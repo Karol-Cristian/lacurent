@@ -1,0 +1,70 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: #f4f4f4;
+}
+
+header {
+    background-color: #007bff;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+main {
+    padding: 20px;
+}
+
+h1, h2 {
+    color: #333;
+}
+
+canvas {
+    display: block;
+    margin: 20px auto;
+    max-width: 100%;
+}
+
+#gauges {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+}
+
+#line-charts {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+input[type="file"] {
+    display: block;
+    margin: 20px auto;
+}
+
+footer {
+    background-color: #007bff;
+    color: white;
+    text-align: center;
+    padding: 10px;
+}
+
+/* Stilizare meniu cu fundal, margini și text roșu mai subtil */
+nav ul.nav li.nav-item a.nav-link {
+    color: #d9534f !important;           /* O nuanță de roșu mai subtilă (similar cu bootstrap "danger") */
+    font-weight: bold;
+    background-color: #f2dede;            /* Fundal roz pal, ușor subtil */
+    border: 1px solid #ebccd1;            /* Margine ușoară, de un roșu deschis */
+    border-radius: 4px;
+    padding: 5px 10px;
+    margin-right: 5px;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+nav ul.nav li.nav-item a.nav-link:hover {
+    background-color: #ebccd1;           /* Ușor mai intens la hover */
+    color: #a94442 !important;
+}
