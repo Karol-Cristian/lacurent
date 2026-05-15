@@ -1,97 +1,50 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
 
-  window.csvData=[];
+  loadLiveData();
 
-  const fileInput=document.getElementById('fileInput');
+  // refresh automat la 60 secunde
 
-  if(fileInput){
-      fileInput.addEventListener(
-          'change',
-          handleFileSelect
-      );
-  }
-
-  const storedData=
-      localStorage.getItem('csvData');
-
-  if(storedData){
-
-      window.csvData=
-          JSON.parse(storedData);
-
-      updateDashboard(
-          window.csvData
-      );
-
-  }else{
-
-      autoLoadCSV();
-
-  }
+  setInterval(
+      loadLiveData,
+      60000
+  );
 
 });
 
 
-function autoLoadCSV(){
 
-  fetch("https://energy-api.username.workers.dev")
-  .then(r=>r.json())
-  .then(data=>{
-  
-  processData(data);
-  
-  });
+async function loadLiveData(){
 
-}
+  try{
 
+      const response =
+      await fetch(
+      "https://energy-api.lemnarukarol.workers.dev"
+      );
 
-function handleFileSelect(event){
+      if(!response.ok){
 
-  const file=
-      event.target.files[0];
+          throw new Error(
+          "API unavailable"
+          );
 
-  if(!file){
+      }
 
-      return;
+      const data=
+      await response.json();
+
+      processData(data);
 
   }
 
-  Papa.parse(file,{
+  catch(error){
 
-      header:true,
+      console.error(
+          "Live data error:",
+          error
+      );
 
-      dynamicTyping:true,
-
-      complete:function(results){
-
-          processData(
-              results.data
-          );
-
-      }
-
-  });
-
-}
-
-
-function parseCSV(text){
-
-  Papa.parse(text,{
-
-      header:true,
-
-      dynamicTyping:true,
-
-      complete:function(results){
-
-          processData(
-              results.data
-          );
-
-      }
-
-  });
+  }
 
 }
 
@@ -100,6 +53,7 @@ function parseCSV(text){
 function processData(data){
 
   const filtered=
+
   data.filter(row=>
 
       row.date &&
@@ -118,18 +72,6 @@ function processData(data){
 
   }
 
-  window.csvData=filtered;
-
-  localStorage.setItem(
-
-      'csvData',
-
-      JSON.stringify(
-          filtered
-      )
-
-  );
-
   updateDashboard(
       filtered
   );
@@ -144,75 +86,121 @@ function updateDashboard(data){
 
   updateCharts(data);
 
+  updateTimestamp();
+
+}
+
+
+
+function updateTimestamp(){
+
+const el=
+document.getElementById(
+'lastUpdate'
+);
+
+if(el){
+
+el.innerText=
+
+"Actualizat: "+
+
+new Date()
+
+.toLocaleString(
+'ro-RO'
+);
+
+}
+
 }
 
 
 
 function updateKPIs(data){
 
-  const latest=
-      data[data.length-1];
+const latest=
 
-  const prod=
-      Math.round(
-          latest.productie ||0
-      );
+data[data.length-1];
 
-  const consum=
-      Math.round(
-          latest.consum||0
-      );
+setValue(
 
-  const sold=
-      Math.round(
-          latest.sold||0
-      );
+"prodTotal",
 
-  const co2=
-      Math.round(
+Math.round(
+latest.productie||0
+)
 
-      (latest.carbune||0)
++" MW"
 
-      *900
-
-      );
+);
 
 
+setValue(
 
-  setValue(
-      "prodTotal",
-      prod+" MW"
-  );
+"consumTotal",
 
-  setValue(
-      "consumTotal",
-      consum+" MW"
-  );
+Math.round(
+latest.consum||0
+)
 
-  setValue(
-      "soldTotal",
-      sold+" MW"
-  );
++" MW"
 
-  setValue(
-      "co2",
-      co2+" kg"
-  );
+);
+
+
+setValue(
+
+"soldTotal",
+
+Math.round(
+latest.sold||0
+)
+
++" MW"
+
+);
+
+
+setValue(
+
+"co2",
+
+Math.round(
+
+(latest.carbune||0)
+
+*900
+
+)
+
++" kg"
+
+);
 
 }
 
 
 
-function setValue(id,value){
+function setValue(
 
-  const el=
-  document.getElementById(id);
+id,
 
-  if(el){
+value
 
-      el.innerText=value;
+){
 
-  }
+const el=
+
+document.getElementById(
+id
+);
+
+if(el){
+
+el.innerText=value;
+
+}
 
 }
 
@@ -220,26 +208,26 @@ function setValue(id,value){
 
 function updateCharts(data){
 
-  const dates=
-      data.map(
-          row=>row.date
-      );
+const dates=
 
+data.map(
+x=>x.date
+);
 
-  createProductionChart(
-      dates,
-      data
-  );
+createProductionChart(
+dates,
+data
+);
 
-  createConsumptionChart(
-      dates,
-      data
-  );
+createConsumptionChart(
+dates,
+data
+);
 
-  createTotalChart(
-      dates,
-      data
-  );
+createTotalChart(
+dates,
+data
+);
 
 }
 
@@ -261,11 +249,11 @@ document
 )
 .getContext('2d');
 
-
-if(window.productionChart)
+if(window.productionChart){
 
 window.productionChart.destroy();
 
+}
 
 
 window.productionChart=
@@ -282,37 +270,49 @@ datasets:[
 
 dataset(
 'Carbune',
-data.map(x=>x.carbune),
+data.map(
+x=>x.carbune
+),
 '#ff5b7f'
 ),
 
 dataset(
 'Hidro',
-data.map(x=>x.hidro),
+data.map(
+x=>x.hidro
+),
 '#3aa0ff'
 ),
 
 dataset(
 'Nuclear',
-data.map(x=>x.nuclear),
+data.map(
+x=>x.nuclear
+),
 '#49dcb1'
 ),
 
 dataset(
 'Eolian',
-data.map(x=>x.eolian),
+data.map(
+x=>x.eolian
+),
 '#a774ff'
 ),
 
 dataset(
 'Fotovoltaic',
-data.map(x=>x.fotovolt),
+data.map(
+x=>x.fotovolt
+),
 '#ffb347'
 ),
 
 dataset(
 'Biomasă',
-data.map(x=>x.biomasa),
+data.map(
+x=>x.biomasa
+),
 '#d4b14c'
 )
 
@@ -346,9 +346,13 @@ document
 )
 .getContext('2d');
 
-if(window.consumptionChart)
+
+if(window.consumptionChart){
 
 window.consumptionChart.destroy();
+
+}
+
 
 window.consumptionChart=
 
@@ -417,9 +421,11 @@ document
 .getContext('2d');
 
 
-if(window.totalChart)
+if(window.totalChart){
 
 window.totalChart.destroy();
+
+}
 
 
 window.totalChart=
@@ -482,9 +488,9 @@ backgroundColor:color,
 
 borderWidth:2,
 
-fill:false,
-
 pointRadius:0,
+
+fill:false,
 
 tension:0.3
 
