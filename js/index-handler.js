@@ -67,64 +67,64 @@ async function loadLiveData(){
 
 function processData(data){
 
-  try{
-
-  console.log(
-  "Procesare..."
-  );
-
-  if(
-      !data ||
-      !Array.isArray(data)
-  ){
-
-      throw new Error(
-      "Date invalide"
-      );
-
-  }
-
   const filtered=
-
-  data.filter(row=>
-
-  row.date!==undefined &&
-
-  row.productie!==undefined
-
-  );
-
-  console.log(
-  "Rows:",
-  filtered.length
-  );
-
-  if(filtered.length===0){
-
-      console.error(
-      "Nu există date"
-      );
-
-      return;
-
+  
+  data
+  .filter(x=>
+  
+  x.date &&
+  
+  x.date!=="nu sunt date"
+  
+  )
+  
+  .map(x=>({
+  
+  date:x.date,
+  
+  productie:
+  x["Putere cerut&#259;"],
+  
+  consum:
+  x["Putere debitat&#259;"],
+  
+  carbune:
+  x["Carbune"],
+  
+  hidro:
+  x["Hidro"],
+  
+  nuclear:
+  x["Nuclear"],
+  
+  eolian:
+  x["Eolian"],
+  
+  hidrocarburi:
+  x["Hidrocarburi"],
+  
+  fotovolt:
+  x["Fotovoltaic"],
+  
+  biomasa:
+  x["Biomasa"],
+  
+  stocare:
+  x["Stocare"],
+  
+  sold:
+  x["Sold"]
+  
+  }));
+  
+  
+  console.log(filtered);
+  
+  window.csvData=filtered;
+  
+  updateDashboard(filtered);
+  
   }
-
-  updateDashboard(
-  filtered
-  );
-
-  }
-
-  catch(e){
-
-      console.error(
-      "Process error:",
-      e
-      );
-
-  }
-
-}
 
 
 
