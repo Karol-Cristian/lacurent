@@ -67,60 +67,78 @@ async function loadLiveData(){
 
 function processData(data){
 
+  console.log("RAW:",data);
+  
   const filtered=data
   .filter(x=>x.date)
   .map(x=>({
   
   date:x.date,
   
-  productie:Number(
-  x["Putere cerut&#259;"]
+  productie:
+  Number(
+  x.productie ??
+  x["Putere cerută"] ??
+  x["Putere ceruta"]
+  ) || 0,
+  
+  consum:
+  Number(
+  x.consum ??
+  x["Putere debitată"] ??
+  x["Putere debitata"]
+  ) || 0,
+  
+  carbune:
+  Number(
+  x.carbune ??
+  x["Carbune"]
   )||0,
   
-  consum:Number(
-  x["Putere debitat&#259;"]
+  hidro:
+  Number(
+  x.hidro ??
+  x["Hidro"]
   )||0,
   
-  carbune:Math.max(
-  0,
-  Number(x["Carbune"])||0
-  ),
+  nuclear:
+  Number(
+  x.nuclear ??
+  x["Nuclear"]
+  )||0,
   
-  hidro:Math.max(
-  0,
-  Number(x["Hidro"])||0
-  ),
+  eolian:
+  Number(
+  x.eolian ??
+  x["Eolian"]
+  )||0,
   
-  nuclear:Math.max(
-  0,
-  Number(x["Nuclear"])||0
-  ),
+  fotovolt:
+  Number(
+  x.fotovolt ??
+  x["Fotovolt"]
+  ??
+  x["Fotovoltaic"]
+  )||0,
   
-  eolian:Math.max(
-  0,
-  Number(x["Eolian"])||0
-  ),
+  biomasa:
+  Number(
+  x.biomasa ??
+  x["Biomasa"]
+  )||0,
   
-  hidrocarburi:Math.max(
-  0,
-  Number(x["Hidrocarburi"])||0
-  ),
-  
-  fotovolt:Math.max(
-  0,
-  Number(x["Fotovoltaic"])||0
-  ),
-  
-  biomasa:Math.max(
-  0,
-  Number(x["Biomasa"])||0
-  ),
-  
-  sold:Number(
+  sold:
+  Number(
+  x.sold ??
   x["Sold"]
   )||0
   
   }));
+  
+  console.log(
+  "Procesate:",
+  filtered
+  );
   
   window.csvData=filtered;
   
