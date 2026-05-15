@@ -75,16 +75,69 @@
   </header>
   
   <main class="container">
-    <section id="monitorizare" class="mb-5">
-      <h2>Monitorizare Date</h2>
-      <!-- Zone pentru grafice -->
-      <div id="line-charts">
-        <canvas id="phaseShiftChart" width="800" height="400"></canvas>
-        <canvas id="cosFiChart" width="800" height="400"></canvas>
-        <canvas id="lambdaChart" width="800" height="400"></canvas>
-      </div>
+
+    <div class="system-banner">
+        <div>
+            <div class="small-label">SISTEM ENERGETIC NAȚIONAL</div>
+            <h2>Monitorizare în timp real</h2>
+            <small>Actualizare automată • Sursă: Transelectrica</small>
+        </div>
+    
+        <div class="status">
+            <span class="green-dot"></span>
+            Sistem stabil
+        </div>
+    </div>
+    
+    <div class="kpi-grid">
+    
+    <div class="kpi-card">
+    <h3 id="prodTotal">-- MW</h3>
+    <p>Producție totală</p>
+    </div>
+    
+    <div class="kpi-card">
+    <h3 id="consumTotal">-- MW</h3>
+    <p>Consum</p>
+    </div>
+    
+    <div class="kpi-card">
+    <h3 id="soldTotal">-- MW</h3>
+    <p>Sold</p>
+    </div>
+    
+    <div class="kpi-card">
+    <h3 id="co2">--</h3>
+    <p>CO₂ estimat</p>
+    </div>
+    
+    </div>
+    
+    <section class="graph-card">
+    
+    <h3>Mix energetic național</h3>
+    
+    <canvas id="phaseShiftChart"></canvas>
+    
     </section>
-  </main>
+    
+    <section class="graph-card">
+    
+    <h3>Echilibru sistem</h3>
+    
+    <canvas id="cosFiChart"></canvas>
+    
+    </section>
+    
+    <section class="graph-card">
+    
+    <h3>Producție totală</h3>
+    
+    <canvas id="lambdaChart"></canvas>
+    
+    </section>
+    
+    </main>
   
   <footer class="container text-center my-3">
     <p>&copy; 2025 Proiect PIGMC. Toate drepturile rezervate.</p>
