@@ -264,73 +264,53 @@ el.innerText=value;
 
 function updateCharts(data){
 
-try{
-
-const dates=
-
-data.map(
-x=>x.date
-);
-
-
-if(
-
-document.getElementById(
-'phaseShiftChart'
-)
-
-){
-
-createProductionChart(
-dates,
-data
-);
-
-}
-
-
-if(
-
-document.getElementById(
-'cosFiChart'
-)
-
-){
-
-createConsumptionChart(
-dates,
-data
-);
-
-}
-
-
-if(
-
-document.getElementById(
-'lambdaChart'
-)
-
-){
-
-createTotalChart(
-dates,
-data
-);
-
-}
-
-}
-catch(err){
-
-console.error(
-"Eroare grafice:",
-err
-);
-
-}
-
-}
+  try{
+  
+  const sampled = data
+  .reverse()
+  .slice(0,120)
+  .reverse()
+  .filter((_,i)=>i%4===0);
+  
+  const dates=
+  sampled.map(x=>
+  
+  new Date(x.date)
+  .toLocaleTimeString(
+  'ro-RO',
+  {
+  hour:'2-digit',
+  minute:'2-digit'
+  })
+  
+  );
+  
+  createProductionChart(
+  dates,
+  sampled
+  );
+  
+  createConsumptionChart(
+  dates,
+  sampled
+  );
+  
+  createTotalChart(
+  dates,
+  sampled
+  );
+  
+  }
+  catch(err){
+  
+  console.error(
+  "Eroare grafice:",
+  err
+  );
+  
+  }
+  
+  }
 
 
 
@@ -618,12 +598,17 @@ function dataset(
     intersect:false
     },
     
+    elements:{
+    point:{
+    radius:0
+    }
+    },
+    
     plugins:{
     title:{
     display:true,
     text:title
     },
-    
     legend:{
     position:'top'
     }
@@ -632,10 +617,10 @@ function dataset(
     scales:{
     x:{
     ticks:{
-    maxTicksLimit:8
+    maxTicksLimit:6,
+    maxRotation:0
     }
     },
-    
     y:{
     beginAtZero:true
     }
