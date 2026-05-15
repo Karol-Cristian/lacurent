@@ -1,95 +1,61 @@
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    background-color: #f4f4f4;
-}
+/* ===== RESET ===== */
 
-header {
-    background-color: #007bff;
-    color: white;
-    padding: 20px;
-    text-align: center;
-}
-
-main {
-    padding: 20px;
-}
-
-h1, h2 {
-    color: #333;
-}
-
-canvas {
-    display: block;
-    margin: 20px auto;
-    max-width: 100%;
-}
-
-#gauges {
-    display: flex;
-    justify-content: space-around;
-    margin-bottom: 20px;
-}
-
-#line-charts {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-input[type="file"] {
-    display: block;
-    margin: 20px auto;
-}
-
-footer {
-    background-color: #007bff;
-    color: white;
-    text-align: center;
-    padding: 10px;
-}
-
-/* Stilizare meniu cu fundal, margini și text roșu mai subtil */
-nav ul.nav li.nav-item a.nav-link {
-    color: #d9534f !important;           /* O nuanță de roșu mai subtilă (similar cu bootstrap "danger") */
-    font-weight: bold;
-    background-color: #f2dede;            /* Fundal roz pal, ușor subtil */
-    border: 1px solid #ebccd1;            /* Margine ușoară, de un roșu deschis */
-    border-radius: 4px;
-    padding: 5px 10px;
-    margin-right: 5px;
-    text-decoration: none;
-    transition: background-color 0.3s;
-}
-
-nav ul.nav li.nav-item a.nav-link:hover {
-    background-color: #ebccd1;           /* Ușor mai intens la hover */
-    color: #a94442 !important;
-}
-
-body{
-
-    background:#f0f3f8;
-    font-family:Inter,sans-serif;
-    color:#1f2937;
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    }
+    
+    body{
+    
+    background:#f4f6fa;
+    
+    font-family:Inter,Arial,sans-serif;
+    
+    color:#1e293b;
+    
+    line-height:1.5;
     
     }
+    
+    
+    /* ===== LAYOUT ===== */
+    
+    .dashboard{
+    
+    width:95%;
+    
+    max-width:1600px;
+    
+    margin:auto;
+    
+    padding:25px;
+    
+    }
+    
+    main{
+    
+    padding:20px;
+    
+    }
+    
+    
+    /* ===== HEADER ===== */
     
     header{
     
     background:#0f172a;
+    
     padding:30px;
+    
+    color:white;
+    
+    box-shadow:
+    0 2px 10px rgba(0,0,0,.15);
     
     }
     
-    .system-banner{
-    
-    background:white;
-    padding:25px;
-    
-    border-radius:15px;
+    .topbar{
     
     display:flex;
     
@@ -97,9 +63,80 @@ body{
     
     align-items:center;
     
-    margin-bottom:25px;
+    gap:20px;
     
-    box-shadow:0 4px 15px rgba(0,0,0,0.08);
+    flex-wrap:wrap;
+    
+    }
+    
+    .topbar h1{
+    
+    font-size:36px;
+    
+    margin-bottom:5px;
+    
+    color:white;
+    
+    }
+    
+    .topbar p{
+    
+    opacity:.75;
+    
+    margin:0;
+    
+    }
+    
+    
+    /* ===== STATUS ===== */
+    
+    .status{
+    
+    font-weight:600;
+    
+    display:flex;
+    
+    align-items:center;
+    
+    }
+    
+    .green-dot{
+    
+    width:10px;
+    
+    height:10px;
+    
+    background:#18c964;
+    
+    border-radius:50%;
+    
+    display:inline-block;
+    
+    margin-right:8px;
+    
+    }
+    
+    
+    /* ===== BANNER ===== */
+    
+    .system-banner{
+    
+    background:white;
+    
+    padding:25px;
+    
+    border-radius:20px;
+    
+    display:flex;
+    
+    justify-content:space-between;
+    
+    align-items:center;
+    
+    margin-bottom:30px;
+    
+    box-shadow:
+    0 4px 20px rgba(0,0,0,.05);
     
     }
     
@@ -109,31 +146,55 @@ body{
     
     letter-spacing:2px;
     
-    color:gray;
+    text-transform:uppercase;
+    
+    color:#64748b;
+    
+    margin-bottom:6px;
     
     }
     
-    .status{
     
-    font-weight:bold;
+    /* ===== NAV ===== */
+    
+    nav ul{
+    
+    display:flex;
+    
+    list-style:none;
+    
+    gap:10px;
+    
+    padding:0;
+    
+    }
+    
+    nav a{
+    
+    text-decoration:none;
+    
+    padding:10px 16px;
+    
+    background:#e2e8f0;
+    
+    border-radius:10px;
+    
+    font-weight:600;
+    
+    color:#334155;
+    
+    transition:.2s;
     
     }
     
-    .green-dot{
+    nav a:hover{
     
-    display:inline-block;
-    
-    width:10px;
-    
-    height:10px;
-    
-    background:#00c853;
-    
-    border-radius:50%;
-    
-    margin-right:8px;
+    background:#cbd5e1;
     
     }
+    
+    
+    /* ===== KPI ===== */
     
     .kpi-grid{
     
@@ -151,36 +212,162 @@ body{
     
     background:white;
     
-    padding:20px;
+    padding:30px;
     
-    border-radius:15px;
-    
-    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    border-radius:20px;
     
     text-align:center;
     
+    box-shadow:
+    0 4px 20px rgba(0,0,0,.05);
+    
+    transition:.2s;
+    
     }
     
+    .kpi-card:hover{
+    
+    transform:translateY(-3px);
+    
+    }
+    
+    .kpi-card h2,
     .kpi-card h3{
     
-    font-size:30px;
+    font-size:42px;
     
     font-weight:700;
+    
+    margin-bottom:8px;
+    
+    color:#0f172a;
+    
+    }
+    
+    .kpi-card p{
+    
+    color:#64748b;
     
     margin:0;
     
     }
     
-    .graph-card{
+    
+    /* ===== GRAFICE ===== */
+    
+    .chart-grid{
+    
+    display:grid;
+    
+    grid-template-columns:1fr;
+    
+    gap:30px;
+    
+    }
+    
+    
+    .graph-card,
+    .chart-card{
     
     background:white;
     
     padding:30px;
     
-    border-radius:15px;
+    border-radius:20px;
     
-    margin-bottom:30px;
+    box-shadow:
+    0 4px 20px rgba(0,0,0,.05);
     
-    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    height:700px;
+    
+    overflow:hidden;
+    
+    }
+    
+    .graph-card h3,
+    .chart-card h3{
+    
+    font-size:22px;
+    
+    margin-bottom:25px;
+    
+    color:#0f172a;
+    
+    }
+    
+    
+    /* CHEIA: dimensiune stabilă */
+    
+    .graph-card canvas,
+    .chart-card canvas{
+    
+    display:block;
+    
+    width:100% !important;
+    
+    height:580px !important;
+    
+    margin:0 !important;
+    
+    }
+    
+    
+    /* ===== FOOTER ===== */
+    
+    footer{
+    
+    margin-top:40px;
+    
+    padding:25px;
+    
+    text-align:center;
+    
+    color:#64748b;
+    
+    }
+    
+    
+    /* ===== RESPONSIVE ===== */
+    
+    @media(max-width:1100px){
+    
+    .kpi-grid{
+    
+    grid-template-columns:
+    repeat(2,1fr);
+    
+    }
+    
+    }
+    
+    @media(max-width:700px){
+    
+    .kpi-grid{
+    
+    grid-template-columns:1fr;
+    
+    }
+    
+    .topbar{
+    
+    flex-direction:column;
+    
+    align-items:flex-start;
+    
+    }
+    
+    .graph-card,
+    .chart-card{
+    
+    height:500px;
+    
+    }
+    
+    .graph-card canvas,
+    .chart-card canvas{
+    
+    height:400px !important;
+    
+    }
     
     }
