@@ -16,19 +16,9 @@ async function loadLiveData(){
 
   try{
 
-      console.log(
-      "Cerere API..."
-      );
-
       const response=
-
       await fetch(
       "https://energy-api.lemnarukarol.workers.dev/"
-      );
-
-      console.log(
-      "Status:",
-      response.status
       );
 
       if(!response.ok){
@@ -41,12 +31,6 @@ async function loadLiveData(){
 
       const data=
       await response.json();
-
-      console.log(
-      "Date API:"
-      );
-
-      console.log(data);
 
       processData(data);
 
@@ -67,107 +51,136 @@ async function loadLiveData(){
 
 function processData(data){
 
-  console.log("RAW:",data);
-  
-  const filtered=data
-  .filter(x=>x.date)
-  .map(x=>({
-  
-  date:x.date,
-  
-  productie:
-  Number(
-  x.productie ??
-  x["Putere cerută"] ??
-  x["Putere ceruta"]
-  ) || 0,
-  
-  consum:
-  Number(
-  x.consum ??
-  x["Putere debitată"] ??
-  x["Putere debitata"]
-  ) || 0,
-  
-  carbune:
-  Number(
-  x.carbune ??
-  x["Carbune"]
-  )||0,
-  
-  hidro:
-  Number(
-  x.hidro ??
-  x["Hidro"]
-  )||0,
-  
-  nuclear:
-  Number(
-  x.nuclear ??
-  x["Nuclear"]
-  )||0,
-  
-  eolian:
-  Number(
-  x.eolian ??
-  x["Eolian"]
-  )||0,
-  
-  fotovolt:
-  Number(
-  x.fotovolt ??
-  x["Fotovolt"]
-  ??
-  x["Fotovoltaic"]
-  )||0,
-  
-  biomasa:
-  Number(
-  x.biomasa ??
-  x["Biomasa"]
-  )||0,
-  
-  sold:
-  Number(
-  x.sold ??
-  x["Sold"]
-  )||0
-  
-  }));
-  
-  console.log(
-  "Procesate:",
-  filtered
-  );
-  
-  window.csvData=filtered;
-  
-  updateDashboard(filtered);
-  
-  }
+console.log(
+"RAW API:"
+);
+
+console.log(
+data[0]
+);
+
+const filtered=data
+
+.filter(x=>x.date)
+
+.map(x=>({
+
+date:x.date,
+
+consum:Number(
+
+x.consum ??
+
+x["Putere cerută"] ??
+
+x["Putere ceruta"] ??
+
+x["Putere cerut&#259;"]
+
+)||0,
+
+
+productie:Number(
+
+x.productie ??
+
+x["Putere debitată"] ??
+
+x["Putere debitata"] ??
+
+x["Putere debitat&#259;"]
+
+)||0,
+
+
+carbune:Math.max(
+0,
+Number(
+x.carbune ??
+x["Carbune"]
+)||0
+),
+
+hidro:Math.max(
+0,
+Number(
+x.hidro ??
+x["Hidro"]
+)||0
+),
+
+nuclear:Math.max(
+0,
+Number(
+x.nuclear ??
+x["Nuclear"]
+)||0
+),
+
+eolian:Math.max(
+0,
+Number(
+x.eolian ??
+x["Eolian"]
+)||0
+),
+
+fotovolt:Math.max(
+0,
+Number(
+x.fotovolt ??
+x["Fotovoltaic"] ??
+x["Fotovolt"]
+)||0
+),
+
+biomasa:Math.max(
+0,
+Number(
+x.biomasa ??
+x["Biomasa"]
+)||0
+),
+
+sold:Number(
+x.sold ??
+x["Sold"]
+)||0
+
+}))
+
+.filter(x=>
+
+x.consum>0 ||
+
+x.productie>0
+
+)
+
+.sort((a,b)=>
+
+new Date(a.date)
+-
+new Date(b.date)
+
+);
+
+
+updateDashboard(
+filtered
+);
+
+}
 
 
 
 function updateDashboard(data){
 
-  try{
+updateKPIs(data);
 
-  updateKPIs(data);
+updateCharts(data);
 
-  updateCharts(data);
-
-  updateTimestamp();
-
-  }
-
-  catch(e){
-
-      console.error(
-      "Dashboard error:",
-      e
-      );
-
-  }
+updateTimestamp();
 
 }
 
@@ -203,31 +216,42 @@ function updateKPIs(data){
 
 try{
 
-const latest=data[0];
+const latest=
 
-console.log(
-"KPI:",
-latest
-);
+data[data.length-1];
 
 setValue(
 "prodTotal",
-(latest.productie||0)+" MW"
+Math.round(
+latest.productie
+)+" MW"
 );
 
 setValue(
 "consumTotal",
-(latest.consum||0)+" MW"
+Math.round(
+latest.consum
+)+" MW"
 );
 
 setValue(
 "soldTotal",
-(latest.sold||0)+" MW"
+Math.round(
+latest.sold
+)+" MW"
 );
 
 setValue(
 "co2",
-((latest.carbune||0)*900)+" kg"
+
+Math.round(
+
+latest.carbune*900
+
+)
+
++" kg"
+
 );
 
 }
@@ -248,9 +272,7 @@ function setValue(id,value){
 
 const el=
 
-document.getElementById(
-id
-);
+document.getElementById(id);
 
 if(el){
 
@@ -264,182 +286,153 @@ el.innerText=value;
 
 function updateCharts(data){
 
-  try{
-  
-  const sampled = data
-  .reverse()
-  .slice(0,120)
-  .reverse()
-  .filter((_,i)=>i%4===0);
-  
-  const dates=
-  sampled.map(x=>
-  
-  new Date(x.date)
-  .toLocaleTimeString(
-  'ro-RO',
-  {
-  hour:'2-digit',
-  minute:'2-digit'
-  })
-  
-  );
-  
-  createProductionChart(
-  dates,
-  sampled
-  );
-  
-  createConsumptionChart(
-  dates,
-  sampled
-  );
-  
-  createTotalChart(
-  dates,
-  sampled
-  );
-  
-  }
-  catch(err){
-  
-  console.error(
-  "Eroare grafice:",
-  err
-  );
-  
-  }
-  
-  }
+try{
+
+const sampled=
+
+[...data]
+
+.slice(-90)
+
+.filter(
+(_,i)=>i%3===0
+);
+
+
+const dates=
+
+sampled.map(x=>
+
+new Date(x.date)
+
+.toLocaleTimeString(
+
+'ro-RO',
+
+{
+
+hour:'2-digit',
+
+minute:'2-digit'
+
+})
+
+);
+
+
+createProductionChart(
+dates,
+sampled
+);
+
+createConsumptionChart(
+dates,
+sampled
+);
+
+}
+catch(err){
+
+console.error(
+"Eroare grafice:",
+err
+);
+
+}
+
+}
 
 
 
 function createProductionChart(dates,data){
 
-  const sampled=data.filter((_,i)=>i%20===0);
-  
-  const ctx=
-  document
-  .getElementById(
-  'phaseShiftChart'
-  )
-  .getContext('2d');
-  
-  if(window.productionChart){
-  
-  window.productionChart.destroy();
-  
-  }
-  
-  window.productionChart=
-  
-  new Chart(ctx,{
-  
-  type:'line',
-  
-  data:{
-  
-  labels:
-  sampled.map(x=>x.date),
-  
-  datasets:[
-  
-  dataset(
-  'Nuclear',
-  sampled.map(x=>x.nuclear),
-  '#4cc9f0'
-  ),
-  
-  dataset(
-  'Hidro',
-  sampled.map(x=>x.hidro),
-  '#4361ee'
-  ),
-  
-  dataset(
-  'Eolian',
-  sampled.map(x=>x.eolian),
-  '#7209b7'
-  ),
-  
-  dataset(
-  'Fotovoltaic',
-  sampled.map(x=>x.fotovolt),
-  '#f9c74f'
-  ),
-  
-  dataset(
-  'Carbune',
-  sampled.map(x=>x.carbune),
-  '#ef476f'
-  ),
-  
-  dataset(
-  'Biomasă',
-  sampled.map(x=>x.biomasa),
-  '#90be6d'
-  )
-  
-  ]
-  
-  },
-  
-  options:{
-  
-  responsive:true,
-  
-  maintainAspectRatio:false,
-  
-  plugins:{
-  
-  legend:{
-  position:'right'
-  }
-  
-  },
-  
-  scales:{
-  
-  x:{
-  ticks:{
-  maxTicksLimit:10
-  }
-  },
-  
-  y:{
-  beginAtZero:true
-  }
-  
-  }
-  
-  }
-  
-  });
-  
-  }
+const ctx=
+
+document
+.getElementById(
+'phaseShiftChart'
+)
+.getContext('2d');
+
+
+if(window.productionChart){
+
+window.productionChart.destroy();
+
+}
+
+
+window.productionChart=
+
+new Chart(ctx,{
+
+type:'line',
+
+data:{
+
+labels:dates,
+
+datasets:[
+
+dataset(
+'Nuclear',
+data.map(x=>x.nuclear),
+'#4cc9f0'
+),
+
+dataset(
+'Hidro',
+data.map(x=>x.hidro),
+'#4361ee'
+),
+
+dataset(
+'Eolian',
+data.map(x=>x.eolian),
+'#7209b7'
+),
+
+dataset(
+'Fotovoltaic',
+data.map(x=>x.fotovolt),
+'#f9c74f'
+),
+
+dataset(
+'Carbune',
+data.map(x=>x.carbune),
+'#ef476f'
+),
+
+dataset(
+'Biomasă',
+data.map(x=>x.biomasa),
+'#90be6d'
+)
+
+]
+
+},
+
+options:chartOptions(
+"Mix energetic național"
+)
+
+});
+
+}
 
 
 
-function createConsumptionChart(
-
-dates,
-
-data
-
-){
-
-const canvas=
-
-document.getElementById(
-'cosFiChart'
-);
-
-if(!canvas)return;
-
+function createConsumptionChart(dates,data){
 
 const ctx=
 
-canvas.getContext('2d');
+document
+.getElementById(
+'cosFiChart'
+)
+.getContext('2d');
 
 
 if(window.consumptionChart){
@@ -463,17 +456,19 @@ datasets:[
 
 dataset(
 'Consum',
-data.map(
-x=>x.consum
-),
+data.map(x=>x.consum),
 '#00a3ff'
 ),
 
 dataset(
-'Sold',
-data.map(
-x=>x.sold
+'Producție',
+data.map(x=>x.productie),
+'#31c46c'
 ),
+
+dataset(
+'Sold',
+data.map(x=>x.sold),
 '#ff5b5b'
 )
 
@@ -491,141 +486,106 @@ options:chartOptions(
 
 
 
-function createTotalChart(
-
-dates,
-
-data
-
+function dataset(
+label,
+data,
+color
 ){
 
-const canvas=
+return{
 
-document.getElementById(
-'lambdaChart'
-);
+label,
 
-if(!canvas)return;
+data,
 
+borderColor:color,
 
-const ctx=
+backgroundColor:color,
 
-canvas.getContext('2d');
+borderWidth:2,
 
+pointRadius:0,
 
-if(window.totalChart){
+fill:false,
 
-window.totalChart.destroy();
+tension:.25
+
+};
 
 }
 
 
-window.totalChart=
 
-new Chart(ctx,{
+function chartOptions(title){
 
-type:'line',
+return{
 
-data:{
+responsive:true,
 
-labels:dates,
+maintainAspectRatio:false,
 
-datasets:[
+animation:false,
 
-dataset(
+resizeDelay:300,
 
-'Producție',
+interaction:{
 
-data.map(
-x=>x.productie
-),
+mode:'index',
 
-'#31c46c'
-
-)
-
-]
+intersect:false
 
 },
 
-options:chartOptions(
-"Producție totală"
-)
+elements:{
 
-});
+point:{
+
+radius:0
 
 }
 
+},
 
+plugins:{
 
-function dataset(
-  label,
-  data,
-  color
-  ){
-  
-  return{
-  
-  label,
-  
-  data,
-  
-  borderColor:color,
-  
-  backgroundColor:color,
-  
-  pointRadius:0,
-  borderWidth:2,
-  fill:true,
-  tension:.45
-  
-  };
-  
-  }
+title:{
 
+display:true,
 
+text:title
 
-  function chartOptions(title){
+},
 
-    return {
-    
-    responsive:true,
-    
-    maintainAspectRatio:false,
-    
-    interaction:{
-    mode:'index',
-    intersect:false
-    },
-    
-    elements:{
-    point:{
-    radius:0
-    }
-    },
-    
-    plugins:{
-    title:{
-    display:true,
-    text:title
-    },
-    legend:{
-    position:'top'
-    }
-    },
-    
-    scales:{
-    x:{
-    ticks:{
-    maxTicksLimit:6,
-    maxRotation:0
-    }
-    },
-    y:{
-    beginAtZero:true
-    }
-    }
-    
-    };
-    
-    }
+legend:{
+
+position:'top'
+
+}
+
+},
+
+scales:{
+
+x:{
+
+ticks:{
+
+maxTicksLimit:6,
+
+maxRotation:0
+
+}
+
+},
+
+y:{
+
+beginAtZero:true
+
+}
+
+}
+
+};
+
+}
