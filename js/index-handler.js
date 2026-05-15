@@ -583,58 +583,42 @@ function dataset(
 
 
 
-function chartOptions(title){
+  function chartOptions(title){
 
-return{
-
-responsive:true,
-
-interaction:{
-
-mode:'index',
-
-intersect:false
-
-},
-
-plugins:{
-
-title:{
-
-display:true,
-
-text:title
-
-},
-
-legend:{
-
-position:'top'
-
-}
-
-},
-
-scales:{
-
-x:{
-
-ticks:{
-
-maxTicksLimit:8
-
-}
-
-},
-
-y:{
-
-beginAtZero:true
-
-}
-
-}
-
-};
-
-}
+    return {
+    
+    responsive:true,
+    
+    maintainAspectRatio:false,
+    
+    interaction:{
+    mode:'index',
+    intersect:false
+    },
+    
+    plugins:{
+    title:{
+    display:true,
+    text:title
+    },
+    
+    legend:{
+    position:'top'
+    }
+    },
+    
+    scales:{
+    x:{
+    ticks:{
+    maxTicksLimit:8
+    }
+    },
+    
+    y:{
+    beginAtZero:true
+    }
+    }
+    
+    };
+    
+    }
