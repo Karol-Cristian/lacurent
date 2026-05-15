@@ -318,9 +318,9 @@ err
 
 function createProductionChart(dates,data){
 
-  const sampled=
+  const sampled =
   data.filter(
-  (_,i)=>i%10===0
+  (_,i)=>i%20===0
   );
   
   const ctx=
@@ -342,21 +342,6 @@ function createProductionChart(dates,data){
   
   type:'line',
   
-  data:{
-  
-  labels:
-  
-  sampled.map(x=>
-  
-  new Date(x.date)
-  .toLocaleTimeString(
-  'ro-RO',
-  {
-  hour:'2-digit',
-  minute:'2-digit'
-  })
-  
-  ),
   
   datasets:[
   
@@ -587,13 +572,10 @@ function dataset(
   
   backgroundColor:color,
   
-  fill:true,
-  
   pointRadius:0,
-  
-  borderWidth:1,
-  
-  tension:0.4
+  borderWidth:2,
+  fill:true,
+  tension:.45
   
   };
   
