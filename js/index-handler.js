@@ -34,32 +34,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function autoLoadCSV(){
 
-  fetch('data/Ianuarie 2025.csv')
-
-  .then(response=>{
-
-      if(!response.ok){
-
-          throw new Error(
-              "CSV auto load failed"
-          );
-
-      }
-
-      return response.text();
-
-  })
-
-  .then(csvText=>{
-
-      parseCSV(csvText);
-
-  })
-
-  .catch(err=>{
-
-      console.error(err);
-
+  fetch("https://energy-api.username.workers.dev")
+  .then(r=>r.json())
+  .then(data=>{
+  
+  processData(data);
+  
   });
 
 }
