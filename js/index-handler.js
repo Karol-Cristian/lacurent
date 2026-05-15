@@ -19,7 +19,7 @@ async function loadLiveData(){
 
       const response =
       await fetch(
-      "https://energy-api.lemnarukarol.workers.dev"
+      "https://energy-api.lemnarukarol.workers.dev/"
       );
 
       if(!response.ok){
