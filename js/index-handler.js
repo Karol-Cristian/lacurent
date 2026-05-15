@@ -67,58 +67,60 @@ async function loadLiveData(){
 
 function processData(data){
 
-  const filtered=
-  
-  data
-  .filter(x=>
-  
-  x.date &&
-  
-  x.date!=="nu sunt date"
-  
-  )
-  
+  const filtered=data
+  .filter(x=>x.date)
   .map(x=>({
   
   date:x.date,
   
-  productie:
-  x["Putere cerut&#259;"],
+  productie:Number(
+  x["Putere cerut&#259;"]
+  )||0,
   
-  consum:
-  x["Putere debitat&#259;"],
+  consum:Number(
+  x["Putere debitat&#259;"]
+  )||0,
   
-  carbune:
-  x["Carbune"],
+  carbune:Math.max(
+  0,
+  Number(x["Carbune"])||0
+  ),
   
-  hidro:
-  x["Hidro"],
+  hidro:Math.max(
+  0,
+  Number(x["Hidro"])||0
+  ),
   
-  nuclear:
-  x["Nuclear"],
+  nuclear:Math.max(
+  0,
+  Number(x["Nuclear"])||0
+  ),
   
-  eolian:
-  x["Eolian"],
+  eolian:Math.max(
+  0,
+  Number(x["Eolian"])||0
+  ),
   
-  hidrocarburi:
-  x["Hidrocarburi"],
+  hidrocarburi:Math.max(
+  0,
+  Number(x["Hidrocarburi"])||0
+  ),
   
-  fotovolt:
-  x["Fotovoltaic"],
+  fotovolt:Math.max(
+  0,
+  Number(x["Fotovoltaic"])||0
+  ),
   
-  biomasa:
-  x["Biomasa"],
+  biomasa:Math.max(
+  0,
+  Number(x["Biomasa"])||0
+  ),
   
-  stocare:
-  x["Stocare"],
-  
-  sold:
+  sold:Number(
   x["Sold"]
+  )||0
   
   }));
-  
-  
-  console.log(filtered);
   
   window.csvData=filtered;
   
@@ -314,106 +316,120 @@ err
 
 
 
-function createProductionChart(
+function createProductionChart(dates,data){
 
-dates,
-
-data
-
-){
-
-const canvas=
-
-document.getElementById(
-'phaseShiftChart'
-);
-
-if(!canvas)return;
-
-
-const ctx=
-
-canvas.getContext('2d');
-
-
-if(window.productionChart){
-
-window.productionChart.destroy();
-
-}
-
-
-window.productionChart=
-
-new Chart(ctx,{
-
-type:'line',
-
-data:{
-
-labels:dates,
-
-datasets:[
-
-dataset(
-'Carbune',
-data.map(
-x=>x.carbune
-),
-'#ff5b7f'
-),
-
-dataset(
-'Hidro',
-data.map(
-x=>x.hidro
-),
-'#3aa0ff'
-),
-
-dataset(
-'Nuclear',
-data.map(
-x=>x.nuclear
-),
-'#49dcb1'
-),
-
-dataset(
-'Eolian',
-data.map(
-x=>x.eolian
-),
-'#a774ff'
-),
-
-dataset(
-'Fotovoltaic',
-data.map(
-x=>x.fotovolt
-),
-'#ffb347'
-),
-
-dataset(
-'Biomasă',
-data.map(
-x=>x.biomasa
-),
-'#d4b14c'
-)
-
-]
-
-},
-
-options:chartOptions(
-"Mix energetic"
-)
-
-});
-
-}
+  const sampled=
+  data.filter(
+  (_,i)=>i%10===0
+  );
+  
+  const ctx=
+  document
+  .getElementById(
+  'phaseShiftChart'
+  )
+  .getContext('2d');
+  
+  if(window.productionChart){
+  
+  window.productionChart.destroy();
+  
+  }
+  
+  window.productionChart=
+  
+  new Chart(ctx,{
+  
+  type:'line',
+  
+  data:{
+  
+  labels:
+  
+  sampled.map(x=>
+  
+  new Date(x.date)
+  .toLocaleTimeString(
+  'ro-RO',
+  {
+  hour:'2-digit',
+  minute:'2-digit'
+  })
+  
+  ),
+  
+  datasets:[
+  
+  dataset(
+  'Nuclear',
+  sampled.map(x=>x.nuclear),
+  '#4cc9f0'
+  ),
+  
+  dataset(
+  'Hidro',
+  sampled.map(x=>x.hidro),
+  '#4361ee'
+  ),
+  
+  dataset(
+  'Eolian',
+  sampled.map(x=>x.eolian),
+  '#7209b7'
+  ),
+  
+  dataset(
+  'Fotovoltaic',
+  sampled.map(x=>x.fotovolt),
+  '#f9c74f'
+  ),
+  
+  dataset(
+  'Carbune',
+  sampled.map(x=>x.carbune),
+  '#ef476f'
+  ),
+  
+  dataset(
+  'Biomasa',
+  sampled.map(x=>x.biomasa),
+  '#90be6d'
+  )
+  
+  ]
+  
+  },
+  
+  options:{
+  
+  responsive:true,
+  
+  plugins:{
+  
+  legend:{
+  position:'right'
+  }
+  
+  },
+  
+  scales:{
+  
+  x:{
+  stacked:true
+  },
+  
+  y:{
+  stacked:true,
+  beginAtZero:true
+  }
+  
+  }
+  
+  }
+  
+  });
+  
+  }
 
 
 
@@ -556,36 +572,32 @@ options:chartOptions(
 
 
 function dataset(
-
-label,
-
-data,
-
-color
-
-){
-
-return{
-
-label,
-
-data,
-
-borderColor:color,
-
-backgroundColor:color,
-
-borderWidth:2,
-
-pointRadius:0,
-
-fill:false,
-
-tension:0.3
-
-};
-
-}
+  label,
+  data,
+  color
+  ){
+  
+  return{
+  
+  label,
+  
+  data,
+  
+  borderColor:color,
+  
+  backgroundColor:color,
+  
+  fill:true,
+  
+  pointRadius:0,
+  
+  borderWidth:1,
+  
+  tension:0.4
+  
+  };
+  
+  }
 
 
 
