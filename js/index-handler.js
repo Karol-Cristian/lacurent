@@ -3,21 +3,18 @@ document.addEventListener('DOMContentLoaded', () => {
   loadLiveData();
 
   // refresh automat la 60 secunde
-
-  setInterval(
-      loadLiveData,
-      60000
-  );
+  setInterval(loadLiveData,60000);
 
 });
-
 
 
 async function loadLiveData(){
 
   try{
 
-      const response =
+      console.log("Încarc API...");
+
+      const response=
       await fetch(
       "https://energy-api.lemnarukarol.workers.dev/"
       );
@@ -33,6 +30,12 @@ async function loadLiveData(){
       const data=
       await response.json();
 
+      console.log(
+      "JSON primit:"
+      );
+
+      console.log(data);
+
       processData(data);
 
   }
@@ -40,8 +43,8 @@ async function loadLiveData(){
   catch(error){
 
       console.error(
-          "Live data error:",
-          error
+      "Live data error:",
+      error
       );
 
   }
@@ -52,20 +55,29 @@ async function loadLiveData(){
 
 function processData(data){
 
+  console.log(
+  "Intru processData"
+  );
+
   const filtered=
 
   data.filter(row=>
 
-      row.date &&
+  row.date!==undefined &&
 
-      row.productie
+  row.productie!==undefined
 
+  );
+
+  console.log(
+  "Rows:",
+  filtered.length
   );
 
   if(filtered.length===0){
 
       console.error(
-          "No valid data"
+      "Nu există date valide"
       );
 
       return;
@@ -73,7 +85,7 @@ function processData(data){
   }
 
   updateDashboard(
-      filtered
+  filtered
   );
 
 }
@@ -119,9 +131,12 @@ new Date()
 
 function updateKPIs(data){
 
-const latest=
+const latest=data[0];
 
-data[data.length-1];
+console.log(
+"Date KPI:",
+latest
+);
 
 setValue(
 
@@ -192,9 +207,7 @@ value
 
 const el=
 
-document.getElementById(
-id
-);
+document.getElementById(id);
 
 if(el){
 
@@ -249,6 +262,7 @@ document
 )
 .getContext('2d');
 
+
 if(window.productionChart){
 
 window.productionChart.destroy();
@@ -270,49 +284,37 @@ datasets:[
 
 dataset(
 'Carbune',
-data.map(
-x=>x.carbune
-),
+data.map(x=>x.carbune),
 '#ff5b7f'
 ),
 
 dataset(
 'Hidro',
-data.map(
-x=>x.hidro
-),
+data.map(x=>x.hidro),
 '#3aa0ff'
 ),
 
 dataset(
 'Nuclear',
-data.map(
-x=>x.nuclear
-),
+data.map(x=>x.nuclear),
 '#49dcb1'
 ),
 
 dataset(
 'Eolian',
-data.map(
-x=>x.eolian
-),
+data.map(x=>x.eolian),
 '#a774ff'
 ),
 
 dataset(
 'Fotovoltaic',
-data.map(
-x=>x.fotovolt
-),
+data.map(x=>x.fotovolt),
 '#ffb347'
 ),
 
 dataset(
 'Biomasă',
-data.map(
-x=>x.biomasa
-),
+data.map(x=>x.biomasa),
 '#d4b14c'
 )
 
