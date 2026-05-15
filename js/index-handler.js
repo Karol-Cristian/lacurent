@@ -318,10 +318,7 @@ err
 
 function createProductionChart(dates,data){
 
-  const sampled =
-  data.filter(
-  (_,i)=>i%20===0
-  );
+  const sampled=data.filter((_,i)=>i%20===0);
   
   const ctx=
   document
@@ -342,6 +339,10 @@ function createProductionChart(dates,data){
   
   type:'line',
   
+  data:{
+  
+  labels:
+  sampled.map(x=>x.date),
   
   datasets:[
   
@@ -376,7 +377,7 @@ function createProductionChart(dates,data){
   ),
   
   dataset(
-  'Biomasa',
+  'Biomasă',
   sampled.map(x=>x.biomasa),
   '#90be6d'
   )
@@ -389,6 +390,8 @@ function createProductionChart(dates,data){
   
   responsive:true,
   
+  maintainAspectRatio:false,
+  
   plugins:{
   
   legend:{
@@ -400,11 +403,12 @@ function createProductionChart(dates,data){
   scales:{
   
   x:{
-  stacked:true
+  ticks:{
+  maxTicksLimit:10
+  }
   },
   
   y:{
-  stacked:true,
   beginAtZero:true
   }
   
