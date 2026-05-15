@@ -1,9 +1,13 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded',()=>{
+
+  console.log("Pornire aplicație");
 
   loadLiveData();
 
-  // refresh automat la 60 secunde
-  setInterval(loadLiveData,60000);
+  setInterval(
+      loadLiveData,
+      60000
+  );
 
 });
 
@@ -12,11 +16,19 @@ async function loadLiveData(){
 
   try{
 
-      console.log("Încarc API...");
+      console.log(
+      "Cerere API..."
+      );
 
       const response=
+
       await fetch(
       "https://energy-api.lemnarukarol.workers.dev/"
+      );
+
+      console.log(
+      "Status:",
+      response.status
       );
 
       if(!response.ok){
@@ -31,7 +43,7 @@ async function loadLiveData(){
       await response.json();
 
       console.log(
-      "JSON primit:"
+      "Date API:"
       );
 
       console.log(data);
@@ -55,9 +67,22 @@ async function loadLiveData(){
 
 function processData(data){
 
+  try{
+
   console.log(
-  "Intru processData"
+  "Procesare..."
   );
+
+  if(
+      !data ||
+      !Array.isArray(data)
+  ){
+
+      throw new Error(
+      "Date invalide"
+      );
+
+  }
 
   const filtered=
 
@@ -77,7 +102,7 @@ function processData(data){
   if(filtered.length===0){
 
       console.error(
-      "Nu există date valide"
+      "Nu există date"
       );
 
       return;
@@ -88,17 +113,41 @@ function processData(data){
   filtered
   );
 
+  }
+
+  catch(e){
+
+      console.error(
+      "Process error:",
+      e
+      );
+
+  }
+
 }
 
 
 
 function updateDashboard(data){
 
+  try{
+
   updateKPIs(data);
 
   updateCharts(data);
 
   updateTimestamp();
+
+  }
+
+  catch(e){
+
+      console.error(
+      "Dashboard error:",
+      e
+      );
+
+  }
 
 }
 
@@ -107,6 +156,7 @@ function updateDashboard(data){
 function updateTimestamp(){
 
 const el=
+
 document.getElementById(
 'lastUpdate'
 );
@@ -131,83 +181,56 @@ new Date()
 
 function updateKPIs(data){
 
+try{
+
 const latest=data[0];
 
 console.log(
-"Date KPI:",
+"KPI:",
 latest
 );
 
 setValue(
-
 "prodTotal",
-
-Math.round(
-latest.productie||0
-)
-
-+" MW"
-
+(latest.productie||0)+" MW"
 );
 
-
 setValue(
-
 "consumTotal",
-
-Math.round(
-latest.consum||0
-)
-
-+" MW"
-
+(latest.consum||0)+" MW"
 );
 
-
 setValue(
-
 "soldTotal",
-
-Math.round(
-latest.sold||0
-)
-
-+" MW"
-
+(latest.sold||0)+" MW"
 );
-
 
 setValue(
-
 "co2",
-
-Math.round(
-
-(latest.carbune||0)
-
-*900
-
-)
-
-+" kg"
-
+((latest.carbune||0)*900)+" kg"
 );
+
+}
+catch(e){
+
+console.log(
+"KPI error:",
+e
+);
+
+}
 
 }
 
 
 
-function setValue(
-
-id,
-
-value
-
-){
+function setValue(id,value){
 
 const el=
 
-document.getElementById(id);
+document.getElementById(
+id
+);
 
 if(el){
 
@@ -221,26 +244,71 @@ el.innerText=value;
 
 function updateCharts(data){
 
+try{
+
 const dates=
 
 data.map(
 x=>x.date
 );
 
+
+if(
+
+document.getElementById(
+'phaseShiftChart'
+)
+
+){
+
 createProductionChart(
 dates,
 data
 );
+
+}
+
+
+if(
+
+document.getElementById(
+'cosFiChart'
+)
+
+){
 
 createConsumptionChart(
 dates,
 data
 );
 
+}
+
+
+if(
+
+document.getElementById(
+'lambdaChart'
+)
+
+){
+
 createTotalChart(
 dates,
 data
 );
+
+}
+
+}
+catch(err){
+
+console.error(
+"Eroare grafice:",
+err
+);
+
+}
 
 }
 
@@ -254,13 +322,18 @@ data
 
 ){
 
+const canvas=
+
+document.getElementById(
+'phaseShiftChart'
+);
+
+if(!canvas)return;
+
+
 const ctx=
 
-document
-.getElementById(
-'phaseShiftChart'
-)
-.getContext('2d');
+canvas.getContext('2d');
 
 
 if(window.productionChart){
@@ -284,37 +357,49 @@ datasets:[
 
 dataset(
 'Carbune',
-data.map(x=>x.carbune),
+data.map(
+x=>x.carbune
+),
 '#ff5b7f'
 ),
 
 dataset(
 'Hidro',
-data.map(x=>x.hidro),
+data.map(
+x=>x.hidro
+),
 '#3aa0ff'
 ),
 
 dataset(
 'Nuclear',
-data.map(x=>x.nuclear),
+data.map(
+x=>x.nuclear
+),
 '#49dcb1'
 ),
 
 dataset(
 'Eolian',
-data.map(x=>x.eolian),
+data.map(
+x=>x.eolian
+),
 '#a774ff'
 ),
 
 dataset(
 'Fotovoltaic',
-data.map(x=>x.fotovolt),
+data.map(
+x=>x.fotovolt
+),
 '#ffb347'
 ),
 
 dataset(
 'Biomasă',
-data.map(x=>x.biomasa),
+data.map(
+x=>x.biomasa
+),
 '#d4b14c'
 )
 
@@ -323,7 +408,7 @@ data.map(x=>x.biomasa),
 },
 
 options:chartOptions(
-"Mix energetic național"
+"Mix energetic"
 )
 
 });
@@ -340,13 +425,18 @@ data
 
 ){
 
+const canvas=
+
+document.getElementById(
+'cosFiChart'
+);
+
+if(!canvas)return;
+
+
 const ctx=
 
-document
-.getElementById(
-'cosFiChart'
-)
-.getContext('2d');
+canvas.getContext('2d');
 
 
 if(window.consumptionChart){
@@ -369,27 +459,19 @@ labels:dates,
 datasets:[
 
 dataset(
-
 'Consum',
-
 data.map(
 x=>x.consum
 ),
-
 '#00a3ff'
-
 ),
 
 dataset(
-
 'Sold',
-
 data.map(
 x=>x.sold
 ),
-
 '#ff5b5b'
-
 )
 
 ]
@@ -414,13 +496,18 @@ data
 
 ){
 
+const canvas=
+
+document.getElementById(
+'lambdaChart'
+);
+
+if(!canvas)return;
+
+
 const ctx=
 
-document
-.getElementById(
-'lambdaChart'
-)
-.getContext('2d');
+canvas.getContext('2d');
 
 
 if(window.totalChart){
@@ -502,11 +589,7 @@ tension:0.3
 
 
 
-function chartOptions(
-
-title
-
-){
+function chartOptions(title){
 
 return{
 
