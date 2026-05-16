@@ -316,106 +316,180 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   
-  function drawMixChart(latest){
-  
-  const ctx=
-  
-  document
-  .getElementById(
-  "mixChart"
-  )
-  .getContext("2d");
-  
-  
-  if(window.mixChart){
-  
-  window.mixChart.destroy();
-  
-  }
-  
-  
-  window.mixChart=
-  
-  new Chart(ctx,{
-  
-  type:"doughnut",
-  
-  data:{
-  
-  labels:[
-  
-  "Carbune",
-  
-  "Hidro",
-  
-  "Nuclear",
-  
-  "Eolian",
-  
-  "Fotovoltaic",
-  
-  "Biomasă"
-  
-  ],
-  
-  datasets:[{
-  
-  data:[
-  
-  latest.carbune,
-  
-  latest.hidro,
-  
-  latest.nuclear,
-  
-  latest.eolian,
-  
-  latest.fotovolt,
-  
-  latest.biomasa
-  
-  ],
-  
-  backgroundColor:[
-  
-  "#ef476f",
-  
-  "#3a86ff",
-  
-  "#06d6a0",
-  
-  "#8338ec",
-  
-  "#ffbe0b",
-  
-  "#90be6d"
-  
-  ],
-  
-  borderWidth:0
-  
-  }]
-  
-  },
-  
-  options:{
-  
-  responsive:true,
-  
-  maintainAspectRatio:false,
-  
-  plugins:{
-  
-  legend:{
-  
-  position:"bottom"
-  
-  }
-  
-  }
-  
-  }
-  
-  });
-  
-  }
+    function drawMixChart(latest){
+
+      const canvas=
+      
+      document.getElementById(
+      "mixChart"
+      );
+      
+      if(!canvas){
+      
+      console.log(
+      "mixChart not found"
+      );
+      
+      return;
+      
+      }
+      
+      const ctx=
+      canvas.getContext("2d");
+      
+      
+      if(window.mixChart){
+      
+      window.mixChart.destroy();
+      
+      }
+      
+      
+      window.mixChart=
+      
+      new Chart(ctx,{
+      
+      type:"doughnut",
+      
+      data:{
+      
+      labels:[
+      
+      "Carbune",
+      
+      "Hidro",
+      
+      "Nuclear",
+      
+      "Eolian",
+      
+      "Fotovoltaic",
+      
+      "Biomasă"
+      
+      ],
+      
+      datasets:[{
+      
+      data:[
+      
+      latest.carbune||0,
+      
+      latest.hidro||0,
+      
+      latest.nuclear||0,
+      
+      latest.eolian||0,
+      
+      latest.fotovolt||0,
+      
+      latest.biomasa||0
+      
+      ],
+      
+      backgroundColor:[
+      
+      "#ef476f",
+      
+      "#3a86ff",
+      
+      "#06d6a0",
+      
+      "#8338ec",
+      
+      "#ffbe0b",
+      
+      "#90be6d"
+      
+      ],
+      
+      borderColor:"#ffffff",
+      
+      borderWidth:3,
+      
+      hoverOffset:20
+      
+      }]
+      
+      },
+      
+      options:{
+      
+      responsive:true,
+      
+      maintainAspectRatio:false,
+      
+      cutout:"45%",
+      
+      plugins:{
+      
+      legend:{
+      
+      position:"right",
+      
+      labels:{
+      
+      padding:20,
+      
+      font:{
+      
+      size:14
+      
+      }
+      
+      }
+      
+      },
+      
+      tooltip:{
+      
+      callbacks:{
+      
+      label:function(context){
+      
+      const value=
+      
+      context.raw;
+      
+      const total=
+      
+      context.dataset.data
+      .reduce(
+      (a,b)=>a+b,
+      0
+      );
+      
+      const p=
+      
+      (
+      value/total*100
+      )
+      .toFixed(1);
+      
+      return
+      
+      context.label+
+      
+      ": "+
+      
+      value+
+      
+      " MW ("+
+      
+      p+
+      
+      "%)";
+      
+      }
+      
+      }
+      
+      }
+      
+      }
+      
+      }
+      
+      });
+      
+      }
