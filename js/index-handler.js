@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   setInterval(
       loadLiveData,
-      600
+      60000
   );
 
 });
@@ -51,126 +51,119 @@ async function loadLiveData(){
 
 function processData(data){
 
-console.log(
-"RAW API:"
-);
-
-console.log(
-data[0]
-);
-
-const filtered=data
-
-.filter(x=>x.date)
-
-.map(x=>({
-
-date:x.date,
-
-consum:Number(
-
-x.consum ??
-
-x["Putere cerută"] ??
-
-x["Putere ceruta"] ??
-
-x["Putere cerut&#259;"]
-
-)||0,
-
-
-productie:Number(
-
-x.productie ??
-
-x["Putere debitată"] ??
-
-x["Putere debitata"] ??
-
-x["Putere debitat&#259;"]
-
-)||0,
-
-
-carbune:Math.max(
-0,
-Number(
-x.carbune ??
-x["Carbune"]
-)||0
-),
-
-hidro:Math.max(
-0,
-Number(
-x.hidro ??
-x["Hidro"]
-)||0
-),
-
-nuclear:Math.max(
-0,
-Number(
-x.nuclear ??
-x["Nuclear"]
-)||0
-),
-
-eolian:Math.max(
-0,
-Number(
-x.eolian ??
-x["Eolian"]
-)||0
-),
-
-fotovolt:Math.max(
-0,
-Number(
-x.fotovolt ??
-x["Fotovoltaic"] ??
-x["Fotovolt"]
-)||0
-),
-
-biomasa:Math.max(
-0,
-Number(
-x.biomasa ??
-x["Biomasa"]
-)||0
-),
-
-sold:Number(
-x.sold ??
-x["Sold"]
-)||0
-
-}))
-
-.filter(x=>
-
-x.consum>0 ||
-
-x.productie>0
-
-)
-
-.sort((a,b)=>
-
-new Date(a.date)
--
-new Date(b.date)
-
-);
-
-
-updateDashboard(
-filtered
-);
-
-}
+  console.log(
+  "RAW API:"
+  );
+  
+  console.log(
+  data[0]
+  );
+  
+  const filtered=data
+  
+  .filter(x=>x.date)
+  
+  .map(x=>({
+  
+  date:x.date,
+  
+  consum:Number(
+  
+  x.consum ??
+  
+  x["Putere cerută"] ??
+  
+  x["Putere ceruta"] ??
+  
+  x["Putere cerut&#259;"]
+  
+  )||0,
+  
+  
+  productie:Number(
+  
+  x.productie ??
+  
+  x["Putere debitată"] ??
+  
+  x["Putere debitata"] ??
+  
+  x["Putere debitat&#259;"]
+  
+  )||0,
+  
+  
+  carbune:Number(
+  x.carbune ??
+  x["Carbune"]
+  )||0,
+  
+  
+  hidro:Number(
+  x.hidro ??
+  x["Hidro"]
+  )||0,
+  
+  
+  nuclear:Number(
+  x.nuclear ??
+  x["Nuclear"]
+  )||0,
+  
+  
+  eolian:Number(
+  x.eolian ??
+  x["Eolian"]
+  )||0,
+  
+  
+  fotovolt:Number(
+  x.fotovolt ??
+  x["Fotovoltaic"] ??
+  x["Fotovolt"]
+  )||0,
+  
+  
+  biomasa:Number(
+  x.biomasa ??
+  x["Biomasa"]
+  )||0,
+  
+  
+  sold:Number(
+  x.sold ??
+  x["Sold"]
+  )||0
+  
+  }))
+  
+  .filter(x=>
+  
+  x.consum>0 ||
+  
+  x.productie>0
+  
+  )
+  
+  .sort((a,b)=>
+  
+  new Date(a.date)
+  -
+  new Date(b.date)
+  
+  );
+  
+  
+  console.log(
+  "Ultimul punct:",
+  filtered[filtered.length-1]
+  );
+  
+  updateDashboard(
+  filtered
+  );
+  
+  }
 
 
 
