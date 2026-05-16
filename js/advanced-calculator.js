@@ -250,57 +250,69 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   function setCapacity(
-  
-  id,
-  
-  current,
-  
-  installedPower
-  
-  ){
-  
-  const percent=
-  
-  (
-  
-  current
-  /
-  installedPower
-  *
-  100
-  
-  )
-  
-  .toFixed(1);
-  
-  
-  const el=
-  
-  document.getElementById(
-  id
-  );
-  
-  if(el){
-  
-  el.innerHTML=
-  
-  percent+
-  
-  `<br><small>
-  
-  ${Math.round(current)}
-  
-  MW / 
-  
-  ${installedPower}
-  
-  MW
-  
-  </small>`;
-  
-  }
-  
-  }
+
+    id,
+    
+    current,
+    
+    installedPower
+    
+    ){
+    
+    const percent=
+    
+    (
+    
+    current
+    /
+    installedPower
+    *
+    100
+    
+    )
+    
+    .toFixed(1);
+    
+    
+    const el=
+    
+    document.getElementById(
+    id
+    );
+    
+    if(el){
+    
+    el.innerHTML=
+    
+    `
+    
+    <div style="font-size:42px;
+    font-weight:700">
+    
+    ${percent}<span style="font-size:28px">%</span>
+    
+    </div>
+    
+    <div style="
+    font-size:13px;
+    color:#64748b;
+    margin-top:8px;
+    line-height:1.4;
+    ">
+    
+    ${Math.round(current)} MW acum
+    
+    <br>
+    
+    Instalat: ${installedPower} MW
+    
+    </div>
+    
+    `;
+    
+    }
+    
+    }
   
   
   
