@@ -318,16 +318,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   
     function drawMixChart(latest){
 
-      const canvas=
+      console.log(
+      "Mix data:",
+      latest
+      );
       
+      const canvas=
       document.getElementById(
       "mixChart"
       );
       
       if(!canvas){
       
-      console.log(
-      "mixChart not found"
+      console.error(
+      "mixChart canvas lipsă"
       );
       
       return;
@@ -337,6 +341,37 @@ document.addEventListener("DOMContentLoaded",()=>{
       const ctx=
       canvas.getContext("2d");
       
+      const values=[
+      
+      Number(latest.carbune)||0,
+      Number(latest.hidro)||0,
+      Number(latest.nuclear)||0,
+      Number(latest.eolian)||0,
+      Number(latest.fotovolt)||0,
+      Number(latest.biomasa)||0
+      
+      ];
+      
+      console.log(
+      "Pie values:",
+      values
+      );
+      
+      const total=
+      values.reduce(
+      (a,b)=>a+b,
+      0
+      );
+      
+      if(total===0){
+      
+      console.error(
+      "Toate valorile sunt 0"
+      );
+      
+      return;
+      
+      }
       
       if(window.mixChart){
       
@@ -345,69 +380,39 @@ document.addEventListener("DOMContentLoaded",()=>{
       }
       
       
-      window.mixChart=
+      window.mixChart=new Chart(ctx,{
       
-      new Chart(ctx,{
-      
-      type:"doughnut",
+      type:"pie",
       
       data:{
       
       labels:[
       
       "Carbune",
-      
       "Hidro",
-      
       "Nuclear",
-      
       "Eolian",
-      
       "Fotovoltaic",
-      
       "Biomasă"
       
       ],
       
       datasets:[{
       
-      data:[
-      
-      latest.carbune||0,
-      
-      latest.hidro||0,
-      
-      latest.nuclear||0,
-      
-      latest.eolian||0,
-      
-      latest.fotovolt||0,
-      
-      latest.biomasa||0
-      
-      ],
+      data:values,
       
       backgroundColor:[
       
       "#ef476f",
-      
       "#3a86ff",
-      
       "#06d6a0",
-      
       "#8338ec",
-      
       "#ffbe0b",
-      
       "#90be6d"
       
       ],
       
-      borderColor:"#ffffff",
-      
-      borderWidth:3,
-      
-      hoverOffset:20
+      borderWidth:2
       
       }]
       
@@ -419,25 +424,11 @@ document.addEventListener("DOMContentLoaded",()=>{
       
       maintainAspectRatio:false,
       
-      cutout:"45%",
-      
       plugins:{
       
       legend:{
       
-      position:"right",
-      
-      labels:{
-      
-      padding:20,
-      
-      font:{
-      
-      size:14
-      
-      }
-      
-      }
+      position:"right"
       
       },
       
@@ -448,37 +439,15 @@ document.addEventListener("DOMContentLoaded",()=>{
       label:function(context){
       
       const value=
-      
       context.raw;
       
-      const total=
-      
-      context.dataset.data
-      .reduce(
-      (a,b)=>a+b,
-      0
-      );
-      
       const p=
-      
       (
       value/total*100
       )
       .toFixed(1);
       
-      return
-      
-      context.label+
-      
-      ": "+
-      
-      value+
-      
-      " MW ("+
-      
-      p+
-      
-      "%)";
+      return `${context.label}: ${value} MW (${p}%)`;
       
       }
       
