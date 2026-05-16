@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ro">
 
 <head>
@@ -11,33 +10,27 @@ name="viewport"
 content="width=device-width, initial-scale=1.0">
 
 <title>
-
 LA CURENT | Laborator energetic
-
 </title>
 
-<link rel="stylesheet"
+<link
+rel="stylesheet"
 href="../css/style.css">
-
 
 <link
 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
 rel="stylesheet">
 
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 
 <script
 src="../js/advanced-calculator.js"
 defer>
-
 </script>
 
 </head>
 
 <body>
-
 
 
 <header class="hero">
@@ -46,46 +39,31 @@ defer>
 
 <div class="hero-top">
 
-
 <div>
 
 <div class="small-label">
-
 ANALIZĂ ȘI STATISTICI
-
 </div>
-
 
 <h1>
-
 Laborator energetic
-
 </h1>
 
-
 <p>
-
 Indicatori avansați și interpretări ale sistemului energetic
-
 </p>
 
-
 </div>
-
 
 <div class="system-state">
 
-<span
-class="green-dot">
-
-</span>
+<span class="green-dot"></span>
 
 LIVE
 
 </div>
 
 </div>
-
 
 
 <nav>
@@ -121,20 +99,16 @@ Laborator
 
 </nav>
 
-
 </div>
 
 </header>
 
 
 
+<main class="container">
 
 
-<main
-class="container">
-
-<div
-class="system-banner">
+<div class="system-banner">
 
 <div>
 
@@ -150,7 +124,6 @@ Indicatori avansați
 
 </h2>
 
-
 <small>
 
 Date generate automat
@@ -162,10 +135,7 @@ Date generate automat
 
 <div class="status">
 
-<span
-class="green-dot">
-
-</span>
+<span class="green-dot"></span>
 
 Activ
 
@@ -175,8 +145,174 @@ Activ
 
 
 
+<div id="advancedResults">
+
+
+<div class="kpi-grid">
+
+
+<div class="kpi-card">
+
+<h2 id="carbune">0.0%</h2>
+
+<p>Carbune</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="hidro">0.0%</h2>
+
+<p>Hidro</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="nuclear">0.0%</h2>
+
+<p>Nuclear</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="eolian">0.0%</h2>
+
+<p>Eolian</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="fotovolt">0.0%</h2>
+
+<p>Fotovoltaic</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="biomasa">0.0%</h2>
+
+<p>Biomasă</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+</div>
+
+
+
+<section class="graph-card">
+
+<h3>
+Mix energetic %
+</h3>
+
+<small>
+Distribuție producție instantanee
+</small>
+
 <div
-id="advancedResults">
+style="
+height:500px;
+margin-top:20px;
+position:relative;
+">
+
+<canvas id="mixChart"></canvas>
+
+</div>
+
+</section>
+
+
+
+<section class="graph-card">
+
+<h3>
+
+Interpretare sistem
+
+</h3>
+
+<div
+style="
+padding:25px;
+font-size:18px;
+line-height:1.8;
+">
+
+<p>
+
+• Cărbune → sursă flexibilă cu emisii ridicate
+
+</p>
+
+<p>
+
+• Hidro → indicator al rezervelor și sezonalității
+
+</p>
+
+<p>
+
+• Eolian + fotovoltaic → sensibil la condiții meteo
+
+</p>
+
+<p>
+
+• Nuclear → producție de bază stabilă
+
+</p>
+
+<p>
+
+• Mixul energetic poate sugera stres sau stabilitate în SEN
+
+</p>
+
+</div>
+
+</section>
+
+
 
 </div>
 
@@ -196,12 +332,10 @@ LA CURENT · laborator energetic
 </footer>
 
 
-
 <script
 src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
 
 </script>
 
 </body>
-
 </html>

@@ -1,336 +1,257 @@
-document.addEventListener('DOMContentLoaded', async ()=>{
+document.addEventListener("DOMContentLoaded",()=>{
 
-  const resultDiv=
-  document.getElementById(
-  'advancedResults'
+  loadData();
+  
+  setInterval(
+  loadData,
+  60000
   );
+  
+  });
+  
+  
+  async function loadData(){
   
   try{
   
   const response=
-  
   await fetch(
-  'https://energy-api.lemnarukarol.workers.dev'
+  "https://energy-api.lemnarukarol.workers.dev/"
   );
   
-  const data=
+  const raw=
   await response.json();
   
-  if(!data || !data.length){
+  const data=raw
   
-  resultDiv.innerHTML=
+  .filter(x=>x.date)
   
-  `<div class="alert alert-warning">
+  .map(x=>({
   
-  Nu există date live.
+  date:x.date,
   
-  </div>`;
+  consum:Number(
+  x.consum ??
+  x["Putere cerută"] ??
+  0
+  ),
   
-  return;
+  productie:Number(
+  x.productie ??
+  x["Putere debitată"] ??
+  0
+  ),
+  
+  carbune:Number(
+  x.carbune ??
+  x["Carbune"] ??
+  0
+  ),
+  
+  hidro:Number(
+  x.hidro ??
+  x["Hidro"] ??
+  0
+  ),
+  
+  nuclear:Number(
+  x.nuclear ??
+  x["Nuclear"] ??
+  0
+  ),
+  
+  eolian:Number(
+  x.eolian ??
+  x["Eolian"] ??
+  0
+  ),
+  
+  fotovolt:Number(
+  x.fotovolt ??
+  x["Fotovoltaic"] ??
+  0
+  ),
+  
+  biomasa:Number(
+  x.biomasa ??
+  x["Biomasa"] ??
+  0
+  )
+  
+  }));
+  
+  updateAdvanced(data);
   
   }
-  
-  renderAnalysis(
-  data,
-  resultDiv
-  );
-  
-  }
-  
   catch(err){
   
-  console.error(err);
-  
-  resultDiv.innerHTML=
-  
-  `<div class="alert alert-danger">
-  
-  Eroare API live
-  
-  </div>`;
+  console.log(err);
   
   }
   
-  });
+  }
   
   
   
-  function renderAnalysis(
+  function updateAdvanced(data){
   
-  data,
+  const latest=
+  data[data.length-1];
   
-  resultDiv
+  const total=
+  
+  latest.carbune+
+  latest.hidro+
+  latest.nuclear+
+  latest.eolian+
+  latest.fotovolt+
+  latest.biomasa;
+  
+  
+  setPercent(
+  "carbune",
+  latest.carbune,
+  total
+  );
+  
+  setPercent(
+  "hidro",
+  latest.hidro,
+  total
+  );
+  
+  setPercent(
+  "nuclear",
+  latest.nuclear,
+  total
+  );
+  
+  setPercent(
+  "eolian",
+  latest.eolian,
+  total
+  );
+  
+  setPercent(
+  "fotovolt",
+  latest.fotovolt,
+  total
+  );
+  
+  setPercent(
+  "biomasa",
+  latest.biomasa,
+  total
+  );
+  
+  
+  drawMixChart(latest);
+  
+  }
+  
+  
+  
+  function setPercent(
+  
+  id,
+  value,
+  total
   
   ){
   
-  const sources=[
+  const percent=
   
-  'carbune',
+  ((value/total)*100)
+  .toFixed(1);
   
-  'hidro',
+  const el=
   
-  'nuclear',
+  document.getElementById(id);
   
-  'eolian',
+  if(el){
   
-  'fotovolt',
-  
-  'biomasa'
-  
-  ];
-  
-  
-  
-  const installed={
-  
-  carbune:4000,
-  
-  hidro:5000,
-  
-  nuclear:1300,
-  
-  eolian:1500,
-  
-  fotovolt:2000,
-  
-  biomasa:200
-  
-  };
-  
-  
-  
-  const totals={};
-  
-  let totalProduction=0;
-  
-  
-  
-  sources.forEach(src=>{
-  
-  totals[src]=
-  
-  data
-  
-  .map(x=>x[src]||0)
-  
-  .reduce(
-  
-  (a,b)=>a+b,
-  
-  0
-  
-  );
-  
-  totalProduction+=
-  
-  totals[src];
-  
-  });
-  
-  
-  
-  let html=`
-  
-  <div class="row">
-  
-  `;
-  
-  
-  
-  sources.forEach(src=>{
-  
-  const avg=
-  
-  totals[src]
-  
-  /
-  
-  data.length;
-  
-  
-  
-  const factor=
-  
-  (
-  
-  avg
-  
-  /
-  
-  installed[src]
-  
-  )
-  
-  *100;
-  
-  
-  
-  html+=`
-  
-  <div class="col-md-4 mb-4">
-  
-  <div class="kpi-card">
-  
-  <h3>
-  
-  ${factor.toFixed(1)}%
-  
-  </h3>
-  
-  <p>
-  
-  ${src}
-  
-  </p>
-  
-  <small>
-  
-  Factor capacitate
-  
-  </small>
-  
-  </div>
-  
-  </div>
-  
-  `;
-  
-  });
-  
-  
-  
-  html+=`
-  
-  </div>
-  
-  
-  
-  <div class="graph-card">
-  
-  <h3>
-  
-  Mix energetic %
-  
-  </h3>
-  
-  <canvas id="mixChart">
-  
-  </canvas>
-  
-  </div>
-  
-  
-  
-  <div class="graph-card">
-  
-  <h3>
-  
-  Impact estimat CO₂
-  
-  </h3>
-  
-  <canvas id="emissionChart">
-  
-  </canvas>
-  
-  </div>
-  
-  `;
-  
-  
-  
-  resultDiv.innerHTML=html;
-  
-  
-  
-  new Chart(
-  
-  document
-  .getElementById(
-  'mixChart'
-  ),
-  
-  {
-  
-  type:'doughnut',
-  
-  data:{
-  
-  labels:sources,
-  
-  datasets:[{
-  
-  data:
-  
-  sources.map(
-  
-  x=>
-  
-  (
-  
-  totals[x]
-  
-  /
-  
-  totalProduction
-  
-  )
-  
-  *100
-  
-  )
-  
-  }]
+  el.innerText=
+  percent+"%";
   
   }
   
   }
   
-  );
   
   
+  function drawMixChart(latest){
   
-  new Chart(
+  const ctx=
   
   document
   .getElementById(
-  'emissionChart'
-  ),
+  "mixChart"
+  )
+  .getContext("2d");
   
-  {
   
-  type:'bar',
+  if(window.mixChart){
+  
+  window.mixChart.destroy();
+  
+  }
+  
+  
+  window.mixChart=
+  
+  new Chart(ctx,{
+  
+  type:"doughnut",
   
   data:{
   
-  labels:sources,
+  labels:[
+  
+  "Carbune",
+  "Hidro",
+  "Nuclear",
+  "Eolian",
+  "Fotovoltaic",
+  "Biomasa"
+  
+  ],
   
   datasets:[{
-  
-  label:'kg CO₂',
   
   data:[
   
-  totals.carbune*900,
+  latest.carbune,
+  latest.hidro,
+  latest.nuclear,
+  latest.eolian,
+  latest.fotovolt,
+  latest.biomasa
   
-  totals.hidro*50,
+  ],
   
-  totals.nuclear*12,
+  backgroundColor:[
   
-  totals.eolian*10,
-  
-  totals.fotovolt*20,
-  
-  totals.biomasa*150
+  "#ef476f",
+  "#3a86ff",
+  "#06d6a0",
+  "#8338ec",
+  "#ffbe0b",
+  "#90be6d"
   
   ]
   
   }]
   
-  }
+  },
+  
+  options:{
+  
+  responsive:true,
+  
+  maintainAspectRatio:false
   
   }
   
-  );
+  });
   
   }
