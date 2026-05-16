@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   setInterval(
       loadLiveData,
-      60000
+      600
   );
 
 });
