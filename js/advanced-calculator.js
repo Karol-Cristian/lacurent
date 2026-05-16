@@ -100,6 +100,7 @@ document.addEventListener(
   Number(
   row.consum ||
   row["Putere cerută [MW]"]||
+  row["Putere cerut&#259;"]||
   0
   ),
   
@@ -108,6 +109,7 @@ document.addEventListener(
   Number(
   row.productie||
   row["Putere debitată [MW]"]||
+  row["Putere debitat&#259;"]||
   0
   ),
   
@@ -143,15 +145,14 @@ document.addEventListener(
   0
   ),
   
+  // AICI NU MAI TĂIEM VALORI NEGATIVE
   fotovolt:
   
-  Math.max(
-  0,
   Number(
   row.fotovolt||
   row["Fotovolt"]||
+  row["Fotovoltaic"]||
   0
-  )
   ),
   
   biomasa:
@@ -225,52 +226,56 @@ document.addEventListener(
   
   
   function updateOne(
-
-    id,
-    current,
-    max
-    
-    ){
-    
-    const el=
-    
-    document.getElementById(id);
-    
-    if(!el)return;
-    
-    const percent=
-    
-    (
-    (current/max)*100
-    )
-    .toFixed(1);
-    
-    
-    el.innerHTML=
-    
-    `
-    
-    <div style="font-size:56px;font-weight:700">
-    
-    ${percent}%
-    
-    </div>
-    
-    <div style="
-    font-size:18px;
-    font-weight:600;
-    margin-top:10px;
-    line-height:1.5;
-    color:#334155;
-    ">
-    
-    ${current} MW / ${max} MW instalați
-    
-    </div>
-    
-    `;
-    
-    }
+  
+  id,
+  current,
+  max
+  
+  ){
+  
+  const el=
+  
+  document.getElementById(id);
+  
+  if(!el)return;
+  
+  
+  const percent=
+  
+  (
+  (current/max)*100
+  )
+  .toFixed(1);
+  
+  
+  el.innerHTML=
+  
+  `
+  
+  <div style="
+  font-size:56px;
+  font-weight:700;
+  ">
+  
+  ${percent}%
+  
+  </div>
+  
+  <div style="
+  font-size:18px;
+  font-weight:600;
+  margin-top:10px;
+  line-height:1.5;
+  color:#334155;
+  ">
+  
+  ${current} MW / ${max} MW instalați
+  
+  </div>
+  
+  `;
+  
+  }
   
   
   
@@ -302,37 +307,58 @@ document.addEventListener(
   
   {
   name:"Carbune",
-  value:latest.carbune,
+  value:Math.max(
+  0,
+  latest.carbune
+  ),
   color:"#ef476f"
   },
   
   {
   name:"Hidro",
-  value:latest.hidro,
+  value:Math.max(
+  0,
+  latest.hidro
+  ),
   color:"#3a86ff"
   },
   
   {
   name:"Nuclear",
-  value:latest.nuclear,
+  value:Math.max(
+  0,
+  latest.nuclear
+  ),
   color:"#06d6a0"
   },
   
   {
   name:"Eolian",
-  value:latest.eolian,
+  value:Math.max(
+  0,
+  latest.eolian
+  ),
   color:"#8338ec"
   },
   
   {
   name:"Fotovoltaic",
-  value:latest.fotovolt,
+  
+  // DOAR AICI LIMITĂM
+  value:Math.max(
+  0,
+  latest.fotovolt
+  ),
+  
   color:"#ffbe0b"
   },
   
   {
   name:"Biomasă",
-  value:latest.biomasa,
+  value:Math.max(
+  0,
+  latest.biomasa
+  ),
   color:"#90be6d"
   }
   
@@ -453,7 +479,7 @@ document.addEventListener(
   const i=
   context.dataIndex;
   
-  return
+  return(
   
   sources[i].name+
   
@@ -465,7 +491,9 @@ document.addEventListener(
   
   sources[i].value+
   
-  " MW)";
+  " MW)"
+  
+  );
   
   }
   
