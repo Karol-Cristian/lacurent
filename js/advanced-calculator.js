@@ -318,11 +318,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   
     function drawMixChart(latest){
 
-      console.log(
-      "Mix data:",
-      latest
-      );
-      
       const canvas=
       document.getElementById(
       "mixChart"
@@ -331,7 +326,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       if(!canvas){
       
       console.error(
-      "mixChart canvas lipsă"
+      "mixChart lipsește"
       );
       
       return;
@@ -341,32 +336,58 @@ document.addEventListener("DOMContentLoaded",()=>{
       const ctx=
       canvas.getContext("2d");
       
-      const values=[
       
-      Number(latest.carbune)||0,
-      Number(latest.hidro)||0,
-      Number(latest.nuclear)||0,
-      Number(latest.eolian)||0,
-      Number(latest.fotovolt)||0,
-      Number(latest.biomasa)||0
+      const mixData=[
       
-      ];
+      {
+      name:"Carbune",
+      value:Number(latest.carbune)||0,
+      color:"#ef476f"
+      },
+      
+      {
+      name:"Hidro",
+      value:Number(latest.hidro)||0,
+      color:"#3a86ff"
+      },
+      
+      {
+      name:"Nuclear",
+      value:Number(latest.nuclear)||0,
+      color:"#06d6a0"
+      },
+      
+      {
+      name:"Eolian",
+      value:Number(latest.eolian)||0,
+      color:"#8338ec"
+      },
+      
+      {
+      name:"Fotovoltaic",
+      value:Number(latest.fotovolt)||0,
+      color:"#ffbe0b"
+      },
+      
+      {
+      name:"Biomasă",
+      value:Number(latest.biomasa)||0,
+      color:"#90be6d"
+      }
+      
+      ]
+      .filter(x=>x.value>0);
+      
       
       console.log(
-      "Pie values:",
-      values
+      "Mix final:",
+      mixData
       );
       
-      const total=
-      values.reduce(
-      (a,b)=>a+b,
-      0
-      );
-      
-      if(total===0){
+      if(mixData.length===0){
       
       console.error(
-      "Toate valorile sunt 0"
+      "Nu există date pentru pie chart"
       );
       
       return;
@@ -382,37 +403,32 @@ document.addEventListener("DOMContentLoaded",()=>{
       
       window.mixChart=new Chart(ctx,{
       
-      type:"pie",
+      type:"doughnut",
       
       data:{
       
-      labels:[
-      
-      "Carbune",
-      "Hidro",
-      "Nuclear",
-      "Eolian",
-      "Fotovoltaic",
-      "Biomasă"
-      
-      ],
+      labels:
+      mixData.map(
+      x=>x.name
+      ),
       
       datasets:[{
       
-      data:values,
+      data:
+      mixData.map(
+      x=>x.value
+      ),
       
-      backgroundColor:[
+      backgroundColor:
+      mixData.map(
+      x=>x.color
+      ),
       
-      "#ef476f",
-      "#3a86ff",
-      "#06d6a0",
-      "#8338ec",
-      "#ffbe0b",
-      "#90be6d"
+      borderColor:"#fff",
       
-      ],
+      borderWidth:3,
       
-      borderWidth:2
+      hoverOffset:15
       
       }]
       
@@ -423,6 +439,8 @@ document.addEventListener("DOMContentLoaded",()=>{
       responsive:true,
       
       maintainAspectRatio:false,
+      
+      cutout:"50%",
       
       plugins:{
       
@@ -438,16 +456,27 @@ document.addEventListener("DOMContentLoaded",()=>{
       
       label:function(context){
       
+      const total=
+      
+      context.dataset.data
+      .reduce(
+      (a,b)=>a+b,
+      0
+      );
+      
       const value=
       context.raw;
       
-      const p=
+      const percent=
+      
       (
-      value/total*100
+      value/
+      total*
+      100
       )
       .toFixed(1);
       
-      return `${context.label}: ${value} MW (${p}%)`;
+      return `${context.label}: ${percent}%`;
       
       }
       
