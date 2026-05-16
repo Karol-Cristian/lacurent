@@ -1,627 +1,312 @@
-document.addEventListener("DOMContentLoaded",()=>{
+function drawMixChart(latest){
 
-  loadData();
-  
-  setInterval(
-  loadData,
-  60000
-  );
-  
-  });
-  
-  
-  
-  const installed={
-  
-  carbune:2300,
-  
-  hidro:6700,
-  
-  nuclear:1400,
-  
-  eolian:3100,
-  
-  fotovolt:4400,
-  
-  biomasa:150
-  
-  };
-  
-  
-  
-  async function loadData(){
-  
-  try{
-  
-  const response=
-  
-  await fetch(
-  "https://energy-api.lemnarukarol.workers.dev/"
-  );
-  
-  if(!response.ok){
-  
-  throw new Error(
-  "API unavailable"
-  );
-  
-  }
-  
-  const raw=
-  await response.json();
-  
   console.log(
-  "RAW:",
-  raw[0]
+  "=== DRAW START ==="
   );
   
-  
-  const data=
-  
-  raw
-  
-  .filter(
-  x=>x.date
-  )
-  
-  .map(x=>({
-  
-  date:x.date,
-  
-  
-  consum:Number(
-  
-  x.consum ??
-  
-  x["Putere cerută"] ??
-  
-  x["Putere ceruta"] ??
-  
-  0
-  
-  ),
-  
-  
-  productie:Number(
-  
-  x.productie ??
-  
-  x["Putere debitată"] ??
-  
-  x["Putere debitata"] ??
-  
-  0
-  
-  ),
-  
-  
-  carbune:Number(
-  
-  x.carbune ??
-  
-  x.Carbune ??
-  
-  x["Carbune"] ??
-  
-  0
-  
-  ),
-  
-  
-  hidro:Number(
-  
-  x.hidro ??
-  
-  x.Hidro ??
-  
-  x["Hidro"] ??
-  
-  0
-  
-  ),
-  
-  
-  nuclear:Number(
-  
-  x.nuclear ??
-  
-  x.Nuclear ??
-  
-  x["Nuclear"] ??
-  
-  0
-  
-  ),
-  
-  
-  eolian:Number(
-  
-  x.eolian ??
-  
-  x.Eolian ??
-  
-  x["Eolian"] ??
-  
-  0
-  
-  ),
-  
-  
-  fotovolt:Number(
-  
-  x.fotovolt ??
-  
-  x.fotovoltaic ??
-  
-  x.Fotovoltaic ??
-  
-  x["Fotovoltaic"] ??
-  
-  0
-  
-  ),
-  
-  
-  biomasa:Number(
-  
-  x.biomasa ??
-  
-  x.Biomasa ??
-  
-  x["Biomasa"] ??
-  
-  0
-  
-  )
-  
-  }))
-  
-  .filter(x=>
-  
-  x.carbune ||
-  
-  x.hidro ||
-  
-  x.nuclear ||
-  
-  x.eolian ||
-  
-  x.fotovolt ||
-  
-  x.biomasa
-  
-  )
-  
-  .sort(
-  
-  (a,b)=>
-  
-  new Date(a.date)
-  
-  -
-  
-  new Date(b.date)
-  
+  const canvas=
+  document.getElementById(
+  "mixChart"
   );
   
-  
-  console.log(
-  "Ultimul punct:",
-  data[data.length-1]
-  );
-  
-  
-  updateAdvanced(
-  data
-  );
-  
-  }
-  
-  catch(err){
+  if(!canvas){
   
   console.error(
-  "loadData:",
-  err
-  );
-  
-  }
-  
-  }
-  
-  
-  
-  
-  function updateAdvanced(data){
-  
-  if(
-  !data ||
-  data.length===0
-  ){
-  
-  console.error(
-  "Nu există date"
+  "mixChart nu există"
   );
   
   return;
   
   }
   
-  const latest=
+  const ctx=
+  canvas.getContext(
+  "2d"
+  );
   
-  data[data.length-1];
+  
+  const sources=[
+  
+  {
+  name:"Carbune",
+  value:Math.max(
+  0,
+  Number(
+  latest.carbune
+  )||0
+  ),
+  color:"#ef476f"
+  },
+  
+  {
+  name:"Hidro",
+  value:Math.max(
+  0,
+  Number(
+  latest.hidro
+  )||0
+  ),
+  color:"#3a86ff"
+  },
+  
+  {
+  name:"Nuclear",
+  value:Math.max(
+  0,
+  Number(
+  latest.nuclear
+  )||0
+  ),
+  color:"#06d6a0"
+  },
+  
+  {
+  name:"Eolian",
+  value:Math.max(
+  0,
+  Number(
+  latest.eolian
+  )||0
+  ),
+  color:"#8338ec"
+  },
+  
+  {
+  name:"Fotovoltaic",
+  value:Math.max(
+  0,
+  Number(
+  latest.fotovolt
+  )||0
+  ),
+  color:"#ffbe0b"
+  },
+  
+  {
+  name:"Biomasă",
+  value:Math.max(
+  0,
+  Number(
+  latest.biomasa
+  )||0
+  ),
+  color:"#90be6d"
+  }
+  
+  ]
+  
+  .filter(
+  x=>x.value>0
+  );
   
   
   console.log(
-  "Latest:",
-  latest
+  "Surse:",
+  sources
   );
   
   
-  setCapacity(
-  "carbune",
-  latest.carbune,
-  installed.carbune
+  const total=
+  
+  sources.reduce(
+  
+  (sum,item)=>
+  
+  sum+item.value,
+  
+  0
+  
   );
   
   
-  setCapacity(
-  "hidro",
-  latest.hidro,
-  installed.hidro
+  console.log(
+  "Total:",
+  total
   );
   
   
-  setCapacity(
-  "nuclear",
-  latest.nuclear,
-  installed.nuclear
+  if(total===0){
+  
+  console.error(
+  "Total zero"
   );
   
-  
-  setCapacity(
-  "eolian",
-  latest.eolian,
-  installed.eolian
-  );
-  
-  
-  setCapacity(
-  "fotovolt",
-  latest.fotovolt,
-  installed.fotovolt
-  );
-  
-  
-  setCapacity(
-  "biomasa",
-  latest.biomasa,
-  installed.biomasa
-  );
-  
-  
-  drawMixChart(
-  latest
-  );
+  return;
   
   }
   
   
+  const percentages=
   
+  sources.map(x=>({
   
-  function setCapacity(
+  name:x.name,
   
-  id,
+  value:x.value,
   
-  current,
+  color:x.color,
   
-  installedPower
-  
-  ){
-  
-  const percent=
+  percent:Number(
   
   (
+  x.value
+  /
+  total
+  *
+  100
+  )
   
-  current/
-  
-  installedPower
-  
-  *100
+  .toFixed(1)
   
   )
   
-  .toFixed(1);
+  }));
   
   
-  const el=
-  
-  document.getElementById(
-  id
+  console.log(
+  "Procente:",
+  percentages
   );
   
-  if(el){
-  
-  el.innerHTML=
-  
-  `
-  
-  <div style="
-  font-size:42px;
-  font-weight:700;
-  ">
-  
-  ${percent}
-  
-  <span style="
-  font-size:26px
-  ">
-  
-  %
-  
-  </span>
-  
-  </div>
   
   
-  <div style="
-  font-size:13px;
-  color:#64748b;
-  margin-top:8px;
-  line-height:1.5;
-  ">
+  try{
   
-  ${Math.round(current)} MW acum
+  if(
   
-  <br>
+  window.mixChart &&
   
-  Instalat:
-  ${installedPower} MW
+  typeof
+  window.mixChart.destroy
+  ===
   
-  </div>
+  "function"
   
-  `;
+  ){
+  
+  window.mixChart.destroy();
   
   }
   
   }
   
+  catch(e){
+  
+  console.log(
+  "skip destroy"
+  );
+  
+  }
   
   
   
-  function drawMixChart(latest){
-
-    const canvas=
-    document.getElementById(
-    "mixChart"
-    );
-    
-    if(!canvas){
-    
-    console.error(
-    "mixChart lipsește"
-    );
-    
-    return;
-    
-    }
-    
-    const ctx=
-    canvas.getContext("2d");
-    
-    
-    const sources=[
-    
-    {
-    name:"Carbune",
-    value:Math.max(
-    0,
-    Number(latest.carbune)||0
-    ),
-    color:"#ef476f"
-    },
-    
-    {
-    name:"Hidro",
-    value:Math.max(
-    0,
-    Number(latest.hidro)||0
-    ),
-    color:"#3a86ff"
-    },
-    
-    {
-    name:"Nuclear",
-    value:Math.max(
-    0,
-    Number(latest.nuclear)||0
-    ),
-    color:"#06d6a0"
-    },
-    
-    {
-    name:"Eolian",
-    value:Math.max(
-    0,
-    Number(latest.eolian)||0
-    ),
-    color:"#8338ec"
-    },
-    
-    {
-    name:"Fotovoltaic",
-    value:Math.max(
-    0,
-    Number(latest.fotovolt)||0
-    ),
-    color:"#ffbe0b"
-    },
-    
-    {
-    name:"Biomasă",
-    value:Math.max(
-    0,
-    Number(latest.biomasa)||0
-    ),
-    color:"#90be6d"
-    }
-    
-    ]
-    
-    .filter(
-    x=>x.value>0
-    );
-    
-    
-    const total=
-    
-    sources.reduce(
-    
-    (sum,item)=>
-    
-    sum+item.value,
-    
-    0
-    
-    );
-    
-    
-    console.log(
-    "Total producție:",
-    total
-    );
-    
-    
-    if(total===0){
-    
-    console.error(
-    "Total=0"
-    );
-    
-    return;
-    
-    }
-    
-    
-    const percentages=
-    
-    sources.map(x=>({
-    
-    ...x,
-    
-    percent:
-    
-    (
-    x.value/
-    total*
-    100
-    )
-    
-    .toFixed(1)
-    
-    }));
-    
-    
-    console.log(
-    "Mix:",
-    percentages
-    );
-    
-    
-    if(window.mixChart){
-    
-    window.mixChart.destroy();
-    
-    }
-    
-    
-    window.mixChart=
-    
-    new Chart(ctx,{
-    
-    type:"doughnut",
-    
-    data:{
-    
-    labels:
-    
-    percentages.map(
-    x=>x.name
-    ),
-    
-    datasets:[{
-    
-    data:
-    
-    percentages.map(
-    x=>x.percent
-    ),
-    
-    backgroundColor:
-    
-    percentages.map(
-    x=>x.color
-    ),
-    
-    borderWidth:2,
-    
-    borderColor:"#fff"
-    
-    }]
-    
-    },
-    
-    options:{
-    
-    responsive:true,
-    
-    maintainAspectRatio:false,
-    
-    cutout:"55%",
-    
-    plugins:{
-    
-    legend:{
-    
-    position:"right"
-    
-    },
-    
-    tooltip:{
-    
-    callbacks:{
-    
-    label:function(context){
-    
-    const index=
-    context.dataIndex;
-    
-    const x=
-    percentages[index];
-    
-    return
-    
-    x.name+
-    
-    ": "+
-    
-    x.percent+
-    
-    "% ("+
-    
-    x.value+
-    
-    " MW)";
-    
-    }
-    
-    }
-    
-    }
-    
-    }
-    
-    }
-    
-    });
-    
-    }
+  window.mixChart=
+  
+  new Chart(ctx,{
+  
+  type:"doughnut",
+  
+  data:{
+  
+  labels:
+  
+  percentages.map(
+  x=>x.name
+  ),
+  
+  datasets:[{
+  
+  data:
+  
+  percentages.map(
+  x=>x.percent
+  ),
+  
+  backgroundColor:
+  
+  percentages.map(
+  x=>x.color
+  ),
+  
+  borderColor:"#fff",
+  
+  borderWidth:3,
+  
+  hoverOffset:20
+  
+  }]
+  
+  },
+  
+  options:{
+  
+  responsive:true,
+  
+  maintainAspectRatio:false,
+  
+  cutout:"55%",
+  
+  plugins:{
+  
+  legend:{
+  
+  position:"right",
+  
+  labels:{
+  
+  padding:20,
+  
+  font:{
+  
+  size:14
+  
+  }
+  
+  }
+  
+  },
+  
+  tooltip:{
+  
+  callbacks:{
+  
+  label:function(context){
+  
+  const item=
+  
+  percentages[
+  context.dataIndex
+  ];
+  
+  
+  return
+  
+  item.name+
+  
+  ": "+
+  
+  item.percent+
+  
+  "% ("+
+  
+  item.value+
+  
+  " MW)";
+  
+  }
+  
+  }
+  
+  }
+  
+  }
+  
+  }
+  
+  });
+  
+  console.log(
+  "Grafic creat"
+  );
+  
+  }
