@@ -225,45 +225,52 @@ document.addEventListener(
   
   
   function updateOne(
-  
-  id,
-  current,
-  max
-  
-  ){
-  
-  const el=
-  
-  document.getElementById(
-  id
-  );
-  
-  if(!el)return;
-  
-  const percent=
-  
-  (
-  current/
-  max*
-  100
-  )
-  .toFixed(1);
-  
-  el.innerHTML=
-  
-  percent+
-  
-  "%<br><small>"+
-  
-  current+
-  
-  " MW / "+
-  
-  max+
-  
-  " MW instalați</small>";
-  
-  }
+
+    id,
+    current,
+    max
+    
+    ){
+    
+    const el=
+    
+    document.getElementById(id);
+    
+    if(!el)return;
+    
+    const percent=
+    
+    (
+    (current/max)*100
+    )
+    .toFixed(1);
+    
+    
+    el.innerHTML=
+    
+    `
+    
+    <div style="font-size:56px;font-weight:700">
+    
+    ${percent}%
+    
+    </div>
+    
+    <div style="
+    font-size:18px;
+    font-weight:600;
+    margin-top:10px;
+    line-height:1.5;
+    color:#334155;
+    ">
+    
+    ${current} MW / ${max} MW instalați
+    
+    </div>
+    
+    `;
+    
+    }
   
   
   
