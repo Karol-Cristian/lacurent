@@ -1,409 +1,341 @@
-document.addEventListener("DOMContentLoaded",()=>{
+<!DOCTYPE html>
+<html lang="ro">
 
-  loadData();
-  
-  setInterval(
-  loadData,
-  60000
-  );
-  
-  });
-  
-  
-  
-  const installed={
-  
-  carbune:2300,
-  
-  hidro:6700,
-  
-  nuclear:1400,
-  
-  eolian:3100,
-  
-  fotovolt:4400,
-  
-  biomasa:150
-  
-  };
-  
-  
-  
-  async function loadData(){
-  
-  try{
-  
-  const response=
-  
-  await fetch(
-  "https://energy-api.lemnarukarol.workers.dev/"
-  );
-  
-  if(!response.ok){
-  
-  throw new Error(
-  "API unavailable"
-  );
-  
-  }
-  
-  const raw=
-  
-  await response.json();
-  
-  
-  const data=
-  
-  raw
-  
-  .filter(x=>x.date)
-  
-  .map(x=>({
-  
-  date:x.date,
-  
-  consum:Number(
-  
-  x.consum ??
-  
-  x["Putere cerută"] ??
-  
-  x["Putere ceruta"] ??
-  
-  x["Putere cerut&#259;"]
-  
-  )||0,
-  
-  
-  productie:Number(
-  
-  x.productie ??
-  
-  x["Putere debitată"] ??
-  
-  x["Putere debitata"] ??
-  
-  x["Putere debitat&#259;"]
-  
-  )||0,
-  
-  
-  carbune:Math.max(
-  0,
-  Number(
-  x.carbune ??
-  x["Carbune"]
-  )||0
-  ),
-  
-  hidro:Math.max(
-  0,
-  Number(
-  x.hidro ??
-  x["Hidro"]
-  )||0
-  ),
-  
-  nuclear:Math.max(
-  0,
-  Number(
-  x.nuclear ??
-  x["Nuclear"]
-  )||0
-  ),
-  
-  eolian:Math.max(
-  0,
-  Number(
-  x.eolian ??
-  x["Eolian"]
-  )||0
-  ),
-  
-  fotovolt:Math.max(
-  0,
-  Number(
-  x.fotovolt ??
-  x["Fotovoltaic"] ??
-  x["Fotovolt"]
-  )||0
-  ),
-  
-  biomasa:Math.max(
-  0,
-  Number(
-  x.biomasa ??
-  x["Biomasa"]
-  )||0
-  
-  )
-  
-  }))
-  
-  .sort(
-  (a,b)=>
-  
-  new Date(a.date)
-  -
-  new Date(b.date)
-  
-  );
-  
-  
-  updateAdvanced(
-  data
-  );
-  
-  }
-  catch(err){
-  
-  console.error(
-  err
-  );
-  
-  }
-  
-  }
-  
-  
-  
-  
-  function updateAdvanced(data){
-  
-  const latest=
-  
-  data[data.length-1];
-  
-  
-  setCapacity(
-  
-  "carbune",
-  
-  latest.carbune,
-  
-  installed.carbune
-  
-  );
-  
-  
-  setCapacity(
-  
-  "hidro",
-  
-  latest.hidro,
-  
-  installed.hidro
-  
-  );
-  
-  
-  setCapacity(
-  
-  "nuclear",
-  
-  latest.nuclear,
-  
-  installed.nuclear
-  
-  );
-  
-  
-  setCapacity(
-  
-  "eolian",
-  
-  latest.eolian,
-  
-  installed.eolian
-  
-  );
-  
-  
-  setCapacity(
-  
-  "fotovolt",
-  
-  latest.fotovolt,
-  
-  installed.fotovolt
-  
-  );
-  
-  
-  setCapacity(
-  
-  "biomasa",
-  
-  latest.biomasa,
-  
-  installed.biomasa
-  
-  );
-  
-  
-  drawMixChart(
-  latest
-  );
-  
-  }
-  
-  
-  
-  function setCapacity(
-  
-  id,
-  
-  current,
-  
-  installedPower
-  
-  ){
-  
-  const percent=
-  
-  (
-  
-  current
-  /
-  installedPower
-  *
-  100
-  
-  )
-  
-  .toFixed(1);
-  
-  
-  const el=
-  
-  document.getElementById(
-  id
-  );
-  
-  if(el){
-  
-  el.innerHTML=
-  
-  percent+
-  
-  `<br><small>
-  
-  ${Math.round(current)}
-  
-  MW / 
-  
-  ${installedPower}
-  
-  MW
-  
-  </small>`;
-  
-  }
-  
-  }
-  
-  
-  
-  function drawMixChart(latest){
-  
-  const ctx=
-  
-  document
-  .getElementById(
-  "mixChart"
-  )
-  .getContext("2d");
-  
-  
-  if(window.mixChart){
-  
-  window.mixChart.destroy();
-  
-  }
-  
-  
-  window.mixChart=
-  
-  new Chart(ctx,{
-  
-  type:"doughnut",
-  
-  data:{
-  
-  labels:[
-  
-  "Carbune",
-  
-  "Hidro",
-  
-  "Nuclear",
-  
-  "Eolian",
-  
-  "Fotovoltaic",
-  
-  "Biomasă"
-  
-  ],
-  
-  datasets:[{
-  
-  data:[
-  
-  latest.carbune,
-  
-  latest.hidro,
-  
-  latest.nuclear,
-  
-  latest.eolian,
-  
-  latest.fotovolt,
-  
-  latest.biomasa
-  
-  ],
-  
-  backgroundColor:[
-  
-  "#ef476f",
-  
-  "#3a86ff",
-  
-  "#06d6a0",
-  
-  "#8338ec",
-  
-  "#ffbe0b",
-  
-  "#90be6d"
-  
-  ],
-  
-  borderWidth:0
-  
-  }]
-  
-  },
-  
-  options:{
-  
-  responsive:true,
-  
-  maintainAspectRatio:false,
-  
-  plugins:{
-  
-  legend:{
-  
-  position:"bottom"
-  
-  }
-  
-  }
-  
-  }
-  
-  });
-  
-  }
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>
+LA CURENT | Laborator energetic
+</title>
+
+<link
+rel="stylesheet"
+href="../css/style.css">
+
+<link
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script
+src="../js/advanced-calculator.js"
+defer>
+</script>
+
+</head>
+
+<body>
+
+
+<header class="hero">
+
+<div class="container">
+
+<div class="hero-top">
+
+<div>
+
+<div class="small-label">
+ANALIZĂ ȘI STATISTICI
+</div>
+
+<h1>
+Laborator energetic
+</h1>
+
+<p>
+Indicatori avansați și interpretări ale sistemului energetic
+</p>
+
+</div>
+
+<div class="system-state">
+
+<span class="green-dot"></span>
+
+LIVE
+
+</div>
+
+</div>
+
+
+<nav>
+
+<ul class="nav">
+
+<li class="nav-item">
+
+<a
+class="nav-link custom-nav"
+href="../index.html">
+
+Panou energetic
+
+</a>
+
+</li>
+
+
+<li class="nav-item">
+
+<a
+class="nav-link custom-nav active"
+href="advanced-calculator.html">
+
+Laborator
+
+</a>
+
+</li>
+
+</ul>
+
+</nav>
+
+</div>
+
+</header>
+
+
+
+<main class="container">
+
+
+<div class="system-banner">
+
+<div>
+
+<div class="small-label">
+
+ANALIZĂ ENERGETICĂ
+
+</div>
+
+<h2>
+
+Indicatori avansați
+
+</h2>
+
+<small>
+
+Date generate automat
+
+</small>
+
+</div>
+
+
+<div class="status">
+
+<span class="green-dot"></span>
+
+Activ
+
+</div>
+
+</div>
+
+
+
+<div id="advancedResults">
+
+
+<div class="kpi-grid">
+
+
+<div class="kpi-card">
+
+<h2 id="carbune">0.0%</h2>
+
+<p>Carbune</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="hidro">0.0%</h2>
+
+<p>Hidro</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="nuclear">0.0%</h2>
+
+<p>Nuclear</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="eolian">0.0%</h2>
+
+<p>Eolian</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="fotovolt">0.0%</h2>
+
+<p>Fotovoltaic</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+
+<div class="kpi-card">
+
+<h2 id="biomasa">0.0%</h2>
+
+<p>Biomasă</p>
+
+<small>
+Factor capacitate
+</small>
+
+</div>
+
+
+</div>
+
+
+
+<section class="graph-card">
+
+<h3>
+Mix energetic %
+</h3>
+
+<small>
+Distribuție producție instantanee
+</small>
+
+<div
+style="
+height:500px;
+margin-top:20px;
+position:relative;
+">
+
+<canvas id="mixChart"></canvas>
+
+</div>
+
+</section>
+
+
+
+<section class="graph-card">
+
+<h3>
+
+Interpretare sistem
+
+</h3>
+
+<div
+style="
+padding:25px;
+font-size:18px;
+line-height:1.8;
+">
+
+<p>
+
+• Cărbune → sursă flexibilă cu emisii ridicate
+
+</p>
+
+<p>
+
+• Hidro → indicator al rezervelor și sezonalității
+
+</p>
+
+<p>
+
+• Eolian + fotovoltaic → sensibil la condiții meteo
+
+</p>
+
+<p>
+
+• Nuclear → producție de bază stabilă
+
+</p>
+
+<p>
+
+• Mixul energetic poate sugera stres sau stabilitate în SEN
+
+</p>
+
+</div>
+
+</section>
+
+
+
+</div>
+
+</main>
+
+
+
+<footer
+class="container text-center my-4">
+
+<small>
+
+LA CURENT · laborator energetic
+
+</small>
+
+</footer>
+
+
+<script
+src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+
+</script>
+
+</body>
+</html>

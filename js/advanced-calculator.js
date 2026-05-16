@@ -10,19 +10,51 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   
   
+  
+  const installed={
+  
+  carbune:2300,
+  
+  hidro:6700,
+  
+  nuclear:1400,
+  
+  eolian:3100,
+  
+  fotovolt:4400,
+  
+  biomasa:150
+  
+  };
+  
+  
+  
   async function loadData(){
   
   try{
   
   const response=
+  
   await fetch(
   "https://energy-api.lemnarukarol.workers.dev/"
   );
   
+  if(!response.ok){
+  
+  throw new Error(
+  "API unavailable"
+  );
+  
+  }
+  
   const raw=
+  
   await response.json();
   
-  const data=raw
+  
+  const data=
+  
+  raw
   
   .filter(x=>x.date)
   
@@ -31,147 +63,240 @@ document.addEventListener("DOMContentLoaded",()=>{
   date:x.date,
   
   consum:Number(
+  
   x.consum ??
+  
   x["Putere cerută"] ??
-  0
-  ),
+  
+  x["Putere ceruta"] ??
+  
+  x["Putere cerut&#259;"]
+  
+  )||0,
+  
   
   productie:Number(
+  
   x.productie ??
+  
   x["Putere debitată"] ??
-  0
-  ),
   
-  carbune:Number(
+  x["Putere debitata"] ??
+  
+  x["Putere debitat&#259;"]
+  
+  )||0,
+  
+  
+  carbune:Math.max(
+  0,
+  Number(
   x.carbune ??
-  x["Carbune"] ??
-  0
+  x["Carbune"]
+  )||0
   ),
   
-  hidro:Number(
+  hidro:Math.max(
+  0,
+  Number(
   x.hidro ??
-  x["Hidro"] ??
-  0
+  x["Hidro"]
+  )||0
   ),
   
-  nuclear:Number(
+  nuclear:Math.max(
+  0,
+  Number(
   x.nuclear ??
-  x["Nuclear"] ??
-  0
+  x["Nuclear"]
+  )||0
   ),
   
-  eolian:Number(
+  eolian:Math.max(
+  0,
+  Number(
   x.eolian ??
-  x["Eolian"] ??
-  0
+  x["Eolian"]
+  )||0
   ),
   
-  fotovolt:Number(
+  fotovolt:Math.max(
+  0,
+  Number(
   x.fotovolt ??
   x["Fotovoltaic"] ??
-  0
+  x["Fotovolt"]
+  )||0
   ),
   
-  biomasa:Number(
+  biomasa:Math.max(
+  0,
+  Number(
   x.biomasa ??
-  x["Biomasa"] ??
-  0
+  x["Biomasa"]
+  )||0
+  
   )
   
-  }));
+  }))
   
-  updateAdvanced(data);
+  .sort(
+  (a,b)=>
+  
+  new Date(a.date)
+  -
+  new Date(b.date)
+  
+  );
+  
+  
+  updateAdvanced(
+  data
+  );
   
   }
   catch(err){
   
-  console.log(err);
+  console.error(
+  err
+  );
   
   }
   
   }
+  
   
   
   
   function updateAdvanced(data){
   
   const latest=
+  
   data[data.length-1];
   
-  const total=
   
-  latest.carbune+
-  latest.hidro+
-  latest.nuclear+
-  latest.eolian+
-  latest.fotovolt+
-  latest.biomasa;
+  setCapacity(
   
-  
-  setPercent(
   "carbune",
+  
   latest.carbune,
-  total
+  
+  installed.carbune
+  
   );
   
-  setPercent(
+  
+  setCapacity(
+  
   "hidro",
+  
   latest.hidro,
-  total
+  
+  installed.hidro
+  
   );
   
-  setPercent(
+  
+  setCapacity(
+  
   "nuclear",
+  
   latest.nuclear,
-  total
+  
+  installed.nuclear
+  
   );
   
-  setPercent(
+  
+  setCapacity(
+  
   "eolian",
+  
   latest.eolian,
-  total
+  
+  installed.eolian
+  
   );
   
-  setPercent(
+  
+  setCapacity(
+  
   "fotovolt",
+  
   latest.fotovolt,
-  total
+  
+  installed.fotovolt
+  
   );
   
-  setPercent(
+  
+  setCapacity(
+  
   "biomasa",
+  
   latest.biomasa,
-  total
+  
+  installed.biomasa
+  
   );
   
   
-  drawMixChart(latest);
+  drawMixChart(
+  latest
+  );
   
   }
   
   
   
-  function setPercent(
+  function setCapacity(
   
   id,
-  value,
-  total
+  
+  current,
+  
+  installedPower
   
   ){
   
   const percent=
   
-  ((value/total)*100)
+  (
+  
+  current
+  /
+  installedPower
+  *
+  100
+  
+  )
+  
   .toFixed(1);
+  
   
   const el=
   
-  document.getElementById(id);
+  document.getElementById(
+  id
+  );
   
   if(el){
   
-  el.innerText=
-  percent+"%";
+  el.innerHTML=
+  
+  percent+
+  
+  `<br><small>
+  
+  ${Math.round(current)}
+  
+  MW / 
+  
+  ${installedPower}
+  
+  MW
+  
+  </small>`;
   
   }
   
@@ -208,11 +333,16 @@ document.addEventListener("DOMContentLoaded",()=>{
   labels:[
   
   "Carbune",
+  
   "Hidro",
+  
   "Nuclear",
+  
   "Eolian",
+  
   "Fotovoltaic",
-  "Biomasa"
+  
+  "Biomasă"
   
   ],
   
@@ -221,10 +351,15 @@ document.addEventListener("DOMContentLoaded",()=>{
   data:[
   
   latest.carbune,
+  
   latest.hidro,
+  
   latest.nuclear,
+  
   latest.eolian,
+  
   latest.fotovolt,
+  
   latest.biomasa
   
   ],
@@ -232,13 +367,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   backgroundColor:[
   
   "#ef476f",
+  
   "#3a86ff",
+  
   "#06d6a0",
+  
   "#8338ec",
+  
   "#ffbe0b",
+  
   "#90be6d"
   
-  ]
+  ],
+  
+  borderWidth:0
   
   }]
   
@@ -248,7 +390,17 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   responsive:true,
   
-  maintainAspectRatio:false
+  maintainAspectRatio:false,
+  
+  plugins:{
+  
+  legend:{
+  
+  position:"bottom"
+  
+  }
+  
+  }
   
   }
   
