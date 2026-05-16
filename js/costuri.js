@@ -9,6 +9,27 @@ acciza:0.01,
 TVA:0.17
 };
 
+const total=
+
+Object.values(
+costuri
+)
+
+.reduce(
+(a,b)=>a+b,
+0
+);
+
+
+set(
+
+'totalKwh',
+
+total.toFixed(2)+
+' lei/kWh'
+
+);
+
 set('energie',costuri.energie+' lei/kWh');
 set('transport',costuri.transport+' lei/kWh');
 set('distributie',costuri.distributie+' lei/kWh');
