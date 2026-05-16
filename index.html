@@ -93,11 +93,22 @@ Panou energetic
 class="nav-link custom-nav"
 href="forms/advanced-calculator.html">
 
-Calculator
+Indicatori
 
 </a>
 
 </li>
+
+<li class="nav-item">
+
+  <a 
+  class="nav-link" href="forms/costuri.html">
+
+  Costuri
+
+  </a>
+
+  </li>
 
 </ul>
 
@@ -110,184 +121,83 @@ Calculator
 
 
 
-<main class="container">
-
-
-
-<div class="system-banner">
-
-<div>
-
-<div class="small-label">
-
-TRANSELECTRICA
-
-</div>
-
-<h2>
-
-Monitorizare în timp real
-
-</h2>
-
-<small
-id="lastUpdate">
-
-Actualizare...
-
-</small>
-
-</div>
-
-
-<div class="status">
-
-<span class="green-dot">
-
-</span>
-
-Sistem stabil
-
-</div>
-
-</div>
-
-
-
-
-<div class="kpi-grid">
-
-
-<div class="kpi-card">
-
-<h3 id="prodTotal">
-
--- MW
-
-</h3>
-
-<p>
-
-Producție totală
-
-</p>
-
-</div>
-
-
-
-<div class="kpi-card">
-
-<h3 id="consumTotal">
-
--- MW
-
-</h3>
-
-<p>
-
-Consum
-
-</p>
-
-</div>
-
-
-
-<div class="kpi-card">
-
-<h3 id="soldTotal">
-
--- MW
-
-</h3>
-
-<p>
-
-Sold import/export
-
-</p>
-
-</div>
-
-
-
-<div class="kpi-card">
-
-<h3 id="co2">
-
---
-
-</h3>
-
-<p>
-
-CO₂ estimat
-
-</p>
-
-</div>
-
-
-</div>
-
-
-
-
-<section class="graph-card">
-
-<h3>
-
-Mix energetic național
-
-</h3>
-
-<canvas
-id="phaseShiftChart">
-
-</canvas>
-
-</section>
-
-
-
-
-<section class="graph-card">
-
-<h3>
-
-Echilibru sistem
-
-</h3>
-
-<canvas
-id="cosFiChart">
-
-</canvas>
-
-</section>
-
-
-
-
-<section class="graph-card">
-
-<h3>
-
-Producție totală
-
-</h3>
-
-<canvas
-id="lambdaChart">
-
-</canvas>
-
-</section>
-
-
-
-</main>
+<main class="dashboard">
+
+  <section class="topbar">
+  
+  <div>
+  <h1>LA CURENT</h1>
+  <p>Monitorizare Sistem Energetic Național</p>
+  </div>
+  
+  <div class="status">
+  
+  <span class="dot"></span>
+  
+  Sistem stabil
+  
+  </div>
+  
+  <div id="lastUpdate">
+  Actualizare...
+  </div>
+  
+  </section>
+  
+  
+  <section class="kpi-grid">
+  
+  <div class="kpi-card">
+  <h2 id="consumTotal">--</h2>
+  <p>Consum</p>
+  </div>
+  
+  <div class="kpi-card">
+  <h2 id="prodTotal">--</h2>
+  <p>Producție</p>
+  </div>
+  
+  <div class="kpi-card">
+  <h2 id="soldTotal">--</h2>
+  <p>Import / Export</p>
+  </div>
+  
+  <div class="kpi-card">
+  <h2 id="co2">--</h2>
+  <p>CO₂ estimat</p>
+  </div>
+  
+  </section>
+  
+  
+  <section class="chart-grid">
+  
+  <div class="chart-card">
+  
+  <h3>
+  Mix energetic național
+  </h3>
+  
+  <canvas id="phaseShiftChart">
+  </canvas>
+  
+  </div>
+  
+  
+  <div class="chart-card">
+  
+  <h3>
+  Consum vs Producție
+  </h3>
+  
+  <canvas id="cosFiChart">
+  </canvas>
+  
+  </div>
+  
+  </section>
+  
+  </main>
 
 
 
