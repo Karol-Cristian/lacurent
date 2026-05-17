@@ -47,24 +47,20 @@
         
         left:15px;
         
-        z-index:2000;
+        width:46px;
+        
+        height:46px;
+        
+        z-index:3000;
+        
+        background:white;
         
         border:none;
         
-        background:#0f172a;
-        
-        color:white;
-        
-        width:45px;
-        
-        height:45px;
-        
         border-radius:12px;
         
-        font-size:22px;
-        
         box-shadow:
-        0 4px 15px rgba(0,0,0,.2);
+        0 4px 20px rgba(0,0,0,.15);
         
         }
         
@@ -1561,20 +1557,121 @@
     
     }
 
-    .sidebar-item.active{
+    /* ===== RESPONSIVE FIX DASHBOARD ===== */
 
-        background:#2563eb;
-        
-        color:white;
-        
-        box-shadow:
-        0 8px 25px rgba(37,99,235,.35);
-        
-        }
-        
-        
-        .sidebar-item.active:hover{
-        
-        background:#1d4ed8;
-        
-        }
+@media(max-width:1200px){
+
+    .app-content{
+    
+    margin-left:0!important;
+    
+    width:100%!important;
+    
+    padding-top:70px;
+    
+    }
+    
+    
+    .dashboard{
+    
+    padding:20px;
+    
+    }
+    
+    
+    .hero-grid{
+    
+    grid-template-columns:1fr!important;
+    
+    gap:30px;
+    
+    }
+    
+    
+    .hero-landing h1{
+    
+    font-size:42px;
+    
+    max-width:100%;
+    
+    }
+    
+    
+    .hero-landing p{
+    
+    max-width:100%;
+    
+    }
+    
+    
+    .mock-dashboard{
+    
+    margin:auto;
+    
+    max-width:100%;
+    
+    }
+    
+    
+    .topbar{
+    
+    flex-direction:column;
+    
+    align-items:flex-start;
+    
+    }
+    
+    
+    .kpi-grid{
+    
+    grid-template-columns:
+    repeat(
+    2,
+    1fr
+    );
+    
+    }
+    
+    }
+    
+    
+    @media(max-width:700px){
+    
+    .hero-landing h1{
+    
+    font-size:34px;
+    
+    line-height:1.15;
+    
+    }
+    
+    
+    .kpi-grid{
+    
+    grid-template-columns:1fr;
+    
+    }
+    
+    
+    .hero-buttons{
+    
+    flex-direction:column;
+    
+    }
+    
+    
+    .chart-card{
+    
+    padding:20px;
+    
+    }
+    
+    
+    .chart-card canvas{
+    
+    height:350px!important;
+    
+    }
+    
+    
+    }
