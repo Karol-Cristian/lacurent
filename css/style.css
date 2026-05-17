@@ -526,13 +526,48 @@
     
     /* ===== CHARTS ===== */
     
-    .chart-grid{
+/* ===== GRAFICE ===== */
+
+.chart-grid{
+
+    display:flex;
     
-    display:grid;
-    
-    grid-template-columns:1fr 1fr;
+    flex-direction:column;
     
     gap:25px;
+    
+    width:100%;
+    
+    }
+    
+    
+    .chart-card{
+    
+    width:100%;
+    
+    background:white;
+    
+    padding:30px;
+    
+    border-radius:25px;
+    
+    box-shadow:
+    0 4px 20px rgba(0,0,0,.05);
+    
+    height:auto;
+    
+    min-height:650px;
+    
+    }
+    
+    
+    .chart-card canvas{
+    
+    width:100%!important;
+    
+    height:550px!important;
+    
+    display:block;
     
     }
     
