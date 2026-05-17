@@ -47,58 +47,185 @@
         
         left:15px;
         
-        width:46px;
-        
-        height:46px;
-        
-        z-index:3000;
-        
-        background:white;
+        z-index:2000;
         
         border:none;
         
+        background:#0f172a;
+        
+        color:white;
+        
+        width:45px;
+        
+        height:45px;
+        
         border-radius:12px;
         
+        font-size:22px;
+        
         box-shadow:
-        0 4px 20px rgba(0,0,0,.15);
+        0 4px 15px rgba(0,0,0,.2);
         
         }
         
         
-        @media(max-width:1000px){
-        
-        .menu-btn{
-        
-        display:block;
-        
-        }
-        
-        
-        .sidebar{
-        
-        transform:translateX(-100%);
-        
-        transition:.3s;
-        
-        }
-        
-        
-        .sidebar.open{
-        
-        transform:translateX(0);
-        
-        }
-        
-        
-        .app-content{
-        
-        margin-left:0;
-        
-        padding-top:70px;
-        
-        }
-        
-        }
+        @media(max-width:1200px){
+
+            .menu-btn{
+            
+            display:block;
+            
+            }
+            
+            
+            .sidebar{
+            
+            left:0;
+            
+            top:0;
+            
+            transform:translateX(-100%);
+            
+            transition:.3s;
+            
+            width:260px;
+            
+            }
+            
+            
+            .sidebar.open{
+            
+            transform:translateX(0);
+            
+            }
+            
+            
+            .app-content{
+            
+            margin-left:0!important;
+            
+            width:100%!important;
+            
+            padding:70px 20px 20px;
+            
+            }
+            
+            
+            .dashboard{
+            
+            max-width:100%;
+            
+            padding:0;
+            
+            }
+            
+            
+            .hero-grid{
+            
+            display:grid;
+            
+            grid-template-columns:1fr!important;
+            
+            gap:25px;
+            
+            }
+            
+            
+            .hero-landing h1{
+            
+            font-size:42px;
+            
+            max-width:100%;
+            
+            }
+            
+            
+            .hero-landing p{
+            
+            max-width:100%;
+            
+            }
+            
+            
+            .mock-dashboard{
+            
+            max-width:100%;
+            
+            margin:auto;
+            
+            }
+            
+            
+            .kpi-grid{
+            
+            grid-template-columns:
+            repeat(
+            2,
+            1fr
+            );
+            
+            }
+            
+            
+            .chart-grid{
+            
+            display:flex;
+            
+            flex-direction:column;
+            
+            }
+            
+            
+            .chart-card{
+            
+            width:100%;
+            
+            min-height:auto;
+            
+            }
+            
+            
+            .chart-card canvas{
+            
+            height:420px!important;
+            
+            }
+            
+            }
+            
+            
+            @media(max-width:700px){
+            
+            .kpi-grid{
+            
+            grid-template-columns:1fr;
+            
+            }
+            
+            
+            .hero-landing h1{
+            
+            font-size:34px;
+            
+            line-height:1.1;
+            
+            }
+            
+            
+            .hero-buttons{
+            
+            flex-direction:column;
+            
+            }
+            
+            
+            .recommend-grid{
+            
+            grid-template-columns:1fr;
+            
+            }
+            
+            }
     
     .sidebar{
     
@@ -1557,121 +1684,4 @@
     
     }
 
-    /* ===== RESPONSIVE FIX DASHBOARD ===== */
-
-@media(max-width:1200px){
-
-    .app-content{
     
-    margin-left:0!important;
-    
-    width:100%!important;
-    
-    padding-top:70px;
-    
-    }
-    
-    
-    .dashboard{
-    
-    padding:20px;
-    
-    }
-    
-    
-    .hero-grid{
-    
-    grid-template-columns:1fr!important;
-    
-    gap:30px;
-    
-    }
-    
-    
-    .hero-landing h1{
-    
-    font-size:42px;
-    
-    max-width:100%;
-    
-    }
-    
-    
-    .hero-landing p{
-    
-    max-width:100%;
-    
-    }
-    
-    
-    .mock-dashboard{
-    
-    margin:auto;
-    
-    max-width:100%;
-    
-    }
-    
-    
-    .topbar{
-    
-    flex-direction:column;
-    
-    align-items:flex-start;
-    
-    }
-    
-    
-    .kpi-grid{
-    
-    grid-template-columns:
-    repeat(
-    2,
-    1fr
-    );
-    
-    }
-    
-    }
-    
-    
-    @media(max-width:700px){
-    
-    .hero-landing h1{
-    
-    font-size:34px;
-    
-    line-height:1.15;
-    
-    }
-    
-    
-    .kpi-grid{
-    
-    grid-template-columns:1fr;
-    
-    }
-    
-    
-    .hero-buttons{
-    
-    flex-direction:column;
-    
-    }
-    
-    
-    .chart-card{
-    
-    padding:20px;
-    
-    }
-    
-    
-    .chart-card canvas{
-    
-    height:350px!important;
-    
-    }
-    
-    
-    }
