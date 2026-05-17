@@ -1560,3 +1560,21 @@
     }
     
     }
+
+    .sidebar-item.active{
+
+        background:#2563eb;
+        
+        color:white;
+        
+        box-shadow:
+        0 8px 25px rgba(37,99,235,.35);
+        
+        }
+        
+        
+        .sidebar-item.active:hover{
+        
+        background:#1d4ed8;
+        
+        }
