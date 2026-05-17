@@ -53,235 +53,125 @@ class="menu-btn">
 
 
 
-<div class="app-content">
+Înlocuiește conținutul principal din `index.html` cu structura HTML clasică de mai jos. Păstrează încărcarea `sidebar.html`, CSS-ul existent și scriptul pentru meniu.
 
-
-<header>
-
-<div class="hero-top">
-
-<div>
-
-<div class="small-label">
-
-SISTEM ENERGETIC NAȚIONAL
-
-</div>
-
-<h1>
-
-LA CURENT
-
-</h1>
-
-<p>
-
-Monitorizare în timp real a Sistemului Energetic Național
-
-</p>
-
-</div>
-
-
-<div class="system-state">
-
-<span class="green-dot"></span>
-
-LIVE
-
-</div>
-
-</div>
-
-</header>
-
-
-
-
+```html
 <main class="dashboard">
 
-
-<section class="topbar">
+<section class="hero-landing">
+<div class="hero-grid">
 
 <div>
+<div class="small-label">COPILOT ENERGETIC</div>
+<h1>Spune-ne bugetul. Noi ne ocupăm de energie.</h1>
+<p>Vezi consumul în lei, primește recomandări și află unde pierzi bani înainte să apară factura.</p>
 
-<h1>
-
-Panou energetic național
-
-</h1>
-
-<p>
-
-Producție • Consum • Echilibru • Analiză
-
-</p>
-
+<div class="hero-buttons">
+<button class="primary-btn">Testează analiza casei</button>
+<button class="secondary-btn">Intră pe lista de acces</button>
+</div>
 </div>
 
-
-<div class="status">
-
-<span class="green-dot"></span>
-
-Sistem stabil
-
+<div class="mock-dashboard">
+<div class="kpi-grid">
+<div class="kpi-card"><h2>350 lei</h2><p>Buget</p></div>
+<div class="kpi-card"><h2>420 lei</h2><p>Estimare</p></div>
 </div>
 
-
-<div id="lastUpdate">
-
-Actualizare...
-
+<div class="alert-card">
+⚠ +70 lei peste buget
 </div>
-
-</section>
-
-
-
-
-<section class="kpi-grid">
-
-<div class="kpi-card">
-
-<h2 id="consumTotal">
-
---
-
-</h2>
-
-<p>
-
-Consum total
-
-</p>
-
-</div>
-
-
-
-<div class="kpi-card">
-
-<h2 id="prodTotal">
-
---
-
-</h2>
-
-<p>
-
-Producție totală
-
-</p>
-
-</div>
-
-
-
-<div class="kpi-card">
-
-<h2 id="soldTotal">
-
---
-
-</h2>
-
-<p>
-
-Import / Export
-
-</p>
-
-</div>
-
-
-
-<div class="kpi-card">
-
-<h2 id="co2">
-
---
-
-</h2>
-
-<p>
-
-CO₂ estimat
-
-</p>
-
-</div>
-
-</section>
-
-
-
-
-<section class="chart-grid">
-
 
 <div class="chart-card">
-
-<h3>
-
-Mix energetic național
-
-</h3>
-
-<canvas id="phaseShiftChart"></canvas>
-
+<h3>Consum estimat</h3>
+<div class="fake-chart">
+<div style="height:45%"></div>
+<div style="height:65%"></div>
+<div style="height:30%"></div>
+<div style="height:80%"></div>
+<div style="height:55%"></div>
+<div style="height:90%"></div>
+<div style="height:60%"></div>
 </div>
-
-
-
-<div class="chart-card">
-
-<h3>
-
-Consum vs Producție
-
-</h3>
-
-<canvas id="cosFiChart"></canvas>
-
+<small>Consum exprimat în LEI</small>
 </div>
-
-
+</div>
+</div>
 </section>
 
-
-
-<section
-class="chart-card"
-style="margin-top:25px">
-
-<h3>
-
-Producție pe surse
-
-</h3>
-
-<canvas id="lambdaChart"></canvas>
-
+<section class="info-section">
+<h2>Cum funcționează</h2>
+<div class="kpi-grid">
+<div class="kpi-card"><h3>Spui bugetul</h3><p>Spune cât vrei să cheltui lunar.</p></div>
+<div class="kpi-card"><h3>Înțelegem casa</h3><p>Analizăm tipul locuinței, încălzirea și consumul.</p></div>
+<div class="kpi-card"><h3>Primești recomandări</h3><p>Îți spunem unde pierzi bani și ce merită schimbat.</p></div>
+</div>
 </section>
 
+<section class="info-section">
+<h2>Exemple de recomandări generate</h2>
+<div class="recommend-grid">
+<div class="recommend-card">Dacă reduci temperatura cu 1°C economisești ~28 lei</div>
+<div class="recommend-card">Schimbarea furnizorului poate reduce costul anual cu ~240 lei</div>
+<div class="recommend-card">Izolarea podului se amortizează în ~5 ani</div>
+<div class="recommend-card">Boilerul consumă peste media caselor similare</div>
+<div class="recommend-card">Case asemănătoare consumă cu 18% mai puțin</div>
+</div>
+</section>
 
+<section class="chart-card">
+<h2>Unde se duc banii tăi?</h2>
+<div class="donut-demo"></div>
+<p>Încălzire — 46%</p>
+<p>Boiler — 14%</p>
+<p>Frigider — 10%</p>
+<p>Uscător — 9%</p>
+<p>Cuptor — 7%</p>
+</section>
 
-<footer>
+<section class="info-section">
+<h2>Ce investiții merită?</h2>
+<div class="kpi-grid">
+<div class="kpi-card"><h3>Schimbare furnizor</h3><p>0 lei</p><small>250 lei/an</small></div>
+<div class="kpi-card"><h3>LED</h3><p>300 lei</p><small>180 lei/an</small></div>
+<div class="kpi-card"><h3>Izolare pod</h3><p>7000 lei</p><small>1400 lei/an</small></div>
+</div>
+</section>
 
-<small>
+<section class="chart-card">
+<h2>Lasă energia pe pilot automat</h2>
+<p>Monitorizăm piața și identificăm cele mai bune opțiuni.</p>
+<div class="system-banner">
+<div>Furnizor actual: X</div>
+<div>Posibilă economie: 220 lei/an</div>
+<div>Schimbarea recomandată</div>
+</div>
+<button class="primary-btn">Activează AutoSwitch</button>
+</section>
 
-Date furnizate de
-Transelectrica / SEN România
+<section class="info-section">
+<h2>Construim cea mai mare bază de date energetică pentru locuințe.</h2>
+<div class="kpi-grid">
+<div class="kpi-card"><h2>1200</h2><p>locuințe analizate</p></div>
+<div class="kpi-card"><h2>340.000</h2><p>lei economii</p></div>
+<div class="kpi-card"><h2>390</h2><p>consum mediu</p></div>
+<div class="kpi-card"><h2>#1</h2><p>izolare pod</p></div>
+</div>
+</section>
 
-</small>
-
-</footer>
-
+<section class="chart-card text-center">
+<h2>Factura nu trebuie să fie o surpriză.</h2>
+<p>Intră în lista de acces și ajută-ne să construim viitorul energiei.</p>
+<input class="form-control mt-4" placeholder="Email">
+<button class="primary-btn mt-4">Intră pe lista de acces</button>
+<p><small>Acces anticipat pentru primii utilizatori</small></p>
+</section>
 
 </main>
+```
 
-</div>
+În CSS adaugă ulterior clase: `.hero-landing`, `.hero-grid`, `.fake-chart`, `.recommend-card`, `.donut-demo`, `.primary-btn`, `.secondary-btn`.
+
 
 <script>
 
