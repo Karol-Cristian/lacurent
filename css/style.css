@@ -29,6 +29,8 @@
     
     padding:25px;
     
+    min-height:100vh;
+    
     transition:.3s;
     
     }
@@ -40,9 +42,9 @@
     
     position:fixed;
     
-    left:0;
-    
     top:0;
+    
+    left:0;
     
     width:280px;
     
@@ -52,11 +54,29 @@
     
     padding:25px;
     
-    overflow-y:auto;
-    
     z-index:999;
     
-    border-right:1px solid rgba(255,255,255,.05);
+    border-right:
+    1px solid rgba(255,255,255,.05);
+    
+    display:flex;
+    
+    flex-direction:column;
+    
+    justify-content:space-between;
+    
+    overflow:hidden;
+    
+    }
+    
+    
+    .sidebar-top{
+    
+    overflow-y:auto;
+    
+    padding-right:5px;
+    
+    padding-bottom:20px;
     
     }
     
@@ -83,9 +103,9 @@
     
     font-size:24px;
     
-    color:white;
-    
     margin:0;
+    
+    color:white;
     
     }
     
@@ -149,20 +169,24 @@
     
     height:1px;
     
-    background:rgba(255,255,255,.1);
+    background:
+    rgba(255,255,255,.1);
     
     margin:18px 0;
     
     }
     
     
+    /* ===== SIDEBAR FOOTER ===== */
+    
     .sidebar-footer{
     
-    position:absolute;
+    padding-top:20px;
     
-    bottom:25px;
+    border-top:
+    1px solid rgba(255,255,255,.08);
     
-    width:230px;
+    flex-shrink:0;
     
     }
     
@@ -171,9 +195,9 @@
     
     display:flex;
     
-    gap:12px;
-    
     align-items:center;
+    
+    gap:12px;
     
     padding:15px;
     
@@ -207,6 +231,30 @@
     }
     
     
+    .sidebar-system{
+    
+    margin-top:15px;
+    
+    color:#94a3b8;
+    
+    font-size:13px;
+    
+    line-height:1.7;
+    
+    }
+    
+    
+    .sidebar-system small{
+    
+    display:block;
+    
+    opacity:.7;
+    
+    margin-top:5px;
+    
+    }
+    
+    
     /* ===== HEADER ===== */
     
     header{
@@ -220,6 +268,9 @@
     border-radius:25px;
     
     margin-bottom:25px;
+    
+    box-shadow:
+    0 2px 10px rgba(0,0,0,.12);
     
     }
     
@@ -354,6 +405,8 @@
     
     margin-bottom:8px;
     
+    color:#0f172a;
+    
     }
     
     
@@ -405,7 +458,7 @@
     }
     
     
-    /* ===== GRAFICE ===== */
+    /* ===== CHARTS ===== */
     
     .chart-grid{
     
@@ -463,9 +516,9 @@
     
     padding:25px;
     
-    color:#64748b;
-    
     text-align:center;
+    
+    color:#64748b;
     
     }
     
@@ -480,13 +533,11 @@
     
     }
     
-    
     .app-content{
     
     margin-left:0;
     
     }
-    
     
     .chart-grid{
     
