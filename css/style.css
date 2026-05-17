@@ -37,6 +37,72 @@
     
     
     /* ===== SIDEBAR ===== */
+    .menu-btn{
+
+        display:none;
+        
+        position:fixed;
+        
+        top:15px;
+        
+        left:15px;
+        
+        z-index:2000;
+        
+        border:none;
+        
+        background:#0f172a;
+        
+        color:white;
+        
+        width:45px;
+        
+        height:45px;
+        
+        border-radius:12px;
+        
+        font-size:22px;
+        
+        box-shadow:
+        0 4px 15px rgba(0,0,0,.2);
+        
+        }
+        
+        
+        @media(max-width:1000px){
+        
+        .menu-btn{
+        
+        display:block;
+        
+        }
+        
+        
+        .sidebar{
+        
+        transform:translateX(-100%);
+        
+        transition:.3s;
+        
+        }
+        
+        
+        .sidebar.open{
+        
+        transform:translateX(0);
+        
+        }
+        
+        
+        .app-content{
+        
+        margin-left:0;
+        
+        padding-top:70px;
+        
+        }
+        
+        }
     
     .sidebar{
     
