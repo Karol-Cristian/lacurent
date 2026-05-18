@@ -1955,7 +1955,7 @@ INVESTMENT CARDS
     }
     
 
-        /* ===========================
+    /* ===========================
     Money list
     =========================== */
 
@@ -2025,3 +2025,245 @@ INVESTMENT CARDS
         
         }
         
+
+
+        /* ===========================
+        Formular date
+        =========================== */
+        .analysis-page{
+        
+        max-width:1100px;
+        
+        margin:auto;
+        
+        padding:40px;
+        
+        }
+        
+        .step{
+        
+        display:none;
+        
+        }
+        
+        .step.active{
+        
+        display:block;
+        
+        animation:fade .3s;
+        
+        }
+        
+        @keyframes fade{
+        
+        from{
+        opacity:0;
+        transform:translateY(20px)
+        }
+        
+        to{
+        opacity:1;
+        transform:none
+        }
+        
+        }
+        
+        .form-grid{
+        
+        display:grid;
+        
+        grid-template-columns:
+        repeat(
+        auto-fit,
+        minmax(250px,1fr)
+        );
+        
+        gap:20px;
+        
+        margin-top:25px;
+        
+        }
+        
+        .form-grid div{
+        
+        display:flex;
+        
+        flex-direction:column;
+        
+        }
+        
+        input,
+        select{
+        
+        padding:14px;
+        
+        border-radius:12px;
+        
+        border:1px solid #ddd;
+        
+        }
+        
+        .progress{
+        
+        height:10px;
+        
+        background:#eee;
+        
+        border-radius:20px;
+        
+        margin:20px 0;
+        
+        overflow:hidden;
+        
+        }
+        
+        #progressBar{
+        
+        height:100%;
+        
+        width:10%;
+        
+        background:#2ecc71;
+        
+        transition:.3s;
+        
+        }
+        
+        .buttons{
+        
+        display:flex;
+        
+        justify-content:space-between;
+        
+        margin-top:30px;
+        
+        }
+        
+
+        .analysis-page{
+
+            max-width:1200px;
+            
+            margin:auto;
+            
+            }
+            
+            .progress{
+            
+            height:10px;
+            
+            background:#eee;
+            
+            border-radius:50px;
+            
+            overflow:hidden;
+            
+            margin:20px 0;
+            
+            }
+            
+            #progressBar{
+            
+            width:10%;
+            
+            height:100%;
+            
+            background:#2ecc71;
+            
+            transition:.4s;
+            
+            border-radius:50px;
+            
+            }
+            
+            .step{
+            
+            display:none;
+            
+            padding:30px;
+            
+            background:#fff;
+            
+            border-radius:18px;
+            
+            box-shadow:
+            0 8px 25px rgba(0,0,0,.04);
+            
+            margin-bottom:30px;
+            
+            }
+            
+            .step.active{
+            
+            display:block;
+            
+            animation:fade .3s;
+            
+            }
+            
+            .form-grid{
+            
+            display:grid;
+            
+            grid-template-columns:
+            repeat(
+            auto-fit,
+            minmax(250px,1fr)
+            );
+            
+            gap:20px;
+            
+            margin-top:20px;
+            
+            }
+            
+            .form-grid div{
+            
+            display:flex;
+            
+            flex-direction:column;
+            
+            }
+            
+            .form-grid label{
+            
+            font-weight:600;
+            
+            margin-bottom:8px;
+            
+            }
+            
+            .form-grid input,
+            .form-grid select{
+            
+            padding:14px;
+            
+            border:1px solid #ddd;
+            
+            border-radius:12px;
+            
+            }
+            
+            .buttons{
+            
+            display:flex;
+            
+            justify-content:space-between;
+            
+            margin-top:30px;
+            
+            }
+            
+            @keyframes fade{
+            
+            from{
+            opacity:0;
+            transform:translateY(15px)
+            }
+            
+            to{
+            opacity:1;
+            transform:none
+            }
+            
+            }
