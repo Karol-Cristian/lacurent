@@ -1,275 +1,89 @@
-document.addEventListener('DOMContentLoaded',()=>{
+const steps=
+document.querySelectorAll(".step")
 
-  console.log("Pornire aplicație");
+const nextBtn=
+document.getElementById("nextBtn")
 
-  loadLiveData();
+const prevBtn=
+document.getElementById("prevBtn")
 
-  setInterval(
-      loadLiveData,
-      60000
-  );
+const finishBtn=
+document.getElementById("finishBtn")
 
-});
+let current=0
+
+let xp=0
+
+showStep()
 
 
-async function loadLiveData(){
+function updateXP(){
 
-  try{
+xp=(current+1)*15
 
-      const response=
-      await fetch(
-      "https://energy-api.lemnarukarol.workers.dev/"
-      );
-
-      if(!response.ok){
-
-          throw new Error(
-          "API unavailable"
-          );
-
-      }
-
-      const data=
-      await response.json();
-
-      processData(data);
-
-  }
-
-  catch(error){
-
-      console.error(
-      "Live data error:",
-      error
-      );
-
-  }
+document
+.getElementById(
+"xpCounter"
+)
+.innerText=xp
 
 }
 
 
+function showStep(){
 
-function processData(data){
-
-  console.log(
-  "RAW API:"
-  );
-  
-  console.log(
-  data[0]
-  );
-  
-  const filtered=data
-  
-  .filter(x=>x.date)
-  
-  .map(x=>({
-  
-  date:x.date,
-  
-  consum:Number(
-  
-  x.consum ??
-  
-  x["Putere cerută"] ??
-  
-  x["Putere ceruta"] ??
-  
-  x["Putere cerut&#259;"]
-  
-  )||0,
-  
-  
-  productie:Number(
-  
-  x.productie ??
-  
-  x["Putere debitată"] ??
-  
-  x["Putere debitata"] ??
-  
-  x["Putere debitat&#259;"]
-  
-  )||0,
-  
-  
-  carbune:Number(
-  x.carbune ??
-  x["Carbune"]
-  )||0,
-  
-  
-  hidro:Number(
-  x.hidro ??
-  x["Hidro"]
-  )||0,
-  
-  
-  nuclear:Number(
-  x.nuclear ??
-  x["Nuclear"]
-  )||0,
-  
-  
-  eolian:Number(
-  x.eolian ??
-  x["Eolian"]
-  )||0,
-  
-  
-  fotovolt:Number(
-  x.fotovolt ??
-  x["Fotovoltaic"] ??
-  x["Fotovolt"]
-  )||0,
-  
-  
-  biomasa:Number(
-  x.biomasa ??
-  x["Biomasa"]
-  )||0,
-  
-  
-  sold:Number(
-  x.sold ??
-  x["Sold"]
-  )||0
-  
-  }))
-  
-  .filter(x=>
-  
-  x.consum>0 ||
-  
-  x.productie>0
-  
-  )
-  
-  .sort((a,b)=>
-  
-  new Date(a.date)
-  -
-  new Date(b.date)
-  
-  );
-  
-  
-  console.log(
-  "Ultimul punct:",
-  filtered[filtered.length-1]
-  );
-  
-  updateDashboard(
-  filtered
-  );
-  
-  }
-
-
-
-function updateDashboard(data){
-
-updateKPIs(data);
-
-updateCharts(data);
-
-updateTimestamp();
-
-}
-
-
-
-function updateTimestamp(){
-
-const el=
-
-document.getElementById(
-'lastUpdate'
-);
-
-if(el){
-
-el.innerText=
-
-"Actualizat: "+
-
-new Date()
-
-.toLocaleString(
-'ro-RO'
-);
-
-}
-
-}
-
-
-
-function updateKPIs(data){
-
-try{
-
-const latest=
-
-data[data.length-1];
-
-setValue(
-"prodTotal",
-Math.round(
-latest.productie
-)+" MW"
-);
-
-setValue(
-"consumTotal",
-Math.round(
-latest.consum
-)+" MW"
-);
-
-setValue(
-"soldTotal",
-Math.round(
-latest.sold
-)+" MW"
-);
-
-setValue(
-"co2",
-
-Math.round(
-
-latest.carbune*900
-
+steps.forEach(
+s=>s.classList.remove("active")
 )
 
-+" kg"
+steps[current]
+.classList.add("active")
 
-);
+
+document
+.getElementById(
+"stepText"
+)
+.innerText=
+
+`Pas ${current+1}/${steps.length}`
+
+
+document
+.getElementById(
+"progressBar"
+)
+.style.width=
+
+((current+1)/steps.length)*100+"%"
+
+
+updateXP()
+
+
+prevBtn.style.display=
+
+current===0
+?
+"none"
+:
+"block"
+
+
+
+if(current===steps.length-1){
+
+nextBtn.style.display="none"
+
+finishBtn.style.display="block"
 
 }
-catch(e){
 
-console.log(
-"KPI error:",
-e
-);
+else{
 
-}
+nextBtn.style.display="block"
 
-}
-
-
-
-function setValue(id,value){
-
-const el=
-
-document.getElementById(id);
-
-if(el){
-
-el.innerText=value;
+finishBtn.style.display="none"
 
 }
 
@@ -277,308 +91,43 @@ el.innerText=value;
 
 
 
-function updateCharts(data){
+nextBtn.onclick=()=>{
 
-try{
+if(current<steps.length-1){
 
-const sampled=
+current++
 
-[...data]
+showStep()
 
-.slice(-90)
+}
 
-.filter(
-(_,i)=>i%3===0
-);
+}
 
 
-const dates=
 
-sampled.map(x=>
+prevBtn.onclick=()=>{
 
-new Date(x.date)
+if(current>0){
 
-.toLocaleTimeString(
+current--
 
-'ro-RO',
+showStep()
 
-{
+}
 
-hour:'2-digit',
+}
 
-minute:'2-digit'
+
+
+houseForm
+.addEventListener(
+"submit",
+e=>{
+
+e.preventDefault()
+
+alert(
+"Analiza începe ⚡"
+)
 
 })
-
-);
-
-
-createProductionChart(
-dates,
-sampled
-);
-
-createConsumptionChart(
-dates,
-sampled
-);
-
-}
-catch(err){
-
-console.error(
-"Eroare grafice:",
-err
-);
-
-}
-
-}
-
-
-
-function createProductionChart(dates,data){
-
-const ctx=
-
-document
-.getElementById(
-'phaseShiftChart'
-)
-.getContext('2d');
-
-
-if(window.productionChart){
-
-window.productionChart.destroy();
-
-}
-
-
-window.productionChart=
-
-new Chart(ctx,{
-
-type:'line',
-
-data:{
-
-labels:dates,
-
-datasets:[
-
-dataset(
-'Nuclear',
-data.map(x=>x.nuclear),
-'#4cc9f0'
-),
-
-dataset(
-'Hidro',
-data.map(x=>x.hidro),
-'#4361ee'
-),
-
-dataset(
-'Eolian',
-data.map(x=>x.eolian),
-'#7209b7'
-),
-
-dataset(
-'Fotovoltaic',
-data.map(x=>x.fotovolt),
-'#f9c74f'
-),
-
-dataset(
-'Carbune',
-data.map(x=>x.carbune),
-'#ef476f'
-),
-
-dataset(
-'Biomasă',
-data.map(x=>x.biomasa),
-'#90be6d'
-)
-
-]
-
-},
-
-options:chartOptions(
-"Mix energetic național"
-)
-
-});
-
-}
-
-
-
-function createConsumptionChart(dates,data){
-
-const ctx=
-
-document
-.getElementById(
-'cosFiChart'
-)
-.getContext('2d');
-
-
-if(window.consumptionChart){
-
-window.consumptionChart.destroy();
-
-}
-
-
-window.consumptionChart=
-
-new Chart(ctx,{
-
-type:'line',
-
-data:{
-
-labels:dates,
-
-datasets:[
-
-dataset(
-'Consum',
-data.map(x=>x.consum),
-'#00a3ff'
-),
-
-dataset(
-'Producție',
-data.map(x=>x.productie),
-'#31c46c'
-),
-
-dataset(
-'Sold',
-data.map(x=>x.sold),
-'#ff5b5b'
-)
-
-]
-
-},
-
-options:chartOptions(
-"Echilibru sistem"
-)
-
-});
-
-}
-
-
-
-function dataset(
-label,
-data,
-color
-){
-
-return{
-
-label,
-
-data,
-
-borderColor:color,
-
-backgroundColor:color,
-
-borderWidth:2,
-
-pointRadius:0,
-
-fill:false,
-
-tension:.25
-
-};
-
-}
-
-
-
-function chartOptions(title){
-
-return{
-
-responsive:true,
-
-maintainAspectRatio:false,
-
-animation:false,
-
-resizeDelay:300,
-
-interaction:{
-
-mode:'index',
-
-intersect:false
-
-},
-
-elements:{
-
-point:{
-
-radius:0
-
-}
-
-},
-
-plugins:{
-
-title:{
-
-display:true,
-
-text:title
-
-},
-
-legend:{
-
-position:'top'
-
-}
-
-},
-
-scales:{
-
-x:{
-
-ticks:{
-
-maxTicksLimit:6,
-
-maxRotation:0
-
-}
-
-},
-
-y:{
-
-beginAtZero:true
-
-}
-
-}
-
-};
-
-}

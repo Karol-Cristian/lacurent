@@ -98,544 +98,60 @@ Activ
 <main class="dashboard">
 
 
-    <!-- PAS 1 -->
+    <div class="wizard-footer">
     
-    <div class="step active">
+    <div class="wizard-left">
     
-    <h2>👨‍👩‍👧 Cine consumă energie aici?</h2>
+    <div class="xp-mini">
     
-    <div class="fun-tip">
+    ⚡ XP:
+    <span id="xpCounter">
     
-    ⚡ Începem simplu. Case similare cu ocupare diferită pot avea facturi foarte diferite.
+    0
     
-    </div>
-    
-    <div class="form-grid">
-    
-    <div>
-    
-    <label>Tip utilizator</label>
-    
-    <select>
-    
-    <option>Casnic</option>
-    <option>Necasnic</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Număr persoane</label>
-    
-    <input
-    type="number"
-    placeholder="4">
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Copii în locuință</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Lucrezi de acasă?</label>
-    
-    <select>
-    
-    <option>Niciodată</option>
-    <option>1-2 zile</option>
-    <option>3-5 zile</option>
-    <option>Zilnic</option>
-    
-    </select>
-    
-    </div>
+    </span>
     
     </div>
     
     </div>
     
     
+    <div class="wizard-buttons">
     
-    <!-- PAS 2 -->
+    <button
+    type="button"
+    id="prevBtn"
+    class="secondary-btn">
     
-    <div class="step">
+    ← Înapoi
     
-    <h2>🏠 Arată-ne casa</h2>
-    
-    <div class="fun-tip">
-    
-    🏡 Forma și dimensiunea locuinței influențează consumul mai mult decât cred majoritatea.
-    
-    </div>
-    
-    <div class="form-grid">
-    
-    <div>
-    
-    <label>Tip locuință</label>
-    
-    <select>
-    
-    <option>Casă</option>
-    <option>Apartament</option>
-    <option>Duplex</option>
-    <option>Vilă</option>
-    
-    </select>
-    
-    </div>
+    </button>
     
     
-    <div>
+    <button
+    type="button"
+    id="nextBtn"
+    class="primary-btn">
     
-    <label>Suprafață utilă</label>
+    Continuă →
     
-    <input placeholder="140 m²">
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>An construcție</label>
-    
-    <input type="number">
-    
-    </div>
+    </button>
     
     
-    <div>
+    <button
+    type="submit"
+    id="finishBtn"
+    class="primary-btn"
+    style="display:none">
     
-    <label>Număr camere</label>
+    Generează analiza ⚡
     
-    <input type="number">
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Pod</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Mansardă</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
+    </button>
     
     </div>
     
     </div>
     
-    </div>
-    
-    
-    
-    <!-- PAS 3 -->
-    
-    <div class="step">
-    
-    <h2>🧱 Cât de bine păstrează căldura?</h2>
-    
-    <div class="fun-tip">
-    
-    🔥 Pierderile sunt deseori mai importante decât sursa de încălzire.
-    
-    </div>
-    
-    <div class="form-grid">
-    
-    <div>
-    
-    <label>Pereți</label>
-    
-    <select>
-    
-    <option>BCA</option>
-    <option>Cărămidă</option>
-    <option>Lemn</option>
-    
-    </select>
-    
-    </div>
-    
-    <div>
-    
-    <label>Izolație pereți</label>
-    
-    <select>
-    
-    <option>Fără</option>
-    <option>5 cm</option>
-    <option>10 cm</option>
-    <option>15 cm</option>
-    <option>20 cm+</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Ferestre</label>
-    
-    <select>
-    
-    <option>Vechi</option>
-    <option>Termopan</option>
-    <option>Tripan</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Etanșare</label>
-    
-    <select>
-    
-    <option>Slabă</option>
-    <option>Medie</option>
-    <option>Foarte bună</option>
-    
-    </select>
-    
-    </div>
-    
-    </div>
-    
-    </div>
-    
-    
-    
-    <!-- PAS 4 -->
-    
-    <div class="step">
-    
-    <h2>🔥 Cum încălzești?</h2>
-    
-    <div class="fun-tip">
-    
-    💡 Încălzirea este de obicei cel mai mare consumator.
-    
-    </div>
-    
-    <div class="form-grid">
-    
-    <div>
-    
-    <label>Sursă principală</label>
-    
-    <select>
-    
-    <option>Lemne</option>
-    <option>Gaz</option>
-    <option>Electric</option>
-    <option>Pompă de căldură</option>
-    <option>Peleți</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Distribuție</label>
-    
-    <select>
-    
-    <option>Calorifere</option>
-    <option>Pardoseală</option>
-    <option>Mixt</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Temperatură zi</label>
-    
-    <input placeholder="22">
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Temperatură noapte</label>
-    
-    <input placeholder="20">
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Termostat inteligent</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
-    
-    </div>
-    
-    </div>
-    
-    </div>
-    
-    
-    
-    <!-- PAS 5 -->
-    
-    <div class="step">
-    
-    <h2>⚡ Facturi și consum</h2>
-    
-    <div class="fun-tip">
-    
-    📄 Dacă ai factură, AI-ul poate estima mult mai precis.
-    
-    </div>
-    
-    <div class="form-grid">
-    
-    <div>
-    
-    <label>Furnizor</label>
-    
-    <input placeholder="Hidroelectrica">
-    
-    </div>
-    
-    <div>
-    
-    <label>Factură medie</label>
-    
-    <input placeholder="420 lei">
-    
-    </div>
-    
-    <div>
-    
-    <label>Consum mediu</label>
-    
-    <input placeholder="280 kWh">
-    
-    </div>
-    
-    <div>
-    
-    <label>Încarcă PDF</label>
-    
-    <input type="file">
-    
-    </div>
-    
-    </div>
-    
-    </div>
-    
-    
-    
-    <!-- PAS 6 -->
-    
-    <div class="step">
-    
-    <h2>🧊 Vânătoare de consumatori</h2>
-    
-    <div class="fun-tip">
-    
-    ⚡ Găsește electrocasnicele importante.
-    
-    </div>
-    
-    <div class="form-grid">
-    
-    <div><label>Frigider</label><select><option>Clasa A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></div>
-    
-    <div><label>Mașină spălat</label><select><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
-    
-    <div><label>Uscător</label><select><option>Da</option><option>Nu</option></select></div>
-    
-    <div><label>Aer condiționat</label><select><option>Da</option><option>Nu</option></select></div>
-    
-    <div><label>Boiler</label><select><option>Da</option><option>Nu</option></select></div>
-    
-    <div><label>Cuptor electric</label><select><option>Da</option><option>Nu</option></select></div>
-    
-    </div>
-    
-    </div>
-    
-    
-    
-    <!-- PAS 7 -->
-    
-    <div class="step">
-    
-    <h2>☀ Putere suplimentară</h2>
-    
-    <div class="fun-tip">
-    
-    🚗 Panourile și mașinile electrice schimbă radical profilul energetic.
-    
-    </div>
-    
-    <div class="form-grid">
-    
-    <div>
-    
-    <label>Panouri fotovoltaice</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
-    
-    </div>
-    
-    <div>
-    
-    <label>Putere</label>
-    
-    <input placeholder="6 kW">
-    
-    </div>
-    
-    <div>
-    
-    <label>Producție anuală</label>
-    
-    <input placeholder="7000 kWh">
-    
-    </div>
-    
-    <div>
-    
-    <label>Mașină electrică</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
-    
-    </div>
-    
-    </div>
-    
-    </div>
-    
-    
-    
-    
-    <script>
-    
-    const steps=
-    document.querySelectorAll(".step")
-    
-    let current=0
-    
-    showStep()
-    
-    function showStep(){
-    
-    steps.forEach(
-    s=>s.classList.remove("active")
-    )
-    
-    steps[current]
-    .classList.add("active")
-    
-    document
-    .getElementById(
-    "stepText"
-    )
-    .innerText=
-    
-    `Pas ${current+1}/${steps.length}`
-    
-    document
-    .getElementById(
-    "progressBar"
-    )
-    .style.width=
-    
-    ((current+1)/steps.length)*100+"%"
-    
-    }
-    
-    
-    nextBtn.onclick=()=>{
-    
-    if(current<steps.length-1){
-    
-    current++
-    
-    showStep()
-    
-    }
-    
-    }
-    
-    
-    prevBtn.onclick=()=>{
-    
-    if(current>0){
-    
-    current--
-    
-    showStep()
-    
-    }
-    
-    }
-    
-    </script>
-
 
 </main>
 
