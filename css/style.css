@@ -1684,4 +1684,273 @@
     
     }
 
+ /* ===========================
+INVESTMENT CARDS
+=========================== */
+
+.success-card{
+    border-left:5px solid #2ecc71;
+    }
+    
+    .warning-card{
+    border-left:5px solid #f1c40f;
+    }
+    
+    .danger-card{
+    border-left:5px solid #e74c3c;
+    position:relative;
+    opacity:.93;
+    }
+    
+    /* ===========================
+    KPI CARD BASE
+    =========================== */
+    
+    .kpi-card{
+    
+    background:#fff;
+    
+    border-radius:18px;
+    
+    padding:24px;
+    
+    overflow:hidden;
+    
+    position:relative;
+    
+    transition:
+    all .3s ease;
+    
+    box-shadow:
+    0 8px 25px rgba(0,0,0,.05);
+    
+    height:100%;
+    
+    }
+    
+    .kpi-card:hover{
+    
+    transform:translateY(-6px);
+    
+    box-shadow:
+    0 14px 35px rgba(0,0,0,.1);
+    
+    }
+    
+    /* ===========================
+    STATUS BADGES
+    =========================== */
+    
+    .status-badge{
+    
+    display:inline-flex;
+    
+    align-items:center;
+    
+    gap:8px;
+    
+    padding:8px 14px;
+    
+    border-radius:30px;
+    
+    font-size:.85rem;
+    
+    font-weight:700;
+    
+    margin-bottom:15px;
+    
+    }
+    
+    .success{
+    
+    background:#eafaf1;
+    
+    color:#27ae60;
+    
+    }
+    
+    .warning{
+    
+    background:#fff8db;
+    
+    color:#c58b00;
+    
+    }
+    
+    .danger{
+    
+    background:#fdeaea;
+    
+    color:#d63031;
+    
+    }
+    
+    /* ===========================
+    TITLES + TEXT
+    =========================== */
+    
+    .kpi-card h3{
+    
+    margin-top:10px;
+    
+    font-size:1.1rem;
+    
+    font-weight:700;
+    
+    margin-bottom:14px;
+    
+    color:#111;
+    
+    }
+    
+    .kpi-card p{
+    
+    margin-bottom:8px;
+    
+    font-size:.95rem;
+    
+    color:#666;
+    
+    line-height:1.5;
+    
+    }
+    
+    .kpi-card strong{
+    
+    color:#111;
+    
+    font-weight:700;
+    
+    }
+    
+    .kpi-card h4{
+    
+    margin-top:18px;
+    
+    font-size:1.2rem;
+    
+    font-weight:800;
+    
+    color:#111;
+    
+    }
+    
+    .kpi-card small{
+    
+    display:block;
+    
+    margin-top:14px;
+    
+    color:#888;
+    
+    line-height:1.5;
+    
+    }
+    
+    /* ===========================
+    HORIZONTAL LINE
+    =========================== */
+    
+    .kpi-card hr{
+    
+    margin:18px 0;
+    
+    opacity:.08;
+    
+    }
+    
+    /* ===========================
+    RED RIBBON
+    =========================== */
+    
+    .danger-card::after{
+    
+    content:"Nu recomandăm";
+    
+    position:absolute;
+    
+    top:18px;
+    
+    right:-40px;
+    
+    background:#e74c3c;
+    
+    color:white;
+    
+    padding:6px 50px;
+    
+    font-size:.7rem;
+    
+    font-weight:700;
+    
+    transform:rotate(35deg);
+    
+    box-shadow:
+    0 5px 15px rgba(0,0,0,.15);
+    
+    }
+    
+    /* ===========================
+    FOOTER MESSAGE
+    =========================== */
+    
+    .investment-note{
+    
+    margin-top:30px;
+    
+    padding:22px;
+    
+    background:
+    linear-gradient(
+    90deg,
+    #f7fafc,
+    #eef5ff
+    );
+    
+    border-radius:14px;
+    
+    font-weight:600;
+    
+    text-align:center;
+    
+    color:#444;
+    
+    box-shadow:
+    0 4px 15px rgba(0,0,0,.03);
+    
+    }
+    
+    /* ===========================
+    MOBILE
+    =========================== */
+    
+    @media(max-width:768px){
+    
+    .kpi-card{
+    
+    padding:18px;
+    
+    }
+    
+    .kpi-card h3{
+    
+    font-size:1rem;
+    
+    }
+    
+    .status-badge{
+    
+    font-size:.8rem;
+    
+    padding:6px 12px;
+    
+    }
+    
+    .danger-card::after{
+    
+    display:none;
+    
+    }
+    
+    }
     
