@@ -98,38 +98,17 @@ Activ
 <main class="dashboard">
 
 
-    <section class="analysis-page">
-    
-    <div class="analysis-header">
-    
-    <div class="progress-wrap">
-    
-    <div class="progress">
-    
-    <div id="progressBar"></div>
-    
-    </div>
-    
-    <span id="stepText">
-    
-    Pas 1 / 7
-    
-    </span>
-    
-    </div>
-    
-    </div>
-    
-    
-    
-    <form id="houseForm">
-    
-    
     <!-- PAS 1 -->
     
     <div class="step active">
     
-    <h2>Date generale</h2>
+    <h2>👨‍👩‍👧 Cine consumă energie aici?</h2>
+    
+    <div class="fun-tip">
+    
+    ⚡ Începem simplu. Case similare cu ocupare diferită pot avea facturi foarte diferite.
+    
+    </div>
     
     <div class="form-grid">
     
@@ -149,7 +128,18 @@ Activ
     
     <div>
     
-    <label>Lucrezi de acasă?</label>
+    <label>Număr persoane</label>
+    
+    <input
+    type="number"
+    placeholder="4">
+    
+    </div>
+    
+    
+    <div>
+    
+    <label>Copii în locuință</label>
     
     <select>
     
@@ -163,22 +153,16 @@ Activ
     
     <div>
     
-    <label>Număr persoane</label>
+    <label>Lucrezi de acasă?</label>
     
-    <input
-    type="number"
-    placeholder="4">
+    <select>
     
-    </div>
+    <option>Niciodată</option>
+    <option>1-2 zile</option>
+    <option>3-5 zile</option>
+    <option>Zilnic</option>
     
-    
-    <div>
-    
-    <label>Zile lucru acasă / săptămână</label>
-    
-    <input
-    type="number"
-    placeholder="5">
+    </select>
     
     </div>
     
@@ -192,7 +176,13 @@ Activ
     
     <div class="step">
     
-    <h2>Locuință</h2>
+    <h2>🏠 Arată-ne casa</h2>
+    
+    <div class="fun-tip">
+    
+    🏡 Forma și dimensiunea locuinței influențează consumul mai mult decât cred majoritatea.
+    
+    </div>
     
     <div class="form-grid">
     
@@ -205,6 +195,7 @@ Activ
     <option>Casă</option>
     <option>Apartament</option>
     <option>Duplex</option>
+    <option>Vilă</option>
     
     </select>
     
@@ -215,8 +206,7 @@ Activ
     
     <label>Suprafață utilă</label>
     
-    <input
-    placeholder="140 m²">
+    <input placeholder="140 m²">
     
     </div>
     
@@ -225,9 +215,7 @@ Activ
     
     <label>An construcție</label>
     
-    <input
-    type="number"
-    placeholder="2005">
+    <input type="number">
     
     </div>
     
@@ -236,27 +224,35 @@ Activ
     
     <label>Număr camere</label>
     
-    <input
-    type="number"
-    placeholder="5">
+    <input type="number">
     
     </div>
     
     
     <div>
     
-    <label>Județ</label>
+    <label>Pod</label>
     
-    <input>
+    <select>
+    
+    <option>Da</option>
+    <option>Nu</option>
+    
+    </select>
     
     </div>
     
     
     <div>
     
-    <label>Localitate</label>
+    <label>Mansardă</label>
     
-    <input>
+    <select>
+    
+    <option>Da</option>
+    <option>Nu</option>
+    
+    </select>
     
     </div>
     
@@ -270,7 +266,13 @@ Activ
     
     <div class="step">
     
-    <h2>Izolație și structură</h2>
+    <h2>🧱 Cât de bine păstrează căldura?</h2>
+    
+    <div class="fun-tip">
+    
+    🔥 Pierderile sunt deseori mai importante decât sursa de încălzire.
+    
+    </div>
     
     <div class="form-grid">
     
@@ -288,18 +290,17 @@ Activ
     
     </div>
     
-    
     <div>
     
-    <label>Izolație</label>
+    <label>Izolație pereți</label>
     
     <select>
     
     <option>Fără</option>
-    <option>5cm</option>
-    <option>10cm</option>
-    <option>15cm</option>
-    <option>20cm+</option>
+    <option>5 cm</option>
+    <option>10 cm</option>
+    <option>15 cm</option>
+    <option>20 cm+</option>
     
     </select>
     
@@ -345,7 +346,13 @@ Activ
     
     <div class="step">
     
-    <h2>Încălzire</h2>
+    <h2>🔥 Cum încălzești?</h2>
+    
+    <div class="fun-tip">
+    
+    💡 Încălzirea este de obicei cel mai mare consumator.
+    
+    </div>
     
     <div class="form-grid">
     
@@ -359,7 +366,22 @@ Activ
     <option>Gaz</option>
     <option>Electric</option>
     <option>Pompă de căldură</option>
+    <option>Peleți</option>
+    
+    </select>
+    
+    </div>
+    
+    
+    <div>
+    
+    <label>Distribuție</label>
+    
+    <select>
+    
+    <option>Calorifere</option>
     <option>Pardoseală</option>
+    <option>Mixt</option>
     
     </select>
     
@@ -370,9 +392,7 @@ Activ
     
     <label>Temperatură zi</label>
     
-    <input
-    type="number"
-    placeholder="22">
+    <input placeholder="22">
     
     </div>
     
@@ -381,9 +401,7 @@ Activ
     
     <label>Temperatură noapte</label>
     
-    <input
-    type="number"
-    placeholder="20">
+    <input placeholder="20">
     
     </div>
     
@@ -411,7 +429,13 @@ Activ
     
     <div class="step">
     
-    <h2>Consum și facturi</h2>
+    <h2>⚡ Facturi și consum</h2>
+    
+    <div class="fun-tip">
+    
+    📄 Dacă ai factură, AI-ul poate estima mult mai precis.
+    
+    </div>
     
     <div class="form-grid">
     
@@ -419,38 +443,31 @@ Activ
     
     <label>Furnizor</label>
     
-    <input
-    placeholder="Hidroelectrica">
+    <input placeholder="Hidroelectrica">
     
     </div>
-    
     
     <div>
     
     <label>Factură medie</label>
     
-    <input
-    placeholder="420 lei">
+    <input placeholder="420 lei">
     
     </div>
     
-    
     <div>
     
-    <label>Consum lunar</label>
+    <label>Consum mediu</label>
     
-    <input
-    placeholder="280 kWh">
+    <input placeholder="280 kWh">
     
     </div>
     
-    
     <div>
     
-    <label>Încarcă factură</label>
+    <label>Încarcă PDF</label>
     
-    <input
-    type="file">
+    <input type="file">
     
     </div>
     
@@ -464,68 +481,27 @@ Activ
     
     <div class="step">
     
-    <h2>Electrocasnice</h2>
+    <h2>🧊 Vânătoare de consumatori</h2>
+    
+    <div class="fun-tip">
+    
+    ⚡ Găsește electrocasnicele importante.
+    
+    </div>
     
     <div class="form-grid">
     
-    <div>
+    <div><label>Frigider</label><select><option>Clasa A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></div>
     
-    <label>Frigider</label>
+    <div><label>Mașină spălat</label><select><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
     
-    <select>
+    <div><label>Uscător</label><select><option>Da</option><option>Nu</option></select></div>
     
-    <option>Clasa A</option>
-    <option>Clasa B</option>
-    <option>Clasa C</option>
-    <option>Clasa D</option>
-    <option>Clasa E</option>
+    <div><label>Aer condiționat</label><select><option>Da</option><option>Nu</option></select></div>
     
-    </select>
+    <div><label>Boiler</label><select><option>Da</option><option>Nu</option></select></div>
     
-    </div>
-    
-    
-    <div>
-    
-    <label>Mașină spălat</label>
-    
-    <select>
-    
-    <option>A</option>
-    <option>B</option>
-    <option>C</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Uscător</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
-    
-    </div>
-    
-    
-    <div>
-    
-    <label>Aer condiționat</label>
-    
-    <select>
-    
-    <option>Da</option>
-    <option>Nu</option>
-    
-    </select>
-    
-    </div>
+    <div><label>Cuptor electric</label><select><option>Da</option><option>Nu</option></select></div>
     
     </div>
     
@@ -537,7 +513,13 @@ Activ
     
     <div class="step">
     
-    <h2>Panouri și mașină electrică</h2>
+    <h2>☀ Putere suplimentară</h2>
+    
+    <div class="fun-tip">
+    
+    🚗 Panourile și mașinile electrice schimbă radical profilul energetic.
+    
+    </div>
     
     <div class="form-grid">
     
@@ -554,26 +536,21 @@ Activ
     
     </div>
     
-    
     <div>
     
-    <label>Putere instalată</label>
+    <label>Putere</label>
     
-    <input
-    placeholder="6 kW">
+    <input placeholder="6 kW">
     
     </div>
-    
     
     <div>
     
     <label>Producție anuală</label>
     
-    <input
-    placeholder="7000 kWh">
+    <input placeholder="7000 kWh">
     
     </div>
-    
     
     <div>
     
@@ -592,34 +569,6 @@ Activ
     
     </div>
     
-    
-    
-    <div class="buttons">
-    
-    <button
-    type="button"
-    id="prevBtn"
-    class="secondary-btn">
-    
-    Înapoi
-    
-    </button>
-    
-    
-    <button
-    type="button"
-    id="nextBtn"
-    class="primary-btn">
-    
-    Continuă
-    
-    </button>
-    
-    </div>
-    
-    </form>
-    
-    </section>
     
     
     
