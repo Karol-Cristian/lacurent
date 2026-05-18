@@ -1954,3 +1954,74 @@ INVESTMENT CARDS
     
     }
     
+
+        /* ===========================
+    Money list
+    =========================== */
+
+    .money-list{
+
+        margin-top:30px;
+        
+        display:flex;
+        
+        flex-direction:column;
+        
+        gap:14px;
+        
+        }
+        
+        .money-item{
+        
+        display:flex;
+        
+        justify-content:space-between;
+        
+        align-items:center;
+        
+        padding:18px;
+        
+        background:#fff;
+        
+        border-radius:14px;
+        
+        box-shadow:
+        0 5px 20px rgba(0,0,0,.04);
+        
+        transition:.3s;
+        
+        }
+        
+        .money-item:hover{
+        
+        transform:translateX(6px);
+        
+        box-shadow:
+        0 10px 30px rgba(0,0,0,.08);
+        
+        }
+        
+        .money-item h4{
+        
+        margin:0;
+        
+        font-size:1rem;
+        
+        font-weight:700;
+        
+        }
+        
+        .money-item small{
+        
+        color:#888;
+        
+        }
+        
+        .money-item strong{
+        
+        font-size:1.1rem;
+        
+        color:#111;
+        
+        }
+        
