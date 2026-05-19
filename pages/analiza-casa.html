@@ -68,13 +68,13 @@ LA CURENT
 
 <h1>
 
-Titlul paginii
+    Analiza energetică a locuinței
 
 </h1>
 
 <p>
 
-Descriere scurtă
+    Completează informațiile pentru estimări, recomandări și oportunități de reducere a costurilor.
 
 </p>
 
@@ -97,481 +97,81 @@ Activ
 
 <main class="dashboard">
 
-    <section class="analysis-page">
+    <div class="step active">
 
-        <div class="analysis-game-top">
+        <h2>Date utilizator și profil consum</h2>
         
-        <div>
+        <p class="section-description">
         
-        <div class="small-label">
-        
-        ENERGY JOURNEY
-        
-        </div>
-        
-        <h2>
-        
-        Descoperă scorul energetic al casei tale
-        
-        </h2>
-        
-        <p>
-        
-        Completează profilul și găsește economii ascunse.
+        Aceste informații sunt utilizate pentru estimarea profilului energetic.
         
         </p>
-        
-        </div>
-        
-        
-        <div class="player-card">
-        
-        <div class="level">
-        
-        🏡 Nivel 1
-        
-        </div>
-        
-        <div class="xp">
-        
-        ⚡ XP:
-        <span id="xpCounter">0</span>
-        
-        </div>
-        
-        <div class="score">
-        
-        Scor estimat:
-        <span id="energyScore">50</span>/100
-        
-        </div>
-        
-        </div>
-        
-        </div>
-        
-        
-        
-        <div class="progress-wrap">
-        
-        <div class="progress">
-        
-        <div id="progressBar"></div>
-        
-        </div>
-        
-        <div class="progress-text">
-        
-        <span id="stepText">
-        
-        Pas 1 / 7
-        
-        </span>
-        
-        <span>
-        
-        🏅 Explorator energetic
-        
-        </span>
-        
-        </div>
-        
-        </div>
-        
-        
-        
-        <form id="houseForm">
-        
-        <!-- PAS 1 -->
-        
-        <div class="step active">
-        
-        <h2>👨‍👩‍👧 Cine consumă energie aici?</h2>
-        
-        <div class="fun-tip">
-        
-        ⚡ Ocuparea locuinței schimbă radical consumul.
-        
-        </div>
         
         <div class="form-grid">
         
         <div>
         
-        <label>Număr persoane</label>
-        
-        <input type="number">
-        
-        </div>
-        
-        <div>
-        
-        <label>Lucrezi de acasă?</label>
+        <label>Tip consumator</label>
         
         <select>
         
-        <option>Niciodată</option>
-        <option>1-2 zile</option>
-        <option>3-5 zile</option>
+        <option>Casnic</option>
+        
+        <option>Necasnic</option>
+        
+        </select>
+        
+        </div>
+        
+        
+        <div>
+        
+        <label>Număr persoane</label>
+        
+        <input
+        type="number">
+        
+        </div>
+        
+        
+        <div>
+        
+        <label>Program ocupare locuință</label>
+        
+        <select>
+        
+        <option>Dimineața + seara</option>
+        
+        <option>Majoritatea zilei</option>
+        
+        <option>Permanent</option>
+        
+        <option>Variabil</option>
+        
+        </select>
+        
+        </div>
+        
+        
+        <div>
+        
+        <label>Lucru de acasă</label>
+        
+        <select>
+        
+        <option>Nu</option>
+        
+        <option>Parțial</option>
+        
         <option>Zilnic</option>
         
         </select>
         
         </div>
         
-        <div>
-        
-        <label>Copii</label>
-        
-        <select>
-        
-        <option>Da</option>
-        <option>Nu</option>
-        
-        </select>
-        
         </div>
         
         </div>
-        
-        </div>
-        
-        
-        
-        <!-- PAS 2 -->
-        
-        <div class="step">
-        
-        <h2>🏠 Casa</h2>
-        
-        <div class="fun-tip">
-        
-        🏡 Dimensiunea și forma contează.
-        
-        </div>
-        
-        <div class="form-grid">
-        
-        <div>
-        
-        <label>Tip locuință</label>
-        
-        <select>
-        
-        <option>Casă</option>
-        <option>Apartament</option>
-        <option>Duplex</option>
-        
-        </select>
-        
-        </div>
-        
-        <div>
-        
-        <label>Suprafață</label>
-        
-        <input placeholder="140">
-        
-        </div>
-        
-        <div>
-        
-        <label>An construcție</label>
-        
-        <input>
-        
-        </div>
-        
-        <div>
-        
-        <label>Camere</label>
-        
-        <input>
-        
-        </div>
-        
-        <div>
-        
-        <label>Pod</label>
-        
-        <select>
-        
-        <option>Da</option>
-        <option>Nu</option>
-        
-        </select>
-        
-        </div>
-        
-        </div>
-        
-        </div>
-        
-        
-        
-        <!-- PAS 3 -->
-        
-        <div class="step">
-        
-        <h2>🔥 Încălzire</h2>
-        
-        <div class="fun-tip">
-        
-        Încălzirea este principalul consumator.
-        
-        </div>
-        
-        <div class="form-grid">
-        
-        <div>
-        
-        <label>Sursă</label>
-        
-        <select>
-        
-        <option>Lemne</option>
-        <option>Gaz</option>
-        <option>Pompă căldură</option>
-        <option>Electric</option>
-        
-        </select>
-        
-        </div>
-        
-        <div>
-        
-        <label>Temperatură zi</label>
-        
-        <input>
-        
-        </div>
-        
-        <div>
-        
-        <label>Temperatură noapte</label>
-        
-        <input>
-        
-        </div>
-        
-        <div>
-        
-        <label>Termostat inteligent</label>
-        
-        <select>
-        
-        <option>Da</option>
-        <option>Nu</option>
-        
-        </select>
-        
-        </div>
-        
-        </div>
-        
-        </div>
-        
-        
-        
-        <!-- PAS 4 -->
-        
-        <div class="step">
-        
-        <h2>⚡ Facturi</h2>
-        
-        <div class="form-grid">
-        
-        <div>
-        
-        <label>Furnizor</label>
-        
-        <input>
-        
-        </div>
-        
-        <div>
-        
-        <label>Consum lunar</label>
-        
-        <input>
-        
-        </div>
-        
-        <div>
-        
-        <label>Factură medie</label>
-        
-        <input>
-        
-        </div>
-        
-        <div>
-        
-        <label>Încarcă PDF</label>
-        
-        <input type="file">
-        
-        </div>
-        
-        </div>
-        
-        </div>
-        
-        
-        
-        <!-- PAS 5 -->
-        
-        <div class="step">
-        
-        <h2>🧊 Electrocasnice</h2>
-        
-        <div class="fun-tip">
-        
-        Găsește consumatorii ascunși.
-        
-        </div>
-        
-        <div class="form-grid">
-        
-        <div>
-        
-        <label>Frigider</label>
-        
-        <select>
-        
-        <option>A</option>
-        <option>B</option>
-        <option>C</option>
-        <option>D</option>
-        <option>E</option>
-        
-        </select>
-        
-        </div>
-        
-        <div>
-        
-        <label>Mașină spălat</label>
-        
-        <select>
-        
-        <option>A</option>
-        <option>B</option>
-        <option>C</option>
-        
-        </select>
-        
-        </div>
-        
-        <div>
-        
-        <label>Uscător</label>
-        
-        <select>
-        
-        <option>Da</option>
-        <option>Nu</option>
-        
-        </select>
-        
-        </div>
-        
-        </div>
-        
-        </div>
-        
-        
-        
-        <!-- PAS 6 -->
-        
-        <div class="step">
-        
-        <h2>☀ Energie verde</h2>
-        
-        <div class="form-grid">
-        
-        <div>
-        
-        <label>Panouri</label>
-        
-        <select>
-        
-        <option>Da</option>
-        <option>Nu</option>
-        
-        </select>
-        
-        </div>
-        
-        <div>
-        
-        <label>Putere</label>
-        
-        <input placeholder="6kW">
-        
-        </div>
-        
-        <div>
-        
-        <label>Producție</label>
-        
-        <input placeholder="7000">
-        
-        </div>
-        
-        </div>
-        
-        </div>
-        
-        
-        
-        <div class="wizard-footer">
-        
-        <div class="xp-mini">
-        
-        ⚡ XP:
-        <span id="xpMini">0</span>
-        
-        </div>
-        
-        
-        <div class="wizard-buttons">
-        
-        <button
-        type="button"
-        id="prevBtn"
-        class="secondary-btn">
-        
-        Înapoi
-        
-        </button>
-        
-        <button
-        type="button"
-        id="nextBtn"
-        class="primary-btn">
-        
-        Continuă →
-        
-        </button>
-        
-        <button
-        type="submit"
-        id="finishBtn"
-        class="primary-btn"
-        style="display:none">
-        
-        Generează analiza
-        
-        </button>
-        
-        </div>
-        
-        </div>
-        
-        </form>
-        
-        </section>
 
 </main>
 
