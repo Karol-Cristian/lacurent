@@ -3,11 +3,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   const houseForm=
   document.getElementById("houseForm");
   
-  if(!houseForm) return;
+  if(!houseForm){
+  
+  console.log("houseForm lipseste");
+  
+  return;
+  
+  }
   
   
   const steps=
   document.querySelectorAll(".step");
+  
+  console.log("Steps:",steps.length);
+  
   
   const nextBtn=
   document.getElementById("nextBtn");
@@ -26,17 +35,16 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   if(
-  !steps.length ||
+  
   !nextBtn ||
   !prevBtn ||
   !finishBtn ||
   !progressBar ||
   !stepText
+  
   ){
   
-  console.error(
-  "Wizard elements missing"
-  );
+  console.log("Lipsesc elemente");
   
   return;
   
@@ -44,7 +52,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   let current=0;
-  
   
   
   function showStep(){
@@ -58,17 +65,19 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   
   
+  if(steps[current]){
+  
   steps[current]
   .classList.add(
   "active"
   );
   
+  }
+  
   
   updateProgress();
   
   updateButtons();
-  
-  scrollTop();
   
   }
   
@@ -137,6 +146,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   "click",
   ()=>{
   
+  console.log(
+  "NEXT",
+  current
+  );
+  
+  
   if(
   current<
   steps.length-1
@@ -168,51 +183,17 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   
   
-  
   houseForm.addEventListener(
   "submit",
   e=>{
   
   e.preventDefault();
   
-  
-  console.log(
-  "Trimis"
-  );
-  
-  
-  /* viitor:
-  
-  fetch()
-  
-  salvare DB
-  
-  AI analysis
-  
-  redirect
-  
-  */
-  
-  
   alert(
-  "Analiza a fost trimisă"
+  "Analiza trimisă"
   );
   
   });
-  
-  
-  
-  function scrollTop(){
-  
-  window.scrollTo({
-  
-  top:0,
-  
-  behavior:"smooth"
-  
-  });
-  
-  }
   
   
   showStep();
