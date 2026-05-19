@@ -1,31 +1,50 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded",()=>{
 
-  const houseForm =
+  const houseForm=
   document.getElementById("houseForm");
   
   if(!houseForm) return;
   
   
-  const steps =
+  const steps=
   document.querySelectorAll(".step");
   
-  const nextBtn =
+  const nextBtn=
   document.getElementById("nextBtn");
   
-  const prevBtn =
+  const prevBtn=
   document.getElementById("prevBtn");
   
-  const finishBtn =
+  const finishBtn=
   document.getElementById("finishBtn");
   
-  const progressBar =
+  const progressBar=
   document.getElementById("progressBar");
   
-  const stepText =
+  const stepText=
   document.getElementById("stepText");
   
   
+  if(
+  !steps.length ||
+  !nextBtn ||
+  !prevBtn ||
+  !finishBtn ||
+  !progressBar ||
+  !stepText
+  ){
+  
+  console.error(
+  "Wizard elements missing"
+  );
+  
+  return;
+  
+  }
+  
+  
   let current=0;
+  
   
   
   function showStep(){
@@ -49,12 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
   
   updateButtons();
   
-  window.scrollTo({
-  
-  top:0,
-  behavior:"smooth"
-  
-  });
+  scrollTop();
   
   }
   
@@ -62,10 +76,11 @@ document.addEventListener("DOMContentLoaded", () => {
   
   function updateProgress(){
   
-  const progress =
+  const progress=
   
   ((current+1)
-  /steps.length)*100;
+  /steps.length)
+  *100;
   
   
   progressBar.style.width=
@@ -90,7 +105,6 @@ document.addEventListener("DOMContentLoaded", () => {
   "none"
   :
   "inline-flex";
-  
   
   
   if(
@@ -124,7 +138,8 @@ document.addEventListener("DOMContentLoaded", () => {
   ()=>{
   
   if(
-  current<steps.length-1
+  current<
+  steps.length-1
   ){
   
   current++;
@@ -134,7 +149,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   });
-  
   
   
   prevBtn.addEventListener(
@@ -157,15 +171,48 @@ document.addEventListener("DOMContentLoaded", () => {
   
   houseForm.addEventListener(
   "submit",
-  function(e){
+  e=>{
   
   e.preventDefault();
+  
+  
+  console.log(
+  "Trimis"
+  );
+  
+  
+  /* viitor:
+  
+  fetch()
+  
+  salvare DB
+  
+  AI analysis
+  
+  redirect
+  
+  */
+  
   
   alert(
   "Analiza a fost trimisă"
   );
   
   });
+  
+  
+  
+  function scrollTop(){
+  
+  window.scrollTo({
+  
+  top:0,
+  
+  behavior:"smooth"
+  
+  });
+  
+  }
   
   
   showStep();
