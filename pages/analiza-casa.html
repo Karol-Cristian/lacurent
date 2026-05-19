@@ -97,81 +97,466 @@ Activ
 
 <main class="dashboard">
 
-    <div class="step active">
+    <!-- PAS 1 -->
 
-        <h2>Date utilizator și profil consum</h2>
-        
-        <p class="section-description">
-        
-        Aceste informații sunt utilizate pentru estimarea profilului energetic.
-        
-        </p>
-        
-        <div class="form-grid">
-        
-        <div>
-        
-        <label>Tip consumator</label>
-        
-        <select>
-        
-        <option>Casnic</option>
-        
-        <option>Necasnic</option>
-        
-        </select>
-        
-        </div>
-        
-        
-        <div>
-        
-        <label>Număr persoane</label>
-        
-        <input
-        type="number">
-        
-        </div>
-        
-        
-        <div>
-        
-        <label>Program ocupare locuință</label>
-        
-        <select>
-        
-        <option>Dimineața + seara</option>
-        
-        <option>Majoritatea zilei</option>
-        
-        <option>Permanent</option>
-        
-        <option>Variabil</option>
-        
-        </select>
-        
-        </div>
-        
-        
-        <div>
-        
-        <label>Lucru de acasă</label>
-        
-        <select>
-        
-        <option>Nu</option>
-        
-        <option>Parțial</option>
-        
-        <option>Zilnic</option>
-        
-        </select>
-        
-        </div>
-        
-        </div>
-        
-        </div>
+<div class="step active">
+
+    <h2>Date utilizator și profil consum</h2>
+    
+    <p class="section-description">
+    Date generale privind ocuparea și utilizarea locuinței.
+    </p>
+    
+    <div class="form-grid">
+    
+    <div>
+    <label>Tip consumator</label>
+    <select required>
+    <option>Casnic</option>
+    <option>Necasnic</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Număr persoane</label>
+    <input type="number" required>
+    </div>
+    
+    <div>
+    <label>Copii în locuință</label>
+    <input type="number">
+    </div>
+    
+    <div>
+    <label>Persoane peste 65 ani</label>
+    <input type="number">
+    </div>
+    
+    <div>
+    <label>Lucru de acasă</label>
+    <select>
+    <option>Nu</option>
+    <option>Parțial</option>
+    <option>Zilnic</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Zile lucru acasă/săptămână</label>
+    <input type="number">
+    </div>
+    
+    <div>
+    <label>Locuința este ocupată</label>
+    <select>
+    <option>Dimineața + seara</option>
+    <option>Permanent</option>
+    <option>Variabil</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Plecați frecvent?</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    </div>
+    
+    </div>
+    
+    
+    
+    <!-- PAS 2 -->
+    
+    <div class="step">
+    
+    <h2>Caracteristici locuință</h2>
+    
+    <div class="form-grid">
+    
+    <div>
+    <label>Tip locuință</label>
+    <select>
+    <option>Casă</option>
+    <option>Apartament</option>
+    <option>Duplex</option>
+    <option>Vilă</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Suprafață utilă (m²)</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Suprafață construită (m²)</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>An construcție</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Număr etaje</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Număr camere</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Număr băi</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Înălțime camere</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Subsol</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Pod</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Mansardă</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Garaj</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    </div>
+    
+    </div>
+    
+    
+    
+    <!-- PAS 3 -->
+    
+    <div class="step">
+    
+    <h2>Anvelopă și izolație</h2>
+    
+    <div class="form-grid">
+    
+    <div>
+    <label>Pereți</label>
+    <select>
+    <option>BCA</option>
+    <option>Cărămidă</option>
+    <option>Lemn</option>
+    <option>Mixt</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Grosime pereți</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Izolație pereți</label>
+    <select>
+    <option>Fără</option>
+    <option>5cm</option>
+    <option>10cm</option>
+    <option>15cm</option>
+    <option>20cm+</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Izolație pod</label>
+    <select>
+    <option>Nu</option>
+    <option>Vată</option>
+    <option>Spumă</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Grosime izolație pod</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Izolație podea</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Ferestre</label>
+    <select>
+    <option>Vechi</option>
+    <option>Termopan</option>
+    <option>Tripan</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Număr ferestre</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Suprafață vitrată</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Etanșare</label>
+    <select>
+    <option>Slabă</option>
+    <option>Medie</option>
+    <option>Foarte bună</option>
+    </select>
+    </div>
+    
+    </div>
+    
+    </div>
+    
+    
+    
+    <!-- PAS 4 -->
+    
+    <div class="step">
+    
+    <h2>Încălzire și apă caldă</h2>
+    
+    <div class="form-grid">
+    
+    <div>
+    <label>Sursă principală</label>
+    <select>
+    <option>Lemne</option>
+    <option>Gaz</option>
+    <option>Electric</option>
+    <option>Pompă căldură</option>
+    <option>Peleți</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Sursă secundară</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Distribuție</label>
+    <select>
+    <option>Calorifere</option>
+    <option>Pardoseală</option>
+    <option>Mixt</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Temperatură zi</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Temperatură noapte</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Termostat inteligent</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    <div>
+    <label>Consum lemne/an</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Consum gaz/an</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Capacitate boiler</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Număr dușuri/zi</label>
+    <input>
+    </div>
+    
+    </div>
+    
+    </div>
+    
+    
+    
+    <!-- PAS 5 -->
+    
+    <div class="step">
+    
+    <h2>Consum și facturi</h2>
+    
+    <div class="form-grid">
+    
+    <div>
+    <label>Furnizor actual</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Cost mediu lunar</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Consum mediu lunar</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Consum anual</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Tarif energie</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>POD</label>
+    <input>
+    </div>
+    
+    <div>
+    <label>Încarcă factură PDF</label>
+    <input type="file">
+    </div>
+    
+    <div>
+    <label>Ultimele 12 luni disponibile?</label>
+    <select>
+    <option>Da</option>
+    <option>Nu</option>
+    </select>
+    </div>
+    
+    </div>
+    
+    </div>
+    
+    
+    
+    <!-- PAS 6 -->
+    
+    <div class="step">
+    
+    <h2>Electrocasnice</h2>
+    
+    <div class="form-grid">
+    
+    <div><label>Frigider clasă</label><select><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></div>
+    
+    <div><label>Mașină spălat clasă</label><select><option>A</option><option>B</option><option>C</option></select></div>
+    
+    <div><label>Uscător</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>Mașină vase</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>Aer condiționat</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>Boiler</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>Cuptor electric</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>Număr TV</label><input></div>
+    
+    <div><label>Desktop/NAS</label><input></div>
+    
+    <div><label>Număr becuri LED</label><input></div>
+    
+    <div><label>Număr becuri clasice</label><input></div>
+    
+    </div>
+    
+    </div>
+    
+    
+    
+    <!-- PAS 7 -->
+    
+    <div class="step">
+    
+    <h2>Energie verde și mobilitate</h2>
+    
+    <div class="form-grid">
+    
+    <div><label>Panouri fotovoltaice</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>Putere instalată</label><input></div>
+    
+    <div><label>Producție anuală</label><input></div>
+    
+    <div><label>Orientare panouri</label><input></div>
+    
+    <div><label>Unghi</label><input></div>
+    
+    <div><label>Baterie</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>Capacitate baterie</label><input></div>
+    
+    <div><label>Mașină electrică</label><select><option>Da</option><option>Nu</option></select></div>
+    
+    <div><label>km/lună</label><input></div>
+    
+    <div><label>Încărcare</label>
+    <select>
+    <option>Acasă</option>
+    <option>Public</option>
+    <option>Ambele</option>
+    </select>
+    </div>
+    
+    </div>
+    
+    </div>
 
 </main>
 
