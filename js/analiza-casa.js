@@ -252,7 +252,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   await fetch(
   
-  "https://lacurent.lemnarukarol.workers.dev",
+  "https://lacurent.lemnarukarol.workers.dev/api/save-house",
   
   {
   
