@@ -1,35 +1,31 @@
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded", () => {
 
-  const houseForm=
+  const houseForm =
   document.getElementById("houseForm");
   
   if(!houseForm) return;
   
   
-  const steps=
+  const steps =
   document.querySelectorAll(".step");
   
-  const nextBtn=
+  const nextBtn =
   document.getElementById("nextBtn");
   
-  const prevBtn=
+  const prevBtn =
   document.getElementById("prevBtn");
   
-  const finishBtn=
+  const finishBtn =
   document.getElementById("finishBtn");
   
-  const progressBar=
+  const progressBar =
   document.getElementById("progressBar");
   
-  const stepText=
+  const stepText =
   document.getElementById("stepText");
   
   
   let current=0;
-  
-  
-  showStep();
-  
   
   
   function showStep(){
@@ -53,7 +49,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   updateButtons();
   
-  scrollToTop();
+  window.scrollTo({
+  
+  top:0,
+  behavior:"smooth"
+  
+  });
   
   }
   
@@ -61,7 +62,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   function updateProgress(){
   
-  const progress=
+  const progress =
   
   ((current+1)
   /steps.length)*100;
@@ -74,7 +75,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   stepText.innerText=
   
-  `Secțiune ${current+1} din ${steps.length}`;
+  `Pas ${current+1} din ${steps.length}`;
   
   }
   
@@ -91,6 +92,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   "inline-flex";
   
   
+  
   if(
   current===steps.length-1
   ){
@@ -102,6 +104,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   "inline-flex";
   
   }
+  
   else{
   
   nextBtn.style.display=
@@ -116,69 +119,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   
-  function validateCurrentStep(){
-  
-  const currentInputs=
-  
-  steps[current]
-  .querySelectorAll(
-  "input,select"
-  );
-  
-  
-  for(const input of currentInputs){
-  
-  if(
-  
-  input.hasAttribute(
-  "required"
-  )
-  
-  &&
-  
-  !input.value.trim()
-  
-  ){
-  
-  input.focus();
-  
-  input.style.borderColor=
-  "#ef4444";
-  
-  
-  setTimeout(()=>{
-  
-  input.style.borderColor="";
-  
-  },1500);
-  
-  
-  return false;
-  
-  }
-  
-  }
-  
-  
-  return true;
-  
-  }
-  
-  
-  
   nextBtn.addEventListener(
   "click",
   ()=>{
   
   if(
-  !validateCurrentStep()
-  )
-  return;
-  
-  
-  if(
-  current<
-  steps.length-1
+  current<steps.length-1
   ){
   
   current++;
@@ -211,55 +157,17 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   houseForm.addEventListener(
   "submit",
-  e=>{
+  function(e){
   
   e.preventDefault();
   
-  
-  if(
-  !validateCurrentStep()
-  )
-  return;
-  
-  
-  /*
-  
-  aici ulterior:
-  
-  1. colectezi date
-  
-  2. salvezi db
-  
-  3. AI recommendations
-  
-  4. redirect
-  
-  */
-  
-  
-  console.log(
-  "Trimite analiză"
-  );
-  
-  
   alert(
-  "Analiza a fost trimisă."
+  "Analiza a fost trimisă"
   );
   
   });
   
   
-  
-  function scrollToTop(){
-  
-  window.scrollTo({
-  
-  top:0,
-  
-  behavior:"smooth"
-  
-  });
-  
-  }
+  showStep();
   
   });
