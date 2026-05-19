@@ -5,7 +5,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   if(!houseForm){
   
-  console.log("houseForm lipseste");
+  console.log(
+  "houseForm lipseste"
+  );
   
   return;
   
@@ -14,9 +16,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   const steps=
   document.querySelectorAll(".step");
-  
-  console.log("Steps:",steps.length);
-  
   
   const nextBtn=
   document.getElementById("nextBtn");
@@ -36,6 +35,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   if(
   
+  !steps.length ||
   !nextBtn ||
   !prevBtn ||
   !finishBtn ||
@@ -44,7 +44,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   ){
   
-  console.log("Lipsesc elemente");
+  console.log(
+  "Lipsesc elemente"
+  );
   
   return;
   
@@ -52,6 +54,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   let current=0;
+  
   
   
   function showStep(){
@@ -65,19 +68,23 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   
   
-  if(steps[current]){
-  
   steps[current]
   .classList.add(
   "active"
   );
   
-  }
-  
   
   updateProgress();
   
   updateButtons();
+  
+  window.scrollTo({
+  
+  top:0,
+  
+  behavior:"smooth"
+  
+  });
   
   }
   
@@ -142,15 +149,11 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   
+  /* NEXT */
+  
   nextBtn.addEventListener(
   "click",
   ()=>{
-  
-  console.log(
-  "NEXT",
-  current
-  );
-  
   
   if(
   current<
@@ -165,6 +168,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   });
   
+  
+  /* BACK */
   
   prevBtn.addEventListener(
   "click",
@@ -183,17 +188,144 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   
   
+  
+  /* SUBMIT + CLOUD DB */
+  
   houseForm.addEventListener(
+  
   "submit",
-  e=>{
+  
+  async e=>{
   
   e.preventDefault();
   
-  alert(
-  "Analiza trimisă"
+  
+  const data={
+  
+  house_type:
+  
+  document.querySelector(
+  "#houseType"
+  )?.value,
+  
+  
+  surface:
+  
+  document.querySelector(
+  "#surface"
+  )?.value,
+  
+  
+  rooms:
+  
+  document.querySelector(
+  "#rooms"
+  )?.value,
+  
+  
+  year:
+  
+  document.querySelector(
+  "#year"
+  )?.value,
+  
+  
+  city:
+  
+  document.querySelector(
+  "#city"
+  )?.value
+  
+  };
+  
+  
+  console.log(
+  "TRIMIT:",
+  data
   );
   
-  });
+  
+  try{
+  
+  
+  const response=
+  
+  await fetch(
+  
+  "https://lacurent.lemnarukarol.workers.dev",
+  
+  {
+  
+  method:"POST",
+  
+  headers:{
+  
+  "Content-Type":
+  "application/json"
+  
+  },
+  
+  body:
+  
+  JSON.stringify(
+  data
+  )
+  
+  }
+  
+  );
+  
+  
+  
+  const result=
+  
+  await response.json();
+  
+  
+  console.log(
+  result
+  );
+  
+  
+  if(
+  result.success
+  ){
+  
+  alert(
+  "Locuință salvată cu succes ⚡"
+  );
+  
+  }
+  else{
+  
+  alert(
+  "Eroare la salvare"
+  );
+  
+  console.log(
+  result.error
+  );
+  
+  }
+  
+  }
+  
+  catch(err){
+  
+  console.log(
+  err
+  );
+  
+  alert(
+  "Conexiune eșuată"
+  );
+  
+  }
+  
+  }
+  
+  
+  );
   
   
   showStep();
