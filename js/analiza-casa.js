@@ -250,30 +250,83 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   const response=
   
-  await fetch(
-  
-  "https://lacurent.lemnarukarol.workers.dev/api/save-house",
-  
-  {
-  
-  method:"POST",
-  
-  headers:{
-  
-  "Content-Type":
-  "application/json"
-  
-  },
-  
-  body:
-  
-  JSON.stringify(
-  data
-  )
-  
-  }
-  
-  );
+  try{
+
+    const response=
+    
+    await fetch(
+    
+    "https://lacurent.lemnarukarol.workers.dev/api/save-house",
+    
+    {
+    
+    method:"POST",
+    
+    headers:{
+    
+    "Content-Type":"application/json"
+    
+    },
+    
+    body:JSON.stringify(data)
+    
+    }
+    
+    );
+    
+    
+    console.log(
+    "STATUS:",
+    response.status
+    );
+    
+    
+    const result=
+    await response.json();
+    
+    console.log(
+    "RASPUNS:",
+    result
+    );
+    
+    
+    if(
+    response.ok &&
+    result.success
+    ){
+    
+    alert(
+    "Locuință salvată cu succes ⚡"
+    );
+    
+    }
+    else{
+    
+    alert(
+    "Eroare la salvare"
+    
+    );
+    
+    console.log(
+    result
+    );
+    
+    }
+    
+    }
+    
+    catch(err){
+    
+    console.log(
+    "EROARE:",
+    err
+    );
+    
+    alert(
+    "Conexiune eșuată"
+    );
+    
+    }
   
   
   
