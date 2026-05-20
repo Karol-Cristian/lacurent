@@ -32,6 +32,92 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   
   let current=0;
+
+  function validateCurrentStep(){
+
+    const currentInputs=
+    
+    steps[current]
+    .querySelectorAll(
+    
+    "input,select,textarea"
+    
+    );
+    
+    
+    for(const input of currentInputs){
+    
+    if(
+    
+    input.hasAttribute(
+    "required"
+    )
+    
+    ){
+    
+    if(
+    
+    !input.value.trim()
+    
+    ){
+    
+    alert(
+    
+    `Completează: ${
+    
+    input.previousElementSibling
+    ?.innerText ||
+    
+    input.name ||
+    
+    "Câmp obligatoriu"
+    
+    }`
+    
+    );
+    
+    input.focus();
+    
+    return false;
+    
+    }
+    
+    }
+    
+    
+    if(
+    
+    input.type==="number" &&
+    
+    input.value!=="" &&
+    
+    isNaN(input.value)
+    
+    ){
+    
+    alert(
+    
+    `${
+    
+    input.previousElementSibling
+    ?.innerText
+    
+    } trebuie să fie număr`
+    
+    );
+    
+    input.focus();
+    
+    return false;
+    
+    }
+    
+    }
+    
+    
+    return true;
+    
+    }
   
   
   function showStep(){
@@ -121,22 +207,38 @@ document.addEventListener("DOMContentLoaded",()=>{
   /* NEXT */
   
   nextBtn.addEventListener(
-  "click",
-  ()=>{
-  
-  if(
-  current<
-  steps.length-1
-  ){
-  
-  current++;
-  
-  showStep();
-  
-  }
-  
-  }
-  );
+
+    "click",
+    
+    ()=>{
+    
+    
+    if(
+    
+    !validateCurrentStep()
+    
+    ){
+    
+    return;
+    
+    }
+    
+    
+    if(
+    
+    current<steps.length-1
+    
+    ){
+    
+    current++;
+    
+    showStep();
+    
+    }
+    
+    }
+    
+    );
   
   
   /* BACK */
@@ -168,6 +270,14 @@ document.addEventListener("DOMContentLoaded",()=>{
   async e=>{
   
   e.preventDefault();
+
+  if(
+    !validateCurrentStep()
+    ){
+    
+    return;
+    
+    }
   
   
   const data={
