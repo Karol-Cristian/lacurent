@@ -262,6 +262,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   /* SUBMIT */
+  console.log(
+    "FORM:",
+    houseForm
+    );
+    
+    console.log(
+    
+    "REQUIRED:",
+    
+    document.querySelectorAll(
+    "[required]"
+    )
+    
+    );
   
   houseForm.addEventListener(
   
