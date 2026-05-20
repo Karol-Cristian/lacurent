@@ -171,23 +171,42 @@ document.addEventListener("DOMContentLoaded",()=>{
   
   
   const data={
-  
-  house_type:
-  document.querySelector("#houseType")?.value,
-  
-  surface:
-  document.querySelector("#surface")?.value,
-  
-  rooms:
-  document.querySelector("#rooms")?.value,
-  
-  year:
-  document.querySelector("#year")?.value,
-  
-  city:
-  document.querySelector("#city")?.value
-  
-  };
+
+    house_type:
+    
+    document.getElementById(
+    "houseType"
+    )?.value || "",
+    
+    
+    surface:
+    
+    document.getElementById(
+    "surface"
+    )?.value || "",
+    
+    
+    rooms:
+    
+    document.getElementById(
+    "rooms"
+    )?.value || "",
+    
+    
+    year:
+    
+    document.getElementById(
+    "year"
+    )?.value || "",
+    
+    
+    city:
+    
+    document.getElementById(
+    "city"
+    )?.value || ""
+    
+    };
   
   
   console.log(

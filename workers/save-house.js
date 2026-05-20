@@ -2,60 +2,89 @@ export default {
 
   async fetch(request, env) {
   
-  const url =
-  new URL(request.url);
+  const corsHeaders={
+  
+  "Access-Control-Allow-Origin":"*",
+  
+  "Access-Control-Allow-Methods":
+  "GET, POST, OPTIONS",
+  
+  "Access-Control-Allow-Headers":
+  "Content-Type"
+  
+  };
   
   
-  
-  if(
-  url.pathname !==
-  "/api/save-house"
-  ){
-  
-  return new Response(
-  "Not found",
-  {status:404}
-  );
-  
-  }
-  
-  
-  if(
-  request.method==="OPTIONS"
-  ){
+  if(request.method==="OPTIONS"){
   
   return new Response(
   null,
   {
-  headers:{
-  "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Methods":"POST, OPTIONS",
-  "Access-Control-Allow-Headers":"Content-Type"
-  }
+  headers:corsHeaders
   }
   );
   
   }
+  
+  
+  const url=
+  new URL(request.url);
   
   
   if(
-  request.method!=="POST"
+  url.pathname!=="/api/save-house"
   ){
   
-  return Response.json(
+  return new Response(
+  
+  "Not found",
+  
   {
-  success:false,
-  error:"Method not allowed"
-  },
-  {
-  status:405,
-  headers:{
-  "Access-Control-Allow-Origin":"*"
+  
+  status:404,
+  
+  headers:corsHeaders
+  
   }
-  }
+  
   );
   
   }
+  
+  
+  if(request.method!=="POST"){
+  
+  return new Response(
+  
+  JSON.stringify({
+  
+  success:false,
+  
+  error:"Method not allowed"
+  
+  }),
+  
+  {
+  
+  status:405,
+  
+  headers:{
+  
+  ...corsHeaders,
+  
+  "Content-Type":
+  "application/json"
+  
+  }
+  
+  }
+  
+  );
+  
+  }
+  
+  
+  try{
   
   
   const body=
@@ -65,14 +94,24 @@ export default {
   await env.DB.prepare(`
   
   INSERT INTO houses(
+  
   house_type,
   surface,
   rooms,
   year,
   city
+  
   )
   
-  VALUES(?,?,?,?,?)
+  VALUES(
+  
+  ?,
+  ?,
+  ?,
+  ?,
+  ?
+  
+  )
   
   `)
   
@@ -89,16 +128,62 @@ export default {
   .run();
   
   
-  return Response.json(
-  {
+  
+  return new Response(
+  
+  JSON.stringify({
+  
   success:true
-  },
+  
+  }),
+  
   {
+  
   headers:{
-  "Access-Control-Allow-Origin":"*"
+  
+  ...corsHeaders,
+  
+  "Content-Type":
+  "application/json"
+  
   }
+  
   }
+  
   );
+  
+  }
+  
+  catch(e){
+  
+  return new Response(
+  
+  JSON.stringify({
+  
+  success:false,
+  
+  error:e.toString()
+  
+  }),
+  
+  {
+  
+  status:500,
+  
+  headers:{
+  
+  ...corsHeaders,
+  
+  "Content-Type":
+  "application/json"
+  
+  }
+  
+  }
+  
+  );
+  
+  }
   
   }
   
