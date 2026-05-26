@@ -284,6 +284,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   async e=>{
   
   e.preventDefault();
+  console.log("SUBMIT PORNIT");
 
   if(
     !validateCurrentStep()
