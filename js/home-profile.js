@@ -339,12 +339,22 @@ err
 
 function createProductionChart(dates,data){
 
-const ctx=
+const canvas=
 
 document
 .getElementById(
 'phaseShiftChart'
-)
+);
+
+if(!canvas){
+
+return;
+
+}
+
+const ctx=
+
+canvas
 .getContext('2d');
 
 
@@ -419,12 +429,22 @@ options:chartOptions(
 
 function createConsumptionChart(dates,data){
 
-const ctx=
+const canvas=
 
 document
 .getElementById(
 'cosFiChart'
-)
+);
+
+if(!canvas){
+
+return;
+
+}
+
+const ctx=
+
+canvas
 .getContext('2d');
 
 

@@ -295,43 +295,13 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
   
   
-  const data={
-
-    house_type:
+    const formData =
+    new FormData(houseForm);
     
-    document.getElementById(
-    "houseType"
-    )?.value || "",
-    
-    
-    surface:
-    
-    document.getElementById(
-    "surface"
-    )?.value || "",
-    
-    
-    rooms:
-    
-    document.getElementById(
-    "rooms"
-    )?.value || "",
-    
-    
-    year:
-    
-    document.getElementById(
-    "year"
-    )?.value || "",
-    
-    
-    city:
-    
-    document.getElementById(
-    "city"
-    )?.value || ""
-    
-    };
+    const data =
+    Object.fromEntries(
+    formData.entries()
+    );
   
   
   console.log(
