@@ -298,10 +298,20 @@ document.addEventListener("DOMContentLoaded",()=>{
     const formData =
     new FormData(houseForm);
     
-    const data =
-    Object.fromEntries(
-    formData.entries()
-    );
+    const data = {};
+
+    for(const [key,entry] of formData.entries()){
+
+    data[key]=
+    entry instanceof File
+    ?
+    (
+    entry.name || null
+    )
+    :
+    entry;
+
+    }
   
   
   console.log(

@@ -1,0 +1,13 @@
+.git
+.git/**
+.wrangler
+.wrangler/**
+migrations
+migrations/**
+workers
+workers/**
+.assetsignore
+schema.sql
+wrangler.toml
+README.md
+LICENSE
