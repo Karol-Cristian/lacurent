@@ -98,7 +98,7 @@ Activ
 
 <section class="analysis-page">
 
-<div id="authRequired" class="auth-panel analysis-auth-required" hidden>
+<div id="authRequired" class="auth-panel analysis-auth-required standard-auth-card" hidden>
 
 <div class="small-label">CONT NECESAR</div>
 
@@ -107,6 +107,40 @@ Activ
 <p>Analiza casei se salvează în profilul tău, ca să o poți consulta și actualiza ulterior.</p>
 
 <a class="primary-btn" href="profil.html">Mergi la Profil</a>
+
+<div class="auth-tabs">
+<button type="button" class="auth-tab active" data-auth-tab="login">Sign in</button>
+<button type="button" class="auth-tab" data-auth-tab="register">Sign up</button>
+</div>
+
+<form id="analysisLoginForm" class="auth-form active">
+<label>Email</label>
+<input name="email" type="email" autocomplete="email" required>
+<label>Parolă</label>
+<input name="password" type="password" autocomplete="current-password" required>
+<button class="primary-btn" type="submit">Sign in</button>
+<a href="#" id="analysisForgotLink">Am uitat parola</a>
+<p class="form-message" id="analysisLoginMessage"></p>
+</form>
+
+<form id="analysisRegisterForm" class="auth-form">
+<label>Nume</label>
+<input name="name" autocomplete="name" required>
+<label>Email</label>
+<input name="email" type="email" autocomplete="email" required>
+<label>Parolă</label>
+<input name="password" type="password" autocomplete="new-password" minlength="8" required>
+<button class="primary-btn" type="submit">Sign up</button>
+<p class="form-message" id="analysisRegisterMessage"></p>
+</form>
+
+<form id="analysisForgotForm" class="auth-form">
+<label>Email</label>
+<input name="email" type="email" autocomplete="email" required>
+<button class="primary-btn" type="submit">Generează link</button>
+<p class="form-message" id="analysisForgotMessage"></p>
+<p class="form-message" id="analysisResetLinkMessage"></p>
+</form>
 
 </div>
 

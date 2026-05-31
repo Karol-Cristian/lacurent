@@ -2,372 +2,207 @@
 <html lang="ro">
 
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-name="viewport"
-content="width=device-width,initial-scale=1">
-
-<title>
-
-LA CURENT | Dashboard
-
-</title>
-
-<link
-rel="icon"
-type="image/png"
-href="images/favicon.png?v=2">
-
-<link
-rel="stylesheet"
-href="css/style.css">
-
-<link
-href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-rel="stylesheet">
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LA CURENT | Dashboard</title>
+<link rel="icon" type="image/png" href="images/favicon.png?v=2">
+<link rel="stylesheet" href="css/style.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="js/auth.js" defer></script>
 </head>
 
 <body>
-
-    <button id="menuBtn"
-class="menu-btn">
-
-☰
-
-</button>
-
+<button id="menuBtn" class="menu-btn">&#9776;</button>
 <div id="sidebar"></div>
 
+<main class="dashboard product-dashboard">
+  <div class="dashboard-auth-actions">
+    <a class="secondary-btn auth-only" href="pages/profil.html?mode=login">Sign in</a>
+    <a class="primary-btn auth-only" href="pages/profil.html?mode=register">Sign up</a>
+    <a class="secondary-btn user-only" href="pages/profil.html" hidden>Profil</a>
+  </div>
 
-<main class="dashboard">
-
-<section class="hero-landing">
-<div class="hero-grid">
-
-<div>
-<div class="small-label">COPILOT ENERGETIC</div>
-<h1>
-
-    Spune-ne bugetul.<br>
-    Noi ne ocupăm de energie.
-    
-    </h1>
-<p>Vezi consumul în lei, primește recomandări și află unde pierzi bani înainte să apară factura.</p>
-
-<div class="hero-buttons">
-<button class="primary-btn">Testează analiza casei</button>
-<button class="secondary-btn">Intră pe lista de acces</button>
-</div>
-</div>
-
-<div class="mock-dashboard">
-<div class="kpi-grid">
-<div class="kpi-card"><h2>350 lei</h2><p>Buget</p></div>
-<div class="kpi-card"><h2>420 lei</h2><p>Estimare</p></div>
-</div>
-
-<div class="alert-card">
-⚠ +70 lei peste buget
-</div>
-
-<div class="chart-card">
-<h3>Consum estimat</h3>
-<div class="fake-chart">
-<div style="height:45%"></div>
-<div style="height:65%"></div>
-<div style="height:30%"></div>
-<div style="height:80%"></div>
-<div style="height:55%"></div>
-<div style="height:90%"></div>
-<div style="height:60%"></div>
-</div>
-<small>Consum exprimat în LEI</small>
-</div>
-</div>
-</div>
-</section>
-
-<section class="info-section">
-<h2>Cum funcționează</h2>
-<div class="kpi-grid">
-<div class="kpi-card"><h3>Spui bugetul</h3><p>Spune cât vrei să cheltui lunar.</p></div>
-<div class="kpi-card"><h3>Înțelegem casa</h3><p>Analizăm tipul locuinței, încălzirea și consumul.</p></div>
-<div class="kpi-card"><h3>Primești recomandări</h3><p>Îți spunem unde pierzi bani și ce merită schimbat.</p></div>
-</div>
-</section>
-
-<section class="info-section">
-<h2>Exemple de recomandări generate</h2>
-<div class="recommend-grid">
-<div class="recommend-card">Dacă reduci temperatura cu 1°C economisești ~28 lei</div>
-<div class="recommend-card">Schimbarea furnizorului poate reduce costul anual cu ~240 lei</div>
-<div class="recommend-card">Izolarea podului se amortizează în ~5 ani</div>
-<div class="recommend-card">Boilerul consumă peste media caselor similare</div>
-<div class="recommend-card">Case asemănătoare consumă cu 18% mai puțin</div>
-</div>
-</section>
-
-<section class="chart-card">
-<h2>Unde se duc banii tăi?</h2>
-<div class="donut-demo"></div>
-<p>Încălzire — 295 lei/lună
-<p>Boiler — 180 lei/lună
-<p>Frigider — 37 lei/lună
-<p>Uscător — 50 lei/lună</p>
-<p>Cuptor — 57 lei/lună</p>
-</section>
-
-<section class="info-section">
-
-    <h2>Merită investiția?</h2>
-    
-    <p class="section-subtitle">
-    Nu orice produs eficient energetic este și o investiție bună.
-    Evaluăm timpul real de recuperare al banilor.
-    </p>
-    
-    <div class="kpi-grid">
-    
-    <!-- CARD 1 -->
-    
-    <div class="kpi-card success-card">
-    
-    <div class="status-badge success">
-    
-    ✔ Recomandat
-    
+  <section class="product-hero">
+    <div>
+      <div class="small-label">COPILOT ENERGETIC PENTRU CASA TA</div>
+      <h1>Află cât de eficientă este locuința ta.</h1>
+      <p>Primești un scor energetic, comparații cu locuințe similare și recomandări personalizate pentru reducerea costurilor.</p>
+      <div class="hero-buttons">
+        <a class="primary-btn" href="pages/analiza-casa.html">Analizează locuința gratuit</a>
+        <a class="secondary-btn" href="#example-report">Vezi exemplu raport</a>
+      </div>
     </div>
-    
-    <h3>Becuri clasice → LED</h3>
-    
-    <p>
-    Diferență investiție:
-    <strong>+200 lei</strong>
-    </p>
-    
-    <p>
-    Economii estimate:
-    <strong>320 lei/an</strong>
-    </p>
-    
-    <h4>
-    Recuperare:
-    ~7 luni
-    </h4>
-    
-    <small>
-    Recuperare foarte rapidă.
-    </small>
-    
-    </div>
-    
-    
-    <!-- CARD 2 -->
-    
-    <div class="kpi-card warning-card">
-    
-    <div class="status-badge warning">
-    
-    ⚠ Analizează
-    
-    </div>
-    
-    <h3>Centrală electrică → pompă de căldură</h3>
-    
-    <p>
-    Diferență investiție:
-    <strong>+18.000 lei</strong>
-    </p>
-    
-    <p>
-    Economii estimate:
-    <strong>2500 lei/an</strong>
-    </p>
-    
-    <h4>
-    Recuperare:
-    ~7 ani
-    </h4>
-    
-    <small>
-    Depinde mult de izolație și tipul casei.
-    </small>
-    
-    </div>
-    
-    
-    <!-- CARD 3 -->
-    
-    <div class="kpi-card danger-card">
-    
-    <div class="status-badge danger">
-    
-    ✖ Nu merită acum
-    
-    </div>
-    
-    <h3>Frigider Clasa E → Clasa C</h3>
-    
-    <p>
-    
-    Clasa E:
-    2069 lei
-    
-    </p>
-    
-    <p>
-    
-    Clasa C:
-    3699 lei
-    
-    </p>
-    
-    <hr>
-    
-    <p>
-    Diferență investiție:
-    <strong>+1630 lei</strong>
-    </p>
-    
-    <p>
-    Economii estimate:
-    <strong>150 lei/an</strong>
-    </p>
-    
-    <h4>
-    Recuperare:
-    ~10.8 ani
-    </h4>
-    
-    <small>
-    Economia nu justifică momentan diferența de preț.
-    </small>
-    
-    </div>
-    
-    
-    <!-- CARD 4 -->
-    
-    <div class="kpi-card success-card">
-    
-    <div class="status-badge success">
-    
-    ✔ Recomandat
-    
-    </div>
-    
-    <h3>Etanșare ferestre</h3>
-    
-    <p>
-    Investiție:
-    <strong>500 lei</strong>
-    </p>
-    
-    <p>
-    Economii:
-    <strong>420 lei/an</strong>
-    </p>
-    
-    <h4>
-    Recuperare:
-    ~14 luni
-    </h4>
-    
-    <small>
-    Una dintre cele mai rapide investiții.
-    </small>
-    
-    </div>
-    
-    </div>
-    
-    
-    <div class="investment-note">
-    
-    💡 Nu îți spunem doar ce consumă mai puțin.
-    Îți spunem dacă merită financiar.
-    
-    </div>
-    
-    </section>
 
-<section class="chart-card">
-<h2>Lasă energia pe pilot automat</h2>
-<p>Monitorizăm piața și identificăm cele mai bune opțiuni.</p>
-<div class="system-banner">
-<div>Furnizor actual: X</div>
-<div>Posibilă economie: 220 lei/an</div>
-<div>Schimbarea recomandată</div>
-</div>
-<button class="primary-btn">Activează AutoSwitch</button>
-</section>
+    <div class="score-card hero-score-card">
+      <div class="score-ring">
+        <span>72</span>
+        <small>/100</small>
+      </div>
+      <div>
+        <h3>Scor energetic</h3>
+        <p>Locuința este eficientă, dar există câteva investiții cu impact clar asupra facturii.</p>
+      </div>
+    </div>
+  </section>
 
-<section class="info-section">
-<h2>Construim cea mai mare bază de date energetică pentru locuințe.</h2>
-<div class="kpi-grid">
-<div class="kpi-card"><h2>1200</h2><p>locuințe analizate</p></div>
-<div class="kpi-card"><h2>340.000</h2><p>lei economii</p></div>
-<div class="kpi-card"><h2>390</h2><p>consum mediu</p></div>
-<div class="kpi-card"><h2>#1</h2><p>izolare pod</p></div>
-</div>
-</section>
+  <section class="dashboard-summary-grid" id="example-report">
+    <article class="metric-card score-metric">
+      <span class="metric-label">Energy Score</span>
+      <strong>72/100</strong>
+      <p>Bun, cu potențial de optimizare</p>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Cost lunar estimat</span>
+      <strong>420 lei</strong>
+      <p>+70 lei peste bugetul recomandat</p>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Economii potențiale</span>
+      <strong>620 lei/an</strong>
+      <p>Din recomandările prioritare</p>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Ranking locuință</span>
+      <strong>Top 28%</strong>
+      <p>Mai eficientă decât 28% din case similare</p>
+    </article>
+  </section>
 
-<section class="chart-card text-center">
-<h2>Factura nu trebuie să fie o surpriză.</h2>
-<p>Intră în lista de acces și ajută-ne să construim viitorul energiei.</p>
-<input class="form-control mt-4" placeholder="Email">
-<button class="primary-btn mt-4">Intră pe lista de acces</button>
-<p><small>Acces anticipat pentru primii utilizatori</small></p>
-</section>
+  <section class="dashboard-band two-column-band">
+    <div class="benchmark-panel">
+      <div class="section-heading">
+        <span class="small-label">BENCHMARK</span>
+        <h2>Consumi mai mult decât 72% din locuințe similare.</h2>
+      </div>
+      <div class="percentile-bar">
+        <span style="width:72%"></span>
+      </div>
+      <div class="percentile-labels">
+        <span>Mai eficient</span>
+        <strong>Tu ești aici</strong>
+        <span>Mai costisitor</span>
+      </div>
+      <p>Comparația folosește locuințe cu suprafață, an de construcție și tip de încălzire apropiate.</p>
+    </div>
 
+    <div class="recommendations-preview">
+      <div class="section-heading">
+        <span class="small-label">TOP RECOMANDĂRI</span>
+        <h2>Primele acțiuni cu impact financiar.</h2>
+      </div>
+      <a class="recommendation-row" href="pages/recomandari.html">
+        <span>#1</span>
+        <div>
+          <strong>Îmbunătățește izolația podului</strong>
+          <small>Economii estimate: 120 lei/an</small>
+        </div>
+      </a>
+      <a class="recommendation-row" href="pages/recomandari.html">
+        <span>#2</span>
+        <div>
+          <strong>Înlocuiește boilerul vechi</strong>
+          <small>Economii estimate: 240 lei/an</small>
+        </div>
+      </a>
+      <a class="recommendation-row" href="pages/recomandari.html">
+        <span>#3</span>
+        <div>
+          <strong>Instalează un termostat inteligent</strong>
+          <small>Economii estimate: 60 lei/an</small>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="dashboard-band">
+    <div class="section-heading">
+      <span class="small-label">CE PRIMEȘTI</span>
+      <h2>Un raport simplu, orientat pe decizii.</h2>
+    </div>
+    <div class="value-card-grid">
+      <article>✓ Scor energetic 0-100</article>
+      <article>✓ Comparație cu locuințe similare</article>
+      <article>✓ Economii estimate</article>
+      <article>✓ Recomandări personalizate</article>
+    </div>
+  </section>
+
+  <section class="dashboard-band">
+    <div class="section-heading">
+      <span class="small-label">CUM FUNCȚIONEAZĂ</span>
+      <h2>Trei pași până la claritate.</h2>
+    </div>
+    <div class="steps-grid">
+      <article>
+        <span>1</span>
+        <h3>Completezi analiza</h3>
+        <p>Adaugi date despre locuință, consum, încălzire și electrocasnice.</p>
+      </article>
+      <article>
+        <span>2</span>
+        <h3>Calculăm scorul energetic</h3>
+        <p>Estimăm eficiența și poziția față de locuințe similare.</p>
+      </article>
+      <article>
+        <span>3</span>
+        <h3>Primești recomandări</h3>
+        <p>Vezi ce merită făcut, cât economisești și care este prioritatea.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="dashboard-band">
+    <div class="section-heading">
+      <span class="small-label">INSTRUMENTE AVANSATE</span>
+      <h2>Pentru explorare opțională.</h2>
+    </div>
+    <div class="advanced-tools-grid">
+      <a class="advanced-tool-card" href="pages/advanced-calculator.html">
+        <span class="tool-icon">📊</span>
+        <h3>Indicatori</h3>
+        <p>Analizează în detaliu performanța energetică a locuinței.</p>
+        <small>kWh/m²/an · cost/m² · percentile ranking</small>
+      </a>
+      <a class="advanced-tool-card" href="pages/piata-energiei.html">
+        <span class="tool-icon">⚡</span>
+        <h3>Economii și piață</h3>
+        <p>Descoperă oportunități pentru reducerea costurilor.</p>
+        <small>tarife · solar · baterii · pompe de căldură</small>
+      </a>
+      <a class="advanced-tool-card" href="pages/asistent-ai.html">
+        <span class="tool-icon">🤖</span>
+        <h3>Copilot Energetic</h3>
+        <p>Primește răspunsuri personalizate despre consumul și locuința ta.</p>
+        <small>ROI · facturi · panouri · consum comparat</small>
+      </a>
+      <a class="advanced-tool-card" href="pages/energy-data-hub.html">
+        <span class="tool-icon">📈</span>
+        <h3>Date și benchmark</h3>
+        <p>Explorează statistici și comparații energetice.</p>
+        <small>medii regionale · trenduri · distribuții</small>
+      </a>
+    </div>
+  </section>
 </main>
 
+<script>
+fetch('./components/sidebar.html')
+.then(r=>r.text())
+.then(x=>{
+document.getElementById("sidebar").innerHTML=x;
+const btn=document.getElementById("menuBtn");
+if(btn){
+btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
+}
+});
+</script>
 
 <script>
-
-    fetch('./components/sidebar.html')
-    
-    .then(r=>r.text())
-    
-    .then(x=>{
-    
-    document
-    .getElementById(
-    "sidebar"
-    )
-    
-    .innerHTML=x
-    
-    
-    document
-    .getElementById(
-    "menuBtn"
-    )
-    
-    .onclick=()=>{
-    
-    document
-    .querySelector(
-    ".sidebar"
-    )
-    
-    .classList
-    .toggle(
-    "open"
-    )
-    
-    }
-    
-    })
-    
-    </script>
-
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+window.addEventListener("DOMContentLoaded",()=>{
+const user=window.LaCurentAuth&&window.LaCurentAuth.currentUser();
+document.querySelectorAll(".auth-only").forEach(el=>el.hidden=!!user);
+document.querySelectorAll(".user-only").forEach(el=>el.hidden=!user);
+});
+</script>
 </body>
-
 </html>
