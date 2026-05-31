@@ -238,7 +238,8 @@ document.addEventListener("DOMContentLoaded",async ()=>{
   authRequired.hidden=true;
   }
   
-  const steps=document.querySelectorAll(".step");
+  const allSteps=[...document.querySelectorAll(".step")];
+  let steps=[...allSteps];
   
   const nextBtn=document.getElementById("nextBtn");
   const prevBtn=document.getElementById("prevBtn");
@@ -248,7 +249,7 @@ document.addEventListener("DOMContentLoaded",async ()=>{
   const stepText=document.getElementById("stepText");
   
   if(
-  !steps.length||
+  !allSteps.length||
   !nextBtn||
   !prevBtn||
   !finishBtn||
@@ -263,6 +264,45 @@ document.addEventListener("DOMContentLoaded",async ()=>{
   }
   
   let current=0;
+
+  function selectedValue(name){
+  return houseForm.elements[name]?.value || "";
+  }
+
+  function updateConditionalFields(){
+  const userType=selectedValue("user_type");
+  const houseType=selectedValue("house_type");
+  const isApartment=houseType==="Apartament";
+  const isResidential=userType==="residential";
+
+  document.querySelectorAll(".business-flow").forEach(el=>{
+  el.hidden=userType!=="business";
+  });
+
+  document.querySelectorAll(".institution-flow").forEach(el=>{
+  el.hidden=userType!=="institution";
+  });
+
+  document.querySelectorAll(".apartment-only").forEach(el=>{
+  el.hidden=!isResidential||!isApartment;
+  });
+
+  ["attic","basement","garage","mansard","floors"].forEach(name=>{
+  const field=houseForm.elements[name];
+  if(field){
+  const wrapper=field.closest("div");
+  if(wrapper){
+  wrapper.hidden=!isResidential||isApartment;
+  }
+  }
+  });
+
+  steps=allSteps.filter(step=>!step.hidden);
+
+  if(current>=steps.length){
+  current=steps.length-1;
+  }
+  }
 
   function validateCurrentStep(){
 
@@ -352,8 +392,10 @@ document.addEventListener("DOMContentLoaded",async ()=>{
   
   
   function showStep(){
+
+  updateConditionalFields();
   
-  steps.forEach(step=>{
+  allSteps.forEach(step=>{
   
   step.classList.remove(
   "active"
@@ -436,6 +478,19 @@ document.addEventListener("DOMContentLoaded",async ()=>{
   
   
   /* NEXT */
+
+  houseForm.addEventListener(
+  "change",
+  event=>{
+  if(
+  event.target.name==="user_type"||
+  event.target.name==="house_type"
+  ){
+  updateConditionalFields();
+  showStep();
+  }
+  }
+  );
   
   nextBtn.addEventListener(
 

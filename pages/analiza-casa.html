@@ -183,6 +183,20 @@ Date generale privind ocuparea și utilizarea locuinței.
 
 <div>
 
+<label>Tip utilizator</label>
+
+<select name="user_type" id="userType" required>
+
+<option value="residential">Residential</option>
+<option value="business">Business</option>
+<option value="institution">Institution</option>
+
+</select>
+
+</div>
+
+<div>
+
 <label>Tip consumator</label>
 
 <select name="consumer_type" required>
@@ -294,6 +308,55 @@ required>
 <option>Apartament</option>
 <option>Duplex</option>
 <option>Vilă</option>
+
+</select>
+
+</div>
+
+<div>
+
+<div class="apartment-only">
+
+<label>Etaj apartament</label>
+
+<input name="apartment_floor">
+
+</div>
+
+<div class="apartment-only">
+
+<label>An construcție bloc</label>
+
+<input name="building_year">
+
+</div>
+
+<div class="apartment-only">
+
+<label>Reabilitare termică</label>
+
+<select name="rehabilitation_status">
+
+<option>Reabilitat</option>
+<option>Nereabilitat</option>
+<option>Parțial</option>
+<option>Nu știu</option>
+
+</select>
+
+</div>
+
+<div class="apartment-only">
+
+<label>Orientare</label>
+
+<select name="orientation">
+
+<option>Nord</option>
+<option>Sud</option>
+<option>Est</option>
+<option>Vest</option>
+<option>Mixt</option>
 
 </select>
 
@@ -695,6 +758,93 @@ required>
 </div>
 
 
+
+<div class="step business-flow">
+
+<h2>Profil business</h2>
+
+<div class="form-grid">
+
+<div>
+<label>Tip business</label>
+<select name="business_type">
+<option>Office</option>
+<option>Retail</option>
+<option>Hotel</option>
+<option>Restaurant</option>
+<option>Warehouse</option>
+</select>
+</div>
+
+<div>
+<label>Număr angajați</label>
+<input name="employees" type="number">
+</div>
+
+<div>
+<label>Program de lucru</label>
+<input name="working_hours">
+</div>
+
+<div>
+<label>Suprafață clădire</label>
+<input name="building_area">
+</div>
+
+<div>
+<label>Consumatori principali</label>
+<input name="energy_consumers">
+</div>
+
+<div>
+<label>Număr locații</label>
+<input name="sites" type="number">
+</div>
+
+</div>
+
+</div>
+
+<div class="step institution-flow">
+
+<h2>Profil instituție</h2>
+
+<div class="form-grid">
+
+<div>
+<label>Tip instituție</label>
+<select name="institution_type">
+<option>Municipality</option>
+<option>School</option>
+<option>Hospital</option>
+<option>University</option>
+<option>Public building</option>
+</select>
+</div>
+
+<div>
+<label>Număr clădiri</label>
+<input name="building_count" type="number">
+</div>
+
+<div>
+<label>Buget anual energie</label>
+<input name="annual_energy_budget">
+</div>
+
+<div>
+<label>Sisteme de încălzire</label>
+<input name="heating_systems">
+</div>
+
+<div>
+<label>Planuri renovare</label>
+<input name="renovation_plans">
+</div>
+
+</div>
+
+</div>
 
 <div class="wizard-footer">
 

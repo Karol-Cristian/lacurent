@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="js/auth.js" defer></script>
+<script src="js/product-dashboard.js" defer></script>
 </head>
 
 <body>
@@ -35,12 +36,12 @@
 
     <div class="score-card hero-score-card">
       <div class="score-ring">
-        <span>72</span>
+        <span id="heroScoreValue">--</span>
         <small>/100</small>
       </div>
       <div>
         <h3>Scor energetic</h3>
-        <p>Locuința este eficientă, dar există câteva investiții cu impact clar asupra facturii.</p>
+        <p id="scoreStatusText">Completează analiza pentru a debloca scorul energetic, benchmark-ul și recomandările personalizate.</p>
       </div>
     </div>
   </section>
@@ -48,8 +49,8 @@
   <section class="dashboard-summary-grid" id="example-report">
     <article class="metric-card score-metric">
       <span class="metric-label">Energy Score</span>
-      <strong>72/100</strong>
-      <p>Bun, cu potențial de optimizare</p>
+      <strong id="summaryScoreValue">Blocat</strong>
+      <p>Disponibil după analiza locuinței</p>
     </article>
     <article class="metric-card">
       <span class="metric-label">Cost lunar estimat</span>
@@ -63,8 +64,8 @@
     </article>
     <article class="metric-card">
       <span class="metric-label">Ranking locuință</span>
-      <strong>Top 28%</strong>
-      <p>Mai eficientă decât 28% din case similare</p>
+      <strong id="energyClassValue">--</strong>
+      <p>Clasă energetică estimată</p>
     </article>
   </section>
 
@@ -72,10 +73,10 @@
     <div class="benchmark-panel">
       <div class="section-heading">
         <span class="small-label">BENCHMARK</span>
-        <h2>Consumi mai mult decât 72% din locuințe similare.</h2>
+        <h2 id="benchmarkHeadline">Completează analiza pentru a debloca scorul energetic, benchmark-ul și recomandările personalizate.</h2>
       </div>
       <div class="percentile-bar">
-        <span style="width:72%"></span>
+        <span style="width:0%"></span>
       </div>
       <div class="percentile-labels">
         <span>Mai eficient</span>

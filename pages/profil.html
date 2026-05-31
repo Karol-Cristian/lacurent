@@ -58,6 +58,13 @@ Cont utilizator
 <input name="name" autocomplete="name" required>
 <label>Email</label>
 <input name="email" type="email" autocomplete="email" required>
+<label>Tip cont</label>
+<select name="role" required>
+<option value="residential">Residential</option>
+<option value="business">Business</option>
+<option value="institution">Institution</option>
+<option value="auditor">Energy Auditor</option>
+</select>
 <label>Parolă</label>
 <input name="password" type="password" autocomplete="new-password" minlength="8" required>
 <button class="primary-btn" type="submit">Creează cont</button>
@@ -92,7 +99,7 @@ const menu=document.querySelector(".sidebar");
 if(menu){
 menu.classList.remove("open");
 }
-}
+};
 });
 });
 </script>
@@ -121,7 +128,7 @@ function refreshAccount(){
 const user=LaCurentAuth.currentUser();
 if(user){
 accountTitle.textContent=user.name;
-accountText.textContent=`${user.email} este conectat. Analizele noi vor fi salvate pe acest profil.`;
+accountText.textContent=`${user.email} este conectat. Rol: ${user.role || "residential"}.`;
 logoutBtn.hidden=false;
 return;
 }
