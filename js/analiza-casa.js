@@ -1,10 +1,51 @@
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded",async ()=>{
 
   const houseForm=document.getElementById("houseForm");
+  const authRequired=document.getElementById("authRequired");
+  const progressWrap=document.querySelector(".progress-wrap");
   
   if(!houseForm){
   console.log("houseForm lipseste");
   return;
+  }
+
+  async function hasValidSession(){
+  if(
+  !window.LaCurentAuth ||
+  !window.LaCurentAuth.token()
+  ){
+  return false;
+  }
+
+  try{
+  await window.LaCurentAuth.api(
+  "/api/me"
+  );
+  return true;
+  }
+  catch(e){
+  window.LaCurentAuth.clearAuth();
+  return false;
+  }
+  }
+
+  if(!(await hasValidSession())){
+  houseForm.hidden=true;
+  if(progressWrap){
+  progressWrap.hidden=true;
+  }
+  if(authRequired){
+  authRequired.hidden=false;
+  }
+  return;
+  }
+
+  houseForm.hidden=false;
+  if(progressWrap){
+  progressWrap.hidden=false;
+  }
+  if(authRequired){
+  authRequired.hidden=true;
   }
   
   const steps=document.querySelectorAll(".step");
@@ -335,7 +376,16 @@ document.addEventListener("DOMContentLoaded",()=>{
   headers:{
   
   "Content-Type":
-  "application/json"
+  "application/json",
+
+  ...(localStorage.getItem("lacurent_auth_token")
+  ?
+  {
+  Authorization:
+  `Bearer ${localStorage.getItem("lacurent_auth_token")}`
+  }
+  :
+  {})
   
   },
   
@@ -376,6 +426,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   else{
   
   alert(
+  result.error ||
   "Eroare la salvare"
   );
   
