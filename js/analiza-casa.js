@@ -4,7 +4,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const progressWrap = document.querySelector(".progress-wrap");
   const existingHomesPanel = document.getElementById("existingHomesPanel");
   const existingHomesList = document.getElementById("existingHomesList");
-  const forceNewHome = new URLSearchParams(window.location.search).get("new") === "1";
+  const houseToolsPanel = document.getElementById("houseToolsPanel");
+  const monthlyBillForm = document.getElementById("monthlyBillForm");
+  const params = new URLSearchParams(window.location.search);
+  const forceNewHome = params.get("new") === "1";
+  const editHouseId = params.get("edit");
 
   if (!houseForm) return;
 
@@ -118,10 +122,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const homes = await window.LaCurentHomes?.load?.() || [];
-  if (homes.length && !forceNewHome) {
+  if (editHouseId) {
+    window.LaCurentHomes?.setActiveHouseId(editHouseId);
+  }
+
+  if (homes.length && !forceNewHome && !editHouseId) {
     houseForm.hidden = true;
     if (progressWrap) progressWrap.hidden = true;
     if (existingHomesPanel) existingHomesPanel.hidden = false;
+    if (houseToolsPanel) houseToolsPanel.hidden = false;
+    initMonthlyBillForm(window.LaCurentHomes?.activeHouseId?.() || homes[0]?.id);
     if (existingHomesList) renderHomes(homes);
     return;
   }
@@ -140,6 +150,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span>Clasa: <strong>${home.estimated_energy_class || "--"}</strong></span>
             <span>Decizii implementate: <strong>${home.implemented_actions || 0}</strong></span>
             <button class="secondary-btn" type="button" data-home-id="${home.id}">Selecteaza</button>
+            <a class="secondary-btn" href="analiza-casa.html?edit=${home.id}">Editeaza datele</a>
             <button class="secondary-btn danger-soft" type="button" data-archive-home-id="${home.id}">Nu mai administrez</button>
           </div>
         </div>
@@ -177,9 +188,98 @@ document.addEventListener("DOMContentLoaded", async () => {
   const nextBtn = document.getElementById("nextBtn");
   const prevBtn = document.getElementById("prevBtn");
   const finishBtn = document.getElementById("finishBtn");
+  const simulateBtn = document.getElementById("simulateBtn");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
   const progressBar = document.getElementById("progressBar");
   const stepText = document.getElementById("stepText");
   if (!allSteps.length || !nextBtn || !prevBtn || !finishBtn || !progressBar || !stepText) return;
+
+  function initMonthlyBillForm(houseId) {
+    if (!monthlyBillForm || !houseId) return;
+    monthlyBillForm.elements.house_id.value = houseId;
+    monthlyBillForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const data = Object.fromEntries(new FormData(monthlyBillForm).entries());
+      const message = document.getElementById("monthlyBillMessage");
+      try {
+        await window.LaCurentAuth.api("/api/monthly-bill", data);
+        if (message) message.textContent = "Factura a fost adaugata.";
+        monthlyBillForm.reset();
+        monthlyBillForm.elements.house_id.value = houseId;
+        window.LaCurentHomes?.refresh();
+      } catch (error) {
+        if (message) {
+          message.textContent = error.message;
+          message.classList.add("error");
+        }
+      }
+    }, { once: true });
+  }
+
+  function applyAnswersToForm(answers = {}) {
+    Object.entries(answers).forEach(([key, value]) => {
+      const controls = houseForm.querySelectorAll(`[name="${CSS.escape(key)}"]`);
+      controls.forEach(control => {
+        if (control.type === "checkbox") {
+          control.checked = value === control.value || value === "yes";
+        } else if (control.type !== "file") {
+          control.value = value ?? "";
+        }
+      });
+    });
+    updateConditionalFields();
+  }
+
+  function setElementValue(name, value) {
+    const element = houseForm.elements[name];
+    if (element && value !== undefined && value !== null && value !== "") {
+      element.value = value;
+    }
+  }
+
+  async function loadEditProfile() {
+    if (!editHouseId) return;
+    const result = await window.LaCurentAuth.api("/api/house-profile", { house_id: editHouseId });
+    applyAnswersToForm(result.answers || {});
+    if (result.house) {
+      setElementValue("display_name", result.house.display_name);
+      setElementValue("city", result.house.city);
+      setElementValue("useful_area_m2", result.answers?.useful_area_m2 || result.house.surface);
+      setElementValue("construction_year", result.answers?.construction_year || result.house.year);
+      setElementValue("building_type", result.answers?.building_type || result.house.house_type);
+      setElementValue("analysis_purpose", result.house.analysis_purpose);
+    }
+    finishBtn.textContent = "Salveaza modificarile";
+    cancelEditBtn.hidden = false;
+  }
+
+  function formatMoney(value) {
+    return value ? `${Math.round(value).toLocaleString("ro-RO")} lei/an` : "--";
+  }
+
+  function renderSimulation(result) {
+    const box = document.getElementById("simulationResult");
+    if (!box) return;
+    const comparison = result.comparison;
+    const profile = result.profile;
+    box.hidden = false;
+    if (comparison) {
+      document.getElementById("oldScore").textContent = `${comparison.oldScore}/100`;
+      document.getElementById("newScore").textContent = `${comparison.newScore}/100`;
+      document.getElementById("oldSavings").textContent = `${formatMoney(comparison.oldSavingsMinRon)} - ${formatMoney(comparison.oldSavingsMaxRon)}`;
+      document.getElementById("newSavings").textContent = `${formatMoney(comparison.newSavingsMinRon)} - ${formatMoney(comparison.newSavingsMaxRon)}`;
+      const sign = comparison.scoreDelta > 0 ? "+" : "";
+      document.getElementById("simulationConclusion").textContent =
+        `Diferenta simulata: ${sign}${comparison.scoreDelta} puncte. Modificarile nu sunt salvate pana nu apesi Salveaza modificarile.`;
+    } else {
+      document.getElementById("oldScore").textContent = "--";
+      document.getElementById("newScore").textContent = `${profile.assessment.score}/100`;
+      document.getElementById("oldSavings").textContent = "--";
+      document.getElementById("newSavings").textContent = `${formatMoney(profile.assessment.estimatedAnnualSavingsMinRon)} - ${formatMoney(profile.assessment.estimatedAnnualSavingsMaxRon)}`;
+      document.getElementById("simulationConclusion").textContent = "Simulare noua. Nu exista inca o versiune salvata pentru comparatie.";
+    }
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
   function selected(name) {
     return houseForm.elements[name]?.value;
@@ -256,6 +356,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     prevBtn.style.display = current === 0 ? "none" : "inline-flex";
     nextBtn.style.display = current === steps.length - 1 ? "none" : "inline-flex";
     finishBtn.style.display = current === steps.length - 1 ? "inline-flex" : "none";
+    if (simulateBtn) simulateBtn.style.display = current === steps.length - 1 ? "inline-flex" : "none";
   }
 
   function showStep() {
@@ -286,21 +387,42 @@ document.addEventListener("DOMContentLoaded", async () => {
   houseForm.addEventListener("change", updateConditionalFields);
   houseForm.addEventListener("input", updateConditionalFields);
 
-  houseForm.addEventListener("submit", async event => {
-    event.preventDefault();
-    if (!validateCurrentStep()) return;
+  simulateBtn?.addEventListener("click", async () => {
+    const data = collectFormData();
+    try {
+      const result = await window.LaCurentAuth.api("/api/simulate-house", data);
+      renderSimulation(result);
+    } catch (error) {
+      alert(error.message || "Simularea nu a reusit.");
+    }
+  });
 
+  cancelEditBtn?.addEventListener("click", () => {
+    window.location.href = editHouseId ? "raport-energie.html" : "analiza-casa.html";
+  });
+
+  function collectFormData() {
     const data = {};
     for (const [key, entry] of new FormData(houseForm).entries()) {
       data[key] = entry instanceof File ? (entry.name || null) : entry;
     }
+    if (editHouseId) data.house_id = editHouseId;
     if (selected("pv_installed") !== "yes") data.pv_capacity_kw = "0";
     if (houseForm.querySelector('[name="monthly_gas_cost"]')?.disabled) data.monthly_gas_cost = "0";
     if (houseForm.querySelector('[name="annual_wood_cost"]')?.disabled) data.annual_wood_cost = "0";
     if (houseForm.querySelector('[name="annual_pellets_cost"]')?.disabled) data.annual_pellets_cost = "0";
+    return data;
+  }
+
+  houseForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!validateCurrentStep()) return;
+
+    const data = collectFormData();
+    const endpoint = editHouseId ? "/api/update-house" : "/api/save-house";
 
     try {
-      const response = await fetch("https://lacurent.lemnarukarol.workers.dev/api/save-house", {
+      const response = await fetch(`https://lacurent.lemnarukarol.workers.dev${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -324,5 +446,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.LaCurentSegments?.apply("residential");
   updateConditionalFields();
+  await loadEditProfile();
   showStep();
 });

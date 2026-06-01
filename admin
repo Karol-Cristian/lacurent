@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LA CURENT | Admin</title>
+<link rel="icon" type="image/png" href="/images/favicon.png?v=2">
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="/js/auth.js" defer></script>
+<script src="/js/admin.js" defer></script>
+</head>
+
+<body>
+<button id="menuBtn" class="menu-btn">&#9776;</button>
+<div id="sidebar"></div>
+
+<div class="app-content">
+<header>
+<div class="hero-top">
+<div>
+<div class="small-label">ADMIN</div>
+<h1>Observator date LaCurent</h1>
+<p>Vezi locuintele, scorurile si raspunsurile agregate ca sa decizi ce algoritmi merita aplicati.</p>
+</div>
+<div class="system-state"><span class="green-dot"></span>Date interne</div>
+</div>
+</header>
+
+<main class="dashboard admin-page">
+<section id="adminLoginPanel" class="auth-panel standard-auth-card" hidden>
+<div class="small-label">ADMIN LOGIN</div>
+<h2>Autentificare administrator</h2>
+<p>Foloseste un cont cu rol admin.</p>
+<form id="adminLoginForm" class="auth-form active">
+<label>Utilizator</label>
+<input name="email" autocomplete="username" required>
+<label>Parola</label>
+<input name="password" type="password" autocomplete="current-password" required>
+<button class="primary-btn" type="submit">Intra in admin</button>
+<p id="adminLoginMessage" class="form-message"></p>
+</form>
+</section>
+
+<section id="adminContent" hidden>
+<section class="admin-tabs dashboard-band">
+<button class="admin-tab active" type="button" data-admin-tab="overview">Overview</button>
+<button class="admin-tab" type="button" data-admin-tab="datasets">Date brute</button>
+<button class="admin-tab" type="button" data-admin-tab="tools">Instrumente analiza</button>
+</section>
+
+<div data-admin-panel="overview">
+<section class="recommendation-summary admin-metrics">
+<article><span>Utilizatori</span><strong id="metricUsers">--</strong></article>
+<article><span>Locuinte active</span><strong id="metricHouses">--</strong></article>
+<article><span>Analize</span><strong id="metricAnalyses">--</strong></article>
+<article><span>Scor mediu</span><strong id="metricScore">--</strong></article>
+<article><span>Facturi</span><strong id="metricBills">--</strong></article>
+</section>
+
+<section class="admin-grid">
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">CLASE</span>
+<h2>Distributie clase energetice</h2>
+</div>
+<div id="classChart" class="admin-chart"></div>
+</article>
+
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">INCALZIRE</span>
+<h2>Surse declarate</h2>
+</div>
+<div id="heatingChart" class="admin-chart"></div>
+</article>
+
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">TIPURI</span>
+<h2>Tip locuinta</h2>
+</div>
+<div id="buildingChart" class="admin-chart"></div>
+</article>
+
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">SCOP</span>
+<h2>Scop analiza</h2>
+</div>
+<div id="purposeChart" class="admin-chart"></div>
+</article>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">LOCUINTE</span>
+<h2>Date brute pentru analiza algoritmica</h2>
+</div>
+<div class="admin-table-wrap">
+<table class="admin-table">
+<thead>
+<tr>
+<th>ID</th>
+<th>User</th>
+<th>Locuinta</th>
+<th>Oras</th>
+<th>m2</th>
+<th>An</th>
+<th>Scor</th>
+<th>Clasa</th>
+<th>Incalzire</th>
+<th>Izolatie</th>
+<th>PV</th>
+<th>Cost lunar</th>
+</tr>
+</thead>
+<tbody id="housesTableBody"></tbody>
+</table>
+</div>
+</section>
+</div>
+
+<section data-admin-panel="datasets" hidden>
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">DATASET</span>
+<h2>Acces la tabele si export.</h2>
+</div>
+<div class="admin-controls">
+<label>Tabel
+<select id="adminTableSelect"></select>
+</label>
+<label>Filtru text
+<input id="adminSearchInput" placeholder="Cauta in randuri">
+</label>
+<label>Limit
+<input id="adminLimitInput" type="number" min="1" max="1000" value="500">
+</label>
+<button class="secondary-btn" type="button" id="reloadDatasetBtn">Reincarca</button>
+<button class="secondary-btn" type="button" id="exportCsvBtn">Export CSV</button>
+<button class="secondary-btn" type="button" id="exportJsonBtn">Export JSON</button>
+</div>
+<p id="datasetNotes" class="form-message"></p>
+<div class="admin-table-wrap">
+<table class="admin-table">
+<thead id="datasetTableHead"></thead>
+<tbody id="datasetTableBody"></tbody>
+</table>
+</div>
+</section>
+</section>
+
+<section data-admin-panel="tools" hidden>
+<section class="admin-grid">
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">PROFILARE CAMPURI</span>
+<h2>Completare si valori lipsa.</h2>
+</div>
+<label>Dataset analizat
+<select id="profileTableSelect"></select>
+</label>
+<div id="fieldProfileList" class="admin-profile-list"></div>
+</article>
+
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">ANSWER KEYS</span>
+<h2>Intrebari cu cele mai multe raspunsuri.</h2>
+</div>
+<div id="answerKeysList" class="admin-chart"></div>
+</article>
+
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">SCORURI</span>
+<h2>Distributie pe intervale.</h2>
+</div>
+<div id="scoreBucketsChart" class="admin-chart"></div>
+</article>
+
+<article class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">RAND SELECTAT</span>
+<h2>Inspector JSON.</h2>
+</div>
+<pre id="rowInspector" class="admin-json">Selecteaza un rand din Date brute.</pre>
+</article>
+</section>
+</section>
+</section>
+</main>
+</div>
+
+<script>
+fetch('/components/sidebar.html')
+.then(r=>r.text())
+.then(x=>{
+document.getElementById("sidebar").innerHTML=x;
+const btn=document.getElementById("menuBtn");
+if(btn){
+btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
+}
+});
+</script>
+</body>
+</html>

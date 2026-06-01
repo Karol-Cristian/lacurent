@@ -37,6 +37,25 @@
 <span class="small-label">LOCUINTE SALVATE</span>
 <h2>Ai deja locuinte analizate.</h2>
 </div>
+
+<div id="houseToolsPanel" class="dashboard-band" hidden>
+<div class="section-heading">
+<span class="small-label">DETALII CONTINUE</span>
+<h2>Adauga informatii noi pentru locuinta activa.</h2>
+</div>
+<p>Pastreaza profilul locuintei la zi cu facturi lunare, revizii sau schimbari facute in casa.</p>
+<form id="monthlyBillForm" class="form-grid">
+<input type="hidden" name="house_id">
+<div><label>Luna facturii</label><input name="billing_month" type="month" required></div>
+<div><label>Electricitate (lei)</label><input name="electricity_cost_ron" type="number" value="0"></div>
+<div><label>Gaz (lei)</label><input name="gas_cost_ron" type="number" value="0"></div>
+<div><label>Lemne (lei)</label><input name="wood_cost_ron" type="number" value="0"></div>
+<div><label>Peleti (lei)</label><input name="pellets_cost_ron" type="number" value="0"></div>
+<div><label>Altele (lei)</label><input name="other_cost_ron" type="number" value="0"></div>
+<div class="form-wide"><label>Nota</label><input name="notes" placeholder="Ex: factura reala, nu regularizare"></div>
+<div class="form-wide"><button class="primary-btn" type="submit">Adauga factura</button><p id="monthlyBillMessage" class="form-message"></p></div>
+</form>
+</div>
 <p>Nu completa din nou formularul pentru aceeasi locuinta. Selecteaza locuinta activa, vezi raportul sau marcheaza recomandarile implementate.</p>
 <div id="existingHomesList" class="recommendation-list"></div>
 <div class="hero-buttons">
@@ -202,9 +221,14 @@
 <div class="pellets-consumption-field"><label>Cost anual peleti (lei)</label><input name="annual_pellets_cost" type="number" value="0"></div>
 <div><label>Alte costuri energetice anuale (lei)</label><input name="annual_other_fuel_cost" type="number" value="0"></div>
 <div class="form-wide conditional-panel">
-<strong>Vrei analiza automata in viitor?</strong>
-<p class="section-description">Pregatim un dispozitiv care se monteaza in tablou si monitorizeaza consumul real pentru recomandari mai precise.</p>
-<label><input type="checkbox" name="interested_hw_monitor" value="yes"> Ma intereseaza monitorizarea automata cand devine disponibila</label>
+<div class="hardware-teaser compact">
+<img src="../images/HW_Prototype.png" alt="Prototip dispozitiv LaCurent">
+<div>
+<strong>Monitorizare inteligenta a consumului</strong>
+<p class="section-description">Lucram la un dispozitiv LaCurent care poate citi consumul real al locuintei si poate transforma datele in recomandari mai precise.</p>
+<label><input type="checkbox" name="interested_hw_monitor" value="yes"> Ma intereseaza cand devine disponibil</label>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -221,12 +245,27 @@
 <article>Actiuni pe care le poti marca implementate</article>
 </div>
 </div>
+<div id="simulationResult" class="dashboard-band simulation-result" hidden>
+<div class="section-heading">
+<span class="small-label">SIMULARE</span>
+<h2>Comparatie intre situatia salvata si modificarile curente.</h2>
+</div>
+<div class="recommendation-summary">
+<article><span>Scor actual</span><strong id="oldScore">--</strong></article>
+<article><span>Scor simulat</span><strong id="newScore">--</strong></article>
+<article><span>Economii actuale</span><strong id="oldSavings">--</strong></article>
+<article><span>Economii simulate</span><strong id="newSavings">--</strong></article>
+</div>
+<p id="simulationConclusion" class="form-message"></p>
+</div>
 </div>
 
 <div class="wizard-footer">
 <div class="wizard-buttons">
 <button type="button" id="prevBtn" class="secondary-btn">Inapoi</button>
 <button type="button" id="nextBtn" class="primary-btn">Continua</button>
+<button type="button" id="simulateBtn" class="secondary-btn">Simuleaza fara salvare</button>
+<button type="button" id="cancelEditBtn" class="secondary-btn" hidden>Renunta la modificari</button>
 <button type="submit" id="finishBtn" class="primary-btn" style="display:none">Genereaza raportul</button>
 </div>
 </div>

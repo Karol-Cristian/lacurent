@@ -172,3 +172,18 @@ Exemple:
 Raportul trebuie sa explice ca scorul este un indice estimativ live, influentat de benchmark si de deciziile implementate.
 
 Recomandarile trebuie sa arate nu doar ce trebuie facut, ci si cand investitia poate deveni justificata financiar.
+
+---
+
+# Editare si simulare
+
+Utilizatorul trebuie sa poata reveni asupra locuintei fara sa simta ca reia tot procesul de la zero.
+
+Actiuni asteptate:
+
+* editeaza datele locuintei;
+* adauga factura lunara;
+* marcheaza schimbari facute;
+* simuleaza scenarii fara salvare.
+
+Simularea trebuie separata clar de salvare, pentru ca utilizatorul sa poata intreba "ce-ar fi daca?" fara sa modifice raportul real.

@@ -2905,9 +2905,192 @@ opacity:.6;
 background:#f1f5f9;
 }
 
+.admin-grid{
+display:grid;
+grid-template-columns:repeat(2,minmax(0,1fr));
+gap:18px;
+}
+
+.admin-chart{
+display:grid;
+gap:12px;
+}
+
+.admin-bar-row{
+display:grid;
+grid-template-columns:minmax(90px,140px) 1fr 42px;
+gap:10px;
+align-items:center;
+font-size:14px;
+}
+
+.admin-bar-row span{
+font-weight:700;
+color:#334155;
+overflow:hidden;
+text-overflow:ellipsis;
+white-space:nowrap;
+}
+
+.admin-bar-track{
+height:12px;
+border-radius:999px;
+background:#e5e7eb;
+overflow:hidden;
+}
+
+.admin-bar-track div{
+height:100%;
+border-radius:999px;
+background:#0f766e;
+}
+
+.admin-table-wrap{
+overflow:auto;
+border:1px solid #e5e7eb;
+border-radius:8px;
+}
+
+.admin-table{
+width:100%;
+border-collapse:collapse;
+min-width:1100px;
+font-size:13px;
+}
+
+.admin-table th,
+.admin-table td{
+padding:12px;
+border-bottom:1px solid #e5e7eb;
+text-align:left;
+vertical-align:top;
+}
+
+.admin-table th{
+background:#f8fafc;
+font-size:12px;
+text-transform:uppercase;
+color:#64748b;
+}
+
+.admin-tabs{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+padding:12px;
+}
+
+.admin-tab{
+border:1px solid #d1d5db;
+border-radius:8px;
+background:#fff;
+color:#334155;
+font-weight:800;
+padding:10px 14px;
+}
+
+.admin-tab.active{
+background:#0f766e;
+border-color:#0f766e;
+color:#fff;
+}
+
+.admin-controls{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+gap:12px;
+align-items:end;
+margin-bottom:16px;
+}
+
+.admin-controls label,
+.admin-grid label{
+display:grid;
+gap:6px;
+font-size:13px;
+font-weight:800;
+color:#475569;
+}
+
+.admin-profile-list{
+display:grid;
+gap:10px;
+margin-top:14px;
+max-height:420px;
+overflow:auto;
+}
+
+.admin-profile-row{
+display:grid;
+grid-template-columns:minmax(120px,1fr) 90px 90px;
+gap:10px;
+align-items:center;
+border:1px solid #e5e7eb;
+border-radius:8px;
+padding:10px;
+font-size:13px;
+}
+
+.admin-profile-row strong{
+overflow:hidden;
+text-overflow:ellipsis;
+white-space:nowrap;
+}
+
+.admin-json{
+background:#0f172a;
+color:#e2e8f0;
+border-radius:8px;
+padding:14px;
+max-height:420px;
+overflow:auto;
+font-size:12px;
+white-space:pre-wrap;
+}
+
+.admin-table tbody tr{
+cursor:pointer;
+}
+
+.admin-table tbody tr:hover{
+background:#f0fdfa;
+}
+
+.hardware-teaser{
+display:grid;
+grid-template-columns:minmax(120px,180px) 1fr;
+gap:18px;
+align-items:center;
+}
+
+.hardware-teaser.compact{
+grid-template-columns:120px 1fr;
+}
+
+.hardware-teaser img{
+width:100%;
+border-radius:8px;
+border:1px solid #e5e7eb;
+background:#fff;
+object-fit:cover;
+aspect-ratio:4 / 3;
+}
+
+.hardware-teaser p{
+margin:0;
+color:#475569;
+line-height:1.6;
+}
+
 @media(max-width:900px){
 .report-hero-grid,
-.technical-grid{
+.technical-grid,
+.admin-grid{
+grid-template-columns:1fr;
+}
+
+.hardware-teaser,
+.hardware-teaser.compact{
 grid-template-columns:1fr;
 }
 }

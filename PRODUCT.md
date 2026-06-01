@@ -198,11 +198,27 @@ Raportul trebuie sa explice clar ca scorul nu este o valoare fixa de certificat,
 
 ---
 
-# Monitorizare hardware
+# Dispozitiv LaCurent
 
-In viitor, LaCurent poate include un dispozitiv montat in tabloul electric pentru monitorizare automata.
+In viitor, LaCurent poate include un dispozitiv propriu pentru monitorizarea inteligenta a consumului.
 
-Acesta trebuie prezentat ca optiune pentru analiza mai profunda, nu ca cerinta pentru folosirea produsului.
+Acesta trebuie prezentat ca optiune pentru recomandari mai precise bazate pe date reale, nu ca cerinta pentru folosirea produsului.
+
+---
+
+# Profil viu al locuintei
+
+O locuinta nu este un formular completat o singura data.
+
+Datele trebuie sa poata fi revizuite oricand:
+
+* utilizatorul poate edita caracteristicile locuintei;
+* fiecare editare creeaza o noua versiune de analiza;
+* raportul foloseste ultima versiune relevanta;
+* facturile lunare se pot adauga continuu;
+* simularile trebuie sa permita scenarii fara salvarea modificarilor.
+
+Acest model pastreaza istoricul si permite comparatii in timp intre situatia initiala, deciziile implementate si scenariile simulate.
 
 ---
 

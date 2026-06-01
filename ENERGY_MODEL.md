@@ -35,6 +35,18 @@ Scorul din raport este un indice LaCurent live. Poate evolua cand utilizatorul i
 
 ---
 
+# Versiuni de analiza
+
+Editarea unei locuinte nu sterge analiza veche.
+
+La fiecare revizuire se creeaza o noua analiza pentru aceeasi locuinta, iar raportul foloseste ultima versiune finalizata.
+
+Facturile lunare sunt salvate separat de formularul energetic, pentru ca pot fi adaugate constant fara recalcularea completa a profilului.
+
+Simularile genereaza temporar un profil energetic si nu modifica locuinta salvata.
+
+---
+
 # Flux de date
 
 UI simplu
