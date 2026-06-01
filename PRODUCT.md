@@ -167,6 +167,33 @@ Construim un sistem de suport pentru decizii energetice.
 
 ---
 
+# Portofel energetic
+
+LaCurent trebuie sa faca banii vizibili.
+
+Utilizatorul trebuie sa inteleaga:
+
+* cati bani poate salva;
+* cati bani pierde daca amana deciziile;
+* ce investitie se recupereaza cel mai repede;
+* cum se schimba scorul si costurile dupa implementare.
+
+Recomandarile trebuie prezentate ca decizii financiare, nu doar masuri tehnice.
+
+---
+
+# Oferte si ROI real
+
+Estimarea initiala a investitiei poate folosi valori interne.
+
+Pe termen lung, LaCurent trebuie sa permita firmelor si instalatorilor sa isi arate disponibilitatea sau sa trimita preoferte pentru recomandari anonimizate.
+
+Cand exista oferte reale, recuperarea investitiei trebuie recalculata pe baza ofertei, nu pe baza estimarii interne.
+
+Contactul dintre proprietar si furnizor trebuie pornit doar cand proprietarul cere explicit contactul pentru o masura.
+
+---
+
 # Reguli pentru locuinte multiple
 
 Un proprietar poate administra mai multe locuinte.

@@ -2724,6 +2724,250 @@ display:grid;
 gap:14px;
 }
 
+.billing-insights-grid{
+display:grid;
+grid-template-columns:repeat(4,minmax(0,1fr));
+gap:14px;
+margin:18px 0;
+}
+
+.billing-insights-grid article{
+background:#fff;
+border:1px solid #e5e7eb;
+border-radius:8px;
+padding:18px;
+}
+
+.billing-insights-grid span{
+display:block;
+font-size:12px;
+font-weight:800;
+color:#64748b;
+text-transform:uppercase;
+margin-bottom:8px;
+}
+
+.billing-insights-grid strong{
+font-size:22px;
+color:#0f172a;
+}
+
+.billing-curve{
+min-height:190px;
+display:flex;
+align-items:flex-end;
+gap:10px;
+padding:18px;
+border:1px solid #e5e7eb;
+border-radius:8px;
+background:#f8fafc;
+overflow-x:auto;
+}
+
+.billing-bar-wrap{
+height:150px;
+min-width:42px;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:flex-end;
+gap:8px;
+}
+
+.billing-bar{
+width:28px;
+border-radius:8px 8px 3px 3px;
+background:#0f766e;
+box-shadow:0 10px 22px rgba(15,118,110,.16);
+}
+
+.billing-bar.soft{
+background:#94a3b8;
+box-shadow:none;
+}
+
+.billing-bar-wrap span{
+font-size:12px;
+font-weight:700;
+color:#64748b;
+}
+
+.billing-conclusions{
+display:grid;
+gap:8px;
+margin:16px 0;
+}
+
+.billing-conclusions p{
+margin:0;
+padding:12px 14px;
+border-radius:8px;
+background:#ecfdf5;
+color:#14532d;
+font-weight:700;
+}
+
+.billing-history-list{
+display:grid;
+gap:8px;
+}
+
+.billing-history-list article{
+display:grid;
+grid-template-columns:1.1fr repeat(3,1fr);
+gap:10px;
+align-items:center;
+padding:12px 14px;
+border:1px solid #e5e7eb;
+border-radius:8px;
+background:#fff;
+color:#475569;
+font-size:14px;
+}
+
+.money-wallet-card{
+border-color:#bbf7d0;
+background:linear-gradient(180deg,#f0fdf4 0%,#fff 70%);
+}
+
+.wallet-grid{
+display:grid;
+grid-template-columns:repeat(4,minmax(0,1fr));
+gap:14px;
+margin:18px 0;
+}
+
+.wallet-grid article{
+border:1px solid #e5e7eb;
+border-radius:8px;
+padding:18px;
+background:#fff;
+}
+
+.wallet-grid span,
+.wallet-grid small{
+display:block;
+color:#64748b;
+font-weight:700;
+}
+
+.wallet-grid span{
+font-size:12px;
+text-transform:uppercase;
+margin-bottom:10px;
+}
+
+.wallet-grid strong{
+display:block;
+font-size:28px;
+line-height:1.1;
+color:#0f172a;
+margin-bottom:8px;
+}
+
+.wallet-positive{
+box-shadow:inset 0 4px 0 #16a34a;
+}
+
+.wallet-negative{
+box-shadow:inset 0 4px 0 #dc2626;
+}
+
+.wallet-negative strong{
+color:#991b1b;
+}
+
+.wallet-message{
+font-weight:800;
+color:#14532d;
+margin:0;
+}
+
+.benchmark-callout{
+display:flex;
+align-items:center;
+gap:16px;
+margin-top:18px;
+padding:18px;
+border:1px solid #bae6fd;
+border-radius:8px;
+background:#f0f9ff;
+}
+
+.benchmark-callout strong{
+font-size:38px;
+color:#0369a1;
+min-width:92px;
+}
+
+.benchmark-callout span{
+color:#0f172a;
+font-weight:700;
+}
+
+.provider-recommendations{
+display:grid;
+gap:12px;
+margin-top:14px;
+}
+
+.provider-offer-row{
+display:grid;
+grid-template-columns:minmax(0,1fr) 150px minmax(180px,240px) auto;
+gap:10px;
+align-items:center;
+padding:12px;
+border:1px solid #e5e7eb;
+border-radius:8px;
+background:#f8fafc;
+}
+
+.provider-offer-row small{
+display:block;
+color:#64748b;
+font-weight:700;
+margin-top:4px;
+}
+
+.provider-offer-row input{
+border:1px solid #cbd5e1;
+border-radius:8px;
+padding:10px 12px;
+}
+
+.provider-interest-box{
+display:flex;
+flex-wrap:wrap;
+align-items:center;
+gap:10px;
+margin-top:14px;
+padding:14px;
+border:1px solid #bae6fd;
+border-radius:8px;
+background:#f0f9ff;
+}
+
+.provider-interest-box strong{
+color:#075985;
+}
+
+.provider-interest-box span{
+color:#475569;
+font-weight:700;
+}
+
+.provider-admin-actions{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+margin-top:14px;
+}
+
+.muted-text{
+color:#64748b;
+margin:0;
+}
+
 .recommendation-detail-card{
 display:grid;
 grid-template-columns:54px 1fr;
@@ -2783,8 +3027,23 @@ flex-wrap:wrap;
 .dashboard-summary-grid,
 .value-card-grid,
 .advanced-tools-grid,
+.billing-insights-grid,
+.wallet-grid,
 .steps-grid,
 .recommendation-summary{
+grid-template-columns:1fr;
+}
+
+.billing-history-list article{
+grid-template-columns:1fr;
+}
+
+.benchmark-callout{
+align-items:flex-start;
+flex-direction:column;
+}
+
+.provider-offer-row{
 grid-template-columns:1fr;
 }
 
@@ -3089,6 +3348,17 @@ opacity:.62;
 
 .metric-card.inactive-metric strong{
 color:#64748b;
+}
+
+.secondary-btn.danger-soft{
+border-color:#fecaca;
+background:#fff1f2;
+color:#991b1b;
+}
+
+.secondary-btn.danger-soft:hover{
+background:#ffe4e6;
+color:#7f1d1d;
 }
 
 @media(max-width:900px){

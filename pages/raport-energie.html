@@ -81,12 +81,46 @@ Această evaluare este estimativă și are rol informativ. Nu înlocuiește un c
 </article>
 </section>
 
+<section class="dashboard-band money-wallet-card">
+<div class="section-heading">
+<span class="small-label">PORTOFEL ENERGETIC</span>
+<h2>Banii salvati sau pierduti prin decizii.</h2>
+</div>
+<div class="wallet-grid">
+<article class="wallet-positive">
+<span>Salvat deja</span>
+<strong id="walletSavedYear">--</strong>
+<small>pe an, din decizii marcate implementate</small>
+</article>
+<article class="wallet-positive">
+<span>Poate fi salvat</span>
+<strong id="walletPotentialYear">--</strong>
+<small>pe an, din recomandarile prioritare</small>
+</article>
+<article class="wallet-negative">
+<span>Pierdut lunar daca amani</span>
+<strong id="walletLostMonth">--</strong>
+<small>estimare pe baza potentialului minim</small>
+</article>
+<article class="wallet-negative">
+<span>Pierdut in 5 ani</span>
+<strong id="walletFiveYearLoss">--</strong>
+<small>daca nu iei masurile recomandate</small>
+</article>
+</div>
+<p id="walletMessage" class="wallet-message">--</p>
+</section>
+
 <section class="dashboard-band">
 <div class="section-heading">
 <span class="small-label">SCOR LIVE</span>
 <h2>Scorul se poate schimba in timp.</h2>
 </div>
 <p id="liveScoreExplanation">Indicele combina datele locuintei tale cu comparatia fata de locuinte similare. Pe masura ce apar mai multe locuinte si marchezi decizii implementate, scorul poate evolua.</p>
+<div class="benchmark-callout">
+<strong id="benchmarkPercentile">--</strong>
+<span id="benchmarkMoneyText">--</span>
+</div>
 </section>
 
 <section class="dashboard-band">
@@ -143,6 +177,10 @@ Această evaluare este estimativă și are rol informativ. Nu înlocuiește un c
 <article>
 <span>Încălzire</span>
 <strong id="heatingDemand">--</strong>
+</article>
+<article>
+<span>COP pompa caldura</span>
+<strong id="heatPumpCop">--</strong>
 </article>
 <article>
 <span>Apă caldă</span>

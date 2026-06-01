@@ -48,11 +48,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     setText("metricAnalyses", result.metrics.analyses);
     setText("metricScore", result.metrics.scoreAverage || "--");
     setText("metricBills", result.metrics.bills);
+    setText("metricPendingOffers", result.metrics.pendingOffers);
     barChart("classChart", result.distributions.classes);
     barChart("heatingChart", result.distributions.heatingSources);
     barChart("buildingChart", result.distributions.buildingTypes);
     barChart("purposeChart", result.distributions.analysisPurpose);
     renderOverviewTable(result.houses);
+  }
+
+  async function moderateOffer(offerId, status) {
+    await window.LaCurentAuth.api("/api/admin/provider-offer-action", {
+      offer_id: offerId,
+      status
+    });
+    await loadDataset();
+  }
+
+  function renderOffersModeration() {
+    const root = document.getElementById("adminOffersList");
+    if (!root) return;
+    const offers = adminData?.datasets?.provider_offers || [];
+    root.innerHTML = offers.length ? "" : "<p class='form-message'>Nu exista oferte.</p>";
+    offers.forEach(offer => {
+      const article = document.createElement("article");
+      article.className = "recommendation-detail-card provider-card";
+      article.innerHTML = `
+        <div class="recommendation-rank">${offer.status || "--"}</div>
+        <div>
+          <h3>${offer.company_name || "Furnizor"} · ${offer.recommendation_id || "--"}</h3>
+          <p>Locuinta #${offer.house_id}. Tip: ${offer.provider_type || "--"}. Zona: ${offer.service_area || "--"}.</p>
+          <div class="recommendation-metrics">
+            <span>Preoferta: <strong>${offer.offer_amount_ron ? `${money(offer.offer_amount_ron)} lei` : "fara suma"}</strong></span>
+            <span>Mesaj: <strong>${offer.message || "--"}</strong></span>
+            <span>Creat: <strong>${offer.created_at || "--"}</strong></span>
+          </div>
+          <div class="provider-admin-actions">
+            <button class="secondary-btn" type="button" data-offer-action="approved" data-offer-id="${offer.id}">Aproba</button>
+            <button class="secondary-btn danger-soft" type="button" data-offer-action="rejected" data-offer-id="${offer.id}">Respinge</button>
+            <button class="secondary-btn" type="button" data-offer-action="submitted" data-offer-id="${offer.id}">Reanalizeaza</button>
+          </div>
+        </div>
+      `;
+      root.append(article);
+    });
+
+    root.querySelectorAll("[data-offer-action]").forEach(button => {
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        button.textContent = "Se salveaza...";
+        await moderateOffer(button.dataset.offerId, button.dataset.offerAction);
+      });
+    });
   }
 
   function renderOverviewTable(houses = []) {
@@ -207,6 +253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     populateDatasetControls();
     renderDatasetTable();
     renderAnalysisTools();
+    renderOffersModeration();
   }
 
   async function loadAdmin() {

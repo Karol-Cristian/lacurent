@@ -46,6 +46,7 @@
 <section id="adminContent" hidden>
 <section class="admin-tabs dashboard-band">
 <button class="admin-tab active" type="button" data-admin-tab="overview">Overview</button>
+<button class="admin-tab" type="button" data-admin-tab="offers">Oferte</button>
 <button class="admin-tab" type="button" data-admin-tab="datasets">Date brute</button>
 <button class="admin-tab" type="button" data-admin-tab="tools">Instrumente analiza</button>
 </section>
@@ -57,6 +58,7 @@
 <article><span>Analize</span><strong id="metricAnalyses">--</strong></article>
 <article><span>Scor mediu</span><strong id="metricScore">--</strong></article>
 <article><span>Facturi</span><strong id="metricBills">--</strong></article>
+<article><span>Oferte in analiza</span><strong id="metricPendingOffers">--</strong></article>
 </section>
 
 <section class="admin-grid">
@@ -121,6 +123,17 @@
 </div>
 </section>
 </div>
+
+<section data-admin-panel="offers" hidden>
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">MODERARE OFERTE</span>
+<h2>Preanalizeaza disponibilitatile furnizorilor inainte sa ajunga la proprietari.</h2>
+</div>
+<p class="section-description">Aproba doar ofertele care par clare, relevante si fara promisiuni nerealiste. Ofertele aprobate apar in raportul proprietarului; cele respinse raman ascunse.</p>
+<div id="adminOffersList" class="recommendation-list"></div>
+</section>
+</section>
 
 <section data-admin-panel="datasets" hidden>
 <section class="dashboard-band">

@@ -28,6 +28,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${Math.round(recommendation.paybackYearsMin * 12)}-${Math.round(recommendation.paybackYearsMax * 12)} luni`;
   }
 
+  function renderMoneyWallet(assessment, wallet = {}) {
+    text("walletSavedYear", money(wallet.implementedSavingsRonYear || 0));
+    text("walletPotentialYear", wallet.potentialSavingsMinRon
+      ? `${money(wallet.potentialSavingsMinRon)} - ${money(wallet.potentialSavingsMaxRon)}/an`
+      : "--");
+    text("walletLostMonth", money(wallet.lostMoneyRonMonth || 0));
+    text("walletFiveYearLoss", money(wallet.lostMoneyRonFiveYears || 0));
+    text("walletMessage", wallet.message || "Banii apar dupa ce exista recomandari si costuri estimate.");
+    text("benchmarkPercentile", wallet.benchmarkPercentile ? `${wallet.benchmarkPercentile}%` : "--");
+    text("benchmarkMoneyText", assessment.benchmark?.explanation || "--");
+  }
+
   function renderProblems(problems) {
     const list = document.getElementById("problemsList");
     list.innerHTML = "";
@@ -49,11 +61,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  function renderRecommendations(recommendations, houseId, implementedIds = []) {
+  function renderRecommendations(recommendations, houseId, implementedIds = [], providerOffers = {}) {
     const list = document.getElementById("recommendationsList");
     list.innerHTML = "";
     (recommendations || []).slice(0, 3).forEach((recommendation, index) => {
       const implemented = implementedIds.includes(recommendation.id);
+      const offer = providerOffers[recommendation.id];
       const article = document.createElement("article");
       article.className = "recommendation-detail-card";
       article.innerHTML = `
@@ -63,11 +76,18 @@ document.addEventListener("DOMContentLoaded", async () => {
           <p>${recommendation.userFacingExplanation}</p>
           <div class="recommendation-metrics">
             <span>Impact: <strong>${label(recommendation.impactLevel)}</strong></span>
-            <span>Cost: <strong>${label(recommendation.costLevel)}</strong></span>
+            <span>Investitie: <strong>${money(recommendation.estimatedInvestmentRonMin)} - ${money(recommendation.estimatedInvestmentRonMax)}</strong></span>
             <span>Economie: <strong>${money(recommendation.estimatedSavingsRonYearMin)} - ${money(recommendation.estimatedSavingsRonYearMax)}/an</strong></span>
             <span>Recuperare: <strong>${payback(recommendation)}</strong></span>
-            ${isDemo ? "" : `<button class="${implemented ? "primary-btn" : "secondary-btn"}" type="button" data-recommendation-id="${recommendation.id}">${implemented ? "Implementata" : "Marcheaza implementata"}</button>`}
+            ${isDemo ? "" : `<button class="${implemented ? "secondary-btn danger-soft" : "secondary-btn"}" type="button" data-recommendation-id="${recommendation.id}" data-implemented="${implemented ? "true" : "false"}">${implemented ? "Anuleaza implementarea" : "Marcheaza implementata"}</button>`}
           </div>
+          ${offer ? `
+            <div class="provider-interest-box">
+              <strong>${offer.offers_count} furnizor${offer.offers_count === 1 ? "" : "i"} interesat${offer.offers_count === 1 ? "" : "i"}</strong>
+              <span>${offer.lowest_offer_ron ? `Preoferta de la ${money(offer.lowest_offer_ron)}.` : "Exista disponibilitate, fara pret ferm inca."}</span>
+              <button class="secondary-btn" type="button" data-contact-recommendation-id="${recommendation.id}">${offer.contact_requested_count ? "Contact cerut" : "Vreau sa fiu contactat"}</button>
+            </div>
+          ` : ""}
         </div>
       `;
       list.append(article);
@@ -75,13 +95,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     list.querySelectorAll("[data-recommendation-id]").forEach(button => {
       button.addEventListener("click", async () => {
-        const isImplemented = button.textContent === "Implementata";
+        const isImplemented = button.dataset.implemented === "true";
+        button.disabled = true;
+        button.textContent = isImplemented ? "Se anuleaza..." : "Se salveaza...";
         await window.LaCurentAuth.api("/api/recommendation-action", {
           house_id: houseId || window.LaCurentHomes?.activeHouseId?.(),
           recommendation_id: button.dataset.recommendationId,
           status: isImplemented ? "planned" : "implemented"
         });
         window.location.reload();
+      });
+    });
+
+    list.querySelectorAll("[data-contact-recommendation-id]").forEach(button => {
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        button.textContent = "Se trimite...";
+        await window.LaCurentAuth.api("/api/provider/contact-request", {
+          house_id: houseId || window.LaCurentHomes?.activeHouseId?.(),
+          recommendation_id: button.dataset.contactRecommendationId
+        });
+        button.textContent = "Contact cerut";
       });
     });
   }
@@ -128,6 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const profile = result.profile;
     const assessment = profile.assessment;
+    const derived = profile.derived;
     const demand = profile.derived.demand;
     const emissions = profile.derived.emissions;
 
@@ -144,12 +179,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? `${money(assessment.estimatedAnnualSavingsMinRon)} - ${money(assessment.estimatedAnnualSavingsMaxRon)}/an`
         : "--"
     );
+    renderMoneyWallet(assessment, result.money_wallet || {});
     text(
       "liveScoreExplanation",
       `Scorul ${assessment.score}/100 combina datele locuintei tale cu benchmark-ul pentru locuinte similare. Este un indice live: poate creste cand implementezi recomandari si se poate recalibra pe masura ce apar mai multe locuinte comparabile.`
     );
     renderProblems(assessment.topProblems);
-    renderRecommendations(profile.recommendations, result.house_id, result.implemented_recommendations || []);
+    renderRecommendations(profile.recommendations, result.house_id, result.implemented_recommendations || [], result.provider_offers || {});
     renderSavingsHistory(result.savings_history || []);
     text("confidenceTitle", `Incredere ${label(assessment.confidence.level)} (${assessment.confidence.score}/100)`);
     text("confidenceReasons", assessment.confidence.reasons.join(" "));
@@ -161,9 +197,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
     text("energyIntensity", `${demand.estimatedFinalEnergyKwhM2Year || "--"} kWh/m2/an`);
     text("heatingDemand", `${demand.heatingDemandKwhYear || "--"} kWh/an`);
+    text("heatPumpCop", derived.systems.heating.estimatedCop ? `${Number(derived.systems.heating.estimatedCop).toFixed(1)} estimat` : "--");
     text("dhwDemand", `${demand.dhwDemandKwhYear || "--"} kWh/an`);
     text("co2Estimate", `${emissions.estimatedCo2KgYear || "--"} kg CO2/an`);
-    text("technicalAssumptions", demand.assumptions.join(" "));
+    text("technicalAssumptions", [...demand.assumptions, ...(derived.systems.heating.assumptions || [])].join(" "));
   } catch {
     document.getElementById("reportEmpty").hidden = false;
   }

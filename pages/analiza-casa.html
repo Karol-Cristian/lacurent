@@ -52,6 +52,8 @@
 <div><label>Lemne (lei)</label><input name="wood_cost_ron" type="number" value="0"></div>
 <div><label>Peleti (lei)</label><input name="pellets_cost_ron" type="number" value="0"></div>
 <div><label>Altele (lei)</label><input name="other_cost_ron" type="number" value="0"></div>
+<div><label>Tip citire</label><select name="reading_type"><option value="actual">Consum real din factura</option><option value="estimated">Factura estimata</option><option value="regularization">Regularizare</option></select></div>
+<div><label>Include regularizare?</label><select name="is_regularization"><option value="no">Nu</option><option value="yes">Da</option></select></div>
 <div class="form-wide"><label>Nota</label><input name="notes" placeholder="Ex: factura reala, nu regularizare"></div>
 <div class="form-wide"><button class="primary-btn" type="submit">Adauga factura</button><p id="monthlyBillMessage" class="form-message"></p></div>
 </form>
@@ -164,6 +166,7 @@
 <div class="form-grid">
 <div><label>Sursa incalzire</label><select name="heating_source"><option value="gas">Gaz</option><option value="wood">Lemne</option><option value="pellets">Peleti</option><option value="electric">Electric</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
 <div><label>Tip sistem principal</label><select name="heating_system_type"><option value="stove">Soba simpla</option><option value="wood_boiler">Centrala pe lemne</option><option value="pellet_boiler">Centrala pe peleti</option><option value="individual_boiler">Centrala individuala</option><option value="condensing_boiler">Centrala in condensare</option><option value="electric_radiators">Radiatoare electrice</option><option value="underfloor_heating">Incalzire in pardoseala</option><option value="heat_pump_air_water">Pompa aer-apa</option><option value="heat_pump_air_air">Pompa aer-aer</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Distributie caldura</label><select name="heating_distribution"><option value="unknown">Nu stiu</option><option value="radiators">Calorifere</option><option value="underfloor">Incalzire in pardoseala</option><option value="air">Aer / split</option><option value="local_stoves">Sobe locale</option><option value="mixed">Mixt</option></select></div>
 <div><label>Vechime echipament (ani)</label><input name="heating_equipment_age_years" type="number" placeholder="Ex: 12"></div>
 <div id="stoveDetails" hidden><label>Putere soba / aparat (kW)</label><input name="stove_power_kw" type="number" step="0.1" placeholder="Ex: 7"></div>
 <div id="boilerDetails" hidden><label>Putere centrala (kW)</label><input name="boiler_power_kw" type="number" step="0.1" placeholder="Ex: 24"></div>
@@ -203,8 +206,8 @@
 </div>
 <div><label>Aparat gatit</label><select name="cooking_fuel"><option value="electric">Electric</option><option value="gas">Gaz</option><option value="wood">Lemne</option><option value="none">Nu folosesc</option><option value="unknown">Nu stiu</option></select></div>
 <div><label>Iluminat predominant</label><select name="lighting_type"><option value="led">LED</option><option value="mixed">Mixt</option><option value="incandescent_halogen">Becuri vechi/halogen</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Panouri fotovoltaice</label><select name="pv_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Putere fotovoltaice (kW)</label><input name="pv_capacity_kw" type="number" step="0.1" value="0" disabled></div>
+<div class="photovoltaic-field"><label>Panouri fotovoltaice</label><select name="pv_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
+<div class="photovoltaic-field"><label>Putere fotovoltaice (kW)</label><input name="pv_capacity_kw" type="number" step="0.1" value="0" disabled></div>
 <div><label>Solar termic</label><select name="solar_thermal_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
 <div><label>Baterie</label><select name="battery_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
 </div>

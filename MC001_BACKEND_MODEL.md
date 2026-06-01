@@ -136,6 +136,49 @@ Valorile initiale pot fi placeholder, dar trebuie marcate cu `source: "estimated
 
 ---
 
+## Pompa de caldura si COP estimativ
+
+Pompa de caldura nu trebuie tratata ca recomandare universal buna.
+
+Backend-ul trebuie sa estimeze COP/SCOP in functie de:
+
+* distributia caldurii: pardoseala, calorifere, aer;
+* temperatura probabila a agentului termic;
+* temperatura exterioara medie in sezonul de incalzire;
+* zona climatica;
+* calitatea anvelopei cladirii;
+* necesarul termic al locuintei.
+
+Reguli:
+
+* pentru incalzire in pardoseala, pompa de caldura poate primi scor bun daca anvelopa este rezonabila;
+* pentru calorifere, sistemul trebuie sa avertizeze ca temperatura mai mare pe agent poate reduce COP-ul;
+* pentru case slab izolate, recomandarea trebuie sa prioritizeze reducerea necesarului termic inainte de pompa de caldura;
+* daca COP-ul estimat coboara sub un prag rezonabil, raportul trebuie sa explice ca investitia poate avea ROI slab;
+* simularile cu pompa de caldura trebuie sa compare scorul si costul in functie de distributia aleasa, nu doar de sursa de energie.
+
+Valoarea COP afisata este estimativa si trebuie marcata cu `source: "internal_estimate"` si `confidence`.
+
+---
+
+## Directia algoritmilor
+
+Obiectivul tehnic este ca LaCurent sa ajunga la un rating cat mai aliniat cu structura MC001, fara sa pretinda ca emite certificat oficial.
+
+Prioritati:
+
+1. separarea cererii utile de energie de energia finala livrata;
+2. calcul U-value pe elemente de anvelopa;
+3. corectii pentru punti termice si infiltratii;
+4. factori configurabili pentru energie primara si emisii;
+5. clase configurabile, nu hardcodate in UI;
+6. calibrare cu facturi reale;
+7. calibrare financiara cu oferte reale de la furnizori.
+
+Raportul principal ramane simplu, dar detaliile tehnice pot fi expuse in Date si Benchmark.
+
+---
+
 ## Date demo din certificat analizat
 
 Profil demo orientativ:

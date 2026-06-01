@@ -202,8 +202,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = Object.fromEntries(new FormData(monthlyBillForm).entries());
       const message = document.getElementById("monthlyBillMessage");
       try {
-        await window.LaCurentAuth.api("/api/monthly-bill", data);
-        if (message) message.textContent = "Factura a fost adaugata.";
+        const result = await window.LaCurentAuth.api("/api/monthly-bill", data);
+        const delta = result.bill_analysis?.score_delta || 0;
+        const deltaText = delta ? ` Impact estimat asupra scorului: ${delta > 0 ? "+" : ""}${delta} puncte.` : "";
+        if (message) message.textContent = `Factura a fost adaugata.${deltaText}`;
         monthlyBillForm.reset();
         monthlyBillForm.elements.house_id.value = houseId;
         window.LaCurentHomes?.refresh();
@@ -297,6 +299,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function updateConditionalFields() {
+    const buildingType = selected("building_type");
     const heatingSource = selected("heating_source");
     const heatingSystem = selected("heating_system_type");
     const isMixed = heatingSource === "mixed";
@@ -314,7 +317,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
-    const pvInstalled = selected("pv_installed") === "yes";
+    const isApartment = buildingType === "apartment";
+    document.querySelectorAll(".photovoltaic-field").forEach(field => {
+      field.hidden = isApartment;
+      field.querySelectorAll("select,input").forEach(input => {
+        input.disabled = isApartment || (input.name === "pv_capacity_kw" && selected("pv_installed") !== "yes");
+        if (isApartment) input.value = input.name === "pv_capacity_kw" ? "0" : "no";
+      });
+    });
+
+    const pvInstalled = !isApartment && selected("pv_installed") === "yes";
     setDisabled('[name="pv_capacity_kw"]', !pvInstalled, "0");
 
     const usesGas = heatingSource === "gas" || (isMixed && checked("heating_gas_enabled")) ||
@@ -407,6 +419,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       data[key] = entry instanceof File ? (entry.name || null) : entry;
     }
     if (editHouseId) data.house_id = editHouseId;
+    if (selected("building_type") === "apartment") {
+      data.pv_installed = "no";
+      data.pv_capacity_kw = "0";
+    }
     if (selected("pv_installed") !== "yes") data.pv_capacity_kw = "0";
     if (houseForm.querySelector('[name="monthly_gas_cost"]')?.disabled) data.monthly_gas_cost = "0";
     if (houseForm.querySelector('[name="annual_wood_cost"]')?.disabled) data.annual_wood_cost = "0";

@@ -80,6 +80,59 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function estimateHeatPumpPerformance(input, climate, envelope) {
+  const source = input.heating.mainSource;
+  const system = input.heating.systemType;
+  const distribution = input.heating.distribution;
+  const usesHeatPump = source === "heat_pump" || system === "heat_pump_air_water" || system === "heat_pump_air_air" ||
+    input.heating.sources?.some(item => item.source === "heat_pump");
+  if (!usesHeatPump) return null;
+
+  const isAirAir = system === "heat_pump_air_air" || distribution === "air";
+  const isUnderfloor = system === "underfloor_heating" || distribution === "underfloor";
+  const isRadiators = distribution === "radiators" || (!isAirAir && !isUnderfloor);
+  const poorEnvelope = ["very_poor", "poor"].includes(envelope.wall.quality) ||
+    ["very_poor", "poor"].includes(envelope.roof.quality) ||
+    ["very_poor", "poor"].includes(envelope.windows.quality);
+
+  const heatingSeasonOutdoorC = (climate.averageAnnualTemperatureC ?? 9) - 3;
+  let supplyTemperatureC = 45;
+  if (isAirAir) supplyTemperatureC = 38;
+  if (isUnderfloor) supplyTemperatureC = 35;
+  if (isRadiators) supplyTemperatureC = poorEnvelope ? 58 : 50;
+
+  const temperatureLift = supplyTemperatureC - heatingSeasonOutdoorC;
+  let estimatedCop = 4.6 - temperatureLift * 0.055;
+  if (isRadiators && poorEnvelope) estimatedCop -= 0.25;
+  if ((climate.designOutdoorTemperatureC || -15) <= -20 && isRadiators) estimatedCop -= 0.15;
+  estimatedCop = clamp(estimatedCop, 1.2, 3.8);
+
+  const quality =
+    estimatedCop >= 3 ? "very_good" :
+    estimatedCop >= 2.4 ? "good" :
+    estimatedCop >= 1.8 ? "average" : "poor";
+
+  const assumptions = [
+    `COP sezonier estimat: ${estimatedCop.toFixed(1)}.`,
+    isUnderfloor
+      ? "Distributia la temperatura joasa ajuta pompa de caldura sa lucreze eficient."
+      : isRadiators
+        ? "Caloriferele cer temperatura mai mare pe agentul termic, ceea ce poate cobori COP-ul si economia reala."
+        : "Sistemul aer-aer este evaluat separat de instalatia hidraulica.",
+    poorEnvelope
+      ? "Pierderile mari ale casei cresc temperatura necesara si reduc eficienta pompei de caldura."
+      : "Anvelopa nu indica pierderi majore care sa penalizeze puternic pompa de caldura."
+  ];
+
+  return {
+    estimatedCop,
+    supplyTemperatureC,
+    distribution: isUnderfloor ? "underfloor" : isAirAir ? "air" : "radiators",
+    quality,
+    assumptions
+  };
+}
+
 export function normalizeUserInputs(body = {}) {
   const buildingTypeRaw = normalizeText(pick(body, ["building_type", "house_type"], "house"));
   const buildingType = buildingTypeRaw.includes("apart") ? "apartment" : "house";
@@ -148,7 +201,7 @@ export function normalizeUserInputs(body = {}) {
       mainSource: mapHeatingSource(pick(body, ["heating_source", "heating"], UNKNOWN)),
       systemType: mapHeatingSystem(pick(body, ["heating_system_type", "heating"], UNKNOWN)),
       equipmentAgeYears: num(body, ["heating_equipment_age_years"], UNKNOWN),
-      distribution: pick(body, ["heating_distribution"], UNKNOWN),
+      distribution: heatingDistributionFromBody(body),
       sources: heatingSourcesFromBody(body),
       stovePowerKw: num(body, ["stove_power_kw"], UNKNOWN),
       boilerPowerKw: num(body, ["boiler_power_kw"], UNKNOWN),
@@ -179,8 +232,8 @@ export function normalizeUserInputs(body = {}) {
     },
     renewables: {
       photovoltaic: {
-        installed: yn(pick(body, ["solar_panels", "pv_installed"], UNKNOWN)),
-        capacityKw: num(body, ["installed_power", "pv_capacity_kw"], UNKNOWN),
+        installed: buildingType === "apartment" ? "no" : yn(pick(body, ["solar_panels", "pv_installed"], UNKNOWN)),
+        capacityKw: buildingType === "apartment" ? 0 : num(body, ["installed_power", "pv_capacity_kw"], UNKNOWN),
         annualProductionKwh: num(body, ["pv_annual_production_kwh"], UNKNOWN)
       },
       solarThermal: {
@@ -234,13 +287,13 @@ function mapWindowType(value) {
 function mapHeatingSource(value) {
   const text = normalizeText(value);
   if (text.includes("mixt") || text.includes("mixed")) return "mixed";
-  if (text.includes("gaz")) return "gas";
-  if (text.includes("lemn")) return "wood";
-  if (text.includes("pelet")) return "pellets";
+  if (text.includes("gaz") || text.includes("gas")) return "gas";
+  if (text.includes("lemn") || text.includes("wood")) return "wood";
+  if (text.includes("pelet") || text.includes("pellet")) return "pellets";
   if (text.includes("electric")) return "electric";
-  if (text.includes("pompa")) return "heat_pump";
-  if (text.includes("termoficare")) return "district_heating";
-  if (text.includes("carbune")) return "coal";
+  if (text.includes("pompa") || text.includes("heat_pump")) return "heat_pump";
+  if (text.includes("termoficare") || text.includes("district")) return "district_heating";
+  if (text.includes("carbune") || text.includes("coal")) return "coal";
   return UNKNOWN;
 }
 
@@ -253,6 +306,19 @@ function heatingSourcesFromBody(body) {
       source: key,
       areaM2: num(body, [`heating_${key}_area_m2`], UNKNOWN)
     }));
+}
+
+function heatingDistributionFromBody(body) {
+  const explicit = pick(body, ["heating_distribution"], UNKNOWN);
+  if (explicit !== UNKNOWN) return explicit;
+  const system = mapHeatingSystem(pick(body, ["heating_system_type", "heating"], UNKNOWN));
+  if (system === "underfloor_heating") return "underfloor";
+  if (system === "stove") return "local_stoves";
+  if (system === "heat_pump_air_air") return "air";
+  if (["individual_boiler", "condensing_boiler", "wood_boiler", "pellet_boiler", "heat_pump_air_water"].includes(system)) {
+    return "radiators";
+  }
+  return UNKNOWN;
 }
 
 function dhwSourcesFromBody(body) {
@@ -276,15 +342,16 @@ function dhwSourceFromBody(body) {
 
 function mapHeatingSystem(value) {
   const text = normalizeText(value);
-  if (text.includes("soba")) return "stove";
-  if (text.includes("pelet")) return "pellet_boiler";
-  if (text.includes("lemn")) return "wood_boiler";
+  if (text.includes("soba") || text.includes("stove")) return "stove";
+  if (text.includes("pelet") || text.includes("pellet")) return "pellet_boiler";
+  if (text.includes("lemn") || text.includes("wood_boiler")) return "wood_boiler";
   if (text.includes("condens")) return "condensing_boiler";
   if (text.includes("centrala")) return "individual_boiler";
   if (text.includes("electric")) return "electric_radiators";
-  if (text.includes("pardoseala")) return "underfloor_heating";
-  if (text.includes("pompa")) return "heat_pump_air_water";
-  if (text.includes("termoficare")) return "district_heating";
+  if (text.includes("pardoseala") || text.includes("underfloor")) return "underfloor_heating";
+  if (text.includes("heat_pump_air_air")) return "heat_pump_air_air";
+  if (text.includes("pompa") || text.includes("heat_pump_air_water")) return "heat_pump_air_water";
+  if (text.includes("termoficare") || text.includes("district")) return "district_heating";
   return UNKNOWN;
 }
 
@@ -453,9 +520,10 @@ export function deriveEnvelope(input) {
   };
 }
 
-export function deriveSystems(input) {
+export function deriveSystems(input, climate = {}, envelope = {}) {
   const source = input.heating.mainSource;
   const system = input.heating.systemType;
+  const heatPump = estimateHeatPumpPerformance(input, climate, envelope);
   let estimatedEfficiency = 0.75;
   let heatQuality = "average";
   const assumptions = [];
@@ -480,10 +548,10 @@ export function deriveSystems(input) {
     estimatedEfficiency = 0.94;
     heatQuality = "good";
     assumptions.push("Centrala în condensare este estimată ca eficientă.");
-  } else if (source === "heat_pump") {
-    estimatedEfficiency = 2.8;
-    heatQuality = "very_good";
-    assumptions.push("Pompa de căldură are eficiență sezonieră superioară sistemelor clasice.");
+  } else if (heatPump) {
+    estimatedEfficiency = heatPump.estimatedCop;
+    heatQuality = heatPump.quality;
+    assumptions.push(...heatPump.assumptions);
   } else if (source === "electric") {
     estimatedEfficiency = 1;
     heatQuality = "average";
@@ -501,6 +569,8 @@ export function deriveSystems(input) {
   return {
     heating: {
       estimatedEfficiency,
+      estimatedCop: heatPump?.estimatedCop,
+      estimatedSupplyTemperatureC: heatPump?.supplyTemperatureC,
       quality: heatQuality,
       fuelType: source,
       controlQuality,
@@ -608,7 +678,9 @@ export function estimateDemand(input, derived) {
   heatingKwhM2 *= envelopeFactors[derived.envelope.roof.quality] || 1;
   heatingKwhM2 *= envelopeFactors[derived.envelope.windows.quality] || 1;
 
-  const heatingDemand = area * heatingKwhM2;
+  const usefulHeatingDemand = area * heatingKwhM2;
+  const heatingEfficiency = Number(derived.systems.heating.estimatedEfficiency) || 1;
+  const heatingDemand = usefulHeatingDemand / Math.max(0.45, heatingEfficiency);
   const dhwDemand = area * 18;
   const lightingDemand = area * (input.lighting.dominantType === "led" ? 5 : input.lighting.dominantType === "mixed" ? 9 : 14);
   const coolingDemand = input.cooling.hasCooling === "yes" ? area * 8 : area * 2;
@@ -743,7 +815,14 @@ export function calculateScore(input, derived, realConsumption) {
 
   if (input.renewables.photovoltaic.installed === "yes") score += 7;
   if (input.renewables.solarThermal.installed === "yes") score += 4;
-  if (input.heating.mainSource === "heat_pump") score += 10;
+  if (input.heating.mainSource === "heat_pump") {
+    const cop = Number(derived.systems.heating.estimatedCop || derived.systems.heating.estimatedEfficiency);
+    score += cop >= 2.8 ? 10 : cop >= 2.2 ? 5 : 0;
+    if (cop && cop < 1.8) {
+      score -= 5;
+      problems.push(problem("heating", "high", "Pompa de caldura poate lucra in regim slab", "Fara distributie la temperatura joasa sau izolare buna, COP-ul poate scadea mult."));
+    }
+  }
 
   if (realConsumption.comparisonToModel === "much_higher_than_model") score -= 8;
   if (realConsumption.comparisonToModel === "higher_than_model") score -= 4;
@@ -791,6 +870,9 @@ export function generateRecommendations(input, derived, problems, costs) {
   if (["poor", "very_poor"].includes(derived.systems.heating.quality)) {
     add(rec("modernize_heating", "Modernizează sistemul de încălzire", "heating", "high", "high", "high", 600, 1600, "Sistemul actual pare ineficient.", "Cere o evaluare pentru centrală eficientă, pompă de căldură sau alt sistem potrivit.", ["heating"]));
   }
+  if (input.heating.mainSource === "heat_pump" && Number(derived.systems.heating.estimatedCop || 0) < 2.2) {
+    add(rec("heat_pump_low_temperature_check", "Verifica regimul pompei de caldura", "heating", "high", "medium", "high", 300, 1200, "Pompa de caldura pare sa lucreze cu COP redus.", "Inainte de investitii mari, verifica daca poti reduce temperatura agentului prin izolatie, calorifere dimensionate mai mare sau incalzire in pardoseala.", ["heat_pump", "cop"]));
+  }
   if (input.heating.control.thermostat === "no" || derived.systems.heating.controlQuality === "none") {
     add(rec("add_thermostat", "Adaugă un termostat", "controls", "high", "low", "medium", 150, 500, "Controlul temperaturii reduce consumul inutil.", "Instalează un termostat simplu sau smart pentru programarea încălzirii.", ["thermostat"]));
   }
@@ -800,7 +882,7 @@ export function generateRecommendations(input, derived, problems, costs) {
   if (input.lighting.dominantType !== "led") {
     add(rec("switch_led", "Treci la iluminat LED", "lighting", "medium", "low", "low", 80, 250, "Iluminatul vechi consumă mai mult decât LED.", "Înlocuiește treptat becurile folosite frecvent.", ["lighting"]));
   }
-  if (input.renewables.photovoltaic.installed !== "yes") {
+  if (input.general.buildingType !== "apartment" && input.renewables.photovoltaic.installed !== "yes") {
     add(rec("consider_pv", "Analizează panouri fotovoltaice", "renewables", "medium", "high", "medium", 500, 1500, "Panourile pot reduce costul electric, dar depind de acoperiș și consum.", "Verifică orientarea, umbrirea și profilul de consum înainte de investiție.", ["photovoltaic"]));
   }
   if (input.dhw.source === "electric_boiler") {
@@ -816,6 +898,9 @@ export function generateRecommendations(input, derived, problems, costs) {
 }
 
 function rec(id, title, category, priority, costLevel, impactLevel, min, max, reason, action, triggeredBy) {
+  const investment = investmentRange(category, costLevel);
+  const paybackMin = min && investment.min ? investment.min / min : undefined;
+  const paybackMax = max && investment.max ? investment.max / max : undefined;
   return {
     id,
     title,
@@ -827,13 +912,30 @@ function rec(id, title, category, priority, costLevel, impactLevel, min, max, re
     estimatedSavingsRonYearMax: max,
     estimatedSavingsPercentMin: min ? 5 : undefined,
     estimatedSavingsPercentMax: max ? 18 : undefined,
-    paybackYearsMin: costLevel === "low" ? 1 : costLevel === "medium" ? 3 : 6,
-    paybackYearsMax: costLevel === "low" ? 3 : costLevel === "medium" ? 7 : 12,
+    estimatedInvestmentRonMin: investment.min,
+    estimatedInvestmentRonMax: investment.max,
+    investmentEstimateSource: "internal_estimate",
+    paybackYearsMin: paybackMin ? Math.max(0.5, Number(paybackMin.toFixed(1))) : undefined,
+    paybackYearsMax: paybackMax ? Math.max(0.5, Number(paybackMax.toFixed(1))) : undefined,
     reason,
     action,
     userFacingExplanation: `${reason} ${action}`,
     triggeredBy
   };
+}
+
+function investmentRange(category, costLevel) {
+  const byCategory = {
+    insulation: { low: [1500, 3500], medium: [3500, 9000], high: [9000, 26000], very_high: [18000, 45000] },
+    windows: { low: [2500, 5000], medium: [5000, 12000], high: [10000, 24000], very_high: [18000, 40000] },
+    heating: { low: [700, 1800], medium: [1800, 6000], high: [8000, 35000], very_high: [25000, 60000] },
+    controls: { low: [250, 900], medium: [900, 2500], high: [2500, 6000], very_high: [6000, 12000] },
+    lighting: { low: [150, 800], medium: [800, 2000], high: [2000, 5000], very_high: [5000, 10000] },
+    renewables: { low: [3000, 7000], medium: [7000, 18000], high: [18000, 38000], very_high: [38000, 80000] },
+    maintenance: { low: [300, 1000], medium: [1000, 3500], high: [3500, 9000], very_high: [9000, 20000] }
+  };
+  const range = byCategory[category]?.[costLevel] || [1000, 5000];
+  return { min: range[0], max: range[1] };
 }
 
 function priorityWeight(value) {
@@ -851,7 +953,7 @@ export function buildEnergyProfile(rawInput = {}) {
   derived.climate = deriveClimate(input);
   derived.geometry = deriveGeometry(input);
   derived.envelope = deriveEnvelope(input);
-  derived.systems = deriveSystems(input);
+  derived.systems = deriveSystems(input, derived.climate, derived.envelope);
   derived.demand = estimateDemand(input, derived);
   derived.realConsumption = deriveRealConsumption(input, derived.demand.estimatedFinalEnergyKwhYear);
   derived.emissions = estimateCo2(input, derived.demand, derived.realConsumption);

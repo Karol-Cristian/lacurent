@@ -255,6 +255,8 @@ gas_cost_ron REAL DEFAULT 0,
 wood_cost_ron REAL DEFAULT 0,
 pellets_cost_ron REAL DEFAULT 0,
 other_cost_ron REAL DEFAULT 0,
+reading_type TEXT DEFAULT 'actual',
+is_regularization INTEGER DEFAULT 0,
 notes TEXT,
 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -273,6 +275,34 @@ created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 
 CREATE INDEX house_change_log_user_house_idx
 ON house_change_log(user_id, house_id);
+
+CREATE TABLE service_providers (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+user_id INTEGER,
+company_name TEXT,
+provider_type TEXT,
+service_area TEXT,
+certifications TEXT,
+created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX service_providers_user_idx
+ON service_providers(user_id);
+
+CREATE TABLE provider_offers (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+provider_id INTEGER,
+house_id INTEGER,
+recommendation_id TEXT,
+offer_amount_ron REAL,
+estimated_duration_days INTEGER,
+message TEXT,
+status TEXT DEFAULT 'submitted',
+created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX provider_offers_house_idx
+ON provider_offers(house_id, recommendation_id);
 
 CREATE TABLE organizations (
 id INTEGER PRIMARY KEY AUTOINCREMENT,

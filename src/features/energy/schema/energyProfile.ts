@@ -83,6 +83,8 @@ export interface DerivedSystemProperties {
 
 export interface HeatingSystemPerformance {
   estimatedEfficiency?: number;
+  estimatedCop?: number;
+  estimatedSupplyTemperatureC?: number;
   quality: "very_poor" | "poor" | "average" | "good" | "very_good" | "unknown";
   fuelType: string;
   controlQuality: "none" | "basic" | "good" | "smart" | "unknown";

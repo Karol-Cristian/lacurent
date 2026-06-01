@@ -54,6 +54,188 @@ function savingsHistory(profile, implementedRows = []) {
     }));
 }
 
+function billTotal(row) {
+  return [
+    "electricity_cost_ron",
+    "gas_cost_ron",
+    "wood_cost_ron",
+    "pellets_cost_ron",
+    "other_cost_ron"
+  ].reduce((sum, key) => sum + (Number(row[key]) || 0), 0);
+}
+
+function monthNumber(value) {
+  const month = Number(String(value || "").slice(5, 7));
+  return Number.isFinite(month) ? month : 0;
+}
+
+function stdev(values) {
+  if (values.length < 2) return 0;
+  const average = values.reduce((sum, item) => sum + item, 0) / values.length;
+  const variance = values.reduce((sum, item) => sum + ((item - average) ** 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function analyzeBillingHistory(rows = [], profile = null, baseScore = null) {
+  const sorted = [...rows].sort((a, b) => String(a.billing_month).localeCompare(String(b.billing_month)));
+  const actualRows = sorted.filter(row => {
+    const readingType = row.reading_type || "actual";
+    return readingType === "actual" && Number(row.is_regularization || 0) !== 1;
+  });
+  const averageActual = actualRows.length
+    ? actualRows.reduce((sum, row) => sum + billTotal(row), 0) / actualRows.length
+    : 0;
+
+  const monthly = sorted.map(row => {
+    const rawTotal = billTotal(row);
+    const readingType = row.reading_type || "actual";
+    const isRegularization = Number(row.is_regularization || 0) === 1;
+    const normalizedTotal = readingType === "actual" && !isRegularization
+      ? rawTotal
+      : averageActual || rawTotal;
+    return {
+      ...row,
+      total_cost_ron: Math.round(rawTotal),
+      normalized_cost_ron: Math.round(normalizedTotal),
+      reading_type: readingType,
+      is_regularization: isRegularization ? 1 : 0
+    };
+  });
+
+  const totals = monthly.reduce((acc, row) => {
+    acc.electricity += Number(row.electricity_cost_ron) || 0;
+    acc.gas += Number(row.gas_cost_ron) || 0;
+    acc.wood += Number(row.wood_cost_ron) || 0;
+    acc.pellets += Number(row.pellets_cost_ron) || 0;
+    acc.other += Number(row.other_cost_ron) || 0;
+    acc.total += row.total_cost_ron || 0;
+    acc.normalized += row.normalized_cost_ron || 0;
+    return acc;
+  }, { electricity: 0, gas: 0, wood: 0, pellets: 0, other: 0, total: 0, normalized: 0 });
+
+  const normalizedValues = monthly.map(row => row.normalized_cost_ron).filter(value => value > 0);
+  const normalizedAverage = normalizedValues.length
+    ? normalizedValues.reduce((sum, value) => sum + value, 0) / normalizedValues.length
+    : 0;
+  const volatility = normalizedAverage ? stdev(normalizedValues) / normalizedAverage : 0;
+  const regularizedMonths = monthly.filter(row => row.is_regularization || row.reading_type !== "actual").length;
+  const winter = monthly.filter(row => [11, 12, 1, 2, 3].includes(monthNumber(row.billing_month)));
+  const summer = monthly.filter(row => [6, 7, 8, 9].includes(monthNumber(row.billing_month)));
+  const winterAverage = winter.length ? winter.reduce((sum, row) => sum + row.normalized_cost_ron, 0) / winter.length : 0;
+  const summerAverage = summer.length ? summer.reduce((sum, row) => sum + row.normalized_cost_ron, 0) / summer.length : 0;
+  const dominantCarrier = Object.entries({
+    electricity: totals.electricity,
+    gas: totals.gas,
+    wood: totals.wood,
+    pellets: totals.pellets,
+    other: totals.other
+  }).sort((a, b) => b[1] - a[1])[0] || ["unknown", 0];
+
+  const modelMonthly = profile?.assessment?.estimatedAnnualCostRon
+    ? profile.assessment.estimatedAnnualCostRon / 12
+    : 0;
+  let scoreDelta = 0;
+  const conclusions = [];
+  if (monthly.length >= 10) {
+    scoreDelta += 2;
+    conclusions.push("Ai introdus aproape un an de facturi, deci estimarea devine mai credibila.");
+  } else if (monthly.length >= 4) {
+    scoreDelta += 1;
+    conclusions.push("Exista cateva luni de facturi, dar un an complet ar clarifica sezonalitatea.");
+  } else if (monthly.length > 0) {
+    conclusions.push("Istoricul este inca scurt; scorul foloseste prudent facturile introduse.");
+  }
+  if (modelMonthly && normalizedAverage > modelMonthly * 1.25) {
+    scoreDelta -= 3;
+    conclusions.push("Costul lunar normalizat este peste estimarea modelului, posibil din cauza consumului real mai ridicat sau a preturilor energiei.");
+  } else if (modelMonthly && normalizedAverage < modelMonthly * 0.85 && monthly.length >= 4) {
+    scoreDelta += 1;
+    conclusions.push("Facturile normalizate sunt sub estimarea modelului; poate fi eficienta mai buna sau utilizare mai redusa.");
+  }
+  if (regularizedMonths) {
+    scoreDelta -= 1;
+    conclusions.push("Unele luni sunt estimari sau regularizari, deci le tratam ca semnal mai slab in curba normalizata.");
+  }
+  if (volatility > 0.45) {
+    conclusions.push("Curba are variatii mari; merita separat consumul real de regularizari si facturi estimate.");
+  }
+  if (winterAverage && summerAverage && winterAverage > summerAverage * 1.35) {
+    conclusions.push("Iarna costurile cresc vizibil, semn ca incalzirea domina consumul anual.");
+  }
+  if (dominantCarrier[1] > 0) {
+    const labels = { electricity: "curent", gas: "gaz", wood: "lemn", pellets: "peleti", other: "alte surse" };
+    conclusions.push(`Cea mai mare parte a banilor merge catre ${labels[dominantCarrier[0]]}.`);
+  }
+
+  const adjustedScore = baseScore === null || baseScore === undefined
+    ? null
+    : clampScore(baseScore + scoreDelta);
+
+  return {
+    months_count: monthly.length,
+    complete_year: monthly.length >= 12,
+    total_cost_ron: Math.round(totals.total),
+    normalized_monthly_average_ron: Math.round(normalizedAverage),
+    regularized_months: regularizedMonths,
+    volatility: Number(volatility.toFixed(2)),
+    dominant_carrier: dominantCarrier[0],
+    score_delta: scoreDelta,
+    adjusted_score: adjustedScore,
+    conclusions,
+    monthly
+  };
+}
+
+function buildMoneyWallet(profile, benchmark, implementedRows = []) {
+  const recommendations = profile.recommendations || [];
+  const implementedIds = new Set(implementedRows.map(row => row.recommendation_id));
+  const implementedSavings = recommendations
+    .filter(item => implementedIds.has(item.id))
+    .reduce((sum, item) => sum + (Number(item.estimatedSavingsRonYearMin) || 0), 0);
+  const potentialMin = profile.assessment.estimatedAnnualSavingsMinRon || 0;
+  const potentialMax = profile.assessment.estimatedAnnualSavingsMaxRon || 0;
+  const remainingMin = Math.max(0, potentialMin - implementedSavings);
+  const remainingMax = Math.max(0, potentialMax - implementedSavings);
+  const lostMonth = remainingMin / 12;
+  const percentile = benchmark?.percentile ? clampScore(benchmark.percentile) : null;
+  return {
+    implementedSavingsRonYear: Math.round(implementedSavings),
+    potentialSavingsMinRon: Math.round(remainingMin),
+    potentialSavingsMaxRon: Math.round(remainingMax),
+    lostMoneyRonMonth: Math.round(lostMonth),
+    lostMoneyRonFiveYears: Math.round(remainingMin * 5),
+    benchmarkPercentile: percentile,
+    message: remainingMin
+      ? `Daca amani recomandarile prioritare, modelul estimeaza ca pierzi cel putin ${Math.round(lostMonth).toLocaleString("ro-RO")} lei/luna.`
+      : implementedSavings
+        ? "Ai marcat recomandarile prioritare ca implementate. Urmatorul pas este validarea cu facturi reale."
+        : "Completeaza mai multe date sau facturi pentru a estima banii pierduti lunar."
+  };
+}
+
+function offersByRecommendation(rows = []) {
+  return rows.reduce((acc, row) => {
+    const id = row.recommendation_id;
+    if (!acc[id]) {
+      acc[id] = {
+        recommendation_id: id,
+        offers_count: 0,
+        lowest_offer_ron: null,
+        contact_requested_count: 0
+      };
+    }
+    acc[id].offers_count += 1;
+    if (row.status === "contact_requested") acc[id].contact_requested_count += 1;
+    const amount = Number(row.offer_amount_ron);
+    if (Number.isFinite(amount) && amount > 0) {
+      acc[id].lowest_offer_ron = acc[id].lowest_offer_ron === null
+        ? amount
+        : Math.min(acc[id].lowest_offer_ron, amount);
+    }
+    return acc;
+  }, {});
+}
+
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
@@ -685,7 +867,7 @@ async function houseProfile(request, env, corsHeaders) {
   const analysis = await latestAnalysisForHouse(env, user.id, houseId);
   const answers = analysis ? await latestAnswers(env, analysis.id) : {};
   const bills = await env.DB.prepare(`
-    SELECT billing_month, electricity_cost_ron, gas_cost_ron, wood_cost_ron, pellets_cost_ron, other_cost_ron, notes
+    SELECT billing_month, electricity_cost_ron, gas_cost_ron, wood_cost_ron, pellets_cost_ron, other_cost_ron, reading_type, is_regularization, notes
     FROM house_monthly_bills
     WHERE user_id = ? AND house_id = ?
     ORDER BY billing_month DESC
@@ -873,9 +1055,9 @@ async function monthlyBill(request, env, corsHeaders) {
   await env.DB.prepare(`
     INSERT INTO house_monthly_bills(
       user_id, house_id, billing_month, electricity_cost_ron, gas_cost_ron,
-      wood_cost_ron, pellets_cost_ron, other_cost_ron, notes
+      wood_cost_ron, pellets_cost_ron, other_cost_ron, reading_type, is_regularization, notes
     )
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
     .bind(
       user.id,
@@ -886,6 +1068,8 @@ async function monthlyBill(request, env, corsHeaders) {
       numberValue(body, "wood_cost_ron") || 0,
       numberValue(body, "pellets_cost_ron") || 0,
       numberValue(body, "other_cost_ron") || 0,
+      value(body, "reading_type") || "actual",
+      value(body, "is_regularization") === "yes" ? 1 : 0,
       value(body, "notes")
     )
     .run();
@@ -894,7 +1078,17 @@ async function monthlyBill(request, env, corsHeaders) {
     .bind(user.id, houseId, `Factura adaugata pentru ${billingMonth}`)
     .run();
 
-  return jsonResponse({ success: true }, { headers: corsHeaders });
+  const bills = await env.DB.prepare(`
+    SELECT billing_month, electricity_cost_ron, gas_cost_ron, wood_cost_ron, pellets_cost_ron, other_cost_ron, reading_type, is_regularization, notes
+    FROM house_monthly_bills
+    WHERE user_id = ? AND house_id = ?
+    ORDER BY billing_month DESC
+    LIMIT 12
+  `)
+    .bind(user.id, houseId)
+    .all();
+
+  return jsonResponse({ success: true, bill_analysis: analyzeBillingHistory(bills.results || []) }, { headers: corsHeaders });
 }
 
 async function adminOverview(request, env, corsHeaders) {
@@ -906,11 +1100,12 @@ async function adminOverview(request, env, corsHeaders) {
     );
   }
 
-  const [usersCount, housesCount, analysesCount, billsCount] = await Promise.all([
+  const [usersCount, housesCount, analysesCount, billsCount, pendingOffersCount] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS count FROM users").first(),
     env.DB.prepare("SELECT COUNT(*) AS count FROM houses WHERE COALESCE(active, 1) = 1").first(),
     env.DB.prepare("SELECT COUNT(*) AS count FROM analyses WHERE status = 'completed'").first(),
-    env.DB.prepare("SELECT COUNT(*) AS count FROM house_monthly_bills").first()
+    env.DB.prepare("SELECT COUNT(*) AS count FROM house_monthly_bills").first(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM provider_offers WHERE status = 'submitted'").first()
   ]);
 
   const houses = await env.DB.prepare(`
@@ -1002,6 +1197,7 @@ async function adminOverview(request, env, corsHeaders) {
         houses: housesCount?.count || 0,
         analyses: analysesCount?.count || 0,
         bills: billsCount?.count || 0,
+        pendingOffers: pendingOffersCount?.count || 0,
         scoreAverage
       },
       distributions: {
@@ -1087,6 +1283,23 @@ async function adminDataset(request, env, corsHeaders) {
       SELECT *
       FROM savings_events
       ORDER BY id DESC
+      LIMIT ?
+    `,
+    service_providers: `
+      SELECT *
+      FROM service_providers
+      ORDER BY id DESC
+      LIMIT ?
+    `,
+    provider_offers: `
+      SELECT
+        provider_offers.*,
+        service_providers.company_name,
+        service_providers.provider_type,
+        service_providers.service_area
+      FROM provider_offers
+      LEFT JOIN service_providers ON service_providers.id = provider_offers.provider_id
+      ORDER BY provider_offers.id DESC
       LIMIT ?
     `,
     house_change_log: `
@@ -1277,6 +1490,38 @@ async function energyReport(request, env, corsHeaders) {
     profile.assessment.mainConclusion = `${profile.assessment.mainConclusion} Ai implementat ${implementedIds.length} decizie${implementedIds.length === 1 ? "" : "i"} din recomandări.`;
   }
 
+  const benchmark = await env.DB.prepare(`
+    SELECT percentile, cluster_average, score_comparison
+    FROM benchmark_results
+    WHERE analysis_id = ?
+    ORDER BY id DESC
+    LIMIT 1
+  `)
+    .bind(analysis.id)
+    .first();
+
+  const reportBills = await env.DB.prepare(`
+    SELECT billing_month, electricity_cost_ron, gas_cost_ron, wood_cost_ron, pellets_cost_ron, other_cost_ron, reading_type, is_regularization, notes
+    FROM house_monthly_bills
+    WHERE user_id = ? AND house_id = ?
+    ORDER BY billing_month DESC
+    LIMIT 12
+  `)
+    .bind(user.id, requestedHouseId || analysis.house_id)
+    .all();
+  const billAnalysis = analyzeBillingHistory(reportBills.results || [], profile, profile.assessment.score);
+  if (billAnalysis.adjusted_score !== null && billAnalysis.score_delta !== 0) {
+    profile.assessment.score = billAnalysis.adjusted_score;
+    profile.assessment.estimatedEnergyClass = estimateEnergyClass(profile.assessment.score);
+  }
+  const providerOffers = await env.DB.prepare(`
+    SELECT recommendation_id, offer_amount_ron, status
+    FROM provider_offers
+    WHERE house_id = ? AND status IN ('approved', 'contact_requested')
+  `)
+    .bind(requestedHouseId || analysis.house_id)
+    .all();
+
   return jsonResponse(
     {
       success: true,
@@ -1285,6 +1530,10 @@ async function energyReport(request, env, corsHeaders) {
       house_id: requestedHouseId || analysis.house_id,
       implemented_recommendations: implementedIds,
       savings_history: savingsHistory(profile, implementedRows),
+      money_wallet: buildMoneyWallet(profile, benchmark, implementedRows),
+      benchmark,
+      provider_offers: offersByRecommendation(providerOffers.results || []),
+      bill_analysis: billAnalysis,
       profile
     },
     { headers: corsHeaders }
@@ -1439,6 +1688,183 @@ async function recommendationAction(request, env, corsHeaders) {
   return jsonResponse({ success: true, implemented }, { headers: corsHeaders });
 }
 
+async function providerForUser(env, userId) {
+  return env.DB.prepare("SELECT * FROM service_providers WHERE user_id = ? ORDER BY id DESC LIMIT 1")
+    .bind(userId)
+    .first();
+}
+
+async function providerRegister(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a inscrie o firma." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const companyName = value(body, "company_name");
+  if (!companyName) {
+    return jsonResponse({ success: false, error: "Lipseste numele firmei." }, { status: 400, headers: corsHeaders });
+  }
+
+  const existing = await providerForUser(env, user.id);
+  if (existing) {
+    await env.DB.prepare(`
+      UPDATE service_providers
+      SET company_name = ?, provider_type = ?, service_area = ?, certifications = ?
+      WHERE id = ? AND user_id = ?
+    `)
+      .bind(companyName, value(body, "provider_type"), value(body, "service_area"), value(body, "certifications"), existing.id, user.id)
+      .run();
+    return jsonResponse({ success: true, provider_id: existing.id }, { headers: corsHeaders });
+  }
+
+  const result = await env.DB.prepare(`
+    INSERT INTO service_providers(user_id, company_name, provider_type, service_area, certifications)
+    VALUES(?, ?, ?, ?, ?)
+  `)
+    .bind(user.id, companyName, value(body, "provider_type"), value(body, "service_area"), value(body, "certifications"))
+    .run();
+
+  await env.DB.prepare("UPDATE users SET role = 'business', account_type = 'provider' WHERE id = ?")
+    .bind(user.id)
+    .run();
+
+  return jsonResponse({ success: true, provider_id: result.meta?.last_row_id }, { headers: corsHeaders });
+}
+
+async function providerOpportunities(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat." }, { status: 401, headers: corsHeaders });
+  }
+  const provider = await providerForUser(env, user.id);
+  if (!provider && !requireAdmin(user)) {
+    return jsonResponse({ success: false, error: "Inscrie firma inainte de a vedea oportunitati." }, { status: 403, headers: corsHeaders });
+  }
+
+  const rows = await env.DB.prepare(`
+    SELECT
+      houses.id AS house_id,
+      houses.house_type,
+      houses.surface,
+      houses.city,
+      houses.year,
+      latest.analysis_id,
+      scores.overall_score,
+      scores.estimated_energy_class
+    FROM houses
+    JOIN (
+      SELECT house_id, MAX(id) AS analysis_id
+      FROM analyses
+      WHERE status = 'completed'
+      GROUP BY house_id
+    ) latest ON latest.house_id = houses.id
+    LEFT JOIN scores ON scores.analysis_id = latest.analysis_id
+    WHERE COALESCE(houses.active, 1) = 1
+    ORDER BY latest.analysis_id DESC
+    LIMIT 20
+  `).all();
+
+  const opportunities = [];
+  for (const row of rows.results || []) {
+    const answers = await latestAnswers(env, row.analysis_id);
+    const profile = buildEnergyProfile(answers);
+    opportunities.push({
+      opportunity_id: row.house_id,
+      area_bucket: row.surface ? `${Math.round(Number(row.surface) / 25) * 25} m2 +/-` : "necunoscut",
+      building_type: profile.input.general.buildingType,
+      city_hint: row.city ? String(row.city).split(" ")[0] : "zona anonima",
+      estimated_class: profile.assessment.estimatedEnergyClass || row.estimated_energy_class,
+      score_bucket: row.overall_score ? `${Math.floor(Number(row.overall_score) / 10) * 10}-${Math.floor(Number(row.overall_score) / 10) * 10 + 9}` : "necunoscut",
+      recommendations: profile.recommendations.slice(0, 3).map(item => ({
+        id: item.id,
+        title: item.title,
+        estimatedSavingsRonYearMin: item.estimatedSavingsRonYearMin,
+        estimatedSavingsRonYearMax: item.estimatedSavingsRonYearMax,
+        estimatedInvestmentRonMin: item.estimatedInvestmentRonMin,
+        estimatedInvestmentRonMax: item.estimatedInvestmentRonMax
+      }))
+    });
+  }
+
+  return jsonResponse({ success: true, provider, opportunities }, { headers: corsHeaders });
+}
+
+async function providerOffer(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat." }, { status: 401, headers: corsHeaders });
+  }
+  const provider = await providerForUser(env, user.id);
+  if (!provider && !requireAdmin(user)) {
+    return jsonResponse({ success: false, error: "Inscrie firma inainte de a trimite oferte." }, { status: 403, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const houseId = numberValue(body, "opportunity_id");
+  const recommendationId = value(body, "recommendation_id");
+  const amount = numberValue(body, "offer_amount_ron");
+  if (!houseId || !recommendationId) {
+    return jsonResponse({ success: false, error: "Lipseste oportunitatea sau recomandarea." }, { status: 400, headers: corsHeaders });
+  }
+
+  const result = await env.DB.prepare(`
+    INSERT INTO provider_offers(provider_id, house_id, recommendation_id, offer_amount_ron, estimated_duration_days, message)
+    VALUES(?, ?, ?, ?, ?, ?)
+  `)
+    .bind(provider?.id || null, houseId, recommendationId, amount, numberValue(body, "estimated_duration_days"), value(body, "message"))
+    .run();
+
+  return jsonResponse({ success: true, offer_id: result.meta?.last_row_id }, { headers: corsHeaders });
+}
+
+async function adminProviderOfferAction(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!requireAdmin(user)) {
+    return jsonResponse({ success: false, error: "Acces disponibil doar pentru administratori." }, { status: 403, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const offerId = numberValue(body, "offer_id");
+  const status = value(body, "status");
+  if (!offerId || !["approved", "rejected", "submitted"].includes(status)) {
+    return jsonResponse({ success: false, error: "Status invalid pentru oferta." }, { status: 400, headers: corsHeaders });
+  }
+
+  await env.DB.prepare("UPDATE provider_offers SET status = ? WHERE id = ?")
+    .bind(status, offerId)
+    .run();
+
+  return jsonResponse({ success: true, offer_id: offerId, status }, { headers: corsHeaders });
+}
+
+async function providerContactRequest(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const houseId = numberValue(body, "house_id");
+  const recommendationId = value(body, "recommendation_id");
+  if (!houseId || !recommendationId) {
+    return jsonResponse({ success: false, error: "Lipseste locuinta sau recomandarea." }, { status: 400, headers: corsHeaders });
+  }
+
+  const house = await env.DB.prepare("SELECT id FROM houses WHERE id = ? AND user_id = ? AND COALESCE(active, 1) = 1 LIMIT 1")
+    .bind(houseId, user.id)
+    .first();
+  if (!house) {
+    return jsonResponse({ success: false, error: "Locuinta nu apartine contului curent." }, { status: 403, headers: corsHeaders });
+  }
+
+  const result = await env.DB.prepare(`
+    UPDATE provider_offers
+    SET status = 'contact_requested'
+    WHERE house_id = ? AND recommendation_id = ? AND status = 'approved'
+  `)
+    .bind(houseId, recommendationId)
+    .run();
+
+  return jsonResponse({ success: true, requested: result.meta?.changes || 0 }, { headers: corsHeaders });
+}
+
 export default {
   async fetch(request, env) {
     const corsHeaders = {
@@ -1455,6 +1881,9 @@ export default {
     if (request.method === "GET" && (url.pathname === "/admin" || url.pathname === "/admin/")) {
       return Response.redirect(`${url.origin}/pages/admin.html`, 302);
     }
+    if (request.method === "GET" && (url.pathname === "/furnizori" || url.pathname === "/furnizori/")) {
+      return Response.redirect(`${url.origin}/pages/furnizori.html`, 302);
+    }
 
     const routes = {
       "/api/register": register,
@@ -1470,12 +1899,17 @@ export default {
       "/api/monthly-bill": monthlyBill,
       "/api/admin/overview": adminOverview,
       "/api/admin/dataset": adminDataset,
+      "/api/admin/provider-offer-action": adminProviderOfferAction,
       "/api/dashboard-summary": dashboardSummary,
       "/api/energy-report": energyReport,
       "/api/demo-energy-report": demoEnergyReport,
       "/api/homes": homes,
       "/api/recommendations": recommendations,
       "/api/recommendation-action": recommendationAction,
+      "/api/provider/register": providerRegister,
+      "/api/provider/opportunities": providerOpportunities,
+      "/api/provider/offer": providerOffer,
+      "/api/provider/contact-request": providerContactRequest,
       "/api/archive-home": archiveHome
     };
     const handler = routes[url.pathname];
