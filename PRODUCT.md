@@ -164,3 +164,87 @@ Utilizatorul trebuie sa plece cu o concluzie clara si cu o lista de actiuni care
 Nu construim un dashboard.
 
 Construim un sistem de suport pentru decizii energetice.
+
+---
+
+# Reguli pentru locuinte multiple
+
+Un proprietar poate administra mai multe locuinte.
+
+Fiecare locuinta trebuie sa poata avea:
+
+* nume propriu;
+* scop de analiza;
+* raport propriu;
+* recomandari proprii;
+* istoric de decizii implementate.
+
+Daca utilizatorul nu mai administreaza o locuinta, aceasta nu se sterge fizic din baza de date. Se marcheaza ca inactiva, pentru pastrarea istoricului si a consistentei datelor.
+
+---
+
+# Scor live si decizii implementate
+
+Scorul energetic LaCurent este un indice estimativ si comparativ.
+
+El poate evolua pe baza:
+
+* datelor introduse de utilizator;
+* comparatiei cu locuinte similare;
+* recomandarilor implementate;
+* recalibrarii benchmark-ului pe masura ce apar mai multe locuinte.
+
+Raportul trebuie sa explice clar ca scorul nu este o valoare fixa de certificat, ci un indice decizional live.
+
+---
+
+# Monitorizare hardware
+
+In viitor, LaCurent poate include un dispozitiv montat in tabloul electric pentru monitorizare automata.
+
+Acesta trebuie prezentat ca optiune pentru analiza mai profunda, nu ca cerinta pentru folosirea produsului.
+
+---
+
+# Model energetic rezidențial
+
+Pentru segmentul Locuințe, LaCurent folosește un model energetic estimativ.
+
+Acesta pornește de la întrebări simple și derivează intern un profil energetic mai bogat.
+
+Flux:
+
+UI simplu
+→ UserEnergyInputs
+→ EnergyProfile
+→ DerivedEnergyModel
+→ EnergyAssessment
+→ Recommendations
+→ Raport pentru utilizator
+
+Evaluarea este orientată pe decizii:
+
+* cât de eficientă pare locuința;
+* unde sunt pierderile principale;
+* ce recomandări merită prioritizate;
+* ce nivel de încredere are estimarea.
+
+LaCurent nu emite certificat energetic oficial și nu înlocuiește un auditor energetic.
+
+---
+
+# Locuințe multiple
+
+Un proprietar poate avea mai multe locuințe în același cont.
+
+Fiecare locuință trebuie să poată fi denumită și selectată.
+
+După prima analiză pentru o locuință, utilizatorul nu este încurajat să refacă formularul pentru aceeași proprietate.
+
+Fluxul devine:
+
+1. Selectează locuința activă.
+2. Vezi raportul.
+3. Marchează deciziile implementate.
+4. Scorul activ se actualizează pe baza deciziilor și a benchmark-ului.
+5. Adaugă o locuință nouă doar dacă este o proprietate diferită.

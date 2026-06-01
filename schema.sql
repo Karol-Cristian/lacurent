@@ -68,6 +68,15 @@ year INTEGER,
 
 city TEXT
 
+,
+display_name TEXT
+,
+active INTEGER DEFAULT 1
+,
+archived_at DATETIME
+,
+analysis_purpose TEXT
+
 );
 
 CREATE TABLE household_profiles (
@@ -209,6 +218,32 @@ estimated_savings REAL,
 roi REAL
 
 );
+
+CREATE TABLE recommendation_actions (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+user_id INTEGER,
+house_id INTEGER,
+recommendation_id TEXT,
+status TEXT DEFAULT 'implemented',
+notes TEXT,
+implemented_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX recommendation_actions_user_house_idx
+ON recommendation_actions(user_id, house_id);
+
+CREATE TABLE savings_events (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+user_id INTEGER,
+house_id INTEGER,
+event_type TEXT,
+amount_ron REAL,
+source TEXT,
+created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX savings_events_user_house_idx
+ON savings_events(user_id, house_id);
 
 CREATE TABLE organizations (
 id INTEGER PRIMARY KEY AUTOINCREMENT,

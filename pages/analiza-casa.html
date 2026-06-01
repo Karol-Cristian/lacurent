@@ -4,12 +4,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LA CURENT | Analiză</title>
+<title>LA CURENT | Analiza Locuintei</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="../js/auth.js" defer></script>
 <script src="../js/segment-context.js" defer></script>
+<script src="../js/home-context.js" defer></script>
 <script src="../js/analiza-casa.js" defer></script>
 </head>
 
@@ -21,40 +22,47 @@
 <header>
 <div class="hero-top">
 <div>
-<div class="small-label">LA CURENT</div>
-<h1 data-segment-key="analysisTitle">Analiza energetică a locuinței</h1>
-<p data-segment-key="analysisSubtitle">Completează informațiile pentru estimări și recomandări personalizate.</p>
+<div class="small-label">EVALUARE ESTIMATIVA</div>
+<h1 data-segment-key="analysisTitle">Analiza energetica a locuintei</h1>
+<p data-segment-key="analysisSubtitle">Raspunzi la intrebari simple. LaCurent estimeaza scorul, costurile si recomandarile prioritare.</p>
 </div>
-<div class="system-state">
-<span class="green-dot"></span>
-Activ
-</div>
+<div class="system-state"><span class="green-dot"></span>Raport informativ</div>
 </div>
 </header>
 
 <main class="dashboard">
 <section class="analysis-page">
+<div id="existingHomesPanel" class="dashboard-band" hidden>
+<div class="section-heading">
+<span class="small-label">LOCUINTE SALVATE</span>
+<h2>Ai deja locuinte analizate.</h2>
+</div>
+<p>Nu completa din nou formularul pentru aceeasi locuinta. Selecteaza locuinta activa, vezi raportul sau marcheaza recomandarile implementate.</p>
+<div id="existingHomesList" class="recommendation-list"></div>
+<div class="hero-buttons">
+<a class="primary-btn" href="raport-energie.html">Vezi raportul locuintei active</a>
+<a class="secondary-btn" href="analiza-casa.html?new=1">Adauga alta locuinta</a>
+</div>
+</div>
+
 <div id="authRequired" class="auth-panel analysis-auth-required standard-auth-card" hidden>
 <div class="small-label">CONT NECESAR</div>
-<h2 data-segment-key="authAnalysisTitle">Autentifică-te pentru a genera analiza</h2>
-<p data-segment-key="authAnalysisText">Analiza se salvează în profilul tău, ca să o poți consulta și actualiza ulterior.</p>
+<h2 data-segment-key="authAnalysisTitle">Autentifica-te pentru a genera analiza</h2>
+<p data-segment-key="authAnalysisText">Analiza se salveaza in profilul tau si poate genera un raport estimativ.</p>
 <a class="primary-btn" href="profil.html">Mergi la Profil</a>
-
 <div class="auth-tabs">
 <button type="button" class="auth-tab active" data-auth-tab="login">Autentificare</button>
 <button type="button" class="auth-tab" data-auth-tab="register">Cont nou</button>
 </div>
-
 <form id="analysisLoginForm" class="auth-form active">
 <label>Email</label>
 <input name="email" type="email" autocomplete="email" required>
-<label>Parolă</label>
+<label>Parola</label>
 <input name="password" type="password" autocomplete="current-password" required>
 <button class="primary-btn" type="submit">Autentificare</button>
 <a href="#" id="analysisForgotLink">Am uitat parola</a>
 <p class="form-message" id="analysisLoginMessage"></p>
 </form>
-
 <form id="analysisRegisterForm" class="auth-form">
 <label>Nume contact</label>
 <input name="name" autocomplete="name" required>
@@ -62,459 +70,171 @@ Activ
 <input name="email" type="email" autocomplete="email" required>
 <label>Tip cont</label>
 <select name="role" required>
-<option value="residential">Locuințe</option>
+<option value="residential">Locuinte</option>
 <option value="business">Afaceri</option>
 <option value="industry">Industrie</option>
-<option value="institution">Instituții</option>
+<option value="institution">Institutii</option>
 </select>
-<label>Parolă</label>
+<label>Parola</label>
 <input name="password" type="password" autocomplete="new-password" minlength="8" required>
-<button class="primary-btn" type="submit">Creează cont</button>
+<button class="primary-btn" type="submit">Creeaza cont</button>
 <p class="form-message" id="analysisRegisterMessage"></p>
 </form>
-
 <form id="analysisForgotForm" class="auth-form">
 <label>Email</label>
 <input name="email" type="email" autocomplete="email" required>
-<button class="primary-btn" type="submit">Generează link</button>
+<button class="primary-btn" type="submit">Genereaza link</button>
 <p class="form-message" id="analysisForgotMessage"></p>
 <p class="form-message" id="analysisResetLinkMessage"></p>
 </form>
 </div>
 
 <div class="progress-wrap">
-<div class="progress">
-<div id="progressBar"></div>
-</div>
-<span id="stepText">Pas 1 / 7</span>
+<div class="progress"><div id="progressBar"></div></div>
+<span id="stepText">Pas 1 din 6</span>
 </div>
 
 <form id="houseForm" hidden>
+<input type="hidden" name="user_type" value="residential">
+<input type="hidden" name="real_consumption_mode" value="simple">
+
 <div class="step active">
-<h2>Date utilizator și profil consum</h2>
-<p class="section-description">Alegem segmentul corect, apoi formularul se adaptează.</p>
+<h2>Date generale</h2>
+<p class="section-description">De la inceput: vei primi scor energetic estimat, comparatie live, costuri, probleme si recomandari prioritare. Evaluarea este informativa, nu certificat oficial.</p>
 <div class="form-grid">
-<div>
-<label>Tip utilizator</label>
-<select name="user_type" id="userType" required>
-<option value="residential">Locuințe</option>
-<option value="business">Afaceri</option>
-<option value="industry">Industrie</option>
-<option value="institution">Instituții</option>
-</select>
+<div><label>Nume locuinta</label><input name="display_name" placeholder="Ex: Casa Salicea, Apartament Cluj"></div>
+<div><label>Scopul analizei</label><select name="analysis_purpose">
+<option value="optimize_existing">Reducerea costurilor pentru locuinta actuala</option>
+<option value="renovation">Renovare</option>
+<option value="sale">Vanzare</option>
+<option value="purchase">Cumparare</option>
+<option value="design">Proiectare / casa noua</option>
+<option value="unknown">Nu stiu inca</option>
+</select></div>
+<div><label>Tip locuinta</label><select name="building_type"><option value="house">Casa</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Localitate</label><input name="city" placeholder="Ex: Cluj, Brasov, sat rural"></div>
+<div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1964"></div>
+<div><label>Suprafata utila (m2)</label><input name="useful_area_m2" type="number" placeholder="Ex: 65"></div>
+<div><label>Numar niveluri</label><input name="number_of_floors" type="number" placeholder="Ex: 1"></div>
+<div><label>Numar persoane</label><input name="occupants" type="number" placeholder="Ex: 2"></div>
+<div><label>Locuire</label><select name="usage_type"><option value="permanent">Permanenta</option><option value="seasonal">Sezoniera</option><option value="mixed">Mixta</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Ultima renovare majora</label><select name="last_major_renovation"><option value="never">Niciodata</option><option value="less_than_5_years">Sub 5 ani</option><option value="5_10_years">5-10 ani</option><option value="10_20_years">10-20 ani</option><option value="more_than_20_years">Peste 20 ani</option><option value="unknown">Nu stiu</option></select></div>
 </div>
-<div class="residential-flow">
-<label>Tip consumator</label>
-<select name="consumer_type">
-<option>Casnic</option>
-<option>Necasnic</option>
-</select>
 </div>
-<div class="residential-flow">
-<label>Număr persoane</label>
-<input name="people_count" type="number">
+
+<div class="step">
+<h2>Anvelopa</h2>
+<p class="section-description">Intrebari simple despre pereti, pod/acoperis, podea si ferestre.</p>
+<div class="form-grid">
+<div><label>Material pereti</label><select name="wall_material"><option value="brick">Caramida</option><option value="bca">BCA</option><option value="concrete">Beton</option><option value="wood">Lemn</option><option value="stone">Piatra</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Grosime aproximativa pereti (cm)</label><input name="wall_thickness" type="number" placeholder="Ex: 30"></div>
+<div><label>Izolatie pereti</label><select name="wall_insulation"><option value="unknown">Nu stiu</option><option value="Fara">Fara</option><option value="5cm">Aproximativ 5 cm</option><option value="10cm">Aproximativ 10 cm</option><option value="15cm">Aproximativ 15 cm</option><option value="20cm+">20 cm sau mai mult</option></select></div>
+<div><label>Tip pod/acoperis</label><select name="roof_type"><option value="unheated_attic">Pod neincalzit</option><option value="heated_attic">Mansarda incalzita</option><option value="flat_roof">Acoperis plat</option><option value="pitched_roof_no_attic">Acoperis fara pod</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Izolatie pod/acoperis</label><select name="roof_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
+<div><label>Grosime izolatie pod (cm)</label><input name="roof_insulation_thickness_cm" type="number" placeholder="Ex: 10"></div>
+<div><label>Tip podea</label><select name="floor_type"><option value="on_ground">Pe sol</option><option value="over_basement">Peste subsol</option><option value="over_unheated_space">Peste spatiu neincalzit</option><option value="over_heated_space">Peste spatiu incalzit</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Izolatie podea</label><select name="floor_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
+<div><label>Tip ferestre</label><select name="window_type"><option value="single_glazing">Geam simplu</option><option value="old_double_glazing">Termopan vechi</option><option value="modern_double_glazing">Termopan modern</option><option value="triple_glazing">Tripan</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Vechime ferestre (ani)</label><input name="window_age_years" type="number" placeholder="Ex: 15"></div>
 </div>
-<div class="residential-flow">
-<label>Copii în locuință</label>
-<input name="children_count" type="number">
 </div>
-<div class="residential-flow">
-<label>Persoane peste 65 ani</label>
-<input name="senior_count" type="number">
+
+<div class="step">
+<h2>Incalzire si confort</h2>
+<p class="section-description">Daca ai surse mixte, le poti detalia separat. Daca ai doar soba, nu te intrebam despre termostat smart.</p>
+<div class="form-grid">
+<div><label>Sursa incalzire</label><select name="heating_source"><option value="gas">Gaz</option><option value="wood">Lemne</option><option value="pellets">Peleti</option><option value="electric">Electric</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Tip sistem principal</label><select name="heating_system_type"><option value="stove">Soba simpla</option><option value="wood_boiler">Centrala pe lemne</option><option value="pellet_boiler">Centrala pe peleti</option><option value="individual_boiler">Centrala individuala</option><option value="condensing_boiler">Centrala in condensare</option><option value="electric_radiators">Radiatoare electrice</option><option value="underfloor_heating">Incalzire in pardoseala</option><option value="heat_pump_air_water">Pompa aer-apa</option><option value="heat_pump_air_air">Pompa aer-aer</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Vechime echipament (ani)</label><input name="heating_equipment_age_years" type="number" placeholder="Ex: 12"></div>
+<div id="stoveDetails" hidden><label>Putere soba / aparat (kW)</label><input name="stove_power_kw" type="number" step="0.1" placeholder="Ex: 7"></div>
+<div id="boilerDetails" hidden><label>Putere centrala (kW)</label><input name="boiler_power_kw" type="number" step="0.1" placeholder="Ex: 24"></div>
+<div id="mixedHeatingDetails" class="form-wide conditional-panel" hidden>
+<strong>Surse folosite la incalzire</strong>
+<p class="section-description">Bifeaza sursele reale si estimeaza suprafata incalzita de fiecare.</p>
+<div class="source-grid">
+<label><input type="checkbox" name="heating_gas_enabled" value="yes"> Gaz <input name="heating_gas_area_m2" type="number" placeholder="m2"></label>
+<label><input type="checkbox" name="heating_wood_enabled" value="yes"> Lemne <input name="heating_wood_area_m2" type="number" placeholder="m2"></label>
+<label><input type="checkbox" name="heating_pellets_enabled" value="yes"> Peleti <input name="heating_pellets_area_m2" type="number" placeholder="m2"></label>
+<label><input type="checkbox" name="heating_electric_enabled" value="yes"> Electric <input name="heating_electric_area_m2" type="number" placeholder="m2"></label>
+<label><input type="checkbox" name="heating_heat_pump_enabled" value="yes"> Pompa de caldura <input name="heating_heat_pump_area_m2" type="number" placeholder="m2"></label>
 </div>
-<div>
-<label>Lucru de acasă</label>
-<select name="work_from_home">
-<option>Nu</option>
-<option>Parțial</option>
-<option>Zilnic</option>
-</select>
 </div>
-<div>
-<label>Zile lucru acasă / săptămână</label>
-<input name="work_from_home_days" type="number">
+<div class="heating-control-field"><label>Termostat</label><select name="thermostat"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+<div class="heating-control-field"><label>Termostat smart</label><select name="smart_thermostat"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+<div class="heating-control-field"><label>Robineti termostatati</label><select name="thermostatic_valves"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+<div class="heating-control-field"><label>Zonare pe camere</label><select name="zoning"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+<div><label>Racire vara</label><select name="has_cooling"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+<div><label>Ventilatie</label><select name="ventilation_type"><option value="natural">Naturala</option><option value="mechanical_exhaust">Mecanica simpla</option><option value="mechanical_with_heat_recovery">Cu recuperare de caldura</option><option value="unknown">Nu stiu</option></select></div>
 </div>
-<div class="residential-flow">
-<label>Locuința este ocupată</label>
-<select name="occupancy_pattern">
-<option>Dimineața + seara</option>
-<option>Permanent</option>
-<option>Variabil</option>
-</select>
 </div>
-<div class="residential-flow">
-<label>Plecați frecvent?</label>
-<select name="frequent_travel">
-<option>Da</option>
-<option>Nu</option>
-</select>
+
+<div class="step">
+<h2>Apa calda, iluminat si regenerabile</h2>
+<div class="form-grid">
+<div class="form-wide conditional-panel">
+<strong>Surse apa calda</strong>
+<p class="section-description">Poti bifa mai multe surse daca locuinta foloseste combinatii.</p>
+<div class="source-grid compact">
+<label><input type="checkbox" name="dhw_source_heating" value="yes"> Aceeasi ca incalzirea</label>
+<label><input type="checkbox" name="dhw_source_electric" value="yes"> Boiler electric</label>
+<label><input type="checkbox" name="dhw_source_gas" value="yes"> Gaz</label>
+<label><input type="checkbox" name="dhw_source_solar" value="yes"> Solar termic</label>
+<label><input type="checkbox" name="dhw_source_heat_pump" value="yes"> Pompa de caldura</label>
+</div>
+</div>
+<div><label>Aparat gatit</label><select name="cooking_fuel"><option value="electric">Electric</option><option value="gas">Gaz</option><option value="wood">Lemne</option><option value="none">Nu folosesc</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Iluminat predominant</label><select name="lighting_type"><option value="led">LED</option><option value="mixed">Mixt</option><option value="incandescent_halogen">Becuri vechi/halogen</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Panouri fotovoltaice</label><select name="pv_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Putere fotovoltaice (kW)</label><input name="pv_capacity_kw" type="number" step="0.1" value="0" disabled></div>
+<div><label>Solar termic</label><select name="solar_thermal_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Baterie</label><select name="battery_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
+</div>
+</div>
+
+<div class="step">
+<h2>Consum real</h2>
+<p class="section-description">Cel mai util este sa consulti ultimele 12 facturi. Completeaza valori reale platite pentru consum, nu regularizari care nu descriu consumul lunar.</p>
+<div class="form-grid">
+<div><label>Cost mediu lunar electricitate (lei)</label><input name="monthly_electricity_cost" type="number" placeholder="Ex: 160"></div>
+<div class="gas-consumption-field"><label>Cost mediu lunar gaz (lei)</label><input name="monthly_gas_cost" type="number" value="0"></div>
+<div class="wood-consumption-field"><label>Cost anual lemne (lei)</label><input name="annual_wood_cost" type="number" value="0"></div>
+<div class="wood-consumption-field"><label>Pret lemn pe metru ster (lei)</label><input name="wood_price_per_ster" type="number" placeholder="Ex: 450"></div>
+<div class="pellets-consumption-field"><label>Cost anual peleti (lei)</label><input name="annual_pellets_cost" type="number" value="0"></div>
+<div><label>Alte costuri energetice anuale (lei)</label><input name="annual_other_fuel_cost" type="number" value="0"></div>
+<div class="form-wide conditional-panel">
+<strong>Vrei analiza automata in viitor?</strong>
+<p class="section-description">Pregatim un dispozitiv care se monteaza in tablou si monitorizeaza consumul real pentru recomandari mai precise.</p>
+<label><input type="checkbox" name="interested_hw_monitor" value="yes"> Ma intereseaza monitorizarea automata cand devine disponibila</label>
 </div>
 </div>
 </div>
 
 <div class="step">
-<h2>Caracteristici spațiu analizat</h2>
-<div class="form-grid">
-<div class="residential-flow">
-<label>Tip locuință</label>
-<select name="house_type">
-<option>Casă</option>
-<option>Apartament</option>
-<option>Duplex</option>
-<option>Vilă</option>
-</select>
-</div>
-<div class="apartment-only">
-<label>Etaj apartament</label>
-<input name="apartment_floor">
-</div>
-<div class="apartment-only">
-<label>An construcție bloc</label>
-<input name="building_year">
-</div>
-<div class="apartment-only">
-<label>Reabilitare termică</label>
-<select name="rehabilitation_status">
-<option>Reabilitat</option>
-<option>Nereabilitat</option>
-<option>Parțial</option>
-<option>Nu știu</option>
-</select>
-</div>
-<div class="apartment-only">
-<label>Orientare</label>
-<select name="orientation">
-<option>Nord</option>
-<option>Sud</option>
-<option>Est</option>
-<option>Vest</option>
-<option>Mixt</option>
-</select>
-</div>
-<div>
-<label>Oraș</label>
-<input name="city">
-</div>
-<div>
-<label>Suprafață utilă / clădire (m²)</label>
-<input name="surface">
-</div>
-<div>
-<label>Suprafață construită (m²)</label>
-<input name="built_surface">
-</div>
-<div>
-<label>An construcție</label>
-<input name="year">
-</div>
-<div class="house-only">
-<label>Număr etaje</label>
-<input name="floors">
-</div>
-<div class="residential-flow">
-<label>Număr camere</label>
-<input name="rooms">
-</div>
-<div class="residential-flow">
-<label>Număr băi</label>
-<input name="bathrooms">
-</div>
-<div class="house-only">
-<label>Înălțime camere</label>
-<input name="ceiling_height">
-</div>
-<div class="house-only">
-<label>Subsol</label>
-<select name="basement">
-<option>Da</option>
-<option>Nu</option>
-</select>
-</div>
-<div class="house-only">
-<label>Pod</label>
-<select name="attic">
-<option>Da</option>
-<option>Nu</option>
-</select>
-</div>
-<div class="house-only">
-<label>Mansardă</label>
-<select name="mansard">
-<option>Da</option>
-<option>Nu</option>
-</select>
-</div>
-<div class="house-only">
-<label>Garaj</label>
-<select name="garage">
-<option>Da</option>
-<option>Nu</option>
-</select>
-</div>
-</div>
-</div>
-
-<div class="step business-flow">
-<h2>Profil afacere</h2>
-<div class="form-grid">
-<div>
-<label>Tip afacere</label>
-<select name="business_type">
-<option>Birou</option>
-<option>Retail</option>
-<option>Hotel</option>
-<option>Restaurant</option>
-<option>Depozit</option>
-</select>
-</div>
-<div>
-<label>Număr angajați</label>
-<input name="employees" type="number">
-</div>
-<div>
-<label>Program de lucru</label>
-<input name="working_hours">
-</div>
-<div>
-<label>Suprafață clădire</label>
-<input name="building_area">
-</div>
-<div>
-<label>Consumatori principali</label>
-<input name="energy_consumers">
-</div>
-<div>
-<label>Număr locații</label>
-<input name="sites" type="number">
-</div>
-</div>
-</div>
-
-<div class="step industry-flow">
-<h2>Profil industrie</h2>
-<div class="form-grid">
-<div>
-<label>Tip facilitate</label>
-<select name="industry_type">
-<option>Fabrică</option>
-<option>Producție alimentară</option>
-<option>Prelucrare materiale</option>
-<option>Logistică industrială</option>
-<option>Alt tip</option>
-</select>
-</div>
-<div>
-<label>Număr linii de producție</label>
-<input name="production_lines" type="number">
-</div>
-<div>
-<label>Program operațional</label>
-<input name="operating_hours">
-</div>
-<div>
-<label>Consumatori majori</label>
-<input name="major_consumers">
-</div>
-<div>
-<label>Sarcină de vârf estimată (kW)</label>
-<input name="peak_load_kw" type="number">
-</div>
-<div>
-<label>Planuri de eficientizare</label>
-<input name="efficiency_plan">
-</div>
-</div>
-</div>
-
-<div class="step institution-flow">
-<h2>Profil instituție</h2>
-<div class="form-grid">
-<div>
-<label>Tip instituție</label>
-<select name="institution_type">
-<option>Primărie</option>
-<option>Școală</option>
-<option>Spital</option>
-<option>Universitate</option>
-<option>Clădire publică</option>
-</select>
-</div>
-<div>
-<label>Număr clădiri</label>
-<input name="building_count" type="number">
-</div>
-<div>
-<label>Buget anual energie</label>
-<input name="annual_energy_budget">
-</div>
-<div>
-<label>Sisteme de încălzire</label>
-<input name="heating_systems">
-</div>
-<div>
-<label>Planuri renovare</label>
-<input name="renovation_plans">
-</div>
-</div>
-</div>
-
-<div class="step">
-<h2>Anvelopă și izolație</h2>
-<div class="form-grid">
-<div>
-<label>Pereți</label>
-<select name="wall_material">
-<option>BCA</option>
-<option>Cărămidă</option>
-<option>Lemn</option>
-<option>Mixt</option>
-</select>
-</div>
-<div>
-<label>Grosime pereți</label>
-<input name="wall_thickness">
-</div>
-<div>
-<label>Izolație pereți</label>
-<select name="wall_insulation">
-<option>Fără</option>
-<option>5cm</option>
-<option>10cm</option>
-<option>15cm</option>
-<option>20cm+</option>
-</select>
-</div>
-<div>
-<label>Ferestre</label>
-<select name="windows">
-<option>Vechi</option>
-<option>Termopan</option>
-<option>Tripan</option>
-</select>
-</div>
-</div>
-</div>
-
-<div class="step">
-<h2>Încălzire și apă caldă</h2>
-<div class="form-grid">
-<div>
-<label>Sursă principală</label>
-<select name="heating">
-<option>Lemne</option>
-<option>Gaz</option>
-<option>Electric</option>
-<option>Pompă căldură</option>
-</select>
-</div>
-<div>
-<label>Temperatură zi</label>
-<input name="temperature_day">
-</div>
-<div>
-<label>Temperatură noapte</label>
-<input name="temperature_night">
-</div>
-<div>
-<label>Termostat inteligent</label>
-<select name="smart_thermostat">
-<option>Da</option>
-<option>Nu</option>
-</select>
-</div>
-</div>
-</div>
-
-<div class="step">
-<h2>Consum și facturi</h2>
-<div class="form-grid">
-<div>
-<label>Furnizor actual</label>
-<input name="provider">
-</div>
-<div>
-<label>Cost lunar</label>
-<input name="monthly_bill">
-</div>
-<div>
-<label>Consum mediu</label>
-<input name="monthly_kwh">
-</div>
-<div>
-<label>Încarcă PDF</label>
-<input name="invoice_pdf" type="file">
-</div>
-</div>
-</div>
-
-<div class="step residential-flow">
-<h2>Electrocasnice</h2>
-<div class="form-grid">
-<div>
-<label>Frigider clasă</label>
-<select name="fridge_class">
-<option>A</option>
-<option>B</option>
-<option>C</option>
-<option>D</option>
-</select>
-</div>
-<div>
-<label>Mașină spălat</label>
-<select name="washer_class">
-<option>A</option>
-<option>B</option>
-<option>C</option>
-</select>
-</div>
-<div>
-<label>Uscător</label>
-<select name="dryer">
-<option>Da</option>
-<option>Nu</option>
-</select>
-</div>
-</div>
-</div>
-
-<div class="step">
-<h2>Energie verde și mobilitate</h2>
-<div class="form-grid">
-<div>
-<label>Panouri fotovoltaice</label>
-<select name="solar_panels">
-<option>Da</option>
-<option>Nu</option>
-</select>
-</div>
-<div>
-<label>Putere instalată</label>
-<input name="installed_power">
-</div>
-<div>
-<label>Mașină electrică</label>
-<select name="electric_car">
-<option>Da</option>
-<option>Nu</option>
-</select>
+<h2>Gata pentru raport</h2>
+<p class="section-description">Dupa generare mergi direct in raport, unde vezi scorul live, comparatia, investitiile prioritare si istoricul deciziilor implementate.</p>
+<div class="dashboard-band">
+<h3>Vei primi</h3>
+<div class="value-card-grid">
+<article>Scor energetic estimat</article>
+<article>Comparatie cu locuinte similare</article>
+<article>Investitii cu economie estimata</article>
+<article>Actiuni pe care le poti marca implementate</article>
 </div>
 </div>
 </div>
 
 <div class="wizard-footer">
 <div class="wizard-buttons">
-<button type="button" id="prevBtn" class="secondary-btn">Înapoi</button>
-<button type="button" id="nextBtn" class="primary-btn">Continuă</button>
-<button type="submit" id="finishBtn" class="primary-btn" style="display:none">Generează analiza</button>
+<button type="button" id="prevBtn" class="secondary-btn">Inapoi</button>
+<button type="button" id="nextBtn" class="primary-btn">Continua</button>
+<button type="submit" id="finishBtn" class="primary-btn" style="display:none">Genereaza raportul</button>
 </div>
 </div>
 </form>
 </section>
 </main>
 
-<footer>
-<small>LA CURENT · Analiză energetică</small>
-</footer>
+<footer><small>LA CURENT · Evaluare energetica estimativa</small></footer>
 </div>
 
 <script>
@@ -523,6 +243,7 @@ fetch('../components/sidebar.html')
 .then(x=>{
 document.getElementById("sidebar").innerHTML=x;
 window.LaCurentSegments?.apply();
+window.LaCurentHomes?.refresh();
 const btn=document.getElementById("menuBtn");
 if(btn){
 btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");

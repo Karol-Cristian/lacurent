@@ -2,9 +2,9 @@
 
 # Scop
 
-Acest document definește metricile principale LaCurent, formulele de calcul și regulile de afișare în UI.
+Acest document definește metricile principale LaCurent, formulele orientative și regulile de afișare în UI.
 
-Obiectiv: metrici consistente, explicabile și utile pentru decizie.
+Metricile sunt estimative și orientate pe decizii.
 
 ---
 
@@ -14,139 +14,103 @@ Obiectiv: metrici consistente, explicabile și utile pentru decizie.
    * Cât de eficient sunt?
    * Unde pierd bani?
    * Ce trebuie să fac?
-2. Fiecare metrică afișată trebuie să aibă context (benchmark, interval, trend).
-3. Evităm afișarea metricilor fără recomandare asociată.
+2. Fiecare metrică afișată trebuie să aibă context.
+3. Evităm afișarea metricilor fără explicație sau recomandare.
+4. Detaliile tehnice sunt ascunse implicit.
 
 ---
 
-# Metrici principale (MVP - Locuințe)
+# Metrici principale pentru Locuințe
 
-## 1) Energy Score
+## 1. Energy Score
 
-Definiție: scor compozit al performanței energetice, între 0 și 100.
+Scor estimativ între 0 și 100.
 
-Formula (versiune inițială):
+Formula curentă pornește de la 100 și aplică penalizări/bonusuri pentru:
 
-`energy_score = round(0.35 * building_efficiency + 0.30 * consumption_efficiency + 0.20 * equipment_efficiency + 0.15 * behavior_efficiency)`
+* pereți;
+* pod/acoperiș;
+* podea;
+* ferestre;
+* sistem încălzire;
+* control temperatură;
+* iluminat;
+* regenerabile;
+* consum real comparat cu modelul.
 
-Subscoruri (0-100):
-* `building_efficiency`
-* `consumption_efficiency`
-* `equipment_efficiency`
-* `behavior_efficiency`
+Clase interne:
 
-Reguli UI:
-* Afișare: `Scor energetic: 72 / 100`
-* Context obligatoriu: percentile sau comparație cu grup similar
-* Fără scor dacă analiza nu este completă
+* 90-100: A+
+* 80-89: A
+* 70-79: B
+* 60-69: C
+* 50-59: D
+* 40-49: E
+* 30-39: F
+* sub 30: G
 
----
-
-## 2) Cost Lunar Estimat
-
-Definiție: costul energetic lunar estimat pe baza datelor furnizate și/sau a facturilor.
-
-Formula:
-
-`estimated_monthly_cost = estimated_monthly_kwh * tariff_per_kwh + fixed_monthly_fees`
-
-Reguli UI:
-* Afișare în RON/lună
-* Dacă lipsesc date de tarif, se folosește tarif implicit și se marchează „estimare”
+Această clasificare este internă LaCurent, nu clasificare oficială.
 
 ---
 
-## 3) Economie Anuală Potențială
+## 2. Cost anual estimat
 
-Definiție: suma economiilor estimate dacă utilizatorul implementează recomandările prioritare.
+Costul anual estimat folosește:
 
-Formula:
+* costuri reale introduse de utilizator, dacă există;
+* altfel, consumul estimat și tarife implicite.
 
-`annual_savings_potential = sum(top_recommendations[i].estimated_annual_savings)`
+Regulă UX:
 
-Reguli UI:
-* Afișare în RON/an
-* Se afișează și procent față de costul anual estimat
+În raport se afișează simplu:
 
----
-
-## 4) Benchmark Percentile
-
-Definiție: poziția utilizatorului în distribuția unui grup similar.
-
-Exemplu:
-* „Consum mai mare decât 72% dintre locuințele similare.”
-
-Reguli de grupare (MVP):
-* `user_type` (residential)
-* `building_type`
-* `surface_bucket`
-* `occupants_bucket`
-* `climate_region`
-* `heating_type`
-* `construction_period`
+`Cost anual estimat: 4.800 lei`
 
 ---
 
-## 5) Intensitate Consum
+## 3. Potențial de economisire
 
-Definiție: consum raportat la suprafață.
+Calculat din primele recomandări prioritare.
 
-Formula:
+Se afișează ca interval:
 
-`kwh_per_m2_year = annual_kwh / usable_surface_m2`
-
-Reguli UI:
-* Afișare: `kWh/m²/an`
-* Context: interval performant / mediu / ineficient
+`900 - 2.300 lei/an`
 
 ---
 
-# Clase energetice estimate (neoficial)
+## 4. Consum estimat pe metru pătrat
 
-Interval propus:
-* A+: `>= 95`
-* A: `90-94`
-* B: `80-89`
-* C: `70-79`
-* D: `55-69`
-* E: `40-54`
-* F: `25-39`
-* G: `< 25`
+Metrică tehnică:
 
-Disclaimer UI obligatoriu:
+`kWh/m²/an`
 
-„Estimare energetică generată automat. Nu reprezintă certificat energetic oficial.”
+Se afișează doar în detalii tehnice.
 
 ---
 
-# Structură date recomandată
+## 5. Încredere evaluare
 
-Pentru fiecare analiză salvăm:
-* `analysis_id`
-* `energy_score`
-* subscoruri
-* `estimated_monthly_cost`
-* `annual_savings_potential`
-* `benchmark_percentile`
-* `estimated_energy_class`
-* `calculation_version`
-* `generated_at`
+Nivel:
+
+* scăzut;
+* mediu;
+* ridicat.
+
+Crește dacă utilizatorul completează:
+
+* suprafață;
+* an construcție;
+* material pereți;
+* izolație;
+* ferestre;
+* sistem încălzire;
+* costuri reale;
+* cantități reale.
+
+Scade dacă lipsesc multe date sau utilizatorul a ales „Nu știu”.
 
 ---
 
-# Versionare calcule
+# Disclaimer obligatoriu
 
-Reguli:
-1. Orice schimbare de formulă crește `calculation_version`.
-2. Scorurile istorice rămân auditable.
-3. Recalculările în masă se rulează explicit, nu implicit.
-
----
-
-# Ce urmează (Next)
-
-1. Definire exactă ponderi subscoruri pe baza datelor reale.
-2. Calibrare benchmark pe eșantioane locale.
-3. Introducere model ROI pentru recomandări.
-4. Extindere metrici pentru Afaceri, Industrie, Instituții.
+„Această evaluare este estimativă și are rol informativ. Nu înlocuiește un certificat de performanță energetică emis de un auditor energetic atestat.”

@@ -1,3 +1,5 @@
+import { ENERGY_ASSESSMENT_DISCLAIMER, buildEnergyProfile, demoOldHouseInput } from "./energy-model.js";
+
 const SESSION_DAYS = 30;
 const RESET_MINUTES = 30;
 const PASSWORD_ITERATIONS = 100000;
@@ -29,6 +31,27 @@ function jsonResponse(data, init = {}) {
       "Content-Type": "application/json"
     }
   });
+}
+
+function displayNameForHouse(body, houseId) {
+  return value(body, "display_name") ||
+    value(body, "home_name") ||
+    value(body, "house_name") ||
+    value(body, "site_name") ||
+    `${value(body, "city") || "Locuință"} #${houseId || ""}`.trim();
+}
+
+function savingsHistory(profile, implementedRows = []) {
+  const implementedById = new Map(implementedRows.map(row => [row.recommendation_id, row]));
+  return (profile.recommendations || [])
+    .filter(item => implementedById.has(item.id))
+    .map(item => ({
+      recommendation_id: item.id,
+      title: item.title,
+      estimatedSavingsRonYearMin: item.estimatedSavingsRonYearMin,
+      estimatedSavingsRonYearMax: item.estimatedSavingsRonYearMax,
+      implemented_at: implementedById.get(item.id)?.implemented_at
+    }));
 }
 
 function normalizeEmail(email) {
@@ -451,16 +474,18 @@ async function saveHouse(request, env, corsHeaders) {
   }
 
   const houseResult = await env.DB.prepare(`
-    INSERT INTO houses(user_id, house_type, surface, rooms, year, city)
-    VALUES(?, ?, ?, ?, ?, ?)
+    INSERT INTO houses(user_id, house_type, surface, rooms, year, city, display_name, active, analysis_purpose)
+    VALUES(?, ?, ?, ?, ?, ?, ?, 1, ?)
   `)
     .bind(
       user.id,
       value(body, "house_type") || value(body, "business_type") || value(body, "industry_type") || value(body, "institution_type"),
-      numberValue(body, "surface") || numberValue(body, "building_area"),
+      numberValue(body, "surface") || numberValue(body, "useful_area_m2") || numberValue(body, "building_area"),
       numberValue(body, "rooms"),
-      numberValue(body, "year") || numberValue(body, "building_year"),
-      value(body, "city")
+      numberValue(body, "year") || numberValue(body, "construction_year") || numberValue(body, "building_year"),
+      value(body, "city"),
+      displayNameForHouse(body),
+      value(body, "analysis_purpose")
     )
     .run();
   const houseId = houseResult.meta?.last_row_id;
@@ -479,9 +504,9 @@ async function saveHouse(request, env, corsHeaders) {
       siteId,
       houseId,
       value(body, "house_type") || value(body, "business_type") || value(body, "industry_type") || value(body, "institution_type"),
-      numberValue(body, "surface") || numberValue(body, "building_area"),
-      numberValue(body, "year") || numberValue(body, "building_year"),
-      value(body, "heating"),
+      numberValue(body, "surface") || numberValue(body, "useful_area_m2") || numberValue(body, "building_area"),
+      numberValue(body, "year") || numberValue(body, "construction_year") || numberValue(body, "building_year"),
+      value(body, "heating") || value(body, "heating_source"),
       value(body, "climate_region")
     )
     .run();
@@ -494,7 +519,19 @@ async function saveHouse(request, env, corsHeaders) {
     .bind(user.id, siteId, buildingId, houseId, analysisType, new Date().toISOString())
     .run();
   const analysisId = analysisResult.meta?.last_row_id;
-  const score = calculateScore(body, analysisType);
+  const energyProfile = analysisType === "residential" ? buildEnergyProfile(body) : null;
+  const score = energyProfile
+    ? {
+      overall_score: energyProfile.assessment.score,
+      building_efficiency: clampScore(100 - energyProfile.assessment.topProblems.filter(item => ["walls", "roof", "floor", "windows"].includes(item.area)).length * 15),
+      consumption_efficiency: clampScore(100 - ((energyProfile.derived.demand.estimatedFinalEnergyKwhM2Year || 160) - 80) / 2),
+      behavior: energyProfile.derived.systems.heating.controlQuality === "smart" ? 85 : energyProfile.derived.systems.heating.controlQuality === "none" ? 45 : 65,
+      equipment: energyProfile.derived.systems.heating.quality === "very_good" ? 90 : energyProfile.derived.systems.heating.quality === "good" ? 75 : energyProfile.derived.systems.heating.quality === "poor" ? 40 : 60,
+      green_energy: energyProfile.input.renewables.photovoltaic.installed === "yes" ? 80 : 45,
+      smart_optimization: energyProfile.derived.systems.heating.controlQuality === "smart" ? 85 : 55,
+      estimated_energy_class: energyProfile.assessment.estimatedEnergyClass
+    }
+    : calculateScore(body, analysisType);
   const percentile = clampScore(100 - score.overall_score + 44);
 
   const batch = [
@@ -577,7 +614,7 @@ async function saveHouse(request, env, corsHeaders) {
       score.green_energy,
       score.smart_optimization,
       score.estimated_energy_class,
-      ENERGY_CLASS_DISCLAIMER
+      energyProfile?.metadata.disclaimer || ENERGY_CLASS_DISCLAIMER
     ),
     env.DB.prepare("INSERT INTO benchmark_results(analysis_id, benchmark_group_id, percentile, cluster_average, score_comparison) VALUES(?, NULL, ?, ?, ?)")
       .bind(analysisId, percentile, 68, score.overall_score - 68),
@@ -591,6 +628,8 @@ async function saveHouse(request, env, corsHeaders) {
 
 async function dashboardSummary(request, env, corsHeaders) {
   const user = await getCurrentUser(request, env);
+  const body = await readJson(request);
+  const requestedHouseId = numberValue(body, "house_id");
   const locked = {
     success: true,
     authenticated: Boolean(user),
@@ -601,10 +640,13 @@ async function dashboardSummary(request, env, corsHeaders) {
 
   if (!user) return jsonResponse(locked, { headers: corsHeaders });
 
-  const summary = await env.DB.prepare(`
+  const houseFilter = requestedHouseId ? "AND analyses.house_id = ?" : "";
+  const summaryStatement = env.DB.prepare(`
     SELECT
       analyses.id AS analysis_id,
+      analyses.house_id,
       analyses.analysis_type,
+      houses.display_name,
       scores.overall_score,
       scores.building_efficiency,
       scores.consumption_efficiency,
@@ -616,22 +658,250 @@ async function dashboardSummary(request, env, corsHeaders) {
       scores.disclaimer,
       benchmark_results.percentile,
       benchmark_results.cluster_average,
-      benchmark_results.score_comparison
+      benchmark_results.score_comparison,
+      COUNT(recommendation_actions.id) AS implemented_actions
     FROM analyses
+    LEFT JOIN houses ON houses.id = analyses.house_id
     LEFT JOIN scores ON scores.analysis_id = analyses.id
     LEFT JOIN benchmark_results ON benchmark_results.analysis_id = analyses.id
-    WHERE analyses.user_id = ? AND analyses.status = 'completed'
+    LEFT JOIN recommendation_actions ON recommendation_actions.house_id = analyses.house_id
+      AND recommendation_actions.user_id = analyses.user_id
+      AND recommendation_actions.status = 'implemented'
+    WHERE analyses.user_id = ? AND analyses.status = 'completed' ${houseFilter}
+      AND COALESCE(houses.active, 1) = 1
+    GROUP BY analyses.id
     ORDER BY analyses.completed_at DESC, analyses.id DESC
     LIMIT 1
-  `)
-    .bind(user.id)
-    .first();
+  `);
+  const summary = requestedHouseId
+    ? await summaryStatement.bind(user.id, requestedHouseId).first()
+    : await summaryStatement.bind(user.id).first();
 
   if (!summary || summary.overall_score === null) {
     return jsonResponse(locked, { headers: corsHeaders });
   }
+  summary.overall_score = clampScore(summary.overall_score + (summary.implemented_actions || 0) * 3);
+  summary.estimated_energy_class = estimateEnergyClass(summary.overall_score);
 
   return jsonResponse({ success: true, authenticated: true, has_analysis: true, user, summary }, { headers: corsHeaders });
+}
+
+async function energyReport(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse(
+      { success: false, error: "Trebuie să fii autentificat pentru a vedea raportul." },
+      { status: 401, headers: corsHeaders }
+    );
+  }
+
+  const body = await readJson(request);
+  const requestedHouseId = numberValue(body, "house_id");
+  const houseFilter = requestedHouseId ? "AND analyses.house_id = ?" : "";
+  const analysisStatement = env.DB.prepare(`
+    SELECT analyses.id, analyses.house_id, analyses.analysis_type
+    FROM analyses
+    LEFT JOIN houses ON houses.id = analyses.house_id
+    WHERE analyses.user_id = ? AND analyses.status = 'completed' ${houseFilter}
+      AND COALESCE(houses.active, 1) = 1
+    ORDER BY analyses.completed_at DESC, analyses.id DESC
+    LIMIT 1
+  `);
+  const analysis = requestedHouseId
+    ? await analysisStatement.bind(user.id, requestedHouseId).first()
+    : await analysisStatement.bind(user.id).first();
+
+  if (!analysis) {
+    return jsonResponse(
+      { success: true, has_report: false, message: "Completează analiza locuinței pentru a genera raportul estimativ." },
+      { headers: corsHeaders }
+    );
+  }
+
+  const answers = await env.DB.prepare(`
+    SELECT question_key, answer_value
+    FROM analysis_answers
+    WHERE analysis_id = ?
+  `)
+    .bind(analysis.id)
+    .all();
+  const rawInput = Object.fromEntries((answers.results || []).map(row => [row.question_key, row.answer_value]));
+  const profile = buildEnergyProfile(rawInput);
+  const implemented = await env.DB.prepare(`
+    SELECT recommendation_id, implemented_at
+    FROM recommendation_actions
+    WHERE user_id = ? AND house_id = ? AND status = 'implemented'
+  `)
+    .bind(user.id, requestedHouseId || analysis.house_id)
+    .all();
+  const implementedRows = implemented.results || [];
+  const implementedIds = implementedRows.map(row => row.recommendation_id);
+  if (implementedIds.length) {
+    profile.assessment.score = clampScore(profile.assessment.score + implementedIds.length * 3);
+    profile.assessment.estimatedEnergyClass = estimateEnergyClass(profile.assessment.score);
+    profile.assessment.mainConclusion = `${profile.assessment.mainConclusion} Ai implementat ${implementedIds.length} decizie${implementedIds.length === 1 ? "" : "i"} din recomandări.`;
+  }
+
+  return jsonResponse(
+    {
+      success: true,
+      has_report: true,
+      analysis_id: analysis.id,
+      house_id: requestedHouseId || analysis.house_id,
+      implemented_recommendations: implementedIds,
+      savings_history: savingsHistory(profile, implementedRows),
+      profile
+    },
+    { headers: corsHeaders }
+  );
+}
+
+async function demoEnergyReport(request, env, corsHeaders) {
+  return jsonResponse(
+    {
+      success: true,
+      has_report: true,
+      demo: true,
+      profile: buildEnergyProfile(demoOldHouseInput)
+    },
+    { headers: corsHeaders }
+  );
+}
+
+async function homes(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse(
+      { success: false, error: "Trebuie să fii autentificat pentru a vedea locuințele." },
+      { status: 401, headers: corsHeaders }
+    );
+  }
+
+  const result = await env.DB.prepare(`
+    SELECT
+      houses.id,
+      houses.display_name,
+      houses.house_type,
+      houses.surface,
+      houses.city,
+      latest.analysis_id,
+      latest.completed_at,
+      scores.overall_score,
+      scores.estimated_energy_class,
+      COUNT(recommendation_actions.id) AS implemented_actions
+    FROM houses
+    LEFT JOIN (
+      SELECT house_id, MAX(id) AS analysis_id, MAX(completed_at) AS completed_at
+      FROM analyses
+      WHERE user_id = ? AND status = 'completed'
+      GROUP BY house_id
+    ) latest ON latest.house_id = houses.id
+    LEFT JOIN scores ON scores.analysis_id = latest.analysis_id
+    LEFT JOIN recommendation_actions ON recommendation_actions.house_id = houses.id
+      AND recommendation_actions.user_id = houses.user_id
+      AND recommendation_actions.status = 'implemented'
+    WHERE houses.user_id = ? AND COALESCE(houses.active, 1) = 1
+    GROUP BY houses.id
+    ORDER BY houses.id DESC
+  `)
+    .bind(user.id, user.id)
+    .all();
+
+  const normalizedHomes = (result.results || []).map(home => ({
+    ...home,
+    overall_score: home.overall_score === null || home.overall_score === undefined
+      ? home.overall_score
+      : clampScore(home.overall_score + (home.implemented_actions || 0) * 3),
+    estimated_energy_class: home.overall_score === null || home.overall_score === undefined
+      ? home.estimated_energy_class
+      : estimateEnergyClass(clampScore(home.overall_score + (home.implemented_actions || 0) * 3))
+  }));
+
+  return jsonResponse({ success: true, homes: normalizedHomes }, { headers: corsHeaders });
+}
+
+async function recommendations(request, env, corsHeaders) {
+  return energyReport(request, env, corsHeaders);
+}
+
+async function archiveHome(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse(
+      { success: false, error: "Trebuie sa fii autentificat pentru a modifica locuinta." },
+      { status: 401, headers: corsHeaders }
+    );
+  }
+
+  const body = await readJson(request);
+  const houseId = numberValue(body, "house_id");
+  if (!houseId) {
+    return jsonResponse({ success: false, error: "Lipseste locuinta." }, { status: 400, headers: corsHeaders });
+  }
+
+  await env.DB.prepare(`
+    UPDATE houses
+    SET active = 0, archived_at = ?
+    WHERE id = ? AND user_id = ?
+  `)
+    .bind(new Date().toISOString(), houseId, user.id)
+    .run();
+
+  return jsonResponse({ success: true, house_id: houseId }, { headers: corsHeaders });
+}
+
+async function recommendationAction(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse(
+      { success: false, error: "Trebuie să fii autentificat pentru a salva decizia." },
+      { status: 401, headers: corsHeaders }
+    );
+  }
+
+  const body = await readJson(request);
+  const houseId = numberValue(body, "house_id");
+  const recommendationId = value(body, "recommendation_id");
+  const implemented = value(body, "status") !== "planned";
+
+  if (!houseId || !recommendationId) {
+    return jsonResponse(
+      { success: false, error: "Lipsește locuința sau recomandarea." },
+      { status: 400, headers: corsHeaders }
+    );
+  }
+
+  const house = await env.DB.prepare("SELECT id FROM houses WHERE id = ? AND user_id = ? LIMIT 1")
+    .bind(houseId, user.id)
+    .first();
+  if (!house) {
+    return jsonResponse(
+      { success: false, error: "Locuința nu aparține contului curent." },
+      { status: 403, headers: corsHeaders }
+    );
+  }
+
+  await env.DB.prepare("DELETE FROM recommendation_actions WHERE user_id = ? AND house_id = ? AND recommendation_id = ?")
+    .bind(user.id, houseId, recommendationId)
+    .run();
+
+  if (implemented) {
+    await env.DB.prepare(`
+      INSERT INTO recommendation_actions(user_id, house_id, recommendation_id, status, notes)
+      VALUES(?, ?, ?, 'implemented', ?)
+    `)
+      .bind(user.id, houseId, recommendationId, value(body, "notes"))
+      .run();
+
+    await env.DB.prepare(`
+      INSERT INTO savings_events(user_id, house_id, event_type, amount_ron, source)
+      VALUES(?, ?, 'recommendation_implemented', NULL, ?)
+    `)
+      .bind(user.id, houseId, recommendationId)
+      .run();
+  }
+
+  return jsonResponse({ success: true, implemented }, { headers: corsHeaders });
 }
 
 export default {
@@ -655,7 +925,13 @@ export default {
       "/api/forgot-password": forgotPassword,
       "/api/reset-password": resetPassword,
       "/api/save-house": saveHouse,
-      "/api/dashboard-summary": dashboardSummary
+      "/api/dashboard-summary": dashboardSummary,
+      "/api/energy-report": energyReport,
+      "/api/demo-energy-report": demoEnergyReport,
+      "/api/homes": homes,
+      "/api/recommendations": recommendations,
+      "/api/recommendation-action": recommendationAction,
+      "/api/archive-home": archiveHome
     };
     const handler = routes[url.pathname];
 

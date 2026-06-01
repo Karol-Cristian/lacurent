@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LA CURENT | Raport energetic estimativ</title>
+<link rel="icon" type="image/png" href="../images/favicon.png?v=2">
+<link rel="stylesheet" href="../css/style.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="../js/auth.js" defer></script>
+<script src="../js/segment-context.js" defer></script>
+<script src="../js/home-context.js" defer></script>
+<script src="../js/energy-report.js" defer></script>
+</head>
+
+<body>
+<button id="menuBtn" class="menu-btn">&#9776;</button>
+<div id="sidebar"></div>
+
+<div class="app-content">
+<header>
+<div class="hero-top">
+<div>
+<div class="small-label">RAPORT ESTIMATIV</div>
+<h1>Raport energetic LaCurent</h1>
+<p>Concluzii simple, costuri estimate și recomandări prioritare pentru locuință.</p>
+</div>
+<div class="system-state">
+<span class="green-dot"></span>
+Informativ
+</div>
+</div>
+</header>
+
+<main class="dashboard energy-report-page">
+<section class="dashboard-band report-disclaimer">
+Această evaluare este estimativă și are rol informativ. Nu înlocuiește un certificat de performanță energetică emis de un auditor energetic atestat.
+</section>
+
+<section id="reportEmpty" class="dashboard-band" hidden>
+<div class="section-heading">
+<span class="small-label">RAPORT BLOCAT</span>
+<h2>Completează analiza locuinței pentru a genera raportul.</h2>
+</div>
+<a class="primary-btn" href="analiza-casa.html">Completează analiza</a>
+<a class="secondary-btn" href="raport-energie.html?demo=1">Vezi raport demo</a>
+</section>
+
+<section id="reportContent" hidden>
+<div class="report-hero-grid">
+<article class="score-card report-score-card">
+<span class="metric-label">Scor energetic estimat</span>
+<div class="score-ring">
+<span id="reportScore">--</span>
+<small>/100</small>
+</div>
+<strong id="reportClass">Clasă internă: --</strong>
+<p>Estimare internă LaCurent, nu certificat oficial.</p>
+</article>
+
+<article class="dashboard-band main-conclusion-card">
+<span class="small-label">CONCLUZIE PRINCIPALĂ</span>
+<h2 id="mainConclusion">--</h2>
+<p id="shortExplanation">--</p>
+</article>
+</div>
+
+<section class="recommendation-summary">
+<article>
+<span>Cost anual estimat</span>
+<strong id="annualCost">--</strong>
+</article>
+<article>
+<span>Cost lunar mediu</span>
+<strong id="monthlyCost">--</strong>
+</article>
+<article>
+<span>Potențial economisire</span>
+<strong id="savingsPotential">--</strong>
+</article>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">SCOR LIVE</span>
+<h2>Scorul se poate schimba in timp.</h2>
+</div>
+<p id="liveScoreExplanation">Indicele combina datele locuintei tale cu comparatia fata de locuinte similare. Pe masura ce apar mai multe locuinte si marchezi decizii implementate, scorul poate evolua.</p>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">TOP PROBLEME</span>
+<h2>Zonele care par să influențeze cel mai mult consumul.</h2>
+</div>
+<div id="problemsList" class="recommendation-list"></div>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">RECOMANDĂRI PRIORITARE</span>
+<h2>Primele acțiuni cu impact clar.</h2>
+</div>
+<div id="recommendationsList" class="recommendation-list"></div>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">ISTORIC ECONOMII</span>
+<h2>Decizii implementate si economii estimate in timp.</h2>
+</div>
+<div id="savingsHistoryList" class="recommendation-list"></div>
+</section>
+
+<section class="dashboard-band auditor-marketplace-cta">
+<div class="section-heading">
+<span class="small-label">ANALIZA AUTOMATA</span>
+<h2>Monitorizare hardware in tablou.</h2>
+</div>
+<p>Pentru o analiza mai profunda, pregatim un dispozitiv care masoara consumul real si ajuta la decizii automate. Raportul estimativ ramane util acum, iar monitorizarea reala poate rafina recomandarile ulterior.</p>
+</section>
+
+<section class="dashboard-band confidence-card">
+<div class="section-heading">
+<span class="small-label">ÎNCREDERE ESTIMARE</span>
+<h2 id="confidenceTitle">--</h2>
+</div>
+<p id="confidenceReasons">--</p>
+<p id="missingData">--</p>
+</section>
+
+<details class="dashboard-band technical-details">
+<summary>Detalii tehnice</summary>
+<div class="technical-grid">
+<article>
+<span>Consum estimat</span>
+<strong id="energyIntensity">--</strong>
+</article>
+<article>
+<span>Încălzire</span>
+<strong id="heatingDemand">--</strong>
+</article>
+<article>
+<span>Apă caldă</span>
+<strong id="dhwDemand">--</strong>
+</article>
+<article>
+<span>Emisii estimate</span>
+<strong id="co2Estimate">--</strong>
+</article>
+</div>
+<p id="technicalAssumptions"></p>
+</details>
+</section>
+</main>
+</div>
+
+<script>
+fetch('../components/sidebar.html')
+.then(r=>r.text())
+.then(x=>{
+document.getElementById("sidebar").innerHTML=x;
+window.LaCurentSegments?.apply();
+window.LaCurentHomes?.refresh();
+const btn=document.getElementById("menuBtn");
+if(btn){
+btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
+}
+});
+</script>
+</body>
+</html>

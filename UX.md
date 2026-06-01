@@ -6,15 +6,11 @@ LaCurent nu este un dashboard energetic.
 
 LaCurent este un sistem de suport pentru decizii energetice.
 
-Utilizatorii nu intră în platformă pentru a vedea grafice.
-
 Utilizatorii intră în platformă pentru a afla:
 
 * cât de eficienți sunt;
 * unde pierd bani;
 * ce trebuie să facă.
-
-Toate deciziile de design trebuie evaluate prin această perspectivă.
 
 ---
 
@@ -27,8 +23,6 @@ Toate deciziile de design trebuie evaluate prin această perspectivă.
 3. Ce valoare primește.
 4. Care este următoarea acțiune.
 
-Dacă sunt necesare explicații suplimentare pentru a înțelege produsul, experiența trebuie simplificată.
-
 ---
 
 # Regula unei concluzii
@@ -37,26 +31,15 @@ Fiecare pagină trebuie să aibă o concluzie principală.
 
 Exemple:
 
-"Bună eficiență energetică"
-
-"Potențial mare de economisire"
-
-"Consum peste media locuințelor similare"
-
-Utilizatorul trebuie să poată înțelege pagina fără să citească toate detaliile.
+* „Bună eficiență energetică”
+* „Potențial mare de economisire”
+* „Consum peste media locuințelor similare”
 
 ---
 
 # Regula unei acțiuni
 
 Fiecare analiză trebuie să genereze cel puțin o recomandare.
-
-Exemple:
-
-* Izolează podul.
-* Înlocuiește iluminatul.
-* Optimizează programul de funcționare.
-* Verifică consumul de bază.
 
 Nu afișăm doar probleme.
 
@@ -66,37 +49,15 @@ Afișăm probleme și soluții.
 
 # Regula contextului
 
-Orice metrică trebuie să aibă context.
-
 Nu afișăm:
 
-"Scor: 72"
+`Scor: 72`
 
 Afișăm:
 
-"Scor: 72 / 100"
-"Peste 68% dintre locuințele similare"
+`Scor energetic estimat: 72 / 100`
 
-sau
-
-"Sub media locuințelor comparabile"
-
-Utilizatorul trebuie să înțeleagă dacă valoarea este bună sau rea.
-
----
-
-# Regula prioritizării
-
-Nu afișăm simultan toate informațiile disponibile.
-
-Afișăm:
-
-1. Concluzia.
-2. Impactul.
-3. Recomandarea.
-4. Detaliile.
-
-Detaliile trebuie să fie întotdeauna sub concluzie.
+și explicăm dacă rezultatul este bun sau rău.
 
 ---
 
@@ -109,22 +70,17 @@ Nu construim ecrane pline cu:
 * tabele complexe;
 * filtre excesive.
 
-Fiecare element trebuie să răspundă unei întrebări reale a utilizatorului.
+Fiecare element trebuie să răspundă unei întrebări reale.
 
 ---
 
-# Principiul progresive disclosure
+# Principiul progressive disclosure
 
-Informația apare gradual.
+Nivel 1: concluzia.
 
-Nivel 1:
-Concluzia.
+Nivel 2: explicația.
 
-Nivel 2:
-Explicația.
-
-Nivel 3:
-Detaliile tehnice.
+Nivel 3: detaliile tehnice.
 
 Majoritatea utilizatorilor nu trebuie să ajungă la nivelul 3.
 
@@ -132,15 +88,14 @@ Majoritatea utilizatorilor nu trebuie să ajungă la nivelul 3.
 
 # Limbaj
 
-Folosim limbaj accesibil.
-
 Preferăm:
 
 * economie estimată;
 * cost lunar;
 * recomandare;
 * eficiență;
-* comparație.
+* comparație;
+* „Nu știu”.
 
 Evităm:
 
@@ -151,55 +106,38 @@ Evităm:
 
 ---
 
-# Reguli pentru AI
+# Onboarding Locuințe
 
-Orice funcționalitate nouă trebuie să răspundă la cel puțin una dintre întrebările:
+Onboarding-ul trebuie să fie mobile-first.
 
-* Cât de eficient sunt?
-* Unde pierd bani?
-* Ce trebuie să fac?
+Reguli:
 
-Dacă nu răspunde la niciuna dintre aceste întrebări, funcționalitatea trebuie reconsiderată.
-
----
-
-# Landing Page
-
-Scopul landing page-ului nu este educarea completă.
-
-Scopul landing page-ului este inițierea analizei.
-
-Utilizatorul trebuie să înțeleagă:
-
-* ce primește;
-* cât durează;
-* de ce să aibă încredere.
+* întrebare scurtă;
+* explicație scurtă;
+* opțiuni predefinite;
+* opțiune „Nu știu”;
+* progres vizibil;
+* validare prietenoasă;
+* completare parțială permisă.
 
 ---
 
-# Dashboard
+# Raport energetic estimativ
 
-Dashboard-ul trebuie să fie orientat pe decizii.
+Ordinea raportului:
 
-Ordinea recomandată:
-
-1. Scor general.
+1. Scor energetic estimat.
 2. Concluzie principală.
-3. Top oportunități de economisire.
-4. Comparație cu utilizatori similari.
-5. Detalii și analize.
+3. Clasă internă LaCurent.
+4. Costuri estimate.
+5. Top probleme.
+6. Top recomandări.
+7. Încredere estimare.
+8. Detalii tehnice ascunse implicit.
 
-Nu invers.
+Disclaimer obligatoriu:
 
----
-
-# Mobile First
-
-Majoritatea utilizatorilor vor accesa produsul de pe telefon.
-
-Toate experiențele trebuie proiectate inițial pentru mobil.
-
-Desktop-ul este o extensie a experienței mobile.
+„Această evaluare este estimativă și are rol informativ. Nu înlocuiește un certificat de performanță energetică emis de un auditor energetic atestat.”
 
 ---
 
@@ -211,4 +149,26 @@ Un utilizator are succes dacă poate răspunde rapid la:
 * Unde pierd bani?
 * Ce fac mai departe?
 
-Dacă platforma răspunde clar la aceste întrebări, experiența este reușită.
+---
+
+# Formular locuinta
+
+Formularul trebuie sa fie conditional.
+
+Nu intrebam utilizatorul despre date care nu se aplica locuintei lui.
+
+Exemple:
+
+* daca nu exista fotovoltaice, puterea instalata ramane 0 si campul este blocat;
+* daca incalzirea este mixta, cerem sursele si suprafata aproximativa acoperita de fiecare;
+* daca exista doar soba simpla, nu intrebam despre termostat smart, ci despre putere si utilizare;
+* daca nu exista sursa pe gaz, costul de gaz este 0 si campul este blocat, cu exceptia gatitului pe gaz;
+* consumul real se cere in bani, pe baza ultimelor facturi, evitand regularizarile care nu descriu consumul real.
+
+---
+
+# Raport live
+
+Raportul trebuie sa explice ca scorul este un indice estimativ live, influentat de benchmark si de deciziile implementate.
+
+Recomandarile trebuie sa arate nu doar ce trebuie facut, ci si cand investitia poate deveni justificata financiar.

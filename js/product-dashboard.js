@@ -27,7 +27,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   try {
-    const result = await window.LaCurentAuth.api("/api/dashboard-summary");
+    const result = await window.LaCurentAuth.api("/api/dashboard-summary", {
+      house_id: window.LaCurentHomes?.activeHouseId?.()
+    });
 
     if (!result.has_analysis || !result.summary) {
       lockDashboard(lockedMessage);
