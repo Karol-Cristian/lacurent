@@ -3082,6 +3082,15 @@ color:#475569;
 line-height:1.6;
 }
 
+.metric-card.inactive-metric{
+filter:grayscale(.85);
+opacity:.62;
+}
+
+.metric-card.inactive-metric strong{
+color:#64748b;
+}
+
 @media(max-width:900px){
 .report-hero-grid,
 .technical-grid,
