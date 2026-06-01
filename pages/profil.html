@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="../css/style.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="../js/auth.js" defer></script>
+<script src="../js/segment-context.js" defer></script>
 </head>
 
 <body>
@@ -21,7 +22,7 @@
 <div>
 <div class="small-label">LA CURENT</div>
 <h1>Profil</h1>
-<p>Gestionează contul folosit pentru salvarea analizelor energetice.</p>
+<p>Contul stabilește ce experiență primești: locuință, afacere, industrie, instituție sau auditor.</p>
 </div>
 <div class="system-state">
 <span class="green-dot"></span>
@@ -35,18 +36,18 @@ Cont utilizator
 <div class="auth-panel" id="accountPanel">
 <div class="small-label">CONT CURENT</div>
 <h2 id="accountTitle">Nu ești autentificat</h2>
-<p id="accountText">Autentifică-te ca analiza locuinței să fie legată de profilul tău.</p>
-<button class="secondary-btn" id="logoutBtn" type="button" hidden>Logout</button>
+<p id="accountText">Autentifică-te ca analiza să fie legată de profilul tău.</p>
+<button class="secondary-btn" id="logoutBtn" type="button" hidden>Deconectare</button>
 </div>
 
 <form class="auth-panel" id="loginForm">
-<div class="small-label">LOGIN</div>
+<div class="small-label">AUTENTIFICARE</div>
 <h2>Intră în cont</h2>
 <label>Email</label>
 <input name="email" type="email" autocomplete="email" required>
 <label>Parolă</label>
 <input name="password" type="password" autocomplete="current-password" required>
-<button class="primary-btn" type="submit">Login</button>
+<button class="primary-btn" type="submit">Autentificare</button>
 <a href="#" id="showForgot">Am uitat parola</a>
 <p class="form-message" id="loginMessage"></p>
 </form>
@@ -54,19 +55,45 @@ Cont utilizator
 <form class="auth-panel" id="registerForm">
 <div class="small-label">CONT NOU</div>
 <h2>Creează profil</h2>
-<label>Nume</label>
+<p class="auth-copy">Alegerea segmentului schimbă dashboard-ul, navigația și formularul de analiză.</p>
+
+<label>Nume contact</label>
 <input name="name" autocomplete="name" required>
+
 <label>Email</label>
 <input name="email" type="email" autocomplete="email" required>
+
 <label>Tip cont</label>
-<select name="role" required>
-<option value="residential">Residential</option>
-<option value="business">Business</option>
-<option value="institution">Institution</option>
-<option value="auditor">Energy Auditor</option>
+<select name="role" id="registerRole" required>
+<option value="residential">Locuințe</option>
+<option value="business">Afaceri</option>
+<option value="industry">Industrie</option>
+<option value="institution">Instituții</option>
+<option value="auditor">Auditor energetic</option>
 </select>
+
+<div class="organization-fields" id="organizationFields" hidden>
+<label>Nume organizație</label>
+<input name="organization_name" autocomplete="organization">
+
+<label>Tip organizație</label>
+<select name="organization_type" id="organizationType">
+<option value="">Alege tipul</option>
+</select>
+
+<label>Adresă principală</label>
+<input name="address" autocomplete="street-address">
+
+<label>Oraș</label>
+<input name="city" autocomplete="address-level2">
+
+<label>Telefon</label>
+<input name="phone" autocomplete="tel">
+</div>
+
 <label>Parolă</label>
 <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+
 <button class="primary-btn" type="submit">Creează cont</button>
 <p class="form-message" id="registerMessage"></p>
 </form>
@@ -89,6 +116,7 @@ fetch('../components/sidebar.html')
 .then(r=>r.text())
 .then(x=>{
 document.getElementById("sidebar").innerHTML=x;
+window.LaCurentSegments?.apply();
 const btn=document.getElementById("menuBtn");
 if(btn){
 btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
@@ -113,6 +141,26 @@ const logoutBtn=document.getElementById("logoutBtn");
 const showForgot=document.getElementById("showForgot");
 const accountTitle=document.getElementById("accountTitle");
 const accountText=document.getElementById("accountText");
+const registerRole=document.getElementById("registerRole");
+const organizationFields=document.getElementById("organizationFields");
+const organizationType=document.getElementById("organizationType");
+const params=new URLSearchParams(window.location.search);
+
+const roleLabels={
+residential:"Locuințe",
+business:"Afaceri",
+industry:"Industrie",
+institution:"Instituții",
+auditor:"Auditor energetic",
+admin:"Admin"
+};
+
+const organizationOptions={
+business:["Birou","Retail","Hotel","Restaurant","Depozit","Alt tip de afacere"],
+industry:["Fabrică","Producție alimentară","Prelucrare materiale","Logistică industrială","Alt tip industrial"],
+institution:["Primărie","Școală","Spital","Universitate","Clădire publică"],
+auditor:["Auditor independent","Companie de audit energetic"]
+};
 
 function formData(form){
 return Object.fromEntries(new FormData(form).entries());
@@ -124,17 +172,36 @@ el.textContent=text;
 el.classList.toggle("error",isError);
 }
 
+function updateOrganizationFields(){
+const role=registerRole.value;
+const needsOrganization=role!=="residential";
+organizationFields.hidden=!needsOrganization;
+organizationFields.querySelectorAll("input,select").forEach(input=>{
+input.required=needsOrganization && ["organization_name","organization_type","city"].includes(input.name);
+});
+organizationType.innerHTML='<option value="">Alege tipul</option>';
+(organizationOptions[role] || []).forEach(label=>{
+const option=document.createElement("option");
+option.value=label;
+option.textContent=label;
+organizationType.append(option);
+});
+}
+
 function refreshAccount(){
 const user=LaCurentAuth.currentUser();
 if(user){
+const role=user.role || "residential";
 accountTitle.textContent=user.name;
-accountText.textContent=`${user.email} este conectat. Rol: ${user.role || "residential"}.`;
+accountText.textContent=`${user.email} este conectat. Segment: ${roleLabels[role] || role}.`;
 logoutBtn.hidden=false;
+window.LaCurentSegments?.apply(role);
 return;
 }
 accountTitle.textContent="Nu ești autentificat";
-accountText.textContent="Autentifică-te ca analiza locuinței să fie legată de profilul tău.";
+accountText.textContent="Autentifică-te ca analiza să fie legată de profilul tău.";
 logoutBtn.hidden=true;
+window.LaCurentSegments?.apply("residential");
 }
 
 loginForm.addEventListener("submit",async event=>{
@@ -190,6 +257,18 @@ showForgot.addEventListener("click",event=>{
 event.preventDefault();
 forgotForm.hidden=!forgotForm.hidden;
 });
+
+registerRole.addEventListener("change",updateOrganizationFields);
+updateOrganizationFields();
+
+const mode=params.get("mode");
+if(mode==="register"){
+registerForm.scrollIntoView({behavior:"smooth",block:"start"});
+registerForm.querySelector("input[name='name']")?.focus();
+}else if(mode==="login"){
+loginForm.scrollIntoView({behavior:"smooth",block:"start"});
+loginForm.querySelector("input[name='email']")?.focus();
+}
 
 refreshAccount();
 });

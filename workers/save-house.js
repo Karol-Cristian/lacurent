@@ -154,13 +154,14 @@ function estimateEnergyClass(score) {
 
 function inferAnalysisType(body, user) {
   if (user?.role === "business" || body.user_type === "business") return "business";
+  if (user?.role === "industry" || body.user_type === "industry") return "industry";
   if (user?.role === "institution" || body.user_type === "institution") return "institution";
   if (user?.role === "auditor") return "auditor";
   return "residential";
 }
 
 function calculateScore(body, analysisType) {
-  if (analysisType === "business" || analysisType === "institution") {
+  if (analysisType === "business" || analysisType === "industry" || analysisType === "institution") {
     const consumptionEfficiency = numberValue(body, "monthly_kwh") ? 62 : 52;
     const equipment = value(body, "energy_consumers") ? 64 : 48;
     const overall = clampScore((consumptionEfficiency + equipment + 58) / 3);
@@ -248,7 +249,7 @@ async function register(request, env, corsHeaders) {
   const email = normalizeEmail(body.email);
   const name = String(body.name || "").trim();
   const password = String(body.password || "");
-  const allowedRoles = ["residential", "business", "institution", "auditor"];
+  const allowedRoles = ["residential", "business", "industry", "institution", "auditor"];
   const role = allowedRoles.includes(body.role) ? body.role : "residential";
   const accountType = role === "residential" ? "registered" : role;
 
@@ -267,13 +268,45 @@ async function register(request, env, corsHeaders) {
       .bind(email, name, await hashPassword(password), role, accountType)
       .run();
     const userId = result.meta?.last_row_id;
+    let organization = null;
+
+    if (role !== "residential") {
+      const organizationName = value(body, "organization_name") || name;
+      const organizationType = value(body, "organization_type") || role;
+      const orgResult = await env.DB.prepare(`
+        INSERT INTO organizations(owner_user_id, name, organization_type)
+        VALUES(?, ?, ?)
+      `)
+        .bind(userId, organizationName, organizationType)
+        .run();
+      const organizationId = orgResult.meta?.last_row_id;
+      organization = {
+        id: organizationId,
+        name: organizationName,
+        organization_type: organizationType
+      };
+
+      await env.DB.prepare(`
+        INSERT INTO sites(organization_id, user_id, name, city, address)
+        VALUES(?, ?, ?, ?, ?)
+      `)
+        .bind(
+          organizationId,
+          userId,
+          value(body, "site_name") || "Sediu principal",
+          value(body, "city"),
+          value(body, "address")
+        )
+        .run();
+    }
+
     const session = await createSession(env, userId);
     return jsonResponse(
       {
         success: true,
         token: session.token,
         expires_at: session.expires_at,
-        user: { id: userId, email, name, role, account_type: accountType }
+        user: { id: userId, email, name, role, account_type: accountType, organization }
       },
       { headers: corsHeaders }
     );
@@ -423,7 +456,7 @@ async function saveHouse(request, env, corsHeaders) {
   `)
     .bind(
       user.id,
-      value(body, "house_type") || value(body, "business_type") || value(body, "institution_type"),
+      value(body, "house_type") || value(body, "business_type") || value(body, "industry_type") || value(body, "institution_type"),
       numberValue(body, "surface") || numberValue(body, "building_area"),
       numberValue(body, "rooms"),
       numberValue(body, "year") || numberValue(body, "building_year"),
@@ -445,7 +478,7 @@ async function saveHouse(request, env, corsHeaders) {
     .bind(
       siteId,
       houseId,
-      value(body, "house_type") || value(body, "business_type") || value(body, "institution_type"),
+      value(body, "house_type") || value(body, "business_type") || value(body, "industry_type") || value(body, "institution_type"),
       numberValue(body, "surface") || numberValue(body, "building_area"),
       numberValue(body, "year") || numberValue(body, "building_year"),
       value(body, "heating"),

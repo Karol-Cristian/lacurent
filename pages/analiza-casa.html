@@ -2,115 +2,47 @@
 <html lang="ro">
 
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-name="viewport"
-content="width=device-width,initial-scale=1">
-
-<title>
-LA CURENT | Analiza Casei
-</title>
-
-<link
-rel="icon"
-type="image/png"
-href="../images/favicon.png?v=2">
-
-<link
-rel="stylesheet"
-href="../css/style.css">
-
-<link
-href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-rel="stylesheet">
-
-<script
-src="../js/auth.js"
-defer>
-</script>
-
-<script
-src="../js/analiza-casa.js"
-defer>
-</script>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LA CURENT | Analiză</title>
+<link rel="icon" type="image/png" href="../images/favicon.png?v=2">
+<link rel="stylesheet" href="../css/style.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="../js/auth.js" defer></script>
+<script src="../js/segment-context.js" defer></script>
+<script src="../js/analiza-casa.js" defer></script>
 </head>
 
 <body>
-
-<button
-id="menuBtn"
-class="menu-btn">
-
-☰
-
-</button>
-
-
+<button id="menuBtn" class="menu-btn">&#9776;</button>
 <div id="sidebar"></div>
 
-
 <div class="app-content">
-
 <header>
-
 <div class="hero-top">
-
 <div>
-
-<div class="small-label">
-
-LA CURENT
-
+<div class="small-label">LA CURENT</div>
+<h1 data-segment-key="analysisTitle">Analiza energetică a locuinței</h1>
+<p data-segment-key="analysisSubtitle">Completează informațiile pentru estimări și recomandări personalizate.</p>
 </div>
-
-<h1>
-
-Analiza energetică a locuinței
-
-</h1>
-
-<p>
-
-Completează informațiile pentru estimări și recomandări personalizate.
-
-</p>
-
-</div>
-
 <div class="system-state">
-
 <span class="green-dot"></span>
-
 Activ
-
 </div>
-
 </div>
-
 </header>
 
-
-
 <main class="dashboard">
-
 <section class="analysis-page">
-
 <div id="authRequired" class="auth-panel analysis-auth-required standard-auth-card" hidden>
-
 <div class="small-label">CONT NECESAR</div>
-
-<h2>Autentifică-te pentru a genera analiza</h2>
-
-<p>Analiza casei se salvează în profilul tău, ca să o poți consulta și actualiza ulterior.</p>
-
+<h2 data-segment-key="authAnalysisTitle">Autentifică-te pentru a genera analiza</h2>
+<p data-segment-key="authAnalysisText">Analiza se salvează în profilul tău, ca să o poți consulta și actualiza ulterior.</p>
 <a class="primary-btn" href="profil.html">Mergi la Profil</a>
 
 <div class="auth-tabs">
-<button type="button" class="auth-tab active" data-auth-tab="login">Sign in</button>
-<button type="button" class="auth-tab" data-auth-tab="register">Sign up</button>
+<button type="button" class="auth-tab active" data-auth-tab="login">Autentificare</button>
+<button type="button" class="auth-tab" data-auth-tab="register">Cont nou</button>
 </div>
 
 <form id="analysisLoginForm" class="auth-form active">
@@ -118,19 +50,26 @@ Activ
 <input name="email" type="email" autocomplete="email" required>
 <label>Parolă</label>
 <input name="password" type="password" autocomplete="current-password" required>
-<button class="primary-btn" type="submit">Sign in</button>
+<button class="primary-btn" type="submit">Autentificare</button>
 <a href="#" id="analysisForgotLink">Am uitat parola</a>
 <p class="form-message" id="analysisLoginMessage"></p>
 </form>
 
 <form id="analysisRegisterForm" class="auth-form">
-<label>Nume</label>
+<label>Nume contact</label>
 <input name="name" autocomplete="name" required>
 <label>Email</label>
 <input name="email" type="email" autocomplete="email" required>
+<label>Tip cont</label>
+<select name="role" required>
+<option value="residential">Locuințe</option>
+<option value="business">Afaceri</option>
+<option value="industry">Industrie</option>
+<option value="institution">Instituții</option>
+</select>
 <label>Parolă</label>
 <input name="password" type="password" autocomplete="new-password" minlength="8" required>
-<button class="primary-btn" type="submit">Sign up</button>
+<button class="primary-btn" type="submit">Creează cont</button>
 <p class="form-message" id="analysisRegisterMessage"></p>
 </form>
 
@@ -141,810 +80,454 @@ Activ
 <p class="form-message" id="analysisForgotMessage"></p>
 <p class="form-message" id="analysisResetLinkMessage"></p>
 </form>
-
 </div>
-
 
 <div class="progress-wrap">
-
 <div class="progress">
-
 <div id="progressBar"></div>
-
 </div>
-
-<span id="stepText">
-
-Pas 1 / 7
-
-</span>
-
+<span id="stepText">Pas 1 / 7</span>
 </div>
-
-
 
 <form id="houseForm" hidden>
-
-
-
-<!-- PAS 1 -->
-
 <div class="step active">
-
 <h2>Date utilizator și profil consum</h2>
-
-<p class="section-description">
-
-Date generale privind ocuparea și utilizarea locuinței.
-
-</p>
-
+<p class="section-description">Alegem segmentul corect, apoi formularul se adaptează.</p>
 <div class="form-grid">
-
 <div>
-
 <label>Tip utilizator</label>
-
 <select name="user_type" id="userType" required>
-
-<option value="residential">Residential</option>
-<option value="business">Business</option>
-<option value="institution">Institution</option>
-
+<option value="residential">Locuințe</option>
+<option value="business">Afaceri</option>
+<option value="industry">Industrie</option>
+<option value="institution">Instituții</option>
 </select>
-
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Tip consumator</label>
-
-<select name="consumer_type" required>
-
+<select name="consumer_type">
 <option>Casnic</option>
 <option>Necasnic</option>
-
 </select>
-
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Număr persoane</label>
-
-<input
-name="people_count"
-type="number"
-required>
-
+<input name="people_count" type="number">
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Copii în locuință</label>
-
 <input name="children_count" type="number">
-
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Persoane peste 65 ani</label>
-
 <input name="senior_count" type="number">
-
 </div>
-
 <div>
-
 <label>Lucru de acasă</label>
-
 <select name="work_from_home">
-
 <option>Nu</option>
 <option>Parțial</option>
 <option>Zilnic</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Zile lucru acasă / săptămână</label>
-
 <input name="work_from_home_days" type="number">
-
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Locuința este ocupată</label>
-
 <select name="occupancy_pattern">
-
 <option>Dimineața + seara</option>
 <option>Permanent</option>
 <option>Variabil</option>
-
 </select>
-
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Plecați frecvent?</label>
-
 <select name="frequent_travel">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
 </div>
-
 </div>
-
 </div>
-
-
-
-<!-- PAS 2 -->
 
 <div class="step">
-
-<h2>Caracteristici locuință</h2>
-
+<h2>Caracteristici spațiu analizat</h2>
 <div class="form-grid">
-
-<div>
-
+<div class="residential-flow">
 <label>Tip locuință</label>
-
 <select name="house_type">
-
 <option>Casă</option>
 <option>Apartament</option>
 <option>Duplex</option>
 <option>Vilă</option>
-
 </select>
-
 </div>
-
-<div>
-
 <div class="apartment-only">
-
 <label>Etaj apartament</label>
-
 <input name="apartment_floor">
-
 </div>
-
 <div class="apartment-only">
-
 <label>An construcție bloc</label>
-
 <input name="building_year">
-
 </div>
-
 <div class="apartment-only">
-
 <label>Reabilitare termică</label>
-
 <select name="rehabilitation_status">
-
 <option>Reabilitat</option>
 <option>Nereabilitat</option>
 <option>Parțial</option>
 <option>Nu știu</option>
-
 </select>
-
 </div>
-
 <div class="apartment-only">
-
 <label>Orientare</label>
-
 <select name="orientation">
-
 <option>Nord</option>
 <option>Sud</option>
 <option>Est</option>
 <option>Vest</option>
 <option>Mixt</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Oraș</label>
-
 <input name="city">
-
 </div>
-
 <div>
-
-<label>Suprafață utilă (m²)</label>
-
+<label>Suprafață utilă / clădire (m²)</label>
 <input name="surface">
-
 </div>
-
 <div>
-
 <label>Suprafață construită (m²)</label>
-
 <input name="built_surface">
-
 </div>
-
 <div>
-
 <label>An construcție</label>
-
 <input name="year">
-
 </div>
-
-<div>
-
+<div class="house-only">
 <label>Număr etaje</label>
-
 <input name="floors">
-
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Număr camere</label>
-
 <input name="rooms">
-
 </div>
-
-<div>
-
+<div class="residential-flow">
 <label>Număr băi</label>
-
 <input name="bathrooms">
-
 </div>
-
-<div>
-
+<div class="house-only">
 <label>Înălțime camere</label>
-
 <input name="ceiling_height">
-
 </div>
-
-<div>
-
+<div class="house-only">
 <label>Subsol</label>
-
 <select name="basement">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
 </div>
-
-<div>
-
+<div class="house-only">
 <label>Pod</label>
-
 <select name="attic">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
 </div>
-
-<div>
-
+<div class="house-only">
 <label>Mansardă</label>
-
 <select name="mansard">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
 </div>
-
-<div>
-
+<div class="house-only">
 <label>Garaj</label>
-
 <select name="garage">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
+</div>
+</div>
 </div>
 
+<div class="step business-flow">
+<h2>Profil afacere</h2>
+<div class="form-grid">
+<div>
+<label>Tip afacere</label>
+<select name="business_type">
+<option>Birou</option>
+<option>Retail</option>
+<option>Hotel</option>
+<option>Restaurant</option>
+<option>Depozit</option>
+</select>
+</div>
+<div>
+<label>Număr angajați</label>
+<input name="employees" type="number">
+</div>
+<div>
+<label>Program de lucru</label>
+<input name="working_hours">
+</div>
+<div>
+<label>Suprafață clădire</label>
+<input name="building_area">
+</div>
+<div>
+<label>Consumatori principali</label>
+<input name="energy_consumers">
+</div>
+<div>
+<label>Număr locații</label>
+<input name="sites" type="number">
+</div>
+</div>
 </div>
 
+<div class="step industry-flow">
+<h2>Profil industrie</h2>
+<div class="form-grid">
+<div>
+<label>Tip facilitate</label>
+<select name="industry_type">
+<option>Fabrică</option>
+<option>Producție alimentară</option>
+<option>Prelucrare materiale</option>
+<option>Logistică industrială</option>
+<option>Alt tip</option>
+</select>
+</div>
+<div>
+<label>Număr linii de producție</label>
+<input name="production_lines" type="number">
+</div>
+<div>
+<label>Program operațional</label>
+<input name="operating_hours">
+</div>
+<div>
+<label>Consumatori majori</label>
+<input name="major_consumers">
+</div>
+<div>
+<label>Sarcină de vârf estimată (kW)</label>
+<input name="peak_load_kw" type="number">
+</div>
+<div>
+<label>Planuri de eficientizare</label>
+<input name="efficiency_plan">
+</div>
+</div>
 </div>
 
-
-
-<!-- PAS 3 -->
+<div class="step institution-flow">
+<h2>Profil instituție</h2>
+<div class="form-grid">
+<div>
+<label>Tip instituție</label>
+<select name="institution_type">
+<option>Primărie</option>
+<option>Școală</option>
+<option>Spital</option>
+<option>Universitate</option>
+<option>Clădire publică</option>
+</select>
+</div>
+<div>
+<label>Număr clădiri</label>
+<input name="building_count" type="number">
+</div>
+<div>
+<label>Buget anual energie</label>
+<input name="annual_energy_budget">
+</div>
+<div>
+<label>Sisteme de încălzire</label>
+<input name="heating_systems">
+</div>
+<div>
+<label>Planuri renovare</label>
+<input name="renovation_plans">
+</div>
+</div>
+</div>
 
 <div class="step">
-
 <h2>Anvelopă și izolație</h2>
-
 <div class="form-grid">
-
 <div>
-
 <label>Pereți</label>
-
 <select name="wall_material">
-
 <option>BCA</option>
 <option>Cărămidă</option>
 <option>Lemn</option>
 <option>Mixt</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Grosime pereți</label>
-
 <input name="wall_thickness">
-
 </div>
-
 <div>
-
 <label>Izolație pereți</label>
-
 <select name="wall_insulation">
-
 <option>Fără</option>
 <option>5cm</option>
 <option>10cm</option>
 <option>15cm</option>
 <option>20cm+</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Ferestre</label>
-
 <select name="windows">
-
 <option>Vechi</option>
 <option>Termopan</option>
 <option>Tripan</option>
-
 </select>
-
 </div>
-
 </div>
-
 </div>
-
-
-
-<!-- PAS 4 -->
 
 <div class="step">
-
 <h2>Încălzire și apă caldă</h2>
-
 <div class="form-grid">
-
 <div>
-
 <label>Sursă principală</label>
-
 <select name="heating">
-
 <option>Lemne</option>
 <option>Gaz</option>
 <option>Electric</option>
 <option>Pompă căldură</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Temperatură zi</label>
-
 <input name="temperature_day">
-
 </div>
-
 <div>
-
 <label>Temperatură noapte</label>
-
 <input name="temperature_night">
-
 </div>
-
 <div>
-
 <label>Termostat inteligent</label>
-
 <select name="smart_thermostat">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
 </div>
-
 </div>
-
 </div>
-
-
-
-<!-- PAS 5 -->
 
 <div class="step">
-
 <h2>Consum și facturi</h2>
-
 <div class="form-grid">
-
 <div>
-
 <label>Furnizor actual</label>
-
 <input name="provider">
-
 </div>
-
 <div>
-
 <label>Cost lunar</label>
-
 <input name="monthly_bill">
-
 </div>
-
 <div>
-
 <label>Consum mediu</label>
-
 <input name="monthly_kwh">
-
 </div>
-
 <div>
-
 <label>Încarcă PDF</label>
-
 <input name="invoice_pdf" type="file">
-
+</div>
+</div>
 </div>
 
-</div>
-
-</div>
-
-
-
-<!-- PAS 6 -->
-
-<div class="step">
-
+<div class="step residential-flow">
 <h2>Electrocasnice</h2>
-
 <div class="form-grid">
-
 <div>
-
 <label>Frigider clasă</label>
-
 <select name="fridge_class">
-
 <option>A</option>
 <option>B</option>
 <option>C</option>
 <option>D</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Mașină spălat</label>
-
 <select name="washer_class">
-
 <option>A</option>
 <option>B</option>
 <option>C</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Uscător</label>
-
 <select name="dryer">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
 </div>
-
 </div>
-
 </div>
-
-
-
-<!-- PAS 7 -->
 
 <div class="step">
-
 <h2>Energie verde și mobilitate</h2>
-
 <div class="form-grid">
-
 <div>
-
 <label>Panouri fotovoltaice</label>
-
 <select name="solar_panels">
-
 <option>Da</option>
 <option>Nu</option>
-
 </select>
-
 </div>
-
 <div>
-
 <label>Putere instalată</label>
-
 <input name="installed_power">
-
 </div>
-
 <div>
-
 <label>Mașină electrică</label>
-
 <select name="electric_car">
-
 <option>Da</option>
 <option>Nu</option>
-
-</select>
-
-</div>
-
-</div>
-
-</div>
-
-
-
-<div class="step business-flow">
-
-<h2>Profil business</h2>
-
-<div class="form-grid">
-
-<div>
-<label>Tip business</label>
-<select name="business_type">
-<option>Office</option>
-<option>Retail</option>
-<option>Hotel</option>
-<option>Restaurant</option>
-<option>Warehouse</option>
 </select>
 </div>
-
-<div>
-<label>Număr angajați</label>
-<input name="employees" type="number">
 </div>
-
-<div>
-<label>Program de lucru</label>
-<input name="working_hours">
-</div>
-
-<div>
-<label>Suprafață clădire</label>
-<input name="building_area">
-</div>
-
-<div>
-<label>Consumatori principali</label>
-<input name="energy_consumers">
-</div>
-
-<div>
-<label>Număr locații</label>
-<input name="sites" type="number">
-</div>
-
-</div>
-
-</div>
-
-<div class="step institution-flow">
-
-<h2>Profil instituție</h2>
-
-<div class="form-grid">
-
-<div>
-<label>Tip instituție</label>
-<select name="institution_type">
-<option>Municipality</option>
-<option>School</option>
-<option>Hospital</option>
-<option>University</option>
-<option>Public building</option>
-</select>
-</div>
-
-<div>
-<label>Număr clădiri</label>
-<input name="building_count" type="number">
-</div>
-
-<div>
-<label>Buget anual energie</label>
-<input name="annual_energy_budget">
-</div>
-
-<div>
-<label>Sisteme de încălzire</label>
-<input name="heating_systems">
-</div>
-
-<div>
-<label>Planuri renovare</label>
-<input name="renovation_plans">
-</div>
-
-</div>
-
 </div>
 
 <div class="wizard-footer">
-
 <div class="wizard-buttons">
-
-<button
-type="button"
-id="prevBtn"
-class="secondary-btn">
-
-← Înapoi
-
-</button>
-
-
-<button
-type="button"
-id="nextBtn"
-class="primary-btn">
-
-Continuă →
-
-</button>
-
-
-<button
-type="submit"
-id="finishBtn"
-class="primary-btn"
-style="display:none">
-
-Generează analiza
-
-</button>
-
+<button type="button" id="prevBtn" class="secondary-btn">Înapoi</button>
+<button type="button" id="nextBtn" class="primary-btn">Continuă</button>
+<button type="submit" id="finishBtn" class="primary-btn" style="display:none">Generează analiza</button>
 </div>
-
 </div>
-
-
 </form>
-
 </section>
-
 </main>
 
-
-
 <footer>
-
-<small>
-
-LA CURENT · Analiză energetică
-
-</small>
-
+<small>LA CURENT · Analiză energetică</small>
 </footer>
-
 </div>
 
-
-
 <script>
-
 fetch('../components/sidebar.html')
-
 .then(r=>r.text())
-
 .then(x=>{
-
-document
-.getElementById(
-"sidebar"
-)
-.innerHTML=x
-
-const btn=
-document.getElementById(
-"menuBtn"
-);
-
+document.getElementById("sidebar").innerHTML=x;
+window.LaCurentSegments?.apply();
+const btn=document.getElementById("menuBtn");
 if(btn){
-
-btn.onclick=()=>{
-
-document
-.querySelector(
-".sidebar"
-)
-.classList.toggle(
-"open"
-)
-
+btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
 }
-
-}
-
-})
-
+});
 </script>
-
 </body>
 </html>
