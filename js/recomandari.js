@@ -1,27 +1,14 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const empty = document.getElementById("recommendationsEmpty");
   const content = document.getElementById("recommendationsContent");
-  const list = document.getElementById("recommendationsList");
+
+  function text(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
 
   function money(value) {
     return value ? `${Math.round(value).toLocaleString("ro-RO")} lei` : "--";
-  }
-
-  function label(value) {
-    return {
-      low: "scazut",
-      medium: "mediu",
-      high: "ridicat",
-      very_high: "foarte ridicat",
-      urgent: "urgent"
-    }[value] || value || "--";
-  }
-
-  function payback(item) {
-    if (!item.paybackYearsMin) return "Se estimeaza dupa costul real";
-    const minMonths = Math.round(item.paybackYearsMin * 12);
-    const maxMonths = Math.round(item.paybackYearsMax * 12);
-    return `${minMonths}-${maxMonths} luni`;
   }
 
   function carrierLabel(value) {
@@ -43,11 +30,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderBillingAnalysis(analysis = {}) {
     const months = analysis.monthly || [];
     const maxCost = Math.max(...months.map(row => Number(row.normalized_cost_ron) || 0), 1);
-    document.getElementById("billMonthsCount").textContent = analysis.months_count ? `${analysis.months_count}/12` : "0/12";
-    document.getElementById("billNormalizedAverage").textContent = money(analysis.normalized_monthly_average_ron);
-    document.getElementById("billScoreImpact").textContent =
-      analysis.score_delta ? `${analysis.score_delta > 0 ? "+" : ""}${analysis.score_delta} pct` : "0 pct";
-    document.getElementById("billDominantCarrier").textContent = carrierLabel(analysis.dominant_carrier);
+
+    text("billMonthsSummary", analysis.months_count ? `${analysis.months_count}/12` : "0/12");
+    text("billNormalizedSummary", money(analysis.normalized_monthly_average_ron));
+    text("billScoreSummary", analysis.score_delta ? `${analysis.score_delta > 0 ? "+" : ""}${analysis.score_delta} pct` : "0 pct");
+    text("billMonthsCount", analysis.months_count ? `${analysis.months_count}/12` : "0/12");
+    text("billNormalizedAverage", money(analysis.normalized_monthly_average_ron));
+    text("billScoreImpact", analysis.score_delta ? `${analysis.score_delta > 0 ? "+" : ""}${analysis.score_delta} pct` : "0 pct");
+    text("billDominantCarrier", carrierLabel(analysis.dominant_carrier));
 
     const chart = document.getElementById("billingCurveChart");
     chart.innerHTML = months.length
@@ -78,15 +68,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       : "";
   }
 
-  async function toggleRecommendation(houseId, recommendationId, implemented) {
-    await window.LaCurentAuth.api("/api/recommendation-action", {
-      house_id: houseId,
-      recommendation_id: recommendationId,
-      status: implemented ? "planned" : "implemented"
-    });
-    location.reload();
-  }
-
   try {
     const activeHouseId = window.LaCurentHomes?.activeHouseId?.();
     const result = await window.LaCurentAuth.api("/api/recommendations", { house_id: activeHouseId });
@@ -95,46 +76,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const profile = result.profile;
-    const implementedIds = result.implemented_recommendations || [];
     content.hidden = false;
-    document.getElementById("potentialSavings").textContent =
-      profile.assessment.estimatedAnnualSavingsMinRon
-        ? `${money(profile.assessment.estimatedAnnualSavingsMinRon)} - ${money(profile.assessment.estimatedAnnualSavingsMaxRon)}/an`
-        : "--";
-    document.getElementById("priorityCount").textContent = Math.min(profile.recommendations.length, 3);
-    document.getElementById("implementedCount").textContent = implementedIds.length;
     renderBillingAnalysis(result.bill_analysis || {});
-
-    list.innerHTML = "";
-    profile.recommendations.slice(0, 6).forEach((item, index) => {
-      const implemented = implementedIds.includes(item.id);
-      const article = document.createElement("article");
-      article.className = `recommendation-detail-card ${index === 0 ? "high" : ""}`;
-      article.innerHTML = `
-        <div class="recommendation-rank">#${index + 1}</div>
-        <div>
-          <h3>${item.title}</h3>
-          <p>${item.userFacingExplanation}</p>
-          <div class="recommendation-metrics">
-            <span>Economie: <strong>${money(item.estimatedSavingsRonYearMin)} - ${money(item.estimatedSavingsRonYearMax)}/an</strong></span>
-            <span>Recuperare: <strong>${payback(item)}</strong></span>
-            <span>Prioritate: <strong>${label(item.priority)}</strong></span>
-            <button class="${implemented ? "secondary-btn danger-soft" : "secondary-btn"}" type="button" data-recommendation-id="${item.id}" data-implemented="${implemented ? "true" : "false"}">${implemented ? "Anuleaza implementarea" : "Marcheaza implementata"}</button>
-          </div>
-        </div>
-      `;
-      list.append(article);
-    });
-
-    list.querySelectorAll("[data-recommendation-id]").forEach(button => {
-      button.addEventListener("click", () => {
-        const implemented = button.dataset.implemented === "true";
-        button.disabled = true;
-        button.textContent = implemented ? "Se anuleaza..." : "Se salveaza...";
-        toggleRecommendation(result.house_id, button.dataset.recommendationId, implemented);
-      });
-    });
   } catch {
     empty.hidden = false;
   }

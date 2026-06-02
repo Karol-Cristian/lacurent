@@ -1,0 +1,121 @@
+import type { HeatingSystem } from "../model/Systems";
+
+export const HEATING_SYSTEM_PRESETS: Record<string, HeatingSystem> = {
+  wood_stove: {
+    id: "wood_stove",
+    fuel: "wood",
+    generatorType: "wood_stove",
+    distributionType: "local",
+    controlType: "manual",
+    emissionEfficiencyId: "local_stove",
+    distributionEfficiencyId: "local",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "wood_stove",
+    controlEfficiencyId: "manual",
+    auxiliaryEnergyPresetId: "local_stove"
+  },
+  gas_boiler_non_condensing: {
+    id: "gas_boiler_non_condensing",
+    fuel: "natural_gas",
+    generatorType: "gas_boiler_non_condensing",
+    distributionType: "radiators",
+    controlType: "room_thermostat",
+    emissionEfficiencyId: "radiators",
+    distributionEfficiencyId: "radiators_uninsulated",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "gas_boiler_non_condensing",
+    controlEfficiencyId: "room_thermostat",
+    auxiliaryEnergyPresetId: "boiler_pumps_basic"
+  },
+  gas_boiler_condensing: {
+    id: "gas_boiler_condensing",
+    fuel: "natural_gas",
+    generatorType: "gas_boiler_condensing",
+    distributionType: "radiators",
+    controlType: "room_thermostat",
+    emissionEfficiencyId: "radiators",
+    distributionEfficiencyId: "radiators_insulated",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "gas_boiler_condensing",
+    controlEfficiencyId: "room_thermostat",
+    auxiliaryEnergyPresetId: "boiler_pumps_basic"
+  },
+  pellet_boiler: {
+    id: "pellet_boiler",
+    fuel: "pellets",
+    generatorType: "pellet_boiler",
+    distributionType: "radiators",
+    controlType: "room_thermostat",
+    emissionEfficiencyId: "radiators",
+    distributionEfficiencyId: "radiators_insulated",
+    storageEfficiencyId: "buffer_small",
+    generationEfficiencyId: "pellet_boiler",
+    controlEfficiencyId: "room_thermostat",
+    auxiliaryEnergyPresetId: "pellet_boiler_aux"
+  },
+  electric_direct: {
+    id: "electric_direct",
+    fuel: "electricity",
+    generatorType: "electric_radiator",
+    distributionType: "local",
+    controlType: "manual",
+    emissionEfficiencyId: "local_stove",
+    distributionEfficiencyId: "local",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "electric_direct",
+    controlEfficiencyId: "manual",
+    auxiliaryEnergyPresetId: "none"
+  },
+  air_water_heat_pump_radiators: {
+    id: "air_water_heat_pump_radiators",
+    fuel: "heat_pump",
+    generatorType: "air_to_water_heat_pump",
+    distributionType: "radiators",
+    controlType: "room_thermostat",
+    emissionEfficiencyId: "radiators",
+    distributionEfficiencyId: "radiators_insulated",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "air_water_heat_pump_radiators",
+    controlEfficiencyId: "room_thermostat",
+    auxiliaryEnergyPresetId: "heat_pump_aux"
+  },
+  air_water_heat_pump_underfloor: {
+    id: "air_water_heat_pump_underfloor",
+    fuel: "heat_pump",
+    generatorType: "air_to_water_heat_pump",
+    distributionType: "underfloor",
+    controlType: "zoned_control",
+    emissionEfficiencyId: "underfloor",
+    distributionEfficiencyId: "underfloor",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "air_water_heat_pump_underfloor",
+    controlEfficiencyId: "zoned_control",
+    auxiliaryEnergyPresetId: "heat_pump_aux"
+  },
+  air_air_heat_pump: {
+    id: "air_air_heat_pump",
+    fuel: "heat_pump",
+    generatorType: "air_to_air_heat_pump",
+    distributionType: "air",
+    controlType: "room_thermostat",
+    emissionEfficiencyId: "air",
+    distributionEfficiencyId: "local",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "air_air_heat_pump",
+    controlEfficiencyId: "room_thermostat",
+    auxiliaryEnergyPresetId: "split_ac_aux"
+  },
+  district_heating: {
+    id: "district_heating",
+    fuel: "district_heating",
+    generatorType: "district_heating",
+    distributionType: "radiators",
+    controlType: "thermostatic_valves",
+    emissionEfficiencyId: "radiators",
+    distributionEfficiencyId: "district_heating",
+    storageEfficiencyId: "none",
+    generationEfficiencyId: "district_heating",
+    controlEfficiencyId: "thermostatic_valves",
+    auxiliaryEnergyPresetId: "boiler_pumps_basic"
+  }
+};

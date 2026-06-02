@@ -31,7 +31,9 @@ Fluxul rezidential este conditional:
 * consumul real se cere in bani, pe baza ultimelor facturi, nu in cantitati tehnice;
 * costurile de gaz, lemn si peleti se blocheaza cand combustibilul nu este folosit.
 
-Scorul din raport este un indice LaCurent live. Poate evolua cand utilizatorul implementeaza recomandari si cand grupurile de benchmark cresc.
+Scorul din raport este un instantaneu al ultimei analize finalizate.
+
+Evolutia scorului, recalcularea pe baza facturilor, benchmark-ul live si impactul deciziilor implementate apar in sectiunea Algoritmi.
 
 ---
 
@@ -71,6 +73,7 @@ Cod productiv:
 * `workers/save-house.js`
 * `pages/analiza-casa.html`
 * `pages/raport-energie.html`
+* `pages/algoritmi.html`
 * `js/energy-report.js`
 
 Structură TypeScript de referință:
@@ -121,6 +124,129 @@ Pași:
 # Raport
 
 Ordinea raportului:
+
+---
+
+# LaCurent Physics Engine
+
+Motorul fizic v0.1 este separat de scoring-ul heuristic si locuieste in:
+
+`src/features/energy/physics`
+
+Flux conceptual:
+
+```text
+Building
+-> Climate
+-> Thermal Zones
+-> Envelope
+-> Materials
+-> R / U / U'
+-> Heat Transfer
+-> Ventilation
+-> Gains
+-> Heating / Cooling / DHW Demand
+-> Systems
+-> Final Energy
+-> Primary Energy
+-> CO2
+-> Report / Algorithms
+```
+
+Scope v0.1:
+
+* casa ca o singura zona termica incalzita;
+* pod ca zona neincalzita simplificata;
+* pereti, acoperis/planseu pod, pardoseala, ferestre, usi;
+* materiale stratificate;
+* R = d / lambda;
+* U = 1 / R_total;
+* H = U x A;
+* pierderi prin transmisie si ventilatie;
+* necesar incalzire estimativ;
+* energie finala, energie primara si CO2.
+
+Fiecare rezultat fizic trebuie sa pastreze:
+
+* value;
+* unit;
+* source;
+* confidence;
+* assumptions.
+
+Raportul foloseste rezultatul fizic ca snapshot static. Algoritmi foloseste acelasi rezultat ca baza pentru oportunitati dinamice, scenarii si benchmark.
+
+## Physics Engine v0.2 - Envelope First
+
+V0.2 apropie stratul fizic de structura unui audit energetic, fara sa implementeze certificat oficial.
+
+Focus:
+
+* Building cu arii, volum, zona climatica si conventie de masurare;
+* ThermalZone pregatit pentru one-zone si multi-zone;
+* UnconditionedZone pentru pod, subsol, garaj, casa scarii, veranda;
+* EnvelopeElement intre zona incalzita si exterior/sol/zona neincalzita;
+* MaterialLayer simplu: material + grosime;
+* MaterialPreset cu lambda, sursa si confidence;
+* R_layer, R_total, U, U_corrected;
+* punti termice prin H_tb = suma(psi x length);
+* corectie zona neincalzita prin b_ztu;
+* H_tr pe element si categorie;
+* H_ve din airflow sau ACH;
+* Q_H anual simplificat.
+
+Testele unitare ruleaza cu:
+
+```powershell
+npm.cmd run test:physics
+```
+
+Smoke-ul standard ruleaza si testele physics:
+
+```powershell
+npm.cmd run smoke
+```
+
+## Physics Engine v0.3 - Energy Demand
+
+V0.3 transforma pierderile calculate in v0.2 in necesar energetic al cladirii.
+
+Separare importanta:
+
+* Energy Demand = energia necesara spatiului pentru confort termic;
+* Final Energy = energia consumata de sistem ca sa livreze acel necesar.
+
+V0.3 implementeaza doar Energy Demand.
+
+Capitole:
+
+* clima lunara;
+* aporturi interne;
+* aporturi solare prin ferestre;
+* pierderi lunare prin transmisie si ventilatie;
+* factor simplificat de utilizare a aporturilor;
+* balanta termica lunara;
+* necesar lunar/anual de incalzire;
+* necesar estimativ de racire;
+* diagnostice pentru breakdown si pattern lunar.
+
+Formula principala pentru pierderi lunare:
+
+```text
+Qloss_month = H * (Tin - Tout_avg) * hoursInMonth / 1000
+```
+
+Formula de balanta:
+
+```text
+heatingDemand = max(0, grossHeatLoss - utilizationFactor * totalGains)
+```
+
+Testele v0.3 ruleaza impreuna cu testele physics:
+
+```powershell
+npm.cmd run test:physics
+```
 
 1. Scor energetic estimat
 2. Concluzie principală

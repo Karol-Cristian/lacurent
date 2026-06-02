@@ -288,6 +288,53 @@ Fluxul devine:
 
 1. Selectează locuința activă.
 2. Vezi raportul.
+
+---
+
+# Separare Raport vs Algoritmi
+
+LaCurent foloseste doua experiente distincte dupa onboarding:
+
+## Raport
+
+Raportul este fotografia statica a locuintei la momentul generarii.
+
+Raspunde la intrebarea:
+
+* Care este starea energetica actuala a locuintei mele?
+
+Raportul trebuie sa arate ca un document simplificat de audit energetic:
+
+* data de generare;
+* scor energetic estimat;
+* clasa estimata;
+* stare locuinta;
+* performanta energetica;
+* maximum 3 probleme;
+* maximum 3 recomandari generale;
+* detalii tehnice ascunse implicit;
+* disclaimer ca nu este certificat oficial.
+
+Raportul nu include oferte, preturi live, marketplace sau feed dinamic.
+
+## Algoritmi
+
+Algoritmi este motorul live de decizie.
+
+Raspunde la intrebarea:
+
+* Ce ar trebui sa fac acum si cat m-ar costa?
+
+Algoritmi poate folosi:
+
+* raportul energetic;
+* facturi;
+* benchmark cu locuinte similare;
+* preturi estimate materiale/manopera;
+* oferte aprobate;
+* date agregate LaCurent.
+
+Recomandarile dinamice trebuie sa afiseze impactul asupra scorului, economia estimata, costul estimativ, recuperarea investitiei, increderea si sursele de calcul.
 3. Marchează deciziile implementate.
 4. Scorul activ se actualizează pe baza deciziilor și a benchmark-ului.
 5. Adaugă o locuință nouă doar dacă este o proprietate diferită.

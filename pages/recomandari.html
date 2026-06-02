@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LA CURENT | Recomandari</title>
+<title>LA CURENT | Facturi</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -22,11 +22,11 @@
 <header>
 <div class="hero-top">
 <div>
-<div class="small-label">PLAN DE ECONOMISIRE</div>
-<h1>Recomandari</h1>
-<p id="recommendationsIntro">Prioritizeaza investitiile pentru locuinta activa.</p>
+<div class="small-label">FACTURI SI CONSUM REAL</div>
+<h1>Facturi</h1>
+<p>Adauga si urmareste costurile lunare ca algoritmii sa poata calibra estimarile.</p>
 </div>
-<div class="system-state"><span class="green-dot"></span><span id="recommendationsState">Sincronizat cu raportul</span></div>
+<div class="system-state"><span class="green-dot"></span><span id="billingState">Date de consum</span></div>
 </div>
 </header>
 
@@ -34,16 +34,16 @@
 <section id="recommendationsEmpty" class="dashboard-band" hidden>
 <div class="section-heading">
 <span class="small-label">FARA LOCUINTA ACTIVA</span>
-<h2>Completeaza sau selecteaza o locuinta pentru recomandari relevante.</h2>
+<h2>Selecteaza sau adauga o locuinta pentru istoricul facturilor.</h2>
 </div>
-<a class="primary-btn" href="analiza-casa.html">Mergi la analiza locuintei</a>
+<a class="primary-btn" href="analiza-casa.html">Mergi la locuinta</a>
 </section>
 
 <section id="recommendationsContent" hidden>
 <section class="recommendation-summary">
-<article><span>Economii potentiale</span><strong id="potentialSavings">--</strong></article>
-<article><span>Recomandari prioritare</span><strong id="priorityCount">--</strong></article>
-<article><span>Decizii implementate</span><strong id="implementedCount">--</strong></article>
+<article><span>Luni introduse</span><strong id="billMonthsSummary">--</strong></article>
+<article><span>Cost normalizat/luna</span><strong id="billNormalizedSummary">--</strong></article>
+<article><span>Impact scor</span><strong id="billScoreSummary">--</strong></article>
 </section>
 
 <section class="dashboard-band">
@@ -62,14 +62,6 @@
 <div id="billingHistoryList" class="billing-history-list"></div>
 </section>
 
-<section class="dashboard-band">
-<div class="section-heading">
-<span class="small-label">ACTIUNI RECOMANDATE</span>
-<h2>Incepe cu masurile care au impact financiar clar.</h2>
-</div>
-<div id="recommendationsList" class="recommendation-list"></div>
-</section>
-
 <section class="dashboard-band auditor-marketplace-cta">
 <div class="section-heading">
 <span class="small-label">DISPOZITIV LACURENT</span>
@@ -77,7 +69,7 @@
 </div>
 <div class="hardware-teaser">
 <img src="../images/HW_Prototype.png" alt="Prototip dispozitiv LaCurent">
-<p>Pregatim un dispozitiv LaCurent care citeste consumul real al locuintei si ajuta raportul sa devina mai precis in timp. Estimarea ramane utila acum, iar datele reale pot clarifica unde merita investit.</p>
+<p>Pregatim un dispozitiv LaCurent care poate transforma consumul real in recomandari mai precise, fara introducere manuala luna de luna.</p>
 </div>
 </section>
 </section>

@@ -143,7 +143,6 @@ function applySegmentContext(segment = currentSegment()) {
 
   const analysisLink = document.querySelector("[data-sidebar-analysis]");
   if (analysisLink) {
-    analysisLink.textContent = config.analysisLabel;
     analysisLink.href = normalizeSegment(segment) === "auditor"
       ? "/pages/auditor-portal.html"
       : "/pages/analiza-casa.html";

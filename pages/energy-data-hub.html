@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LA CURENT | Date si Benchmark</title>
+<title>LA CURENT | Model tehnic energetic</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -23,113 +23,195 @@
 <div>
 <div class="small-label">DATE SI BENCHMARK</div>
 <h1>Model tehnic energetic</h1>
-<p>Zona pentru formule, preseturi si structuri tehnice folosite in estimarea LaCurent.</p>
+<p>Locul in care vezi cum transforma LaCurent datele unei locuinte in estimari energetice, clase si scenarii.</p>
 </div>
-<div class="system-state"><span class="green-dot"></span>Estimativ, configurabil</div>
+<div class="system-state"><span class="green-dot"></span>Physics Engine v0.8</div>
 </div>
 </header>
 
 <main class="dashboard energy-data-page">
+<section class="dashboard-band technical-model-hero">
+<div>
+<span class="small-label">CE ESTE PAGINA ASTA</span>
+<h2>O harta a motorului energetic LaCurent.</h2>
+<p>Pagina nu este un raport pentru proprietar. Este o explicatie tehnica simplificata: ce date folosim, ce formule aplicam, ce coeficienti sunt estimativi si ce rezultate ies din motor.</p>
+</div>
+<pre class="formula-block">Date locuinta
+-> Pierderi prin cladire
+-> Necesar de energie
+-> Consum final prin sisteme
+-> Energie primara si CO2
+-> Clasa estimata
+-> Scenarii de imbunatatire</pre>
+</section>
+
 <section class="dashboard-band">
 <div class="section-heading">
-<span class="small-label">MC001 BACKEND MODEL</span>
-<h2>Structura tehnica din spatele raportului simplu.</h2>
+<span class="small-label">PE SCURT</span>
+<h2>Cum citesti modelul</h2>
 </div>
-<p>UI-ul ramane orientat pe decizii, dar backend-ul trebuie sa poata reprezenta U-value, R-value, lambda, punti termice, ventilare, energie primara, emisii si praguri configurabile.</p>
-<div class="hero-buttons">
-<a class="primary-btn" href="../MC001_BACKEND_MODEL.md">Deschide documentul MC001</a>
-<a class="secondary-btn" href="admin.html">Vezi datele brute in Admin</a>
+<div class="technical-status-grid">
+<article class="done"><span>1</span><strong>Cladirea pierde energie</strong><p>Peretii, acoperisul, pardoseala, ferestrele si ventilatia determina cat de repede se pierde caldura.</p></article>
+<article class="done"><span>2</span><strong>Motorul calculeaza necesarul</strong><p>Necesarul util spune cata energie cere locuinta pentru confort, inainte sa ne uitam la centrala, soba sau pompa.</p></article>
+<article class="done"><span>3</span><strong>Sistemele transforma necesarul in consum</strong><p>Un sistem eficient consuma mai putin pentru acelasi confort. De aici apare energia finala.</p></article>
+<article class="done"><span>4</span><strong>Rezultatul devine decizie</strong><p>Energia finala devine energie primara, CO2, clasa estimata si scenarii de imbunatatire.</p></article>
 </div>
 </section>
 
-<section class="dashboard-summary-grid">
-<article class="metric-card">
-<span class="metric-label">Formula U-value</span>
-<strong>U = 1 / R</strong>
-<p>R total include rezistentele superficiale si straturile materialelor.</p>
-</article>
-<article class="metric-card">
-<span class="metric-label">Energie primara</span>
-<strong>Final x factor</strong>
-<p>Factorii sunt configurabili pe purtator de energie.</p>
-</article>
-<article class="metric-card">
-<span class="metric-label">Emisii CO2</span>
-<strong>kWh x kgCO2/kWh</strong>
-<p>Factorii sunt separati de componentele UI.</p>
-</article>
-<article class="metric-card">
-<span class="metric-label">Clase</span>
-<strong>Praguri tabelare</strong>
-<p>Clasele energetice si CO2 nu se hardcodeaza in UI.</p>
-</article>
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">FLUXUL COMPLET</span>
+<h2>De la formular la audit estimativ</h2>
+</div>
+<div class="technical-chapter-grid">
+<article class="technical-chapter-card"><span>input</span><h3>Date introduse</h3><p>Suprafata, volum, an, materiale, izolatie, ferestre, ventilatie, incalzire si regenerabile.</p><ul><li>formular locuinta</li><li>facturi ulterior</li><li>date tehnice optionale</li></ul></article>
+<article class="technical-chapter-card"><span>v0.2</span><h3>Anvelopa</h3><p>Calculeaza cat de bune sunt elementele cladirii si cat pierd prin transmisie.</p><ul><li>R</li><li>U / U'</li><li>Htr</li></ul></article>
+<article class="technical-chapter-card"><span>v0.3</span><h3>Necesar util</h3><p>Foloseste clima lunara, pierderile, aporturile solare si aporturile interne.</p><ul><li>Qloss</li><li>Qsolar</li><li>Qheat / Qcool</li></ul></article>
+<article class="technical-chapter-card"><span>v0.4</span><h3>Sisteme</h3><p>Transforma necesarul in energie finala pe combustibil si utilizare.</p><ul><li>incalzire</li><li>ACM</li><li>racire</li></ul></article>
+<article class="technical-chapter-card"><span>v0.5</span><h3>Primara + CO2</h3><p>Aplica factori pentru energie primara si emisii pe fiecare carrier.</p><ul><li>electricitate</li><li>gaz</li><li>lemn</li></ul></article>
+<article class="technical-chapter-card"><span>v0.6</span><h3>Clase estimate</h3><p>Incadreaza rezultatele in praguri interne configurabile.</p><ul><li>A+ - G</li><li>clasa mediu</li><li>referinta</li></ul></article>
+<article class="technical-chapter-card"><span>v0.7</span><h3>Scenarii</h3><p>Compara situatia actuala cu masuri de renovare sau schimbari de sistem.</p><ul><li>economii</li><li>CO2 redus</li><li>payback</li></ul></article>
+<article class="technical-chapter-card"><span>v0.8</span><h3>Audit data model</h3><p>Pregateste structura pentru un raport LaCurent mai apropiat de audit.</p><ul><li>baseline</li><li>scenarios</li><li>summary</li></ul></article>
+</div>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">FORMULE ESENTIALE</span>
+<h2>Ce calcule se aplica</h2>
+</div>
+<div class="formula-grid">
+<article><span>Izolatie strat</span><strong>R_layer = d / lambda</strong><p>Cu cat R este mai mare, cu atat stratul izoleaza mai bine.</p></article>
+<article><span>Pierdere element</span><strong>U = 1 / R_total</strong><p>Cu cat U este mai mic, cu atat elementul pierde mai putina caldura.</p></article>
+<article><span>Punti termice</span><strong>U' = (U x A + sum(psi x length)) / A</strong><p>Adauga pierderile din colturi, contururi si imbinari.</p></article>
+<article><span>Transfer termic</span><strong>H_element = U' x A</strong><p>Transforma calitatea elementului si aria lui in pierdere W/K.</p></article>
+<article><span>Ventilatie</span><strong>Hve = 0.34 x airflow x (1 - eta)</strong><p>Arata pierderea prin aerisire, infiltratii sau ventilatie mecanica.</p></article>
+<article><span>Necesar lunar</span><strong>Qheat = max(0, Qloss - gains useful)</strong><p>Energia ceruta de cladire pentru confort, inainte de sistem.</p></article>
+<article><span>Sistem incalzire</span><strong>eta = emission x distribution x storage x generation x control</strong><p>Randamentul total al sistemului, construit din subsisteme.</p></article>
+<article><span>Energie finala</span><strong>FinalEnergy = UsefulDemand / eta</strong><p>Energia platita efectiv la combustibil sau electricitate.</p></article>
+<article><span>Apa calda</span><strong>Qdhw = liters x rho x c x deltaT / 3600</strong><p>Necesar fizic simplificat pentru prepararea apei calde.</p></article>
+<article><span>Racire</span><strong>CoolingFinal = CoolingDemand / SEER</strong><p>Consum electric estimat pentru racire.</p></article>
+<article><span>Energie primara</span><strong>Primary = FinalEnergy x factor</strong><p>Transforma energia finala in indicator comparabil energetic.</p></article>
+<article><span>Emisii</span><strong>CO2 = FinalEnergy x kgCO2/kWh</strong><p>Emisii estimate pe carrier.</p></article>
+</div>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">CE INSEAMNA REZULTATELE</span>
+<h2>Traducere din termeni tehnici</h2>
+</div>
+<div class="technical-status-grid">
+<article><span>U</span><strong>Calitatea izolatiei</strong><p>Mic este bine. Un perete cu U mic pierde mai putina caldura.</p></article>
+<article><span>Htr</span><strong>Pierderi prin anvelopa</strong><p>Arata pierderea totala prin pereti, acoperis, pardoseala, ferestre si usi.</p></article>
+<article><span>Hve</span><strong>Pierderi prin aer</strong><p>Arata cat pierzi prin infiltratii, aerisire sau ventilatie fara recuperare.</p></article>
+<article><span>QH,nd</span><strong>Necesar de incalzire</strong><p>Cata energie cere casa ca spatiu, indiferent ce sistem ai.</p></article>
+<article><span>Final</span><strong>Ce consumi efectiv</strong><p>Depinde de soba, centrala, pompa de caldura, boiler si auxiliare.</p></article>
+<article><span>Primary</span><strong>Impact energetic total</strong><p>Indicator folosit pentru comparatii energetice, estimat pe carrier.</p></article>
+<article><span>CO2</span><strong>Impact de mediu</strong><p>Estimare a emisiilor asociate energiei finale.</p></article>
+<article><span>Class</span><strong>Incadrare estimativa</strong><p>Clasa LaCurent este orientativa si nu este certificat oficial.</p></article>
+</div>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">COEFICIENTI FOLOSITI ACUM</span>
+<h2>Valori estimative configurabile</h2>
+</div>
+<div class="technical-table-wrap">
+<table class="technical-table">
+<thead>
+<tr><th>Coeficient</th><th>Valoare curenta</th><th>De ce conteaza</th><th>Source</th></tr>
+</thead>
+<tbody>
+<tr><td>Rsi / Rse</td><td>0.13 / 0.04 m2K/W</td><td>Intra in calculul U pentru anvelopa.</td><td>internal_estimate</td></tr>
+<tr><td>ACH natural</td><td>0.75 1/h</td><td>Fallback pentru pierderile prin ventilatie naturala.</td><td>internal_estimate</td></tr>
+<tr><td>Confort interior</td><td>20 C incalzire / 26 C racire</td><td>Stabileste diferenta de temperatura pentru Qloss.</td><td>internal_estimate</td></tr>
+<tr><td>Aport persoana</td><td>70 W/persoana</td><td>Reduce partial necesarul de incalzire.</td><td>internal_estimate</td></tr>
+<tr><td>Ferestre default</td><td>g=0.65, frame=0.80, shading=0.90</td><td>Estimeaza aporturile solare prin ferestre.</td><td>internal_estimate</td></tr>
+<tr><td>Soba lemne</td><td>eta generatie 0.55</td><td>Transforma necesarul util in consum final de lemn.</td><td>internal_estimate</td></tr>
+<tr><td>Centrala gaz condensare</td><td>eta generatie 0.92</td><td>Randament estimativ pentru sistem gaz eficient.</td><td>internal_estimate</td></tr>
+<tr><td>Pompa aer-apa calorifere</td><td>SCOP 2.3</td><td>Scade consumul electric, dar depinde de temperatura agentului.</td><td>internal_estimate</td></tr>
+<tr><td>Pompa aer-apa pardoseala</td><td>SCOP 3.2</td><td>Mai eficienta cand lucreaza la temperatura joasa.</td><td>internal_estimate</td></tr>
+<tr><td>Racire split</td><td>SEER 3.1</td><td>Transforma necesarul de racire in consum electric.</td><td>internal_estimate</td></tr>
+<tr><td>Electricitate</td><td>primary 2.5 / CO2 0.24 kg/kWh</td><td>Factor pentru energie primara si emisii.</td><td>internal_estimate</td></tr>
+<tr><td>Gaz natural</td><td>primary 1.1 / CO2 0.202 kg/kWh</td><td>Factor pentru consum final de gaz.</td><td>internal_estimate</td></tr>
+</tbody>
+</table>
+</div>
 </section>
 
 <section class="admin-grid">
 <article class="dashboard-band">
 <div class="section-heading">
-<span class="small-label">SCHEME SUPORTATE</span>
-<h2>Date tehnice principale</h2>
+<span class="small-label">DATE DE IESIRE</span>
+<h2>Ce produce API-ul</h2>
 </div>
-<div class="value-card-grid">
-<article>Identificare cladire</article>
-<article>Geometrie si volum incalzit</article>
-<article>Anvelopa pe elemente</article>
-<article>Materiale si lambda</article>
-<article>Punti termice</article>
-<article>Ventilare si infiltratii</article>
-<article>Sisteme HVAC si ACM</article>
-<article>Regenerabile</article>
+<div class="technical-output-list">
+<article><strong>energyDemand.monthly</strong><span>balanta lunara: pierderi, aporturi, necesar util.</span></article>
+<article><strong>systemsLayerV04.finalEnergyByCarrier</strong><span>consum final pe electricitate, gaz, lemn, peleti etc.</span></article>
+<article><strong>systemsLayerV04.finalEnergyByUse</strong><span>incalzire, racire, ACM si energie auxiliara.</span></article>
+<article><strong>primaryEnergyAndCo2V05</strong><span>energie primara, regenerabila/neregenerabila si CO2.</span></article>
+<article><strong>classificationV06</strong><span>clasa energetica si clasa de mediu estimate.</span></article>
+<article><strong>AuditScenarioResult</strong><span>baseline vs scenariu, economii si payback.</span></article>
 </div>
 </article>
 
 <article class="dashboard-band">
 <div class="section-heading">
-<span class="small-label">PRESETURI</span>
-<h2>Configurabile, nu hardcodate</h2>
+<span class="small-label">REGISTRE</span>
+<h2>Unde stau valorile configurabile</h2>
 </div>
-<div class="recommendation-list">
-<article class="recommendation-detail-card">
-<div class="recommendation-rank">1</div>
-<div><h3>Materiale</h3><p>Caramida, BCA, beton, lemn, EPS, XPS, vata minerala, geamuri.</p></div>
-</article>
-<article class="recommendation-detail-card">
-<div class="recommendation-rank">2</div>
-<div><h3>Factori energie si emisii</h3><p>Electricitate, gaz, lemn, peleti, termoficare, GPL, carbune.</p></div>
-</article>
-<article class="recommendation-detail-card">
-<div class="recommendation-rank">3</div>
-<div><h3>Praguri si recomandari</h3><p>Clase energetice, clase CO2 si reguli tehnice pentru renovare.</p></div>
-</article>
+<div class="technical-output-list">
+<article><strong>materials / windows</strong><span>conductivitati, U-value si g-value.</span></article>
+<article><strong>monthlyClimate</strong><span>temperaturi, HDD, CDD si radiatie.</span></article>
+<article><strong>heatingSystemPresets</strong><span>sobe, centrale, pompe, termoficare.</span></article>
+<article><strong>efficiency registries</strong><span>emisie, distributie, stocare, generatie, control.</span></article>
+<article><strong>primaryEnergyFactorsV05</strong><span>factori regenerabili/neregenerabili/total.</span></article>
+<article><strong>auditMeasurePresets</strong><span>masuri pentru scenarii de audit.</span></article>
 </div>
 </article>
 </section>
 
-<details class="dashboard-band technical-details" open>
-<summary>Formule expuse pentru analiza</summary>
-<div class="technical-grid">
-<article>
-<span>R strat</span>
-<strong>d / lambda</strong>
-</article>
-<article>
-<span>R total</span>
-<strong>Rsi + ΣR + Rse</strong>
-</article>
-<article>
-<span>U-value</span>
-<strong>1 / R total</strong>
-</article>
-<article>
-<span>CO2 specific</span>
-<strong>kg CO2 / m2 an</strong>
-</article>
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">CALIBRARE INTERNA</span>
+<h2>Case de referinta pentru testare</h2>
 </div>
-<p>Valorile normative exacte trebuie introduse ulterior in preseturi cu `source: mc001`. Valorile curente sunt placeholder-uri marcate ca estimate.</p>
+<p>Avem un set intern de case A+ - G folosit pentru regresie. Testul nu verifica doar clasa, ci lantul complet: U, Htr, Hve, QH, energie finala, energie primara, CO2 si clasa.</p>
+<div class="technical-output-list">
+<article><strong>Fixture</strong><span>src/features/energy/physics/test-fixtures/referenceHomes.ts</span></article>
+<article><strong>Test</strong><span>tests/physics-reference-homes.mjs</span></article>
+<article><strong>Comanda</strong><span>npm.cmd run test:physics</span></article>
+</div>
+</section>
+
+<section class="dashboard-band">
+<div class="section-heading">
+<span class="small-label">LIMITARI</span>
+<h2>Ce trebuie inteles corect</h2>
+</div>
+<div class="technical-status-grid">
+<article><span>estimativ</span><strong>Nu certificat oficial</strong><p>Rezultatul nu inlocuieste un certificat energetic emis de auditor atestat.</p></article>
+<article><span>calibrare</span><strong>Coeficientii se vor imbunatati</strong><p>Valorile actuale sunt marcate internal_estimate sau registry_default.</p></article>
+<article><span>date</span><strong>Precizia depinde de input</strong><p>Suprafata, izolatia, ventilatia, sistemele si facturile reale cresc increderea.</p></article>
+<article><span>viitor</span><strong>Pregatit pentru MC001 complet</strong><p>Structura permite adaugarea treptata de tabele normative si import certificat PDF.</p></article>
+</div>
+</section>
+
+<details class="dashboard-band technical-details" open>
+<summary>Unde sunt implementate fisierele</summary>
+<div class="technical-file-map">
+<article><strong>Modele</strong><code>src/features/energy/physics/model</code></article>
+<article><strong>Registre</strong><code>src/features/energy/physics/registries</code></article>
+<article><strong>Calculatoare</strong><code>src/features/energy/physics/calculators</code></article>
+<article><strong>Engine</strong><code>src/features/energy/physics/engine</code></article>
+<article><strong>Teste</strong><code>tests/physics-v02.mjs, tests/physics-demand-v03.mjs, tests/physics-systems-v04.mjs, tests/physics-audit-v05-v08.mjs, tests/physics-reference-homes.mjs</code></article>
+</div>
 </details>
 </main>
 
-<footer><small>LA CURENT · Date tehnice si benchmark</small></footer>
+<footer><small>LA CURENT - Model tehnic energetic</small></footer>
 </div>
 
 <script>

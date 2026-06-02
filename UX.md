@@ -167,11 +167,40 @@ Exemple:
 
 ---
 
-# Raport live
+# Raport vs Algoritmi
 
-Raportul trebuie sa explice ca scorul este un indice estimativ live, influentat de benchmark si de deciziile implementate.
+Raportul si Algoritmi sunt experiente diferite.
 
-Recomandarile trebuie sa arate nu doar ce trebuie facut, ci si cand investitia poate deveni justificata financiar.
+Raport = fotografie.
+
+Algoritmi = motor live.
+
+## Raport
+
+Raportul este un document static, generat dupa onboarding.
+
+Reguli:
+
+* include data generarii;
+* raspunde la starea energetica actuala a locuintei;
+* nu include oferte;
+* nu include preturi live;
+* nu include marketplace;
+* recomandarile sunt generale si limitate la maximum 3;
+* detaliile tehnice sunt ascunse implicit.
+
+## Algoritmi
+
+Algoritmi este pagina dinamica pentru decizii.
+
+Reguli:
+
+* include timestamp de actualizare;
+* afiseaza surse de calcul;
+* afiseaza numar de locuinte similare;
+* poate include oferte, materiale si manopera;
+* recomandarile sunt ordonate dupa impact, cost, economie si incredere;
+* trebuie sa explice cand investitia poate deveni justificata financiar.
 
 ---
 
