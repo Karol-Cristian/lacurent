@@ -2,232 +2,178 @@
 
 # Principiu fundamental
 
-LaCurent este o singură platformă, dar experiența nu este aceeași pentru toți utilizatorii.
+LaCurent este o singura platforma, dar nu toti utilizatorii au aceleasi obiective.
 
-Segmentul contului controlează:
+Experienta trebuie adaptata segmentului, insa focusul short-term ramane clar:
 
-* mesajul principal din dashboard;
-* eticheta din navigație pentru analiză;
-* tipul de formular afișat;
-* câmpurile cerute la onboarding;
-* tipul de recomandări și metrici prioritare.
+> homeowners / residential houses.
 
-Nu construim o interfață universală pentru toți utilizatorii.
+Segmentele profesionale si B2B sunt importante pentru arhitectura viitoare, dar nu sunt focusul imediat al produsului.
 
 ---
 
-# Segmente principale
+# Segment short-term principal
 
-1. Locuințe
-2. Afaceri
-3. Industrie
-4. Instituții
-5. Auditori energetici
+## Locuinte rezidentiale
 
----
+### Cine sunt
 
-# Regula de segmentare în produs
+Proprietari de case si apartamente.
 
-Utilizatorul își alege segmentul când creează contul.
+In general nu au pregatire tehnica in domeniul energetic.
 
-După autentificare, site-ul trebuie să se adapteze segmentului:
+### Ce ii intereseaza
 
-* `residential` vede experiență orientată pe locuință;
-* `business` vede experiență orientată pe costuri operaționale;
-* `industry` vede experiență orientată pe procese și pierderi energetice;
-* `institution` vede experiență orientată pe clădiri, buget și raportare;
-* `auditor` vede portal dedicat, nu formularul standard de analiză.
-
-Segmentul este salvat în `users.role`.
-
-Pentru segmente non-rezidențiale se creează și o organizație:
-
-* `organizations`
-* `sites`
-
----
-
-# Locuințe
-
-## Cine sunt
-
-Proprietari de case și apartamente.
-
-În general nu au pregătire tehnică în domeniul energetic.
-
-## Ce îi interesează
-
-* factura lunară;
-* costurile de încălzire;
+* factura lunara;
+* costurile de incalzire;
 * confortul;
-* economiile posibile.
+* pierderile in bani;
+* ce investitii merita analizate.
 
-## Întrebările principale
+### Intrebarile principale
 
-* Plătesc prea mult?
-* Casa mea este eficientă?
-* Ce pot îmbunătăți?
-* Care investiție merită făcută?
+* Casa mea este eficienta?
+* Unde pierd bani?
+* Ce date lipsesc pentru o evaluare mai precisa?
+* Ce investitie merita facuta prima?
+* Merita sa schimb sistemul de incalzire?
+* Merita sa izolez podul sau peretii?
 
-## KPI relevanți
+### KPI relevanti
 
-* scor energetic;
+* scor energetic estimat;
+* clasa estimata LaCurent;
+* consum estimat kWh/m2/an;
 * cost anual estimat;
-* potențial de economisire;
-* comparație cu locuințe similare.
+* pierderi estimate in lei/an;
+* nivel de incredere;
+* comparatie cu locuinte similare, dupa ce benchmark-ul este suficient de matur.
 
-## CTA principal
+### CTA principal
 
-Analizează locuința.
-
----
-
-# Afaceri
-
-## Cine sunt
-
-IMM-uri și companii comerciale: birouri, magazine, hoteluri, restaurante, depozite.
-
-## Ce îi interesează
-
-* reducerea costurilor operaționale;
-* monitorizarea consumului;
-* identificarea anomaliilor;
-* rentabilitatea investițiilor.
-
-## Întrebările principale
-
-* Unde pierdem bani?
-* Ce consum este neobișnuit?
-* Care este impactul financiar?
-* Ce investiții au cel mai bun ROI?
-
-## Onboarding necesar
-
-* tip afacere;
-* nume organizație;
-* adresă;
-* oraș;
-* date de contact;
-* program de lucru;
-* suprafață;
-* consumatori principali;
-* număr locații.
-
-## CTA principal
-
-Analizează afacerea.
+Analizeaza locuinta.
 
 ---
 
-# Industrie
+# Segmente viitoare
 
-## Cine sunt
+Aceste segmente trebuie luate in calcul in arhitectura, dar nu trebuie sa domine produsul short-term.
 
-Fabrici și facilități industriale cu consum energetic ridicat.
+## Energy auditors
 
-## Ce îi interesează
+Auditorii energetici pot deveni utilizatori profesionali pentru:
 
-* eficiența proceselor;
-* pierderile energetice;
-* utilizarea echipamentelor;
-* performanța operațională.
+* validarea rapoartelor;
+* import certificat energetic;
+* calibrare model;
+* rapoarte pentru clienti;
+* audit scenarios.
 
-## Onboarding necesar
+Nu folosesc fluxul standard de proprietar.
 
-* tip facilitate;
-* nume organizație;
-* adresă;
-* oraș;
-* linii de producție;
-* program operațional;
-* consumatori majori;
-* sarcină de vârf;
-* planuri de eficientizare.
+## Photovoltaic installers
 
-## CTA principal
+Instalatorii fotovoltaici pot deveni parteneri dupa ce motorul tehnic genereaza recomandari obiective.
 
-Analizează facilitatea.
+Ei nu trebuie sa influenteze ranking-ul tehnic.
 
----
+## Heat pump installers
 
-# Instituții
+Instalatorii de pompe de caldura pot deveni parteneri pentru scenarii unde modelul fizic arata ca pompa de caldura este potrivita.
 
-## Cine sunt
+Recomandarea trebuie sa tina cont de:
 
-Primării, școli, universități, spitale și instituții publice.
+* necesarul termic;
+* temperatura agentului termic;
+* tipul distributiei;
+* COP/SCOP estimat;
+* costul real al investitiei.
 
-## Ce îi interesează
+## Insulation companies
 
-* monitorizare;
-* raportare;
-* transparență;
-* justificarea consumului;
-* prioritizarea investițiilor.
+Firmele de izolatii pot deveni parteneri dupa ce raportul identifica pierderi prin pereti, pod/acoperis sau pardoseala.
 
-## Onboarding necesar
+## HVAC companies
 
-* tip instituție;
-* nume organizație;
-* adresă;
-* oraș;
-* număr clădiri;
-* buget anual energie;
-* sisteme de încălzire;
-* planuri de renovare.
+Firmele HVAC pot fi relevante pentru:
 
-## CTA principal
+* ventilatie cu recuperare;
+* modernizare incalzire;
+* racire eficienta;
+* control si automatizare.
 
-Analizează instituția.
+## Renovation consultants
 
----
+Consultantii de renovare pot folosi LaCurent pentru prioritizarea masurilor energetice.
 
-# Auditori energetici
+## Local institutions and portfolio managers
 
-Auditorii nu folosesc formularul standard de analiză.
+Institutiile si administratorii de portofolii pot folosi ulterior LaCurent pentru:
 
-Ei trebuie trimiși către un portal dedicat pentru:
-
-* clienți;
+* cladiri multiple;
+* prioritizare investitii;
 * rapoarte;
-* recomandări;
-* note;
-* validări.
+* monitorizare bugete energetice.
 
 ---
 
-# Prioritatea actuală
+# Regula de segmentare
 
-Segmentul principal al produsului rămâne:
+O functionalitate nu trebuie presupusa utila pentru toate segmentele.
 
-LOCUINȚE
+Inainte de a propune sau implementa o functionalitate noua, se identifica:
 
-Dar platforma trebuie să adapteze experiența după autentificare pentru conturile `business`, `industry`, `institution` și `auditor`.
-
----
-
-# Reguli pentru AI și dezvoltare
-
-Înainte de a propune sau implementa o funcționalitate nouă, identifică segmentul țintă.
-
-O funcționalitate optimă pentru industrie poate fi inutilă pentru locuințe.
-
-O funcționalitate optimă pentru locuințe poate fi insuficientă pentru industrie.
-
-Experiența trebuie adaptată segmentului, nu doar textul de suprafață.
+* segmentul tinta;
+* problema rezolvata;
+* datele necesare;
+* riscul de a complica experienta rezidentiala.
 
 ---
 
-# Implementare curentă
+# Ce nu facem short-term
 
-Frontend:
+Nu optimizam produsul curent pentru:
 
-* `js/segment-context.js` aplică textele și navigația în funcție de `users.role`.
-* `pages/profil.html` colectează date suplimentare pentru segmente non-rezidențiale.
-* `pages/analiza-casa.html` afișează pași diferiți pentru locuințe, afaceri, industrie și instituții.
+* marketplace;
+* lead generation;
+* vanzari catre instalatori;
+* abonamente B2B;
+* fluxuri complexe pentru auditori;
+* dashboard-uri multi-site;
+* oferte live;
+* ranking comercial.
 
-Backend:
+Aceste directii raman in future scope.
 
-* `users.role` definește segmentul.
-* `organizations` și `sites` sunt create la înregistrarea conturilor non-rezidențiale.
-* `analyses.analysis_type` diferențiază tipul analizei.
+---
+
+# Ce pastram in arhitectura
+
+Chiar daca focusul este rezidential, arhitectura nu trebuie sa blocheze:
+
+* `users.role`;
+* organizatii;
+* site-uri;
+* cladiri multiple;
+* auditori;
+* import certificat;
+* scenarii de audit;
+* furnizori si oferte viitoare.
+
+Separarea importanta:
+
+* produs short-term: proprietari si motor fizic;
+* arhitectura long-term: poate sustine B2B/SaaS si marketplace dupa ce increderea este castigata.
+
+---
+
+# Prioritate curenta
+
+1. Locuinte.
+2. Physics Engine.
+3. Raport static credibil.
+4. Explicatii clare.
+5. Pierderi in lei/an.
+6. Detalii tehnice expandabile.
+
+Segmentele profesionale vin dupa maturizarea motorului fizic si a raportului.

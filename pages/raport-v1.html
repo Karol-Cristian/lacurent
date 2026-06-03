@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LA CURENT | Report v1 Prototype</title>
+<link rel="icon" type="image/png" href="../images/favicon.png?v=2">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/auth.js" defer></script>
+<script src="../js/home-context.js" defer></script>
+<script src="../js/report-v1-demo-data.js" defer></script>
+<script src="../js/report-v1.js" defer></script>
+</head>
+
+<body class="report-v1-body">
+<button id="menuBtn" class="menu-btn">&#9776;</button>
+<div id="sidebar"></div>
+<main class="report-v1-page">
+<article class="decision-report" aria-labelledby="reportTitle">
+<header class="decision-report-header">
+<div>
+<span class="report-v1-eyebrow">LA CURENT REPORT V1 PROTOTYPE</span>
+<h1 id="reportTitle">Dosar de decizie energetica</h1>
+<p id="reportMeta">Evaluare estimativa pentru locuinta demo</p>
+</div>
+<div class="decision-status">
+<strong>Evaluare estimativa</strong>
+<span>Nu este certificat energetic oficial</span>
+</div>
+</header>
+
+<section class="decision-section verdict-section" aria-labelledby="verdictTitle">
+<div>
+<span class="report-v1-eyebrow">VERDICT PRINCIPAL</span>
+<h2 id="verdictTitle"></h2>
+<p id="verdictConclusion"></p>
+<div id="missingData" class="missing-data-list"></div>
+</div>
+<aside class="verdict-panel">
+<span>Cost evitabil estimat</span>
+<strong id="avoidableCost"></strong>
+<em id="confidenceLevel"></em>
+</aside>
+</section>
+
+<section class="decision-section" aria-labelledby="moneyTitle">
+<div class="section-heading-v1">
+<span class="report-v1-eyebrow">UNDE SE DUC BANII</span>
+<h2 id="moneyTitle">Costuri anuale estimate</h2>
+<p>Valorile folosesc datele locuintei active si calculele LaCurent. Costul evitabil este o parte estimata din costurile existente, nu o factura separata.</p>
+</div>
+<div id="annualCosts" class="cost-category-grid"></div>
+<div class="split-section">
+<div>
+<h3>Breakdown incalzire</h3>
+<p class="muted-copy">Bare simple pentru pierderile termice principale.</p>
+</div>
+<div id="heatingBreakdown" class="simple-bars"></div>
+</div>
+</section>
+
+<section class="decision-section" aria-labelledby="diagnosticTitle">
+<div class="section-heading-v1">
+<span class="report-v1-eyebrow">DIAGNOSTIC COMPLET</span>
+<h2 id="diagnosticTitle">Probleme analizate</h2>
+<p>Problemele sunt grupate dupa urgenta, impact si certitudinea estimarii.</p>
+</div>
+<div id="diagnosticGroups" class="diagnostic-groups"></div>
+</section>
+
+<section class="decision-section" aria-labelledby="scenariosTitle">
+<div class="section-heading-v1">
+<span class="report-v1-eyebrow">SCENARII ANALIZATE</span>
+<h2 id="scenariosTitle">Optiuni comparabile</h2>
+<p>Scenariile ajuta proprietarul sa inteleaga ce merita investigat prima data.</p>
+</div>
+<div id="scenarioGrid" class="scenario-grid"></div>
+</section>
+
+<section class="decision-section" aria-labelledby="notNowTitle">
+<div class="section-heading-v1">
+<span class="report-v1-eyebrow">DE CE NU ACUM</span>
+<h2 id="notNowTitle">Optiuni care pot parea bune, dar nu sunt primul pas</h2>
+</div>
+<div id="notRecommended" class="not-now-list"></div>
+</section>
+
+<details class="decision-section technical-v1">
+<summary>Detalii tehnice</summary>
+<div id="technicalDetails" class="technical-v1-grid"></div>
+<p id="technicalAssumptions" class="muted-copy"></p>
+</details>
+
+<footer class="decision-disclaimer">
+Aceasta evaluare este informativa si nu inlocuieste un certificat energetic oficial sau o expertiza/audit realizat de un specialist autorizat.
+</footer>
+</article>
+</main>
+</body>
+
+</html>

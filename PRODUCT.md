@@ -2,339 +2,247 @@
 
 ## Ce este LaCurent
 
-LaCurent este un copilot energetic care ajuta utilizatorii sa inteleaga, compare si optimizeze consumul energetic al unei locuinte, afaceri, institutii sau facilitati industriale.
+LaCurent este un motor de evaluare energetica pentru locuinte.
 
-Scopul produsului nu este sa afiseze date energetice complexe.
+Pe termen scurt, LaCurent transforma date despre constructie, consum si sisteme intr-o evaluare energetica estimativa bazata pe model fizic.
 
-Scopul produsului este sa transforme datele energetice in recomandari clare si actionabile care reduc costurile si cresc eficienta energetica.
+Pe termen lung, LaCurent poate deveni stratul independent de decizie pentru investitii energetice rezidentiale.
+
+LaCurent nu este:
+
+* marketplace;
+* platforma de lead generation;
+* aplicatie generica de recomandari AI;
+* furnizor de energie;
+* instalator;
+* producator de echipamente.
+
+Pozitionarea corecta:
+
+> LaCurent transforms home construction, consumption and system data into a physics-based energy assessment, then later into recommendations and market actions.
 
 ---
 
-# Viziune
+# Short-Term Goal
 
-Orice persoana sau organizatie ar trebui sa poata intelege performanta energetica a unei proprietati fara cunostinte tehnice.
+LaCurent short-term goal is to become a credible home energy assessment engine.
 
-LaCurent devine stratul de inteligenta dintre datele energetice si deciziile utilizatorului.
+Prioritatea curenta este segmentul Locuinte.
 
-In viitor, utilizatorul nu va mai trebui sa interpreteze consumul energetic. Va primi direct concluzii, prioritati si actiuni recomandate.
+Produsul trebuie sa genereze un raport energetic estimativ credibil, inspirat conceptual din metodologia MC001, fara sa pretinda ca emite certificat energetic oficial.
+
+Fundația produsului este LaCurent Physics Engine.
 
 ---
 
 # Misiune
 
-Sa facem eficienta energetica simpla, accesibila si masurabila.
+Help homeowners make the best energy investment decisions based on physics, not sales incentives.
+
+In romana:
+
+Sa ajutam proprietarii sa inteleaga starea energetica a locuintei si sa ia decizii mai bune inainte de a investi bani.
+
+---
+
+# Long-Term Vision
+
+LaCurent nu urmareste sa devina doar un calculator energetic, un marketplace sau o platforma de lead-uri.
+
+Obiectivul pe termen lung este sa devina infrastructura de incredere pentru deciziile energetice ale locuintelor.
+
+Long-Term Goal:
+
+Route a significant share of residential energy upgrade decisions through LaCurent.
+
+Target:
+
+80% of major residential energy investments should be evaluated through LaCurent before a purchase decision is made.
+
+Exemple de decizii:
+
+* izolatie pereti;
+* izolatie pod/acoperis;
+* inlocuire ferestre;
+* inlocuire sistem incalzire;
+* pompe de caldura;
+* panouri fotovoltaice;
+* solar termic;
+* ventilatie cu recuperare;
+* modernizare apa calda menajera;
+* renovare energetica completa.
+
+Ambitia este ca proprietarii sa intrebe:
+
+> What does LaCurent say is the best investment for my home?
+
+inainte de:
+
+> Should I buy this?
 
 ---
 
 # Principii de produs
 
+## Physics engine first
+
+The physics engine is the core asset of LaCurent. Monetization must not compromise trust in the engine.
+
+Pana la Physics Engine v0.6, prioritatea ramane metodologia de calcul si modelul fizic.
+
+Nu optimizam inca pentru:
+
+* marketplace;
+* instalatori;
+* lead-uri;
+* abonamente B2B;
+* recomandari comerciale;
+* preturi live;
+* oferte de la furnizori.
+
+Acestea sunt directii viitoare.
+
+## Incredere inainte de monetizare
+
+Produsul trebuie sa castige increderea utilizatorului inainte sa il trimita catre parteneri comerciali.
+
+Recomandarile trebuie sa fie generate din modelul fizic si analiza economica, nu din interese comerciale.
+
+Ordinea recomandarilor nu trebuie sa fie paid placement.
+
 ## Simplitate inainte de complexitate
 
-Utilizatorul trebuie sa inteleaga rezultatul inainte sa inteleaga metodologia.
+Utilizatorul trebuie sa inteleaga concluzia inainte sa vada metodologia.
 
-Concluziile sunt mai importante decat calculele.
+Concluziile sunt mai importante decat formulele in UI-ul principal.
 
----
+## Explicabilitate
 
-## Recomandari inainte de metrici
-
-Nu afisam valori doar pentru ca exista.
-
-Fiecare metrica trebuie sa raspunda unei intrebari reale.
-
-Utilizatorul trebuie sa afle:
-
-* Este bine sau rau?
-* Comparativ cu cine?
-* Ce trebuie sa fac?
-
----
-
-## Actiuni inainte de analiza
-
-Fiecare analiza trebuie sa produca cel putin o recomandare.
-
-Nu construim rapoarte care doar descriu situatia.
-
-Construim rapoarte care genereaza actiuni.
-
----
-
-## Incredere inainte de automatizare
-
-Orice scor, clasificare sau recomandare trebuie sa poata fi explicata.
-
-Utilizatorul trebuie sa inteleaga de ce a primit un rezultat.
-
----
-
-# Segmente de utilizatori
-
-Segmentul nu este doar o etichetă de cont.
-
-Segmentul schimbă experiența produsului:
-
-* mesajul principal;
-* formularul de analiză;
-* metricile prioritare;
-* recomandările;
-* datele salvate la onboarding.
-
-Pentru conturile non-rezidențiale, LaCurent trebuie să salveze și contextul organizației: tip, nume, adresă, oraș și locație principală.
-
-## Locuinte
-
-Proprietari de case si apartamente care vor sa reduca facturile si sa inteleaga eficienta energetica a locuintei.
-
-Obiectiv principal:
-
-Reducerea costurilor si imbunatatirea confortului.
-
----
-
-## Afaceri
-
-Companii care urmaresc costurile operationale si performanta energetica.
-
-Obiectiv principal:
-
-Reducerea costurilor si identificarea pierderilor.
-
----
-
-## Institutii
-
-Scoli, primarii, spitale si alte organizatii publice.
-
-Obiectiv principal:
-
-Monitorizare, raportare si justificarea consumului.
-
----
-
-## Industrie
-
-Facilitati cu consum energetic ridicat.
-
-Obiectiv principal:
-
-Optimizarea proceselor si reducerea pierderilor energetice.
-
----
-
-# Reguli UX
-
-Utilizatorul trebuie sa inteleaga valoarea produsului in mai putin de 10 secunde.
-
-Orice ecran trebuie sa raspunda la una dintre intrebarile:
-
-* Cat de eficient sunt?
-* Unde pierd bani?
-* Ce trebuie sa fac?
-
-Daca un element nu ajuta la raspunsul acestor intrebari, trebuie reconsiderat.
-
----
-
-# Reguli de comunicare
-
-Evitam jargonul energetic atunci cand exista o alternativa simpla.
-
-Preferam:
-
-* cost lunar
-* economie estimata
-* recomandare
-* comparatie
-* prioritate
-
-in locul:
-
-* coeficienti
-* indicatori tehnici
-* formule
-* terminologie specifica domeniului
-
----
-
-# Obiectivul principal al produsului
-
-Utilizatorul trebuie sa plece cu o concluzie clara si cu o lista de actiuni care ii pot imbunatati performanta energetica.
-
-Nu construim un dashboard.
-
-Construim un sistem de suport pentru decizii energetice.
-
----
-
-# Portofel energetic
-
-LaCurent trebuie sa faca banii vizibili.
+Orice scor, clasa estimata, pierdere sau recomandare trebuie sa poata fi explicata.
 
 Utilizatorul trebuie sa inteleaga:
 
-* cati bani poate salva;
-* cati bani pierde daca amana deciziile;
-* ce investitie se recupereaza cel mai repede;
-* cum se schimba scorul si costurile dupa implementare.
+* ce stim;
+* ce estimam;
+* ce lipseste;
+* cat de mare este increderea.
 
-Recomandarile trebuie prezentate ca decizii financiare, nu doar masuri tehnice.
+## Banii trebuie sa fie vizibili
 
----
+LaCurent trebuie sa arate pierderile si oportunitatile in lei/an, nu doar in kWh.
 
-# Oferte si ROI real
+Utilizatorul trebuie sa inteleaga:
 
-Estimarea initiala a investitiei poate folosi valori interne.
-
-Pe termen lung, LaCurent trebuie sa permita firmelor si instalatorilor sa isi arate disponibilitatea sau sa trimita preoferte pentru recomandari anonimizate.
-
-Cand exista oferte reale, recuperarea investitiei trebuie recalculata pe baza ofertei, nu pe baza estimarii interne.
-
-Contactul dintre proprietar si furnizor trebuie pornit doar cand proprietarul cere explicit contactul pentru o masura.
+* unde pierde bani;
+* ce investitie poate reduce costurile;
+* ce perioada de recuperare este estimata;
+* ce se schimba daca implementeaza o masura.
 
 ---
 
-# Reguli pentru locuinte multiple
-
-Un proprietar poate administra mai multe locuinte.
-
-Fiecare locuinta trebuie sa poata avea:
-
-* nume propriu;
-* scop de analiza;
-* raport propriu;
-* recomandari proprii;
-* istoric de decizii implementate.
-
-Daca utilizatorul nu mai administreaza o locuinta, aceasta nu se sterge fizic din baza de date. Se marcheaza ca inactiva, pentru pastrarea istoricului si a consistentei datelor.
-
----
-
-# Scor live si decizii implementate
-
-Scorul energetic LaCurent este un indice estimativ si comparativ.
-
-El poate evolua pe baza:
-
-* datelor introduse de utilizator;
-* comparatiei cu locuinte similare;
-* recomandarilor implementate;
-* recalibrarii benchmark-ului pe masura ce apar mai multe locuinte.
-
-Raportul trebuie sa explice clar ca scorul nu este o valoare fixa de certificat, ci un indice decizional live.
-
----
-
-# Dispozitiv LaCurent
-
-In viitor, LaCurent poate include un dispozitiv propriu pentru monitorizarea inteligenta a consumului.
-
-Acesta trebuie prezentat ca optiune pentru recomandari mai precise bazate pe date reale, nu ca cerinta pentru folosirea produsului.
-
----
-
-# Profil viu al locuintei
-
-O locuinta nu este un formular completat o singura data.
-
-Datele trebuie sa poata fi revizuite oricand:
-
-* utilizatorul poate edita caracteristicile locuintei;
-* fiecare editare creeaza o noua versiune de analiza;
-* raportul foloseste ultima versiune relevanta;
-* facturile lunare se pot adauga continuu;
-* simularile trebuie sa permita scenarii fara salvarea modificarilor.
-
-Acest model pastreaza istoricul si permite comparatii in timp intre situatia initiala, deciziile implementate si scenariile simulate.
-
----
-
-# Model energetic rezidențial
-
-Pentru segmentul Locuințe, LaCurent folosește un model energetic estimativ.
-
-Acesta pornește de la întrebări simple și derivează intern un profil energetic mai bogat.
-
-Flux:
-
-UI simplu
-→ UserEnergyInputs
-→ EnergyProfile
-→ DerivedEnergyModel
-→ EnergyAssessment
-→ Recommendations
-→ Raport pentru utilizator
-
-Evaluarea este orientată pe decizii:
-
-* cât de eficientă pare locuința;
-* unde sunt pierderile principale;
-* ce recomandări merită prioritizate;
-* ce nivel de încredere are estimarea.
-
-LaCurent nu emite certificat energetic oficial și nu înlocuiește un auditor energetic.
-
----
-
-# Locuințe multiple
-
-Un proprietar poate avea mai multe locuințe în același cont.
-
-Fiecare locuință trebuie să poată fi denumită și selectată.
-
-După prima analiză pentru o locuință, utilizatorul nu este încurajat să refacă formularul pentru aceeași proprietate.
-
-Fluxul devine:
-
-1. Selectează locuința activă.
-2. Vezi raportul.
-
----
-
-# Separare Raport vs Algoritmi
-
-LaCurent foloseste doua experiente distincte dupa onboarding:
+# Raport vs Algoritmi
 
 ## Raport
 
 Raportul este fotografia statica a locuintei la momentul generarii.
 
-Raspunde la intrebarea:
+Raportul raspunde la:
 
-* Care este starea energetica actuala a locuintei mele?
+> Care este starea energetica actuala a locuintei mele?
 
-Raportul trebuie sa arate ca un document simplificat de audit energetic:
+Trebuie sa arate ca un document simplificat de audit:
 
 * data de generare;
+* status: evaluare estimativa;
 * scor energetic estimat;
-* clasa estimata;
+* clasa estimata LaCurent;
 * stare locuinta;
 * performanta energetica;
-* maximum 3 probleme;
+* pierderi estimate in lei/an;
+* maximum 3 probleme principale;
 * maximum 3 recomandari generale;
-* detalii tehnice ascunse implicit;
+* detalii tehnice expandabile;
 * disclaimer ca nu este certificat oficial.
 
-Raportul nu include oferte, preturi live, marketplace sau feed dinamic.
+Raportul nu include marketplace, oferte, preturi live sau feed dinamic.
 
 ## Algoritmi
 
-Algoritmi este motorul live de decizie.
+Algoritmi este zona dinamica de decizie, dar vine dupa ce motorul fizic este suficient de matur.
 
-Raspunde la intrebarea:
+Algoritmi raspunde la:
 
-* Ce ar trebui sa fac acum si cat m-ar costa?
+> Ce ar trebui sa fac acum pentru a imbunatati locuinta si cat m-ar costa?
 
-Algoritmi poate folosi:
+Algoritmi poate include ulterior:
 
-* raportul energetic;
-* facturi;
-* benchmark cu locuinte similare;
-* preturi estimate materiale/manopera;
-* oferte aprobate;
-* date agregate LaCurent.
+* scenarii de renovare;
+* comparatii;
+* simulari;
+* recomandari dinamice;
+* prioritizare investitii;
+* benchmark;
+* preturi si oferte, doar dupa separarea clara de analiza tehnica.
 
-Recomandarile dinamice trebuie sa afiseze impactul asupra scorului, economia estimata, costul estimativ, recuperarea investitiei, increderea si sursele de calcul.
-3. Marchează deciziile implementate.
-4. Scorul activ se actualizează pe baza deciziilor și a benchmark-ului.
-5. Adaugă o locuință nouă doar dacă este o proprietate diferită.
+---
+
+# Roadmap de produs
+
+## Phase 1 - Physics Engine
+
+* model cladire;
+* anvelopa;
+* zone termice;
+* necesar energetic;
+* sisteme;
+* energie finala;
+* energie primara;
+* CO2;
+* clase estimative.
+
+## Phase 2 - Report
+
+* raport static;
+* document-like;
+* explicatii clare;
+* pierderi in lei/an;
+* detalii tehnice expandabile;
+* disclaimer ca nu este certificat oficial.
+
+## Phase 3 - Algorithms
+
+* scenarii de renovare;
+* comparatii;
+* simulari;
+* recomandari dinamice;
+* prioritizare investitii energetice.
+
+## Phase 4 - Market Layer
+
+* preturi materiale;
+* manopera;
+* oferte;
+* instalatori;
+* parteneri.
+
+## Phase 5 - B2B/SaaS
+
+* auditori;
+* instalatori fotovoltaice;
+* firme izolatii;
+* firme HVAC;
+* consultanti renovare.
+
+---
+
+# Segmente
+
+Segmentul principal short-term este Locuinte.
+
+Experientele pentru afaceri, institutii, industrie, auditori si furnizori pot fi pregatite arhitectural, dar nu sunt focusul imediat al produsului.
+
+---
+
+# Disclaimer obligatoriu
+
+Aceasta evaluare este estimativa si are rol informativ. Nu inlocuieste un certificat de performanta energetica emis de un auditor energetic atestat.

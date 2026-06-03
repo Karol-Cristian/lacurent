@@ -148,7 +148,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="recommendation-metrics">
             <span>Clasa: <strong>${home.estimated_energy_class || "--"}</strong></span>
             <span>Decizii: <strong>${home.implemented_actions || 0}</strong></span>
-            <a class="secondary-btn" href="pages/raport-energie.html" data-portfolio-home-id="${home.id}">Raport</a>
+            <a class="secondary-btn" href="pages/raport-v1.html?house_id=${home.id}" data-portfolio-home-id="${home.id}">Raport</a>
             <a class="secondary-btn" href="pages/analiza-casa.html?edit=${home.id}">Editeaza</a>
           </div>
         </div>

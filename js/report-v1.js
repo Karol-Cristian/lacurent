@@ -1,0 +1,367 @@
+document.addEventListener("DOMContentLoaded", async () => {
+  const demo = window.LaCurentReportV1Demo;
+  const params = new URLSearchParams(window.location.search);
+  const requestedHouseId = params.get("house_id");
+  if (requestedHouseId) {
+    window.LaCurentHomes?.setActiveHouseId(requestedHouseId);
+  }
+
+  function money(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0
+      ? `${Math.round(number).toLocaleString("ro-RO")} lei/an`
+      : "--";
+  }
+
+  function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value || "--";
+  }
+
+  function label(value) {
+    return {
+      low: "scazuta",
+      medium: "medie",
+      high: "ridicata",
+      critical: "critic",
+      urgent: "urgent",
+      very_high: "foarte mare",
+      insulation: "izolatie",
+      heating: "incalzire",
+      windows: "ferestre",
+      controls: "control",
+      lighting: "iluminat",
+      renewables: "regenerabile",
+      behavior: "comportament",
+      maintenance: "mentenanta"
+    }[value] || value || "--";
+  }
+
+  function valueOf(physicsValue) {
+    return typeof physicsValue === "number" ? physicsValue : Number(physicsValue?.value || 0);
+  }
+
+  function createBadge(title, value) {
+    return `<span class="decision-badge"><b>${title}</b>${label(value)}</span>`;
+  }
+
+  function costRange(min, max) {
+    if (!min && !max) return "necesita estimare";
+    if (min && max && min !== max) return `${Math.round(min).toLocaleString("ro-RO")}-${Math.round(max).toLocaleString("ro-RO")} lei`;
+    return `${Math.round(min || max).toLocaleString("ro-RO")} lei`;
+  }
+
+  function savingsRange(min, max) {
+    if (!min && !max) return "necesita facturi reale";
+    if (min && max && min !== max) return `${money(min).replace("/an", "")}-${money(max).replace(" lei/an", " lei/an")}`;
+    return money(min || max);
+  }
+
+  function payback(costMin, costMax, savingsMin, savingsMax) {
+    const investment = Number(costMin || costMax || 0);
+    const savings = Number(savingsMax || savingsMin || 0);
+    if (!investment || !savings) return "incert";
+    const years = investment / savings;
+    if (years < 1) return "sub 1 an";
+    return `${Math.round(years)} ani`;
+  }
+
+  function scenarioVerdict(item) {
+    if (item.priority === "urgent" || item.priority === "high") return "Merita analizat primul";
+    if (item.category === "renewables") return "Merita doar dupa reducerea pierderilor";
+    if (item.costLevel === "very_high" && item.impactLevel !== "very_high") return "Bun tehnic, payback lung";
+    if (item.confidencePercent && item.confidencePercent < 55) return "Necesita date suplimentare";
+    return "Merita analizat";
+  }
+
+  function buildDemoPayload() {
+    return { source: "demo", report: demo };
+  }
+
+  function normalizeAnnualCosts(snapshot, physicalResult, profile) {
+    const systems = physicalResult?.systemsLayerV04?.finalEnergyByUse || {};
+    const assessment = profile?.assessment || {};
+    const heating = valueOf(systems.heating) * (snapshot?.financialLosses?.priceRonPerKwh || 0.35);
+    const dhw = valueOf(systems.dhw) * (snapshot?.financialLosses?.priceRonPerKwh || 0.35);
+    const auxiliary = valueOf(systems.auxiliary) * 1.3;
+    const annualCost = Number(snapshot?.estimatedAnnualCostRon || assessment.estimatedAnnualCostRon || 0);
+    const heatingCost = heating || annualCost * 0.65;
+    const dhwCost = dhw || annualCost * 0.16;
+    const electricCost = auxiliary || annualCost * 0.12;
+    const totalEnergyCost = heatingCost + dhwCost + electricCost;
+    const rawAvoidable = Number(snapshot?.financialLosses?.totalAnnualLossRon || assessment.estimatedAnnualSavingsMaxRon || 0);
+    const avoidable = Math.min(rawAvoidable || totalEnergyCost * 0.35, totalEnergyCost * 0.65);
+    return [
+      { label: "Incalzire", valueRon: heatingCost, note: "energie finala estimata pentru incalzire", tone: "critical" },
+      { label: "Apa calda menajera", valueRon: dhwCost, note: "necesar ACM si pierderi sistem", tone: "medium" },
+      { label: "Electric casnic", valueRon: electricCost, note: "auxiliare si consum electric estimativ", tone: "low" },
+      { label: "Cost evitabil estimat", valueRon: avoidable, note: "parte din costurile de mai sus, nu se adauga la total", tone: "high" }
+    ];
+  }
+
+  function normalizeHeatingBreakdown(snapshot, annualCosts = []) {
+    const items = snapshot?.financialLosses?.items || [];
+    const relevant = items.filter(item => !String(item.id).startsWith("system_dhw") && item.id !== "auxiliary");
+    const heatingCost = Number(annualCosts.find(item => item.label === "Incalzire")?.valueRon || 0);
+    const rawTotal = relevant.reduce((sum, item) => sum + Number(item.annualCostRon || 0), 0);
+    const scale = heatingCost && rawTotal ? heatingCost / rawTotal : 1;
+    const normalized = relevant.map(item => ({
+      label: item.label,
+      valueRon: Number(item.annualCostRon || 0) * scale
+    }));
+    const max = Math.max(...normalized.map(item => Number(item.valueRon || 0)), 1);
+    return normalized.map(item => ({
+      label: item.label,
+      valueRon: item.valueRon,
+      percent: Math.max(6, Math.round(Number(item.valueRon || 0) / max * 100))
+    }));
+  }
+
+  function normalizeDiagnostics(profile, snapshot) {
+    const problems = snapshot?.topProblems || profile?.assessment?.topProblems || [];
+    const recommendations = snapshot?.staticRecommendations || profile?.recommendations || [];
+    const groups = [
+      { group: "Critice", items: [] },
+      { group: "Importante", items: [] },
+      { group: "Secundare", items: [] },
+      { group: "Analizate, dar fara prioritate acum", items: [] }
+    ];
+    problems.forEach(problem => {
+      const target = problem.severity === "critical" ? groups[0] : problem.severity === "high" ? groups[1] : groups[2];
+      target.items.push({
+        title: problem.title,
+        impact: problem.impact || "medium",
+        certainty: snapshot?.confidenceLevel || "medium",
+        cost: "necesita estimare",
+        priority: problem.severity || "medium"
+      });
+    });
+    recommendations.slice(0, 8).forEach(recommendation => {
+      const target = recommendation.priority === "high" || recommendation.priority === "urgent" ? groups[1] : groups[3];
+      target.items.push({
+        title: recommendation.title,
+        impact: recommendation.impactLevel || "medium",
+        certainty: snapshot?.confidenceLevel || "medium",
+        cost: recommendation.costLevel || "medium",
+        priority: recommendation.priority || "medium"
+      });
+    });
+    return groups.filter(group => group.items.length);
+  }
+
+  function normalizeScenarios(result, profile) {
+    const insights = result?.algorithm_insights || [];
+    const catalog = insights.length ? insights : (profile?.recommendations || []);
+    return catalog.slice(0, 8).map(item => ({
+      title: item.title,
+      cost: costRange(item.estimatedCostRonMin || item.estimatedInvestmentRonMin, item.estimatedCostRonMax || item.estimatedInvestmentRonMax),
+      savings: savingsRange(item.estimatedSavingsRonYearMin, item.estimatedSavingsRonYearMax),
+      payback: payback(item.estimatedCostRonMin || item.estimatedInvestmentRonMin, item.estimatedCostRonMax || item.estimatedInvestmentRonMax, item.estimatedSavingsRonYearMin, item.estimatedSavingsRonYearMax),
+      comfort: item.category === "insulation" || item.type === "insulation" ? "bun" : item.category === "heating" ? "bun, dependent de sistem" : "variabil",
+      risk: item.confidencePercent && item.confidencePercent < 60 ? "mediu-ridicat" : item.category === "renewables" ? "mediu" : "scazut-mediu",
+      complexity: item.costLevel === "high" || item.costLevel === "very_high" ? "mare" : "medie",
+      verdict: item.verdict || scenarioVerdict(item)
+    }));
+  }
+
+  function normalizeTechnical(snapshot, physicalResult) {
+    const envelope = physicalResult?.envelopeResults || [];
+    const byId = Object.fromEntries(envelope.map(item => [item.elementId, item]));
+    const metric = (labelText, value, source = "LaCurent Physics Engine") => ({ label: labelText, value, source });
+    return {
+      metrics: [
+        metric("U pereti", byId.external_walls ? `${valueOf(byId.external_walls.correctedUValueWm2K).toFixed(2)} W/m2K` : "--"),
+        metric("U pod", byId.attic_ceiling ? `${valueOf(byId.attic_ceiling.correctedUValueWm2K).toFixed(2)} W/m2K` : "--"),
+        metric("Htr", physicalResult?.heatLossTransmission ? `${valueOf(physicalResult.heatLossTransmission).toFixed(1)} W/K` : "--"),
+        metric("Hve", physicalResult?.heatLossVentilation ? `${valueOf(physicalResult.heatLossVentilation).toFixed(1)} W/K` : "--"),
+        metric("QH,nd", physicalResult?.heatingDemandKwhM2Year ? `${valueOf(physicalResult.heatingDemandKwhM2Year).toFixed(1)} kWh/m2/an` : "--"),
+        metric("Energie finala", physicalResult?.finalEnergyKwhM2Year ? `${valueOf(physicalResult.finalEnergyKwhM2Year).toFixed(1)} kWh/m2/an` : "--")
+      ],
+      assumptions: (snapshot?.technicalDetails?.assumptions || physicalResult?.assumptions || []).join(" ")
+    };
+  }
+
+  async function loadReportData() {
+    if (!window.LaCurentAuth?.token()) return buildDemoPayload();
+    const result = await window.LaCurentAuth.api("/api/energy-report", {
+      house_id: requestedHouseId || window.LaCurentHomes?.activeHouseId?.()
+    });
+    if (!result.has_report) return buildDemoPayload();
+    const snapshot = result.report_snapshot;
+    const profile = result.profile;
+    const physicalResult = result.physical_result;
+    const home = snapshot.home || {};
+    const annualCosts = normalizeAnnualCosts(snapshot, physicalResult, profile);
+    const avoidableCost = annualCosts.find(item => item.label === "Cost evitabil estimat")?.valueRon;
+    return {
+      source: "api",
+      report: {
+        home: {
+          title: snapshot.home?.location ? `Locuinta din ${snapshot.home.location}` : `Locuinta #${result.house_id}`,
+          generatedAt: new Date(snapshot.generatedAt || result.generated_at).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" }),
+          facts: [
+            `Tip: ${home.buildingType || "--"}`,
+            `An constructie: ${home.constructionYear || "--"}`,
+            `Suprafata: ${home.usefulAreaM2 || "--"} m2`,
+            `Incalzire: ${home.heatingSystem || "--"}`,
+            `Anvelopa: ${home.envelopeSummary || "--"}`,
+            `Clasa estimata: ${snapshot.estimatedEnergyClass || "--"}`,
+            `Scor: ${snapshot.energyScore || "--"}/100`
+          ]
+        },
+        verdict: {
+          title: snapshot.mainConclusion || "Evaluare energetica estimativa",
+          conclusion: snapshot.shortExplanation || "Raportul foloseste datele introduse si calculele LaCurent Physics Engine.",
+          avoidableCostRange: money(avoidableCost),
+          confidence: `Incredere evaluare: ${label(snapshot.confidenceLevel)}`,
+          missingData: snapshot.missingData?.length ? snapshot.missingData : ["facturi reale", "detalii tehnice suplimentare"]
+        },
+        annualCosts,
+        heatingBreakdown: normalizeHeatingBreakdown(snapshot, annualCosts),
+        diagnostics: normalizeDiagnostics(profile, snapshot),
+        scenarios: normalizeScenarios(result, profile),
+        notRecommended: demo.notRecommended,
+        technical: normalizeTechnical(snapshot, physicalResult)
+      }
+    };
+  }
+
+  async function loadSidebar() {
+    const sidebarHost = document.getElementById("sidebar");
+    if (!sidebarHost) return;
+    const response = await fetch("../components/sidebar.html");
+    sidebarHost.innerHTML = await response.text();
+    window.LaCurentHomes?.refresh?.();
+    const menuButton = document.getElementById("menuBtn");
+    if (menuButton) {
+      menuButton.onclick = () => document.querySelector(".sidebar")?.classList.toggle("open");
+    }
+  }
+
+  function renderAnnualCosts(items) {
+    const container = document.getElementById("annualCosts");
+    container.innerHTML = items.map(item => `
+      <article class="cost-category-card ${item.tone}">
+        <span>${item.label}</span>
+        <strong>${money(item.valueRon)}</strong>
+        <p>${item.note}</p>
+      </article>
+    `).join("");
+  }
+
+  function renderBars(items) {
+    const container = document.getElementById("heatingBreakdown");
+    container.innerHTML = items.map(item => `
+      <article class="bar-row">
+        <div>
+          <span>${item.label}</span>
+          <strong>${money(item.valueRon)}</strong>
+        </div>
+        <div class="bar-track" aria-label="${item.label}: ${item.percent}%">
+          <span style="width:${Math.min(100, item.percent)}%"></span>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  function renderDiagnostics(groups) {
+    const container = document.getElementById("diagnosticGroups");
+    container.innerHTML = groups.map(group => `
+      <section class="diagnostic-group">
+        <h3>${group.group}</h3>
+        <div>
+          ${group.items.map(item => `
+            <article class="diagnostic-item">
+              <h4>${item.title}</h4>
+              <div class="badge-row">
+                ${createBadge("Impact", item.impact)}
+                ${createBadge("Certitudine", item.certainty)}
+                ${createBadge("Cost", item.cost)}
+                ${createBadge("Prioritate", item.priority)}
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `).join("");
+  }
+
+  function renderScenarios(items) {
+    const container = document.getElementById("scenarioGrid");
+    container.innerHTML = items.map(item => `
+      <article class="scenario-card-v1">
+        <div class="scenario-card-head">
+          <h3>${item.title}</h3>
+          <span>${item.verdict}</span>
+        </div>
+        <dl>
+          <div><dt>Cost estimat</dt><dd>${item.cost}</dd></div>
+          <div><dt>Economie anuala</dt><dd>${item.savings}</dd></div>
+          <div><dt>Payback</dt><dd>${item.payback}</dd></div>
+          <div><dt>Confort</dt><dd>${item.comfort}</dd></div>
+          <div><dt>Risc tehnic</dt><dd>${item.risk}</dd></div>
+          <div><dt>Complexitate</dt><dd>${item.complexity}</dd></div>
+        </dl>
+      </article>
+    `).join("");
+  }
+
+  function renderNotRecommended(items) {
+    const container = document.getElementById("notRecommended");
+    container.innerHTML = items.map(item => `
+      <article>
+        <h3>${item.title}</h3>
+        <p>${item.explanation}</p>
+      </article>
+    `).join("");
+  }
+
+  function renderTechnical(technical) {
+    const container = document.getElementById("technicalDetails");
+    container.innerHTML = technical.metrics.map(metric => `
+      <article>
+        <span>${metric.label}</span>
+        <strong>${metric.value}</strong>
+        <em>${metric.source}</em>
+      </article>
+    `).join("");
+    setText("technicalAssumptions", technical.assumptions);
+  }
+
+  try {
+    await loadSidebar();
+    const { source, report } = await loadReportData();
+    setText("reportMeta", `${report.home.title} · ${source === "api" ? "date din DB si calcule LaCurent" : "raport demo"} · ${report.home.generatedAt}`);
+    setText("verdictTitle", report.verdict.title);
+    setText("verdictConclusion", report.verdict.conclusion);
+    setText("avoidableCost", report.verdict.avoidableCostRange);
+    setText("confidenceLevel", report.verdict.confidence);
+    document.getElementById("missingData").innerHTML = `
+      <strong>Date lipsa importante</strong>
+      <ul>${report.verdict.missingData.map(item => `<li>${item}</li>`).join("")}</ul>
+    `;
+    renderAnnualCosts(report.annualCosts);
+    renderBars(report.heatingBreakdown);
+    renderDiagnostics(report.diagnostics);
+    renderScenarios(report.scenarios);
+    renderNotRecommended(report.notRecommended);
+    renderTechnical(report.technical);
+  } catch (error) {
+    const report = demo;
+    setText("reportMeta", `${report.home.title} · fallback demo`);
+    setText("verdictTitle", report.verdict.title);
+    setText("verdictConclusion", report.verdict.conclusion);
+    setText("avoidableCost", report.verdict.avoidableCostRange);
+    setText("confidenceLevel", report.verdict.confidence);
+    document.getElementById("missingData").innerHTML = `
+      <strong>Date lipsa importante</strong>
+      <ul>${report.verdict.missingData.map(item => `<li>${item}</li>`).join("")}</ul>
+    `;
+    renderAnnualCosts(report.annualCosts);
+    renderBars(report.heatingBreakdown);
+    renderDiagnostics(report.diagnostics);
+    renderScenarios(report.scenarios);
+    renderNotRecommended(report.notRecommended);
+    renderTechnical(report.technical);
+  }
+});

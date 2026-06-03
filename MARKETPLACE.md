@@ -1,5 +1,24 @@
 # MARKETPLACE.md
 
+## Status
+
+Acest document descrie o directie viitoare, nu prioritatea short-term.
+
+LaCurent nu este in prezent pozitionat ca marketplace sau platforma de lead generation.
+
+Marketplace-ul poate fi construit doar dupa ce:
+
+* Physics Engine este suficient de matur;
+* raportul energetic este credibil;
+* recomandarile tehnice sunt generate independent;
+* utilizatorul intelege ca analiza nu este influentata comercial.
+
+Regula:
+
+Analysis -> Technical recommendation -> User decision -> Optional marketplace / offers / partners.
+
+---
+
 ## Scop
 
 LaCurent poate deveni o punte intre proprietari si firme care pot implementa recomandarile: instalatori, auditori, firme de izolatii, ferestre, HVAC, fotovoltaice si automatizari.

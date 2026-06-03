@@ -4,215 +4,249 @@
 
 LaCurent nu este un dashboard energetic.
 
-LaCurent este un sistem de suport pentru decizii energetice.
+LaCurent este un sistem de suport pentru decizii energetice, construit pe un motor fizic de evaluare a locuintei.
 
-Utilizatorii intră în platformă pentru a afla:
+In short-term, UX-ul trebuie sa ajute proprietarul sa inteleaga:
 
-* cât de eficienți sunt;
-* unde pierd bani;
-* ce trebuie să facă.
+* care este starea energetica a locuintei;
+* unde pierde bani;
+* cat de credibila este estimarea;
+* ce date lipsesc pentru o evaluare mai buna.
+
+Nu optimizam inca experienta pentru marketplace, lead-uri sau vanzari B2B.
 
 ---
 
 # Regula celor 10 secunde
 
-În maximum 10 secunde utilizatorul trebuie să înțeleagă:
+In maximum 10 secunde utilizatorul trebuie sa inteleaga:
 
 1. Ce este LaCurent.
-2. De ce este relevant pentru el.
-3. Ce valoare primește.
-4. Care este următoarea acțiune.
+2. De ce este relevant pentru locuinta lui.
+3. Ce valoare primeste.
+4. Care este urmatoarea actiune.
+
+Pentru locuinte, urmatoarea actiune principala este completarea evaluarii energetice.
 
 ---
 
 # Regula unei concluzii
 
-Fiecare pagină trebuie să aibă o concluzie principală.
+Fiecare pagina trebuie sa aiba o concluzie principala.
 
 Exemple:
 
-* „Bună eficiență energetică”
-* „Potențial mare de economisire”
-* „Consum peste media locuințelor similare”
+* "Locuinta are pierderi importante prin pod si pereti."
+* "Costurile estimate sunt peste nivelul unei locuinte similare eficiente."
+* "Evaluarea are incredere medie, pentru ca lipsesc facturile reale."
 
----
-
-# Regula unei acțiuni
-
-Fiecare analiză trebuie să genereze cel puțin o recomandare.
-
-Nu afișăm doar probleme.
-
-Afișăm probleme și soluții.
+Utilizatorul trebuie sa poata intelege pagina fara sa citeasca toate detaliile tehnice.
 
 ---
 
 # Regula contextului
 
-Nu afișăm:
+Nu afisam:
 
 `Scor: 72`
 
-Afișăm:
+Afisam:
 
 `Scor energetic estimat: 72 / 100`
 
-și explicăm dacă rezultatul este bun sau rău.
+si explicam:
+
+* ce inseamna;
+* pe ce date se bazeaza;
+* ce incredere avem;
+* daca este comparabil cu alte locuinte.
 
 ---
 
-# Evităm dashboard syndrome
+# Regula pierderilor in bani
+
+Utilizatorii inteleg mai usor costul decat energia.
+
+Cand este posibil, pierderile trebuie traduse in lei/an:
+
+* pierderi prin pereti;
+* pierderi prin pod/acoperis;
+* pierderi prin pardoseala;
+* pierderi prin ferestre;
+* pierderi prin ventilatie si infiltratii;
+* pierderi prin randamentul sistemului;
+* pierderi la apa calda;
+* consum auxiliar.
+
+kWh si coeficientii tehnici raman in detalii tehnice.
+
+---
+
+# Evitam dashboard syndrome
 
 Nu construim ecrane pline cu:
 
 * grafice inutile;
-* KPI-uri fără explicație;
+* KPI-uri fara explicatie;
 * tabele complexe;
-* filtre excesive.
+* filtre excesive;
+* carduri comerciale premature.
 
-Fiecare element trebuie să răspundă unei întrebări reale.
+Fiecare element trebuie sa raspunda la una dintre intrebarile:
+
+* Cat de eficienta este locuinta?
+* Unde se pierd bani?
+* Ce date lipsesc?
+* Ce se poate imbunatati?
 
 ---
 
-# Principiul progressive disclosure
+# Progressive disclosure
 
 Nivel 1: concluzia.
 
-Nivel 2: explicația.
+Nivel 2: explicatia simpla.
 
-Nivel 3: detaliile tehnice.
+Nivel 3: impactul financiar.
 
-Majoritatea utilizatorilor nu trebuie să ajungă la nivelul 3.
+Nivel 4: detaliile tehnice.
 
----
-
-# Limbaj
-
-Preferăm:
-
-* economie estimată;
-* cost lunar;
-* recomandare;
-* eficiență;
-* comparație;
-* „Nu știu”.
-
-Evităm:
-
-* coeficienți;
-* formule;
-* terminologie inginerească;
-* jargon energetic.
+Majoritatea utilizatorilor nu trebuie sa ajunga la nivelul 4, dar acesta trebuie sa existe pentru transparenta.
 
 ---
 
-# Onboarding Locuințe
+# Onboarding Locuinte
 
-Onboarding-ul trebuie să fie mobile-first.
+Onboarding-ul trebuie sa fie mobile-first.
 
 Reguli:
 
-* întrebare scurtă;
-* explicație scurtă;
-* opțiuni predefinite;
-* opțiune „Nu știu”;
+* intrebare scurta;
+* explicatie scurta;
+* optiuni predefinite;
+* optiune "Nu stiu";
 * progres vizibil;
-* validare prietenoasă;
-* completare parțială permisă.
+* validare prietenoasa;
+* completare partiala permisa.
 
----
-
-# Raport energetic estimativ
-
-Ordinea raportului:
-
-1. Scor energetic estimat.
-2. Concluzie principală.
-3. Clasă internă LaCurent.
-4. Costuri estimate.
-5. Top probleme.
-6. Top recomandări.
-7. Încredere estimare.
-8. Detalii tehnice ascunse implicit.
-
-Disclaimer obligatoriu:
-
-„Această evaluare este estimativă și are rol informativ. Nu înlocuiește un certificat de performanță energetică emis de un auditor energetic atestat.”
-
----
-
-# Definiția succesului
-
-Un utilizator are succes dacă poate răspunde rapid la:
-
-* Sunt eficient?
-* Unde pierd bani?
-* Ce fac mai departe?
-
----
-
-# Formular locuinta
-
-Formularul trebuie sa fie conditional.
-
-Nu intrebam utilizatorul despre date care nu se aplica locuintei lui.
+Formularul trebuie sa colecteze date suficiente pentru modelul fizic, fara sa ceara utilizatorului coeficienti tehnici.
 
 Exemple:
 
 * daca nu exista fotovoltaice, puterea instalata ramane 0 si campul este blocat;
 * daca incalzirea este mixta, cerem sursele si suprafata aproximativa acoperita de fiecare;
-* daca exista doar soba simpla, nu intrebam despre termostat smart, ci despre putere si utilizare;
+* daca exista doar soba simpla, nu intrebam despre termostat smart;
 * daca nu exista sursa pe gaz, costul de gaz este 0 si campul este blocat, cu exceptia gatitului pe gaz;
-* consumul real se cere in bani, pe baza ultimelor facturi, evitand regularizarile care nu descriu consumul real.
+* consumul real se cere in bani si pe baza facturilor reale, evitand regularizarile care nu descriu consumul real.
 
 ---
 
-# Raport vs Algoritmi
+# Raport
 
-Raportul si Algoritmi sunt experiente diferite.
+Raportul este un instantaneu static al locuintei.
 
-Raport = fotografie.
+Trebuie sa se simta ca un document de audit energetic simplificat, nu ca dashboard live.
 
-Algoritmi = motor live.
+Raportul:
 
-## Raport
-
-Raportul este un document static, generat dupa onboarding.
-
-Reguli:
-
-* include data generarii;
-* raspunde la starea energetica actuala a locuintei;
-* nu include oferte;
-* nu include preturi live;
+* are data de generare;
+* este document-like;
+* este static;
+* nu include feed dinamic;
 * nu include marketplace;
-* recomandarile sunt generale si limitate la maximum 3;
-* detaliile tehnice sunt ascunse implicit.
+* nu include oferte;
+* nu include preturi live comerciale;
+* include detalii tehnice expandabile la final;
+* include disclaimer ca nu este certificat oficial.
 
-## Algoritmi
+Ordinea recomandata:
 
-Algoritmi este pagina dinamica pentru decizii.
+1. Header raport.
+2. Rezumat executiv.
+3. Starea locuintei.
+4. Performanta energetica.
+5. Pierderi estimate in lei/an.
+6. Probleme principale.
+7. Recomandari generale incluse in raport.
+8. Incredere estimare.
+9. Detalii tehnice expandabile.
+10. Disclaimer.
 
-Reguli:
+Disclaimer obligatoriu:
 
-* include timestamp de actualizare;
-* afiseaza surse de calcul;
-* afiseaza numar de locuinte similare;
-* poate include oferte, materiale si manopera;
-* recomandarile sunt ordonate dupa impact, cost, economie si incredere;
-* trebuie sa explice cand investitia poate deveni justificata financiar.
+> Aceasta evaluare este estimativa si are rol informativ. Nu inlocuieste un certificat de performanta energetica emis de un auditor energetic atestat.
 
 ---
 
-# Editare si simulare
+# Algoritmi
 
-Utilizatorul trebuie sa poata reveni asupra locuintei fara sa simta ca reia tot procesul de la zero.
+Algoritmi vine dupa ce motorul fizic este suficient de matur.
 
-Actiuni asteptate:
+Algoritmi este partea dinamica a produsului:
 
-* editeaza datele locuintei;
-* adauga factura lunara;
-* marcheaza schimbari facute;
-* simuleaza scenarii fara salvare.
+* scenario-based;
+* bazata pe Physics Engine;
+* orientata spre decizii;
+* capabila sa explice sursele de calcul;
+* capabila ulterior sa includa preturi, oferte si disponibilitate parteneri.
 
-Simularea trebuie separata clar de salvare, pentru ca utilizatorul sa poata intreba "ce-ar fi daca?" fara sa modifice raportul real.
+Fiecare recomandare dinamica trebuie sa arate:
+
+* ce date au fost folosite;
+* ce ipoteze exista;
+* impact estimat;
+* economie estimata;
+* cost estimativ;
+* perioada de recuperare;
+* nivel de incredere.
+
+Algoritmi nu trebuie sa devina o lista de reclame.
+
+---
+
+# Separare comerciala in UX
+
+Flux corect:
+
+```text
+Analysis
+-> Technical recommendation
+-> User decision
+-> Optional marketplace / offers / partners
+```
+
+Flux gresit:
+
+```text
+Marketplace
+-> Commercial recommendation
+-> User decision
+```
+
+Paid partners pot aparea doar dupa ce recomandarea tehnica a fost generata.
+
+---
+
+# Mobile first
+
+Majoritatea experientelor trebuie proiectate pentru telefon.
+
+Pe mobil:
+
+* fiecare sectiune trebuie sa aiba o concluzie clara;
+* cardurile trebuie sa fie scurte;
+* tabelele tehnice trebuie evitate sau ascunse;
+* detaliile avansate trebuie sa fie expandabile;
+* sumele in lei/an trebuie sa fie usor de scanat.
+
+---
+
+# Definitia succesului
+
+Un utilizator are succes daca poate raspunde rapid la:
+
+* Este locuinta mea eficienta?
+* Unde pierd bani?
+* Cat de sigura este estimarea?
+* Ce date ar trebui sa mai adaug?
+* Ce investitii merita analizate mai departe?

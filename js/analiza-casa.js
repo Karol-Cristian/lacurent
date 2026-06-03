@@ -161,7 +161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     existingHomesList.querySelectorAll("[data-home-id]").forEach(button => {
       button.addEventListener("click", () => {
         window.LaCurentHomes?.setActiveHouseId(button.dataset.homeId);
-        window.location.href = "raport-energie.html";
+        window.location.href = "raport-v1.html";
       });
     });
 
@@ -410,7 +410,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   cancelEditBtn?.addEventListener("click", () => {
-    window.location.href = editHouseId ? "raport-energie.html" : "analiza-casa.html";
+    window.location.href = editHouseId ? "raport-v1.html" : "analiza-casa.html";
   });
 
   function collectFormData() {
@@ -451,7 +451,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const result = await response.json();
       if (response.ok && result.success) {
         window.LaCurentHomes?.setActiveHouseId(result.house_id);
-        window.location.href = "raport-energie.html";
+        window.location.href = "raport-v1.html";
       } else {
         alert(result.error || "Eroare la salvare");
       }
