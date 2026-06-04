@@ -89,3 +89,33 @@ window.LaCurentHomes = {
 };
 
 window.addEventListener("DOMContentLoaded", refreshHomeContext);
+
+function hideSidebar(sidebar) {
+  sidebar?.classList.remove("open");
+  sidebar?.classList.add("sidebar-hidden");
+  document.body.classList.add("sidebar-collapsed");
+}
+
+function showSidebar(sidebar) {
+  sidebar?.classList.remove("sidebar-hidden");
+  sidebar?.classList.add("open");
+  document.body.classList.remove("sidebar-collapsed");
+}
+
+document.addEventListener("click", event => {
+  const sidebar = document.querySelector(".sidebar");
+  const menuButton = document.getElementById("menuBtn");
+  if (menuButton?.contains(event.target)) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    showSidebar(sidebar);
+    return;
+  }
+  if (event.target.closest("[data-sidebar-close]")) {
+    hideSidebar(sidebar);
+    return;
+  }
+  if (!sidebar || sidebar.classList.contains("sidebar-hidden")) return;
+  if (sidebar.contains(event.target) || menuButton?.contains(event.target)) return;
+  hideSidebar(sidebar);
+}, true);

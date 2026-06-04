@@ -11,6 +11,8 @@
 <script src="../js/auth.js" defer></script>
 <script src="../js/segment-context.js" defer></script>
 <script src="../js/home-context.js" defer></script>
+<script src="../js/physics-parameters-data.js" defer></script>
+<script src="../js/physics-parameter-usage.js" defer></script>
 </head>
 
 <body>
@@ -72,6 +74,42 @@
 <article class="technical-chapter-card"><span>v0.6</span><h3>Clase estimate</h3><p>Incadreaza rezultatele in praguri interne configurabile.</p><ul><li>A+ - G</li><li>clasa mediu</li><li>referinta</li></ul></article>
 <article class="technical-chapter-card"><span>v0.7</span><h3>Scenarii</h3><p>Compara situatia actuala cu masuri de renovare sau schimbari de sistem.</p><ul><li>economii</li><li>CO2 redus</li><li>payback</li></ul></article>
 <article class="technical-chapter-card"><span>v0.8</span><h3>Audit data model</h3><p>Pregateste structura pentru un raport LaCurent mai apropiat de audit.</p><ul><li>baseline</li><li>scenarios</li><li>summary</li></ul></article>
+</div>
+</section>
+
+<section class="dashboard-band mc001-parameters-section">
+<div class="section-heading">
+<span class="small-label">PARAMETRI MC001</span>
+<h2>Dicționarul tehnic folosit de motor</h2>
+<p>Catalog oficial de simboluri și indici MC001. Intrările care nu au încă un corespondent folosit în motorul fizic LaCurent apar estompate.</p>
+</div>
+<div class="parameter-summary-grid" id="parameterSummary">
+<article><span>Total MC001</span><strong>-</strong><p>simboluri și indici oficiali</p></article>
+<article><span>Folosiți</span><strong>-</strong><p>au mapping folosit în engine</p></article>
+<article><span>Mapați</span><strong>-</strong><p>au corespondent LaCurent</p></article>
+<article><span>Nefolosiți</span><strong>-</strong><p>încă lipsesc din cod</p></article>
+</div>
+<div class="parameter-controls">
+<label>
+<span>Filtrează după layer</span>
+<select id="parameterLayerFilter">
+<option value="all">Toate layerele</option>
+</select>
+</label>
+<label>
+<span>Status</span>
+<select id="parameterStatusFilter">
+<option value="all">Toți parametrii</option>
+<option value="used">Folosiți în cod</option>
+<option value="generic_metadata">Metadata generică</option>
+<option value="mapped_unused">Mapați, dar nefolosiți</option>
+<option value="unmapped_official">Oficiali, încă nemapați</option>
+<option value="inactive">Toți cei inactivi</option>
+</select>
+</label>
+</div>
+<div id="mc001ParameterGrid" class="mc001-parameter-grid" aria-live="polite">
+<article class="technical-chapter-card"><span>loading</span><h3>Se încarcă parametrii...</h3><p>Catalogul MC001 este generat din baza de parametri a motorului.</p></article>
 </div>
 </section>
 
@@ -226,6 +264,179 @@ if(btn){
 btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
 }
 });
+
+function renderMc001Parameters(){
+const data=window.LaCurentPhysicsParameters;
+const usage=window.LaCurentPhysicsParameterUsage;
+const grid=document.getElementById("mc001ParameterGrid");
+const summary=document.getElementById("parameterSummary");
+const layerFilter=document.getElementById("parameterLayerFilter");
+const statusFilter=document.getElementById("parameterStatusFilter");
+if(!grid||!data?.parameters||!usage?.usage){return;}
+const usageById=new Map(usage.usage.map(item=>[item.parameterId,item]));
+const layers=[...new Set(data.parameters.map(item=>item.layer))].sort();
+if(layerFilter && layerFilter.options.length===1){
+layers.forEach(layer=>{
+const option=document.createElement("option");
+option.value=layer;
+option.textContent=layer;
+layerFilter.appendChild(option);
+});
+}
+if(summary){
+summary.innerHTML=`
+<article><span>Total</span><strong>${usage.counts.total}</strong><p>parametri catalogați</p></article>
+<article><span>Folosiți</span><strong>${usage.counts.used}</strong><p>apar în calculatoare/engine</p></article>
+<article><span>Metadata</span><strong>${usage.counts.genericMetadata}</strong><p>folosiți generic</p></article>
+<article><span>Nefolosiți</span><strong>${usage.counts.unused}</strong><p>încă neconectați</p></article>`;
+}
+function statusLabel(status){
+if(status==="used") return "folosit";
+if(status==="generic_metadata") return "metadata";
+return "nefolosit";
+}
+function render(){
+const selectedLayer=layerFilter?.value||"all";
+const selectedStatus=statusFilter?.value||"all";
+const filtered=data.parameters.filter(parameter=>{
+const itemUsage=usageById.get(parameter.id);
+const status=itemUsage?.status||"unused";
+return (selectedLayer==="all"||parameter.layer===selectedLayer) && (selectedStatus==="all"||status===selectedStatus);
+});
+grid.innerHTML=filtered.map(parameter=>{
+const itemUsage=usageById.get(parameter.id)||{status:"unused",hits:[]};
+const notation=parameter.notation||{};
+const status=itemUsage.status||"unused";
+const indices=(parameter.mc001.indices||[]).map(index=>index.index).join(", ");
+const hits=(itemUsage.hits||[]).slice(0,2).map(hit=>hit.file.split("/").pop()).join(", ");
+return `<article class="mc001-parameter-card ${status==="unused"?"unused":""}">
+<div class="parameter-card-top">
+<span class="parameter-layer">${parameter.layer}</span>
+<span class="parameter-status ${status}">${statusLabel(status)}</span>
+</div>
+<div class="parameter-symbol" title="${notation.plain||parameter.id}">${notation.mc001||parameter.mc001.symbol?.symbol||"-"}</div>
+<h3>${parameter.nameRo}</h3>
+<p>${parameter.descriptionRo}</p>
+<dl>
+<div><dt>Unitate</dt><dd>${parameter.unit||"-"}</dd></div>
+<div><dt>LaTeX</dt><dd><code>${notation.latex||"-"}</code></dd></div>
+<div><dt>Parametru intern</dt><dd><code>${parameter.id}</code></dd></div>
+<div><dt>Simbol oficial</dt><dd>${parameter.mc001.symbol?.symbol||"-"}</dd></div>
+<div><dt>Indici</dt><dd>${indices||"-"}</dd></div>
+<div><dt>Folosire</dt><dd>${hits||"nu apare în calculators/engine"}</dd></div>
+</dl>
+${parameter.formula?`<div class="parameter-formula">${parameter.formula}</div>`:""}
+</article>`;
+}).join("")||`<article class="technical-chapter-card"><span>gol</span><h3>Niciun parametru pentru filtrul ales</h3><p>Schimbă layerul sau statusul.</p></article>`;
+}
+layerFilter?.addEventListener("change",render);
+statusFilter?.addEventListener("change",render);
+render();
+}
+function renderMc001OfficialVocabulary(){
+const data=window.LaCurentPhysicsParameters;
+const usage=window.LaCurentPhysicsParameterUsage;
+const grid=document.getElementById("mc001ParameterGrid");
+const summary=document.getElementById("parameterSummary");
+const layerFilter=document.getElementById("parameterLayerFilter");
+const statusFilter=document.getElementById("parameterStatusFilter");
+if(!grid||!data?.parameters||!usage?.usage){return;}
+const usageById=new Map(usage.usage.map(item=>[item.parameterId,item]));
+function entryStatus(entry){
+const mapped=entry.mappedParameters||[];
+if(!mapped.length){return "unmapped_official";}
+const mappedStatuses=mapped.map(parameter=>usageById.get(parameter.id)?.status||"unused");
+if(mappedStatuses.includes("used")){return "used";}
+if(mappedStatuses.includes("generic_metadata")){return "generic_metadata";}
+return "mapped_unused";
+}
+function isInactive(status){
+return status==="mapped_unused"||status==="unmapped_official";
+}
+function entryLayer(entry){
+const mappedLayers=[...new Set((entry.mappedParameters||[]).map(parameter=>parameter.layer).filter(Boolean))];
+if(mappedLayers.length){return mappedLayers.join(" + ");}
+return entry.type==="symbol"?"simbol MC001":"indice MC001";
+}
+const layers=[...new Set(data.parameters.map(entryLayer))].sort();
+if(layerFilter && layerFilter.dataset.source!=="official"){
+layerFilter.dataset.source="official";
+layerFilter.innerHTML='<option value="all">Toate layerele</option>';
+layers.forEach(layer=>{
+const option=document.createElement("option");
+option.value=layer;
+option.textContent=layer;
+layerFilter.appendChild(option);
+});
+}
+if(summary){
+const total=data.parameters.length;
+const used=data.parameters.filter(entry=>entryStatus(entry)==="used").length;
+const mapped=data.parameters.filter(entry=>(entry.mappedParameters||[]).length).length;
+const inactive=data.parameters.filter(entry=>isInactive(entryStatus(entry))).length;
+summary.innerHTML=`
+<article><span>Total MC001</span><strong>${total}</strong><p>${data.metadata?.officialSymbols||0} simboluri + ${data.metadata?.officialIndices||0} indici</p></article>
+<article><span>Folosiți</span><strong>${used}</strong><p>au mapping folosit în calculatoare/engine</p></article>
+<article><span>Mapați</span><strong>${mapped}</strong><p>au corespondent intern LaCurent</p></article>
+<article><span>Nefolosiți</span><strong>${inactive}</strong><p>nu sunt încă activi în engine</p></article>`;
+}
+function statusLabel(status){
+if(status==="used") return "folosit";
+if(status==="generic_metadata") return "metadata";
+if(status==="mapped_unused") return "mapat, nefolosit";
+return "nemapat";
+}
+function render(){
+const selectedLayer=layerFilter?.value||"all";
+const selectedStatus=statusFilter?.value||"all";
+const filtered=data.parameters.filter(entry=>{
+const status=entryStatus(entry);
+const layer=entryLayer(entry);
+const statusMatches=selectedStatus==="all"||status===selectedStatus||(selectedStatus==="inactive"&&isInactive(status));
+return (selectedLayer==="all"||layer===selectedLayer) && statusMatches;
+});
+grid.innerHTML=filtered.map(entry=>{
+const notation=entry.notation||{};
+const status=entryStatus(entry);
+const mapped=entry.mappedParameters||[];
+const mappedIds=mapped.map(parameter=>parameter.id).join(", ");
+const mappedNames=mapped.map(parameter=>parameter.nameRo).join("; ");
+const formulas=[...new Set(mapped.map(parameter=>parameter.formula).filter(Boolean))].slice(0,2);
+const hits=mapped.flatMap(parameter=>(usageById.get(parameter.id)?.hits||[]).map(hit=>hit.file.split("/").pop()));
+const uniqueHits=[...new Set(hits)].slice(0,3).join(", ");
+const chapters=(entry.chapters||[]).join(", ");
+return `<article class="mc001-parameter-card ${isInactive(status)?"unused":""}">
+<div class="parameter-card-top">
+<span class="parameter-layer">${entryLayer(entry)}</span>
+<span class="parameter-status ${status}">${statusLabel(status)}</span>
+</div>
+<div class="parameter-symbol" title="${notation.plain||entry.id}">${notation.mc001||"-"}</div>
+<h3>${entry.nameRo}</h3>
+<p>${entry.type==="symbol"?"Simbol oficial MC001":"Indice/subscript oficial MC001"} din capitolele ${chapters||"-"}.</p>
+<dl>
+<div><dt>Unitate</dt><dd>${entry.unit||"-"}</dd></div>
+<div><dt>LaTeX</dt><dd><code>${notation.latex||"-"}</code></dd></div>
+<div><dt>ID oficial</dt><dd><code>${entry.id}</code></dd></div>
+<div><dt>Parametri LaCurent</dt><dd>${mappedIds?`<code>${mappedIds}</code>`:"-"}</dd></div>
+<div><dt>Corespondență</dt><dd>${mappedNames||"nu există încă mapping intern"}</dd></div>
+<div><dt>Folosire în cod</dt><dd>${uniqueHits||"nu apare în calculators/engine"}</dd></div>
+</dl>
+${formulas.length?`<div class="parameter-formula">${formulas.join("<br>")}</div>`:""}
+</article>`;
+}).join("")||`<article class="technical-chapter-card"><span>gol</span><h3>Niciun parametru pentru filtrul ales</h3><p>Schimbă layerul sau statusul.</p></article>`;
+}
+if(layerFilter && layerFilter.dataset.boundOfficial!=="1"){
+layerFilter.dataset.boundOfficial="1";
+layerFilter.addEventListener("change",render);
+}
+if(statusFilter && statusFilter.dataset.boundOfficial!=="1"){
+statusFilter.dataset.boundOfficial="1";
+statusFilter.addEventListener("change",render);
+}
+render();
+}
+window.addEventListener("DOMContentLoaded",renderMc001OfficialVocabulary);
+window.addEventListener("load",renderMc001OfficialVocabulary);
 </script>
 </body>
 </html>

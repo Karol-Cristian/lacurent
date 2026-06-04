@@ -1,0 +1,224 @@
+{
+  "metadata": {
+    "id": "lacurent-physics-index-database",
+    "version": "0.1.0",
+    "scope": "Canonical MC001-style index/subscript dictionary for the LaCurent Physics Engine.",
+    "sourceNote": "Seeded from MC001 symbol/index vocabulary. This file is intentionally focused on indices relevant to the current residential engine."
+  },
+  "indices": [
+    {
+      "id": "H",
+      "termRo": "incalzire",
+      "termEn": "heating",
+      "mc001Chapters": ["2", "5", "6"],
+      "engineMeaning": "Energy service: space heating",
+      "examples": ["Q_H_nd", "E_H_fin"],
+      "cleanupRule": "Do not use H alone in code when it may mean heat transfer coefficient. Use heating or heatTransfer explicitly."
+    },
+    {
+      "id": "C",
+      "termRo": "racire",
+      "termEn": "cooling",
+      "mc001Chapters": ["2", "5", "6"],
+      "engineMeaning": "Energy service: space cooling",
+      "examples": ["Q_C_nd", "E_C_fin"]
+    },
+    {
+      "id": "W",
+      "termRo": "apa calda de consum",
+      "termEn": "domestic hot water",
+      "mc001Chapters": ["2", "5", "6"],
+      "engineMeaning": "Energy service: domestic hot water",
+      "examples": ["Q_W_nd", "E_W_fin"],
+      "cleanupRule": "In code use dhw, not W, to avoid conflict with watt."
+    },
+    {
+      "id": "L",
+      "termRo": "iluminat",
+      "termEn": "lighting",
+      "mc001Chapters": ["2", "5", "6"],
+      "engineMeaning": "Energy service: lighting",
+      "examples": ["E_L_fin"]
+    },
+    {
+      "id": "tr",
+      "termRo": "transmisie",
+      "termEn": "transmission",
+      "mc001Chapters": ["2", "3", "5", "6"],
+      "engineMeaning": "Heat transfer through envelope elements",
+      "examples": ["H_tr"],
+      "cleanupRule": "Use transmissionHeatTransfer for canonical code identifiers."
+    },
+    {
+      "id": "ve",
+      "termRo": "ventilare",
+      "termEn": "ventilation",
+      "mc001Chapters": ["2", "3", "5", "6"],
+      "engineMeaning": "Heat transfer caused by airflow",
+      "examples": ["H_ve"],
+      "cleanupRule": "Use ventilationHeatTransfer for canonical code identifiers."
+    },
+    {
+      "id": "tb",
+      "termRo": "punte termica",
+      "termEn": "thermal bridge",
+      "mc001Chapters": ["2", "3"],
+      "engineMeaning": "Thermal bridge correction",
+      "examples": ["H_tb", "psi_tb"]
+    },
+    {
+      "id": "nd",
+      "termRo": "necesar",
+      "termEn": "need / useful demand",
+      "mc001Chapters": ["2", "5", "6"],
+      "engineMeaning": "Useful demand before systems",
+      "examples": ["Q_H_nd", "Q_C_nd", "Q_W_nd"],
+      "cleanupRule": "Never mix nd with final energy. nd belongs to Energy Demand layer."
+    },
+    {
+      "id": "fin",
+      "termRo": "final",
+      "termEn": "final",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "Final energy after system efficiencies/losses",
+      "examples": ["E_H_fin", "E_fin"],
+      "cleanupRule": "Use finalEnergy only after Systems layer."
+    },
+    {
+      "id": "P",
+      "termRo": "energie primara",
+      "termEn": "primary energy",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "Primary energy converted from final energy",
+      "examples": ["E_P", "EP"]
+    },
+    {
+      "id": "nren",
+      "termRo": "neregenerabil",
+      "termEn": "non-renewable",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "Non-renewable part of primary energy",
+      "examples": ["E_P_nren"]
+    },
+    {
+      "id": "ren",
+      "termRo": "regenerabil",
+      "termEn": "renewable",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "Renewable part of primary energy",
+      "examples": ["E_P_ren"]
+    },
+    {
+      "id": "CO2",
+      "termRo": "emisii CO2",
+      "termEn": "CO2 emissions",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "Carbon dioxide emissions",
+      "examples": ["m_CO2"]
+    },
+    {
+      "id": "i",
+      "termRo": "interior / indice general",
+      "termEn": "internal / generic index",
+      "mc001Chapters": ["2", "3"],
+      "engineMeaning": "Use only in formulas, not as an opaque code variable",
+      "cleanupRule": "Avoid generic i/j/k in persistent model field names."
+    },
+    {
+      "id": "e",
+      "termRo": "exterior",
+      "termEn": "external",
+      "mc001Chapters": ["2", "3", "5", "6"],
+      "engineMeaning": "External environment",
+      "examples": ["Rse"]
+    },
+    {
+      "id": "si",
+      "termRo": "suprafata interioara",
+      "termEn": "internal surface",
+      "mc001Chapters": ["2", "3"],
+      "engineMeaning": "Internal surface resistance/heat transfer",
+      "examples": ["Rsi"]
+    },
+    {
+      "id": "se",
+      "termRo": "suprafata exterioara",
+      "termEn": "external surface",
+      "mc001Chapters": ["2", "3"],
+      "engineMeaning": "External surface resistance/heat transfer",
+      "examples": ["Rse"]
+    },
+    {
+      "id": "zt",
+      "termRo": "zona termica",
+      "termEn": "thermal zone",
+      "mc001Chapters": ["2", "4", "5", "6"],
+      "engineMeaning": "Thermal zone",
+      "examples": ["ThermalZone"]
+    },
+    {
+      "id": "ztc",
+      "termRo": "zona climatizata",
+      "termEn": "conditioned thermal zone",
+      "mc001Chapters": ["2"],
+      "engineMeaning": "Conditioned zone",
+      "examples": ["conditioned_zone"]
+    },
+    {
+      "id": "ztu",
+      "termRo": "zona neclimatizata",
+      "termEn": "unconditioned thermal zone",
+      "mc001Chapters": ["2"],
+      "engineMeaning": "Unconditioned zone",
+      "examples": ["UnconditionedZone", "b_ztu"]
+    },
+    {
+      "id": "em",
+      "termRo": "emisie",
+      "termEn": "emission subsystem",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "Heating emission subsystem",
+      "examples": ["emissionEfficiency"]
+    },
+    {
+      "id": "dis",
+      "termRo": "distributie",
+      "termEn": "distribution subsystem",
+      "mc001Chapters": ["3", "5", "6"],
+      "engineMeaning": "System distribution subsystem",
+      "examples": ["distributionEfficiency"]
+    },
+    {
+      "id": "sto",
+      "termRo": "stocare",
+      "termEn": "storage subsystem",
+      "mc001Chapters": ["3", "5", "6"],
+      "engineMeaning": "System storage subsystem",
+      "examples": ["storageEfficiency"]
+    },
+    {
+      "id": "gen",
+      "termRo": "generare",
+      "termEn": "generation subsystem",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "System generation subsystem",
+      "examples": ["generationEfficiency"]
+    },
+    {
+      "id": "ctr",
+      "termRo": "reglare",
+      "termEn": "control subsystem",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "System control subsystem",
+      "examples": ["controlEfficiency"]
+    },
+    {
+      "id": "aux",
+      "termRo": "auxiliar",
+      "termEn": "auxiliary",
+      "mc001Chapters": ["5", "6"],
+      "engineMeaning": "Auxiliary energy for pumps, fans and controls",
+      "examples": ["auxiliaryEnergy"]
+    }
+  ]
+}

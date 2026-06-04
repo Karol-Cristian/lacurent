@@ -106,22 +106,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  if (!(await hasValidSession())) {
-    houseForm.hidden = true;
-    if (progressWrap) progressWrap.hidden = true;
-    if (authRequired) authRequired.hidden = false;
+  const authenticated = await hasValidSession();
+  if (!authenticated) {
+    if (authRequired) {
+      authRequired.hidden = false;
+      authRequired.querySelector(".small-label").textContent = "CONT OPTIONAL";
+      authRequired.querySelector("h2").textContent = "Poti vedea raportul fara cont.";
+      authRequired.querySelector("p").textContent = "Completeaza analiza acum. Dupa raport poti crea cont gratuit ca sa il salvezi permanent.";
+      authRequired.querySelector(".primary-btn").textContent = "Creeaza cont dupa raport";
+    }
     initAuthGate();
-    return;
   }
 
   const currentUser = window.LaCurentAuth.currentUser();
   const currentRole = window.LaCurentSegments?.normalize(currentUser?.role || "residential") || "residential";
-  if (currentRole !== "residential") {
+  if (authenticated && currentRole !== "residential") {
     window.location.href = currentRole === "auditor" ? "auditor-portal.html" : "profil.html";
     return;
   }
 
-  const homes = await window.LaCurentHomes?.load?.() || [];
+  const homes = authenticated ? await window.LaCurentHomes?.load?.() || [] : [];
   if (editHouseId) {
     window.LaCurentHomes?.setActiveHouseId(editHouseId);
   }
@@ -180,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   houseForm.hidden = false;
   if (progressWrap) progressWrap.hidden = false;
-  if (authRequired) authRequired.hidden = true;
+  if (authRequired && authenticated) authRequired.hidden = true;
 
   const allSteps = [...document.querySelectorAll(".step")];
   let steps = [...allSteps];
@@ -438,6 +442,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const endpoint = editHouseId ? "/api/update-house" : "/api/save-house";
 
     try {
+      if (!window.LaCurentAuth?.token()) {
+        window.LaCurentGuest?.saveHomeDraft(data, data.analysis_purpose === "purchase" ? "buyer" : "owner");
+        const result = await window.LaCurentAuth.api("/api/simulate-house", data);
+        window.LaCurentGuest?.saveReportResult(result);
+        window.location.href = "raport-v1.html?guest=1";
+        return;
+      }
       const response = await fetch(`https://lacurent.lemnarukarol.workers.dev${endpoint}`, {
         method: "POST",
         headers: {

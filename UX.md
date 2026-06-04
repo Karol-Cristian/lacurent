@@ -119,6 +119,10 @@ Majoritatea utilizatorilor nu trebuie sa ajunga la nivelul 4, dar acesta trebuie
 
 Onboarding-ul trebuie sa fie mobile-first.
 
+Utilizatorul poate incepe onboarding-ul fara cont.
+
+Contul se cere doar optional dupa ce raportul estimativ este generat.
+
 Reguli:
 
 * intrebare scurta;

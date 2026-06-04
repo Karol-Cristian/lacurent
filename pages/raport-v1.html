@@ -8,6 +8,7 @@
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/auth.js" defer></script>
+<script src="../js/guest-session.js" defer></script>
 <script src="../js/home-context.js" defer></script>
 <script src="../js/report-v1-demo-data.js" defer></script>
 <script src="../js/report-v1.js" defer></script>
@@ -35,6 +36,11 @@
 <span class="report-v1-eyebrow">VERDICT PRINCIPAL</span>
 <h2 id="verdictTitle"></h2>
 <p id="verdictConclusion"></p>
+<div id="guestSavePrompt" class="guest-save-prompt" hidden>
+<strong>Raportul tau este gata. Il poti folosi acum fara cont.</strong>
+<span>Creeaza cont gratuit doar daca vrei sa il salvezi permanent, sa adaugi facturi sau sa revii la simulari de pe alt dispozitiv.</span>
+<a href="profil.html?mode=register">Creeaza cont gratuit</a>
+</div>
 <div id="missingData" class="missing-data-list"></div>
 </div>
 <aside class="verdict-panel">

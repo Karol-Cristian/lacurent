@@ -21,6 +21,7 @@ const syntaxFiles = [
   "workers/save-house.js",
   "workers/energy-model.js",
   "js/auth.js",
+  "js/guest-session.js",
   "js/analiza-casa.js",
   "js/admin.js",
   "js/energy-report.js",

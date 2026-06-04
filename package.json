@@ -2,7 +2,11 @@
   "scripts": {
     "smoke": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-reference-homes.mjs && node tests/smoke.mjs",
     "smoke:api": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-reference-homes.mjs && set RUN_API_SMOKE=1&& node tests/smoke.mjs",
-    "test:physics": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-reference-homes.mjs"
+    "test:physics": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-reference-homes.mjs",
+    "test:mc001": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs",
+    "test:mc001:verbose": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs --verbose",
+    "docs:physics-params": "node scripts/generate-physics-parameter-docs.mjs",
+    "data:physics-params": "node scripts/generate-physics-parameter-usage.mjs && node scripts/generate-physics-parameter-browser-data.mjs"
   },
   "devDependencies": {}
 }

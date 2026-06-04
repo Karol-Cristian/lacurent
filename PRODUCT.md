@@ -110,6 +110,14 @@ Recomandarile trebuie sa fie generate din modelul fizic si analiza economica, nu
 
 Ordinea recomandarilor nu trebuie sa fie paid placement.
 
+## Guest first, account later
+
+Utilizatorul trebuie sa poata vedea valoarea raportului inainte sa fie obligat sa creeze cont.
+
+Contul este optional la primul contact si devine relevant dupa raport, cand utilizatorul vrea sa salveze permanent, sa adauge facturi, sa compare locuinte sau sa continue pe alt dispozitiv.
+
+Detalii: `GUEST_MODE.md`.
+
 ## Simplitate inainte de complexitate
 
 Utilizatorul trebuie sa inteleaga concluzia inainte sa vada metodologia.

@@ -47,7 +47,10 @@ Cont utilizator
 <label>Email</label>
 <input name="email" type="email" autocomplete="email" required>
 <label>Parolă</label>
+<div class="password-field">
 <input name="password" type="password" autocomplete="current-password" required>
+<button type="button" class="password-toggle" data-password-toggle aria-label="Arata parola">Arata</button>
+</div>
 <button class="primary-btn" type="submit">Autentificare</button>
 <a href="#" id="showForgot">Am uitat parola</a>
 <p class="form-message" id="loginMessage"></p>
@@ -93,7 +96,10 @@ Cont utilizator
 </div>
 
 <label>Parolă</label>
+<div class="password-field">
 <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+<button type="button" class="password-toggle" data-password-toggle aria-label="Arata parola">Arata</button>
+</div>
 
 <button class="primary-btn" type="submit">Creează cont</button>
 <p class="form-message" id="registerMessage"></p>
@@ -173,6 +179,17 @@ const el=document.getElementById(id);
 el.textContent=text;
 el.classList.toggle("error",isError);
 }
+
+document.querySelectorAll("[data-password-toggle]").forEach(button=>{
+button.addEventListener("click",()=>{
+const input=button.closest(".password-field")?.querySelector("input");
+if(!input)return;
+const show=input.type==="password";
+input.type=show?"text":"password";
+button.textContent=show?"Ascunde":"Arata";
+button.setAttribute("aria-label",show?"Ascunde parola":"Arata parola");
+});
+});
 
 function updateOrganizationFields(){
 const role=registerRole.value;

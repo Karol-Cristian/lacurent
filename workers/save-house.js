@@ -1871,15 +1871,12 @@ async function updateHouse(request, env, corsHeaders) {
 
 async function simulateHouse(request, env, corsHeaders) {
   const user = await getCurrentUser(request, env);
-  if (!user) {
-    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru simulare." }, { status: 401, headers: corsHeaders });
-  }
   const body = await readJson(request);
   const houseId = numberValue(body, "house_id");
   const newProfile = buildEnergyProfile(body);
   let oldProfile = null;
 
-  if (houseId) {
+  if (user && houseId) {
     const analysis = await latestAnalysisForHouse(env, user.id, houseId);
     if (analysis) {
       oldProfile = buildEnergyProfile(await latestAnswers(env, analysis.id));
@@ -1900,7 +1897,24 @@ async function simulateHouse(request, env, corsHeaders) {
     }
     : null;
 
-  return jsonResponse({ success: true, simulated: true, profile: newProfile, old_profile: oldProfile, comparison }, { headers: corsHeaders });
+  const generatedAt = new Date().toISOString();
+  const physicalResult = buildPhysicalEnergyResult(body);
+  const reportSnapshot = buildReportSnapshot(newProfile, body, null, generatedAt, physicalResult);
+  const algorithmInsights = buildAlgorithmInsights(newProfile, null, {}, {}, generatedAt, physicalResult);
+
+  return jsonResponse({
+    success: true,
+    simulated: true,
+    guest: !user,
+    has_report: true,
+    generated_at: generatedAt,
+    profile: newProfile,
+    old_profile: oldProfile,
+    comparison,
+    physical_result: physicalResult,
+    report_snapshot: reportSnapshot,
+    algorithm_insights: algorithmInsights
+  }, { headers: corsHeaders });
 }
 
 async function monthlyBill(request, env, corsHeaders) {

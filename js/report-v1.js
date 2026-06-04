@@ -182,11 +182,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadReportData() {
-    if (!window.LaCurentAuth?.token()) return buildDemoPayload();
+    if (!window.LaCurentAuth?.token()) {
+      const guestReport = window.LaCurentGuest?.latestReport?.();
+      if (guestReport?.result?.report_snapshot) {
+        return normalizeApiResult(guestReport.result, "guest");
+      }
+      return buildDemoPayload();
+    }
     const result = await window.LaCurentAuth.api("/api/energy-report", {
       house_id: requestedHouseId || window.LaCurentHomes?.activeHouseId?.()
     });
     if (!result.has_report) return buildDemoPayload();
+    return normalizeApiResult(result, "api");
+  }
+
+  function normalizeApiResult(result, source) {
     const snapshot = result.report_snapshot;
     const profile = result.profile;
     const physicalResult = result.physical_result;
@@ -194,10 +204,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const annualCosts = normalizeAnnualCosts(snapshot, physicalResult, profile);
     const avoidableCost = annualCosts.find(item => item.label === "Cost evitabil estimat")?.valueRon;
     return {
-      source: "api",
+      source,
       report: {
         home: {
-          title: snapshot.home?.location ? `Locuinta din ${snapshot.home.location}` : `Locuinta #${result.house_id}`,
+          title: snapshot.home?.location ? `Locuinta din ${snapshot.home.location}` : (source === "guest" ? "Locuinta analizata local" : `Locuinta #${result.house_id}`),
           generatedAt: new Date(snapshot.generatedAt || result.generated_at).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" }),
           facts: [
             `Tip: ${home.buildingType || "--"}`,
@@ -331,7 +341,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     await loadSidebar();
     const { source, report } = await loadReportData();
-    setText("reportMeta", `${report.home.title} · ${source === "api" ? "date din DB si calcule LaCurent" : "raport demo"} · ${report.home.generatedAt}`);
+    const sourceLabel = source === "api" ? "date din DB si calcule LaCurent" : source === "guest" ? "raport local fara cont" : "raport demo";
+    setText("reportMeta", `${report.home.title} · ${sourceLabel} · ${report.home.generatedAt}`);
+    const guestPrompt = document.getElementById("guestSavePrompt");
+    if (guestPrompt) guestPrompt.hidden = source !== "guest";
     setText("verdictTitle", report.verdict.title);
     setText("verdictConclusion", report.verdict.conclusion);
     setText("avoidableCost", report.verdict.avoidableCostRange);
