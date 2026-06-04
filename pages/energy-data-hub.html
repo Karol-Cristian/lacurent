@@ -435,8 +435,129 @@ statusFilter.addEventListener("change",render);
 }
 render();
 }
-window.addEventListener("DOMContentLoaded",renderMc001OfficialVocabulary);
-window.addEventListener("load",renderMc001OfficialVocabulary);
+function renderMc001OfficialVocabularyTable(){
+const data=window.LaCurentPhysicsParameters;
+const usage=window.LaCurentPhysicsParameterUsage;
+const grid=document.getElementById("mc001ParameterGrid");
+const summary=document.getElementById("parameterSummary");
+const layerFilter=document.getElementById("parameterLayerFilter");
+const statusFilter=document.getElementById("parameterStatusFilter");
+if(!grid||!data?.parameters||!usage?.usage){return;}
+const usageById=new Map(usage.usage.map(item=>[item.parameterId,item]));
+function entryStatus(entry){
+const mapped=entry.mappedParameters||[];
+if(!mapped.length){return "unmapped_official";}
+const mappedStatuses=mapped.map(parameter=>usageById.get(parameter.id)?.status||"unused");
+if(mappedStatuses.includes("used")){return "used";}
+if(mappedStatuses.includes("generic_metadata")){return "generic_metadata";}
+return "mapped_unused";
+}
+function isInactive(status){
+return status==="mapped_unused"||status==="unmapped_official";
+}
+function entryLayer(entry){
+const mappedLayers=[...new Set((entry.mappedParameters||[]).map(parameter=>parameter.layer).filter(Boolean))];
+if(mappedLayers.length){return mappedLayers.join(" + ");}
+return entry.type==="symbol"?"simbol MC001":"indice MC001";
+}
+function statusLabel(status){
+if(status==="used") return "folosit";
+if(status==="generic_metadata") return "metadata";
+if(status==="mapped_unused") return "mapat, nefolosit";
+return "nemapat";
+}
+const layers=[...new Set(data.parameters.map(entryLayer))].sort();
+if(layerFilter && layerFilter.dataset.source!=="official-table"){
+layerFilter.dataset.source="official-table";
+layerFilter.innerHTML='<option value="all">Toate layerele</option>';
+layers.forEach(layer=>{
+const option=document.createElement("option");
+option.value=layer;
+option.textContent=layer;
+layerFilter.appendChild(option);
+});
+}
+if(summary){
+const total=data.parameters.length;
+const used=data.parameters.filter(entry=>entryStatus(entry)==="used").length;
+const mapped=data.parameters.filter(entry=>(entry.mappedParameters||[]).length).length;
+const inactive=data.parameters.filter(entry=>isInactive(entryStatus(entry))).length;
+summary.innerHTML=`
+<article><span>Total MC001</span><strong>${total}</strong><p>${data.metadata?.officialSymbols||0} simboluri + ${data.metadata?.officialIndices||0} indici</p></article>
+<article><span>Folosiți</span><strong>${used}</strong><p>au mapping folosit în calculatoare/engine</p></article>
+<article><span>Mapați</span><strong>${mapped}</strong><p>au corespondent intern LaCurent</p></article>
+<article><span>Nefolosiți</span><strong>${inactive}</strong><p>nu sunt încă activi în engine</p></article>`;
+}
+function render(){
+const selectedLayer=layerFilter?.value||"all";
+const selectedStatus=statusFilter?.value||"all";
+const filtered=data.parameters.filter(entry=>{
+const status=entryStatus(entry);
+const layer=entryLayer(entry);
+const statusMatches=selectedStatus==="all"||status===selectedStatus||(selectedStatus==="inactive"&&isInactive(status));
+return (selectedLayer==="all"||layer===selectedLayer) && statusMatches;
+});
+if(!filtered.length){
+grid.innerHTML=`<article class="technical-chapter-card"><span>gol</span><h3>Niciun parametru pentru filtrul ales</h3><p>Schimbă layerul sau statusul.</p></article>`;
+return;
+}
+grid.innerHTML=`<div class="mc001-parameter-table-wrap">
+<table class="mc001-parameter-table">
+<thead><tr>
+<th>Notație</th>
+<th>Parametru MC001</th>
+<th>Tip</th>
+<th>Unitate</th>
+<th>Cap.</th>
+<th>Mapping LaCurent</th>
+<th>Status</th>
+</tr></thead>
+<tbody>
+${filtered.map(entry=>{
+const notation=entry.notation||{};
+const status=entryStatus(entry);
+const mapped=entry.mappedParameters||[];
+const mappedIds=mapped.map(parameter=>parameter.id).join(", ");
+const mappedNames=mapped.map(parameter=>parameter.nameRo).join("; ");
+const formulas=[...new Set(mapped.map(parameter=>parameter.formula).filter(Boolean))];
+const latex=[...new Set(mapped.map(parameter=>parameter.notation?.latex).filter(Boolean))];
+const hits=mapped.flatMap(parameter=>(usageById.get(parameter.id)?.hits||[]).map(hit=>hit.file.split("/").pop()));
+const uniqueHits=[...new Set(hits)];
+const chapters=(entry.chapters||[]).join(", ");
+const detailText=mapped.length
+? `<div><span>Formule</span><p>${formulas.length?formulas.join("<br>"):"Nu există încă formulă explicită pentru acest mapping."}</p></div>
+<div><span>Notație internă</span><p>${latex.length?latex.map(item=>`<code>${item}</code>`).join(" "):"<code>-</code>"}</p></div>
+<div><span>Folosire în engine</span><p>${uniqueHits.length?uniqueHits.join(", "):"Mappingul există, dar încă nu apare în calculatoare/engine."}</p></div>`
+: `<div><span>Stadiu</span><p>Intrare oficială MC001 încă nemapată la un parametru intern LaCurent. Va rămâne gri până când o legăm de modelul fizic.</p></div>`;
+return `<tr class="mc001-parameter-row ${isInactive(status)?"unused":""}" tabindex="0">
+<td class="mc001-symbol-cell"><span title="${notation.latex||entry.id}">${notation.mc001||"-"}</span></td>
+<td><strong>${entry.nameRo}</strong><small>${entry.id}</small></td>
+<td>${entry.type==="symbol"?"simbol":"indice"}</td>
+<td>${entry.unit||"-"}</td>
+<td>${chapters||"-"}</td>
+<td>${mappedIds?`<code>${mappedIds}</code><small>${mappedNames}</small>${uniqueHits.length?`<em>${uniqueHits.slice(0,2).join(", ")}</em>`:""}`:"-"}</td>
+<td><span class="parameter-status ${status}">${statusLabel(status)}</span></td>
+</tr>
+<tr class="mc001-parameter-detail-row ${isInactive(status)?"unused":""}">
+<td colspan="7"><div class="mc001-parameter-detail">${detailText}</div></td>
+</tr>`;
+}).join("")}
+</tbody>
+</table>
+</div>`;
+}
+if(layerFilter && layerFilter.dataset.boundOfficialTable!=="1"){
+layerFilter.dataset.boundOfficialTable="1";
+layerFilter.addEventListener("change",render);
+}
+if(statusFilter && statusFilter.dataset.boundOfficialTable!=="1"){
+statusFilter.dataset.boundOfficialTable="1";
+statusFilter.addEventListener("change",render);
+}
+render();
+}
+window.addEventListener("DOMContentLoaded",renderMc001OfficialVocabularyTable);
+window.addEventListener("load",renderMc001OfficialVocabularyTable);
 </script>
 </body>
 </html>
