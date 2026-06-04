@@ -354,11 +354,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       reportSnapshot: report,
       mode: "owner"
     }) || [];
-    const reportCards = cards.filter(card =>
-      card.target === "report" &&
-      card.validationStatus === "validated" &&
-      card.display?.stableForReport
-    ).slice(0, 4);
+    const reportCards = cards
+      .filter(card => card.target === "report" && (
+        card.validationStatus === "validated" ||
+        ["missing_data", "risk", "comfort"].includes(card.category)
+      ))
+      .sort((a, b) => {
+        const statusScore = value => value.validationStatus === "validated" ? 0 : 1;
+        const priorityScore = value => ({ urgent: 0, high: 1, medium: 2, low: 3 }[value.priority] ?? 4);
+        return statusScore(a) - statusScore(b) || priorityScore(a) - priorityScore(b);
+      })
+      .slice(0, 7);
 
     container.innerHTML = reportCards.length
       ? reportCards.map(card => `

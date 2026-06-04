@@ -15,6 +15,22 @@
     return value !== undefined && value !== null && value !== "";
   }
 
+  function humanizeInput(path) {
+    return {
+      "normalizedHome.envelope.roofOrAttic.insulationThicknessM": "grosimea izolatiei din pod/acoperis",
+      "normalizedHome.systems.heating.distribution": "tipul distributiei incalzirii",
+      "normalizedHome.systems.dhw.source": "sursa pentru apa calda menajera",
+      "normalizedHome.geometry.usefulAreaM2": "suprafata utila",
+      "normalizedHome.systems.heating.source": "sursa principala de incalzire",
+      "normalizedHome.envelope.windows.type": "tipul ferestrelor",
+      "physicsResult.heatLossTransmission": "pierderile prin transmisie",
+      "physicsResult.heatLossVentilation": "pierderile prin ventilatie",
+      "physicsResult.demandLayerV03.annual.heatingDemandKwhM2Year": "necesarul anual de incalzire pe metru patrat",
+      "physicsResult.demandLayerV03.annual.heatingDemandKwhYear": "necesarul anual de incalzire",
+      "reportSnapshot.realConsumption": "facturile sau consumul real"
+    }[path] || String(path || "").replace(/^normalizedHome\./, "").replace(/^physicsResult\./, "").replace(/^reportSnapshot\./, "").replaceAll(".", " / ");
+  }
+
   function assumption(id) {
     return {
       id,
@@ -154,6 +170,77 @@
     }
 
     candidates.push(candidate({
+      id: "ai.insight.ventilation_hidden_loss",
+      target: "report",
+      type: "ventilation",
+      title: "Ventilatia naturala poate explica o parte din pierderi",
+      hypothesis: "O casa poate pierde energie si prin aer schimbat necontrolat, nu doar prin pereti sau acoperis.",
+      requiredInputs: ["physicsResult.heatLossVentilation"],
+      relatedPhysicsOutputs: ["Hve", "air changes", "ventilation heat loss"],
+      suggestedCalculation: "compare Hve share against total heat transfer",
+      proposedPlacement: "report.after_heating_breakdown",
+      priority: "medium",
+      confidence: context.physicsResult ? "medium" : "low",
+      reason: "Cardul ajuta utilizatorul sa inteleaga pierderile invizibile prin infiltratii si aerisire."
+    }));
+
+    candidates.push(candidate({
+      id: "ai.insight.controls_before_generator",
+      target: "report",
+      type: "automation",
+      title: "Reglajele pot fi testate inaintea schimbarii generatorului",
+      hypothesis: "Daca sistemul actual nu are control bun, termostatul si reglajele pot reduce risipa fara renovare majora.",
+      requiredInputs: ["normalizedHome.systems.heating.source"],
+      relatedPhysicsOutputs: ["systems layer", "control efficiency"],
+      proposedPlacement: "report.low_risk_actions",
+      priority: "medium",
+      confidence: heatingSource && heatingSource !== "unknown" ? "medium" : "low",
+      reason: "Este o analiza cu risc mic care nu promite economii exacte fara simulare."
+    }));
+
+    candidates.push(candidate({
+      id: "ai.insight.windows_maybe_comfort_not_first_roi",
+      target: "report",
+      type: "comfort",
+      title: "Ferestrele pot fi mai importante pentru confort decat pentru primul ROI",
+      hypothesis: "Ferestrele vechi pot crea disconfort, dar investitia trebuie comparata cu podul si peretii inainte de prioritizare.",
+      requiredInputs: ["normalizedHome.envelope.windows.type"],
+      relatedPhysicsOutputs: ["window U-value", "window heat loss"],
+      proposedPlacement: "report.comfort",
+      priority: "medium",
+      confidence: normalizedHome.envelope?.windows?.type && normalizedHome.envelope.windows.type !== "unknown" ? "medium" : "low",
+      reason: "Cardul separa confortul de recuperarea investitiei, fara sa vanda automat ferestre noi."
+    }));
+
+    candidates.push(candidate({
+      id: "ai.insight.dhw_can_change_system_choice",
+      target: "report",
+      type: "dhw",
+      title: "Apa calda menajera poate schimba alegerea sistemului",
+      hypothesis: "Daca ACM este produsa electric sau separat, scenariile de incalzire trebuie comparate impreuna cu apa calda.",
+      requiredInputs: ["normalizedHome.systems.dhw.source"],
+      relatedPhysicsOutputs: ["DHW demand", "final DHW energy"],
+      proposedPlacement: "report.system_context",
+      priority: "medium",
+      confidence: normalizedHome.systems?.dhw?.source && normalizedHome.systems.dhw.source !== "unknown" ? "medium" : "low",
+      reason: "In unele case, apa calda poate schimba costul real al unei solutii de incalzire."
+    }));
+
+    candidates.push(candidate({
+      id: "ai.insight.real_bills_before_strong_ranking",
+      target: "report",
+      type: "missing_data",
+      title: "Facturile reale pot schimba ordinea interventiilor",
+      hypothesis: "Fara facturi reale, raportul poate estima fizic locuinta, dar prioritizarea financiara ramane partiala.",
+      requiredInputs: ["reportSnapshot.realConsumption"],
+      relatedPhysicsOutputs: ["confidence", "financial calibration"],
+      proposedPlacement: "report.missing_data",
+      priority: "high",
+      confidence: "high",
+      reason: "Facturile ajuta la diferentierea dintre pierderi fizice, comportament si preturi."
+    }));
+
+    candidates.push(candidate({
       id: "ai.insight.compare_heat_pump_emitters",
       target: "algorithms",
       type: "scenario",
@@ -217,11 +304,12 @@
   }
 
   function validateInsightCandidate(item, context) {
-    const missingData = (item.requiredInputs || []).filter(path => !has(context, path));
+    const missingPaths = (item.requiredInputs || []).filter(path => !has(context, path));
+    const missingData = missingPaths.map(humanizeInput);
     const deterministic = Boolean(context.physicsResult || context.reportSnapshot);
-    const validatedBy = missingData.length ? "ai_estimate_only" : deterministic ? "physics_engine" : "rules_engine";
-    const statusLabel = missingData.length ? "Necesita date" : deterministic ? "Verificat de motor" : "Ipoteza";
-    const stableForReport = item.target === "report" && !missingData.length && validatedBy !== "ai_estimate_only";
+    const validatedBy = missingPaths.length ? "ai_estimate_only" : deterministic ? "physics_engine" : "rules_engine";
+    const statusLabel = missingPaths.length ? "Necesita date" : deterministic ? "Verificat" : "Ipoteza";
+    const stableForReport = item.target === "report" && !missingPaths.length && validatedBy !== "ai_estimate_only";
 
     return {
       id: `card.${item.id}`,
@@ -248,8 +336,8 @@
           validationNeeded: true
         }
       }],
-      explanation: missingData.length
-        ? `${item.reason} Pentru validare lipsesc: ${missingData.join(", ")}.`
+      explanation: missingPaths.length
+        ? `${item.reason} Pentru validare mai buna lipsesc: ${missingData.join(", ")}.`
         : item.reason,
       assumptions: item.assumptions,
       missingData,
@@ -260,8 +348,8 @@
         experimental: item.target === "algorithms" || validatedBy === "ai_estimate_only"
       },
       validatedBy,
-      confidence: missingData.length ? "low" : item.confidence,
-      validationStatus: missingData.length ? "needs_more_data" : "validated"
+      confidence: missingPaths.length ? "low" : item.confidence,
+      validationStatus: missingPaths.length ? "needs_more_data" : "validated"
     };
   }
 

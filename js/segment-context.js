@@ -2,7 +2,7 @@ const SEGMENT_CONFIG = {
   residential: {
     label: "Locuințe",
     analysisLabel: "Analiza Locuinței",
-    dashboardEyebrow: "COPILOT ENERGETIC PENTRU CASA TA",
+    dashboardEyebrow: "MISSION CONTROL PENTRU ENERGIA CASEI TALE",
     dashboardTitle: "Află cât de eficientă este locuința ta.",
     dashboardSubtitle:
       "Primești un scor energetic, comparații cu locuințe similare și recomandări personalizate pentru reducerea costurilor.",
@@ -26,7 +26,7 @@ const SEGMENT_CONFIG = {
   business: {
     label: "Afaceri",
     analysisLabel: "Analiza Afacerii",
-    dashboardEyebrow: "COPILOT ENERGETIC PENTRU AFACEREA TA",
+    dashboardEyebrow: "MISSION CONTROL PENTRU ENERGIA CASEI TALE",
     dashboardTitle: "Înțelege unde pierde bani afacerea ta.",
     dashboardSubtitle:
       "Primești o analiză a costurilor energetice, comparații operaționale și recomandări cu impact financiar.",
@@ -50,7 +50,7 @@ const SEGMENT_CONFIG = {
   industry: {
     label: "Industrie",
     analysisLabel: "Analiza Facilității",
-    dashboardEyebrow: "COPILOT ENERGETIC PENTRU INDUSTRIE",
+    dashboardEyebrow: "MISSION CONTROL PENTRU ENERGIA CASEI TALE",
     dashboardTitle: "Identifică pierderile energetice din facilitate.",
     dashboardSubtitle:
       "Primești o analiză orientată pe procese, consumatori majori și priorități de eficientizare.",
@@ -74,7 +74,7 @@ const SEGMENT_CONFIG = {
   institution: {
     label: "Instituții",
     analysisLabel: "Analiza Instituției",
-    dashboardEyebrow: "COPILOT ENERGETIC PENTRU INSTITUȚII",
+    dashboardEyebrow: "MISSION CONTROL PENTRU ENERGIA CASEI TALE",
     dashboardTitle: "Vezi ce clădiri trebuie prioritizate.",
     dashboardSubtitle:
       "Primești o analiză pentru monitorizare, raportare și prioritizarea investițiilor energetice.",

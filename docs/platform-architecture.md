@@ -2,7 +2,7 @@
 
 ## Product focus
 
-LA CURENT is an energy copilot for homes and organizations. The primary product loop is:
+LA CURENT is mission control for home energy decisions. The primary product loop is:
 
 1. Create account
 2. Complete analysis
