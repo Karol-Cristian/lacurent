@@ -2328,19 +2328,38 @@ async function energyReport(request, env, corsHeaders) {
 
   const body = await readJson(request);
   const requestedHouseId = numberValue(body, "house_id");
-  const houseFilter = requestedHouseId ? "AND analyses.house_id = ?" : "";
-  const analysisStatement = env.DB.prepare(`
-    SELECT analyses.id, analyses.house_id, analyses.analysis_type
-    FROM analyses
-    LEFT JOIN houses ON houses.id = analyses.house_id
-    WHERE analyses.user_id = ? AND analyses.status = 'completed' ${houseFilter}
-      AND COALESCE(houses.active, 1) = 1
-    ORDER BY analyses.completed_at DESC, analyses.id DESC
-    LIMIT 1
-  `);
-  const analysis = requestedHouseId
-    ? await analysisStatement.bind(user.id, requestedHouseId).first()
-    : await analysisStatement.bind(user.id).first();
+  const adminHouseId = numberValue(body, "admin_house_id");
+  if (adminHouseId && !requireAdmin(user)) {
+    return jsonResponse(
+      { success: false, error: "Acces disponibil doar pentru administratori." },
+      { status: 403, headers: corsHeaders }
+    );
+  }
+  const selectedHouseId = adminHouseId || requestedHouseId;
+  const analysisStatement = adminHouseId
+    ? env.DB.prepare(`
+      SELECT analyses.id, analyses.user_id, analyses.house_id, analyses.analysis_type
+      FROM analyses
+      LEFT JOIN houses ON houses.id = analyses.house_id
+      WHERE analyses.house_id = ? AND analyses.status = 'completed'
+        AND COALESCE(houses.active, 1) = 1
+      ORDER BY analyses.completed_at DESC, analyses.id DESC
+      LIMIT 1
+    `)
+    : env.DB.prepare(`
+      SELECT analyses.id, analyses.user_id, analyses.house_id, analyses.analysis_type
+      FROM analyses
+      LEFT JOIN houses ON houses.id = analyses.house_id
+      WHERE analyses.user_id = ? AND analyses.status = 'completed' ${requestedHouseId ? "AND analyses.house_id = ?" : ""}
+        AND COALESCE(houses.active, 1) = 1
+      ORDER BY analyses.completed_at DESC, analyses.id DESC
+      LIMIT 1
+    `);
+  const analysis = adminHouseId
+    ? await analysisStatement.bind(adminHouseId).first()
+    : requestedHouseId
+      ? await analysisStatement.bind(user.id, requestedHouseId).first()
+      : await analysisStatement.bind(user.id).first();
 
   if (!analysis) {
     return jsonResponse(
@@ -2356,6 +2375,7 @@ async function energyReport(request, env, corsHeaders) {
   `)
     .bind(analysis.id)
     .all();
+  const dataOwnerUserId = adminHouseId ? analysis.user_id : user.id;
   const rawInput = Object.fromEntries((answers.results || []).map(row => [row.question_key, row.answer_value]));
   const profile = buildEnergyProfile(rawInput);
   const implemented = await env.DB.prepare(`
@@ -2363,7 +2383,7 @@ async function energyReport(request, env, corsHeaders) {
     FROM recommendation_actions
     WHERE user_id = ? AND house_id = ? AND status = 'implemented'
   `)
-    .bind(user.id, requestedHouseId || analysis.house_id)
+    .bind(dataOwnerUserId, selectedHouseId || analysis.house_id)
     .all();
   const implementedRows = implemented.results || [];
   const implementedIds = implementedRows.map(row => row.recommendation_id);
@@ -2390,7 +2410,7 @@ async function energyReport(request, env, corsHeaders) {
     ORDER BY billing_month DESC
     LIMIT 12
   `)
-    .bind(user.id, requestedHouseId || analysis.house_id)
+    .bind(dataOwnerUserId, selectedHouseId || analysis.house_id)
     .all();
   const billAnalysis = analyzeBillingHistory(reportBills.results || [], profile, profile.assessment.score);
   if (billAnalysis.adjusted_score !== null && billAnalysis.score_delta !== 0) {
@@ -2402,10 +2422,10 @@ async function energyReport(request, env, corsHeaders) {
     FROM provider_offers
     WHERE house_id = ? AND status IN ('approved', 'contact_requested')
   `)
-    .bind(requestedHouseId || analysis.house_id)
+    .bind(selectedHouseId || analysis.house_id)
     .all();
   const generatedAt = new Date().toISOString();
-  rawInput.house_id = requestedHouseId || analysis.house_id;
+  rawInput.house_id = selectedHouseId || analysis.house_id;
   const physicalResult = buildPhysicalEnergyResult(rawInput);
   const offerMap = offersByRecommendation(providerOffers.results || []);
   const reportSnapshot = buildReportSnapshot(profile, rawInput, benchmark, generatedAt, physicalResult);
@@ -2415,8 +2435,10 @@ async function energyReport(request, env, corsHeaders) {
     {
       success: true,
       has_report: true,
+      admin_view: Boolean(adminHouseId),
+      owner_user_id: dataOwnerUserId,
       analysis_id: analysis.id,
-      house_id: requestedHouseId || analysis.house_id,
+      house_id: selectedHouseId || analysis.house_id,
       generated_at: generatedAt,
       implemented_recommendations: implementedIds,
       savings_history: savingsHistory(profile, implementedRows),
@@ -2461,9 +2483,43 @@ async function homes(request, env, corsHeaders) {
     );
   }
 
-  const result = await env.DB.prepare(`
+  const adminMode = requireAdmin(user);
+  const result = adminMode
+    ? await env.DB.prepare(`
     SELECT
       houses.id,
+      houses.user_id AS owner_user_id,
+      users.email AS owner_email,
+      users.name AS owner_name,
+      houses.display_name,
+      houses.house_type,
+      houses.surface,
+      houses.city,
+      latest.analysis_id,
+      latest.completed_at,
+      scores.overall_score,
+      scores.estimated_energy_class,
+      COUNT(recommendation_actions.id) AS implemented_actions
+    FROM houses
+    LEFT JOIN users ON users.id = houses.user_id
+    LEFT JOIN (
+      SELECT house_id, MAX(id) AS analysis_id, MAX(completed_at) AS completed_at
+      FROM analyses
+      WHERE status = 'completed'
+      GROUP BY house_id
+    ) latest ON latest.house_id = houses.id
+    LEFT JOIN scores ON scores.analysis_id = latest.analysis_id
+    LEFT JOIN recommendation_actions ON recommendation_actions.house_id = houses.id
+      AND recommendation_actions.user_id = houses.user_id
+      AND recommendation_actions.status = 'implemented'
+    WHERE COALESCE(houses.active, 1) = 1
+    GROUP BY houses.id
+    ORDER BY houses.id DESC
+  `).all()
+    : await env.DB.prepare(`
+    SELECT
+      houses.id,
+      houses.user_id AS owner_user_id,
       houses.display_name,
       houses.house_type,
       houses.surface,
@@ -2501,7 +2557,7 @@ async function homes(request, env, corsHeaders) {
       : estimateEnergyClass(clampScore(home.overall_score + (home.implemented_actions || 0) * 3))
   }));
 
-  return jsonResponse({ success: true, homes: normalizedHomes }, { headers: corsHeaders });
+  return jsonResponse({ success: true, admin_view: adminMode, homes: normalizedHomes }, { headers: corsHeaders });
 }
 
 async function recommendations(request, env, corsHeaders) {

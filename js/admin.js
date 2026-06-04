@@ -121,6 +121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${answers.wall_insulation || "--"}</td>
         <td>${answers.pv_installed || "--"}</td>
         <td>${monthlyCost ? `${money(monthlyCost)} lei` : "--"}</td>
+        <td><a class="secondary-btn compact-btn" href="raport-v1.html?admin_house_id=${house.id}">Raport</a></td>
       `;
       tbody.append(row);
     });

@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const demo = window.LaCurentReportV1Demo;
   const params = new URLSearchParams(window.location.search);
   const requestedHouseId = params.get("house_id");
+  const requestedAdminHouseId = params.get("admin_house_id");
   if (requestedHouseId) {
     window.LaCurentHomes?.setActiveHouseId(requestedHouseId);
   }
@@ -189,11 +190,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       return buildDemoPayload();
     }
-    const result = await window.LaCurentAuth.api("/api/energy-report", {
-      house_id: requestedHouseId || window.LaCurentHomes?.activeHouseId?.()
-    });
+    const requestPayload = requestedAdminHouseId
+      ? { admin_house_id: requestedAdminHouseId }
+      : requestedHouseId
+        ? { house_id: requestedHouseId }
+        : window.LaCurentHomes?.activeHouseRequest?.() || {};
+    const result = await window.LaCurentAuth.api("/api/energy-report", requestPayload);
     if (!result.has_report) return buildDemoPayload();
-    return normalizeApiResult(result, "api");
+    return normalizeApiResult(result, result.admin_view ? "api-admin" : "api");
   }
 
   function normalizeApiResult(result, source) {
@@ -341,7 +345,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     await loadSidebar();
     const { source, report } = await loadReportData();
-    const sourceLabel = source === "api" ? "date din DB si calcule LaCurent" : source === "guest" ? "raport local fara cont" : "raport demo";
+    const sourceLabel = source === "api-admin" ? "vizualizare admin read-only" : source === "api" ? "date din DB si calcule LaCurent" : source === "guest" ? "raport local fara cont" : "raport demo";
     setText("reportMeta", `${report.home.title} · ${sourceLabel} · ${report.home.generatedAt}`);
     const guestPrompt = document.getElementById("guestSavePrompt");
     if (guestPrompt) guestPrompt.hidden = source !== "guest";

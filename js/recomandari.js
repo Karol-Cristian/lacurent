@@ -70,7 +70,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     const activeHouseId = window.LaCurentHomes?.activeHouseId?.();
-    const result = await window.LaCurentAuth.api("/api/recommendations", { house_id: activeHouseId });
+    const requestPayload = window.LaCurentHomes?.activeHouseRequest?.() || { house_id: activeHouseId };
+    const result = await window.LaCurentAuth.api("/api/recommendations", requestPayload);
     if (!result.has_report) {
       empty.hidden = false;
       return;

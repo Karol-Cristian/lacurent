@@ -26,6 +26,22 @@ function scoreLabel(home) {
     : String(Math.round(home.overall_score));
 }
 
+function homeLabel(home) {
+  const base = home?.display_name || home?.city || `Locuinta #${home?.id}`;
+  const owner = home?.owner_email || home?.owner_name;
+  return owner ? `${base} - ${owner}` : base;
+}
+
+function isAdminMode() {
+  return window.LaCurentAuth?.currentUser?.()?.role === "admin";
+}
+
+function activeHouseRequest() {
+  const id = activeHouseId();
+  if (!id) return {};
+  return isAdminMode() ? { admin_house_id: id } : { house_id: id };
+}
+
 async function refreshHomeContext() {
   const scoreEl = document.getElementById("sidebarActiveScore");
   const homeEl = document.getElementById("sidebarActiveHome");
@@ -53,10 +69,10 @@ async function refreshHomeContext() {
 
     const activeHome = homes.find(home => String(home.id) === String(currentId)) || homes[0];
     scoreEl.textContent = scoreLabel(activeHome);
-    homeEl.textContent = activeHome.display_name || activeHome.city || `Locuință #${activeHome.id}`;
+    homeEl.textContent = homeLabel(activeHome);
     metaEl.textContent = activeHome.estimated_energy_class
-      ? `Clasă ${activeHome.estimated_energy_class} · ${activeHome.implemented_actions || 0} decizii`
-      : "Analiză în așteptare";
+      ? `${isAdminMode() ? "Admin read-only - " : ""}Clasa ${activeHome.estimated_energy_class} - ${activeHome.implemented_actions || 0} decizii`
+      : "Analiza in asteptare";
 
     if (switcher && select) {
       switcher.hidden = false;
@@ -64,7 +80,7 @@ async function refreshHomeContext() {
       homes.forEach(home => {
         const option = document.createElement("option");
         option.value = home.id;
-        option.textContent = home.display_name || home.city || `Locuință #${home.id}`;
+        option.textContent = homeLabel(home);
         option.selected = String(home.id) === String(currentId);
         select.append(option);
       });
@@ -83,6 +99,7 @@ async function refreshHomeContext() {
 
 window.LaCurentHomes = {
   activeHouseId,
+  activeHouseRequest,
   load: loadHomes,
   refresh: refreshHomeContext,
   setActiveHouseId

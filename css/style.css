@@ -4753,6 +4753,18 @@ font-size:12px;
 white-space:pre-wrap;
 }
 
+.admin-table .compact-btn{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+padding:7px 10px;
+border-radius:7px;
+font-size:12px;
+line-height:1;
+white-space:nowrap;
+box-shadow:none;
+}
+
 .admin-table tbody tr{
 cursor:pointer;
 }

@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     location.reload();
   }
 
-  function renderInsights(insights = [], implementedIds = [], houseId = null) {
+  function renderInsights(insights = [], implementedIds = [], houseId = null, readOnly = false) {
     list.innerHTML = "";
     if (!insights.length) {
       list.innerHTML = `
@@ -122,9 +122,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           <strong>Ce se schimba daca faci asta?</strong>
           <span>Scor estimat dupa implementare: ${item.estimatedScoreAfter || "--"}/100. Cost anual redus cu aproximativ ${money(item.estimatedSavingsRonYearMin)}/an.</span>
         </div>
-        <button class="${implemented ? "secondary-btn danger-soft" : "secondary-btn"}" type="button" data-recommendation-id="${item.id}" data-implemented="${implemented ? "true" : "false"}">
+        ${readOnly
+          ? `<span class="live-badge">Vizualizare admin read-only</span>`
+          : `<button class="${implemented ? "secondary-btn danger-soft" : "secondary-btn"}" type="button" data-recommendation-id="${item.id}" data-implemented="${implemented ? "true" : "false"}">
           ${implemented ? "Anuleaza implementarea" : (item.nextActionLabel || "Marcheaza implementata")}
-        </button>
+        </button>`}
       `;
       list.append(article);
     });
@@ -141,7 +143,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     const activeHouseId = window.LaCurentHomes?.activeHouseId?.();
-    const result = await window.LaCurentAuth.api("/api/recommendations", { house_id: activeHouseId });
+    const requestPayload = window.LaCurentHomes?.activeHouseRequest?.() || { house_id: activeHouseId };
+    const result = await window.LaCurentAuth.api("/api/recommendations", requestPayload);
     if (!result.has_report) {
       empty.hidden = false;
       text("algorithmState", "Avem nevoie de mai multe date");
@@ -174,7 +177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     text("laborSources", basedOn.laborPriceSourcesCount || 0);
     text("marketOffers", basedOn.offersCount || 0);
 
-    renderInsights(insights, implementedIds, result.house_id);
+    renderInsights(insights, implementedIds, result.house_id, Boolean(result.admin_view));
     renderBillingAnalysis(result.bill_analysis || {});
   } catch {
     empty.hidden = false;

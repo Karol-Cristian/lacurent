@@ -144,9 +144,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   try {
-    const result = await window.LaCurentAuth.api(endpoint, {
-      house_id: window.LaCurentHomes?.activeHouseId?.()
-    });
+    const result = await window.LaCurentAuth.api(
+      endpoint,
+      window.LaCurentHomes?.activeHouseRequest?.() || { house_id: window.LaCurentHomes?.activeHouseId?.() }
+    );
 
     if (!result.has_report) {
       document.getElementById("reportEmpty").hidden = false;

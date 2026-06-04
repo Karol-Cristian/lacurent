@@ -137,19 +137,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!section || !list) return;
     section.hidden = false;
     list.innerHTML = "";
+    const adminMode = window.LaCurentAuth?.currentUser?.()?.role === "admin";
     homes.forEach(home => {
+      const reportHref = adminMode
+        ? `pages/raport-v1.html?admin_house_id=${home.id}`
+        : `pages/raport-v1.html?house_id=${home.id}`;
       const article = document.createElement("article");
       article.className = "recommendation-detail-card";
       article.innerHTML = `
         <div class="recommendation-rank">${home.overall_score ? Math.round(home.overall_score) : "--"}</div>
         <div>
           <h3>${home.display_name || home.city || `Locuinta #${home.id}`}</h3>
-          <p>${home.city || "Localitate necompletata"} · ${home.surface || "--"} m2</p>
+          <p>${home.owner_email ? `${home.owner_email} - ` : ""}${home.city || "Localitate necompletata"} - ${home.surface || "--"} m2</p>
           <div class="recommendation-metrics">
             <span>Clasa: <strong>${home.estimated_energy_class || "--"}</strong></span>
             <span>Decizii: <strong>${home.implemented_actions || 0}</strong></span>
-            <a class="secondary-btn" href="pages/raport-v1.html?house_id=${home.id}" data-portfolio-home-id="${home.id}">Raport</a>
-            <a class="secondary-btn" href="pages/analiza-casa.html?edit=${home.id}">Editeaza</a>
+            <a class="secondary-btn" href="${reportHref}" data-portfolio-home-id="${home.id}">Raport</a>
+            ${adminMode ? "" : `<a class="secondary-btn" href="pages/analiza-casa.html?edit=${home.id}">Editeaza</a>`}
           </div>
         </div>
       `;
