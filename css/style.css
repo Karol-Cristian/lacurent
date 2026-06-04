@@ -3771,6 +3771,93 @@ margin:0;
 font-weight:700;
 }
 
+.validated-insight-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+gap:14px;
+}
+
+.validated-insight-card{
+border:1px solid #dbe3ee;
+border-radius:8px;
+background:#fff;
+padding:16px;
+display:grid;
+gap:10px;
+}
+
+.validated-insight-card h3{
+font-size:18px;
+line-height:1.25;
+margin:0;
+color:#0f172a;
+}
+
+.validated-insight-card p,
+.validated-insight-card small,
+.validated-insight-card li{
+color:#52627a;
+line-height:1.55;
+}
+
+.validated-insight-card p{
+margin:0;
+}
+
+.validated-insight-card small{
+display:block;
+}
+
+.validated-insight-card ul{
+margin:0;
+padding-left:18px;
+}
+
+.validated-insight-head{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:10px;
+}
+
+.validated-insight-head span,
+.validated-insight-head strong{
+font-size:11px;
+font-weight:900;
+letter-spacing:.08em;
+text-transform:uppercase;
+}
+
+.validated-insight-head span{
+color:#0f766e;
+background:#ccfbf1;
+border:1px solid #99f6e4;
+border-radius:999px;
+padding:5px 8px;
+}
+
+.validated-insight-head strong{
+color:#475569;
+}
+
+.validated-insight-card.financial{
+border-color:#bae6fd;
+}
+
+.validated-insight-card.negative_recommendation{
+border-color:#fecaca;
+}
+
+.validated-insight-card.risk{
+border-color:#fed7aa;
+}
+
+.validated-insight-card.missing_data,
+.validated-insight-card.needs_more_data{
+background:#f8fafc;
+border-style:dashed;
+}
+
 .not-now-list{
 display:grid;
 gap:12px;

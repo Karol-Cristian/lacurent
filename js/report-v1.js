@@ -235,7 +235,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         diagnostics: normalizeDiagnostics(profile, snapshot),
         scenarios: normalizeScenarios(result, profile),
         notRecommended: demo.notRecommended,
-        technical: normalizeTechnical(snapshot, physicalResult)
+        technical: normalizeTechnical(snapshot, physicalResult),
+        aiContext: {
+          reportSnapshot: snapshot,
+          physicsResult: physicalResult,
+          mode: "owner"
+        }
       }
     };
   }
@@ -342,6 +347,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     setText("technicalAssumptions", technical.assumptions);
   }
 
+  function renderAiInsights(report) {
+    const container = document.getElementById("reportAiInsights");
+    if (!container) return;
+    const cards = window.LaCurentAiInsights?.generateValidatedInsightCards?.(report.aiContext || {
+      reportSnapshot: report,
+      mode: "owner"
+    }) || [];
+    const reportCards = cards.filter(card =>
+      card.target === "report" &&
+      card.validationStatus === "validated" &&
+      card.display?.stableForReport
+    ).slice(0, 4);
+
+    container.innerHTML = reportCards.length
+      ? reportCards.map(card => `
+        <article class="validated-insight-card ${card.category}">
+          <div class="validated-insight-head">
+            <span>${card.display.statusLabel}</span>
+            <strong>${label(card.priority)}</strong>
+          </div>
+          <h3>${card.title}</h3>
+          <p>${card.summary}</p>
+          <small>${card.explanation}</small>
+        </article>
+      `).join("")
+      : `<article class="validated-insight-card missing_data">
+          <div class="validated-insight-head"><span>Necesita date</span><strong>partial</strong></div>
+          <h3>Nu avem inca suficiente analize validate pentru raport.</h3>
+          <p>Completeaza datele lipsa si facturile pentru carduri mai stabile.</p>
+        </article>`;
+  }
+
   try {
     await loadSidebar();
     const { source, report } = await loadReportData();
@@ -361,6 +398,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderBars(report.heatingBreakdown);
     renderDiagnostics(report.diagnostics);
     renderScenarios(report.scenarios);
+    renderAiInsights(report);
     renderNotRecommended(report.notRecommended);
     renderTechnical(report.technical);
   } catch (error) {
@@ -378,6 +416,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderBars(report.heatingBreakdown);
     renderDiagnostics(report.diagnostics);
     renderScenarios(report.scenarios);
+    renderAiInsights(report);
     renderNotRecommended(report.notRecommended);
     renderTechnical(report.technical);
   }

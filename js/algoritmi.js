@@ -141,6 +141,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function renderAiInsightCards(result = {}) {
+    const container = document.getElementById("algorithmAiInsights");
+    if (!container) return;
+    const cards = window.LaCurentAiInsights?.generateValidatedInsightCards?.({
+      reportSnapshot: result.report_snapshot || result.reportSnapshot || {},
+      physicsResult: result.physical_result || result.physicalResult || {},
+      scenarioResults: result.algorithm_insights || [],
+      mode: "owner"
+    }) || [];
+    const algorithmCards = cards.filter(card => card.target === "algorithms").slice(0, 6);
+
+    container.innerHTML = algorithmCards.length
+      ? algorithmCards.map(card => `
+        <article class="validated-insight-card ${card.category} ${card.validationStatus}">
+          <div class="validated-insight-head">
+            <span>${card.display.statusLabel}</span>
+            <strong>${label(card.priority)}</strong>
+          </div>
+          <h3>${card.title}</h3>
+          <p>${card.summary}</p>
+          <small>${card.explanation}</small>
+          ${card.missingData.length ? `<ul>${card.missingData.slice(0, 3).map(item => `<li>${item}</li>`).join("")}</ul>` : ""}
+        </article>
+      `).join("")
+      : `<article class="validated-insight-card missing_data">
+          <div class="validated-insight-head"><span>Ipoteza</span><strong>partial</strong></div>
+          <h3>Nu exista inca propuneri suplimentare.</h3>
+          <p>Adauga mai multe date despre locuinta si facturi pentru analize experimentale.</p>
+        </article>`;
+  }
+
   try {
     const activeHouseId = window.LaCurentHomes?.activeHouseId?.();
     const requestPayload = window.LaCurentHomes?.activeHouseRequest?.() || { house_id: activeHouseId };
@@ -178,6 +209,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     text("marketOffers", basedOn.offersCount || 0);
 
     renderInsights(insights, implementedIds, result.house_id, Boolean(result.admin_view));
+    renderAiInsightCards(result);
     renderBillingAnalysis(result.bill_analysis || {});
   } catch {
     empty.hidden = false;
