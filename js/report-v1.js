@@ -90,6 +90,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     return Number.isFinite(number) && number > 0 ? `${number.toFixed(1)} kgCO2/m2/an` : "--";
   }
 
+  function reportEnergyClassInfo(snapshot = {}, physicalResult = {}) {
+    const classification = physicalResult?.classificationV06 || snapshot?.technicalDetails?.classificationV06 || {};
+    const value = classification.estimatedEnergyClass || snapshot.estimatedEnergyClass || "unknown";
+    return {
+      value,
+      source: classification.estimatedEnergyClass ? "physics_v06" : (snapshot.estimatedEnergyClassSource || "legacy_score"),
+      finalEnergyClass: classification.finalEnergyClass || snapshot.estimatedEnergyClassBasis?.finalEnergyClass,
+      primaryEnergyClass: classification.primaryEnergyClass || snapshot.estimatedEnergyClassBasis?.primaryEnergyClass,
+      rule: classification.classRule || snapshot.estimatedEnergyClassBasis?.rule
+    };
+  }
+
   function valueOf(physicsValue) {
     return typeof physicsValue === "number" ? physicsValue : Number(physicsValue?.value || 0);
   }
@@ -227,6 +239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const home = snapshot.home || {};
     const systems = physicalResult?.systemsLayerV04?.finalEnergyByUse || {};
     const technical = snapshot.technicalDetails || {};
+    const classInfo = reportEnergyClassInfo(snapshot, physicalResult);
     const consumptionKwhM2 = snapshot.estimatedConsumptionKwhM2Year || physicalResult?.finalEnergyKwhM2Year || profile?.derived?.demand?.estimatedFinalEnergyKwhM2Year;
     const totalCo2 = snapshot.estimatedCo2KgM2Year || physicalResult?.co2KgM2Year || technical.primaryEnergyAndCo2V05?.totalCo2KgM2Year;
     const heatingCost = annualCosts.find(item => item.label === "Incalzire")?.valueRon;
@@ -267,7 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         note: "Rezumatul energetic total si emisiile estimate.",
         items: [
           ["Scor LaCurent", snapshot.energyScore ? `${snapshot.energyScore}/100` : "--"],
-          ["Clasa estimata", textValue(snapshot.estimatedEnergyClass)],
+          ["Clasa estimata", textValue(classInfo.value)],
           ["Consum specific estimat", kwhM2Year(consumptionKwhM2)],
           ["Cost anual estimat", money(snapshot.estimatedAnnualCostRon || profile?.assessment?.estimatedAnnualCostRon)],
           ["CO2 specific estimat", co2M2Year(totalCo2)],
@@ -293,6 +306,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const systems = physicalResult?.systemsLayerV04 || {};
     const primary = physicalResult?.primaryEnergyAndCo2V05 || systems.primaryEnergyAndCo2V05 || {};
     const classification = physicalResult?.classificationV06 || primary.classificationV06 || {};
+    const classInfo = reportEnergyClassInfo(snapshot, physicalResult);
     const finalByUse = systems.finalEnergyByUse || {};
     const finalByCarrier = systems.finalEnergyByCarrier || {};
     const mainCarrier = dominantCarrier(finalByCarrier);
@@ -393,7 +407,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     return {
       global: [
-        { label: "Clasa energetica estimata", value: textValue(classification.estimatedEnergyClass || snapshot.estimatedEnergyClass), note: "Scala A+ - G" },
+        { label: "Clasa energetica estimata", value: textValue(classInfo.value), note: classInfo.source === "physics_v06" ? "physics engine v0.6, regula conservatoare" : "fallback vechi din scor" },
+        { label: "Baza clasei", value: `final ${classInfo.finalEnergyClass || "--"} / primara ${classInfo.primaryEnergyClass || "--"}`, note: classInfo.rule === "conservative_worst_of_final_and_primary_energy" ? "se afiseaza varianta mai conservatoare" : "baza partiala" },
         { label: "Clasa mediu/CO2 estimata", value: textValue(classification.estimatedEnvironmentalClass), note: "Scala A - G" },
         { label: "Energie finala specifica", value: numberLabel(systems.totalFinalEnergyKwhM2Year || physicalResult?.finalEnergyKwhM2Year, "kWh/m2/an", 1), note: "total pe m2" },
         { label: "Energie primara specifica", value: numberLabel(primary.totalPrimaryEnergyKwhM2Year || physicalResult?.primaryEnergyKwhM2Year, "kWh/m2/an", 1), note: "cu factori de conversie" },
@@ -402,7 +417,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         { label: "Total energie primara", value: numberLabel(primary.totalPrimaryEnergyKwhYear || physicalResult?.primaryEnergyKwhYear, "kWh/an"), note: "toate carrier-ele" },
         { label: "Total CO2", value: numberLabel(primary.totalCo2KgYear || physicalResult?.co2KgYear, "kgCO2/an"), note: "toate carrier-ele" }
       ],
-      activeClass: classification.estimatedEnergyClass || snapshot.estimatedEnergyClass || "unknown",
+      activeClass: classInfo.value,
       utilityRows,
       systemRows,
       carrierRows,
@@ -537,6 +552,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const snapshot = result.report_snapshot;
     const profile = result.profile;
     const physicalResult = result.physical_result;
+    const classInfo = reportEnergyClassInfo(snapshot, physicalResult);
     const home = snapshot.home || {};
     const annualCosts = normalizeAnnualCosts(snapshot, physicalResult, profile);
     const avoidableCost = annualCosts.find(item => item.label === "Cost evitabil estimat")?.valueRon;
@@ -556,7 +572,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             `Suprafata: ${home.usefulAreaM2 || "--"} m2`,
             `Incalzire: ${home.heatingSystem || "--"}`,
             `Anvelopa: ${home.envelopeSummary || "--"}`,
-            `Clasa estimata: ${snapshot.estimatedEnergyClass || "--"}`,
+            `Clasa estimata: ${classInfo.value || "--"}`,
             `Scor: ${snapshot.energyScore || "--"}/100`
           ]
         },
