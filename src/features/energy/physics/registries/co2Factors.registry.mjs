@@ -1,26 +1,4 @@
-import type { PrimaryEnergyCarrier } from "./primaryEnergyFactors.registry";
-
-export type Co2Carrier =
-  | PrimaryEnergyCarrier
-  | "lpg"
-  | "agricultural_waste_biomass"
-  | "biogas"
-  | "solar_energy"
-  | "wind_energy"
-  | "geothermal_aerothermal"
-  | "electric_heat_pump_heat_dhw";
-
-export interface Co2EmissionFactor {
-  carrier: Co2Carrier;
-  labelRo: string;
-  kgCO2PerKwh: number;
-  source: "MC001-2022";
-  sourceStatus: "user_provided_reference_values";
-  requiresOfficialVerification: true;
-  implementationStatus: "ready_for_registry_but_not_official_certificate";
-}
-
-export const co2EmissionFactors: Co2EmissionFactor[] = [
+export const co2EmissionFactors = [
   { carrier: "lignite", labelRo: "Lignit", kgCO2PerKwh: 0.334, source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" },
   { carrier: "coal_hard", labelRo: "Huila", kgCO2PerKwh: 0.341, source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" },
   { carrier: "fuel_oil", labelRo: "Pacura", kgCO2PerKwh: 0.279, source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" },
@@ -38,26 +16,4 @@ export const co2EmissionFactors: Co2EmissionFactor[] = [
   { carrier: "electric_heat_pump_heat_dhw", labelRo: "Energie termica pentru incalzire si ACM furnizata de pompe de caldura alimentate electric", kgCO2PerKwh: 0.257, source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" }
 ];
 
-export const CO2_FACTORS_REGISTRY = Object.fromEntries(
-  co2EmissionFactors.map(factor => [
-    factor.carrier,
-    {
-      value: factor.kgCO2PerKwh,
-      unit: "kgCO2/kWh",
-      source: "mc001" as const,
-      confidence: "medium" as const,
-      assumptions: [
-        "Factor CO2 MC001-like introdus din valori furnizate manual de utilizator.",
-        "Necesita verificare oficiala inainte de folosire ca certificat energetic."
-      ],
-      metadata: factor
-    }
-  ])
-) as Record<Co2Carrier, {
-  value: number;
-  unit: "kgCO2/kWh";
-  source: "mc001";
-  confidence: "medium";
-  assumptions: string[];
-  metadata: Co2EmissionFactor;
-}>;
+export const CO2_FACTORS_REGISTRY = Object.fromEntries(co2EmissionFactors.map(factor => [factor.carrier, factor]));

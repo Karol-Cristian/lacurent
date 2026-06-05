@@ -1,34 +1,4 @@
-export type PrimaryEnergyCarrier =
-  | "lignite"
-  | "coal_hard"
-  | "fuel_oil"
-  | "natural_gas"
-  | "waste"
-  | "firewood"
-  | "pellets_briquettes"
-  | "grid_electricity"
-  | "district_heating_cogeneration"
-  | "solar_thermal"
-  | "photovoltaic_electricity"
-  | "free_cooling"
-  | "electric_heat_pump_heat";
-
-export type EnergyCarrier = PrimaryEnergyCarrier;
-
-export interface PrimaryEnergyFactor {
-  carrier: PrimaryEnergyCarrier;
-  labelRo: string;
-  nonRenewable: number;
-  renewable: number;
-  total: number;
-  unit: "kWh primary / kWh final";
-  source: "MC001-2022";
-  sourceStatus: "user_provided_reference_values";
-  requiresOfficialVerification: true;
-  implementationStatus: "ready_for_registry_but_not_official_certificate";
-}
-
-export const primaryEnergyFactors: PrimaryEnergyFactor[] = [
+export const primaryEnergyFactors = [
   { carrier: "lignite", labelRo: "Lignit", nonRenewable: 1.30, renewable: 0.00, total: 1.30, unit: "kWh primary / kWh final", source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" },
   { carrier: "coal_hard", labelRo: "Huila", nonRenewable: 1.20, renewable: 0.00, total: 1.20, unit: "kWh primary / kWh final", source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" },
   { carrier: "fuel_oil", labelRo: "Pacura", nonRenewable: 1.10, renewable: 0.00, total: 1.10, unit: "kWh primary / kWh final", source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" },
@@ -44,26 +14,4 @@ export const primaryEnergyFactors: PrimaryEnergyFactor[] = [
   { carrier: "electric_heat_pump_heat", labelRo: "Energie termica incalzire furnizata de pompe de caldura alimentate electric", nonRenewable: 0.86, renewable: 0.67, total: 1.53, unit: "kWh primary / kWh final", source: "MC001-2022", sourceStatus: "user_provided_reference_values", requiresOfficialVerification: true, implementationStatus: "ready_for_registry_but_not_official_certificate" }
 ];
 
-export const PRIMARY_ENERGY_FACTORS_REGISTRY = Object.fromEntries(
-  primaryEnergyFactors.map(factor => [
-    factor.carrier,
-    {
-      value: factor.total,
-      unit: factor.unit,
-      source: "mc001" as const,
-      confidence: "medium" as const,
-      assumptions: [
-        "Factor MC001-like introdus din valori furnizate manual de utilizator.",
-        "Necesita verificare oficiala inainte de folosire ca certificat energetic."
-      ],
-      metadata: factor
-    }
-  ])
-) as Record<PrimaryEnergyCarrier, {
-  value: number;
-  unit: string;
-  source: "mc001";
-  confidence: "medium";
-  assumptions: string[];
-  metadata: PrimaryEnergyFactor;
-}>;
+export const PRIMARY_ENERGY_FACTORS_REGISTRY = Object.fromEntries(primaryEnergyFactors.map(factor => [factor.carrier, factor]));
