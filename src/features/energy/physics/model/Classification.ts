@@ -25,6 +25,8 @@ export interface EnvironmentalClassThreshold {
 export interface ClassificationResult {
   estimatedEnergyClass: EstimatedEnergyClass;
   estimatedEnvironmentalClass: EstimatedEnvironmentalClass;
+  classCalculationStatus?: "calculated_from_validated_methodology" | "blocked_missing_validated_methodology";
+  missingReasons?: string[];
   primaryEnergyKwhM2Year: number;
   finalEnergyKwhM2Year: number;
   co2KgM2Year: number;

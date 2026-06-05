@@ -372,15 +372,19 @@ export function calculateCo2({ finalEnergyKwhYear, co2Factor, heatedAreaM2 }) {
 }
 
 export function estimateEnergyClass({ primaryEnergyKwhM2Year, thresholds = DEFAULT_CLASS_THRESHOLDS }) {
-  const match = thresholds.find(item => primaryEnergyKwhM2Year <= item.maxPrimaryEnergyKwhM2Year) || thresholds.at(-1);
   return trace(
-    match.className,
+    "unknown",
     FORMULA_REGISTRY.ESTIMATED_CLASS.unit,
     FORMULA_REGISTRY.ESTIMATED_CLASS.id,
-    { primaryEnergyKwhM2Year, thresholds },
-    [`${primaryEnergyKwhM2Year} <= ${match.maxPrimaryEnergyKwhM2Year} => ${match.className}`],
-    ["Clasa este estimativa LaCurent, nu certificat oficial."],
-    ["Pragurile de clasa sunt internal_estimate pana la validare oficiala."],
+    { primaryEnergyKwhM2Year, thresholdsStatus: "not_validated" },
+    ["Energy class calculation blocked: no validated class thresholds are available."],
+    [
+      "Physics Engine pastreaza energia primara specifica, dar nu transforma valoarea in clasa fara praguri validate."
+    ],
+    [
+      "MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS",
+      "MISSING_VALIDATED_REFERENCE_BUILDING_METHOD"
+    ],
     "low"
   );
 }

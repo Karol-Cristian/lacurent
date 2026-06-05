@@ -85,17 +85,6 @@ function co2Factor(home) {
   return 0.2;
 }
 
-function expectedClassFromPrimary(primary) {
-  if (primary < 40) return "A+";
-  if (primary < 95) return "A";
-  if (primary < 145) return "B";
-  if (primary < 220) return "C";
-  if (primary < 440) return "D";
-  if (primary < 600) return "E";
-  if (primary < 850) return "F";
-  return "G";
-}
-
 function simulateReferenceHome(home) {
   const area = home.building.usefulAreaM2;
   const volume = home.building.heatedVolumeM3;
@@ -144,7 +133,8 @@ function simulateReferenceHome(home) {
     finalEnergyKwhM2Year,
     primaryEnergyKwhM2Year,
     co2KgM2Year,
-    estimatedClass: expectedClassFromPrimary(primaryEnergyKwhM2Year)
+    estimatedClass: "unknown",
+    classMissingReasons: ["MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS"]
   };
 }
 
@@ -176,7 +166,8 @@ for (const home of referenceHomes) {
   assertRange(home.id, "final", Math.round(result.finalEnergyKwhM2Year), expected.finalEnergyKwhM2Year);
   assertRange(home.id, "primary", Math.round(result.primaryEnergyKwhM2Year), expected.primaryEnergyKwhM2Year);
   assert.ok(result.co2KgM2Year >= 0, `${home.id} CO2 must be non-negative`);
-  assert.equal(result.estimatedClass, home.expectedClass, `${home.id} class mismatch`);
+  assert.equal(result.estimatedClass, "unknown", `${home.id} class must remain blocked`);
+  assert.ok(result.classMissingReasons.includes("MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS"), `${home.id} must explain missing class thresholds`);
 }
 
-console.log("PASS physics reference homes chain U-Htr-Hve-QH-final-primary-CO2-class");
+console.log("PASS physics reference homes chain U-Htr-Hve-QH-final-primary-CO2 with blocked class");

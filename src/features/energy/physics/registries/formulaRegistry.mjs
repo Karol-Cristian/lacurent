@@ -142,11 +142,11 @@ export const FORMULA_REGISTRY = {
   ESTIMATED_CLASS: {
     id: "ESTIMATED_CLASS",
     name: "Estimated energy class",
-    expression: "class = threshold(primaryEnergyKwhM2Year)",
-    inputs: ["primaryEnergyKwhM2Year", "classThresholds"],
+    expression: "class = unknown until validated class thresholds and reference method exist",
+    inputs: ["primaryEnergyKwhM2Year", "validatedClassThresholds", "validatedReferenceBuildingMethod"],
     output: "estimatedClass",
     unit: "class",
-    source: "internal_estimate",
+    source: "mc001_conceptual",
     status: "needs_official_validation"
   }
 };

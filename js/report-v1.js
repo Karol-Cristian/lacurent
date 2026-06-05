@@ -92,13 +92,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function reportEnergyClassInfo(snapshot = {}, physicalResult = {}) {
     const classification = physicalResult?.classificationV06 || snapshot?.technicalDetails?.classificationV06 || {};
-    const value = classification.estimatedEnergyClass || snapshot.estimatedEnergyClass || "unknown";
+    const snapshotFromPhysics = snapshot.estimatedEnergyClassSource === "physics_v06";
+    const value = classification.estimatedEnergyClass || (snapshotFromPhysics ? snapshot.estimatedEnergyClass : "unknown");
     return {
       value,
-      source: classification.estimatedEnergyClass ? "physics_v06" : (snapshot.estimatedEnergyClassSource || "legacy_score"),
-      finalEnergyClass: classification.finalEnergyClass || snapshot.estimatedEnergyClassBasis?.finalEnergyClass,
-      primaryEnergyClass: classification.primaryEnergyClass || snapshot.estimatedEnergyClassBasis?.primaryEnergyClass,
-      rule: classification.classRule || snapshot.estimatedEnergyClassBasis?.rule
+      source: classification.estimatedEnergyClass ? "physics_v06" : (snapshotFromPhysics ? snapshot.estimatedEnergyClassSource : "physics_required"),
+      status: classification.classCalculationStatus || snapshot.estimatedEnergyClassBasis?.status || "blocked_missing_validated_methodology",
+      missingReasons: classification.missingReasons || snapshot.estimatedEnergyClassMissingReasons || snapshot.estimatedEnergyClassBasis?.missingReasons || []
     };
   }
 
@@ -407,8 +407,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     return {
       global: [
-        { label: "Clasa energetica estimata", value: textValue(classInfo.value), note: classInfo.source === "physics_v06" ? "physics engine v0.6, regula conservatoare" : "fallback vechi din scor" },
-        { label: "Baza clasei", value: `final ${classInfo.finalEnergyClass || "--"} / primara ${classInfo.primaryEnergyClass || "--"}`, note: classInfo.rule === "conservative_worst_of_final_and_primary_energy" ? "se afiseaza varianta mai conservatoare" : "baza partiala" },
+        { label: "Clasa energetica estimata", value: textValue(classInfo.value), note: classInfo.source === "physics_v06" ? "physics engine v0.6; blocata pana la validarea metodologiei" : "indisponibila din physics engine" },
+        { label: "Baza clasei", value: classInfo.status === "blocked_missing_validated_methodology" ? "blocata" : "validata", note: classInfo.missingReasons?.slice(0, 2).join(", ") || "metodologie validata" },
         { label: "Clasa mediu/CO2 estimata", value: textValue(classification.estimatedEnvironmentalClass), note: "Scala A - G" },
         { label: "Energie finala specifica", value: numberLabel(systems.totalFinalEnergyKwhM2Year || physicalResult?.finalEnergyKwhM2Year, "kWh/m2/an", 1), note: "total pe m2" },
         { label: "Energie primara specifica", value: numberLabel(primary.totalPrimaryEnergyKwhM2Year || physicalResult?.primaryEnergyKwhM2Year, "kWh/m2/an", 1), note: "cu factori de conversie" },

@@ -14,11 +14,13 @@ function confidenceMin(values: PhysicsConfidence[]): PhysicsConfidence {
 }
 
 export function classifyEnergy(value: number, thresholds: EnergyClassThreshold[] = ENERGY_CLASS_THRESHOLDS_V06): ClassificationResult["estimatedEnergyClass"] {
-  return thresholds.find(item => inRange(value, item.minValueInclusive, item.maxValueExclusive))?.className || "unknown";
+  const validatedThresholds = thresholds.filter(item => item.source === "mc001" && item.confidence !== "low");
+  return validatedThresholds.find(item => inRange(value, item.minValueInclusive, item.maxValueExclusive))?.className || "unknown";
 }
 
 export function classifyEnvironmental(value: number, thresholds: EnvironmentalClassThreshold[] = ENVIRONMENTAL_CLASS_THRESHOLDS_V06): ClassificationResult["estimatedEnvironmentalClass"] {
-  return thresholds.find(item => inRange(value, item.minKgCo2M2Year, item.maxKgCo2M2Year))?.className || "unknown";
+  const validatedThresholds = thresholds.filter(item => item.source === "mc001" && item.confidence !== "low");
+  return validatedThresholds.find(item => inRange(value, item.minKgCo2M2Year, item.maxKgCo2M2Year))?.className || "unknown";
 }
 
 export function calculateClassificationV06(input: {
@@ -29,12 +31,21 @@ export function calculateClassificationV06(input: {
   referencePrimaryEnergyKwhM2Year?: number;
   confidence?: PhysicsConfidence;
 }): ClassificationResult {
-  const energyThreshold = ENERGY_CLASS_THRESHOLDS_V06.find(item => inRange(input.primaryEnergyKwhM2Year, item.minValueInclusive, item.maxValueExclusive));
-  const environmentalThreshold = ENVIRONMENTAL_CLASS_THRESHOLDS_V06.find(item => inRange(input.co2KgM2Year, item.minKgCo2M2Year, item.maxKgCo2M2Year));
+  const validatedEnergyThresholds = ENERGY_CLASS_THRESHOLDS_V06.filter(item => item.source === "mc001" && item.confidence !== "low");
+  const validatedEnvironmentalThresholds = ENVIRONMENTAL_CLASS_THRESHOLDS_V06.filter(item => item.source === "mc001" && item.confidence !== "low");
+  const energyThreshold = validatedEnergyThresholds.find(item => inRange(input.primaryEnergyKwhM2Year, item.minValueInclusive, item.maxValueExclusive));
+  const environmentalThreshold = validatedEnvironmentalThresholds.find(item => inRange(input.co2KgM2Year, item.minKgCo2M2Year, item.maxKgCo2M2Year));
   const referencePrimary = input.referencePrimaryEnergyKwhM2Year;
+  const missingReasons = [
+    !validatedEnergyThresholds.length ? "MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS" : "",
+    !validatedEnvironmentalThresholds.length ? "MISSING_VALIDATED_CO2_CLASS_THRESHOLDS" : "",
+    !input.referenceBuilding ? "MISSING_VALIDATED_REFERENCE_BUILDING_METHOD" : ""
+  ].filter(Boolean);
   return {
     estimatedEnergyClass: energyThreshold?.className || "unknown",
     estimatedEnvironmentalClass: environmentalThreshold?.className || "unknown",
+    classCalculationStatus: energyThreshold ? "calculated_from_validated_methodology" : "blocked_missing_validated_methodology",
+    missingReasons,
     primaryEnergyKwhM2Year: input.primaryEnergyKwhM2Year,
     finalEnergyKwhM2Year: input.finalEnergyKwhM2Year,
     co2KgM2Year: input.co2KgM2Year,
@@ -44,7 +55,7 @@ export function calculateClassificationV06(input: {
       differencePercent: Math.round((input.primaryEnergyKwhM2Year - referencePrimary) / referencePrimary * 100)
     } : undefined,
     assumptions: [
-      "v0.6 foloseste praguri configurabile, nu hardcodate in componente.",
+      "v0.6 calculeaza clasa doar cu praguri validate, nu cu praguri interne.",
       "Clasele sunt estimate LaCurent si nu reprezinta certificat energetic oficial.",
       ...(input.referenceBuilding?.assumptions || [])
     ],

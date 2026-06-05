@@ -122,8 +122,9 @@ near(co2.specific.value, 11.845, 0.01, "co2 m2");
 hasTrace(co2.main, "CO2");
 
 const estimatedClass = estimateEnergyClass({ primaryEnergyKwhM2Year: 394.84 });
-assert.equal(estimatedClass.value, "E");
+assert.equal(estimatedClass.value, "unknown");
 hasTrace(estimatedClass, "ESTIMATED_CLASS");
+assert.ok(estimatedClass.warnings.includes("MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS"));
 
 const salicea = runCriticalMc001Chain(saliceaDemoHome);
 near(salicea.summary.htrWk, 144.636, 0.02, "Salicea Htr");
@@ -133,8 +134,9 @@ near(salicea.summary.qhNdKwhM2Year, 217.117, 0.1, "Salicea QH m2");
 near(salicea.summary.finalEnergyKwhYear, 25580.299, 0.5, "Salicea final");
 near(salicea.summary.primaryEnergyKwhM2Year, 394.758, 0.1, "Salicea primary m2");
 near(salicea.summary.co2KgM2Year, 11.843, 0.1, "Salicea co2 m2");
-assert.equal(salicea.summary.estimatedClass, "E");
+assert.equal(salicea.summary.estimatedClass, "unknown");
 assert.ok(salicea.traces.length >= 20, "Salicea should expose calculation traces");
+assert.ok(salicea.warnings.includes("MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS"));
 
 assert.equal(criticalChainReferenceHomes.length, 7);
 for (const fixture of criticalChainReferenceHomes) {
@@ -145,7 +147,8 @@ for (const fixture of criticalChainReferenceHomes) {
   assert.ok(result.summary.finalEnergyKwhYear > 0, `${fixture.id} final energy must be positive`);
   assert.ok(result.summary.primaryEnergyKwhYear > 0, `${fixture.id} primary energy must be positive`);
   assert.ok(result.summary.co2KgYear >= 0, `${fixture.id} CO2 must be non-negative`);
-  assert.equal(result.summary.estimatedClass, fixture.expectedClass, `${fixture.id} expected class`);
+  assert.equal(result.summary.estimatedClass, "unknown", `${fixture.id} class must be blocked until validated`);
+  assert.ok(result.warnings.includes("MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS"), `${fixture.id} must explain missing class thresholds`);
 }
 
 console.log("PASS physics critical MC001-like chain traces and reference homes");

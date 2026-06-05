@@ -354,50 +354,14 @@ const ENERGY_PRICE_RON_KWH = {
   unknown: 0.45
 };
 
-const ENERGY_CLASS_THRESHOLDS_V06 = [
-  ["A+", 0, 90],
-  ["A", 90, 130],
-  ["B", 130, 180],
-  ["C", 180, 240],
-  ["D", 240, 320],
-  ["E", 320, 420],
-  ["F", 420, 560],
-  ["G", 560, Number.POSITIVE_INFINITY]
+const ENERGY_CLASS_BLOCKERS_V06 = [
+  "MISSING_VALIDATED_PRIMARY_ENERGY_FACTORS",
+  "MISSING_VALIDATED_CO2_FACTORS",
+  "MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS",
+  "MISSING_VALIDATED_REFERENCE_BUILDING_METHOD",
+  "MISSING_VALIDATED_TEMPERATURE_CORRECTION_FACTOR_TAU",
+  "MISSING_VALIDATED_GLOBAL_INSULATION_COEFFICIENT_G"
 ];
-
-const FINAL_ENERGY_CLASS_THRESHOLDS_V06 = [
-  ["A+", 0, 60],
-  ["A", 60, 90],
-  ["B", 90, 130],
-  ["C", 130, 180],
-  ["D", 180, 260],
-  ["E", 260, 340],
-  ["F", 340, 420],
-  ["G", 420, Number.POSITIVE_INFINITY]
-];
-
-const ENV_CLASS_THRESHOLDS_V06 = [
-  ["A", 0, 5],
-  ["B", 5, 10],
-  ["C", 10, 20],
-  ["D", 20, 35],
-  ["E", 35, 55],
-  ["F", 55, 80],
-  ["G", 80, Number.POSITIVE_INFINITY]
-];
-
-function classifyThresholdV06(value, thresholds) {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) return "unknown";
-  return thresholds.find(([, min, max]) => number >= min && number < max)?.[0] || "unknown";
-}
-
-function worseEnergyClass(...classes) {
-  const order = ["A+", "A", "B", "C", "D", "E", "F", "G"];
-  return classes
-    .filter(className => order.includes(className))
-    .sort((a, b) => order.indexOf(b) - order.indexOf(a))[0] || "unknown";
-}
 
 function buildPrimaryEnergyAndCo2V05(systemsLayerV04, area = 65) {
   const byCarrier = systemsLayerV04?.finalEnergyByCarrier || {};
@@ -447,29 +411,20 @@ function buildClassificationV06(primaryAndCo2, systemsLayerV04) {
   const primaryM2 = Number(primaryAndCo2?.totalPrimaryEnergyKwhM2Year || 0);
   const finalM2 = Number(systemsLayerV04?.totalFinalEnergyKwhM2Year?.value || 0);
   const co2M2 = Number(primaryAndCo2?.totalCo2KgM2Year || 0);
-  const referencePrimary = 180;
-  const primaryEnergyClass = classifyThresholdV06(primaryM2, ENERGY_CLASS_THRESHOLDS_V06);
-  const finalEnergyClass = classifyThresholdV06(finalM2, FINAL_ENERGY_CLASS_THRESHOLDS_V06);
-  const selectedEnergyClass = worseEnergyClass(primaryEnergyClass, finalEnergyClass);
   return {
     version: "Physics Layer v0.6 Classification + Reference Building",
-    estimatedEnergyClass: selectedEnergyClass,
-    primaryEnergyClass,
-    finalEnergyClass,
-    classRule: "conservative_worst_of_final_and_primary_energy",
-    estimatedEnvironmentalClass: classifyThresholdV06(co2M2, ENV_CLASS_THRESHOLDS_V06),
+    estimatedEnergyClass: "unknown",
+    estimatedEnvironmentalClass: "unknown",
+    classCalculationStatus: "blocked_missing_validated_methodology",
+    missingReasons: ENERGY_CLASS_BLOCKERS_V06,
     primaryEnergyKwhM2Year: primaryM2,
     finalEnergyKwhM2Year: finalM2,
     co2KgM2Year: co2M2,
-    comparedToReference: {
-      referencePrimaryEnergyKwhM2Year: referencePrimary,
-      currentPrimaryEnergyKwhM2Year: primaryM2,
-      differencePercent: Math.round((primaryM2 - referencePrimary) / referencePrimary * 100)
-    },
+    comparedToReference: null,
     assumptions: [
-      "v0.6 foloseste praguri interne configurabile.",
-      "Clasa afisata este cea mai conservatoare dintre clasa dupa energie finala si clasa dupa energie primara.",
-      "Aceasta regula evita ca un combustibil cu factor primar mic sa faca artificial o casa ineficienta sa para foarte buna.",
+      "v0.6 raporteaza clasa ca unknown pana cand factorii si pragurile sunt validate.",
+      "Metricile fizice raman disponibile: energie finala, energie primara si CO2 estimat.",
+      "Nu se folosesc clase derivate din scor sau praguri interne nevalidate.",
       "Clasele sunt estimari LaCurent, nu certificat energetic oficial."
     ],
     confidence: "low"
@@ -1053,19 +1008,19 @@ function buildReportSnapshot(profile, rawInput = {}, benchmark = null, generated
   const confidence = assessment.confidence || {};
   const financialLosses = buildFinancialLossBreakdown(physicalResult, assessment.estimatedAnnualCostRon);
   const physicsClassification = physicalResult?.classificationV06 || {};
-  const reportEnergyClass = physicsClassification.estimatedEnergyClass || assessment.estimatedEnergyClass;
+  const reportEnergyClass = physicsClassification.estimatedEnergyClass || "unknown";
   return {
     id: `report-${generatedAt || new Date().toISOString()}`,
     homeId: rawInput.house_id || null,
     generatedAt: generatedAt || new Date().toISOString(),
     energyScore: assessment.score,
     estimatedEnergyClass: reportEnergyClass,
-    estimatedEnergyClassSource: physicsClassification.estimatedEnergyClass ? "physics_v06" : "legacy_score",
-    estimatedEnergyClassBasis: physicsClassification.estimatedEnergyClass ? {
-      finalEnergyClass: physicsClassification.finalEnergyClass,
-      primaryEnergyClass: physicsClassification.primaryEnergyClass,
-      rule: physicsClassification.classRule
-    } : null,
+    estimatedEnergyClassSource: "physics_v06",
+    estimatedEnergyClassBasis: {
+      status: physicsClassification.classCalculationStatus || "blocked_missing_validated_methodology",
+      missingReasons: physicsClassification.missingReasons || []
+    },
+    estimatedEnergyClassMissingReasons: physicsClassification.missingReasons || [],
     mainConclusion: assessment.mainConclusion,
     shortExplanation: assessment.shortExplanation,
     estimatedConsumptionKwhM2Year: physicalResult?.heatingDemandKwhM2Year?.value || physicalResult?.finalEnergyKwhM2Year?.value || demand.estimatedFinalEnergyKwhM2Year,
@@ -1272,14 +1227,7 @@ function requireAdmin(user) {
 }
 
 function estimateEnergyClass(score) {
-  if (score >= 95) return "A+";
-  if (score >= 85) return "A";
-  if (score >= 75) return "B";
-  if (score >= 65) return "C";
-  if (score >= 55) return "D";
-  if (score >= 45) return "E";
-  if (score >= 35) return "F";
-  return "G";
+  return "unknown";
 }
 
 function inferAnalysisType(body, user) {
@@ -1642,7 +1590,7 @@ async function saveHouse(request, env, corsHeaders) {
       equipment: energyProfile.derived.systems.heating.quality === "very_good" ? 90 : energyProfile.derived.systems.heating.quality === "good" ? 75 : energyProfile.derived.systems.heating.quality === "poor" ? 40 : 60,
       green_energy: energyProfile.input.renewables.photovoltaic.installed === "yes" ? 80 : 45,
       smart_optimization: energyProfile.derived.systems.heating.controlQuality === "smart" ? 85 : 55,
-      estimated_energy_class: scoreEnergyClass || energyProfile.assessment.estimatedEnergyClass
+      estimated_energy_class: scoreEnergyClass || "unknown"
     }
     : calculateScore(body, analysisType);
   const percentile = clampScore(100 - score.overall_score + 44);
@@ -1847,7 +1795,7 @@ async function createAnalysisVersion(env, user, body, houseId, analysisType, cha
       equipment: energyProfile.derived.systems.heating.quality === "very_good" ? 90 : energyProfile.derived.systems.heating.quality === "good" ? 75 : energyProfile.derived.systems.heating.quality === "poor" ? 40 : 60,
       green_energy: energyProfile.input.renewables.photovoltaic.installed === "yes" ? 80 : 45,
       smart_optimization: energyProfile.derived.systems.heating.controlQuality === "smart" ? 85 : 55,
-      estimated_energy_class: scoreEnergyClass || energyProfile.assessment.estimatedEnergyClass
+      estimated_energy_class: scoreEnergyClass || "unknown"
     }
     : calculateScore(body, analysisType);
   const percentile = clampScore(100 - score.overall_score + 44);
@@ -2377,7 +2325,7 @@ async function dashboardSummary(request, env, corsHeaders) {
   const summaryPhysicsClass = physicsClassFromRawInput({
     ...summaryAnswers,
     house_id: summary.house_id
-  }, summary.estimated_energy_class || estimateEnergyClass(summary.overall_score));
+  }, "unknown");
   summary.estimated_energy_class = summaryPhysicsClass.className;
   summary.estimated_energy_class_source = summaryPhysicsClass.source;
 
@@ -2561,8 +2509,9 @@ async function answersByAnalysisIds(env, analysisIds = []) {
 function physicsClassFromRawInput(rawInput = {}, fallbackClass = null) {
   const physicalResult = safeBuildPhysicalEnergyResult(rawInput);
   return {
-    className: physicalResult?.classificationV06?.estimatedEnergyClass || fallbackClass,
-    source: physicalResult?.classificationV06?.estimatedEnergyClass ? "physics_v06" : "legacy_score"
+    className: physicalResult?.classificationV06?.estimatedEnergyClass || "unknown",
+    source: physicalResult?.classificationV06 ? "physics_v06" : "physics_unavailable",
+    missingReasons: physicalResult?.classificationV06?.missingReasons || ["PHYSICS_ENGINE_UNAVAILABLE"]
   };
 }
 
@@ -2662,12 +2611,13 @@ async function homes(request, env, corsHeaders) {
       city: answers.city || home.city,
       house_type: answers.house_type || home.house_type,
       house_id: home.id
-    }, home.estimated_energy_class);
+    }, "unknown");
     return {
       ...home,
       overall_score: adjustedScore,
       estimated_energy_class: physicsClass.className,
-      estimated_energy_class_source: physicsClass.source
+      estimated_energy_class_source: physicsClass.source,
+      estimated_energy_class_missing_reasons: physicsClass.missingReasons
     };
   });
 
@@ -2843,7 +2793,7 @@ async function providerOpportunities(request, env, corsHeaders) {
       area_bucket: row.surface ? `${Math.round(Number(row.surface) / 25) * 25} m2 +/-` : "necunoscut",
       building_type: profile.input.general.buildingType,
       city_hint: row.city ? String(row.city).split(" ")[0] : "zona anonima",
-      estimated_class: profile.assessment.estimatedEnergyClass || row.estimated_energy_class,
+      estimated_class: "unknown",
       score_bucket: row.overall_score ? `${Math.floor(Number(row.overall_score) / 10) * 10}-${Math.floor(Number(row.overall_score) / 10) * 10 + 9}` : "necunoscut",
       recommendations: profile.recommendations.slice(0, 3).map(item => ({
         id: item.id,
