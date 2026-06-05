@@ -32,6 +32,8 @@
 </div>
 </header>
 
+<section id="reportEmptyState" class="decision-section report-empty-state" hidden></section>
+
 <section class="decision-section certificate-overview" aria-labelledby="certificateOverviewTitle">
 <div class="section-heading-v1">
 <span class="report-v1-eyebrow">DATE RAPORT SI LOCUINTA</span>
@@ -39,6 +41,41 @@
 <p>Prima parte fixeaza contextul raportului: identificare, datele locuintei, indicatorii totali si consumurile pe utilitati.</p>
 </div>
 <div id="certificateOverview" class="certificate-overview-grid"></div>
+</section>
+
+<section class="decision-section certificate-detail-section" aria-labelledby="certificateDetailsTitle">
+<div class="section-heading-v1">
+<span class="report-v1-eyebrow">CERTIFICAT ENERGETIC ESTIMATIV</span>
+<h2 id="certificateDetailsTitle">Indicatori energetici si utilitati</h2>
+<p>Acest bloc acopera informatiile prezente intr-un certificat energetic: performanta globala, consumuri si emisii pe utilitati, combustibili, randamente si factori de conversie.</p>
+</div>
+<div id="certificateGlobal" class="certificate-global-grid"></div>
+<div id="certificateClassScale" class="certificate-class-scale"></div>
+<div class="certificate-table-wrap">
+<table class="certificate-table">
+<thead>
+<tr>
+<th>Utilitate</th>
+<th>Energie finala</th>
+<th>Energie primara</th>
+<th>CO2</th>
+<th>Combustibil / observatii</th>
+</tr>
+</thead>
+<tbody id="certificateUtilityRows"></tbody>
+</table>
+</div>
+<div class="certificate-subgrid">
+<div>
+<h3>Sisteme si randamente</h3>
+<div id="certificateSystemRows" class="certificate-mini-list"></div>
+</div>
+<div>
+<h3>Factori de conversie folositi</h3>
+<div id="certificateCarrierRows" class="certificate-mini-list"></div>
+</div>
+</div>
+<div id="certificateCompleteness" class="certificate-completeness"></div>
 </section>
 
 <section class="decision-section verdict-section" aria-labelledby="verdictTitle">

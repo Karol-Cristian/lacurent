@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const params = new URLSearchParams(window.location.search);
   const requestedHouseId = params.get("house_id");
   const requestedAdminHouseId = params.get("admin_house_id");
+  const explicitDemo = params.get("demo") === "1";
+  const explicitGuest = params.get("guest") === "1";
   if (requestedHouseId) {
     window.LaCurentHomes?.setActiveHouseId(requestedHouseId);
   }
@@ -92,6 +94,73 @@ document.addEventListener("DOMContentLoaded", async () => {
     return typeof physicsValue === "number" ? physicsValue : Number(physicsValue?.value || 0);
   }
 
+  function valueOrNull(physicsValue) {
+    if (typeof physicsValue === "number" && Number.isFinite(physicsValue)) return physicsValue;
+    const number = Number(physicsValue?.value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function numberLabel(value, unit, decimals = 0) {
+    const number = valueOrNull(value);
+    if (number === null || number <= 0) return "--";
+    const rounded = decimals ? number.toFixed(decimals) : Math.round(number).toLocaleString("ro-RO");
+    return `${rounded} ${unit}`;
+  }
+
+  function percentLabel(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? `${Math.round(number)}%` : "--";
+  }
+
+  function carrierLabel(value) {
+    return {
+      electricity: "electricitate",
+      natural_gas: "gaz natural",
+      wood: "lemn",
+      pellets: "peleti",
+      district_heating: "termoficare",
+      lpg: "GPL",
+      coal: "carbune",
+      unknown: "necunoscut"
+    }[value] || value || "necunoscut";
+  }
+
+  function utilityLabel(value) {
+    return {
+      heating: "Incalzire",
+      dhw: "Apa calda menajera",
+      lighting: "Iluminat interior",
+      cooling: "Climatizare",
+      ventilation: "Ventilare",
+      auxiliary: "Auxiliare"
+    }[value] || value || "--";
+  }
+
+  function dominantCarrier(finalByCarrier = {}) {
+    return Object.entries(finalByCarrier)
+      .map(([carrier, data]) => [carrier, valueOf(data)])
+      .filter(([, value]) => value > 0)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] || "unknown";
+  }
+
+  function carrierFactors(carrier, finalByCarrier = {}, primary = {}) {
+    const final = valueOf(finalByCarrier[carrier]);
+    const primaryTotal = Number(primary.primaryEnergyByCarrier?.[carrier]?.totalKwh || 0);
+    const co2 = Number(primary.co2ByCarrierKgYear?.[carrier] || 0);
+    return {
+      primaryFactor: final > 0 && primaryTotal > 0 ? primaryTotal / final : null,
+      co2Factor: final > 0 && co2 > 0 ? co2 / final : null
+    };
+  }
+
+  function estimateUsePrimaryAndCo2(finalKwh, carrier, finalByCarrier = {}, primary = {}) {
+    const { primaryFactor, co2Factor } = carrierFactors(carrier, finalByCarrier, primary);
+    return {
+      primaryKwh: finalKwh > 0 && primaryFactor ? finalKwh * primaryFactor : null,
+      co2Kg: finalKwh > 0 && co2Factor ? finalKwh * co2Factor : null
+    };
+  }
+
   function createBadge(title, value) {
     return `<span class="decision-badge"><b>${title}</b>${label(value)}</span>`;
   }
@@ -127,6 +196,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function buildDemoPayload() {
     return { source: "demo", report: demo };
+  }
+
+  function emptyPayload(type, title, message, actions = []) {
+    return { empty: { type, title, message, actions } };
   }
 
   function normalizeAnnualCosts(snapshot, physicalResult, profile) {
@@ -216,6 +289,127 @@ document.addEventListener("DOMContentLoaded", async () => {
     ];
   }
 
+  function normalizeCertificateDetails({ snapshot = {}, physicalResult = {}, profile = {} }) {
+    const systems = physicalResult?.systemsLayerV04 || {};
+    const primary = physicalResult?.primaryEnergyAndCo2V05 || systems.primaryEnergyAndCo2V05 || {};
+    const classification = physicalResult?.classificationV06 || primary.classificationV06 || {};
+    const finalByUse = systems.finalEnergyByUse || {};
+    const finalByCarrier = systems.finalEnergyByCarrier || {};
+    const mainCarrier = dominantCarrier(finalByCarrier);
+    const electricCarrier = valueOf(finalByCarrier.electricity) > 0 ? "electricity" : mainCarrier;
+    const utilityRows = [
+      {
+        key: "heating",
+        label: "Incalzire",
+        finalKwh: valueOf(finalByUse.heating),
+        carrier: mainCarrier,
+        note: "necesar util transformat prin randamentul sistemului"
+      },
+      {
+        key: "dhw",
+        label: "Apa calda menajera",
+        finalKwh: valueOf(finalByUse.dhw),
+        carrier: mainCarrier,
+        note: "ACM estimata din ocupanti sau fallback pe suprafata"
+      },
+      {
+        key: "lighting",
+        label: "Iluminat interior",
+        finalKwh: valueOf(finalByUse.lighting),
+        carrier: "electricity",
+        note: valueOf(finalByUse.lighting) > 0 ? "calcul separat iluminat" : "necalculat separat in engine; de extras din consum electric"
+      },
+      {
+        key: "cooling",
+        label: "Climatizare",
+        finalKwh: valueOf(finalByUse.cooling),
+        carrier: "electricity",
+        note: valueOf(finalByUse.cooling) > 0 ? "racire transformata prin SEER/EER" : "nu exista racire sau lipsesc date"
+      },
+      {
+        key: "ventilation",
+        label: "Ventilare",
+        finalKwh: 0,
+        carrier: electricCarrier,
+        note: physicalResult?.heatLossVentilation
+          ? `${numberLabel(physicalResult.heatLossVentilation, "W/K", 1)} pierdere termica; energia ventilatoarelor nu este separata inca`
+          : "necalculat separat"
+      }
+    ].map(row => {
+      const estimated = estimateUsePrimaryAndCo2(row.finalKwh, row.carrier, finalByCarrier, primary);
+      return {
+        ...row,
+        finalEnergy: row.finalKwh > 0 ? `${Math.round(row.finalKwh).toLocaleString("ro-RO")} kWh/an` : "--",
+        primaryEnergy: estimated.primaryKwh ? `${Math.round(estimated.primaryKwh).toLocaleString("ro-RO")} kWh/an` : "de implementat pe utilitate",
+        co2: estimated.co2Kg ? `${Math.round(estimated.co2Kg).toLocaleString("ro-RO")} kg/an` : "de implementat pe utilitate",
+        carrierLabel: carrierLabel(row.carrier)
+      };
+    });
+
+    const carrierRows = Object.entries(finalByCarrier)
+      .map(([carrier, value]) => {
+        const finalKwh = valueOf(value);
+        if (!finalKwh) return null;
+        const factors = carrierFactors(carrier, finalByCarrier, primary);
+        return {
+          carrier: carrierLabel(carrier),
+          finalEnergy: `${Math.round(finalKwh).toLocaleString("ro-RO")} kWh/an`,
+          primaryEnergy: `${Math.round(primary.primaryEnergyByCarrier?.[carrier]?.totalKwh || 0).toLocaleString("ro-RO")} kWh/an`,
+          renewable: `${Math.round(primary.primaryEnergyByCarrier?.[carrier]?.renewableKwh || 0).toLocaleString("ro-RO")} kWh/an`,
+          nonRenewable: `${Math.round(primary.primaryEnergyByCarrier?.[carrier]?.nonRenewableKwh || 0).toLocaleString("ro-RO")} kWh/an`,
+          co2: `${Math.round(primary.co2ByCarrierKgYear?.[carrier] || 0).toLocaleString("ro-RO")} kg/an`,
+          primaryFactor: factors.primaryFactor ? factors.primaryFactor.toFixed(2) : "--",
+          co2Factor: factors.co2Factor ? factors.co2Factor.toFixed(3) : "--"
+        };
+      })
+      .filter(Boolean);
+
+    const systemRows = (systems.systemLosses || []).map(row => ({
+      title: utilityLabel(row.use),
+      useful: numberLabel(row.usefulDemandKwhYear, "kWh/an"),
+      final: numberLabel(row.finalEnergyKwhYear, "kWh/an"),
+      losses: numberLabel(row.lossesKwhYear, "kWh/an"),
+      efficiency: valueOrNull(row.totalSystemEfficiency) ? valueOrNull(row.totalSystemEfficiency).toFixed(3) : "--"
+    }));
+    if (systems.auxiliaryEnergy) {
+      systemRows.push({
+        title: "Energie auxiliara",
+        useful: "--",
+        final: numberLabel(systems.auxiliaryEnergy.totalKwhYear, "kWh/an"),
+        losses: "--",
+        efficiency: "consum direct"
+      });
+    }
+
+    const missing = [
+      { label: "Numar certificat, auditor atestat, semnatura/stampila", status: "nu se aplica LaCurent", reason: "Raportul nu este certificat oficial." },
+      { label: "Fotografii caracteristice", status: snapshot.home?.characteristicPhotos && snapshot.home.characteristicPhotos !== "not_provided" ? "prezent" : "lipsa", reason: "Formularul nu cere inca fotografii." },
+      { label: "Suprafata construita si desfasurata", status: snapshot.home?.builtSurfaceM2 && snapshot.home.builtSurfaceM2 !== "unknown" ? "partial/prezent" : "lipsa", reason: "Avem suprafata utila; restul trebuie cerut explicit." },
+      { label: "Iluminat interior separat", status: valueOf(finalByUse.lighting) > 0 ? "prezent" : "lipsa engine", reason: "Momentan este inclus in electric/auxiliare." },
+      { label: "CO2 si energie primara pe fiecare utilitate", status: "partial", reason: "Engine-ul calculeaza sigur pe carrier; alocarea pe utilitati este estimativa." },
+      { label: "Factori oficiali MC001 exacti", status: "de calibrat", reason: "Factorii v0.5 sunt internal_estimate." },
+      { label: "Cladire de referinta oficiala", status: classification.comparedToReference ? "estimativ" : "lipsa", reason: "v0.6 foloseste referinta interna configurabila." }
+    ];
+
+    return {
+      global: [
+        { label: "Clasa energetica estimata", value: textValue(classification.estimatedEnergyClass || snapshot.estimatedEnergyClass), note: "Scala A+ - G" },
+        { label: "Clasa mediu/CO2 estimata", value: textValue(classification.estimatedEnvironmentalClass), note: "Scala A - G" },
+        { label: "Energie finala specifica", value: numberLabel(systems.totalFinalEnergyKwhM2Year || physicalResult?.finalEnergyKwhM2Year, "kWh/m2/an", 1), note: "total pe m2" },
+        { label: "Energie primara specifica", value: numberLabel(primary.totalPrimaryEnergyKwhM2Year || physicalResult?.primaryEnergyKwhM2Year, "kWh/m2/an", 1), note: "cu factori de conversie" },
+        { label: "Emisii CO2 specifice", value: numberLabel(primary.totalCo2KgM2Year || physicalResult?.co2KgM2Year, "kgCO2/m2/an", 1), note: "estimare LaCurent" },
+        { label: "Pondere energie regenerabila", value: percentLabel(primary.renewableEnergyRatioPercent), note: "energie primara regenerabila" },
+        { label: "Total energie primara", value: numberLabel(primary.totalPrimaryEnergyKwhYear || physicalResult?.primaryEnergyKwhYear, "kWh/an"), note: "toate carrier-ele" },
+        { label: "Total CO2", value: numberLabel(primary.totalCo2KgYear || physicalResult?.co2KgYear, "kgCO2/an"), note: "toate carrier-ele" }
+      ],
+      activeClass: classification.estimatedEnergyClass || snapshot.estimatedEnergyClass || "unknown",
+      utilityRows,
+      systemRows,
+      carrierRows,
+      missing
+    };
+  }
+
   function normalizeHeatingBreakdown(snapshot, annualCosts = []) {
     const items = snapshot?.financialLosses?.items || [];
     const relevant = items.filter(item => !String(item.id).startsWith("system_dhw") && item.id !== "auxiliary");
@@ -299,12 +493,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadReportData() {
+    if (explicitDemo) {
+      return buildDemoPayload();
+    }
     if (!window.LaCurentAuth?.token()) {
       const guestReport = window.LaCurentGuest?.latestReport?.();
       if (guestReport?.result?.report_snapshot) {
         return normalizeApiResult(guestReport.result, "guest");
       }
-      return buildDemoPayload();
+      if (explicitGuest) {
+        return emptyPayload(
+          "guest_missing",
+          "Raportul local nu a fost gasit",
+          "Completeaza analiza in acest browser pentru a genera un raport local sau autentifica-te pentru rapoartele salvate in DB.",
+          [{ href: "analiza-casa.html?new=1", label: "Completeaza analiza" }, { href: "profil.html?mode=login", label: "Autentificare" }]
+        );
+      }
+      return emptyPayload(
+        "auth_required",
+        "Autentifica-te pentru raportul locuintei tale",
+        "Raportul real se genereaza din locuintele si analizele salvate in baza de date. Demo-ul este disponibil doar din linkul dedicat.",
+        [{ href: "profil.html?mode=login", label: "Autentificare" }, { href: "profil.html?mode=register", label: "Creeaza cont" }]
+      );
     }
     const requestPayload = requestedAdminHouseId
       ? { admin_house_id: requestedAdminHouseId }
@@ -312,7 +522,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? { house_id: requestedHouseId }
         : window.LaCurentHomes?.activeHouseRequest?.() || {};
     const result = await window.LaCurentAuth.api("/api/energy-report", requestPayload);
-    if (!result.has_report) return buildDemoPayload();
+    if (!result.has_report) {
+      return emptyPayload(
+        "missing_report",
+        "Nu exista inca raport pentru locuinta selectata",
+        result.message || "Adauga o locuinta si completeaza analiza pentru ca raportul sa fie calculat din date reale din DB.",
+        [{ href: "analiza-casa.html?new=1", label: "Adauga locuinta" }]
+      );
+    }
     return normalizeApiResult(result, result.admin_view ? "api-admin" : "api");
   }
 
@@ -324,10 +541,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const annualCosts = normalizeAnnualCosts(snapshot, physicalResult, profile);
     const avoidableCost = annualCosts.find(item => item.label === "Cost evitabil estimat")?.valueRon;
     const certificateOverview = normalizeCertificateOverview({ snapshot, physicalResult, profile, result, source, annualCosts });
+    const certificateDetails = normalizeCertificateDetails({ snapshot, physicalResult, profile });
     return {
       source,
       report: {
         certificateOverview,
+        certificateDetails,
         home: {
           title: snapshot.home?.location ? `Locuinta din ${snapshot.home.location}` : (source === "guest" ? "Locuinta analizata local" : `Locuinta #${result.house_id}`),
           generatedAt: new Date(snapshot.generatedAt || result.generated_at).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" }),
@@ -433,6 +652,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     ];
   }
 
+  function demoCertificateDetails() {
+    return {
+      global: [
+        { label: "Clasa energetica estimata", value: "D/E", note: "demo orientativ" },
+        { label: "Clasa mediu/CO2 estimata", value: "necalculata demo", note: "lipseste factorul complet" },
+        { label: "Energie finala specifica", value: "300-420 kWh/m2/an", note: "interval demo" },
+        { label: "Energie primara specifica", value: "de calculat", note: "v0.5 in API" },
+        { label: "Emisii CO2 specifice", value: "de calculat", note: "v0.5 in API" },
+        { label: "Pondere energie regenerabila", value: "partial biomasa", note: "lemn / estimativ" },
+        { label: "Total energie primara", value: "de calculat", note: "necesita factori" },
+        { label: "Total CO2", value: "de calculat", note: "necesita factori" }
+      ],
+      activeClass: "D",
+      utilityRows: [
+        { label: "Incalzire", finalEnergy: "dominant", primaryEnergy: "de calculat", co2: "de calculat", carrierLabel: "lemn", note: "sobe, randament scazut" },
+        { label: "Apa calda menajera", finalEnergy: "estimativ", primaryEnergy: "de calculat", co2: "de calculat", carrierLabel: "necunoscut", note: "necesar pe ocupanti" },
+        { label: "Iluminat interior", finalEnergy: "necalculat separat", primaryEnergy: "de implementat", co2: "de implementat", carrierLabel: "electricitate", note: "inclus in electric casnic demo" },
+        { label: "Climatizare", finalEnergy: "--", primaryEnergy: "--", co2: "--", carrierLabel: "electricitate", note: "nu exista date" },
+        { label: "Ventilare", finalEnergy: "--", primaryEnergy: "--", co2: "--", carrierLabel: "natural", note: "pierdere termica prin ventilatie naturala" }
+      ],
+      systemRows: [
+        { title: "Incalzire", useful: "160-210 kWh/m2/an", final: "ridicata", losses: "ridicate", efficiency: "scazut" },
+        { title: "Apa calda menajera", useful: "estimativ", final: "estimativ", losses: "necunoscut", efficiency: "necunoscut" }
+      ],
+      carrierRows: [
+        { carrier: "lemn", finalEnergy: "dominant", primaryEnergy: "de calculat", renewable: "partial", nonRenewable: "partial", co2: "de calculat", primaryFactor: "de calibrat", co2Factor: "de calibrat" },
+        { carrier: "electricitate", finalEnergy: "electric casnic", primaryEnergy: "de calculat", renewable: "de calculat", nonRenewable: "de calculat", co2: "de calculat", primaryFactor: "de calibrat", co2Factor: "de calibrat" }
+      ],
+      missing: [
+        { label: "Numar certificat, auditor atestat, semnatura/stampila", status: "nu se aplica LaCurent", reason: "Raportul este estimativ." },
+        { label: "Fotografii caracteristice", status: "lipsa", reason: "Demo fara upload foto." },
+        { label: "Suprafata construita si desfasurata", status: "lipsa", reason: "Demo are doar suprafata utila." },
+        { label: "Iluminat, climatizare, ventilare cu CO2 separat", status: "partial", reason: "Necesita extindere engine si formular." }
+      ]
+    };
+  }
+
   function renderAnnualCosts(items) {
     const container = document.getElementById("annualCosts");
     container.innerHTML = items.map(item => `
@@ -461,6 +717,122 @@ document.addEventListener("DOMContentLoaded", async () => {
         </dl>
       </article>
     `).join("");
+  }
+
+  function renderCertificateDetails(details) {
+    const data = details || demoCertificateDetails();
+    const global = document.getElementById("certificateGlobal");
+    if (global) {
+      global.innerHTML = data.global.map(item => `
+        <article>
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.value)}</strong>
+          <p>${escapeHtml(item.note)}</p>
+        </article>
+      `).join("");
+    }
+
+    const scale = document.getElementById("certificateClassScale");
+    if (scale) {
+      const classes = ["A+", "A", "B", "C", "D", "E", "F", "G"];
+      scale.innerHTML = `
+        <span>Scala clase energetice estimate</span>
+        <div>
+          ${classes.map(className => `<b class="${className === data.activeClass ? "active" : ""}">${className}</b>`).join("")}
+        </div>
+      `;
+    }
+
+    const utilityRows = document.getElementById("certificateUtilityRows");
+    if (utilityRows) {
+      utilityRows.innerHTML = data.utilityRows.map(row => `
+        <tr>
+          <td><strong>${escapeHtml(row.label)}</strong></td>
+          <td>${escapeHtml(row.finalEnergy)}</td>
+          <td>${escapeHtml(row.primaryEnergy)}</td>
+          <td>${escapeHtml(row.co2)}</td>
+          <td><span>${escapeHtml(row.carrierLabel)}</span><small>${escapeHtml(row.note)}</small></td>
+        </tr>
+      `).join("");
+    }
+
+    const systemRows = document.getElementById("certificateSystemRows");
+    if (systemRows) {
+      systemRows.innerHTML = data.systemRows.length
+        ? data.systemRows.map(row => `
+          <article>
+            <strong>${escapeHtml(row.title)}</strong>
+            <span>util: ${escapeHtml(row.useful)}</span>
+            <span>final: ${escapeHtml(row.final)}</span>
+            <span>pierderi: ${escapeHtml(row.losses)}</span>
+            <span>randament: ${escapeHtml(row.efficiency)}</span>
+          </article>
+        `).join("")
+        : `<article><strong>Necompletat</strong><span>Nu exista inca date de sistem.</span></article>`;
+    }
+
+    const carrierRows = document.getElementById("certificateCarrierRows");
+    if (carrierRows) {
+      carrierRows.innerHTML = data.carrierRows.length
+        ? data.carrierRows.map(row => `
+          <article>
+            <strong>${escapeHtml(row.carrier)}</strong>
+            <span>final: ${escapeHtml(row.finalEnergy)}</span>
+            <span>primara: ${escapeHtml(row.primaryEnergy)}</span>
+            <span>CO2: ${escapeHtml(row.co2)}</span>
+            <span>fp=${escapeHtml(row.primaryFactor)} · fCO2=${escapeHtml(row.co2Factor)}</span>
+          </article>
+        `).join("")
+        : `<article><strong>Necompletat</strong><span>Nu exista inca energie finala pe combustibil.</span></article>`;
+    }
+
+    const completeness = document.getElementById("certificateCompleteness");
+    if (completeness) {
+      completeness.innerHTML = `
+        <h3>Acoperire fata de certificatul energetic oficial</h3>
+        <div>
+          ${data.missing.map(item => `
+            <article>
+              <span>${escapeHtml(item.status)}</span>
+              <strong>${escapeHtml(item.label)}</strong>
+              <p>${escapeHtml(item.reason)}</p>
+            </article>
+          `).join("")}
+        </div>
+      `;
+    }
+  }
+
+  function setReportSectionsHidden(hidden) {
+    document.querySelectorAll(".decision-report > .decision-section, .decision-report > .decision-disclaimer")
+      .forEach(section => {
+        if (section.id !== "reportEmptyState") section.hidden = hidden;
+      });
+  }
+
+  function renderEmptyReport(empty) {
+    const container = document.getElementById("reportEmptyState");
+    if (!container) return;
+    setReportSectionsHidden(true);
+    container.hidden = false;
+    setText("reportMeta", "Raport disponibil doar din date reale salvate");
+    container.innerHTML = `
+      <div class="section-heading-v1">
+        <span class="report-v1-eyebrow">RAPORT REAL</span>
+        <h2>${escapeHtml(empty.title)}</h2>
+        <p>${escapeHtml(empty.message)}</p>
+      </div>
+      <div class="report-empty-actions">
+        ${(empty.actions || []).map(action => `<a class="secondary-btn" href="${escapeHtml(action.href)}">${escapeHtml(action.label)}</a>`).join("")}
+        <a class="secondary-btn muted-action" href="raport-v1.html?demo=1">Vezi raport demo separat</a>
+      </div>
+    `;
+  }
+
+  function prepareReportContent() {
+    setReportSectionsHidden(false);
+    const empty = document.getElementById("reportEmptyState");
+    if (empty) empty.hidden = true;
   }
 
   function renderBars(items) {
@@ -582,12 +954,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     await loadSidebar();
-    const { source, report } = await loadReportData();
+    const payload = await loadReportData();
+    if (payload.empty) {
+      renderEmptyReport(payload.empty);
+      return;
+    }
+    prepareReportContent();
+    const { source, report } = payload;
     const sourceLabel = sourceLabelFor(source);
     setText("reportMeta", `${report.home.title} · ${sourceLabel} · ${report.home.generatedAt}`);
     const guestPrompt = document.getElementById("guestSavePrompt");
     if (guestPrompt) guestPrompt.hidden = source !== "guest";
     renderCertificateOverview(report.certificateOverview || demoCertificateOverview(report, source));
+    renderCertificateDetails(report.certificateDetails || demoCertificateDetails());
     setText("verdictTitle", report.verdict.title);
     setText("verdictConclusion", report.verdict.conclusion);
     setText("avoidableCost", report.verdict.avoidableCostRange);
@@ -604,9 +983,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderNotRecommended(report.notRecommended);
     renderTechnical(report.technical);
   } catch (error) {
+    if (!explicitDemo) {
+      renderEmptyReport({
+        type: "load_error",
+        title: "Raportul real nu a putut fi incarcat",
+        message: "Nu afisez demo in locul datelor reale. Verifica autentificarea, conexiunea la API sau locuinta selectata.",
+        actions: [{ href: "profil.html?mode=login", label: "Autentificare" }, { href: "analiza-casa.html?new=1", label: "Adauga locuinta" }]
+      });
+      return;
+    }
     const report = demo;
+    prepareReportContent();
     setText("reportMeta", `${report.home.title} · fallback demo`);
     renderCertificateOverview(report.certificateOverview || demoCertificateOverview(report, "demo"));
+    renderCertificateDetails(report.certificateDetails || demoCertificateDetails());
     setText("verdictTitle", report.verdict.title);
     setText("verdictConclusion", report.verdict.conclusion);
     setText("avoidableCost", report.verdict.avoidableCostRange);
