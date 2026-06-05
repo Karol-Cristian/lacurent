@@ -1,4 +1,7 @@
 import { ENERGY_ASSESSMENT_DISCLAIMER, buildEnergyProfile, demoOldHouseInput } from "./energy-model.js";
+import { inferFinalEnergyCarrierFromHeatingInput, resolveMc001Carrier } from "../src/features/energy/physics/calculators/carrierMapping.mjs";
+import { classifyEstimatedEnergyClass as classifyEstimatedEnergyClassFromRegistry } from "../src/features/energy/physics/calculators/estimatedEnergyClass.mjs";
+import { getCo2Factor, getPrimaryEnergyFactor } from "../src/features/energy/physics/calculators/referenceValues.mjs";
 
 const SESSION_DAYS = 30;
 const RESET_MINUTES = 30;
@@ -312,14 +315,6 @@ function physicalHeatingSystem(rawInput = {}) {
   return { fuel: "wood", efficiency: 0.55, carrier: "wood", label: "lemn/sobe" };
 }
 
-function primaryFactor(carrier) {
-  return { electricity: 2.5, natural_gas: 1.1, wood: 0.2, pellets: 0.25 }[carrier] || 1;
-}
-
-function co2Factor(carrier) {
-  return { electricity: 0.24, natural_gas: 0.202, wood: 0.03, pellets: 0.04 }[carrier] || 0.2;
-}
-
 const SYSTEM_V04_PRESETS = {
   wood_stove: { carrier: "wood", emission: 0.92, distribution: 1, storage: 1, generation: 0.55, control: 0.92, auxiliary: 0 },
   gas_boiler_non_condensing: { carrier: "natural_gas", emission: 0.94, distribution: 0.9, storage: 1, generation: 0.82, control: 0.96, auxiliary: 120 },
@@ -330,17 +325,6 @@ const SYSTEM_V04_PRESETS = {
   air_water_heat_pump_underfloor: { carrier: "electricity", emission: 0.97, distribution: 0.96, storage: 1, generation: 3.2, control: 0.98, auxiliary: 220 },
   air_air_heat_pump: { carrier: "electricity", emission: 0.95, distribution: 1, storage: 1, generation: 3, control: 0.96, auxiliary: 30 },
   district_heating: { carrier: "district_heating", emission: 0.94, distribution: 0.88, storage: 1, generation: 0.98, control: 0.97, auxiliary: 120 }
-};
-
-const PRIMARY_FACTORS_V05 = {
-  electricity: { renewable: 0.55, nonRenewable: 1.95, total: 2.5, co2: 0.24 },
-  natural_gas: { renewable: 0, nonRenewable: 1.1, total: 1.1, co2: 0.202 },
-  wood: { renewable: 0.2, nonRenewable: 0.05, total: 0.25, co2: 0.03 },
-  pellets: { renewable: 0.25, nonRenewable: 0.08, total: 0.33, co2: 0.04 },
-  district_heating: { renewable: 0.1, nonRenewable: 1.2, total: 1.3, co2: 0.18 },
-  lpg: { renewable: 0, nonRenewable: 1.1, total: 1.1, co2: 0.23 },
-  coal: { renewable: 0, nonRenewable: 1.2, total: 1.2, co2: 0.34 },
-  unknown: { renewable: 0, nonRenewable: 1, total: 1, co2: 0.2 }
 };
 
 const ENERGY_PRICE_RON_KWH = {
@@ -354,54 +338,6 @@ const ENERGY_PRICE_RON_KWH = {
   unknown: 0.45
 };
 
-const ESTIMATED_ENERGY_CLASS_SOURCE = "user_provided_estimated_primary_energy_thresholds_2026_06_05";
-const ESTIMATED_ENERGY_CLASS_THRESHOLD_SETS = [
-  {
-    id: "estimated_primary_energy_residential_individual_v1",
-    buildingType: "residential_individual",
-    metric: "primary_energy_kwh_m2_year",
-    unit: "kWh/m2.year",
-    source: ESTIMATED_ENERGY_CLASS_SOURCE,
-    confidence: "medium",
-    assumptions: [
-      "Pragurile sunt pentru clasa estimativa LaCurent pe baza energiei primare specifice anuale.",
-      "Rezultatul nu reprezinta certificat energetic oficial."
-    ],
-    thresholds: [
-      { className: "A+", maxInclusive: 91 },
-      { className: "A", minExclusive: 91, maxInclusive: 129 },
-      { className: "B", minExclusive: 129, maxInclusive: 257 },
-      { className: "C", minExclusive: 257, maxInclusive: 390 },
-      { className: "D", minExclusive: 390, maxInclusive: 522 },
-      { className: "E", minExclusive: 522, maxInclusive: 652 },
-      { className: "F", minExclusive: 652, maxInclusive: 783 },
-      { className: "G", minExclusive: 783 }
-    ]
-  },
-  {
-    id: "estimated_primary_energy_residential_collective_v1",
-    buildingType: "residential_collective",
-    metric: "primary_energy_kwh_m2_year",
-    unit: "kWh/m2.year",
-    source: ESTIMATED_ENERGY_CLASS_SOURCE,
-    confidence: "medium",
-    assumptions: [
-      "Pragurile sunt pentru clasa estimativa LaCurent pe baza energiei primare specifice anuale.",
-      "Rezultatul nu reprezinta certificat energetic oficial."
-    ],
-    thresholds: [
-      { className: "A+", maxInclusive: 73 },
-      { className: "A", minExclusive: 73, maxInclusive: 101 },
-      { className: "B", minExclusive: 101, maxInclusive: 198 },
-      { className: "C", minExclusive: 198, maxInclusive: 297 },
-      { className: "D", minExclusive: 297, maxInclusive: 396 },
-      { className: "E", minExclusive: 396, maxInclusive: 495 },
-      { className: "F", minExclusive: 495, maxInclusive: 595 },
-      { className: "G", minExclusive: 595 }
-    ]
-  }
-];
-
 function inferredBuildingEnergyClassType(rawInput = {}) {
   const type = normalizeEmail(rawInput.building_type || rawInput.buildingType || rawInput.house_type || rawInput.houseType || "");
   if (type.includes("apart") || type.includes("bloc") || type.includes("collective")) return "residential_collective";
@@ -411,70 +347,127 @@ function inferredBuildingEnergyClassType(rawInput = {}) {
   return null;
 }
 
-function classifyEstimatedEnergyClass(primaryEnergyKwhM2Year, buildingEnergyClassType, thresholdSets = ESTIMATED_ENERGY_CLASS_THRESHOLD_SETS) {
-  const assumptions = [
-    "Clasa este estimativa si se bazeaza pe energia primara specifica anuala.",
-    "Rezultatul nu reprezinta certificat energetic oficial."
-  ];
-  if (primaryEnergyKwhM2Year === null || primaryEnergyKwhM2Year === undefined) {
-    return { status: "cannot_classify", estimatedClass: "unknown", warnings: ["MISSING_PRIMARY_ENERGY_KWH_M2_YEAR"], assumptions, confidence: "low", unit: "kWh/m2.year" };
-  }
-  if (!Number.isFinite(primaryEnergyKwhM2Year)) {
-    return { status: "error", estimatedClass: "unknown", warnings: ["INVALID_PRIMARY_ENERGY_KWH_M2_YEAR"], assumptions, confidence: "low", unit: "kWh/m2.year" };
-  }
-  if (primaryEnergyKwhM2Year < 0) {
-    return { status: "error", estimatedClass: "unknown", warnings: ["NEGATIVE_PRIMARY_ENERGY_KWH_M2_YEAR"], assumptions, confidence: "low", unit: "kWh/m2.year" };
-  }
-  if (!buildingEnergyClassType) {
-    return { status: "needs_building_type", estimatedClass: "unknown", warnings: ["NEEDS_BUILDING_ENERGY_CLASS_TYPE"], assumptions, confidence: "low", unit: "kWh/m2.year" };
-  }
-  const thresholdSet = thresholdSets.find(item => item.buildingType === buildingEnergyClassType);
-  if (!thresholdSet) {
-    return { status: "needs_building_type", estimatedClass: "unknown", warnings: ["MISSING_THRESHOLD_SET_FOR_BUILDING_TYPE"], assumptions, confidence: "low", unit: "kWh/m2.year" };
-  }
-  const threshold = thresholdSet.thresholds.find(item => (
-    (item.minExclusive === undefined || primaryEnergyKwhM2Year > item.minExclusive)
-    && (item.maxInclusive === undefined || primaryEnergyKwhM2Year <= item.maxInclusive)
-  ));
-  return {
-    status: threshold ? "classified" : "cannot_classify",
-    estimatedClass: threshold?.className || "unknown",
-    inputPrimaryEnergyKwhM2Year: primaryEnergyKwhM2Year,
-    thresholdSetUsed: {
-      id: thresholdSet.id,
-      buildingType: thresholdSet.buildingType,
-      metric: thresholdSet.metric,
-      unit: thresholdSet.unit,
-      source: thresholdSet.source,
-      confidence: thresholdSet.confidence
-    },
-    warnings: threshold ? [] : ["NO_THRESHOLD_MATCH"],
-    assumptions: [...assumptions, ...thresholdSet.assumptions],
-    confidence: threshold ? thresholdSet.confidence : "low",
-    unit: "kWh/m2.year"
-  };
+function calculationTrace({
+  value,
+  unit,
+  formulaId,
+  formulaText,
+  inputs,
+  steps,
+  assumptions = [],
+  warnings = [],
+  confidence = "medium",
+  source,
+  sourceType
+}) {
+  return { value, unit, formulaId, formulaText, inputs, steps, assumptions, warnings, confidence, source, sourceType };
 }
 
 function buildPrimaryEnergyAndCo2V05(systemsLayerV04, area = 65) {
   const byCarrier = systemsLayerV04?.finalEnergyByCarrier || {};
   const primaryEnergyByCarrier = {};
   const co2ByCarrierKgYear = {};
+  const co2FactorDetailsByCarrier = {};
+  const warnings = [];
+  const calculationTraces = [];
   let renewable = 0;
   let nonRenewable = 0;
   let totalPrimary = 0;
   let totalCo2 = 0;
-  for (const [carrier, factor] of Object.entries(PRIMARY_FACTORS_V05)) {
+  for (const [carrier, data] of Object.entries(byCarrier)) {
     const finalKwh = Number(byCarrier[carrier]?.value || 0);
-    const renewableKwh = finalKwh * factor.renewable;
-    const nonRenewableKwh = finalKwh * factor.nonRenewable;
-    const totalKwh = finalKwh * factor.total;
-    const co2Kg = finalKwh * factor.co2;
+    if (finalKwh <= 0) {
+      primaryEnergyByCarrier[carrier] = {
+        renewableKwh: 0,
+        nonRenewableKwh: 0,
+        totalKwh: 0,
+        mappedPrimaryCarrier: null,
+        factorSource: null,
+        warnings: []
+      };
+      co2ByCarrierKgYear[carrier] = 0;
+      co2FactorDetailsByCarrier[carrier] = {
+        mappedCo2Carrier: null,
+        factorSource: null,
+        warnings: []
+      };
+      continue;
+    }
+    const carrierMapping = resolveMc001Carrier(carrier);
+    calculationTraces.push(carrierMapping.trace);
+    warnings.push(...carrierMapping.warnings);
+    const primaryLookup = carrierMapping.primaryEnergyCarrier
+      ? getPrimaryEnergyFactor(carrierMapping.primaryEnergyCarrier)
+      : { value: null, warnings: ["MISSING_PRIMARY_ENERGY_CARRIER"], assumptions: [], trace: null };
+    const co2Lookup = carrierMapping.co2Carrier
+      ? getCo2Factor(carrierMapping.co2Carrier)
+      : { value: null, warnings: ["MISSING_CO2_CARRIER"], assumptions: [], trace: null };
+    if (finalKwh > 0) {
+      if (primaryLookup.trace) calculationTraces.push(primaryLookup.trace);
+      if (co2Lookup.trace) calculationTraces.push(co2Lookup.trace);
+      warnings.push(...primaryLookup.warnings.map(item => `${item}:${carrier}`));
+      warnings.push(...co2Lookup.warnings.map(item => `${item}:${carrier}`));
+    }
+    const primaryFactor = primaryLookup.value;
+    const co2Factor = co2Lookup.value;
+    const renewableKwh = primaryFactor ? finalKwh * primaryFactor.renewable : 0;
+    const nonRenewableKwh = primaryFactor ? finalKwh * primaryFactor.nonRenewable : 0;
+    const totalKwh = primaryFactor ? finalKwh * primaryFactor.total : 0;
+    const co2Kg = co2Factor ? finalKwh * co2Factor.kgCO2PerKwh : 0;
+    calculationTraces.push(calculationTrace({
+      value: Math.round(totalKwh),
+      unit: "kWh/an",
+      formulaId: "PRIMARY_ENERGY_BY_CARRIER",
+      formulaText: "primaryEnergy = finalEnergy x primaryEnergyFactor",
+      inputs: {
+        finalEnergyKwhYear: finalKwh,
+        finalEnergyCarrier: carrier,
+        primaryEnergyCarrier: carrierMapping.primaryEnergyCarrier,
+        primaryEnergyFactor: primaryFactor?.total ?? null
+      },
+      steps: primaryFactor
+        ? [`${finalKwh} x ${primaryFactor.total} = ${totalKwh}`]
+        : [`Primary energy not calculated for ${carrier}; missing factor.`],
+      assumptions: primaryLookup.assumptions,
+      warnings: primaryLookup.warnings,
+      confidence: primaryFactor ? "medium" : "low",
+      source: primaryFactor?.source || "primaryEnergyFactors.registry",
+      sourceType: primaryFactor ? "mc001" : "registry_default"
+    }));
+    calculationTraces.push(calculationTrace({
+      value: Math.round(co2Kg),
+      unit: "kgCO2/an",
+      formulaId: "CO2_BY_CARRIER",
+      formulaText: "co2 = finalEnergy x co2Factor",
+      inputs: {
+        finalEnergyKwhYear: finalKwh,
+        finalEnergyCarrier: carrier,
+        co2Carrier: carrierMapping.co2Carrier,
+        co2FactorKgPerKwh: co2Factor?.kgCO2PerKwh ?? null
+      },
+      steps: co2Factor
+        ? [`${finalKwh} x ${co2Factor.kgCO2PerKwh} = ${co2Kg}`]
+        : [`CO2 not calculated for ${carrier}; missing factor.`],
+      assumptions: co2Lookup.assumptions,
+      warnings: co2Lookup.warnings,
+      confidence: co2Factor ? "medium" : "low",
+      source: co2Factor?.source || "co2Factors.registry",
+      sourceType: co2Factor ? "mc001" : "registry_default"
+    }));
     primaryEnergyByCarrier[carrier] = {
       renewableKwh: Math.round(renewableKwh),
       nonRenewableKwh: Math.round(nonRenewableKwh),
-      totalKwh: Math.round(totalKwh)
+      totalKwh: Math.round(totalKwh),
+      mappedPrimaryCarrier: carrierMapping.primaryEnergyCarrier,
+      factorSource: primaryFactor?.source,
+      warnings: primaryLookup.warnings
     };
     co2ByCarrierKgYear[carrier] = Math.round(co2Kg);
+    co2FactorDetailsByCarrier[carrier] = {
+      mappedCo2Carrier: carrierMapping.co2Carrier,
+      factorSource: co2Factor?.source,
+      warnings: co2Lookup.warnings
+    };
     renewable += renewableKwh;
     nonRenewable += nonRenewableKwh;
     totalPrimary += totalKwh;
@@ -489,23 +482,34 @@ function buildPrimaryEnergyAndCo2V05(systemsLayerV04, area = 65) {
     nonRenewablePrimaryEnergyKwhYear: Math.round(nonRenewable),
     renewableEnergyRatioPercent: totalPrimary > 0 ? Math.round(renewable / totalPrimary * 100) : 0,
     co2ByCarrierKgYear,
+    co2FactorDetailsByCarrier,
     totalCo2KgYear: Math.round(totalCo2),
     totalCo2KgM2Year: Number((totalCo2 / Math.max(1, area)).toFixed(1)),
     assumptions: [
       "v0.5 transforma energia finala in energie primara si CO2.",
-      "Factorii sunt internal_estimate, nu factori oficiali de certificat."
+      "Factorii vin din registries MC001-like introduse manual si necesita verificare oficiala.",
+      "Nu se foloseste fallback numeric daca lipseste un carrier/factor."
     ],
-    confidence: "low"
+    warnings: [...new Set(warnings)],
+    calculationTraces,
+    confidence: warnings.length ? "low" : "medium"
   };
 }
 
 function buildClassificationV06(primaryAndCo2, systemsLayerV04, rawInput = {}) {
-  const primaryM2 = Number(primaryAndCo2?.totalPrimaryEnergyKwhM2Year || 0);
+  const primaryWarnings = primaryAndCo2?.warnings || [];
+  const primaryEnergyIncomplete = primaryWarnings.some(item =>
+    String(item).includes("MISSING_PRIMARY_ENERGY_FACTOR")
+    || String(item).includes("MISSING_PRIMARY_ENERGY_CARRIER")
+    || String(item).includes("UNMAPPED_FINAL_ENERGY_CARRIER")
+  );
+  const primaryM2 = primaryEnergyIncomplete ? null : Number(primaryAndCo2?.totalPrimaryEnergyKwhM2Year || 0);
   const finalM2 = Number(systemsLayerV04?.totalFinalEnergyKwhM2Year?.value || 0);
   const co2M2 = Number(primaryAndCo2?.totalCo2KgM2Year || 0);
   const buildingEnergyClassType = inferredBuildingEnergyClassType(rawInput);
-  const energyClassResult = classifyEstimatedEnergyClass(primaryM2, buildingEnergyClassType);
+  const energyClassResult = classifyEstimatedEnergyClassFromRegistry(primaryM2, buildingEnergyClassType);
   const missingReasons = [
+    ...primaryWarnings,
     ...energyClassResult.warnings,
     "TODO_CO2_ENVIRONMENTAL_CLASS_REGISTRY_MISSING",
     "PRIMARY_ENERGY_FACTORS_REQUIRE_OFFICIAL_VALIDATION"
@@ -519,6 +523,7 @@ function buildClassificationV06(primaryAndCo2, systemsLayerV04, rawInput = {}) {
     buildingEnergyClassType,
     estimatedEnergyClassSource: energyClassResult.thresholdSetUsed?.source,
     thresholdSetUsed: energyClassResult.thresholdSetUsed,
+    calculationTrace: energyClassResult.trace,
     primaryEnergyKwhM2Year: primaryM2,
     finalEnergyKwhM2Year: finalM2,
     co2KgM2Year: co2M2,
@@ -561,6 +566,15 @@ function buildSystemsLayerV04(rawInput = {}, demand = {}, context = {}) {
   const dhwDemand = physicalNumber(rawInput.dhw_demand_kwh_year, occupants * 850);
   const presetId = selectedSystemPresetV04(rawInput);
   const preset = SYSTEM_V04_PRESETS[presetId] || SYSTEM_V04_PRESETS.wood_stove;
+  const carrierInference = inferFinalEnergyCarrierFromHeatingInput({
+    heatingSource: rawInput.heating_source || rawInput.heating,
+    systemType: rawInput.heating_system_type || rawInput.systemType,
+    generatorType: rawInput.generator_type
+  });
+  const carrierWarnings = [...carrierInference.warnings];
+  if (carrierInference.finalEnergyCarrier && carrierInference.finalEnergyCarrier !== preset.carrier) {
+    carrierWarnings.push("CARRIER_MAPPING_PRESET_MISMATCH");
+  }
   const totalEfficiency = preset.emission * preset.distribution * preset.storage * preset.generation * preset.control;
   const heatingFinal = heatingDemand / Math.max(0.1, totalEfficiency);
   const dhwPreset = normalizeEmail(rawInput.dhw_source_electric).includes("yes")
@@ -621,6 +635,8 @@ function buildSystemsLayerV04(rawInput = {}, demand = {}, context = {}) {
       "Nu calculeaza energie primara, CO2 sau clase energetice.",
       "Valorile sunt internal_estimate si trebuie calibrate ulterior cu date reale."
     ],
+    warnings: carrierWarnings,
+    calculationTraces: [carrierInference.trace],
     confidence: "low"
   };
 }
@@ -892,8 +908,8 @@ function buildPhysicalEnergyResult(rawInput = {}) {
   const primaryEnergyAndCo2V05 = buildPrimaryEnergyAndCo2V05(systemsLayerV04, area);
   const classificationV06 = buildClassificationV06(primaryEnergyAndCo2V05, systemsLayerV04, rawInput);
   const finalEnergy = systemsLayerV04.totalFinalEnergyKwhYear.value || (heatingDemand / heatingSystem.efficiency + dhwDemand / Math.max(0.1, heatingSystem.efficiency));
-  const primaryEnergy = primaryEnergyAndCo2V05.totalPrimaryEnergyKwhYear || finalEnergy * primaryFactor(heatingSystem.carrier);
-  const co2 = primaryEnergyAndCo2V05.totalCo2KgYear || finalEnergy * co2Factor(heatingSystem.carrier);
+  const primaryEnergy = primaryEnergyAndCo2V05.totalPrimaryEnergyKwhYear || 0;
+  const co2 = primaryEnergyAndCo2V05.totalCo2KgYear || 0;
   const weakestEnvelopeElements = [...envelopeResults]
     .sort((a, b) => b.heatTransferCoefficientWK.value - a.heatTransferCoefficientWK.value)
     .slice(0, 3)

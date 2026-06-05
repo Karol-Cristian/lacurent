@@ -14,9 +14,10 @@ function trace<T>(
   steps: string[],
   assumptions: string[],
   warnings: string[],
-  confidence: "low" | "medium" | "high" = "medium"
+  confidence: "low" | "medium" | "high" = "medium",
+  extra: { formulaText?: string; source?: string; sourceType?: CalculationTrace["sourceType"] } = {}
 ): CalculationTrace<T> {
-  return { value, unit, formulaId, inputs, steps, assumptions, warnings, confidence };
+  return { value, unit, formulaId, formulaText: extra.formulaText, inputs, steps, assumptions, warnings, confidence, source: extra.source, sourceType: extra.sourceType };
 }
 
 export function getReferenceEnvelopeValue(
@@ -45,7 +46,12 @@ export function getReferenceEnvelopeValue(
       [value ? `Found ${profile}/${elementType}: Umax=${value.uMaxWPerM2K}` : `Missing ${profile}/${elementType}`],
       assumptions,
       warnings,
-      value ? "medium" : "low"
+      value ? "medium" : "low",
+      {
+        formulaText: "referenceUmax = lookup(profile, elementType)",
+        source: value?.source || "referenceEnvelopeValues.registry",
+        sourceType: value ? "mc001" : "registry_default"
+      }
     )
   };
 }
@@ -100,7 +106,12 @@ export function compareElementToReference(
         : ["Comparația nu poate fi calculata din cauza valorilor lipsa."],
       assumptions,
       warnings,
-      canCompare ? "medium" : "low"
+      canCompare ? "medium" : "low",
+      {
+        formulaText: "percentAboveReference = max(0, (actualUCorrected - referenceUMax) / referenceUMax x 100)",
+        source: referenceValue?.source,
+        sourceType: referenceValue?.source ? "mc001" : "registry_default"
+      }
     )
   };
 }
@@ -120,7 +131,21 @@ export function getPrimaryEnergyFactor(carrier: PrimaryEnergyCarrier): {
     value,
     warnings,
     assumptions,
-    trace: trace(value?.total ?? null, "kWh primary / kWh final", "GET_PRIMARY_ENERGY_FACTOR", { carrier }, [value ? `${carrier}: total=${value.total}` : `Missing factor for ${carrier}`], assumptions, warnings, value ? "medium" : "low")
+    trace: trace(
+      value?.total ?? null,
+      "kWh primary / kWh final",
+      "GET_PRIMARY_ENERGY_FACTOR",
+      { carrier, factor: value || null },
+      [value ? `${carrier}: total=${value.total}` : `Missing factor for ${carrier}`],
+      assumptions,
+      warnings,
+      value ? "medium" : "low",
+      {
+        formulaText: "primaryEnergy = finalEnergy x primaryEnergyFactor",
+        source: value?.source || "primaryEnergyFactors.registry",
+        sourceType: value ? "mc001" : "registry_default"
+      }
+    )
   };
 }
 
@@ -139,6 +164,20 @@ export function getCo2Factor(carrier: Co2Carrier): {
     value,
     warnings,
     assumptions,
-    trace: trace(value?.kgCO2PerKwh ?? null, "kgCO2/kWh", "GET_CO2_FACTOR", { carrier }, [value ? `${carrier}: ${value.kgCO2PerKwh} kgCO2/kWh` : `Missing factor for ${carrier}`], assumptions, warnings, value ? "medium" : "low")
+    trace: trace(
+      value?.kgCO2PerKwh ?? null,
+      "kgCO2/kWh",
+      "GET_CO2_FACTOR",
+      { carrier, factor: value || null },
+      [value ? `${carrier}: ${value.kgCO2PerKwh} kgCO2/kWh` : `Missing factor for ${carrier}`],
+      assumptions,
+      warnings,
+      value ? "medium" : "low",
+      {
+        formulaText: "co2 = finalEnergy x co2Factor",
+        source: value?.source || "co2Factors.registry",
+        sourceType: value ? "mc001" : "registry_default"
+      }
+    )
   };
 }

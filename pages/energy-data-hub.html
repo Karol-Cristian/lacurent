@@ -151,6 +151,38 @@
 </div>
 </section>
 
+<section class="dashboard-band physics-source-panel">
+<div class="section-heading">
+<span class="small-label">VALIDARE MOTOR FIZIC</span>
+<h2>Sursele de adevar pentru locuinta activa</h2>
+<p>Aici verifici daca energia primara, CO2, mapping-ul de carrier si clasa estimativa vin din registries, nu din formule duplicate in UI sau worker.</p>
+</div>
+<div id="physicsValidationStatus" class="technical-status-grid">
+<article><span>...</span><strong>Se incarca</strong><p>Citim locuinta activa si rezultatul Physics Engine.</p></article>
+</div>
+<div class="technical-table-wrap physics-carrier-wrap">
+<table class="technical-table physics-carrier-table">
+<thead>
+<tr>
+<th>Carrier intern</th>
+<th>Final</th>
+<th>Primary carrier</th>
+<th>Factor primary</th>
+<th>Energie primara</th>
+<th>CO2 carrier</th>
+<th>Factor CO2</th>
+<th>CO2</th>
+<th>Warnings</th>
+</tr>
+</thead>
+<tbody id="physicsCarrierValidation">
+<tr><td colspan="9">Astept datele locuintei active.</td></tr>
+</tbody>
+</table>
+</div>
+<div id="physicsTraceValidation" class="physics-trace-list"></div>
+</section>
+
 <section class="dashboard-band">
 <div class="section-heading">
 <span class="small-label">COEFICIENTI FOLOSITI ACUM</span>
@@ -264,6 +296,109 @@ if(btn){
 btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
 }
 });
+
+function escapeHtml(value){
+return String(value??"--")
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+}
+function numericValue(value){
+if(typeof value==="number") return Number.isFinite(value)?value:0;
+const number=Number(value?.value??value??0);
+return Number.isFinite(number)?number:0;
+}
+function formatNumber(value,unit,decimals=0){
+const number=numericValue(value);
+if(!number) return "--";
+const text=decimals?number.toFixed(decimals):Math.round(number).toLocaleString("ro-RO");
+return `${text} ${unit}`;
+}
+function uniqueWarnings(items){
+return [...new Set((items||[]).filter(Boolean).map(item=>String(item)))];
+}
+function traceLabel(trace){
+return trace?.formulaId||trace?.id||trace?.formulaText||"trace";
+}
+async function renderPhysicsValidationPanel(){
+const status=document.getElementById("physicsValidationStatus");
+const carrierBody=document.getElementById("physicsCarrierValidation");
+const traceBox=document.getElementById("physicsTraceValidation");
+if(!status||!carrierBody||!traceBox) return;
+function showEmpty(title,message){
+status.innerHTML=`<article><span>info</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p></article>`;
+carrierBody.innerHTML=`<tr><td colspan="9">${escapeHtml(message)}</td></tr>`;
+traceBox.innerHTML="";
+}
+if(!window.LaCurentAuth?.token?.()){
+showEmpty("Autentificare necesara","Logheaza-te ca sa vedem verificarea pe locuinta activa din DB.");
+return;
+}
+try{
+const requestPayload=window.LaCurentHomes?.activeHouseRequest?.()||{};
+const result=await window.LaCurentAuth.api("/api/energy-report",requestPayload);
+if(!result?.has_report){
+showEmpty("Raport lipsa",result?.message||"Locuinta activa nu are inca un rezultat calculat.");
+return;
+}
+const physical=result.physical_result||{};
+const systems=physical.systemsLayerV04||{};
+const primary=physical.primaryEnergyAndCo2V05||{};
+const classification=physical.classificationV06||{};
+const finalByCarrier=systems.finalEnergyByCarrier||{};
+const primaryByCarrier=primary.primaryEnergyByCarrier||{};
+const co2ByCarrier=primary.co2ByCarrierKgYear||{};
+const co2Details=primary.co2FactorDetailsByCarrier||{};
+const traces=[
+...(systems.calculationTraces||[]),
+...(primary.calculationTraces||[]),
+classification.calculationTrace
+].filter(Boolean);
+const warnings=uniqueWarnings([
+...(systems.warnings||[]),
+...(primary.warnings||[]),
+...(classification.warnings||[]),
+...(classification.missingReasons||[])
+]);
+const carriers=Object.keys(finalByCarrier).filter(carrier=>numericValue(finalByCarrier[carrier])>0);
+status.innerHTML=`
+<article class="done"><span>PE</span><strong>${formatNumber(primary.totalPrimaryEnergyKwhM2Year,"kWh/m2/an",1)}</strong><p>energie primara specifica din primaryEnergyFactors.registry</p></article>
+<article class="done"><span>CO2</span><strong>${formatNumber(primary.totalCo2KgM2Year,"kgCO2/m2/an",1)}</strong><p>emisii specifice din co2Factors.registry</p></article>
+<article class="${classification.estimatedEnergyClass?"done":""}"><span>CLS</span><strong>${escapeHtml(classification.estimatedEnergyClass||"neclasificat")}</strong><p>${escapeHtml(classification.thresholdSetUsed?.id||classification.classCalculationStatus||"lipseste building type sau energie primara")}</p></article>
+<article class="${warnings.length?"":"done"}"><span>!</span><strong>${warnings.length}</strong><p>warnings / date lipsa in lantul Physics Engine</p></article>`;
+carrierBody.innerHTML=carriers.length?carriers.map(carrier=>{
+const finalKwh=numericValue(finalByCarrier[carrier]);
+const primaryDetail=primaryByCarrier[carrier]||{};
+const co2Detail=co2Details[carrier]||{};
+const primaryFactor=finalKwh>0&&numericValue(primaryDetail.totalKwh)>0?numericValue(primaryDetail.totalKwh)/finalKwh:null;
+const co2Factor=finalKwh>0&&numericValue(co2ByCarrier[carrier])>0?numericValue(co2ByCarrier[carrier])/finalKwh:null;
+const rowWarnings=uniqueWarnings([...(primaryDetail.warnings||[]),...(co2Detail.warnings||[])]);
+return `<tr>
+<td><strong>${escapeHtml(carrier)}</strong></td>
+<td>${formatNumber(finalKwh,"kWh/an")}</td>
+<td>${escapeHtml(primaryDetail.mappedPrimaryCarrier||"--")}</td>
+<td>${primaryFactor?primaryFactor.toFixed(2):"--"}<small>${escapeHtml(primaryDetail.factorSource||"--")}</small></td>
+<td>${formatNumber(primaryDetail.totalKwh,"kWh/an")}</td>
+<td>${escapeHtml(co2Detail.mappedCo2Carrier||"--")}</td>
+<td>${co2Factor?co2Factor.toFixed(3):"--"}<small>${escapeHtml(co2Detail.factorSource||"--")}</small></td>
+<td>${formatNumber(co2ByCarrier[carrier],"kg/an")}</td>
+<td>${rowWarnings.length?escapeHtml(rowWarnings.join("; ")):"-"}</td>
+</tr>`;
+}).join(""):`<tr><td colspan="9">Nu exista energie finala pe carrier pentru locuinta activa.</td></tr>`;
+const warningHtml=warnings.length?`<article class="physics-warning-list"><strong>Warnings active</strong><ul>${warnings.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul></article>`:"";
+const traceHtml=traces.length?traces.slice(0,10).map(trace=>`<article>
+<span>${escapeHtml(traceLabel(trace))}</span>
+<strong>${escapeHtml(trace.formulaText||trace.expression||"--")}</strong>
+<p>${escapeHtml((trace.steps||[]).slice(0,2).join(" | ")||trace.source||"CalculationTrace")}</p>
+<small>${escapeHtml(trace.unit||trace.outputUnit||"")} ${trace.source?`/ ${escapeHtml(trace.source)}`:""}</small>
+</article>`).join(""):`<article><span>trace</span><strong>Nu exista trace-uri expuse</strong><p>Engine-ul trebuie sa returneze calculationTraces pentru acest rezultat.</p></article>`;
+traceBox.innerHTML=`${warningHtml}${traceHtml}`;
+}catch(error){
+showEmpty("Nu am putut incarca validarea",error?.message||"Eroare la /api/energy-report.");
+}
+}
 
 function renderMc001Parameters(){
 const data=window.LaCurentPhysicsParameters;
@@ -558,6 +693,8 @@ render();
 }
 window.addEventListener("DOMContentLoaded",renderMc001OfficialVocabularyTable);
 window.addEventListener("load",renderMc001OfficialVocabularyTable);
+window.addEventListener("DOMContentLoaded",renderPhysicsValidationPanel);
+window.addEventListener("lacurent:homes-loaded",renderPhysicsValidationPanel);
 </script>
 </body>
 </html>

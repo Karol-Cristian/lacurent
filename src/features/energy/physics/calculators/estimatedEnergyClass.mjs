@@ -14,6 +14,7 @@ function buildTrace({
     value,
     unit: "class",
     formulaId: "ESTIMATED_ENERGY_CLASS_FROM_PRIMARY_ENERGY",
+    formulaText: "estimatedClass = threshold(primaryEnergyKwhM2Year, buildingEnergyClassType)",
     inputs: {
       primaryEnergyKwhM2Year,
       buildingEnergyClassType,
@@ -22,7 +23,9 @@ function buildTrace({
     steps,
     assumptions,
     warnings,
-    confidence
+    confidence,
+    source: thresholdSetId ? "energyClassThresholds.registry" : "energyClassThresholds.registry",
+    sourceType: "registry_default"
   };
 }
 

@@ -171,6 +171,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  function uniqueList(items = []) {
+    return [...new Set(items.filter(Boolean).map(item => String(item)))];
+  }
+
+  function factorSourceLabel(source) {
+    if (!source) return "fara sursa";
+    if (source === "MC001-2022") return "MC001-2022";
+    if (source.includes?.("registry")) return source;
+    return String(source);
+  }
+
+  function traceTitle(trace = {}) {
+    return trace.formulaId || trace.id || trace.formulaText || "trace";
+  }
+
   function estimateUsePrimaryAndCo2(finalKwh, carrier, finalByCarrier = {}, primary = {}) {
     const { primaryFactor, co2Factor } = carrierFactors(carrier, finalByCarrier, primary);
     return {
@@ -371,15 +386,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         const finalKwh = valueOf(value);
         if (!finalKwh) return null;
         const factors = carrierFactors(carrier, finalByCarrier, primary);
+        const primaryDetail = primary.primaryEnergyByCarrier?.[carrier] || {};
+        const co2Detail = primary.co2FactorDetailsByCarrier?.[carrier] || {};
+        const factorWarnings = uniqueList([...(primaryDetail.warnings || []), ...(co2Detail.warnings || [])]);
         return {
           carrier: carrierLabel(carrier),
           finalEnergy: `${Math.round(finalKwh).toLocaleString("ro-RO")} kWh/an`,
-          primaryEnergy: `${Math.round(primary.primaryEnergyByCarrier?.[carrier]?.totalKwh || 0).toLocaleString("ro-RO")} kWh/an`,
-          renewable: `${Math.round(primary.primaryEnergyByCarrier?.[carrier]?.renewableKwh || 0).toLocaleString("ro-RO")} kWh/an`,
-          nonRenewable: `${Math.round(primary.primaryEnergyByCarrier?.[carrier]?.nonRenewableKwh || 0).toLocaleString("ro-RO")} kWh/an`,
+          primaryEnergy: `${Math.round(primaryDetail.totalKwh || 0).toLocaleString("ro-RO")} kWh/an`,
+          renewable: `${Math.round(primaryDetail.renewableKwh || 0).toLocaleString("ro-RO")} kWh/an`,
+          nonRenewable: `${Math.round(primaryDetail.nonRenewableKwh || 0).toLocaleString("ro-RO")} kWh/an`,
           co2: `${Math.round(primary.co2ByCarrierKgYear?.[carrier] || 0).toLocaleString("ro-RO")} kg/an`,
           primaryFactor: factors.primaryFactor ? factors.primaryFactor.toFixed(2) : "--",
-          co2Factor: factors.co2Factor ? factors.co2Factor.toFixed(3) : "--"
+          co2Factor: factors.co2Factor ? factors.co2Factor.toFixed(3) : "--",
+          primarySource: factorSourceLabel(primaryDetail.factorSource),
+          co2Source: factorSourceLabel(co2Detail.factorSource),
+          mappedPrimaryCarrier: primaryDetail.mappedPrimaryCarrier || carrier,
+          mappedCo2Carrier: co2Detail.mappedCo2Carrier || carrier,
+          factorWarnings
         };
       })
       .filter(Boolean);
@@ -499,6 +522,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   function normalizeTechnical(snapshot, physicalResult) {
     const envelope = physicalResult?.envelopeResults || [];
     const byId = Object.fromEntries(envelope.map(item => [item.elementId, item]));
+    const systems = physicalResult?.systemsLayerV04 || {};
+    const primary = physicalResult?.primaryEnergyAndCo2V05 || {};
+    const classification = physicalResult?.classificationV06 || {};
+    const carrierWarnings = uniqueList([
+      ...(systems.warnings || []),
+      ...(primary.warnings || []),
+      ...(classification.warnings || []),
+      ...(classification.missingReasons || [])
+    ]);
+    const traces = [
+      ...(systems.calculationTraces || []),
+      ...(primary.calculationTraces || []),
+      classification.calculationTrace
+    ].filter(Boolean);
     const metric = (labelText, value, source = "LaCurent Physics Engine") => ({ label: labelText, value, source });
     return {
       metrics: [
@@ -507,9 +544,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         metric("Htr", physicalResult?.heatLossTransmission ? `${valueOf(physicalResult.heatLossTransmission).toFixed(1)} W/K` : "--"),
         metric("Hve", physicalResult?.heatLossVentilation ? `${valueOf(physicalResult.heatLossVentilation).toFixed(1)} W/K` : "--"),
         metric("QH,nd", physicalResult?.heatingDemandKwhM2Year ? `${valueOf(physicalResult.heatingDemandKwhM2Year).toFixed(1)} kWh/m2/an` : "--"),
-        metric("Energie finala", physicalResult?.finalEnergyKwhM2Year ? `${valueOf(physicalResult.finalEnergyKwhM2Year).toFixed(1)} kWh/m2/an` : "--")
+        metric("Energie finala", physicalResult?.finalEnergyKwhM2Year ? `${valueOf(physicalResult.finalEnergyKwhM2Year).toFixed(1)} kWh/m2/an` : "--"),
+        metric("Energie primara", primary.totalPrimaryEnergyKwhM2Year ? `${valueOf(primary.totalPrimaryEnergyKwhM2Year).toFixed(1)} kWh/m2/an` : "--", "primaryEnergyFactors.registry"),
+        metric("CO2", primary.totalCo2KgM2Year ? `${valueOf(primary.totalCo2KgM2Year).toFixed(1)} kgCO2/m2/an` : "--", "co2Factors.registry"),
+        metric("Clasa estimata", classification.estimatedEnergyClass || "--", classification.thresholdSetUsed?.id || "energyClassThresholds.registry"),
+        metric("Trace-uri calcul", traces.length ? `${traces.length} trace-uri` : "--", "CalculationTrace")
       ],
-      assumptions: (snapshot?.technicalDetails?.assumptions || physicalResult?.assumptions || []).join(" ")
+      assumptions: (snapshot?.technicalDetails?.assumptions || physicalResult?.assumptions || []).join(" "),
+      warnings: carrierWarnings,
+      traces: traces.slice(0, 8)
     };
   }
 
@@ -803,6 +846,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span>primara: ${escapeHtml(row.primaryEnergy)}</span>
             <span>CO2: ${escapeHtml(row.co2)}</span>
             <span>fp=${escapeHtml(row.primaryFactor)} · fCO2=${escapeHtml(row.co2Factor)}</span>
+            <span>surse: ${escapeHtml(row.primarySource)} / ${escapeHtml(row.co2Source)}</span>
+            <span>mapping: ${escapeHtml(row.mappedPrimaryCarrier)} / ${escapeHtml(row.mappedCo2Carrier)}</span>
+            ${row.factorWarnings?.length ? `<span class="technical-warning-inline">${escapeHtml(row.factorWarnings.join("; "))}</span>` : ""}
           </article>
         `).join("")
         : `<article><strong>Necompletat</strong><span>Nu exista inca energie finala pe combustibil.</span></article>`;
@@ -926,13 +972,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderTechnical(technical) {
     const container = document.getElementById("technicalDetails");
+    const warningHtml = technical.warnings?.length
+      ? `<article class="technical-v1-wide technical-warning-card">
+          <span>Warnings</span>
+          <strong>${technical.warnings.length} verificari de clarificat</strong>
+          <ul>${technical.warnings.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </article>`
+      : "";
+    const traceHtml = technical.traces?.length
+      ? `<article class="technical-v1-wide technical-trace-card">
+          <span>CalculationTrace</span>
+          <strong>Formule folosite in lantul curent</strong>
+          <div class="technical-trace-list">
+            ${technical.traces.map(trace => `
+              <div>
+                <b>${escapeHtml(traceTitle(trace))}</b>
+                <small>${escapeHtml(trace.formulaText || trace.expression || "--")}</small>
+                <em>${escapeHtml(trace.unit || trace.outputUnit || "")} ${trace.source ? ` / ${escapeHtml(trace.source)}` : ""}</em>
+              </div>
+            `).join("")}
+          </div>
+        </article>`
+      : "";
     container.innerHTML = technical.metrics.map(metric => `
       <article>
         <span>${metric.label}</span>
         <strong>${metric.value}</strong>
         <em>${metric.source}</em>
       </article>
-    `).join("");
+    `).join("") + warningHtml + traceHtml;
     setText("technicalAssumptions", technical.assumptions);
   }
 
