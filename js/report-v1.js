@@ -330,6 +330,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const classInfo = reportEnergyClassInfo(snapshot, physicalResult);
     const finalByUse = systems.finalEnergyByUse || {};
     const finalByCarrier = systems.finalEnergyByCarrier || {};
+    const carrierByUse = systems.finalEnergyCarrierByUse || {};
     const mainCarrier = dominantCarrier(finalByCarrier);
     const electricCarrier = valueOf(finalByCarrier.electricity) > 0 ? "electricity" : mainCarrier;
     const utilityRows = [
@@ -337,15 +338,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         key: "heating",
         label: "Incalzire",
         finalKwh: valueOf(finalByUse.heating),
-        carrier: mainCarrier,
+        carrier: carrierByUse.heating || mainCarrier,
         note: "necesar util transformat prin randamentul sistemului"
       },
       {
         key: "dhw",
         label: "Apa calda menajera",
         finalKwh: valueOf(finalByUse.dhw),
-        carrier: mainCarrier,
-        note: "ACM estimata din ocupanti sau fallback pe suprafata"
+        carrier: carrierByUse.dhw || mainCarrier,
+        note: carrierByUse.dhw
+          ? "ACM foloseste carrier-ul sistemului de apa calda selectat"
+          : "ACM estimata din ocupanti; carrier fallback pe sistemul principal"
       },
       {
         key: "lighting",

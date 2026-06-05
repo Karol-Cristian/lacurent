@@ -102,6 +102,7 @@ assert.equal(missingClassType.status, "needs_building_type");
 assert.ok(missingClassType.warnings.includes("NEEDS_BUILDING_ENERGY_CLASS_TYPE"));
 
 const workerSource = readFileSync(resolve("workers/save-house.js"), "utf8");
+const reportV1Source = readFileSync(resolve("js/report-v1.js"), "utf8");
 assert.doesNotMatch(workerSource, /PRIMARY_FACTORS_V05/);
 assert.doesNotMatch(workerSource, /ESTIMATED_ENERGY_CLASS_THRESHOLD_SETS/);
 assert.doesNotMatch(workerSource, /function primaryFactor/);
@@ -112,5 +113,9 @@ assert.match(workerSource, /getPrimaryEnergyFactor/);
 assert.match(workerSource, /getCo2Factor/);
 assert.match(workerSource, /classifyEstimatedEnergyClassFromRegistry/);
 assert.match(workerSource, /resolveMc001Carrier/);
+assert.match(workerSource, /selectedDhwPresetV04/);
+assert.match(workerSource, /finalEnergyCarrierByUse/);
+assert.match(reportV1Source, /finalEnergyCarrierByUse/);
+assert.doesNotMatch(reportV1Source, /key:\s*"dhw"[\s\S]{0,160}carrier:\s*mainCarrier/);
 
 console.log("PASS physics source-of-truth parity");

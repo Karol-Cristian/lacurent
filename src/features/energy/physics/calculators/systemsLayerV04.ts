@@ -144,7 +144,8 @@ export function runSystemsLayerV04(input: SystemsLayerInput): FinalEnergyResult 
 
   addEnergy(finalEnergyByCarrier, carrierForFuel(input.heatingSystem.fuel), heatingLoss.finalEnergyKwhYear.value, "Combustibil incalzire.", heatingLoss.finalEnergyKwhYear.confidence);
   addEnergy(finalEnergyByCarrier, "electricity", coolingFinal.value, "Racirea consuma energie electrica finala.", coolingFinal.confidence);
-  addEnergy(finalEnergyByCarrier, carrierForFuel(input.domesticHotWaterSystem?.fuel || input.heatingSystem.fuel), dhwLoss.finalEnergyKwhYear.value, "Combustibil ACM.", dhwLoss.finalEnergyKwhYear.confidence);
+  const dhwCarrier = carrierForFuel(input.domesticHotWaterSystem?.fuel || input.heatingSystem.fuel);
+  addEnergy(finalEnergyByCarrier, dhwCarrier, dhwLoss.finalEnergyKwhYear.value, "Combustibil ACM.", dhwLoss.finalEnergyKwhYear.confidence);
   addEnergy(finalEnergyByCarrier, "electricity", auxiliaryTotal, "Energia auxiliara este tratata ca electricitate.", "low");
 
   const total = Object.values(finalEnergyByUse).reduce((sum, item) => sum + item.value, 0);
@@ -160,6 +161,12 @@ export function runSystemsLayerV04(input: SystemsLayerInput): FinalEnergyResult 
   return {
     finalEnergyByCarrier,
     finalEnergyByUse,
+    finalEnergyCarrierByUse: {
+      heating: carrierForFuel(input.heatingSystem.fuel),
+      cooling: "electricity",
+      dhw: dhwCarrier,
+      auxiliary: "electricity"
+    },
     systemLosses: [heatingLoss, dhwLoss],
     auxiliaryEnergy: {
       heatingKwhYear: heatingAux,

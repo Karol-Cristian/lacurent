@@ -39,6 +39,7 @@ export interface AuxiliaryEnergy {
 export interface FinalEnergyResult {
   finalEnergyByCarrier: Record<FinalEnergyCarrier, PhysicsValue>;
   finalEnergyByUse: Record<FinalEnergyUse, PhysicsValue>;
+  finalEnergyCarrierByUse: Record<FinalEnergyUse, FinalEnergyCarrier>;
   systemLosses: SystemLosses[];
   auxiliaryEnergy: AuxiliaryEnergy;
   totalFinalEnergyKwhYear: PhysicsValue;

@@ -558,6 +558,34 @@ function selectedSystemPresetV04(rawInput = {}) {
   return "wood_stove";
 }
 
+function booleanInput(value) {
+  const normalized = normalizeEmail(value);
+  return normalized === "yes" || normalized === "da" || normalized === "true" || normalized === "1" || normalized === "on";
+}
+
+function selectedDhwPresetV04(rawInput = {}, heatingPresetId = "wood_stove") {
+  const source = normalizeEmail(rawInput.dhw_source || rawInput.dhwSource || rawInput.domestic_hot_water_source || rawInput.hot_water_source);
+  const warnings = [];
+  if (booleanInput(rawInput.dhw_source_electric) || source.includes("electric") || source.includes("boiler electric")) {
+    return { presetId: "electric_direct", source: "electric_boiler", warnings };
+  }
+  if (booleanInput(rawInput.dhw_source_gas) || source.includes("gaz") || source.includes("gas")) {
+    return { presetId: "gas_boiler_condensing", source: "gas_boiler", warnings };
+  }
+  if (booleanInput(rawInput.dhw_source_heat_pump) || source.includes("pompa") || source.includes("heat_pump")) {
+    warnings.push("DHW_HEAT_PUMP_MODELED_WITH_EXISTING_HEAT_PUMP_PRESET");
+    return { presetId: "air_water_heat_pump_radiators", source: "heat_pump", warnings };
+  }
+  if (booleanInput(rawInput.dhw_source_solar) || source.includes("solar")) {
+    warnings.push("DHW_SOLAR_THERMAL_NOT_MODELED_SEPARATELY_USING_HEATING_BACKUP");
+    return { presetId: heatingPresetId, source: "solar_thermal_with_backup", warnings };
+  }
+  if (booleanInput(rawInput.dhw_source_heating) || source.includes("same_as_heating") || source.includes("incalz")) {
+    return { presetId: heatingPresetId, source: "same_as_heating", warnings };
+  }
+  return { presetId: heatingPresetId, source: "same_as_heating", warnings: ["DHW_SOURCE_MISSING_USING_HEATING_SYSTEM"] };
+}
+
 function buildSystemsLayerV04(rawInput = {}, demand = {}, context = {}) {
   const area = context.area || 65;
   const heatingDemand = Number(demand.heatingDemandKwhYear) || 0;
@@ -577,9 +605,9 @@ function buildSystemsLayerV04(rawInput = {}, demand = {}, context = {}) {
   }
   const totalEfficiency = preset.emission * preset.distribution * preset.storage * preset.generation * preset.control;
   const heatingFinal = heatingDemand / Math.max(0.1, totalEfficiency);
-  const dhwPreset = normalizeEmail(rawInput.dhw_source_electric).includes("yes")
-    ? SYSTEM_V04_PRESETS.electric_direct
-    : preset;
+  const dhwSelection = selectedDhwPresetV04(rawInput, presetId);
+  const dhwPreset = SYSTEM_V04_PRESETS[dhwSelection.presetId] || preset;
+  carrierWarnings.push(...dhwSelection.warnings);
   const dhwEfficiency = dhwPreset.emission * dhwPreset.distribution * (rawInput.dhw_storage_l ? 0.9 : dhwPreset.storage) * dhwPreset.generation * dhwPreset.control;
   const dhwFinal = dhwDemand / Math.max(0.1, dhwEfficiency);
   const seer = physicalNumber(rawInput.cooling_seer || rawInput.cooling_eer, 3.1);
@@ -599,13 +627,17 @@ function buildSystemsLayerV04(rawInput = {}, demand = {}, context = {}) {
   byCarrier[dhwPreset.carrier] = (byCarrier[dhwPreset.carrier] || 0) + dhwFinal;
   byCarrier.electricity += coolingFinal + auxiliary;
   const byUse = { heating: heatingFinal, cooling: coolingFinal, dhw: dhwFinal, auxiliary };
+  const carrierByUse = { heating: preset.carrier, cooling: "electricity", dhw: dhwPreset.carrier, auxiliary: "electricity" };
   const total = Object.values(byUse).reduce((sum, value) => sum + value, 0);
   const mapValue = (value, assumptions) => physicsValue(Math.round(value), "kWh/an", assumptions, "low");
   return {
     version: "Physics Layer v0.4 Systems",
     heatingSystemPreset: presetId,
+    dhwSystemPreset: dhwSelection.presetId,
+    dhwSource: dhwSelection.source,
     finalEnergyByCarrier: Object.fromEntries(Object.entries(byCarrier).map(([key, value]) => [key, mapValue(value, [`Energie finala pe carrier: ${key}.`])])),
     finalEnergyByUse: Object.fromEntries(Object.entries(byUse).map(([key, value]) => [key, mapValue(value, [`Energie finala pe utilizare: ${key}.`])])),
+    finalEnergyCarrierByUse: carrierByUse,
     systemLosses: [
       {
         use: "heating",
