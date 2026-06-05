@@ -992,13 +992,29 @@ function buildFinancialLossBreakdown(physicalResult = {}, estimatedAnnualCostRon
 
 function homeSummaryFromInput(rawInput = {}, profile = {}) {
   const input = profile.input || {};
+  const usefulAreaM2 = input.geometry?.usefulAreaM2 || rawInput.surface || rawInput.useful_area_m2 || "unknown";
+  const heatedAreaM2 = input.geometry?.heatedAreaM2 || rawInput.heated_area_m2 || usefulAreaM2;
+  const floors = input.geometry?.numberOfFloors || rawInput.number_of_floors || rawInput.floors || "unknown";
   return {
+    homeId: rawInput.house_id || null,
     buildingType: input.general?.buildingType || rawInput.house_type || "unknown",
+    buildingCategory: rawInput.building_category || rawInput.analysis_type || "residential",
     location: input.general?.location?.cityOrVillage || rawInput.city || "unknown",
+    county: input.general?.location?.county || rawInput.county || rawInput.judet || "unknown",
+    address: rawInput.address || rawInput.street || rawInput.city || "unknown",
     constructionYear: input.general?.constructionYear || rawInput.year || "unknown",
-    usefulAreaM2: input.geometry?.usefulAreaM2 || rawInput.surface || "unknown",
+    usefulAreaM2,
+    heatedAreaM2,
+    builtSurfaceM2: rawInput.built_surface || rawInput.building_footprint_m2 || "unknown",
+    unfoldedSurfaceM2: rawInput.unfolded_surface || rawInput.gross_floor_area_m2 || rawInput.total_floor_area_m2 || "unknown",
+    numberOfFloors: floors,
+    heatedVolumeM3: rawInput.heated_volume_m3 || (usefulAreaM2 !== "unknown" && rawInput.floor_height_m
+      ? Math.round(Number(usefulAreaM2) * Number(rawInput.floor_height_m))
+      : "unknown"),
     heatingSystem: input.heating?.systemType || input.heating?.mainSource || rawInput.heating || "unknown",
-    envelopeSummary: input.envelope?.walls?.insulated || rawInput.wall_insulation || "unknown"
+    envelopeSummary: input.envelope?.walls?.insulated || rawInput.wall_insulation || "unknown",
+    climateRegion: rawInput.climate_region || rawInput.climate_zone_id || "unknown",
+    characteristicPhotos: rawInput.characteristic_photos || rawInput.photo_count || "not_provided"
   };
 }
 

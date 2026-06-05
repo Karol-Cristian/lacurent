@@ -3491,6 +3491,69 @@ font-size:13px;
 color:#64748b;
 }
 
+.certificate-overview{
+background:#fff;
+}
+
+.certificate-overview-grid{
+display:grid;
+grid-template-columns:1fr;
+gap:12px;
+margin-top:18px;
+}
+
+.certificate-overview-card{
+display:grid;
+gap:10px;
+padding:14px;
+border:1px solid #dbe3ee;
+background:#fbfdff;
+}
+
+.certificate-overview-card h3{
+font-size:18px;
+line-height:1.2;
+margin:0;
+color:#0f172a;
+}
+
+.certificate-overview-card p{
+margin:0;
+font-size:13px;
+color:#64748b;
+}
+
+.certificate-overview-card dl{
+display:grid;
+gap:6px;
+margin:0;
+}
+
+.certificate-overview-card dl div{
+display:grid;
+grid-template-columns:minmax(120px,42%) minmax(0,1fr);
+gap:8px;
+align-items:start;
+padding-top:6px;
+border-top:1px solid #e2e8f0;
+}
+
+.certificate-overview-card dt{
+font-size:11px;
+font-weight:900;
+letter-spacing:0;
+text-transform:uppercase;
+color:#64748b;
+}
+
+.certificate-overview-card dd{
+margin:0;
+font-size:13px;
+font-weight:800;
+color:#172033;
+word-break:break-word;
+}
+
 .decision-section{
 border-bottom:1px solid #dbe3ee;
 }
@@ -3926,6 +3989,10 @@ padding:34px;
 
 .cost-category-grid{
 grid-template-columns:repeat(4,1fr);
+}
+
+.certificate-overview-grid{
+grid-template-columns:repeat(2,1fr);
 }
 
 .split-section{

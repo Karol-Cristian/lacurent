@@ -19,6 +19,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (element) element.textContent = value || "--";
   }
 
+  function escapeHtml(value) {
+    return String(value ?? "--")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
   function label(value) {
     return {
       low: "scazuta",
@@ -36,6 +45,47 @@ document.addEventListener("DOMContentLoaded", async () => {
       behavior: "comportament",
       maintenance: "mentenanta"
     }[value] || value || "--";
+  }
+
+  function sourceLabelFor(source) {
+    return source === "api-admin"
+      ? "vizualizare admin read-only"
+      : source === "api"
+        ? "date din DB si calcule LaCurent"
+        : source === "guest"
+          ? "raport local fara cont"
+          : "raport demo";
+  }
+
+  function textValue(value, fallback = "necompletat") {
+    if (value === null || value === undefined || value === "" || value === "unknown") return fallback;
+    if (value === "not_provided") return "neintroduse inca";
+    return String(value);
+  }
+
+  function areaValue(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? `${number.toLocaleString("ro-RO")} m2` : "necompletat";
+  }
+
+  function volumeValue(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? `${number.toLocaleString("ro-RO")} m3` : "necompletat";
+  }
+
+  function kwhYear(value) {
+    const number = valueOf(value);
+    return Number.isFinite(number) && number > 0 ? `${Math.round(number).toLocaleString("ro-RO")} kWh/an` : "--";
+  }
+
+  function kwhM2Year(value) {
+    const number = valueOf(value);
+    return Number.isFinite(number) && number > 0 ? `${Math.round(number).toLocaleString("ro-RO")} kWh/m2/an` : "--";
+  }
+
+  function co2M2Year(value) {
+    const number = valueOf(value);
+    return Number.isFinite(number) && number > 0 ? `${number.toFixed(1)} kgCO2/m2/an` : "--";
   }
 
   function valueOf(physicsValue) {
@@ -97,6 +147,72 @@ document.addEventListener("DOMContentLoaded", async () => {
       { label: "Apa calda menajera", valueRon: dhwCost, note: "necesar ACM si pierderi sistem", tone: "medium" },
       { label: "Electric casnic", valueRon: electricCost, note: "auxiliare si consum electric estimativ", tone: "low" },
       { label: "Cost evitabil estimat", valueRon: avoidable, note: "parte din costurile de mai sus, nu se adauga la total", tone: "high" }
+    ];
+  }
+
+  function normalizeCertificateOverview({ snapshot = {}, physicalResult = {}, profile = {}, result = {}, source = "demo", annualCosts = [] }) {
+    const home = snapshot.home || {};
+    const systems = physicalResult?.systemsLayerV04?.finalEnergyByUse || {};
+    const technical = snapshot.technicalDetails || {};
+    const consumptionKwhM2 = snapshot.estimatedConsumptionKwhM2Year || physicalResult?.finalEnergyKwhM2Year || profile?.derived?.demand?.estimatedFinalEnergyKwhM2Year;
+    const totalCo2 = snapshot.estimatedCo2KgM2Year || physicalResult?.co2KgM2Year || technical.primaryEnergyAndCo2V05?.totalCo2KgM2Year;
+    const heatingCost = annualCosts.find(item => item.label === "Incalzire")?.valueRon;
+    const dhwCost = annualCosts.find(item => item.label === "Apa calda menajera")?.valueRon;
+    const electricCost = annualCosts.find(item => item.label === "Electric casnic")?.valueRon;
+    return [
+      {
+        title: "Identificare raport",
+        note: "Echivalentul zonei de identificare, dar pentru evaluarea estimativa LaCurent.",
+        items: [
+          ["ID raport", snapshot.id || `report-${result.analysis_id || result.house_id || "local"}`],
+          ["ID locuinta", home.homeId || result.house_id || "necompletat"],
+          ["Data generarii", snapshot.generatedAt ? new Date(snapshot.generatedAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" }) : textValue(result.generated_at)],
+          ["Status", "Evaluare estimativa"],
+          ["Sursa date", sourceLabelFor(source)]
+        ]
+      },
+      {
+        title: "Date cladire analizata",
+        note: "Datele constructive sunt pastrate separat de verdict, ca in prima parte a unui certificat.",
+        items: [
+          ["Amplasare", [home.location, home.county].filter(value => value && value !== "unknown").join(", ") || "necompletat"],
+          ["Adresa / reper", textValue(home.address)],
+          ["Categorie cladire", textValue(home.buildingCategory || "residential")],
+          ["Tip locuinta", textValue(home.buildingType)],
+          ["An construire", textValue(home.constructionYear)],
+          ["Suprafata utila", areaValue(home.usefulAreaM2)],
+          ["Suprafata incalzita", areaValue(home.heatedAreaM2)],
+          ["Suprafata construita", areaValue(home.builtSurfaceM2)],
+          ["Suprafata desfasurata", areaValue(home.unfoldedSurfaceM2)],
+          ["Volum incalzit", volumeValue(home.heatedVolumeM3)],
+          ["Niveluri", textValue(home.numberOfFloors)],
+          ["Fotografii caracteristice", textValue(home.characteristicPhotos)]
+        ]
+      },
+      {
+        title: "Performanta totala",
+        note: "Rezumatul energetic total si emisiile estimate.",
+        items: [
+          ["Scor LaCurent", snapshot.energyScore ? `${snapshot.energyScore}/100` : "--"],
+          ["Clasa estimata", textValue(snapshot.estimatedEnergyClass)],
+          ["Consum specific estimat", kwhM2Year(consumptionKwhM2)],
+          ["Cost anual estimat", money(snapshot.estimatedAnnualCostRon || profile?.assessment?.estimatedAnnualCostRon)],
+          ["CO2 specific estimat", co2M2Year(totalCo2)],
+          ["Comparatie", snapshot.benchmarkExplanation || "Benchmark in calibrare"]
+        ]
+      },
+      {
+        title: "Consum pe utilitati",
+        note: "Aceeasi impartire de baza: incalzire, ACM, iluminat/electric, climatizare si ventilare.",
+        items: [
+          ["Incalzire", `${kwhYear(systems.heating)} / ${money(heatingCost)}`],
+          ["Apa calda menajera", `${kwhYear(systems.dhw || technical.dhwDemandKwhYear)} / ${money(dhwCost)}`],
+          ["Iluminat / electric casnic", `${kwhYear(systems.lighting || systems.auxiliary)} / ${money(electricCost)}`],
+          ["Climatizare", kwhYear(systems.cooling || physicalResult?.coolingDemandKwhYear)],
+          ["Ventilare", physicalResult?.heatLossVentilation ? `${valueOf(physicalResult.heatLossVentilation).toFixed(1)} W/K pierderi` : "necompletat"],
+          ["CO2 pe utilitati", "agregat acum; detaliere pe utilitati in v0.5+"]
+        ]
+      }
     ];
   }
 
@@ -207,9 +323,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const home = snapshot.home || {};
     const annualCosts = normalizeAnnualCosts(snapshot, physicalResult, profile);
     const avoidableCost = annualCosts.find(item => item.label === "Cost evitabil estimat")?.valueRon;
+    const certificateOverview = normalizeCertificateOverview({ snapshot, physicalResult, profile, result, source, annualCosts });
     return {
       source,
       report: {
+        certificateOverview,
         home: {
           title: snapshot.home?.location ? `Locuinta din ${snapshot.home.location}` : (source === "guest" ? "Locuinta analizata local" : `Locuinta #${result.house_id}`),
           generatedAt: new Date(snapshot.generatedAt || result.generated_at).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" }),
@@ -257,6 +375,64 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function demoCertificateOverview(report, source = "demo") {
+    return [
+      {
+        title: "Identificare raport",
+        note: "Evaluare demonstrativa, nu certificat oficial.",
+        items: [
+          ["ID raport", "demo-report-v1"],
+          ["ID locuinta", "demo-salicea-1964"],
+          ["Data generarii", report.home.generatedAt],
+          ["Status", "Evaluare estimativa"],
+          ["Sursa date", sourceLabelFor(source)]
+        ]
+      },
+      {
+        title: "Date cladire analizata",
+        note: "Date demo pentru o casa veche individuala.",
+        items: [
+          ["Amplasare", "Salicea, Cluj"],
+          ["Adresa / reper", "necompletat"],
+          ["Categorie cladire", "rezidential"],
+          ["Tip locuinta", "casa individuala"],
+          ["An construire", "1964"],
+          ["Suprafata utila", "64.8 m2"],
+          ["Suprafata incalzita", "64.8 m2"],
+          ["Suprafata construita", "necompletat"],
+          ["Suprafata desfasurata", "necompletat"],
+          ["Volum incalzit", "162 m3"],
+          ["Niveluri", "1"],
+          ["Fotografii caracteristice", "neintroduse inca"]
+        ]
+      },
+      {
+        title: "Performanta totala",
+        note: "Indicatori demonstrativi pentru structura raportului.",
+        items: [
+          ["Scor LaCurent", "estimativ"],
+          ["Clasa estimata", "D/E"],
+          ["Consum specific estimat", "160-210 kWh/m2/an"],
+          ["Cost anual estimat", "13.300 lei/an"],
+          ["CO2 specific estimat", "necalculat demo"],
+          ["Comparatie", "comparatie demo cu locuinte similare"]
+        ]
+      },
+      {
+        title: "Consum pe utilitati",
+        note: "Impartire demonstrativa pe utilizari energetice.",
+        items: [
+          ["Incalzire", "9.400 lei/an"],
+          ["Apa calda menajera", "1.800 lei/an"],
+          ["Iluminat / electric casnic", "2.100 lei/an"],
+          ["Climatizare", "necompletat"],
+          ["Ventilare", "pierderi prin ventilatie naturala"],
+          ["CO2 pe utilitati", "agregat acum; detaliere pe utilitati in v0.5+"]
+        ]
+      }
+    ];
+  }
+
   function renderAnnualCosts(items) {
     const container = document.getElementById("annualCosts");
     container.innerHTML = items.map(item => `
@@ -264,6 +440,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         <span>${item.label}</span>
         <strong>${money(item.valueRon)}</strong>
         <p>${item.note}</p>
+      </article>
+    `).join("");
+  }
+
+  function renderCertificateOverview(sections) {
+    const container = document.getElementById("certificateOverview");
+    if (!container) return;
+    container.innerHTML = sections.map(section => `
+      <article class="certificate-overview-card">
+        <h3>${escapeHtml(section.title)}</h3>
+        <p>${escapeHtml(section.note)}</p>
+        <dl>
+          ${section.items.map(([term, description]) => `
+            <div>
+              <dt>${escapeHtml(term)}</dt>
+              <dd>${escapeHtml(description)}</dd>
+            </div>
+          `).join("")}
+        </dl>
       </article>
     `).join("");
   }
@@ -388,10 +583,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     await loadSidebar();
     const { source, report } = await loadReportData();
-    const sourceLabel = source === "api-admin" ? "vizualizare admin read-only" : source === "api" ? "date din DB si calcule LaCurent" : source === "guest" ? "raport local fara cont" : "raport demo";
+    const sourceLabel = sourceLabelFor(source);
     setText("reportMeta", `${report.home.title} · ${sourceLabel} · ${report.home.generatedAt}`);
     const guestPrompt = document.getElementById("guestSavePrompt");
     if (guestPrompt) guestPrompt.hidden = source !== "guest";
+    renderCertificateOverview(report.certificateOverview || demoCertificateOverview(report, source));
     setText("verdictTitle", report.verdict.title);
     setText("verdictConclusion", report.verdict.conclusion);
     setText("avoidableCost", report.verdict.avoidableCostRange);
@@ -410,6 +606,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (error) {
     const report = demo;
     setText("reportMeta", `${report.home.title} · fallback demo`);
+    renderCertificateOverview(report.certificateOverview || demoCertificateOverview(report, "demo"));
     setText("verdictTitle", report.verdict.title);
     setText("verdictConclusion", report.verdict.conclusion);
     setText("avoidableCost", report.verdict.avoidableCostRange);
