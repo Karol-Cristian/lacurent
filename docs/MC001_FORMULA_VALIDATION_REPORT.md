@@ -2,7 +2,7 @@
 
 Status: executed.
 
-Generated at: 2026-06-04T18:49:44.803Z
+Generated at: 2026-06-05T07:58:15.066Z
 
 This report validates only physical and energetic building calculations. It does not validate recommendations, ROI, marketplace, offers, installers or investment ranking.
 

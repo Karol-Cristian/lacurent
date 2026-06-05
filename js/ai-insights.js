@@ -106,24 +106,34 @@
     const roofInsulation = normalizedHome.envelope?.roofOrAttic?.insulationThicknessM;
     const distribution = normalizedHome.systems?.heating?.distribution;
     const heatingSource = normalizedHome.systems?.heating?.source;
+    const windowsType = normalizedHome.envelope?.windows?.type;
+    const dhwSource = normalizedHome.systems?.dhw?.source;
+    const isApartment = normalizedHome.buildingType === "apartment";
+    const isHouse = normalizedHome.buildingType === "house" || normalizedHome.buildingType === "duplex";
+    const hasPhysics = Boolean(context.physicsResult);
+    const hasTransmissionAndVentilation = has(context, "physicsResult.heatLossTransmission") && has(context, "physicsResult.heatLossVentilation");
+    const hasHeatingDemand = has(context, "physicsResult.demandLayerV03.annual.heatingDemandKwhM2Year") || has(context, "physicsResult.heatingDemandKwhM2Year");
+    const hasRealConsumption = has(context, "reportSnapshot.realConsumption") || has(context, "reportSnapshot.realConsumptionSummary");
     const candidates = [];
 
-    candidates.push(candidate({
-      id: "ai.insight.envelope_vs_supplier",
-      target: "report",
-      type: "money_leak",
-      title: "Factura mare pare mai degraba problema de anvelopa decat de furnizor",
-      hypothesis: "Daca pierderile prin transmisie si ventilatie sunt ridicate, schimbarea furnizorului nu rezolva cauza principala.",
-      requiredInputs: ["physicsResult.heatLossTransmission", "physicsResult.heatLossVentilation"],
-      relatedPhysicsOutputs: ["Htr", "Hve", "QH,nd"],
-      suggestedCalculation: "compare Htr + Hve with heating cost share",
-      proposedPlacement: "report.after_money_breakdown",
-      priority: "high",
-      confidence: context.physicsResult ? "medium" : "low",
-      reason: "Cardul separa problema fizica a casei de pretul energiei."
-    }));
+    if (hasTransmissionAndVentilation) {
+      candidates.push(candidate({
+        id: "ai.insight.envelope_vs_supplier",
+        target: "report",
+        type: "money_leak",
+        title: "Factura mare pare mai degraba problema de anvelopa decat de furnizor",
+        hypothesis: "Pierderile prin transmisie si ventilatie indica o problema fizica a locuintei, nu doar un pret mare la energie.",
+        requiredInputs: ["physicsResult.heatLossTransmission", "physicsResult.heatLossVentilation"],
+        relatedPhysicsOutputs: ["Htr", "Hve", "QH,nd"],
+        suggestedCalculation: "compare Htr + Hve with heating cost share",
+        proposedPlacement: "report.after_money_breakdown",
+        priority: "high",
+        confidence: "medium",
+        reason: "Cardul separa problema fizica a casei de pretul energiei."
+      }));
+    }
 
-    if (normalizedHome.buildingType !== "apartment" && (!roofInsulation || roofInsulation < 0.15)) {
+    if (isHouse && (!roofInsulation || roofInsulation < 0.15)) {
       candidates.push(candidate({
         id: "ai.insight.attic_data_can_change_verdict",
         target: "report",
@@ -139,21 +149,37 @@
       }));
     }
 
-    candidates.push(candidate({
-      id: "ai.insight.pv_not_root_cause",
-      target: "report",
-      type: "negative_recommendation",
-      title: "PV poate reduce factura electrica, dar nu rezolva pierderile termice",
-      hypothesis: "Panourile fotovoltaice nu reduc necesarul termic al cladirii.",
-      requiredInputs: ["normalizedHome.buildingType"],
-      relatedPhysicsOutputs: ["QH,nd", "final electricity"],
-      proposedPlacement: "report.negative_recommendations",
-      priority: "medium",
-      confidence: "medium",
-      reason: "Este important sa nu confundam reducerea facturii electrice cu reducerea pierderilor prin anvelopa."
-    }));
+    if (isHouse) {
+      candidates.push(candidate({
+        id: "ai.insight.pv_not_root_cause",
+        target: "report",
+        type: "negative_recommendation",
+        title: "PV poate reduce factura electrica, dar nu rezolva pierderile termice",
+        hypothesis: "Panourile fotovoltaice nu reduc necesarul termic al cladirii.",
+        requiredInputs: ["normalizedHome.buildingType"],
+        relatedPhysicsOutputs: ["QH,nd", "final electricity"],
+        proposedPlacement: "report.negative_recommendations",
+        priority: "medium",
+        confidence: "medium",
+        reason: "Este important sa nu confundam reducerea facturii electrice cu reducerea pierderilor prin anvelopa."
+      }));
+    } else if (isApartment) {
+      candidates.push(candidate({
+        id: "ai.insight.apartment_pv_not_individual_first",
+        target: "report",
+        type: "negative_recommendation",
+        title: "PV individual nu este de obicei primul pas pentru apartament",
+        hypothesis: "Pentru apartamente, decizia PV depinde de acoperis comun, asociatie si consum electric, nu doar de locuinta individuala.",
+        requiredInputs: ["normalizedHome.buildingType"],
+        relatedPhysicsOutputs: ["final electricity"],
+        proposedPlacement: "report.negative_recommendations",
+        priority: "medium",
+        confidence: "medium",
+        reason: "Cardul evita o recomandare comerciala nepotrivita pentru un apartament."
+      }));
+    }
 
-    if (["heat_pump", "electricity", "wood", "gas", "unknown"].includes(heatingSource)) {
+    if (heatingSource === "heat_pump" || (hasHeatingDemand && !distribution)) {
       candidates.push(candidate({
         id: "ai.insight.heat_pump_risk_before_envelope",
         target: "report",
@@ -169,76 +195,118 @@
       }));
     }
 
-    candidates.push(candidate({
-      id: "ai.insight.ventilation_hidden_loss",
-      target: "report",
-      type: "ventilation",
-      title: "Ventilatia naturala poate explica o parte din pierderi",
-      hypothesis: "O casa poate pierde energie si prin aer schimbat necontrolat, nu doar prin pereti sau acoperis.",
-      requiredInputs: ["physicsResult.heatLossVentilation"],
-      relatedPhysicsOutputs: ["Hve", "air changes", "ventilation heat loss"],
-      suggestedCalculation: "compare Hve share against total heat transfer",
-      proposedPlacement: "report.after_heating_breakdown",
-      priority: "medium",
-      confidence: context.physicsResult ? "medium" : "low",
-      reason: "Cardul ajuta utilizatorul sa inteleaga pierderile invizibile prin infiltratii si aerisire."
-    }));
+    if (has(context, "physicsResult.heatLossVentilation")) {
+      candidates.push(candidate({
+        id: "ai.insight.ventilation_hidden_loss",
+        target: "report",
+        type: "ventilation",
+        title: "Ventilatia poate explica o parte din pierderi",
+        hypothesis: "Locuinta poate pierde energie si prin aer schimbat necontrolat, nu doar prin elemente constructive.",
+        requiredInputs: ["physicsResult.heatLossVentilation"],
+        relatedPhysicsOutputs: ["Hve", "air changes", "ventilation heat loss"],
+        suggestedCalculation: "compare Hve share against total heat transfer",
+        proposedPlacement: "report.after_heating_breakdown",
+        priority: "medium",
+        confidence: hasPhysics ? "medium" : "low",
+        reason: "Cardul ajuta utilizatorul sa inteleaga pierderile invizibile prin infiltratii si aerisire."
+      }));
+    }
 
-    candidates.push(candidate({
-      id: "ai.insight.controls_before_generator",
-      target: "report",
-      type: "automation",
-      title: "Reglajele pot fi testate inaintea schimbarii generatorului",
-      hypothesis: "Daca sistemul actual nu are control bun, termostatul si reglajele pot reduce risipa fara renovare majora.",
-      requiredInputs: ["normalizedHome.systems.heating.source"],
-      relatedPhysicsOutputs: ["systems layer", "control efficiency"],
-      proposedPlacement: "report.low_risk_actions",
-      priority: "medium",
-      confidence: heatingSource && heatingSource !== "unknown" ? "medium" : "low",
-      reason: "Este o analiza cu risc mic care nu promite economii exacte fara simulare."
-    }));
+    if (heatingSource && heatingSource !== "unknown") {
+      candidates.push(candidate({
+        id: "ai.insight.controls_before_generator",
+        target: "report",
+        type: "automation",
+        title: "Reglajele pot fi testate inaintea schimbarii generatorului",
+        hypothesis: "Daca sistemul actual nu are control bun, termostatul si reglajele pot reduce risipa fara renovare majora.",
+        requiredInputs: ["normalizedHome.systems.heating.source"],
+        relatedPhysicsOutputs: ["systems layer", "control efficiency"],
+        proposedPlacement: "report.low_risk_actions",
+        priority: "medium",
+        confidence: "medium",
+        reason: "Este o analiza cu risc mic care nu promite economii exacte fara simulare."
+      }));
+    }
 
-    candidates.push(candidate({
-      id: "ai.insight.windows_maybe_comfort_not_first_roi",
-      target: "report",
-      type: "comfort",
-      title: "Ferestrele pot fi mai importante pentru confort decat pentru primul ROI",
-      hypothesis: "Ferestrele vechi pot crea disconfort, dar investitia trebuie comparata cu podul si peretii inainte de prioritizare.",
-      requiredInputs: ["normalizedHome.envelope.windows.type"],
-      relatedPhysicsOutputs: ["window U-value", "window heat loss"],
-      proposedPlacement: "report.comfort",
-      priority: "medium",
-      confidence: normalizedHome.envelope?.windows?.type && normalizedHome.envelope.windows.type !== "unknown" ? "medium" : "low",
-      reason: "Cardul separa confortul de recuperarea investitiei, fara sa vanda automat ferestre noi."
-    }));
+    if (!windowsType || ["unknown", "single", "old_double"].includes(windowsType)) {
+      candidates.push(candidate({
+        id: "ai.insight.windows_maybe_comfort_not_first_roi",
+        target: "report",
+        type: "comfort",
+        title: "Ferestrele pot fi mai importante pentru confort decat pentru primul ROI",
+        hypothesis: "Ferestrele vechi pot crea disconfort, dar investitia trebuie comparata cu alte pierderi inainte de prioritizare.",
+        requiredInputs: ["normalizedHome.envelope.windows.type"],
+        relatedPhysicsOutputs: ["window U-value", "window heat loss"],
+        proposedPlacement: "report.comfort",
+        priority: "medium",
+        confidence: windowsType && windowsType !== "unknown" ? "medium" : "low",
+        reason: "Cardul separa confortul de recuperarea investitiei, fara sa vanda automat ferestre noi."
+      }));
+    }
 
-    candidates.push(candidate({
-      id: "ai.insight.dhw_can_change_system_choice",
-      target: "report",
-      type: "dhw",
-      title: "Apa calda menajera poate schimba alegerea sistemului",
-      hypothesis: "Daca ACM este produsa electric sau separat, scenariile de incalzire trebuie comparate impreuna cu apa calda.",
-      requiredInputs: ["normalizedHome.systems.dhw.source"],
-      relatedPhysicsOutputs: ["DHW demand", "final DHW energy"],
-      proposedPlacement: "report.system_context",
-      priority: "medium",
-      confidence: normalizedHome.systems?.dhw?.source && normalizedHome.systems.dhw.source !== "unknown" ? "medium" : "low",
-      reason: "In unele case, apa calda poate schimba costul real al unei solutii de incalzire."
-    }));
+    if (!dhwSource || dhwSource === "unknown" || dhwSource === "electric_boiler" || dhwSource === "same_as_heating") {
+      candidates.push(candidate({
+        id: "ai.insight.dhw_can_change_system_choice",
+        target: "report",
+        type: "dhw",
+        title: "Apa calda menajera poate schimba alegerea sistemului",
+        hypothesis: "Daca ACM este produsa electric sau separat, scenariile de incalzire trebuie comparate impreuna cu apa calda.",
+        requiredInputs: ["normalizedHome.systems.dhw.source"],
+        relatedPhysicsOutputs: ["DHW demand", "final DHW energy"],
+        proposedPlacement: "report.system_context",
+        priority: "medium",
+        confidence: dhwSource && dhwSource !== "unknown" ? "medium" : "low",
+        reason: "In unele case, apa calda poate schimba costul real al unei solutii de incalzire."
+      }));
+    }
 
-    candidates.push(candidate({
-      id: "ai.insight.real_bills_before_strong_ranking",
-      target: "report",
-      type: "missing_data",
-      title: "Facturile reale pot schimba ordinea interventiilor",
-      hypothesis: "Fara facturi reale, raportul poate estima fizic locuinta, dar prioritizarea financiara ramane partiala.",
-      requiredInputs: ["reportSnapshot.realConsumption"],
-      relatedPhysicsOutputs: ["confidence", "financial calibration"],
-      proposedPlacement: "report.missing_data",
-      priority: "high",
-      confidence: "high",
-      reason: "Facturile ajuta la diferentierea dintre pierderi fizice, comportament si preturi."
-    }));
+    if (!hasRealConsumption) {
+      candidates.push(candidate({
+        id: "ai.insight.real_bills_before_strong_ranking",
+        target: "report",
+        type: "missing_data",
+        title: "Facturile reale pot schimba ordinea interventiilor",
+        hypothesis: "Fara facturi reale, raportul poate estima fizic locuinta, dar prioritizarea financiara ramane partiala.",
+        requiredInputs: ["reportSnapshot.realConsumption"],
+        relatedPhysicsOutputs: ["confidence", "financial calibration"],
+        proposedPlacement: "report.missing_data",
+        priority: "high",
+        confidence: "high",
+        reason: "Facturile ajuta la diferentierea dintre pierderi fizice, comportament si preturi."
+      }));
+    }
+
+    if (isApartment) {
+      candidates.push(candidate({
+        id: "ai.insight.apartment_position_matters",
+        target: "report",
+        type: "comparison",
+        title: "La apartament conteaza mult pozitia in bloc",
+        hypothesis: "Etajul, peretii exteriori si vecinii incalziti pot schimba pierderile fata de o casa individuala.",
+        requiredInputs: ["normalizedHome.buildingType"],
+        relatedPhysicsOutputs: ["apartment adjacency", "heated boundary conditions"],
+        proposedPlacement: "report.apartment_context",
+        priority: "high",
+        confidence: "medium",
+        reason: "Cardul schimba analiza de la logica de casa la logica de apartament."
+      }));
+    }
+
+    if (heatingSource === "wood") {
+      candidates.push(candidate({
+        id: "ai.insight.wood_heating_comfort_and_effort",
+        target: "report",
+        type: "heating_source",
+        title: "Incalzirea pe lemn trebuie analizata si prin confort, nu doar cost",
+        hypothesis: "Costul combustibilului poate parea bun, dar alimentarea, randamentul si distributia caldurii pot schimba verdictul.",
+        requiredInputs: ["normalizedHome.systems.heating.source"],
+        relatedPhysicsOutputs: ["systems layer", "generation efficiency"],
+        proposedPlacement: "report.system_context",
+        priority: "medium",
+        confidence: "medium",
+        reason: "Cardul evita comparatia strict pe lei si introduce confortul operational."
+      }));
+    }
 
     candidates.push(candidate({
       id: "ai.insight.compare_heat_pump_emitters",
