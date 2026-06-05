@@ -102,6 +102,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  function classBasisLabel(status) {
+    if (status === "calculated_from_estimated_threshold_registry") return "estimativa";
+    if (status === "blocked_missing_validated_methodology" || status === "cannot_classify" || status === "needs_building_type" || status === "error") return "blocata";
+    return "estimativa";
+  }
+
   function valueOf(physicsValue) {
     return typeof physicsValue === "number" ? physicsValue : Number(physicsValue?.value || 0);
   }
@@ -407,8 +413,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     return {
       global: [
-        { label: "Clasa energetica estimata", value: textValue(classInfo.value), note: classInfo.source === "physics_v06" ? "physics engine v0.6; blocata pana la validarea metodologiei" : "indisponibila din physics engine" },
-        { label: "Baza clasei", value: classInfo.status === "blocked_missing_validated_methodology" ? "blocata" : "validata", note: classInfo.missingReasons?.slice(0, 2).join(", ") || "metodologie validata" },
+        { label: "Clasa energetica estimata", value: textValue(classInfo.value), note: classInfo.source === "physics_v06" ? "clasa estimativa din physics engine v0.6" : "indisponibila din physics engine" },
+        { label: "Baza clasei", value: classBasisLabel(classInfo.status), note: classInfo.missingReasons?.slice(0, 2).join(", ") || "praguri estimative pe energie primara specifica" },
         { label: "Clasa mediu/CO2 estimata", value: textValue(classification.estimatedEnvironmentalClass), note: "Scala A - G" },
         { label: "Energie finala specifica", value: numberLabel(systems.totalFinalEnergyKwhM2Year || physicalResult?.finalEnergyKwhM2Year, "kWh/m2/an", 1), note: "total pe m2" },
         { label: "Energie primara specifica", value: numberLabel(primary.totalPrimaryEnergyKwhM2Year || physicalResult?.primaryEnergyKwhM2Year, "kWh/m2/an", 1), note: "cu factori de conversie" },

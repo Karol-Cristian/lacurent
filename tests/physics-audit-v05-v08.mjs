@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { classifyEstimatedEnergyClass } from "../src/features/energy/physics/calculators/estimatedEnergyClass.mjs";
 
 const primaryFactors = {
   electricity: { renewable: 0.55, nonRenewable: 1.95, total: 2.5, co2: 0.24 },
@@ -41,31 +42,6 @@ function primaryAndCo2(byCarrier, area) {
   };
 }
 
-const energyThresholds = [
-  ["A+", 0, 90],
-  ["A", 90, 130],
-  ["B", 130, 180],
-  ["C", 180, 240],
-  ["D", 240, 320],
-  ["E", 320, 420],
-  ["F", 420, 560],
-  ["G", 560, Infinity]
-];
-
-const envThresholds = [
-  ["A", 0, 5],
-  ["B", 5, 10],
-  ["C", 10, 20],
-  ["D", 20, 35],
-  ["E", 35, 55],
-  ["F", 55, 80],
-  ["G", 80, Infinity]
-];
-
-function classify(value, thresholds) {
-  return thresholds.find(([, min, max]) => value >= min && value < max)?.[0] || "unknown";
-}
-
 function scenarioResult(baseline, measures) {
   const reduction = key => Math.round((1 - measures.reduce((factor, measure) => factor * (1 - (measure[key] || 0) / 100), 1)) * 1000) / 10;
   const finalReduction = reduction("finalEnergyReductionPercent");
@@ -99,10 +75,10 @@ assert.equal(v05.primaryByCarrier.electricity.totalKwh, 2250);
 assert.ok(v05.totalCo2 > 900);
 assert.ok(v05.renewableRatio > 40);
 
-const energyClass = classify(v05.primaryM2, energyThresholds);
-const envClass = classify(v05.co2M2, envThresholds);
+const energyClassResult = classifyEstimatedEnergyClass(v05.primaryM2, "residential_individual");
+const energyClass = energyClassResult.estimatedClass;
 assert.equal(energyClass, "A");
-assert.equal(envClass, "C");
+assert.equal(energyClassResult.status, "classified");
 
 const reference = { primaryM2: 120 };
 const differencePercent = Math.round((v05.primaryM2 - reference.primaryM2) / reference.primaryM2 * 100);

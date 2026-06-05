@@ -1,4 +1,5 @@
 import { FORMULA_REGISTRY } from "../registries/formulaRegistry.mjs";
+import { classifyEstimatedEnergyClass } from "../calculators/estimatedEnergyClass.mjs";
 
 export const DEFAULT_SURFACE_RESISTANCES = {
   rsi: 0.13,
@@ -26,17 +27,6 @@ export const DEFAULT_CO2_FACTORS = {
   lpg: 0.23,
   coal: 0.34
 };
-
-export const DEFAULT_CLASS_THRESHOLDS = [
-  { className: "A+", maxPrimaryEnergyKwhM2Year: 90 },
-  { className: "A", maxPrimaryEnergyKwhM2Year: 130 },
-  { className: "B", maxPrimaryEnergyKwhM2Year: 180 },
-  { className: "C", maxPrimaryEnergyKwhM2Year: 240 },
-  { className: "D", maxPrimaryEnergyKwhM2Year: 320 },
-  { className: "E", maxPrimaryEnergyKwhM2Year: 420 },
-  { className: "F", maxPrimaryEnergyKwhM2Year: 560 },
-  { className: "G", maxPrimaryEnergyKwhM2Year: Number.POSITIVE_INFINITY }
-];
 
 function confidenceFrom(values) {
   return values.includes("low") ? "low" : values.includes("medium") ? "medium" : "high";
@@ -371,22 +361,12 @@ export function calculateCo2({ finalEnergyKwhYear, co2Factor, heatedAreaM2 }) {
   return { main, specific };
 }
 
-export function estimateEnergyClass({ primaryEnergyKwhM2Year, thresholds = DEFAULT_CLASS_THRESHOLDS }) {
-  return trace(
-    "unknown",
-    FORMULA_REGISTRY.ESTIMATED_CLASS.unit,
-    FORMULA_REGISTRY.ESTIMATED_CLASS.id,
-    { primaryEnergyKwhM2Year, thresholdsStatus: "not_validated" },
-    ["Energy class calculation blocked: no validated class thresholds are available."],
-    [
-      "Physics Engine pastreaza energia primara specifica, dar nu transforma valoarea in clasa fara praguri validate."
-    ],
-    [
-      "MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS",
-      "MISSING_VALIDATED_REFERENCE_BUILDING_METHOD"
-    ],
-    "low"
-  );
+export function estimateEnergyClass({ primaryEnergyKwhM2Year, buildingEnergyClassType }) {
+  const result = classifyEstimatedEnergyClass(primaryEnergyKwhM2Year, buildingEnergyClassType);
+  return {
+    ...result.trace,
+    formulaId: FORMULA_REGISTRY.ESTIMATED_CLASS.id
+  };
 }
 
 export function runCriticalMc001Chain(home) {
@@ -431,7 +411,13 @@ export function runCriticalMc001Chain(home) {
   });
   const estimatedClass = estimateEnergyClass({
     primaryEnergyKwhM2Year: primary.specific.value,
-    thresholds: home.classThresholds || DEFAULT_CLASS_THRESHOLDS
+    buildingEnergyClassType: home.buildingEnergyClassType || (
+      home.building?.type === "apartment" || home.building?.type === "apartment_building"
+        ? "residential_collective"
+        : home.building?.type === "single_family_house"
+          ? "residential_individual"
+          : null
+    )
   });
 
   traces.push(

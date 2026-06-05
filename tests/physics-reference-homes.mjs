@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { classifyEstimatedEnergyClass } from "../src/features/energy/physics/calculators/estimatedEnergyClass.mjs";
 
 const source = readFileSync("src/features/energy/physics/test-fixtures/referenceHomes.ts", "utf8");
 const referenceHomes = Function(`${source.replace("export const referenceHomes =", "return")}`)();
@@ -125,6 +126,7 @@ function simulateReferenceHome(home) {
   const pvOffsetKwhM2 = home.systems.pvKw ? home.systems.pvKw * 950 / area : 0;
   const primaryEnergyKwhM2Year = Math.max(0, finalEnergyKwhM2Year * primaryFactor(home) - pvOffsetKwhM2);
   const co2KgM2Year = finalEnergyKwhM2Year * co2Factor(home);
+  const classResult = classifyEstimatedEnergyClass(primaryEnergyKwhM2Year, "residential_individual");
   return {
     u,
     htr,
@@ -133,8 +135,8 @@ function simulateReferenceHome(home) {
     finalEnergyKwhM2Year,
     primaryEnergyKwhM2Year,
     co2KgM2Year,
-    estimatedClass: "unknown",
-    classMissingReasons: ["MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS"]
+    estimatedClass: classResult.estimatedClass,
+    classStatus: classResult.status
   };
 }
 
@@ -166,8 +168,8 @@ for (const home of referenceHomes) {
   assertRange(home.id, "final", Math.round(result.finalEnergyKwhM2Year), expected.finalEnergyKwhM2Year);
   assertRange(home.id, "primary", Math.round(result.primaryEnergyKwhM2Year), expected.primaryEnergyKwhM2Year);
   assert.ok(result.co2KgM2Year >= 0, `${home.id} CO2 must be non-negative`);
-  assert.equal(result.estimatedClass, "unknown", `${home.id} class must remain blocked`);
-  assert.ok(result.classMissingReasons.includes("MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS"), `${home.id} must explain missing class thresholds`);
+  assert.equal(result.classStatus, "classified", `${home.id} class must be classified`);
+  assert.match(result.estimatedClass, /^(A\+|A|B|C|D|E|F|G)$/u, `${home.id} class must be an estimated A-G class`);
 }
 
-console.log("PASS physics reference homes chain U-Htr-Hve-QH-final-primary-CO2 with blocked class");
+console.log("PASS physics reference homes chain U-Htr-Hve-QH-final-primary-CO2-class");

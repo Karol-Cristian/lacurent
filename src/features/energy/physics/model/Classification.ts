@@ -1,4 +1,5 @@
 import type { PhysicsConfidence } from "./Material";
+import type { BuildingEnergyClassType } from "../registries/energyClassThresholds.registry";
 
 export type EstimatedEnergyClass = "A+" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "unknown";
 export type EstimatedEnvironmentalClass = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "unknown";
@@ -25,8 +26,16 @@ export interface EnvironmentalClassThreshold {
 export interface ClassificationResult {
   estimatedEnergyClass: EstimatedEnergyClass;
   estimatedEnvironmentalClass: EstimatedEnvironmentalClass;
-  classCalculationStatus?: "calculated_from_validated_methodology" | "blocked_missing_validated_methodology";
+  classCalculationStatus?:
+    | "calculated_from_validated_methodology"
+    | "calculated_from_estimated_threshold_registry"
+    | "blocked_missing_validated_methodology"
+    | "cannot_classify"
+    | "needs_building_type"
+    | "error";
   missingReasons?: string[];
+  buildingEnergyClassType?: BuildingEnergyClassType;
+  estimatedEnergyClassSource?: string;
   primaryEnergyKwhM2Year: number;
   finalEnergyKwhM2Year: number;
   co2KgM2Year: number;

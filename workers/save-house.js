@@ -354,14 +354,106 @@ const ENERGY_PRICE_RON_KWH = {
   unknown: 0.45
 };
 
-const ENERGY_CLASS_BLOCKERS_V06 = [
-  "MISSING_VALIDATED_PRIMARY_ENERGY_FACTORS",
-  "MISSING_VALIDATED_CO2_FACTORS",
-  "MISSING_VALIDATED_ENERGY_CLASS_THRESHOLDS",
-  "MISSING_VALIDATED_REFERENCE_BUILDING_METHOD",
-  "MISSING_VALIDATED_TEMPERATURE_CORRECTION_FACTOR_TAU",
-  "MISSING_VALIDATED_GLOBAL_INSULATION_COEFFICIENT_G"
+const ESTIMATED_ENERGY_CLASS_SOURCE = "user_provided_estimated_primary_energy_thresholds_2026_06_05";
+const ESTIMATED_ENERGY_CLASS_THRESHOLD_SETS = [
+  {
+    id: "estimated_primary_energy_residential_individual_v1",
+    buildingType: "residential_individual",
+    metric: "primary_energy_kwh_m2_year",
+    unit: "kWh/m2.year",
+    source: ESTIMATED_ENERGY_CLASS_SOURCE,
+    confidence: "medium",
+    assumptions: [
+      "Pragurile sunt pentru clasa estimativa LaCurent pe baza energiei primare specifice anuale.",
+      "Rezultatul nu reprezinta certificat energetic oficial."
+    ],
+    thresholds: [
+      { className: "A+", maxInclusive: 91 },
+      { className: "A", minExclusive: 91, maxInclusive: 129 },
+      { className: "B", minExclusive: 129, maxInclusive: 257 },
+      { className: "C", minExclusive: 257, maxInclusive: 390 },
+      { className: "D", minExclusive: 390, maxInclusive: 522 },
+      { className: "E", minExclusive: 522, maxInclusive: 652 },
+      { className: "F", minExclusive: 652, maxInclusive: 783 },
+      { className: "G", minExclusive: 783 }
+    ]
+  },
+  {
+    id: "estimated_primary_energy_residential_collective_v1",
+    buildingType: "residential_collective",
+    metric: "primary_energy_kwh_m2_year",
+    unit: "kWh/m2.year",
+    source: ESTIMATED_ENERGY_CLASS_SOURCE,
+    confidence: "medium",
+    assumptions: [
+      "Pragurile sunt pentru clasa estimativa LaCurent pe baza energiei primare specifice anuale.",
+      "Rezultatul nu reprezinta certificat energetic oficial."
+    ],
+    thresholds: [
+      { className: "A+", maxInclusive: 73 },
+      { className: "A", minExclusive: 73, maxInclusive: 101 },
+      { className: "B", minExclusive: 101, maxInclusive: 198 },
+      { className: "C", minExclusive: 198, maxInclusive: 297 },
+      { className: "D", minExclusive: 297, maxInclusive: 396 },
+      { className: "E", minExclusive: 396, maxInclusive: 495 },
+      { className: "F", minExclusive: 495, maxInclusive: 595 },
+      { className: "G", minExclusive: 595 }
+    ]
+  }
 ];
+
+function inferredBuildingEnergyClassType(rawInput = {}) {
+  const type = normalizeEmail(rawInput.building_type || rawInput.buildingType || rawInput.house_type || rawInput.houseType || "");
+  if (type.includes("apart") || type.includes("bloc") || type.includes("collective")) return "residential_collective";
+  if (type.includes("casa") || type.includes("casă") || type.includes("house") || type.includes("villa") || type.includes("vila") || type.includes("duplex")) {
+    return "residential_individual";
+  }
+  return null;
+}
+
+function classifyEstimatedEnergyClass(primaryEnergyKwhM2Year, buildingEnergyClassType, thresholdSets = ESTIMATED_ENERGY_CLASS_THRESHOLD_SETS) {
+  const assumptions = [
+    "Clasa este estimativa si se bazeaza pe energia primara specifica anuala.",
+    "Rezultatul nu reprezinta certificat energetic oficial."
+  ];
+  if (primaryEnergyKwhM2Year === null || primaryEnergyKwhM2Year === undefined) {
+    return { status: "cannot_classify", estimatedClass: "unknown", warnings: ["MISSING_PRIMARY_ENERGY_KWH_M2_YEAR"], assumptions, confidence: "low", unit: "kWh/m2.year" };
+  }
+  if (!Number.isFinite(primaryEnergyKwhM2Year)) {
+    return { status: "error", estimatedClass: "unknown", warnings: ["INVALID_PRIMARY_ENERGY_KWH_M2_YEAR"], assumptions, confidence: "low", unit: "kWh/m2.year" };
+  }
+  if (primaryEnergyKwhM2Year < 0) {
+    return { status: "error", estimatedClass: "unknown", warnings: ["NEGATIVE_PRIMARY_ENERGY_KWH_M2_YEAR"], assumptions, confidence: "low", unit: "kWh/m2.year" };
+  }
+  if (!buildingEnergyClassType) {
+    return { status: "needs_building_type", estimatedClass: "unknown", warnings: ["NEEDS_BUILDING_ENERGY_CLASS_TYPE"], assumptions, confidence: "low", unit: "kWh/m2.year" };
+  }
+  const thresholdSet = thresholdSets.find(item => item.buildingType === buildingEnergyClassType);
+  if (!thresholdSet) {
+    return { status: "needs_building_type", estimatedClass: "unknown", warnings: ["MISSING_THRESHOLD_SET_FOR_BUILDING_TYPE"], assumptions, confidence: "low", unit: "kWh/m2.year" };
+  }
+  const threshold = thresholdSet.thresholds.find(item => (
+    (item.minExclusive === undefined || primaryEnergyKwhM2Year > item.minExclusive)
+    && (item.maxInclusive === undefined || primaryEnergyKwhM2Year <= item.maxInclusive)
+  ));
+  return {
+    status: threshold ? "classified" : "cannot_classify",
+    estimatedClass: threshold?.className || "unknown",
+    inputPrimaryEnergyKwhM2Year: primaryEnergyKwhM2Year,
+    thresholdSetUsed: {
+      id: thresholdSet.id,
+      buildingType: thresholdSet.buildingType,
+      metric: thresholdSet.metric,
+      unit: thresholdSet.unit,
+      source: thresholdSet.source,
+      confidence: thresholdSet.confidence
+    },
+    warnings: threshold ? [] : ["NO_THRESHOLD_MATCH"],
+    assumptions: [...assumptions, ...thresholdSet.assumptions],
+    confidence: threshold ? thresholdSet.confidence : "low",
+    unit: "kWh/m2.year"
+  };
+}
 
 function buildPrimaryEnergyAndCo2V05(systemsLayerV04, area = 65) {
   const byCarrier = systemsLayerV04?.finalEnergyByCarrier || {};
@@ -407,27 +499,38 @@ function buildPrimaryEnergyAndCo2V05(systemsLayerV04, area = 65) {
   };
 }
 
-function buildClassificationV06(primaryAndCo2, systemsLayerV04) {
+function buildClassificationV06(primaryAndCo2, systemsLayerV04, rawInput = {}) {
   const primaryM2 = Number(primaryAndCo2?.totalPrimaryEnergyKwhM2Year || 0);
   const finalM2 = Number(systemsLayerV04?.totalFinalEnergyKwhM2Year?.value || 0);
   const co2M2 = Number(primaryAndCo2?.totalCo2KgM2Year || 0);
+  const buildingEnergyClassType = inferredBuildingEnergyClassType(rawInput);
+  const energyClassResult = classifyEstimatedEnergyClass(primaryM2, buildingEnergyClassType);
+  const missingReasons = [
+    ...energyClassResult.warnings,
+    "TODO_CO2_ENVIRONMENTAL_CLASS_REGISTRY_MISSING",
+    "PRIMARY_ENERGY_FACTORS_REQUIRE_OFFICIAL_VALIDATION"
+  ];
   return {
     version: "Physics Layer v0.6 Classification + Reference Building",
-    estimatedEnergyClass: "unknown",
+    estimatedEnergyClass: energyClassResult.estimatedClass,
     estimatedEnvironmentalClass: "unknown",
-    classCalculationStatus: "blocked_missing_validated_methodology",
-    missingReasons: ENERGY_CLASS_BLOCKERS_V06,
+    classCalculationStatus: energyClassResult.status === "classified" ? "calculated_from_estimated_threshold_registry" : energyClassResult.status,
+    missingReasons,
+    buildingEnergyClassType,
+    estimatedEnergyClassSource: energyClassResult.thresholdSetUsed?.source,
+    thresholdSetUsed: energyClassResult.thresholdSetUsed,
     primaryEnergyKwhM2Year: primaryM2,
     finalEnergyKwhM2Year: finalM2,
     co2KgM2Year: co2M2,
     comparedToReference: null,
     assumptions: [
-      "v0.6 raporteaza clasa ca unknown pana cand factorii si pragurile sunt validate.",
+      ...energyClassResult.assumptions,
+      "Clasa de mediu CO2 nu este calculata inca; lipseste registry separat de praguri.",
       "Metricile fizice raman disponibile: energie finala, energie primara si CO2 estimat.",
-      "Nu se folosesc clase derivate din scor sau praguri interne nevalidate.",
+      "Nu se folosesc clase derivate din scor.",
       "Clasele sunt estimari LaCurent, nu certificat energetic oficial."
     ],
-    confidence: "low"
+    confidence: energyClassResult.confidence
   };
 }
 
@@ -787,7 +890,7 @@ function buildPhysicalEnergyResult(rawInput = {}) {
     coolingDemandKwhYear: energyDemand.annual.coolingDemandKwhYear
   }, { area });
   const primaryEnergyAndCo2V05 = buildPrimaryEnergyAndCo2V05(systemsLayerV04, area);
-  const classificationV06 = buildClassificationV06(primaryEnergyAndCo2V05, systemsLayerV04);
+  const classificationV06 = buildClassificationV06(primaryEnergyAndCo2V05, systemsLayerV04, rawInput);
   const finalEnergy = systemsLayerV04.totalFinalEnergyKwhYear.value || (heatingDemand / heatingSystem.efficiency + dhwDemand / Math.max(0.1, heatingSystem.efficiency));
   const primaryEnergy = primaryEnergyAndCo2V05.totalPrimaryEnergyKwhYear || finalEnergy * primaryFactor(heatingSystem.carrier);
   const co2 = primaryEnergyAndCo2V05.totalCo2KgYear || finalEnergy * co2Factor(heatingSystem.carrier);
