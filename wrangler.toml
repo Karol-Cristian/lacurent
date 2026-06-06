@@ -1,4 +1,4 @@
-name = "lacurent"
+name = "lacurent-dev"
 
 main = "workers/save-house.js"
 
@@ -8,6 +8,14 @@ compatibility_date = "2026-05-19"
 directory = "."
 
 [[d1_databases]]
+binding = "DB"
+database_name = "lacurent-dev-db"
+database_id = "REPLACE_WITH_LACURENT_DEV_DB_ID"
+
+[env.production]
+name = "lacurent"
+
+[[env.production.d1_databases]]
 binding = "DB"
 database_name = "lacurent-db"
 database_id = "91b70c8a-3c11-4fe0-81ed-e3b64a075118"

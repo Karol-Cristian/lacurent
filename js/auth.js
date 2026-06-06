@@ -1,4 +1,19 @@
-const API_BASE = "https://lacurent.lemnarukarol.workers.dev";
+function resolveApiBase() {
+  const explicitBase = window.LA_CURENT_API_BASE || window.LaCurentConfig?.apiBase;
+  if (explicitBase) return String(explicitBase).replace(/\/$/, "");
+
+  const origin = window.location.origin;
+  const isLocalPage =
+    !origin ||
+    origin === "null" ||
+    origin.includes("127.0.0.1") ||
+    origin.includes("localhost");
+
+  if (isLocalPage) return "http://127.0.0.1:8787";
+  return origin.replace(/\/$/, "");
+}
+
+const API_BASE = resolveApiBase();
 const AUTH_TOKEN_KEY = "lacurent_auth_token";
 const AUTH_USER_KEY = "lacurent_user";
 

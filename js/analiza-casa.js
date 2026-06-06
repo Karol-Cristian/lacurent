@@ -449,18 +449,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         window.location.href = "raport-v1.html?guest=1";
         return;
       }
-      const response = await fetch(`https://lacurent.lemnarukarol.workers.dev${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(localStorage.getItem("lacurent_auth_token")
-            ? { Authorization: `Bearer ${localStorage.getItem("lacurent_auth_token")}` }
-            : {})
-        },
-        body: JSON.stringify(data)
-      });
-      const result = await response.json();
-      if (response.ok && result.success) {
+      const result = await window.LaCurentAuth.api(endpoint, data);
+      if (result.success) {
         window.LaCurentHomes?.setActiveHouseId(result.house_id);
         window.location.href = "raport-v1.html";
       } else {

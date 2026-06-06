@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 
 const LOCAL_BASE = process.env.SMOKE_LOCAL_BASE || "http://127.0.0.1:4173";
-const API_BASE = process.env.SMOKE_API_BASE || "https://lacurent.lemnarukarol.workers.dev";
+const API_BASE = process.env.SMOKE_API_BASE || "https://lacurent-dev.lemnarukarol.workers.dev";
 const RUN_API_SMOKE = process.env.RUN_API_SMOKE === "1";
 
 const pages = [

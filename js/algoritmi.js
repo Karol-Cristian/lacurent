@@ -45,6 +45,49 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `Actualizat acum ${hours} ore`;
   }
 
+  function renderDecisionEnginePlaceholder() {
+    if (content) content.hidden = true;
+    if (empty) {
+      empty.hidden = false;
+      empty.innerHTML = `
+        <div class="calibration-placeholder">
+          <span class="small-label">MOTOR IN PERFECTIONARE</span>
+          <h2>LaCurent Decision Engine este in curs de perfectionare.</h2>
+          <p>
+            Decision Engine va transforma rezultatele Physics Engine, facturile, scenariile si comparatiile anonimizate
+            in recomandari dinamice. Nu il afisam inca in productie pentru ca vrem ca ordinea recomandarilor sa fie
+            justificata de calcule, nu de presupuneri rapide.
+          </p>
+          <div class="placeholder-grid">
+            <article>
+              <span>Ce va decide</span>
+              <strong>Prioritati energetice</strong>
+              <p>Ce merita analizat primul, ce poate astepta si ce investitii au risc tehnic mare pentru locuinta ta.</p>
+            </article>
+            <article>
+              <span>Pe ce se va baza</span>
+              <strong>Fizica, facturi si scenarii</strong>
+              <p>Modelul fizic al casei, consumuri reale, valori validate si comparatii cu locuinte similare.</p>
+            </article>
+            <article>
+              <span>De ce nu e live</span>
+              <strong>Calibrare inainte de recomandari</strong>
+              <p>Nu vrem sa recomandam pompe de caldura, PV, ferestre sau izolatii pana cand baza numerica nu este stabila.</p>
+            </article>
+          </div>
+          <div class="placeholder-note">
+            Cand motorul este gata, aici vor aparea oportunitati prioritare, impact estimat, risc tehnic,
+            economie anuala si explicatia datelor folosite.
+          </div>
+        </div>
+      `;
+    }
+    text("algorithmState", "Decision Engine in perfectionare");
+  }
+
+  renderDecisionEnginePlaceholder();
+  return;
+
   function renderBillingAnalysis(analysis = {}) {
     const months = analysis.monthly || [];
     const maxCost = Math.max(...months.map(row => Number(row.normalized_cost_ron) || 0), 1);

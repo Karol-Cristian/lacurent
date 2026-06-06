@@ -900,6 +900,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
+  function renderCalibrationReportPlaceholder() {
+    const container = document.getElementById("reportEmptyState");
+    if (!container) return;
+    setReportSectionsHidden(true);
+    container.hidden = false;
+    setText("reportMeta", "Raport temporar in calibrare");
+    container.innerHTML = `
+      <div class="calibration-placeholder">
+        <span class="report-v1-eyebrow">MOTOR IN CALIBRARE</span>
+        <h2>LaCurent Physics Engine este in curs de calibrare si testare.</h2>
+        <p>
+          Am oprit temporar afisarea valorilor energetice calculate in productie pentru ca reconstruim motorul fizic
+          pe o baza determinista, trasabila si verificabila. Preferam sa afisam mai putine cifre acum decat sa lasam
+          proprietarii sa ia decizii pe rezultate care nu sunt inca validate suficient.
+        </p>
+        <div class="placeholder-grid">
+          <article>
+            <span>Ce va afisa raportul</span>
+            <strong>Pierderi, consumuri, emisii si clase estimative</strong>
+            <p>Pierderi prin pereti, pod, pardoseala, ferestre si ventilatie, consum util/final/primar, CO2 si ipotezele folosite.</p>
+          </article>
+          <article>
+            <span>Ce calibram acum</span>
+            <strong>Lantul fizic de calcul</strong>
+            <p>Geometrie, anvelopa, R/U/U corectat, Htr, Hve, QH, energie finala, energie primara, CO2 si clasificare estimativa.</p>
+          </article>
+          <article>
+            <span>Ce nu pretindem</span>
+            <strong>Nu este certificat energetic oficial</strong>
+            <p>Rezultatul LaCurent va ramane o evaluare informativa si nu inlocuieste certificatul emis de un auditor energetic atestat.</p>
+          </article>
+        </div>
+        <div class="placeholder-note">
+          <strong>Urmatorul pas:</strong>
+          cand Physics Engine v1 este validat, raportul va afisa unde se pierd banii, ce date lipsesc,
+          cat de sigura este estimarea si ce valori sunt comparabile cu o cladire de referinta.
+        </div>
+        <div class="report-empty-actions">
+          <a class="secondary-btn" href="analiza-casa.html">Revizuieste datele locuintei</a>
+          <a class="secondary-btn muted-action" href="energy-data-hub.html">Vezi modelul tehnic</a>
+        </div>
+      </div>
+    `;
+  }
+
   function prepareReportContent() {
     setReportSectionsHidden(false);
     const empty = document.getElementById("reportEmptyState");
@@ -1047,6 +1092,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     await loadSidebar();
+    renderCalibrationReportPlaceholder();
+    return;
     const payload = await loadReportData();
     if (payload.empty) {
       renderEmptyReport(payload.empty);

@@ -18,7 +18,7 @@ Implicit testeaza:
 * incarcarea paginilor principale;
 * prezenta sectiunilor cheie: dashboard, analiza, raport, algoritmi, facturi, furnizori, admin.
 
-## Rulare cu API real
+## Rulare cu API de development
 
 Pentru testul complet de autentificare/provider:
 
@@ -27,6 +27,13 @@ npm run smoke:api
 ```
 
 Acest test creeaza un cont temporar pe API-ul configurat in `SMOKE_API_BASE`.
+Implicit, `SMOKE_API_BASE` este mediul de development:
+
+```text
+https://lacurent-dev.lemnarukarol.workers.dev
+```
+
+Nu rula smoke API pe productie decat explicit si intentionat.
 
 Verifica regresia importanta:
 
@@ -40,6 +47,6 @@ Poti schimba bazele cu variabile de mediu:
 
 ```powershell
 $env:SMOKE_LOCAL_BASE="http://127.0.0.1:4173"
-$env:SMOKE_API_BASE="https://lacurent.lemnarukarol.workers.dev"
+$env:SMOKE_API_BASE="https://lacurent-dev.lemnarukarol.workers.dev"
 npm run smoke
 ```
