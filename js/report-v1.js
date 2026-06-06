@@ -915,6 +915,50 @@ document.addEventListener("DOMContentLoaded", async () => {
           pe o baza determinista, trasabila si verificabila. Preferam sa afisam mai putine cifre acum decat sa lasam
           proprietarii sa ia decizii pe rezultate care nu sunt inca validate suficient.
         </p>
+        <div class="placeholder-stage" aria-label="Vizual LaCurent Physics Engine in calibrare">
+          <svg viewBox="0 0 480 300" aria-hidden="true">
+            <defs>
+              <radialGradient id="physicsCoreGradient" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#e0faff" stop-opacity="1" />
+                <stop offset="42%" stop-color="#7dd3fc" stop-opacity=".82" />
+                <stop offset="100%" stop-color="#2563eb" stop-opacity="0" />
+              </radialGradient>
+              <linearGradient id="physicsWaveGradient" x1="0%" x2="100%">
+                <stop offset="0%" stop-color="#5eead4" stop-opacity=".12" />
+                <stop offset="48%" stop-color="#7dd3fc" stop-opacity=".95" />
+                <stop offset="100%" stop-color="#c4b5fd" stop-opacity=".14" />
+              </linearGradient>
+            </defs>
+            <path class="placeholder-dash" d="M26 54 H148 L176 88" fill="none" stroke="#7dd3fc" stroke-width="1" />
+            <path class="placeholder-dash" d="M454 66 H338 L304 101" fill="none" stroke="#7dd3fc" stroke-width="1" />
+            <path class="placeholder-dash" d="M42 246 H158 L184 214" fill="none" stroke="#5eead4" stroke-width="1" />
+            <foreignObject x="22" y="34" width="190" height="24"><div class="placeholder-hud-label">MODEL IN CALIBRARE</div></foreignObject>
+            <foreignObject x="314" y="46" width="178" height="24"><div class="placeholder-hud-label">BILANT ENERGETIC</div></foreignObject>
+            <foreignObject x="34" y="250" width="190" height="24"><div class="placeholder-hud-label">VERIFICARE FLUX TERMIC</div></foreignObject>
+            <path class="placeholder-sine" d="M78 150 C104 106 132 106 158 150 S212 194 238 150 S292 106 318 150 S372 194 402 150" fill="none" stroke="url(#physicsWaveGradient)" stroke-width="3" stroke-linecap="round" />
+            <g class="placeholder-core">
+              <circle cx="240" cy="150" r="76" fill="url(#physicsCoreGradient)" opacity=".82" />
+              <circle cx="240" cy="150" r="38" fill="#08111f" stroke="#7dd3fc" stroke-width="1.5" />
+              <circle cx="240" cy="150" r="20" fill="#7dd3fc" opacity=".85" />
+            </g>
+            <g class="placeholder-ring" fill="none">
+              <ellipse cx="240" cy="150" rx="94" ry="34" stroke="#7dd3fc" stroke-opacity=".42" />
+              <ellipse cx="240" cy="150" rx="34" ry="94" stroke="#5eead4" stroke-opacity=".36" />
+            </g>
+            <g class="placeholder-orbit">
+              <circle cx="334" cy="150" r="4.5" fill="#7dd3fc" />
+              <circle cx="146" cy="150" r="3.5" fill="#5eead4" />
+            </g>
+            <g class="placeholder-orbit slow">
+              <circle cx="240" cy="56" r="4" fill="#c4b5fd" />
+              <circle cx="240" cy="244" r="3.5" fill="#7dd3fc" />
+            </g>
+            <foreignObject x="76" y="88" width="136" height="28"><div class="placeholder-equation">R = d / lambda</div></foreignObject>
+            <foreignObject x="318" y="108" width="108" height="28"><div class="placeholder-equation">U = 1 / R</div></foreignObject>
+            <foreignObject x="62" y="188" width="132" height="28"><div class="placeholder-equation">Htr = U x A</div></foreignObject>
+            <foreignObject x="314" y="198" width="136" height="28"><div class="placeholder-equation">QH = H x HDD</div></foreignObject>
+          </svg>
+        </div>
         <div class="placeholder-grid">
           <article>
             <span>Ce va afisa raportul</span>
