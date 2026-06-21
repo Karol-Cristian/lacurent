@@ -34,7 +34,7 @@ Extraction package status: `registry_complete_with_blockers`.
 
 Core formula families for isolated helpers are extracted for geometry, material lambda/R/U, thermal bridges, transmission coefficients, ventilation coefficients, monthly transfer/balance composition, DHW, final/primary/CO2 aggregation and several renewable/export indicators.
 
-Official-like monthly calculation remains blocked until climate/solar datasets and lookup keys are extracted into reviewed registries. Certificate/classification and reference-building logic remain blocked until utility-inclusion, optional-threshold recalculation and reference-building workflows are extracted and implemented with reviewed inputs. Lighting remains blocked on SR EN 15193-1 dependencies that are referenced but not locally extracted.
+Official-like monthly calculation remains blocked until climate/solar datasets and lookup keys are extracted into reviewed registries. Certificate/classification and reference-building logic remain blocked until reference-building workflows, virtual mandatory utilities, overheating/mixed-use handling and certificate class-label context are extracted and implemented with reviewed inputs. Lighting remains blocked on SR EN 15193-1 dependencies that are referenced but not locally extracted.
 
 ## Implementation readiness summary
 
@@ -49,7 +49,7 @@ Official-like monthly calculation remains blocked until climate/solar datasets a
 - Climate dataset: monthly exterior temperature, annual exterior temperature, solar irradiation and sky/longwave terms are blocked.
 - Lighting dataset/formulas: SR EN 15193-1 dependencies are referenced but not locally extracted.
 - Reference building datasets: reference envelope/system/ventilation/lighting/renewable parameters are only partially indexed.
-- Class threshold datasets: tables 5.7-5.14 now have a reviewed numeric registry; class assignment and certificate workflow remain blocked.
+- Class threshold datasets: tables 5.7-5.14 now have a reviewed numeric registry; Tabel 5.6 utility inclusion and Nota 4 threshold recalculation have an isolated helper; certificate workflow remains blocked.
 - Economic audit formulas: relations (6.1), (6.3), (6.4) remain visually blocked.
 
 ## Module status matrix
@@ -71,7 +71,7 @@ Official-like monthly calculation remains blocked until climate/solar datasets a
 | 12 | `12_renewables.md` | partial_needs_verification | ready_for_dataset_registry_later | renewable system data, climate/solar data, factor tables | Chapter 4 system methods partly indexed/blocked | Export/RER formulas are clearer than production models. |
 | 13 | `13_final_primary_co2_rer.md` | partial_factor_tables_indexed | ready_for_dataset_registry_later | final energy by carrier/service, factors 5.17/5.18, explicit RER inputs | general RER perimeter and renewable/export context | Primary/CO2 factor registries exist and Fixtures 007/008 validate them; Fixture 012 validates only Anexa B displayed RER arithmetic. |
 | 14 | `14_reference_building.md` | partial_needs_verification | partial_requires_visual_verification | real geometry, reference parameter tables, climate/factors | reference datasets incomplete | Do not build ReferenceBuildingBuilder yet. |
-| 15 | `15_energy_classes_and_certificate.md` | partial_class_interval_helper_created | ready_for_explicit_interval_lookup | class tables 5.7-5.14, certificate indicators | Tabel 5.6 utility inclusion, optional-utility recalculation, reference-building/CPE workflow | Tabel 5.7-5.14 numeric thresholds are in `mc001EnergyClassThresholds.mjs`; `energyClassAssignment.mjs` handles explicit interval lookup only. No official certificate claim and no certificate workflow added. |
+| 15 | `15_energy_classes_and_certificate.md` | partial_class_interval_and_utility_threshold_helpers_created | ready_for_explicit_interval_and_threshold_adjustment | class tables 5.7-5.14, Tabel 5.6 utility inclusion, certificate indicators | reference-building/CPE workflow, virtual mandatory utilities, overheating indicator, mixed-use averaging | Tabel 5.7-5.14 numeric thresholds are in `mc001EnergyClassThresholds.mjs`; `energyClassAssignment.mjs` handles explicit interval lookup only; `utilityInclusionThresholds.mjs` handles explicit Tabel 5.6 flags and Nota 4 threshold subtraction only. No official certificate claim and no certificate workflow added. |
 | 16 | `16_audit_energy_measures.md` | partial_needs_verification | partial_requires_visual_verification | before/after indicators, costs, energy prices | economic formulas 6.1/6.3/6.4 visually blocked | Recommendations require recalculation, not generic text. |
 | 17 | `17_climate_annex.md` | blocked_missing_climate_dataset | blocked_missing_climate_dataset | MC001 climate/solar datasets | exact local tables not found | Explicit climate inputs may be non-default only with warnings. |
 | 18 | `18_examples_and_breviars.md` | partial_index_only | manual_validation_only | visual cleanup of example tables | examples are partial/visually noisy | Do not automate as fixtures yet. |
@@ -218,7 +218,7 @@ Formula registry count: 92 rows.
 | refrigerantLeakageTable | 13 | Tabel 5.20 | refrigerant emissions context | mixed | system/refrigerant | indexed_table | true after registry | yes | Use only when cooling refrigerant modeled. |
 | energyClassTables | 15 | Tabele 5.7-5.14 | class thresholds | kWh/m2.year, kgCO2/m2.year/context | building category, utility/service, class label | reviewed_numeric_values_extracted | true for numeric threshold lookup and explicit interval assignment | yes | Registry file: `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs`; contains 448 reviewed interval rows. `energyClassAssignment.mjs` adds explicit interval lookup only; no certificate/CPE calculation or production integration is added. |
 | certificateOutputFields | 15 | Tabel 5.15a | certificate output indicators | mixed | field/indicator | indexed_table | true after registry | yes | Output shape only, not official certificate. |
-| table5_6Context | 15 | Tabel 5.6 | certificate/class context | mixed | context/category | needs_visual_verification | false | yes | Verify before implementation. |
+| table5_6Context | 15 | Tabel 5.6 | certificate/class context | mixed | context/category | reviewed_table_values_extracted | true for isolated inclusion flags and threshold subtraction | yes | Implemented only in `utilityInclusionThresholds.mjs`; virtual systems, overheating, mixed-use and certificate workflow remain blocked. |
 | referenceBuildingParameters | 14 | Chapter 5.2 and referenced tables | reference building | mixed | building category, system/envelope parameter | partial_needs_verification | false for full builder | yes | Do not implement full builder yet. |
 | auditEconomicSymbols | 16 | Tabel 6.1 | economic symbols/units | mixed | symbol | indexed_table | true for symbol lookup only | optional | Formula implementation still blocked. |
 | auditEconomicIndices | 16 | Tabel 6.2 | economic indices | not applicable | suffix/index | indexed_table | true for index lookup only | optional | Supports audit formula parsing. |
@@ -254,6 +254,11 @@ Table/data registry count: 33 rows.
   - implementationAllowed: true for numeric threshold lookup
   - row count: 448 interval rows across 8 source tables
   - calculation impact: isolated explicit interval lookup helper added in `src/physics-engine/energyClassAssignment.mjs`; no certificate/CPE calculation changed; no production calculation changed.
+- Tabel 5.6 utility inclusion and Nota 4 threshold recalculation:
+  - helperFile: `src/physics-engine/utilityInclusionThresholds.mjs`
+  - status: `reviewed_table_values_extracted`
+  - implementationAllowed: true for isolated utility flags and explicit threshold subtraction
+  - calculation impact: isolated helper added for mandatory/optional flags and total/CO2 threshold recalculation only; no virtual-system, class-label, certificate/CPE or production calculation changed.
 
 ## Isolated formula helpers
 
@@ -262,13 +267,19 @@ Table/data registry count: 33 rows.
   - uses: reviewed dataset registry `src/physics-engine/datasets/mc001PrimaryEnergyAndCO2Factors.mjs` for Tabel 5.17 and Tabel 5.18 lookups
   - scope: final energy aggregation, primary energy conversion, CO2 conversion, specific indicators per reference/useful area, and missing-input statuses
   - integration impact: no production integration; no certificate/class calculation; no CPE calculation; no app flow change
-  - remaining blockers: CPE/certificate class workflow remains blocked until utility-inclusion, optional-utility recalculation and reference-building flows are implemented.
+  - remaining blockers: CPE/certificate class workflow remains blocked until reference-building flows, certificate class-label context and required virtual-system inputs are implemented.
 - Energy class assignment:
   - helperFile: `src/physics-engine/energyClassAssignment.mjs`
   - uses: reviewed dataset registry `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs` for Tabel 5.7-5.14 lookup
   - scope: explicit source table, building category, indicator basis/key and non-negative indicator value; applies MC001 page 395 open-left/closed-right intervals
   - integration impact: no production integration; no RER calculation; no certificate/CPE workflow; no Anexa B displayed class-label assertion
-  - remaining blockers: Tabel 5.6 utility inclusion, optional-utility threshold recalculation and reference-building/CPE workflow remain blocked.
+  - remaining blockers: Anexa B displayed class labels, reference-building/CPE workflow and certificate output remain blocked.
+- Utility inclusion threshold recalculation:
+  - helperFile: `src/physics-engine/utilityInclusionThresholds.mjs`
+  - uses: reviewed MC001 pages 395-396 Tabel 5.6 and Nota 4 values/rules
+  - scope: mandatory/optional utility flags, calculation variable values, explicit total primary threshold subtraction, and explicit CO2 threshold subtraction
+  - integration impact: no production integration; no virtual ventilation consumption calculation; no overheating/discomfort calculation; no mixed-use weighted averaging; no certificate/CPE workflow
+  - remaining blockers: virtual mandatory utilities, overheating indicator, mixed-use averaging, Anexa B class labels, reference-building/CPE workflow and certificate output remain blocked.
 - Envelope requirement checks:
   - helperFile: `src/physics-engine/envelopeRequirementChecks.mjs`
   - uses: reviewed dataset registry `src/physics-engine/datasets/mc001EnvelopeThresholds.mjs` for Tabel 2.4 and Tabel 2.7 lookups
@@ -340,7 +351,7 @@ Missing-input/status registry count: 24 rows.
 2. Dataset registries needed before official-like monthly calculations.
 3. Climate dataset blocker.
 4. Factor tables blocker.
-5. Certificate utility-inclusion/recalculation and reference-workflow blocker.
+5. Certificate reference-workflow, virtual-system and class-label blocker.
 6. Lighting external standard blocker.
 7. Audit economic formula blocker.
 
@@ -351,7 +362,7 @@ Isolated Physics Engine helper consistency pass completed:
 - No production integration was added.
 - No `src/physics-engine/index.mjs` export change was made.
 - No certificate or CPE calculation was added.
-- Remaining blockers include climate dataset, cleaned broader DHW service inputs and DHW final-energy system inputs, certificate utility-inclusion/recalculation/reference workflows, and lighting external standard data. DHW Tabel 3.3.1 numeric values are extracted into a reviewed dataset registry, useful-demand formulas (3.188)-(3.197) have an isolated helper and Fixture 010 validation, DHW distribution component formulas (3.200)-(3.204) have an isolated helper, Fixture 011 keeps the Anexa B page 525 final-energy subtotal display-only, and Tabel 5.7-5.14 class thresholds are available as a reviewed numeric lookup registry with Fixture 013 interval-assignment validation.
+- Remaining blockers include climate dataset, cleaned broader DHW service inputs and DHW final-energy system inputs, certificate reference workflows, virtual mandatory utilities, overheating/mixed-use class-label context, and lighting external standard data. DHW Tabel 3.3.1 numeric values are extracted into a reviewed dataset registry, useful-demand formulas (3.188)-(3.197) have an isolated helper and Fixture 010 validation, DHW distribution component formulas (3.200)-(3.204) have an isolated helper, Fixture 011 keeps the Anexa B page 525 final-energy subtotal display-only, Tabel 5.7-5.14 class thresholds are available as a reviewed numeric lookup registry with Fixture 013 interval-assignment validation, and Tabel 5.6 utility-inclusion threshold recalculation is covered by Fixture 014.
 
 | check | result | action |
 | --- | --- | --- |
@@ -397,7 +408,7 @@ Isolated Physics Engine helper consistency pass completed:
 
 ## Recommended next technical step
 
-Continue with narrow explicit-input validation targets. The next class-related target should investigate Tabel 5.6 utility inclusion and optional-utility threshold recalculation before asserting Anexa B displayed class labels. Do not promote Fixture 012 into a general RER or certificate workflow. DHW storage/generation/auxiliary components should be investigated one at a time only when every required source input is visible, and Anexa 3.3.B annual DHW distribution-loss energy should wait until `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` blockers are resolved.
+Continue with narrow explicit-input validation targets. Anexa B displayed class labels should remain blocked until reference-building/CPE boundaries, virtual mandatory utilities, overheating indicator handling, and mixed-use averaging are independently validated. Do not promote Fixture 012 into a general RER or certificate workflow. DHW storage/generation/auxiliary components should be investigated one at a time only when every required source input is visible, and Anexa 3.3.B annual DHW distribution-loss energy should wait until `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` blockers are resolved.
 
 Do not add UX/product features as part of this step.
 

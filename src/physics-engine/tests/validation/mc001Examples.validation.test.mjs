@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 13);
+  assert.equal(mc001ExecutableValidationFixtures.length, 14);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 13);
+  assert.equal(mc001ExecutableValidationCases.length, 14);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -108,6 +108,9 @@ test("covers requested validation areas with blocked examples and reviewed execu
   assert.deepEqual(mc001ExecutableValidationCases[12].validationAreas, [
     "energy_class_assignment"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[13].validationAreas, [
+    "utility_inclusion_thresholds"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -124,7 +127,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture010,
     fixture011,
     fixture012,
-    fixture013
+    fixture013,
+    fixture014
   ] =
     mc001ExecutableValidationCases;
 
@@ -293,6 +297,31 @@ test("registers executable fixture metadata without embedding numeric fixture da
     )
   );
   assert.deepEqual(fixture013.helperCoverage, ["energyClassAssignment.mjs"]);
+
+  assert.equal(
+    fixture014.fixtureId,
+    "FIXTURE_014_UTILITY_INCLUSION_THRESHOLD_RECALCULATION"
+  );
+  assert.equal(
+    fixture014.exampleId,
+    "MC001_TABLE_5_6_UTILITY_INCLUSION_THRESHOLDS"
+  );
+  assert.ok(
+    fixture014.documentationPath.endsWith(
+      "FIXTURE_014_UTILITY_INCLUSION_THRESHOLD_RECALCULATION.md"
+    )
+  );
+  assert.ok(
+    fixture014.fixturePath.endsWith(
+      "fixture014UtilityInclusionThresholdRecalculation.mjs"
+    )
+  );
+  assert.ok(
+    fixture014.validationTestPath.endsWith(
+      "fixture014UtilityInclusionThresholdRecalculation.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture014.helperCoverage, ["utilityInclusionThresholds.mjs"]);
 
   for (const fixture of mc001ExecutableValidationCases) {
     assert.equal("calculationInputs" in fixture, false);

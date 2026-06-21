@@ -11,6 +11,7 @@ The existing isolated helpers validate formula mechanics when explicit inputs ar
 - `monthlyBalance.mjs`: Qtr plus Qve, Qint plus Qsol, monthly heating/cooling need branches, annual sums.
 - `finalPrimaryCo2Indicators.mjs`: final-energy aggregation, primary-energy conversion from reviewed Tabel 5.17 registry, CO2 conversion from MC001 relation (5.4b) primary-energy terms using reviewed Tabel 5.18 registry, specific indicators per area.
 - `energyClassAssignment.mjs`: explicit source-table/category/indicator class interval lookup using reviewed Tabel 5.7-5.14 rows and MC001 open-left/closed-right interval semantics.
+- `utilityInclusionThresholds.mjs`: reviewed Tabel 5.6 mandatory/optional utility flags and MC001 Nota 4 total/CO2 threshold subtraction for explicit missing optional utility thresholds.
 - `mc001DhwDemandTable3_3_1.mjs`: reviewed numeric Tabel 3.3.1 DHW specific-demand registry for non-residential/use-category lookup.
 - `dhwUsefulDemand.mjs`: useful DHW energy, residential/non-residential daily volume, temperature correction, residential equivalent consumers, Tabel 3.3.1 lookup, and relation (3.197) loss/waste volume from explicit inputs.
 - `dhwDistributionLosses.mjs`: DHW distribution component formulas for mean distribution temperature and pipe linear transmittance from explicit inputs.
@@ -48,6 +49,8 @@ These are formula validations, not full MC001 example reproductions.
 
 `FIXTURE_013_ENERGY_CLASS_ASSIGNMENT` now provides a dataset-rule fixture for explicit class interval assignment from MC001 pages 395 and 397-400. It verifies selected Tabel 5.7, 5.10, and 5.14 rows against the reviewed dataset, validates lower-open/upper-closed boundaries, below-minimum `A+`, above-maximum `G`, primary-energy classes, and CO2/environmental classes. It does not validate Anexa B class labels or certificate workflow.
 
+`FIXTURE_014_UTILITY_INCLUSION_THRESHOLD_RECALCULATION` now provides a dataset-rule fixture for MC001 pages 395-396. It verifies Tabel 5.6 residential and non-residential mandatory/optional utility flags, validates the school-without-cooling B/C total primary threshold `135 - 13 = 122`, and validates the CO2 threshold `23.0 - 13 * 0.107 = 21.61`. It does not infer certificate classes, calculate virtual ventilation consumption, calculate overheating hours, or implement mixed-use averaging.
+
 No indexed MC001 example currently provides a complete end-to-end verified numeric fixture for these remaining implemented helpers:
 
 - Any envelope U/R rows not covered by fixtures 001 and 003.
@@ -61,7 +64,7 @@ No indexed MC001 example currently provides a complete end-to-end verified numer
 - Full monthly heating-need reproduction for April, September, and October, because `INVESTIGATION_002_HEATING_PERIOD_BOUNDARY_FORMULA` classifies the page 522 positive `QH;nd` values at `gammaH > 2` as an MC001 source conflict with Figure 2.18. Apr/Sep can be diagnostically reconstructed from continuous/full-month columns, but not through the current Figure 2.18 helper branch.
 - Exact monthly heating-need reproduction from displayed `etaH;gn`, because Anexa B page 522 rounds utilization factors to two decimals.
 - Full primary energy and CO2 reproduction from Anexa A or Anexa B certificate/CPE summaries beyond the narrowed Fixture 007 and Fixture 008 service rows.
-- General RER/certificate reproduction beyond the Anexa B display row, because Fixture 012 validates only page 527/page 540 displayed RER arithmetic. Generic RER still needs an explicit `EPren,RER` perimeter and renewable/export context. Explicit class interval assignment is now validated by Fixture 013, but Anexa B class labels still need utility-inclusion and optional-utility recalculation context.
+- General RER/certificate reproduction beyond the Anexa B display row, because Fixture 012 validates only page 527/page 540 displayed RER arithmetic. Generic RER still needs an explicit `EPren,RER` perimeter and renewable/export context. Explicit class interval assignment is validated by Fixture 013 and Tabel 5.6 threshold recalculation is validated by Fixture 014, but Anexa B class labels still need full class-label workflow context, including reference-building/CPE boundaries and unresolved source conflicts.
 - Full DHW final-energy formula validation remains blocked even though Fixture 010 validates the Anexa B useful-demand row and Fixture 011 validates the display-only subtotal arithmetic; distribution/storage/generation/auxiliary inputs still cannot be independently calculated.
 - DHW annual distribution-loss energy validation, because Fixture 009 validates only component rows and `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` keeps the Anexa 3.3.B energy rows blocked: `QW,dis,ls` is missing a traceable effective length, `QW,dis,stub` has a worked-example Wh/kWh scale inconsistency, and `QW,dis,nom` needs visual review of relation (3.207) versus the page 279 mass-flow formula.
 - Anexa B page 527 electric-service CO2 display rows, because `INVESTIGATION_003` classifies `0.086*` as a worked-example inconsistency that double-counts the SEN electricity renewable-share adjustment already embedded in Tabel 5.18.
@@ -90,13 +93,13 @@ The helpers can run, but the example data cannot yet support strict expected-val
 - Clean visual extraction of broader Anexa B DHW, lighting, and ventilation service rows. The Anexa B school useful-demand unit count and useful-demand energy row are covered by Fixture 010, and the page 525 final-energy displayed subtotal is covered by Fixture 011; broader DHW final-energy boundaries and system inputs remain blocked.
 - Clean visual extraction of Anexa 3.3.B DHW distribution-loss energy rows after Fixture 009's component-only validation, including the effective-length basis, relation (3.207) formula path, and the Wh/kWh timestep labeling conflict identified by `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS`.
 - Clean visual extraction of remaining Anexa B final primary/CO2/CPE rows; page 523 heating text and page 527 electric CO2 coefficient are now classified source conflicts, not executable expected outputs.
-- General RER and certificate workflow extraction beyond Fixture 012's page 527/page 540 display arithmetic; Anexa B class-label validation remains blocked until a fixture explicitly handles Tabel 5.6 utility inclusion and optional-utility recalculation context.
+- General RER and certificate workflow extraction beyond Fixture 012's page 527/page 540 display arithmetic; Anexa B class-label validation remains blocked even though Fixture 014 handles Tabel 5.6 utility inclusion and optional-utility recalculation, because certificate/reference-building boundaries and displayed class-label source context are still not implemented.
 - Numeric registry for MC001 climate and solar tables.
 - Visual verification of audit economic relations (6.1), (6.3), and (6.4).
 
 ## 5. Recommended Next Physics Engine Task
 
-Next task: investigate Tabel 5.6 utility-inclusion and optional-utility threshold recalculation before attempting Anexa B displayed class labels. Do not promote Fixture 012 into a general RER helper, certificate generator, or broad certificate calculator.
+Next task: keep Anexa B displayed class labels and certificate workflow blocked until reference-building/CPE boundaries, virtual mandatory utilities, overheating indicator handling, and mixed-use averaging are independently extracted and validated. Do not promote Fixture 012 into a general RER helper, certificate generator, or broad certificate calculator.
 
 Rationale:
 
@@ -104,6 +107,6 @@ Rationale:
 - Fixture 012 proves only the RER display row arithmetic: ventilation primary `39.0`, lighting primary `24.5`, electric renewable share `20%`, and total primary `170.1`.
 - Page 527 displayed CO2 totals should stay blocked for Tabel 5.18 validation because the worked example applies an extra 80% electricity multiplier.
 - Page 523 heating prose should stay blocked because its final-energy value is isolated and inconsistent with the surrounding primary/service rows.
-- Continue with explicit rows or missing-input behavior only; do not add certificate generation, general RER perimeter logic, or production integration. Class work should remain limited to explicit interval lookup until Tabel 5.6/recalculation rules are validated.
+- Continue with explicit rows or missing-input behavior only; do not add certificate generation, general RER perimeter logic, or production integration. Class work should remain limited to explicit interval lookup and explicit threshold adjustment until certificate/reference-building context is validated.
 
 Do not add an orchestrator, production integration, UI, workers, API behavior, schema changes, marketplace work, recommendation work, or AI experiments as part of that task.
