@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 15);
+  assert.equal(mc001ExecutableValidationFixtures.length, 16);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 15);
+  assert.equal(mc001ExecutableValidationCases.length, 16);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -114,6 +114,9 @@ test("covers requested validation areas with blocked examples and reviewed execu
   assert.deepEqual(mc001ExecutableValidationCases[14].validationAreas, [
     "minimal_orchestrator_summary"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[15].validationAreas, [
+    "level_1_core_orchestrator"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -132,7 +135,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture012,
     fixture013,
     fixture014,
-    fixture015
+    fixture015,
+    fixture016
   ] =
     mc001ExecutableValidationCases;
 
@@ -351,6 +355,36 @@ test("registers executable fixture metadata without embedding numeric fixture da
     )
   );
   assert.deepEqual(fixture015.helperCoverage, ["minimalMc001OrchestratorSummary.mjs"]);
+
+  assert.equal(
+    fixture016.fixtureId,
+    "FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR"
+  );
+  assert.equal(
+    fixture016.exampleId,
+    "MC001_LEVEL_1_CORE_EXPLICIT_INPUT_PACK"
+  );
+  assert.ok(
+    fixture016.documentationPath.endsWith(
+      "FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR.md"
+    )
+  );
+  assert.ok(
+    fixture016.fixturePath.endsWith(
+      "fixture016Level1CoreComponentOrchestrator.mjs"
+    )
+  );
+  assert.ok(
+    fixture016.validationTestPath.endsWith(
+      "fixture016Level1CoreComponentOrchestrator.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture016.helperCoverage, [
+    "mc001Level1CoreOrchestrator.mjs",
+    "transmissionCoefficients.mjs",
+    "ventilationCoefficients.mjs",
+    "finalPrimaryCo2Indicators.mjs"
+  ]);
 
   for (const fixture of mc001ExecutableValidationCases) {
     assert.equal("calculationInputs" in fixture, false);

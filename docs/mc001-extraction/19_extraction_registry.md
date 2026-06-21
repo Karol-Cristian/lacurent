@@ -50,6 +50,7 @@ Official-like monthly calculation remains blocked until climate/solar datasets a
 - Lighting dataset/formulas: SR EN 15193-1 dependencies are referenced but not locally extracted.
 - Reference building datasets: reference envelope/system/ventilation/lighting/renewable parameters are only partially indexed.
 - Class threshold datasets: tables 5.7-5.14 now have a reviewed numeric registry; Tabel 5.6 utility inclusion and Nota 4 threshold recalculation have an isolated helper; certificate workflow remains blocked.
+- Level 1 core orchestration: Fixture 016 validates only explicit-input composition for transmission, ventilation and final/primary/CO2 with blockers preserved; Level 2 full-auditor behavior and product/certificate workflows remain blocked.
 - Economic audit formulas: relations (6.1), (6.3), (6.4) remain visually blocked.
 
 ## Module status matrix
@@ -296,6 +297,12 @@ Table/data registry count: 33 rows.
   - scope: relations (3.200)-(3.204), including mean DHW distribution temperature and pipe linear transmittance component formulas
   - integration impact: no production integration; no annual DHW distribution-loss energy, recovery, auxiliary, storage, generation, final-energy, certificate/class, or CPE calculation added
   - remaining blockers: Anexa 3.3.B annual distribution-loss energy rows need the `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` blockers resolved: effective length for `QW,dis,ls`, Wh/kWh worked-example inconsistency for `QW,dis,stub`, and relation (3.207) visual formula review for `QW,dis,nom`; DHW final-energy conversion remains blocked.
+- Level 1 core component orchestrator:
+  - helperFile: `src/physics-engine/mc001Level1CoreOrchestrator.mjs`
+  - uses: explicit input pack from `FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR`
+  - scope: transmission total aggregation, ventilation summary/monthly ventilation rows, final/primary/CO2 summary, and explicit blocker preservation
+  - integration impact: no production integration; no Level 2 full auditor; no certificate/CPE workflow; no report generation; no UI, Worker, DB/schema, API, deploy, or product flow change
+  - remaining blockers: Apr/Sep boundary heating gaps, October ambiguity, full DHW final energy, general RER methodology, Anexa B class-label/certificate context, lighting, cooling systems, reference building, and certificate/CPE workflow.
 
 ## Status vocabulary
 
@@ -362,7 +369,7 @@ Isolated Physics Engine helper consistency pass completed:
 - No production integration was added.
 - No `src/physics-engine/index.mjs` export change was made.
 - No certificate or CPE calculation was added.
-- Remaining blockers include climate dataset, cleaned broader DHW service inputs and DHW final-energy system inputs, certificate reference workflows, virtual mandatory utilities, overheating/mixed-use class-label context, and lighting external standard data. DHW Tabel 3.3.1 numeric values are extracted into a reviewed dataset registry, useful-demand formulas (3.188)-(3.197) have an isolated helper and Fixture 010 validation, DHW distribution component formulas (3.200)-(3.204) have an isolated helper, Fixture 011 keeps the Anexa B page 525 final-energy subtotal display-only, Tabel 5.7-5.14 class thresholds are available as a reviewed numeric lookup registry with Fixture 013 interval-assignment validation, and Tabel 5.6 utility-inclusion threshold recalculation is covered by Fixture 014.
+- Remaining blockers include climate dataset, cleaned broader DHW service inputs and DHW final-energy system inputs, certificate reference workflows, virtual mandatory utilities, overheating/mixed-use class-label context, and lighting external standard data. DHW Tabel 3.3.1 numeric values are extracted into a reviewed dataset registry, useful-demand formulas (3.188)-(3.197) have an isolated helper and Fixture 010 validation, DHW distribution component formulas (3.200)-(3.204) have an isolated helper, Fixture 011 keeps the Anexa B page 525 final-energy subtotal display-only, Tabel 5.7-5.14 class thresholds are available as a reviewed numeric lookup registry with Fixture 013 interval-assignment validation, Tabel 5.6 utility-inclusion threshold recalculation is covered by Fixture 014, Level 0 summary aggregation is covered by Fixture 015, and narrow Level 1 core composition is covered by Fixture 016.
 
 | check | result | action |
 | --- | --- | --- |
@@ -410,7 +417,9 @@ Isolated Physics Engine helper consistency pass completed:
 
 Continue with narrow explicit-input validation targets. Anexa B displayed class labels should remain blocked until reference-building/CPE boundaries, virtual mandatory utilities, overheating indicator handling, and mixed-use averaging are independently validated. Do not promote Fixture 012 into a general RER or certificate workflow. DHW storage/generation/auxiliary components should be investigated one at a time only when every required source input is visible, and Anexa 3.3.B annual DHW distribution-loss energy should wait until `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` blockers are resolved.
 
-`INVESTIGATION_008_MINIMAL_MC001_ORCHESTRATOR_BOUNDARY` recommended a Level 0 Summary Aggregator as the first isolated orchestrator fixture. `FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` implements that recommendation as validation summary aggregation only. Level 1 component orchestration should wait for a fully explicit input pack, and Level 2 full auditor behavior remains out of scope.
+`INVESTIGATION_008_MINIMAL_MC001_ORCHESTRATOR_BOUNDARY` recommended a Level 0 Summary Aggregator as the first isolated orchestrator fixture. `FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` implements that recommendation as validation summary aggregation only.
+
+`INVESTIGATION_009_LEVEL_1_EXPLICIT_INPUT_PACK` defines the fully explicit pack. `FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR` implements the narrow Level 1 core for transmission, ventilation, and final/primary/CO2 with explicit units, trace metadata, and fail-closed blockers. Monthly heating boundary rows, class assignment, DHW useful/display-only rows, RER display arithmetic, and utility threshold recalculation stay outside the core orchestrator unless every helper input is source-backed.
 
 Do not add UX/product features as part of this step.
 
@@ -418,6 +427,7 @@ Do not add UX/product features as part of this step.
 
 - No production flow changed.
 - No UI changed.
-- No additional certificate/CPE/orchestrator calculation added.
-- Isolated tests exist for the useful-demand helper, Fixture 010, Fixture 015, and reviewed datasets; no app behavior changed.
-- No production orchestrator or Level 1 component orchestration has been added; Fixture 015 is Level 0 summary aggregation only.
+- No additional certificate/CPE calculation added.
+- Isolated tests exist for the useful-demand helper, Fixture 010, Fixture 015, Fixture 016, and reviewed datasets; no app behavior changed.
+- No production orchestrator has been added; Fixture 015 is Level 0 summary aggregation only.
+- Fixture 016 adds only narrow Level 1 core component orchestration over explicit validation inputs; no Level 2 full MC001 auditor has been added.

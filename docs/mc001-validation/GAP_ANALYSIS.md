@@ -51,6 +51,10 @@ These are formula validations, not full MC001 example reproductions.
 
 `FIXTURE_014_UTILITY_INCLUSION_THRESHOLD_RECALCULATION` now provides a dataset-rule fixture for MC001 pages 395-396. It verifies Tabel 5.6 residential and non-residential mandatory/optional utility flags, validates the school-without-cooling B/C total primary threshold `135 - 13 = 122`, and validates the CO2 threshold `23.0 - 13 * 0.107 = 21.61`. It does not infer certificate classes, calculate virtual ventilation consumption, calculate overheating hours, or implement mixed-use averaging.
 
+`FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` now provides a Level 0 summary fixture over Fixture 001-014 validation coverage and blockers. It does not recalculate physics helpers or create product/certificate workflow behavior.
+
+`FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR` now provides the first narrow Level 1 core composition fixture. It accepts an explicit input pack and calls only already validated helper paths for transmission aggregation, ventilation summary/monthly ventilation rows, and final/primary/CO2 summary. It preserves explicit blockers for Apr/Sep boundary heating gaps, October ambiguity, full DHW final energy, RER methodology, class-label/certificate context, lighting, cooling systems, and reference building. It is not a Level 2 full auditor and does not add production, certificate/CPE, report, UI, Worker, DB/schema, API, deploy, or product integration behavior.
+
 No indexed MC001 example currently provides a complete end-to-end verified numeric fixture for these remaining implemented helpers:
 
 - Any envelope U/R rows not covered by fixtures 001 and 003.
@@ -99,7 +103,9 @@ The helpers can run, but the example data cannot yet support strict expected-val
 
 ## 5. Recommended Next Physics Engine Task
 
-`INVESTIGATION_008_MINIMAL_MC001_ORCHESTRATOR_BOUNDARY` defined the first orchestrator boundary. `FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` implements that boundary as a Level 0 Summary Aggregator over Fixture 001-014 validation coverage and explicit blockers. Level 1 remains blocked unless a fully explicit input pack is assembled first.
+`INVESTIGATION_008_MINIMAL_MC001_ORCHESTRATOR_BOUNDARY` defined the first orchestrator boundary. `FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` implements that boundary as a Level 0 Summary Aggregator over Fixture 001-014 validation coverage and explicit blockers.
+
+`INVESTIGATION_009_LEVEL_1_EXPLICIT_INPUT_PACK` defines the required pack. `FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR` implements the recommended narrow core for transmission, ventilation, and final/primary/CO2, with monthly heating blockers preserved and class/DHW/RER/utility-threshold sections excluded from the core calculation.
 
 Next task: keep Anexa B displayed class labels and certificate workflow blocked until reference-building/CPE boundaries, virtual mandatory utilities, overheating indicator handling, and mixed-use averaging are independently extracted and validated. Do not promote Fixture 012 into a general RER helper, certificate generator, or broad certificate calculator.
 
@@ -110,6 +116,6 @@ Rationale:
 - Page 527 displayed CO2 totals should stay blocked for Tabel 5.18 validation because the worked example applies an extra 80% electricity multiplier.
 - Page 523 heating prose should stay blocked because its final-energy value is isolated and inconsistent with the surrounding primary/service rows.
 - Continue with explicit rows or missing-input behavior only; do not add certificate generation, general RER perimeter logic, or production integration. Class work should remain limited to explicit interval lookup and explicit threshold adjustment until certificate/reference-building context is validated.
-- First orchestrator work is now Level 0 summary composition over validated fixture outputs and blockers. Level 1 helper-call composition is justified only when all helper inputs are explicit and traceable.
+- First orchestrator work is now split between Level 0 summary composition and Level 1 core helper-call composition over explicit Fixture 004/005/007 inputs. Level 2 full-auditor composition remains blocked until a complete explicit MC001 audit input pack exists.
 
 Do not add a production orchestrator, production integration, UI, workers, API behavior, schema changes, marketplace work, recommendation work, or AI experiments as part of that task.

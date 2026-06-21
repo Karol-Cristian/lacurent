@@ -258,6 +258,27 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     helperCoverage: Object.freeze(["minimalMc001OrchestratorSummary.mjs"]),
     limitations:
       "Executable for Level 0 summary aggregation over Fixture 001-014 coverage and explicit blockers only; no raw physics recalculation, Level 1 component orchestration, certificate/CPE workflow, product integration or production orchestrator."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR",
+    exampleId: "MC001_LEVEL_1_CORE_EXPLICIT_INPUT_PACK",
+    source:
+      "MC001 Physics Engine reviewed Fixtures 004, 005, 007, 015 and Investigation 009 explicit input pack",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture016Level1CoreComponentOrchestrator.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture016Level1CoreComponentOrchestrator.validation.test.mjs",
+    validationAreas: Object.freeze(["level_1_core_orchestrator"]),
+    helperCoverage: Object.freeze([
+      "mc001Level1CoreOrchestrator.mjs",
+      "transmissionCoefficients.mjs",
+      "ventilationCoefficients.mjs",
+      "finalPrimaryCo2Indicators.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Level 1 core composition over explicit transmission, ventilation and final/primary/CO2 inputs with blockers preserved only; no Level 2 full auditor, certificate/CPE workflow, product integration, report generation, UI, API, DB/schema, Worker, deploy, full DHW final energy, lighting, cooling systems or reference-building implementation."
   })
 ]);
 
