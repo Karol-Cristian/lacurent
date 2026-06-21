@@ -410,6 +410,8 @@ Isolated Physics Engine helper consistency pass completed:
 
 Continue with narrow explicit-input validation targets. Anexa B displayed class labels should remain blocked until reference-building/CPE boundaries, virtual mandatory utilities, overheating indicator handling, and mixed-use averaging are independently validated. Do not promote Fixture 012 into a general RER or certificate workflow. DHW storage/generation/auxiliary components should be investigated one at a time only when every required source input is visible, and Anexa 3.3.B annual DHW distribution-loss energy should wait until `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` blockers are resolved.
 
+`INVESTIGATION_008_MINIMAL_MC001_ORCHESTRATOR_BOUNDARY` recommended a Level 0 Summary Aggregator as the first isolated orchestrator fixture. `FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` implements that recommendation as validation summary aggregation only. Level 1 component orchestration should wait for a fully explicit input pack, and Level 2 full auditor behavior remains out of scope.
+
 Do not add UX/product features as part of this step.
 
 ## Implementation boundary
@@ -417,4 +419,5 @@ Do not add UX/product features as part of this step.
 - No production flow changed.
 - No UI changed.
 - No additional certificate/CPE/orchestrator calculation added.
-- Isolated tests exist for the useful-demand helper, Fixture 010, and reviewed datasets; no app behavior changed.
+- Isolated tests exist for the useful-demand helper, Fixture 010, Fixture 015, and reviewed datasets; no app behavior changed.
+- No production orchestrator or Level 1 component orchestration has been added; Fixture 015 is Level 0 summary aggregation only.

@@ -242,6 +242,22 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     helperCoverage: Object.freeze(["utilityInclusionThresholds.mjs"]),
     limitations:
       "Executable for Tabel 5.6 mandatory/optional utility flags and Nota 4 threshold subtraction only; no certificate class inference, virtual ventilation consumption, overheating calculation, mixed-use averaging, CPE or production integration."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY",
+    exampleId: "MC001_VALIDATION_SUMMARY_FIXTURES_001_014",
+    source:
+      "MC001 Physics Engine validation metadata and reviewed Fixture 001-014 summaries",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture015MinimalMc001OrchestratorSummary.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture015MinimalMc001OrchestratorSummary.validation.test.mjs",
+    validationAreas: Object.freeze(["minimal_orchestrator_summary"]),
+    helperCoverage: Object.freeze(["minimalMc001OrchestratorSummary.mjs"]),
+    limitations:
+      "Executable for Level 0 summary aggregation over Fixture 001-014 coverage and explicit blockers only; no raw physics recalculation, Level 1 component orchestration, certificate/CPE workflow, product integration or production orchestrator."
   })
 ]);
 
