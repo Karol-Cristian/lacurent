@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 17);
+  assert.equal(mc001ExecutableValidationFixtures.length, 18);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 17);
+  assert.equal(mc001ExecutableValidationCases.length, 18);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -120,6 +120,9 @@ test("covers requested validation areas with blocked examples and reviewed execu
   assert.deepEqual(mc001ExecutableValidationCases[16].validationAreas, [
     "level_1_monthly_heating_orchestration"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[17].validationAreas, [
+    "level_1_fail_closed_hardening"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -140,7 +143,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture014,
     fixture015,
     fixture016,
-    fixture017
+    fixture017,
+    fixture018
   ] =
     mc001ExecutableValidationCases;
 
@@ -417,6 +421,31 @@ test("registers executable fixture metadata without embedding numeric fixture da
     "mc001Level1CoreOrchestrator.mjs",
     "monthlyBalance.mjs"
   ]);
+
+  assert.equal(
+    fixture018.fixtureId,
+    "FIXTURE_018_LEVEL_1_FAIL_CLOSED_HARDENING"
+  );
+  assert.equal(
+    fixture018.exampleId,
+    "MC001_LEVEL_1_FAIL_CLOSED_INPUT_PACK"
+  );
+  assert.ok(
+    fixture018.documentationPath.endsWith(
+      "FIXTURE_018_LEVEL_1_FAIL_CLOSED_HARDENING.md"
+    )
+  );
+  assert.ok(
+    fixture018.fixturePath.endsWith(
+      "fixture018Level1FailClosedHardening.mjs"
+    )
+  );
+  assert.ok(
+    fixture018.validationTestPath.endsWith(
+      "fixture018Level1FailClosedHardening.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture018.helperCoverage, ["mc001Level1CoreOrchestrator.mjs"]);
 
   for (const fixture of mc001ExecutableValidationCases) {
     assert.equal("calculationInputs" in fixture, false);
