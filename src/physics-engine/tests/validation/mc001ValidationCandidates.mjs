@@ -279,6 +279,25 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for narrow Level 1 core composition over explicit transmission, ventilation and final/primary/CO2 inputs with blockers preserved only; no Level 2 full auditor, certificate/CPE workflow, product integration, report generation, UI, API, DB/schema, Worker, deploy, full DHW final energy, lighting, cooling systems or reference-building implementation."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_017_LEVEL_1_MONTHLY_HEATING_ORCHESTRATION",
+    exampleId: "MC001_LEVEL_1_MONTHLY_HEATING_EXPLICIT_INPUT_PACK",
+    source:
+      "MC001 Physics Engine reviewed Fixture 006 monthly heating rows and Fixture 016 Level 1 core input pack",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_017_LEVEL_1_MONTHLY_HEATING_ORCHESTRATION.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture017Level1MonthlyHeatingOrchestration.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture017Level1MonthlyHeatingOrchestration.validation.test.mjs",
+    validationAreas: Object.freeze(["level_1_monthly_heating_orchestration"]),
+    helperCoverage: Object.freeze([
+      "mc001Level1CoreOrchestrator.mjs",
+      "monthlyBalance.mjs"
+    ]),
+    limitations:
+      "Executable for Level 1 monthly-heating summary composition over explicit Fixture 006 rows only; April and September remain blocked, October remains ambiguous, annual displayed QHnd is reconciliation-only, and no Level 2 full auditor, certificate/CPE workflow, production integration, UI, API, DB/schema, Worker, deploy, full DHW final energy, lighting, cooling systems or reference-building implementation is added."
   })
 ]);
 

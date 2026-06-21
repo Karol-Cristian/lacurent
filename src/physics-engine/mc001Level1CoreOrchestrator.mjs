@@ -28,6 +28,16 @@ const REQUIRED_BLOCKER_IDS = Object.freeze([
   "reference_building_blocked"
 ]);
 
+const ALLOWED_MONTHLY_HEATING_STATUSES = new Set([
+  "validated",
+  "blocked",
+  "ambiguous",
+  "display_reconciliation_only"
+]);
+
+const CALENDAR_MONTH_COUNT = 12;
+const MONTHLY_HEATING_METHODOLOGY_STATUS = "PARTIAL_WITH_BLOCKED_AND_AMBIGUOUS_MONTHS";
+
 function cloneSerializable(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -202,6 +212,90 @@ function validateExplicitBlockers(explicitBlockers) {
   }
 }
 
+function monthName(value) {
+  return typeof value === "string" ? value : value?.month;
+}
+
+function validateMonthlyHeatingRows(monthlyHeating) {
+  assertArray(monthlyHeating.monthlyRows, "monthlyHeating.monthlyRows");
+  if (monthlyHeating.monthlyRows.length !== CALENDAR_MONTH_COUNT) {
+    throw new Error("monthlyHeating.monthlyRows must contain 12 calendar months");
+  }
+
+  const seenMonths = new Set();
+  const blockedMonths = new Set(monthlyHeating.blockedMonths.map(monthName));
+  const ambiguousMonths = new Set(monthlyHeating.ambiguousMonths.map(monthName));
+
+  monthlyHeating.monthlyRows.forEach((row, index) => {
+    const path = `monthlyHeating.monthlyRows[${index}]`;
+    assertObject(row, path);
+    assertRequiredField(row.month, `${path}.month`);
+    assertFiniteNumber(row.QHht, `${path}.QHht`);
+    assertFiniteNumber(row.QHgn, `${path}.QHgn`);
+    assertRequiredField(row.status, `${path}.status`);
+
+    if (seenMonths.has(row.month)) {
+      throw new Error(`Duplicate monthly heating row: ${row.month}`);
+    }
+    seenMonths.add(row.month);
+
+    if (!ALLOWED_MONTHLY_HEATING_STATUSES.has(row.status)) {
+      throw new Error(`${path}.status must be one of the allowed monthly heating statuses`);
+    }
+
+    if (row.status === "validated" || row.status === "display_reconciliation_only") {
+      assertFiniteNumber(row.QHnd, `${path}.QHnd`);
+    } else if (row.QHnd !== null) {
+      assertFiniteNumber(row.QHnd, `${path}.QHnd`);
+    }
+
+    if (row.status === "blocked") {
+      assertRequiredField(row.reason, `${path}.reason`);
+      if (!blockedMonths.has(row.month)) {
+        throw new Error(`${path}.month is blocked but not listed in monthlyHeating.blockedMonths`);
+      }
+    }
+
+    if (row.status === "ambiguous") {
+      assertRequiredField(row.reason, `${path}.reason`);
+      if (!ambiguousMonths.has(row.month)) {
+        throw new Error(
+          `${path}.month is ambiguous but not listed in monthlyHeating.ambiguousMonths`
+        );
+      }
+    }
+  });
+
+  for (const blockedMonth of blockedMonths) {
+    const row = monthlyHeating.monthlyRows.find((monthlyRow) => monthlyRow.month === blockedMonth);
+    if (!row || row.status !== "blocked") {
+      throw new Error(`Missing blocked monthly heating row: ${blockedMonth}`);
+    }
+  }
+
+  for (const ambiguousMonth of ambiguousMonths) {
+    const row = monthlyHeating.monthlyRows.find(
+      (monthlyRow) => monthlyRow.month === ambiguousMonth
+    );
+    if (!row || row.status !== "ambiguous") {
+      throw new Error(`Missing ambiguous monthly heating row: ${ambiguousMonth}`);
+    }
+  }
+}
+
+function validateMonthlyHeating(monthlyHeating) {
+  assertObject(monthlyHeating, "monthlyHeating");
+  assertRequiredField(monthlyHeating.unit, "monthlyHeating.unit");
+  assertFiniteNumber(
+    monthlyHeating.annualDisplayedHeatingNeed,
+    "monthlyHeating.annualDisplayedHeatingNeed"
+  );
+  assertArray(monthlyHeating.blockedMonths, "monthlyHeating.blockedMonths");
+  assertArray(monthlyHeating.ambiguousMonths, "monthlyHeating.ambiguousMonths");
+  assertRequiredField(monthlyHeating.source, "monthlyHeating.source");
+  validateMonthlyHeatingRows(monthlyHeating);
+}
+
 export function validateMc001Level1CoreInputPack(inputPack) {
   assertObject(inputPack, "inputPack");
   for (const sectionName of REQUIRED_SECTIONS) {
@@ -214,6 +308,9 @@ export function validateMc001Level1CoreInputPack(inputPack) {
   validateVentilation(inputPack.ventilation);
   validateFinalPrimaryCo2(inputPack.finalPrimaryCo2);
   validateExplicitBlockers(inputPack.explicitBlockers);
+  if (inputPack.monthlyHeating !== undefined) {
+    validateMonthlyHeating(inputPack.monthlyHeating);
+  }
 
   return true;
 }
@@ -400,6 +497,27 @@ export function summarizeLevel1FinalPrimaryCo2(finalPrimaryCo2) {
   };
 }
 
+export function summarizeLevel1MonthlyHeating(monthlyHeating) {
+  const monthlyRows = cloneSerializable(monthlyHeating.monthlyRows);
+  const validatedMonths = monthlyRows.filter((row) => row.status === "validated");
+  const blockedMonths = monthlyRows.filter((row) => row.status === "blocked");
+  const ambiguousMonths = monthlyRows.filter((row) => row.status === "ambiguous");
+
+  return {
+    unit: monthlyHeating.unit,
+    validatedMonthCount: validatedMonths.length,
+    blockedMonthCount: blockedMonths.length,
+    ambiguousMonthCount: ambiguousMonths.length,
+    validatedMonths,
+    blockedMonths,
+    ambiguousMonths,
+    annualDisplayedHeatingNeed: monthlyHeating.annualDisplayedHeatingNeed,
+    isCompleteAnnualMethodology: false,
+    methodologyStatus: MONTHLY_HEATING_METHODOLOGY_STATUS,
+    source: monthlyHeating.source
+  };
+}
+
 function splitBlockers(explicitBlockers) {
   const blockers = cloneSerializable(explicitBlockers);
   return {
@@ -414,6 +532,10 @@ export function createMc001Level1CoreOrchestrator(inputPack) {
   const transmissionSummary = summarizeLevel1Transmission(inputPack.transmission);
   const ventilationSummary = summarizeLevel1Ventilation(inputPack.ventilation);
   const finalPrimaryCo2Summary = summarizeLevel1FinalPrimaryCo2(inputPack.finalPrimaryCo2);
+  const monthlyHeatingSummary =
+    inputPack.monthlyHeating === undefined
+      ? null
+      : summarizeLevel1MonthlyHeating(inputPack.monthlyHeating);
   const { blockedComponents, ambiguousComponents } = splitBlockers(inputPack.explicitBlockers);
   const validatedCore =
     transmissionSummary.status === "validated" &&
@@ -429,6 +551,7 @@ export function createMc001Level1CoreOrchestrator(inputPack) {
     transmissionSummary,
     ventilationSummary,
     finalPrimaryCo2Summary,
+    ...(monthlyHeatingSummary ? { monthlyHeatingSummary } : {}),
     blockedComponents,
     ambiguousComponents,
     validationStatus: validatedCore
