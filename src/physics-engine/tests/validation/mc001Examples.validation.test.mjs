@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 14);
+  assert.equal(mc001ExecutableValidationFixtures.length, 15);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 14);
+  assert.equal(mc001ExecutableValidationCases.length, 15);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -111,6 +111,9 @@ test("covers requested validation areas with blocked examples and reviewed execu
   assert.deepEqual(mc001ExecutableValidationCases[13].validationAreas, [
     "utility_inclusion_thresholds"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[14].validationAreas, [
+    "minimal_orchestrator_summary"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -128,7 +131,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture011,
     fixture012,
     fixture013,
-    fixture014
+    fixture014,
+    fixture015
   ] =
     mc001ExecutableValidationCases;
 
@@ -322,6 +326,31 @@ test("registers executable fixture metadata without embedding numeric fixture da
     )
   );
   assert.deepEqual(fixture014.helperCoverage, ["utilityInclusionThresholds.mjs"]);
+
+  assert.equal(
+    fixture015.fixtureId,
+    "FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY"
+  );
+  assert.equal(
+    fixture015.exampleId,
+    "MC001_VALIDATION_SUMMARY_FIXTURES_001_014"
+  );
+  assert.ok(
+    fixture015.documentationPath.endsWith(
+      "FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY.md"
+    )
+  );
+  assert.ok(
+    fixture015.fixturePath.endsWith(
+      "fixture015MinimalMc001OrchestratorSummary.mjs"
+    )
+  );
+  assert.ok(
+    fixture015.validationTestPath.endsWith(
+      "fixture015MinimalMc001OrchestratorSummary.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture015.helperCoverage, ["minimalMc001OrchestratorSummary.mjs"]);
 
   for (const fixture of mc001ExecutableValidationCases) {
     assert.equal("calculationInputs" in fixture, false);

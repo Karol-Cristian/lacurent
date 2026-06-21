@@ -99,6 +99,8 @@ The helpers can run, but the example data cannot yet support strict expected-val
 
 ## 5. Recommended Next Physics Engine Task
 
+`INVESTIGATION_008_MINIMAL_MC001_ORCHESTRATOR_BOUNDARY` defined the first orchestrator boundary. `FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` implements that boundary as a Level 0 Summary Aggregator over Fixture 001-014 validation coverage and explicit blockers. Level 1 remains blocked unless a fully explicit input pack is assembled first.
+
 Next task: keep Anexa B displayed class labels and certificate workflow blocked until reference-building/CPE boundaries, virtual mandatory utilities, overheating indicator handling, and mixed-use averaging are independently extracted and validated. Do not promote Fixture 012 into a general RER helper, certificate generator, or broad certificate calculator.
 
 Rationale:
@@ -108,5 +110,6 @@ Rationale:
 - Page 527 displayed CO2 totals should stay blocked for Tabel 5.18 validation because the worked example applies an extra 80% electricity multiplier.
 - Page 523 heating prose should stay blocked because its final-energy value is isolated and inconsistent with the surrounding primary/service rows.
 - Continue with explicit rows or missing-input behavior only; do not add certificate generation, general RER perimeter logic, or production integration. Class work should remain limited to explicit interval lookup and explicit threshold adjustment until certificate/reference-building context is validated.
+- First orchestrator work is now Level 0 summary composition over validated fixture outputs and blockers. Level 1 helper-call composition is justified only when all helper inputs are explicit and traceable.
 
-Do not add an orchestrator, production integration, UI, workers, API behavior, schema changes, marketplace work, recommendation work, or AI experiments as part of that task.
+Do not add a production orchestrator, production integration, UI, workers, API behavior, schema changes, marketplace work, recommendation work, or AI experiments as part of that task.
