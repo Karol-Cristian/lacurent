@@ -1,14 +1,22 @@
 {
   "scripts": {
-    "smoke": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-energy-class-thresholds.mjs && node tests/physics-reference-registries.mjs && node tests/physics-reference-homes.mjs && node tests/physics-critical-chain.mjs && node tests/ai-guardrails.mjs && node tests/smoke.mjs",
-    "smoke:api": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-energy-class-thresholds.mjs && node tests/physics-reference-registries.mjs && node tests/physics-reference-homes.mjs && node tests/physics-critical-chain.mjs && node tests/ai-guardrails.mjs && set RUN_API_SMOKE=1&& node tests/smoke.mjs",
-    "test:physics": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-energy-class-thresholds.mjs && node tests/physics-reference-registries.mjs && node tests/physics-reference-homes.mjs && node tests/physics-critical-chain.mjs",
+    "smoke": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-energy-class-thresholds.mjs && node tests/physics-energy-classification-model.mjs && node tests/physics-reference-registries.mjs && node tests/physics-reference-homes.mjs && node tests/physics-critical-chain.mjs && node tests/ai-guardrails.mjs && node tests/smoke.mjs",
+    "smoke:api": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-energy-class-thresholds.mjs && node tests/physics-energy-classification-model.mjs && node tests/physics-reference-registries.mjs && node tests/physics-reference-homes.mjs && node tests/physics-critical-chain.mjs && node tests/ai-guardrails.mjs && set RUN_API_SMOKE=1&& node tests/smoke.mjs",
+    "test:physics": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-energy-class-thresholds.mjs && node tests/physics-energy-classification-model.mjs && node tests/physics-reference-registries.mjs && node tests/physics-reference-homes.mjs && node tests/physics-critical-chain.mjs",
     "test:mc001": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs",
     "test:physics:parity": "node tests/physics-source-of-truth-parity.mjs",
+    "test:physics:v1": "node src/features/energy/physics-v1/tests/normalizeGeometry.test.mjs",
     "test:ai": "node tests/ai-guardrails.mjs && node tests/ai-insight-contextual.mjs",
     "test:mc001:verbose": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs --verbose",
     "docs:physics-params": "node scripts/generate-physics-parameter-docs.mjs",
-    "data:physics-params": "node scripts/generate-physics-parameter-usage.mjs && node scripts/generate-physics-parameter-browser-data.mjs"
+    "data:physics-params": "node scripts/generate-physics-parameter-usage.mjs && node scripts/generate-physics-parameter-browser-data.mjs",
+    "dev:worker": "wrangler.cmd dev --local",
+    "deploy:dev": "wrangler.cmd deploy --env=\"\"",
+    "deploy:dev:dry-run": "wrangler.cmd deploy --env=\"\" --dry-run",
+    "deploy:prod": "node scripts/guard-production-deploy.mjs && wrangler.cmd deploy --env production",
+    "deploy:prod:dry-run": "node scripts/guard-production-deploy.mjs && wrangler.cmd deploy --env production --dry-run",
+    "d1:dev:create": "wrangler.cmd d1 create lacurent-dev-db",
+    "d1:dev:schema": "wrangler.cmd d1 execute lacurent-dev-db --remote --file schema.sql"
   },
   "devDependencies": {}
 }
