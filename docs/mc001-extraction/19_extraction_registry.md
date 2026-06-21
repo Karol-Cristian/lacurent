@@ -34,7 +34,7 @@ Extraction package status: `registry_complete_with_blockers`.
 
 Core formula families for isolated helpers are extracted for geometry, material lambda/R/U, thermal bridges, transmission coefficients, ventilation coefficients, monthly transfer/balance composition, DHW, final/primary/CO2 aggregation and several renewable/export indicators.
 
-Official-like monthly calculation remains blocked until climate/solar datasets and lookup keys are extracted into reviewed registries. Certificate/classification and reference-building logic remain blocked until threshold/reference datasets are reviewed and represented as registries. Lighting remains blocked on SR EN 15193-1 dependencies that are referenced but not locally extracted.
+Official-like monthly calculation remains blocked until climate/solar datasets and lookup keys are extracted into reviewed registries. Certificate/classification and reference-building logic remain blocked until utility-inclusion, optional-threshold recalculation and reference-building workflows are extracted and implemented with reviewed inputs. Lighting remains blocked on SR EN 15193-1 dependencies that are referenced but not locally extracted.
 
 ## Implementation readiness summary
 
@@ -49,7 +49,7 @@ Official-like monthly calculation remains blocked until climate/solar datasets a
 - Climate dataset: monthly exterior temperature, annual exterior temperature, solar irradiation and sky/longwave terms are blocked.
 - Lighting dataset/formulas: SR EN 15193-1 dependencies are referenced but not locally extracted.
 - Reference building datasets: reference envelope/system/ventilation/lighting/renewable parameters are only partially indexed.
-- Class threshold datasets: tables 5.7-5.14 are indexed and must become reviewed registries.
+- Class threshold datasets: tables 5.7-5.14 now have a reviewed numeric registry; class assignment and certificate workflow remain blocked.
 - Economic audit formulas: relations (6.1), (6.3), (6.4) remain visually blocked.
 
 ## Module status matrix
@@ -65,13 +65,13 @@ Official-like monthly calculation remains blocked until climate/solar datasets a
 | 06 | `06_ventilation_and_infiltration.md` | extracted | ready_for_isolated_formula_implementation | airflow/bve/fve/rho/ca, monthly climate values | climate source for monthly transfer | 0.34 helper is derived, not official numbered formula. |
 | 07 | `07_monthly_heating_cooling_demand.md` | partial_needs_verification | ready_for_isolated_formula_implementation | Qtr/Qve/Qint/Qsol/utilization factors | full monthly inputs and climate/gains datasets | No HDD fallback. |
 | 08 | `08_internal_and_solar_gains.md` | partial_needs_external_data | ready_for_dataset_registry_later | internal gains data, solar data, shading/orientation | climate/solar annex missing | Formulas extracted; default mode blocked by data. |
-| 09 | `09_dhw_systems.md` | extracted | ready_for_isolated_formula_implementation | DHW volume, temperatures, pipe/system data, Tabel 3.3.1 | non-residential table values indexed, not copied | 3.188-3.224 extracted. |
+| 09 | `09_dhw_systems.md` | extracted | ready_for_isolated_formula_implementation | DHW volume, temperatures, pipe/system data, Tabel 3.3.1 | broader DHW final-energy service/system inputs, annual DHW distribution-loss energy inputs, and DHW storage/generation/final-energy inputs | 3.188-3.224 extracted; Tabel 3.3.1 numeric registry created; useful-demand helper created for 3.188-3.197; distribution component helper created for 3.200-3.204; `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION` validates the Anexa B school useful-demand service-unit chain; `FIXTURE_011_DHW_FINAL_ENERGY_DISPLAYED_SUBTOTAL` validates page 525 final-energy subtotal as display-only. |
 | 10 | `10_lighting.md` | blocked_missing_lighting_tables | blocked_missing_external_standard | SR EN 15193-1 and lighting tables | formulas/tables not locally extracted | Lighting cannot be default-calculated. |
 | 11 | `11_cooling_ventilation_systems.md` | partial_needs_verification | partial_requires_visual_verification | useful cooling, EER/SEER/COP, fan/AHU data | several AHU/fan formulas visually unclear | Module 06 is heat transfer, not system final energy. |
 | 12 | `12_renewables.md` | partial_needs_verification | ready_for_dataset_registry_later | renewable system data, climate/solar data, factor tables | Chapter 4 system methods partly indexed/blocked | Export/RER formulas are clearer than production models. |
-| 13 | `13_final_primary_co2_rer.md` | partial_factor_tables_indexed | ready_for_dataset_registry_later | final energy by carrier/service, factors 5.17/5.18 | factor values indexed, not copied | Primary/CO2 calculators need factor registries. |
+| 13 | `13_final_primary_co2_rer.md` | partial_factor_tables_indexed | ready_for_dataset_registry_later | final energy by carrier/service, factors 5.17/5.18, explicit RER inputs | general RER perimeter and renewable/export context | Primary/CO2 factor registries exist and Fixtures 007/008 validate them; Fixture 012 validates only Anexa B displayed RER arithmetic. |
 | 14 | `14_reference_building.md` | partial_needs_verification | partial_requires_visual_verification | real geometry, reference parameter tables, climate/factors | reference datasets incomplete | Do not build ReferenceBuildingBuilder yet. |
-| 15 | `15_energy_classes_and_certificate.md` | partial_needs_verification | ready_for_dataset_registry_later | class tables 5.7-5.14, certificate indicators | threshold tables indexed, not registries | No official certificate claim. |
+| 15 | `15_energy_classes_and_certificate.md` | partial_class_interval_helper_created | ready_for_explicit_interval_lookup | class tables 5.7-5.14, certificate indicators | Tabel 5.6 utility inclusion, optional-utility recalculation, reference-building/CPE workflow | Tabel 5.7-5.14 numeric thresholds are in `mc001EnergyClassThresholds.mjs`; `energyClassAssignment.mjs` handles explicit interval lookup only. No official certificate claim and no certificate workflow added. |
 | 16 | `16_audit_energy_measures.md` | partial_needs_verification | partial_requires_visual_verification | before/after indicators, costs, energy prices | economic formulas 6.1/6.3/6.4 visually blocked | Recommendations require recalculation, not generic text. |
 | 17 | `17_climate_annex.md` | blocked_missing_climate_dataset | blocked_missing_climate_dataset | MC001 climate/solar datasets | exact local tables not found | Explicit climate inputs may be non-default only with warnings. |
 | 18 | `18_examples_and_breviars.md` | partial_index_only | manual_validation_only | visual cleanup of example tables | examples are partial/visually noisy | Do not automate as fixtures yet. |
@@ -111,13 +111,14 @@ Official-like monthly calculation remains blocked until climate/solar datasets a
 | `MC001_SOLAR_GAINS_OPAQUE` | 08 | 2.7.3 | opaque solar gains | QsolOpaque | kWh | extracted | true | opaque area, absorptance, U, Rse, irradiation | climate/solar missing status | Opaque credit needs full inputs. |
 | `MC001_3_188_DHW_USEFUL_ENERGY` | 09 | 3.3.6, rel. (3.188) | DHW useful energy | QWnd | kWh/timestep | extracted | true | Vt, cw, rho, hot/cold temp | missing DHW volume/temp | Unit conversion must be explicit. |
 | `MC001_3_189_DHW_DAILY_VOLUME_RESIDENTIAL` | 09 | 3.3.6.1, rel. (3.189) | residential daily DHW volume | VWDay | l/day | extracted | true | VWPDay, nP | missing occupants/use data | Residential path. |
-| `MC001_3_190_DHW_DAILY_VOLUME_NON_RESIDENTIAL` | 09 | 3.3.6.1, rel. (3.190) | non-residential daily DHW volume | VWDay | l/day | extracted | true | VWFDay, f | missing Tabel 3.3.1 value | Table indexed, values not copied. |
+| `MC001_3_190_DHW_DAILY_VOLUME_NON_RESIDENTIAL` | 09 | 3.3.6.1, rel. (3.190) | non-residential daily DHW volume | VWDay | l/day | extracted | true | VWFDay, f | missing explicit destination/unit count or missing Tabel 3.3.1 entry | Tabel 3.3.1 numeric values are available in the reviewed dataset registry. |
 | `MC001_3_191_DHW_VOLUME_TEMPERATURE_CORRECTION` | 09 | 3.3.6.1, rel. (3.191) | DHW volume temp correction | VWFDayCorrected | l/unit.day | extracted | true | norm volume, temps | denominator zero/missing temps | Uses documented temperature symbols. |
 | `MC001_3_192_NP_EQ_MAX_SINGLE_FAMILY` | 09 | 3.3.6.1, rel. (3.192) | max equivalent consumers single-family | nPEqMax | - | extracted | true | Ah | missing area | Piecewise. |
 | `MC001_3_193_NP_EQ_SINGLE_FAMILY` | 09 | 3.3.6.1, rel. (3.193) | equivalent consumers single-family | nPEq | - | extracted | true | nPEqMax | missing nPEqMax | Piecewise. |
 | `MC001_3_194_NP_EQ_MAX_APARTMENT` | 09 | 3.3.6.1, rel. (3.194) | max equivalent consumers apartment | nPEqMax | - | extracted | true | Ah | missing area | Piecewise. |
 | `MC001_3_195_NP_EQ_APARTMENT` | 09 | 3.3.6.1, rel. (3.195) | equivalent consumers apartment | nPEq | - | extracted | true | nPEqMax | missing nPEqMax | Piecewise. |
 | `MC001_3_196_DHW_SPECIFIC_VOLUME_RESIDENTIAL` | 09 | 3.3.6.1, rel. (3.196) | residential specific DHW volume | VWPDay | l/(person eq.day) | extracted | true | x, y, Ah, nPEq | missing nPEq | Uses MC001 x/y coefficients. |
+| `MC001_3_197_DHW_LOSS_WASTE_VOLUME` | 09 | 3.3.6.1, rel. (3.197) | DHW loss/waste volume penalty | VWDayTotal | l/day | extracted | true | base daily volume, f1, f2 | missing penalty factors | Fixture 010 validates the Anexa B school path with explicit `f1` and `f2`; no final-energy loss model is created. |
 | `MC001_3_200_DHW_MEAN_DISTRIBUTION_TEMPERATURE` | 09 | 3.3.7.2, rel. (3.200) | mean distribution temperature | thetaWMean | C | extracted | true | thetaW, deltaThetaW | missing temp difference | First distribution formula. |
 | `MC001_3_201_DHW_LINEAR_TRANSMITTANCE_INSULATED_PIPE` | 09 | 3.3.7.2, rel. (3.201) | insulated pipe linear transmittance | psiW | W/(mK) | extracted | true | pipe/insulation geometry/material | missing pipe data | Registry may need material/pipe properties. |
 | `MC001_3_202_DHW_LINEAR_TRANSMITTANCE_BURIED_PIPE` | 09 | 3.3.7.2, rel. (3.202) | buried pipe linear transmittance | psiW | W/(mK) | extracted | true | buried pipe data | missing pipe/soil data | Applies where relevant. |
@@ -161,7 +162,7 @@ Official-like monthly calculation remains blocked until climate/solar datasets a
 | `MC001_5_33_EXPORTED_ELECTRICITY_USED_NON_PEC` | 12 | 5.33 | exported electricity non-PEC | EexportNonPEC | kWh | extracted | true | exported electricity | missing export split | Reporting rule. |
 | `MC001_5_34_EXPORTED_ELECTRICITY_TO_GRID` | 12 | 5.34 | exported to grid | Egrid | kWh | extracted | true | export split | missing export data | Reporting rule. |
 | `MC001_5_35_ANNUAL_EXPORTED_ELECTRICITY_TO_GRID` | 12 | 5.35 | annual grid export | EgridAnnual | kWh/year | extracted | true | monthly exports | missing monthly exports | Annual sum. |
-| `MC001_5_16_RENEWABLE_ENERGY_RATIO` | 12/13 | 5.16 | renewable energy ratio | RER | % or - | extracted | true | renewable/nonrenewable primary energy | missing factor data | Also indexed in 13. |
+| `MC001_5_16_RENEWABLE_ENERGY_RATIO` | 12/13 | 5.16 | renewable energy ratio | RER | % or - | extracted | true | renewable/nonrenewable primary energy and explicit RER perimeter | missing RER perimeter or missing EPren/EPtot | Also indexed in 13; Fixture 012 validates only Anexa B displayed RER arithmetic and keeps generic RER blocked. |
 | `MC001_5_1_GLOBAL_WEIGHTED_ENERGY_BALANCE` | 13 | 5.1 | weighted energy balance | weighted energy | kWh/year | extracted | true | energy carriers/services | missing final energy | Chapter 5 energy balance. |
 | `MC001_5_2_DELIVERED_WEIGHTED_ENERGY_SUM` | 13 | 5.2 | delivered weighted energy sum | weighted delivered | kWh/year | extracted | true | delivered energies/factors | missing final energy/factors | Carrier-based. |
 | `MC001_5_3_FINAL_ENERGY_BY_CARRIER_SERVICE_SUM` | 13 | 5.3 | final energy by carrier/service | Qf | kWh/year | extracted | true | service/carrier final energy | missing final energy | Service/carrier breakdown required. |
@@ -204,7 +205,7 @@ Formula registry count: 92 rows.
 | monthlySolarIrradiation | 17 | climate/solar annex/source referenced by MC001 | solar gains | kWh/m2 | locality, month, orientation, tilt | blocked_missing_dataset | false | yes | No online weather substitution. |
 | orientationTiltLookup | 17 | climate/solar annex/source referenced by MC001 | solar gains | varies | orientation, tilt | blocked_missing_dataset | false | yes | Required for transparent/opaque gains. |
 | skyRadiationOrLongwaveCorrection | 17 | climate/solar annex/source referenced by MC001 | sky/longwave correction | kWh/m2 or factor | locality, month, element data | blocked_missing_dataset | false | yes | Required for solar/sky terms. |
-| dhwSpecificConsumptionByUse | 09 | Tabel 3.3.1 | non-residential DHW volume | l/unit.day at 60C | building use/destination | metadata_registry_created_values_missing | false for numeric lookup | yes | Registry file: `src/physics-engine/datasets/mc001DhwDemandTable3_3_1.mjs`; values were not available in extraction, so no DHW calculator added. |
+| dhwSpecificConsumptionByUse | 09 | Tabel 3.3.1 | non-residential DHW volume | l/unit.day at 60C | building use/destination | reviewed_numeric_values_extracted | true for dataset lookup | yes | Registry file: `src/physics-engine/datasets/mc001DhwDemandTable3_3_1.mjs`; 49 numeric entries extracted from pages 256-257, with residential rows 1-2 blocked as formula references. |
 | dhwTemperatureDefaults | 09 | 3.3.5 | DHW temperatures | C | temperature role | extracted | true | yes | Includes 10C cold, 60C distribution/storage, 45C draw recommended. |
 | coolingSystemPerformanceTables | 11 | Chapter 3 cooling/system sections | EER/SEER/COP/losses | mixed | system type, component | needs_source_table/needs_visual_verification | false | yes | No invented EER/SEER/COP. |
 | ahuFanAuxiliaryData | 11 | Chapter 3 AHU/fan sections | fan/AHU energy | mixed | AHU/fan type, airflow, pressure | needs_visual_verification | false | yes | Several formula groups blocked. |
@@ -215,7 +216,7 @@ Formula registry count: 92 rows.
 | co2EmissionFactors | 13 | Tabel 5.18 | CO2 conversion | kgCO2/kWh | carrier | reviewed_dataset_registry_created | true for lookup | yes | Registry file: `src/physics-engine/datasets/mc001PrimaryEnergyAndCO2Factors.mjs`; no CO2 calculator added and no production calculation changed. |
 | refrigerantGwpTable | 13 | Tabel 5.19 | refrigerant emissions context | mixed | refrigerant | indexed_table | true after registry | yes | Not needed for simple carrier CO2. |
 | refrigerantLeakageTable | 13 | Tabel 5.20 | refrigerant emissions context | mixed | system/refrigerant | indexed_table | true after registry | yes | Use only when cooling refrigerant modeled. |
-| energyClassTables | 15 | Tabele 5.7-5.14 | class thresholds | kWh/m2.year, kgCO2/m2.year/context | building category, utility/service | metadata_registry_created_values_missing | false for numeric threshold lookup | yes | Registry file: `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs`; values were not available in extraction, so no energy class calculator added. |
+| energyClassTables | 15 | Tabele 5.7-5.14 | class thresholds | kWh/m2.year, kgCO2/m2.year/context | building category, utility/service, class label | reviewed_numeric_values_extracted | true for numeric threshold lookup and explicit interval assignment | yes | Registry file: `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs`; contains 448 reviewed interval rows. `energyClassAssignment.mjs` adds explicit interval lookup only; no certificate/CPE calculation or production integration is added. |
 | certificateOutputFields | 15 | Tabel 5.15a | certificate output indicators | mixed | field/indicator | indexed_table | true after registry | yes | Output shape only, not official certificate. |
 | table5_6Context | 15 | Tabel 5.6 | certificate/class context | mixed | context/category | needs_visual_verification | false | yes | Verify before implementation. |
 | referenceBuildingParameters | 14 | Chapter 5.2 and referenced tables | reference building | mixed | building category, system/envelope parameter | partial_needs_verification | false for full builder | yes | Do not implement full builder yet. |
@@ -244,14 +245,15 @@ Table/data registry count: 33 rows.
   - calculation impact: no primary energy calculator added; no CO2 calculator added; no certificate/CPE calculation changed; no production calculation changed.
 - Tabel 3.3.1 DHW demand values:
   - registryFile: `src/physics-engine/datasets/mc001DhwDemandTable3_3_1.mjs`
-  - status: `metadata_registry_created_values_missing`
-  - implementationAllowed: false for numeric lookup
-  - calculation impact: no DHW calculator added; no production calculation changed.
+  - status: `reviewed_numeric_values_extracted`
+  - implementationAllowed: true for dataset lookup
+  - calculation impact: isolated useful-demand helper added in `src/physics-engine/dhwUsefulDemand.mjs`; no production calculation changed.
 - Tabele 5.7-5.14 energy/environmental class thresholds:
   - registryFile: `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs`
-  - status: `metadata_registry_created_values_missing`
-  - implementationAllowed: false for numeric threshold lookup
-  - calculation impact: no energy class calculator added; no certificate/CPE calculation changed; no production calculation changed.
+  - status: `reviewed_numeric_values_extracted`
+  - implementationAllowed: true for numeric threshold lookup
+  - row count: 448 interval rows across 8 source tables
+  - calculation impact: isolated explicit interval lookup helper added in `src/physics-engine/energyClassAssignment.mjs`; no certificate/CPE calculation changed; no production calculation changed.
 
 ## Isolated formula helpers
 
@@ -260,12 +262,29 @@ Table/data registry count: 33 rows.
   - uses: reviewed dataset registry `src/physics-engine/datasets/mc001PrimaryEnergyAndCO2Factors.mjs` for Tabel 5.17 and Tabel 5.18 lookups
   - scope: final energy aggregation, primary energy conversion, CO2 conversion, specific indicators per reference/useful area, and missing-input statuses
   - integration impact: no production integration; no certificate/class calculation; no CPE calculation; no app flow change
-  - remaining blockers: CPE and class calculation remain blocked until class thresholds and reference-building flows are implemented.
+  - remaining blockers: CPE/certificate class workflow remains blocked until utility-inclusion, optional-utility recalculation and reference-building flows are implemented.
+- Energy class assignment:
+  - helperFile: `src/physics-engine/energyClassAssignment.mjs`
+  - uses: reviewed dataset registry `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs` for Tabel 5.7-5.14 lookup
+  - scope: explicit source table, building category, indicator basis/key and non-negative indicator value; applies MC001 page 395 open-left/closed-right intervals
+  - integration impact: no production integration; no RER calculation; no certificate/CPE workflow; no Anexa B displayed class-label assertion
+  - remaining blockers: Tabel 5.6 utility inclusion, optional-utility threshold recalculation and reference-building/CPE workflow remain blocked.
 - Envelope requirement checks:
   - helperFile: `src/physics-engine/envelopeRequirementChecks.mjs`
   - uses: reviewed dataset registry `src/physics-engine/datasets/mc001EnvelopeThresholds.mjs` for Tabel 2.4 and Tabel 2.7 lookups
   - scope: corrected `R'` against `R'min`, corrected `U'` against `U'max`, combined checks, missing-input status, and low-confidence warning when plain `U` is compared to corrected `U'` thresholds
   - integration impact: no production integration; no U/R calculation changed; no certificate/class calculation added; no app flow change
+- DHW useful demand:
+  - helperFile: `src/physics-engine/dhwUsefulDemand.mjs`
+  - uses: reviewed dataset registry `src/physics-engine/datasets/mc001DhwDemandTable3_3_1.mjs` for optional Tabel 3.3.1 lookup
+  - scope: relations (3.188)-(3.197), including useful DHW energy, residential/non-residential daily volume, temperature correction, residential equivalent consumers, residential specific daily demand, and loss/waste volume from explicit penalty factors
+  - integration impact: no production integration; no final DHW energy, system loss, certificate/class, or CPE calculation added
+  - remaining blockers: broader Anexa B DHW service rows, annual distribution/storage/generation inputs, and final-energy conversion remain blocked.
+- DHW distribution components:
+  - helperFile: `src/physics-engine/dhwDistributionLosses.mjs`
+  - scope: relations (3.200)-(3.204), including mean DHW distribution temperature and pipe linear transmittance component formulas
+  - integration impact: no production integration; no annual DHW distribution-loss energy, recovery, auxiliary, storage, generation, final-energy, certificate/class, or CPE calculation added
+  - remaining blockers: Anexa 3.3.B annual distribution-loss energy rows need the `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` blockers resolved: effective length for `QW,dis,ls`, Wh/kWh worked-example inconsistency for `QW,dis,stub`, and relation (3.207) visual formula review for `QW,dis,nom`; DHW final-energy conversion remains blocked.
 
 ## Status vocabulary
 
@@ -293,7 +312,7 @@ Table/data registry count: 33 rows.
 | `cannot_calculate_primary_or_co2_missing_final_energy` | 13 | missing final energy by service/carrier | block primary/CO2 | Useful demand is not final energy. |
 | `cannot_calculate_primary_or_co2_missing_energy_factor` | 13, 14 | missing primary/CO2 factor value | block factor conversion | No invented carrier factors. |
 | `cannot_calculate_specific_indicator_missing_reference_area` | 13 | missing denominator area | block specific indicator | Area must be explicit. |
-| `cannot_calculate_energy_class_missing_threshold_table` | 15 | missing class table/threshold | block class assignment | No invented classes. |
+| `cannot_calculate_energy_class_missing_threshold_table` | 15 | missing class table/threshold row for the requested category/indicator | block class assignment | No invented classes; reviewed Tabel 5.7-5.14 values are available but the requested lookup can still be missing. |
 | `cannot_calculate_certificate_indicators_missing_inputs` | 15 | missing primary/CO2/final indicators | block certificate indicator calculation | Non-official indicators only. |
 | `cannot_calculate_cpe_missing_reference_building` | 15 | reference comparison required but missing | block CPE comparison | Needs module 14. |
 | `cannot_validate_envelope_requirement_missing_table` | 04 | missing threshold table/lookup | block envelope validation | Do not pass/fail silently. |
@@ -302,6 +321,7 @@ Table/data registry count: 33 rows.
 | `cannot_calculate_lighting_missing_lighting_data` | 10 | missing lighting lookup tables | block lighting calculation | External standard dependency. |
 | `cannot_calculate_lighting_missing_installed_power` | 10 | installed power absent and no valid default | block lighting calculation | No area-only default. |
 | `cannot_calculate_lighting_missing_schedule` | 10 | schedule/operating hours missing | block lighting calculation | No invented hours. |
+| `cannot_calculate_dhw_useful_demand_missing_table_3_3_1_entry` | 09 | requested Tabel 3.3.1 id is not present in the reviewed DHW demand registry | block table-backed DHW daily-volume calculation | No invented building-use value. |
 | `cannot_calculate_cooling_final_energy_missing_cooling_demand` | 11 | missing useful cooling demand | block final cooling energy | Needs module 07. |
 | `cannot_calculate_cooling_final_energy_missing_system_performance` | 11 | missing EER/SEER/COP/losses | block final cooling energy | No invented performance. |
 | `cannot_calculate_ventilation_auxiliary_energy_missing_fan_data` | 11 | missing fan/AHU data | block auxiliary energy | Fan formulas partly blocked. |
@@ -312,7 +332,7 @@ Table/data registry count: 33 rows.
 | `climate_source_missing_explicit_values_used` | 17 | explicit climate values supplied without official dataset | calculate only in explicit-input mode with warning | Not official MC001 default mode. |
 | `manual_validation_reference_only` | 18 | partial/unclean example data | do not assert exact automated results | Manual validation only. |
 
-Missing-input/status registry count: 23 rows.
+Missing-input/status registry count: 24 rows.
 
 ## Implementation priority
 
@@ -320,7 +340,7 @@ Missing-input/status registry count: 23 rows.
 2. Dataset registries needed before official-like monthly calculations.
 3. Climate dataset blocker.
 4. Factor tables blocker.
-5. Certificate class threshold blocker.
+5. Certificate utility-inclusion/recalculation and reference-workflow blocker.
 6. Lighting external standard blocker.
 7. Audit economic formula blocker.
 
@@ -330,8 +350,8 @@ Isolated Physics Engine helper consistency pass completed:
 
 - No production integration was added.
 - No `src/physics-engine/index.mjs` export change was made.
-- No certificate, CPE, or energy-class calculation was added.
-- Remaining blockers are unchanged: climate dataset, DHW Tabel 3.3.1 numeric values, class thresholds 5.7-5.14 numeric values, and lighting external standard data.
+- No certificate or CPE calculation was added.
+- Remaining blockers include climate dataset, cleaned broader DHW service inputs and DHW final-energy system inputs, certificate utility-inclusion/recalculation/reference workflows, and lighting external standard data. DHW Tabel 3.3.1 numeric values are extracted into a reviewed dataset registry, useful-demand formulas (3.188)-(3.197) have an isolated helper and Fixture 010 validation, DHW distribution component formulas (3.200)-(3.204) have an isolated helper, Fixture 011 keeps the Anexa B page 525 final-energy subtotal display-only, and Tabel 5.7-5.14 class thresholds are available as a reviewed numeric lookup registry with Fixture 013 interval-assignment validation.
 
 | check | result | action |
 | --- | --- | --- |
@@ -363,7 +383,6 @@ Isolated Physics Engine helper consistency pass completed:
 - `08_internal_and_solar_gains`
 - `12_renewables`
 - `13_final_primary_co2_rer`
-- `15_energy_classes_and_certificate`
 - parts of `09_dhw_systems`
 - parts of `14_reference_building`
 
@@ -378,19 +397,13 @@ Isolated Physics Engine helper consistency pass completed:
 
 ## Recommended next technical step
 
-Create reviewed dataset registries for extracted tables before adding more calculators, starting with:
-
-1. Material correction coefficients Tabel 2.2.
-2. Envelope thresholds Tabel 2.4 and 2.7.
-3. Primary/CO2 factor tables 5.17 and 5.18.
-4. Certificate class tables 5.7-5.14.
-5. DHW demand table 3.3.1.
+Continue with narrow explicit-input validation targets. The next class-related target should investigate Tabel 5.6 utility inclusion and optional-utility threshold recalculation before asserting Anexa B displayed class labels. Do not promote Fixture 012 into a general RER or certificate workflow. DHW storage/generation/auxiliary components should be investigated one at a time only when every required source input is visible, and Anexa 3.3.B annual DHW distribution-loss energy should wait until `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` blockers are resolved.
 
 Do not add UX/product features as part of this step.
 
-## Do not implement yet
+## Implementation boundary
 
-- No calculators created.
 - No production flow changed.
 - No UI changed.
-- No tests added.
+- No additional certificate/CPE/orchestrator calculation added.
+- Isolated tests exist for the useful-demand helper, Fixture 010, and reviewed datasets; no app behavior changed.

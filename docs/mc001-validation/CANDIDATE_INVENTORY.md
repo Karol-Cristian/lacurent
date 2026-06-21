@@ -1,0 +1,124 @@
+# MC001 Validation Candidate Inventory
+
+Source files inspected:
+
+- `docs/mc001-extraction/18_examples_and_breviars.md`
+- `docs/mc001-extraction/19_extraction_registry.md`
+
+Scope: MC001 example and breviar validation only. No internal demo-house fixture, no product flow, no UI, no worker, no schema, and no production integration is used by this pack.
+
+## Summary
+
+| Finding | Count |
+| --- | ---: |
+| MC001 examples indexed | 13 |
+| Full examples executable now | 0 |
+| Reviewed executable fixtures | 13 |
+| Partial/manual-reference examples | 9 |
+| Text-only/non-numeric examples | 4 |
+| Blocked or non-executable full examples | 13 |
+
+No indexed Anexa A, Anexa B, Anexa 6.1, Anexa 6.2, or Anexa 6.3 example is fully executable end-to-end.
+
+Thirteen narrowed, visually reviewed executable fixtures now exist:
+
+| fixtureId | Source candidate | Executable scope | Modules validated | Remaining limitation |
+| --- | --- | --- | --- | --- |
+| `FIXTURE_001_ENVELOPE` | `MC001_EX_B_GEOMETRY_ENVELOPE_TABLES` | external opaque wall before renovation | `materialsUValues.mjs`, `transmissionCoefficients.mjs` | broader geometry/envelope and bridge tables remain partial |
+| `FIXTURE_002_ENVELOPE_BRIDGES` | `MC001_EX_B_THERMAL_BRIDGE_TABLES` | complete external-wall Tabel 2.3 bridge rows | `transmissionCoefficients.mjs` | rows with blank length cells and L2D psi derivation remain blocked |
+| `FIXTURE_003_ENVELOPE_REMAINING_ELEMENTS` | `MC001_EX_B_GEOMETRY_ENVELOPE_TABLES`, `MC001_EX_B_THERMAL_BRIDGE_TABLES` | terrace, slab-on-ground, and floor-over-basement R/U values plus complete bridge groups | `materialsUValues.mjs`, `transmissionCoefficients.mjs` | floor-over-basement transmission is source-blocked; slab row is Hg, not Hd; L2D psi derivation remains blocked |
+| `FIXTURE_004_TRANSMISSION_LOSS_TABLE_TOTALS` | `MC001_EX_B_HEATING_MONTHLY_GAINS` | page 520 Hd/Hg totals and page 521 monthly Htr component sums | `transmissionCoefficients.mjs` | Hve, H final, ground derivation, and monthly heat-transfer energy remain blocked |
+| `FIXTURE_005_VENTILATION_HVE_SUMMARY` | `MC001_EX_B_HEATING_MONTHLY_GAINS` | page 519-522 natural ventilation Hve and monthly Qve summary rows | `ventilationCoefficients.mjs` | ACH airflow, unconditioned-zone bve, independent rhoA*ca constants, fan/AHU energy, and full balance rows remain blocked |
+| `FIXTURE_006_HEATING_NEED_TABLE_SUMMARY` | `MC001_EX_B_HEATING_MONTHLY_GAINS` | page 522 monthly heating-need table summary | `monthlyBalance.mjs` | Apr/Sep/Oct Figure 2.18 source conflict, exact eta values, gamma derivation, and full source chain remain blocked |
+| `FIXTURE_007_FINAL_PRIMARY_CO2_SUMMARY` | `MC001_EX_B_FINAL_PRIMARY_CO2_CPE` | page 527/page 533 final-primary-CO2 table-derived summary | `finalPrimaryCo2Indicators.mjs` | page 523 heating prose typo, page 527 electric CO2 worked-example factor inconsistency, general RER perimeter and class-assignment outputs remain blocked; displayed RER arithmetic is covered by Fixture 012 |
+| `FIXTURE_008_SERVICE_FINAL_PRIMARY_ROWS` | `MC001_EX_B_FINAL_PRIMARY_CO2_CPE` | explicit service final-energy rows and Tabel 5.17 primary-energy rows | `finalPrimaryCo2Indicators.mjs` | CO2 display rows, classes, certificate output, and broader unreviewed service rows remain blocked; displayed RER arithmetic is covered by Fixture 012 |
+| `FIXTURE_009_DHW_DISTRIBUTION_LOSS_COMPONENT` | `MC001_ANEXA_3_3_B_DHW_DISTRIBUTION_COMPONENTS` | DHW distribution mean-temperature and pipe transmittance component rows | `dhwDistributionLosses.mjs` | annual distribution-loss energy remains blocked by `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS`; recovery, auxiliary, storage, generation, and final-energy rows remain blocked |
+| `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION` | `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | Anexa B school useful DHW demand service-unit volume and monthly/annual `QW,nd` | `dhwUsefulDemand.mjs` | distribution, storage, generation, auxiliary, and final-energy rows remain blocked |
+| `FIXTURE_011_DHW_FINAL_ENERGY_DISPLAYED_SUBTOTAL` | `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | Anexa B page 525 displayed DHW final-energy subtotal arithmetic | none | underlying distribution, storage, generation, recovered-loss, auxiliary, and full final-energy formulas remain blocked |
+| `FIXTURE_012_RER_DISPLAY_RECONCILIATION` | `MC001_EX_B_FINAL_PRIMARY_CO2_CPE` | Anexa B page 527/page 540 displayed RER arithmetic | none | general RER methodology, exact primary split as pass criterion, class assignment, CO2 display conflict, and certificate workflow remain blocked |
+| `FIXTURE_013_ENERGY_CLASS_ASSIGNMENT` | `MC001_TABLES_5_7_5_14_ENERGY_CLASSES` | Explicit Tabel 5.7-5.14 class interval assignment | `energyClassAssignment.mjs` | Anexa B displayed class labels, Tabel 5.6 utility inclusion, optional-utility recalculation, reference-building class assignment, and certificate workflow remain blocked |
+
+## Enough Numeric Information For Automated Validation
+
+Only narrowed fixtures:
+
+- `FIXTURE_001_ENVELOPE`, as a narrowed external-wall subset of `MC001_EX_B_GEOMETRY_ENVELOPE_TABLES`.
+- `FIXTURE_002_ENVELOPE_BRIDGES`, as complete external-wall bridge rows from `MC001_EX_B_THERMAL_BRIDGE_TABLES`.
+- `FIXTURE_003_ENVELOPE_REMAINING_ELEMENTS`, as remaining reviewed terrace, slab-on-ground, and floor-over-basement rows from Anexa B.
+- `FIXTURE_004_TRANSMISSION_LOSS_TABLE_TOTALS`, as reviewed page 520-521 transmission-loss summary totals from Anexa B.
+- `FIXTURE_005_VENTILATION_HVE_SUMMARY`, as reviewed page 519-522 natural ventilation Hve and monthly Qve summary rows from Anexa B.
+- `FIXTURE_006_HEATING_NEED_TABLE_SUMMARY`, as reviewed page 522 monthly heating-need balance rows from Anexa B.
+- `FIXTURE_007_FINAL_PRIMARY_CO2_SUMMARY`, as reviewed Anexa B final/primary/CO2 service rows with Tabel 5.17 and Tabel 5.18 factors.
+- `FIXTURE_008_SERVICE_FINAL_PRIMARY_ROWS`, as reviewed Anexa B service final-primary rows using Tabel 5.17 factors only.
+- `FIXTURE_009_DHW_DISTRIBUTION_LOSS_COMPONENT`, as reviewed Anexa 3.3.B DHW distribution component rows with complete temperature, geometry, material, and displayed component-output values.
+- `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION`, as reviewed Anexa B school useful-demand rows with complete Tabel 3.3.1 value, service count, loss/waste volume, monthly day counts, and displayed monthly/annual useful-energy values.
+- `FIXTURE_011_DHW_FINAL_ENERGY_DISPLAYED_SUBTOTAL`, as reviewed Anexa B page 525 displayed DHW subtotal arithmetic.
+- `FIXTURE_012_RER_DISPLAY_RECONCILIATION`, as reviewed Anexa B page 527/page 540 displayed RER arithmetic.
+- `FIXTURE_013_ENERGY_CLASS_ASSIGNMENT`, as reviewed MC001 page 395 and Tabel 5.7/5.10/5.14 class interval assignment.
+
+Reason: the reviewed wall and remaining-element subsets contain material layers, lambda values, correction coefficients, thicknesses, R/R' outputs, and limited transmission outputs. The reviewed bridge subsets contain rows with complete `psi`, multiplicity, length, and expected contribution. The reviewed transmission-loss summary contains displayed `Hd`, `Hg`, `Hu/Ha` zero rows, and monthly `Htr` component sums. The reviewed ventilation summary contains explicit airflow, exterior-air `bve`, displayed `Hve`, monthly temperatures, monthly hours, and displayed `Qve` rows. The reviewed heating-need summary contains displayed adjusted `QH;tr`, `QH;ve`, `QH;ht`, internal/solar gains, `QH;gn`, `gammaH`, `etaH;gn`, monthly `QH;nd`, and annual `QH;nd`. The reviewed final/primary/CO2 summary contains explicit service final-energy rows, reference area, Tabel 5.17 factors, and Tabel 5.18 factors. The reviewed service final-primary fixture separately asserts service-level final energy, renewable primary, non-renewable primary, total primary, and specific primary indicators from Tabel 5.17 only. The DHW Tabel 3.3.1 registry now contains reviewed numeric values, the isolated useful-demand formulas (3.188)-(3.197) have helper coverage with Anexa 3.3.A apartment source validation and Fixture 010 Anexa B school useful-demand validation, the DHW distribution component formulas (3.200)-(3.204) have helper coverage with Anexa 3.3.B component validation, Fixture 011 validates the Anexa B page 525 DHW final-energy displayed subtotal arithmetic, and Fixture 013 validates explicit class interval assignment from the Tabel 5.7-5.14 class-threshold registry. No full indexed DHW final-energy formula example is executable because annual distribution-loss energy inputs and final-energy system inputs are still missing. No Anexa B class-label fixture is executable yet because displayed labels still need Tabel 5.6 utility inclusion, optional-utility recalculation context, and certificate/reference-building boundaries. The full examples registry still marks the broader example package as `partial_index_only` and `manual_validation_only`; dense breviar tables still need visual cleanup and climate/solar datasets are missing for the full chain.
+
+## Partial Candidates
+
+| exampleId | Source | Useful validation target after cleanup | Current blocker |
+| --- | --- | --- | --- |
+| `MC001_EX_A_CPE_SINGLE_FAMILY_CERTIFICATE` | Anexa A certificate example | Primary energy, CO2, certificate output-shape checks | `blocked_missing_inputs` |
+| `MC001_EX_B_AUDIT_BREVIAR_SCHOOL_OVERVIEW` | Anexa B audit breviar | Full-chain audit trace after table cleanup | `blocked_missing_inputs` |
+| `MC001_EX_B_GEOMETRY_ENVELOPE_TABLES` | Anexa B section 2.1 and related tables | U values, envelope R/R', transmission inputs | `partially_executable_fixtures_001_003`; broader table cleanup still blocked |
+| `MC001_EX_B_THERMAL_BRIDGE_TABLES` | Anexa B thermal bridge tables | Transmission with bridges | `partially_executable_fixtures_002_003`; rows with missing lengths and L2D remain blocked |
+| `MC001_EX_B_HEATING_MONTHLY_GAINS` | Anexa B heating calculation section | Transmission, ventilation, monthly transfer, monthly balance | `partially_executable_fixtures_004_005_006`; full monthly balance chain, independent ventilation constants, Apr/Sep/Oct source-conflict QHnd rows, and climate-dependent transfer chain still blocked |
+| `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | Anexa B sections 2.4-2.6 | Ventilation outputs, DHW service output trace, primary/CO2 service aggregation | `blocked_missing_inputs` |
+| `MC001_EX_B_RENEWABLES_SOLAR_PRODUCTION` | Anexa B renewable production table | Monthly transfer dependencies and renewable contribution context | `blocked_missing_climate_dataset` |
+| `MC001_EX_B_FINAL_PRIMARY_CO2_CPE` | Anexa B sections 2.8 and 3 | Primary energy, specific indicators, CO2, RER display, class labels | `partially_executable_fixtures_007_008_012_013`; page 523 heating prose typo, page 527 electric CO2 worked-example factor inconsistency, general RER and Anexa B class labels still blocked; page 527/page 540 displayed RER arithmetic is covered by Fixture 012 and explicit class interval assignment is covered by Fixture 013 |
+| `MC001_EX_B_RENOVATION_PACKAGES_ECONOMIC` | Anexa B section 5 and tables 5.6-5.12 | Before/after primary energy and CO2 deltas | `blocked_missing_table` |
+
+## Text-Only Or Non-Numeric Candidates
+
+| exampleId | Source | Why it cannot execute |
+| --- | --- | --- |
+| `MC001_EX_6_1_ANALYSIS_SHEET_MODEL` | Anexa 6.1 | Input sheet template, no calculated numeric outputs |
+| `MC001_EX_6_2_CENTRALIZED_RESIDENTIAL_MEASURES` | Anexa 6.2 tables 6.3-6.8 | Measure catalogue, no numeric savings |
+| `MC001_EX_6_3_INDIVIDUAL_HOUSE_MEASURES` | Anexa 6.3 tables 6.9-6.13 | Measure catalogue, no numeric savings |
+| `MC001_EX_B_TECHNICAL_ANNEX_DRAWINGS` | Anexa B technical annex and Anexa 3 drawings | Source drawings/provenance, no direct calculation outputs |
+
+## Blocked By Missing Climate Tables
+
+| exampleId | Affected validation areas | Missing data |
+| --- | --- | --- |
+| `MC001_EX_B_HEATING_MONTHLY_GAINS` | monthly transfer, monthly balance, transmission/ventilation monthly losses | annual exterior temperature, solar/gain climate inputs, and broader climate-table provenance outside the reviewed page 522 rows |
+| `MC001_EX_B_RENEWABLES_SOLAR_PRODUCTION` | renewable monthly production context, solar gains context | monthly solar irradiation and orientation/tilt lookup tables |
+
+## DHW Dataset Status
+
+| exampleId | Affected validation areas | Current blocker |
+| --- | --- | --- |
+| `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | DHW useful/final/primary trace and service aggregation | Tabel 3.3.1 numeric values, useful-demand helper coverage, Fixture 010 Anexa B useful-demand validation, Anexa 3.3.B distribution component coverage, and Fixture 011 display-only final-energy subtotal validation now exist; annual DHW distribution-loss energy inputs, DHW final-energy system inputs, and lighting external-standard data remain missing |
+
+## Blocked By Missing Or Unverified Tables
+
+| exampleId | Missing or unverified table/source |
+| --- | --- |
+| `MC001_EX_B_GEOMETRY_ENVELOPE_TABLES` | cleaned geometry/envelope R/R' tables |
+| `MC001_EX_B_THERMAL_BRIDGE_TABLES` | remaining external-wall rows with blank lengths, full bridge geometry, and L2D values |
+| `MC001_EX_B_RENOVATION_PACKAGES_ECONOMIC` | visually verified economic tables and relations (6.1), (6.3), (6.4) |
+| `MC001_EX_B_RENEWABLES_SOLAR_PRODUCTION` | cleaned renewable production table and solar dataset provenance |
+
+## Validation Area Mapping
+
+| Physics Engine area | Candidate examples | Current validation status |
+| --- | --- | --- |
+| U values | `MC001_EX_B_GEOMETRY_ENVELOPE_TABLES`, `MC001_EX_A_CPE_SINGLE_FAMILY_CERTIFICATE` | `FIXTURE_001_ENVELOPE` executable for external wall; `FIXTURE_003_ENVELOPE_REMAINING_ELEMENTS` executable for terrace, slab-on-ground, and floor-over-basement; remaining examples blocked |
+| Transmission | `MC001_EX_B_GEOMETRY_ENVELOPE_TABLES`, `MC001_EX_B_THERMAL_BRIDGE_TABLES`, `MC001_EX_B_HEATING_MONTHLY_GAINS` | `FIXTURE_001_ENVELOPE` executable for corrected-U external wall path; `FIXTURE_002_ENVELOPE_BRIDGES` and `FIXTURE_003_ENVELOPE_REMAINING_ELEMENTS` executable for complete bridge rows; `FIXTURE_004_TRANSMISSION_LOSS_TABLE_TOTALS` executable for displayed Hd/Hg/Htr summary totals; full bridge geometry and climate-dependent cases blocked |
+| Ventilation | `MC001_EX_B_HEATING_MONTHLY_GAINS`, `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | `FIXTURE_005_VENTILATION_HVE_SUMMARY` executable for natural ventilation Hve/Qve summary rows; ACH, unconditioned-zone bve, independent rhoA*ca constants, and service rows remain blocked |
+| Monthly transfer | `MC001_EX_B_HEATING_MONTHLY_GAINS` | blocked by missing climate dataset |
+| Monthly balance | `MC001_EX_B_HEATING_MONTHLY_GAINS` | `FIXTURE_006_HEATING_NEED_TABLE_SUMMARY` executable for adjusted QHht/QHgn rows, helper-compatible QHnd rows, annual QHnd sum, and diagnostic Apr/Sep/Oct source-conflict reconstruction; Apr/Sep/Oct remain blocked for strict helper assertion |
+| DHW useful demand | `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION` executable for school service-unit volume, loss/waste volume, monthly `QW,nd`, and annual `QW,nd`; full final-energy chain remains blocked |
+| DHW displayed subtotal | `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | `FIXTURE_011_DHW_FINAL_ENERGY_DISPLAYED_SUBTOTAL` executable for Anexa B page 525 display arithmetic only; full final-energy chain remains blocked |
+| DHW distribution components | `MC001_ANEXA_3_3_B_DHW_DISTRIBUTION_COMPONENTS`, `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS` | `FIXTURE_009_DHW_DISTRIBUTION_LOSS_COMPONENT` executable for mean-temperature and pipe-transmittance component rows; annual distribution-loss energy remains blocked by missing effective length, a Wh/kWh worked-example inconsistency, and relation (3.207) visual formula review; recovery, auxiliary, storage, generation, and final energy remain blocked |
+| Primary energy | `MC001_EX_A_CPE_SINGLE_FAMILY_CERTIFICATE`, `MC001_EX_B_DHW_LIGHTING_VENTILATION_OUTPUTS`, `MC001_EX_B_FINAL_PRIMARY_CO2_CPE`, `MC001_EX_B_RENOVATION_PACKAGES_ECONOMIC` | `FIXTURE_007_FINAL_PRIMARY_CO2_SUMMARY` executable for Anexa B table-derived service rows; `FIXTURE_008_SERVICE_FINAL_PRIMARY_ROWS` executable for service-level final-primary rows using Tabel 5.17 only; remaining examples blocked |
+| CO2 | `MC001_EX_A_CPE_SINGLE_FAMILY_CERTIFICATE`, `MC001_EX_B_FINAL_PRIMARY_CO2_CPE`, `MC001_EX_B_RENOVATION_PACKAGES_ECONOMIC` | `FIXTURE_007_FINAL_PRIMARY_CO2_SUMMARY` executable for Tabel 5.18 factor path; page 527 electric CO2 worked-example factor inconsistency and remaining examples blocked |
+| RER / certificate indicators | `MC001_EX_B_FINAL_PRIMARY_CO2_CPE`, `MC001_EX_A_CPE_SINGLE_FAMILY_CERTIFICATE` | `FIXTURE_012_RER_DISPLAY_RECONCILIATION` validates Anexa B page 527/page 540 displayed RER arithmetic only; `FIXTURE_013_ENERGY_CLASS_ASSIGNMENT` validates explicit Tabel 5.7-5.14 class interval assignment; specific primary and normative specific CO2 are already covered by Fixture 007; general RER, Anexa B class labels and certificate workflow remain blocked |
+
+## Conclusion
+
+The current extracted MC001 examples remain valuable as manual validation references and source-data cleanup targets. `FIXTURE_001_ENVELOPE`, `FIXTURE_002_ENVELOPE_BRIDGES`, `FIXTURE_003_ENVELOPE_REMAINING_ELEMENTS`, `FIXTURE_004_TRANSMISSION_LOSS_TABLE_TOTALS`, `FIXTURE_005_VENTILATION_HVE_SUMMARY`, `FIXTURE_006_HEATING_NEED_TABLE_SUMMARY`, `FIXTURE_007_FINAL_PRIMARY_CO2_SUMMARY`, `FIXTURE_008_SERVICE_FINAL_PRIMARY_ROWS`, `FIXTURE_009_DHW_DISTRIBUTION_LOSS_COMPONENT`, `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION`, `FIXTURE_011_DHW_FINAL_ENERGY_DISPLAYED_SUBTOTAL`, `FIXTURE_012_RER_DISPLAY_RECONCILIATION`, and `FIXTURE_013_ENERGY_CLASS_ASSIGNMENT` are executable narrowed fixtures. DHW useful demand has isolated helper coverage, Anexa 3.3.A apartment source validation, and Fixture 010 Anexa B school useful-demand validation, while DHW distribution components have Anexa 3.3.B source validation. Fixture 011 validates only display arithmetic for the Anexa B DHW final-energy subtotal; full Anexa B DHW final-energy formula validation remains blocked. Fixture 012 validates only displayed Anexa B RER arithmetic; Fixture 013 validates only explicit class interval assignment. General RER, Anexa B class labels, CO2 display conflicts, and full certificate outputs remain blocked. The broader examples remain blocked unless their inputs, units, assumptions and outputs are visually verified without invented values.

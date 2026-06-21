@@ -70,8 +70,9 @@ test("CO2 for gaz_natural uses reviewed Tabel 5.18 factor", () => {
   ]);
 
   assert.equal(result.status, "calculated");
-  assertCloseTo(result.totalCO2Kg, 20.2);
-  assert.equal(result.entries[0].sourceTable, "MC001-2022 Tabel 5.18");
+  assertCloseTo(result.totalCO2Kg, 23.634);
+  assert.equal(result.entries[0].primaryEnergySourceTable, "MC001-2022 Tabel 5.17");
+  assert.equal(result.entries[0].co2SourceTable, "MC001-2022 Tabel 5.18");
 });
 
 test("CO2 for electricitate_sen_consumata uses reviewed Tabel 5.18 factor", () => {
@@ -80,7 +81,8 @@ test("CO2 for electricitate_sen_consumata uses reviewed Tabel 5.18 factor", () =
   ]);
 
   assert.equal(result.status, "calculated");
-  assertCloseTo(result.totalCO2Kg, 10.7);
+  assertCloseTo(result.totalCO2Kg, 26.75);
+  assert.equal(result.entries[0].primaryEnergyKWh, 250);
 });
 
 test("missing primary factor returns missing energy factor status", () => {
@@ -106,7 +108,26 @@ test("missing CO2 factor returns missing energy factor status", () => {
   assert.deepEqual(result.missingFactors, [
     {
       energyCarrierKey: "electricitate_pv_eolian_onsite_nearby_exportata_sen",
-      serviceKey: null
+      serviceKey: null,
+      missingPrimaryEnergyFactor: false,
+      missingCO2EmissionFactor: true
+    }
+  ]);
+});
+
+test("missing primary factor blocks CO2 conversion because relation 5.4b uses primary energy", () => {
+  const result = calculateCO2EmissionsFromFinalEnergy([
+    { finalEnergyKWh: 100, energyCarrierKey: "antracit" }
+  ]);
+
+  assert.equal(result.status, "cannot_calculate_primary_or_co2_missing_energy_factor");
+  assert.equal(result.totalCO2Kg, null);
+  assert.deepEqual(result.missingFactors, [
+    {
+      energyCarrierKey: "antracit",
+      serviceKey: null,
+      missingPrimaryEnergyFactor: true,
+      missingCO2EmissionFactor: false
     }
   ]);
 });
@@ -140,9 +161,9 @@ test("combined summary does not calculate energy class, CPE, or certificate outp
 
   assert.equal(result.status, "calculated");
   assert.equal(result.primaryEnergy.totalPrimaryEnergyKWh, 117);
-  assertCloseTo(result.co2Emissions.totalCO2Kg, 20.2);
+  assertCloseTo(result.co2Emissions.totalCO2Kg, 23.634);
   assert.equal(result.specificPrimaryEnergy.valuePerM2, 2.34);
-  assertCloseTo(result.specificCO2.valuePerM2, 0.404);
+  assertCloseTo(result.specificCO2.valuePerM2, 0.47268);
   assert.equal("energyClass" in result, false);
   assert.equal("cpe" in result, false);
   assert.equal("certificate" in result, false);

@@ -20,13 +20,13 @@ function test(name, fn) {
   }
 }
 
-test("energy class thresholds dataset is an empty frozen array because values were not extracted", () => {
+test("energy class thresholds dataset contains reviewed numeric interval rows", () => {
   assert.equal(Object.isFrozen(energyClassThresholds), true);
-  assert.equal(energyClassThresholds.length, 0);
-  assert.equal(listEnergyClassThresholds().length, 0);
+  assert.equal(energyClassThresholds.length, 448);
+  assert.equal(listEnergyClassThresholds().length, 448);
 });
 
-test("table metadata exists for Tabel 5.7 through Tabel 5.14", () => {
+test("table metadata exists for Tabel 5.7 through Tabel 5.14 with reviewed status", () => {
   const metadata = listEnergyClassThresholdTableMetadata();
 
   assert.equal(Object.isFrozen(energyClassThresholdTableMetadata), true);
@@ -44,51 +44,149 @@ test("table metadata exists for Tabel 5.7 through Tabel 5.14", () => {
       "MC001-2022 Tabel 5.14"
     ]
   );
-});
+  assert.deepEqual(
+    metadata.map((entry) => entry.sourcePage),
+    [397, 397, 398, 398, 399, 399, 400, 400]
+  );
 
-test("metadata entries state that values are indexed only and unavailable for implementation", () => {
-  for (const entry of energyClassThresholdTableMetadata) {
+  for (const entry of metadata) {
     assert.equal(entry.sourceModule, "15_energy_classes_and_certificate");
-    assert.equal(typeof entry.titleRo, "string");
-    assert.ok(entry.titleRo.length > 0);
-    assert.equal(typeof entry.purpose, "string");
-    assert.ok(entry.purpose.length > 0);
+    assert.equal(entry.extractionStatus, "extracted_numeric_values");
+    assert.equal(entry.registryStatus, "reviewed_numeric_registry_created");
+    assert.equal(entry.implementationAllowed, true);
     assert.equal(Object.isFrozen(entry.lookupKeys), true);
-    assert.ok(entry.lookupKeys.length > 0);
-    assert.equal(entry.extractionStatus, "indexed_table");
-    assert.equal(entry.registryStatus, "metadata_registry_created_values_missing");
-    assert.equal(entry.implementationAllowed, false);
-    assert.match(entry.notes, /does not copy numeric threshold values/);
+    assert.equal(Object.isFrozen(entry.classLabels), true);
+    assert.deepEqual(entry.classLabels, ["A+", "A", "B", "C", "D", "E", "F", "G"]);
   }
 });
 
-test("lookup helpers return empty values safely when numeric thresholds are unavailable", () => {
-  assert.equal(findEnergyClassThresholdById("individual_residential_a_plus"), undefined);
-  assert.deepEqual(findEnergyClassThresholdsBySourceTable("MC001-2022 Tabel 5.7"), []);
-  assert.deepEqual(findEnergyClassThresholdsByBuildingCategory("cladiri de locuit individuale"), []);
-  assert.deepEqual(findEnergyClassThresholdsByIndicatorKey("specific_primary_energy"), []);
+test("every threshold row preserves source, category, indicator, class and interval metadata", () => {
+  const byTable = new Map();
+
+  for (const entry of energyClassThresholds) {
+    byTable.set(entry.sourceTable, (byTable.get(entry.sourceTable) ?? 0) + 1);
+
+    assert.equal(Object.isFrozen(entry), true);
+    assert.equal(entry.sourceModule, "15_energy_classes_and_certificate");
+    assert.match(entry.sourceTable, /^MC001-2022 Tabel 5\.(7|8|9|10|11|12|13|14)$/);
+    assert.ok([397, 398, 399, 400].includes(entry.sourcePage));
+    assert.ok(entry.buildingCategoryKey.length > 0);
+    assert.ok(entry.buildingCategoryRo.length > 0);
+    assert.ok(entry.indicatorKey.length > 0);
+    assert.ok(entry.indicatorRo.length > 0);
+    assert.ok(["specific_primary_energy", "specific_co2_emissions"].includes(entry.indicatorBasis));
+    assert.ok(["kWh/(m2.an)", "kgCO2/(m2.an)"].includes(entry.unit));
+    assert.ok(["A+", "A", "B", "C", "D", "E", "F", "G"].includes(entry.classLabel));
+    assert.equal(Object.isFrozen(entry.sourceThresholds), true);
+    assert.equal(entry.sourceThresholds.length, 7);
+    assert.equal(entry.extractionStatus, "extracted_numeric_values");
+    assert.equal(entry.registryStatus, "reviewed_numeric_registry_created");
+    assert.equal(entry.implementationAllowed, true);
+  }
+
+  assert.equal(byTable.size, 8);
+  for (const count of byTable.values()) {
+    assert.equal(count, 56);
+  }
 });
 
-test("no fake threshold values are present", () => {
+test("class intervals follow MC001 open-left closed-right threshold semantics", () => {
+  const aPlus = findEnergyClassThresholdById(
+    "tabel_5_7_specific_primary_energy_total_a_plus"
+  );
+  const a = findEnergyClassThresholdById("tabel_5_7_specific_primary_energy_total_a");
+  const g = findEnergyClassThresholdById("tabel_5_7_specific_primary_energy_total_g");
+
+  assert.equal(aPlus.lowerBound, null);
+  assert.equal(aPlus.upperBound, 91);
+  assert.equal(aPlus.lowerBoundOpen, false);
+  assert.equal(aPlus.upperBoundInclusive, true);
+  assert.equal(aPlus.intervalNotation, "<=91");
+
+  assert.equal(a.lowerBound, 91);
+  assert.equal(a.upperBound, 129);
+  assert.equal(a.lowerBoundOpen, true);
+  assert.equal(a.upperBoundInclusive, true);
+  assert.equal(a.intervalNotation, "(91, 129]");
+
+  assert.equal(g.lowerBound, 783);
+  assert.equal(g.upperBound, null);
+  assert.equal(g.lowerBoundOpen, true);
+  assert.equal(g.upperBoundInclusive, false);
+  assert.equal(g.intervalNotation, ">783");
+});
+
+test("selected exact threshold values match MC001 pages 397-400", () => {
+  assert.deepEqual(
+    findEnergyClassThresholdById("tabel_5_10_specific_primary_energy_total_b"),
+    {
+      ...findEnergyClassThresholdById("tabel_5_10_specific_primary_energy_total_b"),
+      lowerBound: 68,
+      upperBound: 135,
+      unit: "kWh/(m2.an)",
+      sourcePage: 398,
+      buildingCategoryKey: "education"
+    }
+  );
+
+  assert.equal(
+    findEnergyClassThresholdById("tabel_5_10_specific_primary_energy_cooling_b")
+      .upperBound,
+    13
+  );
+  assert.equal(
+    findEnergyClassThresholdById("tabel_5_10_specific_co2_emissions_total_b")
+      .upperBound,
+    23
+  );
+  assert.equal(
+    findEnergyClassThresholdById("tabel_5_12_specific_primary_energy_dhw_a").upperBound,
+    5
+  );
+  assert.equal(
+    findEnergyClassThresholdById("tabel_5_14_specific_primary_energy_total_g").lowerBound,
+    741
+  );
+  assert.equal(
+    findEnergyClassThresholdById("tabel_5_14_specific_co2_emissions_total_g").lowerBound,
+    121.7
+  );
+});
+
+test("lookup helpers return reviewed numeric threshold rows", () => {
+  assert.equal(
+    findEnergyClassThresholdById("tabel_5_7_specific_primary_energy_heating_a_plus")
+      .upperBound,
+    49
+  );
+  assert.equal(findEnergyClassThresholdsBySourceTable("MC001-2022 Tabel 5.7").length, 56);
+  assert.equal(findEnergyClassThresholdsByBuildingCategory("education").length, 56);
+  assert.equal(
+    findEnergyClassThresholdsByBuildingCategory("cladiri destinate invatamantului").length,
+    56
+  );
+  assert.equal(findEnergyClassThresholdsByIndicatorKey("specific_primary_energy").length, 384);
+  assert.equal(findEnergyClassThresholdsByIndicatorKey("specific_co2_emissions").length, 64);
+  assert.equal(findEnergyClassThresholdsByIndicatorKey("heating").length, 64);
+  assert.equal(findEnergyClassThresholdById("missing_threshold"), undefined);
+});
+
+test("dataset contains no certificate workflow or class assignment helper output", () => {
   const serialized = JSON.stringify({
     energyClassThresholds,
     energyClassThresholdTableMetadata
   });
 
-  assert.equal(energyClassThresholds.some((entry) => "lowerBound" in entry), false);
-  assert.equal(energyClassThresholds.some((entry) => "upperBound" in entry), false);
-  assert.equal(serialized.includes('"lowerBound"'), false);
-  assert.equal(serialized.includes('"upperBound"'), false);
-  assert.equal(serialized.includes('"classLabel"'), false);
+  assert.equal(serialized.includes("certificateWorkflow"), false);
+  assert.equal(serialized.includes("assignedClass"), false);
+  assert.equal(serialized.includes("calculatedClass"), false);
 });
 
 test("returned datasets and lookup lists are not mutable from outside", () => {
   const thresholdList = listEnergyClassThresholds();
   const metadataList = listEnergyClassThresholdTableMetadata();
   const bySourceTable = findEnergyClassThresholdsBySourceTable("MC001-2022 Tabel 5.7");
-  const byBuildingCategory = findEnergyClassThresholdsByBuildingCategory(
-    "cladiri de locuit individuale"
-  );
+  const byBuildingCategory = findEnergyClassThresholdsByBuildingCategory("education");
   const byIndicator = findEnergyClassThresholdsByIndicatorKey("specific_primary_energy");
 
   assert.equal(Object.isFrozen(thresholdList), true);

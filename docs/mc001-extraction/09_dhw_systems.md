@@ -11,10 +11,12 @@ MC001 sections used:
 - MC001-2022, 3.3.5 - Temperaturi specifice sistemului de apa calda de consum
 - MC001-2022, 3.3.6 - Necesarul de caldura pentru prepararea apei calde de consum furnizata utilizatorului, `QW,nd`
 - MC001-2022, 3.3.6.1 - Necesarul volumic zilnic de apa calda de consum `VW;day`
+- MC001-2022, 3.3.6.1 - loss/waste volume penalty, relation (3.197)
 - MC001-2022, 3.3.7.2 - Pierderi de distributie, relations (3.200)-(3.213)
 - MC001-2022, 3.3.7.3 - Pierderi termice recuperabile ale distributiei, relations (3.214)-(3.216)
 - MC001-2022, 3.3.7.4 - Energie auxiliara a distributiei pentru apa calda de consum, relations (3.217)-(3.224)
 - MC001-2022, Tabel 3.3.1
+- MC001-2022, Anexa 3.3.A - example for useful DHW demand delivered to the user
 
 Extraction status: `extracted`
 
@@ -24,7 +26,14 @@ Implementation relevance:
 - Key DHW temperature defaults are extracted as data notes.
 - DHW distribution loss formulas are extracted through recoverable distribution heat.
 - DHW auxiliary distribution energy formulas are extracted through relation (3.224).
-- Tabel 3.3.1 remains indexed, not fully copied.
+- Tabel 3.3.1 numeric non-residential values are extracted into a reviewed dataset registry.
+- Tabel 3.3.1 residential rows 1-2 are not numeric table values; they point back to chapter 3.3.6.1 residential formulas.
+- An isolated `src/physics-engine` helper now implements useful-demand, daily-volume, and loss/waste volume relations (3.188)-(3.197) with explicit inputs only.
+- An isolated `src/physics-engine` helper now implements the DHW distribution component relations (3.200)-(3.204) for mean temperature and pipe linear transmittance with explicit inputs only.
+- The Anexa 3.3.A apartment example validates the helper path with source-rounded displayed intermediates documented separately from exact formula output.
+- The Anexa 3.3.B component fixture validates the distribution component helper path with source-rounded displayed transmittance outputs.
+- `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION` validates the Anexa B school useful-demand service-unit chain.
+- `FIXTURE_011_DHW_FINAL_ENERGY_DISPLAYED_SUBTOTAL` validates the Anexa B page 525 DHW final-energy displayed subtotal arithmetic only.
 - Useful DHW energy remains separate from final DHW system energy.
 
 LaCurent disclaimer:
@@ -220,6 +229,22 @@ Useful DHW demand vs final energy:
 | implementation notes | `x` and `y` are MC001 coefficients for residential DHW. Do not use `Ah` alone; `nP,eq` must be calculated. |
 | validation notes | `Ah > 0`; `nPEq > 0`; coefficients must be traced as MC001 values. |
 
+### Formula 9a - DHW loss/waste volume penalty
+
+| Field | Value |
+| --- | --- |
+| formulaId | `MC001_3_197_DHW_LOSS_WASTE_VOLUME` |
+| labelRo | Volumul zilnic total ACC cu pierderi si risipa |
+| formulaText | `VW,day + VW,ls,day = f1 x f2 x VW,day` |
+| unit | `l/zi` |
+| output | `VWDayTotal` |
+| inputs | `VWDay`: base daily useful DHW volume; `f1`: loss/waste factor; `f2`: loss/waste factor |
+| MC001 reference | MC001-2022, 3.3.6.1, relatia (3.197) |
+| formulaStatus | `extracted` |
+| implementationAllowed | `true` |
+| implementation notes | Applies only when `f1` and `f2` are supplied explicitly from source. It does not calculate distribution, storage, generation, auxiliary, recovered, or final energy. |
+| validation notes | `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION` validates the Anexa B school row with `VW,day = 1500 l/day`, `f1 = 1.30`, `f2 = 1.10`, `VW,ls,day = 645 l/day`, and total `Vday = 2145 l/day`. |
+
 ### Formula 10 - Mean DHW distribution temperature
 
 | Field | Value |
@@ -313,7 +338,7 @@ Useful DHW demand vs final energy:
 | MC001 reference | MC001-2022, 3.3.7.2, relatia (3.205) |
 | formulaStatus | `extracted` |
 | implementationAllowed | `true` |
-| implementation notes | Applies to DHW distribution pipes with recirculation during DHW supply. The 1/1000 factor converts W*h to kWh. |
+| implementation notes | Applies to DHW distribution pipes with recirculation during DHW supply. The 1/1000 factor converts W*h to kWh. `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` keeps the Anexa 3.3.B `QW,dis,ls = 0.225 kWh` row blocked because the expected value implies an effective length not fully shown in the visible DHW length rows. |
 | validation notes | Lengths, timestep, and operation time must be non-negative. Temperatures and `Psi_j` must be numeric. |
 
 ### Formula 16 - Stub loss without recirculation
@@ -329,7 +354,7 @@ Useful DHW demand vs final energy:
 | MC001 reference | MC001-2022, 3.3.7.2, relatia (3.206) |
 | formulaStatus | `extracted` |
 | implementationAllowed | `true` |
-| implementation notes | Applies to open-circuit stub pipe portions where water stagnates between successive uses. Zone-indexed terms must be implemented consistently with the MC001 summation. |
+| implementation notes | Applies to open-circuit stub pipe portions where water stagnates between successive uses. Zone-indexed terms must be implemented consistently with the MC001 summation. `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` classifies the Anexa 3.3.B `QW,dis,stub = 135.8 kWh` row as a worked-example inconsistency because the numeric value follows Wh-scale one-hour arithmetic, while the row is labeled `kWh` and no annual multiplier is displayed. |
 | validation notes | Volumes, density, use count, and timestep must be non-negative. Temperatures must be numeric. |
 
 ### Formula 17 - Recirculation loss without draw-off
@@ -345,7 +370,7 @@ Useful DHW demand vs final energy:
 | MC001 reference | MC001-2022, 3.3.7.2, relatia (3.207) |
 | formulaStatus | `extracted` |
 | implementationAllowed | `true` |
-| implementation notes | The visual formula shows a plus sign between `thetaW,avg` and `thetaW,amb,j`; preserve this extraction exactly and verify physical interpretation before calculator implementation. `thetaW,avg` is defined by subsequent relations (3.208)-(3.212). |
+| implementation notes | The visual formula shows a plus sign between `thetaW,avg` and `thetaW,amb,j`; preserve this extraction exactly and verify physical interpretation before calculator implementation. `thetaW,avg` is defined by subsequent relations (3.208)-(3.212). `INVESTIGATION_004_DHW_ANNUAL_DISTRIBUTION_LOSS_BASIS` keeps the Anexa 3.3.B `QW,dis,nom = 7.3 kWh` row blocked for visual formula review because page 279 shows a mass-flow path that is not cleanly aligned with the extracted relation (3.207), and the displayed value has the same Wh/kWh scale issue as the stub row. |
 | validation notes | Lengths, timestep, and operation time must be non-negative. Temperatures and `Psi_j` must be numeric. |
 
 ### Formula 18 - Specific linear heat loss for average-temperature calculation
@@ -626,13 +651,13 @@ Useful DHW demand vs final energy:
 | --- | --- |
 | dataKey | `specificDhwConsumptionByBuildingUse` |
 | MC001 source | MC001-2022, Tabel 3.3.1 |
-| title | Valorile necesarului specific de apa calda de consum pentru diferite destinatii de cladiri |
+| title | Valorile pentru necesarul specific de apa calda de consum, in functie de destinatia cladirii |
 | unit | `l/unitate,zi la 60 degC` |
 | lookup key | building destination/use category |
 | neededFor | Formula (3.190), `MC001_3_190_DHW_DAILY_VOLUME_NON_RESIDENTIAL` |
-| extractionStatus | `indexed_table` |
-| implementationAllowed | `false` |
-| notes | The table is identified and required for non-residential/other-use DHW volume. Values are not copied in this pass, so implementation must wait until values are extracted. |
+| extractionStatus | `extracted_numeric_values` |
+| implementationAllowed | `true for dataset lookup only` |
+| notes | Numeric rows are represented in `src/physics-engine/datasets/mc001DhwDemandTable3_3_1.mjs`. Rows 1-2 are blocked as numeric table rows because the source says to calculate residential demand according to chapter 3.3.6.1. Useful-demand, residential volume, and loss/waste volume formulas are implemented separately in `src/physics-engine/dhwUsefulDemand.mjs`; no production calculation is created by the dataset extraction. |
 
 ## Temperature defaults from 3.3.5
 
@@ -655,11 +680,12 @@ Extracted data notes, not formulas:
 | --- | --- | --- | --- | --- | --- | --- |
 | `dhwVolume` | useful DHW demand | MC001-2022, 3.3.6.1, relations (3.189), (3.190) | `l/zi` or timestep volume | `extracted` | `true` | Residential and non-residential daily volume formulas are extracted. |
 | `numberOfOccupants` / `nP` | residential DHW volume | MC001-2022, 3.3.6.1, relation (3.189) | persons/equivalent consumers | `extracted` | `true` | Residential method uses equivalent consumers. |
-| `buildingUseCategory` | non-residential DHW volume | MC001-2022, Tabel 3.3.1 | category id | `indexed_table` | `false` | Table values must be extracted before implementation for non-residential defaults. |
+| `buildingUseCategory` | non-residential DHW volume | MC001-2022, Tabel 3.3.1 | category id | `extracted_numeric_values` | `true for dataset lookup only` | Numeric table values are available in `src/physics-engine/datasets/mc001DhwDemandTable3_3_1.mjs`; service/input quantities still must be explicit before calculation. `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION` validates the Anexa B school useful-demand row with `scoli_elev_program_fara_dusuri_bai` and `f = 300`. |
+| `lossWastePenaltyFactors` | DHW useful-demand volume reconciliation | MC001-2022, 3.3.6.1, relation (3.197) | factors | `extracted` | `true` | `f1` and `f2` must be explicit. Fixture 010 uses the Anexa B values `1.30` and `1.10`; no generic default is created. |
 | `coldWaterTemperature` | useful DHW demand | MC001-2022, 3.3.5 | `degC` | `extracted` | `true` | Default `thetaWCold = 10 degC`; more exact route may use annual average exterior air temperature where MC001 allows it. |
 | `hotWaterTemperature` / `thetaWDraw` | useful DHW demand | MC001-2022, 3.3.5 | `degC` | `extracted` | `true` | Minimum 42 degC; recommended 45 degC. |
-| `specificDhwConsumption` | DHW volume/default demand | MC001-2022, relation (3.196) for residential; Tabel 3.3.1 for other uses | `l/(persoana echivalenta, zi)` or `l/unitate,zi` | `partial` | `false` | Residential coefficients are extracted; non-residential values remain table-indexed only. |
-| `distributionLosses` | DHW final energy/losses | MC001-2022, 3.3.7, relations (3.201)-(3.224) | `kWh`, `W`, or MC001-defined unit | `extracted` | `true` | Distribution loss, recoverable heat, and auxiliary distribution energy relations (3.201)-(3.224) are extracted. Tabel 3.3.1 values remain indexed, not copied. |
+| `specificDhwConsumption` | DHW volume/default demand | MC001-2022, relation (3.196) for residential; Tabel 3.3.1 for other uses | `l/(persoana echivalenta, zi)` or `l/unitate,zi` | `extracted_numeric_values` | `true for dataset lookup only` | Residential coefficients are extracted; non-residential Tabel 3.3.1 numeric values are available in the reviewed dataset registry. |
+| `distributionLosses` | DHW final energy/losses | MC001-2022, 3.3.7, relations (3.201)-(3.224) | `kWh`, `W`, or MC001-defined unit | `extracted` | `true` | Distribution loss, recoverable heat, and auxiliary distribution energy relations (3.201)-(3.224) are extracted. Tabel 3.3.1 lookup is now available, but final DHW energy still requires traced service/system inputs. |
 | `storageLosses` | DHW final energy/losses | MC001-2022, DHW storage/system sections | `kWh`, `W`, or MC001-defined unit | `pending_extraction` | `false` | Storage losses remain pending. |
 | `generationEfficiency` | DHW final energy/system conversion | MC001-2022 DHW system/final energy sections | `-` | `pending_extraction` | `false` | No efficiency should be invented. |
 | `systemType` | DHW final energy/loss selection | MC001-2022 DHW system categories or explicit input | category id | `pending_extraction` | `false` | Needed to select distribution/storage/generation model. |
@@ -698,19 +724,24 @@ Relations (3.201)-(3.224) are tracked below. Distribution losses, recoverable di
 ## Implementation implications for LaCurent
 
 - DHW useful demand can be calculated independently from monthly climate dataset.
+- `src/physics-engine/dhwUsefulDemand.mjs` implements only the isolated useful-demand, daily-volume, and loss/waste volume formulas (3.188)-(3.197), with explicit service counts, temperatures, density, specific heat, and penalty factors.
+- `src/physics-engine/dhwDistributionLosses.mjs` implements only the isolated distribution component formulas (3.200)-(3.204), with explicit temperatures, pipe geometry, material properties, burial depth, and heat-transfer coefficients.
 - Residential DHW default calculation can use relations (3.189), (3.192)-(3.196), and temperature defaults.
-- Non-residential DHW default calculation requires Tabel 3.3.1 lookup.
-- Final DHW system energy remains incomplete until storage and generation formulas are extracted.
+- Non-residential DHW default calculation can use the reviewed Tabel 3.3.1 dataset lookup when the building destination and unit count are explicit.
+- Final DHW system energy remains incomplete until annual distribution-loss energy, storage, and generation inputs/formulas are fully cleaned. The Anexa B page 525 `Qw,total` row is display-subtotal material only, validated by Fixture 011.
 - Do not infer DHW only from `usefulAreaM2` except where MC001 residential equivalent-consumer method explicitly uses `Ah`.
 - Useful DHW energy and final DHW energy are different and must remain separate.
 - No system efficiency should be invented.
 - Distribution, storage, generation, and auxiliary terms must not be collapsed unless MC001 or an approved simplified non-official mode allows it.
 - This module feeds final energy / primary energy modules later.
 
-## Do not implement yet
+## Implementation boundary
 
-- No calculators created.
+- Useful-demand, daily-volume, and loss/waste volume helper coverage exists in `src/physics-engine/dhwUsefulDemand.mjs`.
 - No production flow changed.
 - No UI changed.
-- No tests added.
-- Next extraction module is `13_final_primary_co2_rer` or `10_lighting`, depending on priority.
+- Dataset validation tests exist for the Tabel 3.3.1 registry.
+- Anexa 3.3.A validates the residential apartment useful-demand path; `FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION` validates the Anexa B school useful-demand service-unit row.
+- Anexa 3.3.B validates only distribution component rows for mean temperature and pipe transmittance.
+- `FIXTURE_011_DHW_FINAL_ENERGY_DISPLAYED_SUBTOTAL` validates only Anexa B page 525 displayed subtotal arithmetic.
+- Annual distribution/storage/generation/final-energy DHW calculations remain blocked until service/system inputs are traced.

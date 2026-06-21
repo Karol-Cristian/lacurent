@@ -24,14 +24,17 @@ MC001 sections used:
 - MC001-2022, 5.4.2.2 - Aria de referinta a pardoselii si volumul de aer al cladirii
 - MC001-2022, 5.4.2.3 - Normalizare la marimea de referinta a cladirii
 
-Extraction status: `partial_needs_verification`
+Extraction status: `partial_class_interval_helper_created`
 
 Implementation relevance:
 
 - This module defines the source tables and rules for MC001 energy classes, environmental/CO2 classes, and certificate-like output indicators.
-- Class threshold tables are indexed, but their full values are not copied here.
-- Future calculators must use reviewed class-threshold registries/datasets, not inline constants.
+- Class threshold tables 5.7-5.14 are now represented in the reviewed numeric registry `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs`.
+- Future calculators must use the reviewed class-threshold registry/dataset, not inline constants.
 - This module depends on module `13_final_primary_co2_rer` for final/primary/CO2 indicators and module `14_reference_building` for reference-building comparison.
+- `FIXTURE_012_RER_DISPLAY_RECONCILIATION` validates Anexa B displayed RER arithmetic as a narrow fixture.
+- `FIXTURE_013_ENERGY_CLASS_ASSIGNMENT` validates explicit Tabel 5.7-5.14 interval assignment from reviewed threshold rows.
+- Anexa B class labels remain blocked because Tabel 5.6 utility inclusion, optional-utility recalculation, reference-building classification, and certificate workflow are not implemented in this pass.
 
 LaCurent disclaimer:
 
@@ -335,8 +338,8 @@ Difference between calculating indicators and issuing official certificate:
 
 | dataKey | neededFor | MC001 source | unit | lookup keys | extractionStatus | implementationAllowed | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `energyClassThresholds` | Energy class A+...G | MC001-2022, Tabele 5.7-5.14 | kWh/(m2.an) | building category, utility or total, class boundary | `indexed_table` | `true` | Exact tables and lookup keys are clear; values must be loaded into a future reviewed registry/dataset before default class calculation. |
-| `cpeThresholds` | Certificate/class threshold lookup | MC001-2022, Tabele 5.7-5.14 | kWh/(m2.an), kgCO2/(m2.an) | building category, indicator type, utility/total, class | `indexed_table` | `true` | Same threshold sources as energy/environmental classes. |
+| `energyClassThresholds` | Energy class A+...G | MC001-2022, Tabele 5.7-5.14 | kWh/(m2.an) | building category, utility or total, class boundary | `reviewed_numeric_values_extracted` | `true` | Registry file: `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs`; contains reviewed numeric interval rows for Tabel 5.7-5.14. Explicit class interval lookup is implemented separately in `energyClassAssignment.mjs`; certificate workflow is not implemented here. |
+| `cpeThresholds` | Certificate/class threshold lookup | MC001-2022, Tabele 5.7-5.14 | kWh/(m2.an), kgCO2/(m2.an) | building category, indicator type, utility/total, class | `reviewed_numeric_values_extracted` | `true` | Same threshold sources as energy/environmental classes; available as a dataset lookup only, not as certificate workflow. |
 | `certificateIndicatorList` | Certificate-like output indicators | MC001-2022, 5.4.1.1, Tabel 5.15a | mixed units | annual total, service/utility, zone, exported/delivered/RER indicators | `indexed_table` | `true` | Output fields are identified; calculations come from other modules. |
 | `referenceBuildingComparisonValues` | Reference comparison context | MC001-2022, 5.2 and module `14_reference_building` | mixed units | real/reference model, building category, service/total indicator | `external_module_needed` | `false` | Depends on reference-building datasets and calculation completion. |
 | `classByBuildingCategory` | Select correct class table | MC001-2022, 5.3; Tabele 5.7-5.14 | not applicable | category 1a, 1b, 2, 3, 4, 5, 6, 7, and category 8 by similarity | `indexed_table` | `true` | Unknown category 8 mapping needs explicit user/expert decision. |
@@ -378,6 +381,8 @@ If `Ause` or the normalization denominator is missing, future calculators must r
 
 `status: cannot_calculate_certificate_indicators_missing_reference_area`
 
+The reviewed registry now contains the numeric values for Tabel 5.7-5.14, and `energyClassAssignment.mjs` can assign an interval class only when source table, category, indicator basis, indicator key and indicator value are explicit. Future certificate calculators must still return missing-input statuses when utility inclusion, optional-utility recalculation context, reference area, primary/CO2 indicator values, or reference-building context are absent.
+
 No invented class thresholds are allowed.
 
 No hardcoded class threshold values should live inside calculators.
@@ -387,15 +392,18 @@ No hardcoded class threshold values should live inside calculators.
 - LaCurent must not claim official certificate issuance.
 - Energy class must come from MC001 thresholds, not arbitrary labels.
 - CPE/reference comparison must use MC001 reference building.
-- Missing thresholds should block class assignment.
+- Missing threshold rows, missing category mapping, missing indicator values, or unresolved utility-inclusion context should block class assignment.
 - Boundary handling must follow MC001 Nota 1: intervals are open on the left and closed on the right.
 - Report UI may display preliminary/non-official indicators only if status/warnings make this clear, but this module does not implement UI.
 - Do not use Salicea or demo defaults.
 
-## Do not implement yet
+## Implementation boundary
 
-- No calculators created.
+- Isolated helper `src/physics-engine/energyClassAssignment.mjs` created for explicit Tabel 5.7-5.14 interval lookup only.
 - No production flow changed.
 - No UI changed.
-- No tests added.
-- Next extraction module is `04_minimum_envelope_requirements` or `12_renewables` depending on priority.
+- Dataset validation tests were added for the reviewed threshold registry only.
+- Class-assignment unit tests and Fixture 013 were added for explicit interval semantics only.
+- No Anexa B class-label, CPE, or certificate workflow tests added.
+- Anexa B displayed RER arithmetic is validated separately by Fixture 012; this module still does not authorize certificate generation.
+- Next safe class-related validation step is Tabel 5.6 utility inclusion and optional-utility threshold recalculation before asserting Anexa B displayed class labels.

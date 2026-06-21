@@ -178,23 +178,32 @@ export function calculateCO2EmissionsFromFinalEnergy(entries) {
   const calculatedEntries = [];
 
   for (const entry of normalizedEntries) {
-    const factor = findCO2EmissionFactorByCarrierKey(entry.energyCarrierKey);
+    const primaryEnergyFactor = findPrimaryEnergyFactorByCarrierKey(entry.energyCarrierKey);
+    const co2Factor = findCO2EmissionFactorByCarrierKey(entry.energyCarrierKey);
 
-    if (!factor) {
+    if (!primaryEnergyFactor || !co2Factor) {
       missingFactors.push({
         energyCarrierKey: entry.energyCarrierKey,
-        serviceKey: entry.serviceKey ?? null
+        serviceKey: entry.serviceKey ?? null,
+        missingPrimaryEnergyFactor: !primaryEnergyFactor,
+        missingCO2EmissionFactor: !co2Factor
       });
       continue;
     }
+
+    const primaryEnergyKWh =
+      entry.finalEnergyKWh * primaryEnergyFactor.totalPrimaryEnergyFactor;
 
     calculatedEntries.push({
       finalEnergyKWh: entry.finalEnergyKWh,
       energyCarrierKey: entry.energyCarrierKey,
       serviceKey: entry.serviceKey,
-      co2EmissionFactor: factor.co2EmissionFactor,
-      co2Kg: entry.finalEnergyKWh * factor.co2EmissionFactor,
-      sourceTable: factor.sourceTable,
+      totalPrimaryEnergyFactor: primaryEnergyFactor.totalPrimaryEnergyFactor,
+      primaryEnergyKWh,
+      co2EmissionFactor: co2Factor.co2EmissionFactor,
+      co2Kg: primaryEnergyKWh * co2Factor.co2EmissionFactor,
+      primaryEnergySourceTable: primaryEnergyFactor.sourceTable,
+      co2SourceTable: co2Factor.sourceTable,
       source: entry.source
     });
   }
@@ -207,7 +216,7 @@ export function calculateCO2EmissionsFromFinalEnergy(entries) {
       missingFactors,
       trace: {
         formulaId: "MC001_5_4B_CO2_EMISSIONS",
-        formulaText: "ECO2 = sum_i(Qf,i * fCO2,i)",
+        formulaText: "ECO2 = sum_i((Qf,i * fPtot,i) * fCO2,i)",
         inputs: normalizedEntries,
         result: null,
         unit: "kgCO2",
@@ -226,11 +235,14 @@ export function calculateCO2EmissionsFromFinalEnergy(entries) {
     missingFactors,
     trace: {
       formulaId: "MC001_5_4B_CO2_EMISSIONS",
-      formulaText: "ECO2 = sum_i(Qf,i * fCO2,i)",
+      formulaText: "ECO2 = sum_i((Qf,i * fPtot,i) * fCO2,i)",
       inputs: normalizedEntries,
       result: totalCO2Kg,
       unit: "kgCO2",
-      assumptions: ["co2_factors_from_reviewed_mc001_tabel_5_18_dataset"],
+      assumptions: [
+        "co2_uses_primary_energy_terms_per_mc001_relation_5_4b",
+        "co2_factors_from_reviewed_mc001_tabel_5_18_dataset"
+      ],
       warnings: []
     }
   };

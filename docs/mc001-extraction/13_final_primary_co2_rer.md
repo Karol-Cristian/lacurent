@@ -26,6 +26,7 @@ Implementation relevance:
 - Core MC001 formulas for global weighted energy, final-energy service aggregation, primary energy, CO2, and RER are extracted.
 - Tabel 5.17 and Tabel 5.18 now have reviewed numeric values represented in `src/physics-engine/datasets/mc001PrimaryEnergyAndCO2Factors.mjs`; calculators must still load them from the reviewed registry/dataset, not inline constants.
 - Specific per-area indicators are marked as derived indicators because MC001 defines the reference floor area used for normalization in 5.4.2.2-5.4.2.3.
+- Fixtures 007 and 008 validate the final/primary/CO2 and service final-primary paths. `FIXTURE_012_RER_DISPLAY_RECONCILIATION` validates only the Anexa B page 527/page 540 displayed RER arithmetic; general RER still requires an explicit perimeter.
 
 LaCurent disclaimer:
 
@@ -320,8 +321,10 @@ No invented factor values are allowed. Do not hardcode table values inline in ca
 
 ## Do not implement yet
 
-- No calculators created.
+- No RER calculator is created by this extraction module or by `INVESTIGATION_007`.
+- `FIXTURE_012_RER_DISPLAY_RECONCILIATION` is display arithmetic only and does not create a general RER calculator.
+- Existing isolated final/primary/CO2 calculations live in `src/physics-engine/finalPrimaryCo2Indicators.mjs` and are covered by MC001 validation fixtures; they do not calculate RER, energy classes, or certificates.
 - No production flow changed.
 - No UI changed.
-- No tests added.
+- No general certificate/RER tests added from this extraction module.
 - Next extraction module is `14_reference_building` or `15_energy_classes_and_certificate`.

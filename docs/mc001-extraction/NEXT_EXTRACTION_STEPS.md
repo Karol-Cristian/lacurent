@@ -187,7 +187,7 @@ Scope:
 Expected output:
 
 - useful DHW demand and residential volume formulas extracted
-- Tabel 3.3.1 indexed for non-residential/default-by-use DHW values
+- Tabel 3.3.1 extracted into a reviewed numeric registry for non-residential/default-by-use DHW values
 - distribution/auxiliary relations (3.201)-(3.224) extracted
 - separation between useful DHW demand and final DHW energy
 - missing-value behavior for occupants, volume, temperatures, system type and losses
