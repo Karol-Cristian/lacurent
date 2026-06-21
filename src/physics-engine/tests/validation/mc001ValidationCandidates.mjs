@@ -13,6 +13,7 @@ export const requestedValidationAreas = Object.freeze([
   "dhw_distribution_components",
   "rer_display",
   "energy_class_assignment",
+  "utility_inclusion_thresholds",
   "monthly_transfer",
   "monthly_balance",
   "primary_energy",
@@ -225,6 +226,22 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     helperCoverage: Object.freeze(["energyClassAssignment.mjs"]),
     limitations:
       "Executable for explicit table/category/indicator interval assignment only; no Anexa B class labels, utility-inclusion recalculation, CPE, certificate workflow or production integration."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_014_UTILITY_INCLUSION_THRESHOLD_RECALCULATION",
+    exampleId: "MC001_TABLE_5_6_UTILITY_INCLUSION_THRESHOLDS",
+    source:
+      "MC001-2022 pages 395-396 Tabel 5.6 utility inclusion and Nota 4 threshold recalculation",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_014_UTILITY_INCLUSION_THRESHOLD_RECALCULATION.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture014UtilityInclusionThresholdRecalculation.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture014UtilityInclusionThresholdRecalculation.validation.test.mjs",
+    validationAreas: Object.freeze(["utility_inclusion_thresholds"]),
+    helperCoverage: Object.freeze(["utilityInclusionThresholds.mjs"]),
+    limitations:
+      "Executable for Tabel 5.6 mandatory/optional utility flags and Nota 4 threshold subtraction only; no certificate class inference, virtual ventilation consumption, overheating calculation, mixed-use averaging, CPE or production integration."
   })
 ]);
 
@@ -413,17 +430,19 @@ export const mc001ValidationCandidates = Object.freeze([
       "primary_energy",
       "co2",
       "rer_display",
-      "energy_class_assignment"
+      "energy_class_assignment",
+      "utility_inclusion_thresholds"
     ]),
     requiredInputs: "service final-energy breakdown by carrier/service, factors and reference area",
     expectedOutputs:
       "total primary energy, specific primary energy, CO2 indicators, displayed RER and class",
     helperCoverage: Object.freeze([
       "finalPrimaryCo2Indicators.mjs",
-      "energyClassAssignment.mjs"
+      "energyClassAssignment.mjs",
+      "utilityInclusionThresholds.mjs"
     ]),
     missingPieces:
-      "broader clean service rows beyond fixtures 007/008/012, page 523 heating prose typo, page 527 electric CO2 worked-example factor inconsistency, general RER perimeter, Anexa B class-label trace, utility-inclusion/recalculation context and certificate workflow; displayed RER arithmetic is covered by Fixture 012 and explicit interval assignment is covered by Fixture 013"
+      "broader clean service rows beyond fixtures 007/008/012, page 523 heating prose typo, page 527 electric CO2 worked-example factor inconsistency, general RER perimeter, Anexa B class-label trace, reference-building/certificate context and certificate workflow; displayed RER arithmetic is covered by Fixture 012, explicit interval assignment is covered by Fixture 013, and Tabel 5.6 utility-inclusion threshold recalculation is covered by Fixture 014"
   },
   {
     exampleId: "MC001_EX_B_RENOVATION_PACKAGES_ECONOMIC",
