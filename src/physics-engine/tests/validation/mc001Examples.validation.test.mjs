@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 16);
+  assert.equal(mc001ExecutableValidationFixtures.length, 17);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 16);
+  assert.equal(mc001ExecutableValidationCases.length, 17);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -117,6 +117,9 @@ test("covers requested validation areas with blocked examples and reviewed execu
   assert.deepEqual(mc001ExecutableValidationCases[15].validationAreas, [
     "level_1_core_orchestrator"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[16].validationAreas, [
+    "level_1_monthly_heating_orchestration"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -136,7 +139,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture013,
     fixture014,
     fixture015,
-    fixture016
+    fixture016,
+    fixture017
   ] =
     mc001ExecutableValidationCases;
 
@@ -384,6 +388,34 @@ test("registers executable fixture metadata without embedding numeric fixture da
     "transmissionCoefficients.mjs",
     "ventilationCoefficients.mjs",
     "finalPrimaryCo2Indicators.mjs"
+  ]);
+
+  assert.equal(
+    fixture017.fixtureId,
+    "FIXTURE_017_LEVEL_1_MONTHLY_HEATING_ORCHESTRATION"
+  );
+  assert.equal(
+    fixture017.exampleId,
+    "MC001_LEVEL_1_MONTHLY_HEATING_EXPLICIT_INPUT_PACK"
+  );
+  assert.ok(
+    fixture017.documentationPath.endsWith(
+      "FIXTURE_017_LEVEL_1_MONTHLY_HEATING_ORCHESTRATION.md"
+    )
+  );
+  assert.ok(
+    fixture017.fixturePath.endsWith(
+      "fixture017Level1MonthlyHeatingOrchestration.mjs"
+    )
+  );
+  assert.ok(
+    fixture017.validationTestPath.endsWith(
+      "fixture017Level1MonthlyHeatingOrchestration.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture017.helperCoverage, [
+    "mc001Level1CoreOrchestrator.mjs",
+    "monthlyBalance.mjs"
   ]);
 
   for (const fixture of mc001ExecutableValidationCases) {
