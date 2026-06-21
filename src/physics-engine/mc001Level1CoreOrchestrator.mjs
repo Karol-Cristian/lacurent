@@ -6,6 +6,18 @@ const ORCHESTRATOR_TYPE = "MC001_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR";
 const LEVEL = "LEVEL_1_CORE_COMPONENT_ORCHESTRATION";
 const NEXT_REQUIRED_STEP = "KEEP_LEVEL_2_BLOCKED_UNTIL_FULL_EXPLICIT_MC001_AUDIT_INPUTS_EXIST";
 
+const EXPECTED_UNITS = Object.freeze({
+  transmission: "W/K",
+  ventilation: "W/K",
+  finalEnergy: "kWh",
+  primaryEnergy: "kWh",
+  co2: "kgCO2",
+  conditionedArea: "m2",
+  monthlyHeating: "kWh"
+});
+
+const ALLOWED_BUILDING_USE_CATEGORIES = new Set(["education"]);
+
 const REQUIRED_SECTIONS = Object.freeze([
   "packMetadata",
   "buildingContext",
@@ -36,7 +48,42 @@ const ALLOWED_MONTHLY_HEATING_STATUSES = new Set([
 ]);
 
 const CALENDAR_MONTH_COUNT = 12;
+const CALENDAR_MONTHS = Object.freeze([
+  "Ian",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mai",
+  "Iun",
+  "Iul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Noi",
+  "Dec"
+]);
+const REQUIRED_MONTHLY_HEATING_MONTH_STATUSES = Object.freeze({
+  Apr: "blocked",
+  Sep: "blocked",
+  Oct: "ambiguous"
+});
 const MONTHLY_HEATING_METHODOLOGY_STATUS = "PARTIAL_WITH_BLOCKED_AND_AMBIGUOUS_MONTHS";
+const READINESS_CLAIMS = Object.freeze({
+  isFullMc001AuditReady: false,
+  isLevel2Ready: false,
+  isCertificateCpeWorkflowReady: false,
+  isProductionOrchestrationReady: false
+});
+const FORBIDDEN_READINESS_CLAIM_FIELDS = Object.freeze([
+  "isFullMc001AuditReady",
+  "isLevel2Ready",
+  "isCertificateCpeWorkflowReady",
+  "isProductionOrchestrationReady",
+  "fullMc001AuditReady",
+  "level2Ready",
+  "certificateCpeReady",
+  "productionOrchestrationReady"
+]);
 
 function cloneSerializable(value) {
   return JSON.parse(JSON.stringify(value));
@@ -53,7 +100,11 @@ function assertObject(value, path) {
 }
 
 function assertRequiredField(value, path) {
-  if (value === undefined || value === null || value === "") {
+  if (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
     throw new Error(`Missing required field: ${path}`);
   }
 }
@@ -65,9 +116,43 @@ function assertFiniteNumber(value, path) {
   }
 }
 
+function assertFiniteNonNegativeNumber(value, path) {
+  assertFiniteNumber(value, path);
+  if (value < 0) {
+    throw new Error(`${path} must be a finite non-negative number`);
+  }
+}
+
+function assertFinitePositiveNumber(value, path) {
+  assertFiniteNumber(value, path);
+  if (value <= 0) {
+    throw new Error(`${path} must be a finite positive number`);
+  }
+}
+
 function assertArray(value, path) {
   if (!Array.isArray(value)) {
     throw new Error(`${path} must be an array`);
+  }
+}
+
+function assertNonEmptyArray(value, path) {
+  assertArray(value, path);
+  if (value.length === 0) {
+    throw new Error(`${path} must contain at least one row`);
+  }
+}
+
+function assertExactUnit(value, expectedUnit, path) {
+  assertRequiredField(value, path);
+  if (value !== expectedUnit) {
+    throw new Error(`${path} must be ${expectedUnit}`);
+  }
+}
+
+function assertOptionalTolerance(value, path) {
+  if (value !== undefined) {
+    assertFiniteNonNegativeNumber(value, path);
   }
 }
 
@@ -77,6 +162,23 @@ function requiredSection(inputPack, sectionName) {
     throw new Error(`Missing required section: ${sectionName}`);
   }
   return section;
+}
+
+function rejectReadinessClaims(inputPack) {
+  for (const field of FORBIDDEN_READINESS_CLAIM_FIELDS) {
+    if (inputPack[field] === true) {
+      throw new Error(`${field} must not claim readiness`);
+    }
+  }
+
+  if (inputPack.readinessClaims !== undefined) {
+    assertObject(inputPack.readinessClaims, "readinessClaims");
+    for (const [field, value] of Object.entries(inputPack.readinessClaims)) {
+      if (value === true) {
+        throw new Error(`readinessClaims.${field} must not claim readiness`);
+      }
+    }
+  }
 }
 
 function validatePackMetadata(packMetadata) {
@@ -89,23 +191,42 @@ function validatePackMetadata(packMetadata) {
 function validateBuildingContext(buildingContext) {
   assertObject(buildingContext, "buildingContext");
   assertRequiredField(buildingContext.buildingUseCategory, "buildingContext.buildingUseCategory");
-  assertFiniteNumber(buildingContext.conditionedFloorArea, "buildingContext.conditionedFloorArea");
-  assertRequiredField(buildingContext.areaUnit, "buildingContext.areaUnit");
+  if (!ALLOWED_BUILDING_USE_CATEGORIES.has(buildingContext.buildingUseCategory)) {
+    throw new Error(
+      `buildingContext.buildingUseCategory is not validated for Level 1: ${buildingContext.buildingUseCategory}`
+    );
+  }
+  assertFinitePositiveNumber(
+    buildingContext.conditionedFloorArea,
+    "buildingContext.conditionedFloorArea"
+  );
+  assertExactUnit(
+    buildingContext.areaUnit,
+    EXPECTED_UNITS.conditionedArea,
+    "buildingContext.areaUnit"
+  );
   assertRequiredField(buildingContext.calculationBasis, "buildingContext.calculationBasis");
 }
 
 function validateTransmission(transmission) {
   assertObject(transmission, "transmission");
   for (const field of ["Hd", "Hg", "Hu", "Ha", "expectedHtr"]) {
-    assertFiniteNumber(transmission[field], `transmission.${field}`);
+    assertFiniteNonNegativeNumber(transmission[field], `transmission.${field}`);
   }
-  assertRequiredField(transmission.unit, "transmission.unit");
+  assertExactUnit(transmission.unit, EXPECTED_UNITS.transmission, "transmission.unit");
+  assertRequiredField(transmission.source, "transmission.source");
+  assertOptionalTolerance(transmission.toleranceAbs, "transmission.toleranceAbs");
 }
 
 function validateVentilation(ventilation) {
   assertObject(ventilation, "ventilation");
-  assertFiniteNumber(ventilation.Hve, "ventilation.Hve");
-  assertRequiredField(ventilation.unit, "ventilation.unit");
+  assertFiniteNonNegativeNumber(ventilation.Hve, "ventilation.Hve");
+  assertExactUnit(ventilation.unit, EXPECTED_UNITS.ventilation, "ventilation.unit");
+  assertRequiredField(ventilation.source, "ventilation.source");
+  assertOptionalTolerance(
+    ventilation.monthlyQveToleranceAbsKWh,
+    "ventilation.monthlyQveToleranceAbsKWh"
+  );
 
   if (ventilation.monthlyVentilationTransferRows !== undefined) {
     assertArray(
@@ -116,45 +237,58 @@ function validateVentilation(ventilation) {
       const path = `ventilation.monthlyVentilationTransferRows[${index}]`;
       assertObject(row, path);
       assertRequiredField(row.month, `${path}.month`);
-      assertFiniteNumber(row.hve, `${path}.hve`);
+      assertFiniteNonNegativeNumber(row.hve, `${path}.hve`);
       assertFiniteNumber(row.thetaInt, `${path}.thetaInt`);
       assertFiniteNumber(row.thetaExternalMonthly, `${path}.thetaExternalMonthly`);
-      assertFiniteNumber(row.deltaHours, `${path}.deltaHours`);
+      assertFinitePositiveNumber(row.deltaHours, `${path}.deltaHours`);
       assertRequiredField(row.thetaExternalMonthlySource, `${path}.thetaExternalMonthlySource`);
       assertFiniteNumber(row.expectedQveKWh, `${path}.expectedQveKWh`);
+      assertOptionalTolerance(row.toleranceAbs, `${path}.toleranceAbs`);
     });
   }
 }
 
-function validateFinalPrimaryCo2(finalPrimaryCo2) {
+function validateFinalPrimaryCo2(finalPrimaryCo2, buildingContext) {
   assertObject(finalPrimaryCo2, "finalPrimaryCo2");
-  assertArray(finalPrimaryCo2.serviceFinalEnergyRows, "finalPrimaryCo2.serviceFinalEnergyRows");
+  assertNonEmptyArray(
+    finalPrimaryCo2.serviceFinalEnergyRows,
+    "finalPrimaryCo2.serviceFinalEnergyRows"
+  );
   assertObject(finalPrimaryCo2.primaryFactors, "finalPrimaryCo2.primaryFactors");
   assertObject(finalPrimaryCo2.co2Factors, "finalPrimaryCo2.co2Factors");
-  assertFiniteNumber(finalPrimaryCo2.conditionedArea, "finalPrimaryCo2.conditionedArea");
-  assertFiniteNumber(
+  assertFinitePositiveNumber(finalPrimaryCo2.conditionedArea, "finalPrimaryCo2.conditionedArea");
+  if (finalPrimaryCo2.conditionedArea !== buildingContext.conditionedFloorArea) {
+    throw new Error("finalPrimaryCo2.conditionedArea must match buildingContext.conditionedFloorArea");
+  }
+  assertFiniteNonNegativeNumber(
     finalPrimaryCo2.expectedFinalEnergyTotalKWh,
     "finalPrimaryCo2.expectedFinalEnergyTotalKWh"
   );
-  assertFiniteNumber(
+  assertFiniteNonNegativeNumber(
     finalPrimaryCo2.expectedPrimaryTotalKWh,
     "finalPrimaryCo2.expectedPrimaryTotalKWh"
   );
+  assertOptionalTolerance(finalPrimaryCo2.toleranceAbs, "finalPrimaryCo2.toleranceAbs");
+  assertOptionalTolerance(finalPrimaryCo2.co2ToleranceAbs, "finalPrimaryCo2.co2ToleranceAbs");
+  assertRequiredField(finalPrimaryCo2.source, "finalPrimaryCo2.source");
 
   if (finalPrimaryCo2.expectedRenewablePrimaryKWh !== undefined) {
-    assertFiniteNumber(
+    assertFiniteNonNegativeNumber(
       finalPrimaryCo2.expectedRenewablePrimaryKWh,
       "finalPrimaryCo2.expectedRenewablePrimaryKWh"
     );
   }
   if (finalPrimaryCo2.expectedNonRenewablePrimaryKWh !== undefined) {
-    assertFiniteNumber(
+    assertFiniteNonNegativeNumber(
       finalPrimaryCo2.expectedNonRenewablePrimaryKWh,
       "finalPrimaryCo2.expectedNonRenewablePrimaryKWh"
     );
   }
   if (finalPrimaryCo2.expectedCO2TotalKg !== undefined) {
-    assertFiniteNumber(finalPrimaryCo2.expectedCO2TotalKg, "finalPrimaryCo2.expectedCO2TotalKg");
+    assertFiniteNonNegativeNumber(
+      finalPrimaryCo2.expectedCO2TotalKg,
+      "finalPrimaryCo2.expectedCO2TotalKg"
+    );
   }
 
   finalPrimaryCo2.serviceFinalEnergyRows.forEach((row, index) => {
@@ -162,7 +296,7 @@ function validateFinalPrimaryCo2(finalPrimaryCo2) {
     assertObject(row, path);
     assertRequiredField(row.serviceKey, `${path}.serviceKey`);
     assertRequiredField(row.energyCarrierKey, `${path}.energyCarrierKey`);
-    assertFiniteNumber(row.finalEnergyKWh, `${path}.finalEnergyKWh`);
+    assertFiniteNonNegativeNumber(row.finalEnergyKWh, `${path}.finalEnergyKWh`);
     assertRequiredField(row.source, `${path}.source`);
 
     if (!finalPrimaryCo2.primaryFactors[row.energyCarrierKey]) {
@@ -174,27 +308,43 @@ function validateFinalPrimaryCo2(finalPrimaryCo2) {
 
     const primaryFactor = finalPrimaryCo2.primaryFactors[row.energyCarrierKey];
     const co2Factor = finalPrimaryCo2.co2Factors[row.energyCarrierKey];
+    assertObject(
+      primaryFactor,
+      `finalPrimaryCo2.primaryFactors.${row.energyCarrierKey}`
+    );
+    assertObject(co2Factor, `finalPrimaryCo2.co2Factors.${row.energyCarrierKey}`);
     assertRequiredField(
       primaryFactor.sourcePrimaryTable,
       `finalPrimaryCo2.primaryFactors.${row.energyCarrierKey}.sourcePrimaryTable`
     );
-    assertFiniteNumber(
+    assertFiniteNonNegativeNumber(
       primaryFactor.renewablePrimaryEnergyFactor,
       `finalPrimaryCo2.primaryFactors.${row.energyCarrierKey}.renewablePrimaryEnergyFactor`
     );
-    assertFiniteNumber(
+    assertFiniteNonNegativeNumber(
       primaryFactor.nonRenewablePrimaryEnergyFactor,
       `finalPrimaryCo2.primaryFactors.${row.energyCarrierKey}.nonRenewablePrimaryEnergyFactor`
     );
-    assertFiniteNumber(
+    assertFiniteNonNegativeNumber(
       primaryFactor.totalPrimaryEnergyFactor,
       `finalPrimaryCo2.primaryFactors.${row.energyCarrierKey}.totalPrimaryEnergyFactor`
     );
+    if (
+      Math.abs(
+        primaryFactor.totalPrimaryEnergyFactor -
+          (primaryFactor.renewablePrimaryEnergyFactor +
+            primaryFactor.nonRenewablePrimaryEnergyFactor)
+      ) > 1e-9
+    ) {
+      throw new Error(
+        `finalPrimaryCo2.primaryFactors.${row.energyCarrierKey}.totalPrimaryEnergyFactor must equal renewable plus non-renewable factors`
+      );
+    }
     assertRequiredField(
       co2Factor.sourceCO2Table,
       `finalPrimaryCo2.co2Factors.${row.energyCarrierKey}.sourceCO2Table`
     );
-    assertFiniteNumber(
+    assertFiniteNonNegativeNumber(
       co2Factor.co2EmissionFactor,
       `finalPrimaryCo2.co2Factors.${row.energyCarrierKey}.co2EmissionFactor`
     );
@@ -203,7 +353,16 @@ function validateFinalPrimaryCo2(finalPrimaryCo2) {
 
 function validateExplicitBlockers(explicitBlockers) {
   assertArray(explicitBlockers, "explicitBlockers");
-  const blockerIds = explicitBlockers.map((blocker) => blocker?.blockerId);
+  const blockerIds = explicitBlockers.map((blocker, index) => {
+    const path = `explicitBlockers[${index}]`;
+    assertObject(blocker, path);
+    assertRequiredField(blocker.blockerId, `${path}.blockerId`);
+    assertRequiredField(blocker.area, `${path}.area`);
+    assertRequiredField(blocker.status, `${path}.status`);
+    assertRequiredField(blocker.source, `${path}.source`);
+    assertRequiredField(blocker.reason, `${path}.reason`);
+    return blocker.blockerId;
+  });
 
   for (const blockerId of REQUIRED_BLOCKER_IDS) {
     if (!blockerIds.includes(blockerId)) {
@@ -225,13 +384,17 @@ function validateMonthlyHeatingRows(monthlyHeating) {
   const seenMonths = new Set();
   const blockedMonths = new Set(monthlyHeating.blockedMonths.map(monthName));
   const ambiguousMonths = new Set(monthlyHeating.ambiguousMonths.map(monthName));
+  const expectedMonths = new Set(CALENDAR_MONTHS);
 
   monthlyHeating.monthlyRows.forEach((row, index) => {
     const path = `monthlyHeating.monthlyRows[${index}]`;
     assertObject(row, path);
     assertRequiredField(row.month, `${path}.month`);
-    assertFiniteNumber(row.QHht, `${path}.QHht`);
-    assertFiniteNumber(row.QHgn, `${path}.QHgn`);
+    if (!expectedMonths.has(row.month)) {
+      throw new Error(`${path}.month is not a recognized calendar month: ${row.month}`);
+    }
+    assertFiniteNonNegativeNumber(row.QHht, `${path}.QHht`);
+    assertFiniteNonNegativeNumber(row.QHgn, `${path}.QHgn`);
     assertRequiredField(row.status, `${path}.status`);
 
     if (seenMonths.has(row.month)) {
@@ -244,9 +407,13 @@ function validateMonthlyHeatingRows(monthlyHeating) {
     }
 
     if (row.status === "validated" || row.status === "display_reconciliation_only") {
-      assertFiniteNumber(row.QHnd, `${path}.QHnd`);
+      assertFiniteNonNegativeNumber(row.QHnd, `${path}.QHnd`);
     } else if (row.QHnd !== null) {
-      assertFiniteNumber(row.QHnd, `${path}.QHnd`);
+      assertFiniteNonNegativeNumber(row.QHnd, `${path}.QHnd`);
+    }
+
+    if (row.sourceDisplayedQHnd !== undefined) {
+      assertFiniteNonNegativeNumber(row.sourceDisplayedQHnd, `${path}.sourceDisplayedQHnd`);
     }
 
     if (row.status === "blocked") {
@@ -265,6 +432,19 @@ function validateMonthlyHeatingRows(monthlyHeating) {
       }
     }
   });
+
+  for (const month of CALENDAR_MONTHS) {
+    if (!seenMonths.has(month)) {
+      throw new Error(`Missing monthly heating row: ${month}`);
+    }
+  }
+
+  for (const [month, expectedStatus] of Object.entries(REQUIRED_MONTHLY_HEATING_MONTH_STATUSES)) {
+    const row = monthlyHeating.monthlyRows.find((monthlyRow) => monthlyRow.month === month);
+    if (!row || row.status !== expectedStatus) {
+      throw new Error(`${month} monthly heating row must remain ${expectedStatus}`);
+    }
+  }
 
   for (const blockedMonth of blockedMonths) {
     const row = monthlyHeating.monthlyRows.find((monthlyRow) => monthlyRow.month === blockedMonth);
@@ -285,19 +465,35 @@ function validateMonthlyHeatingRows(monthlyHeating) {
 
 function validateMonthlyHeating(monthlyHeating) {
   assertObject(monthlyHeating, "monthlyHeating");
-  assertRequiredField(monthlyHeating.unit, "monthlyHeating.unit");
-  assertFiniteNumber(
+  assertExactUnit(
+    monthlyHeating.unit,
+    EXPECTED_UNITS.monthlyHeating,
+    "monthlyHeating.unit"
+  );
+  assertFiniteNonNegativeNumber(
     monthlyHeating.annualDisplayedHeatingNeed,
     "monthlyHeating.annualDisplayedHeatingNeed"
   );
   assertArray(monthlyHeating.blockedMonths, "monthlyHeating.blockedMonths");
   assertArray(monthlyHeating.ambiguousMonths, "monthlyHeating.ambiguousMonths");
   assertRequiredField(monthlyHeating.source, "monthlyHeating.source");
+  if (monthlyHeating.isCompleteAnnualMethodology === true) {
+    throw new Error("monthlyHeating.isCompleteAnnualMethodology must remain false");
+  }
+  if (
+    monthlyHeating.methodologyStatus !== undefined &&
+    monthlyHeating.methodologyStatus !== MONTHLY_HEATING_METHODOLOGY_STATUS
+  ) {
+    throw new Error(
+      `monthlyHeating.methodologyStatus must be ${MONTHLY_HEATING_METHODOLOGY_STATUS}`
+    );
+  }
   validateMonthlyHeatingRows(monthlyHeating);
 }
 
 export function validateMc001Level1CoreInputPack(inputPack) {
   assertObject(inputPack, "inputPack");
+  rejectReadinessClaims(inputPack);
   for (const sectionName of REQUIRED_SECTIONS) {
     requiredSection(inputPack, sectionName);
   }
@@ -306,7 +502,7 @@ export function validateMc001Level1CoreInputPack(inputPack) {
   validateBuildingContext(inputPack.buildingContext);
   validateTransmission(inputPack.transmission);
   validateVentilation(inputPack.ventilation);
-  validateFinalPrimaryCo2(inputPack.finalPrimaryCo2);
+  validateFinalPrimaryCo2(inputPack.finalPrimaryCo2, inputPack.buildingContext);
   validateExplicitBlockers(inputPack.explicitBlockers);
   if (inputPack.monthlyHeating !== undefined) {
     validateMonthlyHeating(inputPack.monthlyHeating);
@@ -547,6 +743,7 @@ export function createMc001Level1CoreOrchestrator(inputPack) {
     level: LEVEL,
     isProductionOrchestrator: false,
     isCertificateWorkflow: false,
+    readinessClaims: cloneSerializable(READINESS_CLAIMS),
     inputPackId: inputPack.packMetadata.packId,
     transmissionSummary,
     ventilationSummary,

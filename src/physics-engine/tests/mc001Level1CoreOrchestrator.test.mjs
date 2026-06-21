@@ -115,6 +115,12 @@ test("creates deterministic serializable Level 1 core output", () => {
   assert.deepEqual(parsed, first);
   assert.equal(first.orchestratorType, fixture.expected.orchestratorType);
   assert.equal(first.level, fixture.expected.level);
+  assert.deepEqual(first.readinessClaims, {
+    isFullMc001AuditReady: false,
+    isLevel2Ready: false,
+    isCertificateCpeWorkflowReady: false,
+    isProductionOrchestrationReady: false
+  });
   assert.equal(first.validationStatus, fixture.expected.validationStatus);
   assert.equal("monthlyHeatingSummary" in first, false);
 });
@@ -183,7 +189,7 @@ test("rejects hidden monthly heating blocker rows", () => {
 
   assert.throws(
     () => validateMc001Level1CoreInputPack(inputPack),
-    /Missing blocked monthly heating row: Apr/
+    /Apr monthly heating row must remain blocked/
   );
 });
 

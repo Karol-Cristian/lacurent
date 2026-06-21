@@ -298,6 +298,22 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for Level 1 monthly-heating summary composition over explicit Fixture 006 rows only; April and September remain blocked, October remains ambiguous, annual displayed QHnd is reconciliation-only, and no Level 2 full auditor, certificate/CPE workflow, production integration, UI, API, DB/schema, Worker, deploy, full DHW final energy, lighting, cooling systems or reference-building implementation is added."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_018_LEVEL_1_FAIL_CLOSED_HARDENING",
+    exampleId: "MC001_LEVEL_1_FAIL_CLOSED_INPUT_PACK",
+    source:
+      "MC001 Physics Engine Fixture 016/017 explicit Level 1 input packs with fail-closed validation mutations",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_018_LEVEL_1_FAIL_CLOSED_HARDENING.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture018Level1FailClosedHardening.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture018Level1FailClosedHardening.validation.test.mjs",
+    validationAreas: Object.freeze(["level_1_fail_closed_hardening"]),
+    helperCoverage: Object.freeze(["mc001Level1CoreOrchestrator.mjs"]),
+    limitations:
+      "Executable for Level 1 input-pack hardening and negative fail-closed validation only; it adds no new MC001 physics formulas, no Level 2 full auditor, no certificate/CPE workflow, no UI/API/DB/schema/Worker/deploy/product integration, no full DHW final energy, no lighting, no cooling systems and no reference-building implementation."
   })
 ]);
 

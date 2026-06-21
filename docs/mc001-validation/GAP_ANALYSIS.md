@@ -57,6 +57,8 @@ These are formula validations, not full MC001 example reproductions.
 
 `FIXTURE_017_LEVEL_1_MONTHLY_HEATING_ORCHESTRATION` now provides an optional Level 1 monthly-heating composition fixture. It uses explicit Fixture 006 rows only, summarizes nine validated helper-compatible months, preserves April and September as blocked boundary-period rows, preserves October as ambiguous, and carries the annual displayed `QH;nd = 76252.3 kWh/an` as reconciliation-only. It does not change `monthlyBalance.mjs` or Figure 2.18's `gammaH > 2` branch.
 
+`FIXTURE_018_LEVEL_1_FAIL_CLOSED_HARDENING` now hardens the Level 1 core input boundary. It rejects missing required sections, missing required fields, invalid units, non-finite numeric values, string numeric values, invalid monthly-heating statuses, hidden Apr/Sep/Oct status changes, missing required explicit blockers, and readiness claims for full MC001 audit, Level 2, certificate/CPE, or production orchestration. It does not add new physics, does not change `monthlyBalance.mjs`, and does not promote Level 1 into a full auditor.
+
 No indexed MC001 example currently provides a complete end-to-end verified numeric fixture for these remaining implemented helpers:
 
 - Any envelope U/R rows not covered by fixtures 001 and 003.
@@ -107,7 +109,7 @@ The helpers can run, but the example data cannot yet support strict expected-val
 
 `INVESTIGATION_008_MINIMAL_MC001_ORCHESTRATOR_BOUNDARY` defined the first orchestrator boundary. `FIXTURE_015_MINIMAL_MC001_ORCHESTRATOR_SUMMARY` implements that boundary as a Level 0 Summary Aggregator over Fixture 001-014 validation coverage and explicit blockers.
 
-`INVESTIGATION_009_LEVEL_1_EXPLICIT_INPUT_PACK` defines the required pack. `FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR` implements the recommended narrow core for transmission, ventilation, and final/primary/CO2. `FIXTURE_017_LEVEL_1_MONTHLY_HEATING_ORCHESTRATION` adds optional monthly-heating summary composition while preserving Apr/Sep blocked months and the Oct ambiguity. Class/DHW/RER/utility-threshold sections remain excluded from the core calculation.
+`INVESTIGATION_009_LEVEL_1_EXPLICIT_INPUT_PACK` defines the required pack. `FIXTURE_016_LEVEL_1_CORE_COMPONENT_ORCHESTRATOR` implements the recommended narrow core for transmission, ventilation, and final/primary/CO2. `FIXTURE_017_LEVEL_1_MONTHLY_HEATING_ORCHESTRATION` adds optional monthly-heating summary composition while preserving Apr/Sep blocked months and the Oct ambiguity. `FIXTURE_018_LEVEL_1_FAIL_CLOSED_HARDENING` strengthens the Level 1 boundary so incomplete, ambiguous, inconsistent, or invented input packs fail closed. Class/DHW/RER/utility-threshold sections remain excluded from the core calculation.
 
 Next task: keep Anexa B displayed class labels and certificate workflow blocked until reference-building/CPE boundaries, virtual mandatory utilities, overheating indicator handling, and mixed-use averaging are independently extracted and validated. Do not promote Fixture 012 into a general RER helper, certificate generator, or broad certificate calculator.
 
@@ -118,6 +120,6 @@ Rationale:
 - Page 527 displayed CO2 totals should stay blocked for Tabel 5.18 validation because the worked example applies an extra 80% electricity multiplier.
 - Page 523 heating prose should stay blocked because its final-energy value is isolated and inconsistent with the surrounding primary/service rows.
 - Continue with explicit rows or missing-input behavior only; do not add certificate generation, general RER perimeter logic, or production integration. Class work should remain limited to explicit interval lookup and explicit threshold adjustment until certificate/reference-building context is validated.
-- First orchestrator work is now split between Level 0 summary composition, Level 1 core helper-call composition over explicit Fixture 004/005/007 inputs, and Level 1 monthly-heating summary composition over explicit Fixture 006 rows. Complete annual monthly-heating methodology and Level 2 full-auditor composition remain blocked until a complete explicit MC001 audit input pack exists.
+- First orchestrator work is now split between Level 0 summary composition, Level 1 core helper-call composition over explicit Fixture 004/005/007 inputs, Level 1 monthly-heating summary composition over explicit Fixture 006 rows, and Level 1 fail-closed validation hardening over Fixture 016/017 input packs. Complete annual monthly-heating methodology and Level 2 full-auditor composition remain blocked until a complete explicit MC001 audit input pack exists.
 
 Do not add a production orchestrator, production integration, UI, workers, API behavior, schema changes, marketplace work, recommendation work, or AI experiments as part of that task.
