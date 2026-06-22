@@ -360,6 +360,30 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for narrow Phase D source-backed exterior envelope input preparation only; unsupported ground, unconditioned, adjacent, climate/monthly, Level 2 full auditor, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, report generation, dataset migration and new MC001 formula coverage remain blocked."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_022_TRANSMISSION_HTR_READINESS_GATE",
+    exampleId: "MC001_PHASE_E_TRANSMISSION_HTR_READINESS_GATE",
+    source:
+      "Phase E transmission/Htr readiness gate over Phase D envelope output",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_022_TRANSMISSION_HTR_READINESS_GATE.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture022TransmissionHtrReadinessGate.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture022TransmissionHtrReadinessGate.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "transmission_htr_readiness_gate",
+      "transmission"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001TransmissionHtrReadinessGate.mjs",
+      "mc001EnvelopeInputBuilder.mjs",
+      "mc001AuditorInputBuilderGate.mjs",
+      "transmissionCoefficients.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase E transmission/Htr readiness classification only; it prevents false complete-Htr readiness and adds no full Htr engine, no full envelope engine, no Level 2 full auditor, no climate/monthly heating implementation, no UI/API/DB/schema/Worker/deploy/product integration, no report generation, no certificate/CPE workflow, no dataset migration and no new MC001 formula coverage."
   })
 ]);
 
