@@ -384,6 +384,57 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for narrow Phase E transmission/Htr readiness classification only; it prevents false complete-Htr readiness and adds no full Htr engine, no full envelope engine, no Level 2 full auditor, no climate/monthly heating implementation, no UI/API/DB/schema/Worker/deploy/product integration, no report generation, no certificate/CPE workflow, no dataset migration and no new MC001 formula coverage."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_023_VENTILATION_FROM_AUDITOR_INPUT",
+    exampleId: "MC001_PHASE_F_VENTILATION_FROM_AUDITOR_INPUT",
+    source:
+      "Phase F source-backed ventilation input builder over Phase C auditor input gate",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_023_VENTILATION_FROM_AUDITOR_INPUT.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture023VentilationFromAuditorInput.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture023VentilationFromAuditorInput.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "ventilation_from_auditor_input",
+      "ventilation"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001VentilationInputBuilder.mjs",
+      "mc001AuditorInputBuilderGate.mjs",
+      "ventilationCoefficients.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase F source-backed ventilation/Hve input preparation only; unsupported ventilation paths, climate/monthly heating, heat-loss readiness, Level 2 full auditor, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, report generation and new MC001 formula coverage remain blocked."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_024_HEAT_LOSS_READINESS_GATE",
+    exampleId: "MC001_PHASE_F_HEAT_LOSS_READINESS_GATE",
+    source:
+      "Phase F heat-loss readiness gate over Phase E Htr and Phase F Hve outputs",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_024_HEAT_LOSS_READINESS_GATE.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture024HeatLossReadinessGate.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture024HeatLossReadinessGate.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "heat_loss_readiness_gate",
+      "transmission",
+      "ventilation"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001HeatLossReadinessGate.mjs",
+      "mc001TransmissionHtrReadinessGate.mjs",
+      "mc001VentilationInputBuilder.mjs",
+      "mc001EnvelopeInputBuilder.mjs",
+      "mc001AuditorInputBuilderGate.mjs",
+      "transmissionCoefficients.mjs",
+      "ventilationCoefficients.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase F heat-loss readiness gating only; it combines complete source-backed Htr and Hve readiness without adding monthly heating, QHnd, climate data, full Htr engine, full ventilation engine, Level 2 full auditor, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, report generation or new MC001 formula coverage."
   })
 ]);
 
