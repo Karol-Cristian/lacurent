@@ -336,6 +336,30 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for a narrow Phase C registry contract and input-builder gate fixture only; it adds no Level 2 full auditor, no MC001 formula expansion, no UI/API/DB/schema/Worker/deploy/product integration, no report generation, no certificate/CPE workflow and no dataset migration."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_021_ENVELOPE_FROM_AUDITOR_INPUT",
+    exampleId: "MC001_PHASE_D_ENVELOPE_FROM_AUDITOR_INPUT",
+    source:
+      "Phase D source-backed envelope input builder over Phase C auditor input gate",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_021_ENVELOPE_FROM_AUDITOR_INPUT.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture021EnvelopeFromAuditorInput.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture021EnvelopeFromAuditorInput.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "envelope_from_auditor_input",
+      "transmission"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001EnvelopeInputBuilder.mjs",
+      "mc001AuditorInputBuilderGate.mjs",
+      "materialsUValues.mjs",
+      "transmissionCoefficients.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase D source-backed exterior envelope input preparation only; unsupported ground, unconditioned, adjacent, climate/monthly, Level 2 full auditor, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, report generation, dataset migration and new MC001 formula coverage remain blocked."
   })
 ]);
 
