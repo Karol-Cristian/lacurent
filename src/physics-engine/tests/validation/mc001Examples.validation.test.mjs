@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 21);
+  assert.equal(mc001ExecutableValidationFixtures.length, 23);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 21);
+  assert.equal(mc001ExecutableValidationCases.length, 23);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -135,6 +135,15 @@ test("covers requested validation areas with blocked examples and reviewed execu
     "transmission_htr_readiness_gate",
     "transmission"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[21].validationAreas, [
+    "ventilation_from_auditor_input",
+    "ventilation"
+  ]);
+  assert.deepEqual(mc001ExecutableValidationCases[22].validationAreas, [
+    "heat_loss_readiness_gate",
+    "transmission",
+    "ventilation"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -159,7 +168,9 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture018,
     fixture020,
     fixture021,
-    fixture022
+    fixture022,
+    fixture023,
+    fixture024
   ] =
     mc001ExecutableValidationCases;
 
@@ -544,6 +555,64 @@ test("registers executable fixture metadata without embedding numeric fixture da
     "mc001EnvelopeInputBuilder.mjs",
     "mc001AuditorInputBuilderGate.mjs",
     "transmissionCoefficients.mjs"
+  ]);
+
+  assert.equal(
+    fixture023.fixtureId,
+    "FIXTURE_023_VENTILATION_FROM_AUDITOR_INPUT"
+  );
+  assert.equal(
+    fixture023.exampleId,
+    "MC001_PHASE_F_VENTILATION_FROM_AUDITOR_INPUT"
+  );
+  assert.ok(
+    fixture023.documentationPath.endsWith(
+      "FIXTURE_023_VENTILATION_FROM_AUDITOR_INPUT.md"
+    )
+  );
+  assert.ok(
+    fixture023.fixturePath.endsWith("fixture023VentilationFromAuditorInput.mjs")
+  );
+  assert.ok(
+    fixture023.validationTestPath.endsWith(
+      "fixture023VentilationFromAuditorInput.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture023.helperCoverage, [
+    "mc001VentilationInputBuilder.mjs",
+    "mc001AuditorInputBuilderGate.mjs",
+    "ventilationCoefficients.mjs"
+  ]);
+
+  assert.equal(
+    fixture024.fixtureId,
+    "FIXTURE_024_HEAT_LOSS_READINESS_GATE"
+  );
+  assert.equal(
+    fixture024.exampleId,
+    "MC001_PHASE_F_HEAT_LOSS_READINESS_GATE"
+  );
+  assert.ok(
+    fixture024.documentationPath.endsWith(
+      "FIXTURE_024_HEAT_LOSS_READINESS_GATE.md"
+    )
+  );
+  assert.ok(
+    fixture024.fixturePath.endsWith("fixture024HeatLossReadinessGate.mjs")
+  );
+  assert.ok(
+    fixture024.validationTestPath.endsWith(
+      "fixture024HeatLossReadinessGate.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture024.helperCoverage, [
+    "mc001HeatLossReadinessGate.mjs",
+    "mc001TransmissionHtrReadinessGate.mjs",
+    "mc001VentilationInputBuilder.mjs",
+    "mc001EnvelopeInputBuilder.mjs",
+    "mc001AuditorInputBuilderGate.mjs",
+    "transmissionCoefficients.mjs",
+    "ventilationCoefficients.mjs"
   ]);
 
   for (const fixture of mc001ExecutableValidationCases) {
