@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 18);
+  assert.equal(mc001ExecutableValidationFixtures.length, 19);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 18);
+  assert.equal(mc001ExecutableValidationCases.length, 19);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -123,6 +123,10 @@ test("covers requested validation areas with blocked examples and reviewed execu
   assert.deepEqual(mc001ExecutableValidationCases[17].validationAreas, [
     "level_1_fail_closed_hardening"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[18].validationAreas, [
+    "normative_registry_contract",
+    "auditor_input_builder_gate"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -144,7 +148,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture015,
     fixture016,
     fixture017,
-    fixture018
+    fixture018,
+    fixture020
   ] =
     mc001ExecutableValidationCases;
 
@@ -446,6 +451,34 @@ test("registers executable fixture metadata without embedding numeric fixture da
     )
   );
   assert.deepEqual(fixture018.helperCoverage, ["mc001Level1CoreOrchestrator.mjs"]);
+
+  assert.equal(
+    fixture020.fixtureId,
+    "FIXTURE_020_REGISTRY_CONTRACT_INPUT_BUILDER_GATE"
+  );
+  assert.equal(
+    fixture020.exampleId,
+    "MC001_PHASE_C_REGISTRY_CONTRACT_INPUT_BUILDER_GATE"
+  );
+  assert.ok(
+    fixture020.documentationPath.endsWith(
+      "FIXTURE_020_REGISTRY_CONTRACT_INPUT_BUILDER_GATE.md"
+    )
+  );
+  assert.ok(
+    fixture020.fixturePath.endsWith(
+      "fixture020RegistryContractInputBuilderGate.mjs"
+    )
+  );
+  assert.ok(
+    fixture020.validationTestPath.endsWith(
+      "fixture020RegistryContractInputBuilderGate.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture020.helperCoverage, [
+    "mc001NormativeRegistryContract.mjs",
+    "mc001AuditorInputBuilderGate.mjs"
+  ]);
 
   for (const fixture of mc001ExecutableValidationCases) {
     assert.equal("calculationInputs" in fixture, false);

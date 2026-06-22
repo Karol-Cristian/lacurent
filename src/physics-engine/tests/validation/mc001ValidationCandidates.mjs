@@ -314,6 +314,28 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     helperCoverage: Object.freeze(["mc001Level1CoreOrchestrator.mjs"]),
     limitations:
       "Executable for Level 1 input-pack hardening and negative fail-closed validation only; it adds no new MC001 physics formulas, no Level 2 full auditor, no certificate/CPE workflow, no UI/API/DB/schema/Worker/deploy/product integration, no full DHW final energy, no lighting, no cooling systems and no reference-building implementation."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_020_REGISTRY_CONTRACT_INPUT_BUILDER_GATE",
+    exampleId: "MC001_PHASE_C_REGISTRY_CONTRACT_INPUT_BUILDER_GATE",
+    source:
+      "Phase A/B MC001 auditor input contract and normative registry hardening plan",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_020_REGISTRY_CONTRACT_INPUT_BUILDER_GATE.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture020RegistryContractInputBuilderGate.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture020RegistryContractInputBuilderGate.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "normative_registry_contract",
+      "auditor_input_builder_gate"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001NormativeRegistryContract.mjs",
+      "mc001AuditorInputBuilderGate.mjs"
+    ]),
+    limitations:
+      "Executable for a narrow Phase C registry contract and input-builder gate fixture only; it adds no Level 2 full auditor, no MC001 formula expansion, no UI/API/DB/schema/Worker/deploy/product integration, no report generation, no certificate/CPE workflow and no dataset migration."
   })
 ]);
 
