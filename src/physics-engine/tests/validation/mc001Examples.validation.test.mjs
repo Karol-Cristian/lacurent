@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 20);
+  assert.equal(mc001ExecutableValidationFixtures.length, 21);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 20);
+  assert.equal(mc001ExecutableValidationCases.length, 21);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -131,6 +131,10 @@ test("covers requested validation areas with blocked examples and reviewed execu
     "envelope_from_auditor_input",
     "transmission"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[20].validationAreas, [
+    "transmission_htr_readiness_gate",
+    "transmission"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -154,7 +158,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture017,
     fixture018,
     fixture020,
-    fixture021
+    fixture021,
+    fixture022
   ] =
     mc001ExecutableValidationCases;
 
@@ -510,6 +515,34 @@ test("registers executable fixture metadata without embedding numeric fixture da
     "mc001EnvelopeInputBuilder.mjs",
     "mc001AuditorInputBuilderGate.mjs",
     "materialsUValues.mjs",
+    "transmissionCoefficients.mjs"
+  ]);
+
+  assert.equal(
+    fixture022.fixtureId,
+    "FIXTURE_022_TRANSMISSION_HTR_READINESS_GATE"
+  );
+  assert.equal(
+    fixture022.exampleId,
+    "MC001_PHASE_E_TRANSMISSION_HTR_READINESS_GATE"
+  );
+  assert.ok(
+    fixture022.documentationPath.endsWith(
+      "FIXTURE_022_TRANSMISSION_HTR_READINESS_GATE.md"
+    )
+  );
+  assert.ok(
+    fixture022.fixturePath.endsWith("fixture022TransmissionHtrReadinessGate.mjs")
+  );
+  assert.ok(
+    fixture022.validationTestPath.endsWith(
+      "fixture022TransmissionHtrReadinessGate.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture022.helperCoverage, [
+    "mc001TransmissionHtrReadinessGate.mjs",
+    "mc001EnvelopeInputBuilder.mjs",
+    "mc001AuditorInputBuilderGate.mjs",
     "transmissionCoefficients.mjs"
   ]);
 
