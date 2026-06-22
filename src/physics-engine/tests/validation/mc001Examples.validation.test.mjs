@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 19);
+  assert.equal(mc001ExecutableValidationFixtures.length, 20);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 19);
+  assert.equal(mc001ExecutableValidationCases.length, 20);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -127,6 +127,10 @@ test("covers requested validation areas with blocked examples and reviewed execu
     "normative_registry_contract",
     "auditor_input_builder_gate"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[19].validationAreas, [
+    "envelope_from_auditor_input",
+    "transmission"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -149,7 +153,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture016,
     fixture017,
     fixture018,
-    fixture020
+    fixture020,
+    fixture021
   ] =
     mc001ExecutableValidationCases;
 
@@ -478,6 +483,34 @@ test("registers executable fixture metadata without embedding numeric fixture da
   assert.deepEqual(fixture020.helperCoverage, [
     "mc001NormativeRegistryContract.mjs",
     "mc001AuditorInputBuilderGate.mjs"
+  ]);
+
+  assert.equal(
+    fixture021.fixtureId,
+    "FIXTURE_021_ENVELOPE_FROM_AUDITOR_INPUT"
+  );
+  assert.equal(
+    fixture021.exampleId,
+    "MC001_PHASE_D_ENVELOPE_FROM_AUDITOR_INPUT"
+  );
+  assert.ok(
+    fixture021.documentationPath.endsWith(
+      "FIXTURE_021_ENVELOPE_FROM_AUDITOR_INPUT.md"
+    )
+  );
+  assert.ok(
+    fixture021.fixturePath.endsWith("fixture021EnvelopeFromAuditorInput.mjs")
+  );
+  assert.ok(
+    fixture021.validationTestPath.endsWith(
+      "fixture021EnvelopeFromAuditorInput.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture021.helperCoverage, [
+    "mc001EnvelopeInputBuilder.mjs",
+    "mc001AuditorInputBuilderGate.mjs",
+    "materialsUValues.mjs",
+    "transmissionCoefficients.mjs"
   ]);
 
   for (const fixture of mc001ExecutableValidationCases) {
