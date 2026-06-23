@@ -47,6 +47,23 @@ function validationImport(componentId, value, extra = {}) {
   };
 }
 
+function expertOverride(componentId, value, extra = {}) {
+  return {
+    overrideId: `PHASE_G_EXPERT_OVERRIDE_${componentId}`,
+    targetFieldPath: `transmission.${componentId}`,
+    value,
+    unit: "W/K",
+    source: `Phase G expert ${componentId} source`,
+    owner: "measured_override_with_source",
+    sourceRefs: [`${componentId}_PHASE_G_EXPERT_SOURCE`],
+    reason: `Reviewed source-backed ${componentId} override for Phase G readiness`,
+    responsiblePerson: "Phase G reviewer",
+    confidence: "reviewed",
+    traceId: `${componentId}_PHASE_G_EXPERT_TRACE`,
+    ...extra
+  };
+}
+
 function baseCoreInputPack() {
   const inputPack = clone(fixture021EnvelopeFromAuditorInput.inputPack);
   const ventilationInput = clone(fixture023VentilationFromAuditorInput.inputPack);
@@ -76,9 +93,24 @@ function completeCoreInputPack() {
   return inputPack;
 }
 
-function build(inputPack = baseCoreInputPack()) {
+function completeCoreInputPackWithExpertOverrides() {
+  const inputPack = baseCoreInputPack();
+  inputPack.envelope.elements = inputPack.envelope.elements.filter(
+    (element) => element.boundaryType === "exterior"
+  );
+  inputPack.explicitBlockers = [];
+  inputPack.expertOverrides = [
+    expertOverride("Hg", 2),
+    expertOverride("Hu", 3),
+    expertOverride("Ha", 4)
+  ];
+  return inputPack;
+}
+
+function build(inputPack = baseCoreInputPack(), options = {}) {
   return createMc001AuditorCoreReadinessOrchestrator(inputPack, {
-    registry: fixture021EnvelopeFromAuditorInput.registry
+    registry: fixture021EnvelopeFromAuditorInput.registry,
+    ...options
   });
 }
 
@@ -86,6 +118,59 @@ function expectFailure(name, fn, expectedError) {
   test(name, () => {
     assert.throws(fn, expectedError);
   });
+}
+
+function assertConsolidatedContract(result) {
+  for (const fieldName of [
+    "inputGateStatus",
+    "envelopeReadiness",
+    "transmissionReadiness",
+    "ventilationReadiness",
+    "heatLossReadiness",
+    "blockedItems",
+    "diagnostics",
+    "sourceTrace",
+    "readinessFlags",
+    "nextBlockers"
+  ]) {
+    assert.ok(fieldName in result, `${fieldName} missing from consolidated result`);
+  }
+
+  for (const flagName of [
+    "isEnvelopeReady",
+    "isTransmissionReady",
+    "isVentilationReady",
+    "isHeatLossReady",
+    "isMonthlyHeatingReady",
+    "isLevel2AuditorReady",
+    "isCpeReady"
+  ]) {
+    assert.ok(flagName in result.readinessFlags, `${flagName} missing from readiness flags`);
+  }
+
+  assert.equal(result.readinessFlags.isMonthlyHeatingReady, false);
+  assert.equal(result.readinessFlags.isQhndReady, false);
+  assert.equal(result.readinessFlags.isLevel2AuditorReady, false);
+  assert.equal(result.readinessFlags.isCpeReady, false);
+  assert.ok(Array.isArray(result.blockedItems));
+  assert.ok(Array.isArray(result.diagnostics));
+  assert.ok(Array.isArray(result.nextBlockers));
+}
+
+function assertBlockedItemsHaveNoFakeValues(result) {
+  assert.ok(
+    result.blockedItems.every((item) => item.value === null),
+    "blocked consolidated items must not carry fallback values"
+  );
+}
+
+function assertNoBroaderReadiness(result) {
+  assert.equal(result.readinessFlags.isMonthlyHeatingReady, false);
+  assert.equal(result.readinessFlags.isQhndReady, false);
+  assert.equal(result.readinessFlags.isLevel2AuditorReady, false);
+  assert.equal(result.readinessFlags.isCpeReady, false);
+  assert.equal(result.readinessFlags.isCertificateCpeWorkflowReady, false);
+  assert.equal(result.readinessFlags.isProductionIntegrationReady, false);
 }
 
 test("valid raw envelope and ventilation produces consolidated readiness result", () => {
@@ -164,6 +249,230 @@ test("result preserves diagnostics and source trace from lower modules", () => {
     )
   );
 });
+
+test("consolidated result contract is stable for partial and complete scenarios", () => {
+  for (const inputPack of [baseCoreInputPack(), completeCoreInputPack()]) {
+    const result = build(inputPack);
+    assertConsolidatedContract(result);
+    assertBlockedItemsHaveNoFakeValues(result);
+    assertNoBroaderReadiness(result);
+  }
+});
+
+test("scenario matrix A envelope Hd and Hve ready while Htr and heat-loss stay blocked", () => {
+  const result = build(baseCoreInputPack());
+
+  assertConsolidatedContract(result);
+  assert.equal(result.envelopeReadiness.isDirectTransmissionReady, true);
+  assert.equal(result.transmissionReadiness.componentReadiness.Hd.status, "ready");
+  assert.equal(result.ventilationReadiness.componentReadiness.Hve.status, "ready");
+  assert.equal(
+    result.transmissionReadiness.componentReadiness.Htr.status,
+    "blocked_incomplete_components"
+  );
+  assert.equal(result.heatLossReadiness.status, "blocked_incomplete_heat_loss_components");
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(result.heatLossReadiness.heatLossResult, null);
+  assertNoBroaderReadiness(result);
+});
+
+test("scenario matrix B missing envelope blocks transmission without fake Htr zero", () => {
+  const inputPack = baseCoreInputPack();
+  delete inputPack.envelope;
+
+  const result = build(inputPack);
+
+  assertConsolidatedContract(result);
+  assert.equal(result.envelopeReadiness.status, "blocked_missing_envelope_input");
+  assert.equal(result.readinessFlags.isEnvelopeReady, false);
+  assert.equal(result.readinessFlags.isTransmissionReady, false);
+  assert.equal(result.readinessFlags.isVentilationReady, true);
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(result.heatLossReadiness.componentReadiness.Htr.value, null);
+  assert.equal(result.heatLossReadiness.heatLossResult, null);
+  assert.ok(
+    result.blockedItems.some(
+      (item) => item.status === "blocked_missing_envelope_input" && item.value === null
+    )
+  );
+});
+
+test("scenario matrix C missing ventilation blocks Hve and heat-loss without fake zero", () => {
+  const inputPack = baseCoreInputPack();
+  delete inputPack.ventilation;
+
+  const result = build(inputPack);
+
+  assertConsolidatedContract(result);
+  assert.equal(result.envelopeReadiness.isDirectTransmissionReady, true);
+  assert.equal(result.transmissionReadiness.componentReadiness.Hd.status, "ready");
+  assert.equal(
+    result.ventilationReadiness.componentReadiness.Hve.status,
+    "blocked_missing_ventilation_input"
+  );
+  assert.equal(result.ventilationReadiness.componentReadiness.Hve.value, null);
+  assert.equal(result.heatLossReadiness.componentReadiness.Hve.value, null);
+  assert.equal(result.readinessFlags.isVentilationReady, false);
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(result.heatLossReadiness.heatLossResult, null);
+});
+
+test("scenario matrix D unsupported Phase D boundary is preserved and not ignored", () => {
+  const inputPack = baseCoreInputPack();
+  inputPack.envelope.elements[2].boundaryType = "adjacent";
+
+  const result = build(inputPack);
+
+  assertConsolidatedContract(result);
+  assert.equal(result.readinessFlags.isEnvelopeReady, false);
+  assert.equal(result.readinessFlags.isTransmissionReady, false);
+  assert.ok(
+    result.blockedItems.some(
+      (item) =>
+        item.phase === "Phase D envelope" &&
+        item.componentId === "adjacent" &&
+        item.status === "blocked_missing_normative_data" &&
+        item.value === null
+    )
+  );
+  assert.ok(
+    result.blockedItems.some(
+      (item) =>
+        item.phase === "Phase E transmission" &&
+        item.componentId === "Ha" &&
+        item.status === "blocked_missing_normative_data" &&
+        item.value === null
+    )
+  );
+  assert.ok(result.nextBlockers.some((blocker) => blocker.includes("adjacent")));
+});
+
+test("scenario matrix E unsupported Phase F ventilation type blocks Hve and heat-loss", () => {
+  const inputPack = baseCoreInputPack();
+  inputPack.ventilation.components[0].ventilationType = "unsupported_phase_g_type";
+
+  const result = build(inputPack);
+
+  assertConsolidatedContract(result);
+  assert.equal(result.ventilationReadiness.componentReadiness.Hve.value, null);
+  assert.equal(result.readinessFlags.isVentilationReady, false);
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(result.heatLossReadiness.heatLossResult, null);
+  assert.ok(
+    result.blockedItems.some(
+      (item) =>
+        item.phase === "Phase F ventilation" &&
+        item.status === "blocked_unsupported_ventilation_type" &&
+        item.value === null
+    )
+  );
+});
+
+test("scenario matrix E unsupported Phase F ventilation path blocks Hve and heat-loss", () => {
+  const inputPack = baseCoreInputPack();
+  inputPack.ventilation.components[0].ventilationPath = "unsupported_phase_g_path";
+
+  const result = build(inputPack);
+
+  assertConsolidatedContract(result);
+  assert.equal(result.ventilationReadiness.componentReadiness.Hve.value, null);
+  assert.equal(result.readinessFlags.isVentilationReady, false);
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(result.heatLossReadiness.heatLossResult, null);
+  assert.ok(
+    result.blockedItems.some(
+      (item) =>
+        item.phase === "Phase F ventilation" &&
+        item.status === "blocked_unsupported_ventilation_path" &&
+        item.value === null
+    )
+  );
+});
+
+for (const { name, mutate } of [
+  {
+    name: "building classification",
+    mutate: (inputPack) => {
+      inputPack.buildingClassification.primaryCategoryKey.owner = "product_fallback";
+    }
+  },
+  {
+    name: "envelope area",
+    mutate: (inputPack) => {
+      inputPack.envelope.elements[0].area.owner = "product_estimate";
+    }
+  },
+  {
+    name: "ventilation airflow",
+    mutate: (inputPack) => {
+      inputPack.ventilation.components[0].airflowM3h.owner = "product_fallback";
+    }
+  }
+]) {
+  expectFailure(
+    `scenario matrix F product fallback in ${name} is rejected`,
+    () => {
+      const inputPack = baseCoreInputPack();
+      mutate(inputPack);
+      build(inputPack);
+    },
+    /owner is not allowed for raw auditor input/
+  );
+}
+
+test("scenario matrix H validation imports preserve provenance in consolidated result", () => {
+  const result = build(completeCoreInputPack());
+
+  assertConsolidatedContract(result);
+  assert.equal(result.readinessFlags.isTransmissionReady, true);
+  assert.equal(result.readinessFlags.isHeatLossReady, true);
+  assert.ok(
+    result.sourceTrace.transmission.Hg.includes("Hg_PHASE_G_CONTROLLED_SOURCE")
+  );
+  assert.ok(
+    result.sourceTrace.heatLoss.heatLoss.includes("Hg_PHASE_G_CONTROLLED_SOURCE")
+  );
+  assertNoBroaderReadiness(result);
+});
+
+test("scenario matrix H expert overrides preserve provenance in consolidated result", () => {
+  const result = build(completeCoreInputPackWithExpertOverrides());
+
+  assertConsolidatedContract(result);
+  assert.equal(result.readinessFlags.isTransmissionReady, true);
+  assert.equal(result.readinessFlags.isHeatLossReady, true);
+  assert.ok(result.sourceTrace.transmission.Hg.includes("Hg_PHASE_G_EXPERT_SOURCE"));
+  assert.ok(result.sourceTrace.heatLoss.heatLoss.includes("Hg_PHASE_G_EXPERT_SOURCE"));
+  assertNoBroaderReadiness(result);
+});
+
+expectFailure(
+  "scenario matrix prevents Htr readiness escalation while transmission is blocked",
+  () => {
+    build(baseCoreInputPack(), {
+      componentClaims: {
+        transmission: {
+          Htr: "ready"
+        }
+      }
+    });
+  },
+  /Htr is claimed ready while transmission components are blocked/
+);
+
+expectFailure(
+  "scenario matrix prevents heat-loss readiness escalation while Htr is blocked",
+  () => {
+    build(baseCoreInputPack(), {
+      componentClaims: {
+        heatLoss: {
+          heatLoss: "ready"
+        }
+      }
+    });
+  },
+  /heat-loss readiness is claimed while Htr is blocked or partial/
+);
 
 expectFailure(
   "missing classification mapping is rejected",

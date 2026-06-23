@@ -465,6 +465,37 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for narrow Phase G auditor core readiness orchestration only; it composes Phase C/D/E/F readiness outputs without adding monthly heating, QHnd, final energy, primary energy, CO2, climate data, full Level 2 auditor behavior, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, marketplace, report generation or new MC001 formula coverage."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_026_AUDITOR_CORE_READINESS_SCENARIO_MATRIX",
+    exampleId: "MC001_PHASE_G1_AUDITOR_CORE_READINESS_MATRIX_HARDENING",
+    source:
+      "Phase G1 auditor core readiness scenario matrix over Phase G orchestrator output states",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_026_AUDITOR_CORE_READINESS_SCENARIO_MATRIX.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture026AuditorCoreReadinessScenarioMatrix.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture026AuditorCoreReadinessScenarioMatrix.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "auditor_core_readiness_orchestrator",
+      "auditor_core_readiness_scenario_matrix",
+      "transmission",
+      "ventilation"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001AuditorCoreReadinessOrchestrator.mjs",
+      "mc001AuditorInputBuilderGate.mjs",
+      "mc001EnvelopeInputBuilder.mjs",
+      "mc001TransmissionHtrReadinessGate.mjs",
+      "mc001VentilationInputBuilder.mjs",
+      "mc001HeatLossReadinessGate.mjs",
+      "materialsUValues.mjs",
+      "transmissionCoefficients.mjs",
+      "ventilationCoefficients.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase G1 auditor core readiness matrix hardening only; it validates multiple Phase G readiness states, blocker propagation, fake-zero rejection and no readiness escalation without adding monthly heating, QHnd, final energy, primary energy, CO2, climate data, full Level 2 auditor behavior, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, marketplace, report generation or new MC001 formula coverage."
   })
 ]);
 

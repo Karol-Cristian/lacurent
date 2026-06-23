@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 24);
+  assert.equal(mc001ExecutableValidationFixtures.length, 25);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 24);
+  assert.equal(mc001ExecutableValidationCases.length, 25);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -149,6 +149,12 @@ test("covers requested validation areas with blocked examples and reviewed execu
     "transmission",
     "ventilation"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[24].validationAreas, [
+    "auditor_core_readiness_orchestrator",
+    "auditor_core_readiness_scenario_matrix",
+    "transmission",
+    "ventilation"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -176,7 +182,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture022,
     fixture023,
     fixture024,
-    fixture025
+    fixture025,
+    fixture026
   ] =
     mc001ExecutableValidationCases;
 
@@ -645,6 +652,41 @@ test("registers executable fixture metadata without embedding numeric fixture da
     )
   );
   assert.deepEqual(fixture025.helperCoverage, [
+    "mc001AuditorCoreReadinessOrchestrator.mjs",
+    "mc001AuditorInputBuilderGate.mjs",
+    "mc001EnvelopeInputBuilder.mjs",
+    "mc001TransmissionHtrReadinessGate.mjs",
+    "mc001VentilationInputBuilder.mjs",
+    "mc001HeatLossReadinessGate.mjs",
+    "materialsUValues.mjs",
+    "transmissionCoefficients.mjs",
+    "ventilationCoefficients.mjs"
+  ]);
+
+  assert.equal(
+    fixture026.fixtureId,
+    "FIXTURE_026_AUDITOR_CORE_READINESS_SCENARIO_MATRIX"
+  );
+  assert.equal(
+    fixture026.exampleId,
+    "MC001_PHASE_G1_AUDITOR_CORE_READINESS_MATRIX_HARDENING"
+  );
+  assert.ok(
+    fixture026.documentationPath.endsWith(
+      "FIXTURE_026_AUDITOR_CORE_READINESS_SCENARIO_MATRIX.md"
+    )
+  );
+  assert.ok(
+    fixture026.fixturePath.endsWith(
+      "fixture026AuditorCoreReadinessScenarioMatrix.mjs"
+    )
+  );
+  assert.ok(
+    fixture026.validationTestPath.endsWith(
+      "fixture026AuditorCoreReadinessScenarioMatrix.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture026.helperCoverage, [
     "mc001AuditorCoreReadinessOrchestrator.mjs",
     "mc001AuditorInputBuilderGate.mjs",
     "mc001EnvelopeInputBuilder.mjs",

@@ -24,6 +24,27 @@ export const MC001_AUDITOR_CORE_READINESS_ORCHESTRATOR_ID =
 
 const CORE_DERIVED_NORMAL_FIELDS = new Set(["heatLoss", "totalHeatLoss"]);
 const DERIVED_IMPORT_ROOTS = new Set(["validationImports", "expertOverrides"]);
+const REQUIRED_RESULT_FIELDS = Object.freeze([
+  "inputGateStatus",
+  "envelopeReadiness",
+  "transmissionReadiness",
+  "ventilationReadiness",
+  "heatLossReadiness",
+  "blockedItems",
+  "diagnostics",
+  "sourceTrace",
+  "readinessFlags",
+  "nextBlockers"
+]);
+const REQUIRED_READINESS_FLAGS = Object.freeze([
+  "isEnvelopeReady",
+  "isTransmissionReady",
+  "isVentilationReady",
+  "isHeatLossReady",
+  "isMonthlyHeatingReady",
+  "isLevel2AuditorReady",
+  "isCpeReady"
+]);
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -38,6 +59,12 @@ function assertObject(value, path) {
 function assertArray(value, path) {
   if (!Array.isArray(value)) {
     throw new Error(`${path} must be an array`);
+  }
+}
+
+function assertFieldExists(value, field, path) {
+  if (!(field in value)) {
+    throw new Error(`${path}.${field} is required`);
   }
 }
 
@@ -172,7 +199,7 @@ function createMissingVentilationReadinessOutput(phaseCGate) {
 }
 
 function blockedValueIsZeroFallback(item) {
-  return item?.status?.startsWith("blocked") && item.value !== null;
+  return item?.status?.startsWith("blocked") && "value" in item && item.value !== null;
 }
 
 function assertNoBlockedFallbackValues(items, path) {
@@ -307,6 +334,146 @@ function nextBlockersFrom(blockedItems, diagnostics) {
   return Object.freeze([...new Set(blockerTexts)]);
 }
 
+function assertConsolidatedResultShape(result) {
+  assertObject(result, "result");
+  for (const field of REQUIRED_RESULT_FIELDS) {
+    assertFieldExists(result, field, "result");
+  }
+
+  assertObject(result.envelopeReadiness, "result.envelopeReadiness");
+  assertObject(result.transmissionReadiness, "result.transmissionReadiness");
+  assertObject(result.ventilationReadiness, "result.ventilationReadiness");
+  assertObject(result.heatLossReadiness, "result.heatLossReadiness");
+  assertArray(result.blockedItems, "result.blockedItems");
+  assertArray(result.diagnostics, "result.diagnostics");
+  assertObject(result.sourceTrace, "result.sourceTrace");
+  assertObject(result.readinessFlags, "result.readinessFlags");
+  assertArray(result.nextBlockers, "result.nextBlockers");
+
+  for (const flag of REQUIRED_READINESS_FLAGS) {
+    assertFieldExists(result.readinessFlags, flag, "result.readinessFlags");
+  }
+
+  if (result.readinessFlags.isMonthlyHeatingReady !== false) {
+    throw new Error("result.readinessFlags.isMonthlyHeatingReady must remain false");
+  }
+  if (result.readinessFlags.isLevel2AuditorReady !== false) {
+    throw new Error("result.readinessFlags.isLevel2AuditorReady must remain false");
+  }
+  if (result.readinessFlags.isCpeReady !== false) {
+    throw new Error("result.readinessFlags.isCpeReady must remain false");
+  }
+}
+
+function assertLowerBlockerPreserved(result, phase, blocker) {
+  const reason = blocker.reason ?? blocker.message ?? blocker.status;
+  const status = blocker.status;
+  const isPreserved = result.blockedItems.some(
+    (item) => item.phase === phase && item.status === status && item.reason === reason
+  );
+  if (!isPreserved) {
+    throw new Error(`${phase} blocker was not preserved in consolidated result: ${status}`);
+  }
+}
+
+function assertBlockerPropagation(result) {
+  const { phaseOutputs } = result;
+  assertObject(phaseOutputs, "result.phaseOutputs");
+  assertObject(phaseOutputs.envelopeBuilderOutput, "result.phaseOutputs.envelopeBuilderOutput");
+  assertObject(
+    phaseOutputs.transmissionReadinessOutput,
+    "result.phaseOutputs.transmissionReadinessOutput"
+  );
+  assertObject(
+    phaseOutputs.ventilationReadinessOutput,
+    "result.phaseOutputs.ventilationReadinessOutput"
+  );
+  assertObject(
+    phaseOutputs.heatLossReadinessOutput,
+    "result.phaseOutputs.heatLossReadinessOutput"
+  );
+
+  for (const blocker of phaseOutputs.envelopeBuilderOutput.blockedItems) {
+    assertLowerBlockerPreserved(result, "Phase D envelope", blocker);
+  }
+  for (const blocker of phaseOutputs.transmissionReadinessOutput.blockedComponents) {
+    assertLowerBlockerPreserved(result, "Phase E transmission", blocker);
+  }
+  for (const blocker of phaseOutputs.ventilationReadinessOutput.blockedItems) {
+    assertLowerBlockerPreserved(result, "Phase F ventilation", blocker);
+  }
+  for (const blocker of phaseOutputs.heatLossReadinessOutput.blockedComponents) {
+    assertLowerBlockerPreserved(result, "Phase F heat-loss", blocker);
+  }
+}
+
+function assertNoReadinessEscalation(result) {
+  const { phaseOutputs, readinessFlags } = result;
+  const envelopeBlocked = phaseOutputs.envelopeBuilderOutput.blockedItems.length > 0;
+  const transmissionBlocked =
+    phaseOutputs.transmissionReadinessOutput.blockedComponents.length > 0;
+  const ventilationBlocked = phaseOutputs.ventilationReadinessOutput.blockedItems.length > 0;
+  const heatLossBlocked = phaseOutputs.heatLossReadinessOutput.blockedComponents.length > 0;
+
+  if (envelopeBlocked && readinessFlags.isEnvelopeReady) {
+    throw new Error("envelope readiness cannot be true while Phase D has blockers");
+  }
+  if (transmissionBlocked && readinessFlags.isTransmissionReady) {
+    throw new Error("transmission readiness cannot be true while Phase E has blockers");
+  }
+  if (ventilationBlocked && readinessFlags.isVentilationReady) {
+    throw new Error("ventilation readiness cannot be true while Phase F ventilation has blockers");
+  }
+  if (heatLossBlocked && readinessFlags.isHeatLossReady) {
+    throw new Error("heat-loss readiness cannot be true while Phase F heat-loss has blockers");
+  }
+  if (
+    readinessFlags.isHeatLossReady &&
+    (readinessFlags.isTransmissionReady !== true ||
+      readinessFlags.isVentilationReady !== true)
+  ) {
+    throw new Error("heat-loss readiness cannot be true unless Htr and Hve are ready");
+  }
+  if (readinessFlags.isHeatLossReady && result.heatLossReadiness.heatLossResult === null) {
+    throw new Error("heat-loss readiness cannot be true without a heat-loss readiness result");
+  }
+  if (
+    readinessFlags.isTransmissionReady &&
+    phaseOutputs.transmissionReadinessOutput.htrResult === null
+  ) {
+    throw new Error("transmission readiness cannot be true without an Htr result");
+  }
+  if (
+    readinessFlags.isVentilationReady &&
+    phaseOutputs.ventilationReadinessOutput.hveResult === null
+  ) {
+    throw new Error("ventilation readiness cannot be true without an Hve result");
+  }
+}
+
+function assertConsolidatedResultContract(result) {
+  assertConsolidatedResultShape(result);
+  assertNoBlockedFallbackValues(result.blockedItems, "result.blockedItems");
+  assertNoBlockedFallbackValues(
+    result.phaseOutputs.envelopeBuilderOutput.blockedItems,
+    "result.phaseOutputs.envelopeBuilderOutput.blockedItems"
+  );
+  assertNoBlockedFallbackValues(
+    result.phaseOutputs.transmissionReadinessOutput.blockedComponents,
+    "result.phaseOutputs.transmissionReadinessOutput.blockedComponents"
+  );
+  assertNoBlockedFallbackValues(
+    result.phaseOutputs.ventilationReadinessOutput.blockedItems,
+    "result.phaseOutputs.ventilationReadinessOutput.blockedItems"
+  );
+  assertNoBlockedFallbackValues(
+    result.phaseOutputs.heatLossReadinessOutput.blockedComponents,
+    "result.phaseOutputs.heatLossReadinessOutput.blockedComponents"
+  );
+  assertBlockerPropagation(result);
+  assertNoReadinessEscalation(result);
+}
+
 export function createMc001AuditorCoreReadinessOrchestrator(
   inputPack,
   {
@@ -380,7 +547,7 @@ export function createMc001AuditorCoreReadinessOrchestrator(
   const isHeatLossReady =
     heatLossReadinessOutput.readinessFlags.isHeatLossReady === true;
 
-  return {
+  const result = {
     orchestratorId: MC001_AUDITOR_CORE_READINESS_ORCHESTRATOR_ID,
     status: isHeatLossReady
       ? "ready_heat_loss_components_only"
@@ -432,4 +599,7 @@ export function createMc001AuditorCoreReadinessOrchestrator(
     nextRequiredStep:
       "KEEP_LEVEL_2_BLOCKED_UNTIL_ENVELOPE_TRANSMISSION_VENTILATION_HEAT_LOSS_CLIMATE_GAINS_SYSTEMS_AND_REPORTING_ARE_COMPLETE"
   };
+
+  assertConsolidatedResultContract(result);
+  return result;
 }
