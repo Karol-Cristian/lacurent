@@ -435,6 +435,36 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for narrow Phase F heat-loss readiness gating only; it combines complete source-backed Htr and Hve readiness without adding monthly heating, QHnd, climate data, full Htr engine, full ventilation engine, Level 2 full auditor, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, report generation or new MC001 formula coverage."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_025_AUDITOR_CORE_READINESS_ORCHESTRATOR",
+    exampleId: "MC001_PHASE_G_AUDITOR_CORE_READINESS_ORCHESTRATOR",
+    source:
+      "Phase G auditor core readiness orchestrator over Phase C/D/E/F outputs",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_025_AUDITOR_CORE_READINESS_ORCHESTRATOR.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture025AuditorCoreReadinessOrchestrator.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture025AuditorCoreReadinessOrchestrator.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "auditor_core_readiness_orchestrator",
+      "transmission",
+      "ventilation"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001AuditorCoreReadinessOrchestrator.mjs",
+      "mc001AuditorInputBuilderGate.mjs",
+      "mc001EnvelopeInputBuilder.mjs",
+      "mc001TransmissionHtrReadinessGate.mjs",
+      "mc001VentilationInputBuilder.mjs",
+      "mc001HeatLossReadinessGate.mjs",
+      "materialsUValues.mjs",
+      "transmissionCoefficients.mjs",
+      "ventilationCoefficients.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase G auditor core readiness orchestration only; it composes Phase C/D/E/F readiness outputs without adding monthly heating, QHnd, final energy, primary energy, CO2, climate data, full Level 2 auditor behavior, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, marketplace, report generation or new MC001 formula coverage."
   })
 ]);
 
