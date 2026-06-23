@@ -15,6 +15,8 @@ This document is implementation-oriented and conservative. It separates current 
 
 Local source note: the repository contains `docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf` and extraction notes under `docs/mc001-extraction/`. The current environment did not have direct PDF text extraction tooling available. The following candidate assessment is therefore based on repository extraction notes plus the assistant extraction candidates. Items not found in the local extraction notes remain marked as `assistant-extracted / pending independent MC001 verification`.
 
+Continuation note: `PHASE_H0A_HTR_BOUNDARY_COMPONENTS_SOURCE_VERIFICATION.md` adds a docs-only source-verification addendum using assistant-provided local MC001 text/PDF-render extraction candidates. It tightens `Hg`, `bztu`, `Htr(excl.*)`, Figure 2.9, ventilation `bve`, time-constant, and unresolved `Ha` conclusions without changing runtime behavior.
+
 ## 2. Current State After Phase G + G1
 
 Phase C added the auditor input/provenance gate. It rejects derived values as normal raw auditor input, rejects product estimates/fallbacks, rejects raw category keys without explicit mapping evidence, and requires source/provenance for controlled `validationImports` and `expertOverrides`.
