@@ -64,6 +64,32 @@ function expertOverride(componentId, value, extra = {}) {
   };
 }
 
+function validBztuDirectInput(extra = {}) {
+  return {
+    entryId: "PHASE_H1_BZTU_DIRECT_INPUT_ORCHESTRATOR_001",
+    recordId: "MC001_2022_2_22_BZTU_CORRECTION_FACTOR",
+    value: 0.62,
+    unit: "dimensionless",
+    month: 1,
+    ztuZoneId: "ztu-buffer-zone-001",
+    source: "Phase H1 source-backed direct bztu review",
+    sourceRefs: ["MC001_2022_2_22_BZTU_CORRECTION_FACTOR"],
+    sourceLocator: "MC001 Chapter 2 relation candidate 2.22 reviewed for Phase H1",
+    methodologyStatus: "accepted",
+    inputClassification: "explicit_methodological_direct_input",
+    traceId: "PHASE_H1_BZTU_TRACE_001",
+    reviewStatus: "reviewed",
+    calculationPeriod: "monthly",
+    applicability: {
+      calculationPeriod: "monthly",
+      notAdjacentToAnotherZtu: true,
+      multipleAdjacentConditionedZones: false
+    },
+    adjacentConditionedZoneRelation: "ztc-school-zone-001_to_ztu-buffer-zone-001",
+    ...extra
+  };
+}
+
 function baseCoreInputPack() {
   const inputPack = clone(fixture021EnvelopeFromAuditorInput.inputPack);
   const ventilationInput = clone(fixture023VentilationFromAuditorInput.inputPack);
@@ -76,6 +102,11 @@ function baseCoreInputPack() {
   inputPack.explicitBlockers.push(...ventilationInput.explicitBlockers);
   inputPack.ventilation = ventilationInput.ventilation;
 
+  return inputPack;
+}
+
+function addBztuDirectInputs(inputPack, entries = [validBztuDirectInput()]) {
+  inputPack.bztuDirectInputs = entries;
   return inputPack;
 }
 
@@ -249,6 +280,140 @@ test("result preserves diagnostics and source trace from lower modules", () => {
     )
   );
 });
+
+test("Phase H1 reports accepted BZTU as explicit methodological direct input", () => {
+  const result = build(addBztuDirectInputs(baseCoreInputPack()));
+
+  assert.equal(result.bztuDirectInputReadiness.gateId, "MC001_BZTU_DIRECT_INPUT_READINESS_GATE_PHASE_H1");
+  assert.equal(result.bztuDirectInputReadiness.status, "accepted");
+  assert.equal(result.bztuDirectInputReadiness.acceptedInputs.length, 1);
+  assert.equal(
+    result.bztuDirectInputReadiness.acceptedInputs[0].inputClassification,
+    "explicit_methodological_direct_input"
+  );
+  assert.equal(result.readinessFlags.isBztuDirectInputReady, true);
+});
+
+test("Phase H1 distinguishes BZTU direct input from raw auditor input", () => {
+  const inputPack = baseCoreInputPack();
+  inputPack.bztu = valueEnvelope(0.62, "-", ["MC001_2022_2_22_BZTU_CORRECTION_FACTOR"]);
+
+  assert.throws(
+    () => build(inputPack),
+    /BZTU value bztu must use bztuDirectInputs/
+  );
+});
+
+test("Phase H1 distinguishes BZTU direct input from engine-derived value", () => {
+  const result = build(addBztuDirectInputs(baseCoreInputPack(), [
+    validBztuDirectInput({
+      inputClassification: "engine_derived_value"
+    })
+  ]));
+
+  assert.equal(result.bztuDirectInputReadiness.status, "rejected");
+  assert.equal(result.readinessFlags.isBztuDirectInputReady, false);
+  assert.ok(
+    result.bztuDirectInputReadiness.rejectedInputs[0].issues.some(
+      (entry) => entry.code === "rejected_bztu_derived_or_raw_input"
+    )
+  );
+});
+
+test("Phase H1 preserves BZTU provenance and traceability in consolidated output", () => {
+  const result = build(addBztuDirectInputs(baseCoreInputPack()));
+
+  assert.deepEqual(result.sourceTrace.bztu.records[0].sourceRefs, [
+    "MC001_2022_2_22_BZTU_CORRECTION_FACTOR"
+  ]);
+  assert.equal(result.sourceTrace.bztu.records[0].traceId, "PHASE_H1_BZTU_TRACE_001");
+  assert.equal(result.sourceTrace.bztu.records[0].ztuZoneId, "ztu-buffer-zone-001");
+  assert.equal(result.sourceTrace.bztu.records[0].month, 1);
+});
+
+test("Phase H1 keeps full BZTU calculation chain and Hu/Htr readiness blocked", () => {
+  const result = build(addBztuDirectInputs(baseCoreInputPack()));
+
+  assert.equal(result.bztuDirectInputReadiness.status, "accepted");
+  assert.equal(result.readinessFlags.isFullBztuDerivationReady, false);
+  assert.notEqual(result.transmissionReadiness.componentReadiness.Hu.status, "ready");
+  assert.equal(
+    result.transmissionReadiness.componentReadiness.Htr.status,
+    "blocked_incomplete_components"
+  );
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+});
+
+for (const { name, mutate, expectedCode } of [
+  {
+    name: "missing BZTU source",
+    mutate: (input) => {
+      delete input.source;
+    },
+    expectedCode: "rejected_bztu_missing_source"
+  },
+  {
+    name: "invalid BZTU unit",
+    mutate: (input) => {
+      input.unit = "W/K";
+    },
+    expectedCode: "rejected_bztu_invalid_unit"
+  },
+  {
+    name: "missing BZTU month scope",
+    mutate: (input) => {
+      delete input.month;
+    },
+    expectedCode: "rejected_bztu_missing_month"
+  },
+  {
+    name: "missing BZTU zone scope",
+    mutate: (input) => {
+      delete input.ztuZoneId;
+    },
+    expectedCode: "rejected_bztu_missing_ztu_zone"
+  },
+  {
+    name: "ambiguous BZTU applicability",
+    mutate: (input) => {
+      input.applicability.notAdjacentToAnotherZtu = false;
+    },
+    expectedCode: "ambiguous_bztu_ztu_adjacent_to_ztu"
+  },
+  {
+    name: "hidden BZTU product fallback",
+    mutate: (input) => {
+      input.inputClassification = "hidden_fallback";
+      input.owner = "product_fallback";
+    },
+    expectedCode: "rejected_bztu_product_fallback"
+  }
+]) {
+  test(`Phase H1 readiness remains blocked for ${name}`, () => {
+    const inputPack = addBztuDirectInputs(completeCoreInputPack(), [
+      validBztuDirectInput()
+    ]);
+    mutate(inputPack.bztuDirectInputs[0]);
+
+    const result = build(inputPack);
+
+    assert.equal(result.readinessFlags.isBztuDirectInputReady, false);
+    assert.equal(result.readinessFlags.isHeatLossReady, false);
+    assert.ok(
+      result.bztuDirectInputReadiness.rejectedInputs.length > 0 ||
+        result.bztuDirectInputReadiness.status === "ambiguous"
+    );
+    assert.ok(
+      result.diagnostics.some((entry) => entry.code === expectedCode),
+      `Expected diagnostic ${expectedCode}`
+    );
+    assert.ok(
+      result.blockedItems.some(
+        (item) => item.phase === "Phase H1 BZTU" && item.diagnosticCode === expectedCode
+      )
+    );
+  });
+}
 
 test("consolidated result contract is stable for partial and complete scenarios", () => {
   for (const inputPack of [baseCoreInputPack(), completeCoreInputPack()]) {
