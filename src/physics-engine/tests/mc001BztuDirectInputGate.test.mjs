@@ -135,6 +135,70 @@ expectRejected(
 );
 
 expectRejected(
+  "empty source locator string is rejected",
+  (input) => {
+    input.sourceLocator = "";
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
+  "whitespace-only source locator string is rejected",
+  (input) => {
+    input.sourceLocator = "   ";
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
+  "empty source locator object is rejected",
+  (input) => {
+    input.sourceLocator = {};
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
+  "source locator object with empty page is rejected",
+  (input) => {
+    input.sourceLocator = { page: "" };
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
+  "source locator object with whitespace-only page is rejected",
+  (input) => {
+    input.sourceLocator = { page: "   " };
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
+  "numeric source locator is rejected",
+  (input) => {
+    input.sourceLocator = 123;
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
+  "boolean source locator is rejected",
+  (input) => {
+    input.sourceLocator = true;
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
+  "array source locator is rejected",
+  (input) => {
+    input.sourceLocator = [];
+  },
+  "rejected_bztu_missing_source_locator"
+);
+
+expectRejected(
   "empty sourceRef string is rejected",
   (input) => {
     input.sourceRefs = [""];

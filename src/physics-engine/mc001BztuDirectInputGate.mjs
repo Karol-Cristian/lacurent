@@ -105,6 +105,27 @@ function sourceLocatorFrom(entry) {
   return entry.sourceLocator ?? entry.provenance?.sourceLocator ?? null;
 }
 
+const SOURCE_LOCATOR_FIELDS = Object.freeze([
+  "document",
+  "documentId",
+  "file",
+  "path",
+  "page",
+  "pageRange",
+  "section",
+  "table",
+  "figure",
+  "equation",
+  "relation",
+  "row",
+  "annex",
+  "locator"
+]);
+
+function locatorFieldIsUseful(value) {
+  return hasRequiredString(value) || (typeof value === "number" && Number.isFinite(value));
+}
+
 function locatorIsPresent(locator) {
   if (hasRequiredString(locator)) {
     return true;
@@ -114,18 +135,7 @@ function locatorIsPresent(locator) {
     return false;
   }
 
-  return [
-    "document",
-    "page",
-    "pageRange",
-    "section",
-    "table",
-    "figure",
-    "equation",
-    "relation",
-    "row",
-    "annex"
-  ].some((field) => locator[field] !== undefined && locator[field] !== null);
+  return SOURCE_LOCATOR_FIELDS.some((field) => locatorFieldIsUseful(locator[field]));
 }
 
 function sourceLocatorKey(locator) {
