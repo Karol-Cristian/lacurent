@@ -30,6 +30,8 @@ export const DERIVED_VALUE_FIELD_NAMES = Object.freeze([
 ]);
 
 const DERIVED_VALUE_NAMES = new Set(DERIVED_VALUE_FIELD_NAMES);
+const BZTU_DIRECT_INPUT_ROOTS = new Set(["bztuDirectInputs"]);
+const BZTU_RAW_FIELD_NAMES = new Set(["bztu", "bztuValue"]);
 const RAW_VALUE_OWNERS = new Set([
   "auditor_entered",
   "normative_table_selected",
@@ -181,6 +183,9 @@ function rejectDerivedValuesInRawInput(value, path = "") {
   for (const [key, child] of Object.entries(value)) {
     const childPath = path ? `${path}.${key}` : key;
     const root = childPath.split(".")[0];
+    if (BZTU_DIRECT_INPUT_ROOTS.has(root)) {
+      continue;
+    }
     if (DERIVED_VALUE_IMPORT_ROOTS.has(root)) {
       continue;
     }
@@ -192,6 +197,36 @@ function rejectDerivedValuesInRawInput(value, path = "") {
     }
 
     rejectDerivedValuesInRawInput(child, childPath);
+  }
+}
+
+function rejectBztuAsNormalRawInput(value, path = "") {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => rejectBztuAsNormalRawInput(entry, `${path}[${index}]`));
+    return;
+  }
+
+  if (!isObject(value)) {
+    return;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = path ? `${path}.${key}` : key;
+    const root = childPath.split(".")[0];
+    if (
+      BZTU_DIRECT_INPUT_ROOTS.has(root) ||
+      DERIVED_VALUE_IMPORT_ROOTS.has(root)
+    ) {
+      continue;
+    }
+
+    if (BZTU_RAW_FIELD_NAMES.has(key)) {
+      throw new Error(
+        `BZTU value ${childPath} must use bztuDirectInputs as explicit methodological direct input, validation fixture import, or expert override with source`
+      );
+    }
+
+    rejectBztuAsNormalRawInput(child, childPath);
   }
 }
 
@@ -360,6 +395,7 @@ export function validateMc001AuditorInputBuilderGate(inputPack, { registry } = {
   validateContractMetadata(inputPack.contractMetadata);
   validateSourceTrace(inputPack.sourceTrace);
   validateBuildingClassification(inputPack.buildingClassification);
+  rejectBztuAsNormalRawInput(inputPack);
   rejectDerivedValuesInRawInput(inputPack);
   validateNormativeReferences(inputPack, registry);
   validateValidationImports(inputPack.validationImports);

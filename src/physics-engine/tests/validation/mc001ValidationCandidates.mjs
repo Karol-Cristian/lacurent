@@ -496,6 +496,31 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for narrow Phase G1 auditor core readiness matrix hardening only; it validates multiple Phase G readiness states, blocker propagation, fake-zero rejection and no readiness escalation without adding monthly heating, QHnd, final energy, primary energy, CO2, climate data, full Level 2 auditor behavior, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, marketplace, report generation or new MC001 formula coverage."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_027_BZTU_DIRECT_INPUT_READINESS_GATE",
+    exampleId: "MC001_PHASE_H1_BZTU_DIRECT_INPUT_READINESS_GATE",
+    source:
+      "Phase H1 direct BZTU input contract over Phase H0/H0A/H1-pre methodology notes",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_027_BZTU_DIRECT_INPUT_READINESS_GATE.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture027BztuDirectInputReadinessGate.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture027BztuDirectInputReadinessGate.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "bztu_direct_input_readiness",
+      "auditor_input_builder_gate",
+      "auditor_core_readiness_orchestrator",
+      "transmission"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001BztuDirectInputGate.mjs",
+      "mc001AuditorInputBuilderGate.mjs",
+      "mc001AuditorCoreReadinessOrchestrator.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase H1 direct BZTU input readiness validation only; it accepts source-backed explicit methodological BZTU input and rejects raw, fallback, ambiguous, unsupported, unscoped, or untraceable values without deriving BZTU, calculating Hu, completing Htr, adding monthly heating, QHnd, final energy, primary energy, CO2, climate data, full Level 2 auditor behavior, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, marketplace, report generation or new MC001 calculation formula coverage."
   })
 ]);
 
