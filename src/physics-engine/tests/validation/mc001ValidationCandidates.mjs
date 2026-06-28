@@ -521,6 +521,29 @@ export const mc001ExecutableValidationFixtures = Object.freeze([
     ]),
     limitations:
       "Executable for narrow Phase H1 direct BZTU input readiness validation only; it accepts source-backed explicit methodological BZTU input and rejects raw, fallback, ambiguous, unsupported, unscoped, or untraceable values without deriving BZTU, calculating Hu, completing Htr, adding monthly heating, QHnd, final energy, primary energy, CO2, climate data, full Level 2 auditor behavior, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, marketplace, report generation or new MC001 calculation formula coverage."
+  }),
+  Object.freeze({
+    fixtureId: "FIXTURE_028_HU_COMPONENT_CONTRACT_READINESS_GATE",
+    exampleId: "MC001_PHASE_H2E_HU_COMPONENT_CONTRACT_READINESS_GATE",
+    source:
+      "Phase H2E Hu component contract readiness over Phase H2C_A locators and Phase H2D fixture design",
+    documentationPath:
+      "docs/mc001-validation/FIXTURE_028_HU_COMPONENT_CONTRACT_READINESS_GATE.md",
+    fixturePath:
+      "src/physics-engine/tests/validation/fixture028HuComponentContractReadinessGate.mjs",
+    validationTestPath:
+      "src/physics-engine/tests/validation/fixture028HuComponentContractReadinessGate.validation.test.mjs",
+    validationAreas: Object.freeze([
+      "hu_component_contract_readiness",
+      "bztu_direct_input_readiness",
+      "transmission"
+    ]),
+    helperCoverage: Object.freeze([
+      "mc001HuComponentContractReadinessGate.mjs",
+      "mc001BztuDirectInputGate.mjs"
+    ]),
+    limitations:
+      "Executable for narrow Phase H2E Hu component contract readiness only; it validates one source-backed component contract with accepted BZTU, element inventory, U-value path, zone/month scope and provenance without calculating Hu, completing Hu, completing Htr, deriving BZTU, adding Hztu;e/Hztu;tot, distribution formulas, monthly heating, QHnd, final energy, primary energy, CO2, climate data, full Level 2 auditor behavior, certificate/CPE workflow, UI/API/DB/schema/Worker/deploy/product integration, marketplace, report generation or new MC001 calculation formula coverage."
   })
 ]);
 
