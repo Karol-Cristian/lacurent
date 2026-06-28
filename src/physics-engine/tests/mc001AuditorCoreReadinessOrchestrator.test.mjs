@@ -90,6 +90,59 @@ function validBztuDirectInput(extra = {}) {
   };
 }
 
+function validHuComponentCandidate(extra = {}) {
+  return {
+    componentId: "PHASE_H2F_HU_COMPONENT_001",
+    conditionedZoneId: "ztc-school-zone-001",
+    ztuZoneId: "ztu-buffer-zone-001",
+    month: 1,
+    element: {
+      elementId: "phase-h2f-ztu-wall-001",
+      elementType: "wall",
+      area: {
+        value: 12.5,
+        unit: "m2"
+      }
+    },
+    boundaryRelation: "external_non_climatized_zone",
+    uValuePath: {
+      pathType: "source_backed_corrected_u_value",
+      value: 0.31,
+      unit: "W/(m2*K)",
+      source: "Phase H2F reviewed U-value path source",
+      sourceRefs: ["MC001_2022_FIGURE_2_12_ELEMENT_TRANSMISSION"],
+      sourceLocator: {
+        documentId: "MC001-2022",
+        page: 100,
+        figure: "Figure 2.12"
+      },
+      traceId: "PHASE_H2F_U_VALUE_TRACE_001"
+    },
+    bztuPath: {
+      pathType: "accepted_direct_input",
+      recordId: "MC001_2022_2_22_BZTU_CORRECTION_FACTOR",
+      entryId: "PHASE_H1_BZTU_DIRECT_INPUT_ORCHESTRATOR_001"
+    },
+    applicability: {
+      appliesToMonth: 1,
+      appliesToZtuZoneId: "ztu-buffer-zone-001",
+      notAdjacentToAnotherZtu: true,
+      multipleAdjacentConditionedZones: false
+    },
+    sourceTrace: {
+      source: "Phase H2F synthetic Hu component contract source",
+      sourceRefs: ["MC001_2022_FIGURE_2_12_ELEMENT_TRANSMISSION"],
+      sourceLocator: {
+        documentId: "MC001-2022",
+        page: 100,
+        figure: "Figure 2.12"
+      },
+      traceId: "PHASE_H2F_HU_COMPONENT_TRACE_001"
+    },
+    ...extra
+  };
+}
+
 function baseCoreInputPack() {
   const inputPack = clone(fixture021EnvelopeFromAuditorInput.inputPack);
   const ventilationInput = clone(fixture023VentilationFromAuditorInput.inputPack);
@@ -107,6 +160,16 @@ function baseCoreInputPack() {
 
 function addBztuDirectInputs(inputPack, entries = [validBztuDirectInput()]) {
   inputPack.bztuDirectInputs = entries;
+  return inputPack;
+}
+
+function addHuComponentCandidate(
+  inputPack,
+  candidate = validHuComponentCandidate(),
+  bztuEntries = [validBztuDirectInput()]
+) {
+  inputPack.huComponentCandidate = candidate;
+  inputPack.bztuDirectInputs = bztuEntries;
   return inputPack;
 }
 
@@ -183,6 +246,8 @@ function assertConsolidatedContract(result) {
   assert.equal(result.readinessFlags.isQhndReady, false);
   assert.equal(result.readinessFlags.isLevel2AuditorReady, false);
   assert.equal(result.readinessFlags.isCpeReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
   assert.ok(Array.isArray(result.blockedItems));
   assert.ok(Array.isArray(result.diagnostics));
   assert.ok(Array.isArray(result.nextBlockers));
@@ -202,6 +267,8 @@ function assertNoBroaderReadiness(result) {
   assert.equal(result.readinessFlags.isCpeReady, false);
   assert.equal(result.readinessFlags.isCertificateCpeWorkflowReady, false);
   assert.equal(result.readinessFlags.isProductionIntegrationReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
 }
 
 test("valid raw envelope and ventilation produces consolidated readiness result", () => {
@@ -342,6 +409,126 @@ test("Phase H1 keeps full BZTU calculation chain and Hu/Htr readiness blocked", 
     "blocked_incomplete_components"
   );
   assert.equal(result.readinessFlags.isHeatLossReady, false);
+});
+
+test("Phase H2F exposes valid Hu component contract readiness through orchestrator", () => {
+  const result = build(addHuComponentCandidate(baseCoreInputPack()));
+
+  assert.equal(
+    result.huComponentReadiness.gateId,
+    "MC001_HU_COMPONENT_CONTRACT_READINESS_GATE_PHASE_H2E"
+  );
+  assert.equal(result.huComponentReadiness.status, "ready");
+  assert.equal(
+    result.huComponentReadiness.componentStatus,
+    "ready_hu_component_contract"
+  );
+  assert.equal(
+    result.huComponentReadiness.huComponentReadiness.ztuZoneId,
+    "ztu-buffer-zone-001"
+  );
+  assert.equal(result.readinessFlags.isHuComponentReady, true);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.equal(result.readinessFlags.isMonthlyHeatingReady, false);
+  assert.equal(result.readinessFlags.isQhndReady, false);
+  assert.equal(result.readinessFlags.isCpeReady, false);
+  assert.equal(result.readinessFlags.isLevel2AuditorReady, false);
+  assert.equal("huResult" in result.huComponentReadiness, false);
+  assert.equal("htrResult" in result.huComponentReadiness, false);
+  assert.equal(
+    result.transmissionReadiness.componentReadiness.Htr.status,
+    "blocked_incomplete_components"
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "hu_component_contract_readiness_only"
+    )
+  );
+  assert.ok(
+    result.sourceTrace.huComponent.records.some(
+      (entry) => entry.traceId === "PHASE_H2F_HU_COMPONENT_TRACE_001"
+    )
+  );
+});
+
+test("Phase H2F exposes invalid Hu component blockers through orchestrator", () => {
+  const candidate = validHuComponentCandidate();
+  delete candidate.uValuePath.sourceRefs;
+
+  const result = build(addHuComponentCandidate(baseCoreInputPack(), candidate));
+
+  assert.equal(result.huComponentReadiness.status, "blocked");
+  assert.equal(result.readinessFlags.isHuComponentReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.ok(
+    result.diagnostics.some(
+      (entry) =>
+        entry.upstreamGate === "MC001_HU_COMPONENT_CONTRACT_READINESS_GATE_PHASE_H2E" &&
+        entry.code === "blocked_invalid_u_value_source"
+    )
+  );
+  assert.ok(
+    result.blockedItems.some(
+      (item) =>
+        item.phase === "Phase H2E Hu component" &&
+        item.diagnosticCode === "blocked_invalid_u_value_source" &&
+        item.value === null
+    )
+  );
+});
+
+test("Phase H2F no Hu candidate preserves existing orchestrator behavior", () => {
+  const result = build(baseCoreInputPack());
+
+  assert.equal(result.huComponentReadiness.status, "not_supplied");
+  assert.equal(result.huComponentReadiness.componentStatus, "not_evaluated");
+  assert.equal(result.readinessFlags.isHuComponentReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.equal(result.envelopeReadiness.isDirectTransmissionReady, true);
+  assert.equal(result.transmissionReadiness.componentReadiness.Hd.status, "ready");
+  assert.equal(result.ventilationReadiness.componentReadiness.Hve.status, "ready");
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(
+    result.blockedItems.some((item) => item.phase === "Phase H2E Hu component"),
+    false
+  );
+});
+
+test("Phase H2F blocks attempts to force complete Hu or Htr readiness", () => {
+  const inputPack = addHuComponentCandidate(baseCoreInputPack());
+  inputPack.readinessClaims = {
+    isCompleteHuReady: true,
+    isCompleteHtrReady: true
+  };
+
+  const result = build(inputPack);
+
+  assert.equal(result.readinessFlags.isHuComponentReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "blocked_complete_hu_readiness_escalation"
+    )
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "blocked_complete_htr_readiness_escalation"
+    )
+  );
+});
+
+test("Phase H2F keeps Phase H1 BZTU readiness behavior unchanged", () => {
+  const result = build(addBztuDirectInputs(baseCoreInputPack()));
+
+  assert.equal(result.bztuDirectInputReadiness.status, "accepted");
+  assert.equal(result.readinessFlags.isBztuDirectInputReady, true);
+  assert.equal(result.readinessFlags.isFullBztuDerivationReady, false);
+  assert.equal(result.huComponentReadiness.status, "not_supplied");
+  assert.equal(result.readinessFlags.isHuComponentReady, false);
 });
 
 for (const { name, mutate, expectedCode } of [

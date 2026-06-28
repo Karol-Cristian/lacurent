@@ -15,6 +15,10 @@ import {
   MC001_HEAT_LOSS_READINESS_GATE_ID
 } from "./mc001HeatLossReadinessGate.mjs";
 import {
+  createMc001HuComponentContractReadinessGate,
+  MC001_HU_COMPONENT_CONTRACT_READINESS_GATE_ID
+} from "./mc001HuComponentContractReadinessGate.mjs";
+import {
   createMc001TransmissionHtrReadinessGate,
   MC001_TRANSMISSION_HTR_READINESS_GATE_ID
 } from "./mc001TransmissionHtrReadinessGate.mjs";
@@ -35,6 +39,7 @@ const REQUIRED_RESULT_FIELDS = Object.freeze([
   "ventilationReadiness",
   "heatLossReadiness",
   "bztuDirectInputReadiness",
+  "huComponentReadiness",
   "blockedItems",
   "diagnostics",
   "sourceTrace",
@@ -46,6 +51,9 @@ const REQUIRED_READINESS_FLAGS = Object.freeze([
   "isTransmissionReady",
   "isVentilationReady",
   "isHeatLossReady",
+  "isHuComponentReady",
+  "isCompleteHuReady",
+  "isCompleteHtrReady",
   "isMonthlyHeatingReady",
   "isLevel2AuditorReady",
   "isCpeReady"
@@ -203,6 +211,56 @@ function createMissingVentilationReadinessOutput(phaseCGate) {
   };
 }
 
+function createNotSuppliedHuComponentReadinessOutput() {
+  const sourceTrace = Object.freeze({
+    records: Object.freeze([])
+  });
+  const diagnostics = Object.freeze([]);
+  const blockedItems = Object.freeze([]);
+  const readinessFlags = {
+    isHuComponentReady: false,
+    isCompleteHuReady: false,
+    isCompleteHtrReady: false,
+    isMonthlyHeatingReady: false,
+    isQhndReady: false,
+    isLevel2AuditorReady: false,
+    isCpeReady: false
+  };
+  const huComponentReadiness = {
+    status: "not_supplied",
+    componentStatus: "not_evaluated",
+    conditionedZoneId: null,
+    unconditionedZoneId: null,
+    ztuZoneId: null,
+    month: null,
+    elementId: null,
+    area: null,
+    uValuePath: null,
+    bztuPath: null,
+    sourceTrace,
+    diagnostics,
+    blockers: blockedItems,
+    isHuComponentReady: false,
+    isCompleteHuReady: false,
+    isCompleteHtrReady: false
+  };
+
+  return {
+    gateId: MC001_HU_COMPONENT_CONTRACT_READINESS_GATE_ID,
+    status: "not_supplied",
+    componentStatus: "not_evaluated",
+    huComponentReadiness,
+    sourceTrace,
+    diagnostics,
+    blockedItems,
+    blockers: blockedItems,
+    readinessFlags,
+    bztuDirectInputReadiness: null,
+    nextRequiredStep:
+      "SUPPLY_HU_COMPONENT_CANDIDATE_ONLY_WHEN_UNCONDITIONED_ZONE_COMPONENT_READINESS_IS_BEING_EVALUATED"
+  };
+}
+
 function blockedValueIsZeroFallback(item) {
   return item?.status?.startsWith("blocked") && "value" in item && item.value !== null;
 }
@@ -251,7 +309,8 @@ function collectDiagnostics({
   transmissionReadinessOutput,
   ventilationReadinessOutput,
   heatLossReadinessOutput,
-  bztuDirectInputGate
+  bztuDirectInputGate,
+  huComponentContractReadinessGate
 }) {
   return Object.freeze([
     ...envelopeBuilderOutput.diagnostics.map((entry) => ({
@@ -273,6 +332,10 @@ function collectDiagnostics({
     ...bztuDirectInputGate.diagnostics.map((entry) => ({
       ...entry,
       upstreamGate: MC001_BZTU_DIRECT_INPUT_GATE_ID
+    })),
+    ...huComponentContractReadinessGate.diagnostics.map((entry) => ({
+      ...entry,
+      upstreamGate: MC001_HU_COMPONENT_CONTRACT_READINESS_GATE_ID
     }))
   ]);
 }
@@ -336,6 +399,26 @@ function summarizeBztuDirectInputReadiness(bztuDirectInputGate) {
   };
 }
 
+function summarizeHuComponentReadiness(huComponentContractReadinessGate) {
+  return {
+    gateId: huComponentContractReadinessGate.gateId,
+    status: huComponentContractReadinessGate.status,
+    componentStatus: huComponentContractReadinessGate.componentStatus,
+    huComponentReadiness:
+      huComponentContractReadinessGate.huComponentReadiness,
+    readinessFlags: huComponentContractReadinessGate.readinessFlags,
+    nextRequiredStep: huComponentContractReadinessGate.nextRequiredStep
+  };
+}
+
+function hasHuComponentCandidate(inputPack) {
+  return (
+    Object.hasOwn(inputPack, "huComponentCandidate") ||
+    Object.hasOwn(inputPack, "huComponent") ||
+    Object.hasOwn(inputPack, "huComponentContract")
+  );
+}
+
 function sourceTraceFromInput(inputPack) {
   return Object.freeze({
     documents: Object.freeze(
@@ -366,6 +449,7 @@ function assertConsolidatedResultShape(result) {
   assertObject(result.ventilationReadiness, "result.ventilationReadiness");
   assertObject(result.heatLossReadiness, "result.heatLossReadiness");
   assertObject(result.bztuDirectInputReadiness, "result.bztuDirectInputReadiness");
+  assertObject(result.huComponentReadiness, "result.huComponentReadiness");
   assertArray(result.blockedItems, "result.blockedItems");
   assertArray(result.diagnostics, "result.diagnostics");
   assertObject(result.sourceTrace, "result.sourceTrace");
@@ -418,6 +502,10 @@ function assertBlockerPropagation(result) {
     phaseOutputs.bztuDirectInputGate,
     "result.phaseOutputs.bztuDirectInputGate"
   );
+  assertObject(
+    phaseOutputs.huComponentContractReadinessGate,
+    "result.phaseOutputs.huComponentContractReadinessGate"
+  );
 
   for (const blocker of phaseOutputs.envelopeBuilderOutput.blockedItems) {
     assertLowerBlockerPreserved(result, "Phase D envelope", blocker);
@@ -434,6 +522,9 @@ function assertBlockerPropagation(result) {
   for (const blocker of phaseOutputs.bztuDirectInputGate.blockedItems) {
     assertLowerBlockerPreserved(result, "Phase H1 BZTU", blocker);
   }
+  for (const blocker of phaseOutputs.huComponentContractReadinessGate.blockedItems) {
+    assertLowerBlockerPreserved(result, "Phase H2E Hu component", blocker);
+  }
 }
 
 function assertNoReadinessEscalation(result) {
@@ -444,6 +535,8 @@ function assertNoReadinessEscalation(result) {
   const ventilationBlocked = phaseOutputs.ventilationReadinessOutput.blockedItems.length > 0;
   const heatLossBlocked = phaseOutputs.heatLossReadinessOutput.blockedComponents.length > 0;
   const bztuBlocked = phaseOutputs.bztuDirectInputGate.blockedItems.length > 0;
+  const huComponentBlocked =
+    phaseOutputs.huComponentContractReadinessGate.blockedItems.length > 0;
 
   if (envelopeBlocked && readinessFlags.isEnvelopeReady) {
     throw new Error("envelope readiness cannot be true while Phase D has blockers");
@@ -459,6 +552,16 @@ function assertNoReadinessEscalation(result) {
   }
   if (bztuBlocked && readinessFlags.isHeatLossReady) {
     throw new Error("heat-loss readiness cannot be true while Phase H1 BZTU has blockers");
+  }
+  if (huComponentBlocked && readinessFlags.isHuComponentReady) {
+    throw new Error(
+      "Hu component readiness cannot be true while Phase H2E has blockers"
+    );
+  }
+  if (huComponentBlocked && readinessFlags.isHeatLossReady) {
+    throw new Error(
+      "heat-loss readiness cannot be true while Phase H2E Hu component has blockers"
+    );
   }
   if (
     readinessFlags.isHeatLossReady &&
@@ -507,6 +610,10 @@ function assertConsolidatedResultContract(result) {
     result.phaseOutputs.bztuDirectInputGate.blockedItems,
     "result.phaseOutputs.bztuDirectInputGate.blockedItems"
   );
+  assertNoBlockedFallbackValues(
+    result.phaseOutputs.huComponentContractReadinessGate.blockedItems,
+    "result.phaseOutputs.huComponentContractReadinessGate.blockedItems"
+  );
   assertBlockerPropagation(result);
   assertNoReadinessEscalation(result);
 }
@@ -547,6 +654,9 @@ export function createMc001AuditorCoreReadinessOrchestrator(
     componentClaims: componentClaims.heatLoss ?? {}
   });
   const bztuDirectInputGate = createMc001BztuDirectInputGate(inputPack);
+  const huComponentContractReadinessGate = hasHuComponentCandidate(inputPack)
+    ? createMc001HuComponentContractReadinessGate(inputPack)
+    : createNotSuppliedHuComponentReadinessOutput();
 
   assertNoBlockedFallbackValues(
     transmissionReadinessOutput.blockedComponents,
@@ -566,14 +676,19 @@ export function createMc001AuditorCoreReadinessOrchestrator(
     ),
     ...phaseBlockedItems("Phase F ventilation", ventilationReadinessOutput.blockedItems),
     ...phaseBlockedItems("Phase F heat-loss", heatLossReadinessOutput.blockedComponents),
-    ...phaseBlockedItems("Phase H1 BZTU", bztuDirectInputGate.blockedItems)
+    ...phaseBlockedItems("Phase H1 BZTU", bztuDirectInputGate.blockedItems),
+    ...phaseBlockedItems(
+      "Phase H2E Hu component",
+      huComponentContractReadinessGate.blockedItems
+    )
   ]);
   const diagnostics = collectDiagnostics({
     envelopeBuilderOutput,
     transmissionReadinessOutput,
     ventilationReadinessOutput,
     heatLossReadinessOutput,
-    bztuDirectInputGate
+    bztuDirectInputGate,
+    huComponentContractReadinessGate
   });
 
   const envelopeReadiness = summarizeEnvelopeReadiness(envelopeBuilderOutput);
@@ -587,9 +702,13 @@ export function createMc001AuditorCoreReadinessOrchestrator(
   const bztuDirectInputReadiness = summarizeBztuDirectInputReadiness(
     bztuDirectInputGate
   );
+  const huComponentReadiness = summarizeHuComponentReadiness(
+    huComponentContractReadinessGate
+  );
   const isHeatLossReady =
     heatLossReadinessOutput.readinessFlags.isHeatLossReady === true &&
-    bztuDirectInputGate.blockedItems.length === 0;
+    bztuDirectInputGate.blockedItems.length === 0 &&
+    huComponentContractReadinessGate.blockedItems.length === 0;
 
   const result = {
     orchestratorId: MC001_AUDITOR_CORE_READINESS_ORCHESTRATOR_ID,
@@ -604,6 +723,7 @@ export function createMc001AuditorCoreReadinessOrchestrator(
     ventilationReadiness,
     heatLossReadiness,
     bztuDirectInputReadiness,
+    huComponentReadiness,
     blockedItems,
     diagnostics,
     sourceTrace: Object.freeze({
@@ -618,7 +738,8 @@ export function createMc001AuditorCoreReadinessOrchestrator(
       transmission: transmissionReadinessOutput.sourceTrace,
       ventilation: ventilationReadinessOutput.sourceTrace,
       heatLoss: heatLossReadinessOutput.sourceTrace,
-      bztu: bztuDirectInputGate.sourceTrace
+      bztu: bztuDirectInputGate.sourceTrace,
+      huComponent: huComponentContractReadinessGate.sourceTrace
     }),
     readinessFlags: {
       isEnvelopeReady: envelopeReadiness.isEnvelopeReady,
@@ -630,6 +751,10 @@ export function createMc001AuditorCoreReadinessOrchestrator(
       isBztuDirectInputReady:
         bztuDirectInputGate.readinessFlags.isBztuDirectInputReady === true,
       isFullBztuDerivationReady: false,
+      isHuComponentReady:
+        huComponentContractReadinessGate.readinessFlags.isHuComponentReady === true,
+      isCompleteHuReady: false,
+      isCompleteHtrReady: false,
       isMonthlyHeatingReady: false,
       isQhndReady: false,
       isLevel2AuditorReady: false,
@@ -644,7 +769,8 @@ export function createMc001AuditorCoreReadinessOrchestrator(
       transmissionReadinessOutput,
       ventilationReadinessOutput,
       heatLossReadinessOutput,
-      bztuDirectInputGate
+      bztuDirectInputGate,
+      huComponentContractReadinessGate
     },
     nextRequiredStep:
       "KEEP_LEVEL_2_BLOCKED_UNTIL_ENVELOPE_TRANSMISSION_VENTILATION_HEAT_LOSS_CLIMATE_GAINS_SYSTEMS_AND_REPORTING_ARE_COMPLETE"
