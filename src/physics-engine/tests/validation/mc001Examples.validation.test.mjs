@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 26);
+  assert.equal(mc001ExecutableValidationFixtures.length, 27);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 26);
+  assert.equal(mc001ExecutableValidationCases.length, 27);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -161,6 +161,11 @@ test("covers requested validation areas with blocked examples and reviewed execu
     "auditor_core_readiness_orchestrator",
     "transmission"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[26].validationAreas, [
+    "hu_component_contract_readiness",
+    "bztu_direct_input_readiness",
+    "transmission"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -190,7 +195,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture024,
     fixture025,
     fixture026,
-    fixture027
+    fixture027,
+    fixture028
   ] =
     mc001ExecutableValidationCases;
 
@@ -732,6 +738,34 @@ test("registers executable fixture metadata without embedding numeric fixture da
     "mc001BztuDirectInputGate.mjs",
     "mc001AuditorInputBuilderGate.mjs",
     "mc001AuditorCoreReadinessOrchestrator.mjs"
+  ]);
+
+  assert.equal(
+    fixture028.fixtureId,
+    "FIXTURE_028_HU_COMPONENT_CONTRACT_READINESS_GATE"
+  );
+  assert.equal(
+    fixture028.exampleId,
+    "MC001_PHASE_H2E_HU_COMPONENT_CONTRACT_READINESS_GATE"
+  );
+  assert.ok(
+    fixture028.documentationPath.endsWith(
+      "FIXTURE_028_HU_COMPONENT_CONTRACT_READINESS_GATE.md"
+    )
+  );
+  assert.ok(
+    fixture028.fixturePath.endsWith(
+      "fixture028HuComponentContractReadinessGate.mjs"
+    )
+  );
+  assert.ok(
+    fixture028.validationTestPath.endsWith(
+      "fixture028HuComponentContractReadinessGate.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture028.helperCoverage, [
+    "mc001HuComponentContractReadinessGate.mjs",
+    "mc001BztuDirectInputGate.mjs"
   ]);
 
   for (const fixture of mc001ExecutableValidationCases) {
