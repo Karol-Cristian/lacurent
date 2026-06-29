@@ -19,6 +19,10 @@ import {
   MC001_HU_COMPONENT_CONTRACT_READINESS_GATE_ID
 } from "./mc001HuComponentContractReadinessGate.mjs";
 import {
+  createMc001HuMultiComponentInventoryReadinessGate,
+  MC001_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE_ID
+} from "./mc001HuMultiComponentInventoryReadinessGate.mjs";
+import {
   createMc001TransmissionHtrReadinessGate,
   MC001_TRANSMISSION_HTR_READINESS_GATE_ID
 } from "./mc001TransmissionHtrReadinessGate.mjs";
@@ -40,6 +44,7 @@ const REQUIRED_RESULT_FIELDS = Object.freeze([
   "heatLossReadiness",
   "bztuDirectInputReadiness",
   "huComponentReadiness",
+  "huMultiComponentInventoryReadiness",
   "blockedItems",
   "diagnostics",
   "sourceTrace",
@@ -52,6 +57,7 @@ const REQUIRED_READINESS_FLAGS = Object.freeze([
   "isVentilationReady",
   "isHeatLossReady",
   "isHuComponentReady",
+  "isHuInventoryReady",
   "isCompleteHuReady",
   "isCompleteHtrReady",
   "isMonthlyHeatingReady",
@@ -261,6 +267,60 @@ function createNotSuppliedHuComponentReadinessOutput() {
   };
 }
 
+function createNotSuppliedHuMultiComponentInventoryReadinessOutput() {
+  const sourceTrace = Object.freeze({
+    records: Object.freeze([])
+  });
+  const diagnostics = Object.freeze([]);
+  const blockedItems = Object.freeze([]);
+  const readinessFlags = {
+    isHuInventoryReady: false,
+    isCompleteHuReady: false,
+    isCompleteHtrReady: false,
+    isMonthlyHeatingReady: false,
+    isQhndReady: false,
+    isLevel2AuditorReady: false,
+    isCpeReady: false
+  };
+  const huMultiComponentInventoryReadiness = {
+    status: "not_supplied",
+    inventoryStatus: "not_evaluated",
+    month: null,
+    conditionedZoneIds: Object.freeze([]),
+    unconditionedZoneIds: Object.freeze([]),
+    ztuZoneIds: Object.freeze([]),
+    componentCount: 0,
+    readyComponentCount: 0,
+    blockedComponentCount: 0,
+    componentReadiness: Object.freeze([]),
+    missingComponents: Object.freeze([]),
+    unexpectedComponents: Object.freeze([]),
+    duplicateComponents: Object.freeze([]),
+    ambiguousComponents: Object.freeze([]),
+    distributionBlockers: Object.freeze([]),
+    sourceTrace,
+    diagnostics,
+    blockers: blockedItems,
+    isHuInventoryReady: false,
+    isCompleteHuReady: false,
+    isCompleteHtrReady: false
+  };
+
+  return {
+    gateId: MC001_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE_ID,
+    status: "not_supplied",
+    inventoryStatus: "not_evaluated",
+    huMultiComponentInventoryReadiness,
+    sourceTrace,
+    diagnostics,
+    blockedItems,
+    blockers: blockedItems,
+    readinessFlags,
+    nextRequiredStep:
+      "SUPPLY_HU_MULTI_COMPONENT_INVENTORY_ONLY_WHEN_UNCONDITIONED_ZONE_INVENTORY_READINESS_IS_BEING_EVALUATED"
+  };
+}
+
 function blockedValueIsZeroFallback(item) {
   return item?.status?.startsWith("blocked") && "value" in item && item.value !== null;
 }
@@ -310,7 +370,8 @@ function collectDiagnostics({
   ventilationReadinessOutput,
   heatLossReadinessOutput,
   bztuDirectInputGate,
-  huComponentContractReadinessGate
+  huComponentContractReadinessGate,
+  huMultiComponentInventoryReadinessGate
 }) {
   return Object.freeze([
     ...envelopeBuilderOutput.diagnostics.map((entry) => ({
@@ -336,6 +397,10 @@ function collectDiagnostics({
     ...huComponentContractReadinessGate.diagnostics.map((entry) => ({
       ...entry,
       upstreamGate: MC001_HU_COMPONENT_CONTRACT_READINESS_GATE_ID
+    })),
+    ...huMultiComponentInventoryReadinessGate.diagnostics.map((entry) => ({
+      ...entry,
+      upstreamGate: MC001_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE_ID
     }))
   ]);
 }
@@ -411,11 +476,35 @@ function summarizeHuComponentReadiness(huComponentContractReadinessGate) {
   };
 }
 
+function summarizeHuMultiComponentInventoryReadiness(
+  huMultiComponentInventoryReadinessGate
+) {
+  return {
+    gateId: huMultiComponentInventoryReadinessGate.gateId,
+    status: huMultiComponentInventoryReadinessGate.status,
+    inventoryStatus: huMultiComponentInventoryReadinessGate.inventoryStatus,
+    huMultiComponentInventoryReadiness:
+      huMultiComponentInventoryReadinessGate.huMultiComponentInventoryReadiness,
+    readinessFlags: huMultiComponentInventoryReadinessGate.readinessFlags,
+    nextRequiredStep: huMultiComponentInventoryReadinessGate.nextRequiredStep
+  };
+}
+
 function hasHuComponentCandidate(inputPack) {
   return (
     Object.hasOwn(inputPack, "huComponentCandidate") ||
     Object.hasOwn(inputPack, "huComponent") ||
     Object.hasOwn(inputPack, "huComponentContract")
+  );
+}
+
+function hasHuMultiComponentInventoryCandidate(inputPack) {
+  return (
+    Object.hasOwn(inputPack, "huMultiComponentInventory") ||
+    Object.hasOwn(inputPack, "huInventory") ||
+    Object.hasOwn(inputPack, "huMultiComponentInventoryCandidate") ||
+    Object.hasOwn(inputPack, "huComponentCandidates") ||
+    Object.hasOwn(inputPack, "expectedHuComponents")
   );
 }
 
@@ -450,6 +539,10 @@ function assertConsolidatedResultShape(result) {
   assertObject(result.heatLossReadiness, "result.heatLossReadiness");
   assertObject(result.bztuDirectInputReadiness, "result.bztuDirectInputReadiness");
   assertObject(result.huComponentReadiness, "result.huComponentReadiness");
+  assertObject(
+    result.huMultiComponentInventoryReadiness,
+    "result.huMultiComponentInventoryReadiness"
+  );
   assertArray(result.blockedItems, "result.blockedItems");
   assertArray(result.diagnostics, "result.diagnostics");
   assertObject(result.sourceTrace, "result.sourceTrace");
@@ -506,6 +599,10 @@ function assertBlockerPropagation(result) {
     phaseOutputs.huComponentContractReadinessGate,
     "result.phaseOutputs.huComponentContractReadinessGate"
   );
+  assertObject(
+    phaseOutputs.huMultiComponentInventoryReadinessGate,
+    "result.phaseOutputs.huMultiComponentInventoryReadinessGate"
+  );
 
   for (const blocker of phaseOutputs.envelopeBuilderOutput.blockedItems) {
     assertLowerBlockerPreserved(result, "Phase D envelope", blocker);
@@ -525,6 +622,9 @@ function assertBlockerPropagation(result) {
   for (const blocker of phaseOutputs.huComponentContractReadinessGate.blockedItems) {
     assertLowerBlockerPreserved(result, "Phase H2E Hu component", blocker);
   }
+  for (const blocker of phaseOutputs.huMultiComponentInventoryReadinessGate.blockedItems) {
+    assertLowerBlockerPreserved(result, "Phase H2H Hu inventory", blocker);
+  }
 }
 
 function assertNoReadinessEscalation(result) {
@@ -537,6 +637,8 @@ function assertNoReadinessEscalation(result) {
   const bztuBlocked = phaseOutputs.bztuDirectInputGate.blockedItems.length > 0;
   const huComponentBlocked =
     phaseOutputs.huComponentContractReadinessGate.blockedItems.length > 0;
+  const huInventoryBlocked =
+    phaseOutputs.huMultiComponentInventoryReadinessGate.blockedItems.length > 0;
 
   if (envelopeBlocked && readinessFlags.isEnvelopeReady) {
     throw new Error("envelope readiness cannot be true while Phase D has blockers");
@@ -561,6 +663,16 @@ function assertNoReadinessEscalation(result) {
   if (huComponentBlocked && readinessFlags.isHeatLossReady) {
     throw new Error(
       "heat-loss readiness cannot be true while Phase H2E Hu component has blockers"
+    );
+  }
+  if (huInventoryBlocked && readinessFlags.isHuInventoryReady) {
+    throw new Error(
+      "Hu inventory readiness cannot be true while Phase H2H has blockers"
+    );
+  }
+  if (huInventoryBlocked && readinessFlags.isHeatLossReady) {
+    throw new Error(
+      "heat-loss readiness cannot be true while Phase H2H Hu inventory has blockers"
     );
   }
   if (
@@ -614,6 +726,10 @@ function assertConsolidatedResultContract(result) {
     result.phaseOutputs.huComponentContractReadinessGate.blockedItems,
     "result.phaseOutputs.huComponentContractReadinessGate.blockedItems"
   );
+  assertNoBlockedFallbackValues(
+    result.phaseOutputs.huMultiComponentInventoryReadinessGate.blockedItems,
+    "result.phaseOutputs.huMultiComponentInventoryReadinessGate.blockedItems"
+  );
   assertBlockerPropagation(result);
   assertNoReadinessEscalation(result);
 }
@@ -657,6 +773,11 @@ export function createMc001AuditorCoreReadinessOrchestrator(
   const huComponentContractReadinessGate = hasHuComponentCandidate(inputPack)
     ? createMc001HuComponentContractReadinessGate(inputPack)
     : createNotSuppliedHuComponentReadinessOutput();
+  const huMultiComponentInventoryReadinessGate = hasHuMultiComponentInventoryCandidate(
+    inputPack
+  )
+    ? createMc001HuMultiComponentInventoryReadinessGate(inputPack)
+    : createNotSuppliedHuMultiComponentInventoryReadinessOutput();
 
   assertNoBlockedFallbackValues(
     transmissionReadinessOutput.blockedComponents,
@@ -680,6 +801,10 @@ export function createMc001AuditorCoreReadinessOrchestrator(
     ...phaseBlockedItems(
       "Phase H2E Hu component",
       huComponentContractReadinessGate.blockedItems
+    ),
+    ...phaseBlockedItems(
+      "Phase H2H Hu inventory",
+      huMultiComponentInventoryReadinessGate.blockedItems
     )
   ]);
   const diagnostics = collectDiagnostics({
@@ -688,7 +813,8 @@ export function createMc001AuditorCoreReadinessOrchestrator(
     ventilationReadinessOutput,
     heatLossReadinessOutput,
     bztuDirectInputGate,
-    huComponentContractReadinessGate
+    huComponentContractReadinessGate,
+    huMultiComponentInventoryReadinessGate
   });
 
   const envelopeReadiness = summarizeEnvelopeReadiness(envelopeBuilderOutput);
@@ -705,10 +831,15 @@ export function createMc001AuditorCoreReadinessOrchestrator(
   const huComponentReadiness = summarizeHuComponentReadiness(
     huComponentContractReadinessGate
   );
+  const huMultiComponentInventoryReadiness =
+    summarizeHuMultiComponentInventoryReadiness(
+      huMultiComponentInventoryReadinessGate
+    );
   const isHeatLossReady =
     heatLossReadinessOutput.readinessFlags.isHeatLossReady === true &&
     bztuDirectInputGate.blockedItems.length === 0 &&
-    huComponentContractReadinessGate.blockedItems.length === 0;
+    huComponentContractReadinessGate.blockedItems.length === 0 &&
+    huMultiComponentInventoryReadinessGate.blockedItems.length === 0;
 
   const result = {
     orchestratorId: MC001_AUDITOR_CORE_READINESS_ORCHESTRATOR_ID,
@@ -724,6 +855,7 @@ export function createMc001AuditorCoreReadinessOrchestrator(
     heatLossReadiness,
     bztuDirectInputReadiness,
     huComponentReadiness,
+    huMultiComponentInventoryReadiness,
     blockedItems,
     diagnostics,
     sourceTrace: Object.freeze({
@@ -739,7 +871,8 @@ export function createMc001AuditorCoreReadinessOrchestrator(
       ventilation: ventilationReadinessOutput.sourceTrace,
       heatLoss: heatLossReadinessOutput.sourceTrace,
       bztu: bztuDirectInputGate.sourceTrace,
-      huComponent: huComponentContractReadinessGate.sourceTrace
+      huComponent: huComponentContractReadinessGate.sourceTrace,
+      huMultiComponentInventory: huMultiComponentInventoryReadinessGate.sourceTrace
     }),
     readinessFlags: {
       isEnvelopeReady: envelopeReadiness.isEnvelopeReady,
@@ -753,6 +886,8 @@ export function createMc001AuditorCoreReadinessOrchestrator(
       isFullBztuDerivationReady: false,
       isHuComponentReady:
         huComponentContractReadinessGate.readinessFlags.isHuComponentReady === true,
+      isHuInventoryReady:
+        huMultiComponentInventoryReadinessGate.readinessFlags.isHuInventoryReady === true,
       isCompleteHuReady: false,
       isCompleteHtrReady: false,
       isMonthlyHeatingReady: false,
@@ -770,7 +905,8 @@ export function createMc001AuditorCoreReadinessOrchestrator(
       ventilationReadinessOutput,
       heatLossReadinessOutput,
       bztuDirectInputGate,
-      huComponentContractReadinessGate
+      huComponentContractReadinessGate,
+      huMultiComponentInventoryReadinessGate
     },
     nextRequiredStep:
       "KEEP_LEVEL_2_BLOCKED_UNTIL_ENVELOPE_TRANSMISSION_VENTILATION_HEAT_LOSS_CLIMATE_GAINS_SYSTEMS_AND_REPORTING_ARE_COMPLETE"
