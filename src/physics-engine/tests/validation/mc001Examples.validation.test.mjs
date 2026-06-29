@@ -41,7 +41,7 @@ test("inventories every indexed MC001 example candidate", () => {
   assert.equal(summary.byBlocker[BLOCKED_MISSING_TABLE], 3);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_CLIMATE_DATASET], 2);
   assert.equal(summary.byBlocker[BLOCKED_MISSING_DHW_DATASET] ?? 0, 0);
-  assert.equal(mc001ExecutableValidationFixtures.length, 27);
+  assert.equal(mc001ExecutableValidationFixtures.length, 28);
 });
 
 test("marks non-executable examples with explicit blocker statuses", () => {
@@ -73,7 +73,7 @@ test("covers requested validation areas with blocked examples and reviewed execu
   }
 
   assert.equal(mc001FullyExecutableExampleCandidates.length, 0);
-  assert.equal(mc001ExecutableValidationCases.length, 27);
+  assert.equal(mc001ExecutableValidationCases.length, 28);
   assert.deepEqual(mc001ExecutableValidationCases[0].validationAreas, [
     "u_values",
     "transmission"
@@ -166,6 +166,12 @@ test("covers requested validation areas with blocked examples and reviewed execu
     "bztu_direct_input_readiness",
     "transmission"
   ]);
+  assert.deepEqual(mc001ExecutableValidationCases[27].validationAreas, [
+    "hu_multi_component_inventory_readiness",
+    "hu_component_contract_readiness",
+    "bztu_direct_input_readiness",
+    "transmission"
+  ]);
 });
 
 test("registers executable fixture metadata without embedding numeric fixture data", () => {
@@ -196,7 +202,8 @@ test("registers executable fixture metadata without embedding numeric fixture da
     fixture025,
     fixture026,
     fixture027,
-    fixture028
+    fixture028,
+    fixture029
   ] =
     mc001ExecutableValidationCases;
 
@@ -764,6 +771,35 @@ test("registers executable fixture metadata without embedding numeric fixture da
     )
   );
   assert.deepEqual(fixture028.helperCoverage, [
+    "mc001HuComponentContractReadinessGate.mjs",
+    "mc001BztuDirectInputGate.mjs"
+  ]);
+
+  assert.equal(
+    fixture029.fixtureId,
+    "FIXTURE_029_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE"
+  );
+  assert.equal(
+    fixture029.exampleId,
+    "MC001_PHASE_H2H_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE"
+  );
+  assert.ok(
+    fixture029.documentationPath.endsWith(
+      "FIXTURE_029_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE.md"
+    )
+  );
+  assert.ok(
+    fixture029.fixturePath.endsWith(
+      "fixture029HuMultiComponentInventoryReadinessGate.mjs"
+    )
+  );
+  assert.ok(
+    fixture029.validationTestPath.endsWith(
+      "fixture029HuMultiComponentInventoryReadinessGate.validation.test.mjs"
+    )
+  );
+  assert.deepEqual(fixture029.helperCoverage, [
+    "mc001HuMultiComponentInventoryReadinessGate.mjs",
     "mc001HuComponentContractReadinessGate.mjs",
     "mc001BztuDirectInputGate.mjs"
   ]);
