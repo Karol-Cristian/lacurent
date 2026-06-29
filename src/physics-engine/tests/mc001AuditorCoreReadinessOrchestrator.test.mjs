@@ -173,6 +173,91 @@ function addHuComponentCandidate(
   return inputPack;
 }
 
+function validHuInventoryComponent(index, extra = {}) {
+  return validHuComponentCandidate({
+    componentId: `PHASE_H2I_HU_COMPONENT_00${index}`,
+    element: {
+      elementId: `phase-h2i-ztu-wall-00${index}`,
+      elementType: "wall",
+      area: {
+        value: index === 1 ? 12.5 : 8.75,
+        unit: "m2"
+      }
+    },
+    uValuePath: {
+      pathType: "source_backed_corrected_u_value",
+      value: index === 1 ? 0.31 : 0.29,
+      unit: "W/(m2*K)",
+      source: `Phase H2I reviewed U-value path source ${index}`,
+      sourceRefs: ["MC001_2022_FIGURE_2_12_ELEMENT_TRANSMISSION"],
+      sourceLocator: {
+        documentId: "MC001-2022",
+        page: 100,
+        figure: "Figure 2.12"
+      },
+      traceId: `PHASE_H2I_U_VALUE_TRACE_00${index}`
+    },
+    sourceTrace: {
+      source: `Phase H2I synthetic Hu component contract source ${index}`,
+      sourceRefs: ["MC001_2022_FIGURE_2_12_ELEMENT_TRANSMISSION"],
+      sourceLocator: {
+        documentId: "MC001-2022",
+        page: 100,
+        figure: "Figure 2.12"
+      },
+      traceId: `PHASE_H2I_HU_COMPONENT_TRACE_00${index}`
+    },
+    ...extra
+  });
+}
+
+function expectedHuInventoryComponentFrom(candidate) {
+  return {
+    componentId: candidate.componentId,
+    conditionedZoneId: candidate.conditionedZoneId,
+    ztuZoneId: candidate.ztuZoneId,
+    month: candidate.month,
+    elementId: candidate.element.elementId
+  };
+}
+
+function validHuMultiComponentInventory(extra = {}) {
+  const first = validHuInventoryComponent(1);
+  const second = validHuInventoryComponent(2);
+
+  return {
+    month: 1,
+    conditionedZoneIds: ["ztc-school-zone-001"],
+    ztuZoneIds: ["ztu-buffer-zone-001"],
+    expectedComponents: [
+      expectedHuInventoryComponentFrom(first),
+      expectedHuInventoryComponentFrom(second)
+    ],
+    componentCandidates: [first, second],
+    sourceTrace: {
+      source: "Phase H2I reviewed Hu inventory coverage source",
+      sourceRefs: ["MC001_2022_FIGURE_2_12_ELEMENT_TRANSMISSION"],
+      sourceLocator: {
+        documentId: "MC001-2022",
+        page: 100,
+        figure: "Figure 2.12"
+      },
+      traceId: "PHASE_H2I_HU_INVENTORY_TRACE_001"
+    },
+    ...extra
+  };
+}
+
+function addHuMultiComponentInventory(
+  inputPack,
+  inventory = validHuMultiComponentInventory(),
+  bztuEntries = [validBztuDirectInput()]
+) {
+  inputPack.huMultiComponentInventory = inventory;
+  inputPack.bztuDirectInputs = bztuEntries;
+  return inputPack;
+}
+
 function completeCoreInputPack() {
   const inputPack = baseCoreInputPack();
   inputPack.envelope.elements = inputPack.envelope.elements.filter(
@@ -221,6 +306,7 @@ function assertConsolidatedContract(result) {
     "transmissionReadiness",
     "ventilationReadiness",
     "heatLossReadiness",
+    "huMultiComponentInventoryReadiness",
     "blockedItems",
     "diagnostics",
     "sourceTrace",
@@ -235,6 +321,7 @@ function assertConsolidatedContract(result) {
     "isTransmissionReady",
     "isVentilationReady",
     "isHeatLossReady",
+    "isHuInventoryReady",
     "isMonthlyHeatingReady",
     "isLevel2AuditorReady",
     "isCpeReady"
@@ -529,6 +616,165 @@ test("Phase H2F keeps Phase H1 BZTU readiness behavior unchanged", () => {
   assert.equal(result.readinessFlags.isFullBztuDerivationReady, false);
   assert.equal(result.huComponentReadiness.status, "not_supplied");
   assert.equal(result.readinessFlags.isHuComponentReady, false);
+});
+
+test("Phase H2I exposes valid Hu multi-component inventory readiness through orchestrator", () => {
+  const result = build(addHuMultiComponentInventory(baseCoreInputPack()));
+
+  assert.equal(
+    result.huMultiComponentInventoryReadiness.gateId,
+    "MC001_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE_PHASE_H2H"
+  );
+  assert.equal(result.huMultiComponentInventoryReadiness.status, "ready");
+  assert.equal(
+    result.huMultiComponentInventoryReadiness.inventoryStatus,
+    "ready_hu_component_inventory"
+  );
+  assert.equal(
+    result.huMultiComponentInventoryReadiness
+      .huMultiComponentInventoryReadiness.componentCount,
+    2
+  );
+  assert.equal(result.readinessFlags.isHuInventoryReady, true);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(result.readinessFlags.isMonthlyHeatingReady, false);
+  assert.equal(result.readinessFlags.isQhndReady, false);
+  assert.equal(result.readinessFlags.isCpeReady, false);
+  assert.equal(result.readinessFlags.isLevel2AuditorReady, false);
+  assert.equal("huResult" in result.huMultiComponentInventoryReadiness, false);
+  assert.equal("htrResult" in result.huMultiComponentInventoryReadiness, false);
+  assert.equal(
+    "huResult" in
+      result.huMultiComponentInventoryReadiness.huMultiComponentInventoryReadiness,
+    false
+  );
+  assert.equal(
+    "htrResult" in
+      result.huMultiComponentInventoryReadiness.huMultiComponentInventoryReadiness,
+    false
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "hu_component_contract_readiness_only"
+    )
+  );
+  assert.ok(
+    result.sourceTrace.huMultiComponentInventory.records.some(
+      (entry) => entry.traceId === "PHASE_H2I_HU_INVENTORY_TRACE_001"
+    )
+  );
+});
+
+test("Phase H2I exposes unexpected actual component blockers through orchestrator", () => {
+  const inventory = validHuMultiComponentInventory();
+  const extraComponent = clone(inventory.componentCandidates[1]);
+  extraComponent.componentId = "PHASE_H2I_UNEXPECTED_HU_COMPONENT_003";
+  extraComponent.element.elementId = "phase-h2i-unexpected-ztu-wall-003";
+  extraComponent.uValuePath.traceId = "PHASE_H2I_UNEXPECTED_U_VALUE_TRACE_003";
+  extraComponent.sourceTrace.traceId = "PHASE_H2I_UNEXPECTED_COMPONENT_TRACE_003";
+  inventory.componentCandidates.push(extraComponent);
+
+  const result = build(addHuMultiComponentInventory(baseCoreInputPack(), inventory));
+
+  assert.equal(result.huMultiComponentInventoryReadiness.status, "blocked");
+  assert.equal(
+    result.huMultiComponentInventoryReadiness.inventoryStatus,
+    "blocked_unexpected_hu_component"
+  );
+  assert.equal(result.readinessFlags.isHuInventoryReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal("huResult" in result.huMultiComponentInventoryReadiness, false);
+  assert.equal("htrResult" in result.huMultiComponentInventoryReadiness, false);
+  assert.ok(
+    result.diagnostics.some(
+      (entry) =>
+        entry.upstreamGate ===
+          "MC001_HU_MULTI_COMPONENT_INVENTORY_READINESS_GATE_PHASE_H2H" &&
+        entry.code === "blocked_unexpected_hu_component"
+    )
+  );
+  assert.ok(
+    result.blockedItems.some(
+      (item) =>
+        item.phase === "Phase H2H Hu inventory" &&
+        item.diagnosticCode === "blocked_unexpected_hu_component" &&
+        item.value === null
+    )
+  );
+});
+
+test("Phase H2I exposes partial Hu inventory blockers through orchestrator", () => {
+  const inventory = validHuMultiComponentInventory();
+  inventory.componentCandidates.pop();
+
+  const result = build(addHuMultiComponentInventory(baseCoreInputPack(), inventory));
+
+  assert.equal(result.readinessFlags.isHuInventoryReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.ok(
+    result.diagnostics.some((entry) => entry.code === "blocked_missing_hu_component")
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "blocked_partial_inventory_escalation"
+    )
+  );
+});
+
+test("Phase H2I no inventory candidate preserves existing orchestrator behavior", () => {
+  const result = build(baseCoreInputPack());
+
+  assert.equal(result.huMultiComponentInventoryReadiness.status, "not_supplied");
+  assert.equal(
+    result.huMultiComponentInventoryReadiness.inventoryStatus,
+    "not_evaluated"
+  );
+  assert.equal(result.readinessFlags.isHuInventoryReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.equal(result.envelopeReadiness.isDirectTransmissionReady, true);
+  assert.equal(result.transmissionReadiness.componentReadiness.Hd.status, "ready");
+  assert.equal(result.ventilationReadiness.componentReadiness.Hve.status, "ready");
+  assert.equal(result.readinessFlags.isHeatLossReady, false);
+  assert.equal(
+    result.blockedItems.some((item) => item.phase === "Phase H2H Hu inventory"),
+    false
+  );
+});
+
+test("Phase H2I blocks attempts to force inventory complete Hu or Htr readiness", () => {
+  const inventory = validHuMultiComponentInventory({
+    readinessClaims: {
+      isHuInventoryReady: true,
+      isCompleteHuReady: true,
+      isCompleteHtrReady: true
+    }
+  });
+  const result = build(addHuMultiComponentInventory(baseCoreInputPack(), inventory));
+
+  assert.equal(result.readinessFlags.isHuInventoryReady, false);
+  assert.equal(result.readinessFlags.isCompleteHuReady, false);
+  assert.equal(result.readinessFlags.isCompleteHtrReady, false);
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "blocked_hu_inventory_readiness_escalation"
+    )
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "blocked_complete_hu_readiness_escalation"
+    )
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (entry) => entry.code === "blocked_complete_htr_readiness_escalation"
+    )
+  );
 });
 
 for (const { name, mutate, expectedCode } of [
