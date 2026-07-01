@@ -480,7 +480,8 @@ test("runtime import boundary allows only H4 and no IO or DB/API/UI/Worker impor
     new URL("../mc001HuAggregation.mjs", import.meta.url),
     "utf8"
   );
-  const importBlocks = moduleSource.match(/import[\s\S]*?;\n/g) ?? [];
+  const normalizedSource = moduleSource.replace(/\r\n/g, "\n");
+  const importBlocks = normalizedSource.match(/import[\s\S]*?;\n/g) ?? [];
 
   assert.deepEqual(importBlocks, [
     'import {\n  calculateMc001HuComponentTerms,\n  MC001_HU_COMPONENT_TERM_FORMULA_CODE\n} from "./mc001HuComponentTermCalculation.mjs";\n'
@@ -504,7 +505,7 @@ test("runtime import boundary allows only H4 and no IO or DB/API/UI/Worker impor
     "report",
     "CPE"
   ]) {
-    assert.equal(moduleSource.includes(forbidden), false, `${forbidden} leaked`);
+    assert.equal(normalizedSource.includes(forbidden), false, `${forbidden} leaked`);
   }
 });
 
