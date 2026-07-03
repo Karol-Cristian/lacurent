@@ -2,6 +2,7 @@ import { ENERGY_ASSESSMENT_DISCLAIMER, buildEnergyProfile, demoOldHouseInput } f
 import { inferFinalEnergyCarrierFromHeatingInput, resolveMc001Carrier } from "../src/features/energy/physics/calculators/carrierMapping.mjs";
 import { classifyEstimatedEnergyClass as classifyEstimatedEnergyClassFromRegistry } from "../src/features/energy/physics/calculators/estimatedEnergyClass.mjs";
 import { getCo2Factor, getPrimaryEnergyFactor } from "../src/features/energy/physics/calculators/referenceValues.mjs";
+import { calculateMc001HtrTotal } from "../src/physics-engine/mc001HtrTotalCalculation.mjs";
 
 const SESSION_DAYS = 30;
 const RESET_MINUTES = 30;
@@ -1663,6 +1664,722 @@ async function resetPassword(request, env, corsHeaders) {
   return jsonResponse({ success: true }, { headers: corsHeaders });
 }
 
+const MC001_HTR_VERTICAL_ANALYSIS_TYPE = "mc001_htr_vertical_v1";
+const MC001_HTR_INPUT_ANSWER_KEY = "mc001_htr_input_json";
+const MC001_HTR_RESULT_SCOPE =
+  "htr_transmission_only_not_full_mc001_certificate";
+const MC001_HTR_REGISTRY_SOURCE_PACK_CODES = Object.freeze([
+  "MC001_R0_BZTU_FORMULA_SOURCE_PACK",
+  "MC001_R2_HTR_TRANSMISSION_SPINE_SOURCE_PACK",
+  "MC001_R2_MONTHLY_TRANSMISSION_SOURCE_PACK"
+]);
+const MC001_HTR_REGISTRY_FORMULA_CODES = Object.freeze([
+  "MC001_2_15_HTR_TOTAL_TRANSMISSION"
+]);
+const MC001_HTR_MISSING_NEXT_SCOPE = Object.freeze([
+  "QHnd_monthly_not_implemented",
+  "final_energy_not_implemented",
+  "primary_energy_not_implemented",
+  "co2_not_implemented",
+  "certificate_not_implemented"
+]);
+const MC001_HTR_COMPONENT_TYPES = Object.freeze([
+  "external_wall",
+  "roof",
+  "floor",
+  "window",
+  "door",
+  "other_envelope_component"
+]);
+const MC001_HTR_NON_HU_INPUTS = Object.freeze([
+  Object.freeze({
+    requestKey: "thermal_bridge_w_k",
+    contributionType: "thermal_bridge_transmission_contribution",
+    sourceCode: "thermal-bridge"
+  }),
+  Object.freeze({
+    requestKey: "ground_w_k",
+    contributionType: "ground_transmission_contribution",
+    sourceCode: "ground"
+  }),
+  Object.freeze({
+    requestKey: "adjacent_space_w_k",
+    contributionType: "adjacent_space_transmission_contribution",
+    sourceCode: "adjacent-space"
+  })
+]);
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function mc001HtrPrivateContentLooksUnsafe(value) {
+  const normalized = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return (
+    normalized.includes("@") ||
+    normalized.includes("+40722111222") ||
+    normalized.includes("person@example.com") ||
+    normalized.includes("strada exemplu") ||
+    normalized.includes("john doe") ||
+    normalized.includes("record-johndoe") ||
+    normalized.includes("record-001") ||
+    normalized.includes("owner-snapshot") ||
+    normalized.includes("private-note") ||
+    normalized.includes("person-name") ||
+    normalized.includes("sourcecontext") ||
+    normalized.includes("sourcetrace") ||
+    normalized.includes("sourcerefs") ||
+    normalized.includes("sourcerecordid") ||
+    normalized.includes("token") ||
+    normalized.includes("session")
+  );
+}
+
+function safeShortToken(value, maxLength = 80) {
+  return typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= maxLength &&
+    /^[a-zA-Z0-9_.:-]+$/.test(value) &&
+    !mc001HtrPrivateContentLooksUnsafe(value);
+}
+
+function safeOptionalLabel(value) {
+  return value === null ||
+    value === undefined ||
+    (
+      typeof value === "string" &&
+      value.length <= 80 &&
+      !/[<>{}]/.test(value) &&
+      !mc001HtrPrivateContentLooksUnsafe(value)
+    );
+}
+
+function mc001HtrPayloadHasUnsafeContent(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return mc001HtrPrivateContentLooksUnsafe(value);
+  if (typeof value === "number" || typeof value === "boolean") return false;
+  if (Array.isArray(value)) return value.some(mc001HtrPayloadHasUnsafeContent);
+  if (!isPlainObject(value)) return true;
+  return Object.entries(value).some(([key, child]) => (
+    mc001HtrPrivateContentLooksUnsafe(key) ||
+    mc001HtrPayloadHasUnsafeContent(child)
+  ));
+}
+
+function mc001HtrPayloadHasForbiddenDerivedFields(value) {
+  const forbiddenKeys = new Set([
+    "htr_total",
+    "htrTotal",
+    "totalHtr",
+    "htrResult",
+    "htrValue",
+    "htrFormulaResult",
+    "formulaResult",
+    "resultValue",
+    "calculatedHtr",
+    "calculationTerms",
+    "composedInputs",
+    "htrTotalResult",
+    "calculatedTotal",
+    "finalEnergy",
+    "primaryEnergy",
+    "CO2",
+    "QHnd"
+  ]);
+  if (value === null || value === undefined || typeof value !== "object") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(mc001HtrPayloadHasForbiddenDerivedFields);
+  }
+  return Object.entries(value).some(([key, child]) => (
+    forbiddenKeys.has(key) || mc001HtrPayloadHasForbiddenDerivedFields(child)
+  ));
+}
+
+function mc001HtrFiniteNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function mc001HtrSourceIssue(source) {
+  if (!isPlainObject(source)) {
+    return "Lipseste sursa explicita pentru una dintre valorile Htr.";
+  }
+  if (source.source_type !== "explicit_user_input") {
+    return "Sursa valorilor Htr trebuie sa fie explicit_user_input.";
+  }
+  if (!safeShortToken(source.reference, 80)) {
+    return "Referinta sursei Htr este invalida.";
+  }
+  return null;
+}
+
+function sanitizeMc001HtrInput(body = {}) {
+  const input = body?.htr_input;
+  if (!isPlainObject(input)) {
+    return { ok: false, error: "Lipseste htr_input." };
+  }
+  if (mc001HtrPayloadHasUnsafeContent(input) || mc001HtrPayloadHasUnsafeContent(body.label)) {
+    return { ok: false, error: "Inputul MC001 Htr contine continut nesigur." };
+  }
+  if (mc001HtrPayloadHasForbiddenDerivedFields(input) || mc001HtrPayloadHasForbiddenDerivedFields(body)) {
+    return { ok: false, error: "Inputul MC001 Htr nu poate contine rezultate calculate." };
+  }
+  if (!safeOptionalLabel(body.label)) {
+    return { ok: false, error: "Eticheta analizei Htr este invalida." };
+  }
+  if (!Array.isArray(input.envelope_components) || input.envelope_components.length === 0) {
+    return { ok: false, error: "Adauga cel putin un element de anvelopa pentru Htr." };
+  }
+  if (input.envelope_components.length > 50) {
+    return { ok: false, error: "Prea multe elemente de anvelopa pentru MVP-ul Htr." };
+  }
+
+  const componentIds = new Set();
+  const envelopeComponents = [];
+  for (const component of input.envelope_components) {
+    if (!isPlainObject(component)) {
+      return { ok: false, error: "Element de anvelopa invalid." };
+    }
+    if (!safeShortToken(component.component_id, 64)) {
+      return { ok: false, error: "ID-ul elementului de anvelopa este invalid." };
+    }
+    if (componentIds.has(component.component_id)) {
+      return { ok: false, error: "ID duplicat pentru elementele de anvelopa." };
+    }
+    componentIds.add(component.component_id);
+    if (!MC001_HTR_COMPONENT_TYPES.includes(component.component_type)) {
+      return { ok: false, error: "Tipul elementului de anvelopa nu este acceptat." };
+    }
+    if (!safeOptionalLabel(component.label)) {
+      return { ok: false, error: "Eticheta elementului de anvelopa este invalida." };
+    }
+    const area = mc001HtrFiniteNumber(component.area_m2);
+    if (area === null || area <= 0) {
+      return { ok: false, error: "Suprafata elementului de anvelopa trebuie sa fie pozitiva." };
+    }
+    const thermalTransmittance = mc001HtrFiniteNumber(
+      component.thermal_transmittance_w_m2k
+    );
+    if (thermalTransmittance === null || thermalTransmittance <= 0) {
+      return { ok: false, error: "Transmitanta termica trebuie sa fie pozitiva." };
+    }
+    const bztu = mc001HtrFiniteNumber(component.bztu);
+    if (bztu === null || bztu < 0 || bztu > 1) {
+      return { ok: false, error: "bztu trebuie sa fie un numar finit intre 0 si 1." };
+    }
+    const sourceIssue = mc001HtrSourceIssue(component.source);
+    if (sourceIssue) {
+      return { ok: false, error: sourceIssue };
+    }
+    envelopeComponents.push({
+      component_id: component.component_id,
+      component_type: component.component_type,
+      label: component.label || null,
+      area_m2: area,
+      thermal_transmittance_w_m2k: thermalTransmittance,
+      bztu,
+      source: {
+        source_type: "explicit_user_input",
+        reference: component.source.reference
+      }
+    });
+  }
+
+  if (!isPlainObject(input.non_hu_contributions)) {
+    return { ok: false, error: "Lipsesc contributiile non-Hu pentru Htr." };
+  }
+  const nonHuContributions = {};
+  for (const entry of MC001_HTR_NON_HU_INPUTS) {
+    const contribution = input.non_hu_contributions[entry.requestKey];
+    if (!isPlainObject(contribution)) {
+      return { ok: false, error: "Lipseste o contributie non-Hu pentru Htr." };
+    }
+    const amount = mc001HtrFiniteNumber(contribution.value);
+    if (amount === null || amount < 0) {
+      return {
+        ok: false,
+        error: "Contributiile non-Hu trebuie sa fie numere finite pozitive sau zero."
+      };
+    }
+    const sourceIssue = mc001HtrSourceIssue(contribution.source);
+    if (sourceIssue) {
+      return { ok: false, error: sourceIssue };
+    }
+    nonHuContributions[entry.requestKey] = {
+      value: amount,
+      source: {
+        source_type: "explicit_user_input",
+        reference: contribution.source.reference
+      }
+    };
+  }
+
+  return {
+    ok: true,
+    input: {
+      label: body.label || null,
+      htr_input: {
+        envelope_components: envelopeComponents,
+        non_hu_contributions: nonHuContributions
+      }
+    }
+  };
+}
+
+function validateMc001HtrInput(body = {}) {
+  return sanitizeMc001HtrInput(body);
+}
+
+function mc001HtrInternalSource(sourceCode, sourceType = "expert_override_with_source") {
+  return {
+    sourceType,
+    sourceRecordId: `record:mc001-htr-v2-${sourceCode}`
+  };
+}
+
+function buildMc001HtrComponent(component, index) {
+  const sourceCode = `component-${index + 1}`;
+  return {
+    componentId: `component:${component.component_id.toLowerCase()}`,
+    componentType: component.component_type,
+    ztuZoneId: "ztu:mc001-htr-v2-heated-zone",
+    adjacentZoneId: "ztu:mc001-htr-v2-exterior-zone",
+    area: {
+      value: component.area_m2,
+      unit: "m2",
+      source: mc001HtrInternalSource(`${sourceCode}-area`)
+    },
+    thermalTransmittance: {
+      value: component.thermal_transmittance_w_m2k,
+      unit: "W/(m2*K)",
+      source: mc001HtrInternalSource(`${sourceCode}-u`)
+    },
+    bztu: {
+      value: component.bztu,
+      unit: "dimensionless",
+      source: mc001HtrInternalSource(`${sourceCode}-bztu`, "methodological_direct_input")
+    }
+  };
+}
+
+function mc001HtrPrerequisite(prerequisiteType, sourceCode) {
+  return {
+    prerequisiteId: `htr-prerequisite:mc001-htr-v2-${sourceCode}`,
+    prerequisiteType,
+    applicability: "required",
+    readinessStatus: "metadata_ready",
+    source: mc001HtrInternalSource(`prerequisite-${sourceCode}`)
+  };
+}
+
+function mc001HtrScopeContribution(contributionType, requirementStatus, sourceCode) {
+  return {
+    contributionType,
+    requirementStatus,
+    source: mc001HtrInternalSource(`scope-${sourceCode}`)
+  };
+}
+
+function mc001HtrContract(contributionType, sourceCode) {
+  return {
+    contributionType,
+    contractStatus: "numeric_contract_mapped",
+    valueAvailabilityStatus: "source_backed_value_available",
+    requiredUnit: "W/K",
+    source: mc001HtrInternalSource(`contract-${sourceCode}`)
+  };
+}
+
+function mc001HtrContributionValue(contributionType, amount, sourceCode) {
+  return {
+    contributionType,
+    valueStatus: "explicit_source_backed_value",
+    contributionValue: {
+      amount,
+      unit: "W/K"
+    },
+    source: mc001HtrInternalSource(`value-${sourceCode}`)
+  };
+}
+
+function buildMc001H12InputFromVerticalInput(verticalInput) {
+  const huBridgeInput = {
+    schemaVersion: "mc001-h3-hu-htr-calculation-readiness-input-v1",
+    isMc001HuHtrCalculationReadinessInput: true,
+    inventoryReadiness: {
+      isHuInventoryReady: true
+    },
+    components: verticalInput.htr_input.envelope_components.map(buildMc001HtrComponent)
+  };
+  const contributionContracts = MC001_HTR_NON_HU_INPUTS.map((entry) => (
+    mc001HtrContract(entry.contributionType, entry.sourceCode)
+  ));
+  const contributionValues = MC001_HTR_NON_HU_INPUTS.map((entry) => (
+    mc001HtrContributionValue(
+      entry.contributionType,
+      verticalInput.htr_input.non_hu_contributions[entry.requestKey].value,
+      entry.sourceCode
+    )
+  ));
+
+  return {
+    schemaVersion: "mc001-h12-htr-total-calculation-input-v1",
+    isMc001HtrTotalCalculationInput: true,
+    compositionInput: {
+      schemaVersion: "mc001-h11-htr-total-input-composition-input-v1",
+      isMc001HtrTotalInputCompositionInput: true,
+      valueValidationInput: {
+        schemaVersion: "mc001-h10-htr-non-hu-numeric-value-validation-input-v1",
+        isMc001HtrNonHuNumericValueValidationInput: true,
+        contractReadinessInput: {
+          schemaVersion: "mc001-h9-htr-non-hu-numeric-contribution-contracts-input-v1",
+          isMc001HtrNonHuNumericContributionContractsInput: true,
+          htrTotalReadinessInput: {
+            schemaVersion: "mc001-h8-htr-total-calculation-readiness-input-v1",
+            isMc001HtrTotalCalculationReadinessInput: true,
+            htrPrerequisitesInput: {
+              schemaVersion: "mc001-h7-htr-non-hu-prerequisites-input-v1",
+              isMc001HtrNonHuPrerequisitesInput: true,
+              huBridgeInput,
+              htrNonHuPrerequisites: {
+                expectedPrerequisites: [
+                  mc001HtrPrerequisite("non_hu_transmission_component_inventory", "non-hu-inventory"),
+                  mc001HtrPrerequisite("thermal_bridge_transmission_inventory", "thermal-bridge"),
+                  mc001HtrPrerequisite("ground_transmission_inventory", "ground"),
+                  mc001HtrPrerequisite("adjacent_space_transmission_inventory", "adjacent-space")
+                ]
+              }
+            },
+            htrTotalCalculationScope: {
+              scopeCode: "mc001-htr-total-calculation-scope-v1",
+              expectedContributions: [
+                mc001HtrScopeContribution(
+                  "hu_aggregated_transmission_contribution",
+                  "available_from_hu_bridge",
+                  "hu"
+                ),
+                ...MC001_HTR_NON_HU_INPUTS.map((entry) => (
+                  mc001HtrScopeContribution(
+                    entry.contributionType,
+                    "missing_numeric_calculation",
+                    entry.sourceCode
+                  )
+                ))
+              ]
+            }
+          },
+          nonHuNumericContributionContracts: {
+            contractSetCode: "mc001-htr-non-hu-numeric-contribution-contracts-v1",
+            contributionContracts
+          }
+        },
+        nonHuNumericContributionValues: {
+          valueSetCode: "mc001-htr-non-hu-numeric-contribution-values-v1",
+          contributionValues
+        }
+      },
+      htrTotalInputCompositionPolicy: {
+        compositionSetCode: "mc001-htr-total-input-composition-v1",
+        compositionMode: "compose_hu_bridge_and_validated_non_hu_values",
+        requiredInputTypes: [
+          "hu_aggregated_transmission_contribution",
+          "validated_non_hu_transmission_contributions"
+        ]
+      }
+    },
+    htrTotalCalculationPolicy: {
+      calculationSetCode: "mc001-htr-total-calculation-v1",
+      formulaCode: "MC001_HTR_TOTAL_SUM_COMPOSED_TRANSMISSION_INPUTS",
+      calculationMode: "calculate_htr_total_from_h11_composed_inputs",
+      requiredInputSetStatus: "inputs_composed_not_htr_total_calculated",
+      resultUnit: "W/K"
+    }
+  };
+}
+
+function sanitizeMc001HtrCalculationTerms(result) {
+  const terms = result?.htrTotalCalculation?.calculationTerms;
+  if (!Array.isArray(terms)) return [];
+  return terms.map((term) => {
+    const sanitized = {
+      contributionType: term.contributionType,
+      termStatus: term.termStatus
+    };
+    if (
+      term.contributionValue &&
+      typeof term.contributionValue.amount === "number" &&
+      Number.isFinite(term.contributionValue.amount) &&
+      term.contributionValue.unit === "W/K"
+    ) {
+      sanitized.contributionValue = {
+        amount: term.contributionValue.amount,
+        unit: "W/K"
+      };
+    }
+    return sanitized;
+  });
+}
+
+function sanitizeMc001HtrBlockers(result) {
+  const blockers = Array.isArray(result?.blockers) ? result.blockers : [];
+  return blockers
+    .filter((entry) => isPlainObject(entry) && safeShortToken(entry.code, 96))
+    .map((entry) => ({
+      code: entry.code,
+      severity: entry.severity === "blocking" ? "blocking" : "warning"
+    }));
+}
+
+function sanitizeMc001HtrResult(result) {
+  const isReady = result?.status === "ready";
+  const total = result?.htrTotalCalculation?.htrTotalResult;
+  const htrTotalResult = (
+    isReady &&
+    total &&
+    typeof total.amount === "number" &&
+    Number.isFinite(total.amount) &&
+    total.unit === "W/K"
+  )
+    ? {
+        amount: total.amount,
+        unit: "W/K"
+      }
+    : null;
+
+  return {
+    status: isReady ? "ready" : "blocked",
+    scope: MC001_HTR_RESULT_SCOPE,
+    htrTotalResult,
+    calculationTerms: sanitizeMc001HtrCalculationTerms(result),
+    diagnostics: {
+      blockers: sanitizeMc001HtrBlockers(result),
+      missingForNextMethodologyScope: [...MC001_HTR_MISSING_NEXT_SCOPE]
+    },
+    registryReferences: {
+      sourcePackCodes: [...MC001_HTR_REGISTRY_SOURCE_PACK_CODES],
+      formulaCodes: [...MC001_HTR_REGISTRY_FORMULA_CODES]
+    }
+  };
+}
+
+function parseMc001HtrStoredJson(text, fallback) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+}
+
+async function verifyMc001HtrHouseOwnership(env, userId, houseId) {
+  if (houseId === null || houseId === undefined || houseId === "") {
+    return null;
+  }
+  const parsedHouseId = Number(houseId);
+  if (!Number.isInteger(parsedHouseId) || parsedHouseId <= 0) {
+    return { ok: false, error: "house_id invalid." };
+  }
+  const house = await env.DB.prepare(`
+    SELECT id
+    FROM houses
+    WHERE id = ? AND user_id = ? AND COALESCE(active, 1) = 1
+    LIMIT 1
+  `)
+    .bind(parsedHouseId, userId)
+    .first();
+  if (!house) {
+    return { ok: false, error: "Locuinta nu apartine contului curent." };
+  }
+  return { ok: true, houseId: parsedHouseId };
+}
+
+async function saveMc001HtrAnalysis(env, userId, houseId, sanitizedInput, mc001Htr) {
+  const completedAt = new Date().toISOString();
+  const analysisResult = await env.DB.prepare(`
+    INSERT INTO analyses(user_id, house_id, analysis_type, status, completed_at)
+    VALUES(?, ?, ?, 'completed', ?)
+  `)
+    .bind(userId, houseId, MC001_HTR_VERTICAL_ANALYSIS_TYPE, completedAt)
+    .run();
+  const analysisId = analysisResult.meta?.last_row_id;
+  if (!analysisId) {
+    throw new Error("MC001 Htr analysis insert failed");
+  }
+
+  await env.DB.prepare(`
+    INSERT INTO analysis_answers(analysis_id, question_key, answer_value, answer_group)
+    VALUES(?, ?, ?, ?)
+  `)
+    .bind(
+      analysisId,
+      MC001_HTR_INPUT_ANSWER_KEY,
+      JSON.stringify(sanitizedInput),
+      MC001_HTR_VERTICAL_ANALYSIS_TYPE
+    )
+    .run();
+
+  await env.DB.prepare(`
+    INSERT INTO report_snapshots(home_id, analysis_id, generated_at, technical_details_json, confidence_level)
+    VALUES(?, ?, ?, ?, ?)
+  `)
+    .bind(
+      houseId,
+      analysisId,
+      completedAt,
+      JSON.stringify({ mc001_htr: mc001Htr, scope: MC001_HTR_RESULT_SCOPE }),
+      mc001Htr.status
+    )
+    .run();
+
+  await env.DB.prepare(`
+    INSERT INTO reports(analysis_id, report_type, status)
+    VALUES(?, 'mc001_htr_transmission_module', 'completed')
+  `)
+    .bind(analysisId)
+    .run();
+
+  return analysisId;
+}
+
+async function loadMc001HtrAnalysis(env, userId, analysisId) {
+  const parsedAnalysisId = Number(analysisId);
+  if (!Number.isInteger(parsedAnalysisId) || parsedAnalysisId <= 0) {
+    return { ok: false, error: "analysis_id invalid." };
+  }
+  const analysis = await env.DB.prepare(`
+    SELECT id, house_id
+    FROM analyses
+    WHERE id = ? AND user_id = ? AND analysis_type = ?
+    LIMIT 1
+  `)
+    .bind(parsedAnalysisId, userId, MC001_HTR_VERTICAL_ANALYSIS_TYPE)
+    .first();
+  if (!analysis) {
+    return { ok: false, error: "Analiza MC001 Htr nu apartine contului curent." };
+  }
+  const answer = await env.DB.prepare(`
+    SELECT answer_value
+    FROM analysis_answers
+    WHERE analysis_id = ? AND question_key = ? AND answer_group = ?
+    LIMIT 1
+  `)
+    .bind(parsedAnalysisId, MC001_HTR_INPUT_ANSWER_KEY, MC001_HTR_VERTICAL_ANALYSIS_TYPE)
+    .first();
+  const snapshot = await env.DB.prepare(`
+    SELECT technical_details_json
+    FROM report_snapshots
+    WHERE analysis_id = ?
+    ORDER BY generated_at DESC, id DESC
+    LIMIT 1
+  `)
+    .bind(parsedAnalysisId)
+    .first();
+  const htrInput = parseMc001HtrStoredJson(answer?.answer_value, null);
+  const storedTechnicalDetails = parseMc001HtrStoredJson(
+    snapshot?.technical_details_json,
+    {}
+  );
+  const mc001Htr = storedTechnicalDetails.mc001_htr || null;
+  if (!htrInput || !mc001Htr) {
+    return { ok: false, error: "Analiza MC001 Htr nu are datele salvate complet." };
+  }
+  return { ok: true, analysis, htrInput, mc001Htr };
+}
+
+async function handleMc001HtrRun(request, env, corsHeaders) {
+  try {
+    const user = await getCurrentUser(request, env);
+    if (!user) {
+      return jsonResponse(
+        { success: false, error: "Trebuie sa fii autentificat pentru a rula MC001 Htr." },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    const body = await readJson(request);
+    const ownership = await verifyMc001HtrHouseOwnership(env, user.id, body.house_id);
+    if (ownership?.ok === false) {
+      return jsonResponse(
+        { success: false, error: ownership.error },
+        { status: 403, headers: corsHeaders }
+      );
+    }
+    const validation = validateMc001HtrInput(body);
+    if (!validation.ok) {
+      return jsonResponse(
+        { success: false, error: validation.error },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    const h12Input = buildMc001H12InputFromVerticalInput(validation.input);
+    const h12Result = calculateMc001HtrTotal(h12Input);
+    const mc001Htr = sanitizeMc001HtrResult(h12Result);
+    const houseId = ownership?.houseId ?? null;
+    const analysisId = await saveMc001HtrAnalysis(
+      env,
+      user.id,
+      houseId,
+      validation.input,
+      mc001Htr
+    );
+
+    return jsonResponse(
+      {
+        success: true,
+        analysis_id: analysisId,
+        house_id: houseId,
+        mc001_htr: mc001Htr
+      },
+      { headers: corsHeaders }
+    );
+  } catch {
+    return jsonResponse(
+      { success: false, error: "Nu am putut rula modulul MC001 Htr." },
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
+async function handleMc001HtrLoad(request, env, corsHeaders) {
+  try {
+    const user = await getCurrentUser(request, env);
+    if (!user) {
+      return jsonResponse(
+        { success: false, error: "Trebuie sa fii autentificat pentru a incarca analiza MC001 Htr." },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+    const body = await readJson(request);
+    const loaded = await loadMc001HtrAnalysis(env, user.id, body.analysis_id);
+    if (!loaded.ok) {
+      return jsonResponse(
+        { success: false, error: loaded.error },
+        { status: 404, headers: corsHeaders }
+      );
+    }
+    return jsonResponse(
+      {
+        success: true,
+        analysis_id: loaded.analysis.id,
+        house_id: loaded.analysis.house_id ?? null,
+        htr_input: loaded.htrInput.htr_input,
+        mc001_htr: loaded.mc001Htr
+      },
+      { headers: corsHeaders }
+    );
+  } catch {
+    return jsonResponse(
+      { success: false, error: "Nu am putut incarca analiza MC001 Htr." },
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
 async function saveHouse(request, env, corsHeaders) {
   const user = await getCurrentUser(request, env);
   if (!user) {
@@ -3077,6 +3794,8 @@ export default {
       "/api/dashboard-summary": dashboardSummary,
       "/api/energy-report": energyReport,
       "/api/demo-energy-report": demoEnergyReport,
+      "/api/mc001/htr/run": handleMc001HtrRun,
+      "/api/mc001/htr/load": handleMc001HtrLoad,
       "/api/homes": homes,
       "/api/recommendations": recommendations,
       "/api/recommendation-action": recommendationAction,
