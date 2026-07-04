@@ -194,6 +194,86 @@ function validPayload(overrides = {}) {
   };
 }
 
+function c1FormulaPayload(overrides = {}) {
+  return validPayload({
+    htr_input: {
+      ...validPayload().htr_input,
+      transmission_formula_inputs: {
+        direct_transmission_elements: [
+          {
+            element_id: "direct-wall-1",
+            label: "Direct wall",
+            area_m2: 10,
+            corrected_u_w_m2k: 0.3,
+            source: {
+              source_type: "explicit_user_input",
+              reference: "manual_mvp_input"
+            }
+          }
+        ],
+        linear_thermal_bridges: [
+          {
+            bridge_id: "bridge-1",
+            label: "Linear bridge",
+            length_m: 5,
+            psi_w_mk: 0.1,
+            source: {
+              source_type: "explicit_user_input",
+              reference: "manual_mvp_input"
+            }
+          }
+        ],
+        psi_calculation_cases: [
+          {
+            case_id: "psi-case-1",
+            length_m: 5,
+            l2d_w_k: 4,
+            reference_elements: [
+              {
+                element_id: "ref-wall-1",
+                area_m2: 10,
+                u_w_m2k: 0.3
+              }
+            ],
+            source: {
+              source_type: "explicit_user_input",
+              reference: "manual_mvp_input"
+            }
+          }
+        ],
+        heat_flow_cases: [
+          {
+            case_id: "heat-flow-1",
+            htr_w_k: 10,
+            theta_i_c: 20,
+            theta_e_c: 0
+          }
+        ],
+        time_integrated_transmission_cases: [
+          {
+            case_id: "time-case-1",
+            htr_w_k: 10,
+            theta_i_c: 20,
+            theta_e_c: 0,
+            duration_h: 24
+          }
+        ],
+        htr_total_2_15_case: {
+          hd_w_k: 7,
+          hg_w_k: 2,
+          hu_w_k: 3,
+          ha_w_k: 1,
+          source: {
+            source_type: "explicit_user_input",
+            reference: "manual_mvp_input"
+          }
+        },
+        ...overrides
+      }
+    }
+  });
+}
+
 async function post(path, db, body, token = "test-token") {
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -271,6 +351,129 @@ await test("run endpoint calculates and persists a sanitized Htr result", async 
   assert.equal(db.reports.length, 1);
 });
 
+await test("V2 minimal payload still works without C1 formula results", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, validPayload());
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(result.body.mc001_htr, "transmissionFormulaResults"),
+    false
+  );
+});
+
+await test("C1 direct transmission returns relation 2.12 result", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload({
+    linear_thermal_bridges: [],
+    psi_calculation_cases: [],
+    heat_flow_cases: [],
+    time_integrated_transmission_cases: [],
+    htr_total_2_15_case: null
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.directTransmission.result.amount, 3);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.directTransmission.result.unit, "W/K");
+});
+
+await test("C1 thermal bridge global returns relation 2.28 result", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload({
+    direct_transmission_elements: [],
+    psi_calculation_cases: [],
+    heat_flow_cases: [],
+    time_integrated_transmission_cases: [],
+    htr_total_2_15_case: null
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.thermalBridgeGlobal.result.amount, 0.5);
+});
+
+await test("C1 direct plus bridge returns global excluding ground result", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload({
+    psi_calculation_cases: [],
+    heat_flow_cases: [],
+    time_integrated_transmission_cases: [],
+    htr_total_2_15_case: null
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(
+    result.body.mc001_htr.transmissionFormulaResults.globalTransmissionExcludingGround.result.amount,
+    3.5
+  );
+});
+
+await test("C1 psi case returns expected psi result", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload({
+    direct_transmission_elements: [],
+    linear_thermal_bridges: [],
+    heat_flow_cases: [],
+    time_integrated_transmission_cases: [],
+    htr_total_2_15_case: null
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.psiCases[0].result.amount, 0.2);
+});
+
+await test("C1 heat flow case returns expected flux", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload({
+    direct_transmission_elements: [],
+    linear_thermal_bridges: [],
+    psi_calculation_cases: [],
+    time_integrated_transmission_cases: [],
+    htr_total_2_15_case: null
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.heatFlowCases[0].result.amount, 200);
+});
+
+await test("C1 time-integrated case returns expected kWh and not-QHnd scope", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload({
+    direct_transmission_elements: [],
+    linear_thermal_bridges: [],
+    psi_calculation_cases: [],
+    heat_flow_cases: [],
+    htr_total_2_15_case: null
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(
+    result.body.mc001_htr.transmissionFormulaResults.timeIntegratedTransmissionCases[0].result.amount,
+    4.8
+  );
+  assert.equal(
+    result.body.mc001_htr.transmissionFormulaResults.timeIntegratedTransmissionCases[0].scope,
+    "transmission_heat_flow_time_integration_only_not_QHnd"
+  );
+});
+
+await test("C1 Htr relation 2.15 case returns expected total", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload({
+    direct_transmission_elements: [],
+    linear_thermal_bridges: [],
+    psi_calculation_cases: [],
+    heat_flow_cases: [],
+    time_integrated_transmission_cases: []
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.htrTotalRelation215.result.amount, 13);
+});
+
+await test("C1 expanded result persists and reloads", async () => {
+  const db = new FakeDb();
+  await post("/api/mc001/htr/run", db, c1FormulaPayload());
+  const result = await post("/api/mc001/htr/load", db, { analysis_id: 100 });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.htr_input.transmission_formula_inputs.direct_transmission_elements.length, 1);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.directTransmission.result.amount, 3);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.globalTransmissionExcludingGround.result.amount, 3.5);
+});
+
 await test("load endpoint returns saved sanitized input and result for owner", async () => {
   const db = new FakeDb();
   await post("/api/mc001/htr/run", db, validPayload({ house_id: 7 }));
@@ -296,6 +499,38 @@ await test("run endpoint rejects client-provided Htr totals", async () => {
   assert.equal(db.analyses.length, 0);
 });
 
+await test("C1 rejects client-provided transmission formula results", async () => {
+  const db = new FakeDb();
+  const payload = c1FormulaPayload();
+  payload.htr_input.transmissionFormulaResults = {
+    directTransmission: { result: { amount: 999, unit: "W/K" } }
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C1 rejects invalid negative direct transmission area", async () => {
+  const db = new FakeDb();
+  const payload = c1FormulaPayload();
+  payload.htr_input.transmission_formula_inputs.direct_transmission_elements[0].area_m2 = -10;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C1 rejects missing explicit source for source-required formula inputs", async () => {
+  const db = new FakeDb();
+  const payload = c1FormulaPayload();
+  delete payload.htr_input.transmission_formula_inputs.direct_transmission_elements[0].source;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
 await test("run endpoint rejects private sentinel content and does not echo it", async () => {
   const db = new FakeDb();
   const payload = validPayload({ label: "person@example.com" });
@@ -309,7 +544,7 @@ await test("run endpoint rejects private sentinel content and does not echo it",
 
 await test("responses do not expose raw auth or source provenance internals", async () => {
   const db = new FakeDb();
-  const result = await post("/api/mc001/htr/run", db, validPayload());
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload());
   const serialized = JSON.stringify(result.body);
   for (const forbidden of [
     "sourceRecordId",
@@ -321,4 +556,15 @@ await test("responses do not expose raw auth or source provenance internals", as
   ]) {
     assert.equal(serialized.includes(forbidden), false, `leaked ${forbidden}`);
   }
+});
+
+await test("C1 response does not expose stack traces or mutate V2 result contract", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1FormulaPayload());
+  const serialized = JSON.stringify(result.body);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
+  assert.equal(Array.isArray(result.body.mc001_htr.calculationTerms), true);
+  assert.equal(serialized.includes("Error:"), false);
+  assert.equal(serialized.includes("at "), false);
 });

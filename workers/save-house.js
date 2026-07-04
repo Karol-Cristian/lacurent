@@ -3,6 +3,15 @@ import { inferFinalEnergyCarrierFromHeatingInput, resolveMc001Carrier } from "..
 import { classifyEstimatedEnergyClass as classifyEstimatedEnergyClassFromRegistry } from "../src/features/energy/physics/calculators/estimatedEnergyClass.mjs";
 import { getCo2Factor, getPrimaryEnergyFactor } from "../src/features/energy/physics/calculators/referenceValues.mjs";
 import { calculateMc001HtrTotal } from "../src/physics-engine/mc001HtrTotalCalculation.mjs";
+import {
+  calculateMc001DirectTransmissionCoefficient,
+  calculateMc001GlobalTransmissionExcludingGround,
+  calculateMc001LinearThermalBridgePsi,
+  calculateMc001ThermalBridgeGlobalCoefficient,
+  calculateMc001TransmissionEnergyFromHeatFlow,
+  calculateMc001TransmissionHeatFlow,
+  calculateMc001TransmissionTotalCoefficient
+} from "../src/physics-engine/mc001TransmissionFormulaCalculations.mjs";
 
 const SESSION_DAYS = 30;
 const RESET_MINUTES = 30;
@@ -1784,6 +1793,19 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "composedInputs",
     "htrTotalResult",
     "calculatedTotal",
+    "transmissionFormulaResults",
+    "directTransmission",
+    "thermalBridgeGlobal",
+    "globalTransmissionExcludingGround",
+    "psiCases",
+    "heatFlowCases",
+    "timeIntegratedTransmissionCases",
+    "htrTotalRelation215",
+    "formulaCode",
+    "relationCode",
+    "result",
+    "results",
+    "terms",
     "finalEnergy",
     "primaryEnergy",
     "CO2",
@@ -1816,6 +1838,232 @@ function mc001HtrSourceIssue(source) {
     return "Referinta sursei Htr este invalida.";
   }
   return null;
+}
+
+function mc001HtrFormulaSource(source) {
+  return {
+    sourceType: "explicit_user_input",
+    reference: source.reference
+  };
+}
+
+function mc001HtrOptionalArray(value, label) {
+  if (value === undefined || value === null) return { ok: true, value: [] };
+  if (!Array.isArray(value) || value.length > 50) {
+    return { ok: false, error: `${label} trebuie sa fie o lista valida.` };
+  }
+  return { ok: true, value };
+}
+
+function sanitizeMc001TransmissionFormulaInputs(input) {
+  const formulaInput = input.transmission_formula_inputs;
+  if (formulaInput === undefined || formulaInput === null) {
+    return { ok: true, value: null };
+  }
+  if (!isPlainObject(formulaInput)) {
+    return { ok: false, error: "Inputurile avansate de transmisie sunt invalide." };
+  }
+
+  const directArray = mc001HtrOptionalArray(
+    formulaInput.direct_transmission_elements,
+    "direct_transmission_elements"
+  );
+  if (!directArray.ok) return directArray;
+  const bridgeArray = mc001HtrOptionalArray(
+    formulaInput.linear_thermal_bridges,
+    "linear_thermal_bridges"
+  );
+  if (!bridgeArray.ok) return bridgeArray;
+  const psiArray = mc001HtrOptionalArray(
+    formulaInput.psi_calculation_cases,
+    "psi_calculation_cases"
+  );
+  if (!psiArray.ok) return psiArray;
+  const heatArray = mc001HtrOptionalArray(
+    formulaInput.heat_flow_cases,
+    "heat_flow_cases"
+  );
+  if (!heatArray.ok) return heatArray;
+  const timeArray = mc001HtrOptionalArray(
+    formulaInput.time_integrated_transmission_cases,
+    "time_integrated_transmission_cases"
+  );
+  if (!timeArray.ok) return timeArray;
+
+  const directTransmissionElements = [];
+  for (const [index, element] of directArray.value.entries()) {
+    if (!isPlainObject(element) || !safeShortToken(element.element_id, 64)) {
+      return { ok: false, error: `Elementul direct ${index + 1} are id invalid.` };
+    }
+    if (!safeOptionalLabel(element.label)) {
+      return { ok: false, error: `Elementul direct ${index + 1} are eticheta invalida.` };
+    }
+    const area = mc001HtrFiniteNumber(element.area_m2);
+    const correctedU = mc001HtrFiniteNumber(element.corrected_u_w_m2k);
+    if (area === null || area <= 0 || correctedU === null || correctedU <= 0) {
+      return { ok: false, error: "Valorile Hd direct trebuie sa fie finite si pozitive." };
+    }
+    const sourceIssue = mc001HtrSourceIssue(element.source);
+    if (sourceIssue) return { ok: false, error: sourceIssue };
+    directTransmissionElements.push({
+      element_id: element.element_id,
+      label: element.label || null,
+      area_m2: area,
+      corrected_u_w_m2k: correctedU,
+      source: {
+        source_type: "explicit_user_input",
+        reference: element.source.reference
+      }
+    });
+  }
+
+  const linearThermalBridges = [];
+  for (const [index, bridge] of bridgeArray.value.entries()) {
+    if (!isPlainObject(bridge) || !safeShortToken(bridge.bridge_id, 64)) {
+      return { ok: false, error: `Puntea termica ${index + 1} are id invalid.` };
+    }
+    if (!safeOptionalLabel(bridge.label)) {
+      return { ok: false, error: `Puntea termica ${index + 1} are eticheta invalida.` };
+    }
+    const length = mc001HtrFiniteNumber(bridge.length_m);
+    const psi = mc001HtrFiniteNumber(bridge.psi_w_mk);
+    if (length === null || length < 0 || psi === null) {
+      return { ok: false, error: "Valorile puntilor termice trebuie sa fie finite." };
+    }
+    const sourceIssue = mc001HtrSourceIssue(bridge.source);
+    if (sourceIssue) return { ok: false, error: sourceIssue };
+    linearThermalBridges.push({
+      bridge_id: bridge.bridge_id,
+      label: bridge.label || null,
+      length_m: length,
+      psi_w_mk: psi,
+      source: {
+        source_type: "explicit_user_input",
+        reference: bridge.source.reference
+      }
+    });
+  }
+
+  const psiCalculationCases = [];
+  for (const [index, psiCase] of psiArray.value.entries()) {
+    if (!isPlainObject(psiCase) || !safeShortToken(psiCase.case_id, 64)) {
+      return { ok: false, error: `Cazul psi ${index + 1} are id invalid.` };
+    }
+    const length = mc001HtrFiniteNumber(psiCase.length_m);
+    const l2d = mc001HtrFiniteNumber(psiCase.l2d_w_k);
+    if (length === null || length <= 0 || l2d === null || l2d < 0) {
+      return { ok: false, error: "Valorile cazului psi trebuie sa fie finite." };
+    }
+    const refs = mc001HtrOptionalArray(psiCase.reference_elements, "reference_elements");
+    if (!refs.ok || refs.value.length === 0) {
+      return { ok: false, error: "Cazul psi are nevoie de cel putin un element de referinta." };
+    }
+    const sourceIssue = mc001HtrSourceIssue(psiCase.source);
+    if (sourceIssue) return { ok: false, error: sourceIssue };
+    const referenceElements = [];
+    for (const [refIndex, ref] of refs.value.entries()) {
+      if (!isPlainObject(ref) || !safeShortToken(ref.element_id, 64)) {
+        return { ok: false, error: `Elementul de referinta psi ${refIndex + 1} are id invalid.` };
+      }
+      const area = mc001HtrFiniteNumber(ref.area_m2);
+      const u = mc001HtrFiniteNumber(ref.u_w_m2k);
+      if (area === null || area <= 0 || u === null || u <= 0) {
+        return { ok: false, error: "Elementele de referinta psi trebuie sa aiba valori pozitive." };
+      }
+      referenceElements.push({
+        element_id: ref.element_id,
+        area_m2: area,
+        u_w_m2k: u
+      });
+    }
+    psiCalculationCases.push({
+      case_id: psiCase.case_id,
+      length_m: length,
+      l2d_w_k: l2d,
+      reference_elements: referenceElements,
+      source: {
+        source_type: "explicit_user_input",
+        reference: psiCase.source.reference
+      }
+    });
+  }
+
+  const heatFlowCases = [];
+  for (const [index, heatCase] of heatArray.value.entries()) {
+    if (!isPlainObject(heatCase) || !safeShortToken(heatCase.case_id, 64)) {
+      return { ok: false, error: `Cazul flux ${index + 1} are id invalid.` };
+    }
+    const htr = mc001HtrFiniteNumber(heatCase.htr_w_k);
+    const indoor = mc001HtrFiniteNumber(heatCase.theta_i_c);
+    const outdoor = mc001HtrFiniteNumber(heatCase.theta_e_c);
+    if (htr === null || htr < 0 || indoor === null || outdoor === null) {
+      return { ok: false, error: "Cazul de flux termic are valori invalide." };
+    }
+    heatFlowCases.push({
+      case_id: heatCase.case_id,
+      htr_w_k: htr,
+      theta_i_c: indoor,
+      theta_e_c: outdoor
+    });
+  }
+
+  const timeIntegratedTransmissionCases = [];
+  for (const [index, timeCase] of timeArray.value.entries()) {
+    if (!isPlainObject(timeCase) || !safeShortToken(timeCase.case_id, 64)) {
+      return { ok: false, error: `Cazul energetic ${index + 1} are id invalid.` };
+    }
+    const htr = mc001HtrFiniteNumber(timeCase.htr_w_k);
+    const indoor = mc001HtrFiniteNumber(timeCase.theta_i_c);
+    const outdoor = mc001HtrFiniteNumber(timeCase.theta_e_c);
+    const duration = mc001HtrFiniteNumber(timeCase.duration_h);
+    if (htr === null || htr < 0 || indoor === null || outdoor === null || duration === null || duration <= 0) {
+      return { ok: false, error: "Cazul de energie transmisie are valori invalide." };
+    }
+    timeIntegratedTransmissionCases.push({
+      case_id: timeCase.case_id,
+      htr_w_k: htr,
+      theta_i_c: indoor,
+      theta_e_c: outdoor,
+      duration_h: duration
+    });
+  }
+
+  let htrTotal215Case = null;
+  if (formulaInput.htr_total_2_15_case !== undefined && formulaInput.htr_total_2_15_case !== null) {
+    const htrCase = formulaInput.htr_total_2_15_case;
+    if (!isPlainObject(htrCase)) {
+      return { ok: false, error: "Cazul Htr 2.15 este invalid." };
+    }
+    const hd = mc001HtrFiniteNumber(htrCase.hd_w_k);
+    const hg = mc001HtrFiniteNumber(htrCase.hg_w_k);
+    const hu = mc001HtrFiniteNumber(htrCase.hu_w_k);
+    const ha = mc001HtrFiniteNumber(htrCase.ha_w_k);
+    if (hd === null || hd < 0 || hg === null || hg < 0 || hu === null || hu < 0 || ha === null || ha < 0) {
+      return { ok: false, error: "Componentele Htr 2.15 trebuie sa fie finite si pozitive sau zero." };
+    }
+    const sourceIssue = mc001HtrSourceIssue(htrCase.source);
+    if (sourceIssue) return { ok: false, error: sourceIssue };
+    htrTotal215Case = {
+      hd_w_k: hd,
+      hg_w_k: hg,
+      hu_w_k: hu,
+      ha_w_k: ha,
+      source: {
+        source_type: "explicit_user_input",
+        reference: htrCase.source.reference
+      }
+    };
+  }
+
+  const sanitized = {
+    direct_transmission_elements: directTransmissionElements,
+    linear_thermal_bridges: linearThermalBridges,
+    psi_calculation_cases: psiCalculationCases,
+    heat_flow_cases: heatFlowCases,
+    time_integrated_transmission_cases: timeIntegratedTransmissionCases
+  };
+  if (htrTotal215Case) sanitized.htr_total_2_15_case = htrTotal215Case;
+  return { ok: true, value: sanitized };
 }
 
 function sanitizeMc001HtrInput(body = {}) {
@@ -1919,13 +2167,21 @@ function sanitizeMc001HtrInput(body = {}) {
     };
   }
 
+  const transmissionFormulaInputs = sanitizeMc001TransmissionFormulaInputs(input);
+  if (!transmissionFormulaInputs.ok) {
+    return { ok: false, error: transmissionFormulaInputs.error };
+  }
+
   return {
     ok: true,
     input: {
       label: body.label || null,
       htr_input: {
         envelope_components: envelopeComponents,
-        non_hu_contributions: nonHuContributions
+        non_hu_contributions: nonHuContributions,
+        ...(transmissionFormulaInputs.value
+          ? { transmission_formula_inputs: transmissionFormulaInputs.value }
+          : {})
       }
     }
   };
@@ -2167,6 +2423,141 @@ function sanitizeMc001HtrResult(result) {
   };
 }
 
+function mc001EnsureFormulaReady(result) {
+  return result?.status === "ready";
+}
+
+function buildMc001TransmissionFormulaResults(transmissionInputs) {
+  if (!transmissionInputs) return { ok: true, value: null };
+
+  const results = {};
+  let directTransmission = null;
+  if (transmissionInputs.direct_transmission_elements.length > 0) {
+    directTransmission = calculateMc001DirectTransmissionCoefficient({
+      elements: transmissionInputs.direct_transmission_elements.map((element) => ({
+        elementId: element.element_id,
+        label: element.label,
+        area: { amount: element.area_m2, unit: "m2" },
+        correctedThermalTransmittance: { amount: element.corrected_u_w_m2k, unit: "W/(m2*K)" },
+        source: mc001HtrFormulaSource(element.source)
+      }))
+    });
+    if (!mc001EnsureFormulaReady(directTransmission)) {
+      return { ok: false, error: "Inputurile Hd direct sunt invalide." };
+    }
+    results.directTransmission = directTransmission;
+  }
+
+  let thermalBridgeGlobal = null;
+  if (transmissionInputs.linear_thermal_bridges.length > 0) {
+    thermalBridgeGlobal = calculateMc001ThermalBridgeGlobalCoefficient({
+      bridges: transmissionInputs.linear_thermal_bridges.map((bridge) => ({
+        bridgeId: bridge.bridge_id,
+        label: bridge.label,
+        length: { amount: bridge.length_m, unit: "m" },
+        psi: { amount: bridge.psi_w_mk, unit: "W/(m*K)" },
+        source: mc001HtrFormulaSource(bridge.source)
+      }))
+    });
+    if (!mc001EnsureFormulaReady(thermalBridgeGlobal)) {
+      return { ok: false, error: "Inputurile puntilor termice sunt invalide." };
+    }
+    results.thermalBridgeGlobal = thermalBridgeGlobal;
+  }
+
+  if (directTransmission && thermalBridgeGlobal) {
+    const source = { sourceType: "explicit_user_input", reference: "manual_mvp_input" };
+    const globalTransmissionExcludingGround = calculateMc001GlobalTransmissionExcludingGround({
+      elementTransmissionCoefficients: [{
+        elementId: "direct_transmission_hd",
+        amount: directTransmission.result.amount,
+        unit: "W/K",
+        source
+      }],
+      thermalBridgeCoefficient: {
+        amount: thermalBridgeGlobal.result.amount,
+        unit: "W/K",
+        source
+      }
+    });
+    if (!mc001EnsureFormulaReady(globalTransmissionExcludingGround)) {
+      return { ok: false, error: "Inputurile transmisiei globale fara sol sunt invalide." };
+    }
+    results.globalTransmissionExcludingGround = globalTransmissionExcludingGround;
+  }
+
+  if (transmissionInputs.psi_calculation_cases.length > 0) {
+    results.psiCases = [];
+    for (const psiCase of transmissionInputs.psi_calculation_cases) {
+      const result = calculateMc001LinearThermalBridgePsi({
+        bridgeId: psiCase.case_id,
+        length: { amount: psiCase.length_m, unit: "m" },
+        l2d: { amount: psiCase.l2d_w_k, unit: "W/K" },
+        referenceElements: psiCase.reference_elements.map((element) => ({
+          elementId: element.element_id,
+          area: { amount: element.area_m2, unit: "m2" },
+          thermalTransmittance: { amount: element.u_w_m2k, unit: "W/(m2*K)" }
+        })),
+        source: mc001HtrFormulaSource(psiCase.source)
+      });
+      if (!mc001EnsureFormulaReady(result)) {
+        return { ok: false, error: "Inputurile calculului psi sunt invalide." };
+      }
+      results.psiCases.push({ caseId: psiCase.case_id, ...result });
+    }
+  }
+
+  if (transmissionInputs.heat_flow_cases.length > 0) {
+    results.heatFlowCases = [];
+    for (const heatCase of transmissionInputs.heat_flow_cases) {
+      const result = calculateMc001TransmissionHeatFlow({
+        htr: { amount: heatCase.htr_w_k, unit: "W/K" },
+        indoorTemperature: { amount: heatCase.theta_i_c, unit: "degC" },
+        outdoorTemperature: { amount: heatCase.theta_e_c, unit: "degC" }
+      });
+      if (!mc001EnsureFormulaReady(result)) {
+        return { ok: false, error: "Inputurile fluxului de transmisie sunt invalide." };
+      }
+      results.heatFlowCases.push({ caseId: heatCase.case_id, ...result });
+    }
+  }
+
+  if (transmissionInputs.time_integrated_transmission_cases.length > 0) {
+    results.timeIntegratedTransmissionCases = [];
+    for (const timeCase of transmissionInputs.time_integrated_transmission_cases) {
+      const result = calculateMc001TransmissionEnergyFromHeatFlow({
+        htr: { amount: timeCase.htr_w_k, unit: "W/K" },
+        indoorTemperature: { amount: timeCase.theta_i_c, unit: "degC" },
+        outdoorTemperature: { amount: timeCase.theta_e_c, unit: "degC" },
+        duration: { amount: timeCase.duration_h, unit: "h" }
+      });
+      if (!mc001EnsureFormulaReady(result)) {
+        return { ok: false, error: "Inputurile energiei de transmisie sunt invalide." };
+      }
+      results.timeIntegratedTransmissionCases.push({ caseId: timeCase.case_id, ...result });
+    }
+  }
+
+  if (transmissionInputs.htr_total_2_15_case) {
+    const htrCase = transmissionInputs.htr_total_2_15_case;
+    const htrTotalRelation215 = calculateMc001TransmissionTotalCoefficient({
+      hd: { amount: htrCase.hd_w_k, unit: "W/K" },
+      hg: { amount: htrCase.hg_w_k, unit: "W/K" },
+      hu: { amount: htrCase.hu_w_k, unit: "W/K" },
+      ha: { amount: htrCase.ha_w_k, unit: "W/K" }
+    });
+    if (!mc001EnsureFormulaReady(htrTotalRelation215)) {
+      return { ok: false, error: "Inputurile Htr 2.15 sunt invalide." };
+    }
+    results.htrTotalRelation215 = htrTotalRelation215;
+  }
+
+  return {
+    ok: true,
+    value: Object.keys(results).length > 0 ? results : null
+  };
+}
+
 function parseMc001HtrStoredJson(text, fallback) {
   try {
     return JSON.parse(text);
@@ -2319,6 +2710,18 @@ async function handleMc001HtrRun(request, env, corsHeaders) {
     const h12Input = buildMc001H12InputFromVerticalInput(validation.input);
     const h12Result = calculateMc001HtrTotal(h12Input);
     const mc001Htr = sanitizeMc001HtrResult(h12Result);
+    const formulaResults = buildMc001TransmissionFormulaResults(
+      validation.input.htr_input.transmission_formula_inputs
+    );
+    if (!formulaResults.ok) {
+      return jsonResponse(
+        { success: false, error: formulaResults.error },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    if (formulaResults.value) {
+      mc001Htr.transmissionFormulaResults = formulaResults.value;
+    }
     const houseId = ownership?.houseId ?? null;
     const analysisId = await saveMc001HtrAnalysis(
       env,
