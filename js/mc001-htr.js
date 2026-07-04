@@ -44,6 +44,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return Number.isFinite(number) ? number : null;
   }
 
+  function inputValue(id) {
+    return document.getElementById(id)?.value.trim() || "";
+  }
+
+  function hasAnyValue(ids) {
+    return ids.some(id => inputValue(id) !== "");
+  }
+
   function setText(id, value) {
     const element = document.getElementById(id);
     if (element) element.textContent = value ?? "--";
@@ -195,6 +203,126 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function explicitSource(referenceId, label) {
+    const reference = inputValue(referenceId) || DEFAULT_SOURCE_REFERENCE;
+    if (!safeShortCode(reference, 80)) {
+      throw new Error(`${label}: source.reference trebuie sa fie un cod scurt sigur.`);
+    }
+    return {
+      source_type: "explicit_user_input",
+      reference
+    };
+  }
+
+  function positiveNumber(id, label) {
+    const value = finiteNumber(inputValue(id));
+    if (value === null || value <= 0) {
+      throw new Error(`${label} trebuie sa fie un numar pozitiv.`);
+    }
+    return value;
+  }
+
+  function nonNegativeNumber(id, label) {
+    const value = finiteNumber(inputValue(id));
+    if (value === null || value < 0) {
+      throw new Error(`${label} trebuie sa fie un numar pozitiv sau zero.`);
+    }
+    return value;
+  }
+
+  function anyFiniteNumber(id, label) {
+    const value = finiteNumber(inputValue(id));
+    if (value === null) {
+      throw new Error(`${label} trebuie sa fie un numar finit.`);
+    }
+    return value;
+  }
+
+  function collectTransmissionFormulaInputs() {
+    const formulaInputs = {};
+
+    if (hasAnyValue(["directElementId", "directLabel", "directArea", "directCorrectedU"])) {
+      const elementId = inputValue("directElementId");
+      const label = inputValue("directLabel");
+      if (!safeShortCode(elementId, 64)) throw new Error("Hd direct: element_id este invalid.");
+      if (!safeLabel(label)) throw new Error("Hd direct: label este invalid.");
+      formulaInputs.direct_transmission_elements = [{
+        element_id: elementId,
+        label: label || null,
+        area_m2: positiveNumber("directArea", "Hd direct: area_m2"),
+        corrected_u_w_m2k: positiveNumber("directCorrectedU", "Hd direct: corrected_u_w_m2k"),
+        source: explicitSource("directSource", "Hd direct")
+      }];
+    }
+
+    if (hasAnyValue(["bridgeId", "bridgeLabel", "bridgeLength", "bridgePsi"])) {
+      const bridgeId = inputValue("bridgeId");
+      const label = inputValue("bridgeLabel");
+      if (!safeShortCode(bridgeId, 64)) throw new Error("Punte termica: bridge_id este invalid.");
+      if (!safeLabel(label)) throw new Error("Punte termica: label este invalid.");
+      formulaInputs.linear_thermal_bridges = [{
+        bridge_id: bridgeId,
+        label: label || null,
+        length_m: nonNegativeNumber("bridgeLength", "Punte termica: length_m"),
+        psi_w_mk: anyFiniteNumber("bridgePsi", "Punte termica: psi_w_mk"),
+        source: explicitSource("bridgeSource", "Punte termica")
+      }];
+    }
+
+    if (hasAnyValue(["psiCaseId", "psiLength", "psiL2d", "psiRefElementId", "psiRefArea", "psiRefU"])) {
+      const caseId = inputValue("psiCaseId");
+      const refId = inputValue("psiRefElementId");
+      if (!safeShortCode(caseId, 64)) throw new Error("Calcul Psi: case_id este invalid.");
+      if (!safeShortCode(refId, 64)) throw new Error("Calcul Psi: reference element_id este invalid.");
+      formulaInputs.psi_calculation_cases = [{
+        case_id: caseId,
+        length_m: positiveNumber("psiLength", "Calcul Psi: length_m"),
+        l2d_w_k: nonNegativeNumber("psiL2d", "Calcul Psi: l2d_w_k"),
+        reference_elements: [{
+          element_id: refId,
+          area_m2: positiveNumber("psiRefArea", "Calcul Psi: reference area_m2"),
+          u_w_m2k: positiveNumber("psiRefU", "Calcul Psi: reference u_w_m2k")
+        }],
+        source: explicitSource("psiSource", "Calcul Psi")
+      }];
+    }
+
+    if (hasAnyValue(["heatFlowCaseId", "heatFlowHtr", "heatFlowThetaI", "heatFlowThetaE"])) {
+      const caseId = inputValue("heatFlowCaseId");
+      if (!safeShortCode(caseId, 64)) throw new Error("Flux transmisie: case_id este invalid.");
+      formulaInputs.heat_flow_cases = [{
+        case_id: caseId,
+        htr_w_k: nonNegativeNumber("heatFlowHtr", "Flux transmisie: htr_w_k"),
+        theta_i_c: anyFiniteNumber("heatFlowThetaI", "Flux transmisie: theta_i_c"),
+        theta_e_c: anyFiniteNumber("heatFlowThetaE", "Flux transmisie: theta_e_c")
+      }];
+    }
+
+    if (hasAnyValue(["timeCaseId", "timeHtr", "timeThetaI", "timeThetaE", "timeDuration"])) {
+      const caseId = inputValue("timeCaseId");
+      if (!safeShortCode(caseId, 64)) throw new Error("Energie transmisie: case_id este invalid.");
+      formulaInputs.time_integrated_transmission_cases = [{
+        case_id: caseId,
+        htr_w_k: nonNegativeNumber("timeHtr", "Energie transmisie: htr_w_k"),
+        theta_i_c: anyFiniteNumber("timeThetaI", "Energie transmisie: theta_i_c"),
+        theta_e_c: anyFiniteNumber("timeThetaE", "Energie transmisie: theta_e_c"),
+        duration_h: positiveNumber("timeDuration", "Energie transmisie: duration_h")
+      }];
+    }
+
+    if (hasAnyValue(["htr215Hd", "htr215Hg", "htr215Hu", "htr215Ha"])) {
+      formulaInputs.htr_total_2_15_case = {
+        hd_w_k: nonNegativeNumber("htr215Hd", "Htr 2.15: hd_w_k"),
+        hg_w_k: nonNegativeNumber("htr215Hg", "Htr 2.15: hg_w_k"),
+        hu_w_k: nonNegativeNumber("htr215Hu", "Htr 2.15: hu_w_k"),
+        ha_w_k: nonNegativeNumber("htr215Ha", "Htr 2.15: ha_w_k"),
+        source: explicitSource("htr215Source", "Htr 2.15")
+      };
+    }
+
+    return Object.keys(formulaInputs).length ? formulaInputs : null;
+  }
+
   function buildRunPayload() {
     const rows = [...componentRows.querySelectorAll("[data-component-row]")];
     if (!rows.length) throw new Error("Adauga cel putin un element de anvelopa.");
@@ -218,17 +346,23 @@ document.addEventListener("DOMContentLoaded", () => {
       throw new Error("Referinta sursei non-Hu trebuie sa fie un cod scurt sigur.");
     }
 
+    const htrInput = {
+      envelope_components: rows.map(collectComponent),
+      non_hu_contributions: {
+        thermal_bridge_w_k: contribution("thermal_bridge_w_k", "thermalBridgeValue", nonHuReference),
+        ground_w_k: contribution("ground_w_k", "groundValue", nonHuReference),
+        adjacent_space_w_k: contribution("adjacent_space_w_k", "adjacentValue", nonHuReference)
+      }
+    };
+    const transmissionFormulaInputs = collectTransmissionFormulaInputs();
+    if (transmissionFormulaInputs) {
+      htrInput.transmission_formula_inputs = transmissionFormulaInputs;
+    }
+
     return {
       house_id: houseId,
       label,
-      htr_input: {
-        envelope_components: rows.map(collectComponent),
-        non_hu_contributions: {
-          thermal_bridge_w_k: contribution("thermal_bridge_w_k", "thermalBridgeValue", nonHuReference),
-          ground_w_k: contribution("ground_w_k", "groundValue", nonHuReference),
-          adjacent_space_w_k: contribution("adjacent_space_w_k", "adjacentValue", nonHuReference)
-        }
-      }
+      htr_input: htrInput
     };
   }
 
@@ -250,6 +384,35 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.entries(nonHu).forEach(([key, value]) => {
       appendArticle(list, key, `${value?.value ?? "--"} W/K`, "input non-Hu explicit");
     });
+    const formulaInputs = input.transmission_formula_inputs || {};
+    if (formulaInputs.direct_transmission_elements?.length) {
+      appendArticle(list, "Hd direct 2.12", `${formulaInputs.direct_transmission_elements.length} element explicit`);
+    }
+    if (formulaInputs.linear_thermal_bridges?.length) {
+      appendArticle(list, "Punti 2.28", `${formulaInputs.linear_thermal_bridges.length} punte explicite`);
+    }
+    if (formulaInputs.psi_calculation_cases?.length) {
+      appendArticle(list, "Psi 2.13", `${formulaInputs.psi_calculation_cases.length} caz explicit`);
+    }
+    if (formulaInputs.heat_flow_cases?.length) {
+      appendArticle(list, "Flux 2.14", `${formulaInputs.heat_flow_cases.length} caz explicit`);
+    }
+    if (formulaInputs.time_integrated_transmission_cases?.length) {
+      appendArticle(list, "Integrare 2.14", `${formulaInputs.time_integrated_transmission_cases.length} caz explicit`);
+    }
+    if (formulaInputs.htr_total_2_15_case) {
+      appendArticle(list, "Htr 2.15", "Componente explicite Hd/Hg/Hu/Ha");
+    }
+  }
+
+  function renderFormulaResult(list, title, result, meta = "") {
+    if (!result) return;
+    appendArticle(
+      list,
+      title,
+      `${result.result?.symbol || "--"} = ${result.result?.amount ?? "--"} ${result.result?.unit || ""}`,
+      `${result.formulaCode || ""} ${result.relationCode ? `relatia ${result.relationCode}` : ""} ${meta}`.trim()
+    );
   }
 
   function renderResult(payload) {
@@ -279,6 +442,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     if (terms && !terms.children.length) {
       appendArticle(terms, "Fara termeni publici", "Rezultatul este blocat sau API-ul nu a returnat termeni.");
+    }
+
+    const formulaResults = clearList("formulaResultsList");
+    const c1 = result.transmissionFormulaResults || {};
+    renderFormulaResult(formulaResults, "Hd direct", c1.directTransmission);
+    renderFormulaResult(formulaResults, "Punti termice globale", c1.thermalBridgeGlobal);
+    renderFormulaResult(formulaResults, "Transmisie globala fara sol", c1.globalTransmissionExcludingGround);
+    (c1.psiCases || []).forEach(item => renderFormulaResult(formulaResults, `Psi ${item.caseId || ""}`, item));
+    (c1.heatFlowCases || []).forEach(item => renderFormulaResult(formulaResults, `Flux ${item.caseId || ""}`, item));
+    (c1.timeIntegratedTransmissionCases || []).forEach(item => {
+      renderFormulaResult(formulaResults, `Energie transmisie ${item.caseId || ""}`, item, item.scope || "");
+    });
+    renderFormulaResult(formulaResults, "Htr total 2.15", c1.htrTotalRelation215);
+    if (formulaResults && !formulaResults.children.length) {
+      appendArticle(
+        formulaResults,
+        "Fara formule avansate",
+        "Nu au fost transmise inputuri explicite pentru calculele C1."
+      );
     }
 
     const diagnostics = clearList("diagnosticsList");

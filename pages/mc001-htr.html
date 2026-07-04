@@ -100,6 +100,83 @@ QHnd, energie finala, energie primara, CO2 sau raport oficial.
 </div>
 </div>
 
+<div class="section-heading">
+<span class="small-label">MC001 FORMULE TRANSMISIE AVANSATE</span>
+<h2>Calculatoare explicite pentru relatiile 2.12, 2.13, 2.14, 2.15 si 2.28</h2>
+</div>
+<p class="section-description">
+Aceste calcule folosesc doar valorile introduse explicit mai jos. Nu sunt CPE, certificat, QHnd, energie finala,
+energie primara sau CO2.
+</p>
+
+<fieldset>
+<legend>Hd direct - relatia 2.12</legend>
+<div class="form-grid">
+<div><label for="directElementId">element_id</label><input id="directElementId" placeholder="direct-wall-1"></div>
+<div><label for="directLabel">label</label><input id="directLabel" placeholder="Perete direct"></div>
+<div><label for="directArea">area_m2</label><input id="directArea" type="number" min="0" step="0.001"></div>
+<div><label for="directCorrectedU">corrected_u_w_m2k</label><input id="directCorrectedU" type="number" min="0" step="0.001"></div>
+<div><label for="directSource">source.reference</label><input id="directSource" value="manual_mvp_input"></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Punti termice liniare - relatia 2.28</legend>
+<div class="form-grid">
+<div><label for="bridgeId">bridge_id</label><input id="bridgeId" placeholder="bridge-1"></div>
+<div><label for="bridgeLabel">label</label><input id="bridgeLabel" placeholder="Punte liniara"></div>
+<div><label for="bridgeLength">length_m</label><input id="bridgeLength" type="number" min="0" step="0.001"></div>
+<div><label for="bridgePsi">psi_w_mk</label><input id="bridgePsi" type="number" step="0.001"></div>
+<div><label for="bridgeSource">source.reference</label><input id="bridgeSource" value="manual_mvp_input"></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Calcul Psi din L2D - relatia 2.13</legend>
+<div class="form-grid">
+<div><label for="psiCaseId">case_id</label><input id="psiCaseId" placeholder="psi-case-1"></div>
+<div><label for="psiLength">length_m</label><input id="psiLength" type="number" min="0" step="0.001"></div>
+<div><label for="psiL2d">l2d_w_k</label><input id="psiL2d" type="number" min="0" step="0.001"></div>
+<div><label for="psiRefElementId">reference element_id</label><input id="psiRefElementId" placeholder="ref-wall-1"></div>
+<div><label for="psiRefArea">reference area_m2</label><input id="psiRefArea" type="number" min="0" step="0.001"></div>
+<div><label for="psiRefU">reference u_w_m2k</label><input id="psiRefU" type="number" min="0" step="0.001"></div>
+<div><label for="psiSource">source.reference</label><input id="psiSource" value="manual_mvp_input"></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Flux termic transmisie - relatia 2.14</legend>
+<div class="form-grid">
+<div><label for="heatFlowCaseId">case_id</label><input id="heatFlowCaseId" placeholder="heat-flow-1"></div>
+<div><label for="heatFlowHtr">htr_w_k</label><input id="heatFlowHtr" type="number" min="0" step="0.001"></div>
+<div><label for="heatFlowThetaI">theta_i_c</label><input id="heatFlowThetaI" type="number" step="0.1"></div>
+<div><label for="heatFlowThetaE">theta_e_c</label><input id="heatFlowThetaE" type="number" step="0.1"></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Energie transmisie integrata in timp - relatia 2.14 integrata</legend>
+<p class="section-description">Nu este QHnd. Este doar integrarea fluxului de transmisie pe durata introdusa.</p>
+<div class="form-grid">
+<div><label for="timeCaseId">case_id</label><input id="timeCaseId" placeholder="time-case-1"></div>
+<div><label for="timeHtr">htr_w_k</label><input id="timeHtr" type="number" min="0" step="0.001"></div>
+<div><label for="timeThetaI">theta_i_c</label><input id="timeThetaI" type="number" step="0.1"></div>
+<div><label for="timeThetaE">theta_e_c</label><input id="timeThetaE" type="number" step="0.1"></div>
+<div><label for="timeDuration">duration_h</label><input id="timeDuration" type="number" min="0" step="0.001"></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Htr total - relatia 2.15</legend>
+<div class="form-grid">
+<div><label for="htr215Hd">hd_w_k</label><input id="htr215Hd" type="number" min="0" step="0.001"></div>
+<div><label for="htr215Hg">hg_w_k</label><input id="htr215Hg" type="number" min="0" step="0.001"></div>
+<div><label for="htr215Hu">hu_w_k</label><input id="htr215Hu" type="number" min="0" step="0.001"></div>
+<div><label for="htr215Ha">ha_w_k</label><input id="htr215Ha" type="number" min="0" step="0.001"></div>
+<div><label for="htr215Source">source.reference</label><input id="htr215Source" value="manual_mvp_input"></div>
+</div>
+</fieldset>
+
 <div class="wizard-buttons">
 <button class="primary-btn" type="submit">Calculeaza Htr</button>
 </div>
@@ -149,6 +226,11 @@ QHnd, energie finala, energie primara, CO2 sau raport oficial.
 <h2>Termeni publici H12</h2>
 </div>
 <div id="termsList" class="recommendation-list"></div>
+<div class="section-heading">
+<span class="small-label">FORMULE TRANSMISIE C1</span>
+<h2>Rezultate explicite relatii MC001</h2>
+</div>
+<div id="formulaResultsList" class="recommendation-list"></div>
 <div class="section-heading">
 <span class="small-label">DIAGNOSTICE</span>
 <h2>Blocaje si domenii lipsa</h2>
