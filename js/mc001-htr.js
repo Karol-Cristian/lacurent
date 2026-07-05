@@ -925,6 +925,41 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function renderExplicitTotalHeatTransferResult(list, total) {
+    if (!total) {
+      appendArticle(
+        list,
+        "Fara rezultat C5",
+        "Rezultatul C5 apare numai cand C3 transmisie si C4 ventilare sunt ambele calculate explicit."
+      );
+      return;
+    }
+    appendArticle(
+      list,
+      "Transmisie explicita",
+      `${total.components?.transmissionEnergy?.amount ?? "--"} ${total.components?.transmissionEnergy?.unit || "kWh"}`,
+      "C3, semnat"
+    );
+    appendArticle(
+      list,
+      "Ventilare explicita",
+      `${total.components?.ventilationEnergy?.amount ?? "--"} ${total.components?.ventilationEnergy?.unit || "kWh"}`,
+      "C4, semnat"
+    );
+    appendArticle(
+      list,
+      total.result?.symbol || "Q_total_transfer_explicit",
+      `${total.result?.amount ?? "--"} ${total.result?.unit || "kWh"}`,
+      total.scope || "not QHnd"
+    );
+    (total.diagnostics?.warnings || []).forEach(warning => {
+      appendArticle(list, "Avertisment C5", warning.code || warning, warning.severity || "warning");
+    });
+    (total.diagnostics?.methodologyLimits || []).forEach(code => {
+      appendArticle(list, "Limita metodologica C5", code, "not QHnd");
+    });
+  }
+
   function renderResult(payload) {
     const panel = document.getElementById("resultPanel");
     const result = payload?.mc001_htr || {};
@@ -984,6 +1019,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const explicitSummary = clearList("explicitHeatTransferSummaryList");
     renderExplicitHeatTransferSummary(explicitSummary, result.explicitHeatTransferSummary);
+
+    const explicitTotal = clearList("explicitTotalHeatTransferList");
+    renderExplicitTotalHeatTransferResult(explicitTotal, result.explicitTotalHeatTransferResult);
 
     const diagnostics = clearList("diagnosticsList");
     (result.diagnostics?.blockers || []).forEach(blocker => {

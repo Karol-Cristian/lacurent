@@ -985,6 +985,55 @@ await test("C3 and C4 return explicit non-QHnd combined heat transfer summary", 
   assert.equal(summary.scope, "explicit_transmission_plus_ventilation_only_not_QHnd");
 });
 
+await test("C5 returns explicit total heat transfer result from C3 and C4", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3AndC4Payload());
+  const c5 = result.body.mc001_htr.explicitTotalHeatTransferResult;
+  assert.equal(result.status, 200);
+  assert.equal(c5.status, "ready");
+  assert.equal(c5.components.transmissionEnergy.amount, 133.92);
+  assert.equal(c5.components.ventilationEnergy.amount, 892.8);
+  assert.equal(c5.result.amount, 1026.72);
+  assert.equal(c5.scope, "explicit_transmission_plus_ventilation_heat_transfer_only_not_QHnd");
+});
+
+await test("C5 explicit total heat transfer result persists and reloads", async () => {
+  const db = new FakeDb();
+  await post("/api/mc001/htr/run", db, c3AndC4Payload());
+  const result = await post("/api/mc001/htr/load", db, { analysis_id: 100 });
+  const c5 = result.body.mc001_htr.explicitTotalHeatTransferResult;
+  assert.equal(result.status, 200);
+  assert.equal(c5.result.amount, 1026.72);
+  assert.equal(c5.components.transmissionEnergy.amount, 133.92);
+  assert.equal(c5.components.ventilationEnergy.amount, 892.8);
+});
+
+await test("C5 rejects client-provided explicit total heat transfer result", async () => {
+  const db = new FakeDb();
+  const payload = c3AndC4Payload();
+  payload.htr_input.explicitTotalHeatTransferResult = {
+    result: { amount: 1, unit: "kWh" }
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C5 omits explicit total heat transfer when only C3 exists", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3MonthlyPayload());
+  assert.equal(result.status, 200);
+  assert.equal(Object.prototype.hasOwnProperty.call(result.body.mc001_htr, "explicitTotalHeatTransferResult"), false);
+});
+
+await test("C5 omits explicit total heat transfer when only C4 exists", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c4VentilationPayload());
+  assert.equal(result.status, 200);
+  assert.equal(Object.prototype.hasOwnProperty.call(result.body.mc001_htr, "explicitTotalHeatTransferResult"), false);
+});
+
 await test("C4 does not mutate V2 C1 C2 or C3 response fields", async () => {
   const db = new FakeDb();
   const payload = c2IntegratedPayload();
@@ -1000,6 +1049,37 @@ await test("C4 does not mutate V2 C1 C2 or C3 response fields", async () => {
   assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
   assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].transmissionEnergy.amount, 133.92);
   assert.equal(result.body.mc001_htr.ventilationTransferResult.caseResults[0].ventilationEnergy.amount, 892.8);
+});
+
+await test("C5 does not mutate V2 C1 C2 C3 or C4 response fields", async () => {
+  const db = new FakeDb();
+  const payload = c2IntegratedPayload();
+  payload.htr_input.transmission_formula_inputs = c1FormulaPayload().htr_input.transmission_formula_inputs;
+  payload.htr_input.monthly_transmission_energy_input = c3MonthlyPayload()
+    .htr_input.monthly_transmission_energy_input;
+  payload.htr_input.ventilation_transfer_input = c4VentilationPayload()
+    .htr_input.ventilation_transfer_input;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.directTransmission.result.amount, 3);
+  assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
+  assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].transmissionEnergy.amount, 133.92);
+  assert.equal(result.body.mc001_htr.ventilationTransferResult.caseResults[0].ventilationEnergy.amount, 892.8);
+  assert.equal(result.body.mc001_htr.explicitTotalHeatTransferResult.result.amount, 1026.72);
+});
+
+await test("C5 scope and methodology limits do not claim downstream energy behavior", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3AndC4Payload());
+  const serialized = JSON.stringify(result.body.mc001_htr.explicitTotalHeatTransferResult);
+  assert.equal(serialized.includes("not_QHnd"), true);
+  assert.equal(serialized.includes("not_final_energy"), true);
+  assert.equal(serialized.includes("not_primary_energy"), true);
+  assert.equal(serialized.includes("not_CO2"), true);
+  assert.equal(serialized.includes("not_certificate"), true);
+  assert.equal(serialized.includes("does_not_include_internal_gains"), true);
+  assert.equal(serialized.includes("does_not_include_utilization_factors"), true);
 });
 
 await test("run endpoint rejects private sentinel content and does not echo it", async () => {
@@ -1079,6 +1159,22 @@ await test("C4 response does not expose token session email or private data", as
   }
 });
 
+await test("C5 response does not expose token session email or private data", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3AndC4Payload());
+  const serialized = JSON.stringify(result.body);
+  for (const forbidden of [
+    "sourceRecordId",
+    "sourceContext",
+    "sourceTrace",
+    "sourceRefs",
+    "test-token",
+    "safe-user.local"
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, `leaked ${forbidden}`);
+  }
+});
+
 await test("C1 response does not expose stack traces or mutate V2 result contract", async () => {
   const db = new FakeDb();
   const result = await post("/api/mc001/htr/run", db, c1FormulaPayload());
@@ -1102,6 +1198,15 @@ await test("C3 response does not expose stack traces", async () => {
 await test("C4 response does not expose stack traces", async () => {
   const db = new FakeDb();
   const result = await post("/api/mc001/htr/run", db, c4VentilationPayload());
+  const serialized = JSON.stringify(result.body);
+  assert.equal(result.status, 200);
+  assert.equal(serialized.includes("Error:"), false);
+  assert.equal(serialized.includes("at "), false);
+});
+
+await test("C5 response does not expose stack traces", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3AndC4Payload());
   const serialized = JSON.stringify(result.body);
   assert.equal(result.status, 200);
   assert.equal(serialized.includes("Error:"), false);

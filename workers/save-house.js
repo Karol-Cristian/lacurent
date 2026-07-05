@@ -3,6 +3,7 @@ import { inferFinalEnergyCarrierFromHeatingInput, resolveMc001Carrier } from "..
 import { classifyEstimatedEnergyClass as classifyEstimatedEnergyClassFromRegistry } from "../src/features/energy/physics/calculators/estimatedEnergyClass.mjs";
 import { getCo2Factor, getPrimaryEnergyFactor } from "../src/features/energy/physics/calculators/referenceValues.mjs";
 import { calculateMc001HtrTotal } from "../src/physics-engine/mc001HtrTotalCalculation.mjs";
+import { calculateMc001ExplicitTotalHeatTransferSummary } from "../src/physics-engine/mc001ExplicitTotalHeatTransferCalculation.mjs";
 import { calculateMc001IntegratedTransmissionResult } from "../src/physics-engine/mc001IntegratedTransmissionCalculation.mjs";
 import { calculateMc001MonthlyTransmissionEnergyExplicit } from "../src/physics-engine/mc001MonthlyTransmissionEnergyCalculation.mjs";
 import { calculateMc001MonthlyVentilationTransferExplicit } from "../src/physics-engine/mc001VentilationTransferCalculation.mjs";
@@ -1827,6 +1828,9 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "transmissionEnergyKWh",
     "ventilationEnergyKWh",
     "combinedTransmissionAndVentilationKWh",
+    "explicitTotalHeatTransferResult",
+    "totalHeatTransfer",
+    "Q_total_transfer_explicit",
     "formulaCodes",
     "formulaCode",
     "relationCode",
@@ -3080,6 +3084,35 @@ function buildMc001VentilationTransferResult(ventilationInput) {
 }
 
 function buildMc001ExplicitHeatTransferSummary(monthlyTransmissionEnergyResult, ventilationTransferResult) {
+  const totalResult = buildMc001ExplicitTotalHeatTransferResult(
+    monthlyTransmissionEnergyResult,
+    ventilationTransferResult
+  );
+  if (!totalResult) {
+    return null;
+  }
+  return {
+    status: "ready",
+    scope: "explicit_transmission_plus_ventilation_only_not_QHnd",
+    transmissionEnergyKWh: {
+      amount: totalResult.components.transmissionEnergy.amount,
+      unit: "kWh",
+      source: "monthlyTransmissionEnergyResult.summary.annualSignedTransmissionEnergy"
+    },
+    ventilationEnergyKWh: {
+      amount: totalResult.components.ventilationEnergy.amount,
+      unit: "kWh",
+      source: "ventilationTransferResult.summary.annualSignedVentilationEnergy"
+    },
+    combinedTransmissionAndVentilationKWh: {
+      amount: totalResult.result.amount,
+      unit: "kWh"
+    },
+    diagnostics: totalResult.diagnostics
+  };
+}
+
+function buildMc001ExplicitTotalHeatTransferResult(monthlyTransmissionEnergyResult, ventilationTransferResult) {
   if (
     monthlyTransmissionEnergyResult?.status !== "ready" ||
     ventilationTransferResult?.status !== "ready"
@@ -3091,37 +3124,26 @@ function buildMc001ExplicitHeatTransferSummary(monthlyTransmissionEnergyResult, 
   if (!Number.isFinite(transmission) || !Number.isFinite(ventilation)) {
     return null;
   }
-  return {
-    status: "ready",
-    scope: "explicit_transmission_plus_ventilation_only_not_QHnd",
-    transmissionEnergyKWh: {
+  const result = calculateMc001ExplicitTotalHeatTransferSummary({
+    mode: "explicit_total_heat_transfer_summary_v1",
+    transmissionEnergy: {
       amount: transmission,
       unit: "kWh",
-      source: "monthlyTransmissionEnergyResult.summary.annualSignedTransmissionEnergy"
+      source: {
+        sourceType: "explicit_calculated_input",
+        reference: "monthlyTransmissionEnergyResult.summary.annualSignedTransmissionEnergy"
+      }
     },
-    ventilationEnergyKWh: {
+    ventilationEnergy: {
       amount: ventilation,
       unit: "kWh",
-      source: "ventilationTransferResult.summary.annualSignedVentilationEnergy"
-    },
-    combinedTransmissionAndVentilationKWh: {
-      amount: transmission + ventilation,
-      unit: "kWh"
-    },
-    diagnostics: {
-      blockers: [],
-      warnings: [],
-      methodologyLimits: [
-        "not_QHnd",
-        "not_final_energy",
-        "not_primary_energy",
-        "not_CO2",
-        "not_certificate",
-        "not_fan_energy",
-        "not_air_treatment_energy"
-      ]
+      source: {
+        sourceType: "explicit_calculated_input",
+        reference: "ventilationTransferResult.summary.annualSignedVentilationEnergy"
+      }
     }
-  };
+  });
+  return result?.status === "ready" ? result : null;
 }
 
 function parseMc001HtrStoredJson(text, fallback) {
@@ -3324,6 +3346,13 @@ async function handleMc001HtrRun(request, env, corsHeaders) {
     }
     if (ventilationTransferResult.value) {
       mc001Htr.ventilationTransferResult = ventilationTransferResult.value;
+    }
+    const explicitTotalHeatTransferResult = buildMc001ExplicitTotalHeatTransferResult(
+      monthlyTransmissionEnergyResult.value,
+      ventilationTransferResult.value
+    );
+    if (explicitTotalHeatTransferResult) {
+      mc001Htr.explicitTotalHeatTransferResult = explicitTotalHeatTransferResult;
     }
     const explicitHeatTransferSummary = buildMc001ExplicitHeatTransferSummary(
       monthlyTransmissionEnergyResult.value,
