@@ -14,6 +14,8 @@ const R0_BZTU_SOURCE_PACK_CODE = "MC001_R0_BZTU_FORMULA_SOURCE_PACK";
 const R2_HTR_SPINE_SOURCE_PACK_CODE =
   "MC001_R2_HTR_TRANSMISSION_SPINE_SOURCE_PACK";
 const R2_MONTHLY_SOURCE_PACK_CODE = "MC001_R2_MONTHLY_TRANSMISSION_SOURCE_PACK";
+const R3_QHND_MONTHLY_SOURCE_PACK_CODE =
+  "MC001_R3_QHND_MONTHLY_USEFUL_ENERGY_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -31,10 +33,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 3,
+  sourcePacks: 4,
   formulas: 10,
   constants: 1,
-  concepts: 3,
+  concepts: 4,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -108,6 +110,10 @@ function htrSpinePack(value = registry()) {
 
 function monthlyPack(value = registry()) {
   return sourcePackByCode(R2_MONTHLY_SOURCE_PACK_CODE, value);
+}
+
+function qhndMonthlyPack(value = registry()) {
+  return sourcePackByCode(R3_QHND_MONTHLY_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -214,7 +220,9 @@ function serializedOutputs() {
     getMc001NormativeSourcePackByCode(R0_BZTU_SOURCE_PACK_CODE),
     getMc001NormativeSourcePackByCode(R2_HTR_SPINE_SOURCE_PACK_CODE),
     getMc001NormativeSourcePackByCode(R2_MONTHLY_SOURCE_PACK_CODE),
+    getMc001NormativeSourcePackByCode(R3_QHND_MONTHLY_SOURCE_PACK_CODE),
     getMc001NormativeEntryByCode("MC001_CONCEPT_HTR_TRANSMISSION_COEFFICIENT"),
+    getMc001NormativeEntryByCode("MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND"),
     getMc001NormativeFormulaByCode("MC001_2_15_HTR_TOTAL_TRANSMISSION"),
     getMc001NormativeDefaultValueCandidateByCode(DEFAULT_CANDIDATE_CODE)
   ]);
@@ -295,16 +303,17 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly three source packs", () => {
+test("registry now contains exactly four source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 3);
+  assert.equal(packs.length, 4);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
       R0_BZTU_SOURCE_PACK_CODE,
       R2_HTR_SPINE_SOURCE_PACK_CODE,
-      R2_MONTHLY_SOURCE_PACK_CODE
+      R2_MONTHLY_SOURCE_PACK_CODE,
+      R3_QHND_MONTHLY_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -380,6 +389,100 @@ test("all R2 source packs are registry ready but not calculator ready", () => {
   for (const pack of [htrSpinePack(), monthlyPack()]) {
     assert.equal(pack.implementationStatus, "registry_ready_not_calculator_ready");
   }
+});
+
+test("R3 monthly useful energy source pack exists as metadata only", () => {
+  const pack = qhndMonthlyPack();
+
+  assert.equal(pack.sourcePackCode, R3_QHND_MONTHLY_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.verificationStatus, "human_verified_from_official_pdf_visual_review");
+  assert.equal(pack.implementationStatus, "registry_ready_not_calculator_ready");
+  assert.equal(pack.metadataOnly, true);
+  assert.equal(pack.runtimeCalculatorStatus, "not_implemented");
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+  assert.equal(Object.hasOwn(pack, "defaultValueCandidates"), false);
+});
+
+test("R3 source pack contains verified source references", () => {
+  const pack = qhndMonthlyPack();
+
+  assert.deepEqual(pack.sourceScope.sectionsVerified, [
+    "2.7",
+    "2.7.1",
+    "2.7.1.1",
+    "2.7.1.2",
+    "2.7.2",
+    "2.7.3",
+    "2.7.5",
+    "2.7.6",
+    "2.8",
+    "2.10"
+  ]);
+  assert.ok(pack.sourceScope.pagesVerified.includes(121));
+  assert.ok(pack.sourceScope.figuresVerified.includes("2.18"));
+  assert.ok(pack.sourceScope.figuresVerified.includes("2.19"));
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.84"));
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.85"));
+  assert.equal(pack.sourceMap.length, 7);
+});
+
+test("R3 source pack includes QH and QC dependency groups", () => {
+  const groups = qhndMonthlyPack().dependencyGroups;
+
+  assert.ok(groups.heatTransferTotal.requiredSymbols.includes("QH;ht;ztc;m"));
+  assert.ok(groups.heatTransferTotal.requiredSymbols.includes("QC;ht;ztc;m"));
+  assert.ok(groups.heatGains.requiredSymbols.includes("QH;gn;ztc;m"));
+  assert.ok(groups.heatGains.requiredSymbols.includes("QC;gn;ztc;m"));
+  assert.ok(groups.utilizationFactors.requiredSymbols.includes("etaH;gn;ztc;m"));
+  assert.ok(groups.utilizationFactors.requiredSymbols.includes("etaC;ht;ztc;m"));
+  assert.ok(groups.monthlyUsefulDemand.requiredOutputs.includes("QH;nd;ztc;m"));
+  assert.ok(groups.monthlyUsefulDemand.requiredOutputs.includes("QC;nd;ztc;m"));
+});
+
+test("R3 declares C5 explicit transfer only and not monthly useful demand", () => {
+  const pack = qhndMonthlyPack();
+  const c5 = pack.currentImplementedChain.find((entry) => entry.milestoneCode === "C5");
+
+  assert.equal(c5.scope, "explicit transmission plus ventilation heat transfer");
+  assert.equal(c5.status, "implemented_explicit_input_only");
+  assert.equal(c5.limitation, "not_QH;nd");
+  assert.equal(
+    pack.dependencyGroups.heatTransferTotal.limitation,
+    "C5 is explicit heat transfer only and is not QH;nd or QC;nd"
+  );
+});
+
+test("R3 declares blockers for certificate final primary and CO2 readiness", () => {
+  const blockers = qhndMonthlyPack().dependencyGroups.explicitBlockers.blockers;
+
+  for (const blockerCode of [
+    "certificate_not_ready",
+    "not_final_energy_ready",
+    "not_primary_energy_ready",
+    "not_CO2_ready",
+    "not_system_losses_ready",
+    "gains_not_fully_implemented",
+    "utilization_factors_not_implemented",
+    "intermittency_and_unoccupied_periods_not_implemented",
+    "latent_humidification_dehumidification_not_implemented"
+  ]) {
+    assert.ok(blockers.includes(blockerCode), blockerCode);
+  }
+});
+
+test("R3 has no invented defaults personal fixture or copied PDF passage", () => {
+  const serialized = JSON.stringify(qhndMonthlyPack());
+
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+  assert.equal(
+    serialized.includes("Pentru calculul necesarului de energie lunar pentru"),
+    false
+  );
 });
 
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
@@ -519,7 +622,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R2 expected aggregate counts", () => {
+test("validation counts match R3 expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");
@@ -579,7 +682,8 @@ test("source pack lookup returns found for all known packs", () => {
   for (const sourcePackCode of [
     R0_BZTU_SOURCE_PACK_CODE,
     R2_HTR_SPINE_SOURCE_PACK_CODE,
-    R2_MONTHLY_SOURCE_PACK_CODE
+    R2_MONTHLY_SOURCE_PACK_CODE,
+    R3_QHND_MONTHLY_SOURCE_PACK_CODE
   ]) {
     const result = getMc001NormativeSourcePackByCode(sourcePackCode);
     assert.equal(result.status, "found", sourcePackCode);
@@ -613,7 +717,8 @@ test("entry lookup returns found for new R2 concepts figures rules and formulas"
     "MC001_FIGURE_2_11_TOTAL_TRANSMISSION_HEAT_TRANSFER",
     "MC001_FIGURE_2_12_GLOBAL_TRANSMISSION_COEFFICIENT",
     "MC001_RULE_TRANSMISSION_POSITIVE_INTERIOR_TO_EXTERIOR",
-    "MC001_RULE_MONTHLY_TRANSMISSION_SEPARATES_GROUND_CONTACT"
+    "MC001_RULE_MONTHLY_TRANSMISSION_SEPARATES_GROUND_CONTACT",
+    "MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND"
   ]) {
     const result = getMc001NormativeEntryByCode(entryCode);
     assert.equal(result.status, "found", entryCode);
@@ -822,14 +927,16 @@ test("no hidden fallback values exist", () => {
   assert.equal(serialized.includes(productFallback), false);
 });
 
-test("no QHnd monthly final primary CO2 or downstream readiness behavior is introduced", () => {
+test("no monthly useful demand final primary CO2 or downstream runtime behavior is introduced", () => {
   const readiness = "downstream" + "Readiness";
   const source = runtimeSource();
   const behaviorTerms = [
-    "Q" + "Hnd",
+    "calculateMc001MonthlyUsefulDemand",
+    "calculateQHnd",
+    "calculateQCnd",
     "final" + "Energy",
     "primary" + "Energy",
-    "C" + "O2",
+    "calculateCO2",
     readiness,
     "isCompleteHtrReady",
     "isHtrTotalCalculationReady"

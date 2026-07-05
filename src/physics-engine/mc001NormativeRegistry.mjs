@@ -4,7 +4,10 @@ const R2_HTR_SPINE_SOURCE_PACK_CODE =
   "MC001_R2_HTR_TRANSMISSION_SPINE_SOURCE_PACK";
 const R2_MONTHLY_TRANSMISSION_SOURCE_PACK_CODE =
   "MC001_R2_MONTHLY_TRANSMISSION_SOURCE_PACK";
+const R3_QHND_MONTHLY_SOURCE_PACK_CODE =
+  "MC001_R3_QHND_MONTHLY_USEFUL_ENERGY_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
+const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
 const R2_VERIFICATION_STATUS = "human_verified_from_official_pdf_visual_review";
 const IMPLEMENTATION_STATUS = "registry_ready_not_calculator_ready";
@@ -53,7 +56,8 @@ const ALLOWED_BLOCKER_CODES = new Set([
 const SOURCE_PACK_CODES = new Set([
   R0_BZTU_SOURCE_PACK_CODE,
   R2_HTR_SPINE_SOURCE_PACK_CODE,
-  R2_MONTHLY_TRANSMISSION_SOURCE_PACK_CODE
+  R2_MONTHLY_TRANSMISSION_SOURCE_PACK_CODE,
+  R3_QHND_MONTHLY_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -84,7 +88,8 @@ const ENTRY_CODES = new Set([
   "MC001_FORMULA_2_27_GLOBAL_TRANSMISSION_EXCLUDING_GROUND",
   "MC001_FORMULA_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT",
   "MC001_RULE_TRANSMISSION_POSITIVE_INTERIOR_TO_EXTERIOR",
-  "MC001_RULE_MONTHLY_TRANSMISSION_SEPARATES_GROUND_CONTACT"
+  "MC001_RULE_MONTHLY_TRANSMISSION_SEPARATES_GROUND_CONTACT",
+  "MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -198,7 +203,39 @@ const DISTRIBUTION_RULE_CODES = new Set([
   "multiple_adjacent_conditioned_zones",
   "single_adjacent_conditioned_zone"
 ]);
-const SOURCE_SCOPE_PAGES = Object.freeze([81, 82, 94, 95, 96, 99, 100, 109]);
+const SOURCE_SCOPE_PAGES = Object.freeze([
+  81,
+  82,
+  94,
+  95,
+  96,
+  98,
+  99,
+  100,
+  101,
+  102,
+  103,
+  104,
+  105,
+  106,
+  107,
+  108,
+  109,
+  110,
+  111,
+  112,
+  113,
+  114,
+  115,
+  116,
+  117,
+  118,
+  119,
+  120,
+  121,
+  124,
+  125
+]);
 
 const PRIVATE_CONTENT_TERMS = Object.freeze([
   "@",
@@ -382,10 +419,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 3,
+    sourcePacks: 4,
     formulas: 10,
     constants: 1,
-    concepts: 3,
+    concepts: 4,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -900,6 +937,266 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           }
         }
       ]
+    },
+    {
+      sourcePackCode: R3_QHND_MONTHLY_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: true,
+      runtimeCalculatorStatus: "not_implemented",
+
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.7. Calculul necesarului de energie pentru climatizare folosind metoda de calcul lunar",
+        pagesVerified: [
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          124,
+          125
+        ],
+        sectionsVerified: [
+          "2.7",
+          "2.7.1",
+          "2.7.1.1",
+          "2.7.1.2",
+          "2.7.2",
+          "2.7.3",
+          "2.7.5",
+          "2.7.6",
+          "2.8",
+          "2.10"
+        ],
+        figuresVerified: [
+          "2.9",
+          "2.10",
+          "2.13",
+          "2.14",
+          "2.15",
+          "2.16",
+          "2.17",
+          "2.18",
+          "2.19"
+        ],
+        relationsVerified: [
+          "2.29",
+          "2.30",
+          "2.32",
+          "2.33",
+          "2.34",
+          "2.37",
+          "2.38",
+          "2.55",
+          "2.56",
+          "2.57",
+          "2.58",
+          "2.59",
+          "2.67",
+          "2.72",
+          "2.73",
+          "2.74",
+          "2.75",
+          "2.76",
+          "2.77",
+          "2.84",
+          "2.85"
+        ]
+      },
+
+      concept: {
+        entryCode: "MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND",
+        entryType: "concept",
+        conceptCode: "monthly_useful_energy_demand_readiness",
+        targetSymbol: "QH;nd;ztc;m / QC;nd;ztc;m",
+        registryKind: "metadata_only_readiness_registry",
+        name: "monthly useful heating and cooling energy demand readiness",
+        unit: "kWh",
+        purpose: "maps the verified source dependencies needed before implementing monthly useful heating and cooling demand",
+        sourceLocator: {
+          page: 121,
+          figure: "2.18",
+          subsection: "2.8.4"
+        }
+      },
+
+      currentImplementedChain: [
+        {
+          milestoneCode: "C3",
+          scope: "explicit monthly transmission energy",
+          status: "implemented_explicit_input_only",
+          limitation: "not_QH;nd"
+        },
+        {
+          milestoneCode: "C4",
+          scope: "explicit monthly ventilation energy",
+          status: "implemented_explicit_input_only",
+          limitation: "not_QH;nd"
+        },
+        {
+          milestoneCode: "C5",
+          scope: "explicit transmission plus ventilation heat transfer",
+          status: "implemented_explicit_input_only",
+          limitation: "not_QH;nd"
+        }
+      ],
+
+      sourceMap: [
+        {
+          sourceRefCode: "MC001_R3_SOURCE_2_7_MONTHLY_METHOD",
+          section: "2.7",
+          page: 98,
+          topic: "monthly method scope for heating and cooling useful energy"
+        },
+        {
+          sourceRefCode: "MC001_R3_SOURCE_2_7_1_TOTAL_TRANSFER",
+          section: "2.7.1",
+          page: 100,
+          figure: "2.10",
+          topic: "total heat transfer as transmission plus ventilation"
+        },
+        {
+          sourceRefCode: "MC001_R3_SOURCE_2_7_2_GAINS",
+          section: "2.7.2",
+          page: 103,
+          figure: "2.13",
+          topic: "total gains from internal and solar gains"
+        },
+        {
+          sourceRefCode: "MC001_R3_SOURCE_2_7_5_CAPACITY",
+          section: "2.7.5",
+          page: 113,
+          topic: "effective internal heat capacity for the thermal zone"
+        },
+        {
+          sourceRefCode: "MC001_R3_SOURCE_2_7_6_UTILIZATION",
+          section: "2.7.6",
+          page: 114,
+          figures: ["2.14", "2.15", "2.16", "2.17"],
+          relations: ["2.55", "2.56", "2.57", "2.58"],
+          topic: "gain and heat-transfer utilization factors"
+        },
+        {
+          sourceRefCode: "MC001_R3_SOURCE_2_8_UNOCCUPIED",
+          section: "2.8",
+          pages: [117, 118, 119, 120, 121],
+          figures: ["2.18", "2.19"],
+          relations: ["2.59", "2.67", "2.72", "2.73", "2.74", "2.75", "2.76", "2.77"],
+          topic: "intermittent and long unoccupied period handling"
+        },
+        {
+          sourceRefCode: "MC001_R3_SOURCE_2_10_ANNUAL",
+          section: "2.10",
+          page: 125,
+          relations: ["2.84", "2.85"],
+          topic: "annual aggregation of monthly useful heating and cooling demand"
+        }
+      ],
+
+      dependencyGroups: {
+        heatTransferTotal: {
+          status: "partially_implemented_explicit_input_only",
+          implementedReferences: [
+            "C3_monthlyTransmissionEnergyResult",
+            "C4_ventilationTransferResult",
+            "C5_explicitTotalHeatTransferResult"
+          ],
+          requiredSymbols: ["QH;ht;ztc;m", "QC;ht;ztc;m"],
+          sourceReferences: ["figure_2.10", "section_2.7.1"],
+          limitation: "C5 is explicit heat transfer only and is not QH;nd or QC;nd"
+        },
+        heatGains: {
+          status: "missing_machine_encoded_gain_method",
+          requiredSymbols: [
+            "QH;gn;ztc;m",
+            "QC;gn;ztc;m",
+            "QH;int;ztc;m",
+            "QC;int;ztc;m",
+            "QH;sol;ztc;m",
+            "QC;sol;ztc;m"
+          ],
+          sourceReferences: ["figure_2.13", "section_2.7.2", "section_2.7.3"],
+          implementationPath: "future explicit monthly gains input can precede full internal and solar gain formulas"
+        },
+        utilizationFactors: {
+          status: "missing_machine_encoded_utilization_method",
+          requiredSymbols: [
+            "etaH;gn;ztc;m",
+            "etaC;ht;ztc;m",
+            "gammaH;ztc;m",
+            "gammaC;ztc;m",
+            "aH;ztc;m",
+            "aC;ztc;m",
+            "tauH;ztc;m",
+            "tauC;ztc;m",
+            "Cm;eff;ztc"
+          ],
+          sourceReferences: ["figure_2.14", "figure_2.15", "relations_2.55_to_2.58"],
+          implementationPath: "requires explicit heat capacity and transfer coefficients before useful-demand calculation"
+        },
+        monthlyUsefulDemand: {
+          status: "metadata_ready_not_calculator_ready",
+          requiredOutputs: [
+            "QH;nd;ztc;m",
+            "QC;nd;ztc;m",
+            "QH;nd;ztc;an",
+            "QC;nd;ztc;an"
+          ],
+          sourceReferences: ["figure_2.18", "figure_2.19", "relations_2.76_to_2.77", "relations_2.84_to_2.85"],
+          implementationPath: "future heating-only explicit-input slice may be implemented after formula branch conditions are encoded"
+        },
+        explicitBlockers: {
+          status: "blocked_for_certificate_or_runtime_demand",
+          blockers: [
+            "certificate_not_ready",
+            "not_final_energy_ready",
+            "not_primary_energy_ready",
+            "not_CO2_ready",
+            "not_system_losses_ready",
+            "gains_not_fully_implemented",
+            "utilization_factors_not_implemented",
+            "intermittency_and_unoccupied_periods_not_implemented",
+            "latent_humidification_dehumidification_not_implemented"
+          ]
+        }
+      },
+
+      futureImplementationReadiness: {
+        safeForFutureImplementation: [
+          "explicit_input_heating_monthly_useful_demand_without_long_unoccupied_periods",
+          "explicit_input_cooling_monthly_useful_demand_without_long_unoccupied_periods"
+        ],
+        notYetMachineEncoded: [
+          "figure_2.18_branch_conditions",
+          "figure_2.19_branch_conditions",
+          "long_unoccupied_period_interpolation",
+          "intermittent_heating_and_cooling_corrections",
+          "latent_humidification_dehumidification"
+        ],
+        noInventedDefaults: true,
+        noRuntimeCalculator: true
+      }
     }
   ]
 });
@@ -954,6 +1251,89 @@ function validateMonthlyTransmissionSourceScope(sourceScope) {
   );
 }
 
+function validateQhndMonthlySourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section ===
+      "2.7. Calculul necesarului de energie pentru climatizare folosind metoda de calcul lunar" &&
+    arraysMatchExactly(sourceScope.pagesVerified, [
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      124,
+      125
+    ]) &&
+    arraysMatchExactly(sourceScope.sectionsVerified, [
+      "2.7",
+      "2.7.1",
+      "2.7.1.1",
+      "2.7.1.2",
+      "2.7.2",
+      "2.7.3",
+      "2.7.5",
+      "2.7.6",
+      "2.8",
+      "2.10"
+    ]) &&
+    arraysMatchExactly(sourceScope.figuresVerified, [
+      "2.9",
+      "2.10",
+      "2.13",
+      "2.14",
+      "2.15",
+      "2.16",
+      "2.17",
+      "2.18",
+      "2.19"
+    ]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, [
+      "2.29",
+      "2.30",
+      "2.32",
+      "2.33",
+      "2.34",
+      "2.37",
+      "2.38",
+      "2.55",
+      "2.56",
+      "2.57",
+      "2.58",
+      "2.59",
+      "2.67",
+      "2.72",
+      "2.73",
+      "2.74",
+      "2.75",
+      "2.76",
+      "2.77",
+      "2.84",
+      "2.85"
+    ])
+  );
+}
+
 function validateBztuConcept(concept) {
   return (
     isObject(concept) &&
@@ -991,6 +1371,22 @@ function validateMonthlyTransmissionConcept(concept) {
     concept.unit === "kWh" &&
     hasRequiredString(concept.name) &&
     hasRequiredString(concept.purpose)
+  );
+}
+
+function validateQhndMonthlyConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "monthly_useful_energy_demand_readiness" &&
+    concept.targetSymbol === "QH;nd;ztc;m / QC;nd;ztc;m" &&
+    concept.registryKind === "metadata_only_readiness_registry" &&
+    concept.unit === "kWh" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 121) &&
+    concept.sourceLocator.figure === "2.18"
   );
 }
 
@@ -1305,11 +1701,104 @@ function hasForbiddenNumericValueField(value) {
   return false;
 }
 
-function sourcePackBaseIssue(sourcePack, verificationStatus) {
+function validateQhndSourceMap(sourceMap) {
+  if (!Array.isArray(sourceMap) || sourceMap.length !== 7) {
+    return false;
+  }
+  const refCodes = sourceMap.map((entry) => entry.sourceRefCode);
+  if (!arraysMatchExactly(refCodes, [
+    "MC001_R3_SOURCE_2_7_MONTHLY_METHOD",
+    "MC001_R3_SOURCE_2_7_1_TOTAL_TRANSFER",
+    "MC001_R3_SOURCE_2_7_2_GAINS",
+    "MC001_R3_SOURCE_2_7_5_CAPACITY",
+    "MC001_R3_SOURCE_2_7_6_UTILIZATION",
+    "MC001_R3_SOURCE_2_8_UNOCCUPIED",
+    "MC001_R3_SOURCE_2_10_ANNUAL"
+  ])) {
+    return false;
+  }
+  for (const entry of sourceMap) {
+    const pages = Array.isArray(entry.pages) ? entry.pages : [entry.page];
+    if (
+      !hasRequiredString(entry.sourceRefCode) ||
+      !hasRequiredString(entry.section) ||
+      !hasRequiredString(entry.topic) ||
+      pages.some((page) => !SOURCE_SCOPE_PAGES.includes(page))
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateQhndDependencyGroups(dependencyGroups) {
+  if (!isObject(dependencyGroups)) {
+    return false;
+  }
+  const requiredGroups = [
+    "heatTransferTotal",
+    "heatGains",
+    "utilizationFactors",
+    "monthlyUsefulDemand",
+    "explicitBlockers"
+  ];
+  if (!arraysMatchExactly(Object.keys(dependencyGroups), requiredGroups)) {
+    return false;
+  }
+  return (
+    dependencyGroups.heatTransferTotal.limitation ===
+      "C5 is explicit heat transfer only and is not QH;nd or QC;nd" &&
+    Array.isArray(dependencyGroups.heatGains.requiredSymbols) &&
+    dependencyGroups.heatGains.requiredSymbols.includes("QH;gn;ztc;m") &&
+    dependencyGroups.heatGains.requiredSymbols.includes("QC;gn;ztc;m") &&
+    Array.isArray(dependencyGroups.utilizationFactors.requiredSymbols) &&
+    dependencyGroups.utilizationFactors.requiredSymbols.includes("etaH;gn;ztc;m") &&
+    dependencyGroups.utilizationFactors.requiredSymbols.includes("etaC;ht;ztc;m") &&
+    Array.isArray(dependencyGroups.monthlyUsefulDemand.requiredOutputs) &&
+    dependencyGroups.monthlyUsefulDemand.requiredOutputs.includes("QH;nd;ztc;m") &&
+    dependencyGroups.monthlyUsefulDemand.requiredOutputs.includes("QC;nd;ztc;m") &&
+    arraysMatchExactly(dependencyGroups.explicitBlockers.blockers, [
+      "certificate_not_ready",
+      "not_final_energy_ready",
+      "not_primary_energy_ready",
+      "not_CO2_ready",
+      "not_system_losses_ready",
+      "gains_not_fully_implemented",
+      "utilization_factors_not_implemented",
+      "intermittency_and_unoccupied_periods_not_implemented",
+      "latent_humidification_dehumidification_not_implemented"
+    ])
+  );
+}
+
+function validateQhndFutureReadiness(readiness) {
+  return (
+    isObject(readiness) &&
+    arraysMatchExactly(readiness.safeForFutureImplementation, [
+      "explicit_input_heating_monthly_useful_demand_without_long_unoccupied_periods",
+      "explicit_input_cooling_monthly_useful_demand_without_long_unoccupied_periods"
+    ]) &&
+    arraysMatchExactly(readiness.notYetMachineEncoded, [
+      "figure_2.18_branch_conditions",
+      "figure_2.19_branch_conditions",
+      "long_unoccupied_period_interpolation",
+      "intermittent_heating_and_cooling_corrections",
+      "latent_humidification_dehumidification"
+    ]) &&
+    readiness.noInventedDefaults === true &&
+    readiness.noRuntimeCalculator === true
+  );
+}
+
+function sourcePackBaseIssue(
+  sourcePack,
+  verificationStatus,
+  sourcePackType = SOURCE_PACK_TYPE
+) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
   }
-  if (sourcePack.sourcePackType !== SOURCE_PACK_TYPE) {
+  if (sourcePack.sourcePackType !== sourcePackType) {
     return "blocked_invalid_source_pack";
   }
   if (sourcePack.verificationStatus !== verificationStatus) {
@@ -1404,6 +1893,44 @@ function monthlyTransmissionSourcePackIssue(sourcePack) {
   return null;
 }
 
+function qhndMonthlySourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateQhndMonthlySourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateQhndMonthlyConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateQhndSourceMap(sourcePack.sourceMap)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateQhndDependencyGroups(sourcePack.dependencyGroups)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateQhndFutureReadiness(sourcePack.futureImplementationReadiness)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== true ||
+    sourcePack.runtimeCalculatorStatus !== "not_implemented" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -1416,6 +1943,9 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R2_MONTHLY_TRANSMISSION_SOURCE_PACK_CODE) {
     return monthlyTransmissionSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R3_QHND_MONTHLY_SOURCE_PACK_CODE) {
+    return qhndMonthlySourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
