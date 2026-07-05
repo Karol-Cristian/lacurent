@@ -274,6 +274,64 @@ function c1FormulaPayload(overrides = {}) {
   });
 }
 
+function c2IntegratedPayload(overrides = {}) {
+  return validPayload({
+    htr_input: {
+      ...validPayload().htr_input,
+      integrated_transmission_input: {
+        mode: "explicit_input_integrated_transmission_v1",
+        direct_transmission_elements: [
+          {
+            element_id: "direct-wall-1",
+            label: "Direct wall",
+            area_m2: 10,
+            corrected_u_w_m2k: 0.3,
+            source: {
+              source_type: "explicit_user_input",
+              reference: "manual_mvp_input"
+            }
+          }
+        ],
+        linear_thermal_bridges: [
+          {
+            bridge_id: "bridge-1",
+            label: "Linear bridge",
+            length_m: 5,
+            psi_w_mk: 0.1,
+            source: {
+              source_type: "explicit_user_input",
+              reference: "manual_mvp_input"
+            }
+          }
+        ],
+        explicit_no_thermal_bridges: false,
+        ground_w_k: {
+          value: 2,
+          source: {
+            source_type: "explicit_user_input",
+            reference: "manual_mvp_input"
+          }
+        },
+        hu_w_k: {
+          value: 3,
+          source: {
+            source_type: "explicit_user_input",
+            reference: "manual_mvp_input"
+          }
+        },
+        ha_w_k: {
+          value: 1,
+          source: {
+            source_type: "explicit_user_input",
+            reference: "manual_mvp_input"
+          }
+        },
+        ...overrides
+      }
+    }
+  });
+}
+
 async function post(path, db, body, token = "test-token") {
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -531,6 +589,103 @@ await test("C1 rejects missing explicit source for source-required formula input
   assert.equal(db.analyses.length, 0);
 });
 
+await test("C2 integrated payload returns expected explicit transmission results", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload());
+  const c2 = result.body.mc001_htr.integratedTransmissionResult;
+  assert.equal(result.status, 200);
+  assert.equal(c2.status, "ready");
+  assert.equal(c2.results.hd.result.amount, 3);
+  assert.equal(c2.results.thermalBridgeGlobal.result.amount, 0.5);
+  assert.equal(c2.results.transmissionExcludingGround.result.amount, 3.5);
+  assert.equal(c2.results.htrTotal215.result.amount, 9);
+});
+
+await test("C2 integrated result persists and reloads", async () => {
+  const db = new FakeDb();
+  await post("/api/mc001/htr/run", db, c2IntegratedPayload());
+  const result = await post("/api/mc001/htr/load", db, { analysis_id: 100 });
+  assert.equal(result.status, 200);
+  assert.equal(
+    result.body.htr_input.integrated_transmission_input.mode,
+    "explicit_input_integrated_transmission_v1"
+  );
+  assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
+});
+
+await test("C2 rejects client-provided integrated transmission result", async () => {
+  const db = new FakeDb();
+  const payload = c2IntegratedPayload();
+  payload.htr_input.integratedTransmissionResult = {
+    results: { htrTotal215: { result: { amount: 999, unit: "W/K" } } }
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C2 rejects missing bridge list when no-bridge flag is not true", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload({
+    linear_thermal_bridges: [],
+    explicit_no_thermal_bridges: false
+  }));
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C2 accepts explicit no thermal bridges and returns zero Htr,tb", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload({
+    linear_thermal_bridges: [],
+    explicit_no_thermal_bridges: true
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(
+    result.body.mc001_htr.integratedTransmissionResult.results.thermalBridgeGlobal.result.amount,
+    0
+  );
+  assert.equal(
+    result.body.mc001_htr.integratedTransmissionResult.results.transmissionExcludingGround.result.amount,
+    3
+  );
+});
+
+await test("C2 rejects negative ground Hu or Ha", async () => {
+  for (const override of [
+    { ground_w_k: { value: -1, source: { source_type: "explicit_user_input", reference: "manual_mvp_input" } } },
+    { hu_w_k: { value: -1, source: { source_type: "explicit_user_input", reference: "manual_mvp_input" } } },
+    { ha_w_k: { value: -1, source: { source_type: "explicit_user_input", reference: "manual_mvp_input" } } }
+  ]) {
+    const db = new FakeDb();
+    const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload(override));
+    assert.equal(result.status, 400);
+    assert.equal(result.body.success, false);
+    assert.equal(db.analyses.length, 0);
+  }
+});
+
+await test("C2 response includes bridge-separation warning", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload());
+  assert.equal(
+    result.body.mc001_htr.integratedTransmissionResult.diagnostics.warnings.includes(
+      "thermal_bridge_not_auto_added_to_2_15_total_in_c2"
+    ),
+    true
+  );
+});
+
+await test("C2 does not mutate existing V2 H12 total result", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload());
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
+  assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
+});
+
 await test("run endpoint rejects private sentinel content and does not echo it", async () => {
   const db = new FakeDb();
   const payload = validPayload({ label: "person@example.com" });
@@ -558,6 +713,24 @@ await test("responses do not expose raw auth or source provenance internals", as
   }
 });
 
+await test("C2 response does not expose token session email or private data", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload());
+  const serialized = JSON.stringify(result.body);
+  for (const forbidden of [
+    "sourceRecordId",
+    "sourceContext",
+    "sourceTrace",
+    "sourceRefs",
+    "test-token",
+    "safe-user.local",
+    "person@example.com",
+    "private-note"
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, `leaked ${forbidden}`);
+  }
+});
+
 await test("C1 response does not expose stack traces or mutate V2 result contract", async () => {
   const db = new FakeDb();
   const result = await post("/api/mc001/htr/run", db, c1FormulaPayload());
@@ -565,6 +738,15 @@ await test("C1 response does not expose stack traces or mutate V2 result contrac
   assert.equal(result.status, 200);
   assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
   assert.equal(Array.isArray(result.body.mc001_htr.calculationTerms), true);
+  assert.equal(serialized.includes("Error:"), false);
+  assert.equal(serialized.includes("at "), false);
+});
+
+await test("C2 response does not expose stack traces", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2IntegratedPayload());
+  const serialized = JSON.stringify(result.body);
+  assert.equal(result.status, 200);
   assert.equal(serialized.includes("Error:"), false);
   assert.equal(serialized.includes("at "), false);
 });
