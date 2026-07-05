@@ -16,6 +16,8 @@ const R2_HTR_SPINE_SOURCE_PACK_CODE =
 const R2_MONTHLY_SOURCE_PACK_CODE = "MC001_R2_MONTHLY_TRANSMISSION_SOURCE_PACK";
 const R3_QHND_MONTHLY_SOURCE_PACK_CODE =
   "MC001_R3_QHND_MONTHLY_USEFUL_ENERGY_SOURCE_PACK";
+const R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE =
+  "MC001_R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -33,10 +35,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 4,
+  sourcePacks: 5,
   formulas: 10,
   constants: 1,
-  concepts: 4,
+  concepts: 5,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -114,6 +116,10 @@ function monthlyPack(value = registry()) {
 
 function qhndMonthlyPack(value = registry()) {
   return sourcePackByCode(R3_QHND_MONTHLY_SOURCE_PACK_CODE, value);
+}
+
+function figure218HeatingPack(value = registry()) {
+  return sourcePackByCode(R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -303,17 +309,18 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly four source packs", () => {
+test("registry now contains exactly five source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 4);
+  assert.equal(packs.length, 5);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
       R0_BZTU_SOURCE_PACK_CODE,
       R2_HTR_SPINE_SOURCE_PACK_CODE,
       R2_MONTHLY_SOURCE_PACK_CODE,
-      R3_QHND_MONTHLY_SOURCE_PACK_CODE
+      R3_QHND_MONTHLY_SOURCE_PACK_CODE,
+      R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -485,6 +492,160 @@ test("R3 has no invented defaults personal fixture or copied PDF passage", () =>
   );
 });
 
+test("R4 figure 2.18 heating branch source pack exists as metadata only", () => {
+  const pack = figure218HeatingPack();
+
+  assert.equal(pack.sourcePackCode, R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.verificationStatus, "human_verified_from_official_pdf_visual_review");
+  assert.equal(pack.implementationStatus, "registry_ready_not_calculator_ready");
+  assert.equal(pack.metadataOnly, true);
+  assert.equal(pack.runtimeCalculatorStatus, "not_implemented");
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+  assert.equal(Object.hasOwn(pack, "figures"), false);
+  assert.equal(Object.hasOwn(pack, "defaultValueCandidates"), false);
+});
+
+test("R4 references MC001 2022 figure 2.18 and related heating branch sources", () => {
+  const pack = figure218HeatingPack();
+
+  assert.equal(pack.sourceIdentity.methodologyCode, "MC001");
+  assert.equal(pack.sourceIdentity.methodologyVersion, "2022");
+  assert.equal(pack.sourceIdentity.figureReference, "figure_2.18");
+  assert.equal(pack.sourceIdentity.primaryPage, 121);
+  assert.deepEqual(pack.sourceScope.parentSectionsVerified, [
+    "2.7",
+    "2.7.6",
+    "2.8",
+    "2.8.4",
+    "2.10"
+  ]);
+  assert.deepEqual(pack.sourceScope.pagesVerified, [114, 120, 121, 122, 125]);
+  assert.ok(pack.sourceScope.figuresVerified.includes("2.18"));
+  assert.ok(pack.sourceScope.figuresVerified.includes("2.14"));
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.84"));
+});
+
+test("R4 includes heating branch symbols with dependency origins", () => {
+  const symbols = figure218HeatingPack().heatingBranchSymbols;
+
+  assert.deepEqual(symbols.map((entry) => entry.symbol), [
+    "gammaH;ztc;m",
+    "QH;ht;ztc;m",
+    "etaH;gn;ztc;m",
+    "QH;gn;ztc;m",
+    "QH;nd;ztc;m"
+  ]);
+  assert.equal(symbols[0].unit, "dimensionless");
+  assert.equal(symbols[1].dependencyOrigin, "implemented_explicit_transfer_chain_C5_or_explicit_input_required");
+  assert.equal(symbols[2].dependencyOrigin, "missing_future_source_pack_utilization_factor");
+  assert.equal(symbols[4].dependencyOrigin, "not_implemented_output");
+});
+
+test("R4 includes figure 2.18 heating branch logic entries", () => {
+  const branches = figure218HeatingPack().heatingBranchDecisionLogic;
+
+  assert.deepEqual(branches.map((entry) => entry.branchId), [
+    "heating_zero_non_positive_balance_condition",
+    "heating_zero_high_balance_ratio",
+    "heating_else_gain_utilization"
+  ]);
+  assert.equal(branches[0].conditionTranscriptionStatus, "needs_human_visual_review");
+  assert.equal(branches[0].readinessStatus, "needs_human_visual_review");
+  assert.equal(branches[1].conditionExpression, "gammaH;ztc;m > 2.0");
+  assert.equal(branches[1].outputExpression, "QH;nd;ztc;m = 0");
+  assert.equal(
+    branches[2].outputExpression,
+    "QH;nd;ztc;m = QH;ht;ztc;m - etaH;gn;ztc;m * QH;gn;ztc;m"
+  );
+});
+
+test("R4 formula candidates have source references and readiness statuses", () => {
+  const candidates = figure218HeatingPack().formulaCandidates;
+
+  assert.equal(candidates.length, 4);
+  for (const candidate of candidates) {
+    assert.ok(candidate.candidateCode.startsWith("MC001_R4_"));
+    assert.ok(candidate.sourceReference.includes("MC001-2022"));
+    assert.ok(["verified_for_future_runtime", "needs_human_visual_review"].includes(
+      candidate.readinessStatus
+    ));
+    assert.equal(candidate.sourceLocator.page === 121 || candidate.sourceLocator.page === 114, true);
+  }
+  assert.equal(
+    candidates.find((candidate) => (
+      candidate.branchId === "heating_zero_non_positive_balance_condition"
+    )).readinessStatus,
+    "needs_human_visual_review"
+  );
+});
+
+test("R4 dependency matrix declares QH nd not implemented", () => {
+  const matrix = figure218HeatingPack().dependencyMatrix;
+
+  assert.equal(matrix.c5ExplicitHeatTransferTotal.status, "implemented");
+  assert.equal(matrix.c5ExplicitHeatTransferTotal.limitation, "explicit transfer only not QH;nd");
+  assert.equal(matrix.internalGains.status, "missing_or_explicit_input_only");
+  assert.equal(matrix.solarGains.status, "missing_or_explicit_input_only");
+  assert.equal(matrix.gainUtilizationFactor.status, "missing_source_needed");
+  assert.equal(matrix.effectiveThermalCapacity.status, "missing_source_needed");
+  assert.equal(matrix.timeConstant.status, "missing_source_needed");
+  assert.equal(matrix.monthlyHeatingUsefulDemand.status, "not_implemented");
+  assert.equal(matrix.annualAggregation.status, "not_implemented");
+});
+
+test("R4 declares final primary CO2 CPE and certificate blocked", () => {
+  const blockers = figure218HeatingPack().blockers;
+
+  for (const blockerCode of [
+    "not_runtime_QH;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "utilization_factor_not_implemented",
+    "gains_not_implemented",
+    "left_branch_condition_needs_human_visual_review",
+    "no_hidden_defaults"
+  ]) {
+    assert.ok(blockers.includes(blockerCode), blockerCode);
+  }
+});
+
+test("R4 declares C6C must continue extraction before heating runtime", () => {
+  const readiness = figure218HeatingPack().futureRuntimeReadiness;
+
+  assert.equal(readiness.canImplementHeatingOnlyRuntime, false);
+  assert.equal(
+    readiness.recommendedNextMilestone,
+    "C6C_continue_source_extraction_for_figure_2.14_utilization_and_figure_2.18_ambiguity"
+  );
+  assert.ok(readiness.requiredBeforeRuntime.includes(
+    "resolve_figure_2.18_first_branch_condition"
+  ));
+  assert.ok(readiness.requiredBeforeRuntime.includes(
+    "transcribe_figure_2.14_heating_utilization_factor"
+  ));
+});
+
+test("R4 contains no calculator functions runtime access invented defaults or fixture data", () => {
+  const serialized = JSON.stringify(figure218HeatingPack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+  assert.equal(serialized.includes("PENTRU CALCULUL NECESARULUI"), false);
+});
+
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
   const formula = formulaByRelation("2.12");
 
@@ -622,7 +783,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R3 expected aggregate counts", () => {
+test("validation counts match R4 expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");
