@@ -18,6 +18,8 @@ const R3_QHND_MONTHLY_SOURCE_PACK_CODE =
   "MC001_R3_QHND_MONTHLY_USEFUL_ENERGY_SOURCE_PACK";
 const R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE =
   "MC001_R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK";
+const R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE =
+  "MC001_R5_UTILIZATION_FACTORS_HEATING_READINESS_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -35,10 +37,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 5,
+  sourcePacks: 6,
   formulas: 10,
   constants: 1,
-  concepts: 5,
+  concepts: 6,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -120,6 +122,10 @@ function qhndMonthlyPack(value = registry()) {
 
 function figure218HeatingPack(value = registry()) {
   return sourcePackByCode(R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE, value);
+}
+
+function utilizationHeatingPack(value = registry()) {
+  return sourcePackByCode(R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -309,10 +315,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly five source packs", () => {
+test("registry now contains exactly six source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 5);
+  assert.equal(packs.length, 6);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -320,7 +326,8 @@ test("registry now contains exactly five source packs", () => {
       R2_HTR_SPINE_SOURCE_PACK_CODE,
       R2_MONTHLY_SOURCE_PACK_CODE,
       R3_QHND_MONTHLY_SOURCE_PACK_CODE,
-      R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE
+      R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
+      R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -646,6 +653,167 @@ test("R4 contains no calculator functions runtime access invented defaults or fi
   assert.equal(serialized.includes("PENTRU CALCULUL NECESARULUI"), false);
 });
 
+test("R5 utilization factors heating source pack exists as metadata only", () => {
+  const pack = utilizationHeatingPack();
+
+  assert.equal(pack.sourcePackCode, R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.verificationStatus, "human_verified_from_official_pdf_visual_review");
+  assert.equal(pack.implementationStatus, "registry_ready_not_calculator_ready");
+  assert.equal(pack.metadataOnly, true);
+  assert.equal(pack.runtimeCalculatorStatus, "not_implemented");
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+  assert.equal(Object.hasOwn(pack, "figures"), false);
+  assert.equal(Object.hasOwn(pack, "defaultValueCandidates"), false);
+});
+
+test("R5 references MC001 2022 figure 2.14 and figure 2.18", () => {
+  const pack = utilizationHeatingPack();
+
+  assert.equal(pack.sourceIdentity.methodologyCode, "MC001");
+  assert.equal(pack.sourceIdentity.methodologyVersion, "2022");
+  assert.equal(pack.sourceIdentity.primaryFigureReference, "figure_2.14");
+  assert.equal(pack.sourceIdentity.linkedHeatingDemandFigureReference, "figure_2.18");
+  assert.deepEqual(pack.sourceScope.pagesVerified, [112, 113, 116, 120]);
+  assert.deepEqual(pack.sourceScope.figuresVerified, ["2.14", "2.18"]);
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.55", "2.57"]);
+  assert.deepEqual(pack.sourceScope.tablesVerified, ["2.19", "2.20"]);
+});
+
+test("R5 includes heating utilization symbols", () => {
+  const symbols = utilizationHeatingPack().heatingUtilizationSymbols;
+
+  assert.deepEqual(symbols.map((entry) => entry.symbol), [
+    "QH;ht;ztc;m",
+    "QH;gn;ztc;m",
+    "gammaH;ztc;m",
+    "etaH;gn;ztc;m",
+    "tauH;ztc;m",
+    "Cm;eff;ztc",
+    "aH;ztc;m",
+    "QH;nd;ztc;m"
+  ]);
+  assert.equal(symbols.find((entry) => entry.symbol === "tauH;ztc;m").unit, "h");
+  assert.equal(symbols.find((entry) => entry.symbol === "Cm;eff;ztc").unit, "J/K");
+  assert.equal(
+    symbols.find((entry) => entry.symbol === "QH;nd;ztc;m").dependencyOrigin,
+    "ambiguous_needs_human_review"
+  );
+});
+
+test("R5 includes utilization branch and condition entries", () => {
+  const branches = utilizationHeatingPack().utilizationBranchConditions;
+
+  assert.deepEqual(branches.map((entry) => entry.branchId), [
+    "heating_utilization_positive_gamma_not_one",
+    "heating_utilization_gamma_equals_one",
+    "heating_utilization_non_positive_gamma_positive_gains",
+    "heating_utilization_negative_gamma_non_positive_gains"
+  ]);
+  assert.equal(branches[0].conditionExpression, "gammaH;ztc;m > 0 and gammaH;ztc;m != 1");
+  assert.equal(branches[0].readinessStatus, "verified_for_future_runtime");
+  assert.equal(branches[1].outputExpression, "etaH;gn;ztc;m = aH;ztc;m / (aH;ztc;m + 1)");
+  assert.equal(branches[2].readinessStatus, "needs_human_visual_review");
+  assert.equal(branches[3].outputExpression, "etaH;gn;ztc;m = 1");
+});
+
+test("R5 formula candidates have source references and readiness statuses", () => {
+  const candidates = utilizationHeatingPack().formulaCandidates;
+  const statuses = candidates.map((candidate) => candidate.readinessStatus);
+
+  assert.equal(candidates.length, 9);
+  assert.ok(statuses.includes("verified_for_future_runtime"));
+  assert.ok(statuses.includes("needs_human_visual_review"));
+  assert.ok(statuses.includes("referenced_but_not_transcribed"));
+  assert.ok(statuses.includes("blocked_due_to_ambiguous_figure"));
+  for (const candidate of candidates) {
+    assert.ok(candidate.candidateCode.startsWith("MC001_R5_"));
+    assert.ok(candidate.sourceReference.includes("MC001-2022"));
+    assert.ok(candidate.sourceLocator.page === 112 ||
+      candidate.sourceLocator.page === 113 ||
+      candidate.sourceLocator.page === 116 ||
+      candidate.sourceLocator.page === 120);
+  }
+});
+
+test("R5 includes figure 2.18 ambiguity review result", () => {
+  const review = utilizationHeatingPack().figure218AmbiguityReview;
+
+  assert.equal(
+    review.observedConditionText,
+    "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0 != 1"
+  );
+  assert.equal(review.reviewStatus, "unresolved");
+  assert.equal(review.resolutionDecision, "do_not_infer_intended_meaning");
+  assert.equal(review.runtimeImpact, "blocks_heating_QH;nd_runtime_branch_implementation");
+  assert.equal(review.sourceLocator.figure, "2.18");
+});
+
+test("R5 dependency matrix declares QHnd runtime not implemented", () => {
+  const matrix = utilizationHeatingPack().dependencyMatrix;
+
+  assert.equal(matrix.c5ExplicitTransferTotal.status, "implemented");
+  assert.equal(matrix.gammaH.status, "verified_for_future_runtime");
+  assert.equal(matrix.etaHGn.status, "partially_verified_needs_zero_edge_review");
+  assert.equal(matrix.figure218BranchLogic.status, "blocked_due_to_ambiguous_first_branch");
+  assert.equal(matrix.qhndRuntime.status, "not_implemented");
+  assert.equal(matrix.annualQhndAggregation.status, "not_implemented");
+  assert.equal(matrix.final_energy.status, "blocked");
+  assert.equal(matrix.primary_energy.status, "blocked");
+  assert.equal(matrix.co2.status, "blocked");
+  assert.equal(matrix.cpeCertificate.status, "blocked");
+});
+
+test("R5 declares heating QHnd runtime cannot be implemented yet", () => {
+  const readiness = utilizationHeatingPack().heatingQhndReadiness;
+
+  assert.equal(readiness.canImplementHeatingOnlyRuntime, false);
+  assert.equal(readiness.gammaHFormula, "verified_for_future_runtime");
+  assert.equal(readiness.etaHGnFormula, "partially_verified_with_zero_edge_review_needed");
+  assert.equal(readiness.figure218BranchConditions, "blocked_due_to_ambiguous_first_branch");
+  assert.equal(readiness.qhndFormula, "not_implemented");
+  assert.equal(
+    readiness.nextRecommendation,
+    "C6D_continue_source_extraction_for_figure_2.18_ambiguity_effective_capacity_and_gains"
+  );
+});
+
+test("R5 declares final primary CO2 CPE and certificate blocked", () => {
+  const blockers = utilizationHeatingPack().blockers;
+
+  for (const blockerCode of [
+    "not_runtime_QH;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "gains_not_implemented",
+    "no_normative_default_gains",
+    "no_normative_default_capacity",
+    "no_default_schedules",
+    "figure_2.18_first_branch_unresolved"
+  ]) {
+    assert.ok(blockers.includes(blockerCode), blockerCode);
+  }
+});
+
+test("R5 contains no calculator functions runtime access invented defaults or fixture data", () => {
+  const serialized = JSON.stringify(utilizationHeatingPack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+});
+
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
   const formula = formulaByRelation("2.12");
 
@@ -783,7 +951,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R4 expected aggregate counts", () => {
+test("validation counts match R5 expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");

@@ -8,6 +8,8 @@ const R3_QHND_MONTHLY_SOURCE_PACK_CODE =
   "MC001_R3_QHND_MONTHLY_USEFUL_ENERGY_SOURCE_PACK";
 const R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE =
   "MC001_R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK";
+const R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE =
+  "MC001_R5_UTILIZATION_FACTORS_HEATING_READINESS_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -60,7 +62,8 @@ const SOURCE_PACK_CODES = new Set([
   R2_HTR_SPINE_SOURCE_PACK_CODE,
   R2_MONTHLY_TRANSMISSION_SOURCE_PACK_CODE,
   R3_QHND_MONTHLY_SOURCE_PACK_CODE,
-  R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE
+  R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
+  R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -93,7 +96,8 @@ const ENTRY_CODES = new Set([
   "MC001_RULE_TRANSMISSION_POSITIVE_INTERIOR_TO_EXTERIOR",
   "MC001_RULE_MONTHLY_TRANSMISSION_SEPARATES_GROUND_CONTACT",
   "MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND",
-  "MC001_CONCEPT_FIGURE_2_18_HEATING_BRANCH"
+  "MC001_CONCEPT_FIGURE_2_18_HEATING_BRANCH",
+  "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -424,10 +428,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 5,
+    sourcePacks: 6,
     formulas: 10,
     constants: 1,
-    concepts: 5,
+    concepts: 6,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -1484,6 +1488,420 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "source_pack_effective_thermal_capacity_and_time_constant"
         ]
       }
+    },
+    {
+      sourcePackCode: R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: true,
+      runtimeCalculatorStatus: "not_implemented",
+
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.7.6. Factori de utilizare",
+        subsection: "factor de utilizare a aporturilor pentru incalzire",
+        parentSectionsVerified: ["2.7", "2.7.5", "2.7.6", "2.8.4"],
+        pagesVerified: [112, 113, 116, 120],
+        figuresVerified: ["2.14", "2.18"],
+        tablesVerified: ["2.19", "2.20"],
+        relationsVerified: ["2.55", "2.57"]
+      },
+
+      concept: {
+        entryCode: "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS",
+        entryType: "concept",
+        conceptCode: "utilization_factors_heating_readiness",
+        targetSymbol: "etaH;gn;ztc;m",
+        registryKind: "metadata_only_readiness_registry",
+        name: "heating utilization factor readiness",
+        unit: "dimensionless",
+        purpose: "transcribes metadata for heating utilization-factor logic needed before monthly useful heating demand runtime work",
+        sourceLocator: {
+          page: 113,
+          figure: "2.14",
+          subsection: "2.7.6"
+        }
+      },
+
+      sourceIdentity: {
+        methodologyCode: "MC001",
+        methodologyVersion: "2022",
+        primaryFigureReference: "figure_2.14",
+        linkedHeatingDemandFigureReference: "figure_2.18",
+        relatedReferences: [
+          "section_2.7_monthly_method",
+          "section_2.7.5_effective_internal_heat_capacity",
+          "section_2.7.6_utilization_factors",
+          "figure_2.14_heating_gain_utilization",
+          "relation_2.55_heating_utilization_parameter",
+          "relation_2.57_heating_time_constant",
+          "figure_2.18_heating_monthly_useful_demand"
+        ]
+      },
+
+      heatingUtilizationSymbols: [
+        {
+          symbol: "QH;ht;ztc;m",
+          meaning: "total heat transfer for heating mode in the month",
+          unit: "kWh",
+          dependencyOrigin: "implemented_or_explicit_input_required",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          symbol: "QH;gn;ztc;m",
+          meaning: "total heat gains for heating mode in the month",
+          unit: "kWh",
+          dependencyOrigin: "explicit_input_required",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          symbol: "gammaH;ztc;m",
+          meaning: "thermal balance ratio for heating mode",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          symbol: "etaH;gn;ztc;m",
+          meaning: "gain utilization factor for heating mode",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          symbol: "tauH;ztc;m",
+          meaning: "time constant of the conditioned zone for heating",
+          unit: "h",
+          dependencyOrigin: "missing_future_source_pack",
+          sourceLocator: {
+            page: 116,
+            relation: "2.57",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          symbol: "Cm;eff;ztc",
+          meaning: "effective internal heat capacity of the conditioned zone",
+          unit: "J/K",
+          dependencyOrigin: "missing_future_source_pack",
+          sourceLocator: {
+            page: 112,
+            subsection: "2.7.5"
+          }
+        },
+        {
+          symbol: "aH;ztc;m",
+          meaning: "dimensionless heating utilization parameter",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          sourceLocator: {
+            page: 113,
+            relation: "2.55",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          symbol: "QH;nd;ztc;m",
+          meaning: "monthly useful heating energy demand for the thermal zone",
+          unit: "kWh",
+          dependencyOrigin: "ambiguous_needs_human_review",
+          sourceLocator: {
+            page: 120,
+            figure: "2.18",
+            subsection: "2.8.4"
+          }
+        }
+      ],
+
+      utilizationBranchConditions: [
+        {
+          branchId: "heating_utilization_positive_gamma_not_one",
+          conditionExpression: "gammaH;ztc;m > 0 and gammaH;ztc;m != 1",
+          outputExpression: "etaH;gn;ztc;m = (1 - gammaH;ztc;m ^ aH;ztc;m) / (1 - gammaH;ztc;m ^ (aH;ztc;m + 1))",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          branchId: "heating_utilization_gamma_equals_one",
+          conditionExpression: "gammaH;ztc;m = 1",
+          outputExpression: "etaH;gn;ztc;m = aH;ztc;m / (aH;ztc;m + 1)",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          branchId: "heating_utilization_non_positive_gamma_positive_gains",
+          conditionExpression: "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0",
+          outputExpression: "etaH;gn;ztc;m = 1 / gammaH;ztc;m",
+          readinessStatus: "needs_human_visual_review",
+          note: "The source figure is legible, but the gamma equal zero edge case requires review before runtime use.",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          branchId: "heating_utilization_negative_gamma_non_positive_gains",
+          conditionExpression: "gammaH;ztc;m < 0 and QH;gn;ztc;m <= 0",
+          outputExpression: "etaH;gn;ztc;m = 1",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        }
+      ],
+
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R5_FIGURE_2_14_GAMMA_H_BALANCE_RATIO",
+          relationReference: "figure_2.14",
+          relationNumberAvailable: false,
+          expressionText: "gammaH;ztc;m = QH;gn;ztc;m / QH;ht;ztc;m",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_FIGURE_2_14_ETA_H_POSITIVE_GAMMA_NOT_ONE",
+          relationReference: "figure_2.14",
+          relationNumberAvailable: false,
+          expressionText: "etaH;gn;ztc;m = (1 - gammaH;ztc;m ^ aH;ztc;m) / (1 - gammaH;ztc;m ^ (aH;ztc;m + 1))",
+          branchId: "heating_utilization_positive_gamma_not_one",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_FIGURE_2_14_ETA_H_GAMMA_EQUALS_ONE",
+          relationReference: "figure_2.14",
+          relationNumberAvailable: false,
+          expressionText: "etaH;gn;ztc;m = aH;ztc;m / (aH;ztc;m + 1)",
+          branchId: "heating_utilization_gamma_equals_one",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_FIGURE_2_14_ETA_H_NON_POSITIVE_GAMMA_POSITIVE_GAINS",
+          relationReference: "figure_2.14",
+          relationNumberAvailable: false,
+          expressionText: "etaH;gn;ztc;m = 1 / gammaH;ztc;m",
+          branchId: "heating_utilization_non_positive_gamma_positive_gains",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          readinessStatus: "needs_human_visual_review",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_FIGURE_2_14_ETA_H_NEGATIVE_GAMMA_NON_POSITIVE_GAINS",
+          relationReference: "figure_2.14",
+          relationNumberAvailable: false,
+          expressionText: "etaH;gn;ztc;m = 1",
+          branchId: "heating_utilization_negative_gamma_non_positive_gains",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_RELATION_2_55_A_H_PARAMETER",
+          relationReference: "2.55",
+          relationNumberAvailable: true,
+          expressionText: "aH;ztc;m = aH;0 + tauH;ztc;m / tauH;0",
+          sourceReference: "MC001-2022 page 113 relation 2.55",
+          readinessStatus: "verified_for_future_runtime",
+          note: "Reference parameters are source-visible but not encoded as defaults in this readiness pack.",
+          sourceLocator: {
+            page: 113,
+            relation: "2.55",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_RELATION_2_57_TAU_H_TIME_CONSTANT",
+          relationReference: "2.57",
+          relationNumberAvailable: true,
+          expressionText: "tauH;ztc;m = (Cm;eff;ztc / 3600) / (HH;tr(excl.grflr);ztc;m + HH;gr;adj;ztc + HH;ve;ztc;m)",
+          sourceReference: "MC001-2022 page 116 relation 2.57",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 116,
+            relation: "2.57",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_TABLES_2_19_2_20_EFFECTIVE_CAPACITY_DEPENDENCY",
+          relationReference: "tables_2.19_2.20",
+          relationNumberAvailable: false,
+          expressionText: "Cm;eff;ztc effective capacity class dependency",
+          sourceReference: "MC001-2022 page 112 tables 2.19 and 2.20",
+          readinessStatus: "referenced_but_not_transcribed",
+          sourceLocator: {
+            page: 112,
+            subsection: "2.7.5"
+          }
+        },
+        {
+          candidateCode: "MC001_R5_FIGURE_2_18_FIRST_BRANCH_REVIEW",
+          relationReference: "figure_2.18",
+          relationNumberAvailable: false,
+          expressionText: "QH;nd;ztc;m = 0 for the first heating branch",
+          sourceReference: "MC001-2022 page 120 figure 2.18",
+          readinessStatus: "blocked_due_to_ambiguous_figure",
+          sourceLocator: {
+            page: 120,
+            figure: "2.18",
+            subsection: "2.8.4"
+          }
+        }
+      ],
+
+      figure218AmbiguityReview: {
+        observedConditionText: "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0 != 1",
+        reviewedAgainst: ["MC001-2022 page 120 figure 2.18", "MC001-2022 page 113 figure 2.14"],
+        ambiguityType: "visual_or_logical_notation_ambiguity",
+        reviewStatus: "unresolved",
+        resolutionDecision: "do_not_infer_intended_meaning",
+        runtimeImpact: "blocks_heating_QH;nd_runtime_branch_implementation",
+        sourceLocator: {
+          page: 120,
+          figure: "2.18",
+          subsection: "2.8.4"
+        }
+      },
+
+      heatingQhndReadiness: {
+        canImplementHeatingOnlyRuntime: false,
+        qhHtMonthlyHeatTransferInput: "explicit_input_or_C5_transfer_chain_required",
+        qhGnMonthlyHeatGainsInput: "explicit_input_required_until_gains_are_source_packed",
+        gammaHFormula: "verified_for_future_runtime",
+        etaHGnFormula: "partially_verified_with_zero_edge_review_needed",
+        figure218BranchConditions: "blocked_due_to_ambiguous_first_branch",
+        qhndFormula: "not_implemented",
+        annualAggregation: "not_implemented",
+        nextRecommendation:
+          "C6D_continue_source_extraction_for_figure_2.18_ambiguity_effective_capacity_and_gains"
+      },
+
+      dependencyMatrix: {
+        c5ExplicitTransferTotal: {
+          status: "implemented",
+          limitation: "explicit transfer only not QH;nd"
+        },
+        qhHtMonthlyInput: {
+          status: "explicit_input_only_or_C5_chain",
+          source: "figure_2.14"
+        },
+        internalGains: {
+          status: "missing_or_explicit_input_only",
+          source: "section_2.7.2"
+        },
+        solarGains: {
+          status: "missing_or_explicit_input_only",
+          source: "section_2.7.3"
+        },
+        totalGainsQhGn: {
+          status: "missing_or_explicit_input_only",
+          source: "figure_2.14"
+        },
+        gammaH: {
+          status: "verified_for_future_runtime",
+          source: "figure_2.14"
+        },
+        etaHGn: {
+          status: "partially_verified_needs_zero_edge_review",
+          source: "figure_2.14"
+        },
+        effectiveCapacityAndTimeConstant: {
+          status: "referenced_but_not_runtime_ready",
+          source: "section_2.7.5_relation_2.57"
+        },
+        figure218BranchLogic: {
+          status: "blocked_due_to_ambiguous_first_branch",
+          source: "figure_2.18"
+        },
+        qhndRuntime: {
+          status: "not_implemented"
+        },
+        annualQhndAggregation: {
+          status: "not_implemented"
+        },
+        final_energy: {
+          status: "blocked"
+        },
+        primary_energy: {
+          status: "blocked"
+        },
+        co2: {
+          status: "blocked"
+        },
+        cpeCertificate: {
+          status: "blocked"
+        }
+      },
+
+      blockers: [
+        "not_runtime_QH;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "gains_not_implemented",
+        "no_hidden_defaults",
+        "no_normative_default_gains",
+        "no_normative_default_capacity",
+        "no_default_schedules",
+        "intermittency_and_unoccupied_periods_not_implemented",
+        "figure_2.18_first_branch_unresolved",
+        "figure_2.14_zero_edge_needs_review"
+      ]
     }
   ]
 });
@@ -1641,6 +2059,25 @@ function validateFigure218HeatingSourceScope(sourceScope) {
   );
 }
 
+function validateUtilizationHeatingSourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section === "2.7.6. Factori de utilizare" &&
+    sourceScope.subsection === "factor de utilizare a aporturilor pentru incalzire" &&
+    arraysMatchExactly(sourceScope.parentSectionsVerified, [
+      "2.7",
+      "2.7.5",
+      "2.7.6",
+      "2.8.4"
+    ]) &&
+    arraysMatchExactly(sourceScope.pagesVerified, [112, 113, 116, 120]) &&
+    arraysMatchExactly(sourceScope.figuresVerified, ["2.14", "2.18"]) &&
+    arraysMatchExactly(sourceScope.tablesVerified, ["2.19", "2.20"]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, ["2.55", "2.57"])
+  );
+}
+
 function validateBztuConcept(concept) {
   return (
     isObject(concept) &&
@@ -1710,6 +2147,22 @@ function validateFigure218HeatingConcept(concept) {
     hasRequiredString(concept.purpose) &&
     sourceLocatorLooksValid(concept.sourceLocator, 121) &&
     concept.sourceLocator.figure === "2.18"
+  );
+}
+
+function validateUtilizationHeatingConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "utilization_factors_heating_readiness" &&
+    concept.targetSymbol === "etaH;gn;ztc;m" &&
+    concept.registryKind === "metadata_only_readiness_registry" &&
+    concept.unit === "dimensionless" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 113) &&
+    concept.sourceLocator.figure === "2.14"
   );
 }
 
@@ -2314,6 +2767,214 @@ function validateFigure218FutureRuntimeReadiness(readiness) {
   );
 }
 
+function validateUtilizationHeatingSourceIdentity(identity) {
+  return (
+    isObject(identity) &&
+    identity.methodologyCode === METHODOLOGY_CODE &&
+    identity.methodologyVersion === METHODOLOGY_VERSION &&
+    identity.primaryFigureReference === "figure_2.14" &&
+    identity.linkedHeatingDemandFigureReference === "figure_2.18" &&
+    arraysMatchExactly(identity.relatedReferences, [
+      "section_2.7_monthly_method",
+      "section_2.7.5_effective_internal_heat_capacity",
+      "section_2.7.6_utilization_factors",
+      "figure_2.14_heating_gain_utilization",
+      "relation_2.55_heating_utilization_parameter",
+      "relation_2.57_heating_time_constant",
+      "figure_2.18_heating_monthly_useful_demand"
+    ])
+  );
+}
+
+function validateUtilizationHeatingSymbols(symbols) {
+  const expected = [
+    ["QH;ht;ztc;m", "kWh", "implemented_or_explicit_input_required"],
+    ["QH;gn;ztc;m", "kWh", "explicit_input_required"],
+    ["gammaH;ztc;m", "dimensionless", "missing_future_source_pack"],
+    ["etaH;gn;ztc;m", "dimensionless", "missing_future_source_pack"],
+    ["tauH;ztc;m", "h", "missing_future_source_pack"],
+    ["Cm;eff;ztc", "J/K", "missing_future_source_pack"],
+    ["aH;ztc;m", "dimensionless", "missing_future_source_pack"],
+    ["QH;nd;ztc;m", "kWh", "ambiguous_needs_human_review"]
+  ];
+  if (!Array.isArray(symbols) || symbols.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [symbol, unit, origin] = expected[index];
+    if (
+      symbols[index].symbol !== symbol ||
+      symbols[index].unit !== unit ||
+      symbols[index].dependencyOrigin !== origin ||
+      !hasRequiredString(symbols[index].meaning) ||
+      !sourceLocatorLooksValid(symbols[index].sourceLocator)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateUtilizationBranchConditions(branches) {
+  const expected = [
+    [
+      "heating_utilization_positive_gamma_not_one",
+      "gammaH;ztc;m > 0 and gammaH;ztc;m != 1",
+      "verified_for_future_runtime"
+    ],
+    [
+      "heating_utilization_gamma_equals_one",
+      "gammaH;ztc;m = 1",
+      "verified_for_future_runtime"
+    ],
+    [
+      "heating_utilization_non_positive_gamma_positive_gains",
+      "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0",
+      "needs_human_visual_review"
+    ],
+    [
+      "heating_utilization_negative_gamma_non_positive_gains",
+      "gammaH;ztc;m < 0 and QH;gn;ztc;m <= 0",
+      "verified_for_future_runtime"
+    ]
+  ];
+  if (!Array.isArray(branches) || branches.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [branchId, conditionExpression, readinessStatus] = expected[index];
+    const branch = branches[index];
+    if (
+      !isObject(branch) ||
+      branch.branchId !== branchId ||
+      branch.conditionExpression !== conditionExpression ||
+      branch.readinessStatus !== readinessStatus ||
+      !hasRequiredString(branch.outputExpression) ||
+      !sourceLocatorLooksValid(branch.sourceLocator, 113) ||
+      branch.sourceLocator.figure !== "2.14"
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateUtilizationFormulaCandidates(candidates) {
+  const expected = [
+    ["MC001_R5_FIGURE_2_14_GAMMA_H_BALANCE_RATIO", "verified_for_future_runtime", 113],
+    ["MC001_R5_FIGURE_2_14_ETA_H_POSITIVE_GAMMA_NOT_ONE", "verified_for_future_runtime", 113],
+    ["MC001_R5_FIGURE_2_14_ETA_H_GAMMA_EQUALS_ONE", "verified_for_future_runtime", 113],
+    ["MC001_R5_FIGURE_2_14_ETA_H_NON_POSITIVE_GAMMA_POSITIVE_GAINS", "needs_human_visual_review", 113],
+    ["MC001_R5_FIGURE_2_14_ETA_H_NEGATIVE_GAMMA_NON_POSITIVE_GAINS", "verified_for_future_runtime", 113],
+    ["MC001_R5_RELATION_2_55_A_H_PARAMETER", "verified_for_future_runtime", 113],
+    ["MC001_R5_RELATION_2_57_TAU_H_TIME_CONSTANT", "verified_for_future_runtime", 116],
+    ["MC001_R5_TABLES_2_19_2_20_EFFECTIVE_CAPACITY_DEPENDENCY", "referenced_but_not_transcribed", 112],
+    ["MC001_R5_FIGURE_2_18_FIRST_BRANCH_REVIEW", "blocked_due_to_ambiguous_figure", 120]
+  ];
+  if (!Array.isArray(candidates) || candidates.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [candidateCode, readinessStatus, page] = expected[index];
+    const candidate = candidates[index];
+    if (
+      !isObject(candidate) ||
+      candidate.candidateCode !== candidateCode ||
+      candidate.readinessStatus !== readinessStatus ||
+      !hasRequiredString(candidate.expressionText) ||
+      !hasRequiredString(candidate.sourceReference) ||
+      !sourceLocatorLooksValid(candidate.sourceLocator, page) ||
+      ![
+        "verified_for_future_runtime",
+        "needs_human_visual_review",
+        "blocked_due_to_ambiguous_figure",
+        "referenced_but_not_transcribed"
+      ].includes(candidate.readinessStatus) ||
+      Object.hasOwn(candidate, "entryType") ||
+      Object.hasOwn(candidate, "formulaCode")
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateFigure218AmbiguityReview(review) {
+  return (
+    isObject(review) &&
+    review.observedConditionText ===
+      "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0 != 1" &&
+    arraysMatchExactly(review.reviewedAgainst, [
+      "MC001-2022 page 120 figure 2.18",
+      "MC001-2022 page 113 figure 2.14"
+    ]) &&
+    review.ambiguityType === "visual_or_logical_notation_ambiguity" &&
+    review.reviewStatus === "unresolved" &&
+    review.resolutionDecision === "do_not_infer_intended_meaning" &&
+    review.runtimeImpact === "blocks_heating_QH;nd_runtime_branch_implementation" &&
+    sourceLocatorLooksValid(review.sourceLocator, 120) &&
+    review.sourceLocator.figure === "2.18"
+  );
+}
+
+function validateHeatingQhndReadiness(readiness) {
+  return (
+    isObject(readiness) &&
+    readiness.canImplementHeatingOnlyRuntime === false &&
+    readiness.qhHtMonthlyHeatTransferInput === "explicit_input_or_C5_transfer_chain_required" &&
+    readiness.qhGnMonthlyHeatGainsInput === "explicit_input_required_until_gains_are_source_packed" &&
+    readiness.gammaHFormula === "verified_for_future_runtime" &&
+    readiness.etaHGnFormula === "partially_verified_with_zero_edge_review_needed" &&
+    readiness.figure218BranchConditions === "blocked_due_to_ambiguous_first_branch" &&
+    readiness.qhndFormula === "not_implemented" &&
+    readiness.annualAggregation === "not_implemented" &&
+    readiness.nextRecommendation ===
+      "C6D_continue_source_extraction_for_figure_2.18_ambiguity_effective_capacity_and_gains"
+  );
+}
+
+function validateUtilizationDependencyMatrix(matrix) {
+  if (!isObject(matrix)) {
+    return false;
+  }
+  return (
+    matrix.c5ExplicitTransferTotal?.status === "implemented" &&
+    matrix.qhHtMonthlyInput?.status === "explicit_input_only_or_C5_chain" &&
+    matrix.internalGains?.status === "missing_or_explicit_input_only" &&
+    matrix.solarGains?.status === "missing_or_explicit_input_only" &&
+    matrix.totalGainsQhGn?.status === "missing_or_explicit_input_only" &&
+    matrix.gammaH?.status === "verified_for_future_runtime" &&
+    matrix.etaHGn?.status === "partially_verified_needs_zero_edge_review" &&
+    matrix.effectiveCapacityAndTimeConstant?.status === "referenced_but_not_runtime_ready" &&
+    matrix.figure218BranchLogic?.status === "blocked_due_to_ambiguous_first_branch" &&
+    matrix.qhndRuntime?.status === "not_implemented" &&
+    matrix.annualQhndAggregation?.status === "not_implemented" &&
+    matrix.final_energy?.status === "blocked" &&
+    matrix.primary_energy?.status === "blocked" &&
+    matrix.co2?.status === "blocked" &&
+    matrix.cpeCertificate?.status === "blocked"
+  );
+}
+
+function validateUtilizationBlockers(blockers) {
+  return arraysMatchExactly(blockers, [
+    "not_runtime_QH;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "gains_not_implemented",
+    "no_hidden_defaults",
+    "no_normative_default_gains",
+    "no_normative_default_capacity",
+    "no_default_schedules",
+    "intermittency_and_unoccupied_periods_not_implemented",
+    "figure_2.18_first_branch_unresolved",
+    "figure_2.14_zero_edge_needs_review"
+  ]);
+}
+
 function sourcePackBaseIssue(
   sourcePack,
   verificationStatus,
@@ -2505,6 +3166,59 @@ function figure218HeatingSourcePackIssue(sourcePack) {
   return null;
 }
 
+function utilizationHeatingSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateUtilizationHeatingSourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateUtilizationHeatingConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateUtilizationHeatingSourceIdentity(sourcePack.sourceIdentity)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateUtilizationHeatingSymbols(sourcePack.heatingUtilizationSymbols)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateUtilizationBranchConditions(sourcePack.utilizationBranchConditions)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateUtilizationFormulaCandidates(sourcePack.formulaCandidates)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateFigure218AmbiguityReview(sourcePack.figure218AmbiguityReview)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingQhndReadiness(sourcePack.heatingQhndReadiness)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateUtilizationDependencyMatrix(sourcePack.dependencyMatrix)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateUtilizationBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== true ||
+    sourcePack.runtimeCalculatorStatus !== "not_implemented" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -2523,6 +3237,9 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE) {
     return figure218HeatingSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE) {
+    return utilizationHeatingSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
