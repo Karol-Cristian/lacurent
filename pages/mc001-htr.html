@@ -57,7 +57,7 @@ QHnd, energie finala, energie primara, CO2 sau raport oficial.
 </div>
 <p class="section-description">Completeaza valori sintetice pentru smoke test. Nu sunt valori implicite normative MC001.</p>
 <div class="hero-buttons">
-<button class="secondary-btn" type="button" id="smokePresetBtn">Completeaza exemplu C2 smoke</button>
+<button class="secondary-btn" type="button" id="smokePresetBtn">Completeaza exemplu smoke transmisie</button>
 </div>
 
 <div class="form-grid">
@@ -228,6 +228,57 @@ fluxul metodologic complet este stabilit. Nu este CPE, certificat, QHnd, energie
 </div>
 </fieldset>
 
+<div class="section-heading">
+<span class="small-label">ENERGIE LUNARA TRANSMISIE C3</span>
+<h2>Energie de transmisie explicita pe perioada</h2>
+</div>
+<p class="section-description">
+C3 calculeaza energie de transmisie explicita din Htr, temperaturi si durata. Nu este QHnd si nu este energie finala.
+</p>
+
+<fieldset>
+<legend>C3 caz lunar explicit - relatia 2.14 integrata</legend>
+<div class="form-grid">
+<div><label for="monthlyCaseId">case_id</label><input id="monthlyCaseId" placeholder="jan-heating"></div>
+<div>
+<label for="monthlyMonth">month</label>
+<select id="monthlyMonth">
+<option value="">Alege luna</option>
+<option value="january">january</option>
+<option value="february">february</option>
+<option value="march">march</option>
+<option value="april">april</option>
+<option value="may">may</option>
+<option value="june">june</option>
+<option value="july">july</option>
+<option value="august">august</option>
+<option value="september">september</option>
+<option value="october">october</option>
+<option value="november">november</option>
+<option value="december">december</option>
+</select>
+</div>
+<div>
+<label for="monthlyCalculationMode">calculation_mode</label>
+<select id="monthlyCalculationMode">
+<option value="">Alege modul</option>
+<option value="heating">heating</option>
+<option value="cooling">cooling</option>
+<option value="explicit_signed">explicit_signed</option>
+</select>
+</div>
+<div><label for="monthlyHtr">htr_w_k</label><input id="monthlyHtr" type="number" min="0" step="0.001"></div>
+<div><label for="monthlyThetaI">theta_i_c</label><input id="monthlyThetaI" type="number" step="0.1"></div>
+<div><label for="monthlyThetaE">theta_e_c</label><input id="monthlyThetaE" type="number" step="0.1"></div>
+<div><label for="monthlyDuration">duration_h</label><input id="monthlyDuration" type="number" min="0" step="0.001"></div>
+<div><label for="monthlySource">source.reference</label><input id="monthlySource" value="manual_mvp_input"></div>
+<div>
+<label for="monthlyUseC2Htr">Foloseste Htr integrat C2 2.15</label>
+<input id="monthlyUseC2Htr" type="checkbox">
+</div>
+</div>
+</fieldset>
+
 <div class="wizard-buttons">
 <button class="primary-btn" type="submit">Calculeaza Htr</button>
 </div>
@@ -287,6 +338,11 @@ fluxul metodologic complet este stabilit. Nu este CPE, certificat, QHnd, energie
 <h2>Transmisie explicita integrata</h2>
 </div>
 <div id="integratedResultsList" class="recommendation-list"></div>
+<div class="section-heading">
+<span class="small-label">ENERGIE TRANSMISIE C3</span>
+<h2>Rezultate lunare explicite</h2>
+</div>
+<div id="monthlyTransmissionResultsList" class="recommendation-list"></div>
 <div class="section-heading">
 <span class="small-label">DIAGNOSTICE</span>
 <h2>Blocaje si domenii lipsa</h2>
