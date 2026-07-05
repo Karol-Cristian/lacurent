@@ -271,6 +271,22 @@ document.addEventListener("DOMContentLoaded", () => {
     setInputValue("monthlySource", DEFAULT_SOURCE_REFERENCE);
     setCheckboxValue("monthlyUseC2Htr", false);
 
+    setInputValue("ventilationCaseId", "jan-ventilation");
+    setInputValue("ventilationMonth", "january");
+    setInputValue("ventilationCalculationMode", "heating");
+    setInputValue("ventilationAirHeatCapacity", "1200");
+    setInputValue("ventilationAirHeatSource", DEFAULT_SOURCE_REFERENCE);
+    setInputValue("ventilationComponentId", "infiltration-1");
+    setInputValue("ventilationComponentLabel", "Infiltration");
+    setInputValue("ventilationAirFlowRate", "0.05");
+    setInputValue("ventilationTemperatureFactor", "1");
+    setInputValue("ventilationDynamicFactor", "1");
+    setInputValue("ventilationComponentSource", DEFAULT_SOURCE_REFERENCE);
+    setInputValue("ventilationThetaI", "20");
+    setInputValue("ventilationThetaE", "0");
+    setInputValue("ventilationDuration", "744");
+    setInputValue("ventilationCaseSource", DEFAULT_SOURCE_REFERENCE);
+
     setMessage(
       runMessage,
       "Exemplul sintetic smoke transmisie a fost completat. Verifica valorile si apasa Calculeaza Htr."
@@ -579,6 +595,70 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function collectVentilationTransferInput() {
+    const hasVentilation = hasAnyValue([
+      "ventilationCaseId",
+      "ventilationMonth",
+      "ventilationCalculationMode",
+      "ventilationAirHeatCapacity",
+      "ventilationComponentId",
+      "ventilationComponentLabel",
+      "ventilationAirFlowRate",
+      "ventilationTemperatureFactor",
+      "ventilationDynamicFactor",
+      "ventilationThetaI",
+      "ventilationThetaE",
+      "ventilationDuration"
+    ]);
+    if (!hasVentilation) return null;
+
+    const caseId = inputValue("ventilationCaseId");
+    const month = inputValue("ventilationMonth");
+    const calculationMode = inputValue("ventilationCalculationMode");
+    const componentId = inputValue("ventilationComponentId");
+    const label = inputValue("ventilationComponentLabel");
+    if (!safeShortCode(caseId, 64)) throw new Error("C4 ventilare: case_id este invalid.");
+    if (!MONTHS.includes(month)) throw new Error("C4 ventilare: month trebuie ales din lista.");
+    if (!MONTHLY_CALCULATION_MODES.includes(calculationMode)) {
+      throw new Error("C4 ventilare: calculation_mode trebuie ales din lista.");
+    }
+    if (!safeShortCode(componentId, 64)) {
+      throw new Error("C4 ventilare: component_id este invalid.");
+    }
+    if (!safeLabel(label)) throw new Error("C4 ventilare: label este invalid.");
+
+    return {
+      mode: "explicit_monthly_ventilation_transfer_v1",
+      cases: [{
+        case_id: caseId,
+        month,
+        calculation_mode: calculationMode,
+        air_heat_capacity_j_m3k: {
+          value: positiveNumber("ventilationAirHeatCapacity", "C4 ventilare: air_heat_capacity_j_m3k"),
+          source: explicitSource("ventilationAirHeatSource", "C4 ventilare aer")
+        },
+        components: [{
+          component_id: componentId,
+          label: label || null,
+          air_flow_rate_m3_s: nonNegativeNumber("ventilationAirFlowRate", "C4 ventilare: air_flow_rate_m3_s"),
+          temperature_correction_factor: nonNegativeNumber(
+            "ventilationTemperatureFactor",
+            "C4 ventilare: temperature_correction_factor"
+          ),
+          dynamic_correction_factor: nonNegativeNumber(
+            "ventilationDynamicFactor",
+            "C4 ventilare: dynamic_correction_factor"
+          ),
+          source: explicitSource("ventilationComponentSource", "C4 ventilare componenta")
+        }],
+        theta_i_c: anyFiniteNumber("ventilationThetaI", "C4 ventilare: theta_i_c"),
+        theta_e_c: anyFiniteNumber("ventilationThetaE", "C4 ventilare: theta_e_c"),
+        duration_h: positiveNumber("ventilationDuration", "C4 ventilare: duration_h"),
+        source: explicitSource("ventilationCaseSource", "C4 ventilare caz")
+      }]
+    };
+  }
+
   function buildRunPayload() {
     const rows = [...componentRows.querySelectorAll("[data-component-row]")];
     if (!rows.length) throw new Error("Adauga cel putin un element de anvelopa.");
@@ -621,6 +701,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const monthlyTransmissionEnergyInput = collectMonthlyTransmissionEnergyInput();
     if (monthlyTransmissionEnergyInput) {
       htrInput.monthly_transmission_energy_input = monthlyTransmissionEnergyInput;
+    }
+    const ventilationTransferInput = collectVentilationTransferInput();
+    if (ventilationTransferInput) {
+      htrInput.ventilation_transfer_input = ventilationTransferInput;
     }
 
     return {
@@ -683,6 +767,15 @@ document.addEventListener("DOMContentLoaded", () => {
         "C3 energie transmisie lunara",
         `${c3Input.cases?.length || 0} caz explicit`,
         c3Input.htr_source ? `htr_source=${c3Input.htr_source}` : "htr_w_k explicit"
+      );
+    }
+    const c4Input = input.ventilation_transfer_input;
+    if (c4Input) {
+      appendArticle(
+        list,
+        "C4 ventilare explicita",
+        `${c4Input.cases?.length || 0} caz explicit`,
+        "debit, temperatura si durata explicite"
       );
     }
   }
@@ -761,6 +854,77 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function renderVentilationTransferResult(list, ventilation) {
+    if (!ventilation) {
+      appendArticle(
+        list,
+        "Fara rezultat C4",
+        "Nu a fost transmis input explicit pentru transferul prin ventilare."
+      );
+      return;
+    }
+    (ventilation.caseResults || []).forEach(item => {
+      appendArticle(
+        list,
+        `C4 ${item.caseId || item.month || "caz"}`,
+        `Hve=${item.ventilationHeatTransferCoefficient?.amount ?? "--"} ${item.ventilationHeatTransferCoefficient?.unit || "W/K"}; Phi=${item.heatFlow?.amount ?? "--"} ${item.heatFlow?.unit || "W"}; Q=${item.ventilationEnergy?.amount ?? "--"} ${item.ventilationEnergy?.unit || "kWh"}`,
+        `${item.month || ""} ${item.calculationMode || ""}`.trim()
+      );
+    });
+    const summary = ventilation.summary || {};
+    appendArticle(
+      list,
+      "C4 anual semnat",
+      `${summary.annualSignedVentilationEnergy?.amount ?? "--"} ${summary.annualSignedVentilationEnergy?.unit || "kWh"}`,
+      `caseCount=${summary.caseCount ?? "--"}`
+    );
+    appendArticle(
+      list,
+      "C4 incalzire pozitiva",
+      `${summary.annualPositiveHeatingVentilationEnergy?.amount ?? "--"} ${summary.annualPositiveHeatingVentilationEnergy?.unit || "kWh"}`
+    );
+    appendArticle(
+      list,
+      "C4 directie racire",
+      `${summary.annualCoolingDirectionVentilationEnergy?.amount ?? "--"} ${summary.annualCoolingDirectionVentilationEnergy?.unit || "kWh"}`
+    );
+    (ventilation.diagnostics?.methodologyLimits || []).forEach(code => {
+      appendArticle(list, "Limita metodologica C4", code, "explicit-input only");
+    });
+  }
+
+  function renderExplicitHeatTransferSummary(list, summary) {
+    if (!summary) {
+      appendArticle(
+        list,
+        "Fara sumar combinat",
+        "Sumarul apare numai cand C3 transmisie si C4 ventilare sunt ambele calculate explicit."
+      );
+      return;
+    }
+    appendArticle(
+      list,
+      "Transmisie explicita",
+      `${summary.transmissionEnergyKWh?.amount ?? "--"} ${summary.transmissionEnergyKWh?.unit || "kWh"}`,
+      "C3, semnat"
+    );
+    appendArticle(
+      list,
+      "Ventilare explicita",
+      `${summary.ventilationEnergyKWh?.amount ?? "--"} ${summary.ventilationEnergyKWh?.unit || "kWh"}`,
+      "C4, semnat"
+    );
+    appendArticle(
+      list,
+      "Transmisie + ventilare",
+      `${summary.combinedTransmissionAndVentilationKWh?.amount ?? "--"} ${summary.combinedTransmissionAndVentilationKWh?.unit || "kWh"}`,
+      summary.scope || "explicit only, not QHnd"
+    );
+    (summary.diagnostics?.methodologyLimits || []).forEach(code => {
+      appendArticle(list, "Limita sumar explicit", code, "not QHnd");
+    });
+  }
+
   function renderResult(payload) {
     const panel = document.getElementById("resultPanel");
     const result = payload?.mc001_htr || {};
@@ -814,6 +978,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const monthlyResults = clearList("monthlyTransmissionResultsList");
     renderMonthlyTransmissionResult(monthlyResults, result.monthlyTransmissionEnergyResult);
+
+    const ventilationResults = clearList("ventilationResultsList");
+    renderVentilationTransferResult(ventilationResults, result.ventilationTransferResult);
+
+    const explicitSummary = clearList("explicitHeatTransferSummaryList");
+    renderExplicitHeatTransferSummary(explicitSummary, result.explicitHeatTransferSummary);
 
     const diagnostics = clearList("diagnosticsList");
     (result.diagnostics?.blockers || []).forEach(blocker => {
