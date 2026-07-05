@@ -4,6 +4,7 @@ import { classifyEstimatedEnergyClass as classifyEstimatedEnergyClassFromRegistr
 import { getCo2Factor, getPrimaryEnergyFactor } from "../src/features/energy/physics/calculators/referenceValues.mjs";
 import { calculateMc001HtrTotal } from "../src/physics-engine/mc001HtrTotalCalculation.mjs";
 import { calculateMc001IntegratedTransmissionResult } from "../src/physics-engine/mc001IntegratedTransmissionCalculation.mjs";
+import { calculateMc001MonthlyTransmissionEnergyExplicit } from "../src/physics-engine/mc001MonthlyTransmissionEnergyCalculation.mjs";
 import {
   calculateMc001DirectTransmissionCoefficient,
   calculateMc001GlobalTransmissionExcludingGround,
@@ -1805,6 +1806,16 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "integratedTransmissionResult",
     "transmissionExcludingGround",
     "htrTotal215",
+    "monthlyTransmissionEnergyResult",
+    "annualSignedTransmissionEnergy",
+    "annualPositiveHeatingTransmissionEnergy",
+    "annualCoolingDirectionTransmissionEnergy",
+    "annualSignedTransmissionEnergyKWh",
+    "annualPositiveHeatingTransmissionEnergyKWh",
+    "annualCoolingDirectionTransmissionEnergyKWh",
+    "caseResults",
+    "transmissionEnergy",
+    "heatFlow",
     "formulaCodes",
     "formulaCode",
     "relationCode",
@@ -2196,6 +2207,102 @@ function sanitizeMc001IntegratedTransmissionInput(input) {
   };
 }
 
+const MC001_MONTHLY_TRANSMISSION_MONTHS = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december"
+];
+const MC001_MONTHLY_TRANSMISSION_MODES = [
+  "heating",
+  "cooling",
+  "explicit_signed"
+];
+
+function sanitizeMc001MonthlyTransmissionEnergyInput(input) {
+  const monthlyInput = input.monthly_transmission_energy_input;
+  if (monthlyInput === undefined || monthlyInput === null) {
+    return { ok: true, value: null };
+  }
+  if (!isPlainObject(monthlyInput)) {
+    return { ok: false, error: "Inputul lunar de transmisie C3 este invalid." };
+  }
+  if (monthlyInput.mode !== "explicit_monthly_transmission_energy_v1") {
+    return { ok: false, error: "Modul de calcul lunar C3 este invalid." };
+  }
+  if (
+    monthlyInput.htr_source !== undefined &&
+    monthlyInput.htr_source !== null &&
+    monthlyInput.htr_source !== "integrated_htr_2_15"
+  ) {
+    return { ok: false, error: "Sursa Htr lunara C3 este invalida." };
+  }
+  if (!Array.isArray(monthlyInput.cases) || monthlyInput.cases.length === 0 || monthlyInput.cases.length > 12) {
+    return { ok: false, error: "Inputul lunar C3 necesita intre 1 si 12 cazuri." };
+  }
+
+  const cases = [];
+  for (const [index, monthlyCase] of monthlyInput.cases.entries()) {
+    if (!isPlainObject(monthlyCase) || !safeShortToken(monthlyCase.case_id, 64)) {
+      return { ok: false, error: `Cazul lunar C3 ${index + 1} are id invalid.` };
+    }
+    if (!MC001_MONTHLY_TRANSMISSION_MONTHS.includes(monthlyCase.month)) {
+      return { ok: false, error: `Cazul lunar C3 ${index + 1} are luna invalida.` };
+    }
+    if (!MC001_MONTHLY_TRANSMISSION_MODES.includes(monthlyCase.calculation_mode)) {
+      return { ok: false, error: `Cazul lunar C3 ${index + 1} are mod de calcul invalid.` };
+    }
+    const htrProvided = monthlyCase.htr_w_k !== undefined && monthlyCase.htr_w_k !== null && monthlyCase.htr_w_k !== "";
+    const htr = htrProvided ? mc001HtrFiniteNumber(monthlyCase.htr_w_k) : null;
+    if (htrProvided && (htr === null || htr < 0)) {
+      return { ok: false, error: "Htr lunar C3 trebuie sa fie finit si pozitiv sau zero." };
+    }
+    if (!htrProvided && monthlyInput.htr_source !== "integrated_htr_2_15") {
+      return { ok: false, error: "Cazul lunar C3 necesita htr_w_k explicit sau htr_source integrat." };
+    }
+    const indoor = mc001HtrFiniteNumber(monthlyCase.theta_i_c);
+    const outdoor = mc001HtrFiniteNumber(monthlyCase.theta_e_c);
+    const duration = mc001HtrFiniteNumber(monthlyCase.duration_h);
+    if (indoor === null || outdoor === null || duration === null || duration <= 0) {
+      return { ok: false, error: "Cazul lunar C3 are temperatura sau durata invalida." };
+    }
+    const sourceIssue = mc001HtrSourceIssue(monthlyCase.source);
+    if (sourceIssue) return { ok: false, error: sourceIssue };
+    cases.push({
+      case_id: monthlyCase.case_id,
+      month: monthlyCase.month,
+      calculation_mode: monthlyCase.calculation_mode,
+      ...(htrProvided ? { htr_w_k: htr } : {}),
+      theta_i_c: indoor,
+      theta_e_c: outdoor,
+      duration_h: duration,
+      source: {
+        source_type: "explicit_user_input",
+        reference: monthlyCase.source.reference
+      }
+    });
+  }
+
+  return {
+    ok: true,
+    value: {
+      mode: "explicit_monthly_transmission_energy_v1",
+      ...(monthlyInput.htr_source === "integrated_htr_2_15"
+        ? { htr_source: "integrated_htr_2_15" }
+        : {}),
+      cases
+    }
+  };
+}
+
 function sanitizeMc001HtrInput(body = {}) {
   const input = body?.htr_input;
   if (!isPlainObject(input)) {
@@ -2305,6 +2412,10 @@ function sanitizeMc001HtrInput(body = {}) {
   if (!integratedTransmissionInput.ok) {
     return { ok: false, error: integratedTransmissionInput.error };
   }
+  const monthlyTransmissionEnergyInput = sanitizeMc001MonthlyTransmissionEnergyInput(input);
+  if (!monthlyTransmissionEnergyInput.ok) {
+    return { ok: false, error: monthlyTransmissionEnergyInput.error };
+  }
 
   return {
     ok: true,
@@ -2318,6 +2429,9 @@ function sanitizeMc001HtrInput(body = {}) {
           : {}),
         ...(integratedTransmissionInput.value
           ? { integrated_transmission_input: integratedTransmissionInput.value }
+          : {}),
+        ...(monthlyTransmissionEnergyInput.value
+          ? { monthly_transmission_energy_input: monthlyTransmissionEnergyInput.value }
           : {})
       }
     }
@@ -2746,6 +2860,48 @@ function buildMc001IntegratedTransmissionResult(integratedInput) {
   return { ok: true, value: result };
 }
 
+function buildMc001MonthlyTransmissionCalculatorInput(monthlyInput, integratedTransmissionResult) {
+  const integratedHtr = integratedTransmissionResult?.results?.htrTotal215?.result?.amount;
+  return {
+    mode: "explicit_monthly_transmission_energy_v1",
+    cases: monthlyInput.cases.map((monthlyCase) => {
+      const htr = Object.prototype.hasOwnProperty.call(monthlyCase, "htr_w_k")
+        ? monthlyCase.htr_w_k
+        : integratedHtr;
+      return {
+        caseId: monthlyCase.case_id,
+        month: monthlyCase.month,
+        calculationMode: monthlyCase.calculation_mode,
+        htr: { amount: htr, unit: "W/K" },
+        indoorTemperature: { amount: monthlyCase.theta_i_c, unit: "degC" },
+        outdoorTemperature: { amount: monthlyCase.theta_e_c, unit: "degC" },
+        duration: { amount: monthlyCase.duration_h, unit: "h" },
+        source: mc001HtrFormulaSource(monthlyCase.source)
+      };
+    })
+  };
+}
+
+function buildMc001MonthlyTransmissionEnergyResult(monthlyInput, integratedTransmissionResult) {
+  if (!monthlyInput) return { ok: true, value: null };
+  const needsIntegratedHtr = monthlyInput.cases.some((monthlyCase) => (
+    !Object.prototype.hasOwnProperty.call(monthlyCase, "htr_w_k")
+  ));
+  if (needsIntegratedHtr && monthlyInput.htr_source !== "integrated_htr_2_15") {
+    return { ok: false, error: "Inputul lunar C3 are nevoie de Htr explicit." };
+  }
+  if (needsIntegratedHtr && integratedTransmissionResult?.status !== "ready") {
+    return { ok: false, error: "Inputul lunar C3 necesita rezultatul integrat C2." };
+  }
+  const result = calculateMc001MonthlyTransmissionEnergyExplicit(
+    buildMc001MonthlyTransmissionCalculatorInput(monthlyInput, integratedTransmissionResult)
+  );
+  if (result?.status !== "ready") {
+    return { ok: false, error: "Inputul lunar de transmisie C3 este invalid." };
+  }
+  return { ok: true, value: result };
+}
+
 function parseMc001HtrStoredJson(text, fallback) {
   try {
     return JSON.parse(text);
@@ -2921,6 +3077,19 @@ async function handleMc001HtrRun(request, env, corsHeaders) {
     }
     if (integratedTransmissionResult.value) {
       mc001Htr.integratedTransmissionResult = integratedTransmissionResult.value;
+    }
+    const monthlyTransmissionEnergyResult = buildMc001MonthlyTransmissionEnergyResult(
+      validation.input.htr_input.monthly_transmission_energy_input,
+      integratedTransmissionResult.value
+    );
+    if (!monthlyTransmissionEnergyResult.ok) {
+      return jsonResponse(
+        { success: false, error: monthlyTransmissionEnergyResult.error },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    if (monthlyTransmissionEnergyResult.value) {
+      mc001Htr.monthlyTransmissionEnergyResult = monthlyTransmissionEnergyResult.value;
     }
     const houseId = ownership?.houseId ?? null;
     const analysisId = await saveMc001HtrAnalysis(

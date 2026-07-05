@@ -7,6 +7,25 @@ document.addEventListener("DOMContentLoaded", () => {
     "door",
     "other_envelope_component"
   ];
+  const MONTHS = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december"
+  ];
+  const MONTHLY_CALCULATION_MODES = [
+    "heating",
+    "cooling",
+    "explicit_signed"
+  ];
 
   const DEFAULT_SOURCE_REFERENCE = "manual_mvp_input";
   const HTR_SCOPE = "htr_transmission_only_not_full_mc001_certificate";
@@ -242,9 +261,19 @@ document.addEventListener("DOMContentLoaded", () => {
     setInputValue("c2Ha", "1");
     setInputValue("c2HaSource", DEFAULT_SOURCE_REFERENCE);
 
+    setInputValue("monthlyCaseId", "jan-heating");
+    setInputValue("monthlyMonth", "january");
+    setInputValue("monthlyCalculationMode", "heating");
+    setInputValue("monthlyHtr", "9");
+    setInputValue("monthlyThetaI", "20");
+    setInputValue("monthlyThetaE", "0");
+    setInputValue("monthlyDuration", "744");
+    setInputValue("monthlySource", DEFAULT_SOURCE_REFERENCE);
+    setCheckboxValue("monthlyUseC2Htr", false);
+
     setMessage(
       runMessage,
-      "Exemplul sintetic C2 smoke a fost completat. Verifica valorile si apasa Calculeaza Htr."
+      "Exemplul sintetic smoke transmisie a fost completat. Verifica valorile si apasa Calculeaza Htr."
     );
   }
 
@@ -504,6 +533,52 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function collectMonthlyTransmissionEnergyInput() {
+    const hasMonthly = hasAnyValue([
+      "monthlyCaseId",
+      "monthlyMonth",
+      "monthlyCalculationMode",
+      "monthlyHtr",
+      "monthlyThetaI",
+      "monthlyThetaE",
+      "monthlyDuration"
+    ]) || isChecked("monthlyUseC2Htr");
+    if (!hasMonthly) return null;
+
+    const caseId = inputValue("monthlyCaseId");
+    const month = inputValue("monthlyMonth");
+    const calculationMode = inputValue("monthlyCalculationMode");
+    if (!safeShortCode(caseId, 64)) throw new Error("C3 lunar: case_id este invalid.");
+    if (!MONTHS.includes(month)) throw new Error("C3 lunar: month trebuie ales din lista.");
+    if (!MONTHLY_CALCULATION_MODES.includes(calculationMode)) {
+      throw new Error("C3 lunar: calculation_mode trebuie ales din lista.");
+    }
+    const useIntegratedHtr = isChecked("monthlyUseC2Htr");
+    const htrValue = finiteNumber(inputValue("monthlyHtr"));
+    if (!useIntegratedHtr && (htrValue === null || htrValue < 0)) {
+      throw new Error("C3 lunar: htr_w_k trebuie sa fie finit si pozitiv sau zero.");
+    }
+    const monthlyCase = {
+      case_id: caseId,
+      month,
+      calculation_mode: calculationMode,
+      theta_i_c: anyFiniteNumber("monthlyThetaI", "C3 lunar: theta_i_c"),
+      theta_e_c: anyFiniteNumber("monthlyThetaE", "C3 lunar: theta_e_c"),
+      duration_h: positiveNumber("monthlyDuration", "C3 lunar: duration_h"),
+      source: explicitSource("monthlySource", "C3 lunar")
+    };
+    if (htrValue !== null) {
+      if (htrValue < 0) throw new Error("C3 lunar: htr_w_k trebuie sa fie pozitiv sau zero.");
+      monthlyCase.htr_w_k = htrValue;
+    }
+
+    return {
+      mode: "explicit_monthly_transmission_energy_v1",
+      ...(useIntegratedHtr ? { htr_source: "integrated_htr_2_15" } : {}),
+      cases: [monthlyCase]
+    };
+  }
+
   function buildRunPayload() {
     const rows = [...componentRows.querySelectorAll("[data-component-row]")];
     if (!rows.length) throw new Error("Adauga cel putin un element de anvelopa.");
@@ -542,6 +617,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const integratedTransmissionInput = collectIntegratedTransmissionInput();
     if (integratedTransmissionInput) {
       htrInput.integrated_transmission_input = integratedTransmissionInput;
+    }
+    const monthlyTransmissionEnergyInput = collectMonthlyTransmissionEnergyInput();
+    if (monthlyTransmissionEnergyInput) {
+      htrInput.monthly_transmission_energy_input = monthlyTransmissionEnergyInput;
     }
 
     return {
@@ -597,6 +676,15 @@ document.addEventListener("DOMContentLoaded", () => {
         "input explicit pentru rezultat integrat"
       );
     }
+    const c3Input = input.monthly_transmission_energy_input;
+    if (c3Input) {
+      appendArticle(
+        list,
+        "C3 energie transmisie lunara",
+        `${c3Input.cases?.length || 0} caz explicit`,
+        c3Input.htr_source ? `htr_source=${c3Input.htr_source}` : "htr_w_k explicit"
+      );
+    }
   }
 
   function renderFormulaResult(list, title, result, meta = "") {
@@ -631,6 +719,45 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     (integrated.diagnostics?.methodologyLimits || []).forEach(code => {
       appendArticle(list, "Limita metodologica C2", code, "explicit-input only");
+    });
+  }
+
+  function renderMonthlyTransmissionResult(list, monthly) {
+    if (!monthly) {
+      appendArticle(
+        list,
+        "Fara rezultat C3",
+        "Nu a fost transmis input explicit pentru energia lunara de transmisie."
+      );
+      return;
+    }
+    (monthly.caseResults || []).forEach(item => {
+      appendArticle(
+        list,
+        `C3 ${item.caseId || item.month || "caz"}`,
+        `Phi=${item.heatFlow?.amount ?? "--"} ${item.heatFlow?.unit || "W"}; Q=${item.transmissionEnergy?.amount ?? "--"} ${item.transmissionEnergy?.unit || "kWh"}`,
+        `${item.month || ""} ${item.calculationMode || ""}`.trim()
+      );
+    });
+    const summary = monthly.summary || {};
+    appendArticle(
+      list,
+      "C3 anual semnat",
+      `${summary.annualSignedTransmissionEnergy?.amount ?? "--"} ${summary.annualSignedTransmissionEnergy?.unit || "kWh"}`,
+      `caseCount=${summary.caseCount ?? "--"}`
+    );
+    appendArticle(
+      list,
+      "C3 incalzire pozitiva",
+      `${summary.annualPositiveHeatingTransmissionEnergy?.amount ?? "--"} ${summary.annualPositiveHeatingTransmissionEnergy?.unit || "kWh"}`
+    );
+    appendArticle(
+      list,
+      "C3 directie racire",
+      `${summary.annualCoolingDirectionTransmissionEnergy?.amount ?? "--"} ${summary.annualCoolingDirectionTransmissionEnergy?.unit || "kWh"}`
+    );
+    (monthly.diagnostics?.methodologyLimits || []).forEach(code => {
+      appendArticle(list, "Limita metodologica C3", code, "explicit-input only");
     });
   }
 
@@ -685,12 +812,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const integratedResults = clearList("integratedResultsList");
     renderIntegratedTransmissionResult(integratedResults, result.integratedTransmissionResult);
 
+    const monthlyResults = clearList("monthlyTransmissionResultsList");
+    renderMonthlyTransmissionResult(monthlyResults, result.monthlyTransmissionEnergyResult);
+
     const diagnostics = clearList("diagnosticsList");
     (result.diagnostics?.blockers || []).forEach(blocker => {
       appendArticle(diagnostics, blocker.code, "Blocaj Htr", blocker.severity);
     });
     (result.diagnostics?.missingForNextMethodologyScope || []).forEach(item => {
-      appendArticle(diagnostics, item.code, "Domeniu metodologic neimplementat in acest MVP.", item.severity);
+      const code = typeof item === "string" ? item : item.code;
+      const severity = typeof item === "string" ? "blocking" : item.severity;
+      appendArticle(diagnostics, code, "Domeniu metodologic neimplementat in acest MVP.", severity);
     });
     if (diagnostics && !diagnostics.children.length) {
       appendArticle(diagnostics, "Fara blocaje", "Htr a fost calculat pentru inputul transmis.");

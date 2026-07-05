@@ -332,6 +332,57 @@ function c2IntegratedPayload(overrides = {}) {
   });
 }
 
+function c3MonthlyPayload(overrides = {}) {
+  return validPayload({
+    htr_input: {
+      ...validPayload().htr_input,
+      monthly_transmission_energy_input: {
+        mode: "explicit_monthly_transmission_energy_v1",
+        cases: [
+          {
+            case_id: "jan-heating",
+            month: "january",
+            calculation_mode: "heating",
+            htr_w_k: 9,
+            theta_i_c: 20,
+            theta_e_c: 0,
+            duration_h: 744,
+            source: {
+              source_type: "explicit_user_input",
+              reference: "manual_mvp_input"
+            }
+          }
+        ],
+        ...overrides
+      }
+    }
+  });
+}
+
+function c2AndC3MonthlyPayload(monthlyOverrides = {}) {
+  const payload = c2IntegratedPayload();
+  payload.htr_input.monthly_transmission_energy_input = {
+    mode: "explicit_monthly_transmission_energy_v1",
+    cases: [
+      {
+        case_id: "jan-heating",
+        month: "january",
+        calculation_mode: "heating",
+        theta_i_c: 20,
+        theta_e_c: 0,
+        duration_h: 744,
+        source: {
+          source_type: "explicit_user_input",
+          reference: "manual_mvp_input"
+        }
+      }
+    ],
+    htr_source: "integrated_htr_2_15",
+    ...monthlyOverrides
+  };
+  return payload;
+}
+
 async function post(path, db, body, token = "test-token") {
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -686,6 +737,103 @@ await test("C2 does not mutate existing V2 H12 total result", async () => {
   assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
 });
 
+await test("C3 monthly payload returns January heat flow and energy", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3MonthlyPayload());
+  const c3 = result.body.mc001_htr.monthlyTransmissionEnergyResult;
+  assert.equal(result.status, 200);
+  assert.equal(c3.status, "ready");
+  assert.equal(c3.caseResults[0].heatFlow.amount, 180);
+  assert.equal(c3.caseResults[0].transmissionEnergy.amount, 133.92);
+  assert.equal(c3.scope, "monthly_transmission_energy_explicit_input_only_not_QHnd");
+});
+
+await test("C3 monthly result persists and reloads", async () => {
+  const db = new FakeDb();
+  await post("/api/mc001/htr/run", db, c3MonthlyPayload());
+  const result = await post("/api/mc001/htr/load", db, { analysis_id: 100 });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.htr_input.monthly_transmission_energy_input.cases.length, 1);
+  assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].heatFlow.amount, 180);
+  assert.equal(
+    result.body.mc001_htr.monthlyTransmissionEnergyResult.summary.annualSignedTransmissionEnergy.amount,
+    133.92
+  );
+});
+
+await test("C3 rejects client-provided monthly transmission result", async () => {
+  const db = new FakeDb();
+  const payload = c3MonthlyPayload();
+  payload.htr_input.monthlyTransmissionEnergyResult = {
+    summary: { annualSignedTransmissionEnergy: { amount: 999, unit: "kWh" } }
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C3 rejects invalid month", async () => {
+  const db = new FakeDb();
+  const payload = c3MonthlyPayload();
+  payload.htr_input.monthly_transmission_energy_input.cases[0].month = "jan";
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C3 rejects missing explicit source", async () => {
+  const db = new FakeDb();
+  const payload = c3MonthlyPayload();
+  delete payload.htr_input.monthly_transmission_energy_input.cases[0].source;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C3 rejects zero duration", async () => {
+  const db = new FakeDb();
+  const payload = c3MonthlyPayload();
+  payload.htr_input.monthly_transmission_energy_input.cases[0].duration_h = 0;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C3 does not mutate V2 C1 or C2 response fields", async () => {
+  const db = new FakeDb();
+  const payload = c2IntegratedPayload();
+  payload.htr_input.transmission_formula_inputs = c1FormulaPayload().htr_input.transmission_formula_inputs;
+  payload.htr_input.monthly_transmission_energy_input = c3MonthlyPayload()
+    .htr_input.monthly_transmission_energy_input;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.directTransmission.result.amount, 3);
+  assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
+  assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].transmissionEnergy.amount, 133.92);
+});
+
+await test("C3 response says not QHnd", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3MonthlyPayload());
+  const serialized = JSON.stringify(result.body.mc001_htr.monthlyTransmissionEnergyResult);
+  assert.equal(serialized.includes("not_QHnd"), true);
+  assert.equal(serialized.includes("monthly_transmission_energy_explicit_input_only_not_QHnd"), true);
+});
+
+await test("C3 can explicitly use C2 Htr 2.15 as monthly Htr source", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c2AndC3MonthlyPayload());
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
+  assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].heatFlow.amount, 180);
+  assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].transmissionEnergy.amount, 133.92);
+});
+
 await test("run endpoint rejects private sentinel content and does not echo it", async () => {
   const db = new FakeDb();
   const payload = validPayload({ label: "person@example.com" });
@@ -731,6 +879,22 @@ await test("C2 response does not expose token session email or private data", as
   }
 });
 
+await test("C3 response does not expose token session email or private data", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3MonthlyPayload());
+  const serialized = JSON.stringify(result.body);
+  for (const forbidden of [
+    "sourceRecordId",
+    "sourceContext",
+    "sourceTrace",
+    "sourceRefs",
+    "test-token",
+    "safe-user.local"
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, `leaked ${forbidden}`);
+  }
+});
+
 await test("C1 response does not expose stack traces or mutate V2 result contract", async () => {
   const db = new FakeDb();
   const result = await post("/api/mc001/htr/run", db, c1FormulaPayload());
@@ -738,6 +902,15 @@ await test("C1 response does not expose stack traces or mutate V2 result contrac
   assert.equal(result.status, 200);
   assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
   assert.equal(Array.isArray(result.body.mc001_htr.calculationTerms), true);
+  assert.equal(serialized.includes("Error:"), false);
+  assert.equal(serialized.includes("at "), false);
+});
+
+await test("C3 response does not expose stack traces", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3MonthlyPayload());
+  const serialized = JSON.stringify(result.body);
+  assert.equal(result.status, 200);
   assert.equal(serialized.includes("Error:"), false);
   assert.equal(serialized.includes("at "), false);
 });
