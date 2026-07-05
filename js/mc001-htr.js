@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const workspace = document.getElementById("htrWorkspace");
   const componentRows = document.getElementById("componentRows");
   const addComponentBtn = document.getElementById("addComponentBtn");
+  const smokePresetBtn = document.getElementById("smokePresetBtn");
   const runForm = document.getElementById("mc001HtrForm");
   const loadForm = document.getElementById("loadForm");
   const runMessage = document.getElementById("runMessage");
@@ -59,6 +60,16 @@ document.addEventListener("DOMContentLoaded", () => {
   function setText(id, value) {
     const element = document.getElementById(id);
     if (element) element.textContent = value ?? "--";
+  }
+
+  function setInputValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.value = value;
+  }
+
+  function setCheckboxValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.checked = Boolean(value);
   }
 
   function clearList(id) {
@@ -143,6 +154,98 @@ document.addEventListener("DOMContentLoaded", () => {
   function addComponentRow() {
     componentRows.append(componentRowTemplate(componentRows.children.length + 1));
     refreshComponentRows();
+  }
+
+  function ensureSingleComponentRow() {
+    componentRows.innerHTML = "";
+    addComponentRow();
+    return componentRows.querySelector("[data-component-row]");
+  }
+
+  function setComponentField(row, name, value) {
+    const field = row?.querySelector(`[name="${name}"]`);
+    if (field) field.value = value;
+  }
+
+  function applyC2SmokePreset() {
+    setInputValue("analysisLabel", "smoke-c2-integrated");
+    setInputValue("houseId", "");
+
+    const row = ensureSingleComponentRow();
+    setComponentField(row, "component_id", "smoke-wall-1");
+    setComponentField(row, "component_type", "external_wall");
+    setComponentField(row, "label", "Smoke wall");
+    setComponentField(row, "area_m2", "10");
+    setComponentField(row, "thermal_transmittance_w_m2k", "0.3");
+    setComponentField(row, "bztu", "1");
+    setComponentField(row, "source_reference", DEFAULT_SOURCE_REFERENCE);
+
+    setInputValue("thermalBridgeValue", "0");
+    setInputValue("groundValue", "0");
+    setInputValue("adjacentValue", "0");
+    setInputValue("nonHuSource", DEFAULT_SOURCE_REFERENCE);
+
+    setInputValue("directElementId", "direct-wall-1");
+    setInputValue("directLabel", "Direct wall");
+    setInputValue("directArea", "10");
+    setInputValue("directCorrectedU", "0.3");
+    setInputValue("directSource", DEFAULT_SOURCE_REFERENCE);
+
+    setInputValue("bridgeId", "bridge-1");
+    setInputValue("bridgeLabel", "Linear bridge");
+    setInputValue("bridgeLength", "5");
+    setInputValue("bridgePsi", "0.1");
+    setInputValue("bridgeSource", DEFAULT_SOURCE_REFERENCE);
+
+    setInputValue("psiCaseId", "psi-case-1");
+    setInputValue("psiLength", "5");
+    setInputValue("psiL2d", "4");
+    setInputValue("psiRefElementId", "ref-wall-1");
+    setInputValue("psiRefArea", "10");
+    setInputValue("psiRefU", "0.3");
+    setInputValue("psiSource", DEFAULT_SOURCE_REFERENCE);
+
+    setInputValue("heatFlowCaseId", "heat-flow-1");
+    setInputValue("heatFlowHtr", "10");
+    setInputValue("heatFlowThetaI", "20");
+    setInputValue("heatFlowThetaE", "0");
+
+    setInputValue("timeCaseId", "time-case-1");
+    setInputValue("timeHtr", "10");
+    setInputValue("timeThetaI", "20");
+    setInputValue("timeThetaE", "0");
+    setInputValue("timeDuration", "24");
+
+    setInputValue("htr215Hd", "7");
+    setInputValue("htr215Hg", "2");
+    setInputValue("htr215Hu", "3");
+    setInputValue("htr215Ha", "1");
+    setInputValue("htr215Source", DEFAULT_SOURCE_REFERENCE);
+
+    setInputValue("c2DirectElementId", "direct-wall-1");
+    setInputValue("c2DirectLabel", "Direct wall");
+    setInputValue("c2DirectArea", "10");
+    setInputValue("c2DirectCorrectedU", "0.3");
+    setInputValue("c2DirectSource", DEFAULT_SOURCE_REFERENCE);
+
+    setInputValue("c2BridgeId", "bridge-1");
+    setInputValue("c2BridgeLabel", "Linear bridge");
+    setInputValue("c2BridgeLength", "5");
+    setInputValue("c2BridgePsi", "0.1");
+    setInputValue("c2BridgeSource", DEFAULT_SOURCE_REFERENCE);
+    setCheckboxValue("c2ExplicitNoThermalBridges", false);
+
+    setInputValue("c2Ground", "2");
+    setInputValue("c2GroundSource", DEFAULT_SOURCE_REFERENCE);
+    setInputValue("c2Hu", "3");
+    setInputValue("c2HuSource", DEFAULT_SOURCE_REFERENCE);
+    setInputValue("c2Ha", "1");
+    setInputValue("c2HaSource", DEFAULT_SOURCE_REFERENCE);
+
+    setMessage(
+      runMessage,
+      "Exemplul sintetic C2 smoke a fost completat. Verifica valorile si apasa Calculeaza Htr."
+    );
   }
 
   function collectComponent(row, index) {
@@ -661,6 +764,7 @@ document.addEventListener("DOMContentLoaded", () => {
     button.closest("[data-component-row]")?.remove();
     refreshComponentRows();
   });
+  smokePresetBtn?.addEventListener("click", applyC2SmokePreset);
   runForm?.addEventListener("submit", runHtr);
   loadForm?.addEventListener("submit", loadHtr);
 
