@@ -52,6 +52,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return ids.some(id => inputValue(id) !== "");
   }
 
+  function isChecked(id) {
+    return Boolean(document.getElementById(id)?.checked);
+  }
+
   function setText(id, value) {
     const element = document.getElementById(id);
     if (element) element.textContent = value ?? "--";
@@ -323,6 +327,80 @@ document.addEventListener("DOMContentLoaded", () => {
     return Object.keys(formulaInputs).length ? formulaInputs : null;
   }
 
+  function collectIntegratedTransmissionInput() {
+    const hasDirect = hasAnyValue([
+      "c2DirectElementId",
+      "c2DirectLabel",
+      "c2DirectArea",
+      "c2DirectCorrectedU"
+    ]);
+    const hasBridge = hasAnyValue([
+      "c2BridgeId",
+      "c2BridgeLabel",
+      "c2BridgeLength",
+      "c2BridgePsi"
+    ]);
+    const explicitNoThermalBridges = isChecked("c2ExplicitNoThermalBridges");
+    const hasComponents = hasAnyValue(["c2Ground", "c2Hu", "c2Ha"]);
+    if (!hasDirect && !hasBridge && !explicitNoThermalBridges && !hasComponents) {
+      return null;
+    }
+    if (!hasDirect) {
+      throw new Error("C2: completeaza elementul Hd direct.");
+    }
+    if (hasBridge && explicitNoThermalBridges) {
+      throw new Error("C2: alege fie punte termica explicita, fie fara punti termice.");
+    }
+    if (!hasBridge && !explicitNoThermalBridges) {
+      throw new Error("C2: adauga o punte termica sau bifeaza fara punti termice.");
+    }
+
+    const elementId = inputValue("c2DirectElementId");
+    const label = inputValue("c2DirectLabel");
+    if (!safeShortCode(elementId, 64)) throw new Error("C2 Hd: element_id este invalid.");
+    if (!safeLabel(label)) throw new Error("C2 Hd: label este invalid.");
+
+    const linearThermalBridges = [];
+    if (hasBridge) {
+      const bridgeId = inputValue("c2BridgeId");
+      const bridgeLabel = inputValue("c2BridgeLabel");
+      if (!safeShortCode(bridgeId, 64)) throw new Error("C2 punte: bridge_id este invalid.");
+      if (!safeLabel(bridgeLabel)) throw new Error("C2 punte: label este invalid.");
+      linearThermalBridges.push({
+        bridge_id: bridgeId,
+        label: bridgeLabel || null,
+        length_m: nonNegativeNumber("c2BridgeLength", "C2 punte: length_m"),
+        psi_w_mk: anyFiniteNumber("c2BridgePsi", "C2 punte: psi_w_mk"),
+        source: explicitSource("c2BridgeSource", "C2 punte")
+      });
+    }
+
+    return {
+      mode: "explicit_input_integrated_transmission_v1",
+      direct_transmission_elements: [{
+        element_id: elementId,
+        label: label || null,
+        area_m2: positiveNumber("c2DirectArea", "C2 Hd: area_m2"),
+        corrected_u_w_m2k: positiveNumber("c2DirectCorrectedU", "C2 Hd: corrected_u_w_m2k"),
+        source: explicitSource("c2DirectSource", "C2 Hd")
+      }],
+      linear_thermal_bridges: linearThermalBridges,
+      explicit_no_thermal_bridges: explicitNoThermalBridges,
+      ground_w_k: {
+        value: nonNegativeNumber("c2Ground", "C2 ground_w_k"),
+        source: explicitSource("c2GroundSource", "C2 ground")
+      },
+      hu_w_k: {
+        value: nonNegativeNumber("c2Hu", "C2 hu_w_k"),
+        source: explicitSource("c2HuSource", "C2 Hu")
+      },
+      ha_w_k: {
+        value: nonNegativeNumber("c2Ha", "C2 ha_w_k"),
+        source: explicitSource("c2HaSource", "C2 Ha")
+      }
+    };
+  }
+
   function buildRunPayload() {
     const rows = [...componentRows.querySelectorAll("[data-component-row]")];
     if (!rows.length) throw new Error("Adauga cel putin un element de anvelopa.");
@@ -357,6 +435,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const transmissionFormulaInputs = collectTransmissionFormulaInputs();
     if (transmissionFormulaInputs) {
       htrInput.transmission_formula_inputs = transmissionFormulaInputs;
+    }
+    const integratedTransmissionInput = collectIntegratedTransmissionInput();
+    if (integratedTransmissionInput) {
+      htrInput.integrated_transmission_input = integratedTransmissionInput;
     }
 
     return {
@@ -403,6 +485,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (formulaInputs.htr_total_2_15_case) {
       appendArticle(list, "Htr 2.15", "Componente explicite Hd/Hg/Hu/Ha");
     }
+    const c2Input = input.integrated_transmission_input;
+    if (c2Input) {
+      appendArticle(
+        list,
+        "C2 transmisie integrata",
+        `Hd=${c2Input.direct_transmission_elements?.length || 0} element, punti=${c2Input.linear_thermal_bridges?.length || 0}, fara punti=${c2Input.explicit_no_thermal_bridges === true}`,
+        "input explicit pentru rezultat integrat"
+      );
+    }
   }
 
   function renderFormulaResult(list, title, result, meta = "") {
@@ -413,6 +504,31 @@ document.addEventListener("DOMContentLoaded", () => {
       `${result.result?.symbol || "--"} = ${result.result?.amount ?? "--"} ${result.result?.unit || ""}`,
       `${result.formulaCode || ""} ${result.relationCode ? `relatia ${result.relationCode}` : ""} ${meta}`.trim()
     );
+  }
+
+  function renderIntegratedTransmissionResult(list, integrated) {
+    if (!integrated) {
+      appendArticle(
+        list,
+        "Fara rezultat integrat C2",
+        "Nu a fost transmis input explicit pentru compozitia integrata C2."
+      );
+      return;
+    }
+    renderFormulaResult(list, "C2 Hd", integrated.results?.hd);
+    renderFormulaResult(list, "C2 Htr,tb", integrated.results?.thermalBridgeGlobal);
+    renderFormulaResult(
+      list,
+      "C2 transmisie fara sol",
+      integrated.results?.transmissionExcludingGround
+    );
+    renderFormulaResult(list, "C2 Htr 2.15", integrated.results?.htrTotal215);
+    (integrated.diagnostics?.warnings || []).forEach(code => {
+      appendArticle(list, "Avertisment C2", code, "diagnostic");
+    });
+    (integrated.diagnostics?.methodologyLimits || []).forEach(code => {
+      appendArticle(list, "Limita metodologica C2", code, "explicit-input only");
+    });
   }
 
   function renderResult(payload) {
@@ -462,6 +578,9 @@ document.addEventListener("DOMContentLoaded", () => {
         "Nu au fost transmise inputuri explicite pentru calculele C1."
       );
     }
+
+    const integratedResults = clearList("integratedResultsList");
+    renderIntegratedTransmissionResult(integratedResults, result.integratedTransmissionResult);
 
     const diagnostics = clearList("diagnosticsList");
     (result.diagnostics?.blockers || []).forEach(blocker => {

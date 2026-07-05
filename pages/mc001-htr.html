@@ -177,6 +177,53 @@ energie primara sau CO2.
 </div>
 </fieldset>
 
+<div class="section-heading">
+<span class="small-label">REZULTAT INTEGRAT TRANSMISIE C2</span>
+<h2>Compozitie explicita Hd, punti, Hg, Hu si Ha</h2>
+</div>
+<p class="section-description">
+In C2, puntile termice sunt raportate separat si nu sunt adaugate automat in Htr 2.15 pentru a evita dublarea pana cand
+fluxul metodologic complet este stabilit. Nu este CPE, certificat, QHnd, energie finala, energie primara sau CO2.
+</p>
+
+<fieldset>
+<legend>C2 Hd direct - relatia 2.12</legend>
+<div class="form-grid">
+<div><label for="c2DirectElementId">element_id</label><input id="c2DirectElementId" placeholder="direct-wall-c2"></div>
+<div><label for="c2DirectLabel">label</label><input id="c2DirectLabel" placeholder="Perete C2"></div>
+<div><label for="c2DirectArea">area_m2</label><input id="c2DirectArea" type="number" min="0" step="0.001"></div>
+<div><label for="c2DirectCorrectedU">corrected_u_w_m2k</label><input id="c2DirectCorrectedU" type="number" min="0" step="0.001"></div>
+<div><label for="c2DirectSource">source.reference</label><input id="c2DirectSource" value="manual_mvp_input"></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>C2 punti termice - relatia 2.28</legend>
+<div class="form-grid">
+<div><label for="c2BridgeId">bridge_id</label><input id="c2BridgeId" placeholder="bridge-c2-1"></div>
+<div><label for="c2BridgeLabel">label</label><input id="c2BridgeLabel" placeholder="Punte C2"></div>
+<div><label for="c2BridgeLength">length_m</label><input id="c2BridgeLength" type="number" min="0" step="0.001"></div>
+<div><label for="c2BridgePsi">psi_w_mk</label><input id="c2BridgePsi" type="number" step="0.001"></div>
+<div><label for="c2BridgeSource">source.reference</label><input id="c2BridgeSource" value="manual_mvp_input"></div>
+<div>
+<label for="c2ExplicitNoThermalBridges">fara punti termice explicite</label>
+<input id="c2ExplicitNoThermalBridges" type="checkbox">
+</div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>C2 componente explicite pentru relatia 2.15</legend>
+<div class="form-grid">
+<div><label for="c2Ground">ground_w_k</label><input id="c2Ground" type="number" min="0" step="0.001"></div>
+<div><label for="c2GroundSource">ground source.reference</label><input id="c2GroundSource" value="manual_mvp_input"></div>
+<div><label for="c2Hu">hu_w_k</label><input id="c2Hu" type="number" min="0" step="0.001"></div>
+<div><label for="c2HuSource">Hu source.reference</label><input id="c2HuSource" value="manual_mvp_input"></div>
+<div><label for="c2Ha">ha_w_k</label><input id="c2Ha" type="number" min="0" step="0.001"></div>
+<div><label for="c2HaSource">Ha source.reference</label><input id="c2HaSource" value="manual_mvp_input"></div>
+</div>
+</fieldset>
+
 <div class="wizard-buttons">
 <button class="primary-btn" type="submit">Calculeaza Htr</button>
 </div>
@@ -231,6 +278,11 @@ energie primara sau CO2.
 <h2>Rezultate explicite relatii MC001</h2>
 </div>
 <div id="formulaResultsList" class="recommendation-list"></div>
+<div class="section-heading">
+<span class="small-label">REZULTAT INTEGRAT C2</span>
+<h2>Transmisie explicita integrata</h2>
+</div>
+<div id="integratedResultsList" class="recommendation-list"></div>
 <div class="section-heading">
 <span class="small-label">DIAGNOSTICE</span>
 <h2>Blocaje si domenii lipsa</h2>
