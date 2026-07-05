@@ -5,6 +5,7 @@ import { getCo2Factor, getPrimaryEnergyFactor } from "../src/features/energy/phy
 import { calculateMc001HtrTotal } from "../src/physics-engine/mc001HtrTotalCalculation.mjs";
 import { calculateMc001IntegratedTransmissionResult } from "../src/physics-engine/mc001IntegratedTransmissionCalculation.mjs";
 import { calculateMc001MonthlyTransmissionEnergyExplicit } from "../src/physics-engine/mc001MonthlyTransmissionEnergyCalculation.mjs";
+import { calculateMc001MonthlyVentilationTransferExplicit } from "../src/physics-engine/mc001VentilationTransferCalculation.mjs";
 import {
   calculateMc001DirectTransmissionCoefficient,
   calculateMc001GlobalTransmissionExcludingGround,
@@ -1816,6 +1817,16 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "caseResults",
     "transmissionEnergy",
     "heatFlow",
+    "ventilationTransferResult",
+    "ventilationHeatTransferCoefficient",
+    "ventilationEnergy",
+    "annualSignedVentilationEnergy",
+    "annualPositiveHeatingVentilationEnergy",
+    "annualCoolingDirectionVentilationEnergy",
+    "explicitHeatTransferSummary",
+    "transmissionEnergyKWh",
+    "ventilationEnergyKWh",
+    "combinedTransmissionAndVentilationKWh",
     "formulaCodes",
     "formulaCode",
     "relationCode",
@@ -2303,6 +2314,120 @@ function sanitizeMc001MonthlyTransmissionEnergyInput(input) {
   };
 }
 
+function sanitizeMc001VentilationTransferInput(input) {
+  const ventilationInput = input.ventilation_transfer_input;
+  if (ventilationInput === undefined || ventilationInput === null) {
+    return { ok: true, value: null };
+  }
+  if (!isPlainObject(ventilationInput)) {
+    return { ok: false, error: "Inputul de ventilare C4 este invalid." };
+  }
+  if (ventilationInput.mode !== "explicit_monthly_ventilation_transfer_v1") {
+    return { ok: false, error: "Modul de calcul ventilare C4 este invalid." };
+  }
+  if (!Array.isArray(ventilationInput.cases) || ventilationInput.cases.length === 0 || ventilationInput.cases.length > 12) {
+    return { ok: false, error: "Inputul ventilare C4 necesita intre 1 si 12 cazuri." };
+  }
+
+  const cases = [];
+  for (const [index, ventilationCase] of ventilationInput.cases.entries()) {
+    if (!isPlainObject(ventilationCase) || !safeShortToken(ventilationCase.case_id, 64)) {
+      return { ok: false, error: `Cazul de ventilare C4 ${index + 1} are id invalid.` };
+    }
+    if (!MC001_MONTHLY_TRANSMISSION_MONTHS.includes(ventilationCase.month)) {
+      return { ok: false, error: `Cazul de ventilare C4 ${index + 1} are luna invalida.` };
+    }
+    if (!MC001_MONTHLY_TRANSMISSION_MODES.includes(ventilationCase.calculation_mode)) {
+      return { ok: false, error: `Cazul de ventilare C4 ${index + 1} are mod de calcul invalid.` };
+    }
+    if (!isPlainObject(ventilationCase.air_heat_capacity_j_m3k)) {
+      return { ok: false, error: "Cazul de ventilare C4 necesita capacitatea termica a aerului." };
+    }
+    const airHeatCapacity = mc001HtrFiniteNumber(ventilationCase.air_heat_capacity_j_m3k.value);
+    if (airHeatCapacity === null || airHeatCapacity <= 0) {
+      return { ok: false, error: "Capacitatea termica a aerului C4 trebuie sa fie pozitiva." };
+    }
+    const airHeatSourceIssue = mc001HtrSourceIssue(ventilationCase.air_heat_capacity_j_m3k.source);
+    if (airHeatSourceIssue) return { ok: false, error: airHeatSourceIssue };
+
+    if (!Array.isArray(ventilationCase.components) || ventilationCase.components.length === 0 || ventilationCase.components.length > 50) {
+      return { ok: false, error: "Cazul de ventilare C4 necesita componente de debit explicite." };
+    }
+    const components = [];
+    for (const [componentIndex, component] of ventilationCase.components.entries()) {
+      if (!isPlainObject(component) || !safeShortToken(component.component_id, 64)) {
+        return { ok: false, error: `Componenta de ventilare C4 ${componentIndex + 1} are id invalid.` };
+      }
+      if (!safeOptionalLabel(component.label)) {
+        return { ok: false, error: "Eticheta componentei de ventilare C4 este invalida." };
+      }
+      const airFlowRate = mc001HtrFiniteNumber(component.air_flow_rate_m3_s);
+      const temperatureCorrectionFactor = mc001HtrFiniteNumber(component.temperature_correction_factor);
+      const dynamicCorrectionFactor = mc001HtrFiniteNumber(component.dynamic_correction_factor);
+      if (airFlowRate === null || airFlowRate < 0) {
+        return { ok: false, error: "Debit de ventilare C4 invalid." };
+      }
+      if (temperatureCorrectionFactor === null || temperatureCorrectionFactor < 0) {
+        return { ok: false, error: "Factor de corectie temperatura C4 invalid." };
+      }
+      if (dynamicCorrectionFactor === null || dynamicCorrectionFactor < 0) {
+        return { ok: false, error: "Factor dinamic ventilare C4 invalid." };
+      }
+      const componentSourceIssue = mc001HtrSourceIssue(component.source);
+      if (componentSourceIssue) return { ok: false, error: componentSourceIssue };
+      components.push({
+        component_id: component.component_id,
+        label: component.label || null,
+        air_flow_rate_m3_s: airFlowRate,
+        temperature_correction_factor: temperatureCorrectionFactor,
+        dynamic_correction_factor: dynamicCorrectionFactor,
+        source: {
+          source_type: "explicit_user_input",
+          reference: component.source.reference
+        }
+      });
+    }
+
+    const indoor = mc001HtrFiniteNumber(ventilationCase.theta_i_c);
+    const outdoor = mc001HtrFiniteNumber(ventilationCase.theta_e_c);
+    const duration = mc001HtrFiniteNumber(ventilationCase.duration_h);
+    if (indoor === null || outdoor === null || duration === null || duration <= 0) {
+      return { ok: false, error: "Cazul de ventilare C4 are temperatura sau durata invalida." };
+    }
+    const sourceIssue = mc001HtrSourceIssue(ventilationCase.source);
+    if (sourceIssue) return { ok: false, error: sourceIssue };
+
+    cases.push({
+      case_id: ventilationCase.case_id,
+      month: ventilationCase.month,
+      calculation_mode: ventilationCase.calculation_mode,
+      air_heat_capacity_j_m3k: {
+        value: airHeatCapacity,
+        source: {
+          source_type: "explicit_user_input",
+          reference: ventilationCase.air_heat_capacity_j_m3k.source.reference
+        }
+      },
+      components,
+      theta_i_c: indoor,
+      theta_e_c: outdoor,
+      duration_h: duration,
+      source: {
+        source_type: "explicit_user_input",
+        reference: ventilationCase.source.reference
+      }
+    });
+  }
+
+  return {
+    ok: true,
+    value: {
+      mode: "explicit_monthly_ventilation_transfer_v1",
+      cases
+    }
+  };
+}
+
 function sanitizeMc001HtrInput(body = {}) {
   const input = body?.htr_input;
   if (!isPlainObject(input)) {
@@ -2416,6 +2541,10 @@ function sanitizeMc001HtrInput(body = {}) {
   if (!monthlyTransmissionEnergyInput.ok) {
     return { ok: false, error: monthlyTransmissionEnergyInput.error };
   }
+  const ventilationTransferInput = sanitizeMc001VentilationTransferInput(input);
+  if (!ventilationTransferInput.ok) {
+    return { ok: false, error: ventilationTransferInput.error };
+  }
 
   return {
     ok: true,
@@ -2432,6 +2561,9 @@ function sanitizeMc001HtrInput(body = {}) {
           : {}),
         ...(monthlyTransmissionEnergyInput.value
           ? { monthly_transmission_energy_input: monthlyTransmissionEnergyInput.value }
+          : {}),
+        ...(ventilationTransferInput.value
+          ? { ventilation_transfer_input: ventilationTransferInput.value }
           : {})
       }
     }
@@ -2902,6 +3034,96 @@ function buildMc001MonthlyTransmissionEnergyResult(monthlyInput, integratedTrans
   return { ok: true, value: result };
 }
 
+function buildMc001VentilationTransferCalculatorInput(ventilationInput) {
+  return {
+    mode: "explicit_monthly_ventilation_transfer_v1",
+    cases: ventilationInput.cases.map((ventilationCase) => ({
+      caseId: ventilationCase.case_id,
+      month: ventilationCase.month,
+      calculationMode: ventilationCase.calculation_mode,
+      airHeatCapacity: {
+        amount: ventilationCase.air_heat_capacity_j_m3k.value,
+        unit: "J/(m3*K)",
+        source: mc001HtrFormulaSource(ventilationCase.air_heat_capacity_j_m3k.source)
+      },
+      components: ventilationCase.components.map((component) => ({
+        componentId: component.component_id,
+        label: component.label,
+        airFlowRate: { amount: component.air_flow_rate_m3_s, unit: "m3/s" },
+        temperatureCorrectionFactor: {
+          amount: component.temperature_correction_factor,
+          unit: "dimensionless"
+        },
+        dynamicCorrectionFactor: {
+          amount: component.dynamic_correction_factor,
+          unit: "dimensionless"
+        },
+        source: mc001HtrFormulaSource(component.source)
+      })),
+      indoorTemperature: { amount: ventilationCase.theta_i_c, unit: "degC" },
+      outdoorTemperature: { amount: ventilationCase.theta_e_c, unit: "degC" },
+      duration: { amount: ventilationCase.duration_h, unit: "h" },
+      source: mc001HtrFormulaSource(ventilationCase.source)
+    }))
+  };
+}
+
+function buildMc001VentilationTransferResult(ventilationInput) {
+  if (!ventilationInput) return { ok: true, value: null };
+  const result = calculateMc001MonthlyVentilationTransferExplicit(
+    buildMc001VentilationTransferCalculatorInput(ventilationInput)
+  );
+  if (result?.status !== "ready") {
+    return { ok: false, error: "Inputul de ventilare C4 este invalid." };
+  }
+  return { ok: true, value: result };
+}
+
+function buildMc001ExplicitHeatTransferSummary(monthlyTransmissionEnergyResult, ventilationTransferResult) {
+  if (
+    monthlyTransmissionEnergyResult?.status !== "ready" ||
+    ventilationTransferResult?.status !== "ready"
+  ) {
+    return null;
+  }
+  const transmission = monthlyTransmissionEnergyResult.summary?.annualSignedTransmissionEnergy?.amount;
+  const ventilation = ventilationTransferResult.summary?.annualSignedVentilationEnergy?.amount;
+  if (!Number.isFinite(transmission) || !Number.isFinite(ventilation)) {
+    return null;
+  }
+  return {
+    status: "ready",
+    scope: "explicit_transmission_plus_ventilation_only_not_QHnd",
+    transmissionEnergyKWh: {
+      amount: transmission,
+      unit: "kWh",
+      source: "monthlyTransmissionEnergyResult.summary.annualSignedTransmissionEnergy"
+    },
+    ventilationEnergyKWh: {
+      amount: ventilation,
+      unit: "kWh",
+      source: "ventilationTransferResult.summary.annualSignedVentilationEnergy"
+    },
+    combinedTransmissionAndVentilationKWh: {
+      amount: transmission + ventilation,
+      unit: "kWh"
+    },
+    diagnostics: {
+      blockers: [],
+      warnings: [],
+      methodologyLimits: [
+        "not_QHnd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_certificate",
+        "not_fan_energy",
+        "not_air_treatment_energy"
+      ]
+    }
+  };
+}
+
 function parseMc001HtrStoredJson(text, fallback) {
   try {
     return JSON.parse(text);
@@ -3090,6 +3312,25 @@ async function handleMc001HtrRun(request, env, corsHeaders) {
     }
     if (monthlyTransmissionEnergyResult.value) {
       mc001Htr.monthlyTransmissionEnergyResult = monthlyTransmissionEnergyResult.value;
+    }
+    const ventilationTransferResult = buildMc001VentilationTransferResult(
+      validation.input.htr_input.ventilation_transfer_input
+    );
+    if (!ventilationTransferResult.ok) {
+      return jsonResponse(
+        { success: false, error: ventilationTransferResult.error },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    if (ventilationTransferResult.value) {
+      mc001Htr.ventilationTransferResult = ventilationTransferResult.value;
+    }
+    const explicitHeatTransferSummary = buildMc001ExplicitHeatTransferSummary(
+      monthlyTransmissionEnergyResult.value,
+      ventilationTransferResult.value
+    );
+    if (explicitHeatTransferSummary) {
+      mc001Htr.explicitHeatTransferSummary = explicitHeatTransferSummary;
     }
     const houseId = ownership?.houseId ?? null;
     const analysisId = await saveMc001HtrAnalysis(

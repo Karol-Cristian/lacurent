@@ -383,6 +383,59 @@ function c2AndC3MonthlyPayload(monthlyOverrides = {}) {
   return payload;
 }
 
+function c4VentilationPayload(overrides = {}) {
+  return validPayload({
+    htr_input: {
+      ...validPayload().htr_input,
+      ventilation_transfer_input: {
+        mode: "explicit_monthly_ventilation_transfer_v1",
+        cases: [
+          {
+            case_id: "jan-ventilation",
+            month: "january",
+            calculation_mode: "heating",
+            air_heat_capacity_j_m3k: {
+              value: 1200,
+              source: {
+                source_type: "explicit_user_input",
+                reference: "manual_mvp_input"
+              }
+            },
+            components: [
+              {
+                component_id: "infiltration-1",
+                label: "Infiltration",
+                air_flow_rate_m3_s: 0.05,
+                temperature_correction_factor: 1,
+                dynamic_correction_factor: 1,
+                source: {
+                  source_type: "explicit_user_input",
+                  reference: "manual_mvp_input"
+                }
+              }
+            ],
+            theta_i_c: 20,
+            theta_e_c: 0,
+            duration_h: 744,
+            source: {
+              source_type: "explicit_user_input",
+              reference: "manual_mvp_input"
+            }
+          }
+        ],
+        ...overrides
+      }
+    }
+  });
+}
+
+function c3AndC4Payload() {
+  const payload = c3MonthlyPayload();
+  payload.htr_input.ventilation_transfer_input = c4VentilationPayload()
+    .htr_input.ventilation_transfer_input;
+  return payload;
+}
+
 async function post(path, db, body, token = "test-token") {
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -834,6 +887,121 @@ await test("C3 can explicitly use C2 Htr 2.15 as monthly Htr source", async () =
   assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].transmissionEnergy.amount, 133.92);
 });
 
+await test("C4 ventilation payload returns Hve Phi and Qve", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c4VentilationPayload());
+  const c4 = result.body.mc001_htr.ventilationTransferResult;
+  assert.equal(result.status, 200);
+  assert.equal(c4.status, "ready");
+  assert.equal(c4.caseResults[0].ventilationHeatTransferCoefficient.amount, 60);
+  assert.equal(c4.caseResults[0].heatFlow.amount, 1200);
+  assert.equal(c4.caseResults[0].ventilationEnergy.amount, 892.8);
+  assert.equal(c4.scope, "monthly_ventilation_transfer_explicit_input_only_not_QHnd");
+});
+
+await test("C4 result persists and reloads", async () => {
+  const db = new FakeDb();
+  await post("/api/mc001/htr/run", db, c4VentilationPayload());
+  const result = await post("/api/mc001/htr/load", db, { analysis_id: 100 });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.htr_input.ventilation_transfer_input.cases.length, 1);
+  assert.equal(
+    result.body.mc001_htr.ventilationTransferResult.summary.annualSignedVentilationEnergy.amount,
+    892.8
+  );
+});
+
+await test("C4 rejects client-provided ventilation transfer result", async () => {
+  const db = new FakeDb();
+  const payload = c4VentilationPayload();
+  payload.htr_input.ventilationTransferResult = {
+    summary: { annualSignedVentilationEnergy: { amount: 999, unit: "kWh" } }
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C4 rejects client-provided explicit heat transfer summary", async () => {
+  const db = new FakeDb();
+  const payload = c3AndC4Payload();
+  payload.htr_input.explicitHeatTransferSummary = {
+    combinedTransmissionAndVentilationKWh: { amount: 1, unit: "kWh" }
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C4 rejects missing air heat capacity source", async () => {
+  const db = new FakeDb();
+  const payload = c4VentilationPayload();
+  delete payload.htr_input.ventilation_transfer_input.cases[0].air_heat_capacity_j_m3k.source;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C4 rejects invalid month", async () => {
+  const db = new FakeDb();
+  const payload = c4VentilationPayload();
+  payload.htr_input.ventilation_transfer_input.cases[0].month = "jan";
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C4 rejects negative airflow", async () => {
+  const db = new FakeDb();
+  const payload = c4VentilationPayload();
+  payload.htr_input.ventilation_transfer_input.cases[0].components[0].air_flow_rate_m3_s = -0.05;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C4 response says not QHnd", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c4VentilationPayload());
+  const serialized = JSON.stringify(result.body.mc001_htr.ventilationTransferResult);
+  assert.equal(serialized.includes("not_QHnd"), true);
+  assert.equal(serialized.includes("monthly_ventilation_transfer_explicit_input_only_not_QHnd"), true);
+});
+
+await test("C3 and C4 return explicit non-QHnd combined heat transfer summary", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c3AndC4Payload());
+  const summary = result.body.mc001_htr.explicitHeatTransferSummary;
+  assert.equal(result.status, 200);
+  assert.equal(summary.status, "ready");
+  assert.equal(summary.transmissionEnergyKWh.amount, 133.92);
+  assert.equal(summary.ventilationEnergyKWh.amount, 892.8);
+  assert.equal(summary.combinedTransmissionAndVentilationKWh.amount, 1026.72);
+  assert.equal(summary.scope, "explicit_transmission_plus_ventilation_only_not_QHnd");
+});
+
+await test("C4 does not mutate V2 C1 C2 or C3 response fields", async () => {
+  const db = new FakeDb();
+  const payload = c2IntegratedPayload();
+  payload.htr_input.transmission_formula_inputs = c1FormulaPayload().htr_input.transmission_formula_inputs;
+  payload.htr_input.monthly_transmission_energy_input = c3MonthlyPayload()
+    .htr_input.monthly_transmission_energy_input;
+  payload.htr_input.ventilation_transfer_input = c4VentilationPayload()
+    .htr_input.ventilation_transfer_input;
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.directTransmission.result.amount, 3);
+  assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
+  assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].transmissionEnergy.amount, 133.92);
+  assert.equal(result.body.mc001_htr.ventilationTransferResult.caseResults[0].ventilationEnergy.amount, 892.8);
+});
+
 await test("run endpoint rejects private sentinel content and does not echo it", async () => {
   const db = new FakeDb();
   const payload = validPayload({ label: "person@example.com" });
@@ -895,6 +1063,22 @@ await test("C3 response does not expose token session email or private data", as
   }
 });
 
+await test("C4 response does not expose token session email or private data", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c4VentilationPayload());
+  const serialized = JSON.stringify(result.body);
+  for (const forbidden of [
+    "sourceRecordId",
+    "sourceContext",
+    "sourceTrace",
+    "sourceRefs",
+    "test-token",
+    "safe-user.local"
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, `leaked ${forbidden}`);
+  }
+});
+
 await test("C1 response does not expose stack traces or mutate V2 result contract", async () => {
   const db = new FakeDb();
   const result = await post("/api/mc001/htr/run", db, c1FormulaPayload());
@@ -909,6 +1093,15 @@ await test("C1 response does not expose stack traces or mutate V2 result contrac
 await test("C3 response does not expose stack traces", async () => {
   const db = new FakeDb();
   const result = await post("/api/mc001/htr/run", db, c3MonthlyPayload());
+  const serialized = JSON.stringify(result.body);
+  assert.equal(result.status, 200);
+  assert.equal(serialized.includes("Error:"), false);
+  assert.equal(serialized.includes("at "), false);
+});
+
+await test("C4 response does not expose stack traces", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c4VentilationPayload());
   const serialized = JSON.stringify(result.body);
   assert.equal(result.status, 200);
   assert.equal(serialized.includes("Error:"), false);
