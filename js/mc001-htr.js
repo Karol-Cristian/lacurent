@@ -287,9 +287,17 @@ document.addEventListener("DOMContentLoaded", () => {
     setInputValue("ventilationDuration", "744");
     setInputValue("ventilationCaseSource", DEFAULT_SOURCE_REFERENCE);
 
+    setInputValue("restrictedQhndCaseId", "jan-qhnd-restricted");
+    setInputValue("restrictedQhndMonth", "january");
+    setInputValue("restrictedQhndQHht", "1026.72");
+    setInputValue("restrictedQhndQHgn", "300");
+    setInputValue("restrictedQhndGammaH", "");
+    setInputValue("restrictedQhndEtaHgn", "0.8");
+    setInputValue("restrictedQhndSource", DEFAULT_SOURCE_REFERENCE);
+
     setMessage(
       runMessage,
-      "Exemplul sintetic smoke transmisie a fost completat. Verifica valorile si apasa Calculeaza Htr."
+      "Exemplul sintetic smoke transmisie a fost completat. C6F asteptat: QHnd=786.72 kWh. Verifica valorile si apasa Calculeaza Htr."
     );
   }
 
@@ -659,6 +667,62 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function collectRestrictedHeatingQhndInput() {
+    const hasRestrictedQhnd = hasAnyValue([
+      "restrictedQhndCaseId",
+      "restrictedQhndMonth",
+      "restrictedQhndQHht",
+      "restrictedQhndQHgn",
+      "restrictedQhndGammaH",
+      "restrictedQhndEtaHgn"
+    ]);
+    if (!hasRestrictedQhnd) return null;
+
+    const caseId = inputValue("restrictedQhndCaseId");
+    const month = inputValue("restrictedQhndMonth");
+    const sourceReference = inputValue("restrictedQhndSource") || DEFAULT_SOURCE_REFERENCE;
+    if (!safeShortCode(caseId, 64)) throw new Error("C6F QHnd: case_id este invalid.");
+    if (!MONTHS.includes(month)) throw new Error("C6F QHnd: month trebuie ales din lista.");
+    if (!safeShortCode(sourceReference, 80)) {
+      throw new Error("C6F QHnd: source.reference trebuie sa fie un cod scurt sigur.");
+    }
+
+    const qHht = positiveNumber("restrictedQhndQHht", "C6F QHnd: qHht_kwh");
+    const qHgn = nonNegativeNumber("restrictedQhndQHgn", "C6F QHnd: qHgn_kwh");
+    const etaHgn = nonNegativeNumber("restrictedQhndEtaHgn", "C6F QHnd: etaHgn");
+    const gammaRaw = inputValue("restrictedQhndGammaH");
+    const qhnd = qHht - etaHgn * qHgn;
+    if (qhnd < 0) {
+      throw new Error("C6F QHnd: rezultatul ar fi negativ si este in afara domeniului C6F.");
+    }
+    if (gammaRaw === "" && qHgn / qHht <= 0) {
+      throw new Error("C6F QHnd: gammaH calculat trebuie sa fie mai mare decat zero.");
+    }
+
+    const qhndCase = {
+      case_id: caseId,
+      month,
+      qHht_kwh: qHht,
+      qHgn_kwh: qHgn,
+      etaHgn,
+      source: {
+        reference: sourceReference
+      }
+    };
+    if (gammaRaw !== "") {
+      const gammaH = finiteNumber(gammaRaw);
+      if (gammaH === null || gammaH <= 0 || gammaH > 2) {
+        throw new Error("C6F QHnd: gammaH trebuie sa fie in intervalul (0, 2].");
+      }
+      qhndCase.gammaH = gammaH;
+    }
+
+    return {
+      mode: "restricted_heating_qhnd_explicit_v1",
+      cases: [qhndCase]
+    };
+  }
+
   function buildRunPayload() {
     const rows = [...componentRows.querySelectorAll("[data-component-row]")];
     if (!rows.length) throw new Error("Adauga cel putin un element de anvelopa.");
@@ -705,6 +769,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const ventilationTransferInput = collectVentilationTransferInput();
     if (ventilationTransferInput) {
       htrInput.ventilation_transfer_input = ventilationTransferInput;
+    }
+    const restrictedHeatingQhndInput = collectRestrictedHeatingQhndInput();
+    if (restrictedHeatingQhndInput) {
+      htrInput.restricted_heating_qhnd_input = restrictedHeatingQhndInput;
     }
 
     return {
@@ -776,6 +844,15 @@ document.addEventListener("DOMContentLoaded", () => {
         "C4 ventilare explicita",
         `${c4Input.cases?.length || 0} caz explicit`,
         "debit, temperatura si durata explicite"
+      );
+    }
+    const c6fInput = input.restricted_heating_qhnd_input;
+    if (c6fInput) {
+      appendArticle(
+        list,
+        "C6F QHnd incalzire restrictionat",
+        `${c6fInput.cases?.length || 0} caz explicit`,
+        "qHht, qHgn si etaHgn explicite; nu este QHnd complet"
       );
     }
   }
@@ -960,6 +1037,37 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function renderRestrictedHeatingQhndResult(list, qhnd) {
+    if (!qhnd) {
+      appendArticle(
+        list,
+        "Fara rezultat C6F",
+        "Rezultatul C6F apare numai cand este transmis input QHnd de incalzire restrictionat."
+      );
+      return;
+    }
+    (qhnd.caseResults || []).forEach(item => {
+      appendArticle(
+        list,
+        `C6F ${item.caseId || item.month || "caz"}`,
+        `QHht=${item.qHht ?? "--"} kWh; QHgn=${item.qHgn ?? "--"} kWh; gammaH=${item.gammaH ?? "--"}; etaHgn=${item.etaHgn ?? "--"}; QHnd=${item.qHnd ?? "--"} kWh`,
+        `${item.month || ""} ${item.scope || ""}`.trim()
+      );
+    });
+    appendArticle(
+      list,
+      "C6F anual QHnd",
+      `${qhnd.summary?.annualQHnd ?? "--"} kWh`,
+      `caseCount=${qhnd.summary?.caseCount ?? "--"}`
+    );
+    (qhnd.diagnostics?.methodologyLimits || []).forEach(code => {
+      appendArticle(list, "Limita metodologica C6F", code, "restricted explicit input");
+    });
+    (qhnd.diagnostics?.excludedBranches || []).forEach(code => {
+      appendArticle(list, "Ramura exclusa C6F", code, "nu este executata in C6F");
+    });
+  }
+
   function renderResult(payload) {
     const panel = document.getElementById("resultPanel");
     const result = payload?.mc001_htr || {};
@@ -1022,6 +1130,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const explicitTotal = clearList("explicitTotalHeatTransferList");
     renderExplicitTotalHeatTransferResult(explicitTotal, result.explicitTotalHeatTransferResult);
+
+    const restrictedQhnd = clearList("restrictedHeatingQhndList");
+    renderRestrictedHeatingQhndResult(restrictedQhnd, result.restrictedHeatingQhndResult);
 
     const diagnostics = clearList("diagnosticsList");
     (result.diagnostics?.blockers || []).forEach(blocker => {

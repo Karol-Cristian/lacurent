@@ -334,6 +334,45 @@ consumul de energie al ventilatoarelor sau tratarea aerului.
 </div>
 </fieldset>
 
+<div class="section-heading">
+<span class="small-label">QHND INCALZIRE RESTRICTIONAT C6F</span>
+<h2>QHnd explicit, incalzire lunara restrictionata</h2>
+</div>
+<p class="section-description">
+C6F calculeaza doar QHnd de incalzire pentru domeniul restrictionat cu inputuri explicite. Nu este QHnd complet, nu este QCnd,
+nu este energie finala, energie primara, CO2 sau certificat energetic.
+</p>
+
+<fieldset>
+<legend>C6F caz lunar incalzire explicit</legend>
+<div class="form-grid">
+<div><label for="restrictedQhndCaseId">case_id</label><input id="restrictedQhndCaseId" placeholder="jan-qhnd-restricted"></div>
+<div>
+<label for="restrictedQhndMonth">month</label>
+<select id="restrictedQhndMonth">
+<option value="">Alege luna</option>
+<option value="january">january</option>
+<option value="february">february</option>
+<option value="march">march</option>
+<option value="april">april</option>
+<option value="may">may</option>
+<option value="june">june</option>
+<option value="july">july</option>
+<option value="august">august</option>
+<option value="september">september</option>
+<option value="october">october</option>
+<option value="november">november</option>
+<option value="december">december</option>
+</select>
+</div>
+<div><label for="restrictedQhndQHht">qHht_kwh</label><input id="restrictedQhndQHht" type="number" min="0" step="0.001"></div>
+<div><label for="restrictedQhndQHgn">qHgn_kwh</label><input id="restrictedQhndQHgn" type="number" min="0" step="0.001"></div>
+<div><label for="restrictedQhndGammaH">gammaH optional</label><input id="restrictedQhndGammaH" type="number" min="0" max="2" step="0.000001"></div>
+<div><label for="restrictedQhndEtaHgn">etaHgn explicit</label><input id="restrictedQhndEtaHgn" type="number" min="0" step="0.000001"></div>
+<div><label for="restrictedQhndSource">source.reference</label><input id="restrictedQhndSource" value="manual_mvp_input"></div>
+</div>
+</fieldset>
+
 <div class="wizard-buttons">
 <button class="primary-btn" type="submit">Calculeaza Htr</button>
 </div>
@@ -416,6 +455,14 @@ consumul de energie al ventilatoarelor sau tratarea aerului.
 C5 insumeaza energia explicita prin transmisie si ventilare. Nu este QHnd, nu este energie finala si nu este certificat energetic.
 </p>
 <div id="explicitTotalHeatTransferList" class="recommendation-list"></div>
+<div class="section-heading">
+<span class="small-label">QHND INCALZIRE RESTRICTIONAT C6F</span>
+<h2>Rezultat QHnd explicit restrictionat</h2>
+</div>
+<p class="section-description">
+C6F foloseste qHht, qHgn si etaHgn introduse explicit. Nu este QHnd complet, nu este QCnd si nu este certificat energetic.
+</p>
+<div id="restrictedHeatingQhndList" class="recommendation-list"></div>
 <div class="section-heading">
 <span class="small-label">DIAGNOSTICE</span>
 <h2>Blocaje si domenii lipsa</h2>

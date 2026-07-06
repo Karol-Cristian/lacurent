@@ -7,6 +7,7 @@ import { calculateMc001ExplicitTotalHeatTransferSummary } from "../src/physics-e
 import { calculateMc001IntegratedTransmissionResult } from "../src/physics-engine/mc001IntegratedTransmissionCalculation.mjs";
 import { calculateMc001MonthlyTransmissionEnergyExplicit } from "../src/physics-engine/mc001MonthlyTransmissionEnergyCalculation.mjs";
 import { calculateMc001MonthlyVentilationTransferExplicit } from "../src/physics-engine/mc001VentilationTransferCalculation.mjs";
+import { calculateMc001RestrictedHeatingQhndExplicit } from "../src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs";
 import {
   calculateMc001DirectTransmissionCoefficient,
   calculateMc001GlobalTransmissionExcludingGround,
@@ -1816,6 +1817,7 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "annualPositiveHeatingTransmissionEnergyKWh",
     "annualCoolingDirectionTransmissionEnergyKWh",
     "caseResults",
+    "summary",
     "transmissionEnergy",
     "heatFlow",
     "ventilationTransferResult",
@@ -1831,6 +1833,15 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "explicitTotalHeatTransferResult",
     "totalHeatTransfer",
     "Q_total_transfer_explicit",
+    "restrictedHeatingQhndResult",
+    "restricted_heating_qhnd_result",
+    "qHnd",
+    "qhnd",
+    "qHnd_kwh",
+    "annualQHnd",
+    "annualQHndKWh",
+    "annual_qhnd_kwh",
+    "qhndResult",
     "formulaCodes",
     "formulaCode",
     "relationCode",
@@ -2432,6 +2443,79 @@ function sanitizeMc001VentilationTransferInput(input) {
   };
 }
 
+function sanitizeMc001RestrictedHeatingQhndInput(input) {
+  const restrictedInput = input.restricted_heating_qhnd_input;
+  if (restrictedInput === undefined || restrictedInput === null) {
+    return { ok: true, value: null };
+  }
+  if (!isPlainObject(restrictedInput)) {
+    return { ok: false, error: "Inputul QHnd restrictionat C6F este invalid." };
+  }
+  if (restrictedInput.mode !== "restricted_heating_qhnd_explicit_v1") {
+    return { ok: false, error: "Modul QHnd restrictionat C6F este invalid." };
+  }
+  if (!Array.isArray(restrictedInput.cases) || restrictedInput.cases.length === 0 || restrictedInput.cases.length > 12) {
+    return { ok: false, error: "Inputul QHnd restrictionat C6F necesita intre 1 si 12 cazuri." };
+  }
+
+  const cases = [];
+  for (const [index, qhndCase] of restrictedInput.cases.entries()) {
+    if (!isPlainObject(qhndCase) || !safeShortToken(qhndCase.case_id, 64)) {
+      return { ok: false, error: `Cazul QHnd C6F ${index + 1} are id invalid.` };
+    }
+    if (!MC001_MONTHLY_TRANSMISSION_MONTHS.includes(qhndCase.month)) {
+      return { ok: false, error: `Cazul QHnd C6F ${index + 1} are luna invalida.` };
+    }
+    const qHht = mc001HtrFiniteNumber(qhndCase.qHht_kwh);
+    const qHgn = mc001HtrFiniteNumber(qhndCase.qHgn_kwh);
+    if (qHht === null || qHht <= 0) {
+      return { ok: false, error: "QHht C6F trebuie sa fie finit si pozitiv." };
+    }
+    if (qHgn === null || qHgn < 0) {
+      return { ok: false, error: "QHgn C6F trebuie sa fie finit si pozitiv sau zero." };
+    }
+    const gammaProvided = qhndCase.gammaH !== undefined && qhndCase.gammaH !== null && qhndCase.gammaH !== "";
+    const gammaH = gammaProvided ? mc001HtrFiniteNumber(qhndCase.gammaH) : null;
+    if (gammaProvided && (gammaH === null || gammaH <= 0 || gammaH > 2)) {
+      return { ok: false, error: "gammaH C6F trebuie sa fie in intervalul (0, 2]." };
+    }
+    const etaHgn = mc001HtrFiniteNumber(qhndCase.etaHgn);
+    if (etaHgn === null || etaHgn < 0) {
+      return { ok: false, error: "etaHgn C6F trebuie sa fie explicit, finit si pozitiv sau zero." };
+    }
+    if (!isPlainObject(qhndCase.source) || !safeShortToken(qhndCase.source.reference, 80)) {
+      return { ok: false, error: "Cazul QHnd C6F necesita sursa explicita valida." };
+    }
+    if (qhndCase.source.notes !== undefined && (
+      typeof qhndCase.source.notes !== "string" ||
+      qhndCase.source.notes.length > 160 ||
+      /[<>{}]/.test(qhndCase.source.notes)
+    )) {
+      return { ok: false, error: "Nota sursei QHnd C6F este invalida." };
+    }
+    cases.push({
+      case_id: qhndCase.case_id,
+      month: qhndCase.month,
+      qHht_kwh: qHht,
+      qHgn_kwh: qHgn,
+      ...(gammaProvided ? { gammaH } : {}),
+      etaHgn,
+      source: {
+        reference: qhndCase.source.reference,
+        ...(qhndCase.source.notes ? { notes: qhndCase.source.notes } : {})
+      }
+    });
+  }
+
+  return {
+    ok: true,
+    value: {
+      mode: "restricted_heating_qhnd_explicit_v1",
+      cases
+    }
+  };
+}
+
 function sanitizeMc001HtrInput(body = {}) {
   const input = body?.htr_input;
   if (!isPlainObject(input)) {
@@ -2549,6 +2633,10 @@ function sanitizeMc001HtrInput(body = {}) {
   if (!ventilationTransferInput.ok) {
     return { ok: false, error: ventilationTransferInput.error };
   }
+  const restrictedHeatingQhndInput = sanitizeMc001RestrictedHeatingQhndInput(input);
+  if (!restrictedHeatingQhndInput.ok) {
+    return { ok: false, error: restrictedHeatingQhndInput.error };
+  }
 
   return {
     ok: true,
@@ -2568,6 +2656,9 @@ function sanitizeMc001HtrInput(body = {}) {
           : {}),
         ...(ventilationTransferInput.value
           ? { ventilation_transfer_input: ventilationTransferInput.value }
+          : {}),
+        ...(restrictedHeatingQhndInput.value
+          ? { restricted_heating_qhnd_input: restrictedHeatingQhndInput.value }
           : {})
       }
     }
@@ -3146,6 +3237,34 @@ function buildMc001ExplicitTotalHeatTransferResult(monthlyTransmissionEnergyResu
   return result?.status === "ready" ? result : null;
 }
 
+function buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput) {
+  return {
+    mode: "restricted_heating_qhnd_explicit_v1",
+    cases: restrictedInput.cases.map((qhndCase) => ({
+      caseId: qhndCase.case_id,
+      month: qhndCase.month,
+      qHht: qhndCase.qHht_kwh,
+      qHgn: qhndCase.qHgn_kwh,
+      ...(Object.prototype.hasOwnProperty.call(qhndCase, "gammaH")
+        ? { gammaH: qhndCase.gammaH }
+        : {}),
+      etaHgn: qhndCase.etaHgn,
+      source: qhndCase.source
+    }))
+  };
+}
+
+function buildMc001RestrictedHeatingQhndResult(restrictedInput) {
+  if (!restrictedInput) return { ok: true, value: null };
+  const result = calculateMc001RestrictedHeatingQhndExplicit(
+    buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput)
+  );
+  if (result?.status !== "ready") {
+    return { ok: false, error: "Inputul QHnd restrictionat C6F este invalid." };
+  }
+  return { ok: true, value: result };
+}
+
 function parseMc001HtrStoredJson(text, fallback) {
   try {
     return JSON.parse(text);
@@ -3360,6 +3479,18 @@ async function handleMc001HtrRun(request, env, corsHeaders) {
     );
     if (explicitHeatTransferSummary) {
       mc001Htr.explicitHeatTransferSummary = explicitHeatTransferSummary;
+    }
+    const restrictedHeatingQhndResult = buildMc001RestrictedHeatingQhndResult(
+      validation.input.htr_input.restricted_heating_qhnd_input
+    );
+    if (!restrictedHeatingQhndResult.ok) {
+      return jsonResponse(
+        { success: false, error: restrictedHeatingQhndResult.error },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    if (restrictedHeatingQhndResult.value) {
+      mc001Htr.restrictedHeatingQhndResult = restrictedHeatingQhndResult.value;
     }
     const houseId = ownership?.houseId ?? null;
     const analysisId = await saveMc001HtrAnalysis(
