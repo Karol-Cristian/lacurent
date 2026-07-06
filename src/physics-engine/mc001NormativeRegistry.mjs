@@ -12,6 +12,8 @@ const R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE =
   "MC001_R5_UTILIZATION_FACTORS_HEATING_READINESS_SOURCE_PACK";
 const R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE =
   "MC001_R6_GAINS_CAPACITY_TIMECONSTANT_READINESS_SOURCE_PACK";
+const R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE =
+  "MC001_R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -66,7 +68,8 @@ const SOURCE_PACK_CODES = new Set([
   R3_QHND_MONTHLY_SOURCE_PACK_CODE,
   R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
   R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
-  R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE
+  R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
+  R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -101,7 +104,8 @@ const ENTRY_CODES = new Set([
   "MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND",
   "MC001_CONCEPT_FIGURE_2_18_HEATING_BRANCH",
   "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS",
-  "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS"
+  "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS",
+  "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -432,10 +436,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 7,
+    sourcePacks: 8,
     formulas: 10,
     constants: 1,
-    concepts: 7,
+    concepts: 8,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -2504,6 +2508,349 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "tables_2.19_2.20_not_encoded_as_values",
         "climate_solar_data_missing_future_source_pack"
       ]
+    },
+    {
+      sourcePackCode: R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: true,
+      runtimeCalculatorStatus: "not_implemented",
+
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section:
+          "2.7.6 factori de utilizare si 2.8.4 corectii pentru perioada de neocupare",
+        subsection: "figure 2.18 heating QH;nd ambiguity resolution",
+        parentSectionsVerified: ["2.7", "2.7.6", "2.8.4"],
+        pagesVerified: [113, 116, 120],
+        figuresVerified: ["2.14", "2.18"],
+        relationsVerified: ["2.55", "2.57"],
+        adjacentSymbolDefinitionsVerified: [
+          "gammaH;ztc;m",
+          "QH;ht;ztc;m",
+          "QH;gn;ztc;m",
+          "etaH;gn;ztc;m",
+          "QH;nd;ztc;m"
+        ]
+      },
+
+      concept: {
+        entryCode: "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS",
+        entryType: "concept",
+        conceptCode: "qhnd_ambiguity_resolution_readiness",
+        targetSymbol: "QH;nd;ztc;m",
+        registryKind: "metadata_only_readiness_registry",
+        name: "QHnd ambiguity resolution readiness",
+        unit: "metadata_only",
+        purpose:
+          "records source-backed resolution of the figure 2.18 first heating branch before restricted monthly useful heating demand runtime work",
+        sourceLocator: {
+          page: 120,
+          figure: "2.18",
+          subsection: "2.8.4"
+        }
+      },
+
+      sourceIdentity: {
+        methodologyCode: "MC001",
+        methodologyVersion: "2022",
+        primaryFigureReference: "figure_2.18",
+        crossCheckFigureReference: "figure_2.14",
+        utilizationSectionReference: "section_2.7.6",
+        utilizationParameterReference: "relation_2.55",
+        timeConstantReference: "relation_2.57",
+        relatedReferences: [
+          "MC001-2022 page 120 figure 2.18",
+          "MC001-2022 page 113 figure 2.14",
+          "MC001-2022 page 113 section 2.7.6",
+          "MC001-2022 page 113 relation 2.55",
+          "MC001-2022 page 116 relation 2.57"
+        ],
+        adjacentSymbolDefinitionReferences: [
+          "QH;gn;ztc;m_total_heat_gains_kWh",
+          "QH;ht;ztc;m_heat_transfer_kWh",
+          "gammaH;ztc;m_balance_ratio_dimensionless",
+          "etaH;gn;ztc;m_gain_utilization_dimensionless",
+          "QH;nd;ztc;m_monthly_useful_heating_energy_kWh"
+        ]
+      },
+
+      figure218FirstBranchReview: {
+        visualTranscription: "gammaH;ztc;m <= 0 si QH;gn;ztc;m > 0 \u2260 1",
+        classification: "resolved_verified_typographical_artifact",
+        resolvedCondition: "gammaH <= 0 && QHgn > 0",
+        output: "QHnd = 0",
+        runtimeNote:
+          "Do not execute this branch in the first restricted runtime unless separate targeted tests are added.",
+        sourceBackedReasons: [
+          "QH;gn;ztc;m is defined as total heat gains in kWh, so attaching != 1 to QHgn is dimensionally invalid.",
+          "gammaH <= 0 already implies gammaH != 1.",
+          "figure 2.14 contains the matching edge case gammaH <= 0 and QH;gn;ztc;m > 0 without the trailing artifact.",
+          "relation 2.55 defines the heating utilization parameter with no need for the trailing artifact.",
+          "the resolved branch is internally consistent with etaH;gn;ztc;m * QH;gn;ztc;m offsetting QH;ht;ztc;m."
+        ],
+        sourceLocator: {
+          page: 120,
+          figure: "2.18",
+          subsection: "2.8.4"
+        }
+      },
+
+      figure214EdgeConditionReview: [
+        {
+          edgeCaseId: "gammaH_non_positive",
+          condition: "gammaH <= 0",
+          sourceBackedBehavior:
+            "figure 2.14 has non-positive gamma branches; figure 2.18 first branch is resolved for positive gains but remains excluded from the first restricted runtime",
+          readinessStatus: "resolved_metadata_only_excluded_from_first_runtime",
+          includedInFirstRestrictedRuntime: false,
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          edgeCaseId: "gammaH_zero",
+          condition: "gammaH = 0",
+          sourceBackedBehavior:
+            "the etaH;gn = 1 / gammaH edge expression is singular at zero and requires targeted runtime treatment",
+          readinessStatus: "excluded_zero_division_edge",
+          includedInFirstRestrictedRuntime: false,
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          edgeCaseId: "gammaH_near_zero",
+          condition: "gammaH near zero",
+          sourceBackedBehavior:
+            "near-zero numeric behavior is not a separate MC001 branch and should be excluded until explicit numeric tests exist",
+          readinessStatus: "excluded_numerical_edge",
+          includedInFirstRestrictedRuntime: false,
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          edgeCaseId: "QHgn_non_positive",
+          condition: "QHgn <= 0",
+          sourceBackedBehavior:
+            "figure 2.14 includes a non-positive gains branch, but first restricted heating runtime should require QHgn >= 0 and gammaH > 0",
+          readinessStatus: "excluded_non_positive_gain_edge",
+          includedInFirstRestrictedRuntime: false,
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          edgeCaseId: "QHht_non_positive",
+          condition: "QHht <= 0",
+          sourceBackedBehavior:
+            "gammaH = QHgn / QHht requires positive heat transfer for the restricted explicit-input runtime",
+          readinessStatus: "excluded_non_positive_transfer_edge",
+          includedInFirstRestrictedRuntime: false,
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          edgeCaseId: "gammaH_equals_one",
+          condition: "gammaH = 1",
+          sourceBackedBehavior:
+            "figure 2.14 separately gives etaH;gn;ztc;m = aH;ztc;m / (aH;ztc;m + 1)",
+          readinessStatus: "verified_with_explicit_eta_or_gamma_equals_one_branch",
+          includedInFirstRestrictedRuntime: true,
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          edgeCaseId: "gammaH_greater_than_two",
+          condition: "gammaH > 2.0",
+          sourceBackedBehavior:
+            "figure 2.18 shows zero useful heating demand, but the first restricted runtime domain should exclude this branch",
+          readinessStatus: "verified_but_excluded_from_first_runtime",
+          includedInFirstRestrictedRuntime: false,
+          sourceLocator: {
+            page: 120,
+            figure: "2.18",
+            subsection: "2.8.4"
+          }
+        },
+        {
+          edgeCaseId: "normal_branch",
+          condition: "0 < gammaH <= 2.0",
+          sourceBackedBehavior:
+            "restricted runtime may use explicit etaHgn input or source-backed figure 2.14 formulas, then compute QHnd = QHht - etaHgn * QHgn",
+          readinessStatus: "allowed_for_restricted_runtime",
+          includedInFirstRestrictedRuntime: true,
+          sourceLocator: {
+            page: 120,
+            figure: "2.18",
+            subsection: "2.8.4"
+          }
+        }
+      ],
+
+      restrictedExplicitInputRuntimeFeasibility: {
+        status: "allowed_for_future_runtime",
+        domain: [
+          "heating_only",
+          "monthly_explicit_inputs_only",
+          "no_long_unoccupied_periods",
+          "QHht > 0",
+          "QHgn >= 0",
+          "0 < gammaH <= 2.0",
+          "etaHgn_explicit_or_source_backed_from_explicit_inputs"
+        ],
+        inputValidationConstraints: [
+          "QHht_kWh finite greater than zero",
+          "QHgn_kWh finite greater than or equal to zero",
+          "gammaH finite and greater than zero and less than or equal to 2.0",
+          "etaHgn finite explicit input or calculated only from verified figure 2.14 formulas with explicit aH and tau inputs",
+          "no normative gains solar capacity schedule or occupancy defaults",
+          "no final energy primary energy CO2 CPE or certificate output"
+        ],
+        allowedFormulaCandidates: [
+          {
+            candidateCode: "MC001_R7_GAMMA_H_EXPLICIT_RATIO",
+            expressionText: "gammaH = QHgn / QHht",
+            readinessStatus: "verified_for_future_runtime_restricted_domain",
+            sourceLocator: {
+              page: 113,
+              figure: "2.14",
+              subsection: "2.7.6"
+            }
+          },
+          {
+            candidateCode: "MC001_R7_QHND_NORMAL_RESTRICTED_BRANCH",
+            expressionText: "QHnd = QHht - etaHgn * QHgn",
+            readinessStatus: "verified_for_future_runtime_restricted_domain",
+            sourceLocator: {
+              page: 120,
+              figure: "2.18",
+              subsection: "2.8.4"
+            }
+          },
+          {
+            candidateCode: "MC001_R7_QHND_RESOLVED_ZERO_BRANCH_METADATA_ONLY",
+            expressionText: "if gammaH <= 0 and QHgn > 0 then QHnd = 0",
+            readinessStatus: "resolved_metadata_only_excluded_from_first_runtime",
+            sourceLocator: {
+              page: 120,
+              figure: "2.18",
+              subsection: "2.8.4"
+            }
+          }
+        ],
+        allowedOutputs: [
+          "monthly_useful_heating_energy_QHnd_kWh_restricted_explicit_input_only",
+          "diagnostics_and_methodology_limits"
+        ],
+        exclusions: [
+          "not_full_QHnd",
+          "not_QCnd",
+          "not_final_energy",
+          "not_primary_energy",
+          "not_CO2",
+          "not_CPE_certificate",
+          "not_system_losses",
+          "not_long_unoccupied_or_intermittent_operation"
+        ]
+      },
+
+      runtimeReadinessVerdict: "C6F_CAN_IMPLEMENT_RESTRICTED_HEATING_QHND_EXPLICIT_INPUT",
+
+      dependencyMatrix: {
+        c5ExplicitTransferTotal: {
+          status: "implemented",
+          limitation: "explicit transfer only not full QH;nd"
+        },
+        qhHtMonthlyInput: {
+          status: "explicit_input_only_or_C5_chain",
+          source: "C5_explicit_transfer_total"
+        },
+        qhGnMonthlyInput: {
+          status: "explicit_input_required",
+          source: "R6_gains_readiness"
+        },
+        gammaHFormula: {
+          status: "verified_for_restricted_future_runtime",
+          source: "figure_2.14"
+        },
+        etaHgnFormula: {
+          status: "verified_for_restricted_future_runtime_with_explicit_inputs_or_user_supplied_eta",
+          source: "figure_2.14_relation_2.55_relation_2.57"
+        },
+        figure214EdgeConditions: {
+          status: "reviewed_restricted_domain_selected",
+          source: "figure_2.14"
+        },
+        figure218FirstBranch: {
+          status: "resolved_verified_typographical_artifact",
+          source: "figure_2.18"
+        },
+        effectiveCapacityTimeConstant: {
+          status: "explicit_input_or_future_source_pack",
+          source: "section_2.7.5_relation_2.57"
+        },
+        internalGains: {
+          status: "explicit_input_only_or_missing_future_source_pack",
+          source: "section_2.7.2"
+        },
+        solarGains: {
+          status: "explicit_input_only_or_missing_future_source_pack",
+          source: "section_2.7.3"
+        },
+        qhndRuntime: {
+          status: "not_implemented_future_restricted_runtime_allowed"
+        },
+        annualAggregation: {
+          status: "not_implemented"
+        },
+        final_energy: {
+          status: "blocked"
+        },
+        primary_energy: {
+          status: "blocked"
+        },
+        co2: {
+          status: "blocked"
+        },
+        cpeCertificate: {
+          status: "blocked"
+        }
+      },
+
+      blockers: [
+        "not_runtime_QH;nd_in_C6E",
+        "not_full_QH;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults",
+        "no_normative_default_gains",
+        "no_normative_default_solar_data",
+        "no_normative_default_capacity",
+        "no_default_occupancy_or_schedules",
+        "long_unoccupied_and_intermittency_not_implemented",
+        "restricted_runtime_must_exclude_gammaH_non_positive_branch_initially",
+        "first_runtime_requires_targeted_tests_for_edge_branches"
+      ]
     }
   ]
 });
@@ -2724,6 +3071,27 @@ function validateGainsCapacitySourceScope(sourceScope) {
   );
 }
 
+function validateQhndAmbiguitySourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section ===
+      "2.7.6 factori de utilizare si 2.8.4 corectii pentru perioada de neocupare" &&
+    sourceScope.subsection === "figure 2.18 heating QH;nd ambiguity resolution" &&
+    arraysMatchExactly(sourceScope.parentSectionsVerified, ["2.7", "2.7.6", "2.8.4"]) &&
+    arraysMatchExactly(sourceScope.pagesVerified, [113, 116, 120]) &&
+    arraysMatchExactly(sourceScope.figuresVerified, ["2.14", "2.18"]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, ["2.55", "2.57"]) &&
+    arraysMatchExactly(sourceScope.adjacentSymbolDefinitionsVerified, [
+      "gammaH;ztc;m",
+      "QH;ht;ztc;m",
+      "QH;gn;ztc;m",
+      "etaH;gn;ztc;m",
+      "QH;nd;ztc;m"
+    ])
+  );
+}
+
 function validateBztuConcept(concept) {
   return (
     isObject(concept) &&
@@ -2824,6 +3192,22 @@ function validateGainsCapacityConcept(concept) {
     hasRequiredString(concept.name) &&
     hasRequiredString(concept.purpose) &&
     sourceLocatorLooksValid(concept.sourceLocator, 103)
+  );
+}
+
+function validateQhndAmbiguityConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "qhnd_ambiguity_resolution_readiness" &&
+    concept.targetSymbol === "QH;nd;ztc;m" &&
+    concept.registryKind === "metadata_only_readiness_registry" &&
+    concept.unit === "metadata_only" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 120) &&
+    concept.sourceLocator.figure === "2.18"
   );
 }
 
@@ -3960,6 +4344,208 @@ function validateGainsCapacityBlockers(blockers) {
   ]);
 }
 
+function validateQhndAmbiguitySourceIdentity(identity) {
+  return (
+    isObject(identity) &&
+    identity.methodologyCode === METHODOLOGY_CODE &&
+    identity.methodologyVersion === METHODOLOGY_VERSION &&
+    identity.primaryFigureReference === "figure_2.18" &&
+    identity.crossCheckFigureReference === "figure_2.14" &&
+    identity.utilizationSectionReference === "section_2.7.6" &&
+    identity.utilizationParameterReference === "relation_2.55" &&
+    identity.timeConstantReference === "relation_2.57" &&
+    arraysMatchExactly(identity.relatedReferences, [
+      "MC001-2022 page 120 figure 2.18",
+      "MC001-2022 page 113 figure 2.14",
+      "MC001-2022 page 113 section 2.7.6",
+      "MC001-2022 page 113 relation 2.55",
+      "MC001-2022 page 116 relation 2.57"
+    ]) &&
+    arraysMatchExactly(identity.adjacentSymbolDefinitionReferences, [
+      "QH;gn;ztc;m_total_heat_gains_kWh",
+      "QH;ht;ztc;m_heat_transfer_kWh",
+      "gammaH;ztc;m_balance_ratio_dimensionless",
+      "etaH;gn;ztc;m_gain_utilization_dimensionless",
+      "QH;nd;ztc;m_monthly_useful_heating_energy_kWh"
+    ])
+  );
+}
+
+function validateQhndAmbiguityFigure218Review(review) {
+  return (
+    isObject(review) &&
+    review.visualTranscription === "gammaH;ztc;m <= 0 si QH;gn;ztc;m > 0 \u2260 1" &&
+    review.classification === "resolved_verified_typographical_artifact" &&
+    review.resolvedCondition === "gammaH <= 0 && QHgn > 0" &&
+    review.output === "QHnd = 0" &&
+    review.runtimeNote ===
+      "Do not execute this branch in the first restricted runtime unless separate targeted tests are added." &&
+    arraysMatchExactly(review.sourceBackedReasons, [
+      "QH;gn;ztc;m is defined as total heat gains in kWh, so attaching != 1 to QHgn is dimensionally invalid.",
+      "gammaH <= 0 already implies gammaH != 1.",
+      "figure 2.14 contains the matching edge case gammaH <= 0 and QH;gn;ztc;m > 0 without the trailing artifact.",
+      "relation 2.55 defines the heating utilization parameter with no need for the trailing artifact.",
+      "the resolved branch is internally consistent with etaH;gn;ztc;m * QH;gn;ztc;m offsetting QH;ht;ztc;m."
+    ]) &&
+    sourceLocatorLooksValid(review.sourceLocator, 120) &&
+    review.sourceLocator.figure === "2.18"
+  );
+}
+
+function validateQhndAmbiguityEdgeReview(edges) {
+  const expected = [
+    ["gammaH_non_positive", "gammaH <= 0", "resolved_metadata_only_excluded_from_first_runtime", false, 113],
+    ["gammaH_zero", "gammaH = 0", "excluded_zero_division_edge", false, 113],
+    ["gammaH_near_zero", "gammaH near zero", "excluded_numerical_edge", false, 113],
+    ["QHgn_non_positive", "QHgn <= 0", "excluded_non_positive_gain_edge", false, 113],
+    ["QHht_non_positive", "QHht <= 0", "excluded_non_positive_transfer_edge", false, 113],
+    [
+      "gammaH_equals_one",
+      "gammaH = 1",
+      "verified_with_explicit_eta_or_gamma_equals_one_branch",
+      true,
+      113
+    ],
+    ["gammaH_greater_than_two", "gammaH > 2.0", "verified_but_excluded_from_first_runtime", false, 120],
+    ["normal_branch", "0 < gammaH <= 2.0", "allowed_for_restricted_runtime", true, 120]
+  ];
+  if (!Array.isArray(edges) || edges.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [edgeCaseId, condition, readinessStatus, included, page] = expected[index];
+    const edge = edges[index];
+    if (
+      !isObject(edge) ||
+      edge.edgeCaseId !== edgeCaseId ||
+      edge.condition !== condition ||
+      edge.readinessStatus !== readinessStatus ||
+      edge.includedInFirstRestrictedRuntime !== included ||
+      !hasRequiredString(edge.sourceBackedBehavior) ||
+      !sourceLocatorLooksValid(edge.sourceLocator, page) ||
+      !["2.14", "2.18"].includes(edge.sourceLocator.figure)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateQhndAmbiguityRestrictedRuntimeFeasibility(feasibility) {
+  if (!isObject(feasibility) || feasibility.status !== "allowed_for_future_runtime") {
+    return false;
+  }
+  if (!arraysMatchExactly(feasibility.domain, [
+    "heating_only",
+    "monthly_explicit_inputs_only",
+    "no_long_unoccupied_periods",
+    "QHht > 0",
+    "QHgn >= 0",
+    "0 < gammaH <= 2.0",
+    "etaHgn_explicit_or_source_backed_from_explicit_inputs"
+  ])) {
+    return false;
+  }
+  if (!arraysMatchExactly(feasibility.inputValidationConstraints, [
+    "QHht_kWh finite greater than zero",
+    "QHgn_kWh finite greater than or equal to zero",
+    "gammaH finite and greater than zero and less than or equal to 2.0",
+    "etaHgn finite explicit input or calculated only from verified figure 2.14 formulas with explicit aH and tau inputs",
+    "no normative gains solar capacity schedule or occupancy defaults",
+    "no final energy primary energy CO2 CPE or certificate output"
+  ])) {
+    return false;
+  }
+  const candidates = feasibility.allowedFormulaCandidates;
+  const expected = [
+    ["MC001_R7_GAMMA_H_EXPLICIT_RATIO", "verified_for_future_runtime_restricted_domain", 113],
+    ["MC001_R7_QHND_NORMAL_RESTRICTED_BRANCH", "verified_for_future_runtime_restricted_domain", 120],
+    [
+      "MC001_R7_QHND_RESOLVED_ZERO_BRANCH_METADATA_ONLY",
+      "resolved_metadata_only_excluded_from_first_runtime",
+      120
+    ]
+  ];
+  if (!Array.isArray(candidates) || candidates.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [candidateCode, readinessStatus, page] = expected[index];
+    const candidate = candidates[index];
+    if (
+      !isObject(candidate) ||
+      candidate.candidateCode !== candidateCode ||
+      candidate.readinessStatus !== readinessStatus ||
+      !hasRequiredString(candidate.expressionText) ||
+      !sourceLocatorLooksValid(candidate.sourceLocator, page) ||
+      Object.hasOwn(candidate, "entryType") ||
+      Object.hasOwn(candidate, "formulaCode")
+    ) {
+      return false;
+    }
+  }
+  return (
+    arraysMatchExactly(feasibility.allowedOutputs, [
+      "monthly_useful_heating_energy_QHnd_kWh_restricted_explicit_input_only",
+      "diagnostics_and_methodology_limits"
+    ]) &&
+    arraysMatchExactly(feasibility.exclusions, [
+      "not_full_QHnd",
+      "not_QCnd",
+      "not_final_energy",
+      "not_primary_energy",
+      "not_CO2",
+      "not_CPE_certificate",
+      "not_system_losses",
+      "not_long_unoccupied_or_intermittent_operation"
+    ])
+  );
+}
+
+function validateQhndAmbiguityDependencyMatrix(matrix) {
+  return (
+    isObject(matrix) &&
+    matrix.c5ExplicitTransferTotal?.status === "implemented" &&
+    matrix.c5ExplicitTransferTotal.limitation === "explicit transfer only not full QH;nd" &&
+    matrix.qhHtMonthlyInput?.status === "explicit_input_only_or_C5_chain" &&
+    matrix.qhGnMonthlyInput?.status === "explicit_input_required" &&
+    matrix.gammaHFormula?.status === "verified_for_restricted_future_runtime" &&
+    matrix.etaHgnFormula?.status ===
+      "verified_for_restricted_future_runtime_with_explicit_inputs_or_user_supplied_eta" &&
+    matrix.figure214EdgeConditions?.status === "reviewed_restricted_domain_selected" &&
+    matrix.figure218FirstBranch?.status === "resolved_verified_typographical_artifact" &&
+    matrix.effectiveCapacityTimeConstant?.status === "explicit_input_or_future_source_pack" &&
+    matrix.internalGains?.status === "explicit_input_only_or_missing_future_source_pack" &&
+    matrix.solarGains?.status === "explicit_input_only_or_missing_future_source_pack" &&
+    matrix.qhndRuntime?.status === "not_implemented_future_restricted_runtime_allowed" &&
+    matrix.annualAggregation?.status === "not_implemented" &&
+    matrix.final_energy?.status === "blocked" &&
+    matrix.primary_energy?.status === "blocked" &&
+    matrix.co2?.status === "blocked" &&
+    matrix.cpeCertificate?.status === "blocked"
+  );
+}
+
+function validateQhndAmbiguityBlockers(blockers) {
+  return arraysMatchExactly(blockers, [
+    "not_runtime_QH;nd_in_C6E",
+    "not_full_QH;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_normative_default_gains",
+    "no_normative_default_solar_data",
+    "no_normative_default_capacity",
+    "no_default_occupancy_or_schedules",
+    "long_unoccupied_and_intermittency_not_implemented",
+    "restricted_runtime_must_exclude_gammaH_non_positive_branch_initially",
+    "first_runtime_requires_targeted_tests_for_edge_branches"
+  ]);
+}
+
 function sourcePackBaseIssue(
   sourcePack,
   verificationStatus,
@@ -4254,6 +4840,63 @@ function gainsCapacityTimeconstantSourcePackIssue(sourcePack) {
   return null;
 }
 
+function qhndAmbiguityResolutionSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateQhndAmbiguitySourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateQhndAmbiguityConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateQhndAmbiguitySourceIdentity(sourcePack.sourceIdentity)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateQhndAmbiguityFigure218Review(sourcePack.figure218FirstBranchReview)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateQhndAmbiguityEdgeReview(sourcePack.figure214EdgeConditionReview)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    !validateQhndAmbiguityRestrictedRuntimeFeasibility(
+      sourcePack.restrictedExplicitInputRuntimeFeasibility
+    )
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.runtimeReadinessVerdict !==
+    "C6F_CAN_IMPLEMENT_RESTRICTED_HEATING_QHND_EXPLICIT_INPUT"
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateQhndAmbiguityDependencyMatrix(sourcePack.dependencyMatrix)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateQhndAmbiguityBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== true ||
+    sourcePack.runtimeCalculatorStatus !== "not_implemented" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -4278,6 +4921,9 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE) {
     return gainsCapacityTimeconstantSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE) {
+    return qhndAmbiguityResolutionSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
