@@ -436,6 +436,43 @@ function c3AndC4Payload() {
   return payload;
 }
 
+function c6fRestrictedQhndPayload(caseOverrides = {}) {
+  return validPayload({
+    htr_input: {
+      ...validPayload().htr_input,
+      restricted_heating_qhnd_input: {
+        mode: "restricted_heating_qhnd_explicit_v1",
+        cases: [
+          {
+            case_id: "jan-qhnd-restricted",
+            month: "january",
+            qHht_kwh: 1026.72,
+            qHgn_kwh: 300,
+            etaHgn: 0.8,
+            source: {
+              reference: "manual_mvp_input"
+            },
+            ...caseOverrides
+          }
+        ]
+      }
+    }
+  });
+}
+
+function c1ThroughC6fPayload() {
+  const payload = c2IntegratedPayload();
+  payload.htr_input.transmission_formula_inputs = c1FormulaPayload()
+    .htr_input.transmission_formula_inputs;
+  payload.htr_input.monthly_transmission_energy_input = c3MonthlyPayload()
+    .htr_input.monthly_transmission_energy_input;
+  payload.htr_input.ventilation_transfer_input = c4VentilationPayload()
+    .htr_input.ventilation_transfer_input;
+  payload.htr_input.restricted_heating_qhnd_input = c6fRestrictedQhndPayload()
+    .htr_input.restricted_heating_qhnd_input;
+  return payload;
+}
+
 async function post(path, db, body, token = "test-token") {
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -1080,6 +1117,118 @@ await test("C5 scope and methodology limits do not claim downstream energy behav
   assert.equal(serialized.includes("not_certificate"), true);
   assert.equal(serialized.includes("does_not_include_internal_gains"), true);
   assert.equal(serialized.includes("does_not_include_utilization_factors"), true);
+});
+
+await test("C6F accepts valid restricted heating QHnd explicit input", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload());
+  const c6f = result.body.mc001_htr.restrictedHeatingQhndResult;
+  assert.equal(result.status, 200);
+  assert.equal(c6f.status, "ready");
+  assert.equal(c6f.scope, "restricted_heating_qhnd_explicit_input_only_not_full_mc001");
+  assert.equal(c6f.caseResults[0].qHht, 1026.72);
+  assert.equal(c6f.caseResults[0].qHgn, 300);
+  assert.equal(c6f.caseResults[0].etaHgn, 0.8);
+  assert.equal(c6f.caseResults[0].qHnd, 786.72);
+  assert.equal(c6f.summary.annualQHnd, 786.72);
+});
+
+await test("C6F restricted QHnd result persists and reloads", async () => {
+  const db = new FakeDb();
+  await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload());
+  const result = await post("/api/mc001/htr/load", db, { analysis_id: 100 });
+  const c6f = result.body.mc001_htr.restrictedHeatingQhndResult;
+  assert.equal(result.status, 200);
+  assert.equal(result.body.htr_input.restricted_heating_qhnd_input.cases[0].case_id, "jan-qhnd-restricted");
+  assert.equal(result.body.htr_input.restricted_heating_qhnd_input.cases[0].qHht_kwh, 1026.72);
+  assert.equal(c6f.caseResults[0].qHnd, 786.72);
+  assert.equal(c6f.summary.annualQHnd, 786.72);
+});
+
+await test("C6F rejects client-provided restricted heating QHnd result", async () => {
+  const db = new FakeDb();
+  const payload = c6fRestrictedQhndPayload();
+  payload.htr_input.restrictedHeatingQhndResult = {
+    summary: { annualQHnd: 1 }
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C6F rejects client-provided derived QHnd fields", async () => {
+  const db = new FakeDb();
+  const payload = c6fRestrictedQhndPayload({ qHnd: 1 });
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C6F rejects client-provided restricted QHnd summary", async () => {
+  const db = new FakeDb();
+  const payload = c6fRestrictedQhndPayload();
+  payload.htr_input.restricted_heating_qhnd_input.summary = {
+    annualQHnd: 1
+  };
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C6F rejects missing etaHgn", async () => {
+  const db = new FakeDb();
+  const payload = c6fRestrictedQhndPayload({ etaHgn: undefined });
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C6F rejects gammaH less than or equal to zero and greater than two", async () => {
+  for (const gammaH of [0, 2.01]) {
+    const db = new FakeDb();
+    const result = await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload({ gammaH }));
+    assert.equal(result.status, 400);
+    assert.equal(result.body.success, false);
+    assert.equal(db.analyses.length, 0);
+  }
+});
+
+await test("C6F preserves V2 C1 C2 C3 C4 and C5 response fields", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c1ThroughC6fPayload());
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.htrTotalResult.amount, 10);
+  assert.equal(result.body.mc001_htr.transmissionFormulaResults.directTransmission.result.amount, 3);
+  assert.equal(result.body.mc001_htr.integratedTransmissionResult.results.htrTotal215.result.amount, 9);
+  assert.equal(result.body.mc001_htr.monthlyTransmissionEnergyResult.caseResults[0].transmissionEnergy.amount, 133.92);
+  assert.equal(result.body.mc001_htr.ventilationTransferResult.caseResults[0].ventilationEnergy.amount, 892.8);
+  assert.equal(result.body.mc001_htr.explicitTotalHeatTransferResult.result.amount, 1026.72);
+  assert.equal(result.body.mc001_htr.restrictedHeatingQhndResult.summary.annualQHnd, 786.72);
+});
+
+await test("C6F response does not expose token session email private data or stack traces", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload());
+  const serialized = JSON.stringify(result.body);
+  assert.equal(result.status, 200);
+  for (const forbidden of [
+    "sourceRecordId",
+    "sourceContext",
+    "sourceTrace",
+    "sourceRefs",
+    "test-token",
+    "safe-user.local",
+    "person@example.com",
+    "private-note",
+    "Error:",
+    "at "
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, `leaked ${forbidden}`);
+  }
 });
 
 await test("run endpoint rejects private sentinel content and does not echo it", async () => {
