@@ -11,6 +11,10 @@ function test(name, fn) {
     });
 }
 
+function close(actual, expected, epsilon = 1e-9) {
+  assert.ok(Math.abs(actual - expected) <= epsilon, `${actual} != ${expected}`);
+}
+
 class FakeStatement {
   constructor(db, sql) {
     this.db = db;
@@ -1129,8 +1133,24 @@ await test("C6F accepts valid restricted heating QHnd explicit input", async () 
   assert.equal(c6f.caseResults[0].qHht, 1026.72);
   assert.equal(c6f.caseResults[0].qHgn, 300);
   assert.equal(c6f.caseResults[0].etaHgn, 0.8);
+  assert.equal(c6f.caseResults[0].etaHgnOrigin, "explicit_input");
   assert.equal(c6f.caseResults[0].qHnd, 786.72);
   assert.equal(c6f.summary.annualQHnd, 786.72);
+});
+
+await test("C7D accepts restricted QHnd with etaHgn calculated from explicit aH", async () => {
+  const db = new FakeDb();
+  const payload = c6fRestrictedQhndPayload({ etaHgn: undefined, aH: 2 });
+  const result = await post("/api/mc001/htr/run", db, payload);
+  const c6f = result.body.mc001_htr.restrictedHeatingQhndResult;
+  assert.equal(result.status, 200);
+  assert.equal(c6f.status, "ready");
+  close(c6f.caseResults[0].gammaH, 300 / 1026.72);
+  close(c6f.caseResults[0].etaHgn, 0.9380237833186124);
+  close(c6f.caseResults[0].qHnd, 745.3128650044164);
+  assert.equal(c6f.caseResults[0].aH, 2);
+  assert.equal(c6f.caseResults[0].etaHgnOrigin, "calculated_from_explicit_aH");
+  assert.equal(c6f.caseResults[0].etaHgnFormulaCode, "MC001_FIGURE_2_14_HEATING_GAIN_UTILIZATION_FACTOR");
 });
 
 await test("C6F global diagnostics clarify full QHnd is still not implemented", async () => {
@@ -1163,6 +1183,22 @@ await test("C6F restricted QHnd result persists and reloads", async () => {
   assert.equal(c6f.summary.annualQHnd, 786.72);
 });
 
+await test("C7D calculated etaHgn result persists and reloads", async () => {
+  const db = new FakeDb();
+  await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload({ etaHgn: undefined, aH: 2 }));
+  const result = await post("/api/mc001/htr/load", db, { analysis_id: 100 });
+  const inputCase = result.body.htr_input.restricted_heating_qhnd_input.cases[0];
+  const c6fCase = result.body.mc001_htr.restrictedHeatingQhndResult.caseResults[0];
+  assert.equal(result.status, 200);
+  assert.equal(inputCase.aH, 2);
+  assert.equal(Object.prototype.hasOwnProperty.call(inputCase, "etaHgn"), false);
+  close(c6fCase.gammaH, 300 / 1026.72);
+  close(c6fCase.etaHgn, 0.9380237833186124);
+  close(c6fCase.qHnd, 745.3128650044164);
+  assert.equal(c6fCase.aH, 2);
+  assert.equal(c6fCase.etaHgnOrigin, "calculated_from_explicit_aH");
+});
+
 await test("C6F rejects client-provided restricted heating QHnd result", async () => {
   const db = new FakeDb();
   const payload = c6fRestrictedQhndPayload();
@@ -1184,6 +1220,19 @@ await test("C6F rejects client-provided derived QHnd fields", async () => {
   assert.equal(db.analyses.length, 0);
 });
 
+await test("C7D rejects client-provided etaHgn origin and formula derived fields", async () => {
+  for (const derivedField of [
+    { etaHgnOrigin: "explicit_input" },
+    { etaHgnFormulaCode: "MC001_FIGURE_2_14_HEATING_GAIN_UTILIZATION_FACTOR" }
+  ]) {
+    const db = new FakeDb();
+    const result = await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload(derivedField));
+    assert.equal(result.status, 400);
+    assert.equal(result.body.success, false);
+    assert.equal(db.analyses.length, 0);
+  }
+});
+
 await test("C6F rejects client-provided restricted QHnd summary", async () => {
   const db = new FakeDb();
   const payload = c6fRestrictedQhndPayload();
@@ -1196,9 +1245,26 @@ await test("C6F rejects client-provided restricted QHnd summary", async () => {
   assert.equal(db.analyses.length, 0);
 });
 
-await test("C6F rejects missing etaHgn", async () => {
+await test("C7D rejects both etaHgn and aH present", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload({ aH: 2 }));
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C7D rejects neither etaHgn nor aH present", async () => {
   const db = new FakeDb();
   const payload = c6fRestrictedQhndPayload({ etaHgn: undefined });
+  const result = await post("/api/mc001/htr/run", db, payload);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.success, false);
+  assert.equal(db.analyses.length, 0);
+});
+
+await test("C7D rejects aH less than or equal to zero", async () => {
+  const db = new FakeDb();
+  const payload = c6fRestrictedQhndPayload({ etaHgn: undefined, aH: 0 });
   const result = await post("/api/mc001/htr/run", db, payload);
   assert.equal(result.status, 400);
   assert.equal(result.body.success, false);

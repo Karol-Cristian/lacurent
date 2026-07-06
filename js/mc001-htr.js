@@ -296,12 +296,13 @@ document.addEventListener("DOMContentLoaded", () => {
     setInputValue("restrictedQhndQHht", "1026.72");
     setInputValue("restrictedQhndQHgn", "300");
     setInputValue("restrictedQhndGammaH", "");
-    setInputValue("restrictedQhndEtaHgn", "0.8");
+    setInputValue("restrictedQhndEtaHgn", "");
+    setInputValue("restrictedQhndAH", "2");
     setInputValue("restrictedQhndSource", DEFAULT_SOURCE_REFERENCE);
 
     setMessage(
       runMessage,
-      "Exemplul sintetic smoke transmisie a fost completat. C6F asteptat: QHnd=786.72 kWh. Verifica valorile si apasa Calculeaza Htr."
+      "Exemplul sintetic smoke transmisie a fost completat. C7D asteptat: etaHgn=0.9380237833186124 si QHnd=745.3128650044164 kWh. Verifica valorile si apasa Calculeaza Htr."
     );
   }
 
@@ -678,7 +679,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "restrictedQhndQHht",
       "restrictedQhndQHgn",
       "restrictedQhndGammaH",
-      "restrictedQhndEtaHgn"
+      "restrictedQhndEtaHgn",
+      "restrictedQhndAH"
     ]);
     if (!hasRestrictedQhnd) return null;
 
@@ -693,11 +695,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const qHht = positiveNumber("restrictedQhndQHht", "C6F QHnd: qHht_kwh");
     const qHgn = nonNegativeNumber("restrictedQhndQHgn", "C6F QHnd: qHgn_kwh");
-    const etaHgn = nonNegativeNumber("restrictedQhndEtaHgn", "C6F QHnd: etaHgn");
     const gammaRaw = inputValue("restrictedQhndGammaH");
-    const qhnd = qHht - etaHgn * qHgn;
-    if (qhnd < 0) {
-      throw new Error("C6F QHnd: rezultatul ar fi negativ si este in afara domeniului C6F.");
+    const etaRaw = inputValue("restrictedQhndEtaHgn");
+    const aHRaw = inputValue("restrictedQhndAH");
+    if (etaRaw !== "" && aHRaw !== "") {
+      throw new Error("C6F QHnd: completeaza fie etaHgn, fie aH, nu ambele.");
+    }
+    if (etaRaw === "" && aHRaw === "") {
+      throw new Error("C6F QHnd: completeaza etaHgn explicit sau aH explicit.");
     }
     if (gammaRaw === "" && qHgn / qHht <= 0) {
       throw new Error("C6F QHnd: gammaH calculat trebuie sa fie mai mare decat zero.");
@@ -708,11 +713,28 @@ document.addEventListener("DOMContentLoaded", () => {
       month,
       qHht_kwh: qHht,
       qHgn_kwh: qHgn,
-      etaHgn,
       source: {
         reference: sourceReference
       }
     };
+    if (etaRaw !== "") {
+      const etaHgn = finiteNumber(etaRaw);
+      if (etaHgn === null || etaHgn < 0) {
+        throw new Error("C6F QHnd: etaHgn trebuie sa fie un numar pozitiv sau zero.");
+      }
+      const qhnd = qHht - etaHgn * qHgn;
+      if (qhnd < 0) {
+        throw new Error("C6F QHnd: rezultatul ar fi negativ si este in afara domeniului C6F.");
+      }
+      qhndCase.etaHgn = etaHgn;
+    }
+    if (aHRaw !== "") {
+      const aH = finiteNumber(aHRaw);
+      if (aH === null || aH <= 0) {
+        throw new Error("C6F QHnd: aH trebuie sa fie un numar pozitiv.");
+      }
+      qhndCase.aH = aH;
+    }
     if (gammaRaw !== "") {
       const gammaH = finiteNumber(gammaRaw);
       if (gammaH === null || gammaH <= 0 || gammaH > 2) {
@@ -856,7 +878,7 @@ document.addEventListener("DOMContentLoaded", () => {
         list,
         "C6F QHnd incalzire restrictionat",
         `${c6fInput.cases?.length || 0} caz explicit`,
-        "qHht, qHgn si etaHgn explicite; nu este QHnd complet"
+        "qHht, qHgn si etaHgn sau aH explicite; nu este QHnd complet"
       );
     }
   }
@@ -1054,8 +1076,8 @@ document.addEventListener("DOMContentLoaded", () => {
       appendArticle(
         list,
         `C6F ${item.caseId || item.month || "caz"}`,
-        `QHht=${item.qHht ?? "--"} kWh; QHgn=${item.qHgn ?? "--"} kWh; gammaH=${item.gammaH ?? "--"}; etaHgn=${item.etaHgn ?? "--"}; QHnd=${item.qHnd ?? "--"} kWh`,
-        `${item.month || ""} ${item.scope || ""}`.trim()
+        `QHht=${item.qHht ?? "--"} kWh; QHgn=${item.qHgn ?? "--"} kWh; gammaH=${item.gammaH ?? "--"}; etaHgn=${item.etaHgn ?? "--"}; aH=${item.aH ?? "--"}; QHnd=${item.qHnd ?? "--"} kWh`,
+        `${item.month || ""} etaHgnOrigin=${item.etaHgnOrigin || "--"} ${item.etaHgnFormulaCode || ""} ${item.scope || ""}`.trim()
       );
     });
     appendArticle(
