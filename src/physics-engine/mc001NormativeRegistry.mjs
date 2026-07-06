@@ -14,6 +14,8 @@ const R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE =
   "MC001_R6_GAINS_CAPACITY_TIMECONSTANT_READINESS_SOURCE_PACK";
 const R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE =
   "MC001_R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK";
+const R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE =
+  "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -69,7 +71,8 @@ const SOURCE_PACK_CODES = new Set([
   R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
   R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
   R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
-  R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE
+  R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
+  R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -105,7 +108,8 @@ const ENTRY_CODES = new Set([
   "MC001_CONCEPT_FIGURE_2_18_HEATING_BRANCH",
   "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS",
   "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS",
-  "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS"
+  "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS",
+  "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -436,10 +440,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 8,
+    sourcePacks: 9,
     formulas: 10,
     constants: 1,
-    concepts: 8,
+    concepts: 9,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -2851,6 +2855,338 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "restricted_runtime_must_exclude_gammaH_non_positive_branch_initially",
         "first_runtime_requires_targeted_tests_for_edge_branches"
       ]
+    },
+    {
+      sourcePackCode: R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: true,
+      runtimeCalculatorStatus: "not_implemented",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.7.6. Factori de utilizare",
+        subsection: "heating gain utilization factor etaH;gn formula readiness",
+        parentSectionsVerified: ["2.7", "2.7.5", "2.7.6"],
+        pagesVerified: [112, 113, 116],
+        figuresVerified: ["2.14"],
+        relationsVerified: ["2.55", "2.57"],
+        adjacentSymbolDefinitionsVerified: [
+          "etaH;gn;ztc;m",
+          "gammaH;ztc;m",
+          "aH;ztc;m",
+          "aH;0",
+          "tauH;ztc;m",
+          "tauH;0",
+          "QH;gn;ztc;m",
+          "QH;ht;ztc;m"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS",
+        entryType: "concept",
+        conceptCode: "heating_gain_utilization_factor_formula_readiness",
+        targetSymbol: "etaH;gn;ztc;m",
+        registryKind: "metadata_only_readiness_registry",
+        name: "Heating gain utilization factor formula readiness",
+        unit: "dimensionless",
+        purpose:
+          "records source-backed etaH;gn formula candidates before restricted runtime utilization-factor calculation",
+        sourceLocator: {
+          page: 113,
+          figure: "2.14",
+          subsection: "2.7.6"
+        }
+      },
+      sourceIdentity: {
+        methodologyCode: "MC001",
+        methodologyVersion: "2022",
+        utilizationSectionReference: "section_2.7.6",
+        primaryFigureReference: "figure_2.14",
+        utilizationParameterReference: "relation_2.55",
+        timeConstantReference: "relation_2.57",
+        adjacentTextReferences: [
+          "MC001-2022 page 112 section 2.7.5",
+          "MC001-2022 page 113 section 2.7.6",
+          "MC001-2022 page 113 figure 2.14",
+          "MC001-2022 page 113 relation 2.55",
+          "MC001-2022 page 116 relation 2.57"
+        ],
+        sourceReviewNotes: [
+          "page 113 defines etaH;gn as depending on gammaH and aH for every conditioned zone and month",
+          "page 113 defines QH;ht;ztc;m as total heat transfer for heating in kWh",
+          "page 113 defines QH;gn;ztc;m as total heat gains for heating in kWh",
+          "relation 2.55 defines aH;ztc;m through reference parameters and tauH;ztc;m",
+          "relation 2.57 defines tauH;ztc;m through effective capacity and heat-transfer coefficients"
+        ]
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R8_GAMMA_H_BALANCE_RATIO",
+          mc001Symbol: "gammaH;ztc;m",
+          expressionText: "gammaH;ztc;m = QH;gn;ztc;m / QH;ht;ztc;m",
+          machineExpression: "gammaH = QHgn / QHht",
+          relationReference: "figure_2.14",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          requiredInputs: ["QH;gn;ztc;m", "QH;ht;ztc;m"],
+          outputSymbol: "gammaH;ztc;m",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R8_ETA_H_GN_GAMMA_NOT_ONE",
+          mc001Symbol: "etaH;gn;ztc;m",
+          expressionText:
+            "etaH;gn;ztc;m = (1 - gammaH;ztc;m ^ aH;ztc;m) / (1 - gammaH;ztc;m ^ (aH;ztc;m + 1))",
+          machineExpression:
+            "etaHgn = (1 - gammaH ** aH) / (1 - gammaH ** (aH + 1))",
+          conditionExpression: "gammaH;ztc;m > 0 and gammaH;ztc;m != 1",
+          relationReference: "figure_2.14",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          requiredInputs: ["gammaH;ztc;m", "aH;ztc;m"],
+          outputSymbol: "etaH;gn;ztc;m",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R8_ETA_H_GN_GAMMA_EQUALS_ONE",
+          mc001Symbol: "etaH;gn;ztc;m",
+          expressionText: "etaH;gn;ztc;m = aH;ztc;m / (aH;ztc;m + 1)",
+          machineExpression: "etaHgn = aH / (aH + 1)",
+          conditionExpression: "gammaH;ztc;m = 1",
+          relationReference: "figure_2.14",
+          sourceReference: "MC001-2022 page 113 figure 2.14",
+          requiredInputs: ["aH;ztc;m"],
+          outputSymbol: "etaH;gn;ztc;m",
+          readinessStatus: "verified_for_future_runtime",
+          sourceLocator: {
+            page: 113,
+            figure: "2.14",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R8_AH_PARAMETER_RELATION_2_55",
+          mc001Symbol: "aH;ztc;m",
+          expressionText: "aH;ztc;m = aH;0 + tauH;ztc;m / tauH;0",
+          machineExpression: "aH = aH0 + tauH / tauH0",
+          relationReference: "2.55",
+          sourceReference: "MC001-2022 page 113 relation 2.55",
+          requiredInputs: ["aH;0", "tauH;ztc;m", "tauH;0"],
+          outputSymbol: "aH;ztc;m",
+          readinessStatus: "verified_for_future_runtime",
+          runtimeNote:
+            "C7A avoids encoding source reference parameter values; C7B should prefer explicit aH input or require explicit aH0 tauH tauH0 inputs.",
+          sourceLocator: {
+            page: 113,
+            relation: "2.55",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          candidateCode: "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57",
+          mc001Symbol: "tauH;ztc;m",
+          expressionText:
+            "tauH;ztc;m = (Cm;eff;ztc / 3600) / (HH;tr(excl.grflr);ztc;m + HH;gr;adj;ztc + HH;ve;ztc;m)",
+          machineExpression:
+            "tauH = (CmEff / 3600) / (HHtrExclGroundFloor + HHgrAdj + HHve)",
+          relationReference: "2.57",
+          sourceReference: "MC001-2022 page 116 relation 2.57",
+          requiredInputs: [
+            "Cm;eff;ztc",
+            "HH;tr(excl.grflr);ztc;m",
+            "HH;gr;adj;ztc",
+            "HH;ve;ztc;m"
+          ],
+          outputSymbol: "tauH;ztc;m",
+          readinessStatus: "verified_for_future_runtime",
+          runtimeNote:
+            "C7A records the dependency only; C7B can avoid this path by requiring explicit aH.",
+          sourceLocator: {
+            page: 116,
+            relation: "2.57",
+            subsection: "2.7.6"
+          }
+        }
+      ],
+      branchConditionTable: [
+        {
+          branchId: "eta_gamma_equals_one",
+          conditionExpression: "gammaH;ztc;m = 1",
+          outputExpression: "etaH;gn;ztc;m = aH;ztc;m / (aH;ztc;m + 1)",
+          readinessStatus: "verified_for_future_runtime",
+          c7bRuntimeScope: "allowed_with_explicit_aH",
+          sourceReference: "MC001-2022 page 113 figure 2.14"
+        },
+        {
+          branchId: "eta_gamma_not_one_positive",
+          conditionExpression: "gammaH;ztc;m > 0 and gammaH;ztc;m != 1",
+          outputExpression:
+            "etaH;gn;ztc;m = (1 - gammaH;ztc;m ^ aH;ztc;m) / (1 - gammaH;ztc;m ^ (aH;ztc;m + 1))",
+          readinessStatus: "verified_for_future_runtime",
+          c7bRuntimeScope: "allowed_with_explicit_aH",
+          sourceReference: "MC001-2022 page 113 figure 2.14"
+        },
+        {
+          branchId: "restricted_normal_domain",
+          conditionExpression: "0 < gammaH <= 2",
+          outputExpression: "etaHgn selected from gamma equals one or gamma not one branch",
+          readinessStatus: "verified_for_future_restricted_runtime",
+          c7bRuntimeScope: "allowed",
+          sourceReference: "MC001-2022 page 113 figure 2.14 and C6E restricted domain"
+        },
+        {
+          branchId: "excluded_gamma_non_positive",
+          conditionExpression: "gammaH <= 0",
+          outputExpression: "excluded from first eta runtime",
+          readinessStatus: "excluded_from_C7B_restricted_runtime",
+          c7bRuntimeScope: "excluded",
+          sourceReference: "MC001-2022 page 113 figure 2.14"
+        },
+        {
+          branchId: "excluded_gamma_near_zero",
+          conditionExpression: "gammaH near zero",
+          outputExpression: "excluded from first eta runtime",
+          readinessStatus: "excluded_numerical_edge",
+          c7bRuntimeScope: "excluded",
+          sourceReference: "MC001-2022 page 113 figure 2.14"
+        },
+        {
+          branchId: "excluded_gamma_above_two",
+          conditionExpression: "gammaH > 2",
+          outputExpression: "excluded by C6F/C7B restricted QHnd domain",
+          readinessStatus: "excluded_from_C7B_restricted_runtime",
+          c7bRuntimeScope: "excluded",
+          sourceReference: "MC001-2022 page 120 figure 2.18"
+        },
+        {
+          branchId: "excluded_non_positive_transfer",
+          conditionExpression: "QHht <= 0",
+          outputExpression: "excluded because gammaH denominator must be positive",
+          readinessStatus: "excluded_from_C7B_restricted_runtime",
+          c7bRuntimeScope: "excluded",
+          sourceReference: "MC001-2022 page 113 figure 2.14"
+        },
+        {
+          branchId: "excluded_negative_gains",
+          conditionExpression: "QHgn < 0",
+          outputExpression: "excluded from first eta runtime",
+          readinessStatus: "excluded_from_C7B_restricted_runtime",
+          c7bRuntimeScope: "excluded",
+          sourceReference: "MC001-2022 page 113 figure 2.14"
+        },
+        {
+          branchId: "excluded_missing_a_or_tau_inputs",
+          conditionExpression: "aH missing and tauH/aH0/tauH0 path not explicitly supplied",
+          outputExpression: "blocked because hidden defaults are not allowed",
+          readinessStatus: "blocked_missing_explicit_inputs",
+          c7bRuntimeScope: "excluded",
+          sourceReference: "MC001-2022 page 113 relation 2.55"
+        }
+      ],
+      relationshipToC6F: {
+        currentC6FBehavior: "C6F requires explicit etaHgn and leaves etaHgn uncalculated.",
+        c7bOption:
+          "C7B may calculate etaHgn only from verified figure 2.14 formulas with explicit aH and gammaH inputs.",
+        explicitEtaOverride:
+          "C7B must keep explicit etaHgn as an allowed override or input path.",
+        hiddenDefaultsProhibited: [
+          "aH0",
+          "tauH0",
+          "tauH",
+          "Cm",
+          "gains",
+          "solar_data",
+          "schedules",
+          "building_category"
+        ],
+        runtimeScopeLimit: "restricted_heating_only_until_separately_expanded"
+      },
+      dependencyMatrix: {
+        gammaH: {
+          status: "explicit_or_calculated_from_qHgn_qHht",
+          source: "figure_2.14"
+        },
+        qhHt: {
+          status: "explicit_input_only_unless_future_phase_wires_C5",
+          source: "C6F_restricted_runtime_boundary"
+        },
+        qhGn: {
+          status: "explicit_input_until_gains_are_implemented",
+          source: "R6_gains_readiness"
+        },
+        aH: {
+          status: "explicit_input_recommended_for_C7B",
+          source: "relation_2.55"
+        },
+        aH0: {
+          status: "source_referenced_not_encoded_as_runtime_value",
+          source: "relation_2.55"
+        },
+        tauH: {
+          status: "explicit_input_or_calculated_only_from_explicit_relation_2.57_inputs",
+          source: "relation_2.57"
+        },
+        tauH0: {
+          status: "source_referenced_not_encoded_as_runtime_value",
+          source: "relation_2.55"
+        },
+        cmEffectiveCapacity: {
+          status: "source_dependency_only_unless_explicit_input",
+          source: "section_2.7.5_tables_2.19_2.20"
+        },
+        etaHgnRuntime: {
+          status: "not_implemented_in_C7A"
+        },
+        c6fQhndRuntime: {
+          status: "implemented_with_explicit_eta"
+        },
+        fullQhnd: {
+          status: "blocked"
+        },
+        qcnd: {
+          status: "blocked"
+        },
+        final_energy: {
+          status: "blocked"
+        },
+        primary_energy: {
+          status: "blocked"
+        },
+        co2: {
+          status: "blocked"
+        },
+        cpeCertificate: {
+          status: "blocked"
+        }
+      },
+      runtimeReadinessVerdict:
+        "C7B_CAN_IMPLEMENT_RESTRICTED_ETA_HGN_RUNTIME_WITH_EXPLICIT_A_AND_GAMMA",
+      blockers: [
+        "not_runtime_etaHgn_in_C7A",
+        "not_full_QH;nd",
+        "not_QC;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults",
+        "no_normative_default_gains",
+        "no_normative_default_solar_data",
+        "no_normative_default_capacity",
+        "no_default_occupancy_or_schedules",
+        "no_long_unoccupied_or_intermittency_runtime_behavior",
+        "C7B_must_require_explicit_aH_or_explicit_tau_path_inputs"
+      ]
     }
   ]
 });
@@ -4546,6 +4882,224 @@ function validateQhndAmbiguityBlockers(blockers) {
   ]);
 }
 
+function validateHeatingEtaSourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section === "2.7.6. Factori de utilizare" &&
+    sourceScope.subsection === "heating gain utilization factor etaH;gn formula readiness" &&
+    arraysMatchExactly(sourceScope.parentSectionsVerified, ["2.7", "2.7.5", "2.7.6"]) &&
+    arraysMatchExactly(sourceScope.pagesVerified, [112, 113, 116]) &&
+    arraysMatchExactly(sourceScope.figuresVerified, ["2.14"]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, ["2.55", "2.57"]) &&
+    arraysMatchExactly(sourceScope.adjacentSymbolDefinitionsVerified, [
+      "etaH;gn;ztc;m",
+      "gammaH;ztc;m",
+      "aH;ztc;m",
+      "aH;0",
+      "tauH;ztc;m",
+      "tauH;0",
+      "QH;gn;ztc;m",
+      "QH;ht;ztc;m"
+    ])
+  );
+}
+
+function validateHeatingEtaConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "heating_gain_utilization_factor_formula_readiness" &&
+    concept.targetSymbol === "etaH;gn;ztc;m" &&
+    concept.registryKind === "metadata_only_readiness_registry" &&
+    concept.unit === "dimensionless" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 113) &&
+    concept.sourceLocator.figure === "2.14"
+  );
+}
+
+function validateHeatingEtaSourceIdentity(identity) {
+  return (
+    isObject(identity) &&
+    identity.methodologyCode === METHODOLOGY_CODE &&
+    identity.methodologyVersion === METHODOLOGY_VERSION &&
+    identity.utilizationSectionReference === "section_2.7.6" &&
+    identity.primaryFigureReference === "figure_2.14" &&
+    identity.utilizationParameterReference === "relation_2.55" &&
+    identity.timeConstantReference === "relation_2.57" &&
+    arraysMatchExactly(identity.adjacentTextReferences, [
+      "MC001-2022 page 112 section 2.7.5",
+      "MC001-2022 page 113 section 2.7.6",
+      "MC001-2022 page 113 figure 2.14",
+      "MC001-2022 page 113 relation 2.55",
+      "MC001-2022 page 116 relation 2.57"
+    ]) &&
+    Array.isArray(identity.sourceReviewNotes) &&
+    identity.sourceReviewNotes.length === 5 &&
+    identity.sourceReviewNotes.every(hasRequiredString)
+  );
+}
+
+function validateHeatingEtaFormulaCandidates(candidates) {
+  const expected = [
+    ["MC001_R8_GAMMA_H_BALANCE_RATIO", "gammaH;ztc;m", "figure_2.14", 113],
+    ["MC001_R8_ETA_H_GN_GAMMA_NOT_ONE", "etaH;gn;ztc;m", "figure_2.14", 113],
+    ["MC001_R8_ETA_H_GN_GAMMA_EQUALS_ONE", "etaH;gn;ztc;m", "figure_2.14", 113],
+    ["MC001_R8_AH_PARAMETER_RELATION_2_55", "aH;ztc;m", "2.55", 113],
+    ["MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57", "tauH;ztc;m", "2.57", 116]
+  ];
+  if (!Array.isArray(candidates) || candidates.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [candidateCode, symbol, relationReference, page] = expected[index];
+    const candidate = candidates[index];
+    if (
+      !isObject(candidate) ||
+      candidate.candidateCode !== candidateCode ||
+      candidate.mc001Symbol !== symbol ||
+      candidate.relationReference !== relationReference ||
+      candidate.readinessStatus !== "verified_for_future_runtime" ||
+      !hasRequiredString(candidate.expressionText) ||
+      !hasRequiredString(candidate.machineExpression) ||
+      !hasRequiredString(candidate.sourceReference) ||
+      !Array.isArray(candidate.requiredInputs) ||
+      candidate.requiredInputs.length === 0 ||
+      !hasRequiredString(candidate.outputSymbol) ||
+      !sourceLocatorLooksValid(candidate.sourceLocator, page) ||
+      Object.hasOwn(candidate, "entryType") ||
+      Object.hasOwn(candidate, "formulaCode")
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateHeatingEtaBranchConditions(branches) {
+  const expected = [
+    ["eta_gamma_equals_one", "gammaH;ztc;m = 1", "verified_for_future_runtime", "allowed_with_explicit_aH"],
+    [
+      "eta_gamma_not_one_positive",
+      "gammaH;ztc;m > 0 and gammaH;ztc;m != 1",
+      "verified_for_future_runtime",
+      "allowed_with_explicit_aH"
+    ],
+    ["restricted_normal_domain", "0 < gammaH <= 2", "verified_for_future_restricted_runtime", "allowed"],
+    [
+      "excluded_gamma_non_positive",
+      "gammaH <= 0",
+      "excluded_from_C7B_restricted_runtime",
+      "excluded"
+    ],
+    ["excluded_gamma_near_zero", "gammaH near zero", "excluded_numerical_edge", "excluded"],
+    [
+      "excluded_gamma_above_two",
+      "gammaH > 2",
+      "excluded_from_C7B_restricted_runtime",
+      "excluded"
+    ],
+    [
+      "excluded_non_positive_transfer",
+      "QHht <= 0",
+      "excluded_from_C7B_restricted_runtime",
+      "excluded"
+    ],
+    ["excluded_negative_gains", "QHgn < 0", "excluded_from_C7B_restricted_runtime", "excluded"],
+    [
+      "excluded_missing_a_or_tau_inputs",
+      "aH missing and tauH/aH0/tauH0 path not explicitly supplied",
+      "blocked_missing_explicit_inputs",
+      "excluded"
+    ]
+  ];
+  if (!Array.isArray(branches) || branches.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [branchId, conditionExpression, readinessStatus, c7bRuntimeScope] = expected[index];
+    const branch = branches[index];
+    if (
+      !isObject(branch) ||
+      branch.branchId !== branchId ||
+      branch.conditionExpression !== conditionExpression ||
+      branch.readinessStatus !== readinessStatus ||
+      branch.c7bRuntimeScope !== c7bRuntimeScope ||
+      !hasRequiredString(branch.outputExpression) ||
+      !hasRequiredString(branch.sourceReference)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateHeatingEtaRelationshipToC6F(relationship) {
+  return (
+    isObject(relationship) &&
+    relationship.currentC6FBehavior ===
+      "C6F requires explicit etaHgn and leaves etaHgn uncalculated." &&
+    relationship.explicitEtaOverride ===
+      "C7B must keep explicit etaHgn as an allowed override or input path." &&
+    arraysMatchExactly(relationship.hiddenDefaultsProhibited, [
+      "aH0",
+      "tauH0",
+      "tauH",
+      "Cm",
+      "gains",
+      "solar_data",
+      "schedules",
+      "building_category"
+    ]) &&
+    relationship.runtimeScopeLimit === "restricted_heating_only_until_separately_expanded"
+  );
+}
+
+function validateHeatingEtaDependencyMatrix(matrix) {
+  return (
+    isObject(matrix) &&
+    matrix.gammaH?.status === "explicit_or_calculated_from_qHgn_qHht" &&
+    matrix.qhHt?.status === "explicit_input_only_unless_future_phase_wires_C5" &&
+    matrix.qhGn?.status === "explicit_input_until_gains_are_implemented" &&
+    matrix.aH?.status === "explicit_input_recommended_for_C7B" &&
+    matrix.aH0?.status === "source_referenced_not_encoded_as_runtime_value" &&
+    matrix.tauH?.status === "explicit_input_or_calculated_only_from_explicit_relation_2.57_inputs" &&
+    matrix.tauH0?.status === "source_referenced_not_encoded_as_runtime_value" &&
+    matrix.cmEffectiveCapacity?.status === "source_dependency_only_unless_explicit_input" &&
+    matrix.etaHgnRuntime?.status === "not_implemented_in_C7A" &&
+    matrix.c6fQhndRuntime?.status === "implemented_with_explicit_eta" &&
+    matrix.fullQhnd?.status === "blocked" &&
+    matrix.qcnd?.status === "blocked" &&
+    matrix.final_energy?.status === "blocked" &&
+    matrix.primary_energy?.status === "blocked" &&
+    matrix.co2?.status === "blocked" &&
+    matrix.cpeCertificate?.status === "blocked"
+  );
+}
+
+function validateHeatingEtaBlockers(blockers) {
+  return arraysMatchExactly(blockers, [
+    "not_runtime_etaHgn_in_C7A",
+    "not_full_QH;nd",
+    "not_QC;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_normative_default_gains",
+    "no_normative_default_solar_data",
+    "no_normative_default_capacity",
+    "no_default_occupancy_or_schedules",
+    "no_long_unoccupied_or_intermittency_runtime_behavior",
+    "C7B_must_require_explicit_aH_or_explicit_tau_path_inputs"
+  ]);
+}
+
 function sourcePackBaseIssue(
   sourcePack,
   verificationStatus,
@@ -4897,6 +5451,59 @@ function qhndAmbiguityResolutionSourcePackIssue(sourcePack) {
   return null;
 }
 
+function heatingEtaFormulaSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateHeatingEtaSourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateHeatingEtaConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateHeatingEtaSourceIdentity(sourcePack.sourceIdentity)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateHeatingEtaFormulaCandidates(sourcePack.formulaCandidates)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingEtaBranchConditions(sourcePack.branchConditionTable)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingEtaRelationshipToC6F(sourcePack.relationshipToC6F)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingEtaDependencyMatrix(sourcePack.dependencyMatrix)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.runtimeReadinessVerdict !==
+    "C7B_CAN_IMPLEMENT_RESTRICTED_ETA_HGN_RUNTIME_WITH_EXPLICIT_A_AND_GAMMA"
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingEtaBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== true ||
+    sourcePack.runtimeCalculatorStatus !== "not_implemented" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -4924,6 +5531,12 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE) {
     return qhndAmbiguityResolutionSourcePackIssue(sourcePack);
+  }
+  if (
+    sourcePack.sourcePackCode ===
+    R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
+  ) {
+    return heatingEtaFormulaSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }

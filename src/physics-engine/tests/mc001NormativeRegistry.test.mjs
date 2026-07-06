@@ -24,6 +24,8 @@ const R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE =
   "MC001_R6_GAINS_CAPACITY_TIMECONSTANT_READINESS_SOURCE_PACK";
 const R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE =
   "MC001_R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK";
+const R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE =
+  "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -41,10 +43,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 8,
+  sourcePacks: 9,
   formulas: 10,
   constants: 1,
-  concepts: 8,
+  concepts: 9,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -138,6 +140,13 @@ function gainsCapacityPack(value = registry()) {
 
 function qhndAmbiguityPack(value = registry()) {
   return sourcePackByCode(R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE, value);
+}
+
+function heatingEtaPack(value = registry()) {
+  return sourcePackByCode(
+    R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
+    value
+  );
 }
 
 function formulas(value = registry()) {
@@ -327,10 +336,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly eight source packs", () => {
+test("registry now contains exactly nine source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 8);
+  assert.equal(packs.length, 9);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -341,7 +350,8 @@ test("registry now contains exactly eight source packs", () => {
       R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
       R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
       R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
-      R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE
+      R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
+      R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -1116,6 +1126,140 @@ test("R7 contains no calculator functions runtime access invented defaults or fi
   assert.equal(serialized.includes("demo-" + "house"), false);
 });
 
+test("R8 heating etaHgn formula source pack exists as metadata only", () => {
+  const pack = heatingEtaPack();
+
+  assert.equal(pack.sourcePackCode, R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.verificationStatus, "human_verified_from_official_pdf_visual_review");
+  assert.equal(pack.implementationStatus, "registry_ready_not_calculator_ready");
+  assert.equal(pack.metadataOnly, true);
+  assert.equal(pack.runtimeCalculatorStatus, "not_implemented");
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+  assert.equal(Object.hasOwn(pack, "figures"), false);
+  assert.equal(Object.hasOwn(pack, "defaultValueCandidates"), false);
+});
+
+test("R8 references MC001 2022 section 2.7.6 figure 2.14 and relations", () => {
+  const pack = heatingEtaPack();
+
+  assert.equal(pack.sourceIdentity.methodologyCode, "MC001");
+  assert.equal(pack.sourceIdentity.methodologyVersion, "2022");
+  assert.equal(pack.sourceIdentity.utilizationSectionReference, "section_2.7.6");
+  assert.equal(pack.sourceIdentity.primaryFigureReference, "figure_2.14");
+  assert.equal(pack.sourceIdentity.utilizationParameterReference, "relation_2.55");
+  assert.equal(pack.sourceIdentity.timeConstantReference, "relation_2.57");
+  assert.deepEqual(pack.sourceScope.pagesVerified, [112, 113, 116]);
+  assert.deepEqual(pack.sourceScope.figuresVerified, ["2.14"]);
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.55", "2.57"]);
+  assert.ok(pack.sourceScope.adjacentSymbolDefinitionsVerified.includes("etaH;gn;ztc;m"));
+  assert.ok(pack.sourceScope.adjacentSymbolDefinitionsVerified.includes("gammaH;ztc;m"));
+});
+
+test("R8 formula candidates transcribe etaHgn branches and dependencies", () => {
+  const candidates = heatingEtaPack().formulaCandidates;
+  const byCode = new Map(candidates.map((candidate) => [candidate.candidateCode, candidate]));
+
+  assert.equal(candidates.length, 5);
+  for (const candidate of candidates) {
+    assert.ok(candidate.sourceReference.startsWith("MC001-2022 page "));
+    assert.equal(candidate.readinessStatus, "verified_for_future_runtime");
+    assert.equal(Object.hasOwn(candidate, "formulaCode"), false);
+  }
+  assert.equal(
+    byCode.get("MC001_R8_ETA_H_GN_GAMMA_NOT_ONE").machineExpression,
+    "etaHgn = (1 - gammaH ** aH) / (1 - gammaH ** (aH + 1))"
+  );
+  assert.equal(
+    byCode.get("MC001_R8_ETA_H_GN_GAMMA_EQUALS_ONE").machineExpression,
+    "etaHgn = aH / (aH + 1)"
+  );
+  assert.equal(
+    byCode.get("MC001_R8_GAMMA_H_BALANCE_RATIO").machineExpression,
+    "gammaH = QHgn / QHht"
+  );
+  assert.equal(byCode.get("MC001_R8_AH_PARAMETER_RELATION_2_55").relationReference, "2.55");
+  assert.equal(byCode.get("MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57").relationReference, "2.57");
+});
+
+test("R8 includes branch condition table for C7B restricted eta runtime", () => {
+  const branches = heatingEtaPack().branchConditionTable;
+  const byId = new Map(branches.map((branch) => [branch.branchId, branch]));
+
+  assert.equal(branches.length, 9);
+  assert.equal(byId.get("eta_gamma_equals_one").conditionExpression, "gammaH;ztc;m = 1");
+  assert.equal(
+    byId.get("eta_gamma_not_one_positive").conditionExpression,
+    "gammaH;ztc;m > 0 and gammaH;ztc;m != 1"
+  );
+  assert.equal(byId.get("restricted_normal_domain").c7bRuntimeScope, "allowed");
+  assert.equal(byId.get("excluded_gamma_non_positive").c7bRuntimeScope, "excluded");
+  assert.equal(byId.get("excluded_gamma_above_two").c7bRuntimeScope, "excluded");
+  assert.equal(byId.get("excluded_missing_a_or_tau_inputs").readinessStatus, "blocked_missing_explicit_inputs");
+});
+
+test("R8 dependency matrix and verdict allow only explicit aH gamma eta runtime", () => {
+  const pack = heatingEtaPack();
+  const matrix = pack.dependencyMatrix;
+
+  assert.equal(
+    pack.runtimeReadinessVerdict,
+    "C7B_CAN_IMPLEMENT_RESTRICTED_ETA_HGN_RUNTIME_WITH_EXPLICIT_A_AND_GAMMA"
+  );
+  assert.equal(matrix.gammaH.status, "explicit_or_calculated_from_qHgn_qHht");
+  assert.equal(matrix.aH.status, "explicit_input_recommended_for_C7B");
+  assert.equal(matrix.aH0.status, "source_referenced_not_encoded_as_runtime_value");
+  assert.equal(matrix.tauH0.status, "source_referenced_not_encoded_as_runtime_value");
+  assert.equal(matrix.etaHgnRuntime.status, "not_implemented_in_C7A");
+  assert.equal(matrix.c6fQhndRuntime.status, "implemented_with_explicit_eta");
+  assert.equal(matrix.fullQhnd.status, "blocked");
+  assert.equal(matrix.qcnd.status, "blocked");
+  assert.equal(matrix.final_energy.status, "blocked");
+  assert.equal(matrix.primary_energy.status, "blocked");
+  assert.equal(matrix.co2.status, "blocked");
+  assert.equal(matrix.cpeCertificate.status, "blocked");
+});
+
+test("R8 declares downstream claims hidden defaults and runtime behavior blocked", () => {
+  const pack = heatingEtaPack();
+  const blockers = pack.blockers;
+
+  for (const blockerCode of [
+    "not_runtime_etaHgn_in_C7A",
+    "not_full_QH;nd",
+    "not_QC;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_normative_default_gains",
+    "no_normative_default_solar_data",
+    "no_normative_default_capacity",
+    "no_default_occupancy_or_schedules",
+    "C7B_must_require_explicit_aH_or_explicit_tau_path_inputs"
+  ]) {
+    assert.ok(blockers.includes(blockerCode), blockerCode);
+  }
+});
+
+test("R8 contains no calculator functions runtime access invented defaults or fixture data", () => {
+  const serialized = JSON.stringify(heatingEtaPack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+});
+
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
   const formula = formulaByRelation("2.12");
 
@@ -1253,7 +1397,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R7 expected aggregate counts", () => {
+test("validation counts match R8 expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");
@@ -1318,7 +1462,8 @@ test("source pack lookup returns found for all known packs", () => {
     R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
     R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
     R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
-    R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE
+    R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
+    R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
   ]) {
     const result = getMc001NormativeSourcePackByCode(sourcePackCode);
     assert.equal(result.status, "found", sourcePackCode);
