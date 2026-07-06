@@ -22,6 +22,8 @@ const R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE =
   "MC001_R5_UTILIZATION_FACTORS_HEATING_READINESS_SOURCE_PACK";
 const R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE =
   "MC001_R6_GAINS_CAPACITY_TIMECONSTANT_READINESS_SOURCE_PACK";
+const R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE =
+  "MC001_R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -39,10 +41,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 7,
+  sourcePacks: 8,
   formulas: 10,
   constants: 1,
-  concepts: 7,
+  concepts: 8,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -132,6 +134,10 @@ function utilizationHeatingPack(value = registry()) {
 
 function gainsCapacityPack(value = registry()) {
   return sourcePackByCode(R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE, value);
+}
+
+function qhndAmbiguityPack(value = registry()) {
+  return sourcePackByCode(R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -321,10 +327,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly seven source packs", () => {
+test("registry now contains exactly eight source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 7);
+  assert.equal(packs.length, 8);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -334,7 +340,8 @@ test("registry now contains exactly seven source packs", () => {
       R3_QHND_MONTHLY_SOURCE_PACK_CODE,
       R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
       R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
-      R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE
+      R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
+      R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -978,6 +985,137 @@ test("R6 contains no calculator functions runtime access invented defaults or fi
   assert.equal(serialized.includes("demo-" + "house"), false);
 });
 
+test("R7 QHnd ambiguity resolution source pack exists as metadata only", () => {
+  const pack = qhndAmbiguityPack();
+
+  assert.equal(pack.sourcePackCode, R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.verificationStatus, "human_verified_from_official_pdf_visual_review");
+  assert.equal(pack.implementationStatus, "registry_ready_not_calculator_ready");
+  assert.equal(pack.metadataOnly, true);
+  assert.equal(pack.runtimeCalculatorStatus, "not_implemented");
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+  assert.equal(Object.hasOwn(pack, "figures"), false);
+  assert.equal(Object.hasOwn(pack, "defaultValueCandidates"), false);
+});
+
+test("R7 references MC001 2022 figure 2.18 figure 2.14 and utilization relations", () => {
+  const pack = qhndAmbiguityPack();
+
+  assert.equal(pack.sourceIdentity.methodologyCode, "MC001");
+  assert.equal(pack.sourceIdentity.methodologyVersion, "2022");
+  assert.equal(pack.sourceIdentity.primaryFigureReference, "figure_2.18");
+  assert.equal(pack.sourceIdentity.crossCheckFigureReference, "figure_2.14");
+  assert.equal(pack.sourceIdentity.utilizationSectionReference, "section_2.7.6");
+  assert.equal(pack.sourceIdentity.utilizationParameterReference, "relation_2.55");
+  assert.equal(pack.sourceIdentity.timeConstantReference, "relation_2.57");
+  assert.deepEqual(pack.sourceScope.pagesVerified, [113, 116, 120]);
+  assert.deepEqual(pack.sourceScope.figuresVerified, ["2.14", "2.18"]);
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.55", "2.57"]);
+});
+
+test("R7 records figure 2.18 first branch as resolved typographical artifact", () => {
+  const review = qhndAmbiguityPack().figure218FirstBranchReview;
+
+  assert.equal(review.visualTranscription, "gammaH;ztc;m <= 0 si QH;gn;ztc;m > 0 \u2260 1");
+  assert.equal(review.classification, "resolved_verified_typographical_artifact");
+  assert.equal(review.resolvedCondition, "gammaH <= 0 && QHgn > 0");
+  assert.equal(review.output, "QHnd = 0");
+  assert.equal(
+    review.runtimeNote,
+    "Do not execute this branch in the first restricted runtime unless separate targeted tests are added."
+  );
+  assert.ok(review.sourceBackedReasons.some((reason) => reason.includes("dimensionally invalid")));
+});
+
+test("R7 includes figure 2.14 edge-condition review", () => {
+  const edges = qhndAmbiguityPack().figure214EdgeConditionReview;
+  const byId = new Map(edges.map((edge) => [edge.edgeCaseId, edge]));
+
+  assert.equal(edges.length, 8);
+  assert.equal(byId.get("gammaH_non_positive").includedInFirstRestrictedRuntime, false);
+  assert.equal(byId.get("gammaH_zero").readinessStatus, "excluded_zero_division_edge");
+  assert.equal(byId.get("gammaH_near_zero").readinessStatus, "excluded_numerical_edge");
+  assert.equal(byId.get("QHgn_non_positive").includedInFirstRestrictedRuntime, false);
+  assert.equal(byId.get("QHht_non_positive").includedInFirstRestrictedRuntime, false);
+  assert.equal(byId.get("gammaH_equals_one").includedInFirstRestrictedRuntime, true);
+  assert.equal(byId.get("gammaH_greater_than_two").includedInFirstRestrictedRuntime, false);
+  assert.equal(byId.get("normal_branch").readinessStatus, "allowed_for_restricted_runtime");
+});
+
+test("R7 allows future restricted explicit-input heating QHnd runtime only", () => {
+  const feasibility = qhndAmbiguityPack().restrictedExplicitInputRuntimeFeasibility;
+
+  assert.equal(feasibility.status, "allowed_for_future_runtime");
+  assert.ok(feasibility.domain.includes("heating_only"));
+  assert.ok(feasibility.domain.includes("0 < gammaH <= 2.0"));
+  assert.ok(feasibility.inputValidationConstraints.includes("QHht_kWh finite greater than zero"));
+  assert.ok(
+    feasibility.allowedFormulaCandidates.some((candidate) => (
+      candidate.candidateCode === "MC001_R7_QHND_NORMAL_RESTRICTED_BRANCH"
+    ))
+  );
+  assert.ok(feasibility.exclusions.includes("not_full_QHnd"));
+  assert.ok(feasibility.exclusions.includes("not_CPE_certificate"));
+});
+
+test("R7 C6F readiness verdict is restricted explicit heating only", () => {
+  const pack = qhndAmbiguityPack();
+
+  assert.equal(
+    pack.runtimeReadinessVerdict,
+    "C6F_CAN_IMPLEMENT_RESTRICTED_HEATING_QHND_EXPLICIT_INPUT"
+  );
+  assert.equal(pack.dependencyMatrix.c5ExplicitTransferTotal.status, "implemented");
+  assert.equal(pack.dependencyMatrix.figure218FirstBranch.status, "resolved_verified_typographical_artifact");
+  assert.equal(
+    pack.dependencyMatrix.qhndRuntime.status,
+    "not_implemented_future_restricted_runtime_allowed"
+  );
+  assert.equal(pack.dependencyMatrix.annualAggregation.status, "not_implemented");
+  assert.equal(pack.dependencyMatrix.final_energy.status, "blocked");
+  assert.equal(pack.dependencyMatrix.primary_energy.status, "blocked");
+  assert.equal(pack.dependencyMatrix.co2.status, "blocked");
+  assert.equal(pack.dependencyMatrix.cpeCertificate.status, "blocked");
+});
+
+test("R7 declares final primary CO2 CPE certificate and hidden defaults blocked", () => {
+  const blockers = qhndAmbiguityPack().blockers;
+
+  for (const blockerCode of [
+    "not_runtime_QH;nd_in_C6E",
+    "not_full_QH;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_normative_default_gains",
+    "no_normative_default_solar_data",
+    "no_normative_default_capacity",
+    "no_default_occupancy_or_schedules"
+  ]) {
+    assert.ok(blockers.includes(blockerCode), blockerCode);
+  }
+});
+
+test("R7 contains no calculator functions runtime access invented defaults or fixture data", () => {
+  const serialized = JSON.stringify(qhndAmbiguityPack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+});
+
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
   const formula = formulaByRelation("2.12");
 
@@ -1115,7 +1253,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R6 expected aggregate counts", () => {
+test("validation counts match R7 expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");
@@ -1176,7 +1314,11 @@ test("source pack lookup returns found for all known packs", () => {
     R0_BZTU_SOURCE_PACK_CODE,
     R2_HTR_SPINE_SOURCE_PACK_CODE,
     R2_MONTHLY_SOURCE_PACK_CODE,
-    R3_QHND_MONTHLY_SOURCE_PACK_CODE
+    R3_QHND_MONTHLY_SOURCE_PACK_CODE,
+    R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
+    R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
+    R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
+    R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE
   ]) {
     const result = getMc001NormativeSourcePackByCode(sourcePackCode);
     assert.equal(result.status, "found", sourcePackCode);
