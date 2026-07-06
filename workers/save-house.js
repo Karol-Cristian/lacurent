@@ -1691,7 +1691,7 @@ const MC001_HTR_REGISTRY_FORMULA_CODES = Object.freeze([
   "MC001_2_15_HTR_TOTAL_TRANSMISSION"
 ]);
 const MC001_HTR_MISSING_NEXT_SCOPE = Object.freeze([
-  "QHnd_monthly_not_implemented",
+  "full_QHnd_monthly_not_implemented",
   "final_energy_not_implemented",
   "primary_energy_not_implemented",
   "co2_not_implemented",

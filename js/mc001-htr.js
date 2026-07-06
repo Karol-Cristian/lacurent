@@ -29,6 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const DEFAULT_SOURCE_REFERENCE = "manual_mvp_input";
   const HTR_SCOPE = "htr_transmission_only_not_full_mc001_certificate";
+  const DIAGNOSTIC_DESCRIPTIONS = {
+    full_QHnd_monthly_not_implemented:
+      "QHnd lunar complet MC001 nu este inca implementat; exista doar C6F restrictionat explicit-input."
+  };
 
   const authRequired = document.getElementById("authRequired");
   const workspace = document.getElementById("htrWorkspace");
@@ -1141,7 +1145,12 @@ document.addEventListener("DOMContentLoaded", () => {
     (result.diagnostics?.missingForNextMethodologyScope || []).forEach(item => {
       const code = typeof item === "string" ? item : item.code;
       const severity = typeof item === "string" ? "blocking" : item.severity;
-      appendArticle(diagnostics, code, "Domeniu metodologic neimplementat in acest MVP.", severity);
+      appendArticle(
+        diagnostics,
+        code,
+        DIAGNOSTIC_DESCRIPTIONS[code] || "Domeniu metodologic neimplementat in acest MVP.",
+        severity
+      );
     });
     if (diagnostics && !diagnostics.children.length) {
       appendArticle(diagnostics, "Fara blocaje", "Htr a fost calculat pentru inputul transmis.");
