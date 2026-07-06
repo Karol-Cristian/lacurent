@@ -1841,6 +1841,8 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "annualQHnd",
     "annualQHndKWh",
     "annual_qhnd_kwh",
+    "etaHgnOrigin",
+    "etaHgnFormulaCode",
     "qhndResult",
     "formulaCodes",
     "formulaCode",
@@ -2479,9 +2481,21 @@ function sanitizeMc001RestrictedHeatingQhndInput(input) {
     if (gammaProvided && (gammaH === null || gammaH <= 0 || gammaH > 2)) {
       return { ok: false, error: "gammaH C6F trebuie sa fie in intervalul (0, 2]." };
     }
-    const etaHgn = mc001HtrFiniteNumber(qhndCase.etaHgn);
-    if (etaHgn === null || etaHgn < 0) {
-      return { ok: false, error: "etaHgn C6F trebuie sa fie explicit, finit si pozitiv sau zero." };
+    const etaProvided = qhndCase.etaHgn !== undefined && qhndCase.etaHgn !== null && qhndCase.etaHgn !== "";
+    const aHProvided = qhndCase.aH !== undefined && qhndCase.aH !== null && qhndCase.aH !== "";
+    if (etaProvided && aHProvided) {
+      return { ok: false, error: "C6F necesita fie etaHgn, fie aH, nu ambele." };
+    }
+    if (!etaProvided && !aHProvided) {
+      return { ok: false, error: "C6F necesita fie etaHgn explicit, fie aH explicit." };
+    }
+    const etaHgn = etaProvided ? mc001HtrFiniteNumber(qhndCase.etaHgn) : null;
+    if (etaProvided && (etaHgn === null || etaHgn < 0)) {
+      return { ok: false, error: "etaHgn C6F trebuie sa fie finit si pozitiv sau zero." };
+    }
+    const aH = aHProvided ? mc001HtrFiniteNumber(qhndCase.aH) : null;
+    if (aHProvided && (aH === null || aH <= 0)) {
+      return { ok: false, error: "aH C6F trebuie sa fie explicit, finit si pozitiv." };
     }
     if (!isPlainObject(qhndCase.source) || !safeShortToken(qhndCase.source.reference, 80)) {
       return { ok: false, error: "Cazul QHnd C6F necesita sursa explicita valida." };
@@ -2499,7 +2513,8 @@ function sanitizeMc001RestrictedHeatingQhndInput(input) {
       qHht_kwh: qHht,
       qHgn_kwh: qHgn,
       ...(gammaProvided ? { gammaH } : {}),
-      etaHgn,
+      ...(etaProvided ? { etaHgn } : {}),
+      ...(aHProvided ? { aH } : {}),
       source: {
         reference: qhndCase.source.reference,
         ...(qhndCase.source.notes ? { notes: qhndCase.source.notes } : {})
@@ -3248,7 +3263,12 @@ function buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput) {
       ...(Object.prototype.hasOwnProperty.call(qhndCase, "gammaH")
         ? { gammaH: qhndCase.gammaH }
         : {}),
-      etaHgn: qhndCase.etaHgn,
+      ...(Object.prototype.hasOwnProperty.call(qhndCase, "etaHgn")
+        ? { etaHgn: qhndCase.etaHgn }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(qhndCase, "aH")
+        ? { aH: qhndCase.aH }
+        : {}),
       source: qhndCase.source
     }))
   };
