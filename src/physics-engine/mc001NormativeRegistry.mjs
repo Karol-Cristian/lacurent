@@ -10,6 +10,8 @@ const R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE =
   "MC001_R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK";
 const R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE =
   "MC001_R5_UTILIZATION_FACTORS_HEATING_READINESS_SOURCE_PACK";
+const R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE =
+  "MC001_R6_GAINS_CAPACITY_TIMECONSTANT_READINESS_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -63,7 +65,8 @@ const SOURCE_PACK_CODES = new Set([
   R2_MONTHLY_TRANSMISSION_SOURCE_PACK_CODE,
   R3_QHND_MONTHLY_SOURCE_PACK_CODE,
   R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
-  R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE
+  R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
+  R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -97,7 +100,8 @@ const ENTRY_CODES = new Set([
   "MC001_RULE_MONTHLY_TRANSMISSION_SEPARATES_GROUND_CONTACT",
   "MC001_CONCEPT_QHND_MONTHLY_USEFUL_ENERGY_DEMAND",
   "MC001_CONCEPT_FIGURE_2_18_HEATING_BRANCH",
-  "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS"
+  "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS",
+  "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -428,10 +432,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 6,
+    sourcePacks: 7,
     formulas: 10,
     constants: 1,
-    concepts: 6,
+    concepts: 7,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -1902,6 +1906,604 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "figure_2.18_first_branch_unresolved",
         "figure_2.14_zero_edge_needs_review"
       ]
+    },
+    {
+      sourcePackCode: R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: true,
+      runtimeCalculatorStatus: "not_implemented",
+
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section:
+          "2.7. Calculul necesarului de energie pentru climatizare folosind metoda de calcul lunar",
+        subsection:
+          "2.7.2 aporturi de caldura, 2.7.3 aporturi solare, 2.7.5 capacitate termica eficace",
+        parentSectionsVerified: ["2.7", "2.7.2", "2.7.3", "2.7.5", "2.7.6", "2.8.4"],
+        pagesVerified: [103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 116, 120],
+        figuresVerified: ["2.13", "2.18"],
+        tablesVerified: ["2.19", "2.20"],
+        relationsVerified: [
+          "2.33",
+          "2.34",
+          "2.35",
+          "2.36",
+          "2.37",
+          "2.38",
+          "2.39",
+          "2.50",
+          "2.57"
+        ]
+      },
+
+      concept: {
+        entryCode: "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS",
+        entryType: "concept",
+        conceptCode: "gains_capacity_timeconstant_readiness",
+        targetSymbol: "QH;gn;ztc;m + Cm;eff;ztc + tauH;ztc;m",
+        registryKind: "metadata_only_readiness_registry",
+        name: "gains capacity and time constant readiness",
+        unit: "metadata_only",
+        purpose:
+          "maps heat gains, effective capacity, and time-constant dependencies needed before monthly useful heating demand runtime work",
+        sourceLocator: {
+          page: 103,
+          subsection: "2.7.2"
+        }
+      },
+
+      sourceIdentity: {
+        methodologyCode: "MC001",
+        methodologyVersion: "2022",
+        heatGainsSectionReference: "section_2.7.2",
+        solarGainsSectionReference: "section_2.7.3",
+        effectiveCapacitySectionReference: "section_2.7.5",
+        timeConstantReference: "relation_2.57",
+        ambiguityReference: "figure_2.18",
+        relatedReferences: [
+          "figure_2.13_total_heat_gains",
+          "relations_2.33_2.35_internal_gains",
+          "relations_2.36_2.39_solar_gains",
+          "relation_2.50_opaque_solar_gains",
+          "tables_2.19_2.20_effective_capacity",
+          "relation_2.57_heating_time_constant",
+          "figure_2.18_heating_monthly_useful_demand"
+        ]
+      },
+
+      heatGainsDependencyMap: [
+        {
+          symbol: "QH;gn;ztc;m",
+          meaning: "total monthly heat gains for heating mode in the conditioned zone",
+          unit: "kWh",
+          dependencyOrigin: "explicit_input_required",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 103,
+            figure: "2.13",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "QC;gn;ztc;m",
+          meaning: "total monthly heat gains for cooling mode in the conditioned zone",
+          unit: "kWh",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 103,
+            figure: "2.13",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "QH/C;int;ztc;m",
+          meaning: "monthly internal gains in the conditioned zone",
+          unit: "kWh",
+          dependencyOrigin: "explicit_input_required",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 103,
+            relation: "2.33",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "QH/C;sol;ztc;m",
+          meaning: "monthly solar gains in the conditioned zone",
+          unit: "kWh",
+          dependencyOrigin: "explicit_input_required",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 104,
+            relation: "2.36",
+            subsection: "2.7.3"
+          }
+        }
+      ],
+
+      internalGainsDependencyMap: [
+        {
+          symbol: "QH/C;int;dir;ztc;m",
+          meaning: "direct monthly internal gains in the conditioned zone",
+          unit: "kWh",
+          dependencyOrigin: "explicit_input_required",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 103,
+            relation: "2.33",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "bztu,k;m",
+          meaning: "adjacent unconditioned-zone correction factor used for gains-side adjacent-zone terms",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 104,
+            relation: "2.34",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "Fztc;ztu,k;m",
+          meaning: "distribution factor for gains associated with adjacent unconditioned zones",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 104,
+            relation: "2.34",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "fgn;max;H;ztu,k;m",
+          meaning: "reduction factor that limits overestimated adjacent-zone heat gains",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 104,
+            relation: "2.34",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "QH/C;spec;int;oc/A/L/WA/HVAC/proc;zt;m",
+          meaning:
+            "monthly specific internal gains from occupants, appliances, lighting, water, HVAC, and processes",
+          unit: "kWh/m2",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "referenced_but_not_transcribed",
+          sourceLocator: {
+            page: 104,
+            relation: "2.35",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          symbol: "Ause;zt",
+          meaning: "useful floor area used to scale direct internal gains",
+          unit: "m2",
+          dependencyOrigin: "explicit_input_required",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 104,
+            relation: "2.35",
+            subsection: "2.7.2"
+          }
+        }
+      ],
+
+      solarGainsDependencyMap: [
+        {
+          symbol: "QH/C;sol;dir;ztc;m",
+          meaning: "direct monthly solar gains in the conditioned zone",
+          unit: "kWh",
+          dependencyOrigin: "explicit_input_required",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 104,
+            relation: "2.36",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          symbol: "QH/C;sol;wi;k;m",
+          meaning: "monthly solar gains through transparent element k",
+          unit: "kWh",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 105,
+            relation: "2.38",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          symbol: "QH/C;sol;op;k;m",
+          meaning: "monthly solar gains through opaque element k",
+          unit: "kWh",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 105,
+            relation: "2.38",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          symbol: "ggl;wi;H/C;m",
+          meaning: "monthly mean effective total solar energy transmittance of glazing",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 105,
+            relation: "2.39",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          symbol: "Hsol;wi;m / Hsol;k;m",
+          meaning: "monthly solar irradiation for transparent or opaque element orientation and tilt",
+          unit: "kWh/m2",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 105,
+            relation: "2.39",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          symbol: "Fsh;obst;wi;m / Fsh;obst;k;m",
+          meaning: "obstacle shading factor for transparent or opaque solar gains",
+          unit: "dimensionless",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 105,
+            relation: "2.39",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          symbol: "alphaSr;k + Rse;k + Uc;op;k + Ac;k",
+          meaning: "opaque solar gain parameters for absorptance, exterior resistance, U-value, and area",
+          unit: "source_units",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 111,
+            relation: "2.50",
+            subsection: "2.7.3"
+          }
+        }
+      ],
+
+      capacityTimeConstantDependencyMap: [
+        {
+          symbol: "Cm;eff;ztc",
+          meaning: "effective internal heat capacity of the conditioned zone",
+          unit: "J/K",
+          dependencyOrigin: "explicit_input_required_or_missing_future_source_pack",
+          readinessStatus: "tables_referenced_without_encoded_values",
+          sourceLocator: {
+            page: 112,
+            subsection: "2.7.5"
+          }
+        },
+        {
+          symbol: "tables 2.19 and 2.20",
+          meaning: "effective capacity class/source dependencies for Cm;eff;ztc",
+          unit: "source_units",
+          dependencyOrigin: "missing_future_source_pack",
+          readinessStatus: "referenced_but_not_transcribed",
+          sourceLocator: {
+            page: 112,
+            subsection: "2.7.5"
+          }
+        },
+        {
+          symbol: "tauH;ztc;m",
+          meaning: "heating time constant for the conditioned zone",
+          unit: "h",
+          dependencyOrigin: "explicit_input_required_or_missing_future_source_pack",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 116,
+            relation: "2.57",
+            subsection: "2.7.6"
+          }
+        },
+        {
+          symbol: "HH;tr(excl.grflr);ztc;m + HH;gr;adj;ztc + HH;ve;ztc;m",
+          meaning: "time-constant denominator heat-transfer coefficients",
+          unit: "W/K",
+          dependencyOrigin: "explicit_input_required_or_C5_chain_plus_ground_adjustment",
+          readinessStatus: "source_dependency_only",
+          sourceLocator: {
+            page: 116,
+            relation: "2.57",
+            subsection: "2.7.6"
+          }
+        }
+      ],
+
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R6_FIGURE_2_13_TOTAL_HEAT_GAINS",
+          relationReference: "figure_2.13",
+          relationNumberAvailable: false,
+          expressionText: "QH;gn;ztc;m = QH;int;ztc;m + QH;sol;ztc;m",
+          sourceReference: "MC001-2022 page 103 figure 2.13",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 103,
+            figure: "2.13",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_33_INTERNAL_GAINS_SINGLE_ZONE",
+          relationReference: "2.33",
+          relationNumberAvailable: true,
+          expressionText: "QH/C;int;ztc;m = QH/C;int;dir;ztc;m",
+          sourceReference: "MC001-2022 page 103 relation 2.33",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 103,
+            relation: "2.33",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_34_INTERNAL_GAINS_ZTU_ADJACENT",
+          relationReference: "2.34",
+          relationNumberAvailable: true,
+          expressionText:
+            "QH/C;int;ztc;m = QH/C;int;dir;ztc;m + sum_k((1 - bztu,k;m) * Fztc;ztu,k;m * fgn;max;H;ztu,k;m * QH/C;int;dir;ztu,k;m)",
+          sourceReference: "MC001-2022 page 104 relation 2.34",
+          readinessStatus: "needs_human_visual_review",
+          note: "Adjacent-zone bztu/distribution/reduction values are not encoded in this pack.",
+          sourceLocator: {
+            page: 104,
+            relation: "2.34",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_35_DIRECT_INTERNAL_GAINS_COMPONENTS",
+          relationReference: "2.35",
+          relationNumberAvailable: true,
+          expressionText:
+            "QH/C;int;dir;zt;m = (QH/C;spec;int;oc;zt;m + QH/C;spec;int;A;zt;m + QH/C;spec;int;L;zt;m + QH/C;spec;int;WA;zt;m + QH/C;spec;int;HVAC;zt;m + QH/C;spec;int;proc;zt;m) * Ause;zt",
+          sourceReference: "MC001-2022 page 104 relation 2.35",
+          readinessStatus: "referenced_but_not_transcribed",
+          note: "Component source tables, schedules, and category data are source dependencies only.",
+          sourceLocator: {
+            page: 104,
+            relation: "2.35",
+            subsection: "2.7.2"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_36_SOLAR_GAINS_SINGLE_ZONE",
+          relationReference: "2.36",
+          relationNumberAvailable: true,
+          expressionText: "QH/C;sol;ztc;m = QH/C;sol;dir;ztc;m",
+          sourceReference: "MC001-2022 page 104 relation 2.36",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 104,
+            relation: "2.36",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_37_SOLAR_GAINS_ZTU_ADJACENT",
+          relationReference: "2.37",
+          relationNumberAvailable: true,
+          expressionText:
+            "QH/C;sol;ztc;m = QH/C;sol;dir;ztc;m + sum_k((1 - bztu,k;m) * Fztc;ztu,k;m * fgn;max;H;ztu,k;m * QH/C;sol;dir;ztu,k;m)",
+          sourceReference: "MC001-2022 page 104 relation 2.37",
+          readinessStatus: "needs_human_visual_review",
+          note: "Adjacent-zone bztu/distribution/reduction values are not encoded in this pack.",
+          sourceLocator: {
+            page: 104,
+            relation: "2.37",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_38_DIRECT_SOLAR_GAINS_COMPONENTS",
+          relationReference: "2.38",
+          relationNumberAvailable: true,
+          expressionText:
+            "QH/C;sol;dir;zt;m = sum_k(QH/C;sol;wi;k;m) + sum_k(QH/C;sol;op;k;m)",
+          sourceReference: "MC001-2022 page 105 relation 2.38",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 105,
+            relation: "2.38",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_39_TRANSPARENT_SOLAR_GAINS",
+          relationReference: "2.39",
+          relationNumberAvailable: true,
+          expressionText:
+            "QH/C;sol;wi;k;m = ggl;wi;H/C;m * Awi * (1 - Ffr;wi) * Fsh;obst;wi;m * Hsol;wi;m - Qsky;wi;m",
+          sourceReference: "MC001-2022 page 105 relation 2.39",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 105,
+            relation: "2.39",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_50_OPAQUE_SOLAR_GAINS",
+          relationReference: "2.50",
+          relationNumberAvailable: true,
+          expressionText:
+            "QH/C;sol;op;k;m = alphaSr;k * Rse;k * Uc;op;k * Ac;k * Fsh;obst;k;m * Hsol;k;m - Qsky;k;m",
+          sourceReference: "MC001-2022 page 111 relation 2.50",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 111,
+            relation: "2.50",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_TABLES_2_19_2_20_EFFECTIVE_CAPACITY_DEPENDENCY",
+          relationReference: "tables_2.19_2.20",
+          relationNumberAvailable: false,
+          expressionText: "Cm;eff;ztc effective capacity table dependency",
+          sourceReference: "MC001-2022 page 112 tables 2.19 and 2.20",
+          readinessStatus: "referenced_but_not_transcribed",
+          note: "Table values are not encoded as runtime defaults.",
+          sourceLocator: {
+            page: 112,
+            subsection: "2.7.5"
+          }
+        },
+        {
+          candidateCode: "MC001_R6_RELATION_2_57_HEATING_TIME_CONSTANT",
+          relationReference: "2.57",
+          relationNumberAvailable: true,
+          expressionText:
+            "tauH;ztc;m = (Cm;eff;ztc / 3600) / (HH;tr(excl.grflr);ztc;m + HH;gr;adj;ztc + HH;ve;ztc;m)",
+          sourceReference: "MC001-2022 page 116 relation 2.57",
+          readinessStatus: "verified_for_future_runtime_with_explicit_inputs",
+          sourceLocator: {
+            page: 116,
+            relation: "2.57",
+            subsection: "2.7.6"
+          }
+        }
+      ],
+
+      figure218AmbiguityReview: {
+        observedConditionText: "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0 != 1",
+        reviewedAgainst: [
+          "MC001-2022 page 120 figure 2.18",
+          "MC001-2022 page 113 figure 2.14",
+          "MC001-2022 section 2.7.2 heat gains references"
+        ],
+        ambiguityType: "visual_or_logical_notation_ambiguity",
+        reviewStatus: "unresolved",
+        resolutionDecision: "do_not_infer_intended_meaning",
+        runtimeImpact: "blocks_heating_QH;nd_runtime_branch_implementation",
+        sourceLocator: {
+          page: 120,
+          figure: "2.18",
+          subsection: "2.8.4"
+        }
+      },
+
+      heatingQhndReadinessVerdict: {
+        canImplementHeatingOnlyRuntime: false,
+        qhHtMonthlyHeatTransferInput: "explicit_input_or_C5_transfer_chain_required",
+        qhGnMonthlyHeatGainsInput: "explicit_input_possible_but_source_backed_gains_runtime_not_ready",
+        gammaHFormula: "verified_for_future_runtime_from_R5",
+        etaHGnFormula: "partially_verified_with_zero_edge_review_needed_from_R5",
+        effectiveCapacityTimeConstantPath:
+          "explicit_input_possible_or_tables_2.19_2.20_future_source_pack_required",
+        figure218BranchConditions: "blocked_due_to_ambiguous_first_branch",
+        qhndFormula: "not_implemented",
+        annualAggregation: "not_implemented",
+        nextRecommendation:
+          "C6E_continue_source_extraction_or_human_visual_review_before_QHnd_runtime"
+      },
+
+      dependencyMatrix: {
+        c5ExplicitTransferTotal: {
+          status: "implemented",
+          limitation: "explicit transfer only not QH;nd"
+        },
+        qhHtMonthlyInput: {
+          status: "explicit_input_only_or_C5_chain",
+          source: "C5_explicit_transfer_total"
+        },
+        internalGains: {
+          status: "explicit_input_only_or_missing_future_source_pack",
+          source: "section_2.7.2_relations_2.33_to_2.35"
+        },
+        solarGains: {
+          status: "explicit_input_only_or_missing_future_source_pack",
+          source: "section_2.7.3_relations_2.36_to_2.39_and_2.50"
+        },
+        totalGainsQhGn: {
+          status: "explicit_input_only_or_missing_future_source_pack",
+          source: "figure_2.13"
+        },
+        gammaH: {
+          status: "verified_for_future_runtime",
+          source: "R5_figure_2.14"
+        },
+        etaHGn: {
+          status: "partially_verified_needs_zero_edge_review",
+          source: "R5_figure_2.14"
+        },
+        effectiveCapacityCm: {
+          status: "explicit_input_only_or_missing_future_source_pack",
+          source: "section_2.7.5_tables_2.19_2.20"
+        },
+        timeConstantTau: {
+          status: "verified_for_future_runtime_with_explicit_inputs",
+          source: "relation_2.57"
+        },
+        figure218FirstBranch: {
+          status: "blocked_due_to_ambiguous_first_branch",
+          source: "figure_2.18"
+        },
+        qhndRuntime: {
+          status: "not_implemented"
+        },
+        annualQhndAggregation: {
+          status: "not_implemented"
+        },
+        final_energy: {
+          status: "blocked"
+        },
+        primary_energy: {
+          status: "blocked"
+        },
+        co2: {
+          status: "blocked"
+        },
+        cpeCertificate: {
+          status: "blocked"
+        }
+      },
+
+      blockers: [
+        "not_runtime_QH;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults",
+        "no_normative_default_gains",
+        "no_normative_default_solar_data",
+        "no_normative_default_capacity",
+        "no_default_occupancy_or_schedules",
+        "intermittency_and_unoccupied_periods_not_implemented",
+        "figure_2.18_first_branch_unresolved",
+        "figure_2.14_zero_edge_needs_review",
+        "tables_2.19_2.20_not_encoded_as_values",
+        "climate_solar_data_missing_future_source_pack"
+      ]
     }
   ]
 });
@@ -2078,6 +2680,50 @@ function validateUtilizationHeatingSourceScope(sourceScope) {
   );
 }
 
+function validateGainsCapacitySourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section ===
+      "2.7. Calculul necesarului de energie pentru climatizare folosind metoda de calcul lunar" &&
+    arraysMatchExactly(sourceScope.parentSectionsVerified, [
+      "2.7",
+      "2.7.2",
+      "2.7.3",
+      "2.7.5",
+      "2.7.6",
+      "2.8.4"
+    ]) &&
+    arraysMatchExactly(sourceScope.pagesVerified, [
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      116,
+      120
+    ]) &&
+    arraysMatchExactly(sourceScope.figuresVerified, ["2.13", "2.18"]) &&
+    arraysMatchExactly(sourceScope.tablesVerified, ["2.19", "2.20"]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, [
+      "2.33",
+      "2.34",
+      "2.35",
+      "2.36",
+      "2.37",
+      "2.38",
+      "2.39",
+      "2.50",
+      "2.57"
+    ])
+  );
+}
+
 function validateBztuConcept(concept) {
   return (
     isObject(concept) &&
@@ -2163,6 +2809,21 @@ function validateUtilizationHeatingConcept(concept) {
     hasRequiredString(concept.purpose) &&
     sourceLocatorLooksValid(concept.sourceLocator, 113) &&
     concept.sourceLocator.figure === "2.14"
+  );
+}
+
+function validateGainsCapacityConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "gains_capacity_timeconstant_readiness" &&
+    concept.targetSymbol === "QH;gn;ztc;m + Cm;eff;ztc + tauH;ztc;m" &&
+    concept.registryKind === "metadata_only_readiness_registry" &&
+    concept.unit === "metadata_only" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 103)
   );
 }
 
@@ -2975,6 +3636,330 @@ function validateUtilizationBlockers(blockers) {
   ]);
 }
 
+function validateGainsCapacitySourceIdentity(identity) {
+  return (
+    isObject(identity) &&
+    identity.methodologyCode === METHODOLOGY_CODE &&
+    identity.methodologyVersion === METHODOLOGY_VERSION &&
+    identity.heatGainsSectionReference === "section_2.7.2" &&
+    identity.solarGainsSectionReference === "section_2.7.3" &&
+    identity.effectiveCapacitySectionReference === "section_2.7.5" &&
+    identity.timeConstantReference === "relation_2.57" &&
+    identity.ambiguityReference === "figure_2.18" &&
+    arraysMatchExactly(identity.relatedReferences, [
+      "figure_2.13_total_heat_gains",
+      "relations_2.33_2.35_internal_gains",
+      "relations_2.36_2.39_solar_gains",
+      "relation_2.50_opaque_solar_gains",
+      "tables_2.19_2.20_effective_capacity",
+      "relation_2.57_heating_time_constant",
+      "figure_2.18_heating_monthly_useful_demand"
+    ])
+  );
+}
+
+function validateSourceDependencyMapEntries(entries, expected) {
+  if (!Array.isArray(entries) || entries.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [symbol, unit, origin, status, page] = expected[index];
+    const entry = entries[index];
+    if (
+      !isObject(entry) ||
+      entry.symbol !== symbol ||
+      entry.unit !== unit ||
+      entry.dependencyOrigin !== origin ||
+      entry.readinessStatus !== status ||
+      !hasRequiredString(entry.meaning) ||
+      !sourceLocatorLooksValid(entry.sourceLocator, page)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateGainsCapacityDependencyMaps(sourcePack) {
+  return (
+    validateSourceDependencyMapEntries(sourcePack.heatGainsDependencyMap, [
+      ["QH;gn;ztc;m", "kWh", "explicit_input_required", "source_dependency_only", 103],
+      ["QC;gn;ztc;m", "kWh", "missing_future_source_pack", "source_dependency_only", 103],
+      ["QH/C;int;ztc;m", "kWh", "explicit_input_required", "source_dependency_only", 103],
+      ["QH/C;sol;ztc;m", "kWh", "explicit_input_required", "source_dependency_only", 104]
+    ]) &&
+    validateSourceDependencyMapEntries(sourcePack.internalGainsDependencyMap, [
+      [
+        "QH/C;int;dir;ztc;m",
+        "kWh",
+        "explicit_input_required",
+        "verified_for_future_runtime_with_explicit_inputs",
+        103
+      ],
+      ["bztu,k;m", "dimensionless", "missing_future_source_pack", "source_dependency_only", 104],
+      [
+        "Fztc;ztu,k;m",
+        "dimensionless",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        104
+      ],
+      [
+        "fgn;max;H;ztu,k;m",
+        "dimensionless",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        104
+      ],
+      [
+        "QH/C;spec;int;oc/A/L/WA/HVAC/proc;zt;m",
+        "kWh/m2",
+        "missing_future_source_pack",
+        "referenced_but_not_transcribed",
+        104
+      ],
+      ["Ause;zt", "m2", "explicit_input_required", "source_dependency_only", 104]
+    ]) &&
+    validateSourceDependencyMapEntries(sourcePack.solarGainsDependencyMap, [
+      [
+        "QH/C;sol;dir;ztc;m",
+        "kWh",
+        "explicit_input_required",
+        "verified_for_future_runtime_with_explicit_inputs",
+        104
+      ],
+      [
+        "QH/C;sol;wi;k;m",
+        "kWh",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        105
+      ],
+      [
+        "QH/C;sol;op;k;m",
+        "kWh",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        105
+      ],
+      [
+        "ggl;wi;H/C;m",
+        "dimensionless",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        105
+      ],
+      [
+        "Hsol;wi;m / Hsol;k;m",
+        "kWh/m2",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        105
+      ],
+      [
+        "Fsh;obst;wi;m / Fsh;obst;k;m",
+        "dimensionless",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        105
+      ],
+      [
+        "alphaSr;k + Rse;k + Uc;op;k + Ac;k",
+        "source_units",
+        "missing_future_source_pack",
+        "source_dependency_only",
+        111
+      ]
+    ]) &&
+    validateSourceDependencyMapEntries(sourcePack.capacityTimeConstantDependencyMap, [
+      [
+        "Cm;eff;ztc",
+        "J/K",
+        "explicit_input_required_or_missing_future_source_pack",
+        "tables_referenced_without_encoded_values",
+        112
+      ],
+      [
+        "tables 2.19 and 2.20",
+        "source_units",
+        "missing_future_source_pack",
+        "referenced_but_not_transcribed",
+        112
+      ],
+      [
+        "tauH;ztc;m",
+        "h",
+        "explicit_input_required_or_missing_future_source_pack",
+        "verified_for_future_runtime_with_explicit_inputs",
+        116
+      ],
+      [
+        "HH;tr(excl.grflr);ztc;m + HH;gr;adj;ztc + HH;ve;ztc;m",
+        "W/K",
+        "explicit_input_required_or_C5_chain_plus_ground_adjustment",
+        "source_dependency_only",
+        116
+      ]
+    ])
+  );
+}
+
+function validateGainsCapacityFormulaCandidates(candidates) {
+  const expected = [
+    ["MC001_R6_FIGURE_2_13_TOTAL_HEAT_GAINS", "verified_for_future_runtime_with_explicit_inputs", 103],
+    [
+      "MC001_R6_RELATION_2_33_INTERNAL_GAINS_SINGLE_ZONE",
+      "verified_for_future_runtime_with_explicit_inputs",
+      103
+    ],
+    ["MC001_R6_RELATION_2_34_INTERNAL_GAINS_ZTU_ADJACENT", "needs_human_visual_review", 104],
+    [
+      "MC001_R6_RELATION_2_35_DIRECT_INTERNAL_GAINS_COMPONENTS",
+      "referenced_but_not_transcribed",
+      104
+    ],
+    [
+      "MC001_R6_RELATION_2_36_SOLAR_GAINS_SINGLE_ZONE",
+      "verified_for_future_runtime_with_explicit_inputs",
+      104
+    ],
+    ["MC001_R6_RELATION_2_37_SOLAR_GAINS_ZTU_ADJACENT", "needs_human_visual_review", 104],
+    [
+      "MC001_R6_RELATION_2_38_DIRECT_SOLAR_GAINS_COMPONENTS",
+      "verified_for_future_runtime_with_explicit_inputs",
+      105
+    ],
+    [
+      "MC001_R6_RELATION_2_39_TRANSPARENT_SOLAR_GAINS",
+      "verified_for_future_runtime_with_explicit_inputs",
+      105
+    ],
+    [
+      "MC001_R6_RELATION_2_50_OPAQUE_SOLAR_GAINS",
+      "verified_for_future_runtime_with_explicit_inputs",
+      111
+    ],
+    [
+      "MC001_R6_TABLES_2_19_2_20_EFFECTIVE_CAPACITY_DEPENDENCY",
+      "referenced_but_not_transcribed",
+      112
+    ],
+    [
+      "MC001_R6_RELATION_2_57_HEATING_TIME_CONSTANT",
+      "verified_for_future_runtime_with_explicit_inputs",
+      116
+    ]
+  ];
+  if (!Array.isArray(candidates) || candidates.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [candidateCode, readinessStatus, page] = expected[index];
+    const candidate = candidates[index];
+    if (
+      !isObject(candidate) ||
+      candidate.candidateCode !== candidateCode ||
+      candidate.readinessStatus !== readinessStatus ||
+      !hasRequiredString(candidate.expressionText) ||
+      !hasRequiredString(candidate.sourceReference) ||
+      !sourceLocatorLooksValid(candidate.sourceLocator, page) ||
+      ![
+        "verified_for_future_runtime_with_explicit_inputs",
+        "needs_human_visual_review",
+        "referenced_but_not_transcribed"
+      ].includes(candidate.readinessStatus) ||
+      Object.hasOwn(candidate, "entryType") ||
+      Object.hasOwn(candidate, "formulaCode") ||
+      Object.hasOwn(candidate, "defaultValue") ||
+      Object.hasOwn(candidate, "defaultValues")
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateGainsCapacityAmbiguityReview(review) {
+  return (
+    isObject(review) &&
+    review.observedConditionText ===
+      "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0 != 1" &&
+    arraysMatchExactly(review.reviewedAgainst, [
+      "MC001-2022 page 120 figure 2.18",
+      "MC001-2022 page 113 figure 2.14",
+      "MC001-2022 section 2.7.2 heat gains references"
+    ]) &&
+    review.ambiguityType === "visual_or_logical_notation_ambiguity" &&
+    review.reviewStatus === "unresolved" &&
+    review.resolutionDecision === "do_not_infer_intended_meaning" &&
+    review.runtimeImpact === "blocks_heating_QH;nd_runtime_branch_implementation" &&
+    sourceLocatorLooksValid(review.sourceLocator, 120) &&
+    review.sourceLocator.figure === "2.18"
+  );
+}
+
+function validateGainsCapacityReadinessVerdict(verdict) {
+  return (
+    isObject(verdict) &&
+    verdict.canImplementHeatingOnlyRuntime === false &&
+    verdict.qhHtMonthlyHeatTransferInput === "explicit_input_or_C5_transfer_chain_required" &&
+    verdict.qhGnMonthlyHeatGainsInput ===
+      "explicit_input_possible_but_source_backed_gains_runtime_not_ready" &&
+    verdict.gammaHFormula === "verified_for_future_runtime_from_R5" &&
+    verdict.etaHGnFormula === "partially_verified_with_zero_edge_review_needed_from_R5" &&
+    verdict.effectiveCapacityTimeConstantPath ===
+      "explicit_input_possible_or_tables_2.19_2.20_future_source_pack_required" &&
+    verdict.figure218BranchConditions === "blocked_due_to_ambiguous_first_branch" &&
+    verdict.qhndFormula === "not_implemented" &&
+    verdict.annualAggregation === "not_implemented" &&
+    verdict.nextRecommendation ===
+      "C6E_continue_source_extraction_or_human_visual_review_before_QHnd_runtime"
+  );
+}
+
+function validateGainsCapacityDependencyMatrix(matrix) {
+  return (
+    isObject(matrix) &&
+    matrix.c5ExplicitTransferTotal?.status === "implemented" &&
+    matrix.qhHtMonthlyInput?.status === "explicit_input_only_or_C5_chain" &&
+    matrix.internalGains?.status === "explicit_input_only_or_missing_future_source_pack" &&
+    matrix.solarGains?.status === "explicit_input_only_or_missing_future_source_pack" &&
+    matrix.totalGainsQhGn?.status === "explicit_input_only_or_missing_future_source_pack" &&
+    matrix.gammaH?.status === "verified_for_future_runtime" &&
+    matrix.etaHGn?.status === "partially_verified_needs_zero_edge_review" &&
+    matrix.effectiveCapacityCm?.status === "explicit_input_only_or_missing_future_source_pack" &&
+    matrix.timeConstantTau?.status === "verified_for_future_runtime_with_explicit_inputs" &&
+    matrix.figure218FirstBranch?.status === "blocked_due_to_ambiguous_first_branch" &&
+    matrix.qhndRuntime?.status === "not_implemented" &&
+    matrix.annualQhndAggregation?.status === "not_implemented" &&
+    matrix.final_energy?.status === "blocked" &&
+    matrix.primary_energy?.status === "blocked" &&
+    matrix.co2?.status === "blocked" &&
+    matrix.cpeCertificate?.status === "blocked"
+  );
+}
+
+function validateGainsCapacityBlockers(blockers) {
+  return arraysMatchExactly(blockers, [
+    "not_runtime_QH;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_normative_default_gains",
+    "no_normative_default_solar_data",
+    "no_normative_default_capacity",
+    "no_default_occupancy_or_schedules",
+    "intermittency_and_unoccupied_periods_not_implemented",
+    "figure_2.18_first_branch_unresolved",
+    "figure_2.14_zero_edge_needs_review",
+    "tables_2.19_2.20_not_encoded_as_values",
+    "climate_solar_data_missing_future_source_pack"
+  ]);
+}
+
 function sourcePackBaseIssue(
   sourcePack,
   verificationStatus,
@@ -3219,6 +4204,56 @@ function utilizationHeatingSourcePackIssue(sourcePack) {
   return null;
 }
 
+function gainsCapacityTimeconstantSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateGainsCapacitySourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateGainsCapacityConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateGainsCapacitySourceIdentity(sourcePack.sourceIdentity)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateGainsCapacityDependencyMaps(sourcePack)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateGainsCapacityFormulaCandidates(sourcePack.formulaCandidates)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateGainsCapacityAmbiguityReview(sourcePack.figure218AmbiguityReview)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateGainsCapacityReadinessVerdict(sourcePack.heatingQhndReadinessVerdict)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateGainsCapacityDependencyMatrix(sourcePack.dependencyMatrix)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateGainsCapacityBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== true ||
+    sourcePack.runtimeCalculatorStatus !== "not_implemented" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -3240,6 +4275,9 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE) {
     return utilizationHeatingSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE) {
+    return gainsCapacityTimeconstantSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }

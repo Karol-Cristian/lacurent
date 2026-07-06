@@ -20,6 +20,8 @@ const R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE =
   "MC001_R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK";
 const R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE =
   "MC001_R5_UTILIZATION_FACTORS_HEATING_READINESS_SOURCE_PACK";
+const R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE =
+  "MC001_R6_GAINS_CAPACITY_TIMECONSTANT_READINESS_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -37,10 +39,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 6,
+  sourcePacks: 7,
   formulas: 10,
   constants: 1,
-  concepts: 6,
+  concepts: 7,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -126,6 +128,10 @@ function figure218HeatingPack(value = registry()) {
 
 function utilizationHeatingPack(value = registry()) {
   return sourcePackByCode(R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE, value);
+}
+
+function gainsCapacityPack(value = registry()) {
+  return sourcePackByCode(R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -315,10 +321,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly six source packs", () => {
+test("registry now contains exactly seven source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 6);
+  assert.equal(packs.length, 7);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -327,7 +333,8 @@ test("registry now contains exactly six source packs", () => {
       R2_MONTHLY_SOURCE_PACK_CODE,
       R3_QHND_MONTHLY_SOURCE_PACK_CODE,
       R4_FIGURE_2_18_HEATING_BRANCH_SOURCE_PACK_CODE,
-      R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE
+      R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
+      R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -814,6 +821,163 @@ test("R5 contains no calculator functions runtime access invented defaults or fi
   assert.equal(serialized.includes("demo-" + "house"), false);
 });
 
+test("R6 gains capacity time constant source pack exists as metadata only", () => {
+  const pack = gainsCapacityPack();
+
+  assert.equal(pack.sourcePackCode, R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.verificationStatus, "human_verified_from_official_pdf_visual_review");
+  assert.equal(pack.implementationStatus, "registry_ready_not_calculator_ready");
+  assert.equal(pack.metadataOnly, true);
+  assert.equal(pack.runtimeCalculatorStatus, "not_implemented");
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+  assert.equal(Object.hasOwn(pack, "figures"), false);
+  assert.equal(Object.hasOwn(pack, "defaultValueCandidates"), false);
+});
+
+test("R6 references MC001 2022 gains capacity tables and relation 2.57", () => {
+  const pack = gainsCapacityPack();
+
+  assert.equal(pack.sourceIdentity.methodologyCode, "MC001");
+  assert.equal(pack.sourceIdentity.methodologyVersion, "2022");
+  assert.equal(pack.sourceIdentity.heatGainsSectionReference, "section_2.7.2");
+  assert.equal(pack.sourceIdentity.solarGainsSectionReference, "section_2.7.3");
+  assert.equal(pack.sourceIdentity.effectiveCapacitySectionReference, "section_2.7.5");
+  assert.equal(pack.sourceIdentity.timeConstantReference, "relation_2.57");
+  assert.ok(pack.sourceScope.parentSectionsVerified.includes("2.7.2"));
+  assert.ok(pack.sourceScope.parentSectionsVerified.includes("2.7.3"));
+  assert.ok(pack.sourceScope.parentSectionsVerified.includes("2.7.5"));
+  assert.deepEqual(pack.sourceScope.tablesVerified, ["2.19", "2.20"]);
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.57"));
+});
+
+test("R6 includes internal gains dependency map", () => {
+  const pack = gainsCapacityPack();
+  const internalSymbols = pack.internalGainsDependencyMap.map((entry) => entry.symbol);
+
+  assert.ok(pack.heatGainsDependencyMap.some((entry) => entry.symbol === "QH;gn;ztc;m"));
+  assert.ok(internalSymbols.includes("QH/C;int;dir;ztc;m"));
+  assert.ok(internalSymbols.includes("QH/C;spec;int;oc/A/L/WA/HVAC/proc;zt;m"));
+  assert.equal(
+    pack.internalGainsDependencyMap.find((entry) => entry.symbol === "bztu,k;m").readinessStatus,
+    "source_dependency_only"
+  );
+  assert.equal(
+    pack.internalGainsDependencyMap.find((entry) => entry.symbol === "Ause;zt").dependencyOrigin,
+    "explicit_input_required"
+  );
+});
+
+test("R6 includes solar gains dependency map", () => {
+  const symbols = gainsCapacityPack().solarGainsDependencyMap.map((entry) => entry.symbol);
+
+  assert.ok(symbols.includes("QH/C;sol;dir;ztc;m"));
+  assert.ok(symbols.includes("QH/C;sol;wi;k;m"));
+  assert.ok(symbols.includes("QH/C;sol;op;k;m"));
+  assert.ok(symbols.includes("Hsol;wi;m / Hsol;k;m"));
+  assert.ok(symbols.includes("alphaSr;k + Rse;k + Uc;op;k + Ac;k"));
+});
+
+test("R6 includes effective capacity and time constant dependency map", () => {
+  const map = gainsCapacityPack().capacityTimeConstantDependencyMap;
+
+  assert.equal(map.find((entry) => entry.symbol === "Cm;eff;ztc").unit, "J/K");
+  assert.equal(
+    map.find((entry) => entry.symbol === "tables 2.19 and 2.20").readinessStatus,
+    "referenced_but_not_transcribed"
+  );
+  assert.equal(map.find((entry) => entry.symbol === "tauH;ztc;m").sourceLocator.relation, "2.57");
+});
+
+test("R6 formula candidates are source referenced and do not encode defaults", () => {
+  const candidates = gainsCapacityPack().formulaCandidates;
+  const codes = candidates.map((candidate) => candidate.candidateCode);
+
+  assert.equal(candidates.length, 11);
+  assert.ok(codes.includes("MC001_R6_RELATION_2_35_DIRECT_INTERNAL_GAINS_COMPONENTS"));
+  assert.ok(codes.includes("MC001_R6_RELATION_2_39_TRANSPARENT_SOLAR_GAINS"));
+  assert.ok(codes.includes("MC001_R6_RELATION_2_57_HEATING_TIME_CONSTANT"));
+  assert.ok(codes.includes("MC001_R6_TABLES_2_19_2_20_EFFECTIVE_CAPACITY_DEPENDENCY"));
+  for (const candidate of candidates) {
+    assert.ok(candidate.candidateCode.startsWith("MC001_R6_"));
+    assert.ok(candidate.sourceReference.includes("MC001-2022"));
+    assert.equal(Object.hasOwn(candidate, "formulaCode"), false);
+    assert.equal(Object.hasOwn(candidate, "defaultValue"), false);
+    assert.equal(Object.hasOwn(candidate, "defaultValues"), false);
+  }
+});
+
+test("R6 includes figure 2.18 ambiguity review result", () => {
+  const review = gainsCapacityPack().figure218AmbiguityReview;
+
+  assert.equal(
+    review.observedConditionText,
+    "gammaH;ztc;m <= 0 and QH;gn;ztc;m > 0 != 1"
+  );
+  assert.equal(review.reviewStatus, "unresolved");
+  assert.equal(review.resolutionDecision, "do_not_infer_intended_meaning");
+  assert.equal(review.runtimeImpact, "blocks_heating_QH;nd_runtime_branch_implementation");
+  assert.equal(review.sourceLocator.figure, "2.18");
+});
+
+test("R6 dependency matrix and verdict keep QHnd runtime blocked", () => {
+  const pack = gainsCapacityPack();
+
+  assert.equal(pack.heatingQhndReadinessVerdict.canImplementHeatingOnlyRuntime, false);
+  assert.equal(pack.dependencyMatrix.c5ExplicitTransferTotal.status, "implemented");
+  assert.equal(
+    pack.dependencyMatrix.internalGains.status,
+    "explicit_input_only_or_missing_future_source_pack"
+  );
+  assert.equal(
+    pack.dependencyMatrix.solarGains.status,
+    "explicit_input_only_or_missing_future_source_pack"
+  );
+  assert.equal(pack.dependencyMatrix.figure218FirstBranch.status, "blocked_due_to_ambiguous_first_branch");
+  assert.equal(pack.dependencyMatrix.qhndRuntime.status, "not_implemented");
+  assert.equal(pack.dependencyMatrix.final_energy.status, "blocked");
+  assert.equal(pack.dependencyMatrix.primary_energy.status, "blocked");
+  assert.equal(pack.dependencyMatrix.co2.status, "blocked");
+  assert.equal(pack.dependencyMatrix.cpeCertificate.status, "blocked");
+});
+
+test("R6 declares final primary CO2 CPE certificate and hidden defaults blocked", () => {
+  const blockers = gainsCapacityPack().blockers;
+
+  for (const blockerCode of [
+    "not_runtime_QH;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_hidden_defaults",
+    "no_normative_default_gains",
+    "no_normative_default_solar_data",
+    "no_normative_default_capacity",
+    "no_default_occupancy_or_schedules",
+    "tables_2.19_2.20_not_encoded_as_values",
+    "climate_solar_data_missing_future_source_pack"
+  ]) {
+    assert.ok(blockers.includes(blockerCode), blockerCode);
+  }
+});
+
+test("R6 contains no calculator functions runtime access invented defaults or fixture data", () => {
+  const serialized = JSON.stringify(gainsCapacityPack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+});
+
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
   const formula = formulaByRelation("2.12");
 
@@ -951,7 +1115,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R5 expected aggregate counts", () => {
+test("validation counts match R6 expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");
