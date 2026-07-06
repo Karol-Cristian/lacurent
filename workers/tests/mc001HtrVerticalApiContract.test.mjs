@@ -1133,6 +1133,24 @@ await test("C6F accepts valid restricted heating QHnd explicit input", async () 
   assert.equal(c6f.summary.annualQHnd, 786.72);
 });
 
+await test("C6F global diagnostics clarify full QHnd is still not implemented", async () => {
+  const db = new FakeDb();
+  const result = await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload());
+  const missing = result.body.mc001_htr.diagnostics.missingForNextMethodologyScope;
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mc001_htr.restrictedHeatingQhndResult.summary.annualQHnd, 786.72);
+  assert.equal(missing.includes("full_QHnd_monthly_not_implemented"), true);
+  assert.equal(missing.includes(["QHnd", "monthly", "not", "implemented"].join("_")), false);
+  for (const code of [
+    "final_energy_not_implemented",
+    "primary_energy_not_implemented",
+    "co2_not_implemented",
+    "certificate_not_implemented"
+  ]) {
+    assert.equal(missing.includes(code), true, `missing ${code}`);
+  }
+});
+
 await test("C6F restricted QHnd result persists and reloads", async () => {
   const db = new FakeDb();
   await post("/api/mc001/htr/run", db, c6fRestrictedQhndPayload());
