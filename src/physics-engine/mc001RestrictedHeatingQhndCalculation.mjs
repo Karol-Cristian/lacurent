@@ -1,3 +1,5 @@
+import { calculateMc001HeatingGainUtilizationFactor } from "./mc001HeatingGainUtilizationFactorCalculation.mjs";
+
 const MODE = "restricted_heating_qhnd_explicit_v1";
 const SCOPE = "restricted_heating_qhnd_explicit_input_only_not_full_mc001";
 const FORMULA_REFERENCES = [
@@ -29,7 +31,12 @@ const METHODOLOGY_LIMITS = [
   "not_certificate",
   "no_system_losses",
   "no_long_unoccupied_periods",
-  "no_hidden_defaults"
+  "no_hidden_defaults",
+  "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
+  "no_default_aH0",
+  "no_default_tauH0",
+  "no_default_tauH",
+  "no_default_capacity"
 ];
 const EXCLUDED_BRANCHES = [
   "gammaH_less_or_equal_zero",
@@ -46,6 +53,8 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "summary",
   "result",
   "results",
+  "etaHgnOrigin",
+  "etaHgnFormulaCode",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -122,6 +131,42 @@ function validateSource(source) {
   return { ok: true };
 }
 
+function hasInputValue(inputCase, key) {
+  return inputCase[key] !== undefined && inputCase[key] !== null;
+}
+
+function calculateEtaHgnFromExplicitAH(inputCase) {
+  const etaResult = calculateMc001HeatingGainUtilizationFactor({
+    mode: "restricted_heating_etaHgn_explicit_v1",
+    cases: [
+      {
+        caseId: inputCase.caseId,
+        gammaH: hasInputValue(inputCase, "gammaH") ? inputCase.gammaH : undefined,
+        qHgn: inputCase.qHgn,
+        qHht: inputCase.qHht,
+        aH: inputCase.aH,
+        source: {
+          reference: inputCase.source.reference,
+          notes: inputCase.source.notes
+        }
+      }
+    ]
+  });
+
+  if (etaResult.status !== "ready" || etaResult.caseResults.length !== 1) {
+    const etaCode = etaResult.diagnostics?.blockers?.[0]?.code || "unknown_etaHgn_blocker";
+    return {
+      ok: false,
+      code: `restricted_qhnd_etaHgn_calculation_failed_${etaCode}`
+    };
+  }
+
+  return {
+    ok: true,
+    value: etaResult.caseResults[0]
+  };
+}
+
 function validateCase(inputCase) {
   if (!isPlainObject(inputCase)) {
     return { ok: false, code: "restricted_qhnd_invalid_case" };
@@ -155,13 +200,46 @@ function validateCase(inputCase) {
   if (gammaH > 2) {
     return { ok: false, code: "restricted_qhnd_gammaH_greater_than_two" };
   }
-  const etaHgn = finiteNumber(inputCase.etaHgn);
-  if (etaHgn === null) {
-    return { ok: false, code: "restricted_qhnd_missing_etaHgn" };
+
+  const hasEtaHgn = hasInputValue(inputCase, "etaHgn");
+  const hasAH = hasInputValue(inputCase, "aH");
+  if (hasEtaHgn && hasAH) {
+    return { ok: false, code: "etaHgn_and_aH_are_mutually_exclusive_in_c7c" };
   }
-  if (etaHgn < 0) {
-    return { ok: false, code: "restricted_qhnd_invalid_etaHgn" };
+  if (!hasEtaHgn && !hasAH) {
+    return { ok: false, code: "etaHgn_or_aH_required" };
   }
+
+  let etaHgn;
+  let etaHgnOrigin;
+  let aH;
+  let etaHgnFormulaCode;
+
+  if (hasEtaHgn) {
+    etaHgn = finiteNumber(inputCase.etaHgn);
+    if (etaHgn === null) {
+      return { ok: false, code: "restricted_qhnd_missing_etaHgn" };
+    }
+    if (etaHgn < 0) {
+      return { ok: false, code: "restricted_qhnd_invalid_etaHgn" };
+    }
+    etaHgnOrigin = "explicit_input";
+  } else {
+    aH = finiteNumber(inputCase.aH);
+    if (aH === null) {
+      return { ok: false, code: "restricted_qhnd_missing_aH" };
+    }
+    if (aH <= 0) {
+      return { ok: false, code: "restricted_qhnd_invalid_aH" };
+    }
+    const calculatedEta = calculateEtaHgnFromExplicitAH(inputCase);
+    if (!calculatedEta.ok) return calculatedEta;
+    etaHgn = calculatedEta.value.etaHgn;
+    aH = calculatedEta.value.aH;
+    etaHgnFormulaCode = calculatedEta.value.formulaCode;
+    etaHgnOrigin = "calculated_from_explicit_aH";
+  }
+
   const qHnd = qHht - etaHgn * qHgn;
   if (!Number.isFinite(qHnd)) {
     return { ok: false, code: "restricted_qhnd_invalid_result" };
@@ -178,6 +256,9 @@ function validateCase(inputCase) {
       qHgn,
       gammaH,
       etaHgn,
+      etaHgnOrigin,
+      ...(aH === undefined ? {} : { aH }),
+      ...(etaHgnFormulaCode === undefined ? {} : { etaHgnFormulaCode }),
       qHnd,
       sourceReference: inputCase.source.reference
     }

@@ -55,8 +55,42 @@ await test("normal monthly heating case calculates restricted QHnd", () => {
   assert.equal(result.status, "ready");
   assert.equal(result.scope, "restricted_heating_qhnd_explicit_input_only_not_full_mc001");
   close(result.caseResults[0].qHnd, 786.72);
+  assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
   close(result.summary.annualQHnd, 786.72);
   assert.equal(result.caseResults[0].formulaCode, "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH");
+});
+
+await test("calculated etaHgn path uses explicit aH and calculated gammaH", () => {
+  const payloadCase = sampleCase({ aH: 2 });
+  delete payloadCase.etaHgn;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].gammaH, 300 / 1026.72);
+  close(result.caseResults[0].etaHgn, 0.9380237833186124);
+  close(result.caseResults[0].qHnd, 745.3128650044164);
+  assert.equal(result.caseResults[0].etaHgnOrigin, "calculated_from_explicit_aH");
+  assert.equal(result.caseResults[0].aH, 2);
+  assert.equal(result.caseResults[0].etaHgnFormulaCode, "MC001_FIGURE_2_14_HEATING_GAIN_UTILIZATION_FACTOR");
+});
+
+await test("calculated etaHgn path supports gammaH equals one branch", () => {
+  const payloadCase = sampleCase({
+    qHht: 100,
+    qHgn: 100,
+    gammaH: 1,
+    aH: 2
+  });
+  delete payloadCase.etaHgn;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].etaHgn, 2 / 3);
+  close(result.caseResults[0].qHnd, 33.33333333333334);
+  assert.equal(result.caseResults[0].etaHgnOrigin, "calculated_from_explicit_aH");
 });
 
 await test("gamma can be calculated from qHgn over qHht when omitted", () => {
@@ -67,6 +101,7 @@ await test("gamma can be calculated from qHgn over qHht when omitted", () => {
   assert.equal(result.status, "ready");
   close(result.caseResults[0].gammaH, 300 / 1026.72);
   close(result.caseResults[0].qHnd, 786.72);
+  assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
 });
 
 await test("annual aggregation sums monthly restricted QHnd", () => {
@@ -117,12 +152,55 @@ await test("rejects qHgn below zero", () => {
   );
 });
 
-await test("rejects missing etaHgn", () => {
+await test("rejects both etaHgn and aH present", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ aH: 2 })])),
+    "etaHgn_and_aH_are_mutually_exclusive_in_c7c"
+  );
+});
+
+await test("rejects neither etaHgn nor aH present", () => {
   const payloadCase = sampleCase();
   delete payloadCase.etaHgn;
   assertBlocked(
     calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
-    "restricted_qhnd_missing_etaHgn"
+    "etaHgn_or_aH_required"
+  );
+});
+
+await test("rejects aH less than or equal to zero", () => {
+  const payloadCase = sampleCase({ aH: 0 });
+  delete payloadCase.etaHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "restricted_qhnd_invalid_aH"
+  );
+});
+
+await test("rejects calculated etaHgn path with gammaH greater than two", () => {
+  const payloadCase = sampleCase({ gammaH: 2.01, aH: 2 });
+  delete payloadCase.etaHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "restricted_qhnd_gammaH_greater_than_two"
+  );
+});
+
+await test("rejects calculated etaHgn path with qHht less than or equal to zero", () => {
+  const payloadCase = sampleCase({ qHht: 0, aH: 2 });
+  delete payloadCase.etaHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "restricted_qhnd_invalid_qHht"
+  );
+});
+
+await test("rejects calculated etaHgn path with qHgn below zero", () => {
+  const payloadCase = sampleCase({ qHgn: -1, aH: 2 });
+  delete payloadCase.etaHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "restricted_qhnd_invalid_qHgn"
   );
 });
 
@@ -193,7 +271,12 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
     "not_final_energy",
     "not_primary_energy",
     "not_CO2",
-    "not_certificate"
+    "not_certificate",
+    "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
+    "no_default_aH0",
+    "no_default_tauH0",
+    "no_default_tauH",
+    "no_default_capacity"
   ]) {
     assert.equal(result.diagnostics.methodologyLimits.includes(limit), true, `missing ${limit}`);
   }
