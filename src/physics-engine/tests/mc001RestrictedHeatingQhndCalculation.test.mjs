@@ -110,6 +110,8 @@ await test("normal monthly heating case calculates restricted QHnd", () => {
   assert.equal(result.caseResults[0].qHhtOrigin, "explicit_input");
   assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
   close(result.summary.annualQHnd, 786.72);
+  assert.equal(result.summary.caseCount, 1);
+  assert.equal(result.summary.monthCount, 1);
   assert.equal(result.caseResults[0].formulaCode, "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH");
 });
 
@@ -305,6 +307,114 @@ await test("annual aggregation sums monthly restricted QHnd", () => {
   close(result.caseResults[1].qHnd, 450);
   close(result.summary.annualQHnd, 1236.72);
   assert.equal(result.summary.caseCount, 2);
+  assert.equal(result.summary.monthCount, 2);
+  assert.equal(result.caseResults[0].qHhtOrigin, "explicit_input");
+  assert.equal(result.caseResults[1].qHhtOrigin, "explicit_input");
+});
+
+await test("multi-month aggregation supports mixed explicit QHht C5 QHht explicit eta aH and utilization dependencies", () => {
+  const c5AHCase = sampleCase({
+    caseId: "feb-qhnd-c5-aH",
+    month: "february",
+    aH: 2,
+    explicitTotalHeatTransferResult: c5ExplicitTotalTransferResult()
+  });
+  delete c5AHCase.qHht;
+  delete c5AHCase.etaHgn;
+  delete c5AHCase.gammaH;
+
+  const c5UtilizationCase = sampleCase({
+    caseId: "mar-qhnd-c5-utilization",
+    month: "march",
+    qHgn: heatGainsQHgn(),
+    explicitTotalHeatTransferResult: c5ExplicitTotalTransferResult(),
+    utilizationDependencies: {
+      effectiveInternalHeatCapacityJPerK: 25200000,
+      heatTransferCoefficientWK: 420,
+      aH0: 1,
+      tauH0: 15
+    }
+  });
+  delete c5UtilizationCase.qHht;
+  delete c5UtilizationCase.etaHgn;
+  delete c5UtilizationCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([
+    sampleCase(),
+    c5AHCase,
+    c5UtilizationCase
+  ]));
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.summary.caseCount, 3);
+  assert.equal(result.summary.monthCount, 3);
+  close(result.caseResults[0].qHnd, 786.72);
+  close(result.caseResults[1].qHnd, 745.3128650044164);
+  close(result.caseResults[2].qHnd, 742.8843719521191);
+  close(result.summary.annualQHnd, 2274.917236956536);
+  assert.equal(result.caseResults[0].qHhtOrigin, "explicit_input");
+  assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
+  assert.equal(result.caseResults[1].qHhtOrigin, "calculated_from_explicit_C5_transfer");
+  assert.equal(result.caseResults[1].etaHgnOrigin, "calculated_from_explicit_aH");
+  assert.equal(result.caseResults[2].qHhtOrigin, "calculated_from_explicit_C5_transfer");
+  assert.equal(result.caseResults[2].etaHgnOrigin, "calculated_from_explicit_time_constant_dependencies");
+  assert.equal(result.caseResults[2].aHOrigin, "calculated_from_explicit_tauH_dependencies");
+});
+
+await test("multi-month aggregation blocks duplicate case identifiers", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([
+      sampleCase(),
+      sampleCase({ month: "february" })
+    ])),
+    "duplicate_monthly_case_identifier"
+  );
+});
+
+await test("missing or invalid monthly case arrays are blocked", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit({ mode: "restricted_heating_qhnd_explicit_v1" }),
+    "missing_monthly_restricted_heating_cases"
+  );
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([])),
+    "missing_monthly_restricted_heating_cases"
+  );
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit({
+      mode: "restricted_heating_qhnd_explicit_v1",
+      cases: {}
+    }),
+    "invalid_monthly_restricted_heating_cases"
+  );
+});
+
+await test("multi-month aggregation blocks invalid monthly case identifiers", () => {
+  const invalidCase = sampleCase({ caseId: "" });
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([
+      sampleCase(),
+      invalidCase
+    ])),
+    "invalid_monthly_case_identifier"
+  );
+});
+
+await test("failed monthly case blocks aggregation without partial annual total", () => {
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([
+    sampleCase(),
+    sampleCase({
+      caseId: "feb-qhnd-invalid",
+      month: "february",
+      qHgn: -1
+    })
+  ]));
+
+  assertBlocked(result, "monthly_restricted_heating_case_failed");
+  assert.equal(result.caseResults.length, 0);
+  assert.equal(result.summary.annualQHnd, 0);
+  assert.equal(result.summary.caseCount, 0);
+  assert.equal(result.summary.monthCount, 0);
 });
 
 await test("rejects gammaH less than or equal to zero", () => {
@@ -461,8 +571,8 @@ await test("rejects missing source", () => {
 await test("rejects missing and empty cases", () => {
   assertBlocked(calculateMc001RestrictedHeatingQhndExplicit({
     mode: "restricted_heating_qhnd_explicit_v1"
-  }), "restricted_qhnd_missing_cases");
-  assertBlocked(calculateMc001RestrictedHeatingQhndExplicit(input([])), "restricted_qhnd_missing_cases");
+  }), "missing_monthly_restricted_heating_cases");
+  assertBlocked(calculateMc001RestrictedHeatingQhndExplicit(input([])), "missing_monthly_restricted_heating_cases");
 });
 
 await test("rejects invalid month and unsupported mode", () => {
