@@ -18,6 +18,8 @@ const R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE =
   "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK";
 const R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE =
   "MC001_R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK";
+const R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE =
+  "MC001_R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -75,7 +77,8 @@ const SOURCE_PACK_CODES = new Set([
   R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
   R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
   R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
-  R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE
+  R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
+  R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -113,7 +116,8 @@ const ENTRY_CODES = new Set([
   "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS",
   "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS",
   "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS",
-  "MC001_CONCEPT_LONG_UNOCCUPIED_PERIOD_INTERPOLATION"
+  "MC001_CONCEPT_LONG_UNOCCUPIED_PERIOD_INTERPOLATION",
+  "MC001_CONCEPT_HEATING_QHND_VERTICAL_CLOSURE"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -444,10 +448,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 10,
+    sourcePacks: 11,
     formulas: 10,
     constants: 1,
-    concepts: 10,
+    concepts: 11,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -3353,6 +3357,241 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "no_temperature_setpoint_defaults",
         "intermittency_not_machine_encoded"
       ]
+    },
+    {
+      sourcePackCode: R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "coverage_map_only_existing_restricted_heating_runtime_no_new_formula",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section:
+          "2.7 monthly calculation method and 2.8 heating useful-demand corrections",
+        parentSectionsVerified: ["2.7", "2.7.6", "2.8", "2.8.2", "2.8.4", "2.10"],
+        pagesVerified: [113, 116, 117, 118, 119, 120, 121, 124],
+        figuresVerified: ["2.13", "2.14", "2.18", "2.19"],
+        relationsVerified: [
+          "2.55",
+          "2.57",
+          "2.59",
+          "2.60",
+          "2.61",
+          "2.62",
+          "2.63",
+          "2.64",
+          "2.65",
+          "2.66",
+          "2.67",
+          "2.68",
+          "2.69",
+          "2.70",
+          "2.71",
+          "2.72",
+          "2.73",
+          "2.76",
+          "2.77",
+          "2.84"
+        ],
+        sourceMaterialsReviewed: [
+          "local MC001-2022 methodology source",
+          "R6 gains capacity time-constant source pack",
+          "R7 QHnd ambiguity resolution source pack",
+          "R8 etaHgn formula source pack",
+          "R9 long unoccupied interpolation source pack"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_HEATING_QHND_VERTICAL_CLOSURE",
+        entryType: "concept",
+        conceptCode: "heating_qhnd_vertical_closure_coverage",
+        targetSymbol: "QH;nd;ztc;m",
+        registryKind: "machine_readable_runtime_coverage_map",
+        name: "Heating useful-demand vertical closure coverage map",
+        unit: "coverage_metadata",
+        purpose:
+          "maps implemented restricted heating QHnd branches, metadata-only branches, unencoded heating intermittency relations, and downstream out-of-scope domains",
+        sourceLocator: {
+          page: 120,
+          figure: "2.18",
+          subsection: "2.7.6 / 2.8.2 / 2.8.4 / 2.10"
+        }
+      },
+      heatingQhndCoverageMap: {
+        implementedRuntimeBranches: [
+          {
+            branchId: "figure_2_18_normal_balance",
+            relationOrFigure: "figure_2.18",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"
+          },
+          {
+            branchId: "figure_2_18_gamma_non_positive_positive_gains_zero_demand",
+            relationOrFigure: "figure_2.18",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"
+          },
+          {
+            branchId: "figure_2_18_gamma_greater_than_two_zero_demand",
+            relationOrFigure: "figure_2.18",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"
+          },
+          {
+            branchId: "figure_2_14_etaHgn_gamma_equals_one",
+            relationOrFigure: "figure_2.14",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_R8_ETA_H_GN_GAMMA_EQUALS_ONE"
+          },
+          {
+            branchId: "figure_2_14_etaHgn_gamma_not_one",
+            relationOrFigure: "figure_2.14",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_R8_ETA_H_GN_GAMMA_NOT_ONE"
+          },
+          {
+            branchId: "relation_2_55_aH_from_tauH",
+            relationOrFigure: "2.55",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_R8_AH_PARAMETER_RELATION_2_55"
+          },
+          {
+            branchId: "relation_2_57_tauH_from_explicit_capacity_and_coefficients",
+            relationOrFigure: "2.57",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57"
+          },
+          {
+            branchId: "figure_2_13_explicit_heat_gains_sum",
+            relationOrFigure: "figure_2.13",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_EXPLICIT_MONTHLY_HEAT_GAINS_SUM"
+          },
+          {
+            branchId: "relation_2_76_long_unoccupied_heating_interpolation",
+            relationOrFigure: "2.76",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
+          },
+          {
+            branchId: "relation_2_84_annual_heating_qhnd_sum",
+            relationOrFigure: "2.84",
+            runtimeStatus: "implemented_restricted_explicit_monthly_aggregation",
+            formulaReference: "annualQHnd = sum(monthlyQHnd)"
+          }
+        ],
+        sourceBackedMetadataOnlyBranches: [
+          {
+            branchId: "relation_2_77_long_unoccupied_cooling_interpolation",
+            relationOrFigure: "2.77",
+            reason: "cooling_QCnd_metadata_only_not_heating_runtime"
+          }
+        ],
+        notMachineEncodedBranches: [
+          {
+            branchId: "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
+            relationOrFigure: "2.59-2.73",
+            reason:
+              "local text extraction locates formulas but equation glyphs require human visual transcription before runtime use",
+            runtimeDiagnostic:
+              "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+          },
+          {
+            branchId: "heating_period_boundary_duration_method",
+            relationOrFigure: "section_2.11",
+            reason:
+              "local validation notes record a source conflict and no separate machine-ready monthly QHnd formula"
+          }
+        ],
+        downstreamOutOfScope: [
+          "QCnd",
+          "final_energy",
+          "primary_energy",
+          "CO2",
+          "CPE_certificate",
+          "system_losses",
+          "fan_electricity",
+          "air_treatment_energy"
+        ]
+      },
+      runtimeClosureVerdict: {
+        notFullQhndRemains: true,
+        reason:
+          "heating intermittency relations 2.59-2.73 remain source-located but not machine-transcribed",
+        implementedHeatingUsefulDemandRelations: [
+          "figure_2.18",
+          "figure_2.14",
+          "2.55",
+          "2.57",
+          "2.76",
+          "2.84"
+        ],
+        blockedHeatingUsefulDemandRelations: ["2.59-2.73"],
+        coolingRelationsNotUsedInHeatingRuntime: ["2.77"]
+      },
+      dependencyMatrix: {
+        qHht: {
+          status: "implemented_direct_or_explicit_C5_transfer_source"
+        },
+        qHgn: {
+          status: "implemented_direct_components_or_explicit_monthly_heat_gains_result"
+        },
+        gammaH: {
+          status: "implemented_calculated_or_explicit_with_boundary_branches"
+        },
+        tauH: {
+          status: "implemented_from_explicit_capacity_and_heat_transfer_coefficients"
+        },
+        aH: {
+          status: "implemented_explicit_or_from_explicit_tau_dependencies"
+        },
+        etaHgn: {
+          status: "implemented_explicit_or_calculated_from_explicit_aH"
+        },
+        longUnoccupiedRelation276: {
+          status: "implemented_restricted_explicit_interpolation"
+        },
+        heatingIntermittencyRelations259To273: {
+          status: "blocked_source_located_not_machine_encoded"
+        },
+        annualQhnd: {
+          status: "implemented_sum_of_explicit_monthly_cases"
+        },
+        fullQhnd: {
+          status: "blocked_not_full_QHnd"
+        },
+        qcnd: {
+          status: "blocked"
+        },
+        final_energy: {
+          status: "blocked"
+        },
+        primary_energy: {
+          status: "blocked"
+        },
+        co2: {
+          status: "blocked"
+        },
+        cpeCertificate: {
+          status: "blocked"
+        }
+      },
+      blockers: [
+        "not_full_QH;nd",
+        "not_QC;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults",
+        "no_schedule_defaults",
+        "no_temperature_setpoint_defaults",
+        "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+      ]
     }
   ]
 });
@@ -5434,6 +5673,182 @@ function validateLongUnoccupiedBlockers(blockers) {
   ]);
 }
 
+function validateHeatingClosureSourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section ===
+      "2.7 monthly calculation method and 2.8 heating useful-demand corrections" &&
+    arraysMatchExactly(sourceScope.parentSectionsVerified, [
+      "2.7",
+      "2.7.6",
+      "2.8",
+      "2.8.2",
+      "2.8.4",
+      "2.10"
+    ]) &&
+    arraysMatchExactly(sourceScope.pagesVerified, [113, 116, 117, 118, 119, 120, 121, 124]) &&
+    arraysMatchExactly(sourceScope.figuresVerified, ["2.13", "2.14", "2.18", "2.19"]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, [
+      "2.55",
+      "2.57",
+      "2.59",
+      "2.60",
+      "2.61",
+      "2.62",
+      "2.63",
+      "2.64",
+      "2.65",
+      "2.66",
+      "2.67",
+      "2.68",
+      "2.69",
+      "2.70",
+      "2.71",
+      "2.72",
+      "2.73",
+      "2.76",
+      "2.77",
+      "2.84"
+    ]) &&
+    arraysMatchExactly(sourceScope.sourceMaterialsReviewed, [
+      "local MC001-2022 methodology source",
+      "R6 gains capacity time-constant source pack",
+      "R7 QHnd ambiguity resolution source pack",
+      "R8 etaHgn formula source pack",
+      "R9 long unoccupied interpolation source pack"
+    ])
+  );
+}
+
+function validateHeatingClosureConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_HEATING_QHND_VERTICAL_CLOSURE" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "heating_qhnd_vertical_closure_coverage" &&
+    concept.targetSymbol === "QH;nd;ztc;m" &&
+    concept.registryKind === "machine_readable_runtime_coverage_map" &&
+    concept.unit === "coverage_metadata" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 120) &&
+    concept.sourceLocator.figure === "2.18"
+  );
+}
+
+function coverageBranchIds(branches) {
+  return Array.isArray(branches) ? branches.map((branch) => branch.branchId) : [];
+}
+
+function validateHeatingClosureCoverageMap(map) {
+  const implementedIds = [
+    "figure_2_18_normal_balance",
+    "figure_2_18_gamma_non_positive_positive_gains_zero_demand",
+    "figure_2_18_gamma_greater_than_two_zero_demand",
+    "figure_2_14_etaHgn_gamma_equals_one",
+    "figure_2_14_etaHgn_gamma_not_one",
+    "relation_2_55_aH_from_tauH",
+    "relation_2_57_tauH_from_explicit_capacity_and_coefficients",
+    "figure_2_13_explicit_heat_gains_sum",
+    "relation_2_76_long_unoccupied_heating_interpolation",
+    "relation_2_84_annual_heating_qhnd_sum"
+  ];
+  return (
+    isObject(map) &&
+    arraysMatchExactly(coverageBranchIds(map.implementedRuntimeBranches), implementedIds) &&
+    map.implementedRuntimeBranches.every((branch) =>
+      isObject(branch) &&
+      hasRequiredString(branch.relationOrFigure) &&
+      hasRequiredString(branch.runtimeStatus) &&
+      branch.runtimeStatus.startsWith("implemented_") &&
+      hasRequiredString(branch.formulaReference)
+    ) &&
+    arraysMatchExactly(
+      coverageBranchIds(map.sourceBackedMetadataOnlyBranches),
+      ["relation_2_77_long_unoccupied_cooling_interpolation"]
+    ) &&
+    map.sourceBackedMetadataOnlyBranches[0].reason ===
+      "cooling_QCnd_metadata_only_not_heating_runtime" &&
+    arraysMatchExactly(coverageBranchIds(map.notMachineEncodedBranches), [
+      "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
+      "heating_period_boundary_duration_method"
+    ]) &&
+    map.notMachineEncodedBranches[0].runtimeDiagnostic ===
+      "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded" &&
+    arraysMatchExactly(map.downstreamOutOfScope, [
+      "QCnd",
+      "final_energy",
+      "primary_energy",
+      "CO2",
+      "CPE_certificate",
+      "system_losses",
+      "fan_electricity",
+      "air_treatment_energy"
+    ])
+  );
+}
+
+function validateHeatingClosureVerdict(verdict) {
+  return (
+    isObject(verdict) &&
+    verdict.notFullQhndRemains === true &&
+    verdict.reason ===
+      "heating intermittency relations 2.59-2.73 remain source-located but not machine-transcribed" &&
+    arraysMatchExactly(verdict.implementedHeatingUsefulDemandRelations, [
+      "figure_2.18",
+      "figure_2.14",
+      "2.55",
+      "2.57",
+      "2.76",
+      "2.84"
+    ]) &&
+    arraysMatchExactly(verdict.blockedHeatingUsefulDemandRelations, ["2.59-2.73"]) &&
+    arraysMatchExactly(verdict.coolingRelationsNotUsedInHeatingRuntime, ["2.77"])
+  );
+}
+
+function validateHeatingClosureDependencyMatrix(matrix) {
+  return (
+    isObject(matrix) &&
+    matrix.qHht?.status === "implemented_direct_or_explicit_C5_transfer_source" &&
+    matrix.qHgn?.status ===
+      "implemented_direct_components_or_explicit_monthly_heat_gains_result" &&
+    matrix.gammaH?.status === "implemented_calculated_or_explicit_with_boundary_branches" &&
+    matrix.tauH?.status ===
+      "implemented_from_explicit_capacity_and_heat_transfer_coefficients" &&
+    matrix.aH?.status === "implemented_explicit_or_from_explicit_tau_dependencies" &&
+    matrix.etaHgn?.status === "implemented_explicit_or_calculated_from_explicit_aH" &&
+    matrix.longUnoccupiedRelation276?.status ===
+      "implemented_restricted_explicit_interpolation" &&
+    matrix.heatingIntermittencyRelations259To273?.status ===
+      "blocked_source_located_not_machine_encoded" &&
+    matrix.annualQhnd?.status === "implemented_sum_of_explicit_monthly_cases" &&
+    matrix.fullQhnd?.status === "blocked_not_full_QHnd" &&
+    matrix.qcnd?.status === "blocked" &&
+    matrix.final_energy?.status === "blocked" &&
+    matrix.primary_energy?.status === "blocked" &&
+    matrix.co2?.status === "blocked" &&
+    matrix.cpeCertificate?.status === "blocked"
+  );
+}
+
+function validateHeatingClosureBlockers(blockers) {
+  return arraysMatchExactly(blockers, [
+    "not_full_QH;nd",
+    "not_QC;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_schedule_defaults",
+    "no_temperature_setpoint_defaults",
+    "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+  ]);
+}
+
 function sourcePackBaseIssue(
   sourcePack,
   verificationStatus,
@@ -5883,6 +6298,49 @@ function longUnoccupiedInterpolationSourcePackIssue(sourcePack) {
   return null;
 }
 
+function heatingQhndClosureSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateHeatingClosureSourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateHeatingClosureConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateHeatingClosureCoverageMap(sourcePack.heatingQhndCoverageMap)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingClosureVerdict(sourcePack.runtimeClosureVerdict)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingClosureDependencyMatrix(sourcePack.dependencyMatrix)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingClosureBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !==
+      "coverage_map_only_existing_restricted_heating_runtime_no_new_formula" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -5919,6 +6377,9 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE) {
     return longUnoccupiedInterpolationSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE) {
+    return heatingQhndClosureSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
