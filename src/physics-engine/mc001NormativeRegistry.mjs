@@ -16,6 +16,8 @@ const R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE =
   "MC001_R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK";
 const R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE =
   "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK";
+const R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE =
+  "MC001_R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -72,7 +74,8 @@ const SOURCE_PACK_CODES = new Set([
   R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
   R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
   R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
-  R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
+  R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
+  R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -109,7 +112,8 @@ const ENTRY_CODES = new Set([
   "MC001_CONCEPT_UTILIZATION_FACTORS_HEATING_READINESS",
   "MC001_CONCEPT_GAINS_CAPACITY_TIMECONSTANT_READINESS",
   "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS",
-  "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS"
+  "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS",
+  "MC001_CONCEPT_LONG_UNOCCUPIED_PERIOD_INTERPOLATION"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -440,10 +444,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 9,
+    sourcePacks: 10,
     formulas: 10,
     constants: 1,
-    concepts: 9,
+    concepts: 10,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -3187,6 +3191,168 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "no_long_unoccupied_or_intermittency_runtime_behavior",
         "C7B_must_require_explicit_aH_or_explicit_tau_path_inputs"
       ]
+    },
+    {
+      sourcePackCode: R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus: "implemented_restricted_heating_relation_2_76_only",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section:
+          "2.8. Particularitati ale calculului necesarului de energie propriu sistemului",
+        subsection: "2.8.4. Corectii pentru perioada de neocupare",
+        parentSectionsVerified: ["2.7", "2.8", "2.8.4"],
+        pagesVerified: [120, 121],
+        relationsVerified: ["2.76", "2.77"],
+        adjacentSymbolDefinitionsVerified: [
+          "QH/C;nd;occ;ztc;m",
+          "QH/C;nd;nocc;ztc;m",
+          "fH/C;nocc;ztc;m",
+          "QH;nd;ztc;m",
+          "QC;nd;ztc;m"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_LONG_UNOCCUPIED_PERIOD_INTERPOLATION",
+        entryType: "concept",
+        conceptCode: "long_unoccupied_period_interpolation",
+        targetSymbol: "QH;nd;ztc;m / QC;nd;ztc;m",
+        registryKind: "machine_encoded_restricted_heating_registry",
+        name: "Long unoccupied period monthly useful-demand interpolation",
+        unit: "kWh",
+        purpose:
+          "machine-encodes MC001 relation 2.76 for restricted heating runtime and records relation 2.77 as cooling metadata only",
+        sourceLocator: {
+          page: 121,
+          relation: "2.76",
+          subsection: "2.8.4"
+        }
+      },
+      sourceIdentity: {
+        methodologyCode: "MC001",
+        methodologyVersion: "2022",
+        unoccupiedSectionReference: "section_2.8.4",
+        heatingRelationReference: "relation_2.76",
+        coolingRelationReference: "relation_2.77",
+        adjacentTextReferences: [
+          "MC001-2022 page 120 section 2.8.4",
+          "MC001-2022 page 121 relation 2.76",
+          "MC001-2022 page 121 relation 2.77",
+          "MC001-2022 page 121 symbol definitions"
+        ],
+        sourceReviewNotes: [
+          "section 2.8.4 requires a separate occupied-period calculation and unoccupied-period calculation for a month with long non-occupation",
+          "relation 2.76 linearly interpolates heating useful demand by the monthly unoccupied time fraction",
+          "relation 2.77 mirrors the interpolation for cooling and is recorded as metadata only in this heating milestone"
+        ]
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION",
+          mc001Symbol: "QH;nd;ztc;m",
+          expressionText:
+            "QH;nd;ztc;m = (1 - fH;nocc;ztc;m) * QH;nd;occ;ztc;m + fH;nocc;ztc;m * QH;nd;nocc;ztc;m",
+          machineExpression:
+            "QHnd = (1 - fHnocc) * QHndOcc + fHnocc * QHndNocc",
+          relationReference: "2.76",
+          sourceReference: "MC001-2022 page 121 relation 2.76",
+          requiredInputs: ["QH;nd;occ;ztc;m", "QH;nd;nocc;ztc;m", "fH;nocc;ztc;m"],
+          outputSymbol: "QH;nd;ztc;m",
+          unit: "kWh",
+          readinessStatus: "verified_for_restricted_heating_runtime",
+          sourceLocator: {
+            page: 121,
+            relation: "2.76",
+            subsection: "2.8.4"
+          }
+        },
+        {
+          candidateCode: "MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION",
+          mc001Symbol: "QC;nd;ztc;m",
+          expressionText:
+            "QC;nd;ztc;m = (1 - fC;nocc;ztc;m) * QC;nd;occ;ztc;m + fC;nocc;ztc;m * QC;nd;nocc;ztc;m",
+          machineExpression:
+            "QCnd = (1 - fCnocc) * QCndOcc + fCnocc * QCndNocc",
+          relationReference: "2.77",
+          sourceReference: "MC001-2022 page 121 relation 2.77",
+          requiredInputs: ["QC;nd;occ;ztc;m", "QC;nd;nocc;ztc;m", "fC;nocc;ztc;m"],
+          outputSymbol: "QC;nd;ztc;m",
+          unit: "kWh",
+          readinessStatus: "machine_encoded_metadata_only_not_runtime_cooling",
+          sourceLocator: {
+            page: 121,
+            relation: "2.77",
+            subsection: "2.8.4"
+          }
+        }
+      ],
+      runtimeIntegration: {
+        implementedFormulaCodes: ["MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"],
+        metadataOnlyFormulaCodes: ["MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION"],
+        inputContract: {
+          branchInputName: "longUnoccupiedPeriodAdjustment",
+          explicitInputs: ["qHndOccupied", "qHndUnoccupied", "unoccupiedFraction"],
+          outputOrigin: "calculated_from_explicit_long_unoccupied_interpolation"
+        },
+        restrictions: [
+          "heating_only",
+          "explicit_input_only",
+          "no_schedule_defaults",
+          "no_setpoint_defaults",
+          "no_cooling_runtime"
+        ]
+      },
+      dependencyMatrix: {
+        occupiedMonthlyQhnd: {
+          status: "explicit_input_required",
+          source: "relation_2.76"
+        },
+        unoccupiedMonthlyQhnd: {
+          status: "explicit_input_required",
+          source: "relation_2.76"
+        },
+        unoccupiedFraction: {
+          status: "explicit_input_required_0_to_1",
+          source: "relation_2.76_symbol_definition"
+        },
+        heatingLongUnoccupiedRuntime: {
+          status: "implemented_restricted_explicit_interpolation"
+        },
+        coolingLongUnoccupiedRuntime: {
+          status: "blocked_metadata_only"
+        },
+        intermittencyRuntime: {
+          status: "blocked_not_relation_2_76_or_2_77"
+        },
+        final_energy: {
+          status: "blocked"
+        },
+        primary_energy: {
+          status: "blocked"
+        },
+        co2: {
+          status: "blocked"
+        },
+        cpeCertificate: {
+          status: "blocked"
+        }
+      },
+      blockers: [
+        "not_QC;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults",
+        "no_schedule_defaults",
+        "no_temperature_setpoint_defaults",
+        "intermittency_not_machine_encoded"
+      ]
     }
   ]
 });
@@ -5100,6 +5266,174 @@ function validateHeatingEtaBlockers(blockers) {
   ]);
 }
 
+function validateLongUnoccupiedSourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section ===
+      "2.8. Particularitati ale calculului necesarului de energie propriu sistemului" &&
+    sourceScope.subsection === "2.8.4. Corectii pentru perioada de neocupare" &&
+    arraysMatchExactly(sourceScope.parentSectionsVerified, ["2.7", "2.8", "2.8.4"]) &&
+    arraysMatchExactly(sourceScope.pagesVerified, [120, 121]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, ["2.76", "2.77"]) &&
+    arraysMatchExactly(sourceScope.adjacentSymbolDefinitionsVerified, [
+      "QH/C;nd;occ;ztc;m",
+      "QH/C;nd;nocc;ztc;m",
+      "fH/C;nocc;ztc;m",
+      "QH;nd;ztc;m",
+      "QC;nd;ztc;m"
+    ])
+  );
+}
+
+function validateLongUnoccupiedConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_LONG_UNOCCUPIED_PERIOD_INTERPOLATION" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "long_unoccupied_period_interpolation" &&
+    concept.targetSymbol === "QH;nd;ztc;m / QC;nd;ztc;m" &&
+    concept.registryKind === "machine_encoded_restricted_heating_registry" &&
+    concept.unit === "kWh" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 121) &&
+    concept.sourceLocator.relation === "2.76"
+  );
+}
+
+function validateLongUnoccupiedSourceIdentity(identity) {
+  return (
+    isObject(identity) &&
+    identity.methodologyCode === METHODOLOGY_CODE &&
+    identity.methodologyVersion === METHODOLOGY_VERSION &&
+    identity.unoccupiedSectionReference === "section_2.8.4" &&
+    identity.heatingRelationReference === "relation_2.76" &&
+    identity.coolingRelationReference === "relation_2.77" &&
+    arraysMatchExactly(identity.adjacentTextReferences, [
+      "MC001-2022 page 120 section 2.8.4",
+      "MC001-2022 page 121 relation 2.76",
+      "MC001-2022 page 121 relation 2.77",
+      "MC001-2022 page 121 symbol definitions"
+    ]) &&
+    Array.isArray(identity.sourceReviewNotes) &&
+    identity.sourceReviewNotes.length === 3 &&
+    identity.sourceReviewNotes.every(hasRequiredString)
+  );
+}
+
+function validateLongUnoccupiedFormulaCandidates(candidates) {
+  const expected = [
+    [
+      "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION",
+      "QH;nd;ztc;m",
+      "2.76",
+      "verified_for_restricted_heating_runtime",
+      "QHnd = (1 - fHnocc) * QHndOcc + fHnocc * QHndNocc"
+    ],
+    [
+      "MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION",
+      "QC;nd;ztc;m",
+      "2.77",
+      "machine_encoded_metadata_only_not_runtime_cooling",
+      "QCnd = (1 - fCnocc) * QCndOcc + fCnocc * QCndNocc"
+    ]
+  ];
+  if (!Array.isArray(candidates) || candidates.length !== expected.length) {
+    return false;
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const [
+      candidateCode,
+      symbol,
+      relationReference,
+      readinessStatus,
+      machineExpression
+    ] = expected[index];
+    const candidate = candidates[index];
+    if (
+      !isObject(candidate) ||
+      candidate.candidateCode !== candidateCode ||
+      candidate.mc001Symbol !== symbol ||
+      candidate.relationReference !== relationReference ||
+      candidate.readinessStatus !== readinessStatus ||
+      candidate.machineExpression !== machineExpression ||
+      candidate.unit !== "kWh" ||
+      !hasRequiredString(candidate.expressionText) ||
+      !hasRequiredString(candidate.sourceReference) ||
+      !Array.isArray(candidate.requiredInputs) ||
+      candidate.requiredInputs.length !== 3 ||
+      !hasRequiredString(candidate.outputSymbol) ||
+      !sourceLocatorLooksValid(candidate.sourceLocator, 121) ||
+      candidate.sourceLocator.relation !== relationReference ||
+      Object.hasOwn(candidate, "entryType") ||
+      Object.hasOwn(candidate, "formulaCode")
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateLongUnoccupiedRuntimeIntegration(runtimeIntegration) {
+  return (
+    isObject(runtimeIntegration) &&
+    arraysMatchExactly(runtimeIntegration.implementedFormulaCodes, [
+      "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
+    ]) &&
+    arraysMatchExactly(runtimeIntegration.metadataOnlyFormulaCodes, [
+      "MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION"
+    ]) &&
+    runtimeIntegration.inputContract?.branchInputName === "longUnoccupiedPeriodAdjustment" &&
+    arraysMatchExactly(runtimeIntegration.inputContract?.explicitInputs, [
+      "qHndOccupied",
+      "qHndUnoccupied",
+      "unoccupiedFraction"
+    ]) &&
+    runtimeIntegration.inputContract?.outputOrigin ===
+      "calculated_from_explicit_long_unoccupied_interpolation" &&
+    arraysMatchExactly(runtimeIntegration.restrictions, [
+      "heating_only",
+      "explicit_input_only",
+      "no_schedule_defaults",
+      "no_setpoint_defaults",
+      "no_cooling_runtime"
+    ])
+  );
+}
+
+function validateLongUnoccupiedDependencyMatrix(matrix) {
+  return (
+    isObject(matrix) &&
+    matrix.occupiedMonthlyQhnd?.status === "explicit_input_required" &&
+    matrix.unoccupiedMonthlyQhnd?.status === "explicit_input_required" &&
+    matrix.unoccupiedFraction?.status === "explicit_input_required_0_to_1" &&
+    matrix.heatingLongUnoccupiedRuntime?.status ===
+      "implemented_restricted_explicit_interpolation" &&
+    matrix.coolingLongUnoccupiedRuntime?.status === "blocked_metadata_only" &&
+    matrix.intermittencyRuntime?.status === "blocked_not_relation_2_76_or_2_77" &&
+    matrix.final_energy?.status === "blocked" &&
+    matrix.primary_energy?.status === "blocked" &&
+    matrix.co2?.status === "blocked" &&
+    matrix.cpeCertificate?.status === "blocked"
+  );
+}
+
+function validateLongUnoccupiedBlockers(blockers) {
+  return arraysMatchExactly(blockers, [
+    "not_QC;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_schedule_defaults",
+    "no_temperature_setpoint_defaults",
+    "intermittency_not_machine_encoded"
+  ]);
+}
+
 function sourcePackBaseIssue(
   sourcePack,
   verificationStatus,
@@ -5504,6 +5838,51 @@ function heatingEtaFormulaSourcePackIssue(sourcePack) {
   return null;
 }
 
+function longUnoccupiedInterpolationSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateLongUnoccupiedSourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateLongUnoccupiedConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateLongUnoccupiedSourceIdentity(sourcePack.sourceIdentity)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateLongUnoccupiedFormulaCandidates(sourcePack.formulaCandidates)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateLongUnoccupiedRuntimeIntegration(sourcePack.runtimeIntegration)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateLongUnoccupiedDependencyMatrix(sourcePack.dependencyMatrix)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateLongUnoccupiedBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !== "implemented_restricted_heating_relation_2_76_only" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -5537,6 +5916,9 @@ function sourcePackIssue(sourcePack) {
     R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
   ) {
     return heatingEtaFormulaSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE) {
+    return longUnoccupiedInterpolationSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
