@@ -7,6 +7,7 @@ import { calculateMc001ExplicitTotalHeatTransferSummary } from "../src/physics-e
 import { calculateMc001IntegratedTransmissionResult } from "../src/physics-engine/mc001IntegratedTransmissionCalculation.mjs";
 import { calculateMc001MonthlyTransmissionEnergyExplicit } from "../src/physics-engine/mc001MonthlyTransmissionEnergyCalculation.mjs";
 import { calculateMc001MonthlyVentilationTransferExplicit } from "../src/physics-engine/mc001VentilationTransferCalculation.mjs";
+import { calculateMc001MonthlyHeatGainsExplicit } from "../src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs";
 import { calculateMc001RestrictedHeatingQhndExplicit } from "../src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs";
 import {
   calculateMc001DirectTransmissionCoefficient,
@@ -1841,6 +1842,12 @@ function mc001HtrPayloadHasForbiddenDerivedFields(value) {
     "annualQHnd",
     "annualQHndKWh",
     "annual_qhnd_kwh",
+    "qHgn",
+    "annualQHgn",
+    "qHgnOrigin",
+    "heatGainsFormulaCode",
+    "monthlyHeatGainsResult",
+    "heatGainsResult",
     "etaHgnOrigin",
     "etaHgnFormulaCode",
     "qhndResult",
@@ -2469,12 +2476,33 @@ function sanitizeMc001RestrictedHeatingQhndInput(input) {
       return { ok: false, error: `Cazul QHnd C6F ${index + 1} are luna invalida.` };
     }
     const qHht = mc001HtrFiniteNumber(qhndCase.qHht_kwh);
-    const qHgn = mc001HtrFiniteNumber(qhndCase.qHgn_kwh);
     if (qHht === null || qHht <= 0) {
       return { ok: false, error: "QHht C6F trebuie sa fie finit si pozitiv." };
     }
-    if (qHgn === null || qHgn < 0) {
+    const qHgnProvided = qhndCase.qHgn_kwh !== undefined && qhndCase.qHgn_kwh !== null && qhndCase.qHgn_kwh !== "";
+    const internalGainsProvided = qhndCase.internalGains_kwh !== undefined &&
+      qhndCase.internalGains_kwh !== null &&
+      qhndCase.internalGains_kwh !== "";
+    const solarGainsProvided = qhndCase.solarGains_kwh !== undefined &&
+      qhndCase.solarGains_kwh !== null &&
+      qhndCase.solarGains_kwh !== "";
+    if (qHgnProvided && (internalGainsProvided || solarGainsProvided)) {
+      return { ok: false, error: "qHgn_and_heat_gain_components_are_mutually_exclusive_in_c8b" };
+    }
+    if (!qHgnProvided && (!internalGainsProvided || !solarGainsProvided)) {
+      return { ok: false, error: "qHgn_or_complete_heat_gain_components_required" };
+    }
+    const qHgn = qHgnProvided ? mc001HtrFiniteNumber(qhndCase.qHgn_kwh) : null;
+    if (qHgnProvided && (qHgn === null || qHgn < 0)) {
       return { ok: false, error: "QHgn C6F trebuie sa fie finit si pozitiv sau zero." };
+    }
+    const internalGains = internalGainsProvided ? mc001HtrFiniteNumber(qhndCase.internalGains_kwh) : null;
+    if (internalGainsProvided && (internalGains === null || internalGains < 0)) {
+      return { ok: false, error: "internalGains C8B trebuie sa fie finit si pozitiv sau zero." };
+    }
+    const solarGains = solarGainsProvided ? mc001HtrFiniteNumber(qhndCase.solarGains_kwh) : null;
+    if (solarGainsProvided && (solarGains === null || solarGains < 0)) {
+      return { ok: false, error: "solarGains C8B trebuie sa fie finit si pozitiv sau zero." };
     }
     const gammaProvided = qhndCase.gammaH !== undefined && qhndCase.gammaH !== null && qhndCase.gammaH !== "";
     const gammaH = gammaProvided ? mc001HtrFiniteNumber(qhndCase.gammaH) : null;
@@ -2511,7 +2539,9 @@ function sanitizeMc001RestrictedHeatingQhndInput(input) {
       case_id: qhndCase.case_id,
       month: qhndCase.month,
       qHht_kwh: qHht,
-      qHgn_kwh: qHgn,
+      ...(qHgnProvided ? { qHgn_kwh: qHgn } : {}),
+      ...(internalGainsProvided ? { internalGains_kwh: internalGains } : {}),
+      ...(solarGainsProvided ? { solarGains_kwh: solarGains } : {}),
       ...(gammaProvided ? { gammaH } : {}),
       ...(etaProvided ? { etaHgn } : {}),
       ...(aHProvided ? { aH } : {}),
@@ -3252,14 +3282,62 @@ function buildMc001ExplicitTotalHeatTransferResult(monthlyTransmissionEnergyResu
   return result?.status === "ready" ? result : null;
 }
 
-function buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput) {
+function resolveMc001RestrictedHeatingQhndHeatGains(qhndCase) {
+  if (Object.prototype.hasOwnProperty.call(qhndCase, "qHgn_kwh")) {
+    return {
+      ok: true,
+      qHgn: qhndCase.qHgn_kwh,
+      metadata: {
+        qHgnOrigin: "explicit_input"
+      }
+    };
+  }
+
+  const heatGainsResult = calculateMc001MonthlyHeatGainsExplicit({
+    mode: "monthly_heat_gains_explicit_v1",
+    cases: [
+      {
+        caseId: qhndCase.case_id,
+        month: qhndCase.month,
+        internalGains: qhndCase.internalGains_kwh,
+        solarGains: qhndCase.solarGains_kwh,
+        source: qhndCase.source
+      }
+    ]
+  });
+  if (heatGainsResult?.status !== "ready" || !heatGainsResult.caseResults?.[0]) {
+    return { ok: false, error: "Inputul castigurilor explicite C8B este invalid." };
+  }
+
+  const heatGainsCase = heatGainsResult.caseResults[0];
   return {
-    mode: "restricted_heating_qhnd_explicit_v1",
-    cases: restrictedInput.cases.map((qhndCase) => ({
+    ok: true,
+    qHgn: heatGainsCase.qHgn,
+    metadata: {
+      internalGains: heatGainsCase.internalGains,
+      solarGains: heatGainsCase.solarGains,
+      qHgnOrigin: "calculated_from_explicit_internal_and_solar_gains",
+      heatGainsFormulaCode: heatGainsCase.formulaCode,
+      heatGainsScope: heatGainsCase.scope
+    }
+  };
+}
+
+function buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput) {
+  const heatGainsMetadata = [];
+  const cases = [];
+
+  for (const qhndCase of restrictedInput.cases) {
+    const heatGains = resolveMc001RestrictedHeatingQhndHeatGains(qhndCase);
+    if (!heatGains.ok) {
+      return { ok: false, error: heatGains.error };
+    }
+    heatGainsMetadata.push(heatGains.metadata);
+    cases.push({
       caseId: qhndCase.case_id,
       month: qhndCase.month,
       qHht: qhndCase.qHht_kwh,
-      qHgn: qhndCase.qHgn_kwh,
+      qHgn: heatGains.qHgn,
       ...(Object.prototype.hasOwnProperty.call(qhndCase, "gammaH")
         ? { gammaH: qhndCase.gammaH }
         : {}),
@@ -3270,19 +3348,41 @@ function buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput) {
         ? { aH: qhndCase.aH }
         : {}),
       source: qhndCase.source
-    }))
+    });
+  }
+
+  return {
+    ok: true,
+    value: {
+      mode: "restricted_heating_qhnd_explicit_v1",
+      cases
+    },
+    heatGainsMetadata
   };
 }
 
 function buildMc001RestrictedHeatingQhndResult(restrictedInput) {
   if (!restrictedInput) return { ok: true, value: null };
+  const calculatorInput = buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput);
+  if (!calculatorInput.ok) {
+    return { ok: false, error: calculatorInput.error };
+  }
   const result = calculateMc001RestrictedHeatingQhndExplicit(
-    buildMc001RestrictedHeatingQhndCalculatorInput(restrictedInput)
+    calculatorInput.value
   );
   if (result?.status !== "ready") {
     return { ok: false, error: "Inputul QHnd restrictionat C6F este invalid." };
   }
-  return { ok: true, value: result };
+  return {
+    ok: true,
+    value: {
+      ...result,
+      caseResults: result.caseResults.map((caseResult, index) => ({
+        ...caseResult,
+        ...(calculatorInput.heatGainsMetadata[index] || {})
+      }))
+    }
+  };
 }
 
 function parseMc001HtrStoredJson(text, fallback) {

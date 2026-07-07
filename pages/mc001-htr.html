@@ -339,9 +339,11 @@ consumul de energie al ventilatoarelor sau tratarea aerului.
 <h2>QHnd explicit, incalzire lunara restrictionata</h2>
 </div>
 <p class="section-description">
-C6F calculeaza doar QHnd de incalzire pentru domeniul restrictionat cu inputuri explicite. Completeaza fie etaHgn,
-fie aH; daca aH este completat si etaHgn este gol, etaHgn se calculeaza. Nu completa ambele. Nu este QHnd complet,
-nu este QCnd, nu este energie finala, energie primara, CO2 sau certificat energetic.
+C6F calculeaza doar QHnd de incalzire pentru domeniul restrictionat cu inputuri explicite. Completeaza fie qHgn,
+fie internalGains plus solarGains; daca internalGains si solarGains sunt completate iar qHgn este gol, qHgn se calculeaza.
+Completeaza fie etaHgn, fie aH; daca aH este completat si etaHgn este gol, etaHgn se calculeaza. Nu completa ambele
+variante in aceeasi pereche si nu completa qHgn impreuna cu internalGains sau solarGains. Nu exista castiguri implicite.
+Nu este QHnd complet, nu este QCnd, nu este energie finala, energie primara, CO2 sau certificat energetic.
 </p>
 
 <fieldset>
@@ -368,6 +370,8 @@ nu este QCnd, nu este energie finala, energie primara, CO2 sau certificat energe
 </div>
 <div><label for="restrictedQhndQHht">qHht_kwh</label><input id="restrictedQhndQHht" type="number" min="0" step="0.001"></div>
 <div><label for="restrictedQhndQHgn">qHgn_kwh</label><input id="restrictedQhndQHgn" type="number" min="0" step="0.001"></div>
+<div><label for="restrictedQhndInternalGains">internalGains_kwh</label><input id="restrictedQhndInternalGains" type="number" min="0" step="0.001"></div>
+<div><label for="restrictedQhndSolarGains">solarGains_kwh</label><input id="restrictedQhndSolarGains" type="number" min="0" step="0.001"></div>
 <div><label for="restrictedQhndGammaH">gammaH optional</label><input id="restrictedQhndGammaH" type="number" min="0" max="2" step="0.000001"></div>
 <div><label for="restrictedQhndEtaHgn">etaHgn explicit</label><input id="restrictedQhndEtaHgn" type="number" min="0" step="0.000001"></div>
 <div><label for="restrictedQhndAH">aH explicit optional</label><input id="restrictedQhndAH" type="number" min="0" step="0.000001"></div>
@@ -462,8 +466,8 @@ C5 insumeaza energia explicita prin transmisie si ventilare. Nu este QHnd, nu es
 <h2>Rezultat QHnd explicit restrictionat</h2>
 </div>
 <p class="section-description">
-C6F foloseste qHht, qHgn si fie etaHgn explicit, fie etaHgn calculat din aH explicit. Nu este QHnd complet, nu este QCnd
-si nu este certificat energetic.
+C6F foloseste qHht, qHgn direct sau qHgn calculat din internalGains plus solarGains, si fie etaHgn explicit,
+fie etaHgn calculat din aH explicit. Nu este QHnd complet, nu este QCnd si nu este certificat energetic.
 </p>
 <div id="restrictedHeatingQhndList" class="recommendation-list"></div>
 <div class="section-heading">
