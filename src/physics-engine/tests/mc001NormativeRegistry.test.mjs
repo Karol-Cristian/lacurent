@@ -28,6 +28,8 @@ const R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE =
   "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK";
 const R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE =
   "MC001_R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK";
+const R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE =
+  "MC001_R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -45,10 +47,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 10,
+  sourcePacks: 11,
   formulas: 10,
   constants: 1,
-  concepts: 10,
+  concepts: 11,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -154,6 +156,13 @@ function heatingEtaPack(value = registry()) {
 function longUnoccupiedPack(value = registry()) {
   return sourcePackByCode(
     R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
+    value
+  );
+}
+
+function heatingQhndClosurePack(value = registry()) {
+  return sourcePackByCode(
+    R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE,
     value
   );
 }
@@ -345,10 +354,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly ten source packs", () => {
+test("registry now contains exactly eleven source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 10);
+  assert.equal(packs.length, 11);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -361,7 +370,8 @@ test("registry now contains exactly ten source packs", () => {
       R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
       R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
       R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
-      R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE
+      R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
+      R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -1367,6 +1377,104 @@ test("R9 contains no calculator functions runtime access invented defaults or fi
   assert.equal(serialized.includes("demo-" + "house"), false);
 });
 
+test("R10 heating QHnd closure source pack exists as a machine-readable coverage map", () => {
+  const pack = heatingQhndClosurePack();
+
+  assert.equal(pack.sourcePackCode, R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(
+    pack.runtimeCalculatorStatus,
+    "coverage_map_only_existing_restricted_heating_runtime_no_new_formula"
+  );
+  assert.deepEqual(pack.sourceScope.parentSectionsVerified, [
+    "2.7",
+    "2.7.6",
+    "2.8",
+    "2.8.2",
+    "2.8.4",
+    "2.10"
+  ]);
+  assert.equal(pack.sourceScope.relationsVerified.includes("2.59"), true);
+  assert.equal(pack.sourceScope.relationsVerified.includes("2.76"), true);
+  assert.equal(pack.sourceScope.relationsVerified.includes("2.84"), true);
+});
+
+test("R10 coverage map distinguishes implemented heating branches from blocked domains", () => {
+  const map = heatingQhndClosurePack().heatingQhndCoverageMap;
+  const implemented = map.implementedRuntimeBranches.map((branch) => branch.branchId);
+  const metadataOnly = map.sourceBackedMetadataOnlyBranches.map((branch) => branch.branchId);
+  const notEncoded = map.notMachineEncodedBranches.map((branch) => branch.branchId);
+
+  for (const branchId of [
+    "figure_2_18_normal_balance",
+    "figure_2_18_gamma_non_positive_positive_gains_zero_demand",
+    "figure_2_18_gamma_greater_than_two_zero_demand",
+    "figure_2_14_etaHgn_gamma_equals_one",
+    "figure_2_14_etaHgn_gamma_not_one",
+    "relation_2_55_aH_from_tauH",
+    "relation_2_57_tauH_from_explicit_capacity_and_coefficients",
+    "figure_2_13_explicit_heat_gains_sum",
+    "relation_2_76_long_unoccupied_heating_interpolation",
+    "relation_2_84_annual_heating_qhnd_sum"
+  ]) {
+    assert.equal(implemented.includes(branchId), true, branchId);
+  }
+  assert.deepEqual(metadataOnly, ["relation_2_77_long_unoccupied_cooling_interpolation"]);
+  assert.deepEqual(notEncoded, [
+    "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
+    "heating_period_boundary_duration_method"
+  ]);
+  assert.equal(
+    map.notMachineEncodedBranches[0].runtimeDiagnostic,
+    "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+  );
+  for (const downstream of [
+    "QCnd",
+    "final_energy",
+    "primary_energy",
+    "CO2",
+    "CPE_certificate"
+  ]) {
+    assert.equal(map.downstreamOutOfScope.includes(downstream), true, downstream);
+  }
+});
+
+test("R10 keeps not_full_QHnd because heating intermittency is not machine encoded", () => {
+  const pack = heatingQhndClosurePack();
+
+  assert.equal(pack.runtimeClosureVerdict.notFullQhndRemains, true);
+  assert.deepEqual(pack.runtimeClosureVerdict.blockedHeatingUsefulDemandRelations, ["2.59-2.73"]);
+  assert.deepEqual(pack.runtimeClosureVerdict.coolingRelationsNotUsedInHeatingRuntime, ["2.77"]);
+  assert.equal(
+    pack.dependencyMatrix.heatingIntermittencyRelations259To273.status,
+    "blocked_source_located_not_machine_encoded"
+  );
+  assert.equal(pack.dependencyMatrix.fullQhnd.status, "blocked_not_full_QHnd");
+  assert.equal(pack.dependencyMatrix.qcnd.status, "blocked");
+  assert.equal(pack.dependencyMatrix.final_energy.status, "blocked");
+  assert.equal(pack.dependencyMatrix.primary_energy.status, "blocked");
+  assert.equal(pack.dependencyMatrix.co2.status, "blocked");
+  assert.equal(pack.dependencyMatrix.cpeCertificate.status, "blocked");
+});
+
+test("R10 contains no calculator functions runtime access invented defaults or fixture data", () => {
+  const serialized = JSON.stringify(heatingQhndClosurePack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+});
+
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
   const formula = formulaByRelation("2.12");
 
@@ -1504,7 +1612,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R9 expected aggregate counts", () => {
+test("validation counts match C6N expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");
@@ -1570,7 +1678,9 @@ test("source pack lookup returns found for all known packs", () => {
     R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
     R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
     R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
-    R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
+    R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
+    R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
+    R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE
   ]) {
     const result = getMc001NormativeSourcePackByCode(sourcePackCode);
     assert.equal(result.status, "found", sourcePackCode);

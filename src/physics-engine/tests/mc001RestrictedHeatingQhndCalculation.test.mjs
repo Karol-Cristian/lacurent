@@ -509,17 +509,23 @@ await test("golden smoke fixture covers restricted heating dependency spine", ()
   delete highGammaCase.gammaH;
   delete highGammaCase.etaHgn;
 
+  const longUnoccupiedGoldenCase = longUnoccupiedCase({
+    caseId: "apr-golden-long-unoccupied",
+    month: "april"
+  });
+
   const result = calculateMc001RestrictedHeatingQhndExplicit(input([
     normalDependencyCase,
     nonPositiveGammaCase,
-    highGammaCase
+    highGammaCase,
+    longUnoccupiedGoldenCase
   ]));
 
   assert.equal(result.status, "ready");
   assert.equal(result.scope, "restricted_heating_qhnd_explicit_input_only_not_full_mc001");
-  assert.equal(result.summary.caseCount, 3);
-  assert.equal(result.summary.monthCount, 3);
-  close(result.summary.annualQHnd, 742.8843719521191);
+  assert.equal(result.summary.caseCount, 4);
+  assert.equal(result.summary.monthCount, 4);
+  close(result.summary.annualQHnd, 1528.598657666405);
 
   const normalResult = result.caseResults[0];
   close(normalResult.qHht, 1026.72);
@@ -553,6 +559,21 @@ await test("golden smoke fixture covers restricted heating dependency spine", ()
   assert.equal(highGammaResult.qHndBranch, "gammaH_greater_than_two_zero_demand");
   assert.equal(highGammaResult.etaHgnOrigin, "not_required_for_gammaH_greater_than_two_zero_qhnd_branch");
   close(highGammaResult.qHnd, 0);
+
+  const longUnoccupiedResult = result.caseResults[3];
+  assert.equal(longUnoccupiedResult.caseId, "apr-golden-long-unoccupied");
+  close(longUnoccupiedResult.qHndOccupied, 1000);
+  close(longUnoccupiedResult.qHndUnoccupied, 400);
+  close(longUnoccupiedResult.unoccupiedFraction, 10 / 28);
+  close(longUnoccupiedResult.qHnd, 785.7142857142858);
+  assert.equal(
+    longUnoccupiedResult.qHndOrigin,
+    "calculated_from_explicit_long_unoccupied_interpolation"
+  );
+  assert.equal(
+    longUnoccupiedResult.longUnoccupiedFormulaCode,
+    "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
+  );
 
   for (const limit of [
     "restricted_heating_only",
@@ -635,6 +656,20 @@ await test("long unoccupied branch rejects ambiguous normal QHnd inputs", () => 
       longUnoccupiedCase({ qHht: 1026.72 })
     ])),
     "ambiguous_long_unoccupied_qhnd_source"
+  );
+});
+
+await test("heating intermittency input remains blocked until relations 2.59 to 2.73 are machine encoded", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([
+      sampleCase({
+        heatingIntermittencyCorrection: {
+          relationSet: "2.59-2.73",
+          explicitInputsProvided: true
+        }
+      })
+    ])),
+    "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
   );
 });
 
@@ -950,6 +985,7 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
     "not_CO2",
     "not_certificate",
     "long_unoccupied_periods_explicit_interpolation_only",
+    "heating_intermittency_source_located_not_machine_encoded",
     "no_hidden_defaults",
     "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
     "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",

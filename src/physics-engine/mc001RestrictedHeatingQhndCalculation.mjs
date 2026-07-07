@@ -44,6 +44,7 @@ const METHODOLOGY_LIMITS = [
   "not_certificate",
   "no_system_losses",
   "long_unoccupied_periods_explicit_interpolation_only",
+  "heating_intermittency_source_located_not_machine_encoded",
   "no_hidden_defaults",
   "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
   "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
@@ -81,6 +82,8 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "tauH",
   "tauHFormulaCode",
   "longUnoccupiedFormulaCode",
+  "intermittencyOrigin",
+  "intermittencyFormulaCode",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -610,6 +613,13 @@ function validateCase(inputCase) {
   }
   const source = validateSource(inputCase.source);
   if (!source.ok) return source;
+
+  if (hasInputValue(inputCase, "heatingIntermittencyCorrection")) {
+    return {
+      ok: false,
+      code: "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+    };
+  }
 
   if (hasInputValue(inputCase, "longUnoccupiedPeriodAdjustment")) {
     return validateLongUnoccupiedPeriodAdjustmentCase(inputCase);
