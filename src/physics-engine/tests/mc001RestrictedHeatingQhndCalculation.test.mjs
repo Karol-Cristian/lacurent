@@ -52,12 +52,18 @@ function assertBlocked(result, code = null) {
 }
 
 function heatGainsQHgn() {
+  const heatGains = explicitMonthlyHeatGainsResult();
+  assert.equal(heatGains.status, "ready");
+  return heatGains.caseResults[0].qHgn;
+}
+
+function explicitMonthlyHeatGainsResult(overrides = {}) {
   const heatGains = calculateMc001MonthlyHeatGainsExplicit({
     mode: "monthly_heat_gains_explicit_v1",
     cases: [
       {
         caseId: "jan-heat-gains-explicit",
-        month: "january",
+        month: overrides.month || "january",
         internalGains: 120,
         solarGains: 180,
         source: {
@@ -67,7 +73,11 @@ function heatGainsQHgn() {
     ]
   });
   assert.equal(heatGains.status, "ready");
-  return heatGains.caseResults[0].qHgn;
+  return {
+    ...heatGains,
+    ...overrides,
+    caseResults: overrides.caseResults || heatGains.caseResults
+  };
 }
 
 function c5ExplicitTotalTransferResult(overrides = {}) {
@@ -108,6 +118,7 @@ await test("normal monthly heating case calculates restricted QHnd", () => {
   assert.equal(result.scope, "restricted_heating_qhnd_explicit_input_only_not_full_mc001");
   close(result.caseResults[0].qHnd, 786.72);
   assert.equal(result.caseResults[0].qHhtOrigin, "explicit_input");
+  assert.equal(result.caseResults[0].qHgnOrigin, "explicit_input");
   assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
   close(result.summary.annualQHnd, 786.72);
   assert.equal(result.summary.caseCount, 1);
@@ -133,6 +144,41 @@ await test("C5 explicit transfer can feed QHht with explicit etaHgn", () => {
   assert.equal(result.caseResults[0].qHhtSourceSymbol, "Q_total_transfer_explicit");
   close(result.caseResults[0].qHnd, 786.72);
   assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
+});
+
+await test("explicit internal and solar gains can feed QHgn", () => {
+  const payloadCase = sampleCase({
+    internalGains: 120,
+    solarGains: 180
+  });
+  delete payloadCase.qHgn;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHgn, 300);
+  assert.equal(result.caseResults[0].qHgnOrigin, "calculated_from_explicit_internal_and_solar_gains");
+  assert.equal(result.caseResults[0].internalGains, 120);
+  assert.equal(result.caseResults[0].solarGains, 180);
+  assert.equal(result.caseResults[0].heatGainsFormulaCode, "MC001_EXPLICIT_MONTHLY_HEAT_GAINS_SUM");
+  close(result.caseResults[0].qHnd, 786.72);
+});
+
+await test("explicit monthly heat gains result can feed QHgn", () => {
+  const payloadCase = sampleCase({
+    monthlyHeatGainsResult: explicitMonthlyHeatGainsResult()
+  });
+  delete payloadCase.qHgn;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHgn, 300);
+  assert.equal(result.caseResults[0].qHgnOrigin, "calculated_from_explicit_monthly_heat_gains_result");
+  assert.equal(result.caseResults[0].heatGainsScope, "monthly_heat_gains_explicit_input_only_not_full_QHnd");
+  close(result.caseResults[0].qHnd, 786.72);
 });
 
 await test("calculated etaHgn path uses explicit aH and calculated gammaH", () => {
@@ -212,7 +258,38 @@ await test("C5 explicit transfer can feed QHht with explicit utilization depende
   close(result.caseResults[0].aH, 2.111111111111111);
   close(result.caseResults[0].etaHgn, 0.9461187601596033);
   close(result.caseResults[0].qHnd, 742.8843719521191);
+  assert.equal(result.caseResults[0].tauHOrigin, "calculated_from_explicit_total_heat_transfer_coefficient");
+  assert.equal(result.caseResults[0].heatTransferCoefficientOrigin, "explicit_total_heat_transfer_coefficient");
   assert.equal(result.caseResults[0].etaHgnOrigin, "calculated_from_explicit_time_constant_dependencies");
+});
+
+await test("explicit coefficient components can derive tauH aH etaHgn and restricted QHnd", () => {
+  const payloadCase = sampleCase({
+    qHgn: heatGainsQHgn(),
+    utilizationDependencies: {
+      cmEffJPerK: 25200000,
+      heatTransferCoefficientComponents: {
+        transmissionCoefficientWK: 250,
+        groundAdjacentCoefficientWK: 20,
+        ventilationCoefficientWK: 150
+      },
+      aH0: 1,
+      tauH0: 15
+    }
+  });
+  delete payloadCase.etaHgn;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].heatTransferCoefficientWK, 420);
+  assert.equal(result.caseResults[0].heatTransferCoefficientOrigin, "explicit_heat_transfer_coefficient_components");
+  assert.equal(result.caseResults[0].tauHOrigin, "calculated_from_explicit_heat_transfer_coefficient_components");
+  close(result.caseResults[0].tauH, 16.666666666666668);
+  close(result.caseResults[0].aH, 2.111111111111111);
+  close(result.caseResults[0].etaHgn, 0.9461187601596033);
+  close(result.caseResults[0].qHnd, 742.8843719521191);
 });
 
 await test("explicit time constant dependencies calculate tauH aH etaHgn and restricted QHnd", () => {
@@ -237,6 +314,7 @@ await test("explicit time constant dependencies calculate tauH aH etaHgn and res
   close(result.caseResults[0].aH, 2.111111111111111);
   close(result.caseResults[0].etaHgn, 0.9461187601596033);
   close(result.caseResults[0].qHnd, 742.8843719521191);
+  assert.equal(result.caseResults[0].tauHOrigin, "calculated_from_explicit_total_heat_transfer_coefficient");
   assert.equal(result.caseResults[0].aHOrigin, "calculated_from_explicit_tauH_dependencies");
   assert.equal(result.caseResults[0].etaHgnOrigin, "calculated_from_explicit_time_constant_dependencies");
   assert.equal(result.caseResults[0].tauHFormulaCode, "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57");
@@ -287,6 +365,24 @@ await test("gamma can be calculated from qHgn over qHht when omitted", () => {
   close(result.caseResults[0].gammaH, 300 / 1026.72);
   close(result.caseResults[0].qHnd, 786.72);
   assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
+});
+
+await test("gammaH less than or equal to zero with positive gains uses resolved zero-demand branch", () => {
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ gammaH: 0 })]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHnd, 0);
+  assert.equal(result.caseResults[0].qHndBranch, "gammaH_less_or_equal_zero_positive_gains_zero_demand");
+  assert.equal(result.caseResults[0].etaHgnOrigin, "not_required_for_resolved_zero_qhnd_branch");
+});
+
+await test("gammaH greater than two uses zero-demand branch", () => {
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ gammaH: 2.01 })]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHnd, 0);
+  assert.equal(result.caseResults[0].qHndBranch, "gammaH_greater_than_two_zero_demand");
+  assert.equal(result.caseResults[0].etaHgnOrigin, "not_required_for_gammaH_greater_than_two_zero_qhnd_branch");
 });
 
 await test("annual aggregation sums monthly restricted QHnd", () => {
@@ -417,17 +513,55 @@ await test("failed monthly case blocks aggregation without partial annual total"
   assert.equal(result.summary.monthCount, 0);
 });
 
-await test("rejects gammaH less than or equal to zero", () => {
+await test("rejects gammaH less than or equal to zero without positive gains", () => {
   assertBlocked(
-    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ gammaH: 0 })])),
+    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ gammaH: 0, qHgn: 0 })])),
     "restricted_qhnd_gammaH_less_or_equal_zero"
   );
 });
 
-await test("rejects gammaH greater than two", () => {
+await test("gammaH greater than two no longer requires etaHgn calculation", () => {
+  const payloadCase = sampleCase({ gammaH: 2.01, aH: 2 });
+  delete payloadCase.etaHgn;
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHnd, 0);
+});
+
+await test("rejects ambiguous QHgn sources", () => {
   assertBlocked(
-    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ gammaH: 2.01 })])),
-    "restricted_qhnd_gammaH_greater_than_two"
+    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({
+      internalGains: 120,
+      solarGains: 180
+    })])),
+    "ambiguous_QHgn_source"
+  );
+});
+
+await test("rejects incomplete heat gain components for QHgn", () => {
+  const payloadCase = sampleCase({ internalGains: 120 });
+  delete payloadCase.qHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "incomplete_explicit_heat_gains_for_QHgn"
+  );
+});
+
+await test("rejects invalid monthly heat gains result for QHgn", () => {
+  const payloadCase = sampleCase({
+    monthlyHeatGainsResult: explicitMonthlyHeatGainsResult({
+      caseResults: [
+        {
+          ...explicitMonthlyHeatGainsResult().caseResults[0],
+          month: "february"
+        }
+      ]
+    })
+  });
+  delete payloadCase.qHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "invalid_explicit_monthly_heat_gains_result_for_QHgn"
   );
 });
 
@@ -511,12 +645,40 @@ await test("rejects aH less than or equal to zero", () => {
   );
 });
 
-await test("rejects calculated etaHgn path with gammaH greater than two", () => {
-  const payloadCase = sampleCase({ gammaH: 2.01, aH: 2 });
+await test("rejects ambiguous tauH heat transfer coefficient sources", () => {
+  const payloadCase = sampleCase({
+    aH: undefined,
+    utilizationDependencies: {
+      effectiveInternalHeatCapacityJPerK: 25200000,
+      heatTransferCoefficientWK: 420,
+      totalHeatTransferCoefficientWK: 420,
+      aH0: 1,
+      tauH0: 15
+    }
+  });
   delete payloadCase.etaHgn;
   assertBlocked(
     calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
-    "restricted_qhnd_gammaH_greater_than_two"
+    "ambiguous_explicit_heat_transfer_coefficient_for_tauH"
+  );
+});
+
+await test("rejects missing explicit tauH coefficient component", () => {
+  const payloadCase = sampleCase({
+    utilizationDependencies: {
+      effectiveInternalHeatCapacityJPerK: 25200000,
+      heatTransferCoefficientComponents: {
+        transmissionCoefficientWK: 250,
+        ventilationCoefficientWK: 150
+      },
+      aH0: 1,
+      tauH0: 15
+    }
+  });
+  delete payloadCase.etaHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "missing_explicit_heat_transfer_coefficient_component_for_tauH"
   );
 });
 
@@ -617,8 +779,7 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
     assert.equal(result.diagnostics.methodologyLimits.includes(limit), true, `missing ${limit}`);
   }
   for (const branch of [
-    "gammaH_less_or_equal_zero",
-    "gammaH_greater_than_two",
+    "gammaH_less_or_equal_zero_without_positive_gains",
     "cooling_QCnd",
     "long_unoccupied_periods",
     "intermittency"

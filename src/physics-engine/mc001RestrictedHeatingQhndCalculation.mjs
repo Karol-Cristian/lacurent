@@ -1,4 +1,5 @@
 import { calculateMc001HeatingGainUtilizationFactor } from "./mc001HeatingGainUtilizationFactorCalculation.mjs";
+import { calculateMc001MonthlyHeatGainsExplicit } from "./mc001MonthlyHeatGainsCalculation.mjs";
 
 const MODE = "restricted_heating_qhnd_explicit_v1";
 const SCOPE = "restricted_heating_qhnd_explicit_input_only_not_full_mc001";
@@ -14,6 +15,8 @@ const TAUH_FORMULA_CODE = "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57";
 const C5_QHHT_ORIGIN = "calculated_from_explicit_C5_transfer";
 const C5_TOTAL_TRANSFER_SCOPE = "explicit_transmission_plus_ventilation_heat_transfer_only_not_QHnd";
 const C5_TOTAL_TRANSFER_SYMBOL = "Q_total_transfer_explicit";
+const HEAT_GAINS_SCOPE = "monthly_heat_gains_explicit_input_only_not_full_QHnd";
+const HEAT_GAINS_FORMULA_CODE = "MC001_EXPLICIT_MONTHLY_HEAT_GAINS_SUM";
 const ALLOWED_MONTHS = [
   "january",
   "february",
@@ -49,8 +52,7 @@ const METHODOLOGY_LIMITS = [
   "no_default_capacity"
 ];
 const EXCLUDED_BRANCHES = [
-  "gammaH_less_or_equal_zero",
-  "gammaH_greater_than_two",
+  "gammaH_less_or_equal_zero_without_positive_gains",
   "cooling_QCnd",
   "long_unoccupied_periods",
   "intermittency"
@@ -59,11 +61,17 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "restrictedHeatingQhndResult",
   "qHnd",
   "annualQHnd",
+  "annualQHgn",
   "caseResults",
   "summary",
   "result",
   "results",
   "qHhtOrigin",
+  "qHgnOrigin",
+  "heatGainsFormulaCode",
+  "heatGainsScope",
+  "tauHOrigin",
+  "heatTransferCoefficientOrigin",
   "etaHgnOrigin",
   "etaHgnFormulaCode",
   "aHOrigin",
@@ -112,8 +120,10 @@ function hasForbiddenDerivedInput(value, path = []) {
     const nextPath = [...path, key];
     const isAllowedC5ResultKey = key === "result" &&
       path[path.length - 1] === "explicitTotalHeatTransferResult";
+    const isAllowedMonthlyHeatGainsResultKey = path.includes("monthlyHeatGainsResult") &&
+      ["caseResults", "summary", "formulaCode", "formulaReferences", "annualQHgn"].includes(key);
     return (
-      (!isAllowedC5ResultKey && FORBIDDEN_INPUT_KEYS.has(key)) ||
+      (!isAllowedC5ResultKey && !isAllowedMonthlyHeatGainsResultKey && FORBIDDEN_INPUT_KEYS.has(key)) ||
       hasForbiddenDerivedInput(child, nextPath)
     );
   });
@@ -175,6 +185,10 @@ function hasInputValue(inputCase, key) {
   return inputCase[key] !== undefined && inputCase[key] !== null;
 }
 
+function hasAnyInputValue(inputCase, keys) {
+  return keys.some(key => hasInputValue(inputCase, key));
+}
+
 function calculateEtaHgnFromExplicitAH(inputCase) {
   const etaResult = calculateMc001HeatingGainUtilizationFactor({
     mode: "restricted_heating_etaHgn_explicit_v1",
@@ -213,7 +227,18 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
     return { ok: false, code: "missing_explicit_utilization_dependencies_for_aH" };
   }
 
-  const effectiveInternalHeatCapacityJPerK = finiteNumber(dependencies.effectiveInternalHeatCapacityJPerK);
+  const capacityInputs = [
+    hasInputValue(dependencies, "effectiveInternalHeatCapacityJPerK"),
+    hasInputValue(dependencies, "cmEffJPerK")
+  ].filter(Boolean).length;
+  if (capacityInputs > 1) {
+    return { ok: false, code: "ambiguous_explicit_capacity_for_tauH" };
+  }
+  const effectiveInternalHeatCapacityJPerK = finiteNumber(
+    hasInputValue(dependencies, "effectiveInternalHeatCapacityJPerK")
+      ? dependencies.effectiveInternalHeatCapacityJPerK
+      : dependencies.cmEffJPerK
+  );
   if (effectiveInternalHeatCapacityJPerK === null) {
     return { ok: false, code: "missing_explicit_capacity_for_tauH" };
   }
@@ -221,13 +246,8 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
     return { ok: false, code: "invalid_explicit_capacity_for_tauH" };
   }
 
-  const heatTransferCoefficientWK = finiteNumber(dependencies.heatTransferCoefficientWK);
-  if (heatTransferCoefficientWK === null) {
-    return { ok: false, code: "missing_explicit_heat_transfer_coefficient_for_tauH" };
-  }
-  if (heatTransferCoefficientWK <= 0) {
-    return { ok: false, code: "invalid_explicit_heat_transfer_coefficient_for_tauH" };
-  }
+  const heatTransferCoefficient = resolveExplicitHeatTransferCoefficientForTauH(dependencies);
+  if (!heatTransferCoefficient.ok) return heatTransferCoefficient;
 
   const aH0 = finiteNumber(dependencies.aH0);
   if (aH0 === null) {
@@ -245,7 +265,7 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
     return { ok: false, code: "invalid_explicit_tauH0_for_aH" };
   }
 
-  const tauH = (effectiveInternalHeatCapacityJPerK / 3600) / heatTransferCoefficientWK;
+  const tauH = (effectiveInternalHeatCapacityJPerK / 3600) / heatTransferCoefficient.value.heatTransferCoefficientWK;
   if (!Number.isFinite(tauH) || tauH <= 0) {
     return { ok: false, code: "invalid_explicit_tauH_result" };
   }
@@ -259,14 +279,95 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
     ok: true,
     value: {
       effectiveInternalHeatCapacityJPerK,
-      heatTransferCoefficientWK,
+      heatTransferCoefficientWK: heatTransferCoefficient.value.heatTransferCoefficientWK,
+      heatTransferCoefficientOrigin: heatTransferCoefficient.value.heatTransferCoefficientOrigin,
+      ...(heatTransferCoefficient.value.heatTransferCoefficientComponents === undefined
+        ? {}
+        : { heatTransferCoefficientComponents: heatTransferCoefficient.value.heatTransferCoefficientComponents }),
       tauH,
+      tauHOrigin: heatTransferCoefficient.value.tauHOrigin,
       tauH0,
       aH0,
       aH,
       aHOrigin: "calculated_from_explicit_tauH_dependencies",
       tauHFormulaCode: TAUH_FORMULA_CODE,
       aHFormulaCode: AH_FORMULA_CODE
+    }
+  };
+}
+
+function resolveExplicitHeatTransferCoefficientForTauH(dependencies) {
+  const hasLegacyTotal = hasInputValue(dependencies, "heatTransferCoefficientWK");
+  const hasNamedTotal = hasInputValue(dependencies, "totalHeatTransferCoefficientWK");
+  const hasComponents = hasInputValue(dependencies, "heatTransferCoefficientComponents");
+  const sourceCount = [hasLegacyTotal || hasNamedTotal, hasComponents].filter(Boolean).length;
+  if (hasLegacyTotal && hasNamedTotal) {
+    return { ok: false, code: "ambiguous_explicit_heat_transfer_coefficient_for_tauH" };
+  }
+  if (sourceCount > 1) {
+    return { ok: false, code: "ambiguous_explicit_heat_transfer_coefficient_for_tauH" };
+  }
+
+  if (hasLegacyTotal || hasNamedTotal) {
+    const heatTransferCoefficientWK = finiteNumber(
+      hasLegacyTotal ? dependencies.heatTransferCoefficientWK : dependencies.totalHeatTransferCoefficientWK
+    );
+    if (heatTransferCoefficientWK === null) {
+      return { ok: false, code: "missing_explicit_heat_transfer_coefficient_for_tauH" };
+    }
+    if (heatTransferCoefficientWK <= 0) {
+      return { ok: false, code: "invalid_explicit_heat_transfer_coefficient_for_tauH" };
+    }
+    return {
+      ok: true,
+      value: {
+        heatTransferCoefficientWK,
+        heatTransferCoefficientOrigin: "explicit_total_heat_transfer_coefficient",
+        tauHOrigin: "calculated_from_explicit_total_heat_transfer_coefficient"
+      }
+    };
+  }
+
+  if (!hasComponents) {
+    return { ok: false, code: "missing_explicit_heat_transfer_coefficient_for_tauH" };
+  }
+
+  const components = dependencies.heatTransferCoefficientComponents;
+  if (!isPlainObject(components)) {
+    return { ok: false, code: "missing_explicit_heat_transfer_coefficient_component_for_tauH" };
+  }
+
+  const componentEntries = [
+    ["transmissionCoefficientWK", components.transmissionCoefficientWK],
+    ["groundAdjacentCoefficientWK", components.groundAdjacentCoefficientWK],
+    ["ventilationCoefficientWK", components.ventilationCoefficientWK]
+  ];
+  const normalizedComponents = {};
+  for (const [key, rawValue] of componentEntries) {
+    const value = finiteNumber(rawValue);
+    if (value === null) {
+      return { ok: false, code: "missing_explicit_heat_transfer_coefficient_component_for_tauH" };
+    }
+    if (value < 0) {
+      return { ok: false, code: "invalid_explicit_heat_transfer_coefficient_component_for_tauH" };
+    }
+    normalizedComponents[key] = value;
+  }
+
+  const heatTransferCoefficientWK = normalizedComponents.transmissionCoefficientWK +
+    normalizedComponents.groundAdjacentCoefficientWK +
+    normalizedComponents.ventilationCoefficientWK;
+  if (!Number.isFinite(heatTransferCoefficientWK) || heatTransferCoefficientWK <= 0) {
+    return { ok: false, code: "invalid_explicit_heat_transfer_coefficient_for_tauH" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      heatTransferCoefficientWK,
+      heatTransferCoefficientOrigin: "explicit_heat_transfer_coefficient_components",
+      heatTransferCoefficientComponents: normalizedComponents,
+      tauHOrigin: "calculated_from_explicit_heat_transfer_coefficient_components"
     }
   };
 }
@@ -327,6 +428,107 @@ function extractQHhtFromExplicitC5Transfer(inputCase) {
   };
 }
 
+function extractQHgn(inputCase) {
+  const hasDirectQHgn = hasInputValue(inputCase, "qHgn");
+  const hasGainComponents = hasAnyInputValue(inputCase, ["internalGains", "solarGains"]);
+  const hasHeatGainsResult = hasInputValue(inputCase, "monthlyHeatGainsResult");
+  const sourceCount = [hasDirectQHgn, hasGainComponents, hasHeatGainsResult].filter(Boolean).length;
+  if (sourceCount > 1) {
+    return { ok: false, code: "ambiguous_QHgn_source" };
+  }
+
+  if (hasDirectQHgn) {
+    const qHgn = finiteNumber(inputCase.qHgn);
+    if (qHgn === null || qHgn < 0) {
+      return { ok: false, code: "restricted_qhnd_invalid_qHgn" };
+    }
+    return {
+      ok: true,
+      value: {
+        qHgn,
+        qHgnOrigin: "explicit_input"
+      }
+    };
+  }
+
+  if (hasGainComponents) {
+    if (!hasInputValue(inputCase, "internalGains") || !hasInputValue(inputCase, "solarGains")) {
+      return { ok: false, code: "incomplete_explicit_heat_gains_for_QHgn" };
+    }
+    const heatGains = calculateMc001MonthlyHeatGainsExplicit({
+      mode: "monthly_heat_gains_explicit_v1",
+      cases: [
+        {
+          caseId: `${inputCase.caseId}.heat_gains`,
+          month: inputCase.month,
+          internalGains: inputCase.internalGains,
+          solarGains: inputCase.solarGains,
+          source: {
+            reference: inputCase.source.reference,
+            notes: inputCase.source.notes
+          }
+        }
+      ]
+    });
+    if (heatGains.status !== "ready" || heatGains.caseResults.length !== 1) {
+      const gainsCode = heatGains.diagnostics?.blockers?.[0]?.code || "unknown_heat_gains_blocker";
+      return { ok: false, code: `restricted_qhnd_heat_gains_calculation_failed_${gainsCode}` };
+    }
+    const heatGainsCase = heatGains.caseResults[0];
+    return {
+      ok: true,
+      value: {
+        qHgn: heatGainsCase.qHgn,
+        qHgnOrigin: "calculated_from_explicit_internal_and_solar_gains",
+        internalGains: heatGainsCase.internalGains,
+        solarGains: heatGainsCase.solarGains,
+        heatGainsFormulaCode: heatGainsCase.formulaCode,
+        heatGainsScope: heatGainsCase.scope
+      }
+    };
+  }
+
+  if (!hasHeatGainsResult) {
+    return { ok: false, code: "missing_explicit_QHgn_source" };
+  }
+
+  const heatGainsResult = inputCase.monthlyHeatGainsResult;
+  if (
+    !isPlainObject(heatGainsResult) ||
+    heatGainsResult.status !== "ready" ||
+    heatGainsResult.scope !== HEAT_GAINS_SCOPE ||
+    !Array.isArray(heatGainsResult.caseResults) ||
+    heatGainsResult.caseResults.length !== 1
+  ) {
+    return { ok: false, code: "missing_explicit_monthly_heat_gains_result_for_QHgn" };
+  }
+
+  const heatGainsCase = heatGainsResult.caseResults[0];
+  const qHgn = finiteNumber(heatGainsCase?.qHgn);
+  if (
+    !isPlainObject(heatGainsCase) ||
+    heatGainsCase.month !== inputCase.month ||
+    heatGainsCase.formulaCode !== HEAT_GAINS_FORMULA_CODE ||
+    heatGainsCase.scope !== HEAT_GAINS_SCOPE ||
+    qHgn === null ||
+    qHgn < 0
+  ) {
+    return { ok: false, code: "invalid_explicit_monthly_heat_gains_result_for_QHgn" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      qHgn,
+      qHgnOrigin: "calculated_from_explicit_monthly_heat_gains_result",
+      ...(finiteNumber(heatGainsCase.internalGains) === null ? {} : { internalGains: heatGainsCase.internalGains }),
+      ...(finiteNumber(heatGainsCase.solarGains) === null ? {} : { solarGains: heatGainsCase.solarGains }),
+      heatGainsFormulaCode: heatGainsCase.formulaCode,
+      heatGainsScope: heatGainsCase.scope
+    }
+  };
+}
+
 function validateCase(inputCase) {
   if (!isPlainObject(inputCase)) {
     return { ok: false, code: "restricted_qhnd_invalid_case" };
@@ -346,18 +548,67 @@ function validateCase(inputCase) {
   const qHhtSource = extractQHhtFromExplicitC5Transfer(inputCase);
   if (!qHhtSource.ok) return qHhtSource;
   const { qHht } = qHhtSource.value;
-  const qHgn = finiteNumber(inputCase.qHgn);
-  if (qHgn === null || qHgn < 0) {
-    return { ok: false, code: "restricted_qhnd_invalid_qHgn" };
-  }
+  const qHgnSource = extractQHgn(inputCase);
+  if (!qHgnSource.ok) return qHgnSource;
+  const { qHgn } = qHgnSource.value;
   const gammaH = inputCase.gammaH === undefined || inputCase.gammaH === null
     ? qHgn / qHht
     : finiteNumber(inputCase.gammaH);
-  if (gammaH === null || gammaH <= 0) {
+  if (gammaH === null) {
+    return { ok: false, code: "restricted_qhnd_invalid_gammaH" };
+  }
+
+  if (gammaH <= 0 && qHgn > 0) {
+    return {
+      ok: true,
+      value: {
+        caseId: inputCase.caseId,
+        month: inputCase.month,
+        qHht,
+        qHhtOrigin: qHhtSource.value.qHhtOrigin,
+        ...(qHhtSource.value.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: qHhtSource.value.qHhtSourceScope }),
+        ...(qHhtSource.value.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: qHhtSource.value.qHhtSourceSymbol }),
+        qHgn,
+        qHgnOrigin: qHgnSource.value.qHgnOrigin,
+        ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
+        ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
+        ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
+        ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
+        gammaH,
+        etaHgnOrigin: "not_required_for_resolved_zero_qhnd_branch",
+        qHndBranch: "gammaH_less_or_equal_zero_positive_gains_zero_demand",
+        qHnd: 0,
+        sourceReference: inputCase.source.reference
+      }
+    };
+  }
+
+  if (gammaH <= 0) {
     return { ok: false, code: "restricted_qhnd_gammaH_less_or_equal_zero" };
   }
   if (gammaH > 2) {
-    return { ok: false, code: "restricted_qhnd_gammaH_greater_than_two" };
+    return {
+      ok: true,
+      value: {
+        caseId: inputCase.caseId,
+        month: inputCase.month,
+        qHht,
+        qHhtOrigin: qHhtSource.value.qHhtOrigin,
+        ...(qHhtSource.value.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: qHhtSource.value.qHhtSourceScope }),
+        ...(qHhtSource.value.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: qHhtSource.value.qHhtSourceSymbol }),
+        qHgn,
+        qHgnOrigin: qHgnSource.value.qHgnOrigin,
+        ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
+        ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
+        ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
+        ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
+        gammaH,
+        etaHgnOrigin: "not_required_for_gammaH_greater_than_two_zero_qhnd_branch",
+        qHndBranch: "gammaH_greater_than_two_zero_demand",
+        qHnd: 0,
+        sourceReference: inputCase.source.reference
+      }
+    };
   }
 
   const hasEtaHgn = hasInputValue(inputCase, "etaHgn");
@@ -399,7 +650,8 @@ function validateCase(inputCase) {
     }
     const calculatedEta = calculateEtaHgnFromExplicitAH({
       ...inputCase,
-      qHht
+      qHht,
+      qHgn
     });
     if (!calculatedEta.ok) return calculatedEta;
     etaHgn = calculatedEta.value.etaHgn;
@@ -414,6 +666,7 @@ function validateCase(inputCase) {
     const calculatedEta = calculateEtaHgnFromExplicitAH({
       ...inputCase,
       qHht,
+      qHgn,
       aH
     });
     if (!calculatedEta.ok) return calculatedEta;
@@ -439,6 +692,11 @@ function validateCase(inputCase) {
       ...(qHhtSource.value.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: qHhtSource.value.qHhtSourceScope }),
       ...(qHhtSource.value.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: qHhtSource.value.qHhtSourceSymbol }),
       qHgn,
+      qHgnOrigin: qHgnSource.value.qHgnOrigin,
+      ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
+      ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
+      ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
+      ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
       gammaH,
       etaHgn,
       etaHgnOrigin,
