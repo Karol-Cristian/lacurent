@@ -3,9 +3,14 @@ import { calculateMc001HeatingGainUtilizationFactor } from "./mc001HeatingGainUt
 const MODE = "restricted_heating_qhnd_explicit_v1";
 const SCOPE = "restricted_heating_qhnd_explicit_input_only_not_full_mc001";
 const FORMULA_REFERENCES = [
-  "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"
+  "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH",
+  "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK",
+  "MC001_R8_AH_PARAMETER_RELATION_2_55",
+  "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57"
 ];
 const FORMULA_CODE = "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH";
+const AH_FORMULA_CODE = "MC001_R8_AH_PARAMETER_RELATION_2_55";
+const TAUH_FORMULA_CODE = "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57";
 const ALLOWED_MONTHS = [
   "january",
   "february",
@@ -33,6 +38,8 @@ const METHODOLOGY_LIMITS = [
   "no_long_unoccupied_periods",
   "no_hidden_defaults",
   "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
+  "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
+  "tauH_calculated_from_explicit_capacity_and_heat_transfer_coefficient",
   "no_default_aH0",
   "no_default_tauH0",
   "no_default_tauH",
@@ -55,6 +62,10 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "results",
   "etaHgnOrigin",
   "etaHgnFormulaCode",
+  "aHOrigin",
+  "aHFormulaCode",
+  "tauH",
+  "tauHFormulaCode",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -167,6 +178,70 @@ function calculateEtaHgnFromExplicitAH(inputCase) {
   };
 }
 
+function calculateAHFromExplicitUtilizationDependencies(inputCase) {
+  const dependencies = inputCase.utilizationDependencies;
+  if (!isPlainObject(dependencies)) {
+    return { ok: false, code: "missing_explicit_utilization_dependencies_for_aH" };
+  }
+
+  const effectiveInternalHeatCapacityJPerK = finiteNumber(dependencies.effectiveInternalHeatCapacityJPerK);
+  if (effectiveInternalHeatCapacityJPerK === null) {
+    return { ok: false, code: "missing_explicit_capacity_for_tauH" };
+  }
+  if (effectiveInternalHeatCapacityJPerK <= 0) {
+    return { ok: false, code: "invalid_explicit_capacity_for_tauH" };
+  }
+
+  const heatTransferCoefficientWK = finiteNumber(dependencies.heatTransferCoefficientWK);
+  if (heatTransferCoefficientWK === null) {
+    return { ok: false, code: "missing_explicit_heat_transfer_coefficient_for_tauH" };
+  }
+  if (heatTransferCoefficientWK <= 0) {
+    return { ok: false, code: "invalid_explicit_heat_transfer_coefficient_for_tauH" };
+  }
+
+  const aH0 = finiteNumber(dependencies.aH0);
+  if (aH0 === null) {
+    return { ok: false, code: "missing_explicit_aH0_for_aH" };
+  }
+  if (aH0 < 0) {
+    return { ok: false, code: "invalid_explicit_aH0_for_aH" };
+  }
+
+  const tauH0 = finiteNumber(dependencies.tauH0);
+  if (tauH0 === null) {
+    return { ok: false, code: "missing_explicit_tauH0_for_aH" };
+  }
+  if (tauH0 <= 0) {
+    return { ok: false, code: "invalid_explicit_tauH0_for_aH" };
+  }
+
+  const tauH = (effectiveInternalHeatCapacityJPerK / 3600) / heatTransferCoefficientWK;
+  if (!Number.isFinite(tauH) || tauH <= 0) {
+    return { ok: false, code: "invalid_explicit_tauH_result" };
+  }
+
+  const aH = aH0 + (tauH / tauH0);
+  if (!Number.isFinite(aH) || aH <= 0) {
+    return { ok: false, code: "invalid_explicit_aH_result" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      effectiveInternalHeatCapacityJPerK,
+      heatTransferCoefficientWK,
+      tauH,
+      tauH0,
+      aH0,
+      aH,
+      aHOrigin: "calculated_from_explicit_tauH_dependencies",
+      tauHFormulaCode: TAUH_FORMULA_CODE,
+      aHFormulaCode: AH_FORMULA_CODE
+    }
+  };
+}
+
 function validateCase(inputCase) {
   if (!isPlainObject(inputCase)) {
     return { ok: false, code: "restricted_qhnd_invalid_case" };
@@ -203,17 +278,23 @@ function validateCase(inputCase) {
 
   const hasEtaHgn = hasInputValue(inputCase, "etaHgn");
   const hasAH = hasInputValue(inputCase, "aH");
-  if (hasEtaHgn && hasAH) {
+  const hasUtilizationDependencies = hasInputValue(inputCase, "utilizationDependencies");
+  const utilizationPathCount = [hasEtaHgn, hasAH, hasUtilizationDependencies].filter(Boolean).length;
+  if (hasEtaHgn && hasAH && !hasUtilizationDependencies) {
     return { ok: false, code: "etaHgn_and_aH_are_mutually_exclusive_in_c7c" };
   }
-  if (!hasEtaHgn && !hasAH) {
-    return { ok: false, code: "etaHgn_or_aH_required" };
+  if (utilizationPathCount > 1) {
+    return { ok: false, code: "etaHgn_aH_and_utilization_dependencies_are_mutually_exclusive_in_c6g" };
+  }
+  if (utilizationPathCount === 0) {
+    return { ok: false, code: "etaHgn_aH_or_utilization_dependencies_required" };
   }
 
   let etaHgn;
   let etaHgnOrigin;
   let aH;
   let etaHgnFormulaCode;
+  let utilizationDependencyResult;
 
   if (hasEtaHgn) {
     etaHgn = finiteNumber(inputCase.etaHgn);
@@ -224,7 +305,7 @@ function validateCase(inputCase) {
       return { ok: false, code: "restricted_qhnd_invalid_etaHgn" };
     }
     etaHgnOrigin = "explicit_input";
-  } else {
+  } else if (hasAH) {
     aH = finiteNumber(inputCase.aH);
     if (aH === null) {
       return { ok: false, code: "restricted_qhnd_missing_aH" };
@@ -238,6 +319,19 @@ function validateCase(inputCase) {
     aH = calculatedEta.value.aH;
     etaHgnFormulaCode = calculatedEta.value.formulaCode;
     etaHgnOrigin = "calculated_from_explicit_aH";
+  } else {
+    const calculatedAH = calculateAHFromExplicitUtilizationDependencies(inputCase);
+    if (!calculatedAH.ok) return calculatedAH;
+    utilizationDependencyResult = calculatedAH.value;
+    aH = utilizationDependencyResult.aH;
+    const calculatedEta = calculateEtaHgnFromExplicitAH({
+      ...inputCase,
+      aH
+    });
+    if (!calculatedEta.ok) return calculatedEta;
+    etaHgn = calculatedEta.value.etaHgn;
+    etaHgnFormulaCode = calculatedEta.value.formulaCode;
+    etaHgnOrigin = "calculated_from_explicit_time_constant_dependencies";
   }
 
   const qHnd = qHht - etaHgn * qHgn;
@@ -259,6 +353,7 @@ function validateCase(inputCase) {
       etaHgnOrigin,
       ...(aH === undefined ? {} : { aH }),
       ...(etaHgnFormulaCode === undefined ? {} : { etaHgnFormulaCode }),
+      ...(utilizationDependencyResult === undefined ? {} : utilizationDependencyResult),
       qHnd,
       sourceReference: inputCase.source.reference
     }
