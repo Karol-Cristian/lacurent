@@ -457,6 +457,101 @@ await test("multi-month aggregation supports mixed explicit QHht C5 QHht explici
   assert.equal(result.caseResults[2].aHOrigin, "calculated_from_explicit_tauH_dependencies");
 });
 
+await test("golden smoke fixture covers restricted heating dependency spine", () => {
+  const normalDependencyCase = sampleCase({
+    caseId: "jan-golden-c5-gains-utilization",
+    explicitTotalHeatTransferResult: c5ExplicitTotalTransferResult(),
+    monthlyHeatGainsResult: explicitMonthlyHeatGainsResult(),
+    utilizationDependencies: {
+      effectiveInternalHeatCapacityJPerK: 25200000,
+      heatTransferCoefficientWK: 420,
+      aH0: 1,
+      tauH0: 15
+    }
+  });
+  delete normalDependencyCase.qHht;
+  delete normalDependencyCase.qHgn;
+  delete normalDependencyCase.gammaH;
+  delete normalDependencyCase.etaHgn;
+
+  const nonPositiveGammaCase = sampleCase({
+    caseId: "feb-golden-nonpositive-gamma",
+    month: "february",
+    qHht: 800,
+    qHgn: 50,
+    gammaH: 0
+  });
+  delete nonPositiveGammaCase.etaHgn;
+
+  const highGammaCase = sampleCase({
+    caseId: "mar-golden-high-gamma",
+    month: "march",
+    qHht: 100,
+    qHgn: 300
+  });
+  delete highGammaCase.gammaH;
+  delete highGammaCase.etaHgn;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([
+    normalDependencyCase,
+    nonPositiveGammaCase,
+    highGammaCase
+  ]));
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.scope, "restricted_heating_qhnd_explicit_input_only_not_full_mc001");
+  assert.equal(result.summary.caseCount, 3);
+  assert.equal(result.summary.monthCount, 3);
+  close(result.summary.annualQHnd, 742.8843719521191);
+
+  const normalResult = result.caseResults[0];
+  close(normalResult.qHht, 1026.72);
+  assert.equal(normalResult.qHhtOrigin, "calculated_from_explicit_C5_transfer");
+  assert.equal(normalResult.qHhtSourceScope, "explicit_transmission_plus_ventilation_heat_transfer_only_not_QHnd");
+  assert.equal(normalResult.qHhtSourceSymbol, "Q_total_transfer_explicit");
+  close(normalResult.qHgn, 300);
+  assert.equal(normalResult.qHgnOrigin, "calculated_from_explicit_monthly_heat_gains_result");
+  assert.equal(normalResult.heatGainsFormulaCode, "MC001_EXPLICIT_MONTHLY_HEAT_GAINS_SUM");
+  assert.equal(normalResult.heatGainsScope, "monthly_heat_gains_explicit_input_only_not_full_QHnd");
+  close(normalResult.gammaH, 300 / 1026.72);
+  close(normalResult.tauH, 16.666666666666668);
+  assert.equal(normalResult.tauHOrigin, "calculated_from_explicit_total_heat_transfer_coefficient");
+  close(normalResult.aH, 2.111111111111111);
+  assert.equal(normalResult.aHOrigin, "calculated_from_explicit_tauH_dependencies");
+  close(normalResult.etaHgn, 0.9461187601596033);
+  assert.equal(normalResult.etaHgnOrigin, "calculated_from_explicit_time_constant_dependencies");
+  close(normalResult.qHnd, 742.8843719521191);
+
+  const nonPositiveGammaResult = result.caseResults[1];
+  assert.equal(nonPositiveGammaResult.qHhtOrigin, "explicit_input");
+  assert.equal(nonPositiveGammaResult.qHgnOrigin, "explicit_input");
+  assert.equal(nonPositiveGammaResult.qHndBranch, "gammaH_less_or_equal_zero_positive_gains_zero_demand");
+  assert.equal(nonPositiveGammaResult.etaHgnOrigin, "not_required_for_resolved_zero_qhnd_branch");
+  close(nonPositiveGammaResult.qHnd, 0);
+
+  const highGammaResult = result.caseResults[2];
+  assert.equal(highGammaResult.qHhtOrigin, "explicit_input");
+  assert.equal(highGammaResult.qHgnOrigin, "explicit_input");
+  close(highGammaResult.gammaH, 3);
+  assert.equal(highGammaResult.qHndBranch, "gammaH_greater_than_two_zero_demand");
+  assert.equal(highGammaResult.etaHgnOrigin, "not_required_for_gammaH_greater_than_two_zero_qhnd_branch");
+  close(highGammaResult.qHnd, 0);
+
+  for (const limit of [
+    "restricted_heating_only",
+    "explicit_input_only",
+    "not_full_QHnd",
+    "not_QCnd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_certificate",
+    "no_hidden_defaults"
+  ]) {
+    assert.ok(result.diagnostics.methodologyLimits.includes(limit), `missing ${limit}`);
+  }
+});
+
 await test("multi-month aggregation blocks duplicate case identifiers", () => {
   assertBlocked(
     calculateMc001RestrictedHeatingQhndExplicit(input([
