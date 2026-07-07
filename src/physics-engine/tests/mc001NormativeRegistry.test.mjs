@@ -26,6 +26,8 @@ const R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE =
   "MC001_R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK";
 const R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE =
   "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK";
+const R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE =
+  "MC001_R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -43,10 +45,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 9,
+  sourcePacks: 10,
   formulas: 10,
   constants: 1,
-  concepts: 9,
+  concepts: 10,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -145,6 +147,13 @@ function qhndAmbiguityPack(value = registry()) {
 function heatingEtaPack(value = registry()) {
   return sourcePackByCode(
     R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
+    value
+  );
+}
+
+function longUnoccupiedPack(value = registry()) {
+  return sourcePackByCode(
+    R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
     value
   );
 }
@@ -336,10 +345,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly nine source packs", () => {
+test("registry now contains exactly ten source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 9);
+  assert.equal(packs.length, 10);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -351,7 +360,8 @@ test("registry now contains exactly nine source packs", () => {
       R5_UTILIZATION_FACTORS_HEATING_SOURCE_PACK_CODE,
       R6_GAINS_CAPACITY_TIMECONSTANT_SOURCE_PACK_CODE,
       R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
-      R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE
+      R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
+      R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -1260,6 +1270,103 @@ test("R8 contains no calculator functions runtime access invented defaults or fi
   assert.equal(serialized.includes("demo-" + "house"), false);
 });
 
+test("R9 long unoccupied interpolation source pack machine-encodes relations 2.76 and 2.77", () => {
+  const pack = longUnoccupiedPack();
+
+  assert.equal(pack.sourcePackCode, R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.runtimeCalculatorStatus, "implemented_restricted_heating_relation_2_76_only");
+  assert.deepEqual(pack.sourceScope.pagesVerified, [120, 121]);
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.76", "2.77"]);
+  assert.equal(pack.sourceIdentity.heatingRelationReference, "relation_2.76");
+  assert.equal(pack.sourceIdentity.coolingRelationReference, "relation_2.77");
+});
+
+test("R9 formula candidates expose heating runtime and cooling metadata expressions", () => {
+  const candidates = longUnoccupiedPack().formulaCandidates;
+  const byCode = new Map(candidates.map((candidate) => [candidate.candidateCode, candidate]));
+  const heating = byCode.get("MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION");
+  const cooling = byCode.get("MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION");
+
+  assert.equal(candidates.length, 2);
+  assert.equal(heating.relationReference, "2.76");
+  assert.equal(
+    heating.machineExpression,
+    "QHnd = (1 - fHnocc) * QHndOcc + fHnocc * QHndNocc"
+  );
+  assert.equal(heating.readinessStatus, "verified_for_restricted_heating_runtime");
+  assert.deepEqual(heating.requiredInputs, [
+    "QH;nd;occ;ztc;m",
+    "QH;nd;nocc;ztc;m",
+    "fH;nocc;ztc;m"
+  ]);
+  assert.equal(cooling.relationReference, "2.77");
+  assert.equal(
+    cooling.machineExpression,
+    "QCnd = (1 - fCnocc) * QCndOcc + fCnocc * QCndNocc"
+  );
+  assert.equal(cooling.readinessStatus, "machine_encoded_metadata_only_not_runtime_cooling");
+});
+
+test("R9 runtime integration is restricted to explicit heating interpolation", () => {
+  const pack = longUnoccupiedPack();
+
+  assert.deepEqual(pack.runtimeIntegration.implementedFormulaCodes, [
+    "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
+  ]);
+  assert.deepEqual(pack.runtimeIntegration.metadataOnlyFormulaCodes, [
+    "MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION"
+  ]);
+  assert.deepEqual(pack.runtimeIntegration.inputContract.explicitInputs, [
+    "qHndOccupied",
+    "qHndUnoccupied",
+    "unoccupiedFraction"
+  ]);
+  assert.equal(
+    pack.runtimeIntegration.inputContract.outputOrigin,
+    "calculated_from_explicit_long_unoccupied_interpolation"
+  );
+  assert.equal(pack.dependencyMatrix.coolingLongUnoccupiedRuntime.status, "blocked_metadata_only");
+  assert.equal(pack.dependencyMatrix.intermittencyRuntime.status, "blocked_not_relation_2_76_or_2_77");
+});
+
+test("R9 declares downstream behavior hidden defaults and intermittency blocked", () => {
+  const blockers = longUnoccupiedPack().blockers;
+
+  for (const blockerCode of [
+    "not_QC;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults",
+    "no_schedule_defaults",
+    "no_temperature_setpoint_defaults",
+    "intermittency_not_machine_encoded"
+  ]) {
+    assert.ok(blockers.includes(blockerCode), blockerCode);
+  }
+});
+
+test("R9 contains no calculator functions runtime access invented defaults or fixture data", () => {
+  const serialized = JSON.stringify(longUnoccupiedPack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
+});
+
 test("relation 2.12 defines Hd from corrected U prime and area", () => {
   const formula = formulaByRelation("2.12");
 
@@ -1397,7 +1504,7 @@ test("separation of ground-contact elements applicability rule exists", () => {
   assert.equal(rule.sourceLocator.page, 99);
 });
 
-test("validation counts match R8 expected aggregate counts", () => {
+test("validation counts match R9 expected aggregate counts", () => {
   const result = validateMc001NormativeRegistry(registry());
 
   assert.equal(result.status, "valid");

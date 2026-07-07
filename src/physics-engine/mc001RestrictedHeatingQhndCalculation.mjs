@@ -7,9 +7,11 @@ const FORMULA_REFERENCES = [
   "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH",
   "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK",
   "MC001_R8_AH_PARAMETER_RELATION_2_55",
-  "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57"
+  "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57",
+  "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
 ];
 const FORMULA_CODE = "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH";
+const LONG_UNOCCUPIED_FORMULA_CODE = "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION";
 const AH_FORMULA_CODE = "MC001_R8_AH_PARAMETER_RELATION_2_55";
 const TAUH_FORMULA_CODE = "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57";
 const C5_QHHT_ORIGIN = "calculated_from_explicit_C5_transfer";
@@ -41,7 +43,7 @@ const METHODOLOGY_LIMITS = [
   "not_CO2",
   "not_certificate",
   "no_system_losses",
-  "no_long_unoccupied_periods",
+  "long_unoccupied_periods_explicit_interpolation_only",
   "no_hidden_defaults",
   "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
   "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
@@ -54,7 +56,6 @@ const METHODOLOGY_LIMITS = [
 const EXCLUDED_BRANCHES = [
   "gammaH_less_or_equal_zero_without_positive_gains",
   "cooling_QCnd",
-  "long_unoccupied_periods",
   "intermittency"
 ];
 const FORBIDDEN_INPUT_KEYS = new Set([
@@ -68,6 +69,7 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "results",
   "qHhtOrigin",
   "qHgnOrigin",
+  "qHndOrigin",
   "heatGainsFormulaCode",
   "heatGainsScope",
   "tauHOrigin",
@@ -78,9 +80,22 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "aHFormulaCode",
   "tauH",
   "tauHFormulaCode",
+  "longUnoccupiedFormulaCode",
   "formulaCode",
   "formulaReferences"
 ]);
+const NORMAL_QHND_INPUT_KEYS = [
+  "qHht",
+  "explicitTotalHeatTransferResult",
+  "qHgn",
+  "internalGains",
+  "solarGains",
+  "monthlyHeatGainsResult",
+  "gammaH",
+  "etaHgn",
+  "aH",
+  "utilizationDependencies"
+];
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -529,6 +544,57 @@ function extractQHgn(inputCase) {
   };
 }
 
+function validateLongUnoccupiedPeriodAdjustmentCase(inputCase) {
+  if (hasAnyInputValue(inputCase, NORMAL_QHND_INPUT_KEYS)) {
+    return { ok: false, code: "ambiguous_long_unoccupied_qhnd_source" };
+  }
+
+  const adjustment = inputCase.longUnoccupiedPeriodAdjustment;
+  if (!isPlainObject(adjustment)) {
+    return { ok: false, code: "missing_explicit_long_unoccupied_adjustment_inputs" };
+  }
+
+  const qHndOccupied = finiteNumber(adjustment.qHndOccupied);
+  const qHndUnoccupied = finiteNumber(adjustment.qHndUnoccupied);
+  const unoccupiedFraction = finiteNumber(adjustment.unoccupiedFraction);
+  if (
+    qHndOccupied === null ||
+    qHndUnoccupied === null ||
+    unoccupiedFraction === null
+  ) {
+    return { ok: false, code: "missing_explicit_long_unoccupied_adjustment_inputs" };
+  }
+  if (qHndOccupied < 0 || qHndUnoccupied < 0) {
+    return { ok: false, code: "invalid_explicit_long_unoccupied_QHnd" };
+  }
+  if (unoccupiedFraction < 0 || unoccupiedFraction > 1) {
+    return { ok: false, code: "invalid_explicit_long_unoccupied_fraction" };
+  }
+
+  const qHnd = (1 - unoccupiedFraction) * qHndOccupied +
+    unoccupiedFraction * qHndUnoccupied;
+  if (!Number.isFinite(qHnd) || qHnd < 0) {
+    return { ok: false, code: "invalid_explicit_long_unoccupied_QHnd" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      caseId: inputCase.caseId,
+      month: inputCase.month,
+      qHndOccupied,
+      qHndUnoccupied,
+      unoccupiedFraction,
+      qHnd,
+      qHndOrigin: "calculated_from_explicit_long_unoccupied_interpolation",
+      qHndBranch: "long_unoccupied_period_explicit_interpolation",
+      longUnoccupiedFormulaCode: LONG_UNOCCUPIED_FORMULA_CODE,
+      formulaCode: LONG_UNOCCUPIED_FORMULA_CODE,
+      sourceReference: inputCase.source.reference
+    }
+  };
+}
+
 function validateCase(inputCase) {
   if (!isPlainObject(inputCase)) {
     return { ok: false, code: "restricted_qhnd_invalid_case" };
@@ -544,6 +610,10 @@ function validateCase(inputCase) {
   }
   const source = validateSource(inputCase.source);
   if (!source.ok) return source;
+
+  if (hasInputValue(inputCase, "longUnoccupiedPeriodAdjustment")) {
+    return validateLongUnoccupiedPeriodAdjustmentCase(inputCase);
+  }
 
   const qHhtSource = extractQHhtFromExplicitC5Transfer(inputCase);
   if (!qHhtSource.ok) return qHhtSource;
@@ -743,7 +813,7 @@ export function calculateMc001RestrictedHeatingQhndExplicit(input = {}) {
     annualQHnd += validation.value.qHnd;
     caseResults.push({
       ...validation.value,
-      formulaCode: FORMULA_CODE,
+      formulaCode: validation.value.formulaCode || FORMULA_CODE,
       scope: SCOPE
     });
   }

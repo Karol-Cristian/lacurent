@@ -35,6 +35,23 @@ function sampleCase(overrides = {}) {
   };
 }
 
+function longUnoccupiedCase(overrides = {}, adjustmentOverrides = {}) {
+  return {
+    caseId: "feb-long-unoccupied",
+    month: "february",
+    longUnoccupiedPeriodAdjustment: {
+      qHndOccupied: 1000,
+      qHndUnoccupied: 400,
+      unoccupiedFraction: 10 / 28,
+      ...adjustmentOverrides
+    },
+    source: {
+      reference: "manual_mvp_input"
+    },
+    ...overrides
+  };
+}
+
 function input(cases = [sampleCase()], overrides = {}) {
   return {
     mode: "restricted_heating_qhnd_explicit_v1",
@@ -552,6 +569,75 @@ await test("golden smoke fixture covers restricted heating dependency spine", ()
   }
 });
 
+await test("long unoccupied relation 2.76 interpolates explicit occupied and unoccupied QHnd", () => {
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([longUnoccupiedCase()]));
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.caseResults[0].caseId, "feb-long-unoccupied");
+  close(result.caseResults[0].qHndOccupied, 1000);
+  close(result.caseResults[0].qHndUnoccupied, 400);
+  close(result.caseResults[0].unoccupiedFraction, 10 / 28);
+  close(result.caseResults[0].qHnd, 785.7142857142858);
+  assert.equal(
+    result.caseResults[0].qHndOrigin,
+    "calculated_from_explicit_long_unoccupied_interpolation"
+  );
+  assert.equal(result.caseResults[0].qHndBranch, "long_unoccupied_period_explicit_interpolation");
+  assert.equal(
+    result.caseResults[0].longUnoccupiedFormulaCode,
+    "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
+  );
+  assert.equal(result.caseResults[0].formulaCode, "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION");
+  close(result.summary.annualQHnd, 785.7142857142858);
+});
+
+await test("multi-month aggregation supports one normal month and one long unoccupied month", () => {
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([
+    sampleCase(),
+    longUnoccupiedCase()
+  ]));
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.summary.caseCount, 2);
+  assert.equal(result.summary.monthCount, 2);
+  close(result.caseResults[0].qHnd, 786.72);
+  close(result.caseResults[1].qHnd, 785.7142857142858);
+  close(result.summary.annualQHnd, 1572.434285714286);
+});
+
+await test("long unoccupied branch blocks missing explicit interpolation inputs", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([
+      longUnoccupiedCase({}, { qHndUnoccupied: undefined })
+    ])),
+    "missing_explicit_long_unoccupied_adjustment_inputs"
+  );
+});
+
+await test("long unoccupied branch blocks invalid fraction and negative explicit QHnd", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([
+      longUnoccupiedCase({}, { unoccupiedFraction: 1.01 })
+    ])),
+    "invalid_explicit_long_unoccupied_fraction"
+  );
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([
+      longUnoccupiedCase({}, { qHndOccupied: -1 })
+    ])),
+    "invalid_explicit_long_unoccupied_QHnd"
+  );
+});
+
+await test("long unoccupied branch rejects ambiguous normal QHnd inputs", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([
+      longUnoccupiedCase({ qHht: 1026.72 })
+    ])),
+    "ambiguous_long_unoccupied_qhnd_source"
+  );
+});
+
 await test("multi-month aggregation blocks duplicate case identifiers", () => {
   assertBlocked(
     calculateMc001RestrictedHeatingQhndExplicit(input([
@@ -863,7 +949,7 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
     "not_primary_energy",
     "not_CO2",
     "not_certificate",
-    "no_long_unoccupied_periods",
+    "long_unoccupied_periods_explicit_interpolation_only",
     "no_hidden_defaults",
     "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
     "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
@@ -878,23 +964,30 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
   for (const branch of [
     "gammaH_less_or_equal_zero_without_positive_gains",
     "cooling_QCnd",
-    "long_unoccupied_periods",
     "intermittency"
   ]) {
     assert.equal(result.diagnostics.excludedBranches.includes(branch), true, `missing ${branch}`);
   }
+  assert.equal(result.diagnostics.excludedBranches.includes("long_unoccupied_periods"), false);
 });
 
-await test("unoccupied and intermittency branches remain source-pack blocked limitations", () => {
+await test("long unoccupied is implemented while intermittency remains source-pack blocked", () => {
   const result = calculateMc001RestrictedHeatingQhndExplicit(input());
 
   assert.equal(result.status, "ready");
-  assert.equal(result.diagnostics.methodologyLimits.includes("no_long_unoccupied_periods"), true);
+  assert.equal(
+    result.diagnostics.methodologyLimits.includes("long_unoccupied_periods_explicit_interpolation_only"),
+    true
+  );
   assert.equal(result.diagnostics.methodologyLimits.includes("no_hidden_defaults"), true);
-  assert.equal(result.diagnostics.excludedBranches.includes("long_unoccupied_periods"), true);
+  assert.equal(result.diagnostics.excludedBranches.includes("long_unoccupied_periods"), false);
   assert.equal(result.diagnostics.excludedBranches.includes("intermittency"), true);
   assert.equal(result.formulaReferences.includes("MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"), true);
-  assert.equal(result.formulaReferences.some(reference => /2\.76|2\.77|intermitt/i.test(reference)), false);
+  assert.equal(
+    result.formulaReferences.includes("MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"),
+    true
+  );
+  assert.equal(result.formulaReferences.some(reference => /2\.77|intermitt/i.test(reference)), false);
 });
 
 await test("module has no filesystem network PDF or registry-as-calculator behavior", () => {
