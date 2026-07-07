@@ -863,6 +863,8 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
     "not_primary_energy",
     "not_CO2",
     "not_certificate",
+    "no_long_unoccupied_periods",
+    "no_hidden_defaults",
     "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
     "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
     "tauH_calculated_from_explicit_capacity_and_heat_transfer_coefficient",
@@ -881,6 +883,18 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
   ]) {
     assert.equal(result.diagnostics.excludedBranches.includes(branch), true, `missing ${branch}`);
   }
+});
+
+await test("unoccupied and intermittency branches remain source-pack blocked limitations", () => {
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input());
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.diagnostics.methodologyLimits.includes("no_long_unoccupied_periods"), true);
+  assert.equal(result.diagnostics.methodologyLimits.includes("no_hidden_defaults"), true);
+  assert.equal(result.diagnostics.excludedBranches.includes("long_unoccupied_periods"), true);
+  assert.equal(result.diagnostics.excludedBranches.includes("intermittency"), true);
+  assert.equal(result.formulaReferences.includes("MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"), true);
+  assert.equal(result.formulaReferences.some(reference => /2\.76|2\.77|intermitt/i.test(reference)), false);
 });
 
 await test("module has no filesystem network PDF or registry-as-calculator behavior", () => {
