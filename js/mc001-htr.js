@@ -294,7 +294,9 @@ document.addEventListener("DOMContentLoaded", () => {
     setInputValue("restrictedQhndCaseId", "jan-qhnd-restricted");
     setInputValue("restrictedQhndMonth", "january");
     setInputValue("restrictedQhndQHht", "1026.72");
-    setInputValue("restrictedQhndQHgn", "300");
+    setInputValue("restrictedQhndQHgn", "");
+    setInputValue("restrictedQhndInternalGains", "120");
+    setInputValue("restrictedQhndSolarGains", "180");
     setInputValue("restrictedQhndGammaH", "");
     setInputValue("restrictedQhndEtaHgn", "");
     setInputValue("restrictedQhndAH", "2");
@@ -302,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setMessage(
       runMessage,
-      "Exemplul sintetic smoke transmisie a fost completat. C7D asteptat: etaHgn=0.9380237833186124 si QHnd=745.3128650044164 kWh. Verifica valorile si apasa Calculeaza Htr."
+      "Exemplul sintetic smoke transmisie a fost completat. C8B asteptat: qHgn=300, etaHgn=0.9380237833186124 si QHnd=745.3128650044164 kWh. Verifica valorile si apasa Calculeaza Htr."
     );
   }
 
@@ -678,6 +680,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "restrictedQhndMonth",
       "restrictedQhndQHht",
       "restrictedQhndQHgn",
+      "restrictedQhndInternalGains",
+      "restrictedQhndSolarGains",
       "restrictedQhndGammaH",
       "restrictedQhndEtaHgn",
       "restrictedQhndAH"
@@ -694,7 +698,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const qHht = positiveNumber("restrictedQhndQHht", "C6F QHnd: qHht_kwh");
-    const qHgn = nonNegativeNumber("restrictedQhndQHgn", "C6F QHnd: qHgn_kwh");
+    const qHgnRaw = inputValue("restrictedQhndQHgn");
+    const internalGainsRaw = inputValue("restrictedQhndInternalGains");
+    const solarGainsRaw = inputValue("restrictedQhndSolarGains");
+    const qHgnProvided = qHgnRaw !== "";
+    const internalGainsProvided = internalGainsRaw !== "";
+    const solarGainsProvided = solarGainsRaw !== "";
+    if (qHgnProvided && (internalGainsProvided || solarGainsProvided)) {
+      throw new Error("C6F QHnd: completeaza fie qHgn, fie internalGains plus solarGains, nu ambele.");
+    }
+    if (!qHgnProvided && (!internalGainsProvided || !solarGainsProvided)) {
+      throw new Error("C6F QHnd: completeaza qHgn sau perechea internalGains plus solarGains.");
+    }
+    const qHgn = qHgnProvided
+      ? nonNegativeNumber("restrictedQhndQHgn", "C6F QHnd: qHgn_kwh")
+      : (
+        nonNegativeNumber("restrictedQhndInternalGains", "C6F QHnd: internalGains_kwh") +
+        nonNegativeNumber("restrictedQhndSolarGains", "C6F QHnd: solarGains_kwh")
+      );
     const gammaRaw = inputValue("restrictedQhndGammaH");
     const etaRaw = inputValue("restrictedQhndEtaHgn");
     const aHRaw = inputValue("restrictedQhndAH");
@@ -712,11 +733,22 @@ document.addEventListener("DOMContentLoaded", () => {
       case_id: caseId,
       month,
       qHht_kwh: qHht,
-      qHgn_kwh: qHgn,
       source: {
         reference: sourceReference
       }
     };
+    if (qHgnProvided) {
+      qhndCase.qHgn_kwh = qHgn;
+    } else {
+      qhndCase.internalGains_kwh = nonNegativeNumber(
+        "restrictedQhndInternalGains",
+        "C6F QHnd: internalGains_kwh"
+      );
+      qhndCase.solarGains_kwh = nonNegativeNumber(
+        "restrictedQhndSolarGains",
+        "C6F QHnd: solarGains_kwh"
+      );
+    }
     if (etaRaw !== "") {
       const etaHgn = finiteNumber(etaRaw);
       if (etaHgn === null || etaHgn < 0) {
@@ -878,7 +910,7 @@ document.addEventListener("DOMContentLoaded", () => {
         list,
         "C6F QHnd incalzire restrictionat",
         `${c6fInput.cases?.length || 0} caz explicit`,
-        "qHht, qHgn si etaHgn sau aH explicite; nu este QHnd complet"
+        "qHht, qHgn direct sau castiguri explicite, si etaHgn sau aH explicite; nu este QHnd complet"
       );
     }
   }
@@ -1076,8 +1108,8 @@ document.addEventListener("DOMContentLoaded", () => {
       appendArticle(
         list,
         `C6F ${item.caseId || item.month || "caz"}`,
-        `QHht=${item.qHht ?? "--"} kWh; QHgn=${item.qHgn ?? "--"} kWh; gammaH=${item.gammaH ?? "--"}; etaHgn=${item.etaHgn ?? "--"}; aH=${item.aH ?? "--"}; QHnd=${item.qHnd ?? "--"} kWh`,
-        `${item.month || ""} etaHgnOrigin=${item.etaHgnOrigin || "--"} ${item.etaHgnFormulaCode || ""} ${item.scope || ""}`.trim()
+        `QHht=${item.qHht ?? "--"} kWh; QHgn=${item.qHgn ?? "--"} kWh; internalGains=${item.internalGains ?? "--"} kWh; solarGains=${item.solarGains ?? "--"} kWh; gammaH=${item.gammaH ?? "--"}; etaHgn=${item.etaHgn ?? "--"}; aH=${item.aH ?? "--"}; QHnd=${item.qHnd ?? "--"} kWh`,
+        `${item.month || ""} qHgnOrigin=${item.qHgnOrigin || "--"} ${item.heatGainsFormulaCode || ""} etaHgnOrigin=${item.etaHgnOrigin || "--"} ${item.etaHgnFormulaCode || ""} ${item.scope || ""}`.trim()
       );
     });
     appendArticle(
