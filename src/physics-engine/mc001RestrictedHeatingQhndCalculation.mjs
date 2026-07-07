@@ -131,7 +131,8 @@ function blocked(code) {
     caseResults: [],
     summary: {
       annualQHnd: 0,
-      caseCount: 0
+      caseCount: 0,
+      monthCount: 0
     },
     diagnostics: {
       blockers: [blocker(code)],
@@ -140,6 +141,24 @@ function blocked(code) {
       excludedBranches: [...EXCLUDED_BRANCHES]
     }
   };
+}
+
+function uniqueMonthCount(caseResults) {
+  return new Set(caseResults.map(result => result.month)).size;
+}
+
+function validateMonthlyCaseIdentifiers(cases) {
+  const caseIds = new Set();
+  for (const inputCase of cases) {
+    if (!isPlainObject(inputCase) || !safeCode(inputCase.caseId, 96)) {
+      return { ok: false, code: "invalid_monthly_case_identifier" };
+    }
+    if (caseIds.has(inputCase.caseId)) {
+      return { ok: false, code: "duplicate_monthly_case_identifier" };
+    }
+    caseIds.add(inputCase.caseId);
+  }
+  return { ok: true };
 }
 
 function validateSource(source) {
@@ -439,8 +458,20 @@ export function calculateMc001RestrictedHeatingQhndExplicit(input = {}) {
   if (hasForbiddenDerivedInput(input)) {
     return blocked("restricted_qhnd_client_supplied_derived_result");
   }
-  if (!Array.isArray(input.cases) || input.cases.length === 0) {
-    return blocked("restricted_qhnd_missing_cases");
+  if (!hasInputValue(input, "cases")) {
+    return blocked("missing_monthly_restricted_heating_cases");
+  }
+  if (!Array.isArray(input.cases)) {
+    return blocked("invalid_monthly_restricted_heating_cases");
+  }
+  if (input.cases.length === 0) {
+    return blocked("missing_monthly_restricted_heating_cases");
+  }
+
+  const isMonthlyAggregation = input.cases.length > 1;
+  if (isMonthlyAggregation) {
+    const monthlyCaseIdentifiers = validateMonthlyCaseIdentifiers(input.cases);
+    if (!monthlyCaseIdentifiers.ok) return blocked(monthlyCaseIdentifiers.code);
   }
 
   const caseResults = [];
@@ -448,7 +479,9 @@ export function calculateMc001RestrictedHeatingQhndExplicit(input = {}) {
 
   for (const inputCase of input.cases) {
     const validation = validateCase(inputCase);
-    if (!validation.ok) return blocked(validation.code);
+    if (!validation.ok) {
+      return blocked(isMonthlyAggregation ? "monthly_restricted_heating_case_failed" : validation.code);
+    }
     annualQHnd += validation.value.qHnd;
     caseResults.push({
       ...validation.value,
@@ -464,7 +497,8 @@ export function calculateMc001RestrictedHeatingQhndExplicit(input = {}) {
     caseResults,
     summary: {
       annualQHnd,
-      caseCount: caseResults.length
+      caseCount: caseResults.length,
+      monthCount: uniqueMonthCount(caseResults)
     },
     diagnostics: {
       blockers: [],
