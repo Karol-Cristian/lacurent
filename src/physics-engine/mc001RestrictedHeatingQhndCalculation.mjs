@@ -11,6 +11,9 @@ const FORMULA_REFERENCES = [
 const FORMULA_CODE = "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH";
 const AH_FORMULA_CODE = "MC001_R8_AH_PARAMETER_RELATION_2_55";
 const TAUH_FORMULA_CODE = "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57";
+const C5_QHHT_ORIGIN = "calculated_from_explicit_C5_transfer";
+const C5_TOTAL_TRANSFER_SCOPE = "explicit_transmission_plus_ventilation_heat_transfer_only_not_QHnd";
+const C5_TOTAL_TRANSFER_SYMBOL = "Q_total_transfer_explicit";
 const ALLOWED_MONTHS = [
   "january",
   "february",
@@ -60,6 +63,7 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "summary",
   "result",
   "results",
+  "qHhtOrigin",
   "etaHgnOrigin",
   "etaHgnFormulaCode",
   "aHOrigin",
@@ -94,19 +98,25 @@ function safeNotes(value) {
     );
 }
 
-function hasForbiddenDerivedInput(value) {
+function hasForbiddenDerivedInput(value, path = []) {
   if (value === null || value === undefined || typeof value !== "object") {
     return false;
   }
   if (Array.isArray(value)) {
-    return value.some(hasForbiddenDerivedInput);
+    return value.some((child, index) => hasForbiddenDerivedInput(child, [...path, String(index)]));
   }
   if (!isPlainObject(value)) {
     return true;
   }
-  return Object.entries(value).some(([key, child]) => (
-    FORBIDDEN_INPUT_KEYS.has(key) || hasForbiddenDerivedInput(child)
-  ));
+  return Object.entries(value).some(([key, child]) => {
+    const nextPath = [...path, key];
+    const isAllowedC5ResultKey = key === "result" &&
+      path[path.length - 1] === "explicitTotalHeatTransferResult";
+    return (
+      (!isAllowedC5ResultKey && FORBIDDEN_INPUT_KEYS.has(key)) ||
+      hasForbiddenDerivedInput(child, nextPath)
+    );
+  });
 }
 
 function blocker(code) {
@@ -242,6 +252,62 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
   };
 }
 
+function extractQHhtFromExplicitC5Transfer(inputCase) {
+  const hasDirectQHht = hasInputValue(inputCase, "qHht");
+  const hasC5Transfer = hasInputValue(inputCase, "explicitTotalHeatTransferResult");
+  if (hasDirectQHht && hasC5Transfer) {
+    return { ok: false, code: "ambiguous_QHht_source" };
+  }
+
+  if (hasDirectQHht) {
+    const qHht = finiteNumber(inputCase.qHht);
+    if (qHht === null || qHht <= 0) {
+      return { ok: false, code: "restricted_qhnd_invalid_qHht" };
+    }
+    return {
+      ok: true,
+      value: {
+        qHht,
+        qHhtOrigin: "explicit_input"
+      }
+    };
+  }
+
+  if (!hasC5Transfer) {
+    return { ok: false, code: "restricted_qhnd_invalid_qHht" };
+  }
+
+  const c5Result = inputCase.explicitTotalHeatTransferResult;
+  if (
+    !isPlainObject(c5Result) ||
+    c5Result.status !== "ready" ||
+    c5Result.scope !== C5_TOTAL_TRANSFER_SCOPE ||
+    !isPlainObject(c5Result.result)
+  ) {
+    return { ok: false, code: "missing_explicit_C5_transfer_for_QHht" };
+  }
+
+  const amount = finiteNumber(c5Result.result.amount);
+  if (
+    c5Result.result.symbol !== C5_TOTAL_TRANSFER_SYMBOL ||
+    c5Result.result.unit !== "kWh" ||
+    amount === null ||
+    amount <= 0
+  ) {
+    return { ok: false, code: "invalid_explicit_C5_transfer_for_QHht" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      qHht: amount,
+      qHhtOrigin: C5_QHHT_ORIGIN,
+      qHhtSourceScope: c5Result.scope,
+      qHhtSourceSymbol: c5Result.result.symbol
+    }
+  };
+}
+
 function validateCase(inputCase) {
   if (!isPlainObject(inputCase)) {
     return { ok: false, code: "restricted_qhnd_invalid_case" };
@@ -258,10 +324,9 @@ function validateCase(inputCase) {
   const source = validateSource(inputCase.source);
   if (!source.ok) return source;
 
-  const qHht = finiteNumber(inputCase.qHht);
-  if (qHht === null || qHht <= 0) {
-    return { ok: false, code: "restricted_qhnd_invalid_qHht" };
-  }
+  const qHhtSource = extractQHhtFromExplicitC5Transfer(inputCase);
+  if (!qHhtSource.ok) return qHhtSource;
+  const { qHht } = qHhtSource.value;
   const qHgn = finiteNumber(inputCase.qHgn);
   if (qHgn === null || qHgn < 0) {
     return { ok: false, code: "restricted_qhnd_invalid_qHgn" };
@@ -313,7 +378,10 @@ function validateCase(inputCase) {
     if (aH <= 0) {
       return { ok: false, code: "restricted_qhnd_invalid_aH" };
     }
-    const calculatedEta = calculateEtaHgnFromExplicitAH(inputCase);
+    const calculatedEta = calculateEtaHgnFromExplicitAH({
+      ...inputCase,
+      qHht
+    });
     if (!calculatedEta.ok) return calculatedEta;
     etaHgn = calculatedEta.value.etaHgn;
     aH = calculatedEta.value.aH;
@@ -326,6 +394,7 @@ function validateCase(inputCase) {
     aH = utilizationDependencyResult.aH;
     const calculatedEta = calculateEtaHgnFromExplicitAH({
       ...inputCase,
+      qHht,
       aH
     });
     if (!calculatedEta.ok) return calculatedEta;
@@ -347,6 +416,9 @@ function validateCase(inputCase) {
       caseId: inputCase.caseId,
       month: inputCase.month,
       qHht,
+      qHhtOrigin: qHhtSource.value.qHhtOrigin,
+      ...(qHhtSource.value.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: qHhtSource.value.qHhtSourceScope }),
+      ...(qHhtSource.value.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: qHhtSource.value.qHhtSourceSymbol }),
       qHgn,
       gammaH,
       etaHgn,
