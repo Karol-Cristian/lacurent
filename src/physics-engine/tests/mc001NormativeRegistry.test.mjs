@@ -30,6 +30,8 @@ const R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE =
   "MC001_R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK";
 const R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE =
   "MC001_R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK";
+const R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE =
+  "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -47,10 +49,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 11,
+  sourcePacks: 12,
   formulas: 10,
   constants: 1,
-  concepts: 11,
+  concepts: 12,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -165,6 +167,10 @@ function heatingQhndClosurePack(value = registry()) {
     R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE,
     value
   );
+}
+
+function heatingIntermittencyPack(value = registry()) {
+  return sourcePackByCode(R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -354,10 +360,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly eleven source packs", () => {
+test("registry now contains exactly twelve source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 11);
+  assert.equal(packs.length, 12);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -371,7 +377,8 @@ test("registry now contains exactly eleven source packs", () => {
       R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
       R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
       R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
-      R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE
+      R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE,
+      R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -1417,19 +1424,13 @@ test("R10 coverage map distinguishes implemented heating branches from blocked d
     "relation_2_57_tauH_from_explicit_capacity_and_coefficients",
     "figure_2_13_explicit_heat_gains_sum",
     "relation_2_76_long_unoccupied_heating_interpolation",
+    "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
     "relation_2_84_annual_heating_qhnd_sum"
   ]) {
     assert.equal(implemented.includes(branchId), true, branchId);
   }
   assert.deepEqual(metadataOnly, ["relation_2_77_long_unoccupied_cooling_interpolation"]);
-  assert.deepEqual(notEncoded, [
-    "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
-    "heating_period_boundary_duration_method"
-  ]);
-  assert.equal(
-    map.notMachineEncodedBranches[0].runtimeDiagnostic,
-    "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
-  );
+  assert.deepEqual(notEncoded, ["heating_period_boundary_duration_method"]);
   for (const downstream of [
     "QCnd",
     "final_energy",
@@ -1441,15 +1442,17 @@ test("R10 coverage map distinguishes implemented heating branches from blocked d
   }
 });
 
-test("R10 keeps not_full_QHnd because heating intermittency is not machine encoded", () => {
+test("R10 keeps not_full_QHnd because boundary duration defaults remain out of scope", () => {
   const pack = heatingQhndClosurePack();
 
   assert.equal(pack.runtimeClosureVerdict.notFullQhndRemains, true);
-  assert.deepEqual(pack.runtimeClosureVerdict.blockedHeatingUsefulDemandRelations, ["2.59-2.73"]);
+  assert.deepEqual(pack.runtimeClosureVerdict.blockedHeatingUsefulDemandRelations, [
+    "section_2.11_boundary_duration_method"
+  ]);
   assert.deepEqual(pack.runtimeClosureVerdict.coolingRelationsNotUsedInHeatingRuntime, ["2.77"]);
   assert.equal(
     pack.dependencyMatrix.heatingIntermittencyRelations259To273.status,
-    "blocked_source_located_not_machine_encoded"
+    "implemented_restricted_explicit_correction"
   );
   assert.equal(pack.dependencyMatrix.fullQhnd.status, "blocked_not_full_QHnd");
   assert.equal(pack.dependencyMatrix.qcnd.status, "blocked");
@@ -1457,6 +1460,101 @@ test("R10 keeps not_full_QHnd because heating intermittency is not machine encod
   assert.equal(pack.dependencyMatrix.primary_energy.status, "blocked");
   assert.equal(pack.dependencyMatrix.co2.status, "blocked");
   assert.equal(pack.dependencyMatrix.cpeCertificate.status, "blocked");
+});
+
+test("R11 heating intermittency source pack machine-encodes relations 2.59 to 2.73", () => {
+  const pack = heatingIntermittencyPack();
+
+  assert.equal(pack.sourcePackCode, R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE);
+  assert.equal(pack.sourcePackType, "metadata_only_normative_readiness_source_pack");
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(
+    pack.runtimeCalculatorStatus,
+    "implemented_restricted_explicit_heating_intermittency_runtime"
+  );
+  assert.deepEqual(pack.sourceScope.pagesVerified, [117, 118, 119]);
+  assert.deepEqual(
+    pack.sourceScope.relationsVerified,
+    [
+      "2.59",
+      "2.60",
+      "2.61",
+      "2.62",
+      "2.63",
+      "2.64",
+      "2.65",
+      "2.66",
+      "2.67",
+      "2.68",
+      "2.69",
+      "2.70",
+      "2.71",
+      "2.72",
+      "2.73"
+    ]
+  );
+  assert.equal(pack.concept.entryCode, "MC001_CONCEPT_HEATING_INTERMITTENCY_RELATIONS");
+  assert.equal(pack.runtimeIntegration.implementedModule, "mc001HeatingIntermittencyCalculation.mjs");
+  assert.equal(
+    pack.runtimeIntegration.qHhtOrigin,
+    "calculated_from_explicit_heating_intermittency_correction"
+  );
+});
+
+test("R11 relation candidates are runtime-ready metadata and not calculator functions", () => {
+  const candidates = heatingIntermittencyPack().formulaCandidates;
+  const byRelation = new Map(candidates.map((candidate) => [
+    candidate.relationReference,
+    candidate
+  ]));
+
+  assert.equal(candidates.length, 15);
+  for (const relation of [
+    "2.59",
+    "2.60",
+    "2.61",
+    "2.62",
+    "2.63",
+    "2.64",
+    "2.65",
+    "2.66",
+    "2.67",
+    "2.68",
+    "2.69",
+    "2.70",
+    "2.71",
+    "2.72",
+    "2.73"
+  ]) {
+    const candidate = byRelation.get(relation);
+    assert.ok(candidate, relation);
+    assert.equal(candidate.scopeClassification, "heating_runtime_ready");
+    assert.equal(candidate.runtimeReadiness, "verified_for_restricted_runtime");
+    assert.equal(typeof candidate.machineExpression, "string");
+    assert.equal(candidate.machineExpression.length > 0, true);
+    assert.equal(Object.hasOwn(candidate, "formulaCode"), false);
+    assert.equal(Object.hasOwn(candidate, "entryType"), false);
+  }
+  assert.equal(byRelation.get("2.59").machineExpression.includes("thetaIntCalcH"), true);
+  assert.equal(byRelation.get("2.67").unitNormalization.includes("qHgn"), true);
+  assert.equal(byRelation.get("2.73").dependencies.includes("2.70"), true);
+});
+
+test("R11 contains no runtime access invented defaults private data or copied source", () => {
+  const serialized = JSON.stringify(heatingIntermittencyPack());
+  const lower = serialized.toLowerCase();
+  const networkCall = "fetch" + "(";
+
+  assert.equal(lower.includes("function"), false);
+  assert.equal(lower.includes("readfile"), false);
+  assert.equal(lower.includes(networkCall), false);
+  assert.equal(lower.includes(".pdf"), false);
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("defaultValues"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+  assert.equal(serialized.includes("S" + "\u0103" + "licea"), false);
+  assert.equal(serialized.includes("demo-" + "house"), false);
 });
 
 test("R10 contains no calculator functions runtime access invented defaults or fixture data", () => {

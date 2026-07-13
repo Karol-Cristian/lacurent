@@ -1,4 +1,5 @@
 import { calculateMc001HeatingGainUtilizationFactor } from "./mc001HeatingGainUtilizationFactorCalculation.mjs";
+import { calculateMc001HeatingIntermittencyExplicit } from "./mc001HeatingIntermittencyCalculation.mjs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "./mc001MonthlyHeatGainsCalculation.mjs";
 
 const MODE = "restricted_heating_qhnd_explicit_v1";
@@ -8,7 +9,8 @@ const FORMULA_REFERENCES = [
   "MC001_R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK",
   "MC001_R8_AH_PARAMETER_RELATION_2_55",
   "MC001_R8_TAU_H_DEPENDENCY_RELATION_2_57",
-  "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
+  "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION",
+  "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK"
 ];
 const FORMULA_CODE = "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH";
 const LONG_UNOCCUPIED_FORMULA_CODE = "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION";
@@ -19,6 +21,7 @@ const C5_TOTAL_TRANSFER_SCOPE = "explicit_transmission_plus_ventilation_heat_tra
 const C5_TOTAL_TRANSFER_SYMBOL = "Q_total_transfer_explicit";
 const HEAT_GAINS_SCOPE = "monthly_heat_gains_explicit_input_only_not_full_QHnd";
 const HEAT_GAINS_FORMULA_CODE = "MC001_EXPLICIT_MONTHLY_HEAT_GAINS_SUM";
+const HEATING_INTERMITTENCY_SCOPE = "heating_intermittency_explicit_input_only_not_full_QHnd";
 const ALLOWED_MONTHS = [
   "january",
   "february",
@@ -44,7 +47,7 @@ const METHODOLOGY_LIMITS = [
   "not_certificate",
   "no_system_losses",
   "long_unoccupied_periods_explicit_interpolation_only",
-  "heating_intermittency_source_located_not_machine_encoded",
+  "heating_intermittency_explicit_correction_only",
   "no_hidden_defaults",
   "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
   "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
@@ -56,8 +59,7 @@ const METHODOLOGY_LIMITS = [
 ];
 const EXCLUDED_BRANCHES = [
   "gammaH_less_or_equal_zero_without_positive_gains",
-  "cooling_QCnd",
-  "intermittency"
+  "cooling_QCnd"
 ];
 const FORBIDDEN_INPUT_KEYS = new Set([
   "restrictedHeatingQhndResult",
@@ -84,6 +86,9 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "longUnoccupiedFormulaCode",
   "intermittencyOrigin",
   "intermittencyFormulaCode",
+  "heatingIntermittencyResult",
+  "heatingIntermittencyFormulaCode",
+  "heatingIntermittencySourcePackCode",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -94,6 +99,7 @@ const NORMAL_QHND_INPUT_KEYS = [
   "internalGains",
   "solarGains",
   "monthlyHeatGainsResult",
+  "heatingIntermittencyCorrection",
   "gammaH",
   "etaHgn",
   "aH",
@@ -140,8 +146,15 @@ function hasForbiddenDerivedInput(value, path = []) {
       path[path.length - 1] === "explicitTotalHeatTransferResult";
     const isAllowedMonthlyHeatGainsResultKey = path.includes("monthlyHeatGainsResult") &&
       ["caseResults", "summary", "formulaCode", "formulaReferences", "annualQHgn"].includes(key);
+    const isAllowedHeatingIntermittencyInputKey =
+      path.includes("heatingIntermittencyCorrection") && key === "tauH";
     return (
-      (!isAllowedC5ResultKey && !isAllowedMonthlyHeatGainsResultKey && FORBIDDEN_INPUT_KEYS.has(key)) ||
+      (
+        !isAllowedC5ResultKey &&
+        !isAllowedMonthlyHeatGainsResultKey &&
+        !isAllowedHeatingIntermittencyInputKey &&
+        FORBIDDEN_INPUT_KEYS.has(key)
+      ) ||
       hasForbiddenDerivedInput(child, nextPath)
     );
   });
@@ -390,10 +403,12 @@ function resolveExplicitHeatTransferCoefficientForTauH(dependencies) {
   };
 }
 
-function extractQHhtFromExplicitC5Transfer(inputCase) {
+function extractQHhtSource(inputCase, qHgn) {
   const hasDirectQHht = hasInputValue(inputCase, "qHht");
   const hasC5Transfer = hasInputValue(inputCase, "explicitTotalHeatTransferResult");
-  if (hasDirectQHht && hasC5Transfer) {
+  const hasIntermittencyCorrection = hasInputValue(inputCase, "heatingIntermittencyCorrection");
+  const sourceCount = [hasDirectQHht, hasC5Transfer, hasIntermittencyCorrection].filter(Boolean).length;
+  if (sourceCount > 1) {
     return { ok: false, code: "ambiguous_QHht_source" };
   }
 
@@ -411,38 +426,127 @@ function extractQHhtFromExplicitC5Transfer(inputCase) {
     };
   }
 
-  if (!hasC5Transfer) {
-    return { ok: false, code: "restricted_qhnd_invalid_qHht" };
-  }
-
-  const c5Result = inputCase.explicitTotalHeatTransferResult;
-  if (
-    !isPlainObject(c5Result) ||
-    c5Result.status !== "ready" ||
-    c5Result.scope !== C5_TOTAL_TRANSFER_SCOPE ||
-    !isPlainObject(c5Result.result)
-  ) {
-    return { ok: false, code: "missing_explicit_C5_transfer_for_QHht" };
-  }
-
-  const amount = finiteNumber(c5Result.result.amount);
-  if (
-    c5Result.result.symbol !== C5_TOTAL_TRANSFER_SYMBOL ||
-    c5Result.result.unit !== "kWh" ||
-    amount === null ||
-    amount <= 0
-  ) {
-    return { ok: false, code: "invalid_explicit_C5_transfer_for_QHht" };
-  }
-
-  return {
-    ok: true,
-    value: {
-      qHht: amount,
-      qHhtOrigin: C5_QHHT_ORIGIN,
-      qHhtSourceScope: c5Result.scope,
-      qHhtSourceSymbol: c5Result.result.symbol
+  if (hasC5Transfer) {
+    const c5Result = inputCase.explicitTotalHeatTransferResult;
+    if (
+      !isPlainObject(c5Result) ||
+      c5Result.status !== "ready" ||
+      c5Result.scope !== C5_TOTAL_TRANSFER_SCOPE ||
+      !isPlainObject(c5Result.result)
+    ) {
+      return { ok: false, code: "missing_explicit_C5_transfer_for_QHht" };
     }
+
+    const amount = finiteNumber(c5Result.result.amount);
+    if (
+      c5Result.result.symbol !== C5_TOTAL_TRANSFER_SYMBOL ||
+      c5Result.result.unit !== "kWh" ||
+      amount === null ||
+      amount <= 0
+    ) {
+      return { ok: false, code: "invalid_explicit_C5_transfer_for_QHht" };
+    }
+
+    return {
+      ok: true,
+      value: {
+        qHht: amount,
+        qHhtOrigin: C5_QHHT_ORIGIN,
+        qHhtSourceScope: c5Result.scope,
+        qHhtSourceSymbol: c5Result.result.symbol
+      }
+    };
+  }
+
+  if (hasIntermittencyCorrection) {
+    const correction = inputCase.heatingIntermittencyCorrection;
+    if (!isPlainObject(correction)) {
+      return { ok: false, code: "missing_explicit_heating_intermittency_inputs_for_QHht" };
+    }
+    if (hasInputValue(correction, "qHgn")) {
+      return { ok: false, code: "ambiguous_heating_intermittency_QHgn_source" };
+    }
+    const correctionResult = calculateMc001HeatingIntermittencyExplicit({
+      mode: "heating_intermittency_explicit_v1",
+      cases: [
+        {
+          caseId: `${inputCase.caseId}.heating_intermittency`,
+          qHgn,
+          ...correction,
+          source: {
+            reference: inputCase.source.reference,
+            notes: inputCase.source.notes
+          }
+        }
+      ]
+    });
+    if (correctionResult.status !== "ready" || correctionResult.caseResults.length !== 1) {
+      const code = correctionResult.diagnostics?.blockers?.[0]?.code ||
+        "unknown_heating_intermittency_blocker";
+      return { ok: false, code: `restricted_qhnd_heating_intermittency_failed_${code}` };
+    }
+    const correctionCase = correctionResult.caseResults[0];
+    return {
+      ok: true,
+      value: {
+        qHht: correctionCase.qHht,
+        qHhtOrigin: correctionCase.qHhtOrigin,
+        qHhtSourceScope: correctionCase.scope,
+        qHhtSourceSymbol: correctionCase.qHhtSourceSymbol,
+        thetaIntSetH: correctionCase.thetaIntSetH,
+        thetaExternal: correctionCase.thetaExternal,
+        thetaIntCalcH: correctionCase.thetaIntCalcH,
+        aHred: correctionCase.aHred,
+        dThetaFloat: correctionCase.dThetaFloat,
+        dThetaFloatBranch: correctionCase.dThetaFloatBranch,
+        transmissionHeatTransferCoefficientWK:
+          correctionCase.transmissionHeatTransferCoefficientWK,
+        ventilationHeatTransferCoefficientWK:
+          correctionCase.ventilationHeatTransferCoefficientWK,
+        totalHeatTransferCoefficientWK: correctionCase.totalHeatTransferCoefficientWK,
+        calculationDurationHours: correctionCase.calculationDurationHours,
+        heatingIntermittencyPeriodResults: correctionCase.periodResults,
+        heatingIntermittencyFormulaCode: correctionCase.heatingIntermittencyFormulaCode,
+        heatingIntermittencySourcePackCode: correctionCase.heatingIntermittencySourcePackCode
+      }
+    };
+  }
+
+  return { ok: false, code: "restricted_qhnd_invalid_qHht" };
+}
+
+function qHhtSourceOutputFields(source) {
+  return {
+    qHhtOrigin: source.qHhtOrigin,
+    ...(source.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: source.qHhtSourceScope }),
+    ...(source.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: source.qHhtSourceSymbol }),
+    ...(source.thetaIntSetH === undefined ? {} : { thetaIntSetH: source.thetaIntSetH }),
+    ...(source.thetaExternal === undefined ? {} : { thetaExternal: source.thetaExternal }),
+    ...(source.thetaIntCalcH === undefined ? {} : { thetaIntCalcH: source.thetaIntCalcH }),
+    ...(source.aHred === undefined ? {} : { aHred: source.aHred }),
+    ...(source.dThetaFloat === undefined ? {} : { dThetaFloat: source.dThetaFloat }),
+    ...(source.dThetaFloatBranch === undefined ? {} : { dThetaFloatBranch: source.dThetaFloatBranch }),
+    ...(source.transmissionHeatTransferCoefficientWK === undefined
+      ? {}
+      : { transmissionHeatTransferCoefficientWK: source.transmissionHeatTransferCoefficientWK }),
+    ...(source.ventilationHeatTransferCoefficientWK === undefined
+      ? {}
+      : { ventilationHeatTransferCoefficientWK: source.ventilationHeatTransferCoefficientWK }),
+    ...(source.totalHeatTransferCoefficientWK === undefined
+      ? {}
+      : { totalHeatTransferCoefficientWK: source.totalHeatTransferCoefficientWK }),
+    ...(source.calculationDurationHours === undefined
+      ? {}
+      : { calculationDurationHours: source.calculationDurationHours }),
+    ...(source.heatingIntermittencyPeriodResults === undefined
+      ? {}
+      : { heatingIntermittencyPeriodResults: source.heatingIntermittencyPeriodResults }),
+    ...(source.heatingIntermittencyFormulaCode === undefined
+      ? {}
+      : { heatingIntermittencyFormulaCode: source.heatingIntermittencyFormulaCode }),
+    ...(source.heatingIntermittencySourcePackCode === undefined
+      ? {}
+      : { heatingIntermittencySourcePackCode: source.heatingIntermittencySourcePackCode })
   };
 }
 
@@ -614,23 +718,16 @@ function validateCase(inputCase) {
   const source = validateSource(inputCase.source);
   if (!source.ok) return source;
 
-  if (hasInputValue(inputCase, "heatingIntermittencyCorrection")) {
-    return {
-      ok: false,
-      code: "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
-    };
-  }
-
   if (hasInputValue(inputCase, "longUnoccupiedPeriodAdjustment")) {
     return validateLongUnoccupiedPeriodAdjustmentCase(inputCase);
   }
 
-  const qHhtSource = extractQHhtFromExplicitC5Transfer(inputCase);
-  if (!qHhtSource.ok) return qHhtSource;
-  const { qHht } = qHhtSource.value;
   const qHgnSource = extractQHgn(inputCase);
   if (!qHgnSource.ok) return qHgnSource;
   const { qHgn } = qHgnSource.value;
+  const qHhtSource = extractQHhtSource(inputCase, qHgn);
+  if (!qHhtSource.ok) return qHhtSource;
+  const { qHht } = qHhtSource.value;
   const gammaH = inputCase.gammaH === undefined || inputCase.gammaH === null
     ? qHgn / qHht
     : finiteNumber(inputCase.gammaH);
@@ -645,9 +742,7 @@ function validateCase(inputCase) {
         caseId: inputCase.caseId,
         month: inputCase.month,
         qHht,
-        qHhtOrigin: qHhtSource.value.qHhtOrigin,
-        ...(qHhtSource.value.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: qHhtSource.value.qHhtSourceScope }),
-        ...(qHhtSource.value.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: qHhtSource.value.qHhtSourceSymbol }),
+        ...qHhtSourceOutputFields(qHhtSource.value),
         qHgn,
         qHgnOrigin: qHgnSource.value.qHgnOrigin,
         ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
@@ -673,9 +768,7 @@ function validateCase(inputCase) {
         caseId: inputCase.caseId,
         month: inputCase.month,
         qHht,
-        qHhtOrigin: qHhtSource.value.qHhtOrigin,
-        ...(qHhtSource.value.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: qHhtSource.value.qHhtSourceScope }),
-        ...(qHhtSource.value.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: qHhtSource.value.qHhtSourceSymbol }),
+        ...qHhtSourceOutputFields(qHhtSource.value),
         qHgn,
         qHgnOrigin: qHgnSource.value.qHgnOrigin,
         ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
@@ -768,9 +861,7 @@ function validateCase(inputCase) {
       caseId: inputCase.caseId,
       month: inputCase.month,
       qHht,
-      qHhtOrigin: qHhtSource.value.qHhtOrigin,
-      ...(qHhtSource.value.qHhtSourceScope === undefined ? {} : { qHhtSourceScope: qHhtSource.value.qHhtSourceScope }),
-      ...(qHhtSource.value.qHhtSourceSymbol === undefined ? {} : { qHhtSourceSymbol: qHhtSource.value.qHhtSourceSymbol }),
+      ...qHhtSourceOutputFields(qHhtSource.value),
       qHgn,
       qHgnOrigin: qHgnSource.value.qHgnOrigin,
       ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),

@@ -52,6 +52,38 @@ function longUnoccupiedCase(overrides = {}, adjustmentOverrides = {}) {
   };
 }
 
+function heatingIntermittencyCorrection(overrides = {}) {
+  return {
+    thetaIntSetH: 20,
+    thetaExternal: 0,
+    transmissionHeatTransferCoefficientWK: 50,
+    ventilationHeatTransferCoefficientWK: 19,
+    calculationDurationHours: 744,
+    tauH: 16.666666666666668,
+    reductionPeriods: [
+      {
+        periodId: "day",
+        thetaIntSetHLow: 20,
+        reductionDurationHours: 0,
+        repetitionCount: 0
+      },
+      {
+        periodId: "night",
+        thetaIntSetHLow: 16,
+        reductionDurationHours: 8,
+        repetitionCount: 7
+      },
+      {
+        periodId: "wknd",
+        thetaIntSetHLow: 20,
+        reductionDurationHours: 0,
+        repetitionCount: 0
+      }
+    ],
+    ...overrides
+  };
+}
+
 function input(cases = [sampleCase()], overrides = {}) {
   return {
     mode: "restricted_heating_qhnd_explicit_v1",
@@ -161,6 +193,66 @@ await test("C5 explicit transfer can feed QHht with explicit etaHgn", () => {
   assert.equal(result.caseResults[0].qHhtSourceSymbol, "Q_total_transfer_explicit");
   close(result.caseResults[0].qHnd, 786.72);
   assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
+});
+
+await test("heating intermittency relations 2.59 to 2.73 can feed QHht with explicit etaHgn", () => {
+  const payloadCase = sampleCase({
+    heatingIntermittencyCorrection: heatingIntermittencyCorrection()
+  });
+  delete payloadCase.qHht;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHht, 980.64059861452);
+  assert.equal(
+    result.caseResults[0].qHhtOrigin,
+    "calculated_from_explicit_heating_intermittency_correction"
+  );
+  assert.equal(
+    result.caseResults[0].qHhtSourceScope,
+    "heating_intermittency_explicit_input_only_not_full_QHnd"
+  );
+  assert.equal(result.caseResults[0].qHhtSourceSymbol, "QH;ht;ztc;m");
+  close(result.caseResults[0].thetaIntCalcH, 19.10239595244117);
+  close(result.caseResults[0].aHred, 0.9551197976220586);
+  close(result.caseResults[0].dThetaFloat, 0.292192613370734);
+  assert.equal(result.caseResults[0].heatingIntermittencyPeriodResults.length, 3);
+  close(result.caseResults[0].heatingIntermittencyPeriodResults[1].dThetaRedMean, 0.8653593928661756);
+  assert.equal(
+    result.caseResults[0].heatingIntermittencyFormulaCode,
+    "MC001_R11_HEATING_INTERMITTENCY_QHHT_FROM_CORRECTED_SETPOINT"
+  );
+  assert.equal(
+    result.caseResults[0].heatingIntermittencySourcePackCode,
+    "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK"
+  );
+  close(result.caseResults[0].qHnd, 740.64059861452);
+  close(result.summary.annualQHnd, 740.64059861452);
+});
+
+await test("heating intermittency QHht source works with calculated etaHgn from explicit aH", () => {
+  const payloadCase = sampleCase({
+    aH: 2,
+    heatingIntermittencyCorrection: heatingIntermittencyCorrection()
+  });
+  delete payloadCase.qHht;
+  delete payloadCase.etaHgn;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHht, 980.64059861452);
+  close(result.caseResults[0].gammaH, 0.3059224760058369);
+  close(result.caseResults[0].etaHgn, 0.933127671858881);
+  close(result.caseResults[0].qHnd, 700.7022970568556);
+  assert.equal(result.caseResults[0].etaHgnOrigin, "calculated_from_explicit_aH");
+  assert.equal(
+    result.caseResults[0].qHhtOrigin,
+    "calculated_from_explicit_heating_intermittency_correction"
+  );
 });
 
 await test("explicit internal and solar gains can feed QHgn", () => {
@@ -373,6 +465,26 @@ await test("rejects ambiguous direct and C5-derived QHht sources", () => {
   );
 });
 
+await test("rejects ambiguous direct and intermittency-derived QHht sources", () => {
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({
+      heatingIntermittencyCorrection: heatingIntermittencyCorrection()
+    })])),
+    "ambiguous_QHht_source"
+  );
+});
+
+await test("blocks missing explicit heating intermittency dependency", () => {
+  const payloadCase = sampleCase({
+    heatingIntermittencyCorrection: heatingIntermittencyCorrection({ tauH: undefined })
+  });
+  delete payloadCase.qHht;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
+    "restricted_qhnd_heating_intermittency_failed_missing_explicit_tauH_for_intermittency"
+  );
+});
+
 await test("gamma can be calculated from qHgn over qHht when omitted", () => {
   const payloadCase = sampleCase();
   delete payloadCase.gammaH;
@@ -513,19 +625,27 @@ await test("golden smoke fixture covers restricted heating dependency spine", ()
     caseId: "apr-golden-long-unoccupied",
     month: "april"
   });
+  const intermittencyGoldenCase = sampleCase({
+    caseId: "may-golden-heating-intermittency",
+    month: "may",
+    heatingIntermittencyCorrection: heatingIntermittencyCorrection()
+  });
+  delete intermittencyGoldenCase.qHht;
+  delete intermittencyGoldenCase.gammaH;
 
   const result = calculateMc001RestrictedHeatingQhndExplicit(input([
     normalDependencyCase,
     nonPositiveGammaCase,
     highGammaCase,
-    longUnoccupiedGoldenCase
+    longUnoccupiedGoldenCase,
+    intermittencyGoldenCase
   ]));
 
   assert.equal(result.status, "ready");
   assert.equal(result.scope, "restricted_heating_qhnd_explicit_input_only_not_full_mc001");
-  assert.equal(result.summary.caseCount, 4);
-  assert.equal(result.summary.monthCount, 4);
-  close(result.summary.annualQHnd, 1528.598657666405);
+  assert.equal(result.summary.caseCount, 5);
+  assert.equal(result.summary.monthCount, 5);
+  close(result.summary.annualQHnd, 2269.239256280925);
 
   const normalResult = result.caseResults[0];
   close(normalResult.qHht, 1026.72);
@@ -574,6 +694,24 @@ await test("golden smoke fixture covers restricted heating dependency spine", ()
     longUnoccupiedResult.longUnoccupiedFormulaCode,
     "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
   );
+
+  const intermittencyResult = result.caseResults[4];
+  assert.equal(intermittencyResult.caseId, "may-golden-heating-intermittency");
+  close(intermittencyResult.qHht, 980.64059861452);
+  assert.equal(
+    intermittencyResult.qHhtOrigin,
+    "calculated_from_explicit_heating_intermittency_correction"
+  );
+  close(intermittencyResult.thetaIntCalcH, 19.10239595244117);
+  close(intermittencyResult.aHred, 0.9551197976220586);
+  close(intermittencyResult.dThetaFloat, 0.292192613370734);
+  assert.equal(intermittencyResult.heatingIntermittencyPeriodResults.length, 3);
+  close(intermittencyResult.heatingIntermittencyPeriodResults[1].dThetaRedMean, 0.8653593928661756);
+  assert.equal(
+    intermittencyResult.heatingIntermittencyFormulaCode,
+    "MC001_R11_HEATING_INTERMITTENCY_QHHT_FROM_CORRECTED_SETPOINT"
+  );
+  close(intermittencyResult.qHnd, 740.64059861452);
 
   for (const limit of [
     "restricted_heating_only",
@@ -659,17 +797,22 @@ await test("long unoccupied branch rejects ambiguous normal QHnd inputs", () => 
   );
 });
 
-await test("heating intermittency input remains blocked until relations 2.59 to 2.73 are machine encoded", () => {
-  assertBlocked(
-    calculateMc001RestrictedHeatingQhndExplicit(input([
-      sampleCase({
-        heatingIntermittencyCorrection: {
-          relationSet: "2.59-2.73",
-          explicitInputsProvided: true
-        }
-      })
-    ])),
-    "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+await test("heating intermittency relations 2.59 to 2.73 are machine encoded and usable", () => {
+  const payloadCase = sampleCase({
+    heatingIntermittencyCorrection: heatingIntermittencyCorrection()
+  });
+  delete payloadCase.qHht;
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+  assert.equal(result.status, "ready");
+  assert.equal(
+    result.caseResults[0].qHhtOrigin,
+    "calculated_from_explicit_heating_intermittency_correction"
+  );
+  assert.equal(
+    result.formulaReferences.includes(
+      "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK"
+    ),
+    true
   );
 });
 
@@ -985,7 +1128,7 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
     "not_CO2",
     "not_certificate",
     "long_unoccupied_periods_explicit_interpolation_only",
-    "heating_intermittency_source_located_not_machine_encoded",
+    "heating_intermittency_explicit_correction_only",
     "no_hidden_defaults",
     "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
     "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
@@ -999,15 +1142,15 @@ await test("scope and diagnostics say restricted and exclude downstream claims",
   }
   for (const branch of [
     "gammaH_less_or_equal_zero_without_positive_gains",
-    "cooling_QCnd",
-    "intermittency"
+    "cooling_QCnd"
   ]) {
     assert.equal(result.diagnostics.excludedBranches.includes(branch), true, `missing ${branch}`);
   }
   assert.equal(result.diagnostics.excludedBranches.includes("long_unoccupied_periods"), false);
+  assert.equal(result.diagnostics.excludedBranches.includes("intermittency"), false);
 });
 
-await test("long unoccupied is implemented while intermittency remains source-pack blocked", () => {
+await test("long unoccupied and heating intermittency are implemented while downstream scope stays blocked", () => {
   const result = calculateMc001RestrictedHeatingQhndExplicit(input());
 
   assert.equal(result.status, "ready");
@@ -1017,13 +1160,19 @@ await test("long unoccupied is implemented while intermittency remains source-pa
   );
   assert.equal(result.diagnostics.methodologyLimits.includes("no_hidden_defaults"), true);
   assert.equal(result.diagnostics.excludedBranches.includes("long_unoccupied_periods"), false);
-  assert.equal(result.diagnostics.excludedBranches.includes("intermittency"), true);
+  assert.equal(result.diagnostics.excludedBranches.includes("intermittency"), false);
   assert.equal(result.formulaReferences.includes("MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"), true);
   assert.equal(
     result.formulaReferences.includes("MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"),
     true
   );
-  assert.equal(result.formulaReferences.some(reference => /2\.77|intermitt/i.test(reference)), false);
+  assert.equal(
+    result.formulaReferences.includes(
+      "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK"
+    ),
+    true
+  );
+  assert.equal(result.formulaReferences.some(reference => /2\.77/i.test(reference)), false);
 });
 
 await test("module has no filesystem network PDF or registry-as-calculator behavior", () => {
