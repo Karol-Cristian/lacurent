@@ -32,6 +32,12 @@ const R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE =
   "MC001_R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK";
 const R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE =
   "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK";
+const R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE =
+  "MC001_R12_COOLING_QCND_FORMULA_SOURCE_PACK";
+const R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE =
+  "MC001_R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK";
+const R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE =
+  "MC001_R14_COOLING_INTERMITTENCY_RELATIONS_2_74_TO_2_75_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -49,10 +55,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 12,
+  sourcePacks: 15,
   formulas: 10,
   constants: 1,
-  concepts: 12,
+  concepts: 15,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -171,6 +177,18 @@ function heatingQhndClosurePack(value = registry()) {
 
 function heatingIntermittencyPack(value = registry()) {
   return sourcePackByCode(R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE, value);
+}
+
+function coolingQcndPack(value = registry()) {
+  return sourcePackByCode(R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE, value);
+}
+
+function coolingUtilizationPack(value = registry()) {
+  return sourcePackByCode(R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE, value);
+}
+
+function coolingIntermittencyPack(value = registry()) {
+  return sourcePackByCode(R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -360,10 +378,10 @@ test("registry identifies MC001 2022 and Monitorul Oficial source document", () 
   assert.equal(doc.sourceType, "official_normative_document");
 });
 
-test("registry now contains exactly twelve source packs", () => {
+test("registry now contains the expected source packs", () => {
   const packs = registry().sourcePacks;
 
-  assert.equal(packs.length, 12);
+  assert.equal(packs.length, EXPECTED_COUNTS.sourcePacks);
   assert.deepEqual(
     packs.map((pack) => pack.sourcePackCode).sort(),
     [
@@ -378,7 +396,10 @@ test("registry now contains exactly twelve source packs", () => {
       R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
       R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
       R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE,
-      R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE
+      R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE,
+      R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE,
+      R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE,
+      R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -2075,4 +2096,122 @@ test("package orchestrator H pipeline and H12A behavior remain out of runtime", 
   assert.equal(source.includes(packageFile), false);
   assert.equal(source.includes(orchestrator), false);
   assert.equal(source.includes(goldenPipeline), false);
+});
+
+test("R12 cooling QCnd source pack is machine-readable and runtime-scoped", () => {
+  const pack = coolingQcndPack();
+
+  assert.equal(pack.sourcePackCode, R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(pack.runtimeCalculatorStatus, "implemented_restricted_explicit_cooling_QCnd_runtime");
+  assert.equal(pack.concept.entryCode, "MC001_CONCEPT_COOLING_QCND_FORMULA");
+  assert.ok(pack.sourceScope.figuresVerified.includes("2.19"));
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.77"));
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.85"));
+  assert.equal(pack.runtimeIntegration.implementedModule, "mc001CoolingUsefulDemandCalculation.mjs");
+});
+
+test("R12 cooling relation map distinguishes QCnd runtime from downstream metadata", () => {
+  const map = coolingQcndPack().relationMap;
+  const byRelation = new Map(map.map((entry) => [entry.relationReference, entry]));
+
+  assert.equal(byRelation.get("figure_2.19").scopeClassification, "cooling_runtime_ready");
+  assert.equal(byRelation.get("2.77").scopeClassification, "cooling_runtime_ready");
+  assert.equal(byRelation.get("2.85").scopeClassification, "cooling_runtime_ready");
+  assert.equal(byRelation.get("2.78").scopeClassification, "cooling_metadata_only");
+  assert.equal(byRelation.get("2.80").scopeClassification, "downstream_overheating_metadata_only");
+  assert.equal(byRelation.get("2.82").scopeClassification, "latent_humidification_out_of_scope");
+  assert.equal(byRelation.get("2.83").scopeClassification, "latent_dehumidification_out_of_scope");
+});
+
+test("R12 cooling formula candidates include figure 2.19 relation 2.77 and annual 2.85", () => {
+  const candidates = coolingQcndPack().formulaCandidates;
+  const byCode = new Map(candidates.map((candidate) => [candidate.candidateCode, candidate]));
+
+  assert.equal(
+    byCode.get("MC001_R12_FIGURE_2_19_COOLING_UTILIZED_TRANSFER_BRANCH").machineExpression,
+    "qCnd = aCred * (qCgn - etaCht * qCht)"
+  );
+  assert.equal(
+    byCode.get("MC001_R12_RELATION_2_77_COOLING_LONG_UNOCCUPIED_INTERPOLATION").machineExpression,
+    "qCnd = (1 - unoccupiedFraction) * qCndOccupied + unoccupiedFraction * qCndUnoccupied"
+  );
+  assert.equal(
+    byCode.get("MC001_R12_RELATION_2_85_ANNUAL_QCND").machineExpression,
+    "annualQCnd = sum(qCnd for monthly cases)"
+  );
+  assert.equal(
+    byCode.get("MC001_R12_RELATIONS_2_80_TO_2_83_DOWNSTREAM_LATENT_AND_OVERHEATING").runtimeReadiness,
+    "not_used_by_QCnd_runtime"
+  );
+});
+
+test("R13 cooling utilization source pack encodes figure 2.15 and relations 2.56 2.58", () => {
+  const pack = coolingUtilizationPack();
+  const candidates = pack.formulaCandidates;
+  const byCode = new Map(candidates.map((candidate) => [candidate.candidateCode, candidate]));
+
+  assert.equal(pack.sourcePackCode, R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.concept.targetSymbol, "etaC;ht;ztc;m");
+  assert.ok(pack.sourceScope.figuresVerified.includes("2.15"));
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.56"));
+  assert.ok(pack.sourceScope.relationsVerified.includes("2.58"));
+  assert.equal(
+    byCode.get("MC001_R13_FIGURE_2_15_ETA_C_POSITIVE_GAMMA_NOT_ONE").machineExpression,
+    "etaCht = (1 - gammaC ** (-aC)) / (1 - gammaC ** (-(aC + 1)))"
+  );
+  assert.equal(
+    byCode.get("MC001_R13_FIGURE_2_15_ETA_C_GAMMA_EQUALS_ONE").machineExpression,
+    "etaCht = aC / (aC + 1)"
+  );
+  assert.equal(
+    byCode.get("MC001_R13_RELATION_2_56_A_C_PARAMETER").machineExpression,
+    "aC = aC0 + tauC / tauC0"
+  );
+  assert.equal(
+    byCode.get("MC001_R13_RELATION_2_58_TAU_C_TIME_CONSTANT").outputUnit,
+    "h"
+  );
+});
+
+test("R14 cooling intermittency source pack encodes relations 2.74 and 2.75 without defaults", () => {
+  const pack = coolingIntermittencyPack();
+  const candidates = pack.formulaCandidates;
+  const byCode = new Map(candidates.map((candidate) => [candidate.candidateCode, candidate]));
+  const serialized = JSON.stringify(pack);
+
+  assert.equal(pack.sourcePackCode, R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.runtimeIntegration.implementedModule, "mc001CoolingIntermittencyCalculation.mjs");
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.74", "2.75"]);
+  assert.equal(
+    byCode.get("MC001_R14_RELATION_2_74_COOLING_INTERMITTENCY_REDUCTION_FACTOR").machineExpression,
+    "aCred = (1 - fCredWknd) + bCredWknd * fCredWknd"
+  );
+  assert.equal(
+    byCode.get("MC001_R14_RELATION_2_75_COOLING_INTERMITTENCY_WEEK_FRACTION").machineExpression,
+    "fCredWknd = weekendReductionDurationHours * weekendReductionRepetitionCount / (24 * 7)"
+  );
+  assert.equal(serialized.includes("defaultValue"), false);
+  assert.equal(serialized.includes("numericValue"), false);
+});
+
+test("cooling source packs keep final primary CO2 CPE and certificate blocked", () => {
+  for (const pack of [
+    coolingQcndPack(),
+    coolingUtilizationPack(),
+    coolingIntermittencyPack()
+  ]) {
+    for (const blockerCode of [
+      "not_final_energy",
+      "not_primary_energy",
+      "not_CO2",
+      "not_CPE_certificate",
+      "no_hidden_defaults"
+    ]) {
+      assert.ok(pack.blockers.includes(blockerCode), `${pack.sourcePackCode} ${blockerCode}`);
+    }
+  }
 });

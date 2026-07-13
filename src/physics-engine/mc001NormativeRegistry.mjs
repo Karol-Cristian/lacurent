@@ -22,6 +22,12 @@ const R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE =
   "MC001_R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK";
 const R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE =
   "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK";
+const R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE =
+  "MC001_R12_COOLING_QCND_FORMULA_SOURCE_PACK";
+const R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE =
+  "MC001_R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK";
+const R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE =
+  "MC001_R14_COOLING_INTERMITTENCY_RELATIONS_2_74_TO_2_75_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -81,7 +87,10 @@ const SOURCE_PACK_CODES = new Set([
   R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
   R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
   R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE,
-  R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE
+  R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE,
+  R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE,
+  R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE,
+  R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -121,7 +130,10 @@ const ENTRY_CODES = new Set([
   "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS",
   "MC001_CONCEPT_LONG_UNOCCUPIED_PERIOD_INTERPOLATION",
   "MC001_CONCEPT_HEATING_QHND_VERTICAL_CLOSURE",
-  "MC001_CONCEPT_HEATING_INTERMITTENCY_RELATIONS"
+  "MC001_CONCEPT_HEATING_INTERMITTENCY_RELATIONS",
+  "MC001_CONCEPT_COOLING_QCND_FORMULA",
+  "MC001_CONCEPT_COOLING_UTILIZATION_FACTOR",
+  "MC001_CONCEPT_COOLING_INTERMITTENCY_RELATIONS"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -452,10 +464,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 12,
+    sourcePacks: 15,
     formulas: 10,
     constants: 1,
-    concepts: 12,
+    concepts: 15,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -3946,6 +3958,461 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "no_system_losses",
         "no_hidden_defaults"
       ]
+    },
+    {
+      sourcePackCode: R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus: "implemented_restricted_explicit_cooling_QCnd_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        sectionsVerified: ["2.8.3", "2.8.4", "2.9", "2.10"],
+        pagesVerified: [120, 121, 122, 123, 124],
+        figuresVerified: ["2.19"],
+        relationsVerified: [
+          "2.77",
+          "2.78",
+          "2.79",
+          "2.80",
+          "2.81",
+          "2.82",
+          "2.83",
+          "2.85"
+        ],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_COOLING_QCND_FORMULA",
+        entryType: "concept",
+        conceptCode: "cooling_qcnd_formula_runtime",
+        targetSymbol: "QC;nd;ztc;m",
+        registryKind: "machine_readable_restricted_runtime_source_pack",
+        name: "Cooling useful demand formula source pack",
+        unit: "kWh",
+        purpose:
+          "machine-encodes the explicit-input cooling useful-demand branches needed for restricted monthly and annual QCnd runtime",
+        sourceLocator: {
+          page: 120,
+          figure: "2.19",
+          subsection: "2.8.4"
+        }
+      },
+      relationMap: [
+        {
+          relationReference: "figure_2.19",
+          scopeClassification: "cooling_runtime_ready",
+          implementationStatus: "implemented_restricted_runtime",
+          runtimeFormulaCode: "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND"
+        },
+        {
+          relationReference: "2.77",
+          scopeClassification: "cooling_runtime_ready",
+          implementationStatus: "implemented_restricted_runtime",
+          runtimeFormulaCode: "MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION"
+        },
+        {
+          relationReference: "2.85",
+          scopeClassification: "cooling_runtime_ready",
+          implementationStatus: "implemented_restricted_runtime",
+          runtimeFormulaCode: "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND"
+        },
+        {
+          relationReference: "2.78",
+          scopeClassification: "cooling_metadata_only",
+          implementationStatus: "not_required_for_QCnd_runtime_temperature_output"
+        },
+        {
+          relationReference: "2.79",
+          scopeClassification: "cooling_metadata_only",
+          implementationStatus: "not_required_for_QCnd_runtime_temperature_output"
+        },
+        {
+          relationReference: "2.80",
+          scopeClassification: "downstream_overheating_metadata_only",
+          implementationStatus: "out_of_current_QCnd_scope"
+        },
+        {
+          relationReference: "2.81",
+          scopeClassification: "downstream_overheating_metadata_only",
+          implementationStatus: "out_of_current_QCnd_scope"
+        },
+        {
+          relationReference: "2.82",
+          scopeClassification: "latent_humidification_out_of_scope",
+          implementationStatus: "out_of_current_QCnd_scope"
+        },
+        {
+          relationReference: "2.83",
+          scopeClassification: "latent_dehumidification_out_of_scope",
+          implementationStatus: "out_of_current_QCnd_scope"
+        }
+      ],
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R12_FIGURE_2_19_ZERO_INVERSE_GAMMA_BRANCH",
+          relationReference: "figure_2.19",
+          expressionText: "QC;nd;ztc;m = 0 when (1 / gammaC;ztc;m) > 2.0",
+          machineExpression: "qCnd = 0 when (1 / gammaC) > 2",
+          outputSymbol: "QC;nd;ztc;m",
+          outputUnit: "kWh",
+          requiredInputs: ["gammaC"],
+          conditions: ["cooling monthly useful demand zero branch"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 120 figure 2.19",
+          sourceLocator: { page: 120, figure: "2.19" }
+        },
+        {
+          candidateCode: "MC001_R12_FIGURE_2_19_COOLING_UTILIZED_TRANSFER_BRANCH",
+          relationReference: "figure_2.19",
+          expressionText:
+            "QC;nd;ztc;m = aC;red;ztc;m * (QC;gn;ztc;m - etaC;ht;ztc;m * QC;ht;ztc;m)",
+          machineExpression: "qCnd = aCred * (qCgn - etaCht * qCht)",
+          outputSymbol: "QC;nd;ztc;m",
+          outputUnit: "kWh",
+          requiredInputs: ["aCred", "QC;gn;ztc;m", "etaC;ht;ztc;m", "QC;ht;ztc;m"],
+          conditions: ["figure 2.19 non-zero cooling branch"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 120 figure 2.19",
+          sourceLocator: { page: 120, figure: "2.19" }
+        },
+        {
+          candidateCode: "MC001_R12_RELATION_2_77_COOLING_LONG_UNOCCUPIED_INTERPOLATION",
+          relationReference: "2.77",
+          expressionText:
+            "QC;nd;ztc;m = (1 - fC;nocc;ztc;m) * QC;nd;occ;ztc;m + fC;nocc;ztc;m * QC;nd;nocc;ztc;m",
+          machineExpression: "qCnd = (1 - unoccupiedFraction) * qCndOccupied + unoccupiedFraction * qCndUnoccupied",
+          outputSymbol: "QC;nd;ztc;m",
+          outputUnit: "kWh",
+          requiredInputs: ["qCndOccupied", "qCndUnoccupied", "unoccupiedFraction"],
+          conditions: ["cooling long unoccupied period explicit interpolation"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 121 relation 2.77",
+          sourceLocator: { page: 121, relation: "2.77" }
+        },
+        {
+          candidateCode: "MC001_R12_RELATION_2_85_ANNUAL_QCND",
+          relationReference: "2.85",
+          expressionText: "QC;nd;ztc;an = sum_m QC;nd;ztc;m",
+          machineExpression: "annualQCnd = sum(qCnd for monthly cases)",
+          outputSymbol: "QC;nd;ztc;an",
+          outputUnit: "kWh",
+          requiredInputs: ["monthly QC;nd;ztc;m cases"],
+          conditions: ["explicit monthly case list"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 124 relation 2.85",
+          sourceLocator: { page: 124, relation: "2.85" }
+        },
+        {
+          candidateCode: "MC001_R12_RELATIONS_2_78_TO_2_79_CALCULATED_ZONE_TEMPERATURE",
+          relationReference: "2.78_to_2.79",
+          expressionText: "cooling calculated operative temperature and cooling heat-transfer coefficient",
+          machineExpression: "metadata_only_temperature_output_not_used_for_QCnd",
+          outputSymbol: "theta_int;op;C;ztc;m",
+          outputUnit: "degC",
+          requiredInputs: ["QC;nd;ztc;m", "QC;gn;ztc;m", "HC;ht;ztc;m", "Delta_t_m"],
+          conditions: ["temperature output after QCnd"],
+          scopeClassification: "cooling_metadata_only",
+          runtimeReadiness: "metadata_only_not_QCnd_runtime",
+          sourceReference: "MC001-2022 page 121 relations 2.78 and 2.79",
+          sourceLocator: { page: 121, relation: "2.78_to_2.79" }
+        },
+        {
+          candidateCode: "MC001_R12_RELATIONS_2_80_TO_2_83_DOWNSTREAM_LATENT_AND_OVERHEATING",
+          relationReference: "2.80_to_2.83",
+          expressionText: "overheating and latent humidification/dehumidification indicators",
+          machineExpression: "out_of_current_QCnd_scope",
+          outputSymbol: "non_QCnd_downstream_outputs",
+          outputUnit: "mixed",
+          requiredInputs: ["out_of_scope"],
+          conditions: ["not part of restricted sensible cooling useful demand runtime"],
+          scopeClassification: "downstream_out_of_scope",
+          runtimeReadiness: "not_used_by_QCnd_runtime",
+          sourceReference: "MC001-2022 pages 122-124 relations 2.80 to 2.83",
+          sourceLocator: { page: 122, relation: "2.80_to_2.83" }
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001CoolingUsefulDemandCalculation.mjs",
+        runtimeFormulaCodes: [
+          "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND",
+          "MC001_2_77_LONG_UNOCCUPIED_COOLING_INTERPOLATION",
+          "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND"
+        ],
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_climate_defaults",
+          "no_schedule_defaults",
+          "no_setpoint_defaults"
+        ]
+      },
+      blockers: [
+        "not_full_QC;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults"
+      ]
+    },
+    {
+      sourcePackCode: R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_restricted_explicit_cooling_utilization_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.7.6. Factori de utilizare",
+        pagesVerified: [114, 116],
+        figuresVerified: ["2.15"],
+        relationsVerified: ["2.56", "2.58"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_COOLING_UTILIZATION_FACTOR",
+        entryType: "concept",
+        conceptCode: "cooling_heat_transfer_utilization_factor_runtime",
+        targetSymbol: "etaC;ht;ztc;m",
+        registryKind: "machine_readable_restricted_runtime_source_pack",
+        name: "Cooling heat-transfer utilization factor",
+        unit: "dimensionless",
+        purpose:
+          "machine-encodes figure 2.15 and cooling aC/tauC dependencies for restricted QCnd runtime",
+        sourceLocator: {
+          page: 114,
+          figure: "2.15",
+          subsection: "2.7.6"
+        }
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R13_FIGURE_2_15_GAMMA_C_BALANCE_RATIO",
+          relationReference: "figure_2.15",
+          expressionText: "gammaC;ztc;m = QC;gn;ztc;m / QC;ht;ztc;m",
+          machineExpression: "gammaC = qCgn / qCht",
+          outputSymbol: "gammaC;ztc;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["QC;gn;ztc;m", "QC;ht;ztc;m"],
+          conditions: ["explicit cooling gains and heat transfer"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 114 figure 2.15",
+          sourceLocator: { page: 114, figure: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R13_FIGURE_2_15_ETA_C_POSITIVE_GAMMA_NOT_ONE",
+          relationReference: "figure_2.15",
+          expressionText:
+            "etaC;ht;ztc;m = (1 - gammaC;ztc;m ^ (-aC;ztc;m)) / (1 - gammaC;ztc;m ^ (-(aC;ztc;m + 1)))",
+          machineExpression: "etaCht = (1 - gammaC ** (-aC)) / (1 - gammaC ** (-(aC + 1)))",
+          outputSymbol: "etaC;ht;ztc;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["gammaC", "aC"],
+          conditions: ["gammaC > 0", "gammaC != 1"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 114 figure 2.15",
+          sourceLocator: { page: 114, figure: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R13_FIGURE_2_15_ETA_C_GAMMA_EQUALS_ONE",
+          relationReference: "figure_2.15",
+          expressionText: "etaC;ht;ztc;m = aC;ztc;m / (aC;ztc;m + 1)",
+          machineExpression: "etaCht = aC / (aC + 1)",
+          outputSymbol: "etaC;ht;ztc;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["aC"],
+          conditions: ["gammaC = 1"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 114 figure 2.15",
+          sourceLocator: { page: 114, figure: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R13_FIGURE_2_15_ETA_C_NON_POSITIVE_GAMMA",
+          relationReference: "figure_2.15",
+          expressionText: "etaC;ht;ztc;m = 1 when gammaC;ztc;m <= 0",
+          machineExpression: "etaCht = 1",
+          outputSymbol: "etaC;ht;ztc;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["gammaC"],
+          conditions: ["gammaC <= 0"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 114 figure 2.15",
+          sourceLocator: { page: 114, figure: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R13_RELATION_2_56_A_C_PARAMETER",
+          relationReference: "2.56",
+          expressionText: "aC;ztc;m = aC;0 + tauC;ztc;m / tauC;0",
+          machineExpression: "aC = aC0 + tauC / tauC0",
+          outputSymbol: "aC;ztc;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["aC0", "tauC", "tauC0"],
+          conditions: ["reference parameters supplied explicitly"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 114 relation 2.56",
+          sourceLocator: { page: 114, relation: "2.56" }
+        },
+        {
+          candidateCode: "MC001_R13_RELATION_2_58_TAU_C_TIME_CONSTANT",
+          relationReference: "2.58",
+          expressionText:
+            "tauC;ztc;m = (Cm;eff;ztc / 3600) / (HC;tr(excl.grfl);ztc;m + HC;gr;adj;ztc + HC;ve;ztc;m)",
+          machineExpression:
+            "tauC = (effectiveInternalHeatCapacityJPerK / 3600) / coolingHeatTransferCoefficientWK",
+          outputSymbol: "tauC;ztc;m",
+          outputUnit: "h",
+          requiredInputs: ["Cm;eff;ztc", "cooling heat-transfer coefficient components or total"],
+          conditions: ["all inputs explicit and heat-transfer coefficient positive"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 116 relation 2.58",
+          sourceLocator: { page: 116, relation: "2.58" }
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001CoolingHeatTransferUtilizationFactorCalculation.mjs",
+        integrationModule: "mc001CoolingUsefulDemandCalculation.mjs",
+        runtimeFormulaCode: "MC001_FIGURE_2_15_COOLING_HEAT_TRANSFER_UTILIZATION_FACTOR",
+        etaChtOrigin: "calculated_from_explicit_aC_or_time_constant_dependencies",
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_aC0_default",
+          "no_tauC0_default",
+          "no_capacity_default"
+        ]
+      },
+      blockers: [
+        "not_full_QC;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults"
+      ]
+    },
+    {
+      sourcePackCode: R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_restricted_explicit_cooling_intermittency_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.8.3. Corectii pentru racire intermitenta",
+        pagesVerified: [119],
+        relationsVerified: ["2.74", "2.75"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_COOLING_INTERMITTENCY_RELATIONS",
+        entryType: "concept",
+        conceptCode: "cooling_intermittency_relations_2_74_to_2_75",
+        targetSymbol: "aC;red;ztc;m",
+        registryKind: "machine_readable_restricted_runtime_source_pack",
+        name: "Cooling intermittency relations 2.74 to 2.75",
+        unit: "dimensionless",
+        purpose:
+          "machine-encodes explicit-input weekend cooling reduction used by restricted QCnd runtime",
+        sourceLocator: {
+          page: 119,
+          subsection: "2.8.3"
+        }
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R14_RELATION_2_74_COOLING_INTERMITTENCY_REDUCTION_FACTOR",
+          relationReference: "2.74",
+          expressionText:
+            "aC;red;ztc;m = (1 - fC;red;wknd;ztc) + bC;red;wknd * fC;red;wknd;ztc",
+          machineExpression: "aCred = (1 - fCredWknd) + bCredWknd * fCredWknd",
+          outputSymbol: "aC;red;ztc;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["fCredWknd", "bCredWknd"],
+          conditions: ["whole-weekend cooling reduction or shutdown with explicit factor"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 119 relation 2.74",
+          sourceLocator: { page: 119, relation: "2.74" }
+        },
+        {
+          candidateCode: "MC001_R14_RELATION_2_75_COOLING_INTERMITTENCY_WEEK_FRACTION",
+          relationReference: "2.75",
+          expressionText:
+            "fC;red;wknd;ztc = Delta_tC;red;wknd;ztc * nrep;C;red;wknd;ztc / (24 * 7)",
+          machineExpression:
+            "fCredWknd = weekendReductionDurationHours * weekendReductionRepetitionCount / (24 * 7)",
+          outputSymbol: "fC;red;wknd;ztc",
+          outputUnit: "dimensionless",
+          requiredInputs: [
+            "weekendReductionDurationHours",
+            "weekendReductionRepetitionCount"
+          ],
+          conditions: ["weekend reduction duration and repetition count supplied explicitly"],
+          scopeClassification: "cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 119 relation 2.75",
+          sourceLocator: { page: 119, relation: "2.75" }
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001CoolingIntermittencyCalculation.mjs",
+        integrationModule: "mc001CoolingUsefulDemandCalculation.mjs",
+        runtimeFormulaCode: "MC001_R14_RELATION_2_74_COOLING_INTERMITTENCY_REDUCTION_FACTOR",
+        aCredOrigin: "calculated_from_explicit_weekend_cooling_reduction",
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_bCredWknd_default",
+          "no_schedule_defaults",
+          "no_setpoint_defaults"
+        ]
+      },
+      blockers: [
+        "not_full_QC;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults"
+      ]
     }
   ]
 });
@@ -6873,6 +7340,126 @@ function heatingIntermittencySourcePackIssue(sourcePack) {
   return null;
 }
 
+function validateCoolingRuntimeSourceScope(sourceScope, requiredPages, requiredRelations) {
+  return (
+    isObject(sourceScope) &&
+    Array.isArray(sourceScope.extractionMethods) &&
+    sourceScope.extractionMethods.includes("page rendering to PNG") &&
+    requiredPages.every(page => sourceScope.pagesVerified?.includes(page)) &&
+    requiredRelations.every(relation => sourceScope.relationsVerified?.includes(relation))
+  );
+}
+
+function validateCoolingRuntimeConcept(concept, expectedEntryCode, expectedConceptCode, targetSymbol) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === expectedEntryCode &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === expectedConceptCode &&
+    concept.registryKind === "machine_readable_restricted_runtime_source_pack" &&
+    concept.targetSymbol === targetSymbol &&
+    hasRequiredString(concept.purpose) &&
+    isObject(concept.sourceLocator)
+  );
+}
+
+function validateCoolingFormulaCandidates(candidates, prefix, requiredReferences) {
+  if (!Array.isArray(candidates) || candidates.length < requiredReferences.length) {
+    return false;
+  }
+  const references = new Set(candidates.map(candidate => candidate.relationReference));
+  if (!requiredReferences.every(reference => references.has(reference))) {
+    return false;
+  }
+  return candidates.every(candidate => (
+    isObject(candidate) &&
+    typeof candidate.candidateCode === "string" &&
+    candidate.candidateCode.startsWith(prefix) &&
+    hasRequiredString(candidate.expressionText) &&
+    hasRequiredString(candidate.machineExpression) &&
+    hasRequiredString(candidate.outputSymbol) &&
+    hasRequiredString(candidate.outputUnit) &&
+    Array.isArray(candidate.requiredInputs) &&
+    candidate.requiredInputs.length > 0 &&
+    hasRequiredString(candidate.scopeClassification) &&
+    hasRequiredString(candidate.runtimeReadiness) &&
+    hasRequiredString(candidate.sourceReference) &&
+    candidate.sourceReference.includes("MC001-2022") &&
+    isObject(candidate.sourceLocator)
+  ));
+}
+
+function validateCoolingRuntimeIntegration(integration, expectedModule) {
+  return (
+    isObject(integration) &&
+    integration.implementedModule === expectedModule &&
+    Array.isArray(integration.inputPolicy) &&
+    integration.inputPolicy.includes("explicit_inputs_only") &&
+    integration.inputPolicy.includes("no_hidden_defaults")
+  );
+}
+
+function validateCoolingBlockers(blockers) {
+  return Array.isArray(blockers) &&
+    blockers.includes("not_final_energy") &&
+    blockers.includes("not_primary_energy") &&
+    blockers.includes("not_CO2") &&
+    blockers.includes("not_CPE_certificate") &&
+    blockers.includes("no_hidden_defaults");
+}
+
+function coolingSourcePackIssue(sourcePack, config) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateCoolingRuntimeSourceScope(
+    sourcePack.sourceScope,
+    config.requiredPages,
+    config.requiredRelations
+  )) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateCoolingRuntimeConcept(
+    sourcePack.concept,
+    config.entryCode,
+    config.conceptCode,
+    config.targetSymbol
+  )) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateCoolingFormulaCandidates(
+    sourcePack.formulaCandidates,
+    config.candidatePrefix,
+    config.requiredFormulaReferences
+  )) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateCoolingRuntimeIntegration(sourcePack.runtimeIntegration, config.implementedModule)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateCoolingBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !== config.runtimeCalculatorStatus ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -6915,6 +7502,45 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE) {
     return heatingIntermittencySourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE) {
+    return coolingSourcePackIssue(sourcePack, {
+      entryCode: "MC001_CONCEPT_COOLING_QCND_FORMULA",
+      conceptCode: "cooling_qcnd_formula_runtime",
+      targetSymbol: "QC;nd;ztc;m",
+      candidatePrefix: "MC001_R12_",
+      requiredPages: [120, 121, 124],
+      requiredRelations: ["2.77", "2.85"],
+      requiredFormulaReferences: ["figure_2.19", "2.77", "2.85"],
+      implementedModule: "mc001CoolingUsefulDemandCalculation.mjs",
+      runtimeCalculatorStatus: "implemented_restricted_explicit_cooling_QCnd_runtime"
+    });
+  }
+  if (sourcePack.sourcePackCode === R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE) {
+    return coolingSourcePackIssue(sourcePack, {
+      entryCode: "MC001_CONCEPT_COOLING_UTILIZATION_FACTOR",
+      conceptCode: "cooling_heat_transfer_utilization_factor_runtime",
+      targetSymbol: "etaC;ht;ztc;m",
+      candidatePrefix: "MC001_R13_",
+      requiredPages: [114, 116],
+      requiredRelations: ["2.56", "2.58"],
+      requiredFormulaReferences: ["figure_2.15", "2.56", "2.58"],
+      implementedModule: "mc001CoolingHeatTransferUtilizationFactorCalculation.mjs",
+      runtimeCalculatorStatus: "implemented_restricted_explicit_cooling_utilization_runtime"
+    });
+  }
+  if (sourcePack.sourcePackCode === R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE) {
+    return coolingSourcePackIssue(sourcePack, {
+      entryCode: "MC001_CONCEPT_COOLING_INTERMITTENCY_RELATIONS",
+      conceptCode: "cooling_intermittency_relations_2_74_to_2_75",
+      targetSymbol: "aC;red;ztc;m",
+      candidatePrefix: "MC001_R14_",
+      requiredPages: [119],
+      requiredRelations: ["2.74", "2.75"],
+      requiredFormulaReferences: ["2.74", "2.75"],
+      implementedModule: "mc001CoolingIntermittencyCalculation.mjs",
+      runtimeCalculatorStatus: "implemented_restricted_explicit_cooling_intermittency_runtime"
+    });
   }
   return "blocked_invalid_source_pack";
 }
