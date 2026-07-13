@@ -20,6 +20,8 @@ const R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE =
   "MC001_R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK";
 const R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE =
   "MC001_R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK";
+const R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE =
+  "MC001_R11_HEATING_INTERMITTENCY_RELATIONS_2_59_TO_2_73_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -78,7 +80,8 @@ const SOURCE_PACK_CODES = new Set([
   R7_QHND_AMBIGUITY_RESOLUTION_SOURCE_PACK_CODE,
   R8_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_SOURCE_PACK_CODE,
   R9_LONG_UNOCCUPIED_INTERPOLATION_SOURCE_PACK_CODE,
-  R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE
+  R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE,
+  R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -117,7 +120,8 @@ const ENTRY_CODES = new Set([
   "MC001_CONCEPT_QHND_AMBIGUITY_RESOLUTION_READINESS",
   "MC001_CONCEPT_HEATING_GAIN_UTILIZATION_FACTOR_FORMULA_READINESS",
   "MC001_CONCEPT_LONG_UNOCCUPIED_PERIOD_INTERPOLATION",
-  "MC001_CONCEPT_HEATING_QHND_VERTICAL_CLOSURE"
+  "MC001_CONCEPT_HEATING_QHND_VERTICAL_CLOSURE",
+  "MC001_CONCEPT_HEATING_INTERMITTENCY_RELATIONS"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -448,10 +452,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 11,
+    sourcePacks: 12,
     formulas: 10,
     constants: 1,
-    concepts: 11,
+    concepts: 12,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -3401,7 +3405,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "R6 gains capacity time-constant source pack",
           "R7 QHnd ambiguity resolution source pack",
           "R8 etaHgn formula source pack",
-          "R9 long unoccupied interpolation source pack"
+          "R9 long unoccupied interpolation source pack",
+          "R11 heating intermittency source pack"
         ]
       },
       concept: {
@@ -3413,7 +3418,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         name: "Heating useful-demand vertical closure coverage map",
         unit: "coverage_metadata",
         purpose:
-          "maps implemented restricted heating QHnd branches, metadata-only branches, unencoded heating intermittency relations, and downstream out-of-scope domains",
+          "maps implemented restricted heating QHnd branches, metadata-only branches, remaining unencoded boundary-duration dependencies, and downstream out-of-scope domains",
         sourceLocator: {
           page: 120,
           figure: "2.18",
@@ -3477,6 +3482,12 @@ export const mc001NormativeRegistryV1 = deepFreeze({
             formulaReference: "MC001_2_76_LONG_UNOCCUPIED_HEATING_INTERPOLATION"
           },
           {
+            branchId: "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
+            relationOrFigure: "2.59-2.73",
+            runtimeStatus: "implemented_restricted_explicit_inputs",
+            formulaReference: R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE
+          },
+          {
             branchId: "relation_2_84_annual_heating_qhnd_sum",
             relationOrFigure: "2.84",
             runtimeStatus: "implemented_restricted_explicit_monthly_aggregation",
@@ -3491,14 +3502,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           }
         ],
         notMachineEncodedBranches: [
-          {
-            branchId: "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
-            relationOrFigure: "2.59-2.73",
-            reason:
-              "local text extraction locates formulas but equation glyphs require human visual transcription before runtime use",
-            runtimeDiagnostic:
-              "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
-          },
           {
             branchId: "heating_period_boundary_duration_method",
             relationOrFigure: "section_2.11",
@@ -3520,16 +3523,17 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       runtimeClosureVerdict: {
         notFullQhndRemains: true,
         reason:
-          "heating intermittency relations 2.59-2.73 remain source-located but not machine-transcribed",
+          "restricted explicit-input runtime still omits inferred schedules, setpoints, missing months, and boundary-month duration defaults",
         implementedHeatingUsefulDemandRelations: [
           "figure_2.18",
           "figure_2.14",
           "2.55",
           "2.57",
+          "2.59-2.73",
           "2.76",
           "2.84"
         ],
-        blockedHeatingUsefulDemandRelations: ["2.59-2.73"],
+        blockedHeatingUsefulDemandRelations: ["section_2.11_boundary_duration_method"],
         coolingRelationsNotUsedInHeatingRuntime: ["2.77"]
       },
       dependencyMatrix: {
@@ -3555,7 +3559,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           status: "implemented_restricted_explicit_interpolation"
         },
         heatingIntermittencyRelations259To273: {
-          status: "blocked_source_located_not_machine_encoded"
+          status: "implemented_restricted_explicit_correction"
         },
         annualQhnd: {
           status: "implemented_sum_of_explicit_monthly_cases"
@@ -3590,7 +3594,357 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "no_hidden_defaults",
         "no_schedule_defaults",
         "no_temperature_setpoint_defaults",
-        "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+        "boundary_duration_defaults_not_encoded"
+      ]
+    },
+    {
+      sourcePackCode: R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE,
+      sourcePackType: READINESS_SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_restricted_explicit_heating_intermittency_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.8.2. Calculul efectului intermitentei incalzirii",
+        pagesVerified: [117, 118, 119],
+        relationsVerified: [
+          "2.59",
+          "2.60",
+          "2.61",
+          "2.62",
+          "2.63",
+          "2.64",
+          "2.65",
+          "2.66",
+          "2.67",
+          "2.68",
+          "2.69",
+          "2.70",
+          "2.71",
+          "2.72",
+          "2.73"
+        ],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of cropped equation renderings"
+        ],
+        sourceMaterialsReviewed: [
+          "local MC001-2022 methodology source pages 117-119",
+          "PyMuPDF text blocks and visual renderings"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_HEATING_INTERMITTENCY_RELATIONS",
+        entryType: "concept",
+        conceptCode: "heating_intermittency_relations_2_59_to_2_73",
+        targetSymbol: "theta_int_calc_H;ztc;m",
+        registryKind: "machine_readable_restricted_runtime_source_pack",
+        name: "Heating intermittency relations 2.59 to 2.73",
+        unit: "mixed",
+        purpose:
+          "machine-encodes the explicit-input heating intermittency correction chain used to derive corrected heating setpoint and heat transfer demand",
+        sourceLocator: {
+          page: 117,
+          subsection: "2.8.2"
+        }
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R11_RELATION_2_59_HEATING_CORRECTED_SETPOINT",
+          relationReference: "2.59",
+          expressionText:
+            "theta_int_calc_H = aHred * (theta_int_set_H - theta_e) + theta_e",
+          machineExpression:
+            "thetaIntCalcH = aHred * (thetaIntSetH - thetaExternal) + thetaExternal",
+          outputSymbol: "theta_int_calc,H,ztc,m",
+          outputUnit: "degC",
+          requiredInputs: ["aHred", "thetaIntSetH", "thetaExternal"],
+          conditions: ["heating intermittency explicit correction"],
+          dependencies: ["2.60"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.59" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_60_COMBINED_INTERMITTENCY_REDUCTION",
+          relationReference: "2.60",
+          expressionText:
+            "aHred = 1 - (1 - aHred_day) - (1 - aHred_night) - (1 - aHred_wknd)",
+          machineExpression:
+            "aHred = 1 - sum(1 - aHredPeriod for day/night/wknd)",
+          outputSymbol: "a_H,red,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["aHredDay", "aHredNight", "aHredWknd"],
+          conditions: ["day night and weekend period reductions provided explicitly"],
+          dependencies: ["2.61"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.60" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_61_PERIOD_REDUCTION_FACTOR",
+          relationReference: "2.61",
+          expressionText: "aHred_y = 1 - fHred_y + fHred_y * dthetaHredmn_y",
+          machineExpression:
+            "aHredPeriod = 1 - fHredPeriod + fHredPeriod * dThetaRedMeanPeriod",
+          outputSymbol: "a_H,red,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["fHredPeriod", "dThetaRedMeanPeriod"],
+          conditions: ["period y is day night or weekend"],
+          dependencies: ["2.62", "2.72", "2.73"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.61" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_62_PERIOD_TIME_FRACTION",
+          relationReference: "2.62",
+          expressionText: "fHred_y = Delta_t_H_red_y * n_rep_H_red_y / (24 * 7)",
+          machineExpression:
+            "fHredPeriod = reductionDurationHours * repetitionCount / (24 * 7)",
+          outputSymbol: "f_H,red,y,ztc",
+          outputUnit: "dimensionless",
+          requiredInputs: ["reductionDurationHours", "repetitionCount"],
+          conditions: ["period duration and repetition count are explicit"],
+          dependencies: [],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.62" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_63_REDUCED_SETPOINT_RATIO_NO_HEATING",
+          relationReference: "2.63",
+          expressionText:
+            "if theta_int_set_H - theta_e <= 0 then dtheta_set_H_low = 1",
+          machineExpression:
+            "dThetaSetLow = 1 when thetaIntSetH - thetaExternal <= 0",
+          outputSymbol: "dtheta_set,H,low,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["thetaIntSetH", "thetaExternal"],
+          conditions: ["normal heating temperature difference is non-positive"],
+          dependencies: [],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.63" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_64_REDUCED_SETPOINT_RATIO_LOW_BELOW_EXTERIOR",
+          relationReference: "2.64",
+          expressionText:
+            "if theta_int_set_H_low - theta_e <= 0 then dtheta_set_H_low = 0",
+          machineExpression:
+            "dThetaSetLow = 0 when thetaIntSetHLow - thetaExternal <= 0",
+          outputSymbol: "dtheta_set,H,low,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["thetaIntSetHLow", "thetaExternal"],
+          conditions: ["reduced setpoint is below or equal exterior temperature"],
+          dependencies: [],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.64" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_65_REDUCED_SETPOINT_RATIO",
+          relationReference: "2.65",
+          expressionText:
+            "dtheta_set_H_low = (theta_int_set_H_low - theta_e) / (theta_int_set_H - theta_e)",
+          machineExpression:
+            "dThetaSetLow = (thetaIntSetHLow - thetaExternal) / (thetaIntSetH - thetaExternal)",
+          outputSymbol: "dtheta_set,H,low,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["thetaIntSetHLow", "thetaIntSetH", "thetaExternal"],
+          conditions: ["both normal and reduced heating temperature differences are positive"],
+          dependencies: [],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.65" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_66_FREE_FLOAT_RATIO_FROM_EXPLICIT_TEMPERATURE",
+          relationReference: "2.66",
+          expressionText:
+            "dtheta_float = (theta_int_float - theta_e) / (theta_int_set_H - theta_e)",
+          machineExpression:
+            "dThetaFloat = (thetaIntFloat - thetaExternal) / (thetaIntSetH - thetaExternal)",
+          outputSymbol: "dtheta_float,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["thetaIntFloat", "thetaIntSetH", "thetaExternal"],
+          conditions: ["explicit free-float temperature supplied"],
+          dependencies: [],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.66" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_67_FREE_FLOAT_RATIO_FROM_GAINS",
+          relationReference: "2.67",
+          expressionText:
+            "dtheta_float = QHgn / ((HHtr + HHve) * (theta_int_set_H - theta_e) * Delta_t_m)",
+          machineExpression:
+            "dThetaFloat = (qHgn * 1000) / ((Htr + Hve) * (thetaIntSetH - thetaExternal) * calculationDurationHours)",
+          outputSymbol: "dtheta_float,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: [
+            "qHgn",
+            "transmissionHeatTransferCoefficientWK",
+            "ventilationHeatTransferCoefficientWK",
+            "thetaIntSetH",
+            "thetaExternal",
+            "calculationDurationHours"
+          ],
+          conditions: ["explicit gains and heat-transfer coefficients supplied"],
+          dependencies: [],
+          unitNormalization:
+            "qHgn is supplied in kWh and heat-transfer denominator is Wh, so runtime multiplies qHgn by 1000",
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 117, relation: "2.67" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_68_LOW_SETPOINT_DURATION_FULL_PERIOD",
+          relationReference: "2.68",
+          expressionText:
+            "if dtheta_set_H_low - dtheta_float <= 0 or heating is off then fHredlow = 1",
+          machineExpression:
+            "fHredLow = 1 when dThetaSetLow - dThetaFloat <= 0 or heatingOff",
+          outputSymbol: "f_H,red,low,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["dThetaSetLow", "dThetaFloat", "heatingOff"],
+          conditions: ["low setpoint reached for full reduction period or heating off"],
+          dependencies: ["2.63", "2.64", "2.65", "2.66", "2.67"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 118, relation: "2.68" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_69_LOW_SETPOINT_DURATION_ZERO",
+          relationReference: "2.69",
+          expressionText: "if dtheta_float = 1 then fHredlow = 0",
+          machineExpression:
+            "fHredLow = 0 when dThetaFloat equals 1 within runtime tolerance",
+          outputSymbol: "f_H,red,low,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["dThetaFloat"],
+          conditions: ["free-float ratio is one"],
+          dependencies: ["2.66", "2.67"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 118, relation: "2.69" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_70_LOW_SETPOINT_DURATION_FRACTION",
+          relationReference: "2.70",
+          expressionText:
+            "fHredlow = (Delta_t_H_red_low / tauH) / (Delta_t_H_red / tauH)",
+          machineExpression: "fHredLow = lowDurationRatio / periodDurationRatio",
+          outputSymbol: "f_H,red,low,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["lowDurationRatio", "periodDurationRatio"],
+          conditions: ["relations 2.68 and 2.69 do not apply"],
+          dependencies: ["2.71"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 118, relation: "2.70" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_71_LOW_DURATION_RATIO",
+          relationReference: "2.71",
+          expressionText:
+            "Delta_t_H_red_low / tauH = -ln((dtheta_set_H_low - dtheta_float) / (1 - dtheta_float))",
+          machineExpression:
+            "lowDurationRatio = -ln((dThetaSetLow - dThetaFloat) / (1 - dThetaFloat))",
+          outputSymbol: "Delta_t_H,red,low,y,ztc,m / tau_H,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["dThetaSetLow", "dThetaFloat"],
+          conditions: ["log argument is positive and finite"],
+          dependencies: ["2.63", "2.64", "2.65", "2.66", "2.67"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 118, relation: "2.71" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_72_MEAN_REDUCTION_FULL_LOW_PERIOD",
+          relationReference: "2.72",
+          expressionText:
+            "if fHredlow >= 1 then dthetaHredmn = dtheta_float + ((1 - dtheta_float) / (Delta_t_H_red / tauH)) * (1 - exp(-(Delta_t_H_red / tauH)))",
+          machineExpression:
+            "dThetaRedMean = dThetaFloat + ((1 - dThetaFloat) / periodDurationRatio) * (1 - exp(-periodDurationRatio))",
+          outputSymbol: "dtheta_H,red,mn,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["dThetaFloat", "periodDurationRatio", "fHredLow"],
+          conditions: ["fHredLow >= 1"],
+          dependencies: ["2.62", "2.68", "2.69", "2.70"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 119, relation: "2.72" }
+        },
+        {
+          candidateCode: "MC001_R11_RELATION_2_73_MEAN_REDUCTION_PARTIAL_LOW_PERIOD",
+          relationReference: "2.73",
+          expressionText:
+            "dthetaHredmn = ((1 - dtheta_set_H_low) / (Delta_t_H_red / tauH)) + fHredlow * dtheta_float + (1 - fHredlow) * dtheta_set_H_low",
+          machineExpression:
+            "dThetaRedMean = ((1 - dThetaSetLow) / periodDurationRatio) + fHredLow * dThetaFloat + (1 - fHredLow) * dThetaSetLow",
+          outputSymbol: "dtheta_H,red,mn,y,ztc,m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["dThetaSetLow", "dThetaFloat", "fHredLow", "periodDurationRatio"],
+          conditions: ["fHredLow < 1"],
+          dependencies: ["2.62", "2.68", "2.69", "2.70"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceLocator: { page: 119, relation: "2.73" }
+        }
+      ],
+      dependencyGraph: {
+        explicitInputs: [
+          "thetaIntSetH",
+          "thetaExternal",
+          "qHgn",
+          "transmissionHeatTransferCoefficientWK",
+          "ventilationHeatTransferCoefficientWK",
+          "calculationDurationHours",
+          "tauH",
+          "reductionPeriods"
+        ],
+        chain: [
+          "relations_2_63_to_2_65_reduced_setpoint_ratio",
+          "relation_2_66_or_2_67_free_float_ratio",
+          "relations_2_68_to_2_71_low_setpoint_duration_fraction",
+          "relations_2_72_to_2_73_mean_temperature_difference_reduction",
+          "relation_2_61_period_reduction_factor",
+          "relation_2_60_combined_reduction_factor",
+          "relation_2_59_corrected_heating_setpoint",
+          "restricted_explicit_heat_transfer_QHht_from_corrected_setpoint"
+        ],
+        runtimeOutput: "QH;ht;ztc;m for restricted heating QHnd"
+      },
+      runtimeIntegration: {
+        implementedModule: "mc001HeatingIntermittencyCalculation.mjs",
+        integrationModule: "mc001RestrictedHeatingQhndCalculation.mjs",
+        runtimeFormulaCode: "MC001_R11_HEATING_INTERMITTENCY_QHHT_FROM_CORRECTED_SETPOINT",
+        qHhtOrigin: "calculated_from_explicit_heating_intermittency_correction",
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_schedule_defaults",
+          "no_setpoint_defaults",
+          "no_duration_defaults"
+        ]
+      },
+      blockers: [
+        "not_QC;nd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_system_losses",
+        "no_hidden_defaults"
       ]
     }
   ]
@@ -5673,6 +6027,139 @@ function validateLongUnoccupiedBlockers(blockers) {
   ]);
 }
 
+function validateHeatingIntermittencySourceScope(sourceScope) {
+  return (
+    isObject(sourceScope) &&
+    sourceScope.chapter === "Capitolul 2. Anvelopa termica a cladirii" &&
+    sourceScope.section === "2.8.2. Calculul efectului intermitentei incalzirii" &&
+    arraysMatchExactly(sourceScope.pagesVerified, [117, 118, 119]) &&
+    arraysMatchExactly(sourceScope.relationsVerified, [
+      "2.59",
+      "2.60",
+      "2.61",
+      "2.62",
+      "2.63",
+      "2.64",
+      "2.65",
+      "2.66",
+      "2.67",
+      "2.68",
+      "2.69",
+      "2.70",
+      "2.71",
+      "2.72",
+      "2.73"
+    ]) &&
+    Array.isArray(sourceScope.extractionMethods) &&
+    sourceScope.extractionMethods.includes("page.get_text(text)") &&
+    sourceScope.extractionMethods.includes("visual inspection of cropped equation renderings")
+  );
+}
+
+function validateHeatingIntermittencyConcept(concept) {
+  return (
+    isObject(concept) &&
+    concept.entryCode === "MC001_CONCEPT_HEATING_INTERMITTENCY_RELATIONS" &&
+    concept.entryType === "concept" &&
+    concept.conceptCode === "heating_intermittency_relations_2_59_to_2_73" &&
+    concept.targetSymbol === "theta_int_calc_H;ztc;m" &&
+    concept.registryKind === "machine_readable_restricted_runtime_source_pack" &&
+    concept.unit === "mixed" &&
+    hasRequiredString(concept.name) &&
+    hasRequiredString(concept.purpose) &&
+    sourceLocatorLooksValid(concept.sourceLocator, 117) &&
+    concept.sourceLocator.subsection === "2.8.2"
+  );
+}
+
+function validateHeatingIntermittencyFormulaCandidates(candidates) {
+  const relations = [
+    "2.59",
+    "2.60",
+    "2.61",
+    "2.62",
+    "2.63",
+    "2.64",
+    "2.65",
+    "2.66",
+    "2.67",
+    "2.68",
+    "2.69",
+    "2.70",
+    "2.71",
+    "2.72",
+    "2.73"
+  ];
+  if (!Array.isArray(candidates) || candidates.length !== relations.length) {
+    return false;
+  }
+  const actualRelations = candidates.map((candidate) => candidate.relationReference);
+  if (!arraysMatchExactly(actualRelations, relations)) {
+    return false;
+  }
+  return candidates.every((candidate) =>
+    isObject(candidate) &&
+    hasRequiredString(candidate.candidateCode) &&
+    hasRequiredString(candidate.expressionText) &&
+    hasRequiredString(candidate.machineExpression) &&
+    hasRequiredString(candidate.outputSymbol) &&
+    hasRequiredString(candidate.outputUnit) &&
+    Array.isArray(candidate.requiredInputs) &&
+    Array.isArray(candidate.conditions) &&
+    Array.isArray(candidate.dependencies) &&
+    candidate.scopeClassification === "heating_runtime_ready" &&
+    candidate.runtimeReadiness === "verified_for_restricted_runtime" &&
+    sourceLocatorLooksValid(candidate.sourceLocator, candidate.sourceLocator.page) &&
+    candidate.sourceLocator.relation === candidate.relationReference &&
+    Object.hasOwn(candidate, "entryType") === false &&
+    Object.hasOwn(candidate, "formulaCode") === false
+  );
+}
+
+function validateHeatingIntermittencyDependencyGraph(graph) {
+  return (
+    isObject(graph) &&
+    Array.isArray(graph.explicitInputs) &&
+    graph.explicitInputs.includes("thetaIntSetH") &&
+    graph.explicitInputs.includes("reductionPeriods") &&
+    Array.isArray(graph.chain) &&
+    graph.chain[0] === "relations_2_63_to_2_65_reduced_setpoint_ratio" &&
+    graph.chain.includes("relation_2_59_corrected_heating_setpoint") &&
+    graph.runtimeOutput === "QH;ht;ztc;m for restricted heating QHnd"
+  );
+}
+
+function validateHeatingIntermittencyRuntimeIntegration(runtimeIntegration) {
+  return (
+    isObject(runtimeIntegration) &&
+    runtimeIntegration.implementedModule === "mc001HeatingIntermittencyCalculation.mjs" &&
+    runtimeIntegration.integrationModule === "mc001RestrictedHeatingQhndCalculation.mjs" &&
+    runtimeIntegration.runtimeFormulaCode ===
+      "MC001_R11_HEATING_INTERMITTENCY_QHHT_FROM_CORRECTED_SETPOINT" &&
+    runtimeIntegration.qHhtOrigin ===
+      "calculated_from_explicit_heating_intermittency_correction" &&
+    arraysMatchExactly(runtimeIntegration.inputPolicy, [
+      "explicit_inputs_only",
+      "no_hidden_defaults",
+      "no_schedule_defaults",
+      "no_setpoint_defaults",
+      "no_duration_defaults"
+    ])
+  );
+}
+
+function validateHeatingIntermittencyBlockers(blockers) {
+  return arraysMatchExactly(blockers, [
+    "not_QC;nd",
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_CPE_certificate",
+    "no_system_losses",
+    "no_hidden_defaults"
+  ]);
+}
+
 function validateHeatingClosureSourceScope(sourceScope) {
   return (
     isObject(sourceScope) &&
@@ -5716,7 +6203,8 @@ function validateHeatingClosureSourceScope(sourceScope) {
       "R6 gains capacity time-constant source pack",
       "R7 QHnd ambiguity resolution source pack",
       "R8 etaHgn formula source pack",
-      "R9 long unoccupied interpolation source pack"
+      "R9 long unoccupied interpolation source pack",
+      "R11 heating intermittency source pack"
     ])
   );
 }
@@ -5752,6 +6240,7 @@ function validateHeatingClosureCoverageMap(map) {
     "relation_2_57_tauH_from_explicit_capacity_and_coefficients",
     "figure_2_13_explicit_heat_gains_sum",
     "relation_2_76_long_unoccupied_heating_interpolation",
+    "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
     "relation_2_84_annual_heating_qhnd_sum"
   ];
   return (
@@ -5771,11 +6260,8 @@ function validateHeatingClosureCoverageMap(map) {
     map.sourceBackedMetadataOnlyBranches[0].reason ===
       "cooling_QCnd_metadata_only_not_heating_runtime" &&
     arraysMatchExactly(coverageBranchIds(map.notMachineEncodedBranches), [
-      "relations_2_59_to_2_73_heating_intermittency_temperature_correction",
       "heating_period_boundary_duration_method"
     ]) &&
-    map.notMachineEncodedBranches[0].runtimeDiagnostic ===
-      "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded" &&
     arraysMatchExactly(map.downstreamOutOfScope, [
       "QCnd",
       "final_energy",
@@ -5794,16 +6280,19 @@ function validateHeatingClosureVerdict(verdict) {
     isObject(verdict) &&
     verdict.notFullQhndRemains === true &&
     verdict.reason ===
-      "heating intermittency relations 2.59-2.73 remain source-located but not machine-transcribed" &&
+      "restricted explicit-input runtime still omits inferred schedules, setpoints, missing months, and boundary-month duration defaults" &&
     arraysMatchExactly(verdict.implementedHeatingUsefulDemandRelations, [
       "figure_2.18",
       "figure_2.14",
       "2.55",
       "2.57",
+      "2.59-2.73",
       "2.76",
       "2.84"
     ]) &&
-    arraysMatchExactly(verdict.blockedHeatingUsefulDemandRelations, ["2.59-2.73"]) &&
+    arraysMatchExactly(verdict.blockedHeatingUsefulDemandRelations, [
+      "section_2.11_boundary_duration_method"
+    ]) &&
     arraysMatchExactly(verdict.coolingRelationsNotUsedInHeatingRuntime, ["2.77"])
   );
 }
@@ -5822,7 +6311,7 @@ function validateHeatingClosureDependencyMatrix(matrix) {
     matrix.longUnoccupiedRelation276?.status ===
       "implemented_restricted_explicit_interpolation" &&
     matrix.heatingIntermittencyRelations259To273?.status ===
-      "blocked_source_located_not_machine_encoded" &&
+      "implemented_restricted_explicit_correction" &&
     matrix.annualQhnd?.status === "implemented_sum_of_explicit_monthly_cases" &&
     matrix.fullQhnd?.status === "blocked_not_full_QHnd" &&
     matrix.qcnd?.status === "blocked" &&
@@ -5845,7 +6334,7 @@ function validateHeatingClosureBlockers(blockers) {
     "no_hidden_defaults",
     "no_schedule_defaults",
     "no_temperature_setpoint_defaults",
-    "heating_intermittency_relations_2_59_to_2_73_not_machine_encoded"
+    "boundary_duration_defaults_not_encoded"
   ]);
 }
 
@@ -6341,6 +6830,49 @@ function heatingQhndClosureSourcePackIssue(sourcePack) {
   return null;
 }
 
+function heatingIntermittencySourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    READINESS_SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (!validateHeatingIntermittencySourceScope(sourcePack.sourceScope)) {
+    return "blocked_invalid_source_scope";
+  }
+  if (!validateHeatingIntermittencyConcept(sourcePack.concept)) {
+    return "blocked_invalid_concept";
+  }
+  if (!validateHeatingIntermittencyFormulaCandidates(sourcePack.formulaCandidates)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingIntermittencyDependencyGraph(sourcePack.dependencyGraph)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingIntermittencyRuntimeIntegration(sourcePack.runtimeIntegration)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (!validateHeatingIntermittencyBlockers(sourcePack.blockers)) {
+    return "blocked_invalid_source_pack";
+  }
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !==
+      "implemented_restricted_explicit_heating_intermittency_runtime" ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -6380,6 +6912,9 @@ function sourcePackIssue(sourcePack) {
   }
   if (sourcePack.sourcePackCode === R10_HEATING_QHND_VERTICAL_CLOSURE_SOURCE_PACK_CODE) {
     return heatingQhndClosureSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE) {
+    return heatingIntermittencySourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
