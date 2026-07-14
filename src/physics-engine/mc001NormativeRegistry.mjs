@@ -614,10 +614,9 @@ const CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS = new Set([
   "2.87"
 ]);
 
-const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2", "2.11", "2.12"]);
+const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2", "2.11", "2.12", "2.13"]);
 const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
   "2.1",
-  "2.13",
   "2.14",
   "2.15",
   "2.16",
@@ -625,6 +624,18 @@ const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
   "2.19",
   "2.20",
   "2.21"
+]);
+const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
+  ["2.2", "mc001Table2_2MaterialCorrectionCoefficients.mjs"],
+  ["2.11", "mc001SurfaceResistanceTables.mjs"],
+  ["2.12", "mc001SurfaceResistanceTables.mjs"],
+  ["2.13", "mc001SolarTransmissionTable2_13.mjs"]
+]);
+const CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER = new Map([
+  ["2.2", "mc001Table2_2MaterialCorrectionCoefficients.test.mjs"],
+  ["2.11", "mc001SurfaceResistanceTables.test.mjs"],
+  ["2.12", "mc001SurfaceResistanceTables.test.mjs"],
+  ["2.13", "mc001SolarTransmissionTable2_13.test.mjs"]
 ]);
 const CHAPTER_2_NOT_RUNTIME_TABLES = new Set([
   "2.3",
@@ -767,12 +778,8 @@ function chapter2TableEntry(tableNumber) {
       ? "machine_encoded"
       : "not_encoded_in_current_runtime",
     implementationStatus,
-    runtimeModule: tableNumber === "2.2"
-      ? "mc001Table2_2MaterialCorrectionCoefficients.mjs"
-      : null,
-    testFile: tableNumber === "2.2"
-      ? "mc001Table2_2MaterialCorrectionCoefficients.test.mjs"
-      : null,
+    runtimeModule: CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER.get(tableNumber) ?? null,
+    testFile: CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER.get(tableNumber) ?? null,
     goldenCoverage: tableNumber === "2.2",
     sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
     remainingBlocker: implementationStatus === "metadata_only_normative_context"
@@ -854,6 +861,24 @@ const CHAPTER_2_CONDITION_ENTRIES = Object.freeze([
     remainingBlocker: null
   }),
   Object.freeze({
+    identifier: "MC001_CH2_CONDITION_AIR_LAYER_RESISTANCE_EXTERNAL_SOURCE",
+    type: "definition",
+    section: "2.4.1",
+    page: 78,
+    title: "Non-ventilated air-layer resistance Ra is referred to SR EN ISO 6946",
+    scope: "envelope",
+    dependencies: ["Ra", "heat_flow_direction", "air_layer_thickness"],
+    units: "m2K/W",
+    runtimeRelevance: "explicit_input_contract_external_reference",
+    machineEncodability: "external_SR_EN_ISO_6946_dependency_not_local_MC001_table",
+    implementationStatus: "metadata_only_normative_context",
+    runtimeModule: "mc001EnvelopePhysicsCalculation.mjs",
+    testFile: "mc001EnvelopePhysicsCalculation.test.mjs",
+    goldenCoverage: false,
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    remainingBlocker: "SR_EN_ISO_6946_air_layer_values_not_fabricated_from_MC001"
+  }),
+  Object.freeze({
     identifier: "MC001_CH2_CONDITION_EXTERNAL_CLIMATE_DATA",
     type: "definition",
     section: "2.7",
@@ -896,9 +921,9 @@ const CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX = Object.freeze({
     requiredBeforeClosure: Object.freeze([
       "resolve_or_confirm_relation_2_2_gap",
       "resolve_or_confirm_relation_2_5_gap",
-      "machine_encode_air_layer_resistance_tables_if_runtime_safe",
       "machine_encode_effective_capacity_tables_if_runtime_safe",
-      "machine_encode_remaining_solar_glazing_shading_inputs_if_runtime_safe",
+      "machine_encode_material_lambda_catalog_tables_if_runtime_safe",
+      "machine_encode_remaining_solar_climate_orientation_shading_inputs_if_runtime_safe",
       "machine_encode_or_justify_latent_humidification_relations_2_82_to_2_83",
       "golden_cover_every_newly_implemented_runtime_branch"
     ])
@@ -5285,6 +5310,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         sections: [
           "2.1.4",
           "2.4.1",
+          "2.4.2",
           "2.6.2",
           "2.7.1",
           "2.7.2",
@@ -5299,6 +5325,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           80,
           81,
           82,
+          83,
+          84,
           94,
           95,
           100,
@@ -5351,6 +5379,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "surface_resistance_explicit_or_surface_coefficient_explicit",
           "surface_resistance_table_2_11_explicit_code_lookup",
           "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
+          "solar_transmission_table_2_13_explicit_glazing_type_lookup",
           "u_value_from_total_resistance",
           "direct_u_value_or_corrected_u_prime_explicit",
           "outside_air_direct_Hd",
@@ -5372,18 +5401,17 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         explicitInputOnly: [
           "base_material_lambda_normat",
           "surface_resistance_table_selection",
-          "air_layer_resistance_table_selection",
+          "air_layer_resistance_explicit_or_external_SR_EN_ISO_6946_source",
           "opaque_solar_absorptance",
           "monthly_weather_temperatures",
           "monthly_durations",
           "ventilation_airflows_and_corrections",
           "internal_gain_components_and_schedules",
-          "solar_irradiation_shading_glazing_properties",
+          "solar_irradiation_orientation_shading_and_range_glazing_properties",
           "effective_internal_heat_capacity",
           "thermal_bridge_psi_chi_values"
         ],
         tableBackedNotEncoded: [
-          "air_layer_resistance_default_tables",
           "material_lambda_catalog_values",
           "window_door_catalog_U_values",
           "solar_climate_annex_full_dataset",
@@ -5447,9 +5475,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         ],
         remainingGaps: [
           "default_material_lambda_catalog_values_not_encoded",
-          "default_air_layer_resistance_tables_not_encoded",
+          "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated",
           "automatic_ground_contact_detailed_method_not_encoded",
-          "solar_climate_and_shading_default_datasets_not_encoded",
+          "solar_climate_orientation_shading_and_range_glazing_inputs_not_defaulted",
           "final_primary_CO2_CPE_certificate_out_of_scope"
         ]
       },
@@ -5514,9 +5542,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "MC001_RELATION_2_2",
           "MC001_RELATION_2_5",
           "MC001_TABLE_2_1",
-          "MC001_TABLE_2_11",
-          "MC001_TABLE_2_12",
-          "MC001_TABLE_2_13",
           "MC001_TABLE_2_14",
           "MC001_TABLE_2_15",
           "MC001_TABLE_2_16",
@@ -5526,9 +5551,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "MC001_TABLE_2_21"
         ],
         nextImplementationDomains: [
-          "air_layer_resistance_tables",
+          "material_lambda_catalog_tables",
           "effective_capacity_tables",
-          "solar_glazing_shading_inputs",
+          "solar_climate_orientation_shading_inputs",
           "latent_humidification_and_dehumidification_relations"
         ]
       },
@@ -8694,6 +8719,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "material_lambda_relation_2_3_with_explicit_table_2_2_coefficient_code",
     "surface_resistance_table_2_11_explicit_code_lookup",
     "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
+    "solar_transmission_table_2_13_explicit_glazing_type_lookup",
     "u_value_from_total_resistance",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
@@ -8709,7 +8735,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "base_material_lambda_normat",
     "monthly_weather_temperatures",
     "internal_gain_components_and_schedules",
-    "solar_irradiation_shading_glazing_properties"
+    "solar_irradiation_orientation_shading_and_range_glazing_properties"
   ];
   const requiredOutOfScopeItems = [
     "final_energy",
@@ -8725,7 +8751,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 94, 95, 100, 103, 104, 105, 120, 121, 124],
+      [48, 77, 79, 80, 81, 82, 83, 84, 94, 95, 100, 103, 104, 105, 120, 121, 124],
       ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.22", "2.27", "2.28", "2.84", "2.85"]
     ) ||
     !isObject(map) ||

@@ -2389,6 +2389,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "material_lambda_relation_2_3_with_explicit_table_2_2_coefficient_code",
     "surface_resistance_table_2_11_explicit_code_lookup",
     "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
+    "solar_transmission_table_2_13_explicit_glazing_type_lookup",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
     "monthly_ventilation_explicit_airflow_temperature_duration",
@@ -2403,7 +2404,18 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   }
   assert.ok(pack.coverageMap.explicitInputOnly.includes("base_material_lambda_normat"));
   assert.ok(pack.coverageMap.explicitInputOnly.includes("monthly_weather_temperatures"));
+  assert.ok(
+    pack.coverageMap.explicitInputOnly.includes(
+      "air_layer_resistance_explicit_or_external_SR_EN_ISO_6946_source"
+    )
+  );
+  assert.ok(
+    pack.coverageMap.explicitInputOnly.includes(
+      "solar_irradiation_orientation_shading_and_range_glazing_properties"
+    )
+  );
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("surface_resistance_default_tables"), false);
+  assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("air_layer_resistance_default_tables"), false);
   assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"));
   assert.ok(pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"));
   for (const downstream of ["final_energy", "primary_energy", "CO2", "CPE", "certificate"]) {
@@ -2414,6 +2426,16 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("separate_annualQHnd_and_annualQCnd"));
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("no_certificate"));
   assert.ok(pack.completenessAssessment.remainingGaps.includes("default_material_lambda_catalog_values_not_encoded"));
+  assert.ok(
+    pack.completenessAssessment.remainingGaps.includes(
+      "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated"
+    )
+  );
+  assert.ok(
+    pack.completenessAssessment.remainingGaps.includes(
+      "solar_climate_orientation_shading_and_range_glazing_inputs_not_defaulted"
+    )
+  );
   assert.ok(pack.blockers.includes("not_certificate"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
   assert.equal(Object.hasOwn(pack, "formulas"), false);
@@ -2446,12 +2468,12 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(matrix.relations.length, 87);
   assert.equal(matrix.tables.length, 21);
   assert.equal(matrix.figures.length, 21);
-  assert.equal(matrix.conditions.length, 3);
+  assert.equal(matrix.conditions.length, 4);
   assert.equal(matrix.completenessMetrics.pagesInspected, 86);
   assert.equal(matrix.completenessMetrics.relationsClassified, 87);
   assert.equal(matrix.completenessMetrics.tablesClassified, 21);
   assert.equal(matrix.completenessMetrics.figuresClassified, 21);
-  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 3);
+  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 4);
 
   for (const pageEntry of matrix.pageInspections) {
     assert.equal(pageEntry.inspectionStatus, "inspected");
@@ -2488,13 +2510,28 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(tableById.get("MC001_TABLE_2_2").implementationStatus, "table_machine_encoded");
   assert.equal(tableById.get("MC001_TABLE_2_11").implementationStatus, "table_machine_encoded");
   assert.equal(tableById.get("MC001_TABLE_2_12").implementationStatus, "table_machine_encoded");
+  assert.equal(tableById.get("MC001_TABLE_2_13").implementationStatus, "table_machine_encoded");
+  assert.equal(
+    tableById.get("MC001_TABLE_2_13").runtimeModule,
+    "mc001SolarTransmissionTable2_13.mjs"
+  );
   assert.equal(
     tableById.get("MC001_TABLE_2_19").remainingBlocker,
     "table_classified_but_not_machine_encoded_in_current_batch"
   );
 
+  const conditionById = new Map(matrix.conditions.map((entry) => [entry.identifier, entry]));
+  assert.equal(
+    conditionById.get("MC001_CH2_CONDITION_AIR_LAYER_RESISTANCE_EXTERNAL_SOURCE")
+      .implementationStatus,
+    "metadata_only_normative_context"
+  );
+
   assert.equal(pack.completenessGate.closureStatus, "CHAPTER_2_NOT_CLOSED");
   assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_RELATION_2_2"));
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_11"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_12"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_13"), false);
   assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_19"));
   assert.ok(pack.blockers.includes("chapter_2_not_closed"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
