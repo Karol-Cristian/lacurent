@@ -2015,7 +2015,10 @@ test("runtime import boundary has no DB API UI Worker H3-H12 or orchestrator imp
     "from \"./orchestrator",
     "from \"../orchestrator",
     "mc001Htr",
-    "mc001Hu",
+    "mc001HuAggregation",
+    "mc001HuComponent",
+    "mc001HuHtr",
+    "mc001HuMulti",
     "mc001Bztu"
   ]) {
     assert.equal(source.includes(forbidden), false, forbidden);
@@ -2400,6 +2403,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
+    "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -2434,7 +2438,14 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("air_layer_resistance_default_tables"), false);
   assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"));
   assert.ok(pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"));
-  for (const downstream of ["final_energy", "primary_energy", "CO2", "CPE", "certificate"]) {
+  for (const downstream of [
+    "final_energy",
+    "primary_energy",
+    "CO2",
+    "CPE",
+    "certificate",
+    "latent_humidification_dehumidification_energy"
+  ]) {
     assert.ok(pack.coverageMap.outOfChapter2UsefulDemandScope.includes(downstream), downstream);
   }
   assert.ok(pack.runtimeIntegration.implementedModules.includes("mc001Chapter2UsefulDemandCalculation.mjs"));
@@ -2489,7 +2500,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(matrix.completenessMetrics.relationsClassified, 87);
   assert.equal(matrix.completenessMetrics.tablesClassified, 21);
   assert.equal(matrix.completenessMetrics.figuresClassified, 21);
-  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 11);
+  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 12);
 
   for (const pageEntry of matrix.pageInspections) {
     assert.equal(pageEntry.inspectionStatus, "inspected");
@@ -2553,10 +2564,12 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
     tableById.get("MC001_TABLE_2_20").runtimeModule,
     "mc001EffectiveInternalHeatCapacityTables.mjs"
   );
+  assert.equal(tableById.get("MC001_TABLE_2_21").implementationStatus, "table_machine_encoded");
   assert.equal(
-    tableById.get("MC001_TABLE_2_21").remainingBlocker,
-    "table_classified_but_not_machine_encoded_in_current_batch"
+    tableById.get("MC001_TABLE_2_21").runtimeModule,
+    "mc001HumidificationTable2_21.mjs"
   );
+  assert.equal(tableById.get("MC001_TABLE_2_21").remainingBlocker, null);
 
   const conditionById = new Map(matrix.conditions.map((entry) => [entry.identifier, entry]));
   assert.equal(
@@ -2567,6 +2580,8 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
 
   assert.equal(pack.completenessGate.closureStatus, "CHAPTER_2_NOT_CLOSED");
   assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_RELATION_2_2"));
+  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_RELATION_2_5"));
+  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_1"));
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_11"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_12"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_13"), false);
@@ -2577,7 +2592,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_18"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_19"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_20"), false);
-  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_21"));
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_21"), false);
   assert.ok(pack.blockers.includes("chapter_2_not_closed"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
   assert.equal(Object.hasOwn(pack, "formulas"), false);
