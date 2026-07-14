@@ -2382,7 +2382,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     pack.runtimeCalculatorStatus,
     "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer"
   );
-  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.22", "2.84", "2.85"]) {
+  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.22", "2.40", "2.84", "2.85"]) {
     assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
   }
   for (const runtimeItem of [
@@ -2394,7 +2394,10 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
     "monthly_ventilation_explicit_airflow_temperature_duration",
+    "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "solar_shading_table_2_16_explicit_device_lookup",
+    "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -2412,7 +2415,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   );
   assert.ok(
     pack.coverageMap.explicitInputOnly.includes(
-      "solar_irradiation_orientation_shading_and_range_glazing_properties"
+      "solar_irradiation_and_explicit_obstacle_geometry"
     )
   );
   assert.ok(
@@ -2439,7 +2442,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   );
   assert.ok(
     pack.completenessAssessment.remainingGaps.includes(
-      "solar_climate_orientation_shading_and_range_glazing_inputs_not_defaulted"
+      "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted"
     )
   );
   assert.ok(pack.blockers.includes("not_certificate"));
@@ -2479,7 +2482,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(matrix.completenessMetrics.relationsClassified, 87);
   assert.equal(matrix.completenessMetrics.tablesClassified, 21);
   assert.equal(matrix.completenessMetrics.figuresClassified, 21);
-  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 6);
+  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 10);
 
   for (const pageEntry of matrix.pageInspections) {
     assert.equal(pageEntry.inspectionStatus, "inspected");
@@ -2521,6 +2524,17 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
     tableById.get("MC001_TABLE_2_13").runtimeModule,
     "mc001SolarTransmissionTable2_13.mjs"
   );
+  assert.equal(tableById.get("MC001_TABLE_2_15").implementationStatus, "table_machine_encoded");
+  assert.equal(
+    tableById.get("MC001_TABLE_2_15").runtimeModule,
+    "mc001InternalGainsTable2_15.mjs"
+  );
+  assert.equal(tableById.get("MC001_TABLE_2_16").implementationStatus, "table_machine_encoded");
+  assert.equal(tableById.get("MC001_TABLE_2_16").runtimeModule, "mc001SolarShadingTables.mjs");
+  assert.equal(tableById.get("MC001_TABLE_2_17").implementationStatus, "table_machine_encoded");
+  assert.equal(tableById.get("MC001_TABLE_2_17").runtimeModule, "mc001SolarShadingTables.mjs");
+  assert.equal(tableById.get("MC001_TABLE_2_18").implementationStatus, "table_machine_encoded");
+  assert.equal(tableById.get("MC001_TABLE_2_18").runtimeModule, "mc001SolarShadingTables.mjs");
   assert.equal(tableById.get("MC001_TABLE_2_19").implementationStatus, "table_machine_encoded");
   assert.equal(tableById.get("MC001_TABLE_2_20").implementationStatus, "table_machine_encoded");
   assert.equal(
@@ -2544,6 +2558,10 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_11"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_12"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_13"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_15"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_16"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_17"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_18"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_19"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_20"), false);
   assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_21"));
