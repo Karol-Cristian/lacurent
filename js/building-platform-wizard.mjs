@@ -74,6 +74,76 @@ const YEAR_PERIODS = [
   { period: "after_2005", min: 2006 }
 ];
 
+export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
+  fixtureId: "demo_detached_masonry_1985_eps_pvc_bucharest",
+  label: "Casa demonstrativa: locuinta individuala 1985, zidarie, EPS, PVC",
+  provenance: {
+    origin: "demo_fixture",
+    confirmationStatus: "unconfirmed_demo",
+    editable: true,
+    confidence: "medium",
+    reference: "P2B.demo.detached_masonry_1985_eps_pvc_bucharest"
+  },
+  values: Object.freeze({
+    building_platform_demo_mode: "1",
+    building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
+    display_name: "Demo tehnic - casa zidarie 1985",
+    analysis_purpose: "renovation",
+    building_type: "house",
+    city: "Bucharest",
+    construction_year: "1985",
+    useful_area_m2: "120",
+    number_of_floors: "1",
+    floor_height_m: "2.6",
+    occupants: "4",
+    main_orientation: "south",
+    thermal_mass_class: "heavy",
+    usage_type: "permanent",
+    last_major_renovation: "10_20_years",
+    wall_material: "brick",
+    wall_thickness: "30",
+    wall_insulation: "10cm",
+    roof_type: "unheated_attic",
+    roof_insulated: "no",
+    roof_insulation_thickness_cm: "0",
+    floor_type: "on_ground",
+    floor_insulated: "no",
+    window_type: "modern_double_glazing",
+    window_age_years: "8",
+    window_area_m2: "8",
+    window_orientation: "south",
+    heating_source: "gas",
+    heating_system_type: "condensing_boiler",
+    heating_distribution: "radiators",
+    heating_equipment_age_years: "7",
+    boiler_power_kw: "24",
+    thermostat: "yes",
+    smart_thermostat: "no",
+    thermostatic_valves: "yes",
+    zoning: "no",
+    heating_setpoint_c: "20",
+    cooling_setpoint_c: "26",
+    has_cooling: "yes",
+    ventilation_type: "natural",
+    ventilation_ach: "0.6",
+    airflow_m3h: "216",
+    heat_recovery_efficiency: "0",
+    dhw_source_heating: "yes",
+    cooking_fuel: "gas",
+    lighting_type: "led",
+    pv_installed: "no",
+    pv_capacity_kw: "0",
+    solar_thermal_installed: "no",
+    battery_installed: "no",
+    monthly_electricity_cost: "180",
+    monthly_gas_cost: "450",
+    annual_wood_cost: "0",
+    wood_price_per_ster: "0",
+    annual_pellets_cost: "0",
+    annual_other_fuel_cost: "0"
+  })
+});
+
 function safeText(value) {
   return String(value ?? "")
     .replace(/[&<>"']/g, character => ({
@@ -88,6 +158,81 @@ function safeText(value) {
 function formatNumber(value, digits = 2) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(digits) : "--";
+}
+
+function setFieldValue(form, name, value) {
+  const escapedName = globalThis.CSS?.escape
+    ? globalThis.CSS.escape(name)
+    : String(name).replace(/["\\]/g, "\\$&");
+  const controls = form?.querySelectorAll?.(`[name="${escapedName}"]`) ?? [];
+  controls.forEach(control => {
+    if (control.type === "checkbox") {
+      control.checked = value === control.value || value === "yes" || value === true;
+    } else if (control.type !== "file") {
+      control.value = value ?? "";
+    }
+    control.dataset.provenanceOrigin = "demo_fixture";
+    control.dataset.confirmationStatus = "unconfirmed_demo";
+    control.dataset.editable = "true";
+    control.dataset.confidence = ASSISTED_WIZARD_DEMO_FIXTURE.provenance.confidence;
+  });
+}
+
+function clearFieldProvenance(form) {
+  form?.querySelectorAll?.("input,select,textarea")?.forEach(control => {
+    delete control.dataset.provenanceOrigin;
+    delete control.dataset.confirmationStatus;
+    delete control.dataset.editable;
+    delete control.dataset.confidence;
+  });
+}
+
+function dispatchFormRefresh(form) {
+  form?.dispatchEvent?.(new Event("change", { bubbles: true }));
+  form?.dispatchEvent?.(new Event("input", { bubbles: true }));
+}
+
+export function demoModeFromSearch(search = "") {
+  return new URLSearchParams(search).get("demo") === "1";
+}
+
+export function getAssistedWizardDemoFixture() {
+  return {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE,
+    values: { ...ASSISTED_WIZARD_DEMO_FIXTURE.values },
+    provenance: { ...ASSISTED_WIZARD_DEMO_FIXTURE.provenance }
+  };
+}
+
+export function applyAssistedWizardDemoFixture(form, fixture = ASSISTED_WIZARD_DEMO_FIXTURE) {
+  if (!form) return { applied: false };
+  form.reset?.();
+  clearFieldProvenance(form);
+  for (const [name, value] of Object.entries(fixture.values ?? {})) {
+    setFieldValue(form, name, value);
+  }
+  form.dataset.demoMode = "1";
+  form.dataset.demoFixtureId = fixture.fixtureId;
+  dispatchFormRefresh(form);
+  return {
+    applied: true,
+    fixtureId: fixture.fixtureId,
+    fieldCount: Object.keys(fixture.values ?? {}).length
+  };
+}
+
+export function clearAssistedWizardDemoFixture(form) {
+  if (!form) return { cleared: false };
+  form.reset?.();
+  clearFieldProvenance(form);
+  form.dataset.demoMode = "";
+  form.dataset.demoFixtureId = "";
+  const hiddenDemoMode = form.querySelector?.('[name="building_platform_demo_mode"]');
+  const hiddenFixtureId = form.querySelector?.('[name="building_platform_demo_fixture_id"]');
+  if (hiddenDemoMode) hiddenDemoMode.value = "";
+  if (hiddenFixtureId) hiddenFixtureId.value = "";
+  dispatchFormRefresh(form);
+  return { cleared: true };
 }
 
 function renderTable(headers, rows) {
@@ -230,11 +375,11 @@ function renderTraceability(workspace) {
   ], workspace.traceability);
 }
 
-function renderReportChapters(workspace) {
+function renderReportChapters(workspace, options = {}) {
   return `
     <div class="technical-report-chapter-list">
       ${workspace.report.chapters.map(chapter => `
-        <details class="technical-report-chapter">
+        <details class="technical-report-chapter"${options.openReport ? " open" : ""}>
           <summary>${safeText(chapter.title)}</summary>
           <p>${safeText(chapter.summary)}</p>
           <small>${safeText(chapter.chapterId)} · ${safeText(chapter.rows.length)} entries</small>
@@ -269,6 +414,9 @@ export function structuralSystemFromWallMaterial(wallMaterial) {
 }
 
 export function mapWizardAnswersToAssistedAnswers(formData) {
+  const isDemoFixture = formValue(formData, "building_platform_demo_mode") === "1";
+  const demoFixtureId = formValue(formData, "building_platform_demo_fixture_id") ||
+    ASSISTED_WIZARD_DEMO_FIXTURE.fixtureId;
   const buildingType = formValue(formData, "building_type") === "apartment"
     ? "apartment"
     : "detached_house";
@@ -320,7 +468,14 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
     location: {
       city: formValue(formData, "city") || null
     },
-    source: {
+    source: isDemoFixture ? {
+      reference: `P2B.demo.${demoFixtureId}`,
+      origin: "demo_fixture",
+      fixtureId: demoFixtureId,
+      confirmationStatus: "unconfirmed_demo",
+      editable: true,
+      confidence: "medium"
+    } : {
       reference: "building_platform_wizard_answers"
     }
   };
@@ -342,13 +497,14 @@ export function buildWizardEngineeringPreview(assistedAnswers) {
   };
 }
 
-export function renderEngineeringModelReview(preview) {
+export function renderEngineeringModelReview(preview, options = {}) {
   if (preview.status !== "ready") {
     const code = preview.diagnostics?.blockers?.[0]?.code ?? "model_incomplet";
     return `<p class="form-message error">Modelul tehnic nu este gata: ${safeText(code)}</p>`;
   }
   const dna = preview.buildingDna;
   const workspace = preview.technicalWorkspace;
+  const openReport = options.openReport === true || dna.source?.origin === "demo_fixture";
   const stages = preview.stages.map(item => `
     <li>
       <strong>${safeText(item.label)}</strong>
@@ -420,8 +576,11 @@ export function renderEngineeringModelReview(preview) {
       </section>
       <section id="p2b-report" class="technical-workspace-panel">
         <h4>Technical report</h4>
+        <div class="technical-report-success" data-technical-report-success>
+          Raport tehnic generat din Building DNA si rezultatele Chapter 2 validate.
+        </div>
         <p>${safeText(workspace.report.title)} · ${safeText(workspace.report.source)}</p>
-        ${renderReportChapters(workspace)}
+        ${renderReportChapters(workspace, { openReport })}
       </section>
       <section id="p2b-traceability" class="technical-workspace-panel">
         <h4>Formula viewer</h4>
@@ -457,6 +616,93 @@ export function renderEngineeringModelReview(preview) {
   `;
 }
 
+export function generateBuildingPlatformTechnicalReport(root = document, options = {}) {
+  const form = root.getElementById?.("houseForm");
+  const previewTarget = root.getElementById?.("buildingModelReview");
+  if (!form || !previewTarget) {
+    return { generated: false, reason: "missing_form_or_preview_target" };
+  }
+  const answers = mapWizardAnswersToAssistedAnswers(new FormData(form));
+  const preview = buildWizardEngineeringPreview(answers);
+  previewTarget.innerHTML = renderEngineeringModelReview(preview, {
+    openReport: options.openReport === true
+  });
+  if (options.scrollToReport === true) {
+    const report = root.getElementById?.("p2b-report") ?? previewTarget;
+    report?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }
+  return {
+    generated: preview.status === "ready",
+    preview,
+    reportOpened: options.openReport === true || preview.buildingDna?.source?.origin === "demo_fixture"
+  };
+}
+
+function setDemoUiState(root, enabled) {
+  const banner = root.getElementById?.("demoModeBanner");
+  const resetButton = root.getElementById?.("resetDemoModeBtn");
+  if (banner) banner.hidden = !enabled;
+  if (resetButton) resetButton.disabled = !enabled;
+  root.body?.classList?.toggle("demo-mode-active", enabled);
+}
+
+function replaceDemoSearchParam(enabled) {
+  if (typeof window === "undefined" || !window.history?.replaceState) return;
+  const url = new URL(window.location.href);
+  if (enabled) {
+    url.searchParams.set("demo", "1");
+    url.searchParams.set("new", "1");
+  } else {
+    url.searchParams.delete("demo");
+  }
+  window.history.replaceState({}, "", url);
+}
+
+function attachDemoControls(root, form) {
+  const loadButton = root.getElementById?.("loadDemoModeBtn");
+  const blankButton = root.getElementById?.("startBlankProjectBtn");
+  const resetButton = root.getElementById?.("resetDemoModeBtn");
+  const exitButton = root.getElementById?.("exitDemoModeBtn");
+
+  function loadDemo({ updateUrl = true, scrollToReport = false } = {}) {
+    const result = applyAssistedWizardDemoFixture(form);
+    setDemoUiState(root, true);
+    if (updateUrl) replaceDemoSearchParam(true);
+    generateBuildingPlatformTechnicalReport(root, {
+      openReport: true,
+      scrollToReport
+    });
+    return result;
+  }
+
+  function startBlank({ updateUrl = true } = {}) {
+    const result = clearAssistedWizardDemoFixture(form);
+    setDemoUiState(root, false);
+    if (updateUrl) replaceDemoSearchParam(false);
+    const previewTarget = root.getElementById?.("buildingModelReview");
+    if (previewTarget) {
+      previewTarget.innerHTML = `
+        <div class="section-heading">
+          <span class="small-label">REVIZUIRE MODEL</span>
+          <h2>Building DNA, rezultate Chapter 2 si raportul tehnic vor aparea aici.</h2>
+        </div>
+        <p>Apasa previzualizare dupa ce completezi datele principale. Vei vedea ansamblurile, materialele, straturile, U-values, Htr, QHnd, QCnd, formulele si trasabilitatea citite din Building DNA si motorul Chapter 2.</p>
+      `;
+    }
+    return result;
+  }
+
+  loadButton?.addEventListener("click", () => loadDemo({ scrollToReport: true }));
+  resetButton?.addEventListener("click", () => loadDemo({ scrollToReport: true }));
+  blankButton?.addEventListener("click", () => startBlank());
+  exitButton?.addEventListener("click", () => startBlank());
+
+  return {
+    loadDemo,
+    startBlank
+  };
+}
+
 export function attachBuildingPlatformWizard(root = document) {
   const form = root.getElementById?.("houseForm");
   const previewTarget = root.getElementById?.("buildingModelReview");
@@ -464,20 +710,33 @@ export function attachBuildingPlatformWizard(root = document) {
   if (!form || !previewTarget || !previewButton) {
     return { attached: false };
   }
+  const demoControls = attachDemoControls(root, form);
   previewButton.addEventListener("click", () => {
-    const answers = mapWizardAnswersToAssistedAnswers(new FormData(form));
-    const preview = buildWizardEngineeringPreview(answers);
-    previewTarget.innerHTML = renderEngineeringModelReview(preview);
+    generateBuildingPlatformTechnicalReport(root, {
+      openReport: form.dataset.demoMode === "1",
+      scrollToReport: true
+    });
   });
+  if (typeof window !== "undefined" && demoModeFromSearch(window.location.search)) {
+    demoControls.loadDemo({ updateUrl: false, scrollToReport: false });
+  } else {
+    setDemoUiState(root, false);
+  }
   return { attached: true };
 }
 
 if (typeof window !== "undefined") {
   window.LaCurentBuildingPlatformWizard = {
     BUILDING_PLATFORM_WIZARD_STEPS,
+    ASSISTED_WIZARD_DEMO_FIXTURE,
+    applyAssistedWizardDemoFixture,
     attachBuildingPlatformWizard,
     buildWizardEngineeringPreview,
+    clearAssistedWizardDemoFixture,
     constructionPeriodFromYear,
+    demoModeFromSearch,
+    generateBuildingPlatformTechnicalReport,
+    getAssistedWizardDemoFixture,
     mapWizardAnswersToAssistedAnswers,
     renderEngineeringModelReview,
     structuralSystemFromWallMaterial

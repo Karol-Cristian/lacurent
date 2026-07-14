@@ -6,7 +6,7 @@ function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function provenance(reference, confidence = "medium", origin = "confirmed_by_user") {
+function provenance(reference, confidence = "medium", origin = "confirmed_by_user", metadata = {}) {
   return makeEngineeringProvenance({
     origin,
     reference,
@@ -14,24 +14,32 @@ function provenance(reference, confidence = "medium", origin = "confirmed_by_use
     normativeReference:
       "P2 renovation intervention record: modifies the Building DNA proposal before Chapter 2 physics input generation.",
     calculationSource: "renovation_intervention_model_update_no_physics_calculation",
-    confirmationRequired: origin !== "confirmed_by_user"
+    confirmationRequired: origin !== "confirmed_by_user",
+    ...metadata
   });
 }
 
-function intervention({ interventionId, interventionType, target, selectedOption, confidence, reference }) {
+function intervention({ interventionId, interventionType, target, selectedOption, confidence, reference, origin, metadata }) {
   return {
     interventionId,
     interventionType,
     target,
     selectedOption,
     effect: "building_dna_proposal_modifier",
-    provenance: provenance(reference, confidence)
+    provenance: provenance(reference, confidence, origin, metadata)
   };
 }
 
 export function resolveBuildingRenovationInterventions(input = {}) {
   const renovations = input.renovations ?? {};
   const sourceReference = input.source?.reference ?? "P2.renovation_interventions";
+  const demoSource = input.source?.origin === "demo_fixture";
+  const origin = demoSource ? "demo_fixture" : "confirmed_by_user";
+  const metadata = demoSource ? {
+    confirmationStatus: input.source.confirmationStatus ?? "unconfirmed_demo",
+    editable: input.source.editable ?? true,
+    notes: "Prefilled demonstration intervention; editable and not a silent default for normal projects."
+  } : {};
   const interventions = [];
 
   if (renovations.wallInsulation === "eps" || renovations.wallInsulation === true) {
@@ -41,7 +49,9 @@ export function resolveBuildingRenovationInterventions(input = {}) {
       target: "exterior_wall",
       selectedOption: "eps_insulation",
       confidence: "medium",
-      reference: `${sourceReference}.external_wall_eps_insulation`
+      reference: `${sourceReference}.external_wall_eps_insulation`,
+      origin,
+      metadata
     }));
   }
 
@@ -52,7 +62,9 @@ export function resolveBuildingRenovationInterventions(input = {}) {
       target: "roof_or_attic_ceiling",
       selectedOption: "mineral_wool",
       confidence: "medium",
-      reference: `${sourceReference}.roof_or_attic_insulation`
+      reference: `${sourceReference}.roof_or_attic_insulation`,
+      origin,
+      metadata
     }));
   }
 
@@ -63,7 +75,9 @@ export function resolveBuildingRenovationInterventions(input = {}) {
       target: "ground_floor_or_basement_boundary",
       selectedOption: "eps_insulation",
       confidence: "medium",
-      reference: `${sourceReference}.floor_or_basement_insulation`
+      reference: `${sourceReference}.floor_or_basement_insulation`,
+      origin,
+      metadata
     }));
   }
 
@@ -74,7 +88,9 @@ export function resolveBuildingRenovationInterventions(input = {}) {
       target: "window",
       selectedOption: "pvc_double_glazing",
       confidence: "medium",
-      reference: `${sourceReference}.window_replacement`
+      reference: `${sourceReference}.window_replacement`,
+      origin,
+      metadata
     }));
   }
 

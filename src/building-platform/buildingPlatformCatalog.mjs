@@ -5,6 +5,7 @@ const ORIGINS = new Set([
   "confirmed_by_user",
   "selected_from_mc001_catalogue",
   "proposed_by_typology",
+  "demo_fixture",
   "derived_by_resolver",
   "engineering_override",
   "imported",
@@ -32,6 +33,8 @@ function provenance({
   normativeReference,
   calculationSource = "catalogue_entry_no_calculation",
   confirmationRequired = true,
+  confirmationStatus,
+  editable,
   notes
 }) {
   if (!ORIGINS.has(origin)) {
@@ -47,6 +50,8 @@ function provenance({
     normativeReference,
     calculationSource,
     confirmationRequired,
+    ...(confirmationStatus === undefined ? {} : { confirmationStatus }),
+    ...(editable === undefined ? {} : { editable }),
     ...(notes === undefined ? {} : { notes })
   };
 }
