@@ -52,6 +52,8 @@ const R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE =
   "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX";
 const R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE =
   "MC001_R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK";
+const R22_LATENT_DEMAND_SOURCE_PACK_CODE =
+  "MC001_R22_LATENT_HUMIDIFICATION_DEHUMIDIFICATION_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -69,10 +71,10 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 22,
+  sourcePacks: 23,
   formulas: 10,
   constants: 1,
-  concepts: 15,
+  concepts: 16,
   zoneTypes: 2,
   figures: 4,
   distributionRules: 2,
@@ -237,6 +239,10 @@ function chapter2ExhaustiveCoveragePack(value = registry()) {
 
 function solarGainsExplicitPack(value = registry()) {
   return sourcePackByCode(R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE, value);
+}
+
+function latentDemandPack(value = registry()) {
+  return sourcePackByCode(R22_LATENT_DEMAND_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -454,7 +460,8 @@ test("registry now contains the expected source packs", () => {
       R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
       R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
       R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
-      R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE
+      R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE,
+      R22_LATENT_DEMAND_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -2428,8 +2435,11 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "2.52",
     "2.53",
     "2.54",
+    "2.82",
+    "2.83",
     "2.84",
-    "2.85"
+    "2.85",
+    "2.86"
   ]) {
     assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
   }
@@ -2453,12 +2463,15 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
-    "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
+    "humidification_table_2_21_explicit_space_category_lookup",
     "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
     "annual_QCnd_sum_relation_2_85",
+    "latent_humidification_relation_2_82_explicit_inputs",
+    "latent_dehumidification_relation_2_83_explicit_inputs",
+    "annual_latent_sum_relation_2_86",
     "twelve_month_explicit_chapter_2_calculation_layer"
   ]) {
     assert.ok(pack.coverageMap.runtimeImplemented.includes(runtimeItem), runtimeItem);
@@ -2502,15 +2515,20 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "primary_energy",
     "CO2",
     "CPE",
-    "certificate",
-    "latent_humidification_dehumidification_energy"
+    "certificate"
   ]) {
     assert.ok(pack.coverageMap.outOfChapter2UsefulDemandScope.includes(downstream), downstream);
   }
   assert.ok(pack.runtimeIntegration.implementedModules.includes("mc001Chapter2UsefulDemandCalculation.mjs"));
   assert.ok(pack.runtimeIntegration.implementedModules.includes("mc001SolarGainsCalculation.mjs"));
+  assert.ok(pack.runtimeIntegration.implementedModules.includes("mc001LatentDemandCalculation.mjs"));
   assert.equal(pack.runtimeIntegration.implementedExport, "chapter_2_useful_demand_explicit_v1");
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("separate_annualQHnd_and_annualQCnd"));
+  assert.ok(
+    pack.runtimeIntegration.outputPolicy.includes(
+      "separate_annual_humidification_and_dehumidification_latent_demands"
+    )
+  );
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("no_certificate"));
   assert.ok(pack.completenessAssessment.remainingGaps.includes("default_material_lambda_catalog_values_not_encoded"));
   assert.ok(
@@ -2527,6 +2545,18 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     pack.completenessAssessment.remainingGaps.includes(
       "unheated_adjacent_bztu_default_values_not_fabricated"
     )
+  );
+  assert.equal(
+    pack.completenessAssessment.remainingGaps.includes(
+      "humidification_dehumidification_relations_2_82_2_83_out_of_useful_demand_scope"
+    ),
+    false
+  );
+  assert.equal(
+    pack.completenessAssessment.remainingGaps.includes(
+      "final_primary_CO2_CPE_certificate_out_of_scope"
+    ),
+    false
   );
   assert.ok(pack.blockers.includes("not_certificate"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
@@ -2613,7 +2643,15 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   }
   assert.equal(
     relationById.get("MC001_RELATION_2_82").implementationStatus,
-    "out_of_chapter_2_runtime_scope"
+    "golden_covered"
+  );
+  assert.equal(
+    relationById.get("MC001_RELATION_2_83").implementationStatus,
+    "golden_covered"
+  );
+  assert.equal(
+    relationById.get("MC001_RELATION_2_86").implementationStatus,
+    "golden_covered"
   );
 
   const tableById = new Map(matrix.tables.map((entry) => [entry.identifier, entry]));
@@ -2799,5 +2837,71 @@ test("R21 solar gains source pack machine-encodes explicit monthly solar gains r
   assert.ok(pack.blockers.includes("not_CO2"));
   assert.ok(pack.blockers.includes("not_CPE_certificate"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+});
+
+test("R22 latent demand source pack machine-encodes relations 2.82 2.83 and 2.86", () => {
+  const pack = latentDemandPack();
+  const candidatesByCode = new Map(
+    pack.formulaCandidates.map((candidate) => [candidate.candidateCode, candidate])
+  );
+  const relationByReference = new Map(
+    pack.relationMap.map((relation) => [relation.relationReference, relation])
+  );
+
+  assert.equal(pack.sourcePackCode, R22_LATENT_DEMAND_SOURCE_PACK_CODE);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(
+    pack.runtimeCalculatorStatus,
+    "implemented_explicit_chapter_2_latent_humidification_dehumidification_runtime"
+  );
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.82", "2.83", "2.86"]);
+  assert.ok(pack.sourceScope.tablesVerified.includes("2.21"));
+  for (const page of [123, 124, 125]) {
+    assert.ok(pack.sourceScope.pagesVerified.includes(page), page);
+  }
+  assert.equal(
+    relationByReference.get("2.82").scopeClassification,
+    "latent_humidification_runtime_ready"
+  );
+  assert.equal(
+    relationByReference.get("2.83").scopeClassification,
+    "latent_dehumidification_runtime_ready"
+  );
+  assert.equal(
+    relationByReference.get("2.86").scopeClassification,
+    "annual_latent_runtime_ready"
+  );
+
+  for (const candidateCode of [
+    "MC001_R22_RELATION_2_82_HUMIDIFICATION_LATENT_DEMAND",
+    "MC001_R22_RELATION_2_83_DEHUMIDIFICATION_LATENT_DEMAND",
+    "MC001_R22_RELATION_2_86_ANNUAL_LATENT_DEMAND"
+  ]) {
+    const candidate = candidatesByCode.get(candidateCode);
+    assert.ok(candidate, candidateCode);
+    assert.equal(candidate.runtimeReadiness, "verified_for_explicit_runtime");
+    assert.equal(typeof candidate.machineExpression, "string");
+    assert.ok(candidate.machineExpression.length > 0);
+    assert.ok(candidate.requiredInputs.length > 0);
+  }
+  assert.equal(
+    pack.runtimeIntegration.implementedModule,
+    "mc001LatentDemandCalculation.mjs"
+  );
+  assert.equal(
+    pack.runtimeIntegration.integrationModule,
+    "mc001Chapter2UsefulDemandCalculation.mjs"
+  );
+  assert.ok(pack.runtimeIntegration.outputPolicy.includes("not_final_energy"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_hidden_defaults"));
+  assert.ok(
+    pack.externalDependencies.some(
+      dependency =>
+        dependency.dependencyCode === "PEC_M7_1_SR_EN_16798_3_DEHUMIDIFICATION_FRACTION"
+    )
+  );
+  assert.ok(pack.blockers.includes("not_certificate"));
   assert.equal(Object.hasOwn(pack, "formulas"), false);
 });

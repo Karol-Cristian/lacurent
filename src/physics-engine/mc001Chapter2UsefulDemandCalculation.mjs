@@ -1,6 +1,7 @@
 import { calculateMc001CombinedUsefulDemandExplicit } from "./mc001UsefulDemandAggregation.mjs";
 import { calculateMc001CoolingUsefulDemandExplicit } from "./mc001CoolingUsefulDemandCalculation.mjs";
 import { calculateMc001ExplicitTotalHeatTransferSummary } from "./mc001ExplicitTotalHeatTransferCalculation.mjs";
+import { calculateMc001LatentDemandExplicit } from "./mc001LatentDemandCalculation.mjs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "./mc001MonthlyHeatGainsCalculation.mjs";
 import { calculateMc001MonthlyTransmissionEnergyExplicit } from "./mc001MonthlyTransmissionEnergyCalculation.mjs";
 import { calculateMc001MonthlyVentilationTransferExplicit } from "./mc001VentilationTransferCalculation.mjs";
@@ -14,7 +15,8 @@ const FORMULA_REFERENCES = [
   "MC001_R15_MATERIALS_AND_THERMAL_RESISTANCE_SOURCE_PACK",
   "MC001_R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK",
   "MC001_2_84_ANNUAL_HEATING_USEFUL_DEMAND",
-  "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND"
+  "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND",
+  "MC001_2_86_ANNUAL_LATENT_DEMAND_SUM"
 ];
 const METHODOLOGY_LIMITS = [
   "mc001_chapter_2_useful_demand_explicit_v1",
@@ -55,8 +57,11 @@ const MONTHS = [
 const FORBIDDEN_ROOT_KEYS = new Set([
   "chapter2UsefulDemandResult",
   "combinedUsefulDemandResult",
+  "latentDemandResult",
   "annualQHnd",
   "annualQCnd",
+  "annualHumidificationDemandKwh",
+  "annualDehumidificationDemandKwh",
   "totalUsefulDemand",
   "finalEnergy",
   "primaryEnergy",
@@ -529,6 +534,18 @@ export function calculateMc001Chapter2UsefulDemandExplicit(input = {}) {
     return blocked("chapter_2_combined_useful_demand_failed");
   }
 
+  let latentDemandResult = null;
+  if (hasInputValue(input, "latentDemandCases")) {
+    const latentResult = calculateMc001LatentDemandExplicit({
+      mode: "chapter2_latent_demand_explicit_v1",
+      cases: input.latentDemandCases
+    });
+    if (latentResult.status !== "ready") {
+      return blocked("chapter_2_latent_demand_failed");
+    }
+    latentDemandResult = latentResult;
+  }
+
   return {
     status: "ready",
     scope: SCOPE,
@@ -543,8 +560,13 @@ export function calculateMc001Chapter2UsefulDemandExplicit(input = {}) {
       heatingResult,
       coolingResult,
       combinedUsefulDemandResult,
+      latentDemandResult,
       annualQHnd: heatingResult.summary.annualQHnd,
       annualQCnd: coolingResult.summary.annualQCnd,
+      annualHumidificationDemandKwh:
+        latentDemandResult?.summary.annualHumidificationDemandKwh ?? null,
+      annualDehumidificationDemandKwh:
+        latentDemandResult?.summary.annualDehumidificationDemandKwh ?? null,
       caseCount: input.monthlyCases.length,
       monthCount: MONTHS.length,
       coverageCompleteness: {

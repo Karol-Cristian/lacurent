@@ -42,6 +42,8 @@ const R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE =
   "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX";
 const R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE =
   "MC001_R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK";
+const R22_LATENT_DEMAND_SOURCE_PACK_CODE =
+  "MC001_R22_LATENT_HUMIDIFICATION_DEHUMIDIFICATION_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -111,7 +113,8 @@ const SOURCE_PACK_CODES = new Set([
   R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
   R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
   R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
-  R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE
+  R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE,
+  R22_LATENT_DEMAND_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -154,7 +157,8 @@ const ENTRY_CODES = new Set([
   "MC001_CONCEPT_HEATING_INTERMITTENCY_RELATIONS",
   "MC001_CONCEPT_COOLING_QCND_FORMULA",
   "MC001_CONCEPT_COOLING_UTILIZATION_FACTOR",
-  "MC001_CONCEPT_COOLING_INTERMITTENCY_RELATIONS"
+  "MC001_CONCEPT_COOLING_INTERMITTENCY_RELATIONS",
+  "MC001_CONCEPT_LATENT_HUMIDIFICATION_DEHUMIDIFICATION"
 ]);
 
 const FORMULA_CODES = new Set([
@@ -489,10 +493,10 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 22,
+    sourcePacks: 23,
     formulas: 10,
     constants: 1,
-    concepts: 15,
+    concepts: 16,
     zoneTypes: 2,
     figures: 4,
     distributionRules: 2,
@@ -585,8 +589,11 @@ const CHAPTER_2_IMPLEMENTED_RELATIONS = new Set([
   "2.75",
   "2.76",
   "2.77",
+  "2.82",
+  "2.83",
   "2.84",
-  "2.85"
+  "2.85",
+  "2.86"
 ]);
 
 const CHAPTER_2_GOLDEN_RELATIONS = new Set([
@@ -611,8 +618,11 @@ const CHAPTER_2_GOLDEN_RELATIONS = new Set([
   "2.75",
   "2.76",
   "2.77",
+  "2.82",
+  "2.83",
   "2.84",
-  "2.85"
+  "2.85",
+  "2.86"
 ]);
 
 const CHAPTER_2_AMBIGUOUS_RELATIONS = new Set();
@@ -623,9 +633,6 @@ const CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS = new Set([
   "2.79",
   "2.80",
   "2.81",
-  "2.82",
-  "2.83",
-  "2.86",
   "2.87"
 ]);
 
@@ -5715,6 +5722,174 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       ]
     },
     {
+      sourcePackCode: R22_LATENT_DEMAND_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_explicit_chapter_2_latent_humidification_dehumidification_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        sections: ["2.9.1", "2.9.2", "2.10"],
+        pagesVerified: [123, 124, 125],
+        relationsVerified: ["2.82", "2.83", "2.86"],
+        tablesVerified: ["2.21"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      concept: {
+        entryCode: "MC001_CONCEPT_LATENT_HUMIDIFICATION_DEHUMIDIFICATION",
+        entryType: "concept",
+        conceptCode: "chapter_2_latent_demand_runtime",
+        targetSymbol: "QHU/DHU;nd;ztc;m",
+        registryKind: "machine_readable_runtime_source_pack",
+        name: "Chapter 2 latent humidification and dehumidification useful demand",
+        unit: "kWh",
+        purpose:
+          "machine-encodes MC001 relations 2.82, 2.83 and 2.86 as a separate explicit-input Chapter 2 latent demand runtime",
+        sourceLocator: {
+          pages: [123, 124, 125],
+          relations: ["2.82", "2.83", "2.86"]
+        }
+      },
+      relationMap: [
+        {
+          relationReference: "2.82",
+          scopeClassification: "latent_humidification_runtime_ready",
+          implementationStatus: "implemented_explicit_runtime",
+          runtimeFormulaCode: "MC001_RELATION_2_82_MONTHLY_HUMIDIFICATION_LATENT_DEMAND"
+        },
+        {
+          relationReference: "2.83",
+          scopeClassification: "latent_dehumidification_runtime_ready",
+          implementationStatus: "implemented_explicit_runtime",
+          runtimeFormulaCode: "MC001_RELATION_2_83_MONTHLY_DEHUMIDIFICATION_LATENT_DEMAND"
+        },
+        {
+          relationReference: "2.86",
+          scopeClassification: "annual_latent_runtime_ready",
+          implementationStatus: "implemented_explicit_runtime",
+          runtimeFormulaCode: "MC001_RELATION_2_86_ANNUAL_LATENT_DEMAND_SUM"
+        }
+      ],
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R22_RELATION_2_82_HUMIDIFICATION_LATENT_DEMAND",
+          relationReference: "2.82",
+          expressionText:
+            "QHU;nd;ztc;m = fHU;m * hwe * (1 - etaHU;rvd;ztc) * rhoa * qV;mech;ztc;m * (Delta x * t)a;sup;ztc;an",
+          machineExpression:
+            "qHUndKwh = fHU * hweJPerKg * (1 - etaHUrvd) * airDensityKgPerM3 * qVmechM3PerS * annualMoistureSupplyKgHPerKg / 1000",
+          outputSymbol: "QHU;nd;ztc;m",
+          outputUnit: "kWh",
+          requiredInputs: [
+            "fHU;m or QH;nd;m/QH;nd;an",
+            "hwe",
+            "etaHU;rvd;ztc",
+            "rhoa",
+            "qV;mech;ztc;m",
+            "(Delta x * t)a;sup;ztc;an"
+          ],
+          conditions: ["heating-season humidification latent monthly demand"],
+          scopeClassification: "latent_humidification_runtime_ready",
+          runtimeReadiness: "verified_for_explicit_runtime",
+          sourceReference: "MC001-2022 page 123 relation 2.82",
+          sourceLocator: { page: 123, relation: "2.82" }
+        },
+        {
+          candidateCode: "MC001_R22_RELATION_2_83_DEHUMIDIFICATION_LATENT_DEMAND",
+          relationReference: "2.83",
+          expressionText: "QDHU;nd;ztc;m = fDHU;C;ss * QC;nd;ztc;m",
+          machineExpression: "qDHUndKwh = dehumidificationFraction * sensibleCoolingDemandKwh",
+          outputSymbol: "QDHU;nd;ztc;m",
+          outputUnit: "kWh",
+          requiredInputs: ["fDHU;C;ss", "QC;nd;ztc;m"],
+          conditions: ["summer dehumidification when cooling equipment is used"],
+          scopeClassification: "latent_dehumidification_runtime_ready",
+          runtimeReadiness: "verified_for_explicit_runtime",
+          externalDependency:
+            "fDHU;C;ss is obtained from PEC M7-1 / SR EN 16798-3 and must be explicit or source-backed",
+          sourceReference: "MC001-2022 page 124 relation 2.83",
+          sourceLocator: { page: 124, relation: "2.83" }
+        },
+        {
+          candidateCode: "MC001_R22_RELATION_2_86_ANNUAL_LATENT_DEMAND",
+          relationReference: "2.86",
+          expressionText: "QHU/DHU;nd;ztc;an = sum_m QHU/DHU;nd;ztc;m",
+          machineExpression:
+            "annualHumidificationDemandKwh = sum(qHUndKwh); annualDehumidificationDemandKwh = sum(qDHUndKwh)",
+          outputSymbol: "QHU/DHU;nd;ztc;an",
+          outputUnit: "kWh",
+          requiredInputs: ["monthly QHU/DHU;nd;ztc;m cases"],
+          conditions: ["explicit monthly latent case list"],
+          scopeClassification: "annual_latent_runtime_ready",
+          runtimeReadiness: "verified_for_explicit_runtime",
+          sourceReference: "MC001-2022 page 125 relation 2.86",
+          sourceLocator: { page: 125, relation: "2.86" }
+        }
+      ],
+      tableDependencies: [
+        {
+          tableReference: "2.21",
+          runtimeModule: "mc001HumidificationTable2_21.mjs",
+          lookupPolicy: "explicit_space_category_only",
+          sourcePages: [123]
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001LatentDemandCalculation.mjs",
+        integrationModule: "mc001Chapter2UsefulDemandCalculation.mjs",
+        implementedEntrypoint: "chapter2_latent_demand_explicit_v1",
+        outputPolicy: [
+          "separate_humidification_and_dehumidification_outputs",
+          "not_QHnd",
+          "not_QCnd",
+          "not_final_energy",
+          "not_primary_energy",
+          "not_CO2",
+          "not_certificate"
+        ],
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_default_humidification_fraction",
+          "no_default_latent_heat",
+          "no_default_air_density",
+          "no_default_mechanical_airflow",
+          "no_default_dehumidification_fraction"
+        ]
+      },
+      externalDependencies: [
+        {
+          dependencyCode: "PEC_M7_1_SR_EN_16798_3_DEHUMIDIFICATION_FRACTION",
+          symbol: "fDHU;C;ss",
+          contract:
+            "The dehumidification fraction must be supplied explicitly with source provenance; MC001 Chapter 2 omits the system-standard table."
+        },
+        {
+          dependencyCode: "SR_EN_ISO_52016_1_HUMIDITY_SETPOINT_METHOD",
+          symbol: "humidity_setpoint_method",
+          contract:
+            "Setpoint-based humidity calculation may be used only when explicit source-backed humidity inputs are supplied; no humidity setpoint defaults are encoded."
+        }
+      ],
+      blockers: [
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "not_certificate",
+        "no_hidden_defaults"
+      ]
+    },
+    {
       sourcePackCode: R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
       sourcePackType: SOURCE_PACK_TYPE,
       verificationStatus: R2_VERIFICATION_STATUS,
@@ -5769,7 +5944,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           120,
           121,
           123,
-          124
+          124,
+          125
         ],
         relationsVerified: [
           "2.3",
@@ -5802,8 +5978,11 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "2.57",
           "2.58",
           "2.59-2.77",
+          "2.82",
+          "2.83",
           "2.84",
-          "2.85"
+          "2.85",
+          "2.86"
         ],
         extractionMethods: [
           "page.get_text(text)",
@@ -5847,11 +6026,14 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "solar_sky_radiation_relation_2_54_explicit_inputs",
           "solar_shading_table_2_16_explicit_device_lookup",
           "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
-          "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
+          "humidification_table_2_21_explicit_space_category_lookup",
           "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
           "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
           "annual_QHnd_sum_relation_2_84",
           "annual_QCnd_sum_relation_2_85",
+          "latent_humidification_relation_2_82_explicit_inputs",
+          "latent_dehumidification_relation_2_83_explicit_inputs",
+          "annual_latent_sum_relation_2_86",
           "combined_QHnd_QCnd_separate_output",
           "twelve_month_explicit_chapter_2_calculation_layer"
         ],
@@ -5883,7 +6065,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "CO2",
           "CPE",
           "certificate",
-          "latent_humidification_dehumidification_energy",
           "system_losses",
           "fan_electricity",
           "air_treatment_energy"
@@ -5898,12 +6079,14 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "mc001SolarGainsCalculation.mjs",
           "mc001RestrictedHeatingQhndCalculation.mjs",
           "mc001CoolingUsefulDemandCalculation.mjs",
+          "mc001LatentDemandCalculation.mjs",
           "mc001UsefulDemandAggregation.mjs",
           "mc001Chapter2UsefulDemandCalculation.mjs"
         ],
         implementedExport: "chapter_2_useful_demand_explicit_v1",
         outputPolicy: [
           "separate_annualQHnd_and_annualQCnd",
+          "separate_annual_humidification_and_dehumidification_latent_demands",
           "no_ambiguous_total_useful_demand",
           "no_final_energy",
           "no_primary_energy",
@@ -5935,9 +6118,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated",
           "automatic_ground_contact_detailed_method_not_encoded",
           "unheated_adjacent_bztu_default_values_not_fabricated",
-          "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted",
-          "humidification_dehumidification_relations_2_82_2_83_out_of_useful_demand_scope",
-          "final_primary_CO2_CPE_certificate_out_of_scope"
+          "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted"
         ]
       },
       blockers: [
@@ -9242,6 +9423,81 @@ function solarGainsExplicitSourcePackIssue(sourcePack) {
   return null;
 }
 
+function latentDemandSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(sourcePack, R2_VERIFICATION_STATUS, SOURCE_PACK_TYPE);
+  if (baseIssue) {
+    return baseIssue;
+  }
+  const scope = sourcePack.sourceScope;
+  const concept = sourcePack.concept;
+  const candidates = sourcePack.formulaCandidates;
+  const integration = sourcePack.runtimeIntegration;
+  const relationMap = sourcePack.relationMap;
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !==
+      "implemented_explicit_chapter_2_latent_humidification_dehumidification_runtime" ||
+    !isObject(scope) ||
+    ![123, 124, 125].every(page => scope.pagesVerified?.includes(page)) ||
+    !["2.82", "2.83", "2.86"].every(relation => scope.relationsVerified?.includes(relation)) ||
+    !scope.tablesVerified?.includes("2.21") ||
+    !scope.extractionMethods?.includes("page.get_text(text)") ||
+    !scope.extractionMethods?.includes("page.get_text(blocks)") ||
+    !scope.extractionMethods?.includes("page.get_text(dict)") ||
+    !scope.extractionMethods?.includes("page rendering to PNG") ||
+    !scope.extractionMethods?.includes("visual inspection of rendered equations") ||
+    !isObject(concept) ||
+    concept.entryCode !== "MC001_CONCEPT_LATENT_HUMIDIFICATION_DEHUMIDIFICATION" ||
+    concept.conceptCode !== "chapter_2_latent_demand_runtime" ||
+    concept.targetSymbol !== "QHU/DHU;nd;ztc;m" ||
+    !Array.isArray(relationMap) ||
+    !["2.82", "2.83", "2.86"].every(relation => (
+      relationMap.some(entry => (
+        entry.relationReference === relation &&
+        entry.implementationStatus === "implemented_explicit_runtime"
+      ))
+    )) ||
+    !Array.isArray(candidates) ||
+    ![
+      "MC001_R22_RELATION_2_82_HUMIDIFICATION_LATENT_DEMAND",
+      "MC001_R22_RELATION_2_83_DEHUMIDIFICATION_LATENT_DEMAND",
+      "MC001_R22_RELATION_2_86_ANNUAL_LATENT_DEMAND"
+    ].every(code => (
+      candidates.some(candidate => (
+        candidate.candidateCode === code &&
+        candidate.runtimeReadiness === "verified_for_explicit_runtime" &&
+        hasRequiredString(candidate.machineExpression) &&
+        Array.isArray(candidate.requiredInputs) &&
+        candidate.requiredInputs.length > 0
+      ))
+    )) ||
+    !isObject(integration) ||
+    integration.implementedModule !== "mc001LatentDemandCalculation.mjs" ||
+    integration.integrationModule !== "mc001Chapter2UsefulDemandCalculation.mjs" ||
+    integration.implementedEntrypoint !== "chapter2_latent_demand_explicit_v1" ||
+    !integration.inputPolicy?.includes("explicit_inputs_only") ||
+    !integration.inputPolicy?.includes("no_hidden_defaults") ||
+    !Array.isArray(sourcePack.externalDependencies) ||
+    !sourcePack.externalDependencies.some(dependency => (
+      dependency.dependencyCode === "PEC_M7_1_SR_EN_16798_3_DEHUMIDIFICATION_FRACTION"
+    )) ||
+    !sourcePack.blockers?.includes("not_final_energy") ||
+    !sourcePack.blockers?.includes("not_primary_energy") ||
+    !sourcePack.blockers?.includes("not_CO2") ||
+    !sourcePack.blockers?.includes("not_CPE_certificate") ||
+    !sourcePack.blockers?.includes("no_hidden_defaults") ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
   const baseIssue = sourcePackBaseIssue(sourcePack, R2_VERIFICATION_STATUS);
   if (baseIssue) {
@@ -9271,12 +9527,15 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
-    "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
+    "humidification_table_2_21_explicit_space_category_lookup",
     "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
     "annual_QCnd_sum_relation_2_85",
+    "latent_humidification_relation_2_82_explicit_inputs",
+    "latent_dehumidification_relation_2_83_explicit_inputs",
+    "annual_latent_sum_relation_2_86",
     "twelve_month_explicit_chapter_2_calculation_layer"
   ];
   const requiredExplicitOnlyItems = [
@@ -9291,8 +9550,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "primary_energy",
     "CO2",
     "CPE",
-    "certificate",
-    "latent_humidification_dehumidification_energy"
+    "certificate"
   ];
   if (
     sourcePack.metadataOnly !== false ||
@@ -9301,8 +9559,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 96, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 120, 121, 123, 124],
-      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.23", "2.24", "2.27", "2.28", "2.34", "2.36", "2.37", "2.38", "2.39", "2.40", "2.50", "2.51", "2.52", "2.53", "2.54", "2.84", "2.85"]
+      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 96, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 120, 121, 123, 124, 125],
+      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.23", "2.24", "2.27", "2.28", "2.34", "2.36", "2.37", "2.38", "2.39", "2.40", "2.50", "2.51", "2.52", "2.53", "2.54", "2.82", "2.83", "2.84", "2.85", "2.86"]
     ) ||
     !isObject(map) ||
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
@@ -9314,10 +9572,12 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     !isObject(integration) ||
     !integration.implementedModules?.includes("mc001Chapter2UsefulDemandCalculation.mjs") ||
     !integration.implementedModules?.includes("mc001SolarGainsCalculation.mjs") ||
+    !integration.implementedModules?.includes("mc001LatentDemandCalculation.mjs") ||
     integration.implementedExport !== "chapter_2_useful_demand_explicit_v1" ||
     !integration.inputPolicy?.includes("explicit_inputs_only") ||
     !integration.inputPolicy?.includes("no_hidden_defaults") ||
     !integration.outputPolicy?.includes("separate_annualQHnd_and_annualQCnd") ||
+    !integration.outputPolicy?.includes("separate_annual_humidification_and_dehumidification_latent_demands") ||
     !integration.outputPolicy?.includes("no_certificate") ||
     !isObject(assessment) ||
     !assessment.restrictiveMarkersRetained?.includes("not_certificate") ||
@@ -9548,6 +9808,9 @@ function sourcePackIssue(sourcePack) {
     R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE
   ) {
     return solarGainsExplicitSourcePackIssue(sourcePack);
+  }
+  if (sourcePack.sourcePackCode === R22_LATENT_DEMAND_SOURCE_PACK_CODE) {
+    return latentDemandSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
