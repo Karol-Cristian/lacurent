@@ -38,6 +38,8 @@ const R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE =
   "MC001_R18_BOUNDARY_CORRECTIONS_SOURCE_PACK";
 const R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE =
   "MC001_R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK";
+const R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE =
+  "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -105,7 +107,8 @@ const SOURCE_PACK_CODES = new Set([
   R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
   R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
   R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
-  R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE
+  R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
+  R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -483,7 +486,7 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 20,
+    sourcePacks: 21,
     formulas: 10,
     constants: 1,
     concepts: 15,
@@ -494,6 +497,425 @@ function expectedCounts() {
     defaultValueCandidates: 1
   });
 }
+
+const CHAPTER_2_FIRST_PAGE = 41;
+const CHAPTER_2_LAST_PAGE = 126;
+
+const CHAPTER_2_ALLOWED_MATRIX_STATUSES = Object.freeze([
+  "runtime_implemented",
+  "table_machine_encoded",
+  "golden_covered",
+  "metadata_only_normative_context",
+  "not_runtime_applicable",
+  "out_of_chapter_2_runtime_scope",
+  "ambiguous_source_requires_human_resolution"
+]);
+
+const CHAPTER_2_RELATION_NUMBERS = Object.freeze(
+  Array.from({ length: 87 }, (_, index) => `2.${index + 1}`)
+);
+const CHAPTER_2_TABLE_NUMBERS = Object.freeze(
+  Array.from({ length: 21 }, (_, index) => `2.${index + 1}`)
+);
+const CHAPTER_2_FIGURE_NUMBERS = Object.freeze(
+  Array.from({ length: 21 }, (_, index) => `2.${index + 1}`)
+);
+
+const CHAPTER_2_IMPLEMENTED_RELATIONS = new Set([
+  "2.3",
+  "2.6",
+  "2.7",
+  "2.8",
+  "2.9",
+  "2.10",
+  "2.11",
+  "2.12",
+  "2.13",
+  "2.14",
+  "2.15",
+  "2.21",
+  "2.22",
+  "2.23",
+  "2.24",
+  "2.25",
+  "2.26",
+  "2.27",
+  "2.28",
+  "2.29",
+  "2.30",
+  "2.31",
+  "2.32",
+  "2.33",
+  "2.34",
+  "2.35",
+  "2.55",
+  "2.56",
+  "2.57",
+  "2.58",
+  "2.59",
+  "2.60",
+  "2.61",
+  "2.62",
+  "2.63",
+  "2.64",
+  "2.65",
+  "2.66",
+  "2.67",
+  "2.68",
+  "2.69",
+  "2.70",
+  "2.71",
+  "2.72",
+  "2.73",
+  "2.74",
+  "2.75",
+  "2.76",
+  "2.77",
+  "2.84",
+  "2.85"
+]);
+
+const CHAPTER_2_GOLDEN_RELATIONS = new Set([
+  "2.3",
+  "2.6",
+  "2.7",
+  "2.8",
+  "2.10",
+  "2.12",
+  "2.15",
+  "2.22",
+  "2.27",
+  "2.28",
+  "2.33",
+  "2.55",
+  "2.56",
+  "2.57",
+  "2.58",
+  "2.59",
+  "2.73",
+  "2.74",
+  "2.75",
+  "2.76",
+  "2.77",
+  "2.84",
+  "2.85"
+]);
+
+const CHAPTER_2_AMBIGUOUS_RELATIONS = new Set(["2.2", "2.5"]);
+const CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS = new Set([
+  "2.4",
+  "2.78",
+  "2.79",
+  "2.80",
+  "2.81",
+  "2.82",
+  "2.83",
+  "2.86",
+  "2.87"
+]);
+
+const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2"]);
+const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
+  "2.1",
+  "2.11",
+  "2.12",
+  "2.13",
+  "2.14",
+  "2.15",
+  "2.16",
+  "2.17",
+  "2.19",
+  "2.20",
+  "2.21"
+]);
+const CHAPTER_2_NOT_RUNTIME_TABLES = new Set([
+  "2.3",
+  "2.4",
+  "2.5",
+  "2.6",
+  "2.7",
+  "2.8",
+  "2.9",
+  "2.10",
+  "2.18"
+]);
+
+function chapter2IntegerRange(first, last) {
+  return Array.from({ length: last - first + 1 }, (_, index) => first + index);
+}
+
+function chapter2SectionForPage(page) {
+  if (page <= 53) return "2.1";
+  if (page <= 76) return "2.2-2.3";
+  if (page <= 84) return "2.4";
+  if (page <= 88) return "2.5";
+  if (page <= 96) return "2.6";
+  if (page <= 115) return "2.7";
+  if (page <= 122) return "2.8";
+  if (page <= 124) return "2.9-2.10";
+  return "2.11-2.12";
+}
+
+function chapter2PageEntry(page) {
+  return Object.freeze({
+    identifier: `MC001_CH2_PAGE_${page}`,
+    type: "page",
+    section: chapter2SectionForPage(page),
+    page,
+    title: `Chapter 2 PDF page ${page} inspected`,
+    scope: "shared",
+    runtimeRelevance: "source_inventory",
+    machineEncodability: "inspection_record",
+    implementationStatus: "metadata_only_normative_context",
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    inspectionStatus: "inspected",
+    extractionMethods: [
+      "page.get_text(text)",
+      "page.get_text(blocks)",
+      "page.get_text(dict)",
+      "rendered PNG visual inspection where equations or tables are fragmented"
+    ]
+  });
+}
+
+function chapter2RelationStatus(relationNumber) {
+  if (CHAPTER_2_AMBIGUOUS_RELATIONS.has(relationNumber)) {
+    return "ambiguous_source_requires_human_resolution";
+  }
+  if (CHAPTER_2_GOLDEN_RELATIONS.has(relationNumber)) {
+    return "golden_covered";
+  }
+  if (CHAPTER_2_IMPLEMENTED_RELATIONS.has(relationNumber)) {
+    return "runtime_implemented";
+  }
+  if (CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS.has(relationNumber)) {
+    return "out_of_chapter_2_runtime_scope";
+  }
+  return "metadata_only_normative_context";
+}
+
+function chapter2RelationEntry(relationNumber) {
+  const implementationStatus = chapter2RelationStatus(relationNumber);
+  return Object.freeze({
+    identifier: `MC001_RELATION_${relationNumber.replace(".", "_")}`,
+    type: "relation",
+    section: relationNumber.localeCompare("2.21", undefined, { numeric: true }) < 0
+      ? "2.1-2.5"
+      : relationNumber.localeCompare("2.55", undefined, { numeric: true }) < 0
+        ? "2.6-2.7"
+        : relationNumber.localeCompare("2.78", undefined, { numeric: true }) < 0
+          ? "2.8"
+          : "2.9-2.12",
+    page: null,
+    title: `MC001-2022 relation ${relationNumber}`,
+    scope: relationNumber.localeCompare("2.55", undefined, { numeric: true }) >= 0
+      ? "heating_cooling_useful_demand"
+      : "envelope_or_shared",
+    dependencies: [],
+    units: "see_source_relation",
+    runtimeRelevance: CHAPTER_2_IMPLEMENTED_RELATIONS.has(relationNumber)
+      ? "runtime_dependency"
+      : "classified_not_current_runtime_dependency",
+    machineEncodability: CHAPTER_2_AMBIGUOUS_RELATIONS.has(relationNumber)
+      ? "ambiguous_after_text_blocks_dict_and_visual_inspection"
+      : "classified",
+    implementationStatus,
+    runtimeModule: CHAPTER_2_IMPLEMENTED_RELATIONS.has(relationNumber)
+      ? "chapter_2_runtime_modules"
+      : null,
+    testFile: CHAPTER_2_IMPLEMENTED_RELATIONS.has(relationNumber)
+      ? "focused_physics_tests_or_golden_chapter_2_fixture"
+      : null,
+    goldenCoverage: CHAPTER_2_GOLDEN_RELATIONS.has(relationNumber),
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    remainingBlocker: implementationStatus === "metadata_only_normative_context"
+      ? "classified_for_later_domain_specific_runtime_audit"
+      : implementationStatus === "ambiguous_source_requires_human_resolution"
+        ? "relation_number_not_safely_machine_transcribed_from_local_pdf_extraction"
+        : implementationStatus === "out_of_chapter_2_runtime_scope"
+          ? "latent_or_free_temperature_indicator_not_part_of_current_QHnd_QCnd_output"
+          : null
+  });
+}
+
+function chapter2TableStatus(tableNumber) {
+  if (CHAPTER_2_TABLE_MACHINE_ENCODED.has(tableNumber)) {
+    return "table_machine_encoded";
+  }
+  if (CHAPTER_2_TABLE_BACKED_NOT_ENCODED.has(tableNumber)) {
+    return "metadata_only_normative_context";
+  }
+  if (CHAPTER_2_NOT_RUNTIME_TABLES.has(tableNumber)) {
+    return "not_runtime_applicable";
+  }
+  return "metadata_only_normative_context";
+}
+
+function chapter2TableEntry(tableNumber) {
+  const implementationStatus = chapter2TableStatus(tableNumber);
+  return Object.freeze({
+    identifier: `MC001_TABLE_${tableNumber.replace(".", "_")}`,
+    type: "table",
+    section: "Chapter 2",
+    page: null,
+    title: `MC001-2022 table ${tableNumber}`,
+    scope: tableNumber === "2.2" ? "materials" : "envelope_or_useful_demand",
+    dependencies: [],
+    units: "see_source_table",
+    runtimeRelevance: implementationStatus === "table_machine_encoded"
+      ? "runtime_lookup"
+      : "classified_table_dependency",
+    machineEncodability: implementationStatus === "table_machine_encoded"
+      ? "machine_encoded"
+      : "not_encoded_in_current_runtime",
+    implementationStatus,
+    runtimeModule: tableNumber === "2.2"
+      ? "mc001Table2_2MaterialCorrectionCoefficients.mjs"
+      : null,
+    testFile: tableNumber === "2.2"
+      ? "mc001Table2_2MaterialCorrectionCoefficients.test.mjs"
+      : null,
+    goldenCoverage: tableNumber === "2.2",
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    remainingBlocker: implementationStatus === "metadata_only_normative_context"
+      ? "table_classified_but_not_machine_encoded_in_current_batch"
+      : null
+  });
+}
+
+function chapter2FigureEntry(figureNumber) {
+  const implementedFigures = new Set(["2.14", "2.15", "2.18", "2.19"]);
+  const implementationStatus = implementedFigures.has(figureNumber)
+    ? "golden_covered"
+    : "metadata_only_normative_context";
+  return Object.freeze({
+    identifier: `MC001_FIGURE_${figureNumber.replace(".", "_")}`,
+    type: "figure",
+    section: "Chapter 2",
+    page: null,
+    title: `MC001-2022 figure ${figureNumber}`,
+    scope: implementedFigures.has(figureNumber)
+      ? "QHnd_QCnd_branch_logic"
+      : "normative_context",
+    dependencies: [],
+    units: "not_applicable",
+    runtimeRelevance: implementedFigures.has(figureNumber)
+      ? "runtime_branch_reference"
+      : "classified_figure_context",
+    machineEncodability: "classified",
+    implementationStatus,
+    runtimeModule: implementedFigures.has(figureNumber)
+      ? "heating_or_cooling_useful_demand_runtime"
+      : null,
+    testFile: implementedFigures.has(figureNumber)
+      ? "useful_demand_focused_tests"
+      : null,
+    goldenCoverage: implementedFigures.has(figureNumber),
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    remainingBlocker: implementedFigures.has(figureNumber)
+      ? null
+      : "figure_classified_as_normative_context_not_formula_runtime"
+  });
+}
+
+const CHAPTER_2_CONDITION_ENTRIES = Object.freeze([
+  Object.freeze({
+    identifier: "MC001_CH2_CONDITION_NO_HIDDEN_DEFAULTS",
+    type: "condition",
+    section: "Chapter 2",
+    page: null,
+    title: "No hidden defaults for Chapter 2 runtime inputs",
+    scope: "shared",
+    dependencies: [],
+    units: "not_applicable",
+    runtimeRelevance: "runtime_guardrail",
+    machineEncodability: "machine_encoded_as_validation_policy",
+    implementationStatus: "runtime_implemented",
+    runtimeModule: "chapter_2_runtime_modules",
+    testFile: "chapter_2_runtime_tests",
+    goldenCoverage: true,
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    remainingBlocker: null
+  }),
+  Object.freeze({
+    identifier: "MC001_CH2_CONDITION_EXPLICIT_12_MONTHS",
+    type: "condition",
+    section: "2.10",
+    page: 124,
+    title: "Twelve explicit months are required for annual useful-demand aggregation",
+    scope: "heating_cooling_useful_demand",
+    dependencies: ["monthly_QHnd", "monthly_QCnd"],
+    units: "months",
+    runtimeRelevance: "runtime_guardrail",
+    machineEncodability: "machine_encoded_as_validation_policy",
+    implementationStatus: "runtime_implemented",
+    runtimeModule: "mc001Chapter2UsefulDemandCalculation.mjs",
+    testFile: "mc001Chapter2UsefulDemandCalculation.test.mjs",
+    goldenCoverage: true,
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    remainingBlocker: null
+  }),
+  Object.freeze({
+    identifier: "MC001_CH2_CONDITION_EXTERNAL_CLIMATE_DATA",
+    type: "definition",
+    section: "2.7",
+    page: null,
+    title: "Monthly climate, irradiation, and duration values remain explicit inputs",
+    scope: "shared",
+    dependencies: [],
+    units: "see_monthly_inputs",
+    runtimeRelevance: "explicit_input_contract",
+    machineEncodability: "external_or_table_backed_dependency_not_encoded_here",
+    implementationStatus: "metadata_only_normative_context",
+    runtimeModule: null,
+    testFile: "chapter_2_runtime_tests",
+    goldenCoverage: false,
+    sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+    remainingBlocker: "climate_and_solar_defaults_not_fabricated"
+  })
+]);
+
+const CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX = Object.freeze({
+  matrixId: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+  chapter: "Capitolul 2. Anvelopa termica a cladirii",
+  sourceAuthority: "MC001-2022 official local PDF",
+  pageRange: Object.freeze({
+    firstPage: CHAPTER_2_FIRST_PAGE,
+    lastPage: CHAPTER_2_LAST_PAGE,
+    totalPages: CHAPTER_2_LAST_PAGE - CHAPTER_2_FIRST_PAGE + 1
+  }),
+  pageInspections: Object.freeze(
+    chapter2IntegerRange(CHAPTER_2_FIRST_PAGE, CHAPTER_2_LAST_PAGE).map(chapter2PageEntry)
+  ),
+  relations: Object.freeze(CHAPTER_2_RELATION_NUMBERS.map(chapter2RelationEntry)),
+  tables: Object.freeze(CHAPTER_2_TABLE_NUMBERS.map(chapter2TableEntry)),
+  figures: Object.freeze(CHAPTER_2_FIGURE_NUMBERS.map(chapter2FigureEntry)),
+  conditions: CHAPTER_2_CONDITION_ENTRIES,
+  completionGate: Object.freeze({
+    closureStatus: "CHAPTER_2_NOT_CLOSED",
+    closureReason:
+      "All Chapter 2 pages/items are classified, but runtime-feasible table-backed/default domains remain intentionally unimplemented until source-safe machine encoding is completed.",
+    requiredBeforeClosure: Object.freeze([
+      "resolve_or_confirm_relation_2_2_gap",
+      "resolve_or_confirm_relation_2_5_gap",
+      "machine_encode_surface_resistance_tables_if_runtime_safe",
+      "machine_encode_air_layer_resistance_tables_if_runtime_safe",
+      "machine_encode_effective_capacity_tables_if_runtime_safe",
+      "machine_encode_remaining_solar_glazing_shading_inputs_if_runtime_safe",
+      "machine_encode_or_justify_latent_humidification_relations_2_82_to_2_83",
+      "golden_cover_every_newly_implemented_runtime_branch"
+    ])
+  }),
+  completenessMetrics: Object.freeze({
+    pagesInspected: CHAPTER_2_LAST_PAGE - CHAPTER_2_FIRST_PAGE + 1,
+    relationsClassified: CHAPTER_2_RELATION_NUMBERS.length,
+    relationsRuntimeImplemented: CHAPTER_2_IMPLEMENTED_RELATIONS.size,
+    tablesClassified: CHAPTER_2_TABLE_NUMBERS.length,
+    tablesMachineEncoded: CHAPTER_2_TABLE_MACHINE_ENCODED.size,
+    figuresClassified: CHAPTER_2_FIGURE_NUMBERS.length,
+    conditionEntriesClassified: CHAPTER_2_CONDITION_ENTRIES.length
+  })
+});
 
 export const mc001NormativeRegistryV1 = deepFreeze({
   schemaVersion: SCHEMA_VERSION,
@@ -5047,6 +5469,85 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "no_default_gains",
         "no_default_schedules"
       ]
+    },
+    {
+      sourcePackCode: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "executable_chapter_2_coverage_matrix_and_nonclosure_gate",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        sections: [
+          "2.1",
+          "2.2",
+          "2.3",
+          "2.4",
+          "2.5",
+          "2.6",
+          "2.7",
+          "2.8",
+          "2.9",
+          "2.10",
+          "2.11",
+          "2.12"
+        ],
+        pagesVerified: chapter2IntegerRange(CHAPTER_2_FIRST_PAGE, CHAPTER_2_LAST_PAGE),
+        relationsVerified: CHAPTER_2_RELATION_NUMBERS,
+        tablesVerified: CHAPTER_2_TABLE_NUMBERS,
+        figuresVerified: CHAPTER_2_FIGURE_NUMBERS,
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "cropped visual inspection where text extraction is fragmented",
+          "existing reviewed source-pack notes R0-R19"
+        ]
+      },
+      coverageMatrix: CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX,
+      completenessGate: {
+        closureStatus: "CHAPTER_2_NOT_CLOSED",
+        reason:
+          "The exhaustive matrix classifies every Chapter 2 page/relation/table/figure currently identified, but closure is withheld because table-backed defaults and ambiguous relation-number gaps remain unresolved.",
+        unresolvedItemIds: [
+          "MC001_RELATION_2_2",
+          "MC001_RELATION_2_5",
+          "MC001_TABLE_2_1",
+          "MC001_TABLE_2_11",
+          "MC001_TABLE_2_12",
+          "MC001_TABLE_2_13",
+          "MC001_TABLE_2_14",
+          "MC001_TABLE_2_15",
+          "MC001_TABLE_2_16",
+          "MC001_TABLE_2_17",
+          "MC001_TABLE_2_19",
+          "MC001_TABLE_2_20",
+          "MC001_TABLE_2_21"
+        ],
+        nextImplementationDomains: [
+          "surface_resistance_tables",
+          "air_layer_resistance_tables",
+          "effective_capacity_tables",
+          "solar_glazing_shading_inputs",
+          "latent_humidification_and_dehumidification_relations"
+        ]
+      },
+      blockers: [
+        "chapter_2_not_closed",
+        "ambiguous_relation_2_2",
+        "ambiguous_relation_2_5",
+        "table_backed_defaults_not_fully_machine_encoded",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE",
+        "not_certificate",
+        "no_hidden_defaults"
+      ]
     }
   ]
 });
@@ -8259,6 +8760,78 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
   return null;
 }
 
+function matrixEntriesHaveAllowedStatuses(entries) {
+  return Array.isArray(entries) && entries.every((entry) => (
+    isObject(entry) &&
+    hasRequiredString(entry.identifier) &&
+    hasRequiredString(entry.type) &&
+    CHAPTER_2_ALLOWED_MATRIX_STATUSES.includes(entry.implementationStatus) &&
+    entry.sourcePack === R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE &&
+    entry.implementationStatus !== "unknown" &&
+    entry.implementationStatus !== "unreviewed" &&
+    entry.implementationStatus !== "unclassified"
+  ));
+}
+
+function chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(sourcePack, R2_VERIFICATION_STATUS);
+  if (baseIssue) {
+    return baseIssue;
+  }
+
+  const matrix = sourcePack.coverageMatrix;
+  const gate = sourcePack.completenessGate;
+  const expectedPages = chapter2IntegerRange(CHAPTER_2_FIRST_PAGE, CHAPTER_2_LAST_PAGE);
+
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !==
+      "executable_chapter_2_coverage_matrix_and_nonclosure_gate" ||
+    !isObject(sourcePack.sourceScope) ||
+    !arraysMatchExactly(sourcePack.sourceScope.pagesVerified, expectedPages) ||
+    !arraysMatchExactly(sourcePack.sourceScope.relationsVerified, CHAPTER_2_RELATION_NUMBERS) ||
+    !arraysMatchExactly(sourcePack.sourceScope.tablesVerified, CHAPTER_2_TABLE_NUMBERS) ||
+    !arraysMatchExactly(sourcePack.sourceScope.figuresVerified, CHAPTER_2_FIGURE_NUMBERS) ||
+    !isObject(matrix) ||
+    matrix.matrixId !== R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE ||
+    matrix.pageRange?.firstPage !== CHAPTER_2_FIRST_PAGE ||
+    matrix.pageRange?.lastPage !== CHAPTER_2_LAST_PAGE ||
+    matrix.pageRange?.totalPages !== expectedPages.length ||
+    !matrixEntriesHaveAllowedStatuses(matrix.pageInspections) ||
+    !matrixEntriesHaveAllowedStatuses(matrix.relations) ||
+    !matrixEntriesHaveAllowedStatuses(matrix.tables) ||
+    !matrixEntriesHaveAllowedStatuses(matrix.figures) ||
+    !matrixEntriesHaveAllowedStatuses(matrix.conditions) ||
+    matrix.pageInspections.length !== expectedPages.length ||
+    matrix.relations.length !== CHAPTER_2_RELATION_NUMBERS.length ||
+    matrix.tables.length !== CHAPTER_2_TABLE_NUMBERS.length ||
+    matrix.figures.length !== CHAPTER_2_FIGURE_NUMBERS.length ||
+    matrix.completionGate?.closureStatus !== "CHAPTER_2_NOT_CLOSED" ||
+    matrix.completenessMetrics?.pagesInspected !== expectedPages.length ||
+    matrix.completenessMetrics?.relationsClassified !== CHAPTER_2_RELATION_NUMBERS.length ||
+    matrix.completenessMetrics?.tablesClassified !== CHAPTER_2_TABLE_NUMBERS.length ||
+    matrix.completenessMetrics?.figuresClassified !== CHAPTER_2_FIGURE_NUMBERS.length ||
+    matrix.completenessMetrics?.tablesMachineEncoded !== CHAPTER_2_TABLE_MACHINE_ENCODED.size ||
+    !isObject(gate) ||
+    gate.closureStatus !== "CHAPTER_2_NOT_CLOSED" ||
+    !gate.unresolvedItemIds?.includes("MC001_RELATION_2_2") ||
+    !gate.unresolvedItemIds?.includes("MC001_TABLE_2_19") ||
+    !Array.isArray(sourcePack.blockers) ||
+    !sourcePack.blockers.includes("chapter_2_not_closed") ||
+    !sourcePack.blockers.includes("no_hidden_defaults") ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -8382,6 +8955,12 @@ function sourcePackIssue(sourcePack) {
     R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE
   ) {
     return chapter2CompleteCoverageSourcePackIssue(sourcePack);
+  }
+  if (
+    sourcePack.sourcePackCode ===
+    R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE
+  ) {
+    return chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }
