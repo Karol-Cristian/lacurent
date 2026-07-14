@@ -548,6 +548,7 @@ const CHAPTER_2_IMPLEMENTED_RELATIONS = new Set([
   "2.33",
   "2.34",
   "2.35",
+  "2.40",
   "2.55",
   "2.56",
   "2.57",
@@ -614,13 +615,21 @@ const CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS = new Set([
   "2.87"
 ]);
 
-const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2", "2.11", "2.12", "2.13", "2.19", "2.20"]);
-const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
-  "2.1",
-  "2.14",
+const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set([
+  "2.2",
+  "2.11",
+  "2.12",
+  "2.13",
   "2.15",
   "2.16",
   "2.17",
+  "2.18",
+  "2.19",
+  "2.20"
+]);
+const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
+  "2.1",
+  "2.14",
   "2.21"
 ]);
 const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
@@ -628,6 +637,10 @@ const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
   ["2.11", "mc001SurfaceResistanceTables.mjs"],
   ["2.12", "mc001SurfaceResistanceTables.mjs"],
   ["2.13", "mc001SolarTransmissionTable2_13.mjs"],
+  ["2.15", "mc001InternalGainsTable2_15.mjs"],
+  ["2.16", "mc001SolarShadingTables.mjs"],
+  ["2.17", "mc001SolarShadingTables.mjs"],
+  ["2.18", "mc001SolarShadingTables.mjs"],
   ["2.19", "mc001EffectiveInternalHeatCapacityTables.mjs"],
   ["2.20", "mc001EffectiveInternalHeatCapacityTables.mjs"]
 ]);
@@ -636,6 +649,10 @@ const CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER = new Map([
   ["2.11", "mc001SurfaceResistanceTables.test.mjs"],
   ["2.12", "mc001SurfaceResistanceTables.test.mjs"],
   ["2.13", "mc001SolarTransmissionTable2_13.test.mjs"],
+  ["2.15", "mc001InternalGainsTable2_15.test.mjs"],
+  ["2.16", "mc001SolarShadingTables.test.mjs"],
+  ["2.17", "mc001SolarShadingTables.test.mjs"],
+  ["2.18", "mc001SolarShadingTables.test.mjs"],
   ["2.19", "mc001EffectiveInternalHeatCapacityTables.test.mjs"],
   ["2.20", "mc001EffectiveInternalHeatCapacityTables.test.mjs"]
 ]);
@@ -647,8 +664,7 @@ const CHAPTER_2_NOT_RUNTIME_TABLES = new Set([
   "2.7",
   "2.8",
   "2.9",
-  "2.10",
-  "2.18"
+  "2.10"
 ]);
 
 function chapter2IntegerRange(first, last) {
@@ -5336,6 +5352,10 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           103,
           104,
           105,
+          106,
+          107,
+          108,
+          109,
           112,
           120,
           121,
@@ -5355,6 +5375,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "2.33",
           "2.36",
           "2.39",
+          "2.40",
           "2.50",
           "2.55",
           "2.56",
@@ -5394,7 +5415,10 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "Htr_component_sum",
           "monthly_transmission_explicit_temperature_duration",
           "monthly_ventilation_explicit_airflow_temperature_duration",
+          "internal_gains_table_2_15_explicit_category_lookup",
           "monthly_heat_gains_explicit_internal_plus_solar_sum",
+          "solar_shading_table_2_16_explicit_device_lookup",
+          "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
           "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
           "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
           "annual_QHnd_sum_relation_2_84",
@@ -5410,8 +5434,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "monthly_weather_temperatures",
           "monthly_durations",
           "ventilation_airflows_and_corrections",
-          "internal_gain_components_and_schedules",
-          "solar_irradiation_orientation_shading_and_range_glazing_properties",
+          "internal_gain_category_or_components_and_schedules",
+          "solar_irradiation_and_explicit_obstacle_geometry",
           "direct_effective_internal_heat_capacity_or_table_2_20_class_area_source",
           "thermal_bridge_psi_chi_values"
         ],
@@ -5481,7 +5505,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "default_material_lambda_catalog_values_not_encoded",
           "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated",
           "automatic_ground_contact_detailed_method_not_encoded",
-          "solar_climate_orientation_shading_and_range_glazing_inputs_not_defaulted",
+          "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted",
           "final_primary_CO2_CPE_certificate_out_of_scope"
         ]
       },
@@ -5547,14 +5571,12 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "MC001_RELATION_2_5",
           "MC001_TABLE_2_1",
           "MC001_TABLE_2_14",
-          "MC001_TABLE_2_15",
-          "MC001_TABLE_2_16",
-          "MC001_TABLE_2_17",
           "MC001_TABLE_2_21"
         ],
         nextImplementationDomains: [
           "material_lambda_catalog_tables",
-          "solar_climate_orientation_shading_inputs",
+          "ventilation_infiltration_table_2_14",
+          "solar_climate_irradiation_and_obstacle_geometry_inputs",
           "latent_humidification_and_dehumidification_relations"
         ]
       },
@@ -8726,7 +8748,10 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
     "monthly_ventilation_explicit_airflow_temperature_duration",
+    "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "solar_shading_table_2_16_explicit_device_lookup",
+    "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -8736,8 +8761,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
   const requiredExplicitOnlyItems = [
     "base_material_lambda_normat",
     "monthly_weather_temperatures",
-    "internal_gain_components_and_schedules",
-    "solar_irradiation_orientation_shading_and_range_glazing_properties"
+    "internal_gain_category_or_components_and_schedules",
+    "solar_irradiation_and_explicit_obstacle_geometry"
   ];
   const requiredOutOfScopeItems = [
     "final_energy",
@@ -8753,8 +8778,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 94, 95, 100, 103, 104, 105, 112, 120, 121, 124],
-      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.22", "2.27", "2.28", "2.84", "2.85"]
+      [48, 77, 79, 80, 81, 82, 83, 84, 94, 95, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 124],
+      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.22", "2.27", "2.28", "2.40", "2.84", "2.85"]
     ) ||
     !isObject(map) ||
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
