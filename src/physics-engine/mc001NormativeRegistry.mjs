@@ -36,6 +36,8 @@ const R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE =
   "MC001_R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK";
 const R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE =
   "MC001_R18_BOUNDARY_CORRECTIONS_SOURCE_PACK";
+const R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE =
+  "MC001_R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -102,7 +104,8 @@ const SOURCE_PACK_CODES = new Set([
   R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE,
   R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
   R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
-  R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE
+  R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
+  R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -480,7 +483,7 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 19,
+    sourcePacks: 20,
     formulas: 10,
     constants: 1,
     concepts: 15,
@@ -4848,6 +4851,202 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "no_hidden_defaults",
         "no_default_boundary_corrections"
       ]
+    },
+    {
+      sourcePackCode: R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        sections: [
+          "2.1.4",
+          "2.4.1",
+          "2.6.2",
+          "2.7.1",
+          "2.7.2",
+          "2.7.3",
+          "2.8",
+          "2.10"
+        ],
+        pagesVerified: [
+          48,
+          77,
+          79,
+          80,
+          81,
+          82,
+          94,
+          95,
+          100,
+          101,
+          103,
+          104,
+          105,
+          120,
+          121,
+          124
+        ],
+        relationsVerified: [
+          "2.3",
+          "2.6",
+          "2.7",
+          "2.8",
+          "2.11",
+          "2.12",
+          "2.15",
+          "2.22",
+          "2.27",
+          "2.28",
+          "2.33",
+          "2.36",
+          "2.39",
+          "2.50",
+          "2.55",
+          "2.56",
+          "2.57",
+          "2.58",
+          "2.59-2.77",
+          "2.84",
+          "2.85"
+        ],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations",
+          "existing reviewed extraction notes"
+        ]
+      },
+      coverageMap: {
+        runtimeImplemented: [
+          "material_lambda_explicit",
+          "material_lambda_relation_2_3_with_explicit_table_2_2_coefficient_code",
+          "layer_resistance_from_thickness_and_lambda",
+          "air_layer_resistance_explicit",
+          "surface_resistance_explicit_or_surface_coefficient_explicit",
+          "u_value_from_total_resistance",
+          "direct_u_value_or_corrected_u_prime_explicit",
+          "outside_air_direct_Hd",
+          "ground_Hg_from_explicit_boundary_factor",
+          "unheated_Hu_from_explicit_boundary_factor_or_relation_2_22_explicit_ratio",
+          "adjacent_Ha_from_explicit_boundary_factor_or_relation_2_22_explicit_ratio",
+          "linear_and_point_thermal_bridge_terms_explicit",
+          "Htr_component_sum",
+          "monthly_transmission_explicit_temperature_duration",
+          "monthly_ventilation_explicit_airflow_temperature_duration",
+          "monthly_heat_gains_explicit_internal_plus_solar_sum",
+          "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
+          "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
+          "annual_QHnd_sum_relation_2_84",
+          "annual_QCnd_sum_relation_2_85",
+          "combined_QHnd_QCnd_separate_output",
+          "twelve_month_explicit_chapter_2_calculation_layer"
+        ],
+        explicitInputOnly: [
+          "base_material_lambda_normat",
+          "surface_resistance_table_selection",
+          "air_layer_resistance_table_selection",
+          "opaque_solar_absorptance",
+          "monthly_weather_temperatures",
+          "monthly_durations",
+          "ventilation_airflows_and_corrections",
+          "internal_gain_components_and_schedules",
+          "solar_irradiation_shading_glazing_properties",
+          "effective_internal_heat_capacity",
+          "thermal_bridge_psi_chi_values"
+        ],
+        tableBackedNotEncoded: [
+          "surface_resistance_default_tables",
+          "air_layer_resistance_default_tables",
+          "material_lambda_catalog_values",
+          "window_door_catalog_U_values",
+          "solar_climate_annex_full_dataset",
+          "thermal_bridge_catalog_rows_with_missing_geometry"
+        ],
+        ambiguousExtraction: [
+          "automatic_ground_contact_detailed_method",
+          "automatic_unheated_space_balance_defaults",
+          "automatic_adjacent_space_balance_defaults"
+        ],
+        outOfChapter2UsefulDemandScope: [
+          "final_energy",
+          "primary_energy",
+          "CO2",
+          "CPE",
+          "certificate",
+          "system_losses",
+          "fan_electricity",
+          "air_treatment_energy"
+        ]
+      },
+      runtimeIntegration: {
+        implementedModules: [
+          "mc001EnvelopePhysicsCalculation.mjs",
+          "mc001MonthlyTransmissionEnergyCalculation.mjs",
+          "mc001VentilationTransferCalculation.mjs",
+          "mc001MonthlyHeatGainsCalculation.mjs",
+          "mc001RestrictedHeatingQhndCalculation.mjs",
+          "mc001CoolingUsefulDemandCalculation.mjs",
+          "mc001UsefulDemandAggregation.mjs",
+          "mc001Chapter2UsefulDemandCalculation.mjs"
+        ],
+        implementedExport: "chapter_2_useful_demand_explicit_v1",
+        outputPolicy: [
+          "separate_annualQHnd_and_annualQCnd",
+          "no_ambiguous_total_useful_demand",
+          "no_final_energy",
+          "no_primary_energy",
+          "no_CO2",
+          "no_certificate"
+        ],
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_default_material_lambda",
+          "no_default_surface_resistance",
+          "no_default_climate",
+          "no_default_gains",
+          "no_default_schedules"
+        ]
+      },
+      completenessAssessment: {
+        status: "chapter_2_useful_demand_explicit_runtime_substantially_covered_not_universal_certificate",
+        restrictiveMarkersRetained: [
+          "explicit_input_only",
+          "not_final_energy",
+          "not_primary_energy",
+          "not_CO2",
+          "not_CPE",
+          "not_certificate"
+        ],
+        remainingGaps: [
+          "default_material_lambda_catalog_values_not_encoded",
+          "default_surface_resistance_tables_not_encoded",
+          "default_air_layer_resistance_tables_not_encoded",
+          "automatic_ground_contact_detailed_method_not_encoded",
+          "solar_climate_and_shading_default_datasets_not_encoded",
+          "final_primary_CO2_CPE_certificate_out_of_scope"
+        ]
+      },
+      blockers: [
+        "not_certificate",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE",
+        "no_hidden_defaults",
+        "no_default_material_lambda",
+        "no_default_surface_resistances",
+        "no_default_climate",
+        "no_default_gains",
+        "no_default_schedules"
+      ]
     }
   ]
 });
@@ -7986,6 +8185,80 @@ function envelopeSourcePackIssue(sourcePack, config) {
   return null;
 }
 
+function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(sourcePack, R2_VERIFICATION_STATUS);
+  if (baseIssue) {
+    return baseIssue;
+  }
+  const map = sourcePack.coverageMap;
+  const integration = sourcePack.runtimeIntegration;
+  const assessment = sourcePack.completenessAssessment;
+  const requiredRuntimeItems = [
+    "material_lambda_relation_2_3_with_explicit_table_2_2_coefficient_code",
+    "u_value_from_total_resistance",
+    "Htr_component_sum",
+    "monthly_transmission_explicit_temperature_duration",
+    "monthly_ventilation_explicit_airflow_temperature_duration",
+    "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
+    "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
+    "annual_QHnd_sum_relation_2_84",
+    "annual_QCnd_sum_relation_2_85",
+    "twelve_month_explicit_chapter_2_calculation_layer"
+  ];
+  const requiredExplicitOnlyItems = [
+    "base_material_lambda_normat",
+    "monthly_weather_temperatures",
+    "internal_gain_components_and_schedules",
+    "solar_irradiation_shading_glazing_properties"
+  ];
+  const requiredOutOfScopeItems = [
+    "final_energy",
+    "primary_energy",
+    "CO2",
+    "CPE",
+    "certificate"
+  ];
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !==
+      "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
+    !validateEnvelopeRuntimeSourceScope(
+      sourcePack.sourceScope,
+      [48, 77, 79, 80, 81, 82, 94, 95, 100, 103, 104, 105, 120, 121, 124],
+      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.22", "2.27", "2.28", "2.84", "2.85"]
+    ) ||
+    !isObject(map) ||
+    !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
+    !requiredExplicitOnlyItems.every(item => map.explicitInputOnly?.includes(item)) ||
+    !map.tableBackedNotEncoded?.includes("material_lambda_catalog_values") ||
+    !map.ambiguousExtraction?.includes("automatic_ground_contact_detailed_method") ||
+    !requiredOutOfScopeItems.every(item => map.outOfChapter2UsefulDemandScope?.includes(item)) ||
+    !isObject(integration) ||
+    !integration.implementedModules?.includes("mc001Chapter2UsefulDemandCalculation.mjs") ||
+    integration.implementedExport !== "chapter_2_useful_demand_explicit_v1" ||
+    !integration.inputPolicy?.includes("explicit_inputs_only") ||
+    !integration.inputPolicy?.includes("no_hidden_defaults") ||
+    !integration.outputPolicy?.includes("separate_annualQHnd_and_annualQCnd") ||
+    !integration.outputPolicy?.includes("no_certificate") ||
+    !isObject(assessment) ||
+    !assessment.restrictiveMarkersRetained?.includes("not_certificate") ||
+    !assessment.remainingGaps?.includes("default_material_lambda_catalog_values_not_encoded") ||
+    !Array.isArray(sourcePack.blockers) ||
+    !sourcePack.blockers.includes("not_certificate") ||
+    !sourcePack.blockers.includes("no_hidden_defaults") ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -8103,6 +8376,12 @@ function sourcePackIssue(sourcePack) {
       minimumCandidateCount: 4,
       runtimeCalculatorStatus: "implemented_explicit_boundary_correction_runtime"
     });
+  }
+  if (
+    sourcePack.sourcePackCode ===
+    R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE
+  ) {
+    return chapter2CompleteCoverageSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }

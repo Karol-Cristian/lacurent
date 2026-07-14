@@ -46,6 +46,8 @@ const R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE =
   "MC001_R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK";
 const R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE =
   "MC001_R18_BOUNDARY_CORRECTIONS_SOURCE_PACK";
+const R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE =
+  "MC001_R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -63,7 +65,7 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 19,
+  sourcePacks: 20,
   formulas: 10,
   constants: 1,
   concepts: 15,
@@ -213,6 +215,13 @@ function envelopeTransmissionPack(value = registry()) {
 
 function envelopeBoundaryPack(value = registry()) {
   return sourcePackByCode(R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE, value);
+}
+
+function chapter2CoveragePack(value = registry()) {
+  return sourcePackByCode(
+    R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
+    value
+  );
 }
 
 function formulas(value = registry()) {
@@ -427,7 +436,8 @@ test("registry now contains the expected source packs", () => {
       R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE,
       R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
       R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
-      R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE
+      R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
+      R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -2350,4 +2360,49 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_ground_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_unheated_space_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_adjacent_space_factor"));
+});
+
+test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime coverage and gaps", () => {
+  const pack = chapter2CoveragePack();
+
+  assert.equal(pack.sourcePackCode, R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(
+    pack.runtimeCalculatorStatus,
+    "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer"
+  );
+  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.22", "2.84", "2.85"]) {
+    assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
+  }
+  for (const runtimeItem of [
+    "material_lambda_relation_2_3_with_explicit_table_2_2_coefficient_code",
+    "Htr_component_sum",
+    "monthly_transmission_explicit_temperature_duration",
+    "monthly_ventilation_explicit_airflow_temperature_duration",
+    "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
+    "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
+    "annual_QHnd_sum_relation_2_84",
+    "annual_QCnd_sum_relation_2_85",
+    "twelve_month_explicit_chapter_2_calculation_layer"
+  ]) {
+    assert.ok(pack.coverageMap.runtimeImplemented.includes(runtimeItem), runtimeItem);
+  }
+  assert.ok(pack.coverageMap.explicitInputOnly.includes("base_material_lambda_normat"));
+  assert.ok(pack.coverageMap.explicitInputOnly.includes("monthly_weather_temperatures"));
+  assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("surface_resistance_default_tables"));
+  assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"));
+  assert.ok(pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"));
+  for (const downstream of ["final_energy", "primary_energy", "CO2", "CPE", "certificate"]) {
+    assert.ok(pack.coverageMap.outOfChapter2UsefulDemandScope.includes(downstream), downstream);
+  }
+  assert.ok(pack.runtimeIntegration.implementedModules.includes("mc001Chapter2UsefulDemandCalculation.mjs"));
+  assert.equal(pack.runtimeIntegration.implementedExport, "chapter_2_useful_demand_explicit_v1");
+  assert.ok(pack.runtimeIntegration.outputPolicy.includes("separate_annualQHnd_and_annualQCnd"));
+  assert.ok(pack.runtimeIntegration.outputPolicy.includes("no_certificate"));
+  assert.ok(pack.completenessAssessment.remainingGaps.includes("default_material_lambda_catalog_values_not_encoded"));
+  assert.ok(pack.blockers.includes("not_certificate"));
+  assert.ok(pack.blockers.includes("no_hidden_defaults"));
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
 });
