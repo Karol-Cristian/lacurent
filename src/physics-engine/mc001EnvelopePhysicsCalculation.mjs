@@ -1,5 +1,6 @@
 import { findAirLayerResistanceSourceContractByCode } from "./datasets/mc001AirLayerResistanceSourceContracts.mjs";
 import { findBztuDefaultSourceContractByCode } from "./datasets/mc001BztuDefaultSourceContracts.mjs";
+import { findGroundContactSourceContractByCode } from "./datasets/mc001GroundContactSourceContracts.mjs";
 import { findMaterialLambdaSourceContractByCode } from "./datasets/mc001MaterialLambdaSourceContracts.mjs";
 import { findMaterialCorrectionCoefficientById } from "./datasets/mc001Table2_2MaterialCorrectionCoefficients.mjs";
 import {
@@ -29,6 +30,7 @@ const TRANSMISSION_FORMULA_REFERENCES = [
   "MC001_2_22_BZTU_CORRECTION_FACTOR",
   "MC001_2_23_ZTU_TOTAL_HEAT_TRANSFER",
   "MC001_2_24_ZTU_TO_EXTERIOR_HEAT_TRANSFER",
+  "MC001_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_SOURCE_CONTRACT",
   "MC001_R18_BOUNDARY_CORRECTIONS_EXPLICIT_SOURCE_PACK"
 ];
 const ASSEMBLY_LIMITS = [
@@ -93,7 +95,8 @@ const ALLOWED_SOURCE_TYPES = new Set([
   "mc001_table_2_2",
   "external_normative_material_catalog",
   "external_normative_air_layer_resistance",
-  "external_normative_bztu_default_factor"
+  "external_normative_bztu_default_factor",
+  "external_normative_ground_contact"
 ]);
 const FORBIDDEN_ASSEMBLY_KEYS = new Set([
   "assemblyResults",
@@ -744,6 +747,37 @@ function boundaryFactor(element, component) {
   }
   if (hasDerivedFactor) {
     const correction = element.boundaryCorrection;
+    if (correction.mode === "ground_contact_source_backed_factor_v1") {
+      if (element.boundaryType !== "ground" || component !== "Hg") {
+        return { ok: false, code: "unsupported_ground_contact_boundary_correction_context" };
+      }
+      if (!safeCode(correction.sourceContractCode, 128)) {
+        return { ok: false, code: "invalid_ground_contact_source_contract" };
+      }
+      const contract = findGroundContactSourceContractByCode(correction.sourceContractCode);
+      if (contract === null) {
+        return { ok: false, code: "unknown_ground_contact_source_contract" };
+      }
+      if (!safeCode(correction.methodId, 128)) {
+        return { ok: false, code: "invalid_ground_contact_method" };
+      }
+      const groundContactFactor = nonNegativeUnitAmount(
+        correction.groundContactFactor,
+        "dimensionless",
+        "invalid_source_backed_ground_contact_factor"
+      );
+      if (!groundContactFactor.ok) return groundContactFactor;
+      return {
+        ok: true,
+        value: groundContactFactor.amount,
+        origin: "source_backed_ground_contact_detailed_method_factor",
+        formulaCode: "MC001_PAGE_84_GROUND_CONTACT_DETAILED_METHOD_SOURCE_CONTRACT",
+        sourceScope: "ground_contact_source_backed_factor_v1",
+        sourceContractCode: contract.code,
+        sourceReference: contract.sourceReference,
+        methodId: correction.methodId
+      };
+    }
     if (!BZTU_CORRECTION_BOUNDARY_TYPES.has(element.boundaryType)) {
       return { ok: false, code: "unsupported_bztu_boundary_correction_context" };
     }
@@ -905,6 +939,7 @@ function normalizeElement(element, index) {
         boundaryCorrectionSourceReference: factor.sourceReference
       }),
       ...(factor.categoryId === undefined ? {} : { boundaryCorrectionCategoryId: factor.categoryId }),
+      ...(factor.methodId === undefined ? {} : { boundaryCorrectionMethodId: factor.methodId }),
       ...(factor.hztuExterior === undefined ? {} : { boundaryCorrectionHztuExteriorWK: factor.hztuExterior }),
       ...(factor.hztuTotal === undefined ? {} : { boundaryCorrectionHztuTotalWK: factor.hztuTotal }),
       ...(factor.exteriorVentilationCoefficient === undefined ? {} : {

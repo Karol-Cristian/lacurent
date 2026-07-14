@@ -29,6 +29,10 @@ const EXTERNAL_BZTU_SOURCE = {
   sourceType: "external_normative_bztu_default_factor",
   reference: "approved_bztu_defaults.unheated_attic.size_class"
 };
+const EXTERNAL_GROUND_SOURCE = {
+  sourceType: "external_normative_ground_contact",
+  reference: "SR_EN_ISO_13370.ground_contact.test_factor"
+};
 
 function close(actual, expected, tolerance = EPSILON) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
@@ -875,6 +879,126 @@ await test("source-backed bztu default factor rejects invalid source contract in
     }),
     "invalid_source_backed_bztu_default_factor"
   );
+});
+
+await test("ground-contact boundary correction accepts an explicit source-backed detailed-method factor", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "ground-with-source-contract",
+        elementType: "floor",
+        boundaryType: "ground",
+        assemblyResult: assemblyById(assemblies, "ground-floor-slab"),
+        area: value(50, "m2"),
+        boundaryCorrection: {
+          mode: "ground_contact_source_backed_factor_v1",
+          sourceContractCode: "MC001_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_SOURCE_CONTRACT",
+          methodId: "sr_en_iso_13370_monthly_hg_factor",
+          groundContactFactor: value(0.6, "dimensionless", EXTERNAL_GROUND_SOURCE)
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assert.equal(result.status, "ready");
+  const ground = result.elementResults[0];
+  close(ground.boundaryCorrectionFactor, 0.6);
+  close(ground.contributionWK, 13.154500902759864);
+  assert.equal(
+    ground.boundaryCorrectionOrigin,
+    "source_backed_ground_contact_detailed_method_factor"
+  );
+  assert.equal(
+    ground.boundaryCorrectionFormulaCode,
+    "MC001_PAGE_84_GROUND_CONTACT_DETAILED_METHOD_SOURCE_CONTRACT"
+  );
+  assert.equal(ground.boundaryCorrectionSourceScope, "ground_contact_source_backed_factor_v1");
+  assert.equal(
+    ground.boundaryCorrectionSourceContractCode,
+    "MC001_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_SOURCE_CONTRACT"
+  );
+  assert.equal(ground.boundaryCorrectionMethodId, "sr_en_iso_13370_monthly_hg_factor");
+  close(result.components.Hg.amount, 13.154500902759864);
+});
+
+await test("source-backed ground-contact factor rejects invalid source contract inputs", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const baseElement = {
+    elementId: "ground-with-invalid-source-contract",
+    elementType: "floor",
+    boundaryType: "ground",
+    assemblyResult: assemblyById(assemblies, "ground-floor-slab"),
+    area: value(50, "m2"),
+    source: SOURCE
+  };
+
+  assertBlocked(
+    calculateMc001EnvelopeTransmissionCoefficientExplicit({
+      mode: "envelope_transmission_coefficient_explicit_v1",
+      elements: [
+        {
+          ...baseElement,
+          boundaryCorrection: {
+            mode: "ground_contact_source_backed_factor_v1",
+            sourceContractCode: "UNKNOWN_CONTRACT",
+            methodId: "sr_en_iso_13370_monthly_hg_factor",
+            groundContactFactor: value(0.6, "dimensionless", EXTERNAL_GROUND_SOURCE)
+          }
+        }
+      ],
+      noThermalBridges: true
+    }),
+    "unknown_ground_contact_source_contract"
+  );
+
+  assertBlocked(
+    calculateMc001EnvelopeTransmissionCoefficientExplicit({
+      mode: "envelope_transmission_coefficient_explicit_v1",
+      elements: [
+        {
+          ...baseElement,
+          boundaryCorrection: {
+            mode: "ground_contact_source_backed_factor_v1",
+            sourceContractCode: "MC001_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_SOURCE_CONTRACT",
+            methodId: "sr_en_iso_13370_monthly_hg_factor",
+            groundContactFactor: value(-0.1, "dimensionless", EXTERNAL_GROUND_SOURCE)
+          }
+        }
+      ],
+      noThermalBridges: true
+    }),
+    "invalid_source_backed_ground_contact_factor"
+  );
+});
+
+await test("source-backed ground-contact correction is only valid for ground boundaries", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "attic-with-ground-source-contract",
+        elementType: "ceiling",
+        boundaryType: "unheated_attic",
+        assemblyResult: assemblyById(assemblies, "wood-earth-ceiling"),
+        area: value(40, "m2"),
+        boundaryCorrection: {
+          mode: "ground_contact_source_backed_factor_v1",
+          sourceContractCode: "MC001_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_SOURCE_CONTRACT",
+          methodId: "sr_en_iso_13370_monthly_hg_factor",
+          groundContactFactor: value(0.6, "dimensionless", EXTERNAL_GROUND_SOURCE)
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assertBlocked(result, "unsupported_ground_contact_boundary_correction_context");
 });
 
 await test("explicit bztu balance requires conditioned-zone transfer inputs", () => {

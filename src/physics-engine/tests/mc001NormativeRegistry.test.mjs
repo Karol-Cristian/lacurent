@@ -2400,7 +2400,7 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
   const byCode = new Map(pack.formulaCandidates.map(candidate => [candidate.candidateCode, candidate]));
 
   assert.deepEqual(pack.sourceScope.relationsVerified, ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"]);
-  assert.deepEqual(pack.sourceScope.pagesVerified, [81, 82, 94, 95, 96, 100, 109]);
+  assert.deepEqual(pack.sourceScope.pagesVerified, [81, 82, 84, 94, 95, 96, 99, 100, 109]);
   assert.equal(
     byCode.get("MC001_R18_OUTSIDE_AIR_DIRECT_HD_COMPONENT").machineExpression,
     "HdElement = U * area"
@@ -2408,6 +2408,16 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
   assert.equal(
     byCode.get("MC001_R18_GROUND_BOUNDARY_EXPLICIT_FACTOR").machineExpression,
     "HgElement = U * area * explicitBoundaryCorrectionFactor"
+  );
+  assert.equal(
+    byCode.get("MC001_R18_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_CONTRACT")
+      .machineExpression,
+    "HgElement = U * area * explicitSourceBackedGroundContactFactor"
+  );
+  assert.equal(
+    byCode.get("MC001_R18_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_CONTRACT")
+      .runtimeReadiness,
+    "verified_for_explicit_external_contract_runtime"
   );
   assert.equal(
     byCode.get("MC001_R18_UNHEATED_SPACE_EXPLICIT_FACTOR").machineExpression,
@@ -2434,6 +2444,11 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
     "verified_for_explicit_external_contract_runtime"
   );
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_ground_factor"));
+  assert.ok(
+    pack.runtimeIntegration.inputPolicy.includes(
+      "external_ground_contact_contract_or_explicit_factor"
+    )
+  );
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_unheated_space_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_adjacent_space_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_cztu_ve"));
@@ -2441,6 +2456,11 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
   assert.ok(
     pack.runtimeIntegration.boundaryOriginCodes.includes(
       "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance"
+    )
+  );
+  assert.ok(
+    pack.runtimeIntegration.boundaryOriginCodes.includes(
+      "source_backed_ground_contact_detailed_method_factor"
     )
   );
   assert.ok(pack.runtimeIntegration.boundaryOriginCodes.includes("source_backed_bztu_default_factor"));
@@ -2498,6 +2518,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "ground_Hg_from_source_backed_ground_contact_detailed_method_contract",
     "adjacent_unconditioned_zone_internal_gains_relation_2_34_explicit_inputs",
     "adjacent_unconditioned_zone_solar_gains_relation_2_37_explicit_inputs",
     "adjacent_unconditioned_zone_gain_reduction_relations_2_51_2_52_2_53_explicit_inputs",
@@ -2539,6 +2560,11 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   );
   assert.ok(
     pack.coverageMap.explicitInputOnly.includes(
+      "ground_contact_external_contract_or_explicit_factor"
+    )
+  );
+  assert.ok(
+    pack.coverageMap.explicitInputOnly.includes(
       "solar_irradiation_external_contract_or_explicit_value"
     )
   );
@@ -2555,7 +2581,12 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("surface_resistance_default_tables"), false);
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("air_layer_resistance_default_tables"), false);
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"), false);
-  assert.ok(pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"));
+  assert.equal(
+    pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"),
+    false
+  );
+  assert.deepEqual(pack.coverageMap.ambiguousExtraction, []);
+  assert.deepEqual(pack.coverageMap.tableBackedNotEncoded, []);
   assert.equal(
     pack.coverageMap.ambiguousExtraction.includes("automatic_unheated_space_balance_defaults"),
     false
@@ -2606,9 +2637,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     ),
     false
   );
-  assert.deepEqual(pack.completenessAssessment.remainingGaps, [
-    "automatic_ground_contact_detailed_method_not_encoded"
-  ]);
+  assert.deepEqual(pack.completenessAssessment.remainingGaps, []);
   assert.equal(
     pack.completenessAssessment.remainingGaps.includes(
       "humidification_dehumidification_relations_2_82_2_83_out_of_useful_demand_scope"
@@ -2626,7 +2655,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.equal(Object.hasOwn(pack, "formulas"), false);
 });
 
-test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items and keeps closure gated", () => {
+test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items and closes the gate", () => {
   const pack = chapter2ExhaustiveCoveragePack();
   const matrix = pack.coverageMatrix;
   const allowedStatuses = new Set([
@@ -2644,7 +2673,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(pack.metadataOnly, false);
   assert.equal(
     pack.runtimeCalculatorStatus,
-    "executable_chapter_2_coverage_matrix_and_nonclosure_gate"
+    "executable_chapter_2_coverage_matrix_and_closure_gate"
   );
   assert.equal(matrix.pageRange.firstPage, 41);
   assert.equal(matrix.pageRange.lastPage, 126);
@@ -2768,7 +2797,9 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
     "metadata_only_normative_context"
   );
 
-  assert.equal(pack.completenessGate.closureStatus, "CHAPTER_2_NOT_CLOSED");
+  assert.equal(pack.completenessGate.closureStatus, "CHAPTER_2_CLOSED");
+  assert.equal(matrix.completionGate.closureStatus, "CHAPTER_2_CLOSED");
+  assert.deepEqual(matrix.completionGate.requiredBeforeClosure, []);
   assert.deepEqual(pack.completenessGate.unresolvedItemIds, []);
   assert.ok(pack.completenessGate.justifiedNonRuntimeItemIds.includes("MC001_RELATION_2_2"));
   assert.ok(pack.completenessGate.justifiedNonRuntimeItemIds.includes("MC001_RELATION_2_5"));
@@ -2784,7 +2815,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_19"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_20"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_21"), false);
-  assert.ok(pack.blockers.includes("chapter_2_not_closed"));
+  assert.equal(pack.blockers.includes("chapter_2_not_closed"), false);
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
   assert.equal(Object.hasOwn(pack, "formulas"), false);
 });

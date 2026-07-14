@@ -9,6 +9,10 @@ import {
   listBztuDefaultSourceContracts
 } from "../datasets/mc001BztuDefaultSourceContracts.mjs";
 import {
+  findGroundContactSourceContractByCode,
+  listGroundContactSourceContracts
+} from "../datasets/mc001GroundContactSourceContracts.mjs";
+import {
   findMaterialLambdaSourceContractByCode,
   listMaterialLambdaSourceContracts
 } from "../datasets/mc001MaterialLambdaSourceContracts.mjs";
@@ -78,6 +82,19 @@ test("bztu default source contract encodes the page 109 external value dependenc
   assert.equal(findBztuDefaultSourceContractByCode("UNKNOWN"), null);
 });
 
+test("ground-contact source contract encodes the external detailed-method dependency", () => {
+  const contracts = listGroundContactSourceContracts();
+  assert.equal(contracts.length, 1);
+  const contract = findGroundContactSourceContractByCode(
+    "MC001_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_SOURCE_CONTRACT"
+  );
+  assert.equal(contract.sourcePack, "MC001_R18_BOUNDARY_CORRECTIONS_EXPLICIT_SOURCE_PACK");
+  assert.deepEqual(contract.sourcePages, [82, 84, 99]);
+  assert.ok(contract.externalReferences.includes("SR EN ISO 13370"));
+  assert.match(contract.allowedUse, /explicit source-backed ground-contact factor/);
+  assert.equal(findGroundContactSourceContractByCode("UNKNOWN"), null);
+});
+
 test("solar source contracts encode external irradiation and obstacle-factor dependencies", () => {
   const irradiationContracts = listSolarIrradiationSourceContracts();
   const obstacleContracts = listObstacleShadingSourceContracts();
@@ -107,6 +124,7 @@ test("source contract datasets have no runtime PDF filesystem or network access"
     "../datasets/mc001MaterialLambdaSourceContracts.mjs",
     "../datasets/mc001AirLayerResistanceSourceContracts.mjs",
     "../datasets/mc001BztuDefaultSourceContracts.mjs",
+    "../datasets/mc001GroundContactSourceContracts.mjs",
     "../datasets/mc001SolarSourceContracts.mjs"
   ]) {
     const source = readFileSync(new URL(path, import.meta.url), "utf8");
