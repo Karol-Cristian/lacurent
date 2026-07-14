@@ -2525,7 +2525,15 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   const relationById = new Map(matrix.relations.map((entry) => [entry.identifier, entry]));
   assert.equal(
     relationById.get("MC001_RELATION_2_2").implementationStatus,
-    "ambiguous_source_requires_human_resolution"
+    "not_runtime_applicable"
+  );
+  assert.equal(
+    relationById.get("MC001_RELATION_2_2").machineEncodability,
+    "not_applicable_relation_number_absent_from_official_pdf_after_full_text_search"
+  );
+  assert.equal(
+    relationById.get("MC001_RELATION_2_5").implementationStatus,
+    "not_runtime_applicable"
   );
   assert.equal(relationById.get("MC001_RELATION_2_3").implementationStatus, "golden_covered");
   assert.equal(
@@ -2534,6 +2542,12 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   );
 
   const tableById = new Map(matrix.tables.map((entry) => [entry.identifier, entry]));
+  assert.equal(tableById.get("MC001_TABLE_2_1").implementationStatus, "not_runtime_applicable");
+  assert.equal(
+    tableById.get("MC001_TABLE_2_1").machineEncodability,
+    "not_runtime_standards_context_table"
+  );
+  assert.equal(tableById.get("MC001_TABLE_2_1").remainingBlocker, null);
   assert.equal(tableById.get("MC001_TABLE_2_2").implementationStatus, "table_machine_encoded");
   assert.equal(tableById.get("MC001_TABLE_2_11").implementationStatus, "table_machine_encoded");
   assert.equal(tableById.get("MC001_TABLE_2_12").implementationStatus, "table_machine_encoded");
@@ -2579,9 +2593,10 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   );
 
   assert.equal(pack.completenessGate.closureStatus, "CHAPTER_2_NOT_CLOSED");
-  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_RELATION_2_2"));
-  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_RELATION_2_5"));
-  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_1"));
+  assert.deepEqual(pack.completenessGate.unresolvedItemIds, []);
+  assert.ok(pack.completenessGate.justifiedNonRuntimeItemIds.includes("MC001_RELATION_2_2"));
+  assert.ok(pack.completenessGate.justifiedNonRuntimeItemIds.includes("MC001_RELATION_2_5"));
+  assert.ok(pack.completenessGate.justifiedNonRuntimeItemIds.includes("MC001_TABLE_2_1"));
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_11"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_12"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_13"), false);

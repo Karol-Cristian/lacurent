@@ -96,8 +96,9 @@ assert.equal(
   chapter2CoverageGate.sourcePack.completenessGate.closureStatus,
   "CHAPTER_2_NOT_CLOSED"
 );
+assert.deepEqual(chapter2CoverageGate.sourcePack.completenessGate.unresolvedItemIds, []);
 assert.ok(
-  chapter2CoverageGate.sourcePack.completenessGate.unresolvedItemIds.includes(
+  chapter2CoverageGate.sourcePack.completenessGate.justifiedNonRuntimeItemIds.includes(
     "MC001_RELATION_2_2"
   )
 );
