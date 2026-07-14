@@ -98,6 +98,48 @@ await test("calculates monthly solar gains from transparent and opaque explicit 
   );
 });
 
+await test("uses source-backed irradiation and obstacle-factor contracts without changing the formula result", () => {
+  const result = calculateMc001MonthlySolarGainsExplicit(input([
+    sampleCase({
+      transparentElements: [
+        transparentElement({
+          obstacleShadingFactor: undefined,
+          solarIrradiation: undefined,
+          obstacleShadingSource: {
+            contractCode: "MC001_OBSTACLE_SHADING_EXTERNAL_GEOMETRY_SOURCE_CONTRACT",
+            factor: 0.8,
+            source: {
+              reference: "geometry_obstacle_factor.south_window"
+            }
+          },
+          solarIrradiationSource: {
+            contractCode: "MC001_SOLAR_IRRADIATION_EXTERNAL_CLIMATE_SOURCE_CONTRACT",
+            amount: 100,
+            source: {
+              reference: "climate_irradiation.south_window.january"
+            }
+          }
+        })
+      ],
+      opaqueElements: []
+    })
+  ]));
+
+  assert.equal(result.status, "ready");
+  const element = result.caseResults[0].transparentElementResults[0];
+  close(element.solarGains, 400);
+  assert.equal(element.obstacleShadingOrigin, "source_backed_obstacle_shading_factor");
+  assert.equal(
+    element.obstacleShadingSourceContractCode,
+    "MC001_OBSTACLE_SHADING_EXTERNAL_GEOMETRY_SOURCE_CONTRACT"
+  );
+  assert.equal(element.solarIrradiationOrigin, "source_backed_solar_irradiation");
+  assert.equal(
+    element.solarIrradiationSourceContractCode,
+    "MC001_SOLAR_IRRADIATION_EXTERNAL_CLIMATE_SOURCE_CONTRACT"
+  );
+});
+
 await test("uses Table 2.13 relation 2.40 and Table 2.16 for shaded glazing", () => {
   const result = calculateMc001MonthlySolarGainsExplicit(input([
     sampleCase({
@@ -216,6 +258,64 @@ await test("rejects invalid transparent and opaque element inputs", () => {
       opaqueElements: [opaqueElement({ solarAbsorptance: -0.1 })]
     })])),
     "monthly_solar_gains_opaque_invalid_solar_absorptance"
+  );
+});
+
+await test("rejects ambiguous or unknown source-backed solar inputs", () => {
+  assertBlocked(
+    calculateMc001MonthlySolarGainsExplicit(input([sampleCase({
+      transparentElements: [
+        transparentElement({
+          obstacleShadingSource: {
+            contractCode: "MC001_OBSTACLE_SHADING_EXTERNAL_GEOMETRY_SOURCE_CONTRACT",
+            factor: 0.8,
+            source: {
+              reference: "geometry_obstacle_factor.south_window"
+            }
+          }
+        })
+      ],
+      opaqueElements: []
+    })])),
+    "monthly_solar_gains_transparent_ambiguous_obstacle_shading_source"
+  );
+
+  assertBlocked(
+    calculateMc001MonthlySolarGainsExplicit(input([sampleCase({
+      transparentElements: [
+        transparentElement({
+          obstacleShadingFactor: undefined,
+          obstacleShadingSource: {
+            contractCode: "UNKNOWN_CONTRACT",
+            factor: 0.8,
+            source: {
+              reference: "geometry_obstacle_factor.south_window"
+            }
+          }
+        })
+      ],
+      opaqueElements: []
+    })])),
+    "monthly_solar_gains_transparent_obstacle_shading_unknown_source_contract"
+  );
+
+  assertBlocked(
+    calculateMc001MonthlySolarGainsExplicit(input([sampleCase({
+      transparentElements: [
+        transparentElement({
+          solarIrradiation: undefined,
+          solarIrradiationSource: {
+            contractCode: "MC001_SOLAR_IRRADIATION_EXTERNAL_CLIMATE_SOURCE_CONTRACT",
+            amount: -1,
+            source: {
+              reference: "climate_irradiation.south_window.january"
+            }
+          }
+        })
+      ],
+      opaqueElements: []
+    })])),
+    "monthly_solar_gains_transparent_solar_irradiation_invalid_source_backed_value"
   );
 });
 

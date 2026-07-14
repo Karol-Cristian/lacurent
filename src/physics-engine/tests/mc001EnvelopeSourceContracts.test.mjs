@@ -5,9 +5,19 @@ import {
   listAirLayerResistanceSourceContracts
 } from "../datasets/mc001AirLayerResistanceSourceContracts.mjs";
 import {
+  findBztuDefaultSourceContractByCode,
+  listBztuDefaultSourceContracts
+} from "../datasets/mc001BztuDefaultSourceContracts.mjs";
+import {
   findMaterialLambdaSourceContractByCode,
   listMaterialLambdaSourceContracts
 } from "../datasets/mc001MaterialLambdaSourceContracts.mjs";
+import {
+  findObstacleShadingSourceContractByCode,
+  findSolarIrradiationSourceContractByCode,
+  listObstacleShadingSourceContracts,
+  listSolarIrradiationSourceContracts
+} from "../datasets/mc001SolarSourceContracts.mjs";
 
 function test(name, fn) {
   try {
@@ -56,10 +66,48 @@ test("air-layer source contract encodes the SR EN ISO 6946 dependency", () => {
   assert.equal(findAirLayerResistanceSourceContractByCode("UNKNOWN"), null);
 });
 
+test("bztu default source contract encodes the page 109 external value dependency", () => {
+  const contracts = listBztuDefaultSourceContracts();
+  assert.equal(contracts.length, 1);
+  const contract = findBztuDefaultSourceContractByCode(
+    "MC001_BZTU_DEFAULT_BY_TYPE_SIZE_SOURCE_CONTRACT"
+  );
+  assert.equal(contract.sourcePack, "MC001_R18_BOUNDARY_CORRECTIONS_EXPLICIT_SOURCE_PACK");
+  assert.deepEqual(contract.sourcePages, [109]);
+  assert.match(contract.allowedUse, /explicit source-backed bztu factor/);
+  assert.equal(findBztuDefaultSourceContractByCode("UNKNOWN"), null);
+});
+
+test("solar source contracts encode external irradiation and obstacle-factor dependencies", () => {
+  const irradiationContracts = listSolarIrradiationSourceContracts();
+  const obstacleContracts = listObstacleShadingSourceContracts();
+  assert.equal(irradiationContracts.length, 1);
+  assert.equal(obstacleContracts.length, 1);
+
+  const irradiation = findSolarIrradiationSourceContractByCode(
+    "MC001_SOLAR_IRRADIATION_EXTERNAL_CLIMATE_SOURCE_CONTRACT"
+  );
+  assert.equal(irradiation.sourcePack, "MC001_R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK");
+  assert.deepEqual(irradiation.sourcePages, [105, 111]);
+  assert.match(irradiation.allowedUse, /explicit source-backed Hsol/);
+
+  const obstacle = findObstacleShadingSourceContractByCode(
+    "MC001_OBSTACLE_SHADING_EXTERNAL_GEOMETRY_SOURCE_CONTRACT"
+  );
+  assert.equal(obstacle.sourcePack, "MC001_R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK");
+  assert.deepEqual(obstacle.sourcePages, [105, 108, 109, 111]);
+  assert.match(obstacle.allowedUse, /explicit source-backed Fsh;obst/);
+
+  assert.equal(findSolarIrradiationSourceContractByCode("UNKNOWN"), null);
+  assert.equal(findObstacleShadingSourceContractByCode("UNKNOWN"), null);
+});
+
 test("source contract datasets have no runtime PDF filesystem or network access", () => {
   for (const path of [
     "../datasets/mc001MaterialLambdaSourceContracts.mjs",
-    "../datasets/mc001AirLayerResistanceSourceContracts.mjs"
+    "../datasets/mc001AirLayerResistanceSourceContracts.mjs",
+    "../datasets/mc001BztuDefaultSourceContracts.mjs",
+    "../datasets/mc001SolarSourceContracts.mjs"
   ]) {
     const source = readFileSync(new URL(path, import.meta.url), "utf8");
     for (const forbidden of ["readFile", "XMLHttpRequest", "fet" + "ch(", ".pdf", "get_text"]) {

@@ -25,6 +25,10 @@ const EXTERNAL_AIR_LAYER_SOURCE = {
   sourceType: "external_normative_air_layer_resistance",
   reference: "SR_EN_ISO_6946.air_layer.test_row"
 };
+const EXTERNAL_BZTU_SOURCE = {
+  sourceType: "external_normative_bztu_default_factor",
+  reference: "approved_bztu_defaults.unheated_attic.size_class"
+};
 
 function close(actual, expected, tolerance = EPSILON) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
@@ -781,6 +785,96 @@ await test("unheated boundary correction can derive bztu from explicit relations
   assert.equal(attic.boundaryCorrectionSourceScope, "bztu_explicit_ztu_balance_v1");
   assert.equal(attic.boundaryCorrectionExteriorVentilationCoefficient, 0.5);
   assert.equal(attic.boundaryCorrectionConditionedZoneHeatTransferSumWK, 50);
+});
+
+await test("unheated boundary correction accepts an explicit source-backed bztu default factor", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "attic-with-bztu-source-contract",
+        elementType: "ceiling",
+        boundaryType: "unheated_attic",
+        assemblyResult: assemblyById(assemblies, "wood-earth-ceiling"),
+        area: value(40, "m2"),
+        boundaryCorrection: {
+          mode: "bztu_source_backed_default_factor_v1",
+          sourceContractCode: "MC001_BZTU_DEFAULT_BY_TYPE_SIZE_SOURCE_CONTRACT",
+          categoryId: "unheated_attic_size_class",
+          defaultFactor: value(0.7, "dimensionless", EXTERNAL_BZTU_SOURCE)
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assert.equal(result.status, "ready");
+  const attic = result.elementResults[0];
+  close(attic.boundaryCorrectionFactor, 0.7);
+  close(attic.contributionWK, 9.230769230769228);
+  assert.equal(attic.boundaryCorrectionOrigin, "source_backed_bztu_default_factor");
+  assert.equal(
+    attic.boundaryCorrectionFormulaCode,
+    "MC001_PAGE_109_BZTU_DEFAULT_FACTOR_SOURCE_CONTRACT"
+  );
+  assert.equal(attic.boundaryCorrectionSourceScope, "bztu_source_backed_default_factor_v1");
+  assert.equal(
+    attic.boundaryCorrectionSourceContractCode,
+    "MC001_BZTU_DEFAULT_BY_TYPE_SIZE_SOURCE_CONTRACT"
+  );
+  assert.equal(attic.boundaryCorrectionCategoryId, "unheated_attic_size_class");
+});
+
+await test("source-backed bztu default factor rejects invalid source contract inputs", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const baseElement = {
+    elementId: "attic-with-invalid-bztu-source-contract",
+    elementType: "ceiling",
+    boundaryType: "unheated_attic",
+    assemblyResult: assemblyById(assemblies, "wood-earth-ceiling"),
+    area: value(40, "m2"),
+    source: SOURCE
+  };
+
+  assertBlocked(
+    calculateMc001EnvelopeTransmissionCoefficientExplicit({
+      mode: "envelope_transmission_coefficient_explicit_v1",
+      elements: [
+        {
+          ...baseElement,
+          boundaryCorrection: {
+            mode: "bztu_source_backed_default_factor_v1",
+            sourceContractCode: "UNKNOWN_CONTRACT",
+            categoryId: "unheated_attic_size_class",
+            defaultFactor: value(0.7, "dimensionless", EXTERNAL_BZTU_SOURCE)
+          }
+        }
+      ],
+      noThermalBridges: true
+    }),
+    "unknown_bztu_default_source_contract"
+  );
+
+  assertBlocked(
+    calculateMc001EnvelopeTransmissionCoefficientExplicit({
+      mode: "envelope_transmission_coefficient_explicit_v1",
+      elements: [
+        {
+          ...baseElement,
+          boundaryCorrection: {
+            mode: "bztu_source_backed_default_factor_v1",
+            sourceContractCode: "MC001_BZTU_DEFAULT_BY_TYPE_SIZE_SOURCE_CONTRACT",
+            categoryId: "unheated_attic_size_class",
+            defaultFactor: value(1.1, "dimensionless", EXTERNAL_BZTU_SOURCE)
+          }
+        }
+      ],
+      noThermalBridges: true
+    }),
+    "invalid_source_backed_bztu_default_factor"
+  );
 });
 
 await test("explicit bztu balance requires conditioned-zone transfer inputs", () => {

@@ -1,4 +1,5 @@
 import { findAirLayerResistanceSourceContractByCode } from "./datasets/mc001AirLayerResistanceSourceContracts.mjs";
+import { findBztuDefaultSourceContractByCode } from "./datasets/mc001BztuDefaultSourceContracts.mjs";
 import { findMaterialLambdaSourceContractByCode } from "./datasets/mc001MaterialLambdaSourceContracts.mjs";
 import { findMaterialCorrectionCoefficientById } from "./datasets/mc001Table2_2MaterialCorrectionCoefficients.mjs";
 import {
@@ -91,7 +92,8 @@ const ALLOWED_SOURCE_TYPES = new Set([
   "mc001_registry_source_pack",
   "mc001_table_2_2",
   "external_normative_material_catalog",
-  "external_normative_air_layer_resistance"
+  "external_normative_air_layer_resistance",
+  "external_normative_bztu_default_factor"
 ]);
 const FORBIDDEN_ASSEMBLY_KEYS = new Set([
   "assemblyResults",
@@ -789,6 +791,37 @@ function boundaryFactor(element, component) {
         conditionedZoneHeatTransferSum: conditionedSum
       };
     }
+    if (correction.mode === "bztu_source_backed_default_factor_v1") {
+      if (!safeCode(correction.sourceContractCode, 128)) {
+        return { ok: false, code: "invalid_bztu_default_source_contract" };
+      }
+      const contract = findBztuDefaultSourceContractByCode(correction.sourceContractCode);
+      if (contract === null) {
+        return { ok: false, code: "unknown_bztu_default_source_contract" };
+      }
+      if (!safeCode(correction.categoryId, 128)) {
+        return { ok: false, code: "invalid_bztu_default_category" };
+      }
+      const defaultFactor = nonNegativeUnitAmount(
+        correction.defaultFactor,
+        "dimensionless",
+        "invalid_source_backed_bztu_default_factor"
+      );
+      if (!defaultFactor.ok) return defaultFactor;
+      if (defaultFactor.amount > 1) {
+        return { ok: false, code: "invalid_source_backed_bztu_default_factor" };
+      }
+      return {
+        ok: true,
+        value: defaultFactor.amount,
+        origin: "source_backed_bztu_default_factor",
+        formulaCode: "MC001_PAGE_109_BZTU_DEFAULT_FACTOR_SOURCE_CONTRACT",
+        sourceScope: "bztu_source_backed_default_factor_v1",
+        sourceContractCode: contract.code,
+        sourceReference: contract.sourceReference,
+        categoryId: correction.categoryId
+      };
+    }
     if (correction.mode !== "bztu_explicit_heat_transfer_ratio_v1") {
       return { ok: false, code: "unsupported_boundary_correction_mode" };
     }
@@ -865,6 +898,13 @@ function normalizeElement(element, index) {
       boundaryCorrectionOrigin: factor.origin,
       ...(factor.formulaCode === undefined ? {} : { boundaryCorrectionFormulaCode: factor.formulaCode }),
       ...(factor.sourceScope === undefined ? {} : { boundaryCorrectionSourceScope: factor.sourceScope }),
+      ...(factor.sourceContractCode === undefined ? {} : {
+        boundaryCorrectionSourceContractCode: factor.sourceContractCode
+      }),
+      ...(factor.sourceReference === undefined ? {} : {
+        boundaryCorrectionSourceReference: factor.sourceReference
+      }),
+      ...(factor.categoryId === undefined ? {} : { boundaryCorrectionCategoryId: factor.categoryId }),
       ...(factor.hztuExterior === undefined ? {} : { boundaryCorrectionHztuExteriorWK: factor.hztuExterior }),
       ...(factor.hztuTotal === undefined ? {} : { boundaryCorrectionHztuTotalWK: factor.hztuTotal }),
       ...(factor.exteriorVentilationCoefficient === undefined ? {} : {

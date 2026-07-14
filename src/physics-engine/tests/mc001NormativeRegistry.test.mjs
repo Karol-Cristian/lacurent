@@ -1945,6 +1945,10 @@ test("get default value candidate returns no numeric default bztu values", () =>
   const result = getMc001NormativeDefaultValueCandidateByCode(DEFAULT_CANDIDATE_CODE);
 
   assert.equal(result.status, "found");
+  assert.equal(
+    result.defaultValueCandidate.sourceContractCode,
+    "MC001_BZTU_DEFAULT_BY_TYPE_SIZE_SOURCE_CONTRACT"
+  );
   assertNoNumericDefaultValues(result.defaultValueCandidate);
 });
 
@@ -2396,7 +2400,7 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
   const byCode = new Map(pack.formulaCandidates.map(candidate => [candidate.candidateCode, candidate]));
 
   assert.deepEqual(pack.sourceScope.relationsVerified, ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"]);
-  assert.deepEqual(pack.sourceScope.pagesVerified, [81, 82, 94, 95, 96, 100]);
+  assert.deepEqual(pack.sourceScope.pagesVerified, [81, 82, 94, 95, 96, 100, 109]);
   assert.equal(
     byCode.get("MC001_R18_OUTSIDE_AIR_DIRECT_HD_COMPONENT").machineExpression,
     "HdElement = U * area"
@@ -2421,15 +2425,25 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
     byCode.get("MC001_R18_UNHEATED_SPACE_EXPLICIT_BZTU_BALANCE").runtimeReadiness,
     "verified_for_restricted_runtime"
   );
+  assert.equal(
+    byCode.get("MC001_R18_BZTU_SOURCE_BACKED_DEFAULT_FACTOR").machineExpression,
+    "boundaryCorrectionFactor = explicitSourceBackedBztuDefaultFactor"
+  );
+  assert.equal(
+    byCode.get("MC001_R18_BZTU_SOURCE_BACKED_DEFAULT_FACTOR").runtimeReadiness,
+    "verified_for_explicit_external_contract_runtime"
+  );
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_ground_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_unheated_space_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_adjacent_space_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_cztu_ve"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("external_bztu_default_contract_or_explicit_balance"));
   assert.ok(
     pack.runtimeIntegration.boundaryOriginCodes.includes(
       "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance"
     )
   );
+  assert.ok(pack.runtimeIntegration.boundaryOriginCodes.includes("source_backed_bztu_default_factor"));
 });
 
 test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime coverage and gaps", () => {
@@ -2491,8 +2505,11 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
+    "monthly_solar_gains_external_irradiation_and_obstacle_contract_inputs",
     "humidification_table_2_21_explicit_space_category_lookup",
     "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
+    "unheated_Hu_from_source_backed_bztu_default_factor_contract",
+    "adjacent_Ha_from_source_backed_bztu_default_factor_contract",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -2522,7 +2539,12 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   );
   assert.ok(
     pack.coverageMap.explicitInputOnly.includes(
-      "solar_irradiation_and_explicit_obstacle_geometry"
+      "solar_irradiation_external_contract_or_explicit_value"
+    )
+  );
+  assert.ok(
+    pack.coverageMap.explicitInputOnly.includes(
+      "obstacle_shading_external_geometry_contract_or_explicit_factor"
     )
   );
   assert.ok(
@@ -2572,16 +2594,21 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     ),
     false
   );
-  assert.ok(
+  assert.equal(
     pack.completenessAssessment.remainingGaps.includes(
       "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted"
-    )
+    ),
+    false
   );
-  assert.ok(
+  assert.equal(
     pack.completenessAssessment.remainingGaps.includes(
       "unheated_adjacent_bztu_default_values_not_fabricated"
-    )
+    ),
+    false
   );
+  assert.deepEqual(pack.completenessAssessment.remainingGaps, [
+    "automatic_ground_contact_detailed_method_not_encoded"
+  ]);
   assert.equal(
     pack.completenessAssessment.remainingGaps.includes(
       "humidification_dehumidification_relations_2_82_2_83_out_of_useful_demand_scope"
@@ -2807,11 +2834,19 @@ test("R21 solar gains source pack machine-encodes explicit monthly solar gains r
     "MC001_R21_RELATION_2_51_SINGLE_ADJACENT_ZONE_GAIN_REDUCTION",
     "MC001_R21_RELATION_2_52_MULTIPLE_ADJACENT_ZONES_GAIN_REDUCTION",
     "MC001_R21_RELATION_2_53_INTERNAL_ZTU_GAIN_REDUCTION",
-    "MC001_R21_RELATION_2_54_SKY_RADIATION"
+    "MC001_R21_RELATION_2_54_SKY_RADIATION",
+    "MC001_R21_SOLAR_IRRADIATION_SOURCE_CONTRACT",
+    "MC001_R21_OBSTACLE_SHADING_SOURCE_CONTRACT"
   ]) {
     const candidate = candidatesByCode.get(candidateCode);
     assert.ok(candidate, candidateCode);
-    assert.equal(candidate.runtimeReadiness, "verified_for_restricted_runtime");
+    assert.ok(
+      [
+        "verified_for_restricted_runtime",
+        "verified_for_explicit_external_contract_runtime"
+      ].includes(candidate.runtimeReadiness),
+      candidateCode
+    );
     assert.equal(typeof candidate.machineExpression, "string");
     assert.ok(candidate.machineExpression.length > 0);
     assert.equal(Array.isArray(candidate.requiredInputs), true);
@@ -2856,10 +2891,25 @@ test("R21 solar gains source pack machine-encodes explicit monthly solar gains r
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_hidden_defaults"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_solar_irradiation"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_obstacle_shading"));
+  assert.ok(
+    pack.runtimeIntegration.inputPolicy.includes(
+      "external_solar_irradiation_contract_or_explicit_input"
+    )
+  );
+  assert.ok(
+    pack.runtimeIntegration.inputPolicy.includes(
+      "external_obstacle_geometry_contract_or_explicit_factor"
+    )
+  );
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_sky_radiation"));
   assert.ok(
     pack.remainingExplicitDependencies.includes(
-      "monthly_solar_irradiation_by_element_orientation_and_tilt"
+      "solar_irradiation_external_contract_or_explicit_Hsol"
+    )
+  );
+  assert.ok(
+    pack.remainingExplicitDependencies.includes(
+      "obstacle_shading_external_geometry_contract_or_explicit_factor"
     )
   );
   assert.equal(
