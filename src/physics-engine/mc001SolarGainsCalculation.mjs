@@ -3,6 +3,10 @@ import {
   calculateAngleCorrectedSolarTransmittance2_40,
   calculateShadedSolarTransmittanceWithTable2_16
 } from "./datasets/mc001SolarShadingTables.mjs";
+import {
+  findObstacleShadingSourceContractByCode,
+  findSolarIrradiationSourceContractByCode
+} from "./datasets/mc001SolarSourceContracts.mjs";
 
 export const MC001_MONTHLY_SOLAR_GAINS_SCOPE =
   "monthly_solar_gains_explicit_input_only_not_full_QHnd_QCnd";
@@ -18,7 +22,9 @@ const FORMULA_REFERENCES = [
   "MC001_RELATION_2_50_OPAQUE_SOLAR_GAINS",
   "MC001_RELATION_2_54_SKY_RADIATION_EXPLICIT",
   "MC001_TABLE_2_13_SOLAR_TRANSMISSION",
-  "MC001_TABLE_2_16_SHADING_REDUCTION"
+  "MC001_TABLE_2_16_SHADING_REDUCTION",
+  "MC001_SOLAR_IRRADIATION_EXTERNAL_CLIMATE_SOURCE_CONTRACT",
+  "MC001_OBSTACLE_SHADING_EXTERNAL_GEOMETRY_SOURCE_CONTRACT"
 ];
 const MONTHS = new Set([
   "january",
@@ -47,6 +53,8 @@ const METHODOLOGY_LIMITS = [
   "no_hidden_defaults",
   "no_default_solar_irradiation",
   "no_default_obstacle_shading",
+  "external_solar_irradiation_contract_or_explicit_input",
+  "external_obstacle_geometry_contract_or_explicit_factor",
   "no_default_frame_fraction",
   "no_default_sky_radiation",
   "no_default_absorptance",
@@ -57,8 +65,6 @@ const EXCLUDED_CALCULATIONS = [
   "adjacent_unconditioned_zone_solar_gains",
   "dynamic_glazing_hourly_state_averaging",
   "diffuse_glazing_angle_correction",
-  "obstacle_geometry_from_dimensions",
-  "climate_solar_irradiation_lookup",
   "QHnd",
   "QCnd",
   "system_losses",
@@ -81,6 +87,12 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "transparentElementResults",
   "opaqueElementResults",
   "monthlyHeatGainsResult",
+  "obstacleShadingOrigin",
+  "obstacleShadingSourceContractCode",
+  "obstacleShadingSourceReference",
+  "solarIrradiationOrigin",
+  "solarIrradiationSourceContractCode",
+  "solarIrradiationSourceReference",
   "qHgn",
   "qCgn",
   "qHnd",
@@ -177,6 +189,118 @@ function finiteAtLeast(value, min, code) {
     return { ok: false, code };
   }
   return { ok: true, value: amount };
+}
+
+function validateSourceBackedAmount({
+  value,
+  prefix,
+  contractLookup,
+  contractCodeKey,
+  amountKey,
+  min,
+  max
+}) {
+  if (!isPlainObject(value)) {
+    return { ok: false, code: `${prefix}_invalid_source_contract_input` };
+  }
+  if (!safeCode(value[contractCodeKey], 128)) {
+    return { ok: false, code: `${prefix}_invalid_source_contract` };
+  }
+  const contract = contractLookup(value[contractCodeKey]);
+  if (contract === null) {
+    return { ok: false, code: `${prefix}_unknown_source_contract` };
+  }
+  const amount = finiteNumber(value[amountKey]);
+  if (amount === null || amount < min || amount > max) {
+    return { ok: false, code: `${prefix}_invalid_source_backed_value` };
+  }
+  const source = validateSource(value.source);
+  if (!source.ok) {
+    return { ok: false, code: `${prefix}_missing_source_backed_reference` };
+  }
+  return {
+    ok: true,
+    value: amount,
+    contract,
+    sourceReference: value.source.reference
+  };
+}
+
+function resolveObstacleShadingFactor(element, prefix) {
+  const hasExplicit = hasInputValue(element, "obstacleShadingFactor");
+  const hasSourceBacked = hasInputValue(element, "obstacleShadingSource");
+  if (hasExplicit && hasSourceBacked) {
+    return { ok: false, code: `${prefix}_ambiguous_obstacle_shading_source` };
+  }
+  if (hasSourceBacked) {
+    const resolved = validateSourceBackedAmount({
+      value: element.obstacleShadingSource,
+      prefix: `${prefix}_obstacle_shading`,
+      contractLookup: findObstacleShadingSourceContractByCode,
+      contractCodeKey: "contractCode",
+      amountKey: "factor",
+      min: 0,
+      max: 1
+    });
+    if (!resolved.ok) return resolved;
+    return {
+      ok: true,
+      value: resolved.value,
+      origin: "source_backed_obstacle_shading_factor",
+      sourceContractCode: resolved.contract.code,
+      sourceReference: resolved.sourceReference
+    };
+  }
+  const obstacle = finiteInRange(
+    element.obstacleShadingFactor,
+    0,
+    1,
+    `${prefix}_invalid_obstacle_shading_factor`
+  );
+  if (!obstacle.ok) return obstacle;
+  return {
+    ok: true,
+    value: obstacle.value,
+    origin: "explicit_input"
+  };
+}
+
+function resolveSolarIrradiation(element, prefix) {
+  const hasExplicit = hasInputValue(element, "solarIrradiation");
+  const hasSourceBacked = hasInputValue(element, "solarIrradiationSource");
+  if (hasExplicit && hasSourceBacked) {
+    return { ok: false, code: `${prefix}_ambiguous_solar_irradiation_source` };
+  }
+  if (hasSourceBacked) {
+    const resolved = validateSourceBackedAmount({
+      value: element.solarIrradiationSource,
+      prefix: `${prefix}_solar_irradiation`,
+      contractLookup: findSolarIrradiationSourceContractByCode,
+      contractCodeKey: "contractCode",
+      amountKey: "amount",
+      min: 0,
+      max: Number.POSITIVE_INFINITY
+    });
+    if (!resolved.ok) return resolved;
+    return {
+      ok: true,
+      value: resolved.value,
+      origin: "source_backed_solar_irradiation",
+      sourceContractCode: resolved.contract.code,
+      sourceReference: resolved.sourceReference
+    };
+  }
+  const irradiation = finiteAtLeast(
+    element.solarIrradiation,
+    0,
+    `${prefix}_invalid_solar_irradiation`
+  );
+  if (!irradiation.ok) return irradiation;
+  return {
+    ok: true,
+    value: irradiation.value,
+    origin: "explicit_input"
+  };
 }
 
 function resolveSkyRadiation(element) {
@@ -344,18 +468,9 @@ function validateCommonElement(element, prefix) {
   }
   const area = finiteAtLeast(element.area, 0, `${prefix}_invalid_area`);
   if (!area.ok || area.value === 0) return { ok: false, code: `${prefix}_invalid_area` };
-  const obstacle = finiteInRange(
-    element.obstacleShadingFactor,
-    0,
-    1,
-    `${prefix}_invalid_obstacle_shading_factor`
-  );
+  const obstacle = resolveObstacleShadingFactor(element, prefix);
   if (!obstacle.ok) return obstacle;
-  const irradiation = finiteAtLeast(
-    element.solarIrradiation,
-    0,
-    `${prefix}_invalid_solar_irradiation`
-  );
+  const irradiation = resolveSolarIrradiation(element, prefix);
   if (!irradiation.ok) return irradiation;
   const sky = resolveSkyRadiation(element);
   if (!sky.ok) return sky;
@@ -365,7 +480,21 @@ function validateCommonElement(element, prefix) {
       elementId: element.elementId,
       area: area.value,
       obstacleShadingFactor: obstacle.value,
+      obstacleShadingOrigin: obstacle.origin,
+      ...(obstacle.sourceContractCode === undefined ? {} : {
+        obstacleShadingSourceContractCode: obstacle.sourceContractCode
+      }),
+      ...(obstacle.sourceReference === undefined ? {} : {
+        obstacleShadingSourceReference: obstacle.sourceReference
+      }),
       solarIrradiation: irradiation.value,
+      solarIrradiationOrigin: irradiation.origin,
+      ...(irradiation.sourceContractCode === undefined ? {} : {
+        solarIrradiationSourceContractCode: irradiation.sourceContractCode
+      }),
+      ...(irradiation.sourceReference === undefined ? {} : {
+        solarIrradiationSourceReference: irradiation.sourceReference
+      }),
       qSky: sky.value,
       qSkyOrigin: sky.origin,
       qSkyFormulaCode: sky.formulaCode

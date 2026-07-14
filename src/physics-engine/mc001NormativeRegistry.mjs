@@ -940,18 +940,18 @@ const CHAPTER_2_CONDITION_ENTRIES = Object.freeze([
     type: "definition",
     section: "2.7",
     page: null,
-    title: "Monthly climate, irradiation, and duration values remain explicit inputs",
+    title: "Monthly climate and duration values remain explicit inputs or source contracts",
     scope: "shared",
     dependencies: [],
     units: "see_monthly_inputs",
-    runtimeRelevance: "explicit_input_contract",
-    machineEncodability: "external_or_table_backed_dependency_not_encoded_here",
+    runtimeRelevance: "explicit_input_contract_external_reference",
+    machineEncodability: "external_climate_dependency_with_explicit_contract",
     implementationStatus: "metadata_only_normative_context",
-    runtimeModule: null,
+    runtimeModule: "mc001SolarGainsCalculation.mjs",
     testFile: "chapter_2_runtime_tests",
     goldenCoverage: false,
     sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
-    remainingBlocker: "climate_and_solar_defaults_not_fabricated"
+    remainingBlocker: null
   })
 ]);
 
@@ -974,12 +974,11 @@ const CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX = Object.freeze({
   completionGate: Object.freeze({
     closureStatus: "CHAPTER_2_NOT_CLOSED",
     closureReason:
-      "All Chapter 2 pages/items are classified, but runtime-feasible table-backed/default domains remain intentionally unimplemented until source-safe machine encoding is completed.",
+      "All Chapter 2 pages/items are classified, but the automatic ground-contact detailed method remains unresolved.",
     requiredBeforeClosure: Object.freeze([
       "resolve_or_confirm_relation_2_2_gap",
       "resolve_or_confirm_relation_2_5_gap",
-      "machine_encode_material_lambda_catalog_tables_if_runtime_safe",
-      "machine_encode_remaining_solar_climate_orientation_shading_inputs_if_runtime_safe",
+      "resolve_or_contract_automatic_ground_contact_detailed_method",
       "golden_cover_every_newly_implemented_runtime_branch"
     ])
   }),
@@ -1231,11 +1230,12 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           entryCode: "MC001_DEFAULT_CANDIDATE_BZTU_VALUES_WITH_GAINS",
           entryType: "default_value_candidate",
           candidateCode: BZTU_DEFAULT_CANDIDATE_CODE,
-          status: "mentioned_but_not_extracted_as_numeric_table",
+          status: "mentioned_with_explicit_external_source_contract_available",
           page: 109,
           note: "Metodologia spune că pot fi utilizate valori prin lipsă ale bztu,m în funcție de tipul și/sau dimensiunea spațiului neclimatizat adiacent, incluzând efectul aporturilor.",
           implementationDecision: "Nu se introduc valori implicite până nu este identificat și verificat un tabel numeric explicit sau o sursă normativă exactă pentru aceste valori.",
           numericDefaultsAvailable: false,
+          sourceContractCode: "MC001_BZTU_DEFAULT_BY_TYPE_SIZE_SOURCE_CONTRACT",
           sourceLocator: {
             page: 109,
             subsection: "2.7.3"
@@ -5318,7 +5318,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       sourceScope: {
         chapter: "Capitolul 2. Anvelopa termica a cladirii",
         sections: ["2.4.1", "2.6.2", "2.7.1.1"],
-        pagesVerified: [81, 82, 94, 95, 96, 100],
+        pagesVerified: [81, 82, 94, 95, 96, 100, 109],
         relationsVerified: ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"],
         extractionMethods: [
           "page.get_text(text)",
@@ -5407,6 +5407,29 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           runtimeReadiness: "verified_for_restricted_runtime",
           sourceReference: "MC001-2022 pages 95-96 relations 2.22, 2.23, and 2.24",
           sourceLocator: { page: 95, relation: "2.22-2.24" }
+        },
+        {
+          candidateCode: "MC001_R18_BZTU_SOURCE_BACKED_DEFAULT_FACTOR",
+          relationReference: "page_109_default_bztu_note",
+          expressionText:
+            "source-backed bztu default factor may be selected by adjacent unconditioned-zone type or size",
+          machineExpression: "boundaryCorrectionFactor = explicitSourceBackedBztuDefaultFactor",
+          outputSymbol: "bztu",
+          outputUnit: "dimensionless",
+          requiredInputs: [
+            "sourceContractCode",
+            "categoryId",
+            "explicitSourceBackedBztuDefaultFactor"
+          ],
+          conditions: [
+            "boundaryType is unheated_space/attic/basement/adjacent_unheated_space",
+            "MC001 Chapter 2 numeric default rows are not embedded",
+            "factor is explicit and source-backed"
+          ],
+          scopeClassification: "envelope_runtime_ready_explicit_external_contract",
+          runtimeReadiness: "verified_for_explicit_external_contract_runtime",
+          sourceReference: "MC001-2022 page 109 default bztu note",
+          sourceLocator: { page: 109, relation: "default_bztu_note" }
         }
       ],
       runtimeIntegration: {
@@ -5416,7 +5439,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "explicit_Hg_boundary_correction_factor",
           "explicit_Hu_boundary_correction_factor",
           "explicit_Ha_boundary_correction_factor",
-          "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance"
+          "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance",
+          "source_backed_bztu_default_factor"
         ],
         inputPolicy: [
           "explicit_inputs_only",
@@ -5424,7 +5448,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "no_default_ground_factor",
           "no_default_unheated_space_factor",
           "no_default_adjacent_space_factor",
-          "no_default_cztu_ve"
+          "no_default_cztu_ve",
+          "external_bztu_default_contract_or_explicit_balance"
         ]
       },
       blockers: [
@@ -5717,6 +5742,60 @@ export const mc001NormativeRegistryV1 = deepFreeze({
             relation: "2.54",
             subsection: "2.7.4"
           }
+        },
+        {
+          candidateCode: "MC001_R21_SOLAR_IRRADIATION_SOURCE_CONTRACT",
+          relationReference: "2.39/2.50 input dependency",
+          expressionText:
+            "Hsol for transparent and opaque solar gains may be supplied as an explicit source-backed monthly irradiation value",
+          machineExpression: "solarIrradiation = explicitSourceBackedHsol",
+          outputSymbol: "Hsol;k;m",
+          outputUnit: "kWh/m2",
+          requiredInputs: [
+            "sourceContractCode",
+            "explicitSourceBackedHsol",
+            "source.reference"
+          ],
+          conditions: [
+            "relation 2.39 or 2.50 solar element input",
+            "no embedded MC001 climate irradiation dataset",
+            "direct numeric Hsol and source-backed Hsol are mutually exclusive"
+          ],
+          scopeClassification: "solar_runtime_ready_explicit_external_contract",
+          runtimeReadiness: "verified_for_explicit_external_contract_runtime",
+          sourceReference: "MC001-2022 pages 105 and 111 relations 2.39 and 2.50",
+          sourceLocator: {
+            page: 105,
+            relation: "2.39",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_OBSTACLE_SHADING_SOURCE_CONTRACT",
+          relationReference: "2.39/2.50 and tables 2.17/2.18 input dependency",
+          expressionText:
+            "Fsh;obst for transparent and opaque solar gains may be supplied as an explicit source-backed obstacle factor",
+          machineExpression: "obstacleShadingFactor = explicitSourceBackedFshObst",
+          outputSymbol: "Fsh;obst;k;m",
+          outputUnit: "dimensionless",
+          requiredInputs: [
+            "sourceContractCode",
+            "explicitSourceBackedFshObst",
+            "source.reference"
+          ],
+          conditions: [
+            "relation 2.39 or 2.50 solar element input",
+            "MC001 tables 2.17 and 2.18 orientation parameters are machine-encoded",
+            "direct numeric Fsh;obst and source-backed Fsh;obst are mutually exclusive"
+          ],
+          scopeClassification: "solar_runtime_ready_explicit_external_contract",
+          runtimeReadiness: "verified_for_explicit_external_contract_runtime",
+          sourceReference: "MC001-2022 pages 105, 108, 109, and 111",
+          sourceLocator: {
+            page: 108,
+            relation: "2.39",
+            subsection: "2.7.3"
+          }
         }
       ],
       tableDependencies: [
@@ -5759,14 +5838,16 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "no_hidden_defaults",
           "no_default_solar_irradiation",
           "no_default_obstacle_shading",
+          "external_solar_irradiation_contract_or_explicit_input",
+          "external_obstacle_geometry_contract_or_explicit_factor",
           "no_default_frame_fraction",
           "no_default_sky_radiation",
           "no_default_orientation_or_climate"
         ]
       },
       remainingExplicitDependencies: [
-        "monthly_solar_irradiation_by_element_orientation_and_tilt",
-        "obstacle_shading_factor_or_explicit_table_lookup_selection",
+        "solar_irradiation_external_contract_or_explicit_Hsol",
+        "obstacle_shading_external_geometry_contract_or_explicit_factor",
         "frame_fraction",
         "sky_radiation_inputs",
         "opaque_solar_absorptance"
@@ -6074,7 +6155,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "ground_Hg_from_explicit_boundary_factor",
           "unheated_Hu_from_explicit_boundary_factor_or_relation_2_22_explicit_ratio",
           "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
+          "unheated_Hu_from_source_backed_bztu_default_factor_contract",
           "adjacent_Ha_from_explicit_boundary_factor_or_relation_2_22_explicit_ratio",
+          "adjacent_Ha_from_source_backed_bztu_default_factor_contract",
           "linear_and_point_thermal_bridge_terms_explicit",
           "Htr_component_sum",
           "monthly_transmission_explicit_temperature_duration",
@@ -6087,6 +6170,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "adjacent_unconditioned_zone_solar_gains_relation_2_37_explicit_inputs",
           "adjacent_unconditioned_zone_gain_reduction_relations_2_51_2_52_2_53_explicit_inputs",
           "monthly_solar_gains_explicit_transparent_opaque_sum",
+          "monthly_solar_gains_external_irradiation_and_obstacle_contract_inputs",
           "solar_sky_radiation_relation_2_54_explicit_inputs",
           "solar_shading_table_2_16_explicit_device_lookup",
           "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
@@ -6110,13 +6194,13 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "monthly_durations",
           "ventilation_airflows_and_mechanical_ventilation_corrections",
           "internal_gain_category_or_components_and_schedules",
-          "solar_irradiation_and_explicit_obstacle_geometry",
+          "solar_irradiation_external_contract_or_explicit_value",
+          "obstacle_shading_external_geometry_contract_or_explicit_factor",
           "direct_effective_internal_heat_capacity_or_table_2_20_class_area_source",
           "thermal_bridge_psi_chi_values"
         ],
         tableBackedNotEncoded: [
           "window_door_catalog_U_values",
-          "solar_climate_annex_full_dataset",
           "thermal_bridge_catalog_rows_with_missing_geometry"
         ],
         ambiguousExtraction: [
@@ -6164,6 +6248,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "external_air_layer_resistance_contract_or_explicit_Ra",
           "no_default_surface_resistance",
           "no_default_climate",
+          "external_solar_irradiation_contract_or_explicit_input",
+          "external_obstacle_geometry_contract_or_explicit_factor",
+          "external_bztu_default_contract_or_explicit_balance",
           "no_default_gains",
           "no_default_schedules"
         ]
@@ -6179,9 +6266,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "not_certificate"
         ],
         remainingGaps: [
-          "automatic_ground_contact_detailed_method_not_encoded",
-          "unheated_adjacent_bztu_default_values_not_fabricated",
-          "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted"
+          "automatic_ground_contact_detailed_method_not_encoded"
         ]
       },
       blockers: [
@@ -6240,7 +6325,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       completenessGate: {
         closureStatus: "CHAPTER_2_NOT_CLOSED",
         reason:
-          "The exhaustive matrix classifies every Chapter 2 page/relation/table/figure currently identified, but closure is withheld because remaining Chapter 2 default/catalog domains are explicit-input only or external and must not be fabricated.",
+          "The exhaustive matrix classifies every Chapter 2 page/relation/table/figure currently identified, but closure is withheld because the automatic ground-contact detailed method remains unresolved.",
         unresolvedItemIds: [],
         justifiedNonRuntimeItemIds: [
           "MC001_RELATION_2_2",
@@ -6248,9 +6333,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "MC001_TABLE_2_1"
         ],
         nextImplementationDomains: [
-          "material_lambda_catalog_tables",
-          "mechanical_ventilation_and_external_airflow_dependencies",
-          "solar_climate_irradiation_and_obstacle_geometry_inputs"
+          "automatic_ground_contact_detailed_method"
         ]
       },
       blockers: [
@@ -6903,9 +6986,10 @@ function validateDefaultValueCandidates(candidates) {
     candidate.entryCode === "MC001_DEFAULT_CANDIDATE_BZTU_VALUES_WITH_GAINS" &&
     candidate.entryType === "default_value_candidate" &&
     candidate.candidateCode === BZTU_DEFAULT_CANDIDATE_CODE &&
-    candidate.status === "mentioned_but_not_extracted_as_numeric_table" &&
+    candidate.status === "mentioned_with_explicit_external_source_contract_available" &&
     candidate.page === 109 &&
     candidate.numericDefaultsAvailable === false &&
+    candidate.sourceContractCode === "MC001_BZTU_DEFAULT_BY_TYPE_SIZE_SOURCE_CONTRACT" &&
     !Object.hasOwn(candidate, "value") &&
     !Object.hasOwn(candidate, "values") &&
     !Object.hasOwn(candidate, "defaultValue") &&
@@ -9464,7 +9548,10 @@ function solarGainsExplicitSourcePackIssue(sourcePack) {
     !integration.inputPolicy?.includes("no_default_obstacle_shading") ||
     !integration.inputPolicy?.includes("no_default_sky_radiation") ||
     !sourcePack.remainingExplicitDependencies?.includes(
-      "monthly_solar_irradiation_by_element_orientation_and_tilt"
+      "solar_irradiation_external_contract_or_explicit_Hsol"
+    ) ||
+    !sourcePack.remainingExplicitDependencies?.includes(
+      "obstacle_shading_external_geometry_contract_or_explicit_factor"
     ) ||
     sourcePack.remainingExplicitDependencies?.includes(
       "adjacent_unconditioned_zone_solar_gain_terms_relation_2_37"
@@ -9591,8 +9678,11 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
+    "monthly_solar_gains_external_irradiation_and_obstacle_contract_inputs",
     "humidification_table_2_21_explicit_space_category_lookup",
     "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
+    "unheated_Hu_from_source_backed_bztu_default_factor_contract",
+    "adjacent_Ha_from_source_backed_bztu_default_factor_contract",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -9608,7 +9698,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "monthly_weather_temperatures",
     "ventilation_airflows_and_mechanical_ventilation_corrections",
     "internal_gain_category_or_components_and_schedules",
-    "solar_irradiation_and_explicit_obstacle_geometry"
+    "solar_irradiation_external_contract_or_explicit_value",
+    "obstacle_shading_external_geometry_contract_or_explicit_factor"
   ];
   const requiredOutOfScopeItems = [
     "final_energy",
@@ -9851,9 +9942,9 @@ function sourcePackIssue(sourcePack) {
   if (sourcePack.sourcePackCode === R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE) {
     return envelopeSourcePackIssue(sourcePack, {
       candidatePrefix: "MC001_R18_",
-      requiredPages: [81, 82, 94, 95, 96, 100],
+      requiredPages: [81, 82, 94, 95, 96, 100, 109],
       requiredRelations: ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"],
-      minimumCandidateCount: 5,
+      minimumCandidateCount: 6,
       runtimeCalculatorStatus: "implemented_explicit_boundary_correction_runtime"
     });
   }
