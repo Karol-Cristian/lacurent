@@ -1,3 +1,5 @@
+import { findAirLayerResistanceSourceContractByCode } from "./datasets/mc001AirLayerResistanceSourceContracts.mjs";
+import { findMaterialLambdaSourceContractByCode } from "./datasets/mc001MaterialLambdaSourceContracts.mjs";
 import { findMaterialCorrectionCoefficientById } from "./datasets/mc001Table2_2MaterialCorrectionCoefficients.mjs";
 import {
   findExteriorSurfaceResistanceTable2_12EntryById,
@@ -12,8 +14,10 @@ const ASSEMBLY_FORMULA_REFERENCES = [
   "MC001_R15_MATERIALS_AND_THERMAL_RESISTANCE_SOURCE_PACK",
   "MC001_R15_RELATION_2_3_LAMBDA_CORRECTION",
   "MC001_TABLE_2_2_MATERIAL_CORRECTION_COEFFICIENTS",
+  "MC001_MATERIAL_LAMBDA_EXTERNAL_SOURCE_CONTRACTS",
   "MC001_TABLE_2_11_SURFACE_RESISTANCES",
   "MC001_TABLE_2_12_EXTERIOR_SURFACE_RESISTANCE_BY_WIND_SPEED",
+  "MC001_AIR_LAYER_RESISTANCE_EXTERNAL_SR_EN_ISO_6946_CONTRACT",
   "MC001_R15_RELATION_2_6_TOTAL_THERMAL_RESISTANCE",
   "MC001_R16_RELATION_2_7_THERMAL_TRANSMITTANCE"
 ];
@@ -85,7 +89,9 @@ const ALLOWED_SOURCE_TYPES = new Set([
   "explicit_user_input",
   "explicit_calculated_input",
   "mc001_registry_source_pack",
-  "mc001_table_2_2"
+  "mc001_table_2_2",
+  "external_normative_material_catalog",
+  "external_normative_air_layer_resistance"
 ]);
 const FORBIDDEN_ASSEMBLY_KEYS = new Set([
   "assemblyResults",
@@ -341,10 +347,11 @@ function resolveLayer(layer, index) {
 
   const hasDirectLambda = isPlainObject(layer.material.lambda);
   const hasNormativeLambda = isPlainObject(layer.material.lambdaNormat);
-  if (hasDirectLambda && hasNormativeLambda) {
+  const hasCatalogLambda = isPlainObject(layer.material.lambdaNormatCatalog);
+  if ([hasDirectLambda, hasNormativeLambda, hasCatalogLambda].filter(Boolean).length > 1) {
     return { ok: false, code: "ambiguous_material_lambda_source" };
   }
-  if (!hasDirectLambda && !hasNormativeLambda) {
+  if (!hasDirectLambda && !hasNormativeLambda && !hasCatalogLambda) {
     return { ok: false, code: "missing_explicit_material_lambda" };
   }
 
@@ -354,6 +361,9 @@ function resolveLayer(layer, index) {
   let correctionCoefficientCode = null;
   let correctionCoefficientSource = null;
   let correctionCoefficientMetadata = null;
+  let lambdaNormatSourceContractCode = null;
+  let lambdaNormatSourceReference = null;
+  let lambdaNormatSourceMetadata = null;
   let lambdaOrigin = "explicit_material_lambda";
   let lambdaFormulaCode = "EXPLICIT_MATERIAL_LAMBDA";
   if (hasDirectLambda) {
@@ -365,11 +375,41 @@ function resolveLayer(layer, index) {
     if (!directLambda.ok) return directLambda;
     lambda = directLambda.amount;
   } else {
-    const normLambda = positiveUnitAmount(
-      layer.material.lambdaNormat,
-      "W/(m*K)",
-      "invalid_explicit_material_lambda"
-    );
+    let normLambda;
+    if (hasCatalogLambda) {
+      const catalog = layer.material.lambdaNormatCatalog;
+      if (!safeCode(catalog.contractCode, 128)) {
+        return { ok: false, code: "invalid_material_lambda_source_contract" };
+      }
+      const contract = findMaterialLambdaSourceContractByCode(catalog.contractCode);
+      if (contract === null) {
+        return { ok: false, code: "unknown_material_lambda_source_contract" };
+      }
+      if (hasInputValue(catalog, "materialId") && catalog.materialId !== layer.material.materialId) {
+        return { ok: false, code: "invalid_material_lambda_catalog_material_id" };
+      }
+      normLambda = positiveUnitAmount(
+        catalog.lambdaNormat,
+        "W/(m*K)",
+        "invalid_explicit_material_lambda"
+      );
+      if (normLambda.ok) {
+        lambdaNormatSourceContractCode = contract.code;
+        lambdaNormatSourceReference = contract.sourceReference;
+        lambdaNormatSourceMetadata = {
+          sourcePack: contract.sourcePack,
+          scope: contract.scope,
+          allowedUse: contract.allowedUse,
+          sourcePages: contract.sourcePages
+        };
+      }
+    } else {
+      normLambda = positiveUnitAmount(
+        layer.material.lambdaNormat,
+        "W/(m*K)",
+        "invalid_explicit_material_lambda"
+      );
+    }
     if (!normLambda.ok) return normLambda;
     const hasExplicitCoefficient = isPlainObject(layer.material.correctionCoefficientA);
     const hasTableCoefficientCode = hasInputValue(layer.material, "correctionCoefficientCode");
@@ -410,7 +450,9 @@ function resolveLayer(layer, index) {
       correctionCoefficientSource = layer.material.correctionCoefficientA.source.reference;
     }
     lambda = lambdaNormat * correctionCoefficientA;
-    lambdaOrigin = "calculated_from_MC001_relation_2_3_explicit_coefficient";
+    lambdaOrigin = hasCatalogLambda
+      ? "calculated_from_external_material_lambda_contract_and_MC001_relation_2_3"
+      : "calculated_from_MC001_relation_2_3_explicit_coefficient";
     lambdaFormulaCode = "MC001_2_3_LAMBDA_CORRECTION";
   }
 
@@ -439,6 +481,9 @@ function resolveLayer(layer, index) {
         : { correctionCoefficientMetadata }),
       lambdaOrigin,
       lambdaFormulaCode,
+      ...(lambdaNormatSourceContractCode === null ? {} : { lambdaNormatSourceContractCode }),
+      ...(lambdaNormatSourceReference === null ? {} : { lambdaNormatSourceReference }),
+      ...(lambdaNormatSourceMetadata === null ? {} : { lambdaNormatSourceMetadata }),
       resistanceM2KPerW: resistance,
       resistanceFormulaCode: "MC001_LAYER_RESISTANCE_THICKNESS_OVER_LAMBDA"
     }
@@ -499,17 +544,54 @@ function resolveAssemblyUValue(assembly) {
     if (!isPlainObject(airLayer) || !safeCode(airLayer.airLayerId || `air_${index + 1}`)) {
       return { ok: false, code: "invalid_explicit_air_layer" };
     }
-    const resistance = nonNegativeUnitAmount(
-      airLayer.resistance,
-      "m2*K/W",
-      "invalid_explicit_air_layer_resistance"
-    );
+    const hasDirectResistance = isPlainObject(airLayer.resistance);
+    const hasCatalogResistance = isPlainObject(airLayer.resistanceCatalog);
+    if (hasDirectResistance && hasCatalogResistance) {
+      return { ok: false, code: "ambiguous_air_layer_resistance_source" };
+    }
+    if (!hasDirectResistance && !hasCatalogResistance) {
+      return { ok: false, code: "missing_explicit_air_layer_resistance" };
+    }
+
+    let resistance;
+    let origin = "explicit_air_layer_resistance";
+    let formulaCode = "EXPLICIT_AIR_LAYER_RESISTANCE";
+    let sourceContractCode = null;
+    let sourceReference = null;
+    if (hasCatalogResistance) {
+      const catalog = airLayer.resistanceCatalog;
+      if (!safeCode(catalog.contractCode, 128)) {
+        return { ok: false, code: "invalid_air_layer_resistance_source_contract" };
+      }
+      const contract = findAirLayerResistanceSourceContractByCode(catalog.contractCode);
+      if (contract === null) {
+        return { ok: false, code: "unknown_air_layer_resistance_source_contract" };
+      }
+      resistance = nonNegativeUnitAmount(
+        catalog.resistance,
+        "m2*K/W",
+        "invalid_explicit_air_layer_resistance"
+      );
+      origin = "external_SR_EN_ISO_6946_air_layer_resistance_contract";
+      formulaCode = "MC001_AIR_LAYER_RESISTANCE_EXTERNAL_SR_EN_ISO_6946_CONTRACT";
+      sourceContractCode = contract.code;
+      sourceReference = contract.sourceReference;
+    } else {
+      resistance = nonNegativeUnitAmount(
+        airLayer.resistance,
+        "m2*K/W",
+        "invalid_explicit_air_layer_resistance"
+      );
+    }
     if (!resistance.ok) return resistance;
     airResistance += resistance.amount;
     airLayers.push({
       airLayerId: airLayer.airLayerId,
       resistanceM2KPerW: resistance.amount,
-      origin: "explicit_air_layer_resistance"
+      origin,
+      formulaCode,
+      ...(sourceContractCode === null ? {} : { sourceContractCode }),
+      ...(sourceReference === null ? {} : { sourceReference })
     });
   }
 

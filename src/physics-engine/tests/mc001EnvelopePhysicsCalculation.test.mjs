@@ -17,6 +17,14 @@ const CALCULATED_SOURCE = {
   sourceType: "explicit_calculated_input",
   reference: "mc001_envelope_physics_test"
 };
+const EXTERNAL_MATERIAL_SOURCE = {
+  sourceType: "external_normative_material_catalog",
+  reference: "SR_EN_ISO_10456.material_lambda.test_row"
+};
+const EXTERNAL_AIR_LAYER_SOURCE = {
+  sourceType: "external_normative_air_layer_resistance",
+  reference: "SR_EN_ISO_6946.air_layer.test_row"
+};
 
 function close(actual, expected, tolerance = EPSILON) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
@@ -61,6 +69,19 @@ function tableCorrectedMaterial(materialId, lambdaNormat, correctionCoefficientC
     materialId,
     name,
     lambdaNormat: value(lambdaNormat, "W/(m*K)"),
+    correctionCoefficientCode
+  };
+}
+
+function externalCatalogMaterial(materialId, lambdaNormat, correctionCoefficientCode, name = materialId) {
+  return {
+    materialId,
+    name,
+    lambdaNormatCatalog: {
+      contractCode: "SR_EN_ISO_10456_MATERIAL_LAMBDA_PROPERTIES",
+      materialId,
+      lambdaNormat: value(lambdaNormat, "W/(m*K)", EXTERNAL_MATERIAL_SOURCE)
+    },
     correctionCoefficientCode
   };
 }
@@ -412,6 +433,169 @@ await test("Table 2.2 correction coefficient ids can explicitly derive corrected
   );
   assert.equal(wall.layers[0].correctionCoefficientSource, "MC001-2022 Tabel 2.2");
   assert.equal(wall.layers[0].correctionCoefficientMetadata.materialCategoryRo.includes("BCA"), true);
+});
+
+await test("external material lambda contract can feed Table 2.2 correction and layer resistance", () => {
+  const result = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "external-material-catalog-wall",
+        assemblyType: "wall",
+        layers: [
+          layer(
+            "brick-catalog",
+            0.3,
+            externalCatalogMaterial(
+              "brick-catalog",
+              0.8,
+              "zidarie_caramida_condens_vechime_ge_30_ani",
+              "zidarie caramida plina"
+            )
+          )
+        ],
+        surfaceResistances: {
+          rsi: value(0.13, "m2*K/W"),
+          rse: value(0.04, "m2*K/W")
+        },
+        source: SOURCE
+      }
+    ]
+  });
+
+  assert.equal(result.status, "ready");
+  const wall = result.assemblyResults[0];
+  close(wall.layers[0].lambdaWmK, 0.92);
+  close(wall.layers[0].resistanceM2KPerW, 0.32608695652173914);
+  close(wall.totalResistance, 0.4960869565217392);
+  close(wall.uValue, 2.0157756354075373);
+  assert.equal(
+    wall.layers[0].lambdaOrigin,
+    "calculated_from_external_material_lambda_contract_and_MC001_relation_2_3"
+  );
+  assert.equal(
+    wall.layers[0].lambdaNormatSourceContractCode,
+    "SR_EN_ISO_10456_MATERIAL_LAMBDA_PROPERTIES"
+  );
+  assert.equal(wall.layers[0].correctionCoefficientCode, "zidarie_caramida_condens_vechime_ge_30_ani");
+});
+
+await test("external SR EN ISO 6946 air-layer contract can feed total resistance", () => {
+  const result = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "air-layer-contract-wall",
+        assemblyType: "wall",
+        layers: [layer("single", 0.2, material("test-material", 0.5))],
+        airLayers: [
+          {
+            airLayerId: "unventilated-air-gap",
+            resistanceCatalog: {
+              contractCode: "SR_EN_ISO_6946_UNVENTILATED_AIR_LAYER_RESISTANCE",
+              resistance: value(0.18, "m2*K/W", EXTERNAL_AIR_LAYER_SOURCE)
+            }
+          }
+        ],
+        surfaceResistances: {
+          rsi: value(0.13, "m2*K/W"),
+          rse: value(0.04, "m2*K/W")
+        },
+        source: SOURCE
+      }
+    ]
+  });
+
+  assert.equal(result.status, "ready");
+  const wall = result.assemblyResults[0];
+  close(wall.totalResistance, 0.75);
+  close(wall.uValue, 1.3333333333333333);
+  assert.equal(wall.airLayers[0].origin, "external_SR_EN_ISO_6946_air_layer_resistance_contract");
+  assert.equal(
+    wall.airLayers[0].sourceContractCode,
+    "SR_EN_ISO_6946_UNVENTILATED_AIR_LAYER_RESISTANCE"
+  );
+});
+
+await test("external material and air-layer contract paths reject ambiguity and unknown contracts", () => {
+  const ambiguousMaterial = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "ambiguous-material-contract",
+        assemblyType: "wall",
+        layers: [
+          layer("single", 0.2, {
+            ...externalCatalogMaterial(
+              "ambiguous-material",
+              0.8,
+              "zidarie_caramida_uscata_vechime_ge_30_ani"
+            ),
+            lambdaNormat: value(0.8, "W/(m*K)")
+          })
+        ],
+        surfaceResistances: {
+          rsi: value(0.13, "m2*K/W"),
+          rse: value(0.04, "m2*K/W")
+        },
+        source: SOURCE
+      }
+    ]
+  });
+  assertBlocked(ambiguousMaterial, "ambiguous_material_lambda_source");
+
+  const unknownMaterialContract = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "unknown-material-contract",
+        assemblyType: "wall",
+        layers: [
+          layer("single", 0.2, {
+            materialId: "unknown-contract-material",
+            lambdaNormatCatalog: {
+              contractCode: "UNKNOWN_MATERIAL_CONTRACT",
+              lambdaNormat: value(0.8, "W/(m*K)", EXTERNAL_MATERIAL_SOURCE)
+            },
+            correctionCoefficientCode: "zidarie_caramida_uscata_vechime_ge_30_ani"
+          })
+        ],
+        surfaceResistances: {
+          rsi: value(0.13, "m2*K/W"),
+          rse: value(0.04, "m2*K/W")
+        },
+        source: SOURCE
+      }
+    ]
+  });
+  assertBlocked(unknownMaterialContract, "unknown_material_lambda_source_contract");
+
+  const ambiguousAirLayer = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "ambiguous-air-layer-contract",
+        assemblyType: "wall",
+        layers: [layer("single", 0.2, material("test-material", 0.5))],
+        airLayers: [
+          {
+            airLayerId: "air-gap",
+            resistance: value(0.1, "m2*K/W"),
+            resistanceCatalog: {
+              contractCode: "SR_EN_ISO_6946_UNVENTILATED_AIR_LAYER_RESISTANCE",
+              resistance: value(0.18, "m2*K/W", EXTERNAL_AIR_LAYER_SOURCE)
+            }
+          }
+        ],
+        surfaceResistances: {
+          rsi: value(0.13, "m2*K/W"),
+          rse: value(0.04, "m2*K/W")
+        },
+        source: SOURCE
+      }
+    ]
+  });
+  assertBlocked(ambiguousAirLayer, "ambiguous_air_layer_resistance_source");
 });
 
 await test("Table 2.11 surface resistance code can explicitly derive Rsi and Rse", () => {
