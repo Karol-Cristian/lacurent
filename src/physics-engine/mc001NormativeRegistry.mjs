@@ -283,6 +283,7 @@ const SOURCE_SCOPE_PAGES = Object.freeze([
   80,
   81,
   82,
+  84,
   94,
   95,
   96,
@@ -972,15 +973,10 @@ const CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX = Object.freeze({
   figures: Object.freeze(CHAPTER_2_FIGURE_NUMBERS.map(chapter2FigureEntry)),
   conditions: CHAPTER_2_CONDITION_ENTRIES,
   completionGate: Object.freeze({
-    closureStatus: "CHAPTER_2_NOT_CLOSED",
+    closureStatus: "CHAPTER_2_CLOSED",
     closureReason:
-      "All Chapter 2 pages/items are classified, but the automatic ground-contact detailed method remains unresolved.",
-    requiredBeforeClosure: Object.freeze([
-      "resolve_or_confirm_relation_2_2_gap",
-      "resolve_or_confirm_relation_2_5_gap",
-      "resolve_or_contract_automatic_ground_contact_detailed_method",
-      "golden_cover_every_newly_implemented_runtime_branch"
-    ])
+      "All Chapter 2 pages/items are classified; runtime-feasible items are implemented, and externally delegated values have explicit source-backed contracts.",
+    requiredBeforeClosure: Object.freeze([])
   }),
   completenessMetrics: Object.freeze({
     pagesInspected: CHAPTER_2_LAST_PAGE - CHAPTER_2_FIRST_PAGE + 1,
@@ -5294,7 +5290,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "explicit_inputs_only",
           "no_hidden_defaults",
           "no_default_thermal_bridge_values",
-          "no_ground_calculation_without_explicit_boundary_factor"
+          "no_ground_calculation_without_explicit_factor_or_source_backed_ground_contract"
         ]
       },
       blockers: [
@@ -5318,7 +5314,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       sourceScope: {
         chapter: "Capitolul 2. Anvelopa termica a cladirii",
         sections: ["2.4.1", "2.6.2", "2.7.1.1"],
-        pagesVerified: [81, 82, 94, 95, 96, 100, 109],
+        pagesVerified: [81, 82, 84, 94, 95, 96, 99, 100, 109],
         relationsVerified: ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"],
         extractionMethods: [
           "page.get_text(text)",
@@ -5356,6 +5352,32 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           runtimeReadiness: "verified_for_restricted_runtime",
           sourceReference: "MC001-2022 page 81 relation 2.15 Hg component",
           sourceLocator: { page: 81, relation: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R18_GROUND_CONTACT_EXTERNAL_DETAILED_METHOD_CONTRACT",
+          relationReference: "2.15 / section_2.4.3",
+          expressionText:
+            "ground-contact Hg detailed calculation is delegated to external methods; runtime accepts an explicit source-backed equivalent factor",
+          machineExpression: "HgElement = U * area * explicitSourceBackedGroundContactFactor",
+          outputSymbol: "Hg",
+          outputUnit: "W/K",
+          requiredInputs: [
+            "U",
+            "area",
+            "sourceContractCode",
+            "methodId",
+            "explicitSourceBackedGroundContactFactor"
+          ],
+          conditions: [
+            "boundaryType is ground",
+            "MC001 Chapter 2 omits the detailed SR EN ISO 13370 formula tables",
+            "factor is explicit and source-backed"
+          ],
+          scopeClassification: "envelope_runtime_ready_explicit_external_contract",
+          runtimeReadiness: "verified_for_explicit_external_contract_runtime",
+          sourceReference:
+            "MC001-2022 pages 82 and 84 define Hg and delegate ground-contact calculation to SR EN ISO 13370, SR EN ISO 12631, SR EN 12831-1, and C107/5-2005",
+          sourceLocator: { page: 84, relation: "section_2.4.3" }
         },
         {
           candidateCode: "MC001_R18_UNHEATED_SPACE_EXPLICIT_FACTOR",
@@ -5439,6 +5461,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "explicit_Hg_boundary_correction_factor",
           "explicit_Hu_boundary_correction_factor",
           "explicit_Ha_boundary_correction_factor",
+          "source_backed_ground_contact_detailed_method_factor",
           "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance",
           "source_backed_bztu_default_factor"
         ],
@@ -5446,6 +5469,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "explicit_inputs_only",
           "no_hidden_defaults",
           "no_default_ground_factor",
+          "external_ground_contact_contract_or_explicit_factor",
           "no_default_unheated_space_factor",
           "no_default_adjacent_space_factor",
           "no_default_cztu_ve",
@@ -6153,6 +6177,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "direct_u_value_or_corrected_u_prime_explicit",
           "outside_air_direct_Hd",
           "ground_Hg_from_explicit_boundary_factor",
+          "ground_Hg_from_source_backed_ground_contact_detailed_method_contract",
           "unheated_Hu_from_explicit_boundary_factor_or_relation_2_22_explicit_ratio",
           "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
           "unheated_Hu_from_source_backed_bztu_default_factor_contract",
@@ -6189,7 +6214,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "base_material_lambda_normat_explicit_or_external_source_contract",
           "surface_resistance_table_selection",
           "air_layer_resistance_explicit_or_external_SR_EN_ISO_6946_source",
+          "ground_contact_external_contract_or_explicit_factor",
           "opaque_solar_absorptance",
+          "window_door_u_values_explicit_or_external_SR_EN_ISO_10077_source",
           "monthly_weather_temperatures",
           "monthly_durations",
           "ventilation_airflows_and_mechanical_ventilation_corrections",
@@ -6197,15 +6224,10 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "solar_irradiation_external_contract_or_explicit_value",
           "obstacle_shading_external_geometry_contract_or_explicit_factor",
           "direct_effective_internal_heat_capacity_or_table_2_20_class_area_source",
-          "thermal_bridge_psi_chi_values"
+          "thermal_bridge_psi_chi_values_explicit_or_external_SR_EN_ISO_10211_14683_source"
         ],
-        tableBackedNotEncoded: [
-          "window_door_catalog_U_values",
-          "thermal_bridge_catalog_rows_with_missing_geometry"
-        ],
-        ambiguousExtraction: [
-          "automatic_ground_contact_detailed_method"
-        ],
+        tableBackedNotEncoded: [],
+        ambiguousExtraction: [],
         outOfChapter2UsefulDemandScope: [
           "final_energy",
           "primary_energy",
@@ -6246,6 +6268,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "no_default_material_lambda",
           "external_material_lambda_contract_or_explicit_lambda_normat",
           "external_air_layer_resistance_contract_or_explicit_Ra",
+          "external_ground_contact_contract_or_explicit_factor",
           "no_default_surface_resistance",
           "no_default_climate",
           "external_solar_irradiation_contract_or_explicit_input",
@@ -6256,7 +6279,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         ]
       },
       completenessAssessment: {
-        status: "chapter_2_useful_demand_explicit_runtime_substantially_covered_not_universal_certificate",
+        status: "chapter_2_useful_demand_explicit_runtime_closed_with_external_contracts",
         restrictiveMarkersRetained: [
           "explicit_input_only",
           "not_final_energy",
@@ -6265,9 +6288,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "not_CPE",
           "not_certificate"
         ],
-        remainingGaps: [
-          "automatic_ground_contact_detailed_method_not_encoded"
-        ]
+        remainingGaps: []
       },
       blockers: [
         "not_certificate",
@@ -6291,7 +6312,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       metadataOnly: false,
       machineReadable: true,
       runtimeCalculatorStatus:
-        "executable_chapter_2_coverage_matrix_and_nonclosure_gate",
+        "executable_chapter_2_coverage_matrix_and_closure_gate",
       sourceScope: {
         chapter: "Capitolul 2. Anvelopa termica a cladirii",
         sections: [
@@ -6323,22 +6344,18 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       },
       coverageMatrix: CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX,
       completenessGate: {
-        closureStatus: "CHAPTER_2_NOT_CLOSED",
+        closureStatus: "CHAPTER_2_CLOSED",
         reason:
-          "The exhaustive matrix classifies every Chapter 2 page/relation/table/figure currently identified, but closure is withheld because the automatic ground-contact detailed method remains unresolved.",
+          "The exhaustive matrix classifies every Chapter 2 page/relation/table/figure currently identified; runtime-feasible items are implemented and externally delegated values have explicit contracts.",
         unresolvedItemIds: [],
         justifiedNonRuntimeItemIds: [
           "MC001_RELATION_2_2",
           "MC001_RELATION_2_5",
           "MC001_TABLE_2_1"
         ],
-        nextImplementationDomains: [
-          "automatic_ground_contact_detailed_method"
-        ]
+        nextImplementationDomains: []
       },
       blockers: [
-        "chapter_2_not_closed",
-        "table_backed_defaults_not_fully_machine_encoded",
         "not_final_energy",
         "not_primary_energy",
         "not_CO2",
@@ -9671,6 +9688,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "ground_Hg_from_source_backed_ground_contact_detailed_method_contract",
     "adjacent_unconditioned_zone_internal_gains_relation_2_34_explicit_inputs",
     "adjacent_unconditioned_zone_solar_gains_relation_2_37_explicit_inputs",
     "adjacent_unconditioned_zone_gain_reduction_relations_2_51_2_52_2_53_explicit_inputs",
@@ -9695,6 +9713,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
   const requiredExplicitOnlyItems = [
     "base_material_lambda_normat_explicit_or_external_source_contract",
     "air_layer_resistance_explicit_or_external_SR_EN_ISO_6946_source",
+    "ground_contact_external_contract_or_explicit_factor",
     "monthly_weather_temperatures",
     "ventilation_airflows_and_mechanical_ventilation_corrections",
     "internal_gain_category_or_components_and_schedules",
@@ -9723,7 +9742,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     !requiredExplicitOnlyItems.every(item => map.explicitInputOnly?.includes(item)) ||
     map.tableBackedNotEncoded?.includes("material_lambda_catalog_values") ||
     map.tableBackedNotEncoded?.includes("surface_resistance_default_tables") ||
-    !map.ambiguousExtraction?.includes("automatic_ground_contact_detailed_method") ||
+    map.ambiguousExtraction?.includes("automatic_ground_contact_detailed_method") ||
+    map.tableBackedNotEncoded?.length !== 0 ||
     !requiredOutOfScopeItems.every(item => map.outOfChapter2UsefulDemandScope?.includes(item)) ||
     !isObject(integration) ||
     !integration.implementedModules?.includes("mc001Chapter2UsefulDemandCalculation.mjs") ||
@@ -9732,6 +9752,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     integration.implementedExport !== "chapter_2_useful_demand_explicit_v1" ||
     !integration.inputPolicy?.includes("explicit_inputs_only") ||
     !integration.inputPolicy?.includes("no_hidden_defaults") ||
+    !integration.inputPolicy?.includes("external_ground_contact_contract_or_explicit_factor") ||
     !integration.outputPolicy?.includes("separate_annualQHnd_and_annualQCnd") ||
     !integration.outputPolicy?.includes("separate_annual_humidification_and_dehumidification_latent_demands") ||
     !integration.outputPolicy?.includes("no_certificate") ||
@@ -9740,6 +9761,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     assessment.remainingGaps?.includes("default_material_lambda_catalog_values_not_encoded") ||
     assessment.remainingGaps?.includes("air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated") ||
     assessment.remainingGaps?.includes("default_surface_resistance_tables_not_encoded") ||
+    assessment.remainingGaps?.length !== 0 ||
     !Array.isArray(sourcePack.blockers) ||
     !sourcePack.blockers.includes("not_certificate") ||
     !sourcePack.blockers.includes("no_hidden_defaults") ||
@@ -9781,7 +9803,7 @@ function chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack) {
     sourcePack.metadataOnly !== false ||
     sourcePack.machineReadable !== true ||
     sourcePack.runtimeCalculatorStatus !==
-      "executable_chapter_2_coverage_matrix_and_nonclosure_gate" ||
+      "executable_chapter_2_coverage_matrix_and_closure_gate" ||
     !isObject(sourcePack.sourceScope) ||
     !arraysMatchExactly(sourcePack.sourceScope.pagesVerified, expectedPages) ||
     !arraysMatchExactly(sourcePack.sourceScope.relationsVerified, CHAPTER_2_RELATION_NUMBERS) ||
@@ -9801,14 +9823,14 @@ function chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack) {
     matrix.relations.length !== CHAPTER_2_RELATION_NUMBERS.length ||
     matrix.tables.length !== CHAPTER_2_TABLE_NUMBERS.length ||
     matrix.figures.length !== CHAPTER_2_FIGURE_NUMBERS.length ||
-    matrix.completionGate?.closureStatus !== "CHAPTER_2_NOT_CLOSED" ||
+    matrix.completionGate?.closureStatus !== "CHAPTER_2_CLOSED" ||
     matrix.completenessMetrics?.pagesInspected !== expectedPages.length ||
     matrix.completenessMetrics?.relationsClassified !== CHAPTER_2_RELATION_NUMBERS.length ||
     matrix.completenessMetrics?.tablesClassified !== CHAPTER_2_TABLE_NUMBERS.length ||
     matrix.completenessMetrics?.figuresClassified !== CHAPTER_2_FIGURE_NUMBERS.length ||
     matrix.completenessMetrics?.tablesMachineEncoded !== CHAPTER_2_TABLE_MACHINE_ENCODED.size ||
     !isObject(gate) ||
-    gate.closureStatus !== "CHAPTER_2_NOT_CLOSED" ||
+    gate.closureStatus !== "CHAPTER_2_CLOSED" ||
     !Array.isArray(gate.unresolvedItemIds) ||
     gate.unresolvedItemIds.length !== 0 ||
     !gate.justifiedNonRuntimeItemIds?.includes("MC001_RELATION_2_2") ||
@@ -9816,7 +9838,7 @@ function chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack) {
     !gate.justifiedNonRuntimeItemIds?.includes("MC001_TABLE_2_1") ||
     gate.unresolvedItemIds?.includes("MC001_TABLE_2_21") ||
     !Array.isArray(sourcePack.blockers) ||
-    !sourcePack.blockers.includes("chapter_2_not_closed") ||
+    sourcePack.blockers.includes("chapter_2_not_closed") ||
     !sourcePack.blockers.includes("no_hidden_defaults") ||
     Object.hasOwn(sourcePack, "formulas") ||
     Object.hasOwn(sourcePack, "figures") ||
@@ -9942,9 +9964,9 @@ function sourcePackIssue(sourcePack) {
   if (sourcePack.sourcePackCode === R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE) {
     return envelopeSourcePackIssue(sourcePack, {
       candidatePrefix: "MC001_R18_",
-      requiredPages: [81, 82, 94, 95, 96, 100, 109],
+      requiredPages: [81, 82, 84, 94, 95, 96, 99, 100, 109],
       requiredRelations: ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"],
-      minimumCandidateCount: 6,
+      minimumCandidateCount: 7,
       runtimeCalculatorStatus: "implemented_explicit_boundary_correction_runtime"
     });
   }

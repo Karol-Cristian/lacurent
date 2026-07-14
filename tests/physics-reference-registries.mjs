@@ -94,7 +94,7 @@ assert.equal(chapter2CoverageGate.sourcePack.coverageMatrix.tables.length, 21);
 assert.equal(chapter2CoverageGate.sourcePack.coverageMatrix.figures.length, 21);
 assert.equal(
   chapter2CoverageGate.sourcePack.completenessGate.closureStatus,
-  "CHAPTER_2_NOT_CLOSED"
+  "CHAPTER_2_CLOSED"
 );
 assert.deepEqual(chapter2CoverageGate.sourcePack.completenessGate.unresolvedItemIds, []);
 assert.ok(
