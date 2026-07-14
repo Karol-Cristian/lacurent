@@ -4,14 +4,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LA CURENT | Analiza Locuintei</title>
+<title>LA CURENT | Modelul termic al cladirii</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="../js/auth.js" defer></script>
 <script src="../js/guest-session.js" defer></script>
-<script src="../js/segment-context.js" defer></script>
-<script src="../js/home-context.js" defer></script>
 <script src="../js/analiza-casa.js" defer></script>
 <script type="module" src="../js/building-platform-wizard.mjs"></script>
 </head>
@@ -24,55 +22,34 @@
 <header>
 <div class="hero-top">
 <div>
-<div class="small-label">EVALUARE ESTIMATIVA</div>
-<h1 data-segment-key="analysisTitle">Analiza energetica a locuintei</h1>
-<p data-segment-key="analysisSubtitle">Raspunzi la intrebari simple. LaCurent construieste Building DNA, ruleaza motorul Chapter 2 validat si genereaza un raport tehnic verificabil.</p>
+<div class="small-label">MODEL TEHNIC VALIDAT</div>
+<h1>Modelul termic al cladirii</h1>
+<p>Modelarea anvelopei si calculul necesarului util de incalzire si racire conform MC001-2022.</p>
 </div>
-<div class="system-state"><span class="green-dot"></span>Model tehnic Chapter 2</div>
+<div class="system-state"><span class="green-dot"></span>Chapter 2 physics engine</div>
 </div>
 </header>
 
 <main class="dashboard">
-<section class="analysis-page">
+<section class="analysis-page p2c-technical-analysis">
 <div id="existingHomesPanel" class="dashboard-band" hidden>
 <div class="section-heading">
-<span class="small-label">LOCUINTE SALVATE</span>
-<h2>Ai deja locuinte analizate.</h2>
+<span class="small-label">MODELE SALVATE</span>
+<h2>Modele tehnice existente.</h2>
 </div>
-
-<div id="houseToolsPanel" class="dashboard-band" hidden>
-<div class="section-heading">
-<span class="small-label">DETALII CONTINUE</span>
-<h2>Adauga informatii noi pentru locuinta activa.</h2>
-</div>
-<p>Pastreaza profilul locuintei la zi cu facturi lunare, revizii sau schimbari facute in casa.</p>
-<form id="monthlyBillForm" class="form-grid">
-<input type="hidden" name="house_id">
-<div><label>Luna facturii</label><input name="billing_month" type="month" required></div>
-<div><label>Electricitate (lei)</label><input name="electricity_cost_ron" type="number" value="0"></div>
-<div><label>Gaz (lei)</label><input name="gas_cost_ron" type="number" value="0"></div>
-<div><label>Lemne (lei)</label><input name="wood_cost_ron" type="number" value="0"></div>
-<div><label>Peleti (lei)</label><input name="pellets_cost_ron" type="number" value="0"></div>
-<div><label>Altele (lei)</label><input name="other_cost_ron" type="number" value="0"></div>
-<div><label>Tip citire</label><select name="reading_type"><option value="actual">Consum real din factura</option><option value="estimated">Factura estimata</option><option value="regularization">Regularizare</option></select></div>
-<div><label>Include regularizare?</label><select name="is_regularization"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div class="form-wide"><label>Nota</label><input name="notes" placeholder="Ex: factura reala, nu regularizare"></div>
-<div class="form-wide"><button class="primary-btn" type="submit">Adauga factura</button><p id="monthlyBillMessage" class="form-message"></p></div>
-</form>
-</div>
-<p>Nu completa din nou formularul pentru aceeasi locuinta. Selecteaza locuinta activa, vezi raportul sau marcheaza recomandarile implementate.</p>
-<div id="existingHomesList" class="recommendation-list"></div>
+<p>Modelele vechi pot fi inspectate separat. Pentru fluxul validat curent, porneste un model termic nou sau deschide demo-ul.</p>
+<div id="existingHomesList" class="technical-saved-model-list"></div>
 <div class="hero-buttons">
-<a class="primary-btn" href="raport-v1.html">Vezi raportul locuintei active</a>
-<a class="secondary-btn" href="analiza-casa.html?new=1">Adauga alta locuinta</a>
+<a class="primary-btn" href="analiza-casa.html">Model termic nou</a>
+<a class="secondary-btn" href="analiza-casa.html?demo=1">Deschide demo</a>
 </div>
 </div>
 
 <div id="authRequired" class="auth-panel analysis-auth-required standard-auth-card" hidden>
-<div class="small-label">CONT NECESAR</div>
-<h2>Poti vedea raportul fara cont.</h2>
-<p>Completeaza analiza acum. Dupa raport poti crea cont gratuit ca sa il salvezi permanent.</p>
-<a class="primary-btn" href="profil.html">Mergi la Profil</a>
+<div class="small-label">CONT OPTIONAL</div>
+<h2>Poti genera raportul fara cont.</h2>
+<p>Modelul termic ruleaza local in pagina peste Building DNA si motorul Chapter 2 validat. Contul ramane optional pentru salvare ulterioara.</p>
+<a class="primary-btn" href="profil.html">Creeaza cont dupa raport</a>
 <div class="auth-tabs">
 <button type="button" class="auth-tab active" data-auth-tab="login">Autentificare</button>
 <button type="button" class="auth-tab" data-auth-tab="register">Cont nou</button>
@@ -94,9 +71,7 @@
 <label>Tip cont</label>
 <select name="role" required>
 <option value="residential">Locuinte</option>
-<option value="business">Afaceri</option>
-<option value="industry">Industrie</option>
-<option value="institution">Institutii</option>
+<option value="auditor">Auditor / consultant</option>
 </select>
 <label>Parola</label>
 <input name="password" type="password" autocomplete="new-password" minlength="8" required>
@@ -112,25 +87,20 @@
 </form>
 </div>
 
-<div class="progress-wrap">
-<div class="progress"><div id="progressBar"></div></div>
-<span id="stepText">Pas 1 din 6</span>
-</div>
-
 <section class="dashboard-band" id="buildingPlatformIntro">
 <div class="section-heading">
-<span class="small-label">MODEL TEHNIC</span>
-<h2>Descrii locuinta, LaCurent construieste modelul de calcul.</h2>
+<span class="small-label">FLUX VALIDAT</span>
+<h2>Descrierea cladirii devine Building DNA, apoi raport tehnic.</h2>
 </div>
-<p>Raspunsurile tale trec printr-un flux verificabil: descriere, tipologie, parametri, interventii, ansambluri, materiale, Building DNA si apoi motorul Chapter 2 validat. Inainte de calcul poti vedea ce a fost presupus automat si ce trebuie confirmat.</p>
+<p>Interfata expune doar modelarea anvelopei, Building DNA, raportul tehnic si rezultatele Chapter 2 validate: QHnd si QCnd lunar/anual. Nu calculeaza energie finala, energie primara, CO2, CPE sau certificat.</p>
 </section>
 
 <section class="dashboard-band demo-mode-controls" id="demoModeControls">
 <div class="section-heading">
 <span class="small-label">DEMO REVIZUIBIL</span>
-<h2>Deschide rapid un proiect tehnic complet.</h2>
+<h2>Incarca rapid un model complet.</h2>
 </div>
-<p>Exemplul demonstrativ precompleteaza formularul cu o casa coerenta si genereaza imediat Building DNA, calculul Chapter 2 si raportul tehnic. Valorile raman editabile si nu devin valori implicite pentru proiecte normale.</p>
+<p>Exemplul demonstrativ precompleteaza geometria, anvelopa si renovarile pentru o casa coerenta. Valorile sunt marcate ca demo, raman editabile si nu devin valori implicite pentru proiecte normale.</p>
 <div class="hero-buttons demo-action-row">
 <button class="primary-btn" id="loadDemoModeBtn" type="button">Încarcă exemplu demonstrativ</button>
 <button class="secondary-btn" id="startBlankProjectBtn" type="button">Începe proiect gol</button>
@@ -141,191 +111,146 @@
 <section class="dashboard-band demo-mode-banner" id="demoModeBanner" hidden>
 <div>
 <strong>Mod demonstrativ — valorile sunt precompletate și pot fi modificate.</strong>
-<p>Fiecare valoare demo este marcată ca neconfirmată și rămâne editabilă.</p>
+<p>Fiecare valoare demo este marcata ca neconfirmata si ramane editabila.</p>
 </div>
 <button class="secondary-btn" id="exitDemoModeBtn" type="button">Iesi din demo</button>
 </section>
 
+<div class="progress-wrap p2c-progress-wrap">
+<nav class="technical-flow-nav" aria-label="Sectiuni model termic">
+<button type="button" data-step-target="0">Geometrie</button>
+<button type="button" data-step-target="1">Anvelopa</button>
+<button type="button" data-step-target="2">Renovari</button>
+<button type="button" data-step-target="3">Building DNA</button>
+<button type="button" data-step-target="4">Raport tehnic</button>
+<button type="button" data-step-target="5">Rezultate</button>
+</nav>
+<div class="progress"><div id="progressBar"></div></div>
+<span id="stepText">Pas 1 din 6</span>
+</div>
+
 <form id="houseForm" hidden>
 <input type="hidden" name="user_type" value="residential">
-<input type="hidden" name="real_consumption_mode" value="simple">
+<input type="hidden" name="analysis_purpose" value="technical_chapter_2_report">
+<input type="hidden" name="real_consumption_mode" value="not_used_in_chapter_2">
 <input type="hidden" name="building_platform_demo_mode" value="">
 <input type="hidden" name="building_platform_demo_fixture_id" value="">
 
-<div class="step active">
-<h2>Date generale</h2>
-<p class="section-description">De la inceput: raspunsurile devin parametri tehnici verificabili. Raportul rezultat ramane informativ si nu inlocuieste certificatul oficial.</p>
+<div class="step active" data-section-id="geometry">
+<h2>Geometrie</h2>
+<p class="section-description">Datele geometrice alimenteaza Building DNA. Nu introduci coeficienti finali precum Htr, U, gamma, tau sau eta.</p>
 <div class="form-grid">
-<div><label>Nume locuinta</label><input name="display_name" placeholder="Ex: Casa Salicea, Apartament Cluj"></div>
-<div><label>Scopul analizei</label><select name="analysis_purpose">
-<option value="optimize_existing">Reducerea costurilor pentru locuinta actuala</option>
-<option value="renovation">Renovare</option>
-<option value="sale">Vanzare</option>
-<option value="purchase">Cumparare</option>
-<option value="design">Proiectare / casa noua</option>
-<option value="unknown">Nu stiu inca</option>
-</select></div>
-<div><label>Tip locuinta</label><select name="building_type"><option value="house">Casa</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Localitate</label><input name="city" placeholder="Ex: Cluj, Brasov, sat rural"></div>
-<div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1964"></div>
-<div><label>Suprafata utila (m2)</label><input name="useful_area_m2" type="number" placeholder="Ex: 65"></div>
-<div><label>Numar niveluri</label><input name="number_of_floors" type="number" placeholder="Ex: 1"></div>
-<div><label>Inaltime medie camere (m)</label><input name="floor_height_m" type="number" step="0.1" placeholder="Ex: 2.5"></div>
-<div><label>Numar persoane</label><input name="occupants" type="number" placeholder="Ex: 2"></div>
+<div><label>Nume model</label><input name="display_name" placeholder="Ex: Casa zidarie 1985"></div>
+<div><label>Tip cladire</label><select name="building_type"><option value="house">Casa individuala</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Localitate</label><input name="city" placeholder="Ex: Bucuresti"></div>
+<div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1985"></div>
+<div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"></div>
+<div><label>Numar niveluri incalzite</label><input name="number_of_floors" type="number" step="1" placeholder="Ex: 1"></div>
+<div><label>Inaltime medie nivel (m)</label><input name="floor_height_m" type="number" step="0.1" placeholder="Ex: 2.6"></div>
+<div><label>Volum incalzit (m3)</label><input name="heated_volume_m3" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Lungime aproximativa (m)</label><input name="building_length_m" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Latime aproximativa (m)</label><input name="building_width_m" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Orientare principala</label><select name="main_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
 <div><label>Masa termica</label><select name="thermal_mass_class"><option value="unknown">Nu stiu</option><option value="heavy">Grea: caramida/beton/piatra</option><option value="medium">Medie</option><option value="light">Usoara: lemn/structura usoara</option></select></div>
-<div><label>Locuire</label><select name="usage_type"><option value="permanent">Permanenta</option><option value="seasonal">Sezoniera</option><option value="mixed">Mixta</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Ultima renovare majora</label><select name="last_major_renovation"><option value="never">Niciodata</option><option value="less_than_5_years">Sub 5 ani</option><option value="5_10_years">5-10 ani</option><option value="10_20_years">10-20 ani</option><option value="more_than_20_years">Peste 20 ani</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Arie pereti exteriori (m2)</label><input name="exterior_wall_area_m2" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Arie acoperis / planseu superior (m2)</label><input name="roof_area_m2" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Arie planseu inferior (m2)</label><input name="ground_floor_area_m2" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Arie planseu spre pod (m2)</label><input name="attic_ceiling_area_m2" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Arie spre spatiu adiacent (m2)</label><input name="adjacent_wall_area_m2" type="number" step="0.1" placeholder="Optional"></div>
 </div>
 </div>
 
-<div class="step">
+<div class="step" data-section-id="envelope">
 <h2>Anvelopa</h2>
-<p class="section-description">Intrebari simple despre pereti, pod/acoperis, podea si ferestre.</p>
+<p class="section-description">Alege elementele constructive si conditiile la limita. Valorile fizice rezolvate sunt generate de Building DNA si motorul Chapter 2.</p>
 <div class="form-grid">
-<div><label>Material pereti</label><select name="wall_material"><option value="brick">Caramida</option><option value="bca">BCA</option><option value="concrete">Beton</option><option value="wood">Lemn</option><option value="stone">Piatra</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Grosime aproximativa pereti (cm)</label><input name="wall_thickness" type="number" placeholder="Ex: 30"></div>
-<div><label>Izolatie pereti</label><select name="wall_insulation"><option value="unknown">Nu stiu</option><option value="Fara">Fara</option><option value="5cm">Aproximativ 5 cm</option><option value="10cm">Aproximativ 10 cm</option><option value="15cm">Aproximativ 15 cm</option><option value="20cm+">20 cm sau mai mult</option></select></div>
+<div><label>Sistem structural</label><select name="structural_system"><option value="masonry">Zidarie</option><option value="reinforced_concrete_frames">Cadre beton armat</option><option value="reinforced_concrete_walls">Pereti beton armat</option><option value="precast_concrete_panels">Panouri prefabricate</option><option value="timber">Lemn</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Material pereti exteriori</label><select name="wall_material"><option value="brick">Caramida</option><option value="bca">BCA / AAC</option><option value="concrete">Beton</option><option value="wood">Lemn</option><option value="stone">Piatra</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Grosime perete existent (cm)</label><input name="wall_thickness" type="number" step="0.1" placeholder="Ex: 30"></div>
 <div><label>Tip pod/acoperis</label><select name="roof_type"><option value="unheated_attic">Pod neincalzit</option><option value="heated_attic">Mansarda incalzita</option><option value="flat_roof">Acoperis plat</option><option value="pitched_roof_no_attic">Acoperis fara pod</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Izolatie pod/acoperis</label><select name="roof_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
-<div><label>Grosime izolatie pod (cm)</label><input name="roof_insulation_thickness_cm" type="number" placeholder="Ex: 10"></div>
-<div><label>Tip podea</label><select name="floor_type"><option value="on_ground">Pe sol</option><option value="over_basement">Peste subsol</option><option value="over_unheated_space">Peste spatiu neincalzit</option><option value="over_heated_space">Peste spatiu incalzit</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Izolatie podea</label><select name="floor_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
-<div><label>Tip ferestre</label><select name="window_type"><option value="single_glazing">Geam simplu</option><option value="old_double_glazing">Termopan vechi</option><option value="modern_double_glazing">Termopan modern</option><option value="triple_glazing">Tripan</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Vechime ferestre (ani)</label><input name="window_age_years" type="number" placeholder="Ex: 15"></div>
-<div><label>Arie aproximativa ferestre (m2)</label><input name="window_area_m2" type="number" step="0.1" placeholder="Optional"></div>
-<div><label>Orientare ferestre principale</label><select name="window_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
-</div>
-</div>
-
-<div class="step">
-<h2>Incalzire si confort</h2>
-<p class="section-description">Daca ai surse mixte, le poti detalia separat. Daca ai doar soba, nu te intrebam despre termostat smart.</p>
-<div class="form-grid">
-<div><label>Sursa incalzire</label><select name="heating_source"><option value="gas">Gaz</option><option value="wood">Lemne</option><option value="pellets">Peleti</option><option value="electric">Electric</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Tip sistem principal</label><select name="heating_system_type"><option value="stove">Soba simpla</option><option value="wood_boiler">Centrala pe lemne</option><option value="pellet_boiler">Centrala pe peleti</option><option value="individual_boiler">Centrala individuala</option><option value="condensing_boiler">Centrala in condensare</option><option value="electric_radiators">Radiatoare electrice</option><option value="underfloor_heating">Incalzire in pardoseala</option><option value="heat_pump_air_water">Pompa aer-apa</option><option value="heat_pump_air_air">Pompa aer-aer</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Distributie caldura</label><select name="heating_distribution"><option value="unknown">Nu stiu</option><option value="radiators">Calorifere</option><option value="underfloor">Incalzire in pardoseala</option><option value="air">Aer / split</option><option value="local_stoves">Sobe locale</option><option value="mixed">Mixt</option></select></div>
-<div><label>Vechime echipament (ani)</label><input name="heating_equipment_age_years" type="number" placeholder="Ex: 12"></div>
-<div id="stoveDetails" hidden><label>Putere soba / aparat (kW)</label><input name="stove_power_kw" type="number" step="0.1" placeholder="Ex: 7"></div>
-<div id="boilerDetails" hidden><label>Putere centrala (kW)</label><input name="boiler_power_kw" type="number" step="0.1" placeholder="Ex: 24"></div>
-<div id="mixedHeatingDetails" class="form-wide conditional-panel" hidden>
-<strong>Surse folosite la incalzire</strong>
-<p class="section-description">Bifeaza sursele reale si estimeaza suprafata incalzita de fiecare.</p>
-<div class="source-grid">
-<label><input type="checkbox" name="heating_gas_enabled" value="yes"> Gaz <input name="heating_gas_area_m2" type="number" placeholder="m2"></label>
-<label><input type="checkbox" name="heating_wood_enabled" value="yes"> Lemne <input name="heating_wood_area_m2" type="number" placeholder="m2"></label>
-<label><input type="checkbox" name="heating_pellets_enabled" value="yes"> Peleti <input name="heating_pellets_area_m2" type="number" placeholder="m2"></label>
-<label><input type="checkbox" name="heating_electric_enabled" value="yes"> Electric <input name="heating_electric_area_m2" type="number" placeholder="m2"></label>
-<label><input type="checkbox" name="heating_heat_pump_enabled" value="yes"> Pompa de caldura <input name="heating_heat_pump_area_m2" type="number" placeholder="m2"></label>
-</div>
-</div>
-<div class="heating-control-field"><label>Termostat</label><select name="thermostat"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
-<div class="heating-control-field"><label>Termostat smart</label><select name="smart_thermostat"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
-<div class="heating-control-field"><label>Robineti termostatati</label><select name="thermostatic_valves"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
-<div class="heating-control-field"><label>Zonare pe camere</label><select name="zoning"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
-<div><label>Temperatura confort iarna (C)</label><input name="heating_setpoint_c" type="number" step="0.5" placeholder="Ex: 20"></div>
-<div><label>Temperatura confort vara (C)</label><input name="cooling_setpoint_c" type="number" step="0.5" placeholder="Ex: 26"></div>
-<div><label>Racire vara</label><select name="has_cooling"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+<div><label>Limita inferioara</label><select name="floor_type"><option value="on_ground">Pe sol</option><option value="over_basement">Peste subsol neincalzit</option><option value="over_unheated_space">Peste spatiu neincalzit</option><option value="over_heated_space">Peste spatiu incalzit</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Tip ferestre</label><select name="window_type"><option value="single_glazing">Geam simplu</option><option value="old_double_glazing">Termopan vechi</option><option value="modern_double_glazing">PVC / termopan modern</option><option value="triple_glazing">Tripan</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Arie vitrata (m2)</label><input name="window_area_m2" type="number" step="0.1" placeholder="Ex: 8"></div>
+<div><label>Orientare principala ferestre</label><select name="window_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
+<div><label>Arie usi exterioare (m2)</label><input name="door_area_m2" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Ventilatie</label><select name="ventilation_type"><option value="natural">Naturala</option><option value="mechanical_exhaust">Mecanica simpla</option><option value="mechanical_with_heat_recovery">Cu recuperare de caldura</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Schimburi aer estimate (ACH)</label><input name="ventilation_ach" type="number" step="0.1" placeholder="Optional, ex: 0.7"></div>
-<div><label>Debit ventilatie (m3/h)</label><input name="airflow_m3h" type="number" placeholder="Optional"></div>
-<div><label>Eficienta recuperare caldura (%)</label><input name="heat_recovery_efficiency" type="number" min="0" max="95" placeholder="Optional"></div>
+<div><label>Schimburi aer estimate (ACH)</label><input name="ventilation_ach" type="number" step="0.1" placeholder="Ex: 0.6"></div>
+<div><label>Debit ventilatie (m3/h)</label><input name="airflow_m3h" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Punti termice explicite</label><select name="thermal_bridge_mode"><option value="platform_supported_explicit">Termeni expliciti validati de platforma</option><option value="none">Nu se introduc acum</option></select></div>
 </div>
 </div>
 
-<div class="step">
-<h2>Apa calda, iluminat si regenerabile</h2>
+<div class="step" data-section-id="renovations">
+<h2>Renovari</h2>
+<p class="section-description">Interventiile modifica ansamblurile in Building DNA. Nu creeaza arhetipuri rigide si nu activeaza domenii comerciale.</p>
 <div class="form-grid">
-<div class="form-wide conditional-panel">
-<strong>Surse apa calda</strong>
-<p class="section-description">Poti bifa mai multe surse daca locuinta foloseste combinatii.</p>
-<div class="source-grid compact">
-<label><input type="checkbox" name="dhw_source_heating" value="yes"> Aceeasi ca incalzirea</label>
-<label><input type="checkbox" name="dhw_source_electric" value="yes"> Boiler electric</label>
-<label><input type="checkbox" name="dhw_source_gas" value="yes"> Gaz</label>
-<label><input type="checkbox" name="dhw_source_solar" value="yes"> Solar termic</label>
-<label><input type="checkbox" name="dhw_source_heat_pump" value="yes"> Pompa de caldura</label>
-</div>
-</div>
-<div><label>Aparat gatit</label><select name="cooking_fuel"><option value="electric">Electric</option><option value="gas">Gaz</option><option value="wood">Lemne</option><option value="none">Nu folosesc</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Iluminat predominant</label><select name="lighting_type"><option value="led">LED</option><option value="mixed">Mixt</option><option value="incandescent_halogen">Becuri vechi/halogen</option><option value="unknown">Nu stiu</option></select></div>
-<div class="photovoltaic-field"><label>Panouri fotovoltaice</label><select name="pv_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
-<div class="photovoltaic-field"><label>Putere fotovoltaice (kW)</label><input name="pv_capacity_kw" type="number" step="0.1" value="0" disabled></div>
-<div><label>Solar termic</label><select name="solar_thermal_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Baterie</label><select name="battery_installed"><option value="no">Nu</option><option value="yes">Da</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Izolatie pereti exteriori</label><select name="wall_insulation"><option value="unknown">Nu stiu</option><option value="Fara">Fara</option><option value="5cm">EPS / vata aproximativ 5 cm</option><option value="10cm">EPS / vata aproximativ 10 cm</option><option value="15cm">EPS / vata aproximativ 15 cm</option><option value="20cm+">20 cm sau mai mult</option></select></div>
+<div><label>Material izolatie pereti</label><select name="wall_insulation_material"><option value="eps">EPS</option><option value="mineral_wool">Vata minerala</option><option value="xps">XPS</option><option value="unknown">Nu stiu</option></select></div>
+<div><label>Data interventie pereti</label><input name="wall_insulation_year" type="number" placeholder="Optional"></div>
+<div><label>Izolatie pod/acoperis</label><select name="roof_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
+<div><label>Grosime izolatie pod/acoperis (cm)</label><input name="roof_insulation_thickness_cm" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Izolatie planseu inferior</label><select name="floor_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
+<div><label>Grosime izolatie planseu inferior (cm)</label><input name="floor_insulation_thickness_cm" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Ferestre inlocuite</label><select name="windows_replaced"><option value="unknown">Deducere din tipul ferestrei</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+<div><label>Vechime ferestre (ani)</label><input name="window_age_years" type="number" placeholder="Optional"></div>
+<div><label>Usa exterioara inlocuita</label><select name="door_replaced"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
 </div>
 </div>
 
-<div class="step">
-<h2>Consum real</h2>
-<p class="section-description">Cel mai util este sa consulti ultimele 12 facturi. Completeaza valori reale platite pentru consum, nu regularizari care nu descriu consumul lunar.</p>
-<div class="form-grid">
-<div><label>Cost mediu lunar electricitate (lei)</label><input name="monthly_electricity_cost" type="number" placeholder="Ex: 160"></div>
-<div class="gas-consumption-field"><label>Cost mediu lunar gaz (lei)</label><input name="monthly_gas_cost" type="number" value="0"></div>
-<div class="wood-consumption-field"><label>Cost anual lemne (lei)</label><input name="annual_wood_cost" type="number" value="0"></div>
-<div class="wood-consumption-field"><label>Pret lemn pe metru ster (lei)</label><input name="wood_price_per_ster" type="number" placeholder="Ex: 450"></div>
-<div class="pellets-consumption-field"><label>Cost anual peleti (lei)</label><input name="annual_pellets_cost" type="number" value="0"></div>
-<div><label>Alte costuri energetice anuale (lei)</label><input name="annual_other_fuel_cost" type="number" value="0"></div>
-<div class="form-wide conditional-panel">
-<div class="technical-workspace-panel compact">
-<div>
-<strong>Date reale de consum</strong>
-<p class="section-description">Facturile si citirile reale raman date de calibrare pentru modelul tehnic. Nu sunt necesare dispozitive sau recomandari comerciale in acest pas.</p>
-</div>
-</div>
-</div>
+<div class="step" data-section-id="building-dna">
+<h2>Building DNA</h2>
+<p class="section-description">Previzualizeaza modelul canonic: tipologie, geometrie, anvelopa, materiale, interventii, provenienta si ipoteze neconfirmate.</p>
+<div class="dashboard-band compact-technical-note">
+<h3>Spatiu de lucru Building DNA</h3>
+<p>Apasa previzualizare pentru a genera modelul curent. Valorile automate raman marcate cu origine, incredere si confirmari necesare.</p>
+<button class="secondary-btn" id="buildingModelPreviewBtn" type="button">Previzualizeaza Building DNA</button>
 </div>
 </div>
 
-<div class="step">
-<h2>Gata pentru raport tehnic</h2>
-<p class="section-description">Dupa calcul vezi Building DNA, ansambluri, materiale, straturi, valori U, pierderi, castiguri, cereri lunare si trasabilitatea MC001 intr-un raport tehnic compact.</p>
-<div class="dashboard-band">
-<h3>Raportul tehnic include</h3>
+<div class="step" data-section-id="technical-report">
+<h2>Raport tehnic</h2>
+<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motorului Chapter 2. Este structurat pentru citire tehnica si print.</p>
+<div class="dashboard-band compact-technical-note">
+<h3>Capitole raport</h3>
 <div class="value-card-grid">
-<article>Building DNA si ipoteze</article>
-<article>Ansambluri, materiale si straturi</article>
-<article>U-values, Htr si pierderi lunare</article>
-<article>QHnd, QCnd, formule si trasabilitate</article>
+<article>Geometrie, anvelopa si materiale</article>
+<article>Rezistente termice, coeficienti U si Htr</article>
+<article>QHnd/QCnd lunar si anual</article>
+<article>Formule, dependinte si surse normative</article>
 </div>
-</div>
-<div id="simulationResult" class="dashboard-band simulation-result" hidden>
-<div class="section-heading">
-<span class="small-label">SIMULARE</span>
-<h2>Comparatie intre situatia salvata si modificarile curente.</h2>
-</div>
-<div class="recommendation-summary">
-<article><span>Scor actual</span><strong id="oldScore">--</strong></article>
-<article><span>Scor simulat</span><strong id="newScore">--</strong></article>
-<article><span>Economii actuale</span><strong id="oldSavings">--</strong></article>
-<article><span>Economii simulate</span><strong id="newSavings">--</strong></article>
-</div>
-<p id="simulationConclusion" class="form-message"></p>
 </div>
 </div>
 
-<div class="wizard-footer">
-<section class="dashboard-band" id="buildingModelReview">
-<div class="section-heading">
-<span class="small-label">REVIZUIRE MODEL</span>
-<h2>Building DNA, rezultate Chapter 2 si raportul tehnic vor aparea aici.</h2>
+<div class="step" data-section-id="results">
+<h2>Rezultate</h2>
+<p class="section-description">Afisam numai rezultate validate in Chapter 2: QHnd, QCnd, pierderi prin anvelopa, ventilatie si castiguri. Nu afisam energie finala, energie primara, CO2, CPE sau certificat.</p>
+<div class="dashboard-band compact-technical-note">
+<h3>Calculeaza modelul curent</h3>
+<p>Butonul de mai jos ruleaza adapterul Building DNA si motorul Chapter 2 validat, apoi deschide raportul tehnic.</p>
 </div>
-<p>Apasa previzualizare dupa ce completezi datele principale. Vei vedea ansamblurile, materialele, straturile, U-values, Htr, QHnd, QCnd, formulele si trasabilitatea citite din Building DNA si motorul Chapter 2.</p>
-</section>
-<button class="secondary-btn" id="buildingModelPreviewBtn" type="button">Previzualizeaza modelul tehnic</button>
+</div>
+
+<div class="wizard-footer p2c-wizard-footer">
 <div class="wizard-buttons">
 <button type="button" id="prevBtn" class="secondary-btn">Inapoi</button>
 <button type="button" id="nextBtn" class="primary-btn">Continua</button>
-<button type="button" id="simulateBtn" class="secondary-btn">Simuleaza fara salvare</button>
 <button type="button" id="cancelEditBtn" class="secondary-btn" hidden>Renunta la modificari</button>
-<button type="submit" id="finishBtn" class="primary-btn" style="display:none">Genereaza raportul</button>
+<button type="submit" id="finishBtn" class="primary-btn" style="display:none">Genereaza raportul tehnic</button>
 </div>
 </div>
 </form>
+
+<section class="dashboard-band technical-output-dock" id="buildingModelReview">
+<div class="section-heading">
+<span class="small-label">BUILDING DNA SI RAPORT</span>
+<h2>Modelul tehnic, rezultatele Chapter 2 si raportul vor aparea aici.</h2>
+</div>
+<p>Completeaza sectiunile sau incarca demo-ul, apoi genereaza raportul. Valorile afisate provin din Building DNA si motorul Chapter 2 validat.</p>
+</section>
 </section>
 </main>
 
-<footer><small>LA CURENT · Evaluare energetica estimativa</small></footer>
+<footer><small>LA CURENT · Model termic MC001-2022 · nu genereaza energie finala, CO2, CPE sau certificat</small></footer>
 </div>
 
 <script>
@@ -333,8 +258,6 @@ fetch('../components/sidebar.html')
 .then(r=>r.text())
 .then(x=>{
 document.getElementById("sidebar").innerHTML=x;
-window.LaCurentSegments?.apply();
-window.LaCurentHomes?.refresh();
 const btn=document.getElementById("menuBtn");
 if(btn){
 btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");

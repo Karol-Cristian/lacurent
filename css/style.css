@@ -4678,6 +4678,63 @@ margin:4px 0 0;
 color:#475569;
 }
 
+.p2c-technical-analysis .section-description{
+max-width:78ch;
+}
+
+.p2c-progress-wrap{
+gap:12px;
+}
+
+.technical-flow-nav{
+display:grid;
+grid-template-columns:repeat(6,minmax(0,1fr));
+gap:6px;
+margin-bottom:12px;
+}
+
+.technical-flow-nav button{
+border:1px solid rgba(15,23,42,.16);
+background:#fff;
+color:#263238;
+border-radius:8px;
+padding:9px 10px;
+font-size:14px;
+font-weight:800;
+line-height:1.2;
+text-align:center;
+}
+
+.technical-flow-nav button.active,
+.technical-flow-nav button:focus-visible{
+border-color:#1f6feb;
+background:#eef5ff;
+color:#0f3d8a;
+outline:none;
+}
+
+.compact-technical-note{
+border:1px solid rgba(15,23,42,.1);
+background:#fbfcfe;
+}
+
+.technical-output-dock{
+margin-top:16px;
+}
+
+.technical-saved-model-list .recommendation-detail-card{
+grid-template-columns:auto 1fr;
+}
+
+.p2c-wizard-footer{
+position:sticky;
+bottom:0;
+z-index:3;
+background:rgba(255,255,255,.96);
+backdrop-filter:blur(8px);
+border-top:1px solid rgba(15,23,42,.08);
+}
+
 .technical-report-success{
 padding:10px 12px;
 border:1px solid #bbf7d0;
@@ -5653,6 +5710,28 @@ overflow-x:auto;
 
 .technical-table{
 min-width:680px;
+}
+
+.technical-flow-nav{
+display:flex;
+overflow-x:auto;
+padding-bottom:4px;
+scroll-snap-type:x mandatory;
+}
+
+.technical-flow-nav button{
+min-width:150px;
+scroll-snap-align:start;
+white-space:normal;
+}
+
+.p2c-wizard-footer{
+position:static;
+}
+
+.p2c-wizard-footer .wizard-buttons{
+display:grid;
+grid-template-columns:1fr;
 }
 
 .technical-table th,

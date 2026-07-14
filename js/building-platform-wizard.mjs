@@ -5,64 +5,34 @@ import {
 
 export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
   {
-    stepId: "building_type",
-    title: "Ce fel de locuinta ai?",
-    assistedPrompt: "Alege casa sau apartament. Modelul tehnic ramane editabil in pasul de verificare."
-  },
-  {
-    stepId: "construction_period",
-    title: "Cand a fost construita?",
-    assistedPrompt: "Un interval aproximativ este suficient pentru prima propunere."
-  },
-  {
-    stepId: "location",
-    title: "Unde este locuinta?",
-    assistedPrompt: "Localitatea ajuta la organizarea profilului climatic explicit."
-  },
-  {
     stepId: "geometry",
-    title: "Cat de mare este locuinta?",
-    assistedPrompt: "Suprafata, ferestrele si inaltimea camerelor devin parametri editabili."
+    title: "Geometrie",
+    assistedPrompt: "Definește tipul cladirii, localitatea, suprafetele si volumele care devin Building DNA."
   },
   {
-    stepId: "exterior_walls",
-    title: "Din ce sunt peretii exteriori?",
-    assistedPrompt: "Alege materialul vizibil si spune daca exista izolatie."
+    stepId: "envelope",
+    title: "Anvelopa",
+    assistedPrompt: "Descrie elementele constructive, ariile, orientarea si conditiile la limita."
   },
   {
-    stepId: "roof_attic",
-    title: "Cum este podul sau acoperisul?",
-    assistedPrompt: "Pod incalzit, pod neincalzit sau acoperis fara pod."
+    stepId: "renovations",
+    title: "Renovari",
+    assistedPrompt: "Interventiile modifica ansamblurile in modelul canonic, fara arhetipuri rigide."
   },
   {
-    stepId: "ground_basement",
-    title: "Ce se afla sub locuinta?",
-    assistedPrompt: "Sol, subsol sau spatiu incalzit dedesubt."
+    stepId: "building_dna",
+    title: "Building DNA",
+    assistedPrompt: "Verifica tipologia, ansamblurile, materialele, provenienta si confirmarile necesare."
   },
   {
-    stepId: "windows",
-    title: "Ce ferestre ai?",
-    assistedPrompt: "Tipul si aria aproximativa a ferestrelor raman verificabile."
+    stepId: "technical_report",
+    title: "Raport tehnic",
+    assistedPrompt: "Raportul documentar este generat din Building DNA si din motorul Chapter 2 validat."
   },
   {
-    stepId: "insulation",
-    title: "Ce a fost izolat?",
-    assistedPrompt: "Interventiile modifica modelul propus, nu creeaza un arhetip separat."
-  },
-  {
-    stepId: "ventilation",
-    title: "Cum se ventileaza locuinta?",
-    assistedPrompt: "Raspunsurile raman parametri expliciti, editabili ulterior."
-  },
-  {
-    stepId: "engineering_review",
-    title: "Verifica modelul tehnic propus",
-    assistedPrompt: "Vezi propunerea, ipotezele si ce trebuie confirmat."
-  },
-  {
-    stepId: "calculate",
-    title: "Calculeaza cererea utila",
-    assistedPrompt: "Motorul Chapter 2 validat calculeaza incalzirea si racirea."
+    stepId: "results",
+    title: "Rezultate",
+    assistedPrompt: "Afiseaza numai QHnd, QCnd si transferurile validate in Chapter 2."
   }
 ]);
 
@@ -88,59 +58,46 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     building_platform_demo_mode: "1",
     building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
     display_name: "Demo tehnic - casa zidarie 1985",
-    analysis_purpose: "renovation",
+    analysis_purpose: "technical_chapter_2_report",
     building_type: "house",
     city: "Bucharest",
     construction_year: "1985",
+    structural_system: "masonry",
     useful_area_m2: "120",
     number_of_floors: "1",
     floor_height_m: "2.6",
-    occupants: "4",
+    heated_volume_m3: "312",
+    building_length_m: "12",
+    building_width_m: "10",
+    exterior_wall_area_m2: "50",
+    roof_area_m2: "120",
+    ground_floor_area_m2: "120",
+    attic_ceiling_area_m2: "120",
+    adjacent_wall_area_m2: "10",
     main_orientation: "south",
     thermal_mass_class: "heavy",
-    usage_type: "permanent",
-    last_major_renovation: "10_20_years",
     wall_material: "brick",
     wall_thickness: "30",
-    wall_insulation: "10cm",
     roof_type: "unheated_attic",
-    roof_insulated: "no",
-    roof_insulation_thickness_cm: "0",
     floor_type: "on_ground",
-    floor_insulated: "no",
     window_type: "modern_double_glazing",
-    window_age_years: "8",
     window_area_m2: "8",
     window_orientation: "south",
-    heating_source: "gas",
-    heating_system_type: "condensing_boiler",
-    heating_distribution: "radiators",
-    heating_equipment_age_years: "7",
-    boiler_power_kw: "24",
-    thermostat: "yes",
-    smart_thermostat: "no",
-    thermostatic_valves: "yes",
-    zoning: "no",
-    heating_setpoint_c: "20",
-    cooling_setpoint_c: "26",
-    has_cooling: "yes",
+    door_area_m2: "2",
     ventilation_type: "natural",
     ventilation_ach: "0.6",
     airflow_m3h: "216",
-    heat_recovery_efficiency: "0",
-    dhw_source_heating: "yes",
-    cooking_fuel: "gas",
-    lighting_type: "led",
-    pv_installed: "no",
-    pv_capacity_kw: "0",
-    solar_thermal_installed: "no",
-    battery_installed: "no",
-    monthly_electricity_cost: "180",
-    monthly_gas_cost: "450",
-    annual_wood_cost: "0",
-    wood_price_per_ster: "0",
-    annual_pellets_cost: "0",
-    annual_other_fuel_cost: "0"
+    thermal_bridge_mode: "platform_supported_explicit",
+    wall_insulation: "10cm",
+    wall_insulation_material: "eps",
+    wall_insulation_year: "2014",
+    roof_insulated: "no",
+    roof_insulation_thickness_cm: "0",
+    floor_insulated: "no",
+    floor_insulation_thickness_cm: "0",
+    windows_replaced: "yes",
+    window_age_years: "8",
+    door_replaced: "unknown"
   })
 });
 
@@ -434,20 +391,32 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const averageRoomHeightM = positiveNumber(formData, "floor_height_m");
   const numberOfFloors = positiveNumber(formData, "number_of_floors");
   const ventilationAch = positiveNumber(formData, "ventilation_ach");
+  const heatedVolumeM3 = positiveNumber(formData, "heated_volume_m3");
+  const exteriorWallAreaM2 = positiveNumber(formData, "exterior_wall_area_m2");
+  const roofAreaM2 = positiveNumber(formData, "roof_area_m2");
+  const groundFloorAreaM2 = positiveNumber(formData, "ground_floor_area_m2");
+  const atticCeilingAreaM2 = positiveNumber(formData, "attic_ceiling_area_m2");
+  const adjacentWallAreaM2 = positiveNumber(formData, "adjacent_wall_area_m2");
+  const doorAreaM2 = positiveNumber(formData, "door_area_m2");
+  const explicitStructuralSystem = formValue(formData, "structural_system");
+  const windowsReplaced = formValue(formData, "windows_replaced");
 
   return {
     buildingId: "building-platform-wizard-preview",
     buildingType,
     constructionPeriod: constructionPeriodFromYear(formValue(formData, "construction_year")),
-    structuralSystem: structuralSystemFromWallMaterial(formValue(formData, "wall_material")),
+    structuralSystem: explicitStructuralSystem && explicitStructuralSystem !== "unknown"
+      ? explicitStructuralSystem
+      : structuralSystemFromWallMaterial(formValue(formData, "wall_material")),
     renovations: {
       wallInsulation: wallInsulationSelected ? "eps" : false,
       roofInsulated: roofInsulated === "yes" || roofInsulated === "partial",
       floorInsulated: floorInsulated === "yes" || floorInsulated === "partial",
-      windowsReplaced: [
-        "modern_double_glazing",
-        "triple_glazing"
-      ].includes(windowType)
+      windowsReplaced: windowsReplaced === "yes" ||
+        (windowsReplaced !== "no" && [
+          "modern_double_glazing",
+          "triple_glazing"
+        ].includes(windowType))
     },
     buildingSpecificParameters: {
       ...(usefulFloorAreaM2 === undefined ? {} : { usefulFloorAreaM2 }),
@@ -455,11 +424,26 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
       ...(averageRoomHeightM === undefined ? {} : { averageRoomHeightM }),
       ...(numberOfFloors === undefined ? {} : { numberOfFloors }),
       ...(ventilationAch === undefined ? {} : { ventilationAch }),
+      ...(heatedVolumeM3 === undefined ? {} : { heatedVolumeM3 }),
+      ...(exteriorWallAreaM2 === undefined ? {} : { exteriorWallAreaM2 }),
+      ...(roofAreaM2 === undefined ? {} : { roofAreaM2 }),
+      ...(groundFloorAreaM2 === undefined ? {} : { groundFloorAreaM2 }),
+      ...(atticCeilingAreaM2 === undefined ? {} : { atticCeilingAreaM2 }),
       mainOrientation: formValue(formData, "main_orientation") || "unknown",
       windowOrientation: formValue(formData, "window_orientation") || "unknown",
       ventilationType: formValue(formData, "ventilation_type") || "unknown",
       atticContext: roofType === "heated_attic" ? "heated" : "unheated",
       basementContext: floorType === "over_basement" ? "unheated" : "none"
+    },
+    geometry: {
+      ...(exteriorWallAreaM2 === undefined ? {} : { exteriorWallAreaM2 }),
+      ...(roofAreaM2 === undefined ? {} : { roofAreaM2 }),
+      ...(groundFloorAreaM2 === undefined ? {} : { groundFloorAreaM2 }),
+      ...(atticCeilingAreaM2 === undefined ? {} : { atticCeilingAreaM2 }),
+      ...(windowAreaM2 === undefined ? {} : { windowAreaM2 }),
+      ...(doorAreaM2 === undefined ? {} : { doorAreaM2 }),
+      ...(adjacentWallAreaM2 === undefined ? {} : { adjacentWallAreaM2 }),
+      ...(usefulFloorAreaM2 === undefined ? {} : { usefulFloorAreaM2 })
     },
     context: {
       attic: roofType === "heated_attic" ? "heated" : "unheated",

@@ -30,25 +30,43 @@ function formData(entries) {
   };
 }
 
-await test("wizard steps use ordinary language and avoid engineering coefficients", () => {
-  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 12);
+await test("wizard exposes only the six validated technical sections", () => {
+  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 6);
   const serialized = JSON.stringify(BUILDING_PLATFORM_WIZARD_STEPS);
   for (const forbidden of ["lambda", "Htr", "gamma", "tau", "eta", "U-value", "coeficient"]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
   }
-  assert.equal(serialized.includes("Ce fel de locuinta ai?"), true);
+  for (const expected of [
+    "Geometrie",
+    "Anvelopa",
+    "Renovari",
+    "Building DNA",
+    "Raport tehnic",
+    "Rezultate"
+  ]) {
+    assert.equal(serialized.includes(expected), true, expected);
+  }
 });
 
-await test("wizard maps homeowner answers to assisted Building DNA input", () => {
+await test("wizard maps technical answers to assisted Building DNA input", () => {
   const answers = mapWizardAnswersToAssistedAnswers(formData({
     building_type: "house",
     construction_year: "1985",
+    structural_system: "masonry",
     wall_material: "brick",
     wall_insulation: "10cm",
     window_type: "modern_double_glazing",
     roof_type: "unheated_attic",
     floor_type: "on_ground",
-    city: "Cluj"
+    city: "Cluj",
+    useful_area_m2: "120",
+    heated_volume_m3: "312",
+    exterior_wall_area_m2: "50",
+    roof_area_m2: "120",
+    ground_floor_area_m2: "120",
+    attic_ceiling_area_m2: "120",
+    adjacent_wall_area_m2: "10",
+    door_area_m2: "2"
   }));
 
   assert.equal(answers.buildingType, "detached_house");
@@ -58,8 +76,14 @@ await test("wizard maps homeowner answers to assisted Building DNA input", () =>
   assert.equal(answers.renovations.roofInsulated, false);
   assert.equal(answers.renovations.floorInsulated, false);
   assert.equal(answers.renovations.windowsReplaced, true);
-  assert.equal(answers.buildingSpecificParameters.windowAreaM2, undefined);
-  assert.equal(answers.buildingSpecificParameters.mainOrientation, "unknown");
+  assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, 120);
+  assert.equal(answers.buildingSpecificParameters.heatedVolumeM3, 312);
+  assert.equal(answers.buildingSpecificParameters.exteriorWallAreaM2, 50);
+  assert.equal(answers.geometry.roofAreaM2, 120);
+  assert.equal(answers.geometry.groundFloorAreaM2, 120);
+  assert.equal(answers.geometry.atticCeilingAreaM2, 120);
+  assert.equal(answers.geometry.adjacentWallAreaM2, 10);
+  assert.equal(answers.geometry.doorAreaM2, 2);
   assert.equal(answers.context.attic, "unheated");
   assert.equal(answers.context.basement, "none");
 });
@@ -94,18 +118,9 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   assert.equal(preview.dependencyTree.physicsAuthority, "Chapter 2 physics engine");
   assert.equal(preview.summary.annualQHnd, 10286.496332703064);
   assert.equal(preview.summary.annualQCnd, 2786.7333161081524);
-  assert.equal(preview.technicalWorkspace.resultSummary.annualQHnd, 10286.496332703064);
-  assert.equal(preview.technicalWorkspace.resultSummary.annualQCnd, 2786.7333161081524);
 
   const html = renderEngineeringModelReview(preview);
-  assert.equal(html.includes("Platforma de cunostinte a cladirii"), true);
-  assert.equal(html.includes("Flux verificabil"), true);
-  assert.equal(html.includes("Interventii identificate"), true);
-  assert.equal(html.includes("10286.50 kWh"), true);
-  assert.equal(html.includes("2786.73 kWh"), true);
-  assert.equal(html.includes("Chapter 2"), true);
   for (const expected of [
-    "TECHNICAL WORKSPACE",
     "Building DNA",
     "Assemblies and U-values",
     "Materials",
@@ -120,12 +135,10 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   ]) {
     assert.equal(html.includes(expected), true, expected);
   }
-  assert.equal(html.includes("Lambda"), true);
-  assert.equal(html.includes("Htr"), true);
 });
 
-await test("demo query and fixture preload a complete editable assisted wizard dataset", () => {
-  assert.equal(demoModeFromSearch("?new=1&demo=1"), true);
+await test("demo query and fixture preload a complete editable technical dataset", () => {
+  assert.equal(demoModeFromSearch("?demo=1"), true);
   assert.equal(demoModeFromSearch("?new=1"), false);
 
   const fixture = getAssistedWizardDemoFixture();
@@ -143,11 +156,19 @@ await test("demo query and fixture preload a complete editable assisted wizard d
     "useful_area_m2",
     "number_of_floors",
     "floor_height_m",
+    "heated_volume_m3",
+    "exterior_wall_area_m2",
+    "roof_area_m2",
+    "ground_floor_area_m2",
+    "attic_ceiling_area_m2",
+    "adjacent_wall_area_m2",
     "city",
+    "structural_system",
     "wall_material",
     "wall_insulation",
     "window_type",
     "window_area_m2",
+    "door_area_m2",
     "roof_type",
     "floor_type",
     "ventilation_type",
@@ -155,37 +176,33 @@ await test("demo query and fixture preload a complete editable assisted wizard d
   ]) {
     assert.notEqual(fixture.values[field], undefined, field);
     assert.notEqual(fixture.values[field], "", field);
+    assert.equal(pageHtml.includes(`name="${field}"`), true, field);
   }
-  const numericFixtureFields = new Set([
+
+  for (const field of [
     "construction_year",
     "useful_area_m2",
     "number_of_floors",
     "floor_height_m",
-    "occupants",
+    "heated_volume_m3",
+    "building_length_m",
+    "building_width_m",
+    "exterior_wall_area_m2",
+    "roof_area_m2",
+    "ground_floor_area_m2",
+    "attic_ceiling_area_m2",
+    "adjacent_wall_area_m2",
     "wall_thickness",
+    "door_area_m2",
     "roof_insulation_thickness_cm",
+    "floor_insulation_thickness_cm",
     "window_age_years",
     "window_area_m2",
-    "heating_equipment_age_years",
-    "boiler_power_kw",
-    "heating_setpoint_c",
-    "cooling_setpoint_c",
     "ventilation_ach",
     "airflow_m3h",
-    "heat_recovery_efficiency",
-    "pv_capacity_kw",
-    "monthly_electricity_cost",
-    "monthly_gas_cost",
-    "annual_wood_cost",
-    "wood_price_per_ster",
-    "annual_pellets_cost",
-    "annual_other_fuel_cost"
-  ]);
-  for (const [field, value] of Object.entries(fixture.values)) {
-    assert.equal(pageHtml.includes(`name="${field}"`), true, field);
-    if (numericFixtureFields.has(field)) {
-      assert.equal(Number.isFinite(Number(value)), true, field);
-    }
+    "wall_insulation_year"
+  ]) {
+    assert.equal(Number.isFinite(Number(fixture.values[field])), true, field);
   }
 
   const answers = mapWizardAnswersToAssistedAnswers(formData(fixture.values));
@@ -200,6 +217,11 @@ await test("demo query and fixture preload a complete editable assisted wizard d
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, 120);
   assert.equal(answers.buildingSpecificParameters.windowAreaM2, 8);
   assert.equal(answers.buildingSpecificParameters.ventilationAch, 0.6);
+  assert.equal(answers.buildingSpecificParameters.heatedVolumeM3, 312);
+  assert.equal(answers.geometry.exteriorWallAreaM2, 50);
+  assert.equal(answers.geometry.roofAreaM2, 120);
+  assert.equal(answers.geometry.groundFloorAreaM2, 120);
+  assert.equal(answers.geometry.doorAreaM2, 2);
 
   const preview = buildWizardEngineeringPreview(answers);
   assert.equal(preview.status, "ready");
@@ -256,7 +278,7 @@ await test("edited demo values propagate into Building DNA and Chapter 2 results
   assert.notEqual(editedPreview.summary.annualQCnd, originalPreview.summary.annualQCnd);
 });
 
-await test("analysis page includes Building Platform review hook", () => {
+await test("analysis page exposes the refocused technical workflow", () => {
   const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
   assert.equal(html.includes("building-platform-wizard.mjs"), true);
   assert.equal(html.includes("buildingModelReview"), true);
@@ -266,12 +288,60 @@ await test("analysis page includes Building Platform review hook", () => {
   assert.equal(html.includes("Începe proiect gol"), true);
   assert.equal(html.includes("Resetează exemplul"), true);
   assert.equal(html.includes("building_platform_demo_mode"), true);
-  assert.equal(html.includes("Gata pentru raport tehnic"), true);
-  assert.equal(html.includes("Building DNA, rezultate Chapter 2 si raportul tehnic"), true);
-  assert.equal(html.includes("Model tehnic Chapter 2"), true);
+  for (const expected of [
+    "Modelul termic al cladirii",
+    "Geometrie",
+    "Anvelopa",
+    "Renovari",
+    "Building DNA",
+    "Raport tehnic",
+    "Rezultate",
+    "QHnd",
+    "QCnd"
+  ]) {
+    assert.equal(html.includes(expected), true, expected);
+  }
   assert.equal(html.includes("HW_Prototype.png"), false);
   assert.equal(html.includes("Ma intereseaza cand devine disponibil"), false);
   assert.equal(html.includes("scor live"), false);
+});
+
+await test("active production analysis flow removes unsupported product domains", () => {
+  const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
+  const sidebar = readFileSync(new URL("../components/sidebar.html", import.meta.url), "utf8");
+  const visibleSurface = `${html}\n${sidebar}`;
+  for (const forbidden of [
+    "monthlyBillForm",
+    "Factura",
+    "factura",
+    "Cost mediu lunar",
+    "Cost anual",
+    "Sursa incalzire",
+    "Tip sistem principal",
+    "Centrala",
+    "Pompa de caldura",
+    "Apa calda",
+    "Boiler electric",
+    "Panouri fotovoltaice",
+    "Baterie",
+    "Simuleaza fara salvare",
+    "Scor actual",
+    "Economii",
+    "recomandari",
+    "Recomandari",
+    "clasa energetica"
+  ]) {
+    assert.equal(visibleSurface.includes(forbidden), false, forbidden);
+  }
+  for (const explicitScope of [
+    "energie finala",
+    "energie primara",
+    "CO2",
+    "CPE",
+    "certificat"
+  ]) {
+    assert.equal(visibleSurface.includes(explicitScope), true, explicitScope);
+  }
 });
 
 await test("wizard UI module delegates calculations and keeps technical workspace responsive", () => {
@@ -295,9 +365,13 @@ await test("wizard UI module delegates calculations and keeps technical workspac
   const analysisSource = readFileSync(new URL("../js/analiza-casa.js", import.meta.url), "utf8");
   assert.equal(analysisSource.includes("openDemoTechnicalReportIfReady"), true);
   assert.equal(analysisSource.includes("generateBuildingPlatformTechnicalReport"), true);
+  assert.equal(analysisSource.includes("/api/simulate-house"), false);
+  assert.equal(analysisSource.includes("/api/save-house"), false);
+  assert.equal(analysisSource.includes("/api/monthly-bill"), false);
   const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8");
   assert.equal(css.includes(".technical-workspace"), true);
   assert.equal(css.includes(".demo-mode-banner"), true);
   assert.equal(css.includes(".technical-status-grid.p2b-annual-summary"), true);
+  assert.equal(css.includes(".technical-flow-nav"), true);
   assert.equal(css.includes("@media(max-width:700px)"), true);
 });
