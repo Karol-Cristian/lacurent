@@ -26,9 +26,9 @@
 <div>
 <div class="small-label">EVALUARE ESTIMATIVA</div>
 <h1 data-segment-key="analysisTitle">Analiza energetica a locuintei</h1>
-<p data-segment-key="analysisSubtitle">Raspunzi la intrebari simple. LaCurent estimeaza scorul, costurile si recomandarile prioritare.</p>
+<p data-segment-key="analysisSubtitle">Raspunzi la intrebari simple. LaCurent construieste Building DNA, ruleaza motorul Chapter 2 validat si genereaza un raport tehnic verificabil.</p>
 </div>
-<div class="system-state"><span class="green-dot"></span>Raport informativ</div>
+<div class="system-state"><span class="green-dot"></span>Model tehnic Chapter 2</div>
 </div>
 </header>
 
@@ -131,7 +131,7 @@
 
 <div class="step active">
 <h2>Date generale</h2>
-<p class="section-description">De la inceput: vei primi scor energetic estimat, comparatie live, costuri, probleme si recomandari prioritare. Evaluarea este informativa, nu certificat oficial.</p>
+<p class="section-description">De la inceput: raspunsurile devin parametri tehnici verificabili. Raportul rezultat ramane informativ si nu inlocuieste certificatul oficial.</p>
 <div class="form-grid">
 <div><label>Nume locuinta</label><input name="display_name" placeholder="Ex: Casa Salicea, Apartament Cluj"></div>
 <div><label>Scopul analizei</label><select name="analysis_purpose">
@@ -244,12 +244,10 @@
 <div class="pellets-consumption-field"><label>Cost anual peleti (lei)</label><input name="annual_pellets_cost" type="number" value="0"></div>
 <div><label>Alte costuri energetice anuale (lei)</label><input name="annual_other_fuel_cost" type="number" value="0"></div>
 <div class="form-wide conditional-panel">
-<div class="hardware-teaser compact">
-<img src="../images/HW_Prototype.png" alt="Prototip dispozitiv LaCurent">
+<div class="technical-workspace-panel compact">
 <div>
-<strong>Monitorizare inteligenta a consumului</strong>
-<p class="section-description">Lucram la un dispozitiv LaCurent care poate citi consumul real al locuintei si poate transforma datele in recomandari mai precise.</p>
-<label><input type="checkbox" name="interested_hw_monitor" value="yes"> Ma intereseaza cand devine disponibil</label>
+<strong>Date reale de consum</strong>
+<p class="section-description">Facturile si citirile reale raman date de calibrare pentru modelul tehnic. Nu sunt necesare dispozitive sau recomandari comerciale in acest pas.</p>
 </div>
 </div>
 </div>
@@ -257,15 +255,15 @@
 </div>
 
 <div class="step">
-<h2>Gata pentru raport</h2>
-<p class="section-description">Dupa generare mergi direct in raport, unde vezi scorul live, comparatia, investitiile prioritare si istoricul deciziilor implementate.</p>
+<h2>Gata pentru raport tehnic</h2>
+<p class="section-description">Dupa calcul vezi Building DNA, ansambluri, materiale, straturi, valori U, pierderi, castiguri, cereri lunare si trasabilitatea MC001 intr-un raport tehnic compact.</p>
 <div class="dashboard-band">
-<h3>Vei primi</h3>
+<h3>Raportul tehnic include</h3>
 <div class="value-card-grid">
-<article>Scor energetic estimat</article>
-<article>Comparatie cu locuinte similare</article>
-<article>Investitii cu economie estimata</article>
-<article>Actiuni pe care le poti marca implementate</article>
+<article>Building DNA si ipoteze</article>
+<article>Ansambluri, materiale si straturi</article>
+<article>U-values, Htr si pierderi lunare</article>
+<article>QHnd, QCnd, formule si trasabilitate</article>
 </div>
 </div>
 <div id="simulationResult" class="dashboard-band simulation-result" hidden>
@@ -287,9 +285,9 @@
 <section class="dashboard-band" id="buildingModelReview">
 <div class="section-heading">
 <span class="small-label">REVIZUIRE MODEL</span>
-<h2>Building DNA si ipotezele propuse vor aparea aici.</h2>
+<h2>Building DNA, rezultate Chapter 2 si raportul tehnic vor aparea aici.</h2>
 </div>
-<p>Apasa previzualizare dupa ce completezi datele principale. Vei vedea propunerea de ansambluri, interventii, ipoteze, confirmari necesare si rezultatele calculate de motorul Chapter 2.</p>
+<p>Apasa previzualizare dupa ce completezi datele principale. Vei vedea ansamblurile, materialele, straturile, U-values, Htr, QHnd, QCnd, formulele si trasabilitatea citite din Building DNA si motorul Chapter 2.</p>
 </section>
 <button class="secondary-btn" id="buildingModelPreviewBtn" type="button">Previzualizeaza modelul tehnic</button>
 <div class="wizard-buttons">

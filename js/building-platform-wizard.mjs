@@ -1,5 +1,6 @@
 import {
-  buildBuildingKnowledgePlatformFromAssistedAnswers
+  buildBuildingKnowledgePlatformFromAssistedAnswers,
+  buildBuildingTechnicalWorkspace
 } from "../src/building-platform/index.mjs";
 
 export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
@@ -82,6 +83,165 @@ function safeText(value) {
       "\"": "&quot;",
       "'": "&#39;"
     })[character]);
+}
+
+function formatNumber(value, digits = 2) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits) : "--";
+}
+
+function renderTable(headers, rows) {
+  const headerHtml = headers.map(header => `<th>${safeText(header.label)}</th>`).join("");
+  const rowHtml = rows.map(row => `
+    <tr>
+      ${headers.map(header => `<td>${safeText(header.value(row))}</td>`).join("")}
+    </tr>
+  `).join("");
+  return `
+    <div class="technical-table-wrap">
+      <table class="technical-table">
+        <thead><tr>${headerHtml}</tr></thead>
+        <tbody>${rowHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderTechnicalTabs(workspace) {
+  return `
+    <nav class="technical-workspace-tabs" aria-label="Technical workspace sections">
+      ${workspace.tabs.map(tab => `<a href="#p2b-${safeText(tab.tabId)}">${safeText(tab.label)}</a>`).join("")}
+    </nav>
+  `;
+}
+
+function renderAnnualSummary(workspace) {
+  return `
+    <div class="technical-status-grid p2b-annual-summary">
+      <article>
+        <span>Annual QHnd</span>
+        <strong>${formatNumber(workspace.resultSummary.annualQHnd)} kWh</strong>
+        <small>Chapter 2 heating useful demand</small>
+      </article>
+      <article>
+        <span>Annual QCnd</span>
+        <strong>${formatNumber(workspace.resultSummary.annualQCnd)} kWh</strong>
+        <small>Chapter 2 cooling useful demand</small>
+      </article>
+      <article>
+        <span>Htr</span>
+        <strong>${formatNumber(workspace.envelope.htr?.amount)} ${safeText(workspace.envelope.htr?.unit ?? "W/K")}</strong>
+        <small>${safeText(workspace.envelope.htr?.origin)}</small>
+      </article>
+      <article>
+        <span>Months</span>
+        <strong>${formatNumber(workspace.resultSummary.monthCount, 0)}</strong>
+        <small>explicit monthly result set</small>
+      </article>
+    </div>
+  `;
+}
+
+function renderAssemblies(workspace) {
+  return renderTable([
+    { label: "Assembly", value: row => `${row.displayName} (${row.assemblyId})` },
+    { label: "Role", value: row => row.role ?? row.assemblyType },
+    { label: "R total", value: row => `${formatNumber(row.totalResistance, 4)} ${row.totalResistanceUnit}` },
+    { label: "U-value", value: row => `${formatNumber(row.uValue, 4)} ${row.uValueUnit}` },
+    { label: "Origin", value: row => row.uValueOrigin },
+    { label: "Formula", value: row => row.formulaCode }
+  ], workspace.assemblies);
+}
+
+function renderMaterials(workspace) {
+  return renderTable([
+    { label: "Material", value: row => `${row.displayName} (${row.materialId})` },
+    { label: "Category", value: row => row.category ?? "--" },
+    { label: "Lambda ref", value: row => `${formatNumber(row.referenceLambda, 4)} ${row.referenceLambdaUnit ?? ""}` },
+    { label: "Lambda design", value: row => `${formatNumber(row.designLambdaWmK, 4)} W/(m*K)` },
+    { label: "Correction", value: row => row.correctionCoefficientCode ?? row.correctionCoefficientA ?? "--" },
+    { label: "Origin", value: row => row.provenance?.origin ?? row.lambdaOrigin ?? "--" }
+  ], workspace.materials);
+}
+
+function renderLayerStacks(workspace) {
+  const layers = workspace.assemblies.flatMap(assembly => assembly.layers.map(layer => ({
+    ...layer,
+    assemblyName: assembly.displayName
+  })));
+  return renderTable([
+    { label: "Assembly", value: row => row.assemblyName },
+    { label: "Layer", value: row => `${row.layerId} / ${row.materialName}` },
+    { label: "Thickness", value: row => `${formatNumber(row.thicknessM, 3)} m` },
+    { label: "Lambda", value: row => `${formatNumber(row.lambdaWmK, 4)} W/(m*K)` },
+    { label: "R layer", value: row => `${formatNumber(row.resistanceM2KPerW, 4)} m2*K/W` },
+    { label: "Formula", value: row => row.resistanceFormulaCode }
+  ], layers);
+}
+
+function renderHtrBreakdown(workspace) {
+  const rows = [
+    ...workspace.envelope.components,
+    {
+      componentId: "Htr",
+      amount: workspace.envelope.htr?.amount,
+      unit: workspace.envelope.htr?.unit,
+      elementAmount: "--",
+      thermalBridgeAmount: "--"
+    }
+  ];
+  return renderTable([
+    { label: "Component", value: row => row.componentId },
+    { label: "Amount", value: row => `${formatNumber(row.amount, 4)} ${row.unit ?? "W/K"}` },
+    { label: "Elements", value: row => Number.isFinite(Number(row.elementAmount)) ? formatNumber(row.elementAmount, 4) : row.elementAmount },
+    { label: "Bridges", value: row => Number.isFinite(Number(row.thermalBridgeAmount)) ? formatNumber(row.thermalBridgeAmount, 4) : row.thermalBridgeAmount },
+    { label: "Origin", value: row => row.componentId === "Htr" ? workspace.envelope.htr?.origin : "Chapter 2 envelope result" }
+  ], rows);
+}
+
+function renderMonthlyResults(workspace) {
+  return renderTable([
+    { label: "Month", value: row => row.month },
+    { label: "Qtr H", value: row => `${formatNumber(row.heatingTransmissionKwh)} kWh` },
+    { label: "Qve H", value: row => `${formatNumber(row.heatingVentilationKwh)} kWh` },
+    { label: "Internal", value: row => `${formatNumber(row.internalGainsKwh)} kWh` },
+    { label: "Solar", value: row => `${formatNumber(row.solarGainsKwh)} kWh` },
+    { label: "QHnd", value: row => `${formatNumber(row.qHndKwh)} kWh` },
+    { label: "QCnd", value: row => `${formatNumber(row.qCndKwh)} kWh` }
+  ], workspace.monthly);
+}
+
+function renderFormulaViewer(workspace) {
+  return renderTable([
+    { label: "Formula", value: row => row.formulaId },
+    { label: "Name", value: row => row.formulaName },
+    { label: "Inputs", value: row => row.inputVariables.map(item => `${item.symbol}=${formatNumber(item.value, 4)} ${item.unit ?? ""}`).join("; ") },
+    { label: "Result", value: row => `${row.resultSymbol}=${formatNumber(row.resultValue, 4)} ${row.resultUnit ?? ""}` },
+    { label: "Origin", value: row => row.origin ?? "--" }
+  ], workspace.formulaViews.slice(0, 18));
+}
+
+function renderTraceability(workspace) {
+  return renderTable([
+    { label: "Reference", value: row => row.reference },
+    { label: "Chapter", value: row => row.chapter ?? "--" },
+    { label: "Source", value: row => row.source },
+    { label: "Building DNA", value: row => row.buildingDnaLink }
+  ], workspace.traceability);
+}
+
+function renderReportChapters(workspace) {
+  return `
+    <div class="technical-report-chapter-list">
+      ${workspace.report.chapters.map(chapter => `
+        <details class="technical-report-chapter">
+          <summary>${safeText(chapter.title)}</summary>
+          <p>${safeText(chapter.summary)}</p>
+          <small>${safeText(chapter.chapterId)} · ${safeText(chapter.rows.length)} entries</small>
+        </details>
+      `).join("")}
+    </div>
+  `;
 }
 
 function formValue(formData, name) {
@@ -168,10 +328,12 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
 
 export function buildWizardEngineeringPreview(assistedAnswers) {
   const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers);
+  const technicalWorkspace = buildBuildingTechnicalWorkspace(pipeline);
   const annualQHnd = pipeline.review?.results?.annualQHnd ?? null;
   const annualQCnd = pipeline.review?.results?.annualQCnd ?? null;
   return {
     ...pipeline,
+    technicalWorkspace,
     dependencyTree: pipeline.review?.dependencyTrees?.annualQHnd ?? null,
     summary: {
       annualQHnd,
@@ -186,6 +348,7 @@ export function renderEngineeringModelReview(preview) {
     return `<p class="form-message error">Modelul tehnic nu este gata: ${safeText(code)}</p>`;
   }
   const dna = preview.buildingDna;
+  const workspace = preview.technicalWorkspace;
   const stages = preview.stages.map(item => `
     <li>
       <strong>${safeText(item.label)}</strong>
@@ -210,6 +373,66 @@ export function renderEngineeringModelReview(preview) {
   `).join("");
   const assumptions = dna.assumptions.map(item => `<li>${safeText(item.text)}</li>`).join("");
   const confirmations = dna.missingConfirmations.map(item => `<li>${safeText(item)}</li>`).join("");
+  const technicalWorkspaceHtml = workspace?.status === "ready" ? `
+    <section class="technical-workspace" id="p2b-technical-workspace">
+      <div class="section-heading">
+        <span class="small-label">TECHNICAL WORKSPACE</span>
+        <h3>Building DNA, Chapter 2 results and technical report</h3>
+      </div>
+      ${renderTechnicalTabs(workspace)}
+      ${renderAnnualSummary(workspace)}
+      <div class="technical-workspace-grid">
+        <section id="p2b-building" class="technical-workspace-panel">
+          <h4>Building</h4>
+          <p>${safeText(workspace.buildingSummary.buildingType)} / ${safeText(workspace.buildingSummary.constructionPeriod)} / ${safeText(workspace.buildingSummary.structuralSystem)}</p>
+          <p>Typology: ${safeText(workspace.buildingSummary.typologyId)} · Mode: ${safeText(workspace.buildingSummary.userMode)}</p>
+        </section>
+        <section id="p2b-building_dna" class="technical-workspace-panel">
+          <h4>Building DNA</h4>
+          <p>Schema: ${safeText(dna.schema)} · Platform: ${safeText(dna.platformVersion)}</p>
+          <p>Assumptions: ${safeText(dna.assumptions.length)} · Confirmations: ${safeText(dna.missingConfirmations.length)}</p>
+        </section>
+        <section id="p2b-chapter_2" class="technical-workspace-panel">
+          <h4>Chapter 2 authority</h4>
+          <p>Displayed values are read from Building DNA and validated Chapter 2 engine outputs.</p>
+          <p>No Chapter 3, final energy, primary energy, CO2, CPE or certificate calculation is generated here.</p>
+        </section>
+      </div>
+      <section id="p2b-assemblies" class="technical-workspace-panel">
+        <h4>Assemblies and U-values</h4>
+        ${renderAssemblies(workspace)}
+      </section>
+      <section id="p2b-materials" class="technical-workspace-panel">
+        <h4>Materials</h4>
+        ${renderMaterials(workspace)}
+      </section>
+      <section class="technical-workspace-panel">
+        <h4>Layer stacks</h4>
+        ${renderLayerStacks(workspace)}
+      </section>
+      <section class="technical-workspace-panel">
+        <h4>Htr breakdown</h4>
+        ${renderHtrBreakdown(workspace)}
+      </section>
+      <section id="p2b-results" class="technical-workspace-panel">
+        <h4>Monthly QHnd / QCnd</h4>
+        ${renderMonthlyResults(workspace)}
+      </section>
+      <section id="p2b-report" class="technical-workspace-panel">
+        <h4>Technical report</h4>
+        <p>${safeText(workspace.report.title)} · ${safeText(workspace.report.source)}</p>
+        ${renderReportChapters(workspace)}
+      </section>
+      <section id="p2b-traceability" class="technical-workspace-panel">
+        <h4>Formula viewer</h4>
+        ${renderFormulaViewer(workspace)}
+      </section>
+      <section class="technical-workspace-panel">
+        <h4>Traceability</h4>
+        ${renderTraceability(workspace)}
+      </section>
+    </section>
+  ` : `<p class="form-message error">Technical workspace unavailable: ${safeText(workspace?.diagnostics?.blockers?.[0]?.code)}</p>`;
   return `
     <div class="recommendation-detail-card" data-building-platform-review>
       <div>
@@ -228,6 +451,7 @@ export function renderEngineeringModelReview(preview) {
         <ul>${assumptions}</ul>
         <h4>Confirmari necesare</h4>
         <ul>${confirmations}</ul>
+        ${technicalWorkspaceHtml}
       </div>
     </div>
   `;
