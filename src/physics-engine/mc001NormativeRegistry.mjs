@@ -273,8 +273,12 @@ const DISTRIBUTION_RULE_CODES = new Set([
   "single_adjacent_conditioned_zone"
 ]);
 const SOURCE_SCOPE_PAGES = Object.freeze([
+  43,
+  47,
   48,
+  50,
   77,
+  78,
   79,
   80,
   81,
@@ -4940,9 +4944,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       sourceScope: {
         chapter: "Capitolul 2. Anvelopa termica a cladirii",
         sections: ["2.1.4", "2.4.1"],
-        pagesVerified: [48, 77],
+        pagesVerified: [43, 47, 48, 50, 77, 78],
         relationsVerified: ["2.3", "2.6"],
-        tablesVerified: ["2.2", "2.11"],
+        tablesVerified: ["2.1", "2.2", "2.11"],
         extractionMethods: [
           "page.get_text(text)",
           "page.get_text(blocks)",
@@ -5007,6 +5011,64 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           runtimeReadiness: "verified_for_restricted_runtime",
           sourceReference: "MC001-2022 page 77 adjacent text below relation 2.6",
           sourceLocator: { page: 77, relation: "2.6" }
+        },
+        {
+          candidateCode: "MC001_R15_EXTERNAL_MATERIAL_LAMBDA_SOURCE_CONTRACT",
+          relationReference: "2.3_dependency",
+          expressionText:
+            "lambda_normat is supplied from SR EN ISO 10456, SR EN 1745, MP 022-02, approved design tables, or declared/measured values when MC001 permits those sources",
+          machineExpression:
+            "lambdaNormatWmK = explicitExternalSourceBackedMaterialLambda; lambdaWmK = correctionCoefficientA * lambdaNormatWmK",
+          outputSymbol: "lambda_normat",
+          outputUnit: "W/(m*K)",
+          requiredInputs: ["materialLambdaSourceContractCode", "lambdaNormatWmK", "source.reference"],
+          conditions: [
+            "MC001-2022 delegates material lambda catalog values externally; no hidden catalogue defaults are encoded"
+          ],
+          scopeClassification: "external_normative_dependency_with_explicit_contract",
+          runtimeReadiness: "verified_for_explicit_external_contract_runtime",
+          sourceReference: "MC001-2022 pages 43, 47, 50 and relation 2.3",
+          sourceLocator: { page: 50, relation: "2.3_dependency" }
+        },
+        {
+          candidateCode: "MC001_R15_EXTERNAL_AIR_LAYER_RESISTANCE_SOURCE_CONTRACT",
+          relationReference: "2.6_dependency",
+          expressionText:
+            "Ra values for unventilated air layers are taken by explicit source-backed contract from SR EN ISO 6946",
+          machineExpression:
+            "airLayerResistanceM2KPerW = explicitExternalSourceBackedRa",
+          outputSymbol: "Ra",
+          outputUnit: "m2*K/W",
+          requiredInputs: ["airLayerResistanceSourceContractCode", "Ra", "source.reference"],
+          conditions: [
+            "MC001-2022 relation 2.6 includes sum(Ra) and delegates air-layer resistance values to SR EN ISO 6946"
+          ],
+          scopeClassification: "external_normative_dependency_with_explicit_contract",
+          runtimeReadiness: "verified_for_explicit_external_contract_runtime",
+          sourceReference: "MC001-2022 pages 77-78 relation 2.6 adjacent text",
+          sourceLocator: { page: 78, relation: "2.6_dependency" }
+        }
+      ],
+      externalDependencies: [
+        {
+          dependencyCode: "MATERIAL_LAMBDA_EXTERNAL_SOURCE_CONTRACTS",
+          sourceDocuments: [
+            "SR EN ISO 10456",
+            "SR EN 1745",
+            "MP 022-02",
+            "approved updated design-value tables",
+            "manufacturer declaration or authorized laboratory measurement"
+          ],
+          runtimeModule: "mc001MaterialLambdaSourceContracts.mjs",
+          contract:
+            "MC001 Chapter 2 omits a default material lambda catalogue; runtime accepts only explicit source-backed lambda values under one of these contracts."
+        },
+        {
+          dependencyCode: "AIR_LAYER_RESISTANCE_SR_EN_ISO_6946_CONTRACT",
+          sourceDocuments: ["SR EN ISO 6946"],
+          runtimeModule: "mc001AirLayerResistanceSourceContracts.mjs",
+          contract:
+            "MC001 relation 2.6 includes Ra and delegates air-layer values to SR EN ISO 6946; runtime accepts explicit source-backed Ra values under this contract."
         }
       ],
       runtimeIntegration: {
@@ -5019,6 +5081,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "explicit_inputs_only",
           "no_hidden_defaults",
           "no_default_material_lambda",
+          "external_material_lambda_contract_or_explicit_lambda_normat",
+          "external_air_layer_resistance_contract_or_explicit_Ra",
           "no_default_surface_resistances",
           "table_2_2_coefficients_only_when_explicitly_selected_or_supplied"
         ]
@@ -6038,7 +6102,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "twelve_month_explicit_chapter_2_calculation_layer"
         ],
         explicitInputOnly: [
-          "base_material_lambda_normat",
+          "base_material_lambda_normat_explicit_or_external_source_contract",
           "surface_resistance_table_selection",
           "air_layer_resistance_explicit_or_external_SR_EN_ISO_6946_source",
           "opaque_solar_absorptance",
@@ -6051,7 +6115,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "thermal_bridge_psi_chi_values"
         ],
         tableBackedNotEncoded: [
-          "material_lambda_catalog_values",
           "window_door_catalog_U_values",
           "solar_climate_annex_full_dataset",
           "thermal_bridge_catalog_rows_with_missing_geometry"
@@ -6097,6 +6160,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "explicit_inputs_only",
           "no_hidden_defaults",
           "no_default_material_lambda",
+          "external_material_lambda_contract_or_explicit_lambda_normat",
+          "external_air_layer_resistance_contract_or_explicit_Ra",
           "no_default_surface_resistance",
           "no_default_climate",
           "no_default_gains",
@@ -6114,8 +6179,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "not_certificate"
         ],
         remainingGaps: [
-          "default_material_lambda_catalog_values_not_encoded",
-          "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated",
           "automatic_ground_contact_detailed_method_not_encoded",
           "unheated_adjacent_bztu_default_values_not_fabricated",
           "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted"
@@ -9292,6 +9355,7 @@ function validateEnvelopeFormulaCandidates(candidates, prefix, minimumCount) {
     hasRequiredString(candidate.scopeClassification) &&
     [
       "verified_for_restricted_runtime",
+      "verified_for_explicit_external_contract_runtime",
       "metadata_only_use_R17_bridge_runtime_path",
       "metadata_only_not_runtime_path"
     ].includes(candidate.runtimeReadiness) &&
@@ -9539,7 +9603,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "twelve_month_explicit_chapter_2_calculation_layer"
   ];
   const requiredExplicitOnlyItems = [
-    "base_material_lambda_normat",
+    "base_material_lambda_normat_explicit_or_external_source_contract",
+    "air_layer_resistance_explicit_or_external_SR_EN_ISO_6946_source",
     "monthly_weather_temperatures",
     "ventilation_airflows_and_mechanical_ventilation_corrections",
     "internal_gain_category_or_components_and_schedules",
@@ -9565,7 +9630,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     !isObject(map) ||
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
     !requiredExplicitOnlyItems.every(item => map.explicitInputOnly?.includes(item)) ||
-    !map.tableBackedNotEncoded?.includes("material_lambda_catalog_values") ||
+    map.tableBackedNotEncoded?.includes("material_lambda_catalog_values") ||
     map.tableBackedNotEncoded?.includes("surface_resistance_default_tables") ||
     !map.ambiguousExtraction?.includes("automatic_ground_contact_detailed_method") ||
     !requiredOutOfScopeItems.every(item => map.outOfChapter2UsefulDemandScope?.includes(item)) ||
@@ -9581,7 +9646,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     !integration.outputPolicy?.includes("no_certificate") ||
     !isObject(assessment) ||
     !assessment.restrictiveMarkersRetained?.includes("not_certificate") ||
-    !assessment.remainingGaps?.includes("default_material_lambda_catalog_values_not_encoded") ||
+    assessment.remainingGaps?.includes("default_material_lambda_catalog_values_not_encoded") ||
+    assessment.remainingGaps?.includes("air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated") ||
     assessment.remainingGaps?.includes("default_surface_resistance_tables_not_encoded") ||
     !Array.isArray(sourcePack.blockers) ||
     !sourcePack.blockers.includes("not_certificate") ||

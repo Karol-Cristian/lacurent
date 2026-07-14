@@ -2314,7 +2314,7 @@ test("R15 envelope materials pack encodes lambda resistance and surface dependen
   const byCode = new Map(pack.formulaCandidates.map(candidate => [candidate.candidateCode, candidate]));
 
   assert.deepEqual(pack.sourceScope.relationsVerified, ["2.3", "2.6"]);
-  assert.deepEqual(pack.sourceScope.pagesVerified, [48, 77]);
+  assert.deepEqual(pack.sourceScope.pagesVerified, [43, 47, 48, 50, 77, 78]);
   assert.equal(
     byCode.get("MC001_R15_RELATION_2_3_LAMBDA_CORRECTION").machineExpression,
     "lambdaWmK = correctionCoefficientA * lambdaNormatWmK"
@@ -2330,6 +2330,34 @@ test("R15 envelope materials pack encodes lambda resistance and surface dependen
   assert.equal(
     byCode.get("MC001_R15_SURFACE_RESISTANCE_FROM_SURFACE_COEFFICIENTS").machineExpression,
     "rsi = 1 / hi; rse = 1 / he"
+  );
+  assert.equal(
+    byCode.get("MC001_R15_EXTERNAL_MATERIAL_LAMBDA_SOURCE_CONTRACT").runtimeReadiness,
+    "verified_for_explicit_external_contract_runtime"
+  );
+  assert.equal(
+    byCode.get("MC001_R15_EXTERNAL_AIR_LAYER_RESISTANCE_SOURCE_CONTRACT").machineExpression,
+    "airLayerResistanceM2KPerW = explicitExternalSourceBackedRa"
+  );
+  assert.ok(
+    pack.externalDependencies.some(
+      (dependency) => dependency.dependencyCode === "MATERIAL_LAMBDA_EXTERNAL_SOURCE_CONTRACTS"
+    )
+  );
+  assert.ok(
+    pack.externalDependencies.some(
+      (dependency) => dependency.dependencyCode === "AIR_LAYER_RESISTANCE_SR_EN_ISO_6946_CONTRACT"
+    )
+  );
+  assert.ok(
+    pack.runtimeIntegration.inputPolicy.includes(
+      "external_material_lambda_contract_or_explicit_lambda_normat"
+    )
+  );
+  assert.ok(
+    pack.runtimeIntegration.inputPolicy.includes(
+      "external_air_layer_resistance_contract_or_explicit_Ra"
+    )
   );
 });
 
@@ -2476,7 +2504,11 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   ]) {
     assert.ok(pack.coverageMap.runtimeImplemented.includes(runtimeItem), runtimeItem);
   }
-  assert.ok(pack.coverageMap.explicitInputOnly.includes("base_material_lambda_normat"));
+  assert.ok(
+    pack.coverageMap.explicitInputOnly.includes(
+      "base_material_lambda_normat_explicit_or_external_source_contract"
+    )
+  );
   assert.ok(pack.coverageMap.explicitInputOnly.includes("monthly_weather_temperatures"));
   assert.ok(
     pack.coverageMap.explicitInputOnly.includes(
@@ -2500,7 +2532,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   );
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("surface_resistance_default_tables"), false);
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("air_layer_resistance_default_tables"), false);
-  assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"));
+  assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"), false);
   assert.ok(pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"));
   assert.equal(
     pack.coverageMap.ambiguousExtraction.includes("automatic_unheated_space_balance_defaults"),
@@ -2530,11 +2562,15 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     )
   );
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("no_certificate"));
-  assert.ok(pack.completenessAssessment.remainingGaps.includes("default_material_lambda_catalog_values_not_encoded"));
-  assert.ok(
+  assert.equal(
+    pack.completenessAssessment.remainingGaps.includes("default_material_lambda_catalog_values_not_encoded"),
+    false
+  );
+  assert.equal(
     pack.completenessAssessment.remainingGaps.includes(
       "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated"
-    )
+    ),
+    false
   );
   assert.ok(
     pack.completenessAssessment.remainingGaps.includes(
