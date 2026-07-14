@@ -1,3 +1,5 @@
+import { findMaterialCorrectionCoefficientById } from "./datasets/mc001Table2_2MaterialCorrectionCoefficients.mjs";
+
 const ASSEMBLY_MODE = "envelope_assembly_u_value_explicit_v1";
 const TRANSMISSION_MODE = "envelope_transmission_coefficient_explicit_v1";
 const ASSEMBLY_SCOPE = "envelope_assembly_u_value_explicit_input_only_not_certificate";
@@ -5,6 +7,7 @@ const TRANSMISSION_SCOPE = "envelope_transmission_coefficient_explicit_input_onl
 const ASSEMBLY_FORMULA_REFERENCES = [
   "MC001_R15_MATERIALS_AND_THERMAL_RESISTANCE_SOURCE_PACK",
   "MC001_R15_RELATION_2_3_LAMBDA_CORRECTION",
+  "MC001_TABLE_2_2_MATERIAL_CORRECTION_COEFFICIENTS",
   "MC001_R15_RELATION_2_6_TOTAL_THERMAL_RESISTANCE",
   "MC001_R16_RELATION_2_7_THERMAL_TRANSMITTANCE"
 ];
@@ -12,6 +15,7 @@ const TRANSMISSION_FORMULA_REFERENCES = [
   "MC001_R17_RELATION_2_11_DIRECT_TRANSMISSION_WITH_BRIDGES",
   "MC001_R17_RELATION_2_12_DIRECT_TRANSMISSION_WITH_CORRECTED_U",
   "MC001_R17_RELATION_2_15_TOTAL_TRANSMISSION_COEFFICIENT",
+  "MC001_2_22_BZTU_CORRECTION_FACTOR",
   "MC001_R18_BOUNDARY_CORRECTIONS_EXPLICIT_SOURCE_PACK"
 ];
 const ASSEMBLY_LIMITS = [
@@ -61,6 +65,12 @@ const BOUNDARY_COMPONENTS = Object.freeze({
   adjacent_heated_space: "Ha",
   adjacent_unheated_space: "Ha"
 });
+const BZTU_CORRECTION_BOUNDARY_TYPES = new Set([
+  "unheated_space",
+  "unheated_attic",
+  "unheated_basement",
+  "adjacent_unheated_space"
+]);
 const COMPONENT_KEYS = ["Hd", "Hg", "Hu", "Ha"];
 const ALLOWED_SOURCE_TYPES = new Set([
   "explicit_user_input",
@@ -106,6 +116,10 @@ function safeCode(value, maxLength = 96) {
     value.length > 0 &&
     value.length <= maxLength &&
     /^[a-zA-Z0-9_.:-]+$/.test(value);
+}
+
+function hasInputValue(value, key) {
+  return isPlainObject(value) && value[key] !== undefined && value[key] !== null;
 }
 
 function sourceIsAllowed(source) {
@@ -268,6 +282,9 @@ function resolveLayer(layer, index) {
   let lambda;
   let lambdaNormat = null;
   let correctionCoefficientA = null;
+  let correctionCoefficientCode = null;
+  let correctionCoefficientSource = null;
+  let correctionCoefficientMetadata = null;
   let lambdaOrigin = "explicit_material_lambda";
   let lambdaFormulaCode = "EXPLICIT_MATERIAL_LAMBDA";
   if (hasDirectLambda) {
@@ -285,14 +302,44 @@ function resolveLayer(layer, index) {
       "invalid_explicit_material_lambda"
     );
     if (!normLambda.ok) return normLambda;
-    const coefficient = positiveUnitAmount(
-      layer.material.correctionCoefficientA,
-      "dimensionless",
-      "missing_explicit_material_correction_coefficient"
-    );
-    if (!coefficient.ok) return coefficient;
+    const hasExplicitCoefficient = isPlainObject(layer.material.correctionCoefficientA);
+    const hasTableCoefficientCode = hasInputValue(layer.material, "correctionCoefficientCode");
+    if (hasExplicitCoefficient && hasTableCoefficientCode) {
+      return { ok: false, code: "ambiguous_material_correction_coefficient_source" };
+    }
+    if (!hasExplicitCoefficient && !hasTableCoefficientCode) {
+      return { ok: false, code: "missing_explicit_material_correction_coefficient" };
+    }
     lambdaNormat = normLambda.amount;
-    correctionCoefficientA = coefficient.amount;
+    if (hasTableCoefficientCode) {
+      if (!safeCode(layer.material.correctionCoefficientCode, 128)) {
+        return { ok: false, code: "invalid_table_2_2_material_correction_coefficient_code" };
+      }
+      const tableEntry = findMaterialCorrectionCoefficientById(
+        layer.material.correctionCoefficientCode
+      );
+      if (tableEntry === null) {
+        return { ok: false, code: "unknown_table_2_2_material_correction_coefficient_code" };
+      }
+      correctionCoefficientA = tableEntry.correctionCoefficientA;
+      correctionCoefficientCode = tableEntry.id;
+      correctionCoefficientSource = "MC001-2022 Tabel 2.2";
+      correctionCoefficientMetadata = {
+        materialCategoryRo: tableEntry.materialCategoryRo,
+        conditionRo: tableEntry.conditionRo,
+        ...(tableEntry.ageConditionRo ? { ageConditionRo: tableEntry.ageConditionRo } : {}),
+        ...(tableEntry.applicabilityRo ? { applicabilityRo: tableEntry.applicabilityRo } : {})
+      };
+    } else {
+      const coefficient = positiveUnitAmount(
+        layer.material.correctionCoefficientA,
+        "dimensionless",
+        "missing_explicit_material_correction_coefficient"
+      );
+      if (!coefficient.ok) return coefficient;
+      correctionCoefficientA = coefficient.amount;
+      correctionCoefficientSource = layer.material.correctionCoefficientA.source.reference;
+    }
     lambda = lambdaNormat * correctionCoefficientA;
     lambdaOrigin = "calculated_from_MC001_relation_2_3_explicit_coefficient";
     lambdaFormulaCode = "MC001_2_3_LAMBDA_CORRECTION";
@@ -309,6 +356,18 @@ function resolveLayer(layer, index) {
       lambdaWmK: lambda,
       ...(lambdaNormat === null ? {} : { lambdaNormatWmK: lambdaNormat }),
       ...(correctionCoefficientA === null ? {} : { correctionCoefficientA }),
+      ...(correctionCoefficientCode === null ||
+        correctionCoefficientCode === undefined
+        ? {}
+        : { correctionCoefficientCode }),
+      ...(correctionCoefficientSource === null ||
+        correctionCoefficientSource === undefined
+        ? {}
+        : { correctionCoefficientSource }),
+      ...(correctionCoefficientMetadata === null ||
+        correctionCoefficientMetadata === undefined
+        ? {}
+        : { correctionCoefficientMetadata }),
       lambdaOrigin,
       lambdaFormulaCode,
       resistanceM2KPerW: resistance,
@@ -506,11 +565,48 @@ function resolveElementUValue(element) {
 }
 
 function boundaryFactor(element, component) {
+  const hasDirectFactor = isPlainObject(element.boundaryCorrectionFactor);
+  const hasDerivedFactor = isPlainObject(element.boundaryCorrection);
   if (component === "Hd") {
-    if (isPlainObject(element.boundaryCorrectionFactor)) {
+    if (hasDirectFactor || hasDerivedFactor) {
       return { ok: false, code: "ambiguous_outside_air_boundary_correction" };
     }
     return { ok: true, value: 1, origin: "direct_exterior_boundary_factor_one" };
+  }
+
+  if (hasDirectFactor && hasDerivedFactor) {
+    return { ok: false, code: "ambiguous_boundary_correction_source" };
+  }
+  if (hasDerivedFactor) {
+    const correction = element.boundaryCorrection;
+    if (!BZTU_CORRECTION_BOUNDARY_TYPES.has(element.boundaryType)) {
+      return { ok: false, code: "unsupported_bztu_boundary_correction_context" };
+    }
+    if (correction.mode !== "bztu_explicit_heat_transfer_ratio_v1") {
+      return { ok: false, code: "unsupported_boundary_correction_mode" };
+    }
+    const exterior = nonNegativeUnitAmount(
+      correction.heatTransferToExterior,
+      "W/K",
+      "invalid_explicit_bztu_exterior_heat_transfer"
+    );
+    if (!exterior.ok) return exterior;
+    const total = positiveUnitAmount(
+      correction.totalHeatTransfer,
+      "W/K",
+      "invalid_explicit_bztu_total_heat_transfer"
+    );
+    if (!total.ok) return total;
+    if (exterior.amount > total.amount) {
+      return { ok: false, code: "invalid_explicit_bztu_heat_transfer_ratio" };
+    }
+    return {
+      ok: true,
+      value: exterior.amount / total.amount,
+      origin: "calculated_from_MC001_2_22_explicit_bztu_heat_transfer_ratio",
+      formulaCode: "MC001_2_22_BZTU_CORRECTION_FACTOR",
+      sourceScope: "bztu_explicit_heat_transfer_ratio_v1"
+    };
   }
 
   const factor = nonNegativeUnitAmount(
@@ -522,7 +618,8 @@ function boundaryFactor(element, component) {
   return {
     ok: true,
     value: factor.amount,
-    origin: `explicit_${component}_boundary_correction_factor`
+    origin: `explicit_${component}_boundary_correction_factor`,
+    formulaCode: "EXPLICIT_BOUNDARY_CORRECTION_FACTOR"
   };
 }
 
@@ -559,6 +656,8 @@ function normalizeElement(element, index) {
       ...(uValue.value.assemblyType === null ? {} : { assemblyType: uValue.value.assemblyType }),
       boundaryCorrectionFactor: factor.value,
       boundaryCorrectionOrigin: factor.origin,
+      ...(factor.formulaCode === undefined ? {} : { boundaryCorrectionFormulaCode: factor.formulaCode }),
+      ...(factor.sourceScope === undefined ? {} : { boundaryCorrectionSourceScope: factor.sourceScope }),
       contributionWK: contribution,
       contributionFormulaCode: component === "Hd"
         ? "MC001_2_11_DIRECT_ELEMENT_TRANSMISSION"

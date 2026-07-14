@@ -56,6 +56,15 @@ function correctedMaterial(materialId, lambdaNormat, correctionCoefficientA, nam
   };
 }
 
+function tableCorrectedMaterial(materialId, lambdaNormat, correctionCoefficientCode, name = materialId) {
+  return {
+    materialId,
+    name,
+    lambdaNormat: value(lambdaNormat, "W/(m*K)"),
+    correctionCoefficientCode
+  };
+}
+
 function layer(layerId, thickness, layerMaterial) {
   return {
     layerId,
@@ -365,6 +374,46 @@ await test("surface coefficients can explicitly derive surface resistances", () 
   assert.equal(wall.surfaceResistanceOrigin, "calculated_from_explicit_surface_coefficients");
 });
 
+await test("Table 2.2 correction coefficient ids can explicitly derive corrected lambda", () => {
+  const result = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "table-coeff-wall",
+        assemblyType: "wall",
+        layers: [
+          layer(
+            "bca",
+            0.24,
+            tableCorrectedMaterial(
+              "bca",
+              0.24,
+              "zidarie_bca_betoane_usoare_placi_bca_uscata_vechime_ge_20_ani"
+            )
+          )
+        ],
+        surfaceResistances: {
+          rsi: value(0.13, "m2*K/W"),
+          rse: value(0.04, "m2*K/W")
+        },
+        source: SOURCE
+      }
+    ]
+  });
+
+  assert.equal(result.status, "ready");
+  const wall = result.assemblyResults[0];
+  close(wall.layers[0].correctionCoefficientA, 1.05);
+  close(wall.layers[0].lambdaWmK, 0.252);
+  close(wall.layers[0].resistanceM2KPerW, 0.9523809523809523);
+  assert.equal(
+    wall.layers[0].correctionCoefficientCode,
+    "zidarie_bca_betoane_usoare_placi_bca_uscata_vechime_ge_20_ani"
+  );
+  assert.equal(wall.layers[0].correctionCoefficientSource, "MC001-2022 Tabel 2.2");
+  assert.equal(wall.layers[0].correctionCoefficientMetadata.materialCategoryRo.includes("BCA"), true);
+});
+
 await test("envelope transmission engine derives Hd Hg Hu Ha and Htr", () => {
   const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
   const result = envelopeTransmissionResult(assemblies);
@@ -378,6 +427,65 @@ await test("envelope transmission engine derives Hd Hg Hu Ha and Htr", () => {
   assert.equal(result.result.origin, "calculated_from_explicit_envelope_assemblies_and_boundaries");
   assert.equal(result.elementResults.find(item => item.elementId === "ground-floor").boundaryCorrectionOrigin, "explicit_Hg_boundary_correction_factor");
   assert.equal(result.thermalBridgeResults[0].contributionFormulaCode, "MC001_2_11_LINEAR_THERMAL_BRIDGE_TERM");
+});
+
+await test("unheated boundary correction can be derived from explicit relation 2.22 heat-transfer ratio", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "attic-with-bztu-ratio",
+        elementType: "ceiling",
+        boundaryType: "unheated_attic",
+        assemblyResult: assemblyById(assemblies, "wood-earth-ceiling"),
+        area: value(40, "m2"),
+        boundaryCorrection: {
+          mode: "bztu_explicit_heat_transfer_ratio_v1",
+          heatTransferToExterior: value(30, "W/K"),
+          totalHeatTransfer: value(50, "W/K")
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assert.equal(result.status, "ready");
+  const attic = result.elementResults[0];
+  close(attic.boundaryCorrectionFactor, 0.6);
+  close(attic.contributionWK, 7.91208791208791);
+  assert.equal(
+    attic.boundaryCorrectionOrigin,
+    "calculated_from_MC001_2_22_explicit_bztu_heat_transfer_ratio"
+  );
+  assert.equal(attic.boundaryCorrectionFormulaCode, "MC001_2_22_BZTU_CORRECTION_FACTOR");
+  assert.equal(attic.boundaryCorrectionSourceScope, "bztu_explicit_heat_transfer_ratio_v1");
+});
+
+await test("relation 2.22 boundary correction does not replace ground-contact factors", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "ground-with-bztu-ratio",
+        elementType: "floor",
+        boundaryType: "ground",
+        assemblyResult: assemblyById(assemblies, "ground-floor-slab"),
+        area: value(40, "m2"),
+        boundaryCorrection: {
+          mode: "bztu_explicit_heat_transfer_ratio_v1",
+          heatTransferToExterior: value(30, "W/K"),
+          totalHeatTransfer: value(50, "W/K")
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assertBlocked(result, "unsupported_bztu_boundary_correction_context");
 });
 
 await test("small house golden fixture feeds derived Htr through C5 QHnd and QCnd", () => {
