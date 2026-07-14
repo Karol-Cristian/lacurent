@@ -7,6 +7,11 @@ import {
 } from "../src/features/energy/physics/calculators/referenceValues.mjs";
 import { classifyEstimatedEnergyClass } from "../src/features/energy/physics/calculators/estimatedEnergyClass.mjs";
 import { referenceBuildingRules } from "../src/features/energy/physics/registries/referenceBuildingRules.registry.mjs";
+import {
+  getMc001NormativeSourcePackByCode,
+  validateMc001NormativeRegistry,
+  getMc001NormativeRegistry
+} from "../src/physics-engine/mc001NormativeRegistry.mjs";
 
 function assertReferenceMeta(item) {
   assert.equal(item.source, "MC001-2022");
@@ -75,5 +80,26 @@ assert.ok(negativeClassInput.warnings.includes("NEGATIVE_PRIMARY_ENERGY_KWH_M2_Y
 
 assert.equal(referenceBuildingRules.mechanicalVentilation.numericHeatRecoveryEfficiency, null);
 assert.ok(referenceBuildingRules.mechanicalVentilation.missingValueNote.includes("Nu inventa"));
+
+const registryValidation = validateMc001NormativeRegistry(getMc001NormativeRegistry());
+assert.equal(registryValidation.status, "valid");
+
+const chapter2CoverageGate = getMc001NormativeSourcePackByCode(
+  "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX"
+);
+assert.equal(chapter2CoverageGate.status, "found");
+assert.equal(chapter2CoverageGate.sourcePack.coverageMatrix.pageInspections.length, 86);
+assert.equal(chapter2CoverageGate.sourcePack.coverageMatrix.relations.length, 87);
+assert.equal(chapter2CoverageGate.sourcePack.coverageMatrix.tables.length, 21);
+assert.equal(chapter2CoverageGate.sourcePack.coverageMatrix.figures.length, 21);
+assert.equal(
+  chapter2CoverageGate.sourcePack.completenessGate.closureStatus,
+  "CHAPTER_2_NOT_CLOSED"
+);
+assert.ok(
+  chapter2CoverageGate.sourcePack.completenessGate.unresolvedItemIds.includes(
+    "MC001_RELATION_2_2"
+  )
+);
 
 console.log("PASS physics MC001-like reference registries and utility functions");

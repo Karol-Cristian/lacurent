@@ -48,6 +48,8 @@ const R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE =
   "MC001_R18_BOUNDARY_CORRECTIONS_SOURCE_PACK";
 const R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE =
   "MC001_R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK";
+const R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE =
+  "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -65,7 +67,7 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 20,
+  sourcePacks: 21,
   formulas: 10,
   constants: 1,
   concepts: 15,
@@ -220,6 +222,13 @@ function envelopeBoundaryPack(value = registry()) {
 function chapter2CoveragePack(value = registry()) {
   return sourcePackByCode(
     R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
+    value
+  );
+}
+
+function chapter2ExhaustiveCoveragePack(value = registry()) {
+  return sourcePackByCode(
+    R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
     value
   );
 }
@@ -437,7 +446,8 @@ test("registry now contains the expected source packs", () => {
       R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
       R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
       R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
-      R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE
+      R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
+      R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -2403,6 +2413,86 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("no_certificate"));
   assert.ok(pack.completenessAssessment.remainingGaps.includes("default_material_lambda_catalog_values_not_encoded"));
   assert.ok(pack.blockers.includes("not_certificate"));
+  assert.ok(pack.blockers.includes("no_hidden_defaults"));
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+});
+
+test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items and keeps closure gated", () => {
+  const pack = chapter2ExhaustiveCoveragePack();
+  const matrix = pack.coverageMatrix;
+  const allowedStatuses = new Set([
+    "runtime_implemented",
+    "table_machine_encoded",
+    "golden_covered",
+    "metadata_only_normative_context",
+    "not_runtime_applicable",
+    "out_of_chapter_2_runtime_scope",
+    "ambiguous_source_requires_human_resolution"
+  ]);
+
+  assert.equal(pack.sourcePackCode, R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(
+    pack.runtimeCalculatorStatus,
+    "executable_chapter_2_coverage_matrix_and_nonclosure_gate"
+  );
+  assert.equal(matrix.pageRange.firstPage, 41);
+  assert.equal(matrix.pageRange.lastPage, 126);
+  assert.equal(matrix.pageRange.totalPages, 86);
+  assert.equal(matrix.pageInspections.length, 86);
+  assert.equal(matrix.relations.length, 87);
+  assert.equal(matrix.tables.length, 21);
+  assert.equal(matrix.figures.length, 21);
+  assert.equal(matrix.conditions.length, 3);
+  assert.equal(matrix.completenessMetrics.pagesInspected, 86);
+  assert.equal(matrix.completenessMetrics.relationsClassified, 87);
+  assert.equal(matrix.completenessMetrics.tablesClassified, 21);
+  assert.equal(matrix.completenessMetrics.figuresClassified, 21);
+  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 1);
+
+  for (const pageEntry of matrix.pageInspections) {
+    assert.equal(pageEntry.inspectionStatus, "inspected");
+    assert.ok(pageEntry.page >= 41 && pageEntry.page <= 126);
+  }
+  for (const group of [
+    matrix.pageInspections,
+    matrix.relations,
+    matrix.tables,
+    matrix.figures,
+    matrix.conditions
+  ]) {
+    for (const item of group) {
+      assert.equal(allowedStatuses.has(item.implementationStatus), true, item.identifier);
+      assert.notEqual(item.implementationStatus, "unknown");
+      assert.notEqual(item.implementationStatus, "unreviewed");
+      assert.notEqual(item.implementationStatus, "unclassified");
+      assert.equal(item.sourcePack, R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE);
+    }
+  }
+
+  const relationById = new Map(matrix.relations.map((entry) => [entry.identifier, entry]));
+  assert.equal(
+    relationById.get("MC001_RELATION_2_2").implementationStatus,
+    "ambiguous_source_requires_human_resolution"
+  );
+  assert.equal(relationById.get("MC001_RELATION_2_3").implementationStatus, "golden_covered");
+  assert.equal(
+    relationById.get("MC001_RELATION_2_82").implementationStatus,
+    "out_of_chapter_2_runtime_scope"
+  );
+
+  const tableById = new Map(matrix.tables.map((entry) => [entry.identifier, entry]));
+  assert.equal(tableById.get("MC001_TABLE_2_2").implementationStatus, "table_machine_encoded");
+  assert.equal(
+    tableById.get("MC001_TABLE_2_19").remainingBlocker,
+    "table_classified_but_not_machine_encoded_in_current_batch"
+  );
+
+  assert.equal(pack.completenessGate.closureStatus, "CHAPTER_2_NOT_CLOSED");
+  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_RELATION_2_2"));
+  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_19"));
+  assert.ok(pack.blockers.includes("chapter_2_not_closed"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
   assert.equal(Object.hasOwn(pack, "formulas"), false);
 });
