@@ -603,7 +603,8 @@ const CHAPTER_2_GOLDEN_RELATIONS = new Set([
   "2.85"
 ]);
 
-const CHAPTER_2_AMBIGUOUS_RELATIONS = new Set(["2.2", "2.5"]);
+const CHAPTER_2_AMBIGUOUS_RELATIONS = new Set();
+const CHAPTER_2_SOURCE_NUMBERING_GAP_RELATIONS = new Set(["2.2", "2.5"]);
 const CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS = new Set([
   "2.4",
   "2.78",
@@ -630,7 +631,7 @@ const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set([
   "2.20",
   "2.21"
 ]);
-const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set(["2.1"]);
+const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set();
 const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
   ["2.2", "mc001Table2_2MaterialCorrectionCoefficients.mjs"],
   ["2.11", "mc001SurfaceResistanceTables.mjs"],
@@ -660,6 +661,7 @@ const CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER = new Map([
   ["2.21", "mc001HumidificationTable2_21.test.mjs"]
 ]);
 const CHAPTER_2_NOT_RUNTIME_TABLES = new Set([
+  "2.1",
   "2.3",
   "2.4",
   "2.5",
@@ -709,6 +711,9 @@ function chapter2PageEntry(page) {
 }
 
 function chapter2RelationStatus(relationNumber) {
+  if (CHAPTER_2_SOURCE_NUMBERING_GAP_RELATIONS.has(relationNumber)) {
+    return "not_runtime_applicable";
+  }
   if (CHAPTER_2_AMBIGUOUS_RELATIONS.has(relationNumber)) {
     return "ambiguous_source_requires_human_resolution";
   }
@@ -745,10 +750,14 @@ function chapter2RelationEntry(relationNumber) {
     units: "see_source_relation",
     runtimeRelevance: CHAPTER_2_IMPLEMENTED_RELATIONS.has(relationNumber)
       ? "runtime_dependency"
-      : "classified_not_current_runtime_dependency",
-    machineEncodability: CHAPTER_2_AMBIGUOUS_RELATIONS.has(relationNumber)
-      ? "ambiguous_after_text_blocks_dict_and_visual_inspection"
-      : "classified",
+      : CHAPTER_2_SOURCE_NUMBERING_GAP_RELATIONS.has(relationNumber)
+        ? "not_runtime_relation_number_gap"
+        : "classified_not_current_runtime_dependency",
+    machineEncodability: CHAPTER_2_SOURCE_NUMBERING_GAP_RELATIONS.has(relationNumber)
+      ? "not_applicable_relation_number_absent_from_official_pdf_after_full_text_search"
+      : CHAPTER_2_AMBIGUOUS_RELATIONS.has(relationNumber)
+        ? "ambiguous_after_text_blocks_dict_and_visual_inspection"
+        : "classified",
     implementationStatus,
     runtimeModule: CHAPTER_2_IMPLEMENTED_RELATIONS.has(relationNumber)
       ? "chapter_2_runtime_modules"
@@ -758,7 +767,9 @@ function chapter2RelationEntry(relationNumber) {
       : null,
     goldenCoverage: CHAPTER_2_GOLDEN_RELATIONS.has(relationNumber),
     sourcePack: R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
-    remainingBlocker: implementationStatus === "metadata_only_normative_context"
+    remainingBlocker: CHAPTER_2_SOURCE_NUMBERING_GAP_RELATIONS.has(relationNumber)
+      ? null
+      : implementationStatus === "metadata_only_normative_context"
       ? "classified_for_later_domain_specific_runtime_audit"
       : implementationStatus === "ambiguous_source_requires_human_resolution"
         ? "relation_number_not_safely_machine_transcribed_from_local_pdf_extraction"
@@ -797,7 +808,9 @@ function chapter2TableEntry(tableNumber) {
       : "classified_table_dependency",
     machineEncodability: implementationStatus === "table_machine_encoded"
       ? "machine_encoded"
-      : "not_encoded_in_current_runtime",
+      : implementationStatus === "not_runtime_applicable"
+        ? "not_runtime_standards_context_table"
+        : "not_encoded_in_current_runtime",
     implementationStatus,
     runtimeModule: CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER.get(tableNumber) ?? null,
     testFile: CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER.get(tableNumber) ?? null,
@@ -5578,8 +5591,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       completenessGate: {
         closureStatus: "CHAPTER_2_NOT_CLOSED",
         reason:
-          "The exhaustive matrix classifies every Chapter 2 page/relation/table/figure currently identified, but closure is withheld because table-backed defaults and ambiguous relation-number gaps remain unresolved.",
-        unresolvedItemIds: [
+          "The exhaustive matrix classifies every Chapter 2 page/relation/table/figure currently identified, but closure is withheld because remaining Chapter 2 default/catalog domains are explicit-input only or external and must not be fabricated.",
+        unresolvedItemIds: [],
+        justifiedNonRuntimeItemIds: [
           "MC001_RELATION_2_2",
           "MC001_RELATION_2_5",
           "MC001_TABLE_2_1"
@@ -5592,8 +5606,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       },
       blockers: [
         "chapter_2_not_closed",
-        "ambiguous_relation_2_2",
-        "ambiguous_relation_2_5",
         "table_backed_defaults_not_fully_machine_encoded",
         "not_final_energy",
         "not_primary_energy",
@@ -8883,9 +8895,11 @@ function chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack) {
     matrix.completenessMetrics?.tablesMachineEncoded !== CHAPTER_2_TABLE_MACHINE_ENCODED.size ||
     !isObject(gate) ||
     gate.closureStatus !== "CHAPTER_2_NOT_CLOSED" ||
-    !gate.unresolvedItemIds?.includes("MC001_RELATION_2_2") ||
-    !gate.unresolvedItemIds?.includes("MC001_RELATION_2_5") ||
-    !gate.unresolvedItemIds?.includes("MC001_TABLE_2_1") ||
+    !Array.isArray(gate.unresolvedItemIds) ||
+    gate.unresolvedItemIds.length !== 0 ||
+    !gate.justifiedNonRuntimeItemIds?.includes("MC001_RELATION_2_2") ||
+    !gate.justifiedNonRuntimeItemIds?.includes("MC001_RELATION_2_5") ||
+    !gate.justifiedNonRuntimeItemIds?.includes("MC001_TABLE_2_1") ||
     gate.unresolvedItemIds?.includes("MC001_TABLE_2_21") ||
     !Array.isArray(sourcePack.blockers) ||
     !sourcePack.blockers.includes("chapter_2_not_closed") ||
