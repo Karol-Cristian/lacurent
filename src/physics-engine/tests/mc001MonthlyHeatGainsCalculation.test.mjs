@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "../mc001MonthlyHeatGainsCalculation.mjs";
+import { calculateMc001MonthlySolarGainsExplicit } from "../mc001SolarGainsCalculation.mjs";
 
 function test(name, fn) {
   return Promise.resolve()
@@ -31,6 +32,42 @@ function input(cases = [sampleCase()], overrides = {}) {
     cases,
     ...overrides
   };
+}
+
+function solarGainsResult(month = "january") {
+  return calculateMc001MonthlySolarGainsExplicit({
+    mode: "monthly_solar_gains_explicit_v1",
+    cases: [
+      {
+        caseId: `${month}-solar-gains`,
+        month,
+        transparentElements: [
+          {
+            elementId: "south-window",
+            area: 10,
+            frameFraction: 0.25,
+            effectiveSolarTransmittance: 0.675,
+            obstacleShadingFactor: 0.8,
+            solarIrradiation: 100,
+            qSky: 5
+          }
+        ],
+        opaqueElements: [
+          {
+            elementId: "south-wall",
+            area: 20,
+            solarAbsorptance: 0.6,
+            exteriorSurfaceResistance: 0.04,
+            uValue: 0.3,
+            obstacleShadingFactor: 0.9,
+            solarIrradiation: 100,
+            qSky: 1
+          }
+        ],
+        source: { reference: "manual_explicit_solar_inputs" }
+      }
+    ]
+  });
 }
 
 function assertBlocked(result, code = null) {
@@ -70,6 +107,54 @@ await test("two-month annual aggregation sums explicit gains", () => {
   assert.equal(result.caseResults[1].qHgn, 150);
   assert.equal(result.summary.annualQHgn, 450);
   assert.equal(result.summary.caseCount, 2);
+});
+
+await test("solar gains can come from source-backed monthly solar gains result", () => {
+  const result = calculateMc001MonthlyHeatGainsExplicit(input([
+    sampleCase({
+      solarGains: undefined,
+      solarGainsResult: solarGainsResult()
+    })
+  ]));
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.caseResults[0].internalGains, 120);
+  assert.equal(result.caseResults[0].solarGains, 411.96);
+  assert.equal(result.caseResults[0].solarGainsOrigin, "calculated_from_explicit_monthly_solar_gains_result");
+  assert.equal(result.caseResults[0].solarGainsFormulaCode, "MC001_RELATION_2_36_2_38_MONTHLY_SOLAR_GAINS");
+  assert.equal(result.caseResults[0].qHgn, 531.96);
+  assert.equal(result.summary.annualQHgn, 531.96);
+});
+
+await test("rejects ambiguous direct solar gains plus solar gains result", () => {
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({ solarGainsResult: solarGainsResult() })
+    ])),
+    "monthly_heat_gains_solar_gains_and_solar_result_mutually_exclusive"
+  );
+});
+
+await test("rejects invalid solar gains result source", () => {
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({
+        solarGains: undefined,
+        solarGainsResult: { status: "ready", scope: "wrong", caseResults: [] }
+      })
+    ])),
+    "monthly_heat_gains_invalid_solar_gains_result"
+  );
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({
+        month: "february",
+        solarGains: undefined,
+        solarGainsResult: solarGainsResult("january")
+      })
+    ])),
+    "monthly_heat_gains_solar_gains_result_month_mismatch"
+  );
 });
 
 await test("zero internal gains component is allowed", () => {
@@ -185,7 +270,8 @@ await test("rejects client supplied derived fields", () => {
     input([sampleCase()], { summary: { annualQHgn: 300 } }),
     input([sampleCase()], { result: { qHgn: 300 } }),
     input([sampleCase()], { totalGains: 300 }),
-    input([sampleCase()], { heatGainsResult: { summary: {} } })
+    input([sampleCase()], { heatGainsResult: { summary: {} } }),
+    input([sampleCase()], { solarGainsResult: { summary: {} } })
   ];
 
   for (const payload of derivedPayloads) {

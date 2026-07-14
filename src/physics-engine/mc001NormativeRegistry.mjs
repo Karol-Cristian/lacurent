@@ -40,6 +40,8 @@ const R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE =
   "MC001_R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK";
 const R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE =
   "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX";
+const R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE =
+  "MC001_R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -108,7 +110,8 @@ const SOURCE_PACK_CODES = new Set([
   R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
   R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
   R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
-  R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE
+  R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+  R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -486,7 +489,7 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 21,
+    sourcePacks: 22,
     formulas: 10,
     constants: 1,
     concepts: 15,
@@ -549,7 +552,12 @@ const CHAPTER_2_IMPLEMENTED_RELATIONS = new Set([
   "2.33",
   "2.34",
   "2.35",
+  "2.36",
+  "2.38",
+  "2.39",
   "2.40",
+  "2.50",
+  "2.54",
   "2.55",
   "2.56",
   "2.57",
@@ -5354,6 +5362,235 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       ]
     },
     {
+      sourcePackCode: R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_explicit_monthly_solar_gains_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.7.3 Aporturi solare si 2.7.4 radiatia termica catre cer",
+        parentSectionsVerified: ["2.4.2", "2.7.3", "2.7.4"],
+        pagesVerified: [83, 84, 104, 105, 106, 107, 108, 109, 110, 111],
+        figuresVerified: ["2.13"],
+        tablesVerified: ["2.13", "2.16", "2.17", "2.18"],
+        relationsVerified: ["2.36", "2.38", "2.39", "2.40", "2.50", "2.54"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R21_RELATION_2_36_SOLAR_GAINS_SINGLE_ZONE",
+          relationReference: "2.36",
+          expressionText: "QH/C;sol;ztc;m = QH/C;sol;dir;ztc;m",
+          machineExpression: "solarGains = qSolDir",
+          outputSymbol: "QH/C;sol;ztc;m",
+          outputUnit: "kWh",
+          requiredInputs: ["qSolDir"],
+          conditions: ["single_conditioned_zone_explicit_solar_gains"],
+          scopeClassification: "heating_cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 104 relation 2.36",
+          sourceLocator: {
+            page: 104,
+            relation: "2.36",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_38_DIRECT_SOLAR_COMPONENTS",
+          relationReference: "2.38",
+          expressionText:
+            "QH/C;sol;dir;zt;m = sum_k(QH/C;sol;wi;k;m) + sum_k(QH/C;sol;op;k;m)",
+          machineExpression: "qSolDir = sum(transparent.qSol) + sum(opaque.qSol)",
+          outputSymbol: "QH/C;sol;dir;zt;m",
+          outputUnit: "kWh",
+          requiredInputs: ["transparentElements[].qSol", "opaqueElements[].qSol"],
+          conditions: ["one_or_more_explicit_solar_elements"],
+          scopeClassification: "heating_cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 105 relation 2.38",
+          sourceLocator: {
+            page: 105,
+            relation: "2.38",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_39_TRANSPARENT_SOLAR_GAINS",
+          relationReference: "2.39",
+          expressionText:
+            "QH/C;sol;wi;k;m = ggl;wi;H/C;m * Awi * (1 - Ffr;wi) * Fsh;obst;wi;m * Hsol;wi;m - Qsky;wi;m",
+          machineExpression:
+            "qSolWi = effectiveSolarTransmittance * area * (1 - frameFraction) * obstacleShadingFactor * solarIrradiation - qSky",
+          outputSymbol: "QH/C;sol;wi;k;m",
+          outputUnit: "kWh",
+          requiredInputs: [
+            "effectiveSolarTransmittance_or_source_backed_glazing",
+            "area",
+            "frameFraction",
+            "obstacleShadingFactor",
+            "solarIrradiation",
+            "qSky_or_explicit_sky_radiation_inputs"
+          ],
+          conditions: ["transparent_element_inputs_explicit"],
+          scopeClassification: "heating_cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 105 relation 2.39",
+          sourceLocator: {
+            page: 105,
+            relation: "2.39",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_40_GLASS_ANGLE_CORRECTION",
+          relationReference: "2.40",
+          expressionText: "ggl;wi = 0.9 * ggl;n,wi",
+          machineExpression: "effectiveSolarTransmittance = 0.9 * normalSolarTransmittance",
+          outputSymbol: "ggl;wi;H/C;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["normalSolarTransmittance"],
+          conditions: ["source_backed_glazing_or_explicit_normal_transmittance"],
+          scopeClassification: "heating_cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 105 relation 2.40",
+          sourceLocator: {
+            page: 105,
+            relation: "2.40",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_50_OPAQUE_SOLAR_GAINS",
+          relationReference: "2.50",
+          expressionText:
+            "QH/C;sol;op;k;m = alphaSr;k * Rse;k * Uc;op;k * Ac;k * Fsh;obst;k;m * Hsol;k;m - Qsky;k;m",
+          machineExpression:
+            "qSolOp = solarAbsorptance * exteriorSurfaceResistance * uValue * area * obstacleShadingFactor * solarIrradiation - qSky",
+          outputSymbol: "QH/C;sol;op;k;m",
+          outputUnit: "kWh",
+          requiredInputs: [
+            "solarAbsorptance",
+            "exteriorSurfaceResistance",
+            "uValue",
+            "area",
+            "obstacleShadingFactor",
+            "solarIrradiation",
+            "qSky_or_explicit_sky_radiation_inputs"
+          ],
+          conditions: ["opaque_element_inputs_explicit"],
+          scopeClassification: "heating_cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 111 relation 2.50",
+          sourceLocator: {
+            page: 111,
+            relation: "2.50",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_54_SKY_RADIATION",
+          relationReference: "2.54",
+          expressionText:
+            "Qsky;k;m = 0.001 * Fsky;k * Rse;k * Uc;k * Ac;k * hlr;e;k * deltaThetaSky;m * deltaT;m",
+          machineExpression:
+            "qSky = 0.001 * skyViewFactor * exteriorSurfaceResistance * uValue * area * longwaveRadiationCoefficient * skyTemperatureDifference * durationHours",
+          outputSymbol: "Qsky;k;m",
+          outputUnit: "kWh",
+          requiredInputs: [
+            "skyViewFactor",
+            "exteriorSurfaceResistance",
+            "uValue",
+            "area",
+            "longwaveRadiationCoefficient",
+            "skyTemperatureDifference",
+            "durationHours"
+          ],
+          conditions: ["explicit_sky_radiation_inputs_only"],
+          scopeClassification: "heating_cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 111 relation 2.54",
+          sourceLocator: {
+            page: 111,
+            relation: "2.54",
+            subsection: "2.7.4"
+          }
+        }
+      ],
+      tableDependencies: [
+        {
+          tableReference: "2.13",
+          runtimeModule: "mc001SolarTransmissionTable2_13.mjs",
+          lookupPolicy: "explicit_glazing_type_or_explicit_range_value_only",
+          sourcePages: [83, 84]
+        },
+        {
+          tableReference: "2.16",
+          runtimeModule: "mc001SolarShadingTables.mjs",
+          lookupPolicy: "explicit_shading_device_and_mounting_side_only",
+          sourcePages: [105]
+        },
+        {
+          tableReference: "2.17",
+          runtimeModule: "mc001SolarShadingTables.mjs",
+          lookupPolicy: "explicit_obstacle_table_lookup_available_not_defaulted",
+          sourcePages: [108]
+        },
+        {
+          tableReference: "2.18",
+          runtimeModule: "mc001SolarShadingTables.mjs",
+          lookupPolicy: "explicit_obstacle_table_lookup_available_not_defaulted",
+          sourcePages: [108, 109]
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001SolarGainsCalculation.mjs",
+        implementedEntrypoint: "monthly_solar_gains_explicit_v1",
+        downstreamIntegration: ["mc001MonthlyHeatGainsCalculation.mjs"],
+        resultScope: "monthly_solar_gains_explicit_input_only_not_full_QHnd_QCnd",
+        formulaCode: "MC001_RELATION_2_36_2_38_MONTHLY_SOLAR_GAINS",
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_default_solar_irradiation",
+          "no_default_obstacle_shading",
+          "no_default_frame_fraction",
+          "no_default_sky_radiation",
+          "no_default_orientation_or_climate"
+        ]
+      },
+      remainingExplicitDependencies: [
+        "monthly_solar_irradiation_by_element_orientation_and_tilt",
+        "obstacle_shading_factor_or_explicit_table_lookup_selection",
+        "frame_fraction",
+        "sky_radiation_inputs",
+        "opaque_solar_absorptance",
+        "adjacent_unconditioned_zone_solar_gain_terms_relation_2_37"
+      ],
+      blockers: [
+        "not_full_QHnd",
+        "not_full_QCnd",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "not_CPE_certificate",
+        "no_hidden_defaults",
+        "no_default_solar_irradiation",
+        "no_default_obstacle_shading",
+        "no_default_sky_radiation",
+        "no_default_orientation_or_climate"
+      ]
+    },
+    {
       sourcePackCode: R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
       sourcePackType: SOURCE_PACK_TYPE,
       verificationStatus: R2_VERIFICATION_STATUS,
@@ -5401,6 +5638,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           107,
           108,
           109,
+          110,
+          111,
           112,
           120,
           121,
@@ -5423,9 +5662,11 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "2.28",
           "2.33",
           "2.36",
+          "2.38",
           "2.39",
           "2.40",
           "2.50",
+          "2.54",
           "2.55",
           "2.56",
           "2.57",
@@ -5469,6 +5710,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "monthly_ventilation_explicit_airflow_temperature_duration",
           "internal_gains_table_2_15_explicit_category_lookup",
           "monthly_heat_gains_explicit_internal_plus_solar_sum",
+          "monthly_solar_gains_explicit_transparent_opaque_sum",
+          "solar_sky_radiation_relation_2_54_explicit_inputs",
           "solar_shading_table_2_16_explicit_device_lookup",
           "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
           "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
@@ -5519,6 +5762,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "mc001MonthlyTransmissionEnergyCalculation.mjs",
           "mc001VentilationTransferCalculation.mjs",
           "mc001MonthlyHeatGainsCalculation.mjs",
+          "mc001SolarGainsCalculation.mjs",
           "mc001RestrictedHeatingQhndCalculation.mjs",
           "mc001CoolingUsefulDemandCalculation.mjs",
           "mc001UsefulDemandAggregation.mjs",
@@ -8780,6 +9024,79 @@ function envelopeSourcePackIssue(sourcePack, config) {
   return null;
 }
 
+function solarGainsExplicitSourcePackIssue(sourcePack) {
+  const baseIssue = sourcePackBaseIssue(sourcePack, R2_VERIFICATION_STATUS, SOURCE_PACK_TYPE);
+  if (baseIssue) {
+    return baseIssue;
+  }
+  const integration = sourcePack.runtimeIntegration;
+  const tableDependencies = sourcePack.tableDependencies;
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !==
+      "implemented_explicit_monthly_solar_gains_runtime" ||
+    !validateEnvelopeRuntimeSourceScope(
+      sourcePack.sourceScope,
+      [83, 84, 104, 105, 106, 107, 108, 109, 110, 111],
+      ["2.36", "2.38", "2.39", "2.40", "2.50", "2.54"]
+    ) ||
+    !Array.isArray(sourcePack.sourceScope.tablesVerified) ||
+    !["2.13", "2.16", "2.17", "2.18"].every((table) =>
+      sourcePack.sourceScope.tablesVerified.includes(table)
+    ) ||
+    !validateEnvelopeFormulaCandidates(
+      sourcePack.formulaCandidates,
+      "MC001_R21_",
+      6
+    ) ||
+    !Array.isArray(tableDependencies) ||
+    tableDependencies.length !== 4 ||
+    !tableDependencies.some((table) =>
+      table.tableReference === "2.13" &&
+      table.runtimeModule === "mc001SolarTransmissionTable2_13.mjs" &&
+      table.lookupPolicy === "explicit_glazing_type_or_explicit_range_value_only"
+    ) ||
+    !tableDependencies.some((table) =>
+      table.tableReference === "2.16" &&
+      table.runtimeModule === "mc001SolarShadingTables.mjs" &&
+      table.lookupPolicy === "explicit_shading_device_and_mounting_side_only"
+    ) ||
+    !isObject(integration) ||
+    integration.implementedModule !== "mc001SolarGainsCalculation.mjs" ||
+    integration.implementedEntrypoint !== "monthly_solar_gains_explicit_v1" ||
+    integration.resultScope !== "monthly_solar_gains_explicit_input_only_not_full_QHnd_QCnd" ||
+    integration.formulaCode !== "MC001_RELATION_2_36_2_38_MONTHLY_SOLAR_GAINS" ||
+    !integration.downstreamIntegration?.includes("mc001MonthlyHeatGainsCalculation.mjs") ||
+    !integration.inputPolicy?.includes("explicit_inputs_only") ||
+    !integration.inputPolicy?.includes("no_hidden_defaults") ||
+    !integration.inputPolicy?.includes("no_default_solar_irradiation") ||
+    !integration.inputPolicy?.includes("no_default_obstacle_shading") ||
+    !integration.inputPolicy?.includes("no_default_sky_radiation") ||
+    !sourcePack.remainingExplicitDependencies?.includes(
+      "monthly_solar_irradiation_by_element_orientation_and_tilt"
+    ) ||
+    !sourcePack.remainingExplicitDependencies?.includes(
+      "adjacent_unconditioned_zone_solar_gain_terms_relation_2_37"
+    ) ||
+    !Array.isArray(sourcePack.blockers) ||
+    !sourcePack.blockers.includes("not_final_energy") ||
+    !sourcePack.blockers.includes("not_primary_energy") ||
+    !sourcePack.blockers.includes("not_CO2") ||
+    !sourcePack.blockers.includes("not_CPE_certificate") ||
+    !sourcePack.blockers.includes("no_hidden_defaults") ||
+    !sourcePack.blockers.includes("no_default_solar_irradiation") ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
   const baseIssue = sourcePackBaseIssue(sourcePack, R2_VERIFICATION_STATUS);
   if (baseIssue) {
@@ -8802,6 +9119,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "monthly_solar_gains_explicit_transparent_opaque_sum",
+    "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
     "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
@@ -8834,8 +9153,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 96, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 123, 124],
-      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.23", "2.24", "2.27", "2.28", "2.40", "2.84", "2.85"]
+      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 96, 100, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 120, 121, 123, 124],
+      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.23", "2.24", "2.27", "2.28", "2.36", "2.38", "2.39", "2.40", "2.50", "2.54", "2.84", "2.85"]
     ) ||
     !isObject(map) ||
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
@@ -8846,6 +9165,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     !requiredOutOfScopeItems.every(item => map.outOfChapter2UsefulDemandScope?.includes(item)) ||
     !isObject(integration) ||
     !integration.implementedModules?.includes("mc001Chapter2UsefulDemandCalculation.mjs") ||
+    !integration.implementedModules?.includes("mc001SolarGainsCalculation.mjs") ||
     integration.implementedExport !== "chapter_2_useful_demand_explicit_v1" ||
     !integration.inputPolicy?.includes("explicit_inputs_only") ||
     !integration.inputPolicy?.includes("no_hidden_defaults") ||
@@ -9074,6 +9394,12 @@ function sourcePackIssue(sourcePack) {
     R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE
   ) {
     return chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack);
+  }
+  if (
+    sourcePack.sourcePackCode ===
+    R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE
+  ) {
+    return solarGainsExplicitSourcePackIssue(sourcePack);
   }
   return "blocked_invalid_source_pack";
 }

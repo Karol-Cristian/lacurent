@@ -50,6 +50,8 @@ const R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE =
   "MC001_R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK";
 const R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE =
   "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX";
+const R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE =
+  "MC001_R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -67,7 +69,7 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 21,
+  sourcePacks: 22,
   formulas: 10,
   constants: 1,
   concepts: 15,
@@ -231,6 +233,10 @@ function chapter2ExhaustiveCoveragePack(value = registry()) {
     R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
     value
   );
+}
+
+function solarGainsExplicitPack(value = registry()) {
+  return sourcePackByCode(R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -447,7 +453,8 @@ test("registry now contains the expected source packs", () => {
       R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
       R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
       R19_CHAPTER_2_COMPLETE_USEFUL_DEMAND_COVERAGE_SOURCE_PACK_CODE,
-      R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE
+      R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX_SOURCE_PACK_CODE,
+      R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -2400,7 +2407,25 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     pack.runtimeCalculatorStatus,
     "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer"
   );
-  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.20", "2.22", "2.23", "2.24", "2.40", "2.84", "2.85"]) {
+  for (const relation of [
+    "2.3",
+    "2.6",
+    "2.7",
+    "2.11",
+    "2.15",
+    "2.20",
+    "2.22",
+    "2.23",
+    "2.24",
+    "2.36",
+    "2.38",
+    "2.39",
+    "2.40",
+    "2.50",
+    "2.54",
+    "2.84",
+    "2.85"
+  ]) {
     assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
   }
   for (const runtimeItem of [
@@ -2416,6 +2441,8 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "monthly_solar_gains_explicit_transparent_opaque_sum",
+    "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
     "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
@@ -2473,6 +2500,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     assert.ok(pack.coverageMap.outOfChapter2UsefulDemandScope.includes(downstream), downstream);
   }
   assert.ok(pack.runtimeIntegration.implementedModules.includes("mc001Chapter2UsefulDemandCalculation.mjs"));
+  assert.ok(pack.runtimeIntegration.implementedModules.includes("mc001SolarGainsCalculation.mjs"));
   assert.equal(pack.runtimeIntegration.implementedExport, "chapter_2_useful_demand_explicit_v1");
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("separate_annualQHnd_and_annualQCnd"));
   assert.ok(pack.runtimeIntegration.outputPolicy.includes("no_certificate"));
@@ -2565,6 +2593,16 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
     "not_runtime_applicable"
   );
   assert.equal(relationById.get("MC001_RELATION_2_3").implementationStatus, "golden_covered");
+  for (const relationId of [
+    "MC001_RELATION_2_36",
+    "MC001_RELATION_2_38",
+    "MC001_RELATION_2_39",
+    "MC001_RELATION_2_50",
+    "MC001_RELATION_2_54"
+  ]) {
+    assert.equal(relationById.get(relationId).implementationStatus, "runtime_implemented");
+    assert.equal(relationById.get(relationId).runtimeRelevance, "runtime_dependency");
+  }
   assert.equal(
     relationById.get("MC001_RELATION_2_82").implementationStatus,
     "out_of_chapter_2_runtime_scope"
@@ -2638,6 +2676,95 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_20"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_21"), false);
   assert.ok(pack.blockers.includes("chapter_2_not_closed"));
+  assert.ok(pack.blockers.includes("no_hidden_defaults"));
+  assert.equal(Object.hasOwn(pack, "formulas"), false);
+});
+
+test("R21 solar gains source pack machine-encodes explicit monthly solar gains runtime", () => {
+  const pack = solarGainsExplicitPack();
+  const candidatesByCode = new Map(
+    pack.formulaCandidates.map((candidate) => [candidate.candidateCode, candidate])
+  );
+
+  assert.equal(pack.sourcePackCode, R21_SOLAR_GAINS_EXPLICIT_FORMULA_SOURCE_PACK_CODE);
+  assert.equal(pack.machineReadable, true);
+  assert.equal(pack.metadataOnly, false);
+  assert.equal(
+    pack.runtimeCalculatorStatus,
+    "implemented_explicit_monthly_solar_gains_runtime"
+  );
+  for (const relation of ["2.36", "2.38", "2.39", "2.40", "2.50", "2.54"]) {
+    assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
+  }
+  for (const table of ["2.13", "2.16", "2.17", "2.18"]) {
+    assert.ok(pack.sourceScope.tablesVerified.includes(table), table);
+  }
+  for (const page of [83, 84, 104, 105, 108, 109, 110, 111]) {
+    assert.ok(pack.sourceScope.pagesVerified.includes(page), page);
+  }
+
+  for (const candidateCode of [
+    "MC001_R21_RELATION_2_36_SOLAR_GAINS_SINGLE_ZONE",
+    "MC001_R21_RELATION_2_38_DIRECT_SOLAR_COMPONENTS",
+    "MC001_R21_RELATION_2_39_TRANSPARENT_SOLAR_GAINS",
+    "MC001_R21_RELATION_2_40_GLASS_ANGLE_CORRECTION",
+    "MC001_R21_RELATION_2_50_OPAQUE_SOLAR_GAINS",
+    "MC001_R21_RELATION_2_54_SKY_RADIATION"
+  ]) {
+    const candidate = candidatesByCode.get(candidateCode);
+    assert.ok(candidate, candidateCode);
+    assert.equal(candidate.runtimeReadiness, "verified_for_restricted_runtime");
+    assert.equal(typeof candidate.machineExpression, "string");
+    assert.ok(candidate.machineExpression.length > 0);
+    assert.equal(Array.isArray(candidate.requiredInputs), true);
+    assert.ok(candidate.requiredInputs.length > 0);
+  }
+
+  const tableByReference = new Map(
+    pack.tableDependencies.map((table) => [table.tableReference, table])
+  );
+  assert.equal(
+    tableByReference.get("2.13").runtimeModule,
+    "mc001SolarTransmissionTable2_13.mjs"
+  );
+  assert.equal(tableByReference.get("2.16").runtimeModule, "mc001SolarShadingTables.mjs");
+  assert.equal(
+    tableByReference.get("2.13").lookupPolicy,
+    "explicit_glazing_type_or_explicit_range_value_only"
+  );
+  assert.equal(
+    tableByReference.get("2.16").lookupPolicy,
+    "explicit_shading_device_and_mounting_side_only"
+  );
+
+  assert.equal(pack.runtimeIntegration.implementedModule, "mc001SolarGainsCalculation.mjs");
+  assert.equal(
+    pack.runtimeIntegration.implementedEntrypoint,
+    "monthly_solar_gains_explicit_v1"
+  );
+  assert.equal(
+    pack.runtimeIntegration.resultScope,
+    "monthly_solar_gains_explicit_input_only_not_full_QHnd_QCnd"
+  );
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("explicit_inputs_only"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_hidden_defaults"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_solar_irradiation"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_obstacle_shading"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_sky_radiation"));
+  assert.ok(
+    pack.remainingExplicitDependencies.includes(
+      "monthly_solar_irradiation_by_element_orientation_and_tilt"
+    )
+  );
+  assert.ok(
+    pack.remainingExplicitDependencies.includes(
+      "adjacent_unconditioned_zone_solar_gain_terms_relation_2_37"
+    )
+  );
+  assert.ok(pack.blockers.includes("not_final_energy"));
+  assert.ok(pack.blockers.includes("not_primary_energy"));
+  assert.ok(pack.blockers.includes("not_CO2"));
+  assert.ok(pack.blockers.includes("not_CPE_certificate"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
   assert.equal(Object.hasOwn(pack, "formulas"), false);
 });
