@@ -2353,7 +2353,8 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
   const pack = envelopeBoundaryPack();
   const byCode = new Map(pack.formulaCandidates.map(candidate => [candidate.candidateCode, candidate]));
 
-  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.15", "2.21", "2.22", "2.27"]);
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"]);
+  assert.deepEqual(pack.sourceScope.pagesVerified, [81, 82, 94, 95, 96, 100]);
   assert.equal(
     byCode.get("MC001_R18_OUTSIDE_AIR_DIRECT_HD_COMPONENT").machineExpression,
     "HdElement = U * area"
@@ -2370,9 +2371,23 @@ test("R18 envelope boundary pack keeps non-exterior corrections explicit", () =>
     byCode.get("MC001_R18_ADJACENT_SPACE_EXPLICIT_FACTOR").machineExpression,
     "HaElement = U * area * explicitBoundaryCorrectionFactor"
   );
+  assert.equal(
+    byCode.get("MC001_R18_UNHEATED_SPACE_EXPLICIT_BZTU_BALANCE").machineExpression,
+    "bztu = ((1 + explicitCztuVe) * explicitHtrUe) / (sum(explicitHztcZtu) + ((1 + explicitCztuVe) * explicitHtrUe))"
+  );
+  assert.equal(
+    byCode.get("MC001_R18_UNHEATED_SPACE_EXPLICIT_BZTU_BALANCE").runtimeReadiness,
+    "verified_for_restricted_runtime"
+  );
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_ground_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_unheated_space_factor"));
   assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_adjacent_space_factor"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_cztu_ve"));
+  assert.ok(
+    pack.runtimeIntegration.boundaryOriginCodes.includes(
+      "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance"
+    )
+  );
 });
 
 test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime coverage and gaps", () => {
@@ -2385,7 +2400,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     pack.runtimeCalculatorStatus,
     "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer"
   );
-  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.20", "2.22", "2.40", "2.84", "2.85"]) {
+  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.20", "2.22", "2.23", "2.24", "2.40", "2.84", "2.85"]) {
     assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
   }
   for (const runtimeItem of [
@@ -2404,6 +2419,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
     "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
+    "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -2438,6 +2454,14 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("air_layer_resistance_default_tables"), false);
   assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"));
   assert.ok(pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"));
+  assert.equal(
+    pack.coverageMap.ambiguousExtraction.includes("automatic_unheated_space_balance_defaults"),
+    false
+  );
+  assert.equal(
+    pack.coverageMap.ambiguousExtraction.includes("automatic_adjacent_space_balance_defaults"),
+    false
+  );
   for (const downstream of [
     "final_energy",
     "primary_energy",
@@ -2461,6 +2485,11 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.ok(
     pack.completenessAssessment.remainingGaps.includes(
       "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted"
+    )
+  );
+  assert.ok(
+    pack.completenessAssessment.remainingGaps.includes(
+      "unheated_adjacent_bztu_default_values_not_fabricated"
     )
   );
   assert.ok(pack.blockers.includes("not_certificate"));

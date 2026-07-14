@@ -554,6 +554,76 @@ await test("unheated boundary correction can be derived from explicit relation 2
   assert.equal(attic.boundaryCorrectionSourceScope, "bztu_explicit_heat_transfer_ratio_v1");
 });
 
+await test("unheated boundary correction can derive bztu from explicit relations 2.23 and 2.24 balance", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "attic-with-bztu-balance",
+        elementType: "ceiling",
+        boundaryType: "unheated_attic",
+        assemblyResult: assemblyById(assemblies, "wood-earth-ceiling"),
+        area: value(40, "m2"),
+        boundaryCorrection: {
+          mode: "bztu_explicit_ztu_balance_v1",
+          heatTransferToExteriorEnvelope: value(20, "W/K"),
+          exteriorVentilationCoefficient: value(0.5, "dimensionless"),
+          conditionedZoneHeatTransfers: [
+            value(20, "W/K"),
+            value(30, "W/K")
+          ]
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assert.equal(result.status, "ready");
+  const attic = result.elementResults[0];
+  close(attic.boundaryCorrectionHztuExteriorWK, 30);
+  close(attic.boundaryCorrectionHztuTotalWK, 80);
+  close(attic.boundaryCorrectionFactor, 0.375);
+  close(attic.contributionWK, 4.945054945054944);
+  assert.equal(
+    attic.boundaryCorrectionOrigin,
+    "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance"
+  );
+  assert.equal(
+    attic.boundaryCorrectionFormulaCode,
+    "MC001_2_22_2_23_2_24_BZTU_EXPLICIT_BALANCE"
+  );
+  assert.equal(attic.boundaryCorrectionSourceScope, "bztu_explicit_ztu_balance_v1");
+  assert.equal(attic.boundaryCorrectionExteriorVentilationCoefficient, 0.5);
+  assert.equal(attic.boundaryCorrectionConditionedZoneHeatTransferSumWK, 50);
+});
+
+await test("explicit bztu balance requires conditioned-zone transfer inputs", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "attic-missing-conditioned-transfers",
+        elementType: "ceiling",
+        boundaryType: "unheated_attic",
+        assemblyResult: assemblyById(assemblies, "wood-earth-ceiling"),
+        area: value(40, "m2"),
+        boundaryCorrection: {
+          mode: "bztu_explicit_ztu_balance_v1",
+          heatTransferToExteriorEnvelope: value(20, "W/K"),
+          exteriorVentilationCoefficient: value(0.5, "dimensionless")
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assertBlocked(result, "missing_explicit_bztu_conditioned_zone_heat_transfers");
+});
+
 await test("relation 2.22 boundary correction does not replace ground-contact factors", () => {
   const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
   const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
@@ -569,6 +639,32 @@ await test("relation 2.22 boundary correction does not replace ground-contact fa
           mode: "bztu_explicit_heat_transfer_ratio_v1",
           heatTransferToExterior: value(30, "W/K"),
           totalHeatTransfer: value(50, "W/K")
+        },
+        source: SOURCE
+      }
+    ],
+    noThermalBridges: true
+  });
+
+  assertBlocked(result, "unsupported_bztu_boundary_correction_context");
+});
+
+await test("relations 2.23 and 2.24 boundary correction do not replace ground-contact factors", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const result = calculateMc001EnvelopeTransmissionCoefficientExplicit({
+    mode: "envelope_transmission_coefficient_explicit_v1",
+    elements: [
+      {
+        elementId: "ground-with-bztu-balance",
+        elementType: "floor",
+        boundaryType: "ground",
+        assemblyResult: assemblyById(assemblies, "ground-floor-slab"),
+        area: value(40, "m2"),
+        boundaryCorrection: {
+          mode: "bztu_explicit_ztu_balance_v1",
+          heatTransferToExteriorEnvelope: value(20, "W/K"),
+          exteriorVentilationCoefficient: value(0.5, "dimensionless"),
+          conditionedZoneHeatTransfers: [value(20, "W/K")]
         },
         source: SOURCE
       }
