@@ -79,7 +79,7 @@ function finiteNonNegative(value) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
-function provenance(reference, confidence = "medium", origin = "proposed_by_typology") {
+function provenance(reference, confidence = "medium", origin = "proposed_by_typology", metadata = {}) {
   return makeEngineeringProvenance({
     origin,
     reference,
@@ -87,7 +87,8 @@ function provenance(reference, confidence = "medium", origin = "proposed_by_typo
     normativeReference:
       "P1 Building DNA explicit engineering value; Chapter 2 physics engine consumes it as input.",
     calculationSource: "resolver_model_generation_no_physics_calculation",
-    confirmationRequired: origin !== "confirmed_by_user"
+    confirmationRequired: origin !== "confirmed_by_user",
+    ...metadata
   });
 }
 
@@ -95,22 +96,43 @@ function q(amount, unit, reference, confidence = "medium", origin = "proposed_by
   return makeEngineeringQuantity(amount, unit, provenance(reference, confidence, origin));
 }
 
-function parameterValue(value, unit, reference, confidence = "high") {
+function sourceProvenance(source = {}) {
+  if (source.origin !== "demo_fixture") {
+    return {
+      origin: "confirmed_by_user",
+      confidence: "high",
+      metadata: {}
+    };
+  }
+  return {
+    origin: "demo_fixture",
+    confidence: source.confidence ?? "medium",
+    metadata: {
+      confirmationStatus: source.confirmationStatus ?? "unconfirmed_demo",
+      editable: source.editable ?? true,
+      notes: "Prefilled demonstration value; editable and not a silent default for normal projects."
+    }
+  };
+}
+
+function parameterValue(value, unit, reference, source = {}) {
+  const p = sourceProvenance(source);
   return {
     value,
     unit,
-    provenance: provenance(reference, confidence, "confirmed_by_user")
+    provenance: provenance(reference, p.confidence, p.origin, p.metadata)
   };
 }
 
-function parameterText(value, reference, confidence = "high") {
+function parameterText(value, reference, source = {}) {
+  const p = sourceProvenance(source);
   return {
     value,
-    provenance: provenance(reference, confidence, "confirmed_by_user")
+    provenance: provenance(reference, p.confidence, p.origin, p.metadata)
   };
 }
 
-function normalizeBuildingSpecificParameters(parameters = {}) {
+function normalizeBuildingSpecificParameters(parameters = {}, source = {}) {
   const output = {};
   const ref = "P2.building_specific_parameters";
   for (const [key, unit] of [
@@ -127,7 +149,7 @@ function normalizeBuildingSpecificParameters(parameters = {}) {
   ]) {
     const value = parameters?.[key];
     if (finitePositive(value)) {
-      output[key] = parameterValue(value, unit, `${ref}.${key}`);
+      output[key] = parameterValue(value, unit, `${ref}.${key}`, source);
     }
   }
   for (const key of [
@@ -138,7 +160,7 @@ function normalizeBuildingSpecificParameters(parameters = {}) {
     "basementContext"
   ]) {
     if (safeCode(parameters?.[key] ?? "", 96)) {
-      output[key] = parameterText(parameters[key], `${ref}.${key}`);
+      output[key] = parameterText(parameters[key], `${ref}.${key}`, source);
     }
   }
   return output;
@@ -630,7 +652,7 @@ function resolveBuildingDna({
       location: building?.location ?? null
     },
     typologyProposal: typologyProposal ?? null,
-    buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters),
+    buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters, source),
     renovationInterventions: deepClone(renovationInterventions ?? []),
     geometry: deepClone(geometry),
     assemblies: assemblies.value,
@@ -650,7 +672,20 @@ function resolveBuildingDna({
           "User-facing geometry answers seed the engineering geometry for review and must be confirmed for verified calculations.",
         provenance: provenance("P2.resolver.building_specific_parameters", "low")
       }
-    ],
+    ].concat(source?.origin === "demo_fixture" ? [{
+      assumptionId: "demo_fixture_values_are_unconfirmed_and_editable",
+      text:
+        "Demo mode prefilled this Building DNA from an explicit fixture. Values are editable and are not used as defaults for normal projects.",
+      provenance: provenance(
+        source.reference,
+        source.confidence ?? "medium",
+        "demo_fixture",
+        {
+          confirmationStatus: source.confirmationStatus ?? "unconfirmed_demo",
+          editable: source.editable ?? true
+        }
+      )
+    }] : []),
     warnings: [
       warning("building_dna_contains_unconfirmed_typology_proposals")
     ],
@@ -658,6 +693,13 @@ function resolveBuildingDna({
       "confirm_engineering_model"
     ],
     overrides: [],
+    demoFixture: source?.origin === "demo_fixture" ? {
+      fixtureId: source.fixtureId ?? null,
+      origin: "demo_fixture",
+      confirmationStatus: source.confirmationStatus ?? "unconfirmed_demo",
+      editable: source.editable ?? true,
+      confidence: source.confidence ?? "medium"
+    } : null,
     diagnostics: {
       blockers: [],
       methodologyLimits: [

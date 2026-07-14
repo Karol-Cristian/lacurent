@@ -125,9 +125,32 @@
 <p>Raspunsurile tale trec printr-un flux verificabil: descriere, tipologie, parametri, interventii, ansambluri, materiale, Building DNA si apoi motorul Chapter 2 validat. Inainte de calcul poti vedea ce a fost presupus automat si ce trebuie confirmat.</p>
 </section>
 
+<section class="dashboard-band demo-mode-controls" id="demoModeControls">
+<div class="section-heading">
+<span class="small-label">DEMO REVIZUIBIL</span>
+<h2>Deschide rapid un proiect tehnic complet.</h2>
+</div>
+<p>Exemplul demonstrativ precompleteaza formularul cu o casa coerenta si genereaza imediat Building DNA, calculul Chapter 2 si raportul tehnic. Valorile raman editabile si nu devin valori implicite pentru proiecte normale.</p>
+<div class="hero-buttons demo-action-row">
+<button class="primary-btn" id="loadDemoModeBtn" type="button">Încarcă exemplu demonstrativ</button>
+<button class="secondary-btn" id="startBlankProjectBtn" type="button">Începe proiect gol</button>
+<button class="secondary-btn" id="resetDemoModeBtn" type="button">Resetează exemplul</button>
+</div>
+</section>
+
+<section class="dashboard-band demo-mode-banner" id="demoModeBanner" hidden>
+<div>
+<strong>Mod demonstrativ — valorile sunt precompletate și pot fi modificate.</strong>
+<p>Fiecare valoare demo este marcată ca neconfirmată și rămâne editabilă.</p>
+</div>
+<button class="secondary-btn" id="exitDemoModeBtn" type="button">Iesi din demo</button>
+</section>
+
 <form id="houseForm" hidden>
 <input type="hidden" name="user_type" value="residential">
 <input type="hidden" name="real_consumption_mode" value="simple">
+<input type="hidden" name="building_platform_demo_mode" value="">
+<input type="hidden" name="building_platform_demo_fixture_id" value="">
 
 <div class="step active">
 <h2>Date generale</h2>

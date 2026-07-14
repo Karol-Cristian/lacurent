@@ -385,11 +385,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function openDemoTechnicalReportIfReady() {
+    if (houseForm.dataset.demoMode !== "1" || current !== steps.length - 1) return;
+    window.LaCurentBuildingPlatformWizard?.generateBuildingPlatformTechnicalReport?.(document, {
+      openReport: true,
+      scrollToReport: true
+    });
+  }
+
   nextBtn.addEventListener("click", () => {
     if (!validateCurrentStep()) return;
     if (current < steps.length - 1) {
       current++;
       showStep();
+      openDemoTechnicalReportIfReady();
     }
   });
 

@@ -4643,6 +4643,50 @@ margin:8px 0 0;
 color:#64748b;
 }
 
+.demo-mode-controls{
+display:grid;
+gap:12px;
+}
+
+.demo-action-row{
+justify-content:flex-start;
+gap:10px;
+}
+
+.demo-mode-banner{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:14px;
+border-color:#94a3b8;
+background:#f8fafc;
+}
+
+.demo-mode-banner[hidden]{
+display:none;
+}
+
+.demo-mode-banner strong{
+display:block;
+color:#0f172a;
+font-size:16px;
+line-height:1.35;
+}
+
+.demo-mode-banner p{
+margin:4px 0 0;
+color:#475569;
+}
+
+.technical-report-success{
+padding:10px 12px;
+border:1px solid #bbf7d0;
+border-radius:8px;
+background:#f0fdf4;
+color:#166534;
+font-weight:900;
+}
+
 .physics-source-panel .technical-status-grid{
 margin-bottom:16px;
 }
@@ -5629,6 +5673,16 @@ gap:6px;
 .technical-workspace-tabs a{
 font-size:11px;
 min-height:32px;
+}
+
+.demo-mode-banner{
+align-items:flex-start;
+flex-direction:column;
+}
+
+.demo-action-row{
+align-items:stretch;
+flex-direction:column;
 }
 
 .technical-file-map code{
