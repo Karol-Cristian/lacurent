@@ -78,6 +78,13 @@ function assertBlocked(result, code = null) {
   }
 }
 
+function assertApprox(actual, expected, tolerance = 1e-9) {
+  assert.ok(
+    Math.abs(actual - expected) <= tolerance,
+    `expected ${actual} to be within ${tolerance} of ${expected}`
+  );
+}
+
 await test("single January case sums explicit internal and solar gains", () => {
   const result = calculateMc001MonthlyHeatGainsExplicit(input());
 
@@ -126,6 +133,183 @@ await test("solar gains can come from source-backed monthly solar gains result",
   assert.equal(result.summary.annualQHgn, 531.96);
 });
 
+await test("adjacent unconditioned zone gains apply relations 2.34 and 2.37 with explicit factors", () => {
+  const result = calculateMc001MonthlyHeatGainsExplicit(input([
+    sampleCase({
+      adjacentUnconditionedZones: [
+        {
+          zoneId: "sunspace-a",
+          internalGains: 50,
+          solarGains: 100,
+          bztu: 0.4,
+          distributionFactor: 0.5,
+          gainReductionFactor: 0.8
+        }
+      ]
+    })
+  ]));
+
+  const caseResult = result.caseResults[0];
+  const zone = caseResult.adjacentUnconditionedZoneResults[0];
+
+  assert.equal(result.status, "ready");
+  assert.equal(caseResult.directInternalGains, 120);
+  assert.equal(caseResult.directSolarGains, 180);
+  assert.equal(caseResult.adjacentInternalGains, 12);
+  assert.equal(caseResult.adjacentSolarGains, 24);
+  assert.equal(caseResult.internalGains, 132);
+  assert.equal(caseResult.solarGains, 204);
+  assert.equal(caseResult.qHgn, 336);
+  assert.equal(caseResult.internalGainsOrigin, "calculated_with_adjacent_unconditioned_zone_relation_2_34");
+  assert.equal(caseResult.solarGainsOrigin, "calculated_with_adjacent_unconditioned_zone_relation_2_37");
+  assert.equal(
+    caseResult.adjacentUnconditionedGainsFormulaCode,
+    "MC001_RELATION_2_34_2_37_ADJACENT_UNCONDITIONED_ZONE_GAINS"
+  );
+  assert.equal(zone.zoneId, "sunspace-a");
+  assert.equal(zone.bztuOrigin, "explicit_input");
+  assert.equal(zone.distributionFactorOrigin, "explicit_input");
+  assert.equal(zone.gainReductionFactorOrigin, "explicit_input");
+  assert.equal(zone.internalGainContribution, 12);
+  assert.equal(zone.solarGainContribution, 24);
+});
+
+await test("adjacent unconditioned zone relation 2.51 calculates single-zone gain reduction from explicit inputs", () => {
+  const result = calculateMc001MonthlyHeatGainsExplicit(input([
+    sampleCase({
+      internalGains: 10,
+      solarGains: 20,
+      adjacentUnconditionedZones: [
+        {
+          zoneId: "external-buffer-single",
+          internalGains: 50,
+          solarGains: 100,
+          bztu: 0.4,
+          distributionFactorInput: {
+            mode: "single_adjacent_conditioned_zone_v1",
+            singleAdjacentConditionedZoneConfirmed: true
+          },
+          gainReductionFactorInput: {
+            mode: "external_single_adjacent_conditioned_zone_explicit_v1",
+            heatTransferCoefficientToConditionedZone: 50,
+            internalSetpointTemperature: 25,
+            exteriorAirTemperature: 15,
+            durationHours: 720
+          }
+        }
+      ]
+    })
+  ]));
+
+  const caseResult = result.caseResults[0];
+  const zone = caseResult.adjacentUnconditionedZoneResults[0];
+
+  assert.equal(result.status, "ready");
+  assertApprox(zone.gainReductionFactor, 0.96);
+  assert.equal(
+    zone.gainReductionFormulaCode,
+    "MC001_RELATION_2_51_SINGLE_ADJACENT_ZONE_GAIN_REDUCTION"
+  );
+  assert.equal(
+    zone.distributionFormulaCode,
+    "MC001_FIGURE_2_8_SINGLE_ADJACENT_DISTRIBUTION_FACTOR"
+  );
+  assertApprox(caseResult.adjacentInternalGains, 28.8);
+  assertApprox(caseResult.adjacentSolarGains, 57.6);
+  assertApprox(caseResult.internalGains, 38.8);
+  assertApprox(caseResult.solarGains, 77.6);
+  assertApprox(caseResult.qHgn, 116.4);
+});
+
+await test("adjacent unconditioned zone relation 2.52 calculates multiple-zone gain reduction from explicit inputs", () => {
+  const result = calculateMc001MonthlyHeatGainsExplicit(input([
+    sampleCase({
+      internalGains: 0,
+      solarGains: 0,
+      adjacentUnconditionedZones: [
+        {
+          zoneId: "external-buffer-multiple",
+          internalGains: 100,
+          solarGains: 200,
+          bztu: 0.4,
+          distributionFactorInput: {
+            mode: "explicit_heat_transfer_share_v1",
+            heatTransferCoefficientToTargetConditionedZone: 40,
+            totalHeatTransferCoefficientToConditionedZones: 100
+          },
+          gainReductionFactorInput: {
+            mode: "external_multiple_adjacent_conditioned_zones_explicit_v1",
+            exteriorAirTemperature: 5,
+            durationHours: 720,
+            conditionedZoneHeatTransfers: [
+              { heatTransferCoefficient: 30, internalSetpointTemperature: 20 },
+              { heatTransferCoefficient: 20, internalSetpointTemperature: 18 }
+            ]
+          }
+        }
+      ]
+    })
+  ]));
+
+  const caseResult = result.caseResults[0];
+  const zone = caseResult.adjacentUnconditionedZoneResults[0];
+
+  assert.equal(result.status, "ready");
+  assertApprox(zone.gainReductionFactor, 0.6816);
+  assert.equal(
+    zone.gainReductionFormulaCode,
+    "MC001_RELATION_2_52_MULTIPLE_ADJACENT_ZONES_GAIN_REDUCTION"
+  );
+  assert.equal(zone.distributionFactor, 0.4);
+  assertApprox(caseResult.adjacentInternalGains, 16.3584);
+  assertApprox(caseResult.adjacentSolarGains, 32.7168);
+  assertApprox(caseResult.qHgn, 49.0752);
+});
+
+await test("adjacent internal unconditioned zone relation 2.53 uses explicit insignificant-gains confirmation", () => {
+  const result = calculateMc001MonthlyHeatGainsExplicit(input([
+    sampleCase({
+      internalGains: 0,
+      solarGains: 0,
+      adjacentUnconditionedZones: [
+        {
+          zoneId: "internal-buffer",
+          internalGains: 40,
+          solarGains: 60,
+          bztuInput: {
+            mode: "bztu_explicit_heat_transfer_ratio_v1",
+            heatTransferToExterior: 25,
+            totalHeatTransfer: 100
+          },
+          distributionFactorInput: {
+            mode: "single_adjacent_conditioned_zone_v1",
+            singleAdjacentConditionedZoneConfirmed: true
+          },
+          gainReductionFactorInput: {
+            mode: "internal_unconditioned_zone_insignificant_gains_v1",
+            insignificantGainsConfirmed: true
+          }
+        }
+      ]
+    })
+  ]));
+
+  const caseResult = result.caseResults[0];
+  const zone = caseResult.adjacentUnconditionedZoneResults[0];
+
+  assert.equal(result.status, "ready");
+  assert.equal(zone.bztu, 0.25);
+  assert.equal(zone.bztuFormulaCode, "MC001_2_22_BZTU_CORRECTION_FACTOR");
+  assert.equal(zone.gainReductionFactor, 1);
+  assert.equal(
+    zone.gainReductionFormulaCode,
+    "MC001_RELATION_2_53_INTERNAL_UNCONDITIONED_ZONE_GAIN_REDUCTION"
+  );
+  assert.equal(caseResult.adjacentInternalGains, 30);
+  assert.equal(caseResult.adjacentSolarGains, 45);
+  assert.equal(caseResult.qHgn, 75);
+});
+
 await test("rejects ambiguous direct solar gains plus solar gains result", () => {
   assertBlocked(
     calculateMc001MonthlyHeatGainsExplicit(input([
@@ -154,6 +338,88 @@ await test("rejects invalid solar gains result source", () => {
       })
     ])),
     "monthly_heat_gains_solar_gains_result_month_mismatch"
+  );
+});
+
+await test("rejects invalid adjacent unconditioned zone inputs deterministically", () => {
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({
+        adjacentUnconditionedZones: [
+          {
+            zoneId: "missing-bztu",
+            internalGains: 10,
+            solarGains: 20,
+            distributionFactor: 1,
+            gainReductionFactor: 1
+          }
+        ]
+      })
+    ])),
+    "monthly_heat_gains_missing_explicit_bztu"
+  );
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({
+        adjacentUnconditionedZones: [
+          {
+            zoneId: "ambiguous-reduction",
+            internalGains: 10,
+            solarGains: 20,
+            bztu: 0.4,
+            distributionFactor: 1,
+            gainReductionFactor: 1,
+            gainReductionFactorInput: {
+              mode: "internal_unconditioned_zone_insignificant_gains_v1",
+              insignificantGainsConfirmed: true
+            }
+          }
+        ]
+      })
+    ])),
+    "monthly_heat_gains_ambiguous_gain_reduction_factor_source"
+  );
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({
+        adjacentUnconditionedZones: [
+          {
+            zoneId: "missing-confirmation",
+            internalGains: 10,
+            solarGains: 20,
+            bztu: 0.4,
+            distributionFactorInput: {
+              mode: "single_adjacent_conditioned_zone_v1"
+            },
+            gainReductionFactor: 1
+          }
+        ]
+      })
+    ])),
+    "monthly_heat_gains_missing_single_adjacent_zone_confirmation"
+  );
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({
+        adjacentUnconditionedZones: [
+          {
+            zoneId: "zero-denominator",
+            internalGains: 0,
+            solarGains: 0,
+            bztu: 0.4,
+            distributionFactor: 1,
+            gainReductionFactorInput: {
+              mode: "external_single_adjacent_conditioned_zone_explicit_v1",
+              heatTransferCoefficientToConditionedZone: 50,
+              internalSetpointTemperature: 20,
+              exteriorAirTemperature: 0,
+              durationHours: 720
+            }
+          }
+        ]
+      })
+    ])),
+    "monthly_heat_gains_invalid_gain_reduction_zero_gain_denominator"
   );
 });
 
@@ -271,6 +537,7 @@ await test("rejects client supplied derived fields", () => {
     input([sampleCase()], { result: { qHgn: 300 } }),
     input([sampleCase()], { totalGains: 300 }),
     input([sampleCase()], { heatGainsResult: { summary: {} } }),
+    input([sampleCase({ adjacentUnconditionedZoneResults: [] })]),
     input([sampleCase()], { solarGainsResult: { summary: {} } })
   ];
 
@@ -295,6 +562,14 @@ await test("diagnostics state explicit restricted heat gains scope", () => {
     "not_CO2",
     "not_certificate",
     "no_hidden_defaults"
+  ]) {
+    assert.equal(result.diagnostics.methodologyLimits.includes(limit), true, `missing ${limit}`);
+  }
+  for (const limit of [
+    "adjacent_unconditioned_zone_gains_allowed_when_explicit_source_backed",
+    "no_default_bztu",
+    "no_default_distribution_factor",
+    "no_default_gain_reduction_factor"
   ]) {
     assert.equal(result.diagnostics.methodologyLimits.includes(limit), true, `missing ${limit}`);
   }

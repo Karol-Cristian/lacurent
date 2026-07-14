@@ -712,6 +712,15 @@ function extractQHgn(inputCase) {
       qHgnOrigin: "calculated_from_explicit_monthly_heat_gains_result",
       ...(finiteNumber(heatGainsCase.internalGains) === null ? {} : { internalGains: heatGainsCase.internalGains }),
       ...(finiteNumber(heatGainsCase.solarGains) === null ? {} : { solarGains: heatGainsCase.solarGains }),
+      ...(finiteNumber(heatGainsCase.adjacentInternalGains) === null ? {} : {
+        adjacentInternalGains: heatGainsCase.adjacentInternalGains
+      }),
+      ...(finiteNumber(heatGainsCase.adjacentSolarGains) === null ? {} : {
+        adjacentSolarGains: heatGainsCase.adjacentSolarGains
+      }),
+      ...(heatGainsCase.adjacentUnconditionedGainsFormulaCode === undefined ? {} : {
+        adjacentUnconditionedGainsFormulaCode: heatGainsCase.adjacentUnconditionedGainsFormulaCode
+      }),
       heatGainsFormulaCode: heatGainsCase.formulaCode,
       heatGainsScope: heatGainsCase.scope
     }
@@ -814,6 +823,15 @@ function validateCase(inputCase) {
         qHgnOrigin: qHgnSource.value.qHgnOrigin,
         ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
         ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
+        ...(qHgnSource.value.adjacentInternalGains === undefined ? {} : {
+          adjacentInternalGains: qHgnSource.value.adjacentInternalGains
+        }),
+        ...(qHgnSource.value.adjacentSolarGains === undefined ? {} : {
+          adjacentSolarGains: qHgnSource.value.adjacentSolarGains
+        }),
+        ...(qHgnSource.value.adjacentUnconditionedGainsFormulaCode === undefined ? {} : {
+          adjacentUnconditionedGainsFormulaCode: qHgnSource.value.adjacentUnconditionedGainsFormulaCode
+        }),
         ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
         ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
         gammaH,
@@ -840,6 +858,15 @@ function validateCase(inputCase) {
         qHgnOrigin: qHgnSource.value.qHgnOrigin,
         ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
         ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
+        ...(qHgnSource.value.adjacentInternalGains === undefined ? {} : {
+          adjacentInternalGains: qHgnSource.value.adjacentInternalGains
+        }),
+        ...(qHgnSource.value.adjacentSolarGains === undefined ? {} : {
+          adjacentSolarGains: qHgnSource.value.adjacentSolarGains
+        }),
+        ...(qHgnSource.value.adjacentUnconditionedGainsFormulaCode === undefined ? {} : {
+          adjacentUnconditionedGainsFormulaCode: qHgnSource.value.adjacentUnconditionedGainsFormulaCode
+        }),
         ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
         ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
         gammaH,
@@ -933,6 +960,15 @@ function validateCase(inputCase) {
       qHgnOrigin: qHgnSource.value.qHgnOrigin,
       ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
       ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
+      ...(qHgnSource.value.adjacentInternalGains === undefined ? {} : {
+        adjacentInternalGains: qHgnSource.value.adjacentInternalGains
+      }),
+      ...(qHgnSource.value.adjacentSolarGains === undefined ? {} : {
+        adjacentSolarGains: qHgnSource.value.adjacentSolarGains
+      }),
+      ...(qHgnSource.value.adjacentUnconditionedGainsFormulaCode === undefined ? {} : {
+        adjacentUnconditionedGainsFormulaCode: qHgnSource.value.adjacentUnconditionedGainsFormulaCode
+      }),
       ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
       ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
       gammaH,

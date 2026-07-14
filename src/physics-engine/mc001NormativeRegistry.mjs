@@ -553,10 +553,14 @@ const CHAPTER_2_IMPLEMENTED_RELATIONS = new Set([
   "2.34",
   "2.35",
   "2.36",
+  "2.37",
   "2.38",
   "2.39",
   "2.40",
   "2.50",
+  "2.51",
+  "2.52",
+  "2.53",
   "2.54",
   "2.55",
   "2.56",
@@ -2804,11 +2808,11 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           relationNumberAvailable: true,
           expressionText:
             "QH/C;int;ztc;m = QH/C;int;dir;ztc;m + sum_k((1 - bztu,k;m) * Fztc;ztu,k;m * fgn;max;H;ztu,k;m * QH/C;int;dir;ztu,k;m)",
-          sourceReference: "MC001-2022 page 104 relation 2.34",
-          readinessStatus: "needs_human_visual_review",
-          note: "Adjacent-zone bztu/distribution/reduction values are not encoded in this pack.",
+          sourceReference: "MC001-2022 page 102 relation 2.34",
+          readinessStatus: "verified_for_restricted_runtime_with_explicit_adjacent_zone_inputs",
+          note: "Runtime uses explicit or source-backed bztu, distribution, and gain-reduction inputs.",
           sourceLocator: {
-            page: 104,
+            page: 102,
             relation: "2.34",
             subsection: "2.7.2"
           }
@@ -2848,8 +2852,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           expressionText:
             "QH/C;sol;ztc;m = QH/C;sol;dir;ztc;m + sum_k((1 - bztu,k;m) * Fztc;ztu,k;m * fgn;max;H;ztu,k;m * QH/C;sol;dir;ztu,k;m)",
           sourceReference: "MC001-2022 page 104 relation 2.37",
-          readinessStatus: "needs_human_visual_review",
-          note: "Adjacent-zone bztu/distribution/reduction values are not encoded in this pack.",
+          readinessStatus: "verified_for_restricted_runtime_with_explicit_adjacent_zone_inputs",
+          note: "Runtime uses explicit or source-backed bztu, distribution, and gain-reduction inputs.",
           sourceLocator: {
             page: 104,
             relation: "2.37",
@@ -5369,15 +5373,27 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       metadataOnly: false,
       machineReadable: true,
       runtimeCalculatorStatus:
-        "implemented_explicit_monthly_solar_gains_runtime",
+        "implemented_explicit_monthly_solar_gains_and_adjacent_zone_gain_runtime",
       sourceScope: {
         chapter: "Capitolul 2. Anvelopa termica a cladirii",
-        section: "2.7.3 Aporturi solare si 2.7.4 radiatia termica catre cer",
-        parentSectionsVerified: ["2.4.2", "2.7.3", "2.7.4"],
-        pagesVerified: [83, 84, 104, 105, 106, 107, 108, 109, 110, 111],
+        section: "2.7.2 Aporturi interne, 2.7.3 Aporturi solare si 2.7.4 radiatia termica catre cer",
+        parentSectionsVerified: ["2.4.2", "2.7.2", "2.7.3", "2.7.4"],
+        pagesVerified: [83, 84, 102, 104, 105, 106, 107, 108, 109, 110, 111],
         figuresVerified: ["2.13"],
         tablesVerified: ["2.13", "2.16", "2.17", "2.18"],
-        relationsVerified: ["2.36", "2.38", "2.39", "2.40", "2.50", "2.54"],
+        relationsVerified: [
+          "2.34",
+          "2.36",
+          "2.37",
+          "2.38",
+          "2.39",
+          "2.40",
+          "2.50",
+          "2.51",
+          "2.52",
+          "2.53",
+          "2.54"
+        ],
         extractionMethods: [
           "page.get_text(text)",
           "page.get_text(blocks)",
@@ -5402,6 +5418,35 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           sourceLocator: {
             page: 104,
             relation: "2.36",
+            subsection: "2.7.3"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_37_SOLAR_GAINS_ADJACENT_ZTU",
+          relationReference: "2.37",
+          expressionText:
+            "QH/C;sol;ztc;m = QH/C;sol;dir;ztc;m + sum_k((1 - bztu,k;m) * Fztc;ztu,k;m * fgn;max;H;ztu,k;m * QH/C;sol;dir;ztu,k;m)",
+          machineExpression:
+            "solarGains = directSolarGains + sum(adjacentZones.map((1 - bztu) * distributionFactor * gainReductionFactor * adjacentSolarGains))",
+          outputSymbol: "QH/C;sol;ztc;m",
+          outputUnit: "kWh",
+          requiredInputs: [
+            "QH/C;sol;dir;ztc;m",
+            "adjacentZones[].bztu",
+            "adjacentZones[].FztcZtu",
+            "adjacentZones[].fgnMaxH",
+            "adjacentZones[].QH/C;sol;dir;ztu"
+          ],
+          conditions: [
+            "one_or_more_adjacent_unconditioned_zones",
+            "bztu_distribution_and_reduction_inputs_explicit_or_source_backed"
+          ],
+          scopeClassification: "heating_cooling_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 104 relation 2.37",
+          sourceLocator: {
+            page: 104,
+            relation: "2.37",
             subsection: "2.7.3"
           }
         },
@@ -5498,6 +5543,83 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           }
         },
         {
+          candidateCode: "MC001_R21_RELATION_2_51_SINGLE_ADJACENT_ZONE_GAIN_REDUCTION",
+          relationReference: "2.51",
+          expressionText:
+            "fgn;max;H;ztu;m = bztu;m * Hztc;ztu;m * (thetaint;set;H;ztc;m - thetae;a;m) * 0.001 * tm / (QH;int;ztu;m + QH;sol;ztu;m)",
+          machineExpression:
+            "gainReductionFactor = bztu * heatTransferCoefficientToConditionedZone * (internalSetpointTemperature - exteriorAirTemperature) * 0.001 * durationHours / (adjacentInternalGains + adjacentSolarGains)",
+          outputSymbol: "fgn;max;H;ztu;m",
+          outputUnit: "dimensionless",
+          requiredInputs: [
+            "bztu",
+            "heatTransferCoefficientToConditionedZone",
+            "internalSetpointTemperature",
+            "exteriorAirTemperature",
+            "durationHours",
+            "adjacentInternalGains",
+            "adjacentSolarGains"
+          ],
+          conditions: ["external_unconditioned_zone_with_single_adjacent_conditioned_zone"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 110 relation 2.51",
+          sourceLocator: {
+            page: 110,
+            relation: "2.51",
+            subsection: "2.7.3.2"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_52_MULTIPLE_ADJACENT_ZONES_GAIN_REDUCTION",
+          relationReference: "2.52",
+          expressionText:
+            "fgn;max;H;ztu;m = bztu,k;m * sum_ztc(Hztc;ztu;m * (thetaint;set;H;ztc;m - thetae;a;m)) * 0.001 * tm / (QH;int;ztu;m + QH;sol;ztu;m)",
+          machineExpression:
+            "gainReductionFactor = bztu * sum(conditionedZones.map(HztcZtu * (internalSetpointTemperature - exteriorAirTemperature))) * 0.001 * durationHours / (adjacentInternalGains + adjacentSolarGains)",
+          outputSymbol: "fgn;max;H;ztu;m",
+          outputUnit: "dimensionless",
+          requiredInputs: [
+            "bztu",
+            "conditionedZones[].heatTransferCoefficient",
+            "conditionedZones[].internalSetpointTemperature",
+            "exteriorAirTemperature",
+            "durationHours",
+            "adjacentInternalGains",
+            "adjacentSolarGains"
+          ],
+          conditions: ["external_unconditioned_zone_with_multiple_adjacent_conditioned_zones"],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 110 relation 2.52",
+          sourceLocator: {
+            page: 110,
+            relation: "2.52",
+            subsection: "2.7.3.2"
+          }
+        },
+        {
+          candidateCode: "MC001_R21_RELATION_2_53_INTERNAL_ZTU_GAIN_REDUCTION",
+          relationReference: "2.53",
+          expressionText: "fgn;max;H;ztu;m = 1",
+          machineExpression: "gainReductionFactor = 1",
+          outputSymbol: "fgn;max;H;ztu;m",
+          outputUnit: "dimensionless",
+          requiredInputs: ["explicit_insignificant_gains_confirmation"],
+          conditions: [
+            "internal_unconditioned_zone",
+            "applicable_only_for_insignificant_gains"
+          ],
+          scopeClassification: "heating_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 111 relation 2.53",
+          sourceLocator: {
+            page: 111,
+            relation: "2.53",
+            subsection: "2.7.3.2"
+          }
+        },
+        {
           candidateCode: "MC001_R21_RELATION_2_54_SKY_RADIATION",
           relationReference: "2.54",
           expressionText:
@@ -5556,6 +5678,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         implementedModule: "mc001SolarGainsCalculation.mjs",
         implementedEntrypoint: "monthly_solar_gains_explicit_v1",
         downstreamIntegration: ["mc001MonthlyHeatGainsCalculation.mjs"],
+        adjacentZoneGainIntegrationModule: "mc001MonthlyHeatGainsCalculation.mjs",
+        adjacentZoneGainFormulaCode:
+          "MC001_RELATION_2_34_2_37_ADJACENT_UNCONDITIONED_ZONE_GAINS",
         resultScope: "monthly_solar_gains_explicit_input_only_not_full_QHnd_QCnd",
         formulaCode: "MC001_RELATION_2_36_2_38_MONTHLY_SOLAR_GAINS",
         inputPolicy: [
@@ -5573,8 +5698,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "obstacle_shading_factor_or_explicit_table_lookup_selection",
         "frame_fraction",
         "sky_radiation_inputs",
-        "opaque_solar_absorptance",
-        "adjacent_unconditioned_zone_solar_gain_terms_relation_2_37"
+        "opaque_solar_absorptance"
       ],
       blockers: [
         "not_full_QHnd",
@@ -5631,6 +5755,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           96,
           100,
           101,
+          102,
           103,
           104,
           105,
@@ -5661,11 +5786,16 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "2.27",
           "2.28",
           "2.33",
+          "2.34",
           "2.36",
+          "2.37",
           "2.38",
           "2.39",
           "2.40",
           "2.50",
+          "2.51",
+          "2.52",
+          "2.53",
           "2.54",
           "2.55",
           "2.56",
@@ -5710,6 +5840,9 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "monthly_ventilation_explicit_airflow_temperature_duration",
           "internal_gains_table_2_15_explicit_category_lookup",
           "monthly_heat_gains_explicit_internal_plus_solar_sum",
+          "adjacent_unconditioned_zone_internal_gains_relation_2_34_explicit_inputs",
+          "adjacent_unconditioned_zone_solar_gains_relation_2_37_explicit_inputs",
+          "adjacent_unconditioned_zone_gain_reduction_relations_2_51_2_52_2_53_explicit_inputs",
           "monthly_solar_gains_explicit_transparent_opaque_sum",
           "solar_sky_radiation_relation_2_54_explicit_inputs",
           "solar_shading_table_2_16_explicit_device_lookup",
@@ -7231,7 +7364,11 @@ function validateGainsCapacityFormulaCandidates(candidates) {
       "verified_for_future_runtime_with_explicit_inputs",
       103
     ],
-    ["MC001_R6_RELATION_2_34_INTERNAL_GAINS_ZTU_ADJACENT", "needs_human_visual_review", 104],
+    [
+      "MC001_R6_RELATION_2_34_INTERNAL_GAINS_ZTU_ADJACENT",
+      "verified_for_restricted_runtime_with_explicit_adjacent_zone_inputs",
+      102
+    ],
     [
       "MC001_R6_RELATION_2_35_DIRECT_INTERNAL_GAINS_COMPONENTS",
       "referenced_but_not_transcribed",
@@ -7242,7 +7379,11 @@ function validateGainsCapacityFormulaCandidates(candidates) {
       "verified_for_future_runtime_with_explicit_inputs",
       104
     ],
-    ["MC001_R6_RELATION_2_37_SOLAR_GAINS_ZTU_ADJACENT", "needs_human_visual_review", 104],
+    [
+      "MC001_R6_RELATION_2_37_SOLAR_GAINS_ZTU_ADJACENT",
+      "verified_for_restricted_runtime_with_explicit_adjacent_zone_inputs",
+      104
+    ],
     [
       "MC001_R6_RELATION_2_38_DIRECT_SOLAR_GAINS_COMPONENTS",
       "verified_for_future_runtime_with_explicit_inputs",
@@ -7284,6 +7425,7 @@ function validateGainsCapacityFormulaCandidates(candidates) {
       !sourceLocatorLooksValid(candidate.sourceLocator, page) ||
       ![
         "verified_for_future_runtime_with_explicit_inputs",
+        "verified_for_restricted_runtime_with_explicit_adjacent_zone_inputs",
         "needs_human_visual_review",
         "referenced_but_not_transcribed"
       ].includes(candidate.readinessStatus) ||
@@ -9035,11 +9177,11 @@ function solarGainsExplicitSourcePackIssue(sourcePack) {
     sourcePack.metadataOnly !== false ||
     sourcePack.machineReadable !== true ||
     sourcePack.runtimeCalculatorStatus !==
-      "implemented_explicit_monthly_solar_gains_runtime" ||
+      "implemented_explicit_monthly_solar_gains_and_adjacent_zone_gain_runtime" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [83, 84, 104, 105, 106, 107, 108, 109, 110, 111],
-      ["2.36", "2.38", "2.39", "2.40", "2.50", "2.54"]
+      [83, 84, 102, 104, 105, 106, 107, 108, 109, 110, 111],
+      ["2.34", "2.36", "2.37", "2.38", "2.39", "2.40", "2.50", "2.51", "2.52", "2.53", "2.54"]
     ) ||
     !Array.isArray(sourcePack.sourceScope.tablesVerified) ||
     !["2.13", "2.16", "2.17", "2.18"].every((table) =>
@@ -9048,7 +9190,7 @@ function solarGainsExplicitSourcePackIssue(sourcePack) {
     !validateEnvelopeFormulaCandidates(
       sourcePack.formulaCandidates,
       "MC001_R21_",
-      6
+      10
     ) ||
     !Array.isArray(tableDependencies) ||
     tableDependencies.length !== 4 ||
@@ -9068,6 +9210,9 @@ function solarGainsExplicitSourcePackIssue(sourcePack) {
     integration.resultScope !== "monthly_solar_gains_explicit_input_only_not_full_QHnd_QCnd" ||
     integration.formulaCode !== "MC001_RELATION_2_36_2_38_MONTHLY_SOLAR_GAINS" ||
     !integration.downstreamIntegration?.includes("mc001MonthlyHeatGainsCalculation.mjs") ||
+    integration.adjacentZoneGainIntegrationModule !== "mc001MonthlyHeatGainsCalculation.mjs" ||
+    integration.adjacentZoneGainFormulaCode !==
+      "MC001_RELATION_2_34_2_37_ADJACENT_UNCONDITIONED_ZONE_GAINS" ||
     !integration.inputPolicy?.includes("explicit_inputs_only") ||
     !integration.inputPolicy?.includes("no_hidden_defaults") ||
     !integration.inputPolicy?.includes("no_default_solar_irradiation") ||
@@ -9076,7 +9221,7 @@ function solarGainsExplicitSourcePackIssue(sourcePack) {
     !sourcePack.remainingExplicitDependencies?.includes(
       "monthly_solar_irradiation_by_element_orientation_and_tilt"
     ) ||
-    !sourcePack.remainingExplicitDependencies?.includes(
+    sourcePack.remainingExplicitDependencies?.includes(
       "adjacent_unconditioned_zone_solar_gain_terms_relation_2_37"
     ) ||
     !Array.isArray(sourcePack.blockers) ||
@@ -9119,6 +9264,9 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "adjacent_unconditioned_zone_internal_gains_relation_2_34_explicit_inputs",
+    "adjacent_unconditioned_zone_solar_gains_relation_2_37_explicit_inputs",
+    "adjacent_unconditioned_zone_gain_reduction_relations_2_51_2_52_2_53_explicit_inputs",
     "monthly_solar_gains_explicit_transparent_opaque_sum",
     "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
@@ -9153,8 +9301,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 96, 100, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 120, 121, 123, 124],
-      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.23", "2.24", "2.27", "2.28", "2.36", "2.38", "2.39", "2.40", "2.50", "2.54", "2.84", "2.85"]
+      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 96, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 120, 121, 123, 124],
+      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.23", "2.24", "2.27", "2.28", "2.34", "2.36", "2.37", "2.38", "2.39", "2.40", "2.50", "2.51", "2.52", "2.53", "2.54", "2.84", "2.85"]
     ) ||
     !isObject(map) ||
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
