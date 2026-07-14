@@ -51,7 +51,7 @@ await test("calculates cooling intermittency reduction from explicit weekend inp
   const result = calculateMc001CoolingIntermittencyExplicit(input());
 
   assert.equal(result.status, "ready");
-  close(result.caseResults[0].fCredWknd, 48 / 168);
+  close(result.caseResults[0].fCredWknd, 0.2857142857142857);
   close(result.caseResults[0].aCred, 0.8);
   assert.equal(result.caseResults[0].aCredOrigin, "calculated_from_explicit_weekend_cooling_reduction");
   assert.equal(
