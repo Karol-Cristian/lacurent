@@ -2382,7 +2382,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     pack.runtimeCalculatorStatus,
     "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer"
   );
-  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.22", "2.40", "2.84", "2.85"]) {
+  for (const relation of ["2.3", "2.6", "2.7", "2.11", "2.15", "2.20", "2.22", "2.40", "2.84", "2.85"]) {
     assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
   }
   for (const runtimeItem of [
@@ -2393,6 +2393,8 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "effective_internal_heat_capacity_table_2_20_explicit_class_area_lookup",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
+    "ventilation_infiltration_table_2_14_explicit_lookup",
+    "ventilation_infiltration_relation_2_20_explicit_weighted_average",
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
@@ -2408,6 +2410,11 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   }
   assert.ok(pack.coverageMap.explicitInputOnly.includes("base_material_lambda_normat"));
   assert.ok(pack.coverageMap.explicitInputOnly.includes("monthly_weather_temperatures"));
+  assert.ok(
+    pack.coverageMap.explicitInputOnly.includes(
+      "ventilation_airflows_and_mechanical_ventilation_corrections"
+    )
+  );
   assert.ok(
     pack.coverageMap.explicitInputOnly.includes(
       "air_layer_resistance_explicit_or_external_SR_EN_ISO_6946_source"
@@ -2482,7 +2489,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(matrix.completenessMetrics.relationsClassified, 87);
   assert.equal(matrix.completenessMetrics.tablesClassified, 21);
   assert.equal(matrix.completenessMetrics.figuresClassified, 21);
-  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 10);
+  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 11);
 
   for (const pageEntry of matrix.pageInspections) {
     assert.equal(pageEntry.inspectionStatus, "inspected");
@@ -2524,6 +2531,11 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
     tableById.get("MC001_TABLE_2_13").runtimeModule,
     "mc001SolarTransmissionTable2_13.mjs"
   );
+  assert.equal(tableById.get("MC001_TABLE_2_14").implementationStatus, "table_machine_encoded");
+  assert.equal(
+    tableById.get("MC001_TABLE_2_14").runtimeModule,
+    "mc001VentilationInfiltrationTable2_14.mjs"
+  );
   assert.equal(tableById.get("MC001_TABLE_2_15").implementationStatus, "table_machine_encoded");
   assert.equal(
     tableById.get("MC001_TABLE_2_15").runtimeModule,
@@ -2558,6 +2570,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_11"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_12"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_13"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_14"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_15"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_16"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_17"), false);
