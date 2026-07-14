@@ -2387,6 +2387,8 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   }
   for (const runtimeItem of [
     "material_lambda_relation_2_3_with_explicit_table_2_2_coefficient_code",
+    "surface_resistance_table_2_11_explicit_code_lookup",
+    "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
     "monthly_ventilation_explicit_airflow_temperature_duration",
@@ -2401,7 +2403,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   }
   assert.ok(pack.coverageMap.explicitInputOnly.includes("base_material_lambda_normat"));
   assert.ok(pack.coverageMap.explicitInputOnly.includes("monthly_weather_temperatures"));
-  assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("surface_resistance_default_tables"));
+  assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("surface_resistance_default_tables"), false);
   assert.ok(pack.coverageMap.tableBackedNotEncoded.includes("material_lambda_catalog_values"));
   assert.ok(pack.coverageMap.ambiguousExtraction.includes("automatic_ground_contact_detailed_method"));
   for (const downstream of ["final_energy", "primary_energy", "CO2", "CPE", "certificate"]) {
@@ -2449,7 +2451,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(matrix.completenessMetrics.relationsClassified, 87);
   assert.equal(matrix.completenessMetrics.tablesClassified, 21);
   assert.equal(matrix.completenessMetrics.figuresClassified, 21);
-  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 1);
+  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 3);
 
   for (const pageEntry of matrix.pageInspections) {
     assert.equal(pageEntry.inspectionStatus, "inspected");
@@ -2484,6 +2486,8 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
 
   const tableById = new Map(matrix.tables.map((entry) => [entry.identifier, entry]));
   assert.equal(tableById.get("MC001_TABLE_2_2").implementationStatus, "table_machine_encoded");
+  assert.equal(tableById.get("MC001_TABLE_2_11").implementationStatus, "table_machine_encoded");
+  assert.equal(tableById.get("MC001_TABLE_2_12").implementationStatus, "table_machine_encoded");
   assert.equal(
     tableById.get("MC001_TABLE_2_19").remainingBlocker,
     "table_classified_but_not_machine_encoded_in_current_batch"
