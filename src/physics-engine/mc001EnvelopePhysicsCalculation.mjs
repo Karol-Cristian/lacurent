@@ -22,6 +22,8 @@ const TRANSMISSION_FORMULA_REFERENCES = [
   "MC001_R17_RELATION_2_12_DIRECT_TRANSMISSION_WITH_CORRECTED_U",
   "MC001_R17_RELATION_2_15_TOTAL_TRANSMISSION_COEFFICIENT",
   "MC001_2_22_BZTU_CORRECTION_FACTOR",
+  "MC001_2_23_ZTU_TOTAL_HEAT_TRANSFER",
+  "MC001_2_24_ZTU_TO_EXTERIOR_HEAT_TRANSFER",
   "MC001_R18_BOUNDARY_CORRECTIONS_EXPLICIT_SOURCE_PACK"
 ];
 const ASSEMBLY_LIMITS = [
@@ -45,6 +47,7 @@ const TRANSMISSION_LIMITS = [
   "no_default_ground_factor",
   "no_default_unheated_space_factor",
   "no_default_adjacent_space_factor",
+  "no_default_cztu_ve",
   "not_QHnd",
   "not_QCnd",
   "not_final_energy",
@@ -660,6 +663,50 @@ function boundaryFactor(element, component) {
     if (!BZTU_CORRECTION_BOUNDARY_TYPES.has(element.boundaryType)) {
       return { ok: false, code: "unsupported_bztu_boundary_correction_context" };
     }
+    if (correction.mode === "bztu_explicit_ztu_balance_v1") {
+      const exteriorEnvelope = nonNegativeUnitAmount(
+        correction.heatTransferToExteriorEnvelope,
+        "W/K",
+        "invalid_explicit_bztu_exterior_envelope_heat_transfer"
+      );
+      if (!exteriorEnvelope.ok) return exteriorEnvelope;
+      const ventilationCoefficient = nonNegativeUnitAmount(
+        correction.exteriorVentilationCoefficient,
+        "dimensionless",
+        "invalid_explicit_bztu_exterior_ventilation_coefficient"
+      );
+      if (!ventilationCoefficient.ok) return ventilationCoefficient;
+      if (!Array.isArray(correction.conditionedZoneHeatTransfers) || correction.conditionedZoneHeatTransfers.length === 0) {
+        return { ok: false, code: "missing_explicit_bztu_conditioned_zone_heat_transfers" };
+      }
+      const conditionedTransfers = [];
+      for (const transfer of correction.conditionedZoneHeatTransfers) {
+        const amount = positiveUnitAmount(
+          transfer,
+          "W/K",
+          "invalid_explicit_bztu_conditioned_zone_heat_transfer"
+        );
+        if (!amount.ok) return amount;
+        conditionedTransfers.push(amount.amount);
+      }
+      const conditionedSum = conditionedTransfers.reduce((sum, amount) => sum + amount, 0);
+      const hztuExterior = (1 + ventilationCoefficient.amount) * exteriorEnvelope.amount;
+      const hztuTotal = conditionedSum + hztuExterior;
+      if (hztuExterior > hztuTotal) {
+        return { ok: false, code: "invalid_explicit_bztu_balance_ratio" };
+      }
+      return {
+        ok: true,
+        value: hztuExterior / hztuTotal,
+        origin: "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance",
+        formulaCode: "MC001_2_22_2_23_2_24_BZTU_EXPLICIT_BALANCE",
+        sourceScope: "bztu_explicit_ztu_balance_v1",
+        hztuExterior,
+        hztuTotal,
+        exteriorVentilationCoefficient: ventilationCoefficient.amount,
+        conditionedZoneHeatTransferSum: conditionedSum
+      };
+    }
     if (correction.mode !== "bztu_explicit_heat_transfer_ratio_v1") {
       return { ok: false, code: "unsupported_boundary_correction_mode" };
     }
@@ -736,6 +783,14 @@ function normalizeElement(element, index) {
       boundaryCorrectionOrigin: factor.origin,
       ...(factor.formulaCode === undefined ? {} : { boundaryCorrectionFormulaCode: factor.formulaCode }),
       ...(factor.sourceScope === undefined ? {} : { boundaryCorrectionSourceScope: factor.sourceScope }),
+      ...(factor.hztuExterior === undefined ? {} : { boundaryCorrectionHztuExteriorWK: factor.hztuExterior }),
+      ...(factor.hztuTotal === undefined ? {} : { boundaryCorrectionHztuTotalWK: factor.hztuTotal }),
+      ...(factor.exteriorVentilationCoefficient === undefined ? {} : {
+        boundaryCorrectionExteriorVentilationCoefficient: factor.exteriorVentilationCoefficient
+      }),
+      ...(factor.conditionedZoneHeatTransferSum === undefined ? {} : {
+        boundaryCorrectionConditionedZoneHeatTransferSumWK: factor.conditionedZoneHeatTransferSum
+      }),
       contributionWK: contribution,
       contributionFormulaCode: component === "Hd"
         ? "MC001_2_11_DIRECT_ELEMENT_TRANSMISSION"

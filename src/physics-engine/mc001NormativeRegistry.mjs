@@ -5235,8 +5235,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
       sourceScope: {
         chapter: "Capitolul 2. Anvelopa termica a cladirii",
         sections: ["2.4.1", "2.6.2", "2.7.1.1"],
-        pagesVerified: [81, 82, 94, 95, 100],
-        relationsVerified: ["2.15", "2.21", "2.22", "2.27"],
+        pagesVerified: [81, 82, 94, 95, 96, 100],
+        relationsVerified: ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"],
         extractionMethods: [
           "page.get_text(text)",
           "page.get_text(blocks)",
@@ -5301,6 +5301,29 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           runtimeReadiness: "verified_for_restricted_runtime",
           sourceReference: "MC001-2022 page 82 Ha definition",
           sourceLocator: { page: 82, relation: "2.15bis" }
+        },
+        {
+          candidateCode: "MC001_R18_UNHEATED_SPACE_EXPLICIT_BZTU_BALANCE",
+          relationReference: "2.22-2.24",
+          expressionText:
+            "unheated-zone boundary factor can be derived from explicit Hztu,e, Hztu,tot balance inputs",
+          machineExpression:
+            "bztu = ((1 + explicitCztuVe) * explicitHtrUe) / (sum(explicitHztcZtu) + ((1 + explicitCztuVe) * explicitHtrUe))",
+          outputSymbol: "bztu",
+          outputUnit: "dimensionless",
+          requiredInputs: [
+            "Htr;ue;k;m",
+            "cztu;ve",
+            "Hztc;j;ztu;m"
+          ],
+          conditions: [
+            "boundaryType is unheated_space/attic/basement/adjacent_unheated_space",
+            "cztu;ve is explicit and not defaulted"
+          ],
+          scopeClassification: "envelope_runtime_ready_explicit_balance_only",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 pages 95-96 relations 2.22, 2.23, and 2.24",
+          sourceLocator: { page: 95, relation: "2.22-2.24" }
         }
       ],
       runtimeIntegration: {
@@ -5309,14 +5332,16 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "direct_exterior_boundary_factor_one",
           "explicit_Hg_boundary_correction_factor",
           "explicit_Hu_boundary_correction_factor",
-          "explicit_Ha_boundary_correction_factor"
+          "explicit_Ha_boundary_correction_factor",
+          "calculated_from_MC001_2_22_2_23_2_24_explicit_ztu_balance"
         ],
         inputPolicy: [
           "explicit_inputs_only",
           "no_hidden_defaults",
           "no_default_ground_factor",
           "no_default_unheated_space_factor",
-          "no_default_adjacent_space_factor"
+          "no_default_adjacent_space_factor",
+          "no_default_cztu_ve"
         ]
       },
       blockers: [
@@ -5366,6 +5391,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           89,
           94,
           95,
+          96,
           100,
           101,
           103,
@@ -5391,6 +5417,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "2.15",
           "2.20",
           "2.22",
+          "2.23",
+          "2.24",
           "2.27",
           "2.28",
           "2.33",
@@ -5431,6 +5459,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "outside_air_direct_Hd",
           "ground_Hg_from_explicit_boundary_factor",
           "unheated_Hu_from_explicit_boundary_factor_or_relation_2_22_explicit_ratio",
+          "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
           "adjacent_Ha_from_explicit_boundary_factor_or_relation_2_22_explicit_ratio",
           "linear_and_point_thermal_bridge_terms_explicit",
           "Htr_component_sum",
@@ -5470,9 +5499,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "thermal_bridge_catalog_rows_with_missing_geometry"
         ],
         ambiguousExtraction: [
-          "automatic_ground_contact_detailed_method",
-          "automatic_unheated_space_balance_defaults",
-          "automatic_adjacent_space_balance_defaults"
+          "automatic_ground_contact_detailed_method"
         ],
         outOfChapter2UsefulDemandScope: [
           "final_energy",
@@ -5530,6 +5557,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "default_material_lambda_catalog_values_not_encoded",
           "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated",
           "automatic_ground_contact_detailed_method_not_encoded",
+          "unheated_adjacent_bztu_default_values_not_fabricated",
           "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted",
           "humidification_dehumidification_relations_2_82_2_83_out_of_useful_demand_scope",
           "final_primary_CO2_CPE_certificate_out_of_scope"
@@ -8777,6 +8805,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
     "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
+    "unheated_Hu_from_explicit_bztu_balance_relations_2_23_2_24",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -8805,8 +8834,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 123, 124],
-      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.27", "2.28", "2.40", "2.84", "2.85"]
+      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 96, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 123, 124],
+      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.23", "2.24", "2.27", "2.28", "2.40", "2.84", "2.85"]
     ) ||
     !isObject(map) ||
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
@@ -9028,9 +9057,9 @@ function sourcePackIssue(sourcePack) {
   if (sourcePack.sourcePackCode === R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE) {
     return envelopeSourcePackIssue(sourcePack, {
       candidatePrefix: "MC001_R18_",
-      requiredPages: [81, 82, 94, 95, 100],
-      requiredRelations: ["2.15", "2.21", "2.22", "2.27"],
-      minimumCandidateCount: 4,
+      requiredPages: [81, 82, 94, 95, 96, 100],
+      requiredRelations: ["2.15", "2.21", "2.22", "2.23", "2.24", "2.27"],
+      minimumCandidateCount: 5,
       runtimeCalculatorStatus: "implemented_explicit_boundary_correction_runtime"
     });
   }
