@@ -627,12 +627,10 @@ const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set([
   "2.17",
   "2.18",
   "2.19",
-  "2.20"
-]);
-const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
-  "2.1",
+  "2.20",
   "2.21"
 ]);
+const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set(["2.1"]);
 const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
   ["2.2", "mc001Table2_2MaterialCorrectionCoefficients.mjs"],
   ["2.11", "mc001SurfaceResistanceTables.mjs"],
@@ -644,7 +642,8 @@ const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
   ["2.17", "mc001SolarShadingTables.mjs"],
   ["2.18", "mc001SolarShadingTables.mjs"],
   ["2.19", "mc001EffectiveInternalHeatCapacityTables.mjs"],
-  ["2.20", "mc001EffectiveInternalHeatCapacityTables.mjs"]
+  ["2.20", "mc001EffectiveInternalHeatCapacityTables.mjs"],
+  ["2.21", "mc001HumidificationTable2_21.mjs"]
 ]);
 const CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER = new Map([
   ["2.2", "mc001Table2_2MaterialCorrectionCoefficients.test.mjs"],
@@ -657,7 +656,8 @@ const CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER = new Map([
   ["2.17", "mc001SolarShadingTables.test.mjs"],
   ["2.18", "mc001SolarShadingTables.test.mjs"],
   ["2.19", "mc001EffectiveInternalHeatCapacityTables.test.mjs"],
-  ["2.20", "mc001EffectiveInternalHeatCapacityTables.test.mjs"]
+  ["2.20", "mc001EffectiveInternalHeatCapacityTables.test.mjs"],
+  ["2.21", "mc001HumidificationTable2_21.test.mjs"]
 ]);
 const CHAPTER_2_NOT_RUNTIME_TABLES = new Set([
   "2.3",
@@ -944,7 +944,6 @@ const CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX = Object.freeze({
       "resolve_or_confirm_relation_2_5_gap",
       "machine_encode_material_lambda_catalog_tables_if_runtime_safe",
       "machine_encode_remaining_solar_climate_orientation_shading_inputs_if_runtime_safe",
-      "machine_encode_or_justify_latent_humidification_relations_2_82_to_2_83",
       "golden_cover_every_newly_implemented_runtime_branch"
     ])
   }),
@@ -5366,6 +5365,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           112,
           120,
           121,
+          123,
           124
         ],
         relationsVerified: [
@@ -5429,6 +5429,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "monthly_heat_gains_explicit_internal_plus_solar_sum",
           "solar_shading_table_2_16_explicit_device_lookup",
           "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
+          "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
           "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
           "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
           "annual_QHnd_sum_relation_2_84",
@@ -5466,6 +5467,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "CO2",
           "CPE",
           "certificate",
+          "latent_humidification_dehumidification_energy",
           "system_losses",
           "fan_electricity",
           "air_treatment_energy"
@@ -5516,6 +5518,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "air_layer_resistance_external_SR_EN_ISO_6946_dependency_not_fabricated",
           "automatic_ground_contact_detailed_method_not_encoded",
           "solar_climate_irradiation_and_explicit_obstacle_geometry_not_defaulted",
+          "humidification_dehumidification_relations_2_82_2_83_out_of_useful_demand_scope",
           "final_primary_CO2_CPE_certificate_out_of_scope"
         ]
       },
@@ -5579,14 +5582,12 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         unresolvedItemIds: [
           "MC001_RELATION_2_2",
           "MC001_RELATION_2_5",
-          "MC001_TABLE_2_1",
-          "MC001_TABLE_2_21"
+          "MC001_TABLE_2_1"
         ],
         nextImplementationDomains: [
           "material_lambda_catalog_tables",
           "mechanical_ventilation_and_external_airflow_dependencies",
-          "solar_climate_irradiation_and_obstacle_geometry_inputs",
-          "latent_humidification_and_dehumidification_relations"
+          "solar_climate_irradiation_and_obstacle_geometry_inputs"
         ]
       },
       blockers: [
@@ -8763,6 +8764,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
     "solar_shading_table_2_16_explicit_device_lookup",
     "obstacle_shading_tables_2_17_2_18_explicit_month_orientation_lookup",
+    "humidification_table_2_21_explicit_space_category_lookup_not_useful_demand",
     "heating_QHnd_normal_boundary_intermittency_long_unoccupied",
     "cooling_QCnd_normal_boundary_intermittency_long_unoccupied",
     "annual_QHnd_sum_relation_2_84",
@@ -8781,7 +8783,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "primary_energy",
     "CO2",
     "CPE",
-    "certificate"
+    "certificate",
+    "latent_humidification_dehumidification_energy"
   ];
   if (
     sourcePack.metadataOnly !== false ||
@@ -8790,7 +8793,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 124],
+      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 123, 124],
       ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.27", "2.28", "2.40", "2.84", "2.85"]
     ) ||
     !isObject(map) ||
@@ -8881,7 +8884,9 @@ function chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack) {
     !isObject(gate) ||
     gate.closureStatus !== "CHAPTER_2_NOT_CLOSED" ||
     !gate.unresolvedItemIds?.includes("MC001_RELATION_2_2") ||
-    !gate.unresolvedItemIds?.includes("MC001_TABLE_2_21") ||
+    !gate.unresolvedItemIds?.includes("MC001_RELATION_2_5") ||
+    !gate.unresolvedItemIds?.includes("MC001_TABLE_2_1") ||
+    gate.unresolvedItemIds?.includes("MC001_TABLE_2_21") ||
     !Array.isArray(sourcePack.blockers) ||
     !sourcePack.blockers.includes("chapter_2_not_closed") ||
     !sourcePack.blockers.includes("no_hidden_defaults") ||
