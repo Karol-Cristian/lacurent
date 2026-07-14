@@ -533,6 +533,7 @@ const CHAPTER_2_IMPLEMENTED_RELATIONS = new Set([
   "2.13",
   "2.14",
   "2.15",
+  "2.20",
   "2.21",
   "2.22",
   "2.23",
@@ -620,6 +621,7 @@ const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set([
   "2.11",
   "2.12",
   "2.13",
+  "2.14",
   "2.15",
   "2.16",
   "2.17",
@@ -629,7 +631,6 @@ const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set([
 ]);
 const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
   "2.1",
-  "2.14",
   "2.21"
 ]);
 const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
@@ -637,6 +638,7 @@ const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
   ["2.11", "mc001SurfaceResistanceTables.mjs"],
   ["2.12", "mc001SurfaceResistanceTables.mjs"],
   ["2.13", "mc001SolarTransmissionTable2_13.mjs"],
+  ["2.14", "mc001VentilationInfiltrationTable2_14.mjs"],
   ["2.15", "mc001InternalGainsTable2_15.mjs"],
   ["2.16", "mc001SolarShadingTables.mjs"],
   ["2.17", "mc001SolarShadingTables.mjs"],
@@ -649,6 +651,7 @@ const CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER = new Map([
   ["2.11", "mc001SurfaceResistanceTables.test.mjs"],
   ["2.12", "mc001SurfaceResistanceTables.test.mjs"],
   ["2.13", "mc001SolarTransmissionTable2_13.test.mjs"],
+  ["2.14", "mc001VentilationInfiltrationTable2_14.test.mjs"],
   ["2.15", "mc001InternalGainsTable2_15.test.mjs"],
   ["2.16", "mc001SolarShadingTables.test.mjs"],
   ["2.17", "mc001SolarShadingTables.test.mjs"],
@@ -5345,6 +5348,10 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           82,
           83,
           84,
+          86,
+          87,
+          88,
+          89,
           94,
           95,
           100,
@@ -5369,6 +5376,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "2.11",
           "2.12",
           "2.15",
+          "2.20",
           "2.22",
           "2.27",
           "2.28",
@@ -5414,6 +5422,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "linear_and_point_thermal_bridge_terms_explicit",
           "Htr_component_sum",
           "monthly_transmission_explicit_temperature_duration",
+          "ventilation_infiltration_table_2_14_explicit_lookup",
+          "ventilation_infiltration_relation_2_20_explicit_weighted_average",
           "monthly_ventilation_explicit_airflow_temperature_duration",
           "internal_gains_table_2_15_explicit_category_lookup",
           "monthly_heat_gains_explicit_internal_plus_solar_sum",
@@ -5433,7 +5443,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "opaque_solar_absorptance",
           "monthly_weather_temperatures",
           "monthly_durations",
-          "ventilation_airflows_and_corrections",
+          "ventilation_airflows_and_mechanical_ventilation_corrections",
           "internal_gain_category_or_components_and_schedules",
           "solar_irradiation_and_explicit_obstacle_geometry",
           "direct_effective_internal_heat_capacity_or_table_2_20_class_area_source",
@@ -5570,12 +5580,11 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "MC001_RELATION_2_2",
           "MC001_RELATION_2_5",
           "MC001_TABLE_2_1",
-          "MC001_TABLE_2_14",
           "MC001_TABLE_2_21"
         ],
         nextImplementationDomains: [
           "material_lambda_catalog_tables",
-          "ventilation_infiltration_table_2_14",
+          "mechanical_ventilation_and_external_airflow_dependencies",
           "solar_climate_irradiation_and_obstacle_geometry_inputs",
           "latent_humidification_and_dehumidification_relations"
         ]
@@ -8747,6 +8756,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "u_value_from_total_resistance",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
+    "ventilation_infiltration_table_2_14_explicit_lookup",
+    "ventilation_infiltration_relation_2_20_explicit_weighted_average",
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
@@ -8761,6 +8772,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
   const requiredExplicitOnlyItems = [
     "base_material_lambda_normat",
     "monthly_weather_temperatures",
+    "ventilation_airflows_and_mechanical_ventilation_corrections",
     "internal_gain_category_or_components_and_schedules",
     "solar_irradiation_and_explicit_obstacle_geometry"
   ];
@@ -8778,8 +8790,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 94, 95, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 124],
-      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.22", "2.27", "2.28", "2.40", "2.84", "2.85"]
+      [48, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 94, 95, 100, 103, 104, 105, 106, 107, 108, 109, 112, 120, 121, 124],
+      ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.20", "2.22", "2.27", "2.28", "2.40", "2.84", "2.85"]
     ) ||
     !isObject(map) ||
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
