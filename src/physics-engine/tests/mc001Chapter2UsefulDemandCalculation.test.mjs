@@ -394,7 +394,37 @@ await test("Chapter 2 golden building calculates 12 explicit monthly QHnd and QC
   const result = calculateMc001Chapter2UsefulDemandExplicit({
     mode: "chapter_2_useful_demand_explicit_v1",
     envelopeTransmissionResult: envelope,
-    monthlyCases: monthlyCases(envelope.result.amount)
+    monthlyCases: monthlyCases(envelope.result.amount),
+    latentDemandCases: [
+      {
+        caseId: "chapter2-january-latent-humidification",
+        month: "january",
+        source: { reference: "chapter_2_golden_input" },
+        humidification: {
+          heatingDemandFractionSource: {
+            monthlyQHndKwh: 50,
+            annualQHndKwh: 200,
+            source: { reference: "chapter_2_golden_input" }
+          },
+          latentHeatOfVaporizationJPerKg: 2500000,
+          latentHeatRecoveryEfficiency: 0.55,
+          airDensityKgPerM3: 1.2,
+          mechanicalSupplyAirflowM3PerS: 0.1,
+          annualMoistureSupplyTable2_21CategoryId: "residential",
+          source: { reference: "chapter_2_golden_input" }
+        }
+      },
+      {
+        caseId: "chapter2-july-latent-dehumidification",
+        month: "july",
+        source: { reference: "chapter_2_golden_input" },
+        dehumidification: {
+          sensibleCoolingDemandKwh: 100,
+          dehumidificationFraction: 0.2,
+          source: { reference: "chapter_2_golden_input" }
+        }
+      }
+    ]
   });
 
   assert.equal(result.status, "ready");
@@ -464,6 +494,17 @@ await test("Chapter 2 golden building calculates 12 explicit monthly QHnd and QC
 
   close(result.result.annualQHnd, 9115.665451102092);
   close(result.result.annualQCnd, 3146.038436567196);
+  close(result.result.annualHumidificationDemandKwh, 5.7375);
+  close(result.result.annualDehumidificationDemandKwh, 20);
+  assert.equal(result.result.latentDemandResult.caseResults.length, 2);
+  assert.equal(
+    result.result.latentDemandResult.caseResults[0].humidification.formulaCode,
+    "MC001_RELATION_2_82_MONTHLY_HUMIDIFICATION_LATENT_DEMAND"
+  );
+  assert.equal(
+    result.result.latentDemandResult.summary.annualLatentDemandFormulaCode,
+    "MC001_RELATION_2_86_ANNUAL_LATENT_DEMAND_SUM"
+  );
   close(result.result.combinedUsefulDemandResult.result.annualQHnd, result.result.annualQHnd);
   close(result.result.combinedUsefulDemandResult.result.annualQCnd, result.result.annualQCnd);
   assert.equal(Object.hasOwn(result.result.combinedUsefulDemandResult.result, "totalUsefulDemand"), false);
