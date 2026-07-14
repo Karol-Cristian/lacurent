@@ -430,11 +430,17 @@ await test("Chapter 2 golden building calculates 12 explicit monthly QHnd and QC
   assert.equal(result.status, "ready");
   assert.equal(result.scope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
   close(assemblyById(assemblies, "wall-brick-insulated").layers[0].lambdaWmK, 0.618);
+  close(assemblyById(assemblies, "wall-brick-insulated").layers[0].resistanceM2KPerW, 0.48543689320388345);
+  close(assemblyById(assemblies, "wall-brick-insulated").totalResistance, 3.1554368932038833);
+  close(assemblyById(assemblies, "wall-brick-insulated").uValue, 0.3169133257438233);
+  close(assemblyById(assemblies, "wood-earth-ceiling").totalResistance, 3.0333333333333337);
   close(assemblyById(assemblies, "wood-earth-ceiling").uValue, 0.3296703296703296);
   close(envelope.components.Hd.amount, 40.871819482282156);
   close(envelope.components.Hg.amount, 13.154500902759864);
   close(envelope.components.Hu.amount, 9.230769230769228);
   close(envelope.components.Ha.amount, 1);
+  close(envelope.thermalBridgeResults[0].contributionWK, 0.8);
+  close(envelope.components.Hd.thermalBridgeAmount, 0.8);
   close(envelope.result.amount, 64.25708961581125);
   assert.equal(
     envelope.elementResults.find(item => item.elementId === "attic-ceiling").boundaryCorrectionOrigin,
@@ -447,6 +453,8 @@ await test("Chapter 2 golden building calculates 12 explicit monthly QHnd and QC
   assert.equal(result.result.monthCount, 12);
   close(monthly[0].transmission.heating.transmissionEnergy.amount, 925.3020904676819);
   close(monthly[0].ventilation.heating.ventilationEnergy.amount, 288);
+  close(monthly[0].heatGains.internalGains, 120);
+  close(monthly[0].heatGains.solarGains, 180);
   close(monthly[0].heatGains.qHgn, 300);
 
   const heating = result.result.heatingResult;
@@ -505,8 +513,8 @@ await test("Chapter 2 golden building calculates 12 explicit monthly QHnd and QC
     result.result.latentDemandResult.summary.annualLatentDemandFormulaCode,
     "MC001_RELATION_2_86_ANNUAL_LATENT_DEMAND_SUM"
   );
-  close(result.result.combinedUsefulDemandResult.result.annualQHnd, result.result.annualQHnd);
-  close(result.result.combinedUsefulDemandResult.result.annualQCnd, result.result.annualQCnd);
+  close(result.result.combinedUsefulDemandResult.result.annualQHnd, 9115.665451102092);
+  close(result.result.combinedUsefulDemandResult.result.annualQCnd, 3146.038436567196);
   assert.equal(Object.hasOwn(result.result.combinedUsefulDemandResult.result, "totalUsefulDemand"), false);
   assert.equal(
     result.result.coverageCompleteness.sourcePackCode,

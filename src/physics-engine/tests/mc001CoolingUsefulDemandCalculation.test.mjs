@@ -19,13 +19,6 @@ function test(name, fn) {
     });
 }
 
-function etaCht(gammaC, aC) {
-  if (Math.abs(gammaC - 1) <= 1e-12) {
-    return aC / (aC + 1);
-  }
-  return (1 - gammaC ** (-aC)) / (1 - gammaC ** (-(aC + 1)));
-}
-
 function sampleCase(overrides = {}) {
   return {
     caseId: "jan-qcnd-restricted",
@@ -60,14 +53,12 @@ function assertBlocked(result, code = null) {
 await test("normal monthly cooling case calculates QCnd from explicit aC", () => {
   const result = calculateMc001CoolingUsefulDemandExplicit(input());
 
-  const expectedEta = etaCht(2, 2);
-  const expectedQCnd = 600 - expectedEta * 300;
   assert.equal(result.status, "ready");
   assert.equal(result.scope, "restricted_cooling_qcnd_explicit_input_only_not_full_mc001");
   close(result.caseResults[0].gammaC, 2);
-  close(result.caseResults[0].etaCht, expectedEta);
-  close(result.caseResults[0].qCnd, expectedQCnd);
-  close(result.summary.annualQCnd, expectedQCnd);
+  close(result.caseResults[0].etaCht, 0.8571428571428571);
+  close(result.caseResults[0].qCnd, 342.8571428571429);
+  close(result.summary.annualQCnd, 342.8571428571429);
   assert.equal(result.caseResults[0].etaChtOrigin, "calculated_from_explicit_aC");
   assert.equal(result.caseResults[0].qCndBranch, "figure_2_19_cooling_utilized_transfer_branch");
 });
@@ -103,16 +94,12 @@ await test("utilization dependencies derive tauC then aC then etaCht", () => {
     })
   ]));
 
-  const expectedTauC = (25200000 / 3600) / 420;
-  const expectedAC = 1 + expectedTauC / 15;
-  const expectedEta = etaCht(2, expectedAC);
-  const expectedQCnd = 0.8 * (600 - expectedEta * 300);
   assert.equal(result.status, "ready");
-  close(result.caseResults[0].tauC, expectedTauC);
-  close(result.caseResults[0].aC, expectedAC);
-  close(result.caseResults[0].etaCht, expectedEta);
+  close(result.caseResults[0].tauC, 16.666666666666668);
+  close(result.caseResults[0].aC, 2.111111111111111);
+  close(result.caseResults[0].etaCht, 0.8691181348038218);
   close(result.caseResults[0].aCred, 0.8);
-  close(result.caseResults[0].qCnd, expectedQCnd);
+  close(result.caseResults[0].qCnd, 271.4116476470828);
   assert.equal(result.caseResults[0].tauCOrigin, "calculated_from_explicit_total_heat_transfer_coefficient");
   assert.equal(result.caseResults[0].aCOrigin, "calculated_from_explicit_tauC_dependencies");
   assert.equal(result.caseResults[0].etaChtOrigin, "calculated_from_explicit_time_constant_dependencies");
@@ -321,13 +308,12 @@ await test("golden cooling regression covers normal boundary long-unoccupied and
     }
   ]));
 
-  const tauC = (25200000 / 3600) / 420;
-  const aC = 1 + tauC / 15;
-  const jan = 0.8 * (600 - etaCht(2, aC) * 300);
-  const expectedAnnual = jan + 162.5;
   assert.equal(result.status, "ready");
-  close(result.caseResults[0].qCnd, jan);
-  close(result.summary.annualQCnd, expectedAnnual);
+  close(result.caseResults[0].tauC, 16.666666666666668);
+  close(result.caseResults[0].aC, 2.111111111111111);
+  close(result.caseResults[0].etaCht, 0.8691181348038218);
+  close(result.caseResults[0].qCnd, 271.4116476470828);
+  close(result.summary.annualQCnd, 433.9116476470828);
   assert.equal(result.summary.caseCount, 4);
   assert.equal(result.summary.monthCount, 4);
   assert.equal(result.caseResults[0].qChtOrigin, "explicit_input");
