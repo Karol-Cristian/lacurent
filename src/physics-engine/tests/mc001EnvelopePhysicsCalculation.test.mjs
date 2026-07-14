@@ -414,6 +414,97 @@ await test("Table 2.2 correction coefficient ids can explicitly derive corrected
   assert.equal(wall.layers[0].correctionCoefficientMetadata.materialCategoryRo.includes("BCA"), true);
 });
 
+await test("Table 2.11 surface resistance code can explicitly derive Rsi and Rse", () => {
+  const result = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "table-2-11-wall",
+        assemblyType: "wall",
+        layers: [layer("single", 0.2, material("test-material", 0.5))],
+        surfaceResistanceTable2_11Code: "ventilated_unheated_downward_heat_flow",
+        source: SOURCE
+      }
+    ]
+  });
+
+  assert.equal(result.status, "ready");
+  const wall = result.assemblyResults[0];
+  close(wall.rsi, 0.167);
+  close(wall.rse, 0.084);
+  close(wall.uValue, 1 / (0.167 + 0.4 + 0.084));
+  assert.equal(
+    wall.surfaceResistanceOrigin,
+    "calculated_from_MC001_table_2_11_surface_resistance_code"
+  );
+  assert.equal(wall.surfaceResistanceSourceCode, "ventilated_unheated_downward_heat_flow");
+  assert.equal(wall.surfaceResistanceSourceTable, "MC001-2022 Tabel 2.11");
+  assert.equal(wall.surfaceResistanceMetadata.hiWPerM2K, 6);
+  assert.equal(wall.surfaceResistanceMetadata.heWPerM2K, 12);
+});
+
+await test("Table 2.12 exterior Rse code can combine with explicit Rsi", () => {
+  const result = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "table-2-12-wall",
+        assemblyType: "wall",
+        layers: [layer("single", 0.2, material("test-material", 0.5))],
+        surfaceResistances: {
+          rsi: value(0.125, "m2*K/W")
+        },
+        exteriorSurfaceResistanceTable2_12Code: "wind_5_m_per_s",
+        source: SOURCE
+      }
+    ]
+  });
+
+  assert.equal(result.status, "ready");
+  const wall = result.assemblyResults[0];
+  close(wall.rsi, 0.125);
+  close(wall.rse, 0.04);
+  close(wall.uValue, 1 / (0.125 + 0.4 + 0.04));
+  assert.equal(wall.surfaceResistanceOrigin, "explicit_rsi_with_MC001_table_2_12_exterior_rse_code");
+  assert.equal(wall.surfaceResistanceSourceCode, "wind_5_m_per_s");
+  assert.equal(wall.surfaceResistanceSourceTable, "MC001-2022 Tabel 2.12");
+  assert.equal(wall.surfaceResistanceMetadata.windSpeedMPerS, 5);
+});
+
+await test("surface resistance table paths reject ambiguous and unknown codes", () => {
+  const ambiguous = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "ambiguous-surface-table",
+        assemblyType: "wall",
+        layers: [layer("single", 0.2, material("test-material", 0.5))],
+        surfaceResistanceTable2_11Code: "outside_horizontal_heat_flow",
+        surfaceResistances: {
+          rsi: value(0.13, "m2*K/W"),
+          rse: value(0.04, "m2*K/W")
+        },
+        source: SOURCE
+      }
+    ]
+  });
+  assertBlocked(ambiguous, "ambiguous_surface_resistance_source");
+
+  const unknown = calculateMc001EnvelopeAssemblyUValueExplicit({
+    mode: "envelope_assembly_u_value_explicit_v1",
+    assemblies: [
+      {
+        assemblyId: "unknown-surface-table",
+        assemblyType: "wall",
+        layers: [layer("single", 0.2, material("test-material", 0.5))],
+        surfaceResistanceTable2_11Code: "unknown_surface_code",
+        source: SOURCE
+      }
+    ]
+  });
+  assertBlocked(unknown, "unknown_table_2_11_surface_resistance_code");
+});
+
 await test("envelope transmission engine derives Hd Hg Hu Ha and Htr", () => {
   const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
   const result = envelopeTransmissionResult(assemblies);

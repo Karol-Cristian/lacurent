@@ -614,11 +614,9 @@ const CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS = new Set([
   "2.87"
 ]);
 
-const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2"]);
+const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2", "2.11", "2.12"]);
 const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
   "2.1",
-  "2.11",
-  "2.12",
   "2.13",
   "2.14",
   "2.15",
@@ -898,7 +896,6 @@ const CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX = Object.freeze({
     requiredBeforeClosure: Object.freeze([
       "resolve_or_confirm_relation_2_2_gap",
       "resolve_or_confirm_relation_2_5_gap",
-      "machine_encode_surface_resistance_tables_if_runtime_safe",
       "machine_encode_air_layer_resistance_tables_if_runtime_safe",
       "machine_encode_effective_capacity_tables_if_runtime_safe",
       "machine_encode_remaining_solar_glazing_shading_inputs_if_runtime_safe",
@@ -5352,6 +5349,8 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "layer_resistance_from_thickness_and_lambda",
           "air_layer_resistance_explicit",
           "surface_resistance_explicit_or_surface_coefficient_explicit",
+          "surface_resistance_table_2_11_explicit_code_lookup",
+          "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
           "u_value_from_total_resistance",
           "direct_u_value_or_corrected_u_prime_explicit",
           "outside_air_direct_Hd",
@@ -5384,7 +5383,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "thermal_bridge_psi_chi_values"
         ],
         tableBackedNotEncoded: [
-          "surface_resistance_default_tables",
           "air_layer_resistance_default_tables",
           "material_lambda_catalog_values",
           "window_door_catalog_U_values",
@@ -5449,7 +5447,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         ],
         remainingGaps: [
           "default_material_lambda_catalog_values_not_encoded",
-          "default_surface_resistance_tables_not_encoded",
           "default_air_layer_resistance_tables_not_encoded",
           "automatic_ground_contact_detailed_method_not_encoded",
           "solar_climate_and_shading_default_datasets_not_encoded",
@@ -5529,7 +5526,6 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "MC001_TABLE_2_21"
         ],
         nextImplementationDomains: [
-          "surface_resistance_tables",
           "air_layer_resistance_tables",
           "effective_capacity_tables",
           "solar_glazing_shading_inputs",
@@ -8696,6 +8692,8 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
   const assessment = sourcePack.completenessAssessment;
   const requiredRuntimeItems = [
     "material_lambda_relation_2_3_with_explicit_table_2_2_coefficient_code",
+    "surface_resistance_table_2_11_explicit_code_lookup",
+    "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
     "u_value_from_total_resistance",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
@@ -8734,6 +8732,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     !requiredRuntimeItems.every(item => map.runtimeImplemented?.includes(item)) ||
     !requiredExplicitOnlyItems.every(item => map.explicitInputOnly?.includes(item)) ||
     !map.tableBackedNotEncoded?.includes("material_lambda_catalog_values") ||
+    map.tableBackedNotEncoded?.includes("surface_resistance_default_tables") ||
     !map.ambiguousExtraction?.includes("automatic_ground_contact_detailed_method") ||
     !requiredOutOfScopeItems.every(item => map.outOfChapter2UsefulDemandScope?.includes(item)) ||
     !isObject(integration) ||
@@ -8746,6 +8745,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     !isObject(assessment) ||
     !assessment.restrictiveMarkersRetained?.includes("not_certificate") ||
     !assessment.remainingGaps?.includes("default_material_lambda_catalog_values_not_encoded") ||
+    assessment.remainingGaps?.includes("default_surface_resistance_tables_not_encoded") ||
     !Array.isArray(sourcePack.blockers) ||
     !sourcePack.blockers.includes("not_certificate") ||
     !sourcePack.blockers.includes("no_hidden_defaults") ||

@@ -1,4 +1,8 @@
 import { findMaterialCorrectionCoefficientById } from "./datasets/mc001Table2_2MaterialCorrectionCoefficients.mjs";
+import {
+  findExteriorSurfaceResistanceTable2_12EntryById,
+  findSurfaceResistanceTable2_11EntryById
+} from "./datasets/mc001SurfaceResistanceTables.mjs";
 
 const ASSEMBLY_MODE = "envelope_assembly_u_value_explicit_v1";
 const TRANSMISSION_MODE = "envelope_transmission_coefficient_explicit_v1";
@@ -8,6 +12,8 @@ const ASSEMBLY_FORMULA_REFERENCES = [
   "MC001_R15_MATERIALS_AND_THERMAL_RESISTANCE_SOURCE_PACK",
   "MC001_R15_RELATION_2_3_LAMBDA_CORRECTION",
   "MC001_TABLE_2_2_MATERIAL_CORRECTION_COEFFICIENTS",
+  "MC001_TABLE_2_11_SURFACE_RESISTANCES",
+  "MC001_TABLE_2_12_EXTERIOR_SURFACE_RESISTANCE_BY_WIND_SPEED",
   "MC001_R15_RELATION_2_6_TOTAL_THERMAL_RESISTANCE",
   "MC001_R16_RELATION_2_7_THERMAL_TRANSMITTANCE"
 ];
@@ -21,7 +27,7 @@ const TRANSMISSION_FORMULA_REFERENCES = [
 const ASSEMBLY_LIMITS = [
   "explicit_material_lambda_only",
   "explicit_layer_thickness_only",
-  "explicit_surface_resistance_or_coefficient_only",
+  "explicit_surface_resistance_or_coefficient_or_table_code_only",
   "no_hidden_defaults",
   "no_default_material_lambda",
   "no_default_surface_resistances",
@@ -85,6 +91,9 @@ const FORBIDDEN_ASSEMBLY_KEYS = new Set([
   "result",
   "uValue",
   "totalResistance",
+  "surfaceResistanceSourceCode",
+  "surfaceResistanceSourceTable",
+  "surfaceResistanceMetadata",
   "htr",
   "qHnd",
   "qCnd"
@@ -207,11 +216,43 @@ function nonNegativeUnitAmount(value, unit, code) {
 function resolveSurfaceResistance(assembly) {
   const hasResistance = isPlainObject(assembly.surfaceResistances);
   const hasCoefficient = isPlainObject(assembly.surfaceCoefficients);
-  if (hasResistance && hasCoefficient) {
+  const hasTable211Code = hasInputValue(assembly, "surfaceResistanceTable2_11Code");
+  const hasTable212Code = hasInputValue(assembly, "exteriorSurfaceResistanceTable2_12Code");
+  if (
+    (hasResistance && hasCoefficient) ||
+    (hasTable211Code && (hasResistance || hasCoefficient || hasTable212Code)) ||
+    (hasTable212Code && hasCoefficient)
+  ) {
     return { ok: false, code: "ambiguous_surface_resistance_source" };
   }
-  if (!hasResistance && !hasCoefficient) {
+  if (!hasResistance && !hasCoefficient && !hasTable211Code) {
     return { ok: false, code: "missing_explicit_surface_resistances" };
+  }
+
+  if (hasTable211Code) {
+    if (!safeCode(assembly.surfaceResistanceTable2_11Code, 128)) {
+      return { ok: false, code: "invalid_table_2_11_surface_resistance_code" };
+    }
+    const tableEntry = findSurfaceResistanceTable2_11EntryById(
+      assembly.surfaceResistanceTable2_11Code
+    );
+    if (tableEntry === null) {
+      return { ok: false, code: "unknown_table_2_11_surface_resistance_code" };
+    }
+    return {
+      ok: true,
+      rsi: tableEntry.rsiM2KPerW,
+      rse: tableEntry.rseM2KPerW,
+      origin: "calculated_from_MC001_table_2_11_surface_resistance_code",
+      sourceCode: tableEntry.id,
+      sourceTable: tableEntry.sourceTable,
+      metadata: {
+        heatFlowDirection: tableEntry.heatFlowDirection,
+        boundaryGroup: tableEntry.boundaryGroup,
+        hiWPerM2K: tableEntry.hiWPerM2K,
+        heWPerM2K: tableEntry.heWPerM2K
+      }
+    };
   }
 
   if (hasResistance) {
@@ -221,6 +262,31 @@ function resolveSurfaceResistance(assembly) {
       "invalid_explicit_surface_resistance"
     );
     if (!rsi.ok) return rsi;
+    if (hasTable212Code) {
+      if (hasInputValue(assembly.surfaceResistances, "rse")) {
+        return { ok: false, code: "ambiguous_surface_resistance_source" };
+      }
+      if (!safeCode(assembly.exteriorSurfaceResistanceTable2_12Code, 128)) {
+        return { ok: false, code: "invalid_table_2_12_exterior_surface_resistance_code" };
+      }
+      const tableEntry = findExteriorSurfaceResistanceTable2_12EntryById(
+        assembly.exteriorSurfaceResistanceTable2_12Code
+      );
+      if (tableEntry === null) {
+        return { ok: false, code: "unknown_table_2_12_exterior_surface_resistance_code" };
+      }
+      return {
+        ok: true,
+        rsi: rsi.amount,
+        rse: tableEntry.rseM2KPerW,
+        origin: "explicit_rsi_with_MC001_table_2_12_exterior_rse_code",
+        sourceCode: tableEntry.id,
+        sourceTable: tableEntry.sourceTable,
+        metadata: {
+          windSpeedMPerS: tableEntry.windSpeedMPerS
+        }
+      };
+    }
     const rse = nonNegativeUnitAmount(
       assembly.surfaceResistances.rse,
       "m2*K/W",
@@ -457,6 +523,9 @@ function resolveAssemblyUValue(assembly) {
       rsi: surface.rsi,
       rse: surface.rse,
       surfaceResistanceOrigin: surface.origin,
+      ...(surface.sourceCode === undefined ? {} : { surfaceResistanceSourceCode: surface.sourceCode }),
+      ...(surface.sourceTable === undefined ? {} : { surfaceResistanceSourceTable: surface.sourceTable }),
+      ...(surface.metadata === undefined ? {} : { surfaceResistanceMetadata: surface.metadata }),
       layers,
       airLayers,
       formulaCode: "MC001_2_7_U_VALUE_FROM_RELATION_2_6_RESISTANCE"
@@ -496,6 +565,15 @@ function normalizeAssemblyResult(assembly) {
       ...(resolved.value.surfaceResistanceOrigin === null
         ? {}
         : { surfaceResistanceOrigin: resolved.value.surfaceResistanceOrigin }),
+      ...(resolved.value.surfaceResistanceSourceCode === undefined
+        ? {}
+        : { surfaceResistanceSourceCode: resolved.value.surfaceResistanceSourceCode }),
+      ...(resolved.value.surfaceResistanceSourceTable === undefined
+        ? {}
+        : { surfaceResistanceSourceTable: resolved.value.surfaceResistanceSourceTable }),
+      ...(resolved.value.surfaceResistanceMetadata === undefined
+        ? {}
+        : { surfaceResistanceMetadata: resolved.value.surfaceResistanceMetadata }),
       layers: resolved.value.layers,
       airLayers: resolved.value.airLayers,
       formulaCode: resolved.value.formulaCode,
