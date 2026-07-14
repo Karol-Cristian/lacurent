@@ -78,12 +78,13 @@ function assemblySelectionsFor(input) {
     input.renovations?.wallInsulation === true ||
     input.constructionPeriod === "after_2005";
   const hasRoofInsulation = input.renovations?.roofInsulated !== false;
-  const hasWindowReplacement = input.renovations?.windowsReplaced !== false;
+  const hasWindowReplacement = input.renovations?.windowsReplaced === true ||
+    input.constructionPeriod === "after_2005";
 
   return {
     exteriorWall: hasWallInsulation
       ? "wall_masonry_300_eps_100"
-      : "wall_masonry_300_eps_100",
+      : "wall_masonry_300_uninsulated",
     roof: hasRoofInsulation
       ? "roof_timber_mineral_wool_200"
       : "roof_timber_mineral_wool_200",
@@ -93,7 +94,7 @@ function assemblySelectionsFor(input) {
       : "wood_earth_ceiling_mineral_wool_100",
     window: hasWindowReplacement
       ? "window_pvc_double_glazing_direct_u"
-      : "window_pvc_double_glazing_direct_u",
+      : "window_legacy_double_glazing_direct_u",
     door: "exterior_door_insulated_direct_u"
   };
 }

@@ -21,9 +21,9 @@ function test(name, fn) {
 test("catalogue exposes materials and assemblies with provenance", () => {
   const catalogue = getBuildingPlatformCatalogue();
 
-  assert.equal(catalogue.version, "building_platform_p1_v1");
+  assert.equal(catalogue.version, "building_platform_p2_review_mvp_v1");
   assert.equal(listMaterialCatalogueEntries().length >= 6, true);
-  assert.equal(listAssemblyCatalogueEntries().length >= 6, true);
+  assert.equal(listAssemblyCatalogueEntries().length >= 8, true);
 
   const brick = getMaterialCatalogueEntry("brick_masonry_pre_1990");
   assert.equal(brick.kind, "material");
@@ -42,6 +42,14 @@ test("catalogue exposes materials and assemblies with provenance", () => {
   assert.equal(wall.layers[1].thickness.amount, 0.1);
   assert.equal(wall.surfaceResistances.rsi.amount, 0.13);
   assert.equal(wall.surfaceResistances.rse.amount, 0.04);
+
+  const uninsulatedWall = getAssemblyCatalogueEntry("wall_masonry_300_uninsulated");
+  assert.equal(uninsulatedWall.layers.length, 1);
+  assert.equal(uninsulatedWall.provenance.confidence, "low");
+
+  const legacyWindow = getAssemblyCatalogueEntry("window_legacy_double_glazing_direct_u");
+  assert.equal(legacyWindow.directUValue.amount, 2.6);
+  assert.equal(legacyWindow.directUValue.provenance.confirmationRequired, true);
 });
 
 test("catalogue returns defensive copies", () => {

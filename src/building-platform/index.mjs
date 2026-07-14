@@ -33,3 +33,12 @@ export {
   buildEnvelopeTransmissionPhysicsInput,
   calculateChapter2ForBuildingDna
 } from "./buildingChapter2Adapter.mjs";
+
+export {
+  resolveBuildingRenovationInterventions
+} from "./buildingRenovationInterventions.mjs";
+
+export {
+  buildBuildingKnowledgePlatformFromAdvancedModel,
+  buildBuildingKnowledgePlatformFromAssistedAnswers
+} from "./buildingKnowledgePipeline.mjs";

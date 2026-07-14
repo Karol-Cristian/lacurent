@@ -48,11 +48,58 @@ test("assisted answers resolve into canonical Building DNA", () => {
   assert.equal(result.buildingDna.assemblies.length, 6);
   assert.equal(result.buildingDna.envelopeElements.length, 7);
   assert.equal(result.buildingDna.monthlyProfiles.length, 12);
+  assert.equal(result.buildingDna.renovationInterventions.length, 2);
   assert.equal(result.buildingDna.assemblies[0].layers[0].material.provenance.origin, "proposed_by_typology");
   assert.equal(result.buildingDna.missingConfirmations.includes("confirm_window_system"), true);
   assert.equal(
     result.diagnostics.methodologyLimits.includes("no_physics_calculation"),
     true
+  );
+});
+
+test("building-specific parameters and boundary context are carried into Building DNA", () => {
+  const result = createBuildingDnaFromAssistedAnswers({
+    buildingId: "p2-assisted-parameterized-house",
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: false,
+      windowsReplaced: false
+    },
+    buildingSpecificParameters: {
+      usefulFloorAreaM2: 80,
+      windowAreaM2: 12,
+      averageRoomHeightM: 2.6,
+      ventilationAch: 0.7,
+      mainOrientation: "south",
+      windowOrientation: "south",
+      ventilationType: "natural"
+    },
+    context: {
+      attic: "heated",
+      basement: "unheated"
+    },
+    source: {
+      reference: "P2.test.assisted_parameters"
+    }
+  });
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.buildingDna.geometry.usefulFloorAreaM2, 80);
+  assert.equal(result.buildingDna.geometry.windowAreaM2, 12);
+  assert.equal(result.buildingDna.geometry.groundFloorAreaM2, 80);
+  assert.equal(result.buildingDna.buildingSpecificParameters.windowAreaM2.value, 12);
+  assert.equal(result.buildingDna.buildingSpecificParameters.ventilationAch.value, 0.7);
+  assert.equal(result.buildingDna.buildingSpecificParameters.windowOrientation.value, "south");
+  assert.equal(result.buildingDna.assemblies[0].assemblyId, "wall_masonry_300_uninsulated");
+  assert.equal(
+    result.buildingDna.envelopeElements.find(item => item.elementId === "attic-ceiling").boundaryType,
+    "adjacent_heated_space"
+  );
+  assert.equal(
+    result.buildingDna.envelopeElements.find(item => item.elementId === "ground-floor").boundaryType,
+    "unheated_basement"
   );
 });
 

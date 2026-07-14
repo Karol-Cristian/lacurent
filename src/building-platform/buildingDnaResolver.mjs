@@ -10,6 +10,7 @@ import {
   proposeBuildingTypology,
   validateTypologyProposal
 } from "./buildingTypologyEngine.mjs";
+import { resolveBuildingRenovationInterventions } from "./buildingRenovationInterventions.mjs";
 
 const ASSISTED_MODE = "assisted";
 const ADVANCED_MODE = "advanced";
@@ -94,6 +95,77 @@ function q(amount, unit, reference, confidence = "medium", origin = "proposed_by
   return makeEngineeringQuantity(amount, unit, provenance(reference, confidence, origin));
 }
 
+function parameterValue(value, unit, reference, confidence = "high") {
+  return {
+    value,
+    unit,
+    provenance: provenance(reference, confidence, "confirmed_by_user")
+  };
+}
+
+function parameterText(value, reference, confidence = "high") {
+  return {
+    value,
+    provenance: provenance(reference, confidence, "confirmed_by_user")
+  };
+}
+
+function normalizeBuildingSpecificParameters(parameters = {}) {
+  const output = {};
+  const ref = "P2.building_specific_parameters";
+  for (const [key, unit] of [
+    ["usefulFloorAreaM2", "m2"],
+    ["heatedVolumeM3", "m3"],
+    ["numberOfFloors", "count"],
+    ["averageRoomHeightM", "m"],
+    ["ventilationAch", "1/h"],
+    ["windowAreaM2", "m2"],
+    ["exteriorWallAreaM2", "m2"],
+    ["roofAreaM2", "m2"],
+    ["groundFloorAreaM2", "m2"],
+    ["atticCeilingAreaM2", "m2"]
+  ]) {
+    const value = parameters?.[key];
+    if (finitePositive(value)) {
+      output[key] = parameterValue(value, unit, `${ref}.${key}`);
+    }
+  }
+  for (const key of [
+    "mainOrientation",
+    "windowOrientation",
+    "ventilationType",
+    "atticContext",
+    "basementContext"
+  ]) {
+    if (safeCode(parameters?.[key] ?? "", 96)) {
+      output[key] = parameterText(parameters[key], `${ref}.${key}`);
+    }
+  }
+  return output;
+}
+
+function geometryOverridesFromBuildingSpecificParameters(parameters = {}) {
+  const overrides = {};
+  const usefulArea = parameters.usefulFloorAreaM2;
+  if (finitePositive(usefulArea)) {
+    overrides.usefulFloorAreaM2 = usefulArea;
+    overrides.groundFloorAreaM2 = parameters.groundFloorAreaM2 ?? usefulArea;
+    overrides.roofAreaM2 = parameters.roofAreaM2 ?? usefulArea;
+  }
+  for (const key of [
+    "windowAreaM2",
+    "exteriorWallAreaM2",
+    "groundFloorAreaM2",
+    "roofAreaM2",
+    "atticCeilingAreaM2"
+  ]) {
+    if (finitePositive(parameters[key])) {
+      overrides[key] = parameters[key];
+    }
+  }
+  return overrides;
+}
+
 function defaultGeometry(overrides = {}) {
   return {
     exteriorWallAreaM2: 50,
@@ -144,7 +216,11 @@ function seedUtilizationDependencies() {
 
 function seedBoundaryContext() {
   return {
+    groundFloorBoundaryType: "ground",
     groundCorrectionFactor: 0.6,
+    groundFloorBoundaryCorrectionFactor: 0.6,
+    atticBoundaryType: "unheated_attic",
+    atticBoundaryCorrectionFactor: 0.2,
     atticHeatTransferToExteriorWK: 35,
     atticTotalHeatTransferWK: 50,
     adjacentWallUValueWm2K: 0.5,
@@ -158,6 +234,25 @@ function seedBoundaryContext() {
       }
     ]
   };
+}
+
+function boundaryContextFromAssistedContext(context = {}) {
+  const output = {};
+  if (context.attic === "heated") {
+    output.atticBoundaryType = "adjacent_heated_space";
+  } else if (context.attic === "unheated") {
+    output.atticBoundaryType = "unheated_attic";
+  }
+  if (context.basement === "heated") {
+    output.groundFloorBoundaryType = "adjacent_heated_space";
+    output.groundFloorBoundaryCorrectionFactor = 0.2;
+  } else if (context.basement === "unheated") {
+    output.groundFloorBoundaryType = "unheated_basement";
+    output.groundFloorBoundaryCorrectionFactor = 0.6;
+  } else if (context.basement === "none") {
+    output.groundFloorBoundaryType = "ground";
+  }
+  return output;
 }
 
 function validateGeometry(geometry) {
@@ -284,6 +379,51 @@ function buildAssemblies(assemblySelections) {
 
 function makeEnvelopeElements(geometry, boundaryContext) {
   const elementSource = "P1.resolver.envelope";
+  const groundBoundaryType = boundaryContext.groundFloorBoundaryType ?? "ground";
+  const atticBoundaryType = boundaryContext.atticBoundaryType ?? "unheated_attic";
+  const groundBoundaryCorrection = groundBoundaryType === "ground"
+    ? {
+        boundaryCorrectionFactor: q(
+          boundaryContext.groundCorrectionFactor,
+          "dimensionless",
+          `${elementSource}.ground_floor.boundary_factor`,
+          "low"
+        )
+      }
+    : {
+        boundaryCorrectionFactor: q(
+          boundaryContext.groundFloorBoundaryCorrectionFactor,
+          "dimensionless",
+          `${elementSource}.ground_floor.boundary_factor`,
+          "low"
+        )
+      };
+  const atticBoundaryCorrection = atticBoundaryType === "unheated_attic"
+    ? {
+        boundaryCorrection: {
+          mode: "bztu_explicit_heat_transfer_ratio_v1",
+          heatTransferToExterior: q(
+            boundaryContext.atticHeatTransferToExteriorWK,
+            "W/K",
+            `${elementSource}.attic.heat_transfer_to_exterior`,
+            "low"
+          ),
+          totalHeatTransfer: q(
+            boundaryContext.atticTotalHeatTransferWK,
+            "W/K",
+            `${elementSource}.attic.total_heat_transfer`,
+            "low"
+          )
+        }
+      }
+    : {
+        boundaryCorrectionFactor: q(
+          boundaryContext.atticBoundaryCorrectionFactor,
+          "dimensionless",
+          `${elementSource}.attic.boundary_factor`,
+          "low"
+        )
+      };
   const elements = [
     {
       elementId: "exterior-walls",
@@ -317,36 +457,17 @@ function makeEnvelopeElements(geometry, boundaryContext) {
       elementId: "ground-floor",
       elementType: "floor",
       assemblyRole: "ground_floor",
-      boundaryType: "ground",
+      boundaryType: groundBoundaryType,
       area: q(geometry.groundFloorAreaM2, "m2", `${elementSource}.ground_floor.area`),
-      boundaryCorrectionFactor: q(
-        boundaryContext.groundCorrectionFactor,
-        "dimensionless",
-        `${elementSource}.ground_floor.boundary_factor`,
-        "low"
-      )
+      ...groundBoundaryCorrection
     },
     {
       elementId: "attic-ceiling",
       elementType: "ceiling",
       assemblyRole: "attic_ceiling",
-      boundaryType: "unheated_attic",
+      boundaryType: atticBoundaryType,
       area: q(geometry.atticCeilingAreaM2, "m2", `${elementSource}.attic_ceiling.area`),
-      boundaryCorrection: {
-        mode: "bztu_explicit_heat_transfer_ratio_v1",
-        heatTransferToExterior: q(
-          boundaryContext.atticHeatTransferToExteriorWK,
-          "W/K",
-          `${elementSource}.attic.heat_transfer_to_exterior`,
-          "low"
-        ),
-        totalHeatTransfer: q(
-          boundaryContext.atticTotalHeatTransferWK,
-          "W/K",
-          `${elementSource}.attic.total_heat_transfer`,
-          "low"
-        )
-      }
+      ...atticBoundaryCorrection
     }
   ];
 
@@ -465,6 +586,8 @@ function resolveBuildingDna({
   typologyProposal,
   assemblySelections,
   geometry,
+  buildingSpecificParameters,
+  renovationInterventions,
   boundaryContext,
   monthlyProfiles,
   building
@@ -507,6 +630,8 @@ function resolveBuildingDna({
       location: building?.location ?? null
     },
     typologyProposal: typologyProposal ?? null,
+    buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters),
+    renovationInterventions: deepClone(renovationInterventions ?? []),
     geometry: deepClone(geometry),
     assemblies: assemblies.value,
     envelopeElements: makeEnvelopeElements(geometry, resolvedBoundaryContext),
@@ -516,8 +641,14 @@ function resolveBuildingDna({
       {
         assumptionId: "building_dna_contains_confirmable_engineering_assumptions",
         text:
-          "Automatically selected assemblies and monthly profiles are explicit Building DNA values and remain editable.",
+          "Automatically selected assemblies, interventions, geometry seeds, and monthly profiles are explicit Building DNA values and remain editable.",
         provenance: provenance("P1.resolver.assumptions", "low")
+      },
+      {
+        assumptionId: "building_specific_parameters_seed_geometry_until_confirmed",
+        text:
+          "User-facing geometry answers seed the engineering geometry for review and must be confirmed for verified calculations.",
+        provenance: provenance("P2.resolver.building_specific_parameters", "low")
       }
     ],
     warnings: [
@@ -554,6 +685,10 @@ function resolveBuildingDna({
 }
 
 export function createBuildingDnaFromAssistedAnswers(answers = {}) {
+  const interventions = resolveBuildingRenovationInterventions({
+    renovations: answers.renovations ?? {},
+    source: answers.source ?? { reference: "P2.assisted_answers" }
+  });
   const typology = proposeBuildingTypology(createAssistedTypologyInput({
     buildingType: answers.buildingType,
     constructionPeriod: answers.constructionPeriod,
@@ -572,8 +707,16 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     userMode: ASSISTED_MODE,
     source: answers.source ?? { reference: "P1.assisted_answers" },
     typologyProposal: typology.proposal,
-    geometry: defaultGeometry(answers.geometry ?? {}),
-    boundaryContext: answers.boundaryContext,
+    geometry: defaultGeometry({
+      ...geometryOverridesFromBuildingSpecificParameters(answers.buildingSpecificParameters ?? {}),
+      ...(answers.geometry ?? {})
+    }),
+    buildingSpecificParameters: answers.buildingSpecificParameters,
+    renovationInterventions: interventions.interventions,
+    boundaryContext: {
+      ...boundaryContextFromAssistedContext(answers.context ?? {}),
+      ...(answers.boundaryContext ?? {})
+    },
     monthlyProfiles: answers.monthlyProfiles ?? seedMonthlyProfiles(),
     building: {
       buildingId: answers.buildingId,
@@ -591,6 +734,8 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     source: input.source ?? { reference: "P1.advanced_model" },
     assemblySelections: input.assemblySelections,
     geometry: input.geometry,
+    buildingSpecificParameters: input.buildingSpecificParameters,
+    renovationInterventions: input.renovationInterventions,
     boundaryContext: input.boundaryContext,
     monthlyProfiles: input.monthlyProfiles,
     building: input.building

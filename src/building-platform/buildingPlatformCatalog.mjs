@@ -1,4 +1,4 @@
-const PLATFORM_VERSION = "building_platform_p1_v1";
+const PLATFORM_VERSION = "building_platform_p2_review_mvp_v1";
 
 const CONFIDENCE_LEVELS = new Set(["high", "medium", "low"]);
 const ORIGINS = new Set([
@@ -280,20 +280,38 @@ function surfaceResistances(assemblyId, rsi, rse) {
   };
 }
 
-function directU(assemblyId, amount) {
+function directU(assemblyId, amount, confidence = "medium") {
   return quantity(
     amount,
     "W/(m2*K)",
     provenance({
       origin: "proposed_by_typology",
-      reference: `P1.catalog.assembly.${assemblyId}.direct_u`,
-      confidence: "medium",
+      reference: `${PLATFORM_VERSION}.catalog.assembly.${assemblyId}.direct_u`,
+      confidence,
       normativeReference: commonReferences.directU
     })
   );
 }
 
 const assemblyEntries = freezeDeep({
+  wall_masonry_300_uninsulated: {
+    kind: "assembly",
+    assemblyId: "wall_masonry_300_uninsulated",
+    assemblyRole: "exterior_wall",
+    displayName: "Masonry exterior wall without added insulation",
+    assemblyType: "wall",
+    layers: [
+      layer("brick", "brick_masonry_pre_1990", 0.3)
+    ],
+    surfaceResistances: surfaceResistances("wall_masonry_300_uninsulated", 0.13, 0.04),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P2.catalog.assembly.wall_masonry_300_uninsulated",
+      confidence: "low",
+      normativeReference:
+        "Unrenovated typology seed resolved into Chapter 2 R and U calculations; confirmation required."
+    })
+  },
   wall_masonry_300_eps_100: {
     kind: "assembly",
     assemblyId: "wall_masonry_300_eps_100",
@@ -371,7 +389,7 @@ const assemblyEntries = freezeDeep({
     kind: "assembly",
     assemblyId: "window_pvc_double_glazing_direct_u",
     assemblyRole: "window",
-    displayName: "PVC double-glazed window, direct U-value",
+    displayName: "PVC double-glazed window",
     assemblyType: "window",
     directUValue: directU("window_pvc_double_glazing_direct_u", 1.2),
     provenance: provenance({
@@ -381,11 +399,26 @@ const assemblyEntries = freezeDeep({
       normativeReference: commonReferences.directU
     })
   },
+  window_legacy_double_glazing_direct_u: {
+    kind: "assembly",
+    assemblyId: "window_legacy_double_glazing_direct_u",
+    assemblyRole: "window",
+    displayName: "Older double-glazed window",
+    assemblyType: "window",
+    directUValue: directU("window_legacy_double_glazing_direct_u", 2.6, "low"),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P2.catalog.assembly.window_legacy_double_glazing_direct_u",
+      confidence: "low",
+      normativeReference:
+        "Typology seed direct U-value consumed by Chapter 2 physics; must be confirmed or overridden."
+    })
+  },
   exterior_door_insulated_direct_u: {
     kind: "assembly",
     assemblyId: "exterior_door_insulated_direct_u",
     assemblyRole: "door",
-    displayName: "Insulated exterior door, direct U-value",
+    displayName: "Insulated exterior door",
     assemblyType: "door",
     directUValue: directU("exterior_door_insulated_direct_u", 1.6),
     provenance: provenance({
