@@ -1,3 +1,5 @@
+import { MC001_MONTHLY_SOLAR_GAINS_SCOPE } from "./mc001SolarGainsCalculation.mjs";
+
 const MODE = "monthly_heat_gains_explicit_v1";
 const SCOPE = "monthly_heat_gains_explicit_input_only_not_full_QHnd";
 const FORMULA_CODE = "MC001_EXPLICIT_MONTHLY_HEAT_GAINS_SUM";
@@ -32,6 +34,7 @@ const METHODOLOGY_LIMITS = [
   "no_hidden_defaults",
   "no_default_internal_gains",
   "no_default_solar_gains",
+  "solar_gains_result_allowed_when_source_backed",
   "no_default_occupancy",
   "no_default_schedules",
   "no_default_climate_data",
@@ -58,6 +61,7 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "results",
   "totalGains",
   "heatGainsResult",
+  "solarGainsResult",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -86,19 +90,41 @@ function safeNotes(value) {
     );
 }
 
-function hasForbiddenDerivedInput(value) {
+function hasForbiddenDerivedInput(value, path = []) {
   if (value === null || value === undefined || typeof value !== "object") {
     return false;
   }
   if (Array.isArray(value)) {
-    return value.some(hasForbiddenDerivedInput);
+    return value.some((child, index) => hasForbiddenDerivedInput(child, [...path, String(index)]));
   }
   if (!isPlainObject(value)) {
     return true;
   }
-  return Object.entries(value).some(([key, child]) => (
-    FORBIDDEN_INPUT_KEYS.has(key) || hasForbiddenDerivedInput(child)
-  ));
+  return Object.entries(value).some(([key, child]) => {
+    const nextPath = [...path, key];
+    const isAllowedSolarGainsResultContainer = key === "solarGainsResult" &&
+      path.length >= 2 &&
+      path[path.length - 2] === "cases";
+    const isAllowedSolarGainsResultKey = path.includes("solarGainsResult") &&
+      [
+        "caseResults",
+        "summary",
+        "formulaCode",
+        "formulaReferences",
+        "annualSolarGains",
+        "qSolDir",
+        "transparentElementResults",
+        "opaqueElementResults"
+      ].includes(key);
+    return (
+      (
+        !isAllowedSolarGainsResultContainer &&
+        !isAllowedSolarGainsResultKey &&
+        FORBIDDEN_INPUT_KEYS.has(key)
+      ) ||
+      hasForbiddenDerivedInput(child, nextPath)
+    );
+  });
 }
 
 function blocker(code) {
@@ -138,7 +164,7 @@ function validateCase(inputCase) {
   if (!isPlainObject(inputCase)) {
     return { ok: false, code: "monthly_heat_gains_invalid_case" };
   }
-  if (hasForbiddenDerivedInput(inputCase)) {
+  if (hasForbiddenDerivedInput(inputCase, ["cases", "case"])) {
     return { ok: false, code: "monthly_heat_gains_client_supplied_derived_result" };
   }
   if (!safeCode(inputCase.caseId, 96)) {
@@ -159,12 +185,52 @@ function validateCase(inputCase) {
     return { ok: false, code: "monthly_heat_gains_negative_internal_gains" };
   }
 
-  const solarGains = finiteNumber(inputCase.solarGains);
-  if (solarGains === null) {
+  const hasDirectSolarGains = inputCase.solarGains !== undefined && inputCase.solarGains !== null;
+  const hasSolarGainsResult = inputCase.solarGainsResult !== undefined && inputCase.solarGainsResult !== null;
+  if (hasDirectSolarGains && hasSolarGainsResult) {
+    return {
+      ok: false,
+      code: "monthly_heat_gains_solar_gains_and_solar_result_mutually_exclusive"
+    };
+  }
+  if (!hasDirectSolarGains && !hasSolarGainsResult) {
     return { ok: false, code: "monthly_heat_gains_missing_solar_gains" };
   }
-  if (solarGains < 0) {
-    return { ok: false, code: "monthly_heat_gains_negative_solar_gains" };
+
+  let solarGains = null;
+  let solarGainsOrigin = "explicit_input";
+  let solarGainsFormulaCode = null;
+  let solarGainsScope = null;
+  if (hasDirectSolarGains) {
+    solarGains = finiteNumber(inputCase.solarGains);
+    if (solarGains === null) {
+      return { ok: false, code: "monthly_heat_gains_missing_solar_gains" };
+    }
+    if (solarGains < 0) {
+      return { ok: false, code: "monthly_heat_gains_negative_solar_gains" };
+    }
+  } else {
+    const solarResult = inputCase.solarGainsResult;
+    if (
+      !isPlainObject(solarResult) ||
+      solarResult.status !== "ready" ||
+      solarResult.scope !== MC001_MONTHLY_SOLAR_GAINS_SCOPE ||
+      !Array.isArray(solarResult.caseResults) ||
+      solarResult.caseResults.length !== 1
+    ) {
+      return { ok: false, code: "monthly_heat_gains_invalid_solar_gains_result" };
+    }
+    const solarCase = solarResult.caseResults[0];
+    solarGains = finiteNumber(solarCase?.solarGains);
+    if (solarGains === null || solarGains < 0) {
+      return { ok: false, code: "monthly_heat_gains_invalid_solar_gains_result" };
+    }
+    if (solarCase.month !== inputCase.month) {
+      return { ok: false, code: "monthly_heat_gains_solar_gains_result_month_mismatch" };
+    }
+    solarGainsOrigin = "calculated_from_explicit_monthly_solar_gains_result";
+    solarGainsFormulaCode = solarCase.formulaCode;
+    solarGainsScope = solarCase.scope;
   }
 
   return {
@@ -174,6 +240,9 @@ function validateCase(inputCase) {
       month: inputCase.month,
       internalGains,
       solarGains,
+      solarGainsOrigin,
+      ...(solarGainsFormulaCode === null ? {} : { solarGainsFormulaCode }),
+      ...(solarGainsScope === null ? {} : { solarGainsScope }),
       qHgn: internalGains + solarGains,
       sourceReference: inputCase.source.reference
     }
