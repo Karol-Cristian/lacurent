@@ -290,6 +290,55 @@ await test("explicit monthly heat gains result can feed QHgn", () => {
   close(result.caseResults[0].qHnd, 786.72);
 });
 
+await test("monthly heat gains with adjacent unconditioned zone terms can feed QHgn", () => {
+  const heatGains = calculateMc001MonthlyHeatGainsExplicit({
+    mode: "monthly_heat_gains_explicit_v1",
+    cases: [
+      {
+        caseId: "jan-adjacent-heat-gains",
+        month: "january",
+        internalGains: 120,
+        solarGains: 180,
+        adjacentUnconditionedZones: [
+          {
+            zoneId: "sunspace-a",
+            internalGains: 50,
+            solarGains: 100,
+            bztu: 0.4,
+            distributionFactor: 0.5,
+            gainReductionFactor: 0.8
+          }
+        ],
+        source: {
+          reference: "manual_mvp_input"
+        }
+      }
+    ]
+  });
+  assert.equal(heatGains.status, "ready");
+
+  const payloadCase = sampleCase({
+    monthlyHeatGainsResult: heatGains
+  });
+  delete payloadCase.qHgn;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHgn, 336);
+  close(result.caseResults[0].internalGains, 132);
+  close(result.caseResults[0].solarGains, 204);
+  close(result.caseResults[0].adjacentInternalGains, 12);
+  close(result.caseResults[0].adjacentSolarGains, 24);
+  assert.equal(result.caseResults[0].qHgnOrigin, "calculated_from_explicit_monthly_heat_gains_result");
+  assert.equal(
+    result.caseResults[0].adjacentUnconditionedGainsFormulaCode,
+    "MC001_RELATION_2_34_2_37_ADJACENT_UNCONDITIONED_ZONE_GAINS"
+  );
+  close(result.caseResults[0].qHnd, 757.92);
+});
+
 await test("calculated etaHgn path uses explicit aH and calculated gammaH", () => {
   const payloadCase = sampleCase({ aH: 2 });
   delete payloadCase.etaHgn;

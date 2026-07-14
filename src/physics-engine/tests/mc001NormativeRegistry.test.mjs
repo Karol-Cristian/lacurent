@@ -2417,11 +2417,16 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "2.22",
     "2.23",
     "2.24",
+    "2.34",
     "2.36",
+    "2.37",
     "2.38",
     "2.39",
     "2.40",
     "2.50",
+    "2.51",
+    "2.52",
+    "2.53",
     "2.54",
     "2.84",
     "2.85"
@@ -2441,6 +2446,9 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "monthly_ventilation_explicit_airflow_temperature_duration",
     "internal_gains_table_2_15_explicit_category_lookup",
     "monthly_heat_gains_explicit_internal_plus_solar_sum",
+    "adjacent_unconditioned_zone_internal_gains_relation_2_34_explicit_inputs",
+    "adjacent_unconditioned_zone_solar_gains_relation_2_37_explicit_inputs",
+    "adjacent_unconditioned_zone_gain_reduction_relations_2_51_2_52_2_53_explicit_inputs",
     "monthly_solar_gains_explicit_transparent_opaque_sum",
     "solar_sky_radiation_relation_2_54_explicit_inputs",
     "solar_shading_table_2_16_explicit_device_lookup",
@@ -2691,24 +2699,40 @@ test("R21 solar gains source pack machine-encodes explicit monthly solar gains r
   assert.equal(pack.metadataOnly, false);
   assert.equal(
     pack.runtimeCalculatorStatus,
-    "implemented_explicit_monthly_solar_gains_runtime"
+    "implemented_explicit_monthly_solar_gains_and_adjacent_zone_gain_runtime"
   );
-  for (const relation of ["2.36", "2.38", "2.39", "2.40", "2.50", "2.54"]) {
+  for (const relation of [
+    "2.34",
+    "2.36",
+    "2.37",
+    "2.38",
+    "2.39",
+    "2.40",
+    "2.50",
+    "2.51",
+    "2.52",
+    "2.53",
+    "2.54"
+  ]) {
     assert.ok(pack.sourceScope.relationsVerified.includes(relation), relation);
   }
   for (const table of ["2.13", "2.16", "2.17", "2.18"]) {
     assert.ok(pack.sourceScope.tablesVerified.includes(table), table);
   }
-  for (const page of [83, 84, 104, 105, 108, 109, 110, 111]) {
+  for (const page of [83, 84, 102, 104, 105, 108, 109, 110, 111]) {
     assert.ok(pack.sourceScope.pagesVerified.includes(page), page);
   }
 
   for (const candidateCode of [
     "MC001_R21_RELATION_2_36_SOLAR_GAINS_SINGLE_ZONE",
+    "MC001_R21_RELATION_2_37_SOLAR_GAINS_ADJACENT_ZTU",
     "MC001_R21_RELATION_2_38_DIRECT_SOLAR_COMPONENTS",
     "MC001_R21_RELATION_2_39_TRANSPARENT_SOLAR_GAINS",
     "MC001_R21_RELATION_2_40_GLASS_ANGLE_CORRECTION",
     "MC001_R21_RELATION_2_50_OPAQUE_SOLAR_GAINS",
+    "MC001_R21_RELATION_2_51_SINGLE_ADJACENT_ZONE_GAIN_REDUCTION",
+    "MC001_R21_RELATION_2_52_MULTIPLE_ADJACENT_ZONES_GAIN_REDUCTION",
+    "MC001_R21_RELATION_2_53_INTERNAL_ZTU_GAIN_REDUCTION",
     "MC001_R21_RELATION_2_54_SKY_RADIATION"
   ]) {
     const candidate = candidatesByCode.get(candidateCode);
@@ -2739,6 +2763,14 @@ test("R21 solar gains source pack machine-encodes explicit monthly solar gains r
 
   assert.equal(pack.runtimeIntegration.implementedModule, "mc001SolarGainsCalculation.mjs");
   assert.equal(
+    pack.runtimeIntegration.adjacentZoneGainIntegrationModule,
+    "mc001MonthlyHeatGainsCalculation.mjs"
+  );
+  assert.equal(
+    pack.runtimeIntegration.adjacentZoneGainFormulaCode,
+    "MC001_RELATION_2_34_2_37_ADJACENT_UNCONDITIONED_ZONE_GAINS"
+  );
+  assert.equal(
     pack.runtimeIntegration.implementedEntrypoint,
     "monthly_solar_gains_explicit_v1"
   );
@@ -2756,10 +2788,11 @@ test("R21 solar gains source pack machine-encodes explicit monthly solar gains r
       "monthly_solar_irradiation_by_element_orientation_and_tilt"
     )
   );
-  assert.ok(
+  assert.equal(
     pack.remainingExplicitDependencies.includes(
       "adjacent_unconditioned_zone_solar_gain_terms_relation_2_37"
-    )
+    ),
+    false
   );
   assert.ok(pack.blockers.includes("not_final_energy"));
   assert.ok(pack.blockers.includes("not_primary_energy"));
