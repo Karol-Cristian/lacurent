@@ -614,28 +614,30 @@ const CHAPTER_2_OUT_OF_CURRENT_RUNTIME_RELATIONS = new Set([
   "2.87"
 ]);
 
-const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2", "2.11", "2.12", "2.13"]);
+const CHAPTER_2_TABLE_MACHINE_ENCODED = new Set(["2.2", "2.11", "2.12", "2.13", "2.19", "2.20"]);
 const CHAPTER_2_TABLE_BACKED_NOT_ENCODED = new Set([
   "2.1",
   "2.14",
   "2.15",
   "2.16",
   "2.17",
-  "2.19",
-  "2.20",
   "2.21"
 ]);
 const CHAPTER_2_TABLE_RUNTIME_MODULE_BY_NUMBER = new Map([
   ["2.2", "mc001Table2_2MaterialCorrectionCoefficients.mjs"],
   ["2.11", "mc001SurfaceResistanceTables.mjs"],
   ["2.12", "mc001SurfaceResistanceTables.mjs"],
-  ["2.13", "mc001SolarTransmissionTable2_13.mjs"]
+  ["2.13", "mc001SolarTransmissionTable2_13.mjs"],
+  ["2.19", "mc001EffectiveInternalHeatCapacityTables.mjs"],
+  ["2.20", "mc001EffectiveInternalHeatCapacityTables.mjs"]
 ]);
 const CHAPTER_2_TABLE_TEST_FILE_BY_NUMBER = new Map([
   ["2.2", "mc001Table2_2MaterialCorrectionCoefficients.test.mjs"],
   ["2.11", "mc001SurfaceResistanceTables.test.mjs"],
   ["2.12", "mc001SurfaceResistanceTables.test.mjs"],
-  ["2.13", "mc001SolarTransmissionTable2_13.test.mjs"]
+  ["2.13", "mc001SolarTransmissionTable2_13.test.mjs"],
+  ["2.19", "mc001EffectiveInternalHeatCapacityTables.test.mjs"],
+  ["2.20", "mc001EffectiveInternalHeatCapacityTables.test.mjs"]
 ]);
 const CHAPTER_2_NOT_RUNTIME_TABLES = new Set([
   "2.3",
@@ -921,7 +923,6 @@ const CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX = Object.freeze({
     requiredBeforeClosure: Object.freeze([
       "resolve_or_confirm_relation_2_2_gap",
       "resolve_or_confirm_relation_2_5_gap",
-      "machine_encode_effective_capacity_tables_if_runtime_safe",
       "machine_encode_material_lambda_catalog_tables_if_runtime_safe",
       "machine_encode_remaining_solar_climate_orientation_shading_inputs_if_runtime_safe",
       "machine_encode_or_justify_latent_humidification_relations_2_82_to_2_83",
@@ -5315,6 +5316,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "2.7.1",
           "2.7.2",
           "2.7.3",
+          "2.7.5",
           "2.8",
           "2.10"
         ],
@@ -5334,6 +5336,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           103,
           104,
           105,
+          112,
           120,
           121,
           124
@@ -5380,6 +5383,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "surface_resistance_table_2_11_explicit_code_lookup",
           "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
           "solar_transmission_table_2_13_explicit_glazing_type_lookup",
+          "effective_internal_heat_capacity_table_2_20_explicit_class_area_lookup",
           "u_value_from_total_resistance",
           "direct_u_value_or_corrected_u_prime_explicit",
           "outside_air_direct_Hd",
@@ -5408,7 +5412,7 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "ventilation_airflows_and_corrections",
           "internal_gain_components_and_schedules",
           "solar_irradiation_orientation_shading_and_range_glazing_properties",
-          "effective_internal_heat_capacity",
+          "direct_effective_internal_heat_capacity_or_table_2_20_class_area_source",
           "thermal_bridge_psi_chi_values"
         ],
         tableBackedNotEncoded: [
@@ -5546,13 +5550,10 @@ export const mc001NormativeRegistryV1 = deepFreeze({
           "MC001_TABLE_2_15",
           "MC001_TABLE_2_16",
           "MC001_TABLE_2_17",
-          "MC001_TABLE_2_19",
-          "MC001_TABLE_2_20",
           "MC001_TABLE_2_21"
         ],
         nextImplementationDomains: [
           "material_lambda_catalog_tables",
-          "effective_capacity_tables",
           "solar_climate_orientation_shading_inputs",
           "latent_humidification_and_dehumidification_relations"
         ]
@@ -8720,6 +8721,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
     "surface_resistance_table_2_11_explicit_code_lookup",
     "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
     "solar_transmission_table_2_13_explicit_glazing_type_lookup",
+    "effective_internal_heat_capacity_table_2_20_explicit_class_area_lookup",
     "u_value_from_total_resistance",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
@@ -8751,7 +8753,7 @@ function chapter2CompleteCoverageSourcePackIssue(sourcePack) {
       "implemented_explicit_chapter_2_useful_demand_coverage_map_and_12_month_calculation_layer" ||
     !validateEnvelopeRuntimeSourceScope(
       sourcePack.sourceScope,
-      [48, 77, 79, 80, 81, 82, 83, 84, 94, 95, 100, 103, 104, 105, 120, 121, 124],
+      [48, 77, 79, 80, 81, 82, 83, 84, 94, 95, 100, 103, 104, 105, 112, 120, 121, 124],
       ["2.3", "2.6", "2.7", "2.8", "2.11", "2.12", "2.15", "2.22", "2.27", "2.28", "2.84", "2.85"]
     ) ||
     !isObject(map) ||
@@ -8842,7 +8844,7 @@ function chapter2ExhaustiveCoverageMatrixSourcePackIssue(sourcePack) {
     !isObject(gate) ||
     gate.closureStatus !== "CHAPTER_2_NOT_CLOSED" ||
     !gate.unresolvedItemIds?.includes("MC001_RELATION_2_2") ||
-    !gate.unresolvedItemIds?.includes("MC001_TABLE_2_19") ||
+    !gate.unresolvedItemIds?.includes("MC001_TABLE_2_21") ||
     !Array.isArray(sourcePack.blockers) ||
     !sourcePack.blockers.includes("chapter_2_not_closed") ||
     !sourcePack.blockers.includes("no_hidden_defaults") ||
