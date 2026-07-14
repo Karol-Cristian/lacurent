@@ -13,6 +13,7 @@
 <script src="../js/segment-context.js" defer></script>
 <script src="../js/home-context.js" defer></script>
 <script src="../js/analiza-casa.js" defer></script>
+<script type="module" src="../js/building-platform-wizard.mjs"></script>
 </head>
 
 <body>
@@ -115,6 +116,14 @@
 <div class="progress"><div id="progressBar"></div></div>
 <span id="stepText">Pas 1 din 6</span>
 </div>
+
+<section class="dashboard-band" id="buildingPlatformIntro">
+<div class="section-heading">
+<span class="small-label">MODEL TEHNIC</span>
+<h2>Descrii locuinta, LaCurent construieste modelul de calcul.</h2>
+</div>
+<p>Raspunsurile tale genereaza o propunere de ansambluri, materiale, limite si profil lunar. Inainte de calcul poti vedea ce a fost presupus automat si ce trebuie confirmat.</p>
+</section>
 
 <form id="houseForm" hidden>
 <input type="hidden" name="user_type" value="residential">
@@ -275,6 +284,14 @@
 </div>
 
 <div class="wizard-footer">
+<section class="dashboard-band" id="buildingModelReview">
+<div class="section-heading">
+<span class="small-label">REVIZUIRE MODEL</span>
+<h2>Modelul tehnic propus va aparea aici.</h2>
+</div>
+<p>Apasa previzualizare dupa ce completezi datele principale. Valorile tehnice sunt generate de stratul Building DNA si calculate de motorul Chapter 2.</p>
+</section>
+<button class="secondary-btn" id="buildingModelPreviewBtn" type="button">Previzualizeaza modelul tehnic</button>
 <div class="wizard-buttons">
 <button type="button" id="prevBtn" class="secondary-btn">Inapoi</button>
 <button type="button" id="nextBtn" class="primary-btn">Continua</button>
