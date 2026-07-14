@@ -38,6 +38,14 @@ const R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE =
   "MC001_R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK";
 const R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE =
   "MC001_R14_COOLING_INTERMITTENCY_RELATIONS_2_74_TO_2_75_SOURCE_PACK";
+const R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE =
+  "MC001_R15_MATERIALS_AND_THERMAL_RESISTANCE_SOURCE_PACK";
+const R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE =
+  "MC001_R16_THERMAL_TRANSMITTANCE_U_VALUE_SOURCE_PACK";
+const R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE =
+  "MC001_R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK";
+const R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE =
+  "MC001_R18_BOUNDARY_CORRECTIONS_SOURCE_PACK";
 const DEFAULT_CANDIDATE_CODE =
   "bztu_default_values_with_internal_or_solar_gains";
 const R0_FORMULA_CODES = [
@@ -55,7 +63,7 @@ const R2_FORMULA_CODES = [
   "MC001_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT"
 ];
 const EXPECTED_COUNTS = {
-  sourcePacks: 15,
+  sourcePacks: 19,
   formulas: 10,
   constants: 1,
   concepts: 15,
@@ -189,6 +197,22 @@ function coolingUtilizationPack(value = registry()) {
 
 function coolingIntermittencyPack(value = registry()) {
   return sourcePackByCode(R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE, value);
+}
+
+function envelopeMaterialsPack(value = registry()) {
+  return sourcePackByCode(R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE, value);
+}
+
+function envelopeUValuePack(value = registry()) {
+  return sourcePackByCode(R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE, value);
+}
+
+function envelopeTransmissionPack(value = registry()) {
+  return sourcePackByCode(R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE, value);
+}
+
+function envelopeBoundaryPack(value = registry()) {
+  return sourcePackByCode(R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE, value);
 }
 
 function formulas(value = registry()) {
@@ -399,7 +423,11 @@ test("registry now contains the expected source packs", () => {
       R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE,
       R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE,
       R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE,
-      R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE
+      R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE,
+      R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE,
+      R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
+      R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
+      R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE
     ].sort()
   );
 });
@@ -2214,4 +2242,112 @@ test("cooling source packs keep final primary CO2 CPE and certificate blocked", 
       assert.ok(pack.blockers.includes(blockerCode), `${pack.sourcePackCode} ${blockerCode}`);
     }
   }
+});
+
+test("R15 to R18 envelope source packs machine-encode materials U-values Htr and boundaries", () => {
+  const packs = [
+    envelopeMaterialsPack(),
+    envelopeUValuePack(),
+    envelopeTransmissionPack(),
+    envelopeBoundaryPack()
+  ];
+
+  assert.deepEqual(
+    packs.map(pack => pack.sourcePackCode),
+    [
+      R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE,
+      R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
+      R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
+      R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE
+    ]
+  );
+  for (const pack of packs) {
+    assert.equal(pack.machineReadable, true);
+    assert.equal(pack.metadataOnly, false);
+    assert.equal(pack.runtimeIntegration.implementedModule, "mc001EnvelopePhysicsCalculation.mjs");
+    assert.ok(pack.runtimeIntegration.inputPolicy.includes("explicit_inputs_only"));
+    assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_hidden_defaults"));
+    assert.ok(pack.blockers.includes("not_certificate"));
+    assert.equal(Object.hasOwn(pack, "formulas"), false);
+  }
+});
+
+test("R15 envelope materials pack encodes lambda resistance and surface dependencies", () => {
+  const pack = envelopeMaterialsPack();
+  const byCode = new Map(pack.formulaCandidates.map(candidate => [candidate.candidateCode, candidate]));
+
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.3", "2.6"]);
+  assert.deepEqual(pack.sourceScope.pagesVerified, [48, 77]);
+  assert.equal(
+    byCode.get("MC001_R15_RELATION_2_3_LAMBDA_CORRECTION").machineExpression,
+    "lambdaWmK = correctionCoefficientA * lambdaNormatWmK"
+  );
+  assert.equal(
+    byCode.get("MC001_R15_LAYER_RESISTANCE_FROM_THICKNESS_AND_LAMBDA").machineExpression,
+    "layerResistance = thicknessM / lambdaWmK"
+  );
+  assert.equal(
+    byCode.get("MC001_R15_RELATION_2_6_TOTAL_THERMAL_RESISTANCE").machineExpression,
+    "totalResistance = rsi + sum(layerR) + sum(airLayerR) + rse"
+  );
+  assert.equal(
+    byCode.get("MC001_R15_SURFACE_RESISTANCE_FROM_SURFACE_COEFFICIENTS").machineExpression,
+    "rsi = 1 / hi; rse = 1 / he"
+  );
+});
+
+test("R16 and R17 envelope packs encode U and Htr runtime formulas", () => {
+  const uCandidates = new Map(
+    envelopeUValuePack().formulaCandidates.map(candidate => [candidate.candidateCode, candidate])
+  );
+  const htrCandidates = new Map(
+    envelopeTransmissionPack().formulaCandidates.map(candidate => [candidate.candidateCode, candidate])
+  );
+
+  assert.equal(
+    uCandidates.get("MC001_R16_RELATION_2_7_THERMAL_TRANSMITTANCE").machineExpression,
+    "uValue = 1 / totalResistance"
+  );
+  assert.equal(
+    uCandidates.get("MC001_R16_RELATION_2_8_CORRECTED_TRANSMITTANCE_METADATA").runtimeReadiness,
+    "metadata_only_use_R17_bridge_runtime_path"
+  );
+  assert.equal(
+    htrCandidates.get("MC001_R17_RELATION_2_11_DIRECT_TRANSMISSION_WITH_BRIDGES").machineExpression,
+    "Hd = sum(elementU * area * boundaryFactor) + explicitBridgeTerms"
+  );
+  assert.equal(
+    htrCandidates.get("MC001_R17_RELATION_2_15_TOTAL_TRANSMISSION_COEFFICIENT").machineExpression,
+    "htr = hd + hg + hu + ha"
+  );
+  assert.equal(
+    htrCandidates.get("MC001_R17_RELATION_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT").machineExpression,
+    "thermalBridgeCoefficient = sum(psi * length)"
+  );
+});
+
+test("R18 envelope boundary pack keeps non-exterior corrections explicit", () => {
+  const pack = envelopeBoundaryPack();
+  const byCode = new Map(pack.formulaCandidates.map(candidate => [candidate.candidateCode, candidate]));
+
+  assert.deepEqual(pack.sourceScope.relationsVerified, ["2.15", "2.21", "2.22", "2.27"]);
+  assert.equal(
+    byCode.get("MC001_R18_OUTSIDE_AIR_DIRECT_HD_COMPONENT").machineExpression,
+    "HdElement = U * area"
+  );
+  assert.equal(
+    byCode.get("MC001_R18_GROUND_BOUNDARY_EXPLICIT_FACTOR").machineExpression,
+    "HgElement = U * area * explicitBoundaryCorrectionFactor"
+  );
+  assert.equal(
+    byCode.get("MC001_R18_UNHEATED_SPACE_EXPLICIT_FACTOR").machineExpression,
+    "HuElement = U * area * explicitBoundaryCorrectionFactor"
+  );
+  assert.equal(
+    byCode.get("MC001_R18_ADJACENT_SPACE_EXPLICIT_FACTOR").machineExpression,
+    "HaElement = U * area * explicitBoundaryCorrectionFactor"
+  );
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_ground_factor"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_unheated_space_factor"));
+  assert.ok(pack.runtimeIntegration.inputPolicy.includes("no_default_adjacent_space_factor"));
 });

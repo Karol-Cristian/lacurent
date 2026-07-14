@@ -28,6 +28,14 @@ const R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE =
   "MC001_R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK";
 const R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE =
   "MC001_R14_COOLING_INTERMITTENCY_RELATIONS_2_74_TO_2_75_SOURCE_PACK";
+const R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE =
+  "MC001_R15_MATERIALS_AND_THERMAL_RESISTANCE_SOURCE_PACK";
+const R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE =
+  "MC001_R16_THERMAL_TRANSMITTANCE_U_VALUE_SOURCE_PACK";
+const R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE =
+  "MC001_R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK";
+const R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE =
+  "MC001_R18_BOUNDARY_CORRECTIONS_SOURCE_PACK";
 const SOURCE_PACK_TYPE = "formula_backed_normative_source_pack";
 const READINESS_SOURCE_PACK_TYPE = "metadata_only_normative_readiness_source_pack";
 const R0_VERIFICATION_STATUS = "human_verified_from_official_pdf";
@@ -90,7 +98,11 @@ const SOURCE_PACK_CODES = new Set([
   R11_HEATING_INTERMITTENCY_SOURCE_PACK_CODE,
   R12_COOLING_QCND_FORMULA_SOURCE_PACK_CODE,
   R13_COOLING_UTILIZATION_FACTOR_SOURCE_PACK_CODE,
-  R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE
+  R14_COOLING_INTERMITTENCY_SOURCE_PACK_CODE,
+  R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE,
+  R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
+  R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
+  R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE
 ]);
 
 const ENTRY_CODES = new Set([
@@ -248,6 +260,10 @@ const DISTRIBUTION_RULE_CODES = new Set([
   "single_adjacent_conditioned_zone"
 ]);
 const SOURCE_SCOPE_PAGES = Object.freeze([
+  48,
+  77,
+  79,
+  80,
   81,
   82,
   94,
@@ -464,7 +480,7 @@ function countRegistryEntries(registry) {
 
 function expectedCounts() {
   return Object.freeze({
-    sourcePacks: 15,
+    sourcePacks: 19,
     formulas: 10,
     constants: 1,
     concepts: 15,
@@ -4413,6 +4429,425 @@ export const mc001NormativeRegistryV1 = deepFreeze({
         "no_system_losses",
         "no_hidden_defaults"
       ]
+    },
+    {
+      sourcePackCode: R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_explicit_envelope_material_layer_resistance_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        sections: ["2.1.4", "2.4.1"],
+        pagesVerified: [48, 77],
+        relationsVerified: ["2.3", "2.6"],
+        tablesVerified: ["2.2", "2.11"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R15_RELATION_2_3_LAMBDA_CORRECTION",
+          relationReference: "2.3",
+          expressionText: "lambda = a * lambda_normat",
+          machineExpression: "lambdaWmK = correctionCoefficientA * lambdaNormatWmK",
+          outputSymbol: "lambda",
+          outputUnit: "W/(m*K)",
+          requiredInputs: ["lambdaNormatWmK", "correctionCoefficientA"],
+          conditions: ["material lambda and correction coefficient are explicit"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 48 relation 2.3 and table 2.2",
+          sourceLocator: { page: 48, relation: "2.3" }
+        },
+        {
+          candidateCode: "MC001_R15_LAYER_RESISTANCE_FROM_THICKNESS_AND_LAMBDA",
+          relationReference: "2.6_dependency",
+          expressionText: "Rj = dj / lambdaJ",
+          machineExpression: "layerResistance = thicknessM / lambdaWmK",
+          outputSymbol: "Rj",
+          outputUnit: "m2*K/W",
+          requiredInputs: ["thicknessM", "lambdaWmK"],
+          conditions: ["homogeneous layer and explicit thickness/lambda"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 77 relation 2.6 layer sum dependency",
+          sourceLocator: { page: 77, relation: "2.6" }
+        },
+        {
+          candidateCode: "MC001_R15_RELATION_2_6_TOTAL_THERMAL_RESISTANCE",
+          relationReference: "2.6",
+          expressionText: "R = Rsi + sum(Rj) + sum(Ra) + Rse",
+          machineExpression: "totalResistance = rsi + sum(layerR) + sum(airLayerR) + rse",
+          outputSymbol: "R",
+          outputUnit: "m2*K/W",
+          requiredInputs: ["Rsi", "Rj[]", "Ra[]", "Rse"],
+          conditions: ["surface resistances or coefficients and all layer resistances are explicit"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 77 relation 2.6",
+          sourceLocator: { page: 77, relation: "2.6" }
+        },
+        {
+          candidateCode: "MC001_R15_SURFACE_RESISTANCE_FROM_SURFACE_COEFFICIENTS",
+          relationReference: "2.6_surface_text",
+          expressionText: "Rsi = 1 / hi and Rse = 1 / he",
+          machineExpression: "rsi = 1 / hi; rse = 1 / he",
+          outputSymbol: "Rsi/Rse",
+          outputUnit: "m2*K/W",
+          requiredInputs: ["hi", "he"],
+          conditions: ["surface coefficients are explicit; no table default is applied"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 77 adjacent text below relation 2.6",
+          sourceLocator: { page: 77, relation: "2.6" }
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001EnvelopePhysicsCalculation.mjs",
+        implementedExports: [
+          "envelope_assembly_u_value_explicit_v1",
+          "envelope_transmission_coefficient_explicit_v1"
+        ],
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_default_material_lambda",
+          "no_default_surface_resistances",
+          "table_2_2_coefficients_only_when_explicitly_selected_or_supplied"
+        ]
+      },
+      blockers: [
+        "not_certificate",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "no_hidden_defaults",
+        "no_default_material_lambda",
+        "no_default_surface_resistances"
+      ]
+    },
+    {
+      sourcePackCode: R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_explicit_envelope_U_value_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        section: "2.4.1. Calculul rezistentei termice si al transmitantei termice",
+        pagesVerified: [79, 80],
+        relationsVerified: ["2.7", "2.8", "2.9", "2.10"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R16_RELATION_2_7_THERMAL_TRANSMITTANCE",
+          relationReference: "2.7",
+          expressionText: "U = 1 / R",
+          machineExpression: "uValue = 1 / totalResistance",
+          outputSymbol: "U",
+          outputUnit: "W/(m2*K)",
+          requiredInputs: ["totalResistance"],
+          conditions: ["plain one-dimensional U-value, not bridge-corrected"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 79 relation 2.7",
+          sourceLocator: { page: 79, relation: "2.7" }
+        },
+        {
+          candidateCode: "MC001_R16_RELATION_2_8_CORRECTED_TRANSMITTANCE_METADATA",
+          relationReference: "2.8",
+          expressionText: "Uprime = 1 / Rprime = 1 / R + sum(psi*l)/A + sum(chi)/A",
+          machineExpression:
+            "correctedUPrime = explicit_input_or_transmission_bridge_path",
+          outputSymbol: "Uprime",
+          outputUnit: "W/(m2*K)",
+          requiredInputs: ["R", "psi*l terms", "chi terms", "area"],
+          conditions: ["used as explicit corrected U-prime or represented via explicit bridge terms"],
+          scopeClassification: "envelope_metadata_and_runtime_dependency",
+          runtimeReadiness: "metadata_only_use_R17_bridge_runtime_path",
+          sourceReference: "MC001-2022 page 79 relation 2.8",
+          sourceLocator: { page: 79, relation: "2.8" }
+        },
+        {
+          candidateCode: "MC001_R16_RELATIONS_2_9_2_10_CORRECTED_RESISTANCE_METADATA",
+          relationReference: "2.9-2.10",
+          expressionText: "Rprime = r * R with r defined from explicit bridge terms",
+          machineExpression: "correctedResistanceMetadataOnly",
+          outputSymbol: "Rprime",
+          outputUnit: "m2*K/W",
+          requiredInputs: ["R", "bridge terms", "area"],
+          conditions: ["metadata only; runtime uses U-prime explicit input or R17 bridge terms"],
+          scopeClassification: "envelope_metadata_only",
+          runtimeReadiness: "metadata_only_not_runtime_path",
+          sourceReference: "MC001-2022 page 80 relations 2.9 and 2.10",
+          sourceLocator: { page: 80, relation: "2.9-2.10" }
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001EnvelopePhysicsCalculation.mjs",
+        uValueOriginCodes: [
+          "calculated_from_explicit_layers_and_surfaces",
+          "explicit_direct_u_value",
+          "explicit_corrected_u_prime"
+        ],
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "do_not_double_count_corrected_U_prime_and_bridge_terms"
+        ]
+      },
+      blockers: [
+        "not_certificate",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "no_hidden_defaults",
+        "no_default_bridge_terms"
+      ]
+    },
+    {
+      sourcePackCode: R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_explicit_envelope_Htr_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        sections: ["2.4.1", "2.7.1.1"],
+        pagesVerified: [80, 81, 100],
+        relationsVerified: ["2.11", "2.12", "2.13", "2.15", "2.27", "2.28"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R17_RELATION_2_11_DIRECT_TRANSMISSION_WITH_BRIDGES",
+          relationReference: "2.11",
+          expressionText: "Hd = sum(Uj*Aj) + sum(psiK*lK) + sum(chiJ)",
+          machineExpression:
+            "Hd = sum(elementU * area * boundaryFactor) + explicitBridgeTerms",
+          outputSymbol: "Hd",
+          outputUnit: "W/K",
+          requiredInputs: ["Uj", "Aj", "psiK", "lK", "chiJ"],
+          conditions: ["all element, area, and bridge values are explicit"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 80 relation 2.11",
+          sourceLocator: { page: 80, relation: "2.11" }
+        },
+        {
+          candidateCode: "MC001_R17_RELATION_2_12_DIRECT_TRANSMISSION_WITH_CORRECTED_U",
+          relationReference: "2.12",
+          expressionText: "Hd = sum(UprimeJ*Aj)",
+          machineExpression: "Hd = sum(correctedUPrime * area)",
+          outputSymbol: "Hd",
+          outputUnit: "W/K",
+          requiredInputs: ["UprimeJ", "Aj"],
+          conditions: ["corrected U-prime is explicit and bridge terms are not added again"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 81 relation 2.12",
+          sourceLocator: { page: 81, relation: "2.12" }
+        },
+        {
+          candidateCode: "MC001_R17_RELATION_2_15_TOTAL_TRANSMISSION_COEFFICIENT",
+          relationReference: "2.15",
+          expressionText: "Htr = Hd + Hg + Hu + Ha",
+          machineExpression: "htr = hd + hg + hu + ha",
+          outputSymbol: "Htr",
+          outputUnit: "W/K",
+          requiredInputs: ["Hd", "Hg", "Hu", "Ha"],
+          conditions: ["component coefficients are explicit or derived from explicit envelope elements"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 81 relation 2.15",
+          sourceLocator: { page: 81, relation: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R17_RELATION_2_27_GLOBAL_TRANSMISSION_EXCLUDING_GROUND",
+          relationReference: "2.27",
+          expressionText: "Htr(excl.ground) = sum(H_element) + Htr;tb",
+          machineExpression: "htrExcludingGround = sum(elementCoefficients) + thermalBridgeCoefficient",
+          outputSymbol: "HH/C;tr(excl.gr);ztc;m",
+          outputUnit: "W/K",
+          requiredInputs: ["element coefficients", "thermalBridgeCoefficient"],
+          conditions: ["runtime dependency for monthly transmission; ground remains separate"],
+          scopeClassification: "envelope_runtime_dependency",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 100 relation 2.27",
+          sourceLocator: { page: 100, relation: "2.27" }
+        },
+        {
+          candidateCode: "MC001_R17_RELATION_2_28_THERMAL_BRIDGE_GLOBAL_COEFFICIENT",
+          relationReference: "2.28",
+          expressionText: "Htr;tb;zt = sum(Psi_tb;k * l_tb;k)",
+          machineExpression: "thermalBridgeCoefficient = sum(psi * length)",
+          outputSymbol: "Htr;tb;zt",
+          outputUnit: "W/K",
+          requiredInputs: ["psi", "length"],
+          conditions: ["linear bridge coefficients and lengths are explicit"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 100 relation 2.28",
+          sourceLocator: { page: 100, relation: "2.28" }
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001EnvelopePhysicsCalculation.mjs",
+        resultOrigin: "calculated_from_explicit_envelope_assemblies_and_boundaries",
+        integrationTargets: [
+          "mc001MonthlyTransmissionEnergyCalculation.mjs",
+          "mc001ExplicitTotalHeatTransferCalculation.mjs",
+          "mc001RestrictedHeatingQhndCalculation.mjs",
+          "mc001CoolingUsefulDemandCalculation.mjs"
+        ],
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_default_thermal_bridge_values",
+          "no_ground_calculation_without_explicit_boundary_factor"
+        ]
+      },
+      blockers: [
+        "not_certificate",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "no_hidden_defaults",
+        "no_default_thermal_bridge_values"
+      ]
+    },
+    {
+      sourcePackCode: R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE,
+      sourcePackType: SOURCE_PACK_TYPE,
+      verificationStatus: R2_VERIFICATION_STATUS,
+      implementationStatus: IMPLEMENTATION_STATUS,
+      metadataOnly: false,
+      machineReadable: true,
+      runtimeCalculatorStatus:
+        "implemented_explicit_boundary_correction_runtime",
+      sourceScope: {
+        chapter: "Capitolul 2. Anvelopa termica a cladirii",
+        sections: ["2.4.1", "2.6.2", "2.7.1.1"],
+        pagesVerified: [81, 82, 94, 95, 100],
+        relationsVerified: ["2.15", "2.21", "2.22", "2.27"],
+        extractionMethods: [
+          "page.get_text(text)",
+          "page.get_text(blocks)",
+          "page.get_text(dict)",
+          "page rendering to PNG",
+          "visual inspection of rendered equations"
+        ]
+      },
+      formulaCandidates: [
+        {
+          candidateCode: "MC001_R18_OUTSIDE_AIR_DIRECT_HD_COMPONENT",
+          relationReference: "2.15",
+          expressionText: "outside-air envelope elements contribute to Hd",
+          machineExpression: "HdElement = U * area",
+          outputSymbol: "Hd",
+          outputUnit: "W/K",
+          requiredInputs: ["U", "area"],
+          conditions: ["boundaryType is outside_air"],
+          scopeClassification: "envelope_runtime_ready",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 81 relation 2.15 definitions",
+          sourceLocator: { page: 81, relation: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R18_GROUND_BOUNDARY_EXPLICIT_FACTOR",
+          relationReference: "2.15",
+          expressionText: "ground-contact envelope elements contribute to Hg with explicit factor",
+          machineExpression: "HgElement = U * area * explicitBoundaryCorrectionFactor",
+          outputSymbol: "Hg",
+          outputUnit: "W/K",
+          requiredInputs: ["U", "area", "boundaryCorrectionFactor"],
+          conditions: ["boundaryType is ground and correction factor is explicit"],
+          scopeClassification: "envelope_runtime_ready_explicit_factor_only",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 81 relation 2.15 Hg component",
+          sourceLocator: { page: 81, relation: "2.15" }
+        },
+        {
+          candidateCode: "MC001_R18_UNHEATED_SPACE_EXPLICIT_FACTOR",
+          relationReference: "2.15",
+          expressionText: "unheated-space envelope elements contribute to Hu with explicit factor",
+          machineExpression: "HuElement = U * area * explicitBoundaryCorrectionFactor",
+          outputSymbol: "Hu",
+          outputUnit: "W/K",
+          requiredInputs: ["U", "area", "boundaryCorrectionFactor"],
+          conditions: ["boundaryType is unheated_space/attic/basement and correction factor is explicit"],
+          scopeClassification: "envelope_runtime_ready_explicit_factor_only",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 82 Hu definition and section 2.6.2 dependencies",
+          sourceLocator: { page: 82, relation: "2.15bis" }
+        },
+        {
+          candidateCode: "MC001_R18_ADJACENT_SPACE_EXPLICIT_FACTOR",
+          relationReference: "2.15",
+          expressionText: "adjacent-building envelope elements contribute to Ha with explicit factor",
+          machineExpression: "HaElement = U * area * explicitBoundaryCorrectionFactor",
+          outputSymbol: "Ha",
+          outputUnit: "W/K",
+          requiredInputs: ["U", "area", "boundaryCorrectionFactor"],
+          conditions: ["boundaryType is adjacent_space and correction factor is explicit"],
+          scopeClassification: "envelope_runtime_ready_explicit_factor_only",
+          runtimeReadiness: "verified_for_restricted_runtime",
+          sourceReference: "MC001-2022 page 82 Ha definition",
+          sourceLocator: { page: 82, relation: "2.15bis" }
+        }
+      ],
+      runtimeIntegration: {
+        implementedModule: "mc001EnvelopePhysicsCalculation.mjs",
+        boundaryOriginCodes: [
+          "direct_exterior_boundary_factor_one",
+          "explicit_Hg_boundary_correction_factor",
+          "explicit_Hu_boundary_correction_factor",
+          "explicit_Ha_boundary_correction_factor"
+        ],
+        inputPolicy: [
+          "explicit_inputs_only",
+          "no_hidden_defaults",
+          "no_default_ground_factor",
+          "no_default_unheated_space_factor",
+          "no_default_adjacent_space_factor"
+        ]
+      },
+      blockers: [
+        "not_certificate",
+        "not_final_energy",
+        "not_primary_energy",
+        "not_CO2",
+        "no_hidden_defaults",
+        "no_default_boundary_corrections"
+      ]
     }
   ]
 });
@@ -7460,6 +7895,97 @@ function coolingSourcePackIssue(sourcePack, config) {
   return null;
 }
 
+function validateEnvelopeRuntimeSourceScope(sourceScope, requiredPages, requiredRelations) {
+  return (
+    isObject(sourceScope) &&
+    Array.isArray(sourceScope.pagesVerified) &&
+    requiredPages.every(page => sourceScope.pagesVerified.includes(page)) &&
+    Array.isArray(sourceScope.relationsVerified) &&
+    requiredRelations.every(relation => sourceScope.relationsVerified.includes(relation)) &&
+    Array.isArray(sourceScope.extractionMethods) &&
+    sourceScope.extractionMethods.includes("page.get_text(text)") &&
+    sourceScope.extractionMethods.includes("page.get_text(blocks)") &&
+    sourceScope.extractionMethods.includes("page.get_text(dict)") &&
+    sourceScope.extractionMethods.includes("page rendering to PNG") &&
+    sourceScope.extractionMethods.includes("visual inspection of rendered equations")
+  );
+}
+
+function validateEnvelopeFormulaCandidates(candidates, prefix, minimumCount) {
+  if (!Array.isArray(candidates) || candidates.length < minimumCount) {
+    return false;
+  }
+  return candidates.every(candidate => (
+    isObject(candidate) &&
+    hasRequiredString(candidate.candidateCode) &&
+    candidate.candidateCode.startsWith(prefix) &&
+    hasRequiredString(candidate.relationReference) &&
+    hasRequiredString(candidate.expressionText) &&
+    hasRequiredString(candidate.machineExpression) &&
+    hasRequiredString(candidate.outputSymbol) &&
+    hasRequiredString(candidate.outputUnit) &&
+    Array.isArray(candidate.requiredInputs) &&
+    candidate.requiredInputs.length > 0 &&
+    Array.isArray(candidate.conditions) &&
+    candidate.conditions.length > 0 &&
+    hasRequiredString(candidate.scopeClassification) &&
+    [
+      "verified_for_restricted_runtime",
+      "metadata_only_use_R17_bridge_runtime_path",
+      "metadata_only_not_runtime_path"
+    ].includes(candidate.runtimeReadiness) &&
+    hasRequiredString(candidate.sourceReference) &&
+    isObject(candidate.sourceLocator) &&
+    sourceLocatorLooksValid(candidate.sourceLocator, candidate.sourceLocator.page) &&
+    !Object.hasOwn(candidate, "entryType") &&
+    !Object.hasOwn(candidate, "formulaCode") &&
+    !Object.hasOwn(candidate, "defaultValue") &&
+    !Object.hasOwn(candidate, "defaultValues")
+  ));
+}
+
+function envelopeSourcePackIssue(sourcePack, config) {
+  const baseIssue = sourcePackBaseIssue(
+    sourcePack,
+    R2_VERIFICATION_STATUS,
+    SOURCE_PACK_TYPE
+  );
+  if (baseIssue) {
+    return baseIssue;
+  }
+  if (
+    sourcePack.metadataOnly !== false ||
+    sourcePack.machineReadable !== true ||
+    sourcePack.runtimeCalculatorStatus !== config.runtimeCalculatorStatus ||
+    !validateEnvelopeRuntimeSourceScope(
+      sourcePack.sourceScope,
+      config.requiredPages,
+      config.requiredRelations
+    ) ||
+    !validateEnvelopeFormulaCandidates(
+      sourcePack.formulaCandidates,
+      config.candidatePrefix,
+      config.minimumCandidateCount
+    ) ||
+    !isObject(sourcePack.runtimeIntegration) ||
+    sourcePack.runtimeIntegration.implementedModule !== "mc001EnvelopePhysicsCalculation.mjs" ||
+    !Array.isArray(sourcePack.runtimeIntegration.inputPolicy) ||
+    !sourcePack.runtimeIntegration.inputPolicy.includes("explicit_inputs_only") ||
+    !sourcePack.runtimeIntegration.inputPolicy.includes("no_hidden_defaults") ||
+    !Array.isArray(sourcePack.blockers) ||
+    !sourcePack.blockers.includes("not_certificate") ||
+    !sourcePack.blockers.includes("no_hidden_defaults") ||
+    Object.hasOwn(sourcePack, "formulas") ||
+    Object.hasOwn(sourcePack, "figures") ||
+    Object.hasOwn(sourcePack, "zoneTypes") ||
+    Object.hasOwn(sourcePack, "applicabilityRules") ||
+    Object.hasOwn(sourcePack, "defaultValueCandidates")
+  ) {
+    return "blocked_invalid_source_pack";
+  }
+  return null;
+}
+
 function sourcePackIssue(sourcePack) {
   if (!isObject(sourcePack) || !SOURCE_PACK_CODES.has(sourcePack.sourcePackCode)) {
     return "blocked_invalid_source_pack";
@@ -7540,6 +8066,42 @@ function sourcePackIssue(sourcePack) {
       requiredFormulaReferences: ["2.74", "2.75"],
       implementedModule: "mc001CoolingIntermittencyCalculation.mjs",
       runtimeCalculatorStatus: "implemented_restricted_explicit_cooling_intermittency_runtime"
+    });
+  }
+  if (sourcePack.sourcePackCode === R15_ENVELOPE_MATERIALS_RESISTANCE_SOURCE_PACK_CODE) {
+    return envelopeSourcePackIssue(sourcePack, {
+      candidatePrefix: "MC001_R15_",
+      requiredPages: [48, 77],
+      requiredRelations: ["2.3", "2.6"],
+      minimumCandidateCount: 4,
+      runtimeCalculatorStatus: "implemented_explicit_envelope_material_layer_resistance_runtime"
+    });
+  }
+  if (sourcePack.sourcePackCode === R16_ENVELOPE_THERMAL_TRANSMITTANCE_SOURCE_PACK_CODE) {
+    return envelopeSourcePackIssue(sourcePack, {
+      candidatePrefix: "MC001_R16_",
+      requiredPages: [79, 80],
+      requiredRelations: ["2.7", "2.8", "2.9", "2.10"],
+      minimumCandidateCount: 3,
+      runtimeCalculatorStatus: "implemented_explicit_envelope_U_value_runtime"
+    });
+  }
+  if (sourcePack.sourcePackCode === R17_ENVELOPE_TRANSMISSION_COEFFICIENTS_SOURCE_PACK_CODE) {
+    return envelopeSourcePackIssue(sourcePack, {
+      candidatePrefix: "MC001_R17_",
+      requiredPages: [80, 81, 100],
+      requiredRelations: ["2.11", "2.12", "2.13", "2.15", "2.27", "2.28"],
+      minimumCandidateCount: 5,
+      runtimeCalculatorStatus: "implemented_explicit_envelope_Htr_runtime"
+    });
+  }
+  if (sourcePack.sourcePackCode === R18_ENVELOPE_BOUNDARY_CORRECTIONS_SOURCE_PACK_CODE) {
+    return envelopeSourcePackIssue(sourcePack, {
+      candidatePrefix: "MC001_R18_",
+      requiredPages: [81, 82, 94, 95, 100],
+      requiredRelations: ["2.15", "2.21", "2.22", "2.27"],
+      minimumCandidateCount: 4,
+      runtimeCalculatorStatus: "implemented_explicit_boundary_correction_runtime"
     });
   }
   return "blocked_invalid_source_pack";
