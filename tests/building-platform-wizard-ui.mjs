@@ -28,7 +28,7 @@ function formData(entries) {
 }
 
 await test("wizard steps use ordinary language and avoid engineering coefficients", () => {
-  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 5);
+  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 12);
   const serialized = JSON.stringify(BUILDING_PLATFORM_WIZARD_STEPS);
   for (const forbidden of ["lambda", "Htr", "gamma", "tau", "eta", "U-value", "coeficient"]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
@@ -52,7 +52,11 @@ await test("wizard maps homeowner answers to assisted Building DNA input", () =>
   assert.equal(answers.constructionPeriod, "1978_1990");
   assert.equal(answers.structuralSystem, "masonry");
   assert.equal(answers.renovations.wallInsulation, "eps");
+  assert.equal(answers.renovations.roofInsulated, false);
+  assert.equal(answers.renovations.floorInsulated, false);
   assert.equal(answers.renovations.windowsReplaced, true);
+  assert.equal(answers.buildingSpecificParameters.windowAreaM2, undefined);
+  assert.equal(answers.buildingSpecificParameters.mainOrientation, "unknown");
   assert.equal(answers.context.attic, "unheated");
   assert.equal(answers.context.basement, "none");
 });
@@ -80,16 +84,22 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   })));
 
   assert.equal(preview.status, "ready");
+  assert.equal(preview.scope, "building_knowledge_platform_p2_review_mvp");
   assert.equal(preview.buildingDna.schema, "building_dna_v1");
   assert.equal(preview.dependencyTree.physicsAuthority, "Chapter 2 physics engine");
   assert.equal(preview.summary.annualQHnd, 10286.496332703064);
   assert.equal(preview.summary.annualQCnd, 2786.7333161081524);
 
   const html = renderEngineeringModelReview(preview);
-  assert.equal(html.includes("Model tehnic propus"), true);
+  assert.equal(html.includes("Platforma de cunostinte a cladirii"), true);
+  assert.equal(html.includes("Flux verificabil"), true);
+  assert.equal(html.includes("Interventii identificate"), true);
   assert.equal(html.includes("10286.50 kWh"), true);
   assert.equal(html.includes("2786.73 kWh"), true);
   assert.equal(html.includes("Chapter 2"), true);
+  for (const forbidden of ["lambda", "Htr", "gamma", "tau", "etaHgn", "U-value", "coeficient"]) {
+    assert.equal(html.includes(forbidden), false, forbidden);
+  }
 });
 
 await test("analysis page includes Building Platform review hook", () => {
@@ -97,6 +107,7 @@ await test("analysis page includes Building Platform review hook", () => {
   assert.equal(html.includes("building-platform-wizard.mjs"), true);
   assert.equal(html.includes("buildingModelReview"), true);
   assert.equal(html.includes("buildingModelPreviewBtn"), true);
+  assert.equal(html.includes("Building DNA si ipotezele propuse"), true);
 });
 
 await test("wizard UI module has no MC001 formulas or normative coefficient tables", () => {

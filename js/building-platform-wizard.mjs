@@ -1,7 +1,5 @@
 import {
-  calculateChapter2ForBuildingDna,
-  createBuildingDnaFromAssistedAnswers,
-  getBuildingDnaDependencyTree
+  buildBuildingKnowledgePlatformFromAssistedAnswers
 } from "../src/building-platform/index.mjs";
 
 export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
@@ -16,19 +14,54 @@ export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
     assistedPrompt: "Un interval aproximativ este suficient pentru prima propunere."
   },
   {
-    stepId: "envelope",
-    title: "Din ce sunt peretii si ce ai renovat?",
-    assistedPrompt: "Spune materialul principal, izolatia si daca ferestrele au fost schimbate."
+    stepId: "location",
+    title: "Unde este locuinta?",
+    assistedPrompt: "Localitatea ajuta la organizarea profilului climatic explicit."
   },
   {
-    stepId: "boundaries",
-    title: "Ce se afla sub si peste locuinta?",
-    assistedPrompt: "Podul, subsolul si vecinatatile ajuta modelul sa aleaga limitele corecte."
+    stepId: "geometry",
+    title: "Cat de mare este locuinta?",
+    assistedPrompt: "Suprafata, ferestrele si inaltimea camerelor devin parametri editabili."
   },
   {
-    stepId: "review",
+    stepId: "exterior_walls",
+    title: "Din ce sunt peretii exteriori?",
+    assistedPrompt: "Alege materialul vizibil si spune daca exista izolatie."
+  },
+  {
+    stepId: "roof_attic",
+    title: "Cum este podul sau acoperisul?",
+    assistedPrompt: "Pod incalzit, pod neincalzit sau acoperis fara pod."
+  },
+  {
+    stepId: "ground_basement",
+    title: "Ce se afla sub locuinta?",
+    assistedPrompt: "Sol, subsol sau spatiu incalzit dedesubt."
+  },
+  {
+    stepId: "windows",
+    title: "Ce ferestre ai?",
+    assistedPrompt: "Tipul si aria aproximativa a ferestrelor raman verificabile."
+  },
+  {
+    stepId: "insulation",
+    title: "Ce a fost izolat?",
+    assistedPrompt: "Interventiile modifica modelul propus, nu creeaza un arhetip separat."
+  },
+  {
+    stepId: "ventilation",
+    title: "Cum se ventileaza locuinta?",
+    assistedPrompt: "Raspunsurile raman parametri expliciti, editabili ulterior."
+  },
+  {
+    stepId: "engineering_review",
     title: "Verifica modelul tehnic propus",
-    assistedPrompt: "Vezi ce a fost presupus automat, confirma sau cere editare avansata."
+    assistedPrompt: "Vezi propunerea, ipotezele si ce trebuie confirmat."
+  },
+  {
+    stepId: "calculate",
+    title: "Calculeaza cererea utila",
+    assistedPrompt: "Motorul Chapter 2 validat calculeaza incalzirea si racirea."
   }
 ]);
 
@@ -55,6 +88,11 @@ function formValue(formData, name) {
   return typeof formData?.get === "function" ? formData.get(name) : formData?.[name];
 }
 
+function positiveNumber(formData, name) {
+  const value = Number(formValue(formData, name));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 export function constructionPeriodFromYear(yearValue) {
   const year = Number(yearValue);
   if (!Number.isFinite(year)) return "1978_1990";
@@ -78,6 +116,16 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const windowType = formValue(formData, "window_type");
   const roofType = formValue(formData, "roof_type");
   const floorType = formValue(formData, "floor_type");
+  const wallInsulationSelected = wallInsulation &&
+    wallInsulation !== "unknown" &&
+    wallInsulation !== "Fara";
+  const roofInsulated = formValue(formData, "roof_insulated");
+  const floorInsulated = formValue(formData, "floor_insulated");
+  const usefulFloorAreaM2 = positiveNumber(formData, "useful_area_m2");
+  const windowAreaM2 = positiveNumber(formData, "window_area_m2");
+  const averageRoomHeightM = positiveNumber(formData, "floor_height_m");
+  const numberOfFloors = positiveNumber(formData, "number_of_floors");
+  const ventilationAch = positiveNumber(formData, "ventilation_ach");
 
   return {
     buildingId: "building-platform-wizard-preview",
@@ -85,13 +133,25 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
     constructionPeriod: constructionPeriodFromYear(formValue(formData, "construction_year")),
     structuralSystem: structuralSystemFromWallMaterial(formValue(formData, "wall_material")),
     renovations: {
-      wallInsulation: wallInsulation && wallInsulation !== "unknown" && wallInsulation !== "Fara"
-        ? "eps"
-        : false,
+      wallInsulation: wallInsulationSelected ? "eps" : false,
+      roofInsulated: roofInsulated === "yes" || roofInsulated === "partial",
+      floorInsulated: floorInsulated === "yes" || floorInsulated === "partial",
       windowsReplaced: [
         "modern_double_glazing",
         "triple_glazing"
       ].includes(windowType)
+    },
+    buildingSpecificParameters: {
+      ...(usefulFloorAreaM2 === undefined ? {} : { usefulFloorAreaM2 }),
+      ...(windowAreaM2 === undefined ? {} : { windowAreaM2 }),
+      ...(averageRoomHeightM === undefined ? {} : { averageRoomHeightM }),
+      ...(numberOfFloors === undefined ? {} : { numberOfFloors }),
+      ...(ventilationAch === undefined ? {} : { ventilationAch }),
+      mainOrientation: formValue(formData, "main_orientation") || "unknown",
+      windowOrientation: formValue(formData, "window_orientation") || "unknown",
+      ventilationType: formValue(formData, "ventilation_type") || "unknown",
+      atticContext: roofType === "heated_attic" ? "heated" : "unheated",
+      basementContext: floorType === "over_basement" ? "unheated" : "none"
     },
     context: {
       attic: roofType === "heated_attic" ? "heated" : "unheated",
@@ -107,23 +167,12 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
 }
 
 export function buildWizardEngineeringPreview(assistedAnswers) {
-  const dnaResult = createBuildingDnaFromAssistedAnswers(assistedAnswers);
-  if (dnaResult.status !== "ready") {
-    return {
-      status: "blocked",
-      stage: "building_dna",
-      diagnostics: dnaResult.diagnostics
-    };
-  }
-  const calculation = calculateChapter2ForBuildingDna(dnaResult.buildingDna);
-  const annualQHnd = calculation.chapter2Result?.result?.annualQHnd ?? null;
-  const annualQCnd = calculation.chapter2Result?.result?.annualQCnd ?? null;
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers);
+  const annualQHnd = pipeline.review?.results?.annualQHnd ?? null;
+  const annualQCnd = pipeline.review?.results?.annualQCnd ?? null;
   return {
-    status: calculation.status,
-    stage: calculation.stage,
-    buildingDna: dnaResult.buildingDna,
-    calculation,
-    dependencyTree: getBuildingDnaDependencyTree(dnaResult.buildingDna, "annualQHnd"),
+    ...pipeline,
+    dependencyTree: pipeline.review?.dependencyTrees?.annualQHnd ?? null,
     summary: {
       annualQHnd,
       annualQCnd
@@ -137,24 +186,46 @@ export function renderEngineeringModelReview(preview) {
     return `<p class="form-message error">Modelul tehnic nu este gata: ${safeText(code)}</p>`;
   }
   const dna = preview.buildingDna;
-  const assemblies = dna.assemblies.map(assembly => `
+  const stages = preview.stages.map(item => `
+    <li>
+      <strong>${safeText(item.label)}</strong>
+      <span>${safeText(item.status)}</span>
+    </li>
+  `).join("");
+  const interventions = preview.review.renovationInterventions.length === 0
+    ? "<li>Nu a fost selectata nicio interventie. Propunerea ramane editabila.</li>"
+    : preview.review.renovationInterventions.map(item => `
+      <li>
+        <strong>${safeText(item.interventionType)}</strong>
+        <span>${safeText(item.selectedOption)} · ${safeText(item.provenance.origin)}</span>
+      </li>
+    `).join("");
+  const assemblies = preview.review.assemblies.map(assembly => `
     <li>
       <strong>${safeText(assembly.displayName)}</strong>
       <span>Origine: ${safeText(assembly.provenance.origin)}</span>
       <span>Incredere: ${safeText(assembly.provenance.confidence)}</span>
+      <span>Straturi: ${safeText(assembly.layerStack.map(layer => layer.materialName).join(" / ") || "valoare directa editabila")}</span>
     </li>
   `).join("");
+  const assumptions = dna.assumptions.map(item => `<li>${safeText(item.text)}</li>`).join("");
   const confirmations = dna.missingConfirmations.map(item => `<li>${safeText(item)}</li>`).join("");
   return `
     <div class="recommendation-detail-card" data-building-platform-review>
       <div>
-        <h3>Model tehnic propus</h3>
+        <h3>Platforma de cunostinte a cladirii</h3>
         <p>Locuinta: ${safeText(dna.building.buildingType)} / ${safeText(dna.building.constructionPeriod)}</p>
         <p>Incalzire anuala utila: <strong>${preview.summary.annualQHnd?.toFixed(2) ?? "--"} kWh</strong></p>
         <p>Racire anuala utila: <strong>${preview.summary.annualQCnd?.toFixed(2) ?? "--"} kWh</strong></p>
-        <p>Rezultatele vin din motorul Chapter 2 validat. Modelul propus ramane editabil.</p>
+        <p>Rezultatele vin din motorul Chapter 2 validat. Modelul propus ramane editabil si explica fiecare ipoteza.</p>
+        <h4>Flux verificabil</h4>
+        <ul>${stages}</ul>
+        <h4>Interventii identificate</h4>
+        <ul>${interventions}</ul>
         <h4>Ansambluri propuse</h4>
         <ul>${assemblies}</ul>
+        <h4>Ipoteze afisate</h4>
+        <ul>${assumptions}</ul>
         <h4>Confirmari necesare</h4>
         <ul>${confirmations}</ul>
       </div>

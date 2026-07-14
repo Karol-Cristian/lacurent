@@ -43,6 +43,43 @@ test("assisted detached masonry house proposal selects editable engineering asse
   assert.deepEqual(validateTypologyProposal(result), { ok: true });
 });
 
+test("typology stays compositional when insulation and window interventions change", () => {
+  const original = proposeBuildingTypology(createAssistedTypologyInput({
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: false,
+      windowsReplaced: false
+    },
+    context: {
+      basement: "none",
+      attic: "unheated"
+    }
+  }));
+  const renovated = proposeBuildingTypology(createAssistedTypologyInput({
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: "eps",
+      windowsReplaced: true
+    },
+    context: {
+      basement: "none",
+      attic: "unheated"
+    }
+  }));
+
+  assert.equal(original.status, "ready");
+  assert.equal(renovated.status, "ready");
+  assert.equal(original.proposal.typologyId, renovated.proposal.typologyId);
+  assert.equal(original.proposal.assemblySelections.exteriorWall, "wall_masonry_300_uninsulated");
+  assert.equal(original.proposal.assemblySelections.window, "window_legacy_double_glazing_direct_u");
+  assert.equal(renovated.proposal.assemblySelections.exteriorWall, "wall_masonry_300_eps_100");
+  assert.equal(renovated.proposal.assemblySelections.window, "window_pvc_double_glazing_direct_u");
+});
+
 test("unsupported and invalid typologies fail deterministically", () => {
   assert.equal(
     proposeBuildingTypology(createAssistedTypologyInput({
