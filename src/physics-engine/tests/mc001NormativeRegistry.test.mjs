@@ -2390,6 +2390,7 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
     "surface_resistance_table_2_11_explicit_code_lookup",
     "exterior_surface_resistance_table_2_12_explicit_wind_speed_code_lookup",
     "solar_transmission_table_2_13_explicit_glazing_type_lookup",
+    "effective_internal_heat_capacity_table_2_20_explicit_class_area_lookup",
     "Htr_component_sum",
     "monthly_transmission_explicit_temperature_duration",
     "monthly_ventilation_explicit_airflow_temperature_duration",
@@ -2412,6 +2413,11 @@ test("R19 Chapter 2 coverage pack enforces explicit useful-demand runtime covera
   assert.ok(
     pack.coverageMap.explicitInputOnly.includes(
       "solar_irradiation_orientation_shading_and_range_glazing_properties"
+    )
+  );
+  assert.ok(
+    pack.coverageMap.explicitInputOnly.includes(
+      "direct_effective_internal_heat_capacity_or_table_2_20_class_area_source"
     )
   );
   assert.equal(pack.coverageMap.tableBackedNotEncoded.includes("surface_resistance_default_tables"), false);
@@ -2473,7 +2479,7 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(matrix.completenessMetrics.relationsClassified, 87);
   assert.equal(matrix.completenessMetrics.tablesClassified, 21);
   assert.equal(matrix.completenessMetrics.figuresClassified, 21);
-  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 4);
+  assert.equal(matrix.completenessMetrics.tablesMachineEncoded, 6);
 
   for (const pageEntry of matrix.pageInspections) {
     assert.equal(pageEntry.inspectionStatus, "inspected");
@@ -2515,8 +2521,14 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
     tableById.get("MC001_TABLE_2_13").runtimeModule,
     "mc001SolarTransmissionTable2_13.mjs"
   );
+  assert.equal(tableById.get("MC001_TABLE_2_19").implementationStatus, "table_machine_encoded");
+  assert.equal(tableById.get("MC001_TABLE_2_20").implementationStatus, "table_machine_encoded");
   assert.equal(
-    tableById.get("MC001_TABLE_2_19").remainingBlocker,
+    tableById.get("MC001_TABLE_2_20").runtimeModule,
+    "mc001EffectiveInternalHeatCapacityTables.mjs"
+  );
+  assert.equal(
+    tableById.get("MC001_TABLE_2_21").remainingBlocker,
     "table_classified_but_not_machine_encoded_in_current_batch"
   );
 
@@ -2532,7 +2544,9 @@ test("R20 Chapter 2 exhaustive coverage matrix classifies all inspected items an
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_11"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_12"), false);
   assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_13"), false);
-  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_19"));
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_19"), false);
+  assert.equal(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_20"), false);
+  assert.ok(pack.completenessGate.unresolvedItemIds.includes("MC001_TABLE_2_21"));
   assert.ok(pack.blockers.includes("chapter_2_not_closed"));
   assert.ok(pack.blockers.includes("no_hidden_defaults"));
   assert.equal(Object.hasOwn(pack, "formulas"), false);

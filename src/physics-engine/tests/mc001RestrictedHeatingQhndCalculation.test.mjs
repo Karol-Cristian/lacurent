@@ -431,6 +431,49 @@ await test("explicit time constant dependencies calculate tauH aH etaHgn and res
   assert.equal(result.caseResults[0].etaHgnFormulaCode, "MC001_FIGURE_2_14_HEATING_GAIN_UTILIZATION_FACTOR");
 });
 
+await test("Table 2.20 capacity class can derive tauH aH etaHgn and restricted QHnd", () => {
+  const payloadCase = sampleCase({
+    qHgn: heatGainsQHgn(),
+    utilizationDependencies: {
+      effectiveInternalHeatCapacityTable2_20ClassId: "medium",
+      usefulFloorAreaM2: 120,
+      heatTransferCoefficientWK: 420,
+      aH0: 1,
+      tauH0: 15
+    }
+  });
+  delete payloadCase.etaHgn;
+  delete payloadCase.gammaH;
+
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].effectiveInternalHeatCapacityJPerK, 19800000);
+  close(result.caseResults[0].cmIntEffCoefficientJPerM2K, 165000);
+  assert.equal(result.caseResults[0].effectiveInternalHeatCapacityClassId, "medium");
+  assert.equal(result.caseResults[0].usefulFloorAreaM2, 120);
+  assert.equal(
+    result.caseResults[0].effectiveInternalHeatCapacityOrigin,
+    "calculated_from_MC001_TABLE_2_20_class_and_explicit_Ause"
+  );
+  assert.equal(
+    result.caseResults[0].effectiveInternalHeatCapacityFormulaCode,
+    "MC001_TABLE_2_20_EFFECTIVE_INTERNAL_HEAT_CAPACITY_CLASS_AREA"
+  );
+  close(result.caseResults[0].tauH, 13.095238095238095);
+  close(result.caseResults[0].aH, 1.873015873015873);
+  close(result.caseResults[0].etaHgn, 0.9272287936442974);
+  close(result.caseResults[0].qHnd, 748.5513619067108);
+  assert.equal(result.caseResults[0].tauHOrigin, "calculated_from_explicit_total_heat_transfer_coefficient");
+  assert.equal(result.caseResults[0].aHOrigin, "calculated_from_explicit_tauH_dependencies");
+  assert.equal(result.caseResults[0].etaHgnOrigin, "calculated_from_explicit_time_constant_dependencies");
+  assert.ok(
+    result.diagnostics.methodologyLimits.includes(
+      "capacity_can_be_calculated_from_explicit_table_2_20_class_and_Ause"
+    )
+  );
+});
+
 await test("blocks missing or invalid C5 explicit transfer source for QHht", () => {
   const missingPayloadCase = sampleCase({
     explicitTotalHeatTransferResult: {
@@ -993,6 +1036,38 @@ await test("blocks missing explicit dependencies for time constant aH path", () 
       code
     );
   }
+});
+
+await test("rejects incomplete or ambiguous Table 2.20 capacity source for tauH", () => {
+  const incompletePayloadCase = sampleCase({
+    utilizationDependencies: {
+      effectiveInternalHeatCapacityTable2_20ClassId: "medium",
+      heatTransferCoefficientWK: 420,
+      aH0: 1,
+      tauH0: 15
+    }
+  });
+  delete incompletePayloadCase.etaHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([incompletePayloadCase])),
+    "incomplete_effective_capacity_table_2_20_source_for_tauH"
+  );
+
+  const ambiguousPayloadCase = sampleCase({
+    utilizationDependencies: {
+      effectiveInternalHeatCapacityJPerK: 25200000,
+      effectiveInternalHeatCapacityTable2_20ClassId: "medium",
+      usefulFloorAreaM2: 120,
+      heatTransferCoefficientWK: 420,
+      aH0: 1,
+      tauH0: 15
+    }
+  });
+  delete ambiguousPayloadCase.etaHgn;
+  assertBlocked(
+    calculateMc001RestrictedHeatingQhndExplicit(input([ambiguousPayloadCase])),
+    "ambiguous_explicit_capacity_for_tauH"
+  );
 });
 
 await test("rejects aH less than or equal to zero", () => {

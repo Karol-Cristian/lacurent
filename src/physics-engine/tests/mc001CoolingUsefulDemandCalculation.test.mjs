@@ -119,6 +119,54 @@ await test("utilization dependencies derive tauC then aC then etaCht", () => {
   assert.equal(result.caseResults[0].aCredOrigin, "calculated_from_explicit_weekend_cooling_reduction");
 });
 
+await test("Table 2.20 capacity class can derive tauC aC etaCht and restricted QCnd", () => {
+  const result = calculateMc001CoolingUsefulDemandExplicit(input([
+    sampleCase({
+      aC: undefined,
+      aCred: undefined,
+      utilizationDependencies: {
+        effectiveInternalHeatCapacityTable2_20ClassId: "medium",
+        usefulFloorAreaM2: 120,
+        totalHeatTransferCoefficientWK: 420,
+        aC0: 1,
+        tauC0: 15
+      },
+      coolingIntermittency: {
+        weekendReductionDurationHours: 48,
+        weekendReductionRepetitionCount: 1,
+        bCredWknd: 0.3
+      }
+    })
+  ]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].effectiveInternalHeatCapacityJPerK, 19800000);
+  close(result.caseResults[0].cmIntEffCoefficientJPerM2K, 165000);
+  assert.equal(result.caseResults[0].effectiveInternalHeatCapacityClassId, "medium");
+  assert.equal(result.caseResults[0].usefulFloorAreaM2, 120);
+  assert.equal(
+    result.caseResults[0].effectiveInternalHeatCapacityOrigin,
+    "calculated_from_MC001_TABLE_2_20_class_and_explicit_Ause"
+  );
+  assert.equal(
+    result.caseResults[0].effectiveInternalHeatCapacityFormulaCode,
+    "MC001_TABLE_2_20_EFFECTIVE_INTERNAL_HEAT_CAPACITY_CLASS_AREA"
+  );
+  close(result.caseResults[0].tauC, 13.095238095238095);
+  close(result.caseResults[0].aC, 1.873015873015873);
+  close(result.caseResults[0].etaCht, 0.8419209786317079);
+  close(result.caseResults[0].aCred, 0.8);
+  close(result.caseResults[0].qCnd, 277.9389651283901);
+  assert.equal(result.caseResults[0].tauCOrigin, "calculated_from_explicit_total_heat_transfer_coefficient");
+  assert.equal(result.caseResults[0].aCOrigin, "calculated_from_explicit_tauC_dependencies");
+  assert.equal(result.caseResults[0].etaChtOrigin, "calculated_from_explicit_time_constant_dependencies");
+  assert.ok(
+    result.diagnostics.methodologyLimits.includes(
+      "capacity_can_be_calculated_from_explicit_table_2_20_class_and_Ause"
+    )
+  );
+});
+
 await test("qCgn can come from explicit internal and solar gains", () => {
   const result = calculateMc001CoolingUsefulDemandExplicit(input([
     sampleCase({
@@ -358,6 +406,36 @@ await test("rejects missing utilization dependency and invalid long-unoccupied i
       })
     ])),
     "missing_explicit_capacity_for_tauC"
+  );
+  assertBlocked(
+    calculateMc001CoolingUsefulDemandExplicit(input([
+      sampleCase({
+        aC: undefined,
+        utilizationDependencies: {
+          effectiveInternalHeatCapacityTable2_20ClassId: "medium",
+          totalHeatTransferCoefficientWK: 420,
+          aC0: 1,
+          tauC0: 15
+        }
+      })
+    ])),
+    "incomplete_effective_capacity_table_2_20_source_for_tauC"
+  );
+  assertBlocked(
+    calculateMc001CoolingUsefulDemandExplicit(input([
+      sampleCase({
+        aC: undefined,
+        utilizationDependencies: {
+          effectiveInternalHeatCapacityJPerK: 25200000,
+          effectiveInternalHeatCapacityTable2_20ClassId: "medium",
+          usefulFloorAreaM2: 120,
+          totalHeatTransferCoefficientWK: 420,
+          aC0: 1,
+          tauC0: 15
+        }
+      })
+    ])),
+    "ambiguous_explicit_capacity_for_tauC"
   );
   assertBlocked(
     calculateMc001CoolingUsefulDemandExplicit(input([

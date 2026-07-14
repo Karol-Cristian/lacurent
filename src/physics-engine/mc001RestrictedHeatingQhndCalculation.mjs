@@ -1,6 +1,7 @@
 import { calculateMc001HeatingGainUtilizationFactor } from "./mc001HeatingGainUtilizationFactorCalculation.mjs";
 import { calculateMc001HeatingIntermittencyExplicit } from "./mc001HeatingIntermittencyCalculation.mjs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "./mc001MonthlyHeatGainsCalculation.mjs";
+import { resolveEffectiveInternalHeatCapacityTable2_20Value } from "./datasets/mc001EffectiveInternalHeatCapacityTables.mjs";
 
 const MODE = "restricted_heating_qhnd_explicit_v1";
 const SCOPE = "restricted_heating_qhnd_explicit_input_only_not_full_mc001";
@@ -52,6 +53,7 @@ const METHODOLOGY_LIMITS = [
   "etaHgn_calculated_from_explicit_aH_when_etaHgn_missing",
   "aH_calculated_from_explicit_tauH_dependencies_when_aH_missing",
   "tauH_calculated_from_explicit_capacity_and_heat_transfer_coefficient",
+  "capacity_can_be_calculated_from_explicit_table_2_20_class_and_Ause",
   "no_default_aH0",
   "no_default_tauH0",
   "no_default_tauH",
@@ -77,6 +79,8 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "heatGainsScope",
   "tauHOrigin",
   "heatTransferCoefficientOrigin",
+  "effectiveInternalHeatCapacityOrigin",
+  "effectiveInternalHeatCapacityFormulaCode",
   "etaHgnOrigin",
   "etaHgnFormulaCode",
   "aHOrigin",
@@ -260,22 +264,19 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
 
   const capacityInputs = [
     hasInputValue(dependencies, "effectiveInternalHeatCapacityJPerK"),
-    hasInputValue(dependencies, "cmEffJPerK")
+    hasInputValue(dependencies, "cmEffJPerK"),
+    hasAnyInputValue(dependencies, [
+      "effectiveInternalHeatCapacityTable2_20ClassId",
+      "effectiveInternalHeatCapacityClassId",
+      "usefulFloorAreaM2",
+      "aUseM2"
+    ])
   ].filter(Boolean).length;
   if (capacityInputs > 1) {
     return { ok: false, code: "ambiguous_explicit_capacity_for_tauH" };
   }
-  const effectiveInternalHeatCapacityJPerK = finiteNumber(
-    hasInputValue(dependencies, "effectiveInternalHeatCapacityJPerK")
-      ? dependencies.effectiveInternalHeatCapacityJPerK
-      : dependencies.cmEffJPerK
-  );
-  if (effectiveInternalHeatCapacityJPerK === null) {
-    return { ok: false, code: "missing_explicit_capacity_for_tauH" };
-  }
-  if (effectiveInternalHeatCapacityJPerK <= 0) {
-    return { ok: false, code: "invalid_explicit_capacity_for_tauH" };
-  }
+  const capacity = resolveEffectiveInternalHeatCapacityForTauH(dependencies);
+  if (!capacity.ok) return capacity;
 
   const heatTransferCoefficient = resolveExplicitHeatTransferCoefficientForTauH(dependencies);
   if (!heatTransferCoefficient.ok) return heatTransferCoefficient;
@@ -296,7 +297,8 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
     return { ok: false, code: "invalid_explicit_tauH0_for_aH" };
   }
 
-  const tauH = (effectiveInternalHeatCapacityJPerK / 3600) / heatTransferCoefficient.value.heatTransferCoefficientWK;
+  const tauH = (capacity.value.effectiveInternalHeatCapacityJPerK / 3600) /
+    heatTransferCoefficient.value.heatTransferCoefficientWK;
   if (!Number.isFinite(tauH) || tauH <= 0) {
     return { ok: false, code: "invalid_explicit_tauH_result" };
   }
@@ -309,7 +311,7 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
   return {
     ok: true,
     value: {
-      effectiveInternalHeatCapacityJPerK,
+      ...capacity.value,
       heatTransferCoefficientWK: heatTransferCoefficient.value.heatTransferCoefficientWK,
       heatTransferCoefficientOrigin: heatTransferCoefficient.value.heatTransferCoefficientOrigin,
       ...(heatTransferCoefficient.value.heatTransferCoefficientComponents === undefined
@@ -323,6 +325,71 @@ function calculateAHFromExplicitUtilizationDependencies(inputCase) {
       aHOrigin: "calculated_from_explicit_tauH_dependencies",
       tauHFormulaCode: TAUH_FORMULA_CODE,
       aHFormulaCode: AH_FORMULA_CODE
+    }
+  };
+}
+
+function resolveEffectiveInternalHeatCapacityForTauH(dependencies) {
+  if (
+    hasInputValue(dependencies, "effectiveInternalHeatCapacityJPerK") ||
+    hasInputValue(dependencies, "cmEffJPerK")
+  ) {
+    const effectiveInternalHeatCapacityJPerK = finiteNumber(
+      hasInputValue(dependencies, "effectiveInternalHeatCapacityJPerK")
+        ? dependencies.effectiveInternalHeatCapacityJPerK
+        : dependencies.cmEffJPerK
+    );
+    if (effectiveInternalHeatCapacityJPerK === null) {
+      return { ok: false, code: "missing_explicit_capacity_for_tauH" };
+    }
+    if (effectiveInternalHeatCapacityJPerK <= 0) {
+      return { ok: false, code: "invalid_explicit_capacity_for_tauH" };
+    }
+    return {
+      ok: true,
+      value: {
+        effectiveInternalHeatCapacityJPerK,
+        effectiveInternalHeatCapacityOrigin: "explicit_input"
+      }
+    };
+  }
+
+  const hasTableClass =
+    hasInputValue(dependencies, "effectiveInternalHeatCapacityTable2_20ClassId") ||
+    hasInputValue(dependencies, "effectiveInternalHeatCapacityClassId");
+  const hasTableArea =
+    hasInputValue(dependencies, "usefulFloorAreaM2") ||
+    hasInputValue(dependencies, "aUseM2");
+
+  if (!hasTableClass && !hasTableArea) {
+    return { ok: false, code: "missing_explicit_capacity_for_tauH" };
+  }
+  if (!hasTableClass || !hasTableArea) {
+    return { ok: false, code: "incomplete_effective_capacity_table_2_20_source_for_tauH" };
+  }
+
+  const capacity = resolveEffectiveInternalHeatCapacityTable2_20Value({
+    capacityClassId: hasInputValue(dependencies, "effectiveInternalHeatCapacityTable2_20ClassId")
+      ? dependencies.effectiveInternalHeatCapacityTable2_20ClassId
+      : dependencies.effectiveInternalHeatCapacityClassId,
+    usefulFloorAreaM2: hasInputValue(dependencies, "usefulFloorAreaM2")
+      ? dependencies.usefulFloorAreaM2
+      : dependencies.aUseM2
+  });
+  if (capacity.status !== "ready") {
+    const capacityCode = capacity.diagnostics?.blockers?.[0]?.code || "unknown_capacity_blocker";
+    return { ok: false, code: `restricted_qhnd_effective_capacity_calculation_failed_${capacityCode}` };
+  }
+
+  return {
+    ok: true,
+    value: {
+      effectiveInternalHeatCapacityJPerK: capacity.effectiveInternalHeatCapacityJPerK,
+      effectiveInternalHeatCapacityOrigin: capacity.effectiveInternalHeatCapacityOrigin,
+      effectiveInternalHeatCapacityFormulaCode: capacity.effectiveInternalHeatCapacityFormulaCode,
+      effectiveInternalHeatCapacityClassId: capacity.capacityClassId,
+      usefulFloorAreaM2: capacity.usefulFloorAreaM2,
+      cmIntEffCoefficientJPerM2K: capacity.cmIntEffCoefficientJPerM2K
     }
   };
 }
