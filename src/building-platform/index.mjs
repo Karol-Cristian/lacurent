@@ -42,3 +42,8 @@ export {
   buildBuildingKnowledgePlatformFromAdvancedModel,
   buildBuildingKnowledgePlatformFromAssistedAnswers
 } from "./buildingKnowledgePipeline.mjs";
+
+export {
+  TECHNICAL_WORKSPACE_TABS,
+  buildBuildingTechnicalWorkspace
+} from "./buildingTechnicalReport.mjs";
