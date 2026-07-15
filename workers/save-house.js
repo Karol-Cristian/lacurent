@@ -10,6 +10,10 @@ import { calculateMc001MonthlyVentilationTransferExplicit } from "../src/physics
 import { calculateMc001MonthlyHeatGainsExplicit } from "../src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs";
 import { calculateMc001RestrictedHeatingQhndExplicit } from "../src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs";
 import {
+  buildBuildingTechnicalWorkspace,
+  calculateChapter2ForBuildingDna
+} from "../src/building-platform/index.mjs";
+import {
   calculateMc001DirectTransmissionCoefficient,
   calculateMc001GlobalTransmissionExcludingGround,
   calculateMc001LinearThermalBridgePsi,
@@ -3673,6 +3677,357 @@ async function handleMc001HtrLoad(request, env, corsHeaders) {
   }
 }
 
+const BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE = "building_platform_chapter2_v1";
+const BUILDING_PLATFORM_BUILDING_DNA_KEY = "building_dna_json";
+const BUILDING_PLATFORM_VERSION_META_KEY = "building_dna_version_meta_json";
+const BUILDING_PLATFORM_ENGINE_INPUT_KEY = "chapter2_engine_input_json";
+const BUILDING_PLATFORM_ENGINE_OUTPUT_KEY = "chapter2_engine_output_json";
+const BUILDING_PLATFORM_REPORT_MODEL_KEY = "technical_report_model_json";
+const BUILDING_PLATFORM_REPORT_TYPE = "building_platform_chapter2_technical_report";
+const BUILDING_PLATFORM_FORBIDDEN_CLIENT_KEYS = new Set([
+  "chapter2_result",
+  "chapter2Result",
+  "engine_output",
+  "engineOutput",
+  "technical_report",
+  "technicalReport",
+  "report_model",
+  "reportModel",
+  "annualQHnd",
+  "annualQCnd",
+  "qHnd",
+  "qCnd",
+  "finalEnergy",
+  "primaryEnergy",
+  "co2",
+  "CO2",
+  "CPE",
+  "certificate"
+]);
+
+function quantityAmount(value) {
+  const amount = value?.amount;
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function buildingPlatformBodyHasForbiddenClientResults(value) {
+  if (value === null || value === undefined || typeof value !== "object") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(buildingPlatformBodyHasForbiddenClientResults);
+  }
+  return Object.entries(value).some(([key, child]) => (
+    BUILDING_PLATFORM_FORBIDDEN_CLIENT_KEYS.has(key) ||
+    buildingPlatformBodyHasForbiddenClientResults(child)
+  ));
+}
+
+function validateBuildingPlatformBuildingDna(value) {
+  if (!isPlainObject(value) || value.schema !== "building_dna_v1") {
+    return { ok: false, error: "Building DNA invalid sau lipsa." };
+  }
+  if (!Array.isArray(value.monthlyProfiles) || value.monthlyProfiles.length !== 12) {
+    return { ok: false, error: "Building DNA trebuie sa contina 12 profiluri lunare explicite." };
+  }
+  if (!isPlainObject(value.building)) {
+    return { ok: false, error: "Building DNA nu contine descrierea cladirii." };
+  }
+  return { ok: true };
+}
+
+async function ensureBuildingPlatformHouse(env, user, body, buildingDna) {
+  const ownership = await verifyMc001HtrHouseOwnership(env, user.id, body.house_id);
+  if (ownership?.ok === false) return ownership;
+  if (ownership?.houseId) {
+    return { ok: true, houseId: ownership.houseId, created: false };
+  }
+
+  const building = buildingDna.building ?? {};
+  const params = buildingDna.buildingSpecificParameters ?? {};
+  const houseType = building.buildingType ?? "building";
+  const usefulArea = quantityAmount(params.usefulFloorAreaM2);
+  const displayName =
+    String(body.project_name || body.display_name || building.buildingId || "Model termic Chapter 2").slice(0, 120);
+
+  const houseResult = await env.DB.prepare(`
+    INSERT INTO houses(user_id, house_type, surface, rooms, year, city, display_name, active, analysis_purpose)
+    VALUES(?, ?, ?, NULL, ?, ?, ?, 1, ?)
+  `)
+    .bind(
+      user.id,
+      houseType,
+      usefulArea,
+      Number.isInteger(Number(buildingDna.typologyProposal?.constructionYear))
+        ? Number(buildingDna.typologyProposal.constructionYear)
+        : null,
+      building.location?.city ?? building.location?.locality ?? buildingDna.climateProfile?.locality ?? null,
+      displayName,
+      "technical_chapter_2_report"
+    )
+    .run();
+  const houseId = houseResult.meta?.last_row_id;
+  if (!houseId) {
+    throw new Error("Building Platform house insert failed");
+  }
+
+  const siteResult = await env.DB.prepare("INSERT INTO sites(user_id, name, city) VALUES(?, ?, ?)")
+    .bind(user.id, displayName, building.location?.city ?? buildingDna.climateProfile?.locality ?? null)
+    .run();
+  const siteId = siteResult.meta?.last_row_id ?? null;
+
+  await env.DB.prepare(`
+    INSERT INTO buildings(site_id, house_id, building_type, area, construction_year, heating_type, climate_region)
+    VALUES(?, ?, ?, ?, ?, NULL, ?)
+  `)
+    .bind(
+      siteId,
+      houseId,
+      houseType,
+      usefulArea,
+      null,
+      buildingDna.climateProfile?.profileId ?? buildingDna.climateProfile?.climaticZone ?? null
+    )
+    .run();
+
+  return { ok: true, houseId, created: true };
+}
+
+function buildBuildingPlatformPipelineResult(buildingDna, calculation) {
+  return {
+    status: "ready",
+    buildingDna,
+    calculation,
+    review: {
+      dependencyTrees: {}
+    }
+  };
+}
+
+async function saveBuildingPlatformChapter2Record(env, user, body, buildingDna, calculation, workspace, houseId) {
+  const completedAt = new Date().toISOString();
+  const analysisResult = await env.DB.prepare(`
+    INSERT INTO analyses(user_id, house_id, analysis_type, status, completed_at)
+    VALUES(?, ?, ?, 'completed', ?)
+  `)
+    .bind(user.id, houseId, BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE, completedAt)
+    .run();
+  const analysisId = analysisResult.meta?.last_row_id;
+  if (!analysisId) {
+    throw new Error("Building Platform analysis insert failed");
+  }
+
+  const buildingDnaVersion = {
+    versionId: `building-dna-${analysisId}`,
+    schemaVersion: buildingDna.schema,
+    platformVersion: buildingDna.platformVersion,
+    climateProfileVersion: buildingDna.climateProfile?.datasetVersion ?? null,
+    calculationStatus: buildingDna.calculationStatus ?? "requires_confirmation",
+    createdAt: completedAt
+  };
+  const technicalDetails = {
+    scope: BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE,
+    buildingDnaVersion,
+    buildingDna,
+    chapter2Input: calculation.chapter2Input,
+    chapter2Result: calculation.chapter2Result,
+    technicalReport: workspace.report,
+    resultSummary: workspace.resultSummary
+  };
+
+  const answerRows = [
+    [BUILDING_PLATFORM_BUILDING_DNA_KEY, buildingDna],
+    [BUILDING_PLATFORM_VERSION_META_KEY, buildingDnaVersion],
+    [BUILDING_PLATFORM_ENGINE_INPUT_KEY, calculation.chapter2Input],
+    [BUILDING_PLATFORM_ENGINE_OUTPUT_KEY, calculation.chapter2Result],
+    [BUILDING_PLATFORM_REPORT_MODEL_KEY, workspace.report]
+  ].map(([key, valueForKey]) =>
+    env.DB.prepare(`
+      INSERT INTO analysis_answers(analysis_id, question_key, answer_value, answer_group)
+      VALUES(?, ?, ?, ?)
+    `)
+      .bind(
+        analysisId,
+        key,
+        JSON.stringify(valueForKey),
+        BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE
+      )
+  );
+
+  await env.DB.batch(answerRows);
+
+  await env.DB.prepare(`
+    INSERT INTO report_snapshots(home_id, analysis_id, generated_at, technical_details_json, confidence_level)
+    VALUES(?, ?, ?, ?, ?)
+  `)
+    .bind(
+      houseId,
+      analysisId,
+      completedAt,
+      JSON.stringify(technicalDetails),
+      buildingDna.calculationStatus ?? "requires_confirmation"
+    )
+    .run();
+
+  await env.DB.prepare(`
+    INSERT INTO reports(analysis_id, report_type, status)
+    VALUES(?, ?, 'completed')
+  `)
+    .bind(analysisId, BUILDING_PLATFORM_REPORT_TYPE)
+    .run();
+
+  return { analysisId, buildingDnaVersion, technicalDetails };
+}
+
+async function loadBuildingPlatformChapter2Record(env, userId, analysisId) {
+  const parsedAnalysisId = Number(analysisId);
+  if (!Number.isInteger(parsedAnalysisId) || parsedAnalysisId <= 0) {
+    return { ok: false, error: "analysis_id invalid." };
+  }
+  const analysis = await env.DB.prepare(`
+    SELECT id, house_id, completed_at
+    FROM analyses
+    WHERE id = ? AND user_id = ? AND analysis_type = ?
+    LIMIT 1
+  `)
+    .bind(parsedAnalysisId, userId, BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE)
+    .first();
+  if (!analysis) {
+    return { ok: false, error: "Analiza Building Platform nu apartine contului curent." };
+  }
+  const answersResult = await env.DB.prepare(`
+    SELECT question_key, answer_value
+    FROM analysis_answers
+    WHERE analysis_id = ? AND answer_group = ?
+  `)
+    .bind(parsedAnalysisId, BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE)
+    .all();
+  const answers = Object.fromEntries((answersResult.results || []).map(row => [
+    row.question_key,
+    parseMc001HtrStoredJson(row.answer_value, null)
+  ]));
+  const snapshot = await env.DB.prepare(`
+    SELECT technical_details_json
+    FROM report_snapshots
+    WHERE analysis_id = ?
+    ORDER BY generated_at DESC, id DESC
+    LIMIT 1
+  `)
+    .bind(parsedAnalysisId)
+    .first();
+  const technicalDetails = parseMc001HtrStoredJson(snapshot?.technical_details_json, null);
+  if (!answers[BUILDING_PLATFORM_BUILDING_DNA_KEY] || !technicalDetails) {
+    return { ok: false, error: "Analiza Building Platform nu are datele salvate complet." };
+  }
+  return { ok: true, analysis, answers, technicalDetails };
+}
+
+async function handleBuildingPlatformChapter2Save(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse(
+      { success: false, error: "Trebuie sa fii autentificat pentru a salva modelul Building DNA." },
+      { status: 401, headers: corsHeaders }
+    );
+  }
+
+  const body = await readJson(request);
+  if (buildingPlatformBodyHasForbiddenClientResults(body)) {
+    return jsonResponse(
+      { success: false, error: "Rezultatele Chapter 2 si raportul sunt generate server-side, nu sunt acceptate din client." },
+      { status: 400, headers: corsHeaders }
+    );
+  }
+  if (mc001HtrPayloadHasUnsafeContent(body.project_name) || mc001HtrPayloadHasUnsafeContent(body.building_dna)) {
+    return jsonResponse(
+      { success: false, error: "Payload Building DNA contine date personale sau continut nesigur." },
+      { status: 400, headers: corsHeaders }
+    );
+  }
+
+  const buildingDna = body.building_dna;
+  const validation = validateBuildingPlatformBuildingDna(buildingDna);
+  if (!validation.ok) {
+    return jsonResponse({ success: false, error: validation.error }, { status: 400, headers: corsHeaders });
+  }
+
+  const ownership = await ensureBuildingPlatformHouse(env, user, body, buildingDna);
+  if (!ownership.ok) {
+    return jsonResponse({ success: false, error: ownership.error }, { status: 403, headers: corsHeaders });
+  }
+
+  const calculation = calculateChapter2ForBuildingDna(buildingDna);
+  if (calculation.status !== "ready") {
+    return jsonResponse(
+      {
+        success: false,
+        error: "Calculul Chapter 2 nu este gata pentru Building DNA-ul transmis.",
+        diagnostics: calculation.diagnostics ?? calculation.chapter2Result?.diagnostics ?? null
+      },
+      { status: 400, headers: corsHeaders }
+    );
+  }
+  const workspace = buildBuildingTechnicalWorkspace(buildBuildingPlatformPipelineResult(buildingDna, calculation));
+  if (workspace.status !== "ready") {
+    return jsonResponse(
+      { success: false, error: "Raportul tehnic nu a putut fi generat din rezultatul Chapter 2." },
+      { status: 500, headers: corsHeaders }
+    );
+  }
+
+  const saved = await saveBuildingPlatformChapter2Record(
+    env,
+    user,
+    body,
+    buildingDna,
+    calculation,
+    workspace,
+    ownership.houseId
+  );
+
+  return jsonResponse(
+    {
+      success: true,
+      house_id: ownership.houseId,
+      analysis_id: saved.analysisId,
+      building_dna_version: saved.buildingDnaVersion,
+      result_summary: workspace.resultSummary,
+      calculation_status: buildingDna.calculationStatus ?? "requires_confirmation",
+      technical_report: workspace.report
+    },
+    { headers: corsHeaders }
+  );
+}
+
+async function handleBuildingPlatformChapter2Load(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse(
+      { success: false, error: "Trebuie sa fii autentificat pentru a incarca analiza Building Platform." },
+      { status: 401, headers: corsHeaders }
+    );
+  }
+  const body = await readJson(request);
+  const loaded = await loadBuildingPlatformChapter2Record(env, user.id, body.analysis_id);
+  if (!loaded.ok) {
+    return jsonResponse({ success: false, error: loaded.error }, { status: 404, headers: corsHeaders });
+  }
+  return jsonResponse(
+    {
+      success: true,
+      analysis_id: loaded.analysis.id,
+      house_id: loaded.analysis.house_id ?? null,
+      building_dna: loaded.answers[BUILDING_PLATFORM_BUILDING_DNA_KEY],
+      building_dna_version: loaded.answers[BUILDING_PLATFORM_VERSION_META_KEY],
+      chapter2_input: loaded.answers[BUILDING_PLATFORM_ENGINE_INPUT_KEY],
+      chapter2_result: loaded.answers[BUILDING_PLATFORM_ENGINE_OUTPUT_KEY],
+      technical_report: loaded.answers[BUILDING_PLATFORM_REPORT_MODEL_KEY],
+      technical_details: loaded.technicalDetails
+    },
+    { headers: corsHeaders }
+  );
+}
+
 async function saveHouse(request, env, corsHeaders) {
   const user = await getCurrentUser(request, env);
   if (!user) {
@@ -5087,6 +5442,8 @@ export default {
       "/api/dashboard-summary": dashboardSummary,
       "/api/energy-report": energyReport,
       "/api/demo-energy-report": demoEnergyReport,
+      "/api/building-platform/chapter2/save": handleBuildingPlatformChapter2Save,
+      "/api/building-platform/chapter2/load": handleBuildingPlatformChapter2Load,
       "/api/mc001/htr/run": handleMc001HtrRun,
       "/api/mc001/htr/load": handleMc001HtrLoad,
       "/api/homes": homes,
