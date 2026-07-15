@@ -1,0 +1,1101 @@
+{
+  "fixed_expected_value_count": 3,
+  "fixtures": [
+    {
+      "annual_expected": {
+        "q_cnd_kwh": 0.0,
+        "q_hnd_kwh": 8604.275060690636
+      },
+      "comparison": {
+        "comparisons": [
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 749,
+            "left_label": "fixed_expected",
+            "name": "fixed_expected_vs_python",
+            "right_label": "python_reference",
+            "status": "PASS"
+          },
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 749,
+            "left_label": "fixed_expected",
+            "name": "fixed_expected_vs_lacurent_runtime",
+            "right_label": "lacurent_runtime",
+            "status": "PASS"
+          },
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 749,
+            "left_label": "python_reference",
+            "name": "python_reference_vs_lacurent_runtime",
+            "right_label": "lacurent_runtime",
+            "status": "PASS"
+          }
+        ],
+        "expected_file": "expected\\rb001_expected.json",
+        "fixture_file": "fixtures\\rb001.json",
+        "fixture_id": "RB-001",
+        "status": "PASS"
+      },
+      "description": "Insulated masonry detached house with corrected old masonry lambda, EPS intervention, unheated attic gains, ground boundary, windows, and explicit seasonal monthly profile.",
+      "expected_file": "expected\\rb001_expected.json",
+      "fixture_file": "fixtures\\rb001.json",
+      "fixture_id": "RB-001",
+      "monthly_input_table": [
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 280,
+          "month": "january",
+          "outdoor_temperature_c": -2,
+          "solar_gains_kwh": 220
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 672,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 260,
+          "month": "february",
+          "outdoor_temperature_c": 0,
+          "solar_gains_kwh": 260
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 275,
+          "month": "march",
+          "outdoor_temperature_c": 5,
+          "solar_gains_kwh": 390
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 265,
+          "month": "april",
+          "outdoor_temperature_c": 10,
+          "solar_gains_kwh": 510
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 250,
+          "month": "may",
+          "outdoor_temperature_c": 16,
+          "solar_gains_kwh": 620
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 240,
+          "month": "june",
+          "outdoor_temperature_c": 20,
+          "solar_gains_kwh": 700
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 245,
+          "month": "july",
+          "outdoor_temperature_c": 23,
+          "solar_gains_kwh": 760
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 245,
+          "month": "august",
+          "outdoor_temperature_c": 22,
+          "solar_gains_kwh": 710
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 255,
+          "month": "september",
+          "outdoor_temperature_c": 17,
+          "solar_gains_kwh": 540
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 270,
+          "month": "october",
+          "outdoor_temperature_c": 11,
+          "solar_gains_kwh": 390
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 275,
+          "month": "november",
+          "outdoor_temperature_c": 5,
+          "solar_gains_kwh": 260
+        },
+        {
+          "airflow_m3s": 0.04,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 285,
+          "month": "december",
+          "outdoor_temperature_c": 0,
+          "solar_gains_kwh": 210
+        }
+      ],
+      "profile_provenance": {
+        "notes": "Synthetic physically plausible seasonal profile for automated validation only; not Romanian official climate data.",
+        "reference": "P3V.synthetic.profile.rb001.v1",
+        "represented_as_official_climate_data": false,
+        "source_type": "synthetic_validation_profile"
+      }
+    },
+    {
+      "annual_expected": {
+        "q_cnd_kwh": 0.0,
+        "q_hnd_kwh": 55566.64740645608
+      },
+      "comparison": {
+        "comparisons": [
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 673,
+            "left_label": "fixed_expected",
+            "name": "fixed_expected_vs_python",
+            "right_label": "python_reference",
+            "status": "PASS"
+          },
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 673,
+            "left_label": "fixed_expected",
+            "name": "fixed_expected_vs_lacurent_runtime",
+            "right_label": "lacurent_runtime",
+            "status": "PASS"
+          },
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 673,
+            "left_label": "python_reference",
+            "name": "python_reference_vs_lacurent_runtime",
+            "right_label": "lacurent_runtime",
+            "status": "PASS"
+          }
+        ],
+        "expected_file": "expected\\rb002_expected.json",
+        "fixture_file": "fixtures\\rb002.json",
+        "fixture_id": "RB-002",
+        "status": "PASS"
+      },
+      "description": "Weakly insulated masonry building with higher U-values, high Htr, unheated basement and attic boundaries, and a winter-dominant seasonal profile.",
+      "expected_file": "expected\\rb002_expected.json",
+      "fixture_file": "fixtures\\rb002.json",
+      "fixture_id": "RB-002",
+      "monthly_input_table": [
+        {
+          "airflow_m3s": 0.065,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 300,
+          "month": "january",
+          "outdoor_temperature_c": -4,
+          "solar_gains_kwh": 180
+        },
+        {
+          "airflow_m3s": 0.065,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 672,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 280,
+          "month": "february",
+          "outdoor_temperature_c": -1,
+          "solar_gains_kwh": 220
+        },
+        {
+          "airflow_m3s": 0.065,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 295,
+          "month": "march",
+          "outdoor_temperature_c": 4,
+          "solar_gains_kwh": 330
+        },
+        {
+          "airflow_m3s": 0.06,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 285,
+          "month": "april",
+          "outdoor_temperature_c": 9,
+          "solar_gains_kwh": 430
+        },
+        {
+          "airflow_m3s": 0.055,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 270,
+          "month": "may",
+          "outdoor_temperature_c": 15,
+          "solar_gains_kwh": 560
+        },
+        {
+          "airflow_m3s": 0.055,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 260,
+          "month": "june",
+          "outdoor_temperature_c": 20,
+          "solar_gains_kwh": 650
+        },
+        {
+          "airflow_m3s": 0.055,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 260,
+          "month": "july",
+          "outdoor_temperature_c": 24,
+          "solar_gains_kwh": 690
+        },
+        {
+          "airflow_m3s": 0.055,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 260,
+          "month": "august",
+          "outdoor_temperature_c": 23,
+          "solar_gains_kwh": 640
+        },
+        {
+          "airflow_m3s": 0.055,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 270,
+          "month": "september",
+          "outdoor_temperature_c": 17,
+          "solar_gains_kwh": 470
+        },
+        {
+          "airflow_m3s": 0.06,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 285,
+          "month": "october",
+          "outdoor_temperature_c": 10,
+          "solar_gains_kwh": 320
+        },
+        {
+          "airflow_m3s": 0.065,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 295,
+          "month": "november",
+          "outdoor_temperature_c": 4,
+          "solar_gains_kwh": 210
+        },
+        {
+          "airflow_m3s": 0.065,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 305,
+          "month": "december",
+          "outdoor_temperature_c": -1,
+          "solar_gains_kwh": 170
+        }
+      ],
+      "profile_provenance": {
+        "notes": "Synthetic physically plausible seasonal profile for automated validation only; not Romanian official climate data.",
+        "reference": "P3V.synthetic.profile.rb002.v1",
+        "represented_as_official_climate_data": false,
+        "source_type": "synthetic_validation_profile"
+      }
+    },
+    {
+      "annual_expected": {
+        "q_cnd_kwh": 6070.964260584742,
+        "q_hnd_kwh": 6896.823865822726
+      },
+      "comparison": {
+        "comparisons": [
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 681,
+            "left_label": "fixed_expected",
+            "name": "fixed_expected_vs_python",
+            "right_label": "python_reference",
+            "status": "PASS"
+          },
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 681,
+            "left_label": "fixed_expected",
+            "name": "fixed_expected_vs_lacurent_runtime",
+            "right_label": "lacurent_runtime",
+            "status": "PASS"
+          },
+          {
+            "failure_count": 0,
+            "failures": [],
+            "field_count": 681,
+            "left_label": "python_reference",
+            "name": "python_reference_vs_lacurent_runtime",
+            "right_label": "lacurent_runtime",
+            "status": "PASS"
+          }
+        ],
+        "expected_file": "expected\\rb003_expected.json",
+        "fixture_file": "fixtures\\rb003.json",
+        "fixture_id": "RB-003",
+        "status": "PASS"
+      },
+      "description": "Cooling-dominant high-glazing case with improved envelope, large transparent area, strong but smooth summer solar gains, explicit ventilation, and no isolated September spike.",
+      "expected_file": "expected\\rb003_expected.json",
+      "fixture_file": "fixtures\\rb003.json",
+      "fixture_id": "RB-003",
+      "monthly_input_table": [
+        {
+          "airflow_m3s": 0.05,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 360,
+          "month": "january",
+          "outdoor_temperature_c": 1,
+          "solar_gains_kwh": 420
+        },
+        {
+          "airflow_m3s": 0.05,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 672,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 340,
+          "month": "february",
+          "outdoor_temperature_c": 3,
+          "solar_gains_kwh": 540
+        },
+        {
+          "airflow_m3s": 0.05,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 355,
+          "month": "march",
+          "outdoor_temperature_c": 8,
+          "solar_gains_kwh": 820
+        },
+        {
+          "airflow_m3s": 0.052,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 350,
+          "month": "april",
+          "outdoor_temperature_c": 13,
+          "solar_gains_kwh": 1180
+        },
+        {
+          "airflow_m3s": 0.058,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 360,
+          "month": "may",
+          "outdoor_temperature_c": 19,
+          "solar_gains_kwh": 1600
+        },
+        {
+          "airflow_m3s": 0.06,
+          "cooling_applicable": true,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 380,
+          "month": "june",
+          "outdoor_temperature_c": 27.5,
+          "solar_gains_kwh": 2100
+        },
+        {
+          "airflow_m3s": 0.06,
+          "cooling_applicable": true,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 390,
+          "month": "july",
+          "outdoor_temperature_c": 31,
+          "solar_gains_kwh": 2300
+        },
+        {
+          "airflow_m3s": 0.06,
+          "cooling_applicable": true,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 390,
+          "month": "august",
+          "outdoor_temperature_c": 30,
+          "solar_gains_kwh": 2150
+        },
+        {
+          "airflow_m3s": 0.058,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": false,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 370,
+          "month": "september",
+          "outdoor_temperature_c": 22,
+          "solar_gains_kwh": 1600
+        },
+        {
+          "airflow_m3s": 0.054,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 360,
+          "month": "october",
+          "outdoor_temperature_c": 14,
+          "solar_gains_kwh": 1050
+        },
+        {
+          "airflow_m3s": 0.052,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 720,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 355,
+          "month": "november",
+          "outdoor_temperature_c": 8,
+          "solar_gains_kwh": 650
+        },
+        {
+          "airflow_m3s": 0.05,
+          "cooling_applicable": false,
+          "cooling_indoor_temperature_c": 26,
+          "duration_hours": 744,
+          "heating_applicable": true,
+          "heating_indoor_temperature_c": 20,
+          "internal_gains_kwh": 365,
+          "month": "december",
+          "outdoor_temperature_c": 3,
+          "solar_gains_kwh": 450
+        }
+      ],
+      "profile_provenance": {
+        "notes": "Synthetic physically plausible seasonal profile for automated validation only; not Romanian official climate data.",
+        "reference": "P3V.synthetic.profile.rb003.v1",
+        "represented_as_official_climate_data": false,
+        "source_type": "synthetic_validation_profile"
+      }
+    }
+  ],
+  "formula_coverage": {
+    "a_c": {
+      "formula": "aC = aC0 + tauC / tauC0",
+      "source": "MC001-2022 relation (2.56)",
+      "unit": "-"
+    },
+    "a_h": {
+      "formula": "aH = aH0 + tauH / tauH0",
+      "source": "MC001-2022 relation (2.55)",
+      "unit": "-"
+    },
+    "annual_sums": {
+      "formula": "annual demand = sum of 12 monthly demands",
+      "source": "MC001-2022 2.10, relations (2.84), (2.85)",
+      "unit": "kWh/year"
+    },
+    "assembly_resistance": {
+      "formula": "R = Rsi + sum(Rj) + sum(Ra) + Rse",
+      "source": "MC001-2022 2.4.1, relation (2.6)",
+      "unit": "m2*K/W"
+    },
+    "design_lambda": {
+      "formula": "lambda = a * lambda_normat",
+      "source": "MC001-2022 2.1.4, relation (2.3)",
+      "unit": "W/(m*K)"
+    },
+    "direct_transmission": {
+      "formula": "Hd = sum(Uj * Aj) + sum(psi_k * l_k) + sum(chi_j)",
+      "source": "MC001-2022 2.4.1, relation (2.11)",
+      "unit": "W/K"
+    },
+    "eta_cht": {
+      "formula": "etaCht = (1 - gammaC^(-aC)) / (1 - gammaC^(-(aC + 1))); gammaC=1 branch aC/(aC+1)",
+      "source": "MC001-2022 Figure 2.15",
+      "unit": "-"
+    },
+    "eta_hgn": {
+      "formula": "etaHgn = (1 - gammaH^aH) / (1 - gammaH^(aH + 1)); gammaH=1 branch aH/(aH+1)",
+      "source": "MC001-2022 Figure 2.14",
+      "unit": "-"
+    },
+    "htr": {
+      "formula": "Htr = Hd + Hg + Hu + Ha",
+      "source": "MC001-2022 2.4.1, relation (2.15)",
+      "unit": "W/K"
+    },
+    "hve": {
+      "formula": "Hve = ca_air_volume * sum(qv * bve * fve_dyn)",
+      "source": "MC001-2022 2.7.1.2, relation (2.30)",
+      "unit": "W/K"
+    },
+    "layer_resistance": {
+      "formula": "Rj = dj / lambda_j",
+      "source": "MC001-2022 2.4.1 thermal resistance method",
+      "unit": "m2*K/W"
+    },
+    "monthly_gains": {
+      "formula": "Qgn = Qint + Qsol, with explicit adjacent unconditioned-zone gain terms when supplied",
+      "source": "MC001-2022 2.7.2 Figure 2.13; 2.7.2/2.7.3 relations (2.34), (2.37)",
+      "unit": "kWh"
+    },
+    "monthly_transmission": {
+      "formula": "Qtr = Htr * (theta_i - theta_e) * hours / 1000",
+      "source": "MC001-2022 2.4.1 relation (2.14), time integrated for current explicit runtime path",
+      "unit": "kWh"
+    },
+    "monthly_ventilation": {
+      "formula": "Qve = Hve * (theta_i - theta_e) * hours / 1000",
+      "source": "MC001-2022 2.7.1.2, relation (2.29)",
+      "unit": "kWh"
+    },
+    "qcnd": {
+      "formula": "QCnd = 0 for 1/gammaC > 2; otherwise aCred * (QCgn - etaCht * QCht)",
+      "source": "MC001-2022 2.8.1 Figure 2.19",
+      "unit": "kWh"
+    },
+    "qhnd": {
+      "formula": "QHnd = 0 for gammaH <= 0 with gains or gammaH > 2; otherwise QHht - etaHgn * QHgn",
+      "source": "MC001-2022 2.8.1 Figure 2.18",
+      "unit": "kWh"
+    },
+    "tau_c": {
+      "formula": "tauC = (Cm_eff / 3600) / (Htr + Hve)",
+      "source": "MC001-2022 relation (2.58)",
+      "unit": "h"
+    },
+    "tau_h": {
+      "formula": "tauH = (Cm_eff / 3600) / (Htr + Hve)",
+      "source": "MC001-2022 relation (2.57)",
+      "unit": "h"
+    },
+    "u_value": {
+      "formula": "U = 1 / R",
+      "source": "MC001-2022 2.4.1, relation (2.7)",
+      "unit": "W/(m2*K)"
+    }
+  },
+  "hidden_input_findings": [
+    {
+      "findings": [],
+      "fixture_id": "RB-001",
+      "status": "PASS"
+    },
+    {
+      "findings": [],
+      "fixture_id": "RB-002",
+      "status": "PASS"
+    },
+    {
+      "findings": [],
+      "fixture_id": "RB-003",
+      "status": "PASS"
+    }
+  ],
+  "implementation_versions": {
+    "dependencies": [],
+    "git_commit": "3ffb0518673bdb6114128305a7710e2057305e88",
+    "node": "v24.15.0",
+    "python": "3.14.6"
+  },
+  "p3v_gate_result": "PASS",
+  "reference_building_count": 3,
+  "runtime_defects_found": [],
+  "runtime_fixes": [],
+  "schema": "p3v.validation_report.v1",
+  "sensitivity": {
+    "mutation_count": 10,
+    "mutations": [
+      {
+        "affected_dependencies": [
+          "assembly resistance",
+          "U-value",
+          "Htr",
+          "monthly heating transfer"
+        ],
+        "description": "Increase RB-001 EPS intervention thickness by 0.05 m",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690637,
+            "branch_stability": "PASS",
+            "delta": -915.1759560194914,
+            "direction": "decrease",
+            "mutated": 7689.099104671146,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690636,
+            "branch_stability": "PASS",
+            "delta": -915.1759560194896,
+            "direction": "decrease",
+            "mutated": 7689.099104671146,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "decrease",
+        "fixture": "RB-001",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "increase_eps_thickness",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "material lambda",
+          "layer resistance",
+          "U-value",
+          "Htr"
+        ],
+        "description": "Increase RB-001 EPS design lambda by 25 percent",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690637,
+            "branch_stability": "PASS",
+            "delta": 982.7289335646783,
+            "direction": "increase",
+            "mutated": 9587.003994255316,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690636,
+            "branch_stability": "PASS",
+            "delta": 982.7289335646783,
+            "direction": "increase",
+            "mutated": 9587.003994255314,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "increase",
+        "fixture": "RB-001",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "increase_material_lambda",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "element contribution",
+          "Hd",
+          "Htr"
+        ],
+        "description": "Increase RB-001 exterior wall area by 10 percent",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690637,
+            "branch_stability": "PASS",
+            "delta": 325.48319100353,
+            "direction": "increase",
+            "mutated": 8929.758251694167,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690636,
+            "branch_stability": "PASS",
+            "delta": 325.48319100353365,
+            "direction": "increase",
+            "mutated": 8929.75825169417,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "increase",
+        "fixture": "RB-001",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "increase_wall_area",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "window element contribution",
+          "Hd",
+          "Htr"
+        ],
+        "description": "Increase RB-002 legacy high-U window area by 20 percent",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 55566.64740645608,
+            "branch_stability": "PASS",
+            "delta": 1210.4837710328065,
+            "direction": "increase",
+            "mutated": 56777.13117748889,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 55566.64740645608,
+            "branch_stability": "PASS",
+            "delta": 1210.4837710328065,
+            "direction": "increase",
+            "mutated": 56777.13117748889,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "increase",
+        "fixture": "RB-002",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "increase_high_u_window_area",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "direct U override",
+          "window element contribution",
+          "Hd"
+        ],
+        "description": "Improve RB-002 legacy window U-value from 2.8 to 2.1 W/m2K",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 55566.64740645608,
+            "branch_stability": "PASS",
+            "delta": -1513.0728534715163,
+            "direction": "decrease",
+            "mutated": 54053.574552984566,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 55566.64740645608,
+            "branch_stability": "PASS",
+            "delta": -1513.0728534715236,
+            "direction": "decrease",
+            "mutated": 54053.57455298456,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "decrease",
+        "fixture": "RB-002",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "improve_window_u",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "thermal bridge contribution",
+          "Hd",
+          "Htr"
+        ],
+        "description": "Add a positive RB-001 linear thermal bridge",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690637,
+            "branch_stability": "PASS",
+            "delta": 79.68307179653311,
+            "direction": "increase",
+            "mutated": 8683.95813248717,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690636,
+            "branch_stability": "PASS",
+            "delta": 79.68307179653493,
+            "direction": "increase",
+            "mutated": 8683.95813248717,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "increase",
+        "fixture": "RB-001",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "add_positive_thermal_bridge",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "thermal bridge contribution",
+          "Hd",
+          "Htr"
+        ],
+        "description": "Remove RB-001 canopy point bridge",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690637,
+            "branch_stability": "PASS",
+            "delta": -31.866451434112605,
+            "direction": "decrease",
+            "mutated": 8572.408609256525,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690636,
+            "branch_stability": "PASS",
+            "delta": -31.866451434110786,
+            "direction": "decrease",
+            "mutated": 8572.408609256525,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "decrease",
+        "fixture": "RB-001",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "remove_positive_thermal_bridge",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "Hve",
+          "monthly ventilation transfer"
+        ],
+        "description": "Increase RB-001 monthly ventilation airflow by 25 percent",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690637,
+            "branch_stability": "PASS",
+            "delta": 957.593426435038,
+            "direction": "increase",
+            "mutated": 9561.868487125676,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690636,
+            "branch_stability": "PASS",
+            "delta": 957.5934264350417,
+            "direction": "increase",
+            "mutated": 9561.868487125677,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "increase",
+        "fixture": "RB-001",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "increase_ventilation",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "monthly gains",
+          "gammaH",
+          "QHnd"
+        ],
+        "description": "Increase RB-001 December-January-February direct solar gains by 25 percent",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690637,
+            "branch_stability": "PASS",
+            "delta": -171.70223302977865,
+            "direction": "decrease",
+            "mutated": 8432.572827660859,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 8604.275060690636,
+            "branch_stability": "PASS",
+            "delta": -171.70223302977683,
+            "direction": "decrease",
+            "mutated": 8432.572827660859,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "decrease",
+        "fixture": "RB-001",
+        "metric": "annual.q_hnd_kwh",
+        "mutation_id": "increase_winter_solar_gains",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      },
+      {
+        "affected_dependencies": [
+          "monthly gains",
+          "gammaC",
+          "QCnd"
+        ],
+        "description": "Increase RB-003 June-July-August direct solar gains by 15 percent",
+        "engines": {
+          "javascript": {
+            "applicability_stability": "PASS",
+            "baseline": 6070.964260584742,
+            "branch_stability": "PASS",
+            "delta": 978.9599175339981,
+            "direction": "increase",
+            "mutated": 7049.92417811874,
+            "status": "PASS"
+          },
+          "python": {
+            "applicability_stability": "PASS",
+            "baseline": 6070.964260584742,
+            "branch_stability": "PASS",
+            "delta": 978.9599175339972,
+            "direction": "increase",
+            "mutated": 7049.924178118739,
+            "status": "PASS"
+          }
+        },
+        "expected_direction": "increase",
+        "fixture": "RB-003",
+        "metric": "annual.q_cnd_kwh",
+        "mutation_id": "increase_summer_solar_gains",
+        "status": "PASS",
+        "unaffected_dependencies": [
+          "fixture identity",
+          "monthly applicability flags"
+        ]
+      }
+    ],
+    "schema": "p3v.sensitivity_report.v1",
+    "status": "PASS"
+  },
+  "status": "PASS",
+  "unresolved_source_ambiguities": []
+}
