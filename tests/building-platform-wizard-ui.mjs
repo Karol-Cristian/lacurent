@@ -3,12 +3,14 @@ import { readFileSync } from "node:fs";
 import {
   ASSISTED_WIZARD_DEMO_FIXTURE,
   BUILDING_PLATFORM_WIZARD_STEPS,
+  buildBuildingPlatformSavePayload,
   buildWizardEngineeringPreview,
   constructionPeriodFromYear,
   demoModeFromSearch,
   getAssistedWizardDemoFixture,
   mapWizardAnswersToAssistedAnswers,
   renderEngineeringModelReview,
+  saveBuildingPlatformChapter2Analysis,
   structuralSystemFromWallMaterial
 } from "../js/building-platform-wizard.mjs";
 
@@ -26,6 +28,26 @@ function formData(entries) {
   return {
     get(name) {
       return entries[name];
+    }
+  };
+}
+
+function fakeRootForSave() {
+  const nodes = new Map();
+  const status = {
+    textContent: "",
+    dataset: {}
+  };
+  const preview = {
+    innerHTML: ""
+  };
+  nodes.set("buildingPlatformSaveStatus", status);
+  nodes.set("buildingModelReview", preview);
+  return {
+    status,
+    preview,
+    getElementById(id) {
+      return nodes.get(id) || null;
     }
   };
 }
@@ -142,6 +164,66 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   ]) {
     assert.equal(html.includes(expected), true, expected);
   }
+});
+
+await test("save payload sends only Building DNA to the server-side Chapter 2 endpoint", () => {
+  const data = formData(ASSISTED_WIZARD_DEMO_FIXTURE.values);
+  const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(data));
+  const payload = buildBuildingPlatformSavePayload(preview, data, {
+    dataset: {
+      currentHouseId: "42"
+    }
+  });
+
+  assert.equal(payload.ok, true);
+  assert.equal(payload.value.house_id, 42);
+  assert.equal(payload.value.project_name, ASSISTED_WIZARD_DEMO_FIXTURE.values.display_name);
+  assert.equal(payload.value.building_dna.schema, "building_dna_v1");
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.value, "chapter2_result"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.value, "technical_report"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.value, "annualQHnd"), false);
+});
+
+await test("save action persists Building DNA through the authenticated API client", async () => {
+  const root = fakeRootForSave();
+  const calls = [];
+  const result = await saveBuildingPlatformChapter2Analysis(root, {
+    formData: formData(ASSISTED_WIZARD_DEMO_FIXTURE.values),
+    apiClient: async (path, payload) => {
+      calls.push({ path, payload });
+      return {
+        success: true,
+        house_id: 7,
+        analysis_id: 100,
+        building_dna_version: {
+          versionId: "building-dna-100"
+        },
+        result_summary: {
+          annualQHnd: 9400,
+          annualQCnd: 8
+        }
+      };
+    }
+  });
+
+  assert.equal(result.saved, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, "/api/building-platform/chapter2/save");
+  assert.equal(calls[0].payload.building_dna.schema, "building_dna_v1");
+  assert.equal(root.status.dataset.state, "ready");
+  assert.equal(root.status.textContent.includes("analiza 100"), true);
+  assert.equal(root.preview.innerHTML.includes("Raport tehnic generat"), true);
+});
+
+await test("save action blocks when no authenticated API client is available", async () => {
+  const root = fakeRootForSave();
+  const result = await saveBuildingPlatformChapter2Analysis(root, {
+    formData: formData(ASSISTED_WIZARD_DEMO_FIXTURE.values)
+  });
+
+  assert.equal(result.saved, false);
+  assert.equal(result.reason, "missing_authenticated_api_client");
+  assert.equal(root.status.dataset.state, "blocked");
 });
 
 await test("demo query and fixture preload a complete editable technical dataset", () => {
@@ -298,6 +380,9 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("building-platform-wizard.mjs"), true);
   assert.equal(html.includes("buildingModelReview"), true);
   assert.equal(html.includes("buildingModelPreviewBtn"), true);
+  assert.equal(html.includes("saveBuildingPlatformAnalysisBtn"), true);
+  assert.equal(html.includes("recalculateBuildingPlatformAnalysisBtn"), true);
+  assert.equal(html.includes("buildingPlatformSaveStatus"), true);
   assert.equal(html.includes("demoModeBanner"), true);
   assert.equal(html.includes("climate_profile_id"), true);
   assert.equal(html.includes("Profil climatic sintetic pentru demonstra"), true);
@@ -313,6 +398,8 @@ await test("analysis page exposes the refocused technical workflow", () => {
     "Building DNA",
     "Raport tehnic",
     "Rezultate",
+    "Salveaza si calculeaza",
+    "Recalculeaza versiune noua",
     "QHnd",
     "QCnd"
   ]) {
