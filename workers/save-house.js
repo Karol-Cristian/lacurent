@@ -3922,6 +3922,76 @@ async function loadBuildingPlatformChapter2Record(env, userId, analysisId) {
   return { ok: true, analysis, answers, technicalDetails };
 }
 
+async function listBuildingPlatformChapter2Projects(env, userId) {
+  const result = await env.DB.prepare(`
+    SELECT
+      houses.id AS house_id,
+      houses.display_name,
+      houses.house_type,
+      houses.surface,
+      houses.city,
+      latest.analysis_id,
+      latest.completed_at,
+      COALESCE(version_counts.version_count, 1) AS version_count
+    FROM houses
+    JOIN (
+      SELECT house_id, MAX(id) AS analysis_id, MAX(completed_at) AS completed_at
+      FROM analyses
+      WHERE user_id = ? AND analysis_type = ? AND status = 'completed'
+      GROUP BY house_id
+    ) latest ON latest.house_id = houses.id
+    LEFT JOIN (
+      SELECT house_id, COUNT(*) AS version_count
+      FROM analyses
+      WHERE user_id = ? AND analysis_type = ? AND status = 'completed'
+      GROUP BY house_id
+    ) version_counts ON version_counts.house_id = houses.id
+    WHERE houses.user_id = ? AND COALESCE(houses.active, 1) = 1
+    ORDER BY latest.analysis_id DESC
+    LIMIT 50
+  `)
+    .bind(userId, BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE, userId, BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE, userId)
+    .all();
+
+  const projects = [];
+  for (const row of result.results || []) {
+    const snapshot = await env.DB.prepare(`
+      SELECT technical_details_json
+      FROM report_snapshots
+      WHERE analysis_id = ?
+      ORDER BY generated_at DESC, id DESC
+      LIMIT 1
+    `)
+      .bind(row.analysis_id)
+      .first();
+    const technicalDetails = parseMc001HtrStoredJson(snapshot?.technical_details_json, null);
+    const buildingDna = technicalDetails?.buildingDna ?? null;
+    const summary = technicalDetails?.resultSummary ?? {};
+    const buildingDnaVersion = technicalDetails?.buildingDnaVersion ?? {};
+    const climateProfile = buildingDna?.climateProfile ?? {};
+    projects.push({
+      house_id: row.house_id,
+      project_name: row.display_name ?? buildingDna?.building?.buildingId ?? "Model termic Chapter 2",
+      building_type: row.house_type ?? buildingDna?.building?.buildingType ?? null,
+      useful_area_m2: row.surface ?? buildingDna?.geometry?.usefulFloorAreaM2 ?? null,
+      locality: row.city ?? climateProfile.locality ?? buildingDna?.building?.location?.city ?? null,
+      climate_profile_id: climateProfile.profileId ?? null,
+      climate_profile_version: climateProfile.datasetVersion ?? null,
+      climate_status: climateProfile.verificationStatus ?? buildingDna?.calculationStatus ?? "requires_confirmation",
+      latest_analysis_id: row.analysis_id,
+      latest_completed_at: row.completed_at,
+      building_dna_version_id: buildingDnaVersion.versionId ?? null,
+      version_count: Number(row.version_count) || 1,
+      annualQHnd: Number.isFinite(Number(summary.annualQHnd)) ? Number(summary.annualQHnd) : null,
+      annualQCnd: Number.isFinite(Number(summary.annualQCnd)) ? Number(summary.annualQCnd) : null,
+      calculation_status: buildingDnaVersion.calculationStatus ?? buildingDna?.calculationStatus ?? "requires_confirmation",
+      report_available: Boolean(technicalDetails?.technicalReport)
+    });
+  }
+
+  return projects;
+}
+
 async function handleBuildingPlatformChapter2Save(request, env, corsHeaders) {
   const user = await getCurrentUser(request, env);
   if (!user) {
@@ -3994,6 +4064,26 @@ async function handleBuildingPlatformChapter2Save(request, env, corsHeaders) {
       result_summary: workspace.resultSummary,
       calculation_status: buildingDna.calculationStatus ?? "requires_confirmation",
       technical_report: workspace.report
+    },
+    { headers: corsHeaders }
+  );
+}
+
+async function handleBuildingPlatformChapter2List(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse(
+      { success: false, error: "Trebuie sa fii autentificat pentru a vedea proiectele Building Platform." },
+      { status: 401, headers: corsHeaders }
+    );
+  }
+
+  const projects = await listBuildingPlatformChapter2Projects(env, user.id);
+  return jsonResponse(
+    {
+      success: true,
+      scope: BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE,
+      projects
     },
     { headers: corsHeaders }
   );
@@ -5443,6 +5533,7 @@ export default {
       "/api/energy-report": energyReport,
       "/api/demo-energy-report": demoEnergyReport,
       "/api/building-platform/chapter2/save": handleBuildingPlatformChapter2Save,
+      "/api/building-platform/chapter2/list": handleBuildingPlatformChapter2List,
       "/api/building-platform/chapter2/load": handleBuildingPlatformChapter2Load,
       "/api/mc001/htr/run": handleMc001HtrRun,
       "/api/mc001/htr/load": handleMc001HtrLoad,

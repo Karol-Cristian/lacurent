@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   ASSISTED_WIZARD_DEMO_FIXTURE,
   BUILDING_PLATFORM_WIZARD_STEPS,
+  analysisIdFromSearch,
   applyBuildingDnaToWizardForm,
   buildBuildingPlatformSavePayload,
   buildingDnaToWizardValues,
@@ -17,6 +18,10 @@ import {
   saveBuildingPlatformChapter2Analysis,
   structuralSystemFromWallMaterial
 } from "../js/building-platform-wizard.mjs";
+import {
+  projectStatusLabel,
+  renderProjectRows
+} from "../js/my-projects.mjs";
 
 function test(name, fn) {
   return Promise.resolve()
@@ -395,6 +400,37 @@ await test("load action blocks without auth or a valid analysis id", async () =>
   assert.equal(invalid.reason, "invalid_analysis_id");
 });
 
+await test("saved project URL parameter is parsed for dashboard reopen links", () => {
+  assert.equal(analysisIdFromSearch("?analysis_id=321"), 321);
+  assert.equal(analysisIdFromSearch("?analysis_id=0"), null);
+  assert.equal(analysisIdFromSearch("?demo=1"), null);
+});
+
+await test("My Projects rows open the canonical calculator without exposing unsupported domains", () => {
+  const html = renderProjectRows([{
+    project_name: "Casa zidarie 1985",
+    building_type: "house",
+    useful_area_m2: 120,
+    locality: "Bucuresti",
+    climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
+    climate_profile_version: "climate_profile_v1",
+    calculation_status: "estimated",
+    latest_analysis_id: 321,
+    version_count: 2,
+    annualQHnd: 1234.56,
+    annualQCnd: 78.9
+  }]);
+
+  assert.equal(projectStatusLabel({ calculation_status: "estimated" }), "Estimativ");
+  assert.equal(html.includes("Casa zidarie 1985"), true);
+  assert.equal(html.includes("pages/analiza-casa.html?analysis_id=321"), true);
+  assert.equal(html.includes("1234.6 kWh"), true);
+  assert.equal(html.includes("78.9 kWh"), true);
+  for (const forbidden of ["primaryEnergy", "CO2", "certificate", "savings"]) {
+    assert.equal(html.includes(forbidden), false, forbidden);
+  }
+});
+
 await test("demo query and fixture preload a complete editable technical dataset", () => {
   assert.equal(demoModeFromSearch("?demo=1"), true);
   assert.equal(demoModeFromSearch("?new=1"), false);
@@ -553,6 +589,7 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("recalculateBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("buildingPlatformLoadAnalysisId"), true);
   assert.equal(html.includes("loadBuildingPlatformAnalysisBtn"), true);
+  assert.equal(html.includes("Redeschidere avansata dupa ID analiza"), true);
   assert.equal(html.includes("buildingPlatformSaveStatus"), true);
   assert.equal(html.includes("demoModeBanner"), true);
   assert.equal(html.includes("climate_profile_id"), true);
@@ -632,6 +669,9 @@ await test("canonical production route imports only the current Building Platfor
   const analysisPage = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
   const activeSurface = `${index}\n${analysisPage}`;
 
+  assert.equal(index.includes("js/my-projects.mjs"), true);
+  assert.equal(index.includes("myProjectsPanel"), true);
+  assert.equal(index.includes("PROIECTELE MELE"), true);
   assert.equal(index.includes("js/product-dashboard.js"), false);
   assert.equal(index.includes("js/segment-context.js"), false);
   assert.equal(index.includes("js/home-context.js"), false);
@@ -639,11 +679,14 @@ await test("canonical production route imports only the current Building Platfor
   assert.equal(activeSurface.includes("?new=1"), false);
   assert.equal(activeSurface.includes("pages/analiza-casa.html"), true);
   assert.equal(activeSurface.includes("pages/analiza-casa.html?demo=1"), true);
+  assert.equal(analysisPage.includes("buildingPlatformLoadAnalysisId"), true);
+  assert.equal(analysisIdFromSearch("?analysis_id=42"), 42);
 });
 
 await test("active production modules do not import test fixtures", () => {
   const activeFiles = [
     "../js/building-platform-wizard.mjs",
+    "../js/my-projects.mjs",
     "../js/analiza-casa.js",
     "../src/building-platform/buildingDnaResolver.mjs",
     "../src/building-platform/buildingKnowledgePipeline.mjs",

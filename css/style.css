@@ -4555,6 +4555,45 @@ font-weight:800;
 color:#64748b;
 }
 
+.my-projects-panel{
+scroll-margin-top:18px;
+}
+
+.my-projects-table td{
+white-space:nowrap;
+}
+
+.my-projects-table td:first-child,
+.my-projects-table td:nth-child(3){
+white-space:normal;
+min-width:220px;
+}
+
+.compact-action{
+padding:8px 12px;
+min-height:36px;
+font-size:12px;
+}
+
+.technical-advanced-load{
+margin-top:14px;
+padding:12px;
+border:1px solid #dbe3ee;
+border-radius:8px;
+background:#f8fafc;
+}
+
+.technical-advanced-load summary{
+cursor:pointer;
+font-weight:900;
+color:#334155;
+}
+
+.technical-advanced-load p{
+margin:8px 0 12px;
+color:#64748b;
+}
+
 .technical-workspace{
 display:grid;
 gap:16px;

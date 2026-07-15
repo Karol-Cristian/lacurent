@@ -103,6 +103,42 @@ class FakeDb {
   }
 
   all(sql, params) {
+    if (sql.includes("FROM houses") && sql.includes("version_count")) {
+      const [userId, analysisType, countUserId, countAnalysisType, ownerUserId] = params;
+      const houses = this.houses.filter((house) => house.user_id === ownerUserId && house.active === 1);
+      return {
+        results: houses
+          .map((house) => {
+            const analyses = this.analyses
+              .filter((analysis) => (
+                analysis.house_id === house.id &&
+                analysis.user_id === userId &&
+                analysis.analysis_type === analysisType &&
+                analysis.status === "completed"
+              ))
+              .sort((a, b) => b.id - a.id);
+            const counted = this.analyses.filter((analysis) => (
+              analysis.house_id === house.id &&
+              analysis.user_id === countUserId &&
+              analysis.analysis_type === countAnalysisType &&
+              analysis.status === "completed"
+            ));
+            const latest = analyses[0];
+            if (!latest) return null;
+            return {
+              house_id: house.id,
+              display_name: house.display_name,
+              house_type: house.house_type,
+              surface: house.surface,
+              city: house.city,
+              analysis_id: latest.id,
+              completed_at: latest.completed_at,
+              version_count: counted.length
+            };
+          })
+          .filter(Boolean)
+      };
+    }
     if (sql.includes("FROM analysis_answers")) {
       const [analysisId, group] = params;
       return {
@@ -307,6 +343,63 @@ await test("Building Platform load endpoint returns saved structured model for o
     loaded.body.technical_details.resultSummary.annualQHnd,
     saved.body.result_summary.annualQHnd
   );
+});
+
+await test("Building Platform project list returns latest saved version summaries for owner", async () => {
+  const db = new FakeDb();
+  const buildingDna = demoBuildingDna();
+  const first = await post("/api/building-platform/chapter2/save", db, {
+    project_name: "Demo Building Platform",
+    building_dna: buildingDna
+  });
+  const changed = {
+    ...buildingDna,
+    geometry: {
+      ...buildingDna.geometry,
+      windowAreaM2: {
+        ...buildingDna.geometry.windowAreaM2,
+        amount: buildingDna.geometry.windowAreaM2.amount + 4
+      }
+    },
+    envelopeElements: buildingDna.envelopeElements.map((element) => (
+      element.elementId === "windows"
+        ? {
+            ...element,
+            area: {
+              ...element.area,
+              amount: element.area.amount + 4
+            }
+          }
+        : element
+    ))
+  };
+  const second = await post("/api/building-platform/chapter2/save", db, {
+    house_id: first.body.house_id,
+    project_name: "Demo Building Platform",
+    building_dna: changed
+  });
+
+  const listed = await post("/api/building-platform/chapter2/list", db, {});
+
+  assert.equal(listed.status, 200);
+  assert.equal(listed.body.success, true);
+  assert.equal(listed.body.projects.length, 1);
+  assert.equal(listed.body.projects[0].house_id, first.body.house_id);
+  assert.equal(listed.body.projects[0].latest_analysis_id, second.body.analysis_id);
+  assert.equal(listed.body.projects[0].version_count, 2);
+  assert.equal(listed.body.projects[0].project_name, "Demo Building Platform");
+  assert.equal(listed.body.projects[0].building_dna_version_id, "building-dna-101");
+  assert.equal(listed.body.projects[0].annualQHnd, second.body.result_summary.annualQHnd);
+  assert.equal(listed.body.projects[0].annualQCnd, second.body.result_summary.annualQCnd);
+  assert.equal(listed.body.projects[0].report_available, true);
+});
+
+await test("Building Platform project list requires authentication", async () => {
+  const db = new FakeDb();
+  const listed = await post("/api/building-platform/chapter2/list", db, {}, null);
+
+  assert.equal(listed.status, 401);
+  assert.equal(listed.body.success, false);
 });
 
 await test("Building Platform recalculation creates a new analysis version without overwriting old result", async () => {
