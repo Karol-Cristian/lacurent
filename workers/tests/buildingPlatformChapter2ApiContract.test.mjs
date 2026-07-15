@@ -57,6 +57,11 @@ class FakeDb {
     this.answers = [];
     this.snapshots = [];
     this.reports = [];
+    this.versionedProjects = [];
+    this.buildingDnaVersions = [];
+    this.analysisVersions = [];
+    this.reportVersions = [];
+    this.auditEvents = [];
     this.nextHouseId = 7;
     this.nextSiteId = 20;
     this.nextBuildingId = 30;
@@ -98,6 +103,13 @@ class FakeDb {
       return [...this.snapshots]
         .reverse()
         .find((snapshot) => snapshot.analysis_id === analysisId) || null;
+    }
+    if (sql.includes("FROM building_platform_projects")) {
+      const [projectId, ownerUserId] = params;
+      return this.versionedProjects.find((project) => (
+        project.project_id === projectId &&
+        project.owner_user_id === ownerUserId
+      )) || null;
     }
     return null;
   }
@@ -232,6 +244,107 @@ class FakeDb {
       });
       return { meta: { changes: 1 } };
     }
+    if (sql.includes("INSERT INTO building_platform_projects")) {
+      this.versionedProjects.push({
+        project_id: params[0],
+        owner_user_id: params[1],
+        project_name: params[2],
+        project_status: params[3],
+        current_building_dna_version_id: params[4],
+        current_analysis_version_id: params[5],
+        current_report_version_id: params[6],
+        created_at: params[7],
+        updated_at: params[8],
+        legacy_source_id: params[9],
+        schema_version: params[10]
+      });
+      return { meta: { changes: 1 } };
+    }
+    if (sql.includes("UPDATE building_platform_projects")) {
+      const project = this.versionedProjects.find((item) => (
+        item.project_id === params[6] &&
+        item.owner_user_id === params[7]
+      ));
+      if (project) {
+        project.project_name = params[0];
+        project.project_status = params[1];
+        project.current_building_dna_version_id = params[2];
+        project.current_analysis_version_id = params[3];
+        project.current_report_version_id = params[4];
+        project.updated_at = params[5];
+      }
+      return { meta: { changes: project ? 1 : 0 } };
+    }
+    if (sql.includes("INSERT INTO building_dna_versions")) {
+      this.buildingDnaVersions.push({
+        building_dna_version_id: params[0],
+        project_id: params[1],
+        parent_building_dna_version_id: params[2],
+        schema_version: params[3],
+        complete_building_dna_json: params[4],
+        climate_profile_id: params[12],
+        climate_profile_version: params[13],
+        creation_reason: params[14],
+        created_by: params[15],
+        created_at: params[16],
+        building_dna_fingerprint: params[17]
+      });
+      return { meta: { changes: 1 } };
+    }
+    if (sql.includes("INSERT INTO building_platform_analysis_versions")) {
+      this.analysisVersions.push({
+        analysis_version_id: params[0],
+        project_id: params[1],
+        building_dna_version_id: params[2],
+        parent_analysis_version_id: params[3],
+        adapter_version: params[4],
+        physics_engine_version: params[5],
+        normative_registry_version: params[6],
+        climate_profile_id: params[7],
+        climate_profile_version: params[8],
+        explicit_engine_input_json: params[9],
+        complete_engine_output_json: params[10],
+        monthly_qhnd_json: params[11],
+        monthly_qcnd_json: params[12],
+        annual_qhnd: params[13],
+        annual_qcnd: params[14],
+        calculation_status: params[17],
+        calculation_fingerprint: params[18],
+        schema_version: params[22]
+      });
+      return { meta: { changes: 1 } };
+    }
+    if (sql.includes("INSERT INTO building_platform_report_versions")) {
+      this.reportVersions.push({
+        technical_report_version_id: params[0],
+        project_id: params[1],
+        analysis_version_id: params[2],
+        building_dna_version_id: params[3],
+        report_schema_version: params[4],
+        structured_report_model_json: params[5],
+        traceability_model_json: params[6],
+        calculation_fingerprint: params[7],
+        generated_at: params[8],
+        report_status: params[9],
+        schema_version: params[10]
+      });
+      return { meta: { changes: 1 } };
+    }
+    if (sql.includes("INSERT INTO building_platform_audit_events")) {
+      this.auditEvents.push({
+        event_id: params[0],
+        project_id: params[1],
+        building_dna_version_id: params[2],
+        analysis_version_id: params[3],
+        technical_report_version_id: params[4],
+        actor_user_id: params[5],
+        action: params[6],
+        reason: params[7],
+        metadata_json: params[8],
+        created_at: params[9]
+      });
+      return { meta: { changes: 1 } };
+    }
     return { meta: { changes: 0 } };
   }
 }
@@ -307,6 +420,16 @@ await test("Building Platform save endpoint creates persisted Building DNA, anal
   assert.equal(result.body.house_id, 7);
   assert.equal(result.body.analysis_id, 100);
   assert.equal(result.body.building_dna_version.versionId, "building-dna-100");
+  assert.equal(result.body.building_dna_version.backendVersion, "building_platform_versioned_backend_p3e_v1");
+  assert.equal(result.body.building_dna_version.adapterVersion, "building_chapter_2_adapter_v1");
+  assert.equal(
+    result.body.building_dna_version.normativeRegistryVersion,
+    "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX"
+  );
+  assert.equal(result.body.fingerprints.buildingDnaFingerprint.startsWith("dna_"), true);
+  assert.equal(result.body.fingerprints.climateProfileFingerprint.startsWith("climate_"), true);
+  assert.equal(result.body.fingerprints.analysisFingerprint.startsWith("analysis_"), true);
+  assert.equal(result.body.fingerprints.reportFingerprint, result.body.fingerprints.analysisFingerprint);
   assert.equal(result.body.calculation_status, "synthetic_demo");
   assert.equal(result.body.result_summary.annualQHnd > 0, true);
   assert.equal(result.body.result_summary.annualQCnd > 0, true);
@@ -318,6 +441,13 @@ await test("Building Platform save endpoint creates persisted Building DNA, anal
   assert.equal(db.answers.length, 5);
   assert.equal(db.snapshots.length, 1);
   assert.equal(db.reports[0].report_type, "building_platform_chapter2_technical_report");
+  assert.equal(db.versionedProjects.length, 1);
+  assert.equal(db.versionedProjects[0].project_id, "bp-house-7");
+  assert.equal(db.versionedProjects[0].current_building_dna_version_id, "dna-version-100");
+  assert.equal(db.buildingDnaVersions[0].building_dna_fingerprint, result.body.fingerprints.buildingDnaFingerprint);
+  assert.equal(db.analysisVersions[0].calculation_fingerprint, result.body.fingerprints.analysisFingerprint);
+  assert.equal(db.reportVersions[0].calculation_fingerprint, result.body.fingerprints.reportFingerprint);
+  assert.equal(db.auditEvents[0].action, "calculation_completed");
 });
 
 await test("Building Platform load endpoint returns saved structured model for owner", async () => {
@@ -337,6 +467,15 @@ await test("Building Platform load endpoint returns saved structured model for o
   assert.equal(loaded.body.success, true);
   assert.equal(loaded.body.building_dna.schema, "building_dna_v1");
   assert.equal(loaded.body.building_dna_version.versionId, "building-dna-100");
+  assert.deepEqual(loaded.body.fingerprints, saved.body.fingerprints);
+  assert.deepEqual(
+    loaded.body.technical_details.fingerprints,
+    saved.body.fingerprints
+  );
+  assert.equal(
+    loaded.body.technical_details.versions.physicsEngineVersion,
+    "mc001_chapter_2_runtime_complete_for_supported_inputs"
+  );
   assert.equal(loaded.body.chapter2_result.status, "ready");
   assert.equal(loaded.body.technical_report.reportId, "technical_chapter_2_report_v1");
   assert.equal(
@@ -389,9 +528,18 @@ await test("Building Platform project list returns latest saved version summarie
   assert.equal(listed.body.projects[0].version_count, 2);
   assert.equal(listed.body.projects[0].project_name, "Demo Building Platform");
   assert.equal(listed.body.projects[0].building_dna_version_id, "building-dna-101");
+  assert.equal(listed.body.projects[0].building_dna_fingerprint.startsWith("dna_"), true);
+  assert.equal(listed.body.projects[0].analysis_fingerprint.startsWith("analysis_"), true);
+  assert.equal(
+    listed.body.projects[0].report_fingerprint,
+    listed.body.projects[0].analysis_fingerprint
+  );
   assert.equal(listed.body.projects[0].annualQHnd, second.body.result_summary.annualQHnd);
   assert.equal(listed.body.projects[0].annualQCnd, second.body.result_summary.annualQCnd);
   assert.equal(listed.body.projects[0].report_available, true);
+  assert.equal(db.versionedProjects[0].current_building_dna_version_id, "dna-version-101");
+  assert.equal(db.buildingDnaVersions[1].parent_building_dna_version_id, "dna-version-100");
+  assert.equal(db.analysisVersions[1].parent_analysis_version_id, "analysis-version-100");
 });
 
 await test("Building Platform project list requires authentication", async () => {
@@ -442,9 +590,21 @@ await test("Building Platform recalculation creates a new analysis version witho
   assert.equal(db.houses.length, 1);
   assert.equal(db.analyses.length, 2);
   assert.equal(db.snapshots.length, 2);
+  assert.equal(db.versionedProjects.length, 1);
+  assert.equal(db.buildingDnaVersions.length, 2);
+  assert.equal(db.analysisVersions.length, 2);
+  assert.equal(db.reportVersions.length, 2);
   assert.notEqual(
     second.body.result_summary.annualQHnd,
     first.body.result_summary.annualQHnd
+  );
+  assert.notEqual(
+    second.body.fingerprints.buildingDnaFingerprint,
+    first.body.fingerprints.buildingDnaFingerprint
+  );
+  assert.notEqual(
+    second.body.fingerprints.analysisFingerprint,
+    first.body.fingerprints.analysisFingerprint
   );
 });
 
@@ -464,4 +624,30 @@ await test("Building Platform load endpoint enforces analysis ownership", async 
 
   assert.equal(loaded.status, 404);
   assert.equal(loaded.body.success, false);
+});
+
+await test("Building Platform v1 stable API aliases use the same versioned save list and load path", async () => {
+  const db = new FakeDb();
+  const saved = await post(
+    "/api/building-platform/v1/projects/create-and-calculate",
+    db,
+    {
+      project_name: "Stable API Project",
+      building_dna: demoBuildingDna()
+    }
+  );
+  const listed = await post("/api/building-platform/v1/projects/list", db, {});
+  const loaded = await post(
+    "/api/building-platform/v1/analyses/load",
+    db,
+    { analysis_id: saved.body.analysis_id }
+  );
+
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.fingerprints.analysisFingerprint.startsWith("analysis_"), true);
+  assert.equal(listed.status, 200);
+  assert.equal(listed.body.projects[0].analysis_fingerprint, saved.body.fingerprints.analysisFingerprint);
+  assert.equal(loaded.status, 200);
+  assert.deepEqual(loaded.body.fingerprints, saved.body.fingerprints);
+  assert.equal(db.versionedProjects[0].project_name, "Stable API Project");
 });

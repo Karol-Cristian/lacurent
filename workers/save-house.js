@@ -11,6 +11,7 @@ import { calculateMc001MonthlyHeatGainsExplicit } from "../src/physics-engine/mc
 import { calculateMc001RestrictedHeatingQhndExplicit } from "../src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs";
 import {
   buildBuildingTechnicalWorkspace,
+  buildBuildingPlatformVersionMetadata,
   calculateChapter2ForBuildingDna
 } from "../src/building-platform/index.mjs";
 import {
@@ -3804,6 +3805,207 @@ function buildBuildingPlatformPipelineResult(buildingDna, calculation) {
   };
 }
 
+async function persistBuildingPlatformVersionGraph({
+  env,
+  user,
+  houseId,
+  analysisId,
+  body,
+  completedAt,
+  buildingDna,
+  calculation,
+  workspace,
+  buildingDnaVersion
+}) {
+  const projectId = `bp-house-${houseId}`;
+  const buildingDnaVersionId = `dna-version-${analysisId}`;
+  const analysisVersionId = `analysis-version-${analysisId}`;
+  const reportVersionId = `report-version-${analysisId}`;
+  const displayName =
+    String(body.project_name || body.display_name || buildingDna.building?.buildingId || "Model termic Chapter 2")
+      .slice(0, 160);
+  const previousProject = await env.DB.prepare(`
+    SELECT current_building_dna_version_id, current_analysis_version_id, current_report_version_id
+    FROM building_platform_projects
+    WHERE project_id = ? AND owner_user_id = ?
+    LIMIT 1
+  `)
+    .bind(projectId, user.id)
+    .first();
+  const projectSql = previousProject ? `
+    UPDATE building_platform_projects
+    SET project_name = ?, project_status = ?, current_building_dna_version_id = ?,
+      current_analysis_version_id = ?, current_report_version_id = ?, updated_at = ?
+    WHERE project_id = ? AND owner_user_id = ?
+  ` : `
+    INSERT INTO building_platform_projects(
+      project_id, owner_user_id, project_name, project_status, current_building_dna_version_id,
+      current_analysis_version_id, current_report_version_id, created_at, updated_at, legacy_source_id, schema_version
+    )
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const projectStatement = previousProject
+    ? env.DB.prepare(projectSql)
+      .bind(
+        displayName,
+        buildingDna.calculationStatus ?? "calculated",
+        buildingDnaVersionId,
+        analysisVersionId,
+        reportVersionId,
+        completedAt,
+        projectId,
+        user.id
+      )
+    : env.DB.prepare(projectSql)
+      .bind(
+        projectId,
+        user.id,
+        displayName,
+        buildingDna.calculationStatus ?? "calculated",
+        buildingDnaVersionId,
+        analysisVersionId,
+        reportVersionId,
+        completedAt,
+        completedAt,
+        `house:${houseId}`,
+        "building_platform_project_v1"
+      );
+
+  const summary = workspace.resultSummary ?? {};
+  const versionGraph = {
+    projectId,
+    buildingDnaVersionId,
+    analysisVersionId,
+    reportVersionId,
+    parentBuildingDnaVersionId: previousProject?.current_building_dna_version_id ?? null,
+    parentAnalysisVersionId: previousProject?.current_analysis_version_id ?? null,
+    parentReportVersionId: previousProject?.current_report_version_id ?? null
+  };
+  const statements = [
+    projectStatement,
+    env.DB.prepare(`
+      INSERT INTO building_dna_versions(
+        building_dna_version_id, project_id, parent_building_dna_version_id, schema_version,
+        complete_building_dna_json, source_json, assumptions_json, confirmations_json,
+        unresolved_uncertainties_json, interventions_json, engineering_overrides_json,
+        catalogue_versions_json, climate_profile_id, climate_profile_version, creation_reason,
+        created_by, created_at, building_dna_fingerprint
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        buildingDnaVersionId,
+        projectId,
+        versionGraph.parentBuildingDnaVersionId,
+        buildingDnaVersion.buildingDnaSchemaVersion,
+        JSON.stringify(buildingDna),
+        JSON.stringify(buildingDna.source ?? null),
+        JSON.stringify(buildingDna.assumptions ?? []),
+        JSON.stringify(buildingDna.confirmations ?? []),
+        JSON.stringify(buildingDna.missingConfirmations ?? []),
+        JSON.stringify(buildingDna.renovationInterventions ?? []),
+        JSON.stringify(buildingDna.overrides ?? []),
+        JSON.stringify({
+          materialCatalogueVersion: buildingDnaVersion.materialCatalogueVersion,
+          assemblyCatalogueVersion: buildingDnaVersion.assemblyCatalogueVersion
+        }),
+        buildingDnaVersion.climateProfileId,
+        buildingDnaVersion.climateProfileVersion,
+        previousProject ? "user_edit" : "initial_project_creation",
+        user.id,
+        completedAt,
+        buildingDnaVersion.fingerprints.buildingDnaFingerprint
+      ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_analysis_versions(
+        analysis_version_id, project_id, building_dna_version_id, parent_analysis_version_id,
+        adapter_version, physics_engine_version, normative_registry_version,
+        climate_profile_id, climate_profile_version, explicit_engine_input_json,
+        complete_engine_output_json, monthly_qhnd_json, monthly_qcnd_json, annual_qhnd,
+        annual_qcnd, supported_latent_outputs_json, diagnostics_json, calculation_status,
+        calculation_fingerprint, created_at, execution_metadata_json, failure_metadata_json,
+        schema_version
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        analysisVersionId,
+        projectId,
+        buildingDnaVersionId,
+        versionGraph.parentAnalysisVersionId,
+        buildingDnaVersion.adapterVersion,
+        buildingDnaVersion.physicsEngineVersion,
+        buildingDnaVersion.normativeRegistryVersion,
+        buildingDnaVersion.climateProfileId,
+        buildingDnaVersion.climateProfileVersion,
+        JSON.stringify(calculation.chapter2Input),
+        JSON.stringify(calculation.chapter2Result),
+        JSON.stringify(calculation.chapter2Result?.result?.monthlyResults?.map(month => ({
+          month: month.month,
+          value: month.heating?.qHnd ?? null,
+          unit: "kWh"
+        })) ?? []),
+        JSON.stringify(calculation.chapter2Result?.result?.monthlyResults?.map(month => ({
+          month: month.month,
+          value: month.cooling?.qCnd ?? null,
+          unit: "kWh"
+        })) ?? []),
+        summary.annualQHnd ?? null,
+        summary.annualQCnd ?? null,
+        JSON.stringify(calculation.chapter2Result?.result?.latentDemand ?? null),
+        JSON.stringify(calculation.diagnostics ?? []),
+        buildingDna.calculationStatus === "synthetic_demo" ? "synthetic_demo" : "calculated",
+        buildingDnaVersion.fingerprints.analysisFingerprint,
+        completedAt,
+        JSON.stringify({ backendVersion: buildingDnaVersion.backendVersion }),
+        null,
+        buildingDnaVersion.analysisSchemaVersion
+      ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_report_versions(
+        technical_report_version_id, project_id, analysis_version_id, building_dna_version_id,
+        report_schema_version, structured_report_model_json, traceability_model_json,
+        calculation_fingerprint, generated_at, report_status, schema_version
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        reportVersionId,
+        projectId,
+        analysisVersionId,
+        buildingDnaVersionId,
+        buildingDnaVersion.reportSchemaVersion,
+        JSON.stringify(workspace.report),
+        JSON.stringify(workspace.traceability ?? []),
+        buildingDnaVersion.fingerprints.reportFingerprint,
+        completedAt,
+        "completed",
+        buildingDnaVersion.technicalReportSchemaVersion
+      ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_audit_events(
+        event_id, project_id, building_dna_version_id, analysis_version_id, technical_report_version_id,
+        actor_user_id, action, reason, metadata_json, created_at
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        `audit-${analysisId}-calculation-completed`,
+        projectId,
+        buildingDnaVersionId,
+        analysisVersionId,
+        reportVersionId,
+        user.id,
+        "calculation_completed",
+        previousProject ? "user_edit" : "initial_project_creation",
+        JSON.stringify({ legacyAnalysisId: analysisId, legacyHouseId: houseId }),
+        completedAt
+      )
+  ];
+  await env.DB.batch(statements);
+  return versionGraph;
+}
+
 async function saveBuildingPlatformChapter2Record(env, user, body, buildingDna, calculation, workspace, houseId) {
   const completedAt = new Date().toISOString();
   const analysisResult = await env.DB.prepare(`
@@ -3818,22 +4020,49 @@ async function saveBuildingPlatformChapter2Record(env, user, body, buildingDna, 
   }
 
   const buildingDnaVersion = {
-    versionId: `building-dna-${analysisId}`,
-    schemaVersion: buildingDna.schema,
-    platformVersion: buildingDna.platformVersion,
-    climateProfileVersion: buildingDna.climateProfile?.datasetVersion ?? null,
-    calculationStatus: buildingDna.calculationStatus ?? "requires_confirmation",
+    ...buildBuildingPlatformVersionMetadata({
+      buildingDna,
+      calculation,
+      analysisId
+    }),
     createdAt: completedAt
   };
   const technicalDetails = {
     scope: BUILDING_PLATFORM_CHAPTER2_ANALYSIS_TYPE,
     buildingDnaVersion,
+    fingerprints: buildingDnaVersion.fingerprints,
+    versions: {
+      backendVersion: buildingDnaVersion.backendVersion,
+      adapterVersion: buildingDnaVersion.adapterVersion,
+      physicsEngineVersion: buildingDnaVersion.physicsEngineVersion,
+      normativeRegistryVersion: buildingDnaVersion.normativeRegistryVersion,
+      climateProfileId: buildingDnaVersion.climateProfileId,
+      climateProfileVersion: buildingDnaVersion.climateProfileVersion,
+      materialCatalogueVersion: buildingDnaVersion.materialCatalogueVersion,
+      assemblyCatalogueVersion: buildingDnaVersion.assemblyCatalogueVersion,
+      reportSchemaVersion: buildingDnaVersion.reportSchemaVersion
+    },
     buildingDna,
     chapter2Input: calculation.chapter2Input,
     chapter2Result: calculation.chapter2Result,
     technicalReport: workspace.report,
     resultSummary: workspace.resultSummary
   };
+
+  const versionGraph = await persistBuildingPlatformVersionGraph({
+    env,
+    user,
+    houseId,
+    analysisId,
+    body,
+    completedAt,
+    buildingDna,
+    calculation,
+    workspace,
+    buildingDnaVersion
+  });
+  buildingDnaVersion.versionGraph = versionGraph;
+  technicalDetails.versionGraph = versionGraph;
 
   const answerRows = [
     [BUILDING_PLATFORM_BUILDING_DNA_KEY, buildingDna],
@@ -3876,7 +4105,7 @@ async function saveBuildingPlatformChapter2Record(env, user, body, buildingDna, 
     .bind(analysisId, BUILDING_PLATFORM_REPORT_TYPE)
     .run();
 
-  return { analysisId, buildingDnaVersion, technicalDetails };
+  return { analysisId, buildingDnaVersion, technicalDetails, versionGraph };
 }
 
 async function loadBuildingPlatformChapter2Record(env, userId, analysisId) {
@@ -3981,6 +4210,9 @@ async function listBuildingPlatformChapter2Projects(env, userId) {
       latest_analysis_id: row.analysis_id,
       latest_completed_at: row.completed_at,
       building_dna_version_id: buildingDnaVersion.versionId ?? null,
+      building_dna_fingerprint: buildingDnaVersion.fingerprints?.buildingDnaFingerprint ?? null,
+      analysis_fingerprint: buildingDnaVersion.fingerprints?.analysisFingerprint ?? null,
+      report_fingerprint: buildingDnaVersion.fingerprints?.reportFingerprint ?? null,
       version_count: Number(row.version_count) || 1,
       annualQHnd: Number.isFinite(Number(summary.annualQHnd)) ? Number(summary.annualQHnd) : null,
       annualQCnd: Number.isFinite(Number(summary.annualQCnd)) ? Number(summary.annualQCnd) : null,
@@ -4061,6 +4293,7 @@ async function handleBuildingPlatformChapter2Save(request, env, corsHeaders) {
       house_id: ownership.houseId,
       analysis_id: saved.analysisId,
       building_dna_version: saved.buildingDnaVersion,
+      fingerprints: saved.buildingDnaVersion.fingerprints,
       result_summary: workspace.resultSummary,
       calculation_status: buildingDna.calculationStatus ?? "requires_confirmation",
       technical_report: workspace.report
@@ -4109,6 +4342,7 @@ async function handleBuildingPlatformChapter2Load(request, env, corsHeaders) {
       house_id: loaded.analysis.house_id ?? null,
       building_dna: loaded.answers[BUILDING_PLATFORM_BUILDING_DNA_KEY],
       building_dna_version: loaded.answers[BUILDING_PLATFORM_VERSION_META_KEY],
+      fingerprints: loaded.answers[BUILDING_PLATFORM_VERSION_META_KEY]?.fingerprints ?? null,
       chapter2_input: loaded.answers[BUILDING_PLATFORM_ENGINE_INPUT_KEY],
       chapter2_result: loaded.answers[BUILDING_PLATFORM_ENGINE_OUTPUT_KEY],
       technical_report: loaded.answers[BUILDING_PLATFORM_REPORT_MODEL_KEY],
@@ -5535,6 +5769,9 @@ export default {
       "/api/building-platform/chapter2/save": handleBuildingPlatformChapter2Save,
       "/api/building-platform/chapter2/list": handleBuildingPlatformChapter2List,
       "/api/building-platform/chapter2/load": handleBuildingPlatformChapter2Load,
+      "/api/building-platform/v1/projects/create-and-calculate": handleBuildingPlatformChapter2Save,
+      "/api/building-platform/v1/projects/list": handleBuildingPlatformChapter2List,
+      "/api/building-platform/v1/analyses/load": handleBuildingPlatformChapter2Load,
       "/api/mc001/htr/run": handleMc001HtrRun,
       "/api/mc001/htr/load": handleMc001HtrLoad,
       "/api/homes": homes,
