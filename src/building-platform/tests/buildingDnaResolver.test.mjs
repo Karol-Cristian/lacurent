@@ -5,9 +5,9 @@ import {
   createBuildingDnaFromAdvancedModel,
   createBuildingDnaFromAssistedAnswers,
   createP1SeedGeometry,
-  createP1SeedMonthlyProfiles,
   getBuildingDnaDependencyTree
 } from "../index.mjs";
+import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
 function test(name, fn) {
   try {
@@ -35,7 +35,8 @@ function assistedDna() {
     },
     source: {
       reference: "P1.test.assisted_answers"
-    }
+    },
+    monthlyProfiles: createP1SeedMonthlyProfiles()
   });
 }
 
@@ -82,7 +83,8 @@ test("building-specific parameters and boundary context are carried into Buildin
     },
     source: {
       reference: "P2.test.assisted_parameters"
-    }
+    },
+    monthlyProfiles: createP1SeedMonthlyProfiles()
   });
 
   assert.equal(result.status, "ready");
@@ -101,6 +103,29 @@ test("building-specific parameters and boundary context are carried into Buildin
     result.buildingDna.envelopeElements.find(item => item.elementId === "ground-floor").boundaryType,
     "unheated_basement"
   );
+});
+
+test("assisted answers block without explicit climate or monthly profile", () => {
+  const result = createBuildingDnaFromAssistedAnswers({
+    buildingId: "p2d-missing-climate-profile",
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: "eps",
+      windowsReplaced: true
+    },
+    context: {
+      attic: "unheated",
+      basement: "none"
+    },
+    source: {
+      reference: "P2D.test.missing_climate_profile"
+    }
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.diagnostics.blockers[0].code, "missing_climate_profile_selection");
 });
 
 test("advanced and assisted modes can represent equivalent engineering input", () => {

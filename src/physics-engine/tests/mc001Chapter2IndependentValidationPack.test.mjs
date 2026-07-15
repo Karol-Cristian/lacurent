@@ -10,9 +10,9 @@ import {
   createBuildingDnaFromAdvancedModel,
   createBuildingDnaFromAssistedAnswers,
   createP1SeedGeometry,
-  createP1SeedMonthlyProfiles,
   applyBuildingDnaOverride
 } from "../../building-platform/index.mjs";
+import { createP1SeedMonthlyProfiles } from "../../building-platform/tests/fixtures/p1SeedMonthlyProfiles.mjs";
 import {
   ASSISTED_WIZARD_DEMO_FIXTURE,
   getAssistedWizardDemoFixture,
@@ -173,6 +173,7 @@ function assistedAnswers(overrides = {}) {
     source: {
       reference: "P2V.assisted_reference_building"
     },
+    monthlyProfiles: createP1SeedMonthlyProfiles(),
     ...overrides
   };
 }
@@ -1101,7 +1102,7 @@ await test("demo fixture safety and synthetic climate-profile sanity are enforce
   assert.equal(P2V_DEMO_FIXTURE_SAFETY_METADATA.notAClimateFile, true);
   assert.deepEqual(
     P2V_DEMO_FIXTURE_SAFETY_METADATA.artificialCoolingTriggerMonths,
-    ["september"]
+    []
   );
 
   const demoPreview = buildWizardEngineeringPreview(

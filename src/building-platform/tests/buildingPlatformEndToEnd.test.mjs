@@ -5,9 +5,9 @@ import {
   calculateChapter2ForBuildingDna,
   createBuildingDnaFromAdvancedModel,
   createBuildingDnaFromAssistedAnswers,
-  createP1SeedGeometry,
-  createP1SeedMonthlyProfiles
+  createP1SeedGeometry
 } from "../index.mjs";
+import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
 const EPSILON = 1e-9;
 
@@ -41,7 +41,8 @@ function assistedBuildingDna() {
     },
     source: {
       reference: "P1.e2e.user_said_detached_brick_house_1985_eps_pvc"
-    }
+    },
+    monthlyProfiles: createP1SeedMonthlyProfiles()
   });
   assert.equal(result.status, "ready");
   return result.buildingDna;
