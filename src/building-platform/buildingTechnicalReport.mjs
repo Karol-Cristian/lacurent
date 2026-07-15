@@ -53,6 +53,36 @@ function provenanceFields(provenance = {}) {
   };
 }
 
+function stableNormalize(value) {
+  if (Array.isArray(value)) {
+    return value.map(stableNormalize);
+  }
+  if (value && typeof value === "object") {
+    return Object.keys(value)
+      .sort()
+      .reduce((normalized, key) => {
+        normalized[key] = stableNormalize(value[key]);
+        return normalized;
+      }, {});
+  }
+  return value;
+}
+
+function stableString(value) {
+  return JSON.stringify(stableNormalize(value));
+}
+
+function stableFingerprint(value) {
+  const text = stableString(value);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    hash >>>= 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
 function makeReportChapter(chapterId, title, summary, rows = [], references = []) {
   return {
     chapterId,
@@ -173,16 +203,45 @@ function envelopeBreakdown(calculation) {
   };
 }
 
-function monthlyRows(calculation) {
+function quantityAmount(value) {
+  return value?.amount ?? null;
+}
+
+function temperatureDelta(indoor, outdoor) {
+  return Number.isFinite(indoor) && Number.isFinite(outdoor)
+    ? indoor - outdoor
+    : null;
+}
+
+function monthlyRows(calculation, buildingDna) {
   const chapter2 = calculation.chapter2Result?.result ?? {};
   const heatingByMonth = byMonth(chapter2.heatingResult?.caseResults ?? []);
   const coolingByMonth = byMonth(chapter2.coolingResult?.caseResults ?? []);
+  const dnaByMonth = byMonth(buildingDna.monthlyProfiles ?? []);
   return (chapter2.monthlyResults ?? []).map((monthResult) => {
     const heating = heatingByMonth.get(monthResult.month);
     const cooling = coolingByMonth.get(monthResult.month);
+    const dnaMonth = dnaByMonth.get(monthResult.month);
+    const heatingIndoor = quantityAmount(dnaMonth?.transmission?.heating?.indoorTemperature);
+    const heatingOutdoor = quantityAmount(dnaMonth?.transmission?.heating?.outdoorTemperature);
+    const coolingIndoor = quantityAmount(dnaMonth?.transmission?.cooling?.indoorTemperature);
+    const coolingOutdoor = quantityAmount(dnaMonth?.transmission?.cooling?.outdoorTemperature);
     return {
       caseId: monthResult.caseId,
       month: monthResult.month,
+      durationHours: quantityAmount(dnaMonth?.transmission?.heating?.duration),
+      heatingIndoorTemperatureC: heatingIndoor,
+      heatingOutdoorTemperatureC: heatingOutdoor,
+      heatingTemperatureDifferenceK: temperatureDelta(heatingIndoor, heatingOutdoor),
+      coolingIndoorTemperatureC: coolingIndoor,
+      coolingOutdoorTemperatureC: coolingOutdoor,
+      coolingTemperatureDifferenceK: temperatureDelta(coolingOutdoor, coolingIndoor),
+      ventilationAirFlowRateM3PerS: quantityAmount(dnaMonth?.ventilation?.heating?.airFlowRate),
+      ventilationAirHeatCapacityJPerM3K: quantityAmount(dnaMonth?.ventilation?.heating?.airHeatCapacity),
+      solarOrientation: dnaMonth?.heatGains?.solarOrientation ?? null,
+      solarGainsSource: dnaMonth?.heatGains?.solarGainsSource ?? null,
+      monthlyProfileOrigin: dnaMonth?.provenance?.origin ?? null,
+      monthlyProfileReference: dnaMonth?.provenance?.reference ?? null,
       heatingTransmissionKwh: monthResult.transmission?.heating?.transmissionEnergy?.amount ?? null,
       coolingTransmissionKwh: monthResult.transmission?.cooling?.transmissionEnergy?.amount ?? null,
       heatingVentilationKwh: monthResult.ventilation?.heating?.ventilationEnergy?.amount ?? null,
@@ -198,6 +257,69 @@ function monthlyRows(calculation) {
       qCndOrigin: cooling?.etaChtOrigin ?? null
     };
   });
+}
+
+function calculationFingerprint(buildingDna, calculation, monthly) {
+  return {
+    fingerprintId: stableFingerprint({
+      buildingDnaSchema: buildingDna.schema,
+      building: buildingDna.building,
+      climateProfile: {
+        profileId: buildingDna.climateProfile?.profileId ?? null,
+        datasetVersion: buildingDna.climateProfile?.datasetVersion ?? null,
+        sourceType: buildingDna.climateProfile?.sourceType ?? null,
+        verificationStatus: buildingDna.climateProfile?.verificationStatus ?? null
+      },
+      assemblies: (buildingDna.assemblies ?? []).map(assembly => ({
+        assemblyId: assembly.assemblyId,
+        role: assembly.assemblyRole,
+        layers: (assembly.layers ?? []).map(layer => ({
+          materialId: layer.materialId,
+          thicknessM: quantityAmount(layer.thickness)
+        }))
+      })),
+      envelopeElements: (buildingDna.envelopeElements ?? []).map(element => ({
+        elementId: element.elementId,
+        assemblyId: element.assemblyId,
+        component: element.component,
+        area: quantityAmount(element.area),
+        orientation: quantityAmount(element.orientation) ?? element.orientation ?? null,
+        boundaryType: element.boundaryType
+      })),
+      thermalBridges: buildingDna.thermalBridges ?? [],
+      monthly: monthly.map(row => ({
+        month: row.month,
+        durationHours: row.durationHours,
+        heatingOutdoorTemperatureC: row.heatingOutdoorTemperatureC,
+        coolingOutdoorTemperatureC: row.coolingOutdoorTemperatureC,
+        ventilationAirFlowRateM3PerS: row.ventilationAirFlowRateM3PerS,
+        internalGainsKwh: row.internalGainsKwh,
+        solarGainsKwh: row.solarGainsKwh,
+        solarOrientation: row.solarOrientation
+      })),
+      engine: {
+        chapter2Scope: calculation.chapter2Result?.scope ?? null,
+        envelopeScope: calculation.envelopeTransmissionResult?.scope ?? null
+      },
+      outputs: {
+        htr: calculation.envelopeTransmissionResult?.result?.amount ?? null,
+        annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
+        annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null
+      }
+    }),
+    inputs: {
+      buildingDnaSchema: buildingDna.schema,
+      climateProfileId: buildingDna.climateProfile?.profileId ?? null,
+      climateProfileVersion: buildingDna.climateProfile?.datasetVersion ?? null,
+      adapterStage: calculation.stage ?? null,
+      engineScope: calculation.chapter2Result?.scope ?? null
+    },
+    outputs: {
+      annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
+      annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
+      htr: calculation.envelopeTransmissionResult?.result?.amount ?? null
+    }
+  };
 }
 
 function formulaViews(assemblies, envelope, monthly, calculation) {
@@ -292,14 +414,15 @@ function traceabilityRows(buildingDna, calculation, formulas) {
   }));
 }
 
-function reportChapters({ buildingDna, assemblies, materials, envelope, monthly, formulas, traceability, calculation }) {
+function reportChapters({ buildingDna, assemblies, materials, envelope, monthly, formulas, traceability, calculation, fingerprint }) {
   const chapter2 = calculation.chapter2Result?.result ?? {};
   return [
     makeReportChapter("general_project_information", "General Project Information", "Building DNA technical report generated from the current engineering model.", [
       { label: "Building ID", value: buildingDna.building?.buildingId },
       { label: "Building type", value: buildingDna.building?.buildingType },
       { label: "Construction period", value: buildingDna.building?.constructionPeriod },
-      { label: "Structural system", value: buildingDna.building?.structuralSystem }
+      { label: "Structural system", value: buildingDna.building?.structuralSystem },
+      { label: "Calculation fingerprint", value: fingerprint.fingerprintId }
     ]),
     makeReportChapter("building_description", "Building Description", "Typology proposal and building-specific parameters.", [
       { label: "Typology proposal", value: buildingDna.typologyProposal?.typologyId ?? buildingDna.typologyProposal?.proposalId },
@@ -349,6 +472,22 @@ function reportChapters({ buildingDna, assemblies, materials, envelope, monthly,
       ...envelope.components,
       { componentId: "Htr", amount: envelope.htr?.amount, unit: envelope.htr?.unit, origin: envelope.htr?.origin }
     ]),
+    makeReportChapter("monthly_input_transparency", "Monthly Input Transparency", "Explicit monthly inputs preserved in Building DNA before Chapter 2 calculation.", monthly.map(row => ({
+      month: row.month,
+      durationHours: row.durationHours,
+      heatingIndoorTemperatureC: row.heatingIndoorTemperatureC,
+      heatingOutdoorTemperatureC: row.heatingOutdoorTemperatureC,
+      heatingTemperatureDifferenceK: row.heatingTemperatureDifferenceK,
+      coolingIndoorTemperatureC: row.coolingIndoorTemperatureC,
+      coolingOutdoorTemperatureC: row.coolingOutdoorTemperatureC,
+      coolingTemperatureDifferenceK: row.coolingTemperatureDifferenceK,
+      ventilationAirFlowRateM3PerS: row.ventilationAirFlowRateM3PerS,
+      ventilationAirHeatCapacityJPerM3K: row.ventilationAirHeatCapacityJPerM3K,
+      solarOrientation: row.solarOrientation,
+      solarGainsSource: row.solarGainsSource,
+      monthlyProfileOrigin: row.monthlyProfileOrigin,
+      monthlyProfileReference: row.monthlyProfileReference
+    }))),
     makeReportChapter("transmission_losses", "Transmission Losses", "Monthly transmission energy emitted by the Chapter 2 result.", monthly.map(row => ({
       month: row.month,
       heatingTransmissionKwh: row.heatingTransmissionKwh,
@@ -384,6 +523,17 @@ function reportChapters({ buildingDna, assemblies, materials, envelope, monthly,
       { label: "Annual QCnd", value: chapter2.annualQCnd, unit: "kWh" },
       { label: "Month count", value: chapter2.monthCount }
     ]),
+    makeReportChapter("calculation_fingerprint", "Calculation Fingerprint", "Stable diagnostic fingerprint used to detect stale Building DNA, adapter input, engine output, or report data.", [
+      { label: "Fingerprint", value: fingerprint.fingerprintId },
+      { label: "Building DNA schema", value: fingerprint.inputs.buildingDnaSchema },
+      { label: "Climate profile", value: fingerprint.inputs.climateProfileId },
+      { label: "Climate profile version", value: fingerprint.inputs.climateProfileVersion },
+      { label: "Adapter stage", value: fingerprint.inputs.adapterStage },
+      { label: "Engine scope", value: fingerprint.inputs.engineScope },
+      { label: "Htr", value: fingerprint.outputs.htr, unit: "W/K" },
+      { label: "Annual QHnd", value: fingerprint.outputs.annualQHnd, unit: "kWh" },
+      { label: "Annual QCnd", value: fingerprint.outputs.annualQCnd, unit: "kWh" }
+    ]),
     makeReportChapter("engineering_traceability", "Engineering Traceability", "Formula viewer entries and dependency-tree references.", formulas),
     makeReportChapter("normative_references", "Normative References", "MC001 references reported by the validated Chapter 2 engine.", traceability)
   ];
@@ -402,9 +552,10 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
   const assemblies = assemblyRows(buildingDna, calculation);
   const materials = materialRows(buildingDna, assemblies);
   const envelope = envelopeBreakdown(calculation);
-  const monthly = monthlyRows(calculation);
+  const monthly = monthlyRows(calculation, buildingDna);
   const formulas = formulaViews(assemblies, envelope, monthly, calculation);
   const traceability = traceabilityRows(buildingDna, calculation, formulas);
+  const fingerprint = calculationFingerprint(buildingDna, calculation, monthly);
   const chapters = reportChapters({
     buildingDna,
     assemblies,
@@ -413,7 +564,8 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     monthly,
     formulas,
     traceability,
-    calculation
+    calculation,
+    fingerprint
   });
 
   return {
@@ -435,6 +587,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     materials,
     envelope,
     monthly,
+    calculationFingerprint: fingerprint,
     formulaViews: formulas,
     dependencyTrees: pipelineResult.review?.dependencyTrees ?? {},
     traceability,
@@ -442,6 +595,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
       reportId: "technical_chapter_2_report_v1",
       title: "Chapter 2 Technical Engineering Report",
       source: "Building DNA + validated Chapter 2 physics engine",
+      calculationFingerprint: fingerprint,
       chapters
     },
     resultSummary: {
