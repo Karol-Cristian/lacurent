@@ -650,6 +650,87 @@ export function generateBuildingPlatformTechnicalReport(root = document, options
   };
 }
 
+function setSaveStatus(root, message, state = "info") {
+  const target = root.getElementById?.("buildingPlatformSaveStatus");
+  if (!target) return;
+  target.textContent = message;
+  target.dataset.state = state;
+}
+
+function currentHouseIdFromForm(form) {
+  const raw = form?.dataset?.currentHouseId;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function buildBuildingPlatformSavePayload(preview, formData, form = null) {
+  if (preview?.status !== "ready" || !preview.buildingDna) {
+    return {
+      ok: false,
+      code: "building_platform_preview_not_ready_for_save"
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      project_name: formData.get?.("display_name") || preview.buildingDna.building?.buildingId || "Model termic Chapter 2",
+      ...(currentHouseIdFromForm(form) === null ? {} : { house_id: currentHouseIdFromForm(form) }),
+      building_dna: preview.buildingDna
+    }
+  };
+}
+
+export async function saveBuildingPlatformChapter2Analysis(root = document, options = {}) {
+  const form = root.getElementById?.("houseForm");
+  const previewTarget = root.getElementById?.("buildingModelReview");
+  const formData = options.formData ?? (form ? new FormData(form) : null);
+  if (!formData) {
+    return { saved: false, reason: "missing_form_data" };
+  }
+  const apiClient = options.apiClient ?? globalThis.window?.LaCurentAuth?.api;
+  if (typeof apiClient !== "function") {
+    setSaveStatus(root, "Autentificarea este necesara pentru salvare.", "blocked");
+    return { saved: false, reason: "missing_authenticated_api_client" };
+  }
+
+  const answers = mapWizardAnswersToAssistedAnswers(formData);
+  const preview = buildWizardEngineeringPreview(answers);
+  if (previewTarget) {
+    previewTarget.innerHTML = renderEngineeringModelReview(preview, { openReport: true });
+  }
+  if (preview.status !== "ready") {
+    setSaveStatus(root, "Modelul Building DNA nu este gata pentru salvare.", "blocked");
+    return { saved: false, reason: "preview_not_ready", preview };
+  }
+
+  const payload = buildBuildingPlatformSavePayload(preview, formData, form);
+  if (!payload.ok) {
+    setSaveStatus(root, "Payload-ul de salvare nu este valid.", "blocked");
+    return { saved: false, reason: payload.code, preview };
+  }
+
+  setSaveStatus(root, "Se salveaza analiza Chapter 2...", "pending");
+  const response = await apiClient("/api/building-platform/chapter2/save", payload.value);
+  if (!response?.success) {
+    setSaveStatus(root, response?.error || "Analiza nu a putut fi salvata.", "blocked");
+    return { saved: false, reason: "api_save_failed", response, preview };
+  }
+  if (form?.dataset) {
+    form.dataset.currentHouseId = String(response.house_id ?? "");
+    form.dataset.currentAnalysisId = String(response.analysis_id ?? "");
+  }
+  setSaveStatus(
+    root,
+    `Analiza salvata: proiect ${response.house_id}, analiza ${response.analysis_id}, versiune ${response.building_dna_version?.versionId ?? "necunoscuta"}.`,
+    "ready"
+  );
+  return {
+    saved: true,
+    response,
+    preview
+  };
+}
+
 function setDemoUiState(root, enabled) {
   const banner = root.getElementById?.("demoModeBanner");
   const resetButton = root.getElementById?.("resetDemoModeBtn");
@@ -741,6 +822,14 @@ export function attachBuildingPlatformWizard(root = document) {
       scrollToReport: true
     });
   });
+  const saveButton = root.getElementById?.("saveBuildingPlatformAnalysisBtn");
+  const recalculateButton = root.getElementById?.("recalculateBuildingPlatformAnalysisBtn");
+  saveButton?.addEventListener("click", () => {
+    saveBuildingPlatformChapter2Analysis(root);
+  });
+  recalculateButton?.addEventListener("click", () => {
+    saveBuildingPlatformChapter2Analysis(root);
+  });
   if (typeof window !== "undefined" && demoModeFromSearch(window.location.search)) {
     demoControls.loadDemo({ updateUrl: false, scrollToReport: false });
   } else {
@@ -761,8 +850,10 @@ if (typeof window !== "undefined") {
     demoModeFromSearch,
     generateBuildingPlatformTechnicalReport,
     getAssistedWizardDemoFixture,
+    buildBuildingPlatformSavePayload,
     mapWizardAnswersToAssistedAnswers,
     renderEngineeringModelReview,
+    saveBuildingPlatformChapter2Analysis,
     structuralSystemFromWallMaterial
   };
   window.addEventListener("DOMContentLoaded", () => {
