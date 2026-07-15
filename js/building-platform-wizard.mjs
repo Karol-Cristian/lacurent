@@ -121,21 +121,24 @@ function formatNumber(value, digits = 2) {
   return Number.isFinite(number) ? number.toFixed(digits) : "--";
 }
 
-function setFieldValue(form, name, value) {
+function setFieldValue(form, name, value, provenance = {}) {
   const escapedName = globalThis.CSS?.escape
     ? globalThis.CSS.escape(name)
     : String(name).replace(/["\\]/g, "\\$&");
   const controls = form?.querySelectorAll?.(`[name="${escapedName}"]`) ?? [];
+  const provenanceOrigin = provenance.origin ?? "demo_fixture";
+  const confirmationStatus = provenance.confirmationStatus ?? "unconfirmed_demo";
+  const confidence = provenance.confidence ?? ASSISTED_WIZARD_DEMO_FIXTURE.provenance.confidence;
   controls.forEach(control => {
     if (control.type === "checkbox") {
       control.checked = value === control.value || value === "yes" || value === true;
     } else if (control.type !== "file") {
       control.value = value ?? "";
     }
-    control.dataset.provenanceOrigin = "demo_fixture";
-    control.dataset.confirmationStatus = "unconfirmed_demo";
+    control.dataset.provenanceOrigin = provenanceOrigin;
+    control.dataset.confirmationStatus = confirmationStatus;
     control.dataset.editable = "true";
-    control.dataset.confidence = ASSISTED_WIZARD_DEMO_FIXTURE.provenance.confidence;
+    control.dataset.confidence = confidence;
   });
 }
 
@@ -194,6 +197,147 @@ export function clearAssistedWizardDemoFixture(form) {
   if (hiddenFixtureId) hiddenFixtureId.value = "";
   dispatchFormRefresh(form);
   return { cleared: true };
+}
+
+function quantityValue(source) {
+  if (source && typeof source === "object" && "value" in source) return source.value;
+  if (source && typeof source === "object" && "amount" in source) return source.amount;
+  return source;
+}
+
+function constructionYearFromPeriod(period) {
+  const yearsByPeriod = {
+    before_1960: 1950,
+    "1960_1977": 1970,
+    "1978_1990": 1985,
+    "1991_2005": 2000,
+    after_2005: 2010
+  };
+  return yearsByPeriod[period] ?? 1985;
+}
+
+function assemblyIds(buildingDna) {
+  return (buildingDna?.assemblies ?? []).map(assembly => String(assembly.assemblyId ?? ""));
+}
+
+function wallAssemblyIds(buildingDna) {
+  return assemblyIds(buildingDna).filter(id => id.includes("wall"));
+}
+
+function inferWallMaterial(buildingDna) {
+  const ids = assemblyIds(buildingDna).join(" ");
+  if (ids.includes("bca") || ids.includes("aac")) return "bca";
+  if (ids.includes("concrete")) return "concrete";
+  if (ids.includes("timber") || ids.includes("wood")) return "wood";
+  if (ids.includes("stone")) return "stone";
+  if (buildingDna?.building?.structuralSystem === "timber") return "wood";
+  return "brick";
+}
+
+function inferWindowType(buildingDna) {
+  const ids = assemblyIds(buildingDna).join(" ");
+  if (ids.includes("triple")) return "triple_glazing";
+  if (ids.includes("pvc") || ids.includes("double_glazing")) return "modern_double_glazing";
+  if (ids.includes("single")) return "single_glazing";
+  return "unknown";
+}
+
+function hasIntervention(buildingDna, type) {
+  return (buildingDna?.renovationInterventions ?? [])
+    .some(intervention => intervention.interventionType === type || intervention.interventionId === type);
+}
+
+function inferWallInsulation(buildingDna) {
+  const ids = wallAssemblyIds(buildingDna).join(" ");
+  if (!hasIntervention(buildingDna, "external_wall_insulation") && !ids.includes("eps") && !ids.includes("mineral_wool")) {
+    return "Fara";
+  }
+  if (ids.includes("200")) return "20cm+";
+  if (ids.includes("150")) return "15cm";
+  if (ids.includes("50")) return "5cm";
+  return "10cm";
+}
+
+function inferRoofType(buildingDna) {
+  const context = quantityValue(buildingDna?.buildingSpecificParameters?.atticContext);
+  if (context === "heated") return "heated_attic";
+  const roof = (buildingDna?.envelopeElements ?? []).find(element => element.assemblyRole === "roof");
+  if (roof?.boundaryType === "outside_air") return "unheated_attic";
+  return "unheated_attic";
+}
+
+function inferFloorType(buildingDna) {
+  const context = quantityValue(buildingDna?.buildingSpecificParameters?.basementContext);
+  if (context === "unheated") return "over_basement";
+  const ground = (buildingDna?.envelopeElements ?? []).find(element => element.assemblyRole === "ground_floor");
+  if (ground?.boundaryType === "ground") return "on_ground";
+  if (ground?.boundaryType === "unheated_space") return "over_unheated_space";
+  if (ground?.boundaryType === "adjacent_heated_space") return "over_heated_space";
+  return "on_ground";
+}
+
+export function buildingDnaToWizardValues(buildingDna) {
+  const parameters = buildingDna?.buildingSpecificParameters ?? {};
+  const geometry = buildingDna?.geometry ?? {};
+  const building = buildingDna?.building ?? {};
+  return {
+    display_name: building.buildingId ?? "Model termic Chapter 2 salvat",
+    building_type: building.buildingType === "apartment" ? "apartment" : "house",
+    city: building.location?.city ?? building.location?.locality ?? buildingDna?.climateProfile?.locality ?? "",
+    climate_profile_id: building.location?.climateProfileId ?? buildingDna?.climateProfile?.profileId ?? "",
+    construction_year: constructionYearFromPeriod(building.constructionPeriod),
+    useful_area_m2: quantityValue(parameters.usefulFloorAreaM2 ?? geometry.usefulFloorAreaM2) ?? "",
+    number_of_floors: quantityValue(parameters.numberOfFloors) ?? "",
+    floor_height_m: quantityValue(parameters.averageRoomHeightM) ?? "",
+    heated_volume_m3: quantityValue(parameters.heatedVolumeM3) ?? "",
+    main_orientation: quantityValue(parameters.mainOrientation) ?? "unknown",
+    exterior_wall_area_m2: quantityValue(parameters.exteriorWallAreaM2 ?? geometry.exteriorWallAreaM2) ?? "",
+    roof_area_m2: quantityValue(parameters.roofAreaM2 ?? geometry.roofAreaM2) ?? "",
+    ground_floor_area_m2: quantityValue(parameters.groundFloorAreaM2 ?? geometry.groundFloorAreaM2) ?? "",
+    attic_ceiling_area_m2: quantityValue(parameters.atticCeilingAreaM2 ?? geometry.atticCeilingAreaM2) ?? "",
+    adjacent_wall_area_m2: quantityValue(geometry.adjacentWallAreaM2) ?? "",
+    structural_system: building.structuralSystem ?? "unknown",
+    wall_material: inferWallMaterial(buildingDna),
+    roof_type: inferRoofType(buildingDna),
+    floor_type: inferFloorType(buildingDna),
+    window_type: inferWindowType(buildingDna),
+    window_area_m2: quantityValue(parameters.windowAreaM2 ?? geometry.windowAreaM2) ?? "",
+    window_orientation: quantityValue(parameters.windowOrientation) ?? "unknown",
+    door_area_m2: quantityValue(geometry.doorAreaM2) ?? "",
+    ventilation_type: quantityValue(parameters.ventilationType) ?? "unknown",
+    ventilation_ach: quantityValue(parameters.ventilationAch) ?? "",
+    wall_insulation: inferWallInsulation(buildingDna),
+    wall_insulation_material: wallAssemblyIds(buildingDna).join(" ").includes("mineral_wool") ? "mineral_wool" : "eps",
+    roof_insulated: hasIntervention(buildingDna, "roof_insulation") ? "yes" : "unknown",
+    floor_insulated: hasIntervention(buildingDna, "floor_insulation") ? "yes" : "unknown",
+    windows_replaced: hasIntervention(buildingDna, "window_replacement") ? "yes" : "unknown"
+  };
+}
+
+export function applyBuildingDnaToWizardForm(form, buildingDna, provenance = {}) {
+  if (!form || !buildingDna) return { applied: false, reason: "missing_form_or_building_dna" };
+  form.reset?.();
+  clearFieldProvenance(form);
+  const values = buildingDnaToWizardValues(buildingDna);
+  const fieldProvenance = {
+    origin: provenance.origin ?? "saved_building_dna",
+    confirmationStatus: provenance.confirmationStatus ?? "loaded_saved_analysis",
+    confidence: provenance.confidence ?? buildingDna.source?.confidence ?? "medium"
+  };
+  for (const [name, value] of Object.entries(values)) {
+    setFieldValue(form, name, value, fieldProvenance);
+  }
+  form.dataset.demoMode = "";
+  form.dataset.demoFixtureId = "";
+  const hiddenDemoMode = form.querySelector?.('[name="building_platform_demo_mode"]');
+  const hiddenFixtureId = form.querySelector?.('[name="building_platform_demo_fixture_id"]');
+  if (hiddenDemoMode) hiddenDemoMode.value = "";
+  if (hiddenFixtureId) hiddenFixtureId.value = "";
+  dispatchFormRefresh(form);
+  return {
+    applied: true,
+    fieldCount: Object.keys(values).length
+  };
 }
 
 function renderTable(headers, rows) {
@@ -680,6 +824,76 @@ export function buildBuildingPlatformSavePayload(preview, formData, form = null)
   };
 }
 
+function analysisIdFromRoot(root, options = {}) {
+  const explicit = options.analysisId ?? root.getElementById?.("buildingPlatformLoadAnalysisId")?.value;
+  const parsed = Number(explicit);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function renderLoadedReportChapters(report) {
+  const chapters = Array.isArray(report?.chapters) ? report.chapters : [];
+  if (chapters.length === 0) return "<p>Raportul salvat nu contine capitole structurate.</p>";
+  return chapters.map(chapter => `
+    <details class="technical-report-chapter" open>
+      <summary>${safeText(chapter.title ?? chapter.chapterId)}</summary>
+      <p>${safeText(chapter.summary ?? "")}</p>
+      ${Array.isArray(chapter.rows) && chapter.rows.length > 0
+        ? renderTable(
+          [
+            { label: "Camp", value: row => row.label },
+            { label: "Valoare", value: row => row.value }
+          ],
+          chapter.rows
+        )
+        : ""}
+    </details>
+  `).join("");
+}
+
+export function renderLoadedBuildingPlatformAnalysis(record) {
+  const buildingDna = record?.building_dna ?? record?.technical_details?.buildingDna;
+  const summary = record?.technical_details?.resultSummary ?? {};
+  const report = record?.technical_report ?? record?.technical_details?.technicalReport;
+  const version = record?.building_dna_version ?? record?.technical_details?.buildingDnaVersion ?? {};
+  if (!buildingDna) {
+    return `<p class="form-message error">Analiza salvata nu contine Building DNA.</p>`;
+  }
+  return `
+    <div class="recommendation-detail-card" data-loaded-building-platform-analysis>
+      <div>
+        <h3>Analiza Building Platform incarcata</h3>
+        <p>Proiect: ${safeText(record.house_id ?? "--")} · Analiza: ${safeText(record.analysis_id ?? "--")} · Versiune Building DNA: ${safeText(version.versionId ?? "--")}</p>
+        <p>Status calcul: ${safeText(version.calculationStatus ?? buildingDna.calculationStatus ?? "requires_confirmation")}</p>
+        <div class="technical-status-grid p2b-annual-summary">
+          <article>
+            <span>Annual QHnd</span>
+            <strong>${formatNumber(summary.annualQHnd)} kWh</strong>
+            <small>Citit din analiza salvata</small>
+          </article>
+          <article>
+            <span>Annual QCnd</span>
+            <strong>${formatNumber(summary.annualQCnd)} kWh</strong>
+            <small>Citit din analiza salvata</small>
+          </article>
+          <article>
+            <span>Luni</span>
+            <strong>${safeText(summary.monthCount ?? buildingDna.monthlyProfiles?.length ?? "--")}</strong>
+            <small>Profil lunar salvat</small>
+          </article>
+        </div>
+        <section class="technical-workspace-panel" id="p2b-report">
+          <h4>Raport tehnic salvat</h4>
+          <div class="technical-report-success" data-technical-report-success>
+            Raport tehnic incarcat din analiza persistenta. Recalculeaza pentru a crea o versiune noua.
+          </div>
+          <p>${safeText(report?.title ?? "Raport Chapter 2")} · ${safeText(report?.source ?? "saved_analysis_record")}</p>
+          ${renderLoadedReportChapters(report)}
+        </section>
+      </div>
+    </div>
+  `;
+}
+
 export async function saveBuildingPlatformChapter2Analysis(root = document, options = {}) {
   const form = root.getElementById?.("houseForm");
   const previewTarget = root.getElementById?.("buildingModelReview");
@@ -728,6 +942,52 @@ export async function saveBuildingPlatformChapter2Analysis(root = document, opti
     saved: true,
     response,
     preview
+  };
+}
+
+export async function loadBuildingPlatformChapter2Analysis(root = document, options = {}) {
+  const form = root.getElementById?.("houseForm");
+  const previewTarget = root.getElementById?.("buildingModelReview");
+  const apiClient = options.apiClient ?? globalThis.window?.LaCurentAuth?.api;
+  if (typeof apiClient !== "function") {
+    setSaveStatus(root, "Autentificarea este necesara pentru incarcarea analizei.", "blocked");
+    return { loaded: false, reason: "missing_authenticated_api_client" };
+  }
+  const analysisId = analysisIdFromRoot(root, options);
+  if (analysisId === null) {
+    setSaveStatus(root, "Introdu un analysis_id valid pentru incarcare.", "blocked");
+    return { loaded: false, reason: "invalid_analysis_id" };
+  }
+
+  setSaveStatus(root, "Se incarca analiza Building Platform...", "pending");
+  const response = await apiClient("/api/building-platform/chapter2/load", { analysis_id: analysisId });
+  if (!response?.success) {
+    setSaveStatus(root, response?.error || "Analiza nu a putut fi incarcata.", "blocked");
+    return { loaded: false, reason: "api_load_failed", response };
+  }
+  const applied = applyBuildingDnaToWizardForm(form, response.building_dna, {
+    origin: "saved_building_dna",
+    confirmationStatus: "loaded_saved_analysis",
+    confidence: response.building_dna?.source?.confidence ?? "medium"
+  });
+  if (form?.dataset) {
+    form.dataset.currentHouseId = String(response.house_id ?? "");
+    form.dataset.currentAnalysisId = String(response.analysis_id ?? "");
+    form.dataset.loadedBuildingDnaVersionId = String(response.building_dna_version?.versionId ?? "");
+  }
+  if (previewTarget) {
+    previewTarget.innerHTML = renderLoadedBuildingPlatformAnalysis(response);
+  }
+  setSaveStatus(
+    root,
+    `Analiza incarcata: proiect ${response.house_id}, analiza ${response.analysis_id}, versiune ${response.building_dna_version?.versionId ?? "necunoscuta"}.`,
+    "ready"
+  );
+  root.getElementById?.("p2b-report")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  return {
+    loaded: true,
+    response,
+    applied
   };
 }
 
@@ -824,11 +1084,15 @@ export function attachBuildingPlatformWizard(root = document) {
   });
   const saveButton = root.getElementById?.("saveBuildingPlatformAnalysisBtn");
   const recalculateButton = root.getElementById?.("recalculateBuildingPlatformAnalysisBtn");
+  const loadButton = root.getElementById?.("loadBuildingPlatformAnalysisBtn");
   saveButton?.addEventListener("click", () => {
     saveBuildingPlatformChapter2Analysis(root);
   });
   recalculateButton?.addEventListener("click", () => {
     saveBuildingPlatformChapter2Analysis(root);
+  });
+  loadButton?.addEventListener("click", () => {
+    loadBuildingPlatformChapter2Analysis(root);
   });
   if (typeof window !== "undefined" && demoModeFromSearch(window.location.search)) {
     demoControls.loadDemo({ updateUrl: false, scrollToReport: false });
@@ -844,7 +1108,9 @@ if (typeof window !== "undefined") {
     ASSISTED_WIZARD_DEMO_FIXTURE,
     applyAssistedWizardDemoFixture,
     attachBuildingPlatformWizard,
+    applyBuildingDnaToWizardForm,
     buildWizardEngineeringPreview,
+    buildingDnaToWizardValues,
     clearAssistedWizardDemoFixture,
     constructionPeriodFromYear,
     demoModeFromSearch,
@@ -853,6 +1119,8 @@ if (typeof window !== "undefined") {
     buildBuildingPlatformSavePayload,
     mapWizardAnswersToAssistedAnswers,
     renderEngineeringModelReview,
+    renderLoadedBuildingPlatformAnalysis,
+    loadBuildingPlatformChapter2Analysis,
     saveBuildingPlatformChapter2Analysis,
     structuralSystemFromWallMaterial
   };

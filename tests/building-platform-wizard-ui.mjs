@@ -3,13 +3,17 @@ import { readFileSync } from "node:fs";
 import {
   ASSISTED_WIZARD_DEMO_FIXTURE,
   BUILDING_PLATFORM_WIZARD_STEPS,
+  applyBuildingDnaToWizardForm,
   buildBuildingPlatformSavePayload,
+  buildingDnaToWizardValues,
   buildWizardEngineeringPreview,
   constructionPeriodFromYear,
   demoModeFromSearch,
   getAssistedWizardDemoFixture,
+  loadBuildingPlatformChapter2Analysis,
   mapWizardAnswersToAssistedAnswers,
   renderEngineeringModelReview,
+  renderLoadedBuildingPlatformAnalysis,
   saveBuildingPlatformChapter2Analysis,
   structuralSystemFromWallMaterial
 } from "../js/building-platform-wizard.mjs";
@@ -46,6 +50,57 @@ function fakeRootForSave() {
   return {
     status,
     preview,
+    getElementById(id) {
+      return nodes.get(id) || null;
+    }
+  };
+}
+
+function fakeWizardForm(names) {
+  const controls = names.map(name => ({
+    name,
+    type: "text",
+    value: "",
+    dataset: {}
+  }));
+  return {
+    dataset: {},
+    controls,
+    reset() {
+      for (const control of controls) control.value = "";
+    },
+    dispatchEvent() {},
+    querySelectorAll(selector) {
+      const match = selector.match(/\[name="(.+)"\]/);
+      const name = match?.[1]?.replace(/\\"/g, '"') ?? "";
+      return controls.filter(control => control.name === name);
+    },
+    querySelector(selector) {
+      return this.querySelectorAll(selector)[0] ?? null;
+    }
+  };
+}
+
+function fakeRootForLoad(form) {
+  const nodes = new Map();
+  const status = {
+    textContent: "",
+    dataset: {}
+  };
+  const preview = {
+    innerHTML: ""
+  };
+  const analysisInput = {
+    value: "100"
+  };
+  nodes.set("houseForm", form);
+  nodes.set("buildingPlatformSaveStatus", status);
+  nodes.set("buildingModelReview", preview);
+  nodes.set("buildingPlatformLoadAnalysisId", analysisInput);
+  return {
+    status,
+    preview,
+    analysisInput,
     getElementById(id) {
       return nodes.get(id) || null;
     }
@@ -226,6 +281,120 @@ await test("save action blocks when no authenticated API client is available", a
   assert.equal(root.status.dataset.state, "blocked");
 });
 
+await test("saved Building DNA maps back into supported wizard fields with load provenance", () => {
+  const data = formData(ASSISTED_WIZARD_DEMO_FIXTURE.values);
+  const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(data));
+  const values = buildingDnaToWizardValues(preview.buildingDna);
+  assert.equal(values.climate_profile_id, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(values.useful_area_m2, 120);
+  assert.equal(values.window_type, "modern_double_glazing");
+  assert.equal(values.wall_insulation, "10cm");
+
+  const form = fakeWizardForm([
+    "display_name",
+    "building_type",
+    "city",
+    "climate_profile_id",
+    "construction_year",
+    "useful_area_m2",
+    "window_type",
+    "wall_insulation"
+  ]);
+  const applied = applyBuildingDnaToWizardForm(form, preview.buildingDna);
+  assert.equal(applied.applied, true);
+  const byName = Object.fromEntries(form.controls.map(control => [control.name, control]));
+  assert.equal(byName.climate_profile_id.value, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(byName.useful_area_m2.value, 120);
+  assert.equal(byName.window_type.value, "modern_double_glazing");
+  assert.equal(byName.wall_insulation.value, "10cm");
+  assert.equal(byName.climate_profile_id.dataset.provenanceOrigin, "saved_building_dna");
+  assert.equal(byName.climate_profile_id.dataset.confirmationStatus, "loaded_saved_analysis");
+});
+
+await test("loaded Building Platform analysis renders persisted report metadata", () => {
+  const data = formData(ASSISTED_WIZARD_DEMO_FIXTURE.values);
+  const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(data));
+  const html = renderLoadedBuildingPlatformAnalysis({
+    success: true,
+    house_id: 7,
+    analysis_id: 100,
+    building_dna: preview.buildingDna,
+    building_dna_version: {
+      versionId: "building-dna-100",
+      calculationStatus: "synthetic_demo"
+    },
+    technical_report: preview.technicalWorkspace.report,
+    technical_details: {
+      resultSummary: preview.technicalWorkspace.resultSummary
+    }
+  });
+
+  assert.equal(html.includes("Analiza Building Platform incarcata"), true);
+  assert.equal(html.includes("building-dna-100"), true);
+  assert.equal(html.includes("Raport tehnic incarcat"), true);
+  assert.equal(html.includes("9400.72"), true);
+});
+
+await test("load action restores Building DNA and persisted report through authenticated API", async () => {
+  const data = formData(ASSISTED_WIZARD_DEMO_FIXTURE.values);
+  const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(data));
+  const form = fakeWizardForm([
+    "climate_profile_id",
+    "useful_area_m2",
+    "window_type",
+    "wall_insulation"
+  ]);
+  const root = fakeRootForLoad(form);
+  const calls = [];
+
+  const result = await loadBuildingPlatformChapter2Analysis(root, {
+    apiClient: async (path, payload) => {
+      calls.push({ path, payload });
+      return {
+        success: true,
+        house_id: 7,
+        analysis_id: 100,
+        building_dna: preview.buildingDna,
+        building_dna_version: {
+          versionId: "building-dna-100",
+          calculationStatus: "synthetic_demo"
+        },
+        technical_report: preview.technicalWorkspace.report,
+        technical_details: {
+          resultSummary: preview.technicalWorkspace.resultSummary
+        }
+      };
+    }
+  });
+
+  assert.equal(result.loaded, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, "/api/building-platform/chapter2/load");
+  assert.deepEqual(calls[0].payload, { analysis_id: 100 });
+  assert.equal(form.dataset.currentHouseId, "7");
+  assert.equal(form.dataset.currentAnalysisId, "100");
+  assert.equal(form.dataset.loadedBuildingDnaVersionId, "building-dna-100");
+  assert.equal(form.controls.find(control => control.name === "climate_profile_id").value, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(root.preview.innerHTML.includes("Raport tehnic incarcat"), true);
+  assert.equal(root.status.dataset.state, "ready");
+});
+
+await test("load action blocks without auth or a valid analysis id", async () => {
+  const form = fakeWizardForm(["climate_profile_id"]);
+  const root = fakeRootForLoad(form);
+  const noAuth = await loadBuildingPlatformChapter2Analysis(root);
+  assert.equal(noAuth.loaded, false);
+  assert.equal(noAuth.reason, "missing_authenticated_api_client");
+  assert.equal(root.status.dataset.state, "blocked");
+
+  root.analysisInput.value = "0";
+  const invalid = await loadBuildingPlatformChapter2Analysis(root, {
+    apiClient: async () => ({ success: true })
+  });
+  assert.equal(invalid.loaded, false);
+  assert.equal(invalid.reason, "invalid_analysis_id");
+});
+
 await test("demo query and fixture preload a complete editable technical dataset", () => {
   assert.equal(demoModeFromSearch("?demo=1"), true);
   assert.equal(demoModeFromSearch("?new=1"), false);
@@ -382,6 +551,8 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("buildingModelPreviewBtn"), true);
   assert.equal(html.includes("saveBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("recalculateBuildingPlatformAnalysisBtn"), true);
+  assert.equal(html.includes("buildingPlatformLoadAnalysisId"), true);
+  assert.equal(html.includes("loadBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("buildingPlatformSaveStatus"), true);
   assert.equal(html.includes("demoModeBanner"), true);
   assert.equal(html.includes("climate_profile_id"), true);
@@ -400,6 +571,7 @@ await test("analysis page exposes the refocused technical workflow", () => {
     "Rezultate",
     "Salveaza si calculeaza",
     "Recalculeaza versiune noua",
+    "Incarca analiza salvata",
     "QHnd",
     "QCnd"
   ]) {
