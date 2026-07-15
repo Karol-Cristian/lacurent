@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   CLIMATE_PLATFORM_VERSION,
   CLIMATE_SOURCE_CONTRACTS,
   MONTH_IDS,
   ROMANIAN_CLIMATE_PROFILES,
   ROMANIAN_CLIMATE_SOURCE_AUDIT,
+  analyzeClimateProfileSeasonality,
+  analyzeMonthlyUsefulDemandSeasonality,
   climateProfileToBuildingMonthlyProfiles,
   createSyntheticSeasonalDemoClimateProfile,
   findRomanianClimateProfileById,
@@ -13,6 +16,11 @@ import {
   searchRomanianClimateProfiles,
   validateClimateProfile
 } from "../index.mjs";
+import {
+  P3C_ACTIVE_PRODUCTION_CLIMATE_MODULES,
+  P3C_CLIMATE_MONTHLY_INVENTORY_STATUS,
+  P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY
+} from "./fixtures/p3cClimateMonthlyInventoryFixture.mjs";
 
 function test(name, fn) {
   try {
@@ -25,6 +33,48 @@ function test(name, fn) {
 }
 
 const DEMO_PROFILE_ID = "ro_synthetic_bucharest_seasonal_demo_v1";
+
+test("P3C climate inventory classifies production demo test and validation monthly sources", () => {
+  assert.equal(P3C_CLIMATE_MONTHLY_INVENTORY_STATUS, "P3C_CLIMATE_MONTHLY_INVENTORY_V1");
+  assert.equal(P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.length >= 5, true);
+
+  for (const entry of P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY) {
+    assert.equal(typeof entry.inventoryId, "string", entry.inventoryId);
+    assert.equal(typeof entry.file, "string", entry.inventoryId);
+    assert.equal(typeof entry.classification, "string", entry.inventoryId);
+    assert.equal(typeof entry.source, "string", entry.inventoryId);
+    assert.equal(Array.isArray(entry.consumers), true, entry.inventoryId);
+    assert.equal(typeof entry.canReachProduction, "boolean", entry.inventoryId);
+    assert.equal(typeof entry.containsFixedMonthlyInputs, "boolean", entry.inventoryId);
+    assert.equal(typeof entry.containsFixedMonthlyOutputs, "boolean", entry.inventoryId);
+    assert.equal(typeof entry.bypassesClimateCalculations, "boolean", entry.inventoryId);
+  }
+
+  const branchFixture = P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.find(
+    (entry) => entry.inventoryId === "test.p1_seed_monthly_branch_fixture"
+  );
+  assert.equal(branchFixture.canReachProduction, false);
+  assert.equal(branchFixture.containsBranchForcingPattern, true);
+  assert.equal(
+    P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.some((entry) => entry.inventoryId === "production.synthetic_demo_climate_profile"),
+    true
+  );
+});
+
+test("active production climate path does not import validation expected outputs or branch fixtures", () => {
+  for (const file of P3C_ACTIVE_PRODUCTION_CLIMATE_MODULES) {
+    const source = readFileSync(new URL(`../../../${file}`, import.meta.url), "utf8");
+    for (const forbidden of [
+      "p1SeedMonthlyProfiles",
+      "mc001Chapter2ValidationMatrixFixture",
+      "validation-reference/python-mc001/expected",
+      "expected_output",
+      "expectedOutputs"
+    ]) {
+      assert.equal(source.includes(forbidden), false, `${file} imports or references ${forbidden}`);
+    }
+  }
+});
 
 test("Romanian climate source audit distinguishes missing official data from legacy estimates", () => {
   assert.equal(ROMANIAN_CLIMATE_SOURCE_AUDIT.auditId, "P2D_ROMANIAN_CLIMATE_SOURCE_AUDIT_V1");
@@ -73,8 +123,9 @@ test("synthetic demo climate profile is valid but not listed as verified normati
   assert.deepEqual(demo.monthlyRecords.map((record) => record.month), MONTH_IDS);
   assert.equal(new Set(demo.monthlyRecords.map((record) => record.durationHours)).size > 1, true);
   assert.equal(new Set(demo.monthlyRecords.map((record) => record.heatingOutdoorTemperatureC)).size > 1, true);
-  assert.equal(demo.monthlyRecords.find((record) => record.month === "september").internalGainsKwh, 70);
-  assert.equal(demo.monthlyRecords.find((record) => record.month === "september").solarGainsKwh, 150);
+  assert.equal(demo.monthlyRecords.find((record) => record.month === "may").solarGainsKwh, 30);
+  assert.equal(demo.monthlyRecords.find((record) => record.month === "july").solarGainsKwh, 520);
+  assert.equal(demo.monthlyRecords.find((record) => record.month === "october").solarGainsKwh, 15);
 });
 
 test("profile search finds the demo locality while preserving same-name disambiguation metadata", () => {
@@ -122,12 +173,58 @@ test("synthetic profile converts to twelve explicit Building DNA monthly records
   assert.equal(monthlyProfiles[0].coolingIndoorTemperatureC, 24);
   assert.equal(monthlyProfiles[0].solarOrientation, null);
   assert.equal(monthlyProfiles[0].solarGainsSource, "monthly_record_direct_solar_gains");
-  assert.equal(monthlyProfiles.find((profile) => profile.month === "july").coolingOutdoorTemperatureC, 33);
+  assert.equal(monthlyProfiles.find((profile) => profile.month === "july").coolingOutdoorTemperatureC, 32);
 
   const oriented = climateProfileToBuildingMonthlyProfiles(selection.profile, { solarOrientation: "north" });
   assert.equal(oriented.monthlyProfiles[0].solarOrientation, "north");
   assert.equal(oriented.monthlyProfiles[0].solarGainsKwh, 3.5);
   assert.equal(oriented.monthlyProfiles[0].solarGainsSource, "monthly_record_orientation_solar_gains");
+});
+
+test("climate profile validation enforces stable calendar month order", () => {
+  const profile = createSyntheticSeasonalDemoClimateProfile();
+  const mayIndex = profile.monthlyRecords.findIndex((record) => record.month === "may");
+  const juneIndex = profile.monthlyRecords.findIndex((record) => record.month === "june");
+  const swapped = profile.monthlyRecords[mayIndex];
+  profile.monthlyRecords[mayIndex] = profile.monthlyRecords[juneIndex];
+  profile.monthlyRecords[juneIndex] = swapped;
+
+  assert.equal(validateClimateProfile(profile).ok, false);
+  assert.equal(validateClimateProfile(profile).code, "climate_profile_month_order_mismatch");
+});
+
+test("synthetic climate profile has executable seasonal sanity metadata", () => {
+  const sanity = analyzeClimateProfileSeasonality(createSyntheticSeasonalDemoClimateProfile());
+
+  assert.equal(sanity.status, "ready");
+  assert.equal(sanity.diagnostics.warnings.length, 0);
+  assert.equal(sanity.checks.canonicalMonthOrder, true);
+  assert.equal(sanity.checks.winterHeatingOutdoorAverageC < sanity.checks.summerHeatingOutdoorAverageC, true);
+  assert.equal(sanity.checks.summerCoolingOutdoorSumC > sanity.checks.shoulderCoolingOutdoorSumC, true);
+  assert.equal(sanity.checks.januarySouthSolarKwh, 10);
+  assert.equal(sanity.checks.januaryNorthSolarKwh, 3.5);
+  assert.equal(sanity.checks.julySouthSolarKwh, 520);
+  assert.equal(sanity.checks.julyNorthSolarKwh, 182);
+});
+
+test("monthly useful-demand seasonality flags shoulder-only cooling anomalies", () => {
+  const anomalous = analyzeMonthlyUsefulDemandSeasonality([
+    { month: "may", qCndKwh: 2 },
+    { month: "june", qCndKwh: 0 },
+    { month: "july", qCndKwh: 0 },
+    { month: "august", qCndKwh: 0 },
+    { month: "october", qCndKwh: 1 }
+  ]);
+  const repaired = analyzeMonthlyUsefulDemandSeasonality([
+    { month: "may", qCndKwh: 0 },
+    { month: "june", qCndKwh: 10 },
+    { month: "july", qCndKwh: 20 },
+    { month: "august", qCndKwh: 15 },
+    { month: "october", qCndKwh: 0 }
+  ]);
+
+  assert.equal(anomalous.diagnostics.warnings[0].code, "anomalous_monthly_cooling_distribution_requires_review");
+  assert.equal(repaired.diagnostics.warnings.length, 0);
 });
 
 test("synthetic orientation solar ordering is explicit for north east south and west", () => {
@@ -141,10 +238,10 @@ test("synthetic orientation solar ordering is explicit for north east south and 
   assert.equal(directions.east.find((month) => month.month === "january").solarGainsKwh, 7);
   assert.equal(directions.south.find((month) => month.month === "january").solarGainsKwh, 10);
   assert.equal(directions.west.find((month) => month.month === "january").solarGainsKwh, 7);
-  assert.equal(directions.north.find((month) => month.month === "july").solarGainsKwh, 91);
-  assert.equal(directions.east.find((month) => month.month === "july").solarGainsKwh, 182);
-  assert.equal(directions.south.find((month) => month.month === "july").solarGainsKwh, 260);
-  assert.equal(directions.west.find((month) => month.month === "july").solarGainsKwh, 182);
+  assert.equal(directions.north.find((month) => month.month === "july").solarGainsKwh, 182);
+  assert.equal(directions.east.find((month) => month.month === "july").solarGainsKwh, 364);
+  assert.equal(directions.south.find((month) => month.month === "july").solarGainsKwh, 520);
+  assert.equal(directions.west.find((month) => month.month === "july").solarGainsKwh, 364);
   assert.equal(directions.south.find((month) => month.month === "january").solarGainsKwh > directions.north.find((month) => month.month === "january").solarGainsKwh, true);
   assert.equal(directions.south.find((month) => month.month === "july").solarGainsKwh > directions.north.find((month) => month.month === "july").solarGainsKwh, true);
 

@@ -15,7 +15,7 @@ export const MONTH_IDS = Object.freeze([
   "december"
 ]);
 
-const CALENDAR_MONTHLY_HOURS = Object.freeze({
+export const CALENDAR_MONTHLY_HOURS = Object.freeze({
   january: 744,
   february: 672,
   march: 744,
@@ -30,7 +30,7 @@ const CALENDAR_MONTHLY_HOURS = Object.freeze({
   december: 744
 });
 
-const SOLAR_ORIENTATIONS = Object.freeze([
+export const SOLAR_ORIENTATIONS = Object.freeze([
   "north",
   "northeast",
   "east",
@@ -133,12 +133,12 @@ const SYNTHETIC_DEMO_MONTHLY = Object.freeze([
   Object.freeze({ month: "february", outdoorTemperatureC: 1, internalGainsKwh: 15, solarGainsKwh: 15, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(15) }),
   Object.freeze({ month: "march", outdoorTemperatureC: 7, internalGainsKwh: 20, solarGainsKwh: 20, coolingOutdoorTemperatureC: 25.5, solarGainsByOrientationKwh: orientationSolarGains(20) }),
   Object.freeze({ month: "april", outdoorTemperatureC: 12, internalGainsKwh: 40, solarGainsKwh: 50, coolingOutdoorTemperatureC: 26, solarGainsByOrientationKwh: orientationSolarGains(50) }),
-  Object.freeze({ month: "may", outdoorTemperatureC: 18, internalGainsKwh: 70, solarGainsKwh: 140, coolingOutdoorTemperatureC: 28, solarGainsByOrientationKwh: orientationSolarGains(140) }),
-  Object.freeze({ month: "june", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 220, coolingOutdoorTemperatureC: 31, solarGainsByOrientationKwh: orientationSolarGains(220) }),
-  Object.freeze({ month: "july", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 260, coolingOutdoorTemperatureC: 33, solarGainsByOrientationKwh: orientationSolarGains(260) }),
-  Object.freeze({ month: "august", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 240, coolingOutdoorTemperatureC: 32, solarGainsByOrientationKwh: orientationSolarGains(240) }),
-  Object.freeze({ month: "september", outdoorTemperatureC: 19, internalGainsKwh: 70, solarGainsKwh: 150, coolingOutdoorTemperatureC: 29, solarGainsByOrientationKwh: orientationSolarGains(150) }),
-  Object.freeze({ month: "october", outdoorTemperatureC: 13, internalGainsKwh: 40, solarGainsKwh: 60, coolingOutdoorTemperatureC: 26, solarGainsByOrientationKwh: orientationSolarGains(60) }),
+  Object.freeze({ month: "may", outdoorTemperatureC: 17, internalGainsKwh: 35, solarGainsKwh: 30, coolingOutdoorTemperatureC: 25.5, solarGainsByOrientationKwh: orientationSolarGains(30) }),
+  Object.freeze({ month: "june", outdoorTemperatureC: 19, internalGainsKwh: 90, solarGainsKwh: 320, coolingOutdoorTemperatureC: 30, solarGainsByOrientationKwh: orientationSolarGains(320) }),
+  Object.freeze({ month: "july", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 520, coolingOutdoorTemperatureC: 32, solarGainsByOrientationKwh: orientationSolarGains(520) }),
+  Object.freeze({ month: "august", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 460, coolingOutdoorTemperatureC: 31, solarGainsByOrientationKwh: orientationSolarGains(460) }),
+  Object.freeze({ month: "september", outdoorTemperatureC: 18, internalGainsKwh: 75, solarGainsKwh: 220, coolingOutdoorTemperatureC: 28, solarGainsByOrientationKwh: orientationSolarGains(220) }),
+  Object.freeze({ month: "october", outdoorTemperatureC: 12, internalGainsKwh: 30, solarGainsKwh: 15, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(15) }),
   Object.freeze({ month: "november", outdoorTemperatureC: 6, internalGainsKwh: 20, solarGainsKwh: 20, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(20) }),
   Object.freeze({ month: "december", outdoorTemperatureC: 1, internalGainsKwh: 10, solarGainsKwh: 10, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(10) })
 ]);
@@ -149,6 +149,21 @@ function deepClone(value) {
 
 function isFiniteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function average(values) {
+  const numbers = values.filter(isFiniteNumber);
+  return numbers.length === 0
+    ? null
+    : numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+}
+
+function sum(values) {
+  return values.filter(isFiniteNumber).reduce((total, value) => total + value, 0);
+}
+
+function monthRecordMap(profile) {
+  return new Map((profile?.monthlyRecords ?? []).map((record) => [record.month, record]));
 }
 
 function normalizeOrientation(value) {
@@ -274,9 +289,12 @@ export function validateClimateProfile(profile) {
     return { ok: false, code: "climate_profile_requires_twelve_months" };
   }
   const seen = new Set();
-  for (const record of profile.monthlyRecords) {
+  for (const [index, record] of profile.monthlyRecords.entries()) {
     if (!MONTH_IDS.includes(record.month) || seen.has(record.month)) {
       return { ok: false, code: "climate_profile_invalid_or_duplicate_month" };
+    }
+    if (record.month !== MONTH_IDS[index]) {
+      return { ok: false, code: "climate_profile_month_order_mismatch" };
     }
     seen.add(record.month);
     for (const key of [
@@ -318,6 +336,92 @@ export function validateClimateProfile(profile) {
     }
   }
   return { ok: true };
+}
+
+export function analyzeClimateProfileSeasonality(profile) {
+  const validation = validateClimateProfile(profile);
+  if (!validation.ok) {
+    return {
+      status: "blocked",
+      code: validation.code,
+      profileId: profile?.profileId ?? null,
+      checks: {},
+      diagnostics: {
+        blockers: [{ code: validation.code, severity: "blocking" }],
+        warnings: []
+      }
+    };
+  }
+
+  const byMonth = monthRecordMap(profile);
+  const winter = ["december", "january", "february"].map((month) => byMonth.get(month));
+  const summer = ["june", "july", "august"].map((month) => byMonth.get(month));
+  const shoulderCooling = sum(["may", "october"].map((month) => byMonth.get(month)?.coolingOutdoorTemperatureC));
+  const summerCooling = sum(summer.map((record) => record?.coolingOutdoorTemperatureC));
+  const warnings = [];
+  const checks = {
+    canonicalMonthOrder: profile.monthlyRecords.every((record, index) => record.month === MONTH_IDS[index]),
+    winterHeatingOutdoorAverageC: average(winter.map((record) => record?.heatingOutdoorTemperatureC)),
+    summerHeatingOutdoorAverageC: average(summer.map((record) => record?.heatingOutdoorTemperatureC)),
+    shoulderCoolingOutdoorSumC: shoulderCooling,
+    summerCoolingOutdoorSumC: summerCooling,
+    januarySouthSolarKwh: byMonth.get("january")?.solarGainsByOrientationKwh?.south ?? null,
+    januaryNorthSolarKwh: byMonth.get("january")?.solarGainsByOrientationKwh?.north ?? null,
+    julySouthSolarKwh: byMonth.get("july")?.solarGainsByOrientationKwh?.south ?? null,
+    julyNorthSolarKwh: byMonth.get("july")?.solarGainsByOrientationKwh?.north ?? null
+  };
+
+  if (!(checks.winterHeatingOutdoorAverageC < checks.summerHeatingOutdoorAverageC)) {
+    warnings.push({ code: "seasonal_heating_temperatures_require_review", severity: "warning" });
+  }
+  if (!(checks.summerCoolingOutdoorSumC > shoulderCooling)) {
+    warnings.push({ code: "seasonal_cooling_temperatures_require_review", severity: "warning" });
+  }
+  for (const month of ["january", "july"]) {
+    const solar = byMonth.get(month)?.solarGainsByOrientationKwh;
+    if (solar && !(solar.south > solar.north)) {
+      warnings.push({
+        code: "orientation_solar_ordering_requires_review",
+        severity: "warning",
+        month
+      });
+    }
+  }
+
+  return {
+    status: "ready",
+    profileId: profile.profileId,
+    checks,
+    diagnostics: {
+      blockers: [],
+      warnings
+    }
+  };
+}
+
+export function analyzeMonthlyUsefulDemandSeasonality(monthlyRows = []) {
+  const byMonth = new Map(monthlyRows.map((row) => [row.month, row]));
+  const qCnd = (month) => byMonth.get(month)?.qCndKwh ?? 0;
+  const summerCooling = sum(["june", "july", "august"].map(qCnd));
+  const shoulderCooling = sum(["may", "october"].map(qCnd));
+  const warnings = [];
+  if (shoulderCooling > 0 && summerCooling === 0) {
+    warnings.push({
+      code: "anomalous_monthly_cooling_distribution_requires_review",
+      severity: "warning"
+    });
+  }
+  return {
+    status: "ready",
+    checks: {
+      summerCoolingKwh: summerCooling,
+      shoulderCoolingKwh: shoulderCooling
+    },
+    diagnostics: {
+      blockers: [],
+      warnings
+    }
+  };
 }
 
 export function climateProfileToBuildingMonthlyProfiles(profile, options = {}) {

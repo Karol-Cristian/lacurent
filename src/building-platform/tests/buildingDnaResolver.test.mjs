@@ -128,6 +128,37 @@ test("assisted answers block without explicit climate or monthly profile", () =>
   assert.equal(result.diagnostics.blockers[0].code, "missing_climate_profile_selection");
 });
 
+test("resolver rejects explicit monthly profiles with shifted calendar order", () => {
+  const shifted = createP1SeedMonthlyProfiles();
+  const mayIndex = shifted.findIndex((profile) => profile.month === "may");
+  const juneIndex = shifted.findIndex((profile) => profile.month === "june");
+  const may = shifted[mayIndex];
+  shifted[mayIndex] = shifted[juneIndex];
+  shifted[juneIndex] = may;
+
+  const result = createBuildingDnaFromAssistedAnswers({
+    buildingId: "p3c-shifted-month-profile",
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: "eps",
+      windowsReplaced: true
+    },
+    context: {
+      attic: "unheated",
+      basement: "none"
+    },
+    source: {
+      reference: "P3C.test.shifted_month_profile"
+    },
+    monthlyProfiles: shifted
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.diagnostics.blockers[0].code, "monthly_building_profile_month_order_mismatch");
+});
+
 test("advanced and assisted modes can represent equivalent engineering input", () => {
   const assisted = assistedDna().buildingDna;
   const advanced = createBuildingDnaFromAdvancedModel({

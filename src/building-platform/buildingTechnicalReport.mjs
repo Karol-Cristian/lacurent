@@ -1,3 +1,7 @@
+import {
+  analyzeMonthlyUsefulDemandSeasonality
+} from "../climate-platform/index.mjs";
+
 const TECHNICAL_WORKSPACE_SCOPE = "building_technical_workspace_p2b_report_generation_only";
 
 export const TECHNICAL_WORKSPACE_TABS = Object.freeze([
@@ -414,7 +418,7 @@ function traceabilityRows(buildingDna, calculation, formulas) {
   }));
 }
 
-function reportChapters({ buildingDna, assemblies, materials, envelope, monthly, formulas, traceability, calculation, fingerprint }) {
+function reportChapters({ buildingDna, assemblies, materials, envelope, monthly, formulas, traceability, calculation, fingerprint, seasonalSanity }) {
   const chapter2 = calculation.chapter2Result?.result ?? {};
   return [
     makeReportChapter("general_project_information", "General Project Information", "Building DNA technical report generated from the current engineering model.", [
@@ -488,6 +492,14 @@ function reportChapters({ buildingDna, assemblies, materials, envelope, monthly,
       monthlyProfileOrigin: row.monthlyProfileOrigin,
       monthlyProfileReference: row.monthlyProfileReference
     }))),
+    makeReportChapter("monthly_seasonal_sanity", "Monthly Seasonal Sanity", "Non-blocking review diagnostics for seasonal climate/result patterns. Explicit unusual profiles remain calculable but must be explainable.", [
+      { label: "Summer QCnd", value: seasonalSanity.checks.summerCoolingKwh, unit: "kWh" },
+      { label: "May + October QCnd", value: seasonalSanity.checks.shoulderCoolingKwh, unit: "kWh" },
+      {
+        label: "Warnings",
+        value: seasonalSanity.diagnostics.warnings.map(item => item.code).join(", ") || "none"
+      }
+    ]),
     makeReportChapter("transmission_losses", "Transmission Losses", "Monthly transmission energy emitted by the Chapter 2 result.", monthly.map(row => ({
       month: row.month,
       heatingTransmissionKwh: row.heatingTransmissionKwh,
@@ -553,6 +565,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
   const materials = materialRows(buildingDna, assemblies);
   const envelope = envelopeBreakdown(calculation);
   const monthly = monthlyRows(calculation, buildingDna);
+  const seasonalSanity = analyzeMonthlyUsefulDemandSeasonality(monthly);
   const formulas = formulaViews(assemblies, envelope, monthly, calculation);
   const traceability = traceabilityRows(buildingDna, calculation, formulas);
   const fingerprint = calculationFingerprint(buildingDna, calculation, monthly);
@@ -565,7 +578,8 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     formulas,
     traceability,
     calculation,
-    fingerprint
+    fingerprint,
+    seasonalSanity
   });
 
   return {
@@ -587,6 +601,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     materials,
     envelope,
     monthly,
+    seasonalSanity,
     calculationFingerprint: fingerprint,
     formulaViews: formulas,
     dependencyTrees: pipelineResult.review?.dependencyTrees ?? {},

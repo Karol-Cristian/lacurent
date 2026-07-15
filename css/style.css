@@ -4652,6 +4652,31 @@ margin:0;
 color:#475569;
 }
 
+.building-platform-stale-notice,
+.monthly-sanity-panel{
+display:flex;
+flex-wrap:wrap;
+gap:10px 14px;
+align-items:center;
+padding:10px 12px;
+border:1px solid #f59e0b;
+border-radius:8px;
+background:#fffbeb;
+color:#92400e;
+font-size:13px;
+font-weight:800;
+}
+
+.monthly-sanity-panel{
+border-color:#cbd5e1;
+background:#f8fafc;
+color:#334155;
+}
+
+.monthly-sanity-panel strong{
+color:#0f172a;
+}
+
 .technical-status-grid.p2b-annual-summary{
 grid-template-columns:repeat(4,minmax(0,1fr));
 }
