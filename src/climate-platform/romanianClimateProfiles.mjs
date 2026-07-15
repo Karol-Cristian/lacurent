@@ -161,7 +161,15 @@ function normalizeOrientation(value) {
     s: "south",
     sw: "southwest",
     w: "west",
-    nw: "northwest"
+    nw: "northwest",
+    nord: "north",
+    nord_est: "northeast",
+    est: "east",
+    sud_est: "southeast",
+    sud: "south",
+    sud_vest: "southwest",
+    vest: "west",
+    nord_vest: "northwest"
   };
   const direction = aliases[normalized] ?? normalized;
   return SOLAR_ORIENTATIONS.includes(direction) ? direction : null;

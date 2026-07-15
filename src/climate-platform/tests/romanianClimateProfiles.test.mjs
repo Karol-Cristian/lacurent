@@ -130,6 +130,32 @@ test("synthetic profile converts to twelve explicit Building DNA monthly records
   assert.equal(oriented.monthlyProfiles[0].solarGainsSource, "monthly_record_orientation_solar_gains");
 });
 
+test("synthetic orientation solar ordering is explicit for north east south and west", () => {
+  const profile = createSyntheticSeasonalDemoClimateProfile();
+  const directions = Object.fromEntries(["north", "east", "south", "west"].map((orientation) => [
+    orientation,
+    climateProfileToBuildingMonthlyProfiles(profile, { solarOrientation: orientation }).monthlyProfiles
+  ]));
+
+  assert.equal(directions.north.find((month) => month.month === "january").solarGainsKwh, 3.5);
+  assert.equal(directions.east.find((month) => month.month === "january").solarGainsKwh, 7);
+  assert.equal(directions.south.find((month) => month.month === "january").solarGainsKwh, 10);
+  assert.equal(directions.west.find((month) => month.month === "january").solarGainsKwh, 7);
+  assert.equal(directions.north.find((month) => month.month === "july").solarGainsKwh, 91);
+  assert.equal(directions.east.find((month) => month.month === "july").solarGainsKwh, 182);
+  assert.equal(directions.south.find((month) => month.month === "july").solarGainsKwh, 260);
+  assert.equal(directions.west.find((month) => month.month === "july").solarGainsKwh, 182);
+  assert.equal(directions.south.find((month) => month.month === "january").solarGainsKwh > directions.north.find((month) => month.month === "january").solarGainsKwh, true);
+  assert.equal(directions.south.find((month) => month.month === "july").solarGainsKwh > directions.north.find((month) => month.month === "july").solarGainsKwh, true);
+
+  const romanianSouth = climateProfileToBuildingMonthlyProfiles(profile, { solarOrientation: "sud" });
+  const romanianNorth = climateProfileToBuildingMonthlyProfiles(profile, { solarOrientation: "nord" });
+  assert.equal(romanianSouth.monthlyProfiles[0].solarOrientation, "south");
+  assert.equal(romanianSouth.monthlyProfiles[0].solarGainsKwh, 10);
+  assert.equal(romanianNorth.monthlyProfiles[0].solarOrientation, "north");
+  assert.equal(romanianNorth.monthlyProfiles[0].solarGainsKwh, 3.5);
+});
+
 test("explicit professional climate profile is accepted for verified calculation contracts", () => {
   const explicitProfile = createSyntheticSeasonalDemoClimateProfile();
   explicitProfile.profileId = "professional_profile_complete_12_months";

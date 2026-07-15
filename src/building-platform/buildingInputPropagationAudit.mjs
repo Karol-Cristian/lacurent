@@ -34,8 +34,21 @@ function annualQCnd(calculation) {
   return calculation?.chapter2Result?.result?.annualQCnd ?? null;
 }
 
+function fingerprint(workspace) {
+  return workspace?.calculationFingerprint?.fingerprintId ?? workspace?.report?.calculationFingerprint?.fingerprintId ?? null;
+}
+
 function monthlySolar(buildingDna, month = "january") {
   return buildingDna?.monthlyProfiles?.find((profile) => profile.month === month)?.heatGains?.solarGains?.amount ?? null;
+}
+
+function allMonthlySolar(buildingDna) {
+  return (buildingDna?.monthlyProfiles ?? []).map((profile) => ({
+    month: profile.month,
+    solarGainsKwh: profile.heatGains?.solarGains?.amount ?? null,
+    solarOrientation: profile.heatGains?.solarOrientation ?? null,
+    solarGainsSource: profile.heatGains?.solarGainsSource ?? null
+  }));
 }
 
 function firstMonthResult(calculation) {
@@ -115,4 +128,23 @@ export function buildBuildingInputPropagationDiff(before = {}, after = {}) {
       ? [{ code: "no_downstream_calculation_change_detected", severity: "warning" }]
       : []
   };
+}
+
+export function buildOrientationComparisonTable(runs = []) {
+  return runs.map((run) => {
+    const buildingDna = run.buildingDna;
+    const calculation = run.calculation;
+    const monthlySolarGains = allMonthlySolar(buildingDna);
+    return {
+      orientation: run.orientation ?? buildingDna?.monthlyProfiles?.[0]?.heatGains?.solarOrientation ?? null,
+      finalAzimuth: buildingDna?.monthlyProfiles?.[0]?.heatGains?.solarOrientation ?? null,
+      monthlySolarGainsKwh: monthlySolarGains,
+      annualSolarGainsKwh: monthlySolarGains.reduce((sum, month) => sum + (month.solarGainsKwh ?? 0), 0),
+      htr: htr(calculation),
+      annualQHnd: annualQHnd(calculation),
+      annualQCnd: annualQCnd(calculation),
+      calculationFingerprint: fingerprint(run.workspace),
+      status: calculation?.status ?? null
+    };
+  });
 }
