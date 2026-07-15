@@ -12,6 +12,7 @@ import {
   demoModeFromSearch,
   getAssistedWizardDemoFixture,
   loadBuildingPlatformChapter2Analysis,
+  markBuildingPlatformResultsStale,
   mapWizardAnswersToAssistedAnswers,
   renderEngineeringModelReview,
   renderLoadedBuildingPlatformAnalysis,
@@ -108,6 +109,37 @@ function fakeRootForLoad(form) {
     analysisInput,
     getElementById(id) {
       return nodes.get(id) || null;
+    }
+  };
+}
+
+function fakeRootForStale(form) {
+  const status = {
+    textContent: "",
+    dataset: {}
+  };
+  const preview = {
+    dataset: {},
+    innerHTML: "",
+    querySelector(selector) {
+      return this.innerHTML.includes('id="buildingPlatformStaleNotice"') &&
+        selector === "#buildingPlatformStaleNotice"
+        ? { remove() { preview.innerHTML = ""; } }
+        : null;
+    },
+    insertAdjacentHTML(_position, html) {
+      this.innerHTML = `${html}${this.innerHTML}`;
+    }
+  };
+  return {
+    status,
+    preview,
+    getElementById(id) {
+      return {
+        houseForm: form,
+        buildingModelReview: preview,
+        buildingPlatformSaveStatus: status
+      }[id] ?? null;
     }
   };
 }
@@ -349,7 +381,7 @@ await test("loaded Building Platform analysis renders persisted report metadata"
   assert.equal(html.includes("Analiza Building Platform incarcata"), true);
   assert.equal(html.includes("building-dna-100"), true);
   assert.equal(html.includes("Raport tehnic incarcat"), true);
-  assert.equal(html.includes("9400.72"), true);
+  assert.equal(html.includes("9764.75"), true);
 });
 
 await test("load action restores Building DNA and persisted report through authenticated API", async () => {
@@ -552,8 +584,29 @@ await test("demo query and fixture preload a complete editable technical dataset
   assert.equal(html.includes("Raport tehnic generat"), true);
   assert.equal(html.includes("data-technical-report-success"), true);
   assert.equal(html.includes("technical-report-chapter\" open"), true);
+  assert.equal(html.includes("Date climatice lunare utilizate"), true);
+  assert.equal(html.includes("Aport solar lunar (nu factor g)"), true);
+  assert.equal(html.includes("Control coerenta sezoniera lunara"), true);
   assert.equal(html.includes("Annual QHnd"), true);
   assert.equal(html.includes("Annual QCnd"), true);
+});
+
+await test("wizard marks current results stale after an upstream input changes", () => {
+  const form = fakeWizardForm(["window_orientation"]);
+  const root = fakeRootForStale(form);
+  form.controls[0].value = "south";
+  form.dataset.currentCalculationFingerprint = "abc123";
+  form.dataset.currentInputSnapshot = JSON.stringify([["window_orientation", "south"]]);
+
+  form.controls[0].value = "north";
+  const stale = markBuildingPlatformResultsStale(root, "orientation_changed");
+
+  assert.equal(stale.stale, true);
+  assert.equal(form.dataset.currentResultStale, "1");
+  assert.equal(form.dataset.currentStaleReason, "orientation_changed");
+  assert.equal(root.preview.dataset.resultState, "stale");
+  assert.equal(root.preview.innerHTML.includes("Date modificate - rezultatele trebuie recalculate"), true);
+  assert.equal(root.status.textContent.includes("Date modificate"), true);
 });
 
 await test("normal wizard mode does not receive demo defaults or demo provenance", () => {

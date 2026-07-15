@@ -12,6 +12,7 @@ import {
 } from "./buildingTypologyEngine.mjs";
 import { resolveBuildingRenovationInterventions } from "./buildingRenovationInterventions.mjs";
 import {
+  MONTH_IDS,
   climateProfileToBuildingMonthlyProfiles,
   resolveClimateProfileSelection
 } from "../climate-platform/index.mjs";
@@ -19,21 +20,6 @@ import {
 const ASSISTED_MODE = "assisted";
 const ADVANCED_MODE = "advanced";
 const RESOLVER_SCOPE = "building_dna_v1_engineering_model_no_physics_calculation";
-const MONTHS = Object.freeze([
-  "january",
-  "february",
-  "march",
-  "april",
-  "may",
-  "june",
-  "july",
-  "august",
-  "september",
-  "october",
-  "november",
-  "december"
-]);
-
 function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -346,9 +332,12 @@ function validateMonthlyProfiles(monthlyProfiles) {
     return { ok: false, code: "missing_or_invalid_monthly_building_profile" };
   }
   const seen = new Set();
-  for (const profile of monthlyProfiles) {
-    if (!MONTHS.includes(profile.month) || seen.has(profile.month)) {
+  for (const [index, profile] of monthlyProfiles.entries()) {
+    if (!MONTH_IDS.includes(profile.month) || seen.has(profile.month)) {
       return { ok: false, code: "missing_or_invalid_monthly_building_profile" };
+    }
+    if (profile.month !== MONTH_IDS[index]) {
+      return { ok: false, code: "monthly_building_profile_month_order_mismatch" };
     }
     seen.add(profile.month);
     for (const key of [

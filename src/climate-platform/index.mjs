@@ -1,9 +1,13 @@
 export {
   CLIMATE_PLATFORM_VERSION,
   CLIMATE_SOURCE_CONTRACTS,
+  CALENDAR_MONTHLY_HOURS,
   MONTH_IDS,
   ROMANIAN_CLIMATE_PROFILES,
   ROMANIAN_CLIMATE_SOURCE_AUDIT,
+  SOLAR_ORIENTATIONS,
+  analyzeClimateProfileSeasonality,
+  analyzeMonthlyUsefulDemandSeasonality,
   climateProfileToBuildingMonthlyProfiles,
   createSyntheticSeasonalDemoClimateProfile,
   createSyntheticSeasonalDemoMonthlyProfiles,

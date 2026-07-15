@@ -471,6 +471,34 @@ function renderMonthlyResults(workspace) {
   ], workspace.monthly);
 }
 
+function renderMonthlyClimateInspector(workspace) {
+  return renderTable([
+    { label: "Month", value: row => row.month },
+    { label: "Ore", value: row => formatNumber(row.durationHours, 0) },
+    { label: "T exterior incalzire", value: row => `${formatNumber(row.heatingOutdoorTemperatureC, 1)} C` },
+    { label: "Delta T incalzire", value: row => `${formatNumber(row.heatingTemperatureDifferenceK, 1)} K` },
+    { label: "T exterior racire", value: row => `${formatNumber(row.coolingOutdoorTemperatureC, 1)} C` },
+    { label: "Delta T racire", value: row => `${formatNumber(row.coolingTemperatureDifferenceK, 1)} K` },
+    { label: "Orientare solara", value: row => row.solarOrientation ?? "--" },
+    { label: "Aport solar lunar (nu factor g)", value: row => `${formatNumber(row.solarGainsKwh)} kWh` },
+    { label: "Sursa aport/iradiere", value: row => row.solarGainsSource ?? "--" },
+    { label: "Aport intern", value: row => `${formatNumber(row.internalGainsKwh)} kWh` },
+    { label: "Provenienta", value: row => row.monthlyProfileOrigin ?? "--" }
+  ], workspace.monthly);
+}
+
+function renderSeasonalSanity(workspace) {
+  const warnings = workspace.seasonalSanity?.diagnostics?.warnings ?? [];
+  return `
+    <div class="monthly-sanity-panel" data-monthly-seasonal-sanity>
+      <strong>Control coerenta sezoniera lunara</strong>
+      <span>QCnd vara: ${formatNumber(workspace.seasonalSanity?.checks?.summerCoolingKwh)} kWh</span>
+      <span>QCnd mai + octombrie: ${formatNumber(workspace.seasonalSanity?.checks?.shoulderCoolingKwh)} kWh</span>
+      <span>Avertizari: ${safeText(warnings.map(item => item.code).join(", ") || "none")}</span>
+    </div>
+  `;
+}
+
 function renderFormulaViewer(workspace) {
   return renderTable([
     { label: "Formula", value: row => row.formulaId },
@@ -741,6 +769,11 @@ export function renderEngineeringModelReview(preview, options = {}) {
         ${renderHtrBreakdown(workspace)}
       </section>
       <section id="p2b-results" class="technical-workspace-panel">
+        <h4>Date climatice lunare utilizate</h4>
+        ${renderMonthlyClimateInspector(workspace)}
+        ${renderSeasonalSanity(workspace)}
+      </section>
+      <section class="technical-workspace-panel">
         <h4>Monthly QHnd / QCnd</h4>
         ${renderMonthlyResults(workspace)}
       </section>
@@ -786,6 +819,77 @@ export function renderEngineeringModelReview(preview, options = {}) {
   `;
 }
 
+function formInputSnapshot(form) {
+  if (!form) return "";
+  let entries = [];
+  if (typeof FormData === "function") {
+    try {
+      entries = [...new FormData(form).entries()];
+    } catch {
+      entries = [];
+    }
+  }
+  if (entries.length === 0 && Array.isArray(form.controls)) {
+    entries = form.controls
+      .filter(control => control.name)
+      .map(control => [control.name, control.type === "checkbox" ? String(control.checked) : String(control.value ?? "")]);
+  }
+  return JSON.stringify(
+    entries
+      .map(([key, value]) => [key, String(value)])
+      .sort(([left], [right]) => left.localeCompare(right))
+  );
+}
+
+function removeStaleNotice(previewTarget) {
+  const existing = previewTarget?.querySelector?.("#buildingPlatformStaleNotice");
+  existing?.remove?.();
+}
+
+function markBuildingPlatformResultsFresh(root, preview) {
+  const form = root.getElementById?.("houseForm");
+  const previewTarget = root.getElementById?.("buildingModelReview");
+  const fingerprint = preview?.technicalWorkspace?.calculationFingerprint?.fingerprintId ?? "";
+  if (form?.dataset) {
+    form.dataset.currentInputSnapshot = formInputSnapshot(form);
+    form.dataset.currentCalculationFingerprint = fingerprint;
+    form.dataset.currentResultStale = "0";
+  }
+  if (previewTarget?.dataset) {
+    previewTarget.dataset.resultState = "fresh";
+    previewTarget.dataset.calculationFingerprint = fingerprint;
+  }
+  removeStaleNotice(previewTarget);
+}
+
+export function markBuildingPlatformResultsStale(root = document, reason = "upstream_input_changed") {
+  const form = root.getElementById?.("houseForm");
+  const previewTarget = root.getElementById?.("buildingModelReview");
+  if (!form?.dataset?.currentCalculationFingerprint) {
+    return { stale: false, reason: "no_current_calculation" };
+  }
+  if (formInputSnapshot(form) === form.dataset.currentInputSnapshot) {
+    return { stale: false, reason: "input_snapshot_unchanged" };
+  }
+  form.dataset.currentResultStale = "1";
+  form.dataset.currentStaleReason = reason;
+  if (previewTarget?.dataset) {
+    previewTarget.dataset.resultState = "stale";
+  }
+  setSaveStatus(root, "Date modificate - rezultatele si raportul trebuie recalculate.", "pending");
+  if (
+    previewTarget &&
+    typeof previewTarget.insertAdjacentHTML === "function" &&
+    !previewTarget.querySelector?.("#buildingPlatformStaleNotice")
+  ) {
+    previewTarget.insertAdjacentHTML(
+      "afterbegin",
+      `<div id="buildingPlatformStaleNotice" class="building-platform-stale-notice" role="status">Date modificate - rezultatele trebuie recalculate. Raportul afisat apartine amprentei anterioare.</div>`
+    );
+  }
+  return { stale: true, reason };
+}
+
 export function generateBuildingPlatformTechnicalReport(root = document, options = {}) {
   const form = root.getElementById?.("houseForm");
   const previewTarget = root.getElementById?.("buildingModelReview");
@@ -797,6 +901,9 @@ export function generateBuildingPlatformTechnicalReport(root = document, options
   previewTarget.innerHTML = renderEngineeringModelReview(preview, {
     openReport: options.openReport === true
   });
+  if (preview.status === "ready") {
+    markBuildingPlatformResultsFresh(root, preview);
+  }
   if (options.scrollToReport === true) {
     const report = root.getElementById?.("p2b-report") ?? previewTarget;
     report?.scrollIntoView?.({ behavior: "smooth", block: "start" });
@@ -931,6 +1038,9 @@ export async function saveBuildingPlatformChapter2Analysis(root = document, opti
   if (previewTarget) {
     previewTarget.innerHTML = renderEngineeringModelReview(preview, { openReport: true });
   }
+  if (preview.status === "ready") {
+    markBuildingPlatformResultsFresh(root, preview);
+  }
   if (preview.status !== "ready") {
     setSaveStatus(root, "Modelul Building DNA nu este gata pentru salvare.", "blocked");
     return { saved: false, reason: "preview_not_ready", preview };
@@ -996,6 +1106,9 @@ export async function loadBuildingPlatformChapter2Analysis(root = document, opti
   }
   if (previewTarget) {
     previewTarget.innerHTML = renderLoadedBuildingPlatformAnalysis(response);
+    if (previewTarget.dataset) {
+      previewTarget.dataset.resultState = "historical_saved_analysis";
+    }
   }
   setSaveStatus(
     root,
@@ -1101,6 +1214,11 @@ export function attachBuildingPlatformWizard(root = document) {
       scrollToReport: true
     });
   });
+  const markStale = () => {
+    markBuildingPlatformResultsStale(root);
+  };
+  form.addEventListener?.("input", markStale);
+  form.addEventListener?.("change", markStale);
   const saveButton = root.getElementById?.("saveBuildingPlatformAnalysisBtn");
   const recalculateButton = root.getElementById?.("recalculateBuildingPlatformAnalysisBtn");
   const loadButton = root.getElementById?.("loadBuildingPlatformAnalysisBtn");
@@ -1156,7 +1274,8 @@ if (typeof window !== "undefined") {
     renderLoadedBuildingPlatformAnalysis,
     loadBuildingPlatformChapter2Analysis,
     saveBuildingPlatformChapter2Analysis,
-    structuralSystemFromWallMaterial
+    structuralSystemFromWallMaterial,
+    markBuildingPlatformResultsStale
   };
   window.addEventListener("DOMContentLoaded", () => {
     attachBuildingPlatformWizard(document);
