@@ -11,6 +11,10 @@ import {
   validateTypologyProposal
 } from "./buildingTypologyEngine.mjs";
 import { resolveBuildingRenovationInterventions } from "./buildingRenovationInterventions.mjs";
+import {
+  climateProfileToBuildingMonthlyProfiles,
+  resolveClimateProfileSelection
+} from "../climate-platform/index.mjs";
 
 const ASSISTED_MODE = "assisted";
 const ADVANCED_MODE = "advanced";
@@ -80,6 +84,12 @@ function finiteNonNegative(value) {
 }
 
 function provenance(reference, confidence = "medium", origin = "proposed_by_typology", metadata = {}) {
+  const {
+    confirmationStatus,
+    editable,
+    notes,
+    ...metadataRest
+  } = metadata;
   return makeEngineeringProvenance({
     origin,
     reference,
@@ -88,7 +98,10 @@ function provenance(reference, confidence = "medium", origin = "proposed_by_typo
       "P1 Building DNA explicit engineering value; Chapter 2 physics engine consumes it as input.",
     calculationSource: "resolver_model_generation_no_physics_calculation",
     confirmationRequired: origin !== "confirmed_by_user",
-    ...metadata
+    ...(confirmationStatus === undefined ? {} : { confirmationStatus }),
+    ...(editable === undefined ? {} : { editable }),
+    ...(notes === undefined ? {} : { notes }),
+    ...(Object.keys(metadataRest).length === 0 ? {} : { metadata: metadataRest })
   });
 }
 
@@ -97,11 +110,16 @@ function q(amount, unit, reference, confidence = "medium", origin = "proposed_by
 }
 
 function sourceProvenance(source = {}) {
-  if (source.origin !== "demo_fixture") {
+  if (source.origin !== "demo_fixture" && source.origin !== "synthetic_demo_profile") {
     return {
-      origin: "confirmed_by_user",
-      confidence: "high",
-      metadata: {}
+      origin: source.origin ?? "confirmed_by_user",
+      confidence: source.confidence ?? "high",
+      metadata: {
+        ...(source.confirmationStatus === undefined ? {} : { confirmationStatus: source.confirmationStatus }),
+        ...(source.editable === undefined ? {} : { editable: source.editable }),
+        ...(source.profileId === undefined ? {} : { profileId: source.profileId }),
+        ...(source.verificationStatus === undefined ? {} : { verificationStatus: source.verificationStatus })
+      }
     };
   }
   return {
@@ -110,7 +128,12 @@ function sourceProvenance(source = {}) {
     metadata: {
       confirmationStatus: source.confirmationStatus ?? "unconfirmed_demo",
       editable: source.editable ?? true,
-      notes: "Prefilled demonstration value; editable and not a silent default for normal projects."
+      ...(source.profileId === undefined ? {} : { profileId: source.profileId }),
+      ...(source.origin === undefined ? {} : { sourceOrigin: source.origin }),
+      ...(source.verificationStatus === undefined ? {} : { verificationStatus: source.verificationStatus }),
+      notes: source.origin === "synthetic_demo_profile"
+        ? "Synthetic seasonal climate profile for demonstration only; editable and not a normative locality dataset."
+        : "Prefilled demonstration value; editable and not a silent default for normal projects."
     }
   };
 }
@@ -202,27 +225,40 @@ function defaultGeometry(overrides = {}) {
   };
 }
 
-function seedMonthlyProfiles() {
-  return MONTHS.map((month, index) => {
-    const oddMonth = index % 2 === 1 && month !== "september";
-    const gains = month === "september"
-      ? { internalGains: 1500, solarGains: 1500 }
-      : oddMonth
-        ? { internalGains: 100, solarGains: 160 }
-        : { internalGains: 120, solarGains: 180 };
+function resolveMonthlyProfileSelection({
+  monthlyProfiles,
+  climateProfile,
+  climateProfileId,
+  allowSyntheticClimate
+} = {}) {
+  if (Array.isArray(monthlyProfiles)) {
     return {
-      month,
-      heatingIndoorTemperatureC: 20,
-      heatingOutdoorTemperatureC: 0,
-      coolingIndoorTemperatureC: 24,
-      coolingOutdoorTemperatureC: 30,
-      durationHours: 720,
-      ventilationAirHeatCapacityJPerM3K: 1200,
-      ventilationAirFlowRateM3PerS: 0.016666666666666666,
-      internalGainsKwh: gains.internalGains,
-      solarGainsKwh: gains.solarGains
+      status: "ready",
+      monthlyProfiles,
+      climateProfile: climateProfile ?? null,
+      calculationMode: climateProfile?.sourceType === "synthetic_demo_profile"
+        ? "synthetic_demo"
+        : "explicit_monthly_profile"
     };
+  }
+  const selection = resolveClimateProfileSelection({
+    profileId: climateProfileId,
+    explicitProfile: climateProfile,
+    allowSynthetic: allowSyntheticClimate === true
   });
+  if (selection.status !== "ready") {
+    return selection;
+  }
+  const converted = climateProfileToBuildingMonthlyProfiles(selection.profile);
+  if (converted.status !== "ready") {
+    return converted;
+  }
+  return {
+    status: "ready",
+    monthlyProfiles: converted.monthlyProfiles,
+    climateProfile: converted.climateProfile,
+    calculationMode: selection.calculationMode
+  };
 }
 
 function seedUtilizationDependencies() {
@@ -535,61 +571,107 @@ function makeThermalBridges(boundaryContext) {
   }));
 }
 
+function monthlyQuantity(profile, amount, unit, reference, confidence = "low") {
+  const source = profile.provenance ?? {};
+  return {
+    amount,
+    unit,
+    provenance: provenance(
+      reference,
+      source.confidence ?? confidence,
+      source.origin === "synthetic_demo_profile"
+        ? "demo_fixture"
+        : source.origin ?? "confirmed_by_user",
+      {
+        ...(source.profileId === undefined ? {} : { profileId: source.profileId }),
+        ...(source.sourceType === undefined ? {} : { sourceType: source.sourceType }),
+        ...(source.origin === undefined ? {} : { sourceOrigin: source.origin }),
+        ...(source.verificationStatus === undefined ? {} : { verificationStatus: source.verificationStatus }),
+        ...(source.confirmationStatus === undefined ? {} : { confirmationStatus: source.confirmationStatus }),
+        ...(source.monthlyDataSource === undefined ? {} : { monthlyDataSource: source.monthlyDataSource }),
+        editable: source.editable ?? true
+      }
+    )
+  };
+}
+
 function makeMonthlyProfile(profile) {
   const ref = `P1.resolver.monthly.${profile.month}`;
+  const profileProvenance = profile.provenance === undefined
+    ? provenance(ref, "low")
+    : provenance(
+        profile.provenance.reference ?? ref,
+        profile.provenance.confidence ?? "low",
+        profile.provenance.origin === "synthetic_demo_profile"
+          ? "demo_fixture"
+          : profile.provenance.origin ?? "confirmed_by_user",
+        {
+          ...(profile.provenance.profileId === undefined ? {} : { profileId: profile.provenance.profileId }),
+          ...(profile.provenance.sourceType === undefined ? {} : { sourceType: profile.provenance.sourceType }),
+          ...(profile.provenance.origin === undefined ? {} : { sourceOrigin: profile.provenance.origin }),
+          ...(profile.provenance.verificationStatus === undefined ? {} : { verificationStatus: profile.provenance.verificationStatus }),
+          ...(profile.provenance.confirmationStatus === undefined ? {} : { confirmationStatus: profile.provenance.confirmationStatus }),
+          ...(profile.provenance.monthlyDataSource === undefined ? {} : { monthlyDataSource: profile.provenance.monthlyDataSource }),
+          editable: profile.provenance.editable ?? true
+        }
+      );
   return {
     month: profile.month,
     transmission: {
       heating: {
-        indoorTemperature: q(profile.heatingIndoorTemperatureC, "degC", `${ref}.heating.indoor`, "low"),
-        outdoorTemperature: q(profile.heatingOutdoorTemperatureC, "degC", `${ref}.heating.outdoor`, "low"),
-        duration: q(profile.durationHours, "h", `${ref}.heating.duration`, "low")
+        indoorTemperature: monthlyQuantity(profile, profile.heatingIndoorTemperatureC, "degC", `${ref}.heating.indoor`, "low"),
+        outdoorTemperature: monthlyQuantity(profile, profile.heatingOutdoorTemperatureC, "degC", `${ref}.heating.outdoor`, "low"),
+        duration: monthlyQuantity(profile, profile.durationHours, "h", `${ref}.heating.duration`, "low")
       },
       cooling: {
-        indoorTemperature: q(profile.coolingIndoorTemperatureC, "degC", `${ref}.cooling.indoor`, "low"),
-        outdoorTemperature: q(profile.coolingOutdoorTemperatureC, "degC", `${ref}.cooling.outdoor`, "low"),
-        duration: q(profile.durationHours, "h", `${ref}.cooling.duration`, "low")
+        indoorTemperature: monthlyQuantity(profile, profile.coolingIndoorTemperatureC, "degC", `${ref}.cooling.indoor`, "low"),
+        outdoorTemperature: monthlyQuantity(profile, profile.coolingOutdoorTemperatureC, "degC", `${ref}.cooling.outdoor`, "low"),
+        duration: monthlyQuantity(profile, profile.durationHours, "h", `${ref}.cooling.duration`, "low")
       }
     },
     ventilation: {
       heating: {
-        airHeatCapacity: q(
+        airHeatCapacity: monthlyQuantity(
+          profile,
           profile.ventilationAirHeatCapacityJPerM3K,
           "J/(m3*K)",
           `${ref}.heating.air_heat_capacity`,
           "low"
         ),
-        airFlowRate: q(
+        airFlowRate: monthlyQuantity(
+          profile,
           profile.ventilationAirFlowRateM3PerS,
           "m3/s",
           `${ref}.heating.air_flow_rate`,
           "low"
         ),
-        indoorTemperature: q(profile.heatingIndoorTemperatureC, "degC", `${ref}.heating.vent.indoor`, "low"),
-        outdoorTemperature: q(profile.heatingOutdoorTemperatureC, "degC", `${ref}.heating.vent.outdoor`, "low"),
-        duration: q(profile.durationHours, "h", `${ref}.heating.vent.duration`, "low")
+        indoorTemperature: monthlyQuantity(profile, profile.heatingIndoorTemperatureC, "degC", `${ref}.heating.vent.indoor`, "low"),
+        outdoorTemperature: monthlyQuantity(profile, profile.heatingOutdoorTemperatureC, "degC", `${ref}.heating.vent.outdoor`, "low"),
+        duration: monthlyQuantity(profile, profile.durationHours, "h", `${ref}.heating.vent.duration`, "low")
       },
       cooling: {
-        airHeatCapacity: q(
+        airHeatCapacity: monthlyQuantity(
+          profile,
           profile.ventilationAirHeatCapacityJPerM3K,
           "J/(m3*K)",
           `${ref}.cooling.air_heat_capacity`,
           "low"
         ),
-        airFlowRate: q(
+        airFlowRate: monthlyQuantity(
+          profile,
           profile.ventilationAirFlowRateM3PerS,
           "m3/s",
           `${ref}.cooling.air_flow_rate`,
           "low"
         ),
-        indoorTemperature: q(profile.coolingIndoorTemperatureC, "degC", `${ref}.cooling.vent.indoor`, "low"),
-        outdoorTemperature: q(profile.coolingOutdoorTemperatureC, "degC", `${ref}.cooling.vent.outdoor`, "low"),
-        duration: q(profile.durationHours, "h", `${ref}.cooling.vent.duration`, "low")
+        indoorTemperature: monthlyQuantity(profile, profile.coolingIndoorTemperatureC, "degC", `${ref}.cooling.vent.indoor`, "low"),
+        outdoorTemperature: monthlyQuantity(profile, profile.coolingOutdoorTemperatureC, "degC", `${ref}.cooling.vent.outdoor`, "low"),
+        duration: monthlyQuantity(profile, profile.durationHours, "h", `${ref}.cooling.vent.duration`, "low")
       }
     },
     heatGains: {
-      internalGains: q(profile.internalGainsKwh, "kWh", `${ref}.internal_gains`, "low"),
-      solarGains: q(profile.solarGainsKwh, "kWh", `${ref}.solar_gains`, "low")
+      internalGains: monthlyQuantity(profile, profile.internalGainsKwh, "kWh", `${ref}.internal_gains`, "low"),
+      solarGains: monthlyQuantity(profile, profile.solarGainsKwh, "kWh", `${ref}.solar_gains`, "low")
     },
     heating: {
       utilizationDependencies: seedUtilizationDependencies()
@@ -598,7 +680,7 @@ function makeMonthlyProfile(profile) {
       utilizationDependencies: seedUtilizationDependencies(),
       aCred: 1
     },
-    provenance: provenance(ref, "low")
+    provenance: profileProvenance
   };
 }
 
@@ -611,6 +693,8 @@ function resolveBuildingDna({
   buildingSpecificParameters,
   renovationInterventions,
   boundaryContext,
+  climateProfile,
+  calculationMode,
   monthlyProfiles,
   building
 }) {
@@ -651,6 +735,26 @@ function resolveBuildingDna({
       structuralSystem: building?.structuralSystem ?? typologyProposal?.structuralSystem,
       location: building?.location ?? null
     },
+    climateProfile: climateProfile == null ? null : {
+      profileId: climateProfile.profileId,
+      displayName: climateProfile.displayName,
+      country: climateProfile.country,
+      locality: climateProfile.locality,
+      county: climateProfile.county,
+      climaticZone: climateProfile.climaticZone,
+      sourceType: climateProfile.sourceType,
+      origin: climateProfile.origin,
+      normativeStatus: climateProfile.normativeStatus,
+      verificationStatus: climateProfile.verificationStatus,
+      datasetVersion: climateProfile.datasetVersion,
+      sourceReferences: climateProfile.sourceReferences,
+      safetyLabel: climateProfile.safetyLabel ?? null
+    },
+    calculationStatus: calculationMode === "synthetic_demo"
+      ? "synthetic_demo"
+      : calculationMode === "explicit_professional_climate_profile"
+        ? "estimated"
+        : "requires_confirmation",
     typologyProposal: typologyProposal ?? null,
     buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters, source),
     renovationInterventions: deepClone(renovationInterventions ?? []),
@@ -683,6 +787,22 @@ function resolveBuildingDna({
         {
           confirmationStatus: source.confirmationStatus ?? "unconfirmed_demo",
           editable: source.editable ?? true
+        }
+      )
+    }] : []).concat(climateProfile?.sourceType === "synthetic_demo_profile" ? [{
+      assumptionId: "synthetic_climate_profile_not_normative",
+      text:
+        "Profil climatic sintetic pentru demonstratie. Rezultatele nu reprezinta un calcul climatic normativ pentru o localitate reala.",
+      provenance: provenance(
+        climateProfile.profileId,
+        "low",
+        "demo_fixture",
+        {
+          profileId: climateProfile.profileId,
+          sourceOrigin: "synthetic_demo_profile",
+          verificationStatus: climateProfile.verificationStatus,
+          confirmationStatus: "unconfirmed_demo",
+          editable: true
         }
       )
     }] : []),
@@ -745,6 +865,16 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
   if (!validation.ok) {
     return blocked(validation.code);
   }
+  const monthlySelection = resolveMonthlyProfileSelection({
+    monthlyProfiles: answers.monthlyProfiles,
+    climateProfile: answers.climateProfile,
+    climateProfileId: answers.climateProfileId,
+    allowSyntheticClimate: answers.allowSyntheticClimate === true ||
+      answers.source?.origin === "demo_fixture"
+  });
+  if (monthlySelection.status !== "ready") {
+    return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
+  }
   return resolveBuildingDna({
     userMode: ASSISTED_MODE,
     source: answers.source ?? { reference: "P1.assisted_answers" },
@@ -759,7 +889,9 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
       ...boundaryContextFromAssistedContext(answers.context ?? {}),
       ...(answers.boundaryContext ?? {})
     },
-    monthlyProfiles: answers.monthlyProfiles ?? seedMonthlyProfiles(),
+    climateProfile: monthlySelection.climateProfile,
+    calculationMode: monthlySelection.calculationMode,
+    monthlyProfiles: monthlySelection.monthlyProfiles,
     building: {
       buildingId: answers.buildingId,
       buildingType: answers.buildingType,
@@ -771,6 +903,15 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
 }
 
 export function createBuildingDnaFromAdvancedModel(input = {}) {
+  const monthlySelection = resolveMonthlyProfileSelection({
+    monthlyProfiles: input.monthlyProfiles,
+    climateProfile: input.climateProfile,
+    climateProfileId: input.climateProfileId,
+    allowSyntheticClimate: input.allowSyntheticClimate === true
+  });
+  if (monthlySelection.status !== "ready") {
+    return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
+  }
   return resolveBuildingDna({
     userMode: ADVANCED_MODE,
     source: input.source ?? { reference: "P1.advanced_model" },
@@ -779,13 +920,11 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     buildingSpecificParameters: input.buildingSpecificParameters,
     renovationInterventions: input.renovationInterventions,
     boundaryContext: input.boundaryContext,
-    monthlyProfiles: input.monthlyProfiles,
+    climateProfile: monthlySelection.climateProfile,
+    calculationMode: monthlySelection.calculationMode,
+    monthlyProfiles: monthlySelection.monthlyProfiles,
     building: input.building
   });
-}
-
-export function createP1SeedMonthlyProfiles() {
-  return deepClone(seedMonthlyProfiles());
 }
 
 export function createP1SeedGeometry(overrides = {}) {

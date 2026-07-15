@@ -1,6 +1,9 @@
 import {
   buildBuildingKnowledgePlatformFromAssistedAnswers,
-  buildBuildingTechnicalWorkspace
+  buildBuildingTechnicalWorkspace,
+  climateProfileToBuildingMonthlyProfiles,
+  findRomanianClimateProfileById,
+  listRomanianClimateProfiles
 } from "../src/building-platform/index.mjs";
 
 export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
@@ -57,6 +60,7 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
   values: Object.freeze({
     building_platform_demo_mode: "1",
     building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
+    climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
     display_name: "Demo tehnic - casa zidarie 1985",
     analysis_purpose: "technical_chapter_2_report",
     building_type: "house",
@@ -400,6 +404,13 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const doorAreaM2 = positiveNumber(formData, "door_area_m2");
   const explicitStructuralSystem = formValue(formData, "structural_system");
   const windowsReplaced = formValue(formData, "windows_replaced");
+  const climateProfileId = formValue(formData, "climate_profile_id");
+  const climateProfile = climateProfileId
+    ? findRomanianClimateProfileById(climateProfileId)
+    : null;
+  const convertedClimate = climateProfile
+    ? climateProfileToBuildingMonthlyProfiles(climateProfile)
+    : { status: "blocked" };
 
   return {
     buildingId: "building-platform-wizard-preview",
@@ -450,8 +461,18 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
       basement: floorType === "over_basement" ? "unheated" : "none"
     },
     location: {
-      city: formValue(formData, "city") || null
+      city: formValue(formData, "city") || null,
+      climateProfileId: climateProfile?.profileId ?? null,
+      climateProfileSourceType: climateProfile?.sourceType ?? null
     },
+    ...(climateProfile === null ? {} : {
+      climateProfile,
+      climateProfileId: climateProfile.profileId,
+      allowSyntheticClimate: climateProfile.sourceType === "synthetic_demo_profile",
+      monthlyProfiles: convertedClimate.status === "ready"
+        ? convertedClimate.monthlyProfiles
+        : undefined
+    }),
     source: isDemoFixture ? {
       reference: `P2B.demo.${demoFixtureId}`,
       origin: "demo_fixture",
@@ -526,6 +547,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
           <h4>Building</h4>
           <p>${safeText(workspace.buildingSummary.buildingType)} / ${safeText(workspace.buildingSummary.constructionPeriod)} / ${safeText(workspace.buildingSummary.structuralSystem)}</p>
           <p>Typology: ${safeText(workspace.buildingSummary.typologyId)} · Mode: ${safeText(workspace.buildingSummary.userMode)}</p>
+          <p>Climate profile: ${safeText(dna.climateProfile?.displayName ?? "missing")} / ${safeText(dna.climateProfile?.verificationStatus ?? "not_selected")}</p>
         </section>
         <section id="p2b-building_dna" class="technical-workspace-panel">
           <h4>Building DNA</h4>
@@ -546,6 +568,12 @@ export function renderEngineeringModelReview(preview, options = {}) {
         <h4>Materials</h4>
         ${renderMaterials(workspace)}
       </section>
+      ${dna.climateProfile?.sourceType === "synthetic_demo_profile" ? `
+        <section class="technical-workspace-panel synthetic-climate-warning">
+          <h4>Profil climatic sintetic</h4>
+          <p>${safeText(dna.climateProfile.safetyLabel)}</p>
+        </section>
+      ` : ""}
       <section class="technical-workspace-panel">
         <h4>Layer stacks</h4>
         ${renderLayerStacks(workspace)}
@@ -693,6 +721,18 @@ export function attachBuildingPlatformWizard(root = document) {
   const previewButton = root.getElementById?.("buildingModelPreviewBtn");
   if (!form || !previewTarget || !previewButton) {
     return { attached: false };
+  }
+  const climateSelect = form.querySelector?.('[name="climate_profile_id"]');
+  if (climateSelect && climateSelect.options.length <= 1) {
+    for (const profile of listRomanianClimateProfiles({ includeSynthetic: true })) {
+      const option = root.createElement?.("option");
+      if (!option) continue;
+      option.value = profile.profileId;
+      option.textContent = `${profile.locality}, ${profile.county} - ${profile.displayName}`;
+      option.dataset.sourceType = profile.sourceType;
+      option.dataset.verificationStatus = profile.verificationStatus;
+      climateSelect.appendChild(option);
+    }
   }
   const demoControls = attachDemoControls(root, form);
   previewButton.addEventListener("click", () => {

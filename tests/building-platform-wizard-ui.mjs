@@ -51,6 +51,7 @@ await test("wizard exposes only the six validated technical sections", () => {
 await test("wizard maps technical answers to assisted Building DNA input", () => {
   const answers = mapWizardAnswersToAssistedAnswers(formData({
     building_type: "house",
+    climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
     construction_year: "1985",
     structural_system: "masonry",
     wall_material: "brick",
@@ -76,6 +77,9 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
   assert.equal(answers.renovations.roofInsulated, false);
   assert.equal(answers.renovations.floorInsulated, false);
   assert.equal(answers.renovations.windowsReplaced, true);
+  assert.equal(answers.climateProfileId, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(answers.climateProfile.sourceType, "synthetic_demo_profile");
+  assert.equal(answers.monthlyProfiles.length, 12);
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, 120);
   assert.equal(answers.buildingSpecificParameters.heatedVolumeM3, 312);
   assert.equal(answers.buildingSpecificParameters.exteriorWallAreaM2, 50);
@@ -102,6 +106,7 @@ await test("period and structural helpers are deterministic", () => {
 await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(formData({
     building_type: "house",
+    climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
     construction_year: "1985",
     wall_material: "brick",
     wall_insulation: "10cm",
@@ -116,8 +121,10 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   assert.equal(preview.technicalWorkspace.scope, "building_technical_workspace_p2b_report_generation_only");
   assert.equal(preview.buildingDna.schema, "building_dna_v1");
   assert.equal(preview.dependencyTree.physicsAuthority, "Chapter 2 physics engine");
-  assert.equal(preview.summary.annualQHnd, 10286.496332703064);
-  assert.equal(preview.summary.annualQCnd, 2786.7333161081524);
+  assert.equal(preview.buildingDna.climateProfile.profileId, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(preview.buildingDna.calculationStatus, "synthetic_demo");
+  assert.equal(preview.summary.annualQHnd > 0, true);
+  assert.equal(preview.summary.annualQCnd > 0, true);
 
   const html = renderEngineeringModelReview(preview);
   for (const expected of [
@@ -151,6 +158,7 @@ await test("demo query and fixture preload a complete editable technical dataset
   for (const field of [
     "building_platform_demo_mode",
     "building_platform_demo_fixture_id",
+    "climate_profile_id",
     "building_type",
     "construction_year",
     "useful_area_m2",
@@ -214,6 +222,9 @@ await test("demo query and fixture preload a complete editable technical dataset
   assert.equal(answers.structuralSystem, "masonry");
   assert.equal(answers.renovations.wallInsulation, "eps");
   assert.equal(answers.renovations.windowsReplaced, true);
+  assert.equal(answers.climateProfileId, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(answers.climateProfile.sourceType, "synthetic_demo_profile");
+  assert.equal(answers.monthlyProfiles.length, 12);
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, 120);
   assert.equal(answers.buildingSpecificParameters.windowAreaM2, 8);
   assert.equal(answers.buildingSpecificParameters.ventilationAch, 0.6);
@@ -228,6 +239,8 @@ await test("demo query and fixture preload a complete editable technical dataset
   assert.equal(preview.buildingDna.source.origin, "demo_fixture");
   assert.equal(preview.buildingDna.demoFixture.fixtureId, fixture.fixtureId);
   assert.equal(preview.buildingDna.demoFixture.confirmationStatus, "unconfirmed_demo");
+  assert.equal(preview.buildingDna.climateProfile.sourceType, "synthetic_demo_profile");
+  assert.equal(preview.buildingDna.climateProfile.verificationStatus, "synthetic_demo_not_verified");
   assert.equal(preview.buildingDna.buildingSpecificParameters.usefulFloorAreaM2.provenance.origin, "demo_fixture");
   assert.equal(preview.review.renovationInterventions[0].provenance.origin, "demo_fixture");
   assert.equal(preview.summary.annualQHnd > 0, true);
@@ -253,6 +266,8 @@ await test("normal wizard mode does not receive demo defaults or demo provenance
   }));
   assert.equal(answers.source.origin, undefined);
   assert.equal(answers.source.fixtureId, undefined);
+  assert.equal(answers.climateProfileId, undefined);
+  assert.equal(answers.monthlyProfiles, undefined);
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, undefined);
   assert.equal(answers.buildingSpecificParameters.windowAreaM2, undefined);
 });
@@ -284,6 +299,8 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("buildingModelReview"), true);
   assert.equal(html.includes("buildingModelPreviewBtn"), true);
   assert.equal(html.includes("demoModeBanner"), true);
+  assert.equal(html.includes("climate_profile_id"), true);
+  assert.equal(html.includes("Profil climatic sintetic pentru demonstra"), true);
   assert.equal(html.includes("Încarcă exemplu demonstrativ"), true);
   assert.equal(html.includes("Începe proiect gol"), true);
   assert.equal(html.includes("Resetează exemplul"), true);

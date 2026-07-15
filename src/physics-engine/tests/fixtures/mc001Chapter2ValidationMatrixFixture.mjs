@@ -81,7 +81,7 @@ export const P2V_DEMO_FIXTURE_SAFETY_METADATA = Object.freeze({
   confirmationStatus: "unconfirmed_demo",
   editable: true,
   notAClimateFile: true,
-  artificialCoolingTriggerMonths: Object.freeze(["september"]),
+  artificialCoolingTriggerMonths: Object.freeze([]),
   forbiddenDefaultLeakage: Object.freeze([
     "normal_mode_must_not_receive_demo_values",
     "saved_real_building_must_not_inherit_demo_monthly_profiles",

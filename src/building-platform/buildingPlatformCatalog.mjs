@@ -35,7 +35,8 @@ function provenance({
   confirmationRequired = true,
   confirmationStatus,
   editable,
-  notes
+  notes,
+  metadata
 }) {
   if (!ORIGINS.has(origin)) {
     throw new Error(`Unsupported provenance origin ${origin}`);
@@ -52,7 +53,8 @@ function provenance({
     confirmationRequired,
     ...(confirmationStatus === undefined ? {} : { confirmationStatus }),
     ...(editable === undefined ? {} : { editable }),
-    ...(notes === undefined ? {} : { notes })
+    ...(notes === undefined ? {} : { notes }),
+    ...(metadata === undefined ? {} : { metadata })
   };
 }
 

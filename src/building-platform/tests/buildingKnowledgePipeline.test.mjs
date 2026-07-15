@@ -4,9 +4,9 @@ import {
   buildBuildingKnowledgePlatformFromAdvancedModel,
   buildBuildingKnowledgePlatformFromAssistedAnswers,
   createBuildingDnaFromAssistedAnswers,
-  createP1SeedGeometry,
-  createP1SeedMonthlyProfiles
+  createP1SeedGeometry
 } from "../index.mjs";
+import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
 const EPSILON = 1e-9;
 
@@ -48,6 +48,7 @@ function assistedAnswers(overrides = {}) {
     source: {
       reference: "P2.test.assisted_brick_house_1985_eps_pvc"
     },
+    monthlyProfiles: createP1SeedMonthlyProfiles(),
     ...overrides
   };
 }

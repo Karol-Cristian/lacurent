@@ -23,7 +23,6 @@ export {
   createBuildingDnaFromAssistedAnswers,
   createP1SeedBoundaryContext,
   createP1SeedGeometry,
-  createP1SeedMonthlyProfiles,
   getBuildingDnaDependencyTree
 } from "./buildingDnaResolver.mjs";
 
@@ -47,3 +46,17 @@ export {
   TECHNICAL_WORKSPACE_TABS,
   buildBuildingTechnicalWorkspace
 } from "./buildingTechnicalReport.mjs";
+
+export {
+  CLIMATE_PLATFORM_VERSION,
+  ROMANIAN_CLIMATE_SOURCE_AUDIT,
+  climateProfileToBuildingMonthlyProfiles,
+  createSyntheticSeasonalDemoClimateProfile,
+  createSyntheticSeasonalDemoMonthlyProfiles,
+  findRomanianClimateProfileById,
+  listClimateSourceContracts,
+  listRomanianClimateProfiles,
+  resolveClimateProfileSelection,
+  searchRomanianClimateProfiles,
+  validateClimateProfile
+} from "../climate-platform/index.mjs";

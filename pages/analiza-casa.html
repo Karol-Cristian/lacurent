@@ -101,6 +101,7 @@
 <h2>Incarca rapid un model complet.</h2>
 </div>
 <p>Exemplul demonstrativ precompleteaza geometria, anvelopa si renovarile pentru o casa coerenta. Valorile sunt marcate ca demo, raman editabile si nu devin valori implicite pentru proiecte normale.</p>
+<p>Profil climatic sintetic pentru demonstrație. Rezultatele nu reprezintă un calcul climatic normativ pentru o localitate reală.</p>
 <div class="hero-buttons demo-action-row">
 <button class="primary-btn" id="loadDemoModeBtn" type="button">Încarcă exemplu demonstrativ</button>
 <button class="secondary-btn" id="startBlankProjectBtn" type="button">Începe proiect gol</button>
@@ -139,10 +140,12 @@
 <div class="step active" data-section-id="geometry">
 <h2>Geometrie</h2>
 <p class="section-description">Datele geometrice alimenteaza Building DNA. Nu introduci coeficienti finali precum Htr, U, gamma, tau sau eta.</p>
+<p class="section-description">Profilul climatic trebuie selectat explicit. Catalogul normativ romanesc nu este inca disponibil in repository; profilul demonstrativ este sintetic si este etichetat ca atare.</p>
 <div class="form-grid">
 <div><label>Nume model</label><input name="display_name" placeholder="Ex: Casa zidarie 1985"></div>
 <div><label>Tip cladire</label><select name="building_type"><option value="house">Casa individuala</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
 <div><label>Localitate</label><input name="city" placeholder="Ex: Bucuresti"></div>
+<div><label>Profil climatic</label><select name="climate_profile_id"><option value="">Selecteaza un profil climatic</option></select></div>
 <div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1985"></div>
 <div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"></div>
 <div><label>Numar niveluri incalzite</label><input name="number_of_floors" type="number" step="1" placeholder="Ex: 1"></div>

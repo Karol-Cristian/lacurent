@@ -4,6 +4,7 @@ import {
   buildBuildingKnowledgePlatformFromAssistedAnswers,
   buildBuildingTechnicalWorkspace
 } from "../index.mjs";
+import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
 const EPSILON = 1e-9;
 
@@ -46,7 +47,8 @@ function assistedAnswers() {
     },
     source: {
       reference: "P2B.test.technical_report"
-    }
+    },
+    monthlyProfiles: createP1SeedMonthlyProfiles()
   };
 }
 
