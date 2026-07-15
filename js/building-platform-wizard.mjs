@@ -830,6 +830,11 @@ function analysisIdFromRoot(root, options = {}) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+export function analysisIdFromSearch(search = "") {
+  const parsed = Number(new URLSearchParams(search).get("analysis_id"));
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function renderLoadedReportChapters(report) {
   const chapters = Array.isArray(report?.chapters) ? report.chapters : [];
   if (chapters.length === 0) return "<p>Raportul salvat nu contine capitole structurate.</p>";
@@ -1085,6 +1090,7 @@ export function attachBuildingPlatformWizard(root = document) {
   const saveButton = root.getElementById?.("saveBuildingPlatformAnalysisBtn");
   const recalculateButton = root.getElementById?.("recalculateBuildingPlatformAnalysisBtn");
   const loadButton = root.getElementById?.("loadBuildingPlatformAnalysisBtn");
+  const loadInput = root.getElementById?.("buildingPlatformLoadAnalysisId");
   saveButton?.addEventListener("click", () => {
     saveBuildingPlatformChapter2Analysis(root);
   });
@@ -1094,6 +1100,19 @@ export function attachBuildingPlatformWizard(root = document) {
   loadButton?.addEventListener("click", () => {
     loadBuildingPlatformChapter2Analysis(root);
   });
+  if (typeof window !== "undefined") {
+    const requestedAnalysisId = analysisIdFromSearch(window.location.search);
+    if (requestedAnalysisId !== null && !demoModeFromSearch(window.location.search)) {
+      if (loadInput) loadInput.value = String(requestedAnalysisId);
+      if (globalThis.window?.LaCurentAuth?.token?.()) {
+        queueMicrotask(() => {
+          loadBuildingPlatformChapter2Analysis(root, { analysisId: requestedAnalysisId });
+        });
+      } else {
+        setSaveStatus(root, "Autentifica-te pentru a redeschide analiza salvata din Proiectele mele.", "blocked");
+      }
+    }
+  }
   if (typeof window !== "undefined" && demoModeFromSearch(window.location.search)) {
     demoControls.loadDemo({ updateUrl: false, scrollToReport: false });
   } else {
@@ -1116,6 +1135,7 @@ if (typeof window !== "undefined") {
     demoModeFromSearch,
     generateBuildingPlatformTechnicalReport,
     getAssistedWizardDemoFixture,
+    analysisIdFromSearch,
     buildBuildingPlatformSavePayload,
     mapWizardAnswersToAssistedAnswers,
     renderEngineeringModelReview,
