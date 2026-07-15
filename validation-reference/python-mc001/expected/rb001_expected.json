@@ -1,0 +1,957 @@
+{
+  "annual": {
+    "q_cnd_kwh": 0.0,
+    "q_hnd_kwh": 8604.275060690636
+  },
+  "assemblies": {
+    "attic_roof_insulated": {
+      "air_layers": [],
+      "assembly_id": "attic_roof_insulated",
+      "assembly_type": "roof",
+      "branch": "layered_assembly",
+      "layers": [
+        {
+          "lambda_w_mk": 0.18,
+          "layer_id": "wood_board",
+          "material_id": "wood_board",
+          "resistance_m2k_w": 0.11111111111111112,
+          "thickness_m": 0.02
+        },
+        {
+          "lambda_w_mk": 0.04,
+          "layer_id": "mineral_wool",
+          "material_id": "mineral_wool",
+          "resistance_m2k_w": 6.0,
+          "thickness_m": 0.24
+        }
+      ],
+      "rse_m2k_w": 0.04,
+      "rsi_m2k_w": 0.1,
+      "total_resistance_m2k_w": 6.25111111111111,
+      "u_value_origin": "calculated_from_layers_surfaces_and_air_layers",
+      "u_value_w_m2k": 0.15997156061144688
+    },
+    "ground_floor_insulated": {
+      "air_layers": [],
+      "assembly_id": "ground_floor_insulated",
+      "assembly_type": "floor",
+      "branch": "layered_assembly",
+      "layers": [
+        {
+          "lambda_w_mk": 1.7,
+          "layer_id": "concrete_slab",
+          "material_id": "concrete",
+          "resistance_m2k_w": 0.07058823529411765,
+          "thickness_m": 0.12
+        },
+        {
+          "lambda_w_mk": 0.04,
+          "layer_id": "eps_floor",
+          "material_id": "eps",
+          "resistance_m2k_w": 2.0,
+          "thickness_m": 0.08
+        },
+        {
+          "lambda_w_mk": 1.4,
+          "layer_id": "screed",
+          "material_id": "cement_screed",
+          "resistance_m2k_w": 0.03571428571428572,
+          "thickness_m": 0.05
+        }
+      ],
+      "rse_m2k_w": 0.04,
+      "rsi_m2k_w": 0.17,
+      "total_resistance_m2k_w": 2.3163025210084034,
+      "u_value_origin": "calculated_from_layers_surfaces_and_air_layers",
+      "u_value_w_m2k": 0.4317225366419968
+    },
+    "insulated_door": {
+      "air_layers": [],
+      "assembly_id": "insulated_door",
+      "assembly_type": "door",
+      "branch": "direct_u_override",
+      "layers": [],
+      "rse_m2k_w": null,
+      "rsi_m2k_w": null,
+      "total_resistance_m2k_w": 0.5555555555555556,
+      "u_value_origin": "explicit_direct_u_value",
+      "u_value_w_m2k": 1.8
+    },
+    "wall_masonry_eps": {
+      "air_layers": [],
+      "assembly_id": "wall_masonry_eps",
+      "assembly_type": "wall",
+      "branch": "layered_assembly",
+      "layers": [
+        {
+          "lambda_w_mk": 0.7,
+          "layer_id": "internal_plaster",
+          "material_id": "lime_plaster",
+          "resistance_m2k_w": 0.028571428571428574,
+          "thickness_m": 0.02
+        },
+        {
+          "lambda_w_mk": 0.618,
+          "layer_id": "old_masonry",
+          "material_id": "old_masonry",
+          "resistance_m2k_w": 0.4854368932038835,
+          "thickness_m": 0.3
+        },
+        {
+          "lambda_w_mk": 0.04,
+          "layer_id": "eps_intervention",
+          "material_id": "eps",
+          "resistance_m2k_w": 2.5,
+          "thickness_m": 0.1
+        }
+      ],
+      "rse_m2k_w": 0.04,
+      "rsi_m2k_w": 0.13,
+      "total_resistance_m2k_w": 3.184008321775312,
+      "u_value_origin": "calculated_from_layers_surfaces_and_air_layers",
+      "u_value_w_m2k": 0.314069530899476
+    },
+    "window_double_low_e": {
+      "air_layers": [],
+      "assembly_id": "window_double_low_e",
+      "assembly_type": "window",
+      "branch": "direct_u_override",
+      "layers": [],
+      "rse_m2k_w": null,
+      "rsi_m2k_w": null,
+      "total_resistance_m2k_w": 0.7142857142857143,
+      "u_value_origin": "explicit_direct_u_value",
+      "u_value_w_m2k": 1.4
+    }
+  },
+  "diagnostics": {
+    "hidden_input_findings": [],
+    "input_findings": [],
+    "status": "PASS"
+  },
+  "engine": "fixed_expected",
+  "envelope": {
+    "branch": "explicit_elements_boundaries_and_bridges",
+    "components": {
+      "Ha": {
+        "bridge_w_k": 0.0,
+        "element_w_k": 0.0,
+        "total_w_k": 0.0
+      },
+      "Hd": {
+        "bridge_w_k": 2.8,
+        "element_w_k": 77.02903901693188,
+        "total_w_k": 79.82903901693187
+      },
+      "Hg": {
+        "bridge_w_k": 1.26,
+        "element_w_k": 22.557502539544334,
+        "total_w_k": 23.817502539544336
+      },
+      "Hu": {
+        "bridge_w_k": 0.0,
+        "element_w_k": 7.19872022751511,
+        "total_w_k": 7.19872022751511
+      }
+    },
+    "elements": [
+      {
+        "area_m2": 130.0,
+        "assembly_id": "wall_masonry_eps",
+        "boundary_correction_factor": 1.0,
+        "boundary_correction_origin": "direct_exterior_boundary_factor_one",
+        "boundary_type": "outside_air",
+        "component": "Hd",
+        "contribution_w_k": 40.82903901693188,
+        "element_id": "exterior_walls",
+        "element_type": "wall",
+        "u_value_origin": "calculated_from_layers_surfaces_and_air_layers",
+        "u_value_w_m2k": 0.314069530899476
+      },
+      {
+        "area_m2": 100.0,
+        "assembly_id": "attic_roof_insulated",
+        "boundary_correction_factor": 0.45,
+        "boundary_correction_origin": "explicit_boundary_correction_factor",
+        "boundary_type": "unheated_attic",
+        "component": "Hu",
+        "contribution_w_k": 7.19872022751511,
+        "element_id": "attic_roof",
+        "element_type": "roof",
+        "u_value_origin": "calculated_from_layers_surfaces_and_air_layers",
+        "u_value_w_m2k": 0.15997156061144688
+      },
+      {
+        "area_m2": 95.0,
+        "assembly_id": "ground_floor_insulated",
+        "boundary_correction_factor": 0.55,
+        "boundary_correction_origin": "explicit_boundary_correction_factor",
+        "boundary_type": "ground",
+        "component": "Hg",
+        "contribution_w_k": 22.557502539544334,
+        "element_id": "ground_floor",
+        "element_type": "floor",
+        "u_value_origin": "calculated_from_layers_surfaces_and_air_layers",
+        "u_value_w_m2k": 0.4317225366419968
+      },
+      {
+        "area_m2": 22.0,
+        "assembly_id": "window_double_low_e",
+        "boundary_correction_factor": 1.0,
+        "boundary_correction_origin": "direct_exterior_boundary_factor_one",
+        "boundary_type": "outside_air",
+        "component": "Hd",
+        "contribution_w_k": 30.799999999999997,
+        "element_id": "windows",
+        "element_type": "window",
+        "u_value_origin": "explicit_direct_u_value",
+        "u_value_w_m2k": 1.4
+      },
+      {
+        "area_m2": 3.0,
+        "assembly_id": "insulated_door",
+        "boundary_correction_factor": 1.0,
+        "boundary_correction_origin": "direct_exterior_boundary_factor_one",
+        "boundary_type": "outside_air",
+        "component": "Hd",
+        "contribution_w_k": 5.4,
+        "element_id": "entry_door",
+        "element_type": "door",
+        "u_value_origin": "explicit_direct_u_value",
+        "u_value_w_m2k": 1.8
+      }
+    ],
+    "htr_w_k": 110.84526178399132,
+    "thermal_bridges": [
+      {
+        "bridge_id": "external_corners",
+        "bridge_type": "linear",
+        "component": "Hd",
+        "contribution_w_k": 2.4,
+        "length_m": 60.0,
+        "psi_w_mk": 0.04,
+        "source_reference": "RB-001.bridge.external_corners"
+      },
+      {
+        "bridge_id": "plinth_ground",
+        "bridge_type": "linear",
+        "component": "Hg",
+        "contribution_w_k": 1.26,
+        "length_m": 42.0,
+        "psi_w_mk": 0.03,
+        "source_reference": "RB-001.bridge.plinth_ground"
+      },
+      {
+        "bridge_id": "canopy_anchor",
+        "bridge_type": "point",
+        "chi_w_k": 0.4,
+        "component": "Hd",
+        "contribution_w_k": 0.4,
+        "source_reference": "RB-001.bridge.canopy_anchor"
+      }
+    ]
+  },
+  "fixture": {
+    "description": "Insulated masonry detached house with corrected old masonry lambda, EPS intervention, unheated attic gains, ground boundary, windows, and explicit seasonal monthly profile.",
+    "fixture_id": "RB-001",
+    "fixture_status": "full_reference_building",
+    "profile_provenance": {
+      "notes": "Synthetic physically plausible seasonal profile for automated validation only; not Romanian official climate data.",
+      "reference": "P3V.synthetic.profile.rb001.v1",
+      "represented_as_official_climate_data": false,
+      "source_type": "synthetic_validation_profile"
+    }
+  },
+  "formulas": {
+    "a_c": {
+      "formula": "aC = aC0 + tauC / tauC0",
+      "source": "MC001-2022 relation (2.56)",
+      "unit": "-"
+    },
+    "a_h": {
+      "formula": "aH = aH0 + tauH / tauH0",
+      "source": "MC001-2022 relation (2.55)",
+      "unit": "-"
+    },
+    "annual_sums": {
+      "formula": "annual demand = sum of 12 monthly demands",
+      "source": "MC001-2022 2.10, relations (2.84), (2.85)",
+      "unit": "kWh/year"
+    },
+    "assembly_resistance": {
+      "formula": "R = Rsi + sum(Rj) + sum(Ra) + Rse",
+      "source": "MC001-2022 2.4.1, relation (2.6)",
+      "unit": "m2*K/W"
+    },
+    "design_lambda": {
+      "formula": "lambda = a * lambda_normat",
+      "source": "MC001-2022 2.1.4, relation (2.3)",
+      "unit": "W/(m*K)"
+    },
+    "direct_transmission": {
+      "formula": "Hd = sum(Uj * Aj) + sum(psi_k * l_k) + sum(chi_j)",
+      "source": "MC001-2022 2.4.1, relation (2.11)",
+      "unit": "W/K"
+    },
+    "eta_cht": {
+      "formula": "etaCht = (1 - gammaC^(-aC)) / (1 - gammaC^(-(aC + 1))); gammaC=1 branch aC/(aC+1)",
+      "source": "MC001-2022 Figure 2.15",
+      "unit": "-"
+    },
+    "eta_hgn": {
+      "formula": "etaHgn = (1 - gammaH^aH) / (1 - gammaH^(aH + 1)); gammaH=1 branch aH/(aH+1)",
+      "source": "MC001-2022 Figure 2.14",
+      "unit": "-"
+    },
+    "htr": {
+      "formula": "Htr = Hd + Hg + Hu + Ha",
+      "source": "MC001-2022 2.4.1, relation (2.15)",
+      "unit": "W/K"
+    },
+    "hve": {
+      "formula": "Hve = ca_air_volume * sum(qv * bve * fve_dyn)",
+      "source": "MC001-2022 2.7.1.2, relation (2.30)",
+      "unit": "W/K"
+    },
+    "layer_resistance": {
+      "formula": "Rj = dj / lambda_j",
+      "source": "MC001-2022 2.4.1 thermal resistance method",
+      "unit": "m2*K/W"
+    },
+    "monthly_gains": {
+      "formula": "Qgn = Qint + Qsol, with explicit adjacent unconditioned-zone gain terms when supplied",
+      "source": "MC001-2022 2.7.2 Figure 2.13; 2.7.2/2.7.3 relations (2.34), (2.37)",
+      "unit": "kWh"
+    },
+    "monthly_transmission": {
+      "formula": "Qtr = Htr * (theta_i - theta_e) * hours / 1000",
+      "source": "MC001-2022 2.4.1 relation (2.14), time integrated for current explicit runtime path",
+      "unit": "kWh"
+    },
+    "monthly_ventilation": {
+      "formula": "Qve = Hve * (theta_i - theta_e) * hours / 1000",
+      "source": "MC001-2022 2.7.1.2, relation (2.29)",
+      "unit": "kWh"
+    },
+    "qcnd": {
+      "formula": "QCnd = 0 for 1/gammaC > 2; otherwise aCred * (QCgn - etaCht * QCht)",
+      "source": "MC001-2022 2.8.1 Figure 2.19",
+      "unit": "kWh"
+    },
+    "qhnd": {
+      "formula": "QHnd = 0 for gammaH <= 0 with gains or gammaH > 2; otherwise QHht - etaHgn * QHgn",
+      "source": "MC001-2022 2.8.1 Figure 2.18",
+      "unit": "kWh"
+    },
+    "tau_c": {
+      "formula": "tauC = (Cm_eff / 3600) / (Htr + Hve)",
+      "source": "MC001-2022 relation (2.58)",
+      "unit": "h"
+    },
+    "tau_h": {
+      "formula": "tauH = (Cm_eff / 3600) / (Htr + Hve)",
+      "source": "MC001-2022 relation (2.57)",
+      "unit": "h"
+    },
+    "u_value": {
+      "formula": "U = 1 / R",
+      "source": "MC001-2022 2.4.1, relation (2.7)",
+      "unit": "W/(m2*K)"
+    }
+  },
+  "latent": {
+    "annual_dehumidification_kwh": 0.0,
+    "annual_humidification_kwh": 0.0,
+    "branch": "latent_not_in_selected_reference_fixtures",
+    "included": false
+  },
+  "materials": {
+    "cement_screed": {
+      "lambda_design_w_mk": 1.4,
+      "lambda_origin": "explicit_lambda",
+      "material_id": "cement_screed",
+      "source_reference": "RB-001.material.cement_screed"
+    },
+    "concrete": {
+      "lambda_design_w_mk": 1.7,
+      "lambda_origin": "explicit_lambda",
+      "material_id": "concrete",
+      "source_reference": "RB-001.material.concrete"
+    },
+    "eps": {
+      "lambda_design_w_mk": 0.04,
+      "lambda_origin": "explicit_lambda",
+      "material_id": "eps",
+      "source_reference": "RB-001.material.eps"
+    },
+    "lime_plaster": {
+      "lambda_design_w_mk": 0.7,
+      "lambda_origin": "explicit_lambda",
+      "material_id": "lime_plaster",
+      "source_reference": "RB-001.material.lime_plaster"
+    },
+    "mineral_wool": {
+      "lambda_design_w_mk": 0.04,
+      "lambda_origin": "explicit_lambda",
+      "material_id": "mineral_wool",
+      "source_reference": "RB-001.material.mineral_wool"
+    },
+    "old_masonry": {
+      "correction_coefficient": 1.03,
+      "correction_source": "MC001-2022 Tabel 2.2, dry brick masonry age >= 30 years",
+      "lambda_design_w_mk": 0.618,
+      "lambda_normat_w_mk": 0.6,
+      "lambda_origin": "MC001_2_3_relation",
+      "material_id": "old_masonry",
+      "source_reference": "RB-001.material.old_masonry"
+    },
+    "wood_board": {
+      "lambda_design_w_mk": 0.18,
+      "lambda_origin": "explicit_lambda",
+      "material_id": "wood_board",
+      "source_reference": "RB-001.material.wood_board"
+    }
+  },
+  "monthly": [
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": 4.777260922116275,
+      "adjacent_internal_gains_kwh": 5.6,
+      "adjacent_solar_gains_kwh": 9.799999999999999,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 5.6,
+          "solar_gain_contribution_kwh": 9.799999999999999,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 280.0,
+      "direct_solar_gains_kwh": 220.0,
+      "duration_hours": 744.0,
+      "eta_cht": null,
+      "eta_hgn": 0.9996480299725389,
+      "eta_hgn_branch": "gammaH_not_equal_one",
+      "gamma_c": null,
+      "gamma_h": 0.19823235166775904,
+      "heating_applicable": true,
+      "heating_branch": "figure_2_18_standard_balance",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 285.6,
+      "month": "january",
+      "outdoor_temperature_c": -2.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 2084.7606502325234,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 515.4000000000001,
+      "qht_heating_kwh": 2599.97924488037,
+      "qtr_cooling_signed_kwh": 2309.1284934841074,
+      "qtr_heating_kwh": 1814.3152448803698,
+      "qve_cooling_signed_kwh": 999.936,
+      "qve_heating_kwh": 785.664,
+      "solar_gains_kwh": 229.8,
+      "tau_c": null,
+      "tau_h": 56.658913831744115
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": 4.777260922116275,
+      "adjacent_internal_gains_kwh": 5.6,
+      "adjacent_solar_gains_kwh": 12.599999999999998,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 5.6,
+          "solar_gain_contribution_kwh": 12.599999999999998,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 260.0,
+      "direct_solar_gains_kwh": 260.0,
+      "duration_hours": 672.0,
+      "eta_cht": null,
+      "eta_hgn": 0.9989645228833506,
+      "eta_hgn_branch": "gammaH_not_equal_one",
+      "gamma_c": null,
+      "gamma_h": 0.2520984410073139,
+      "heating_applicable": true,
+      "heating_branch": "figure_2_18_standard_balance",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 265.6,
+      "month": "february",
+      "outdoor_temperature_c": 0.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 1597.237612161024,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 538.2,
+      "qht_heating_kwh": 2134.880318376843,
+      "qtr_cooling_signed_kwh": 1936.688413889896,
+      "qtr_heating_kwh": 1489.7603183768433,
+      "qve_cooling_signed_kwh": 838.656,
+      "qve_heating_kwh": 645.12,
+      "solar_gains_kwh": 272.6,
+      "tau_c": null,
+      "tau_h": 56.658913831744115
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": 4.777260922116275,
+      "adjacent_internal_gains_kwh": 5.6,
+      "adjacent_solar_gains_kwh": 15.399999999999999,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 5.6,
+          "solar_gain_contribution_kwh": 15.399999999999999,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 275.0,
+      "direct_solar_gains_kwh": 390.0,
+      "duration_hours": 744.0,
+      "eta_cht": null,
+      "eta_hgn": 0.9933999241897327,
+      "eta_hgn_branch": "gammaH_not_equal_one",
+      "gamma_c": null,
+      "gamma_h": 0.3869774481140627,
+      "heating_applicable": true,
+      "heating_branch": "figure_2_18_standard_balance",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 280.6,
+      "month": "march",
+      "outdoor_temperature_c": 5.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 1091.2407735151864,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 686.0,
+      "qht_heating_kwh": 1772.7131215093432,
+      "qtr_cooling_signed_kwh": 1731.8463701130804,
+      "qtr_heating_kwh": 1237.0331215093431,
+      "qve_cooling_signed_kwh": 749.952,
+      "qve_heating_kwh": 535.68,
+      "solar_gains_kwh": 405.4,
+      "tau_c": null,
+      "tau_h": 56.658913831744115
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": 4.777260922116275,
+      "adjacent_internal_gains_kwh": 4.199999999999999,
+      "adjacent_solar_gains_kwh": 18.2,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 4.199999999999999,
+          "solar_gain_contribution_kwh": 18.2,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 265.0,
+      "direct_solar_gains_kwh": 510.0,
+      "duration_hours": 720.0,
+      "eta_cht": null,
+      "eta_hgn": 0.9382555742744414,
+      "eta_hgn_branch": "gammaH_not_equal_one",
+      "gamma_c": null,
+      "gamma_h": 0.6972194118739622,
+      "heating_applicable": true,
+      "heating_branch": "figure_2_18_standard_balance",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 269.2,
+      "month": "april",
+      "outdoor_temperature_c": 10.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 395.52088991829805,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 797.4000000000001,
+      "qht_heating_kwh": 1143.6858848447378,
+      "qtr_cooling_signed_kwh": 1276.93741575158,
+      "qtr_heating_kwh": 798.0858848447376,
+      "qve_cooling_signed_kwh": 552.96,
+      "qve_heating_kwh": 345.6,
+      "solar_gains_kwh": 528.2,
+      "tau_c": null,
+      "tau_h": 56.658913831744115
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": null,
+      "adjacent_internal_gains_kwh": 4.199999999999999,
+      "adjacent_solar_gains_kwh": 19.599999999999998,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 4.199999999999999,
+          "solar_gain_contribution_kwh": 19.599999999999998,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 250.0,
+      "direct_solar_gains_kwh": 620.0,
+      "duration_hours": 744.0,
+      "eta_cht": null,
+      "eta_hgn": null,
+      "gamma_c": null,
+      "gamma_h": null,
+      "heating_applicable": false,
+      "heating_branch": "heating_not_applicable_or_no_positive_transfer",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 254.2,
+      "month": "may",
+      "outdoor_temperature_c": 16.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 0.0,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 893.8,
+      "qht_heating_kwh": 0.0,
+      "qtr_cooling_signed_kwh": 824.6887476728955,
+      "qtr_heating_kwh": 329.87549906915814,
+      "qve_cooling_signed_kwh": 357.12,
+      "qve_heating_kwh": 142.848,
+      "solar_gains_kwh": 639.6,
+      "tau_c": null,
+      "tau_h": null
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": null,
+      "adjacent_internal_gains_kwh": 0,
+      "adjacent_solar_gains_kwh": 0,
+      "adjacent_zones": [],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 240.0,
+      "direct_solar_gains_kwh": 700.0,
+      "duration_hours": 720.0,
+      "eta_cht": null,
+      "eta_hgn": null,
+      "gamma_c": null,
+      "gamma_h": null,
+      "heating_applicable": false,
+      "heating_branch": "heating_not_applicable_or_no_positive_transfer",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 240.0,
+      "month": "june",
+      "outdoor_temperature_c": 20.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 0.0,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 940.0,
+      "qht_heating_kwh": 0.0,
+      "qtr_cooling_signed_kwh": 478.85153090684247,
+      "qtr_heating_kwh": 0.0,
+      "qve_cooling_signed_kwh": 207.36,
+      "qve_heating_kwh": 0.0,
+      "solar_gains_kwh": 700.0,
+      "tau_c": null,
+      "tau_h": null
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": null,
+      "adjacent_internal_gains_kwh": 0,
+      "adjacent_solar_gains_kwh": 0,
+      "adjacent_zones": [],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 245.0,
+      "direct_solar_gains_kwh": 760.0,
+      "duration_hours": 744.0,
+      "eta_cht": null,
+      "eta_hgn": null,
+      "gamma_c": null,
+      "gamma_h": null,
+      "heating_applicable": false,
+      "heating_branch": "heating_not_applicable_or_no_positive_transfer",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 245.0,
+      "month": "july",
+      "outdoor_temperature_c": 23.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 0.0,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 1005.0,
+      "qht_heating_kwh": 0.0,
+      "qtr_cooling_signed_kwh": 247.40662430186865,
+      "qtr_heating_kwh": -247.40662430186865,
+      "qve_cooling_signed_kwh": 107.136,
+      "qve_heating_kwh": -107.136,
+      "solar_gains_kwh": 760.0,
+      "tau_c": null,
+      "tau_h": null
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": null,
+      "adjacent_internal_gains_kwh": 0,
+      "adjacent_solar_gains_kwh": 0,
+      "adjacent_zones": [],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 245.0,
+      "direct_solar_gains_kwh": 710.0,
+      "duration_hours": 744.0,
+      "eta_cht": null,
+      "eta_hgn": null,
+      "gamma_c": null,
+      "gamma_h": null,
+      "heating_applicable": false,
+      "heating_branch": "heating_not_applicable_or_no_positive_transfer",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 245.0,
+      "month": "august",
+      "outdoor_temperature_c": 22.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 0.0,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 955.0,
+      "qht_heating_kwh": 0.0,
+      "qtr_cooling_signed_kwh": 329.87549906915814,
+      "qtr_heating_kwh": -164.93774953457907,
+      "qve_cooling_signed_kwh": 142.848,
+      "qve_heating_kwh": -71.424,
+      "solar_gains_kwh": 710.0,
+      "tau_c": null,
+      "tau_h": null
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": null,
+      "adjacent_internal_gains_kwh": 0,
+      "adjacent_solar_gains_kwh": 0,
+      "adjacent_zones": [],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 255.0,
+      "direct_solar_gains_kwh": 540.0,
+      "duration_hours": 720.0,
+      "eta_cht": null,
+      "eta_hgn": null,
+      "gamma_c": null,
+      "gamma_h": null,
+      "heating_applicable": false,
+      "heating_branch": "heating_not_applicable_or_no_positive_transfer",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 255.0,
+      "month": "september",
+      "outdoor_temperature_c": 17.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 0.0,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 795.0,
+      "qht_heating_kwh": 0.0,
+      "qtr_cooling_signed_kwh": 718.2772963602637,
+      "qtr_heating_kwh": 239.42576545342123,
+      "qve_cooling_signed_kwh": 311.04,
+      "qve_heating_kwh": 103.68,
+      "solar_gains_kwh": 540.0,
+      "tau_c": null,
+      "tau_h": null
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": 4.777260922116275,
+      "adjacent_internal_gains_kwh": 4.199999999999999,
+      "adjacent_solar_gains_kwh": 15.399999999999999,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 4.199999999999999,
+          "solar_gain_contribution_kwh": 15.399999999999999,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 270.0,
+      "direct_solar_gains_kwh": 390.0,
+      "duration_hours": 744.0,
+      "eta_cht": null,
+      "eta_hgn": 0.9540626621269293,
+      "eta_hgn_branch": "gammaH_not_equal_one",
+      "gamma_c": null,
+      "gamma_h": 0.6389452714730735,
+      "heating_applicable": true,
+      "heating_branch": "figure_2_18_standard_balance",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 274.2,
+      "month": "october",
+      "outdoor_temperature_c": 11.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 415.2468877241447,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 679.5999999999999,
+      "qht_heating_kwh": 1063.6278729056057,
+      "qtr_cooling_signed_kwh": 1237.0331215093431,
+      "qtr_heating_kwh": 742.2198729056058,
+      "qve_cooling_signed_kwh": 535.68,
+      "qve_heating_kwh": 321.408,
+      "solar_gains_kwh": 405.4,
+      "tau_c": null,
+      "tau_h": 56.658913831744115
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": 4.777260922116275,
+      "adjacent_internal_gains_kwh": 5.6,
+      "adjacent_solar_gains_kwh": 11.2,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 5.6,
+          "solar_gain_contribution_kwh": 11.2,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 275.0,
+      "direct_solar_gains_kwh": 260.0,
+      "duration_hours": 720.0,
+      "eta_cht": null,
+      "eta_hgn": 0.9969889589836997,
+      "eta_hgn_branch": "gammaH_not_equal_one",
+      "gamma_c": null,
+      "gamma_h": 0.3216500890160124,
+      "heating_applicable": true,
+      "heating_branch": "figure_2_18_standard_balance",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 280.6,
+      "month": "november",
+      "outdoor_temperature_c": 5.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 1165.3903196999004,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 551.8,
+      "qht_heating_kwh": 1715.528827267106,
+      "qtr_cooling_signed_kwh": 1675.9803581739486,
+      "qtr_heating_kwh": 1197.128827267106,
+      "qve_cooling_signed_kwh": 725.76,
+      "qve_heating_kwh": 518.4,
+      "solar_gains_kwh": 271.2,
+      "tau_c": null,
+      "tau_h": 56.658913831744115
+    },
+    {
+      "a_c": null,
+      "a_cred": 1.0,
+      "a_h": 4.777260922116275,
+      "adjacent_internal_gains_kwh": 5.6,
+      "adjacent_solar_gains_kwh": 8.399999999999999,
+      "adjacent_zones": [
+        {
+          "branch": "explicit_adjacent_unconditioned_zone",
+          "bztu": 0.5,
+          "distribution_factor": 0.7,
+          "gain_reduction_factor": 0.8,
+          "internal_gain_contribution_kwh": 5.6,
+          "solar_gain_contribution_kwh": 8.399999999999999,
+          "zone_id": "attic_buffer"
+        }
+      ],
+      "cooling_applicable": false,
+      "cooling_branch": "cooling_not_applicable_or_no_positive_cooling_transfer",
+      "cooling_indoor_temperature_c": 26.0,
+      "direct_internal_gains_kwh": 285.0,
+      "direct_solar_gains_kwh": 210.0,
+      "duration_hours": 744.0,
+      "eta_cht": null,
+      "eta_hgn": 0.9994883455918108,
+      "eta_hgn_branch": "gammaH_not_equal_one",
+      "gamma_c": null,
+      "gamma_h": 0.21534787291187088,
+      "heating_applicable": true,
+      "heating_branch": "figure_2_18_standard_balance",
+      "heating_indoor_temperature_c": 20.0,
+      "hve_w_k": 48.0,
+      "internal_gains_kwh": 290.6,
+      "month": "december",
+      "outdoor_temperature_c": 0.0,
+      "q_cnd_kwh": 0.0,
+      "q_hnd_kwh": 1854.8779274395595,
+      "qct_transfer_kwh": 0.0,
+      "qgn_kwh": 509.0,
+      "qht_heating_kwh": 2363.617495345791,
+      "qtr_cooling_signed_kwh": 2144.190743949528,
+      "qtr_heating_kwh": 1649.377495345791,
+      "qve_cooling_signed_kwh": 928.512,
+      "qve_heating_kwh": 714.24,
+      "solar_gains_kwh": 218.4,
+      "tau_c": null,
+      "tau_h": 56.658913831744115
+    }
+  ],
+  "schema": "p3v.normalized.v1",
+  "units": {
+    "annual_energy": "kWh/year",
+    "heat_transfer_coefficient": "W/K",
+    "lambda": "W/(m*K)",
+    "monthly_energy": "kWh",
+    "resistance": "m2*K/W",
+    "u_value": "W/(m2*K)"
+  }
+}

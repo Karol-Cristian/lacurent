@@ -1,0 +1,96 @@
+{
+  "fixture_id": "RB-003",
+  "description": "Cooling-dominant high-glazing case with improved envelope, large transparent area, strong but smooth summer solar gains, explicit ventilation, and no isolated September spike.",
+  "fixture_status": "full_reference_building",
+  "profile_provenance": {
+    "source_type": "synthetic_validation_profile",
+    "reference": "P3V.synthetic.profile.rb003.v1",
+    "represented_as_official_climate_data": false,
+    "notes": "Synthetic physically plausible seasonal profile for automated validation only; not Romanian official climate data."
+  },
+  "materials": {
+    "aerated_block": { "lambda_w_mk": 0.18, "source_reference": "RB-003.material.aerated_block" },
+    "eps": { "lambda_w_mk": 0.04, "source_reference": "RB-003.material.eps" },
+    "gypsum": { "lambda_w_mk": 0.35, "source_reference": "RB-003.material.gypsum" },
+    "mineral_wool": { "lambda_w_mk": 0.04, "source_reference": "RB-003.material.mineral_wool" },
+    "concrete": { "lambda_w_mk": 1.7, "source_reference": "RB-003.material.concrete" },
+    "xps": {
+      "lambda_normat_w_mk": 0.034,
+      "correction_coefficient": 1.02,
+      "correction_source": "MC001-2022 Tabel 2.2, extruded polystyrene dry age >= 10 years",
+      "source_reference": "RB-003.material.xps"
+    }
+  },
+  "assemblies": [
+    {
+      "assembly_id": "wall_light_insulated",
+      "assembly_type": "wall",
+      "rsi_m2k_w": 0.13,
+      "rse_m2k_w": 0.04,
+      "layers": [
+        { "layer_id": "gypsum", "material_id": "gypsum", "thickness_m": 0.015 },
+        { "layer_id": "aerated_block", "material_id": "aerated_block", "thickness_m": 0.25 },
+        { "layer_id": "eps", "material_id": "eps", "thickness_m": 0.14 }
+      ]
+    },
+    {
+      "assembly_id": "roof_high_insulation",
+      "assembly_type": "roof",
+      "rsi_m2k_w": 0.1,
+      "rse_m2k_w": 0.04,
+      "layers": [
+        { "layer_id": "gypsum", "material_id": "gypsum", "thickness_m": 0.015 },
+        { "layer_id": "mineral_wool", "material_id": "mineral_wool", "thickness_m": 0.28 }
+      ]
+    },
+    {
+      "assembly_id": "slab_xps",
+      "assembly_type": "floor",
+      "rsi_m2k_w": 0.17,
+      "rse_m2k_w": 0.04,
+      "layers": [
+        { "layer_id": "concrete", "material_id": "concrete", "thickness_m": 0.14 },
+        { "layer_id": "xps", "material_id": "xps", "thickness_m": 0.12 }
+      ]
+    },
+    { "assembly_id": "large_low_e_glazing", "assembly_type": "window", "direct_u_w_m2k": 1.2 },
+    { "assembly_id": "insulated_door", "assembly_type": "door", "direct_u_w_m2k": 1.6 }
+  ],
+  "envelope": {
+    "elements": [
+      { "element_id": "opaque_walls", "element_type": "wall", "boundary_type": "outside_air", "assembly_id": "wall_light_insulated", "area_m2": 95 },
+      { "element_id": "high_glazing", "element_type": "window", "boundary_type": "outside_air", "assembly_id": "large_low_e_glazing", "area_m2": 68 },
+      { "element_id": "roof", "element_type": "roof", "boundary_type": "outside_air", "assembly_id": "roof_high_insulation", "area_m2": 115 },
+      { "element_id": "ground_slab", "element_type": "floor", "boundary_type": "ground", "assembly_id": "slab_xps", "area_m2": 110, "boundary_correction_factor": 0.5 },
+      { "element_id": "door", "element_type": "door", "boundary_type": "outside_air", "assembly_id": "insulated_door", "area_m2": 3 }
+    ],
+    "linear_bridges": [
+      { "bridge_id": "glazing_perimeters", "component": "Hd", "length_m": 98, "psi_w_mk": 0.035, "source_reference": "RB-003.bridge.glazing_perimeters" },
+      { "bridge_id": "slab_edge", "component": "Hg", "length_m": 44, "psi_w_mk": 0.025, "source_reference": "RB-003.bridge.slab_edge" }
+    ],
+    "point_bridges": []
+  },
+  "utilization": {
+    "effective_internal_heat_capacity_j_k": 28800000,
+    "a_h0": 1,
+    "tau_h0": 15,
+    "a_c0": 1,
+    "tau_c0": 15,
+    "a_cred": 1
+  },
+  "monthly": [
+    { "month": "january", "duration_hours": 744, "outdoor_temperature_c": 1, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.05, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 360, "solar_gains_kwh": 420, "heating": { "applicable": true }, "cooling": { "applicable": false } },
+    { "month": "february", "duration_hours": 672, "outdoor_temperature_c": 3, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.05, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 340, "solar_gains_kwh": 540, "heating": { "applicable": true }, "cooling": { "applicable": false } },
+    { "month": "march", "duration_hours": 744, "outdoor_temperature_c": 8, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.05, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 355, "solar_gains_kwh": 820, "heating": { "applicable": true }, "cooling": { "applicable": false } },
+    { "month": "april", "duration_hours": 720, "outdoor_temperature_c": 13, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.052, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 350, "solar_gains_kwh": 1180, "heating": { "applicable": true }, "cooling": { "applicable": false } },
+    { "month": "may", "duration_hours": 744, "outdoor_temperature_c": 19, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.058, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 360, "solar_gains_kwh": 1600, "heating": { "applicable": false }, "cooling": { "applicable": false } },
+    { "month": "june", "duration_hours": 720, "outdoor_temperature_c": 27.5, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.06, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 380, "solar_gains_kwh": 2100, "heating": { "applicable": false }, "cooling": { "applicable": true, "a_cred": 1 } },
+    { "month": "july", "duration_hours": 744, "outdoor_temperature_c": 31, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.06, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 390, "solar_gains_kwh": 2300, "heating": { "applicable": false }, "cooling": { "applicable": true, "a_cred": 1 } },
+    { "month": "august", "duration_hours": 744, "outdoor_temperature_c": 30, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.06, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 390, "solar_gains_kwh": 2150, "heating": { "applicable": false }, "cooling": { "applicable": true, "a_cred": 1 } },
+    { "month": "september", "duration_hours": 720, "outdoor_temperature_c": 22, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.058, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 370, "solar_gains_kwh": 1600, "heating": { "applicable": false }, "cooling": { "applicable": false } },
+    { "month": "october", "duration_hours": 744, "outdoor_temperature_c": 14, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.054, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 360, "solar_gains_kwh": 1050, "heating": { "applicable": true }, "cooling": { "applicable": false } },
+    { "month": "november", "duration_hours": 720, "outdoor_temperature_c": 8, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.052, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 355, "solar_gains_kwh": 650, "heating": { "applicable": true }, "cooling": { "applicable": false } },
+    { "month": "december", "duration_hours": 744, "outdoor_temperature_c": 3, "heating_indoor_temperature_c": 20, "cooling_indoor_temperature_c": 26, "ventilation": { "air_heat_capacity_j_m3k": 1200, "airflow_m3s": 0.05, "bve": 1, "fve_dyn": 1 }, "internal_gains_kwh": 365, "solar_gains_kwh": 450, "heating": { "applicable": true }, "cooling": { "applicable": false } }
+  ]
+}
+

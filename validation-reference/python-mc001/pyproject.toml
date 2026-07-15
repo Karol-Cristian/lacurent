@@ -1,0 +1,7 @@
+[project]
+name = "lacurent-p3v-mc001-reference"
+version = "0.1.0"
+description = "Independent Python MC001 Chapter 2 reference calculator for P3V differential validation"
+requires-python = ">=3.11"
+dependencies = []
+
