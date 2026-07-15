@@ -387,6 +387,11 @@ function renderAnnualSummary(workspace) {
         <strong>${formatNumber(workspace.resultSummary.monthCount, 0)}</strong>
         <small>explicit monthly result set</small>
       </article>
+      <article>
+        <span>Fingerprint</span>
+        <strong>${safeText(workspace.calculationFingerprint?.fingerprintId ?? "--")}</strong>
+        <small>Building DNA + Chapter 2 output</small>
+      </article>
     </div>
   `;
 }
@@ -451,10 +456,16 @@ function renderHtrBreakdown(workspace) {
 function renderMonthlyResults(workspace) {
   return renderTable([
     { label: "Month", value: row => row.month },
+    { label: "Hours", value: row => formatNumber(row.durationHours, 0) },
+    { label: "T ext H", value: row => `${formatNumber(row.heatingOutdoorTemperatureC, 1)} C` },
+    { label: "dT H", value: row => `${formatNumber(row.heatingTemperatureDifferenceK, 1)} K` },
+    { label: "T ext C", value: row => `${formatNumber(row.coolingOutdoorTemperatureC, 1)} C` },
+    { label: "dT C", value: row => `${formatNumber(row.coolingTemperatureDifferenceK, 1)} K` },
     { label: "Qtr H", value: row => `${formatNumber(row.heatingTransmissionKwh)} kWh` },
     { label: "Qve H", value: row => `${formatNumber(row.heatingVentilationKwh)} kWh` },
     { label: "Internal", value: row => `${formatNumber(row.internalGainsKwh)} kWh` },
     { label: "Solar", value: row => `${formatNumber(row.solarGainsKwh)} kWh` },
+    { label: "Solar source", value: row => row.solarOrientation ?? row.solarGainsSource ?? "--" },
     { label: "QHnd", value: row => `${formatNumber(row.qHndKwh)} kWh` },
     { label: "QCnd", value: row => `${formatNumber(row.qCndKwh)} kWh` }
   ], workspace.monthly);

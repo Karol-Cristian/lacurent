@@ -63,6 +63,9 @@ await test("technical report is generated from Building DNA and Chapter 2 output
     ["building", "assemblies", "materials", "building_dna", "chapter_2", "results", "report", "traceability"]
   );
   assert.equal(workspace.report.title, "Chapter 2 Technical Engineering Report");
+  assert.equal(workspace.calculationFingerprint.fingerprintId, "39cfaa3e");
+  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "39cfaa3e");
+  assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
   assert.equal(
     workspace.diagnostics.methodologyLimits.includes("no_duplicate_calculations"),
     true
@@ -89,6 +92,18 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   assert.equal(brick.correctionCoefficientCode, "zidarie_caramida_uscata_vechime_ge_30_ani");
 
   const january = workspace.monthly.find(item => item.month === "january");
+  assert.equal(january.durationHours, 720);
+  assert.equal(january.heatingIndoorTemperatureC, 20);
+  assert.equal(january.heatingOutdoorTemperatureC, 0);
+  assert.equal(january.heatingTemperatureDifferenceK, 20);
+  assert.equal(january.coolingIndoorTemperatureC, 24);
+  assert.equal(january.coolingOutdoorTemperatureC, 30);
+  assert.equal(january.coolingTemperatureDifferenceK, 6);
+  close(january.ventilationAirFlowRateM3PerS, 0.016666666666666666);
+  assert.equal(january.ventilationAirHeatCapacityJPerM3K, 1200);
+  assert.equal(january.solarOrientation, null);
+  assert.equal(january.solarGainsSource, "monthly_profile_solar_gains");
+  assert.equal(january.monthlyProfileOrigin, "proposed_by_typology");
   close(january.heatingTransmissionKwh, 925.302090467682);
   close(january.heatingVentilationKwh, 288);
   close(january.internalGainsKwh, 120);
@@ -117,6 +132,7 @@ await test("technical report contains the required engineering chapters and form
     "U-values",
     "Boundary Conditions",
     "Heat Transfer Coefficients",
+    "Monthly Input Transparency",
     "Transmission Losses",
     "Ventilation Losses",
     "Solar Gains",
@@ -124,6 +140,7 @@ await test("technical report contains the required engineering chapters and form
     "Monthly Heating Demand",
     "Monthly Cooling Demand",
     "Annual Results",
+    "Calculation Fingerprint",
     "Engineering Traceability",
     "Normative References"
   ]) {
@@ -146,6 +163,29 @@ await test("technical report contains the required engineering chapters and form
   assert.equal(
     workspace.traceability.some(row => row.reference === "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"),
     true
+  );
+});
+
+await test("calculation fingerprint changes when upstream Building DNA changes", () => {
+  const baseWorkspace = buildBuildingTechnicalWorkspace(
+    buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers())
+  );
+  const changedAnswers = assistedAnswers();
+  changedAnswers.renovations = {
+    ...changedAnswers.renovations,
+    wallInsulationThicknessM: 0.15
+  };
+  const changedWorkspace = buildBuildingTechnicalWorkspace(
+    buildBuildingKnowledgePlatformFromAssistedAnswers(changedAnswers)
+  );
+
+  assert.notEqual(
+    baseWorkspace.calculationFingerprint.fingerprintId,
+    changedWorkspace.calculationFingerprint.fingerprintId
+  );
+  assert.notEqual(
+    baseWorkspace.resultSummary.annualQHnd,
+    changedWorkspace.resultSummary.annualQHnd
   );
 });
 
