@@ -65,3 +65,46 @@ export {
   searchRomanianClimateProfiles,
   validateClimateProfile
 } from "../climate-platform/index.mjs";
+
+export {
+  ANALYSIS_VERSION_SCHEMA,
+  ASSEMBLY_CATALOGUE_VERSION,
+  BUILDING_DNA_VERSION_SCHEMA,
+  BUILDING_PLATFORM_VERSIONED_BACKEND_VERSION,
+  CHAPTER2_ADAPTER_VERSION,
+  CLIMATE_PROFILE_VERSION_SCHEMA,
+  MATERIAL_CATALOGUE_VERSION,
+  NORMATIVE_REGISTRY_VERSION,
+  PHYSICS_ENGINE_VERSION,
+  TECHNICAL_REPORT_SCHEMA_VERSION,
+  TECHNICAL_REPORT_VERSION_SCHEMA,
+  buildBuildingPlatformVersionMetadata,
+  buildVersionIdentity,
+  fingerprintAnalysis,
+  fingerprintBuildingDna,
+  fingerprintClimateProfile,
+  fingerprintReport,
+  stableFingerprint,
+  stableNormalize,
+  stableStringify
+} from "./backend/buildingPlatformFingerprints.mjs";
+
+export {
+  VersionedBuildingBackend,
+  createBuildingPlatformBackendState,
+  createInMemoryVersionedBuildingBackend
+} from "./backend/buildingPlatformVersionedBackend.mjs";
+
+export {
+  BUILDING_PLATFORM_LEGACY_PERSISTENCE_INVENTORY,
+  BUILDING_PLATFORM_PERSISTENCE_INVENTORY_ID,
+  BUILDING_PLATFORM_VERSIONED_TABLES,
+  getBuildingPlatformPersistenceInventory
+} from "./backend/buildingPlatformPersistenceInventory.mjs";
+
+export {
+  LEGACY_BUILDING_PLATFORM_KEYS,
+  LEGACY_BUILDING_PLATFORM_MIGRATION_SCOPE,
+  createLegacyBuildingDnaMigrationDraft,
+  inspectLegacyBuildingPlatformRecord
+} from "./backend/legacyBuildingPlatformMigration.mjs";
