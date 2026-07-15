@@ -120,7 +120,14 @@ test("synthetic profile converts to twelve explicit Building DNA monthly records
   assert.equal(monthlyProfiles[0].provenance.profileId, DEMO_PROFILE_ID);
   assert.equal(monthlyProfiles[0].heatingIndoorTemperatureC, 20);
   assert.equal(monthlyProfiles[0].coolingIndoorTemperatureC, 24);
+  assert.equal(monthlyProfiles[0].solarOrientation, null);
+  assert.equal(monthlyProfiles[0].solarGainsSource, "monthly_record_direct_solar_gains");
   assert.equal(monthlyProfiles.find((profile) => profile.month === "july").coolingOutdoorTemperatureC, 33);
+
+  const oriented = climateProfileToBuildingMonthlyProfiles(selection.profile, { solarOrientation: "north" });
+  assert.equal(oriented.monthlyProfiles[0].solarOrientation, "north");
+  assert.equal(oriented.monthlyProfiles[0].solarGainsKwh, 3.5);
+  assert.equal(oriented.monthlyProfiles[0].solarGainsSource, "monthly_record_orientation_solar_gains");
 });
 
 test("explicit professional climate profile is accepted for verified calculation contracts", () => {

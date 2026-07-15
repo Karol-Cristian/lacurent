@@ -144,6 +144,7 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
     city: "Cluj",
     useful_area_m2: "120",
     heated_volume_m3: "312",
+    window_orientation: "south",
     exterior_wall_area_m2: "50",
     roof_area_m2: "120",
     ground_floor_area_m2: "120",
@@ -155,13 +156,16 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
   assert.equal(answers.buildingType, "detached_house");
   assert.equal(answers.constructionPeriod, "1978_1990");
   assert.equal(answers.structuralSystem, "masonry");
+  assert.equal(answers.wallMaterial, "brick");
   assert.equal(answers.renovations.wallInsulation, "eps");
+  assert.equal(answers.renovations.wallInsulationThicknessM, 0.1);
   assert.equal(answers.renovations.roofInsulated, false);
   assert.equal(answers.renovations.floorInsulated, false);
   assert.equal(answers.renovations.windowsReplaced, true);
   assert.equal(answers.climateProfileId, "ro_synthetic_bucharest_seasonal_demo_v1");
   assert.equal(answers.climateProfile.sourceType, "synthetic_demo_profile");
-  assert.equal(answers.monthlyProfiles.length, 12);
+  assert.equal(answers.monthlyProfiles, undefined);
+  assert.equal(answers.allowSyntheticClimate, true);
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, 120);
   assert.equal(answers.buildingSpecificParameters.heatedVolumeM3, 312);
   assert.equal(answers.buildingSpecificParameters.exteriorWallAreaM2, 50);
@@ -172,6 +176,11 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
   assert.equal(answers.geometry.doorAreaM2, 2);
   assert.equal(answers.context.attic, "unheated");
   assert.equal(answers.context.basement, "none");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.buildingDna.monthlyProfiles.length, 12);
+  assert.equal(preview.buildingDna.monthlyProfiles[0].heatGains.solarOrientation, "south");
 });
 
 await test("period and structural helpers are deterministic", () => {
@@ -507,11 +516,14 @@ await test("demo query and fixture preload a complete editable technical dataset
   assert.equal(answers.buildingType, "detached_house");
   assert.equal(answers.constructionPeriod, "1978_1990");
   assert.equal(answers.structuralSystem, "masonry");
+  assert.equal(answers.wallMaterial, "brick");
   assert.equal(answers.renovations.wallInsulation, "eps");
+  assert.equal(answers.renovations.wallInsulationThicknessM, 0.1);
   assert.equal(answers.renovations.windowsReplaced, true);
   assert.equal(answers.climateProfileId, "ro_synthetic_bucharest_seasonal_demo_v1");
   assert.equal(answers.climateProfile.sourceType, "synthetic_demo_profile");
-  assert.equal(answers.monthlyProfiles.length, 12);
+  assert.equal(answers.monthlyProfiles, undefined);
+  assert.equal(answers.allowSyntheticClimate, true);
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, 120);
   assert.equal(answers.buildingSpecificParameters.windowAreaM2, 8);
   assert.equal(answers.buildingSpecificParameters.ventilationAch, 0.6);

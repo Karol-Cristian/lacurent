@@ -30,6 +30,18 @@ const CALENDAR_MONTHLY_HOURS = Object.freeze({
   december: 744
 });
 
+const SOLAR_ORIENTATIONS = Object.freeze([
+  "north",
+  "northeast",
+  "east",
+  "southeast",
+  "south",
+  "southwest",
+  "west",
+  "northwest",
+  "horizontal"
+]);
+
 export const ROMANIAN_CLIMATE_SOURCE_AUDIT = Object.freeze({
   auditId: "P2D_ROMANIAN_CLIMATE_SOURCE_AUDIT_V1",
   localMc001Pdf: "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
@@ -102,19 +114,33 @@ export const CLIMATE_SOURCE_CONTRACTS = Object.freeze([
   })
 ]);
 
+function orientationSolarGains(southValue) {
+  return Object.freeze({
+    north: Number((southValue * 0.35).toFixed(6)),
+    northeast: Number((southValue * 0.55).toFixed(6)),
+    east: Number((southValue * 0.7).toFixed(6)),
+    southeast: Number((southValue * 0.9).toFixed(6)),
+    south: southValue,
+    southwest: Number((southValue * 0.9).toFixed(6)),
+    west: Number((southValue * 0.7).toFixed(6)),
+    northwest: Number((southValue * 0.55).toFixed(6)),
+    horizontal: Number((southValue * 0.8).toFixed(6))
+  });
+}
+
 const SYNTHETIC_DEMO_MONTHLY = Object.freeze([
-  Object.freeze({ month: "january", outdoorTemperatureC: -1, internalGainsKwh: 10, solarGainsKwh: 10, coolingOutdoorTemperatureC: 25 }),
-  Object.freeze({ month: "february", outdoorTemperatureC: 1, internalGainsKwh: 15, solarGainsKwh: 15, coolingOutdoorTemperatureC: 25 }),
-  Object.freeze({ month: "march", outdoorTemperatureC: 7, internalGainsKwh: 20, solarGainsKwh: 20, coolingOutdoorTemperatureC: 25.5 }),
-  Object.freeze({ month: "april", outdoorTemperatureC: 12, internalGainsKwh: 40, solarGainsKwh: 50, coolingOutdoorTemperatureC: 26 }),
-  Object.freeze({ month: "may", outdoorTemperatureC: 18, internalGainsKwh: 70, solarGainsKwh: 140, coolingOutdoorTemperatureC: 28 }),
-  Object.freeze({ month: "june", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 220, coolingOutdoorTemperatureC: 31 }),
-  Object.freeze({ month: "july", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 260, coolingOutdoorTemperatureC: 33 }),
-  Object.freeze({ month: "august", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 240, coolingOutdoorTemperatureC: 32 }),
-  Object.freeze({ month: "september", outdoorTemperatureC: 19, internalGainsKwh: 70, solarGainsKwh: 150, coolingOutdoorTemperatureC: 29 }),
-  Object.freeze({ month: "october", outdoorTemperatureC: 13, internalGainsKwh: 40, solarGainsKwh: 60, coolingOutdoorTemperatureC: 26 }),
-  Object.freeze({ month: "november", outdoorTemperatureC: 6, internalGainsKwh: 20, solarGainsKwh: 20, coolingOutdoorTemperatureC: 25 }),
-  Object.freeze({ month: "december", outdoorTemperatureC: 1, internalGainsKwh: 10, solarGainsKwh: 10, coolingOutdoorTemperatureC: 25 })
+  Object.freeze({ month: "january", outdoorTemperatureC: -1, internalGainsKwh: 10, solarGainsKwh: 10, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(10) }),
+  Object.freeze({ month: "february", outdoorTemperatureC: 1, internalGainsKwh: 15, solarGainsKwh: 15, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(15) }),
+  Object.freeze({ month: "march", outdoorTemperatureC: 7, internalGainsKwh: 20, solarGainsKwh: 20, coolingOutdoorTemperatureC: 25.5, solarGainsByOrientationKwh: orientationSolarGains(20) }),
+  Object.freeze({ month: "april", outdoorTemperatureC: 12, internalGainsKwh: 40, solarGainsKwh: 50, coolingOutdoorTemperatureC: 26, solarGainsByOrientationKwh: orientationSolarGains(50) }),
+  Object.freeze({ month: "may", outdoorTemperatureC: 18, internalGainsKwh: 70, solarGainsKwh: 140, coolingOutdoorTemperatureC: 28, solarGainsByOrientationKwh: orientationSolarGains(140) }),
+  Object.freeze({ month: "june", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 220, coolingOutdoorTemperatureC: 31, solarGainsByOrientationKwh: orientationSolarGains(220) }),
+  Object.freeze({ month: "july", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 260, coolingOutdoorTemperatureC: 33, solarGainsByOrientationKwh: orientationSolarGains(260) }),
+  Object.freeze({ month: "august", outdoorTemperatureC: 19, internalGainsKwh: 100, solarGainsKwh: 240, coolingOutdoorTemperatureC: 32, solarGainsByOrientationKwh: orientationSolarGains(240) }),
+  Object.freeze({ month: "september", outdoorTemperatureC: 19, internalGainsKwh: 70, solarGainsKwh: 150, coolingOutdoorTemperatureC: 29, solarGainsByOrientationKwh: orientationSolarGains(150) }),
+  Object.freeze({ month: "october", outdoorTemperatureC: 13, internalGainsKwh: 40, solarGainsKwh: 60, coolingOutdoorTemperatureC: 26, solarGainsByOrientationKwh: orientationSolarGains(60) }),
+  Object.freeze({ month: "november", outdoorTemperatureC: 6, internalGainsKwh: 20, solarGainsKwh: 20, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(20) }),
+  Object.freeze({ month: "december", outdoorTemperatureC: 1, internalGainsKwh: 10, solarGainsKwh: 10, coolingOutdoorTemperatureC: 25, solarGainsByOrientationKwh: orientationSolarGains(10) })
 ]);
 
 function deepClone(value) {
@@ -123,6 +149,30 @@ function deepClone(value) {
 
 function isFiniteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function normalizeOrientation(value) {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    n: "north",
+    ne: "northeast",
+    e: "east",
+    se: "southeast",
+    s: "south",
+    sw: "southwest",
+    w: "west",
+    nw: "northwest"
+  };
+  const direction = aliases[normalized] ?? normalized;
+  return SOLAR_ORIENTATIONS.includes(direction) ? direction : null;
+}
+
+function selectSolarOrientation(options = {}) {
+  for (const candidate of [options.solarOrientation, options.windowOrientation, options.mainOrientation]) {
+    const orientation = normalizeOrientation(candidate);
+    if (orientation !== null) return orientation;
+  }
+  return null;
 }
 
 function profileSource(profile) {
@@ -168,6 +218,7 @@ export const ROMANIAN_CLIMATE_PROFILES = Object.freeze([
       coolingOutdoorTemperatureC: entry.coolingOutdoorTemperatureC,
       internalGainsKwh: entry.internalGainsKwh,
       solarGainsKwh: entry.solarGainsKwh,
+      solarGainsByOrientationKwh: entry.solarGainsByOrientationKwh,
       ventilationAirHeatCapacityJPerM3K: 1200,
       ventilationAirFlowRateM3PerS: 0.016666666666666666,
       monthlyDataSource: "synthetic_seasonal_demo_profile_not_normative"
@@ -243,6 +294,20 @@ export function validateClimateProfile(profile) {
     ) {
       return { ok: false, code: "climate_profile_invalid_non_negative_monthly_value" };
     }
+    if (record.solarGainsByOrientationKwh !== undefined) {
+      if (typeof record.solarGainsByOrientationKwh !== "object" || Array.isArray(record.solarGainsByOrientationKwh)) {
+        return { ok: false, code: "climate_profile_invalid_orientation_solar_gains" };
+      }
+      for (const orientation of Object.keys(record.solarGainsByOrientationKwh)) {
+        if (
+          !SOLAR_ORIENTATIONS.includes(orientation) ||
+          !isFiniteNumber(record.solarGainsByOrientationKwh[orientation]) ||
+          record.solarGainsByOrientationKwh[orientation] < 0
+        ) {
+          return { ok: false, code: "climate_profile_invalid_orientation_solar_gains" };
+        }
+      }
+    }
   }
   return { ok: true };
 }
@@ -257,25 +322,39 @@ export function climateProfileToBuildingMonthlyProfiles(profile, options = {}) {
     };
   }
   const source = profileSource(profile);
+  const solarOrientation = selectSolarOrientation(options);
   return {
     status: "ready",
-    monthlyProfiles: profile.monthlyRecords.map((record) => ({
-      month: record.month,
-      heatingIndoorTemperatureC: options.heatingIndoorTemperatureC ?? 20,
-      heatingOutdoorTemperatureC: record.heatingOutdoorTemperatureC,
-      coolingIndoorTemperatureC: options.coolingIndoorTemperatureC ?? 24,
-      coolingOutdoorTemperatureC: record.coolingOutdoorTemperatureC,
-      durationHours: record.durationHours,
-      ventilationAirHeatCapacityJPerM3K: record.ventilationAirHeatCapacityJPerM3K,
-      ventilationAirFlowRateM3PerS: record.ventilationAirFlowRateM3PerS,
-      internalGainsKwh: record.internalGainsKwh,
-      solarGainsKwh: record.solarGainsKwh,
-      provenance: {
-        ...source,
-        reference: `${source.reference}.${record.month}`,
-        monthlyDataSource: record.monthlyDataSource
-      }
-    })),
+    monthlyProfiles: profile.monthlyRecords.map((record) => {
+      const orientedSolarGains = solarOrientation === null
+        ? undefined
+        : record.solarGainsByOrientationKwh?.[solarOrientation];
+      return {
+        month: record.month,
+        heatingIndoorTemperatureC: options.heatingIndoorTemperatureC ?? 20,
+        heatingOutdoorTemperatureC: record.heatingOutdoorTemperatureC,
+        coolingIndoorTemperatureC: options.coolingIndoorTemperatureC ?? 24,
+        coolingOutdoorTemperatureC: record.coolingOutdoorTemperatureC,
+        durationHours: record.durationHours,
+        ventilationAirHeatCapacityJPerM3K: record.ventilationAirHeatCapacityJPerM3K,
+        ventilationAirFlowRateM3PerS: record.ventilationAirFlowRateM3PerS,
+        internalGainsKwh: record.internalGainsKwh,
+        solarGainsKwh: orientedSolarGains ?? record.solarGainsKwh,
+        solarOrientation,
+        solarGainsSource: orientedSolarGains === undefined
+          ? "monthly_record_direct_solar_gains"
+          : "monthly_record_orientation_solar_gains",
+        provenance: {
+          ...source,
+          reference: `${source.reference}.${record.month}`,
+          monthlyDataSource: record.monthlyDataSource,
+          solarOrientation,
+          solarGainsSource: orientedSolarGains === undefined
+            ? "monthly_record_direct_solar_gains"
+            : "monthly_record_orientation_solar_gains"
+        }
+      };
+    }),
     climateProfile: deepClone(profile),
     source
   };
@@ -291,10 +370,15 @@ export function resolveClimateProfileSelection({
     if (!validation.ok) {
       return { status: "blocked", code: validation.code };
     }
+    if (explicitProfile.sourceType === "synthetic_demo_profile" && !allowSynthetic) {
+      return { status: "blocked", code: "synthetic_climate_profile_requires_demo_or_explicit_estimated_mode" };
+    }
     return {
       status: "ready",
       profile: deepClone(explicitProfile),
-      calculationMode: "explicit_professional_climate_profile"
+      calculationMode: explicitProfile.sourceType === "synthetic_demo_profile"
+        ? "synthetic_demo"
+        : "explicit_professional_climate_profile"
     };
   }
   if (!profileId) {

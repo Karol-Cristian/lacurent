@@ -80,6 +80,67 @@ test("typology stays compositional when insulation and window interventions chan
   assert.equal(renovated.proposal.assemblySelections.window, "window_pvc_double_glazing_direct_u");
 });
 
+test("supported structural and wall material selections resolve to distinct exterior wall assemblies", () => {
+  const cases = [
+    {
+      label: "brick_masonry",
+      buildingType: "detached_house",
+      structuralSystem: "masonry",
+      wallMaterial: "brick",
+      expectedAssembly: "wall_masonry_300_eps_100"
+    },
+    {
+      label: "aac_masonry",
+      buildingType: "detached_house",
+      structuralSystem: "masonry",
+      wallMaterial: "bca",
+      expectedAssembly: "wall_aac_300_eps_100"
+    },
+    {
+      label: "reinforced_concrete_frame",
+      buildingType: "detached_house",
+      structuralSystem: "reinforced_concrete_frames",
+      wallMaterial: "concrete",
+      expectedAssembly: "wall_reinforced_concrete_200_eps_100"
+    },
+    {
+      label: "precast_concrete_panel",
+      buildingType: "apartment",
+      structuralSystem: "precast_concrete_panels",
+      wallMaterial: "concrete",
+      expectedAssembly: "wall_reinforced_concrete_200_eps_100"
+    },
+    {
+      label: "timber",
+      buildingType: "detached_house",
+      structuralSystem: "timber",
+      wallMaterial: "wood",
+      expectedAssembly: "wall_timber_frame_mineral_wool_140"
+    }
+  ];
+
+  for (const item of cases) {
+    const result = proposeBuildingTypology(createAssistedTypologyInput({
+      buildingType: item.buildingType,
+      constructionPeriod: "1978_1990",
+      structuralSystem: item.structuralSystem,
+      wallMaterial: item.wallMaterial,
+      renovations: {
+        wallInsulation: "eps",
+        wallInsulationThicknessM: 0.1,
+        windowsReplaced: true
+      },
+      context: {
+        basement: "none",
+        attic: "unheated"
+      }
+    }));
+
+    assert.equal(result.status, "ready", item.label);
+    assert.equal(result.proposal.assemblySelections.exteriorWall, item.expectedAssembly, item.label);
+  }
+});
+
 test("unsupported and invalid typologies fail deterministically", () => {
   assert.equal(
     proposeBuildingTypology(createAssistedTypologyInput({

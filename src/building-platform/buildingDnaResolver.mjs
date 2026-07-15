@@ -229,7 +229,9 @@ function resolveMonthlyProfileSelection({
   monthlyProfiles,
   climateProfile,
   climateProfileId,
-  allowSyntheticClimate
+  allowSyntheticClimate,
+  solarOrientation,
+  mainOrientation
 } = {}) {
   if (Array.isArray(monthlyProfiles)) {
     return {
@@ -249,7 +251,10 @@ function resolveMonthlyProfileSelection({
   if (selection.status !== "ready") {
     return selection;
   }
-  const converted = climateProfileToBuildingMonthlyProfiles(selection.profile);
+  const converted = climateProfileToBuildingMonthlyProfiles(selection.profile, {
+    solarOrientation,
+    mainOrientation
+  });
   if (converted.status !== "ready") {
     return converted;
   }
@@ -589,6 +594,8 @@ function monthlyQuantity(profile, amount, unit, reference, confidence = "low") {
         ...(source.verificationStatus === undefined ? {} : { verificationStatus: source.verificationStatus }),
         ...(source.confirmationStatus === undefined ? {} : { confirmationStatus: source.confirmationStatus }),
         ...(source.monthlyDataSource === undefined ? {} : { monthlyDataSource: source.monthlyDataSource }),
+        ...(source.solarOrientation === undefined ? {} : { solarOrientation: source.solarOrientation }),
+        ...(source.solarGainsSource === undefined ? {} : { solarGainsSource: source.solarGainsSource }),
         editable: source.editable ?? true
       }
     )
@@ -612,6 +619,8 @@ function makeMonthlyProfile(profile) {
           ...(profile.provenance.verificationStatus === undefined ? {} : { verificationStatus: profile.provenance.verificationStatus }),
           ...(profile.provenance.confirmationStatus === undefined ? {} : { confirmationStatus: profile.provenance.confirmationStatus }),
           ...(profile.provenance.monthlyDataSource === undefined ? {} : { monthlyDataSource: profile.provenance.monthlyDataSource }),
+          ...(profile.provenance.solarOrientation === undefined ? {} : { solarOrientation: profile.provenance.solarOrientation }),
+          ...(profile.provenance.solarGainsSource === undefined ? {} : { solarGainsSource: profile.provenance.solarGainsSource }),
           editable: profile.provenance.editable ?? true
         }
       );
@@ -671,7 +680,9 @@ function makeMonthlyProfile(profile) {
     },
     heatGains: {
       internalGains: monthlyQuantity(profile, profile.internalGainsKwh, "kWh", `${ref}.internal_gains`, "low"),
-      solarGains: monthlyQuantity(profile, profile.solarGainsKwh, "kWh", `${ref}.solar_gains`, "low")
+      solarGains: monthlyQuantity(profile, profile.solarGainsKwh, "kWh", `${ref}.solar_gains`, "low"),
+      solarOrientation: profile.solarOrientation ?? null,
+      solarGainsSource: profile.solarGainsSource ?? "monthly_profile_solar_gains"
     },
     heating: {
       utilizationDependencies: seedUtilizationDependencies()
@@ -855,6 +866,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     buildingType: answers.buildingType,
     constructionPeriod: answers.constructionPeriod,
     structuralSystem: answers.structuralSystem,
+    wallMaterial: answers.wallMaterial,
     renovations: answers.renovations ?? {},
     context: answers.context ?? {}
   }));
@@ -869,6 +881,8 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     monthlyProfiles: answers.monthlyProfiles,
     climateProfile: answers.climateProfile,
     climateProfileId: answers.climateProfileId,
+    solarOrientation: answers.buildingSpecificParameters?.windowOrientation,
+    mainOrientation: answers.buildingSpecificParameters?.mainOrientation,
     allowSyntheticClimate: answers.allowSyntheticClimate === true ||
       answers.source?.origin === "demo_fixture"
   });
@@ -907,6 +921,8 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     monthlyProfiles: input.monthlyProfiles,
     climateProfile: input.climateProfile,
     climateProfileId: input.climateProfileId,
+    solarOrientation: input.buildingSpecificParameters?.windowOrientation,
+    mainOrientation: input.buildingSpecificParameters?.mainOrientation,
     allowSyntheticClimate: input.allowSyntheticClimate === true
   });
   if (monthlySelection.status !== "ready") {

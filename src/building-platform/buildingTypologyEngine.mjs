@@ -73,6 +73,36 @@ function hasAssembly(assemblyId) {
   return getAssemblyCatalogueEntry(assemblyId) !== null;
 }
 
+function epsThicknessCode(input) {
+  const thicknessM = Number(input.renovations?.wallInsulationThicknessM);
+  if (!Number.isFinite(thicknessM) || thicknessM <= 0) return null;
+  if (thicknessM <= 0.075) return "050";
+  if (thicknessM <= 0.125) return "100";
+  if (thicknessM <= 0.175) return "150";
+  return "200";
+}
+
+function exteriorWallSelectionFor(input, hasWallInsulation) {
+  if (input.structuralSystem === "timber") {
+    return "wall_timber_frame_mineral_wool_140";
+  }
+  if (
+    input.structuralSystem === "reinforced_concrete_frames" ||
+    input.structuralSystem === "reinforced_concrete_walls" ||
+    input.structuralSystem === "precast_concrete_panels" ||
+    input.wallMaterial === "concrete"
+  ) {
+    return "wall_reinforced_concrete_200_eps_100";
+  }
+  if (input.wallMaterial === "bca" || input.wallMaterial === "aac") {
+    return "wall_aac_300_eps_100";
+  }
+  if (!hasWallInsulation) {
+    return "wall_masonry_300_uninsulated";
+  }
+  return `wall_masonry_300_eps_${epsThicknessCode(input) ?? "100"}`;
+}
+
 function assemblySelectionsFor(input) {
   const hasWallInsulation = input.renovations?.wallInsulation === "eps" ||
     input.renovations?.wallInsulation === true ||
@@ -82,9 +112,7 @@ function assemblySelectionsFor(input) {
     input.constructionPeriod === "after_2005";
 
   return {
-    exteriorWall: hasWallInsulation
-      ? "wall_masonry_300_eps_100"
-      : "wall_masonry_300_uninsulated",
+    exteriorWall: exteriorWallSelectionFor(input, hasWallInsulation),
     roof: hasRoofInsulation
       ? "roof_timber_mineral_wool_200"
       : "roof_timber_mineral_wool_200",
@@ -202,6 +230,7 @@ export function createAssistedTypologyInput({
   buildingType,
   constructionPeriod,
   structuralSystem,
+  wallMaterial,
   renovations = {},
   context = {}
 }) {
@@ -210,6 +239,7 @@ export function createAssistedTypologyInput({
     buildingType,
     constructionPeriod,
     structuralSystem,
+    wallMaterial,
     renovations: deepClone(renovations),
     context: deepClone(context)
   };
