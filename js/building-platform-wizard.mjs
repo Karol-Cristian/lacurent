@@ -1,7 +1,6 @@
 import {
   buildBuildingKnowledgePlatformFromAssistedAnswers,
   buildBuildingTechnicalWorkspace,
-  climateProfileToBuildingMonthlyProfiles,
   findRomanianClimateProfileById,
   listRomanianClimateProfiles
 } from "../src/building-platform/index.mjs";
@@ -547,14 +546,19 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const adjacentWallAreaM2 = positiveNumber(formData, "adjacent_wall_area_m2");
   const doorAreaM2 = positiveNumber(formData, "door_area_m2");
   const explicitStructuralSystem = formValue(formData, "structural_system");
+  const wallMaterial = formValue(formData, "wall_material") || "unknown";
   const windowsReplaced = formValue(formData, "windows_replaced");
   const climateProfileId = formValue(formData, "climate_profile_id");
   const climateProfile = climateProfileId
     ? findRomanianClimateProfileById(climateProfileId)
     : null;
-  const convertedClimate = climateProfile
-    ? climateProfileToBuildingMonthlyProfiles(climateProfile)
-    : { status: "blocked" };
+  const wallInsulationThicknessByOption = {
+    "5cm": 0.05,
+    "10cm": 0.1,
+    "15cm": 0.15,
+    "20cm+": 0.2
+  };
+  const wallInsulationThicknessM = wallInsulationThicknessByOption[wallInsulation];
 
   return {
     buildingId: "building-platform-wizard-preview",
@@ -562,9 +566,11 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
     constructionPeriod: constructionPeriodFromYear(formValue(formData, "construction_year")),
     structuralSystem: explicitStructuralSystem && explicitStructuralSystem !== "unknown"
       ? explicitStructuralSystem
-      : structuralSystemFromWallMaterial(formValue(formData, "wall_material")),
+      : structuralSystemFromWallMaterial(wallMaterial),
+    wallMaterial,
     renovations: {
       wallInsulation: wallInsulationSelected ? "eps" : false,
+      ...(wallInsulationThicknessM === undefined ? {} : { wallInsulationThicknessM }),
       roofInsulated: roofInsulated === "yes" || roofInsulated === "partial",
       floorInsulated: floorInsulated === "yes" || floorInsulated === "partial",
       windowsReplaced: windowsReplaced === "yes" ||
@@ -612,10 +618,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
     ...(climateProfile === null ? {} : {
       climateProfile,
       climateProfileId: climateProfile.profileId,
-      allowSyntheticClimate: climateProfile.sourceType === "synthetic_demo_profile",
-      monthlyProfiles: convertedClimate.status === "ready"
-        ? convertedClimate.monthlyProfiles
-        : undefined
+      allowSyntheticClimate: climateProfile.sourceType === "synthetic_demo_profile"
     }),
     source: isDemoFixture ? {
       reference: `P2B.demo.${demoFixtureId}`,

@@ -241,6 +241,32 @@ const materialEntries = freezeDeep({
       confidence: "medium",
       normativeReference: commonReferences.materialConductivity
     })
+  },
+  aac_block: {
+    kind: "material",
+    materialId: "aac_block",
+    displayName: "AAC/BCA block typology seed",
+    category: "masonry",
+    physicsMaterial: {
+      materialId: "aac",
+      name: "AAC/BCA block",
+      lambda: quantity(
+        0.18,
+        "W/(m*K)",
+        provenance({
+          origin: "proposed_by_typology",
+          reference: "P3B.catalog.material.aac_block.lambda",
+          confidence: "medium",
+          normativeReference: commonReferences.materialConductivity
+        })
+      )
+    },
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P3B.catalog.material.aac_block",
+      confidence: "medium",
+      normativeReference: commonReferences.materialConductivity
+    })
   }
 });
 
@@ -335,6 +361,115 @@ const assemblyEntries = freezeDeep({
       reference: "P1.catalog.assembly.wall_masonry_300_eps_100",
       confidence: "medium",
       normativeReference: "Layer stack seed resolved into Chapter 2 R and U calculations."
+    })
+  },
+  wall_masonry_300_eps_050: {
+    kind: "assembly",
+    assemblyId: "wall_masonry_300_eps_050",
+    assemblyRole: "exterior_wall",
+    displayName: "Masonry exterior wall with 50 mm EPS insulation",
+    assemblyType: "wall",
+    layers: [
+      layer("brick", "brick_masonry_pre_1990", 0.3),
+      layer("eps-insulation", "eps_insulation", 0.05)
+    ],
+    surfaceResistances: surfaceResistances("wall_masonry_300_eps_050", 0.13, 0.04),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P3B.catalog.assembly.wall_masonry_300_eps_050",
+      confidence: "medium",
+      normativeReference: "Layer stack seed resolved into Chapter 2 R and U calculations."
+    })
+  },
+  wall_masonry_300_eps_150: {
+    kind: "assembly",
+    assemblyId: "wall_masonry_300_eps_150",
+    assemblyRole: "exterior_wall",
+    displayName: "Masonry exterior wall with 150 mm EPS insulation",
+    assemblyType: "wall",
+    layers: [
+      layer("brick", "brick_masonry_pre_1990", 0.3),
+      layer("eps-insulation", "eps_insulation", 0.15)
+    ],
+    surfaceResistances: surfaceResistances("wall_masonry_300_eps_150", 0.13, 0.04),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P3B.catalog.assembly.wall_masonry_300_eps_150",
+      confidence: "medium",
+      normativeReference: "Layer stack seed resolved into Chapter 2 R and U calculations."
+    })
+  },
+  wall_masonry_300_eps_200: {
+    kind: "assembly",
+    assemblyId: "wall_masonry_300_eps_200",
+    assemblyRole: "exterior_wall",
+    displayName: "Masonry exterior wall with 200 mm EPS insulation",
+    assemblyType: "wall",
+    layers: [
+      layer("brick", "brick_masonry_pre_1990", 0.3),
+      layer("eps-insulation", "eps_insulation", 0.2)
+    ],
+    surfaceResistances: surfaceResistances("wall_masonry_300_eps_200", 0.13, 0.04),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P3B.catalog.assembly.wall_masonry_300_eps_200",
+      confidence: "medium",
+      normativeReference: "Layer stack seed resolved into Chapter 2 R and U calculations."
+    })
+  },
+  wall_aac_300_eps_100: {
+    kind: "assembly",
+    assemblyId: "wall_aac_300_eps_100",
+    assemblyRole: "exterior_wall",
+    displayName: "AAC/BCA exterior wall with EPS insulation",
+    assemblyType: "wall",
+    layers: [
+      layer("aac", "aac_block", 0.3),
+      layer("eps-insulation", "eps_insulation", 0.1)
+    ],
+    surfaceResistances: surfaceResistances("wall_aac_300_eps_100", 0.13, 0.04),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P3B.catalog.assembly.wall_aac_300_eps_100",
+      confidence: "medium",
+      normativeReference: "Distinct AAC/BCA typology seed resolved into Chapter 2 R and U calculations."
+    })
+  },
+  wall_reinforced_concrete_200_eps_100: {
+    kind: "assembly",
+    assemblyId: "wall_reinforced_concrete_200_eps_100",
+    assemblyRole: "exterior_wall",
+    displayName: "Reinforced concrete exterior wall with EPS insulation",
+    assemblyType: "wall",
+    layers: [
+      layer("reinforced-concrete", "reinforced_concrete", 0.2),
+      layer("eps-insulation", "eps_insulation", 0.1)
+    ],
+    surfaceResistances: surfaceResistances("wall_reinforced_concrete_200_eps_100", 0.13, 0.04),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P3B.catalog.assembly.wall_reinforced_concrete_200_eps_100",
+      confidence: "medium",
+      normativeReference: "Distinct reinforced-concrete typology seed resolved into Chapter 2 R and U calculations."
+    })
+  },
+  wall_timber_frame_mineral_wool_140: {
+    kind: "assembly",
+    assemblyId: "wall_timber_frame_mineral_wool_140",
+    assemblyRole: "exterior_wall",
+    displayName: "Timber frame wall with mineral wool",
+    assemblyType: "wall",
+    layers: [
+      layer("timber-board-exterior", "timber_board", 0.02, "low"),
+      layer("timber-frame-insulation", "mineral_wool", 0.14, "medium"),
+      layer("timber-board-interior", "timber_board", 0.02, "low")
+    ],
+    surfaceResistances: surfaceResistances("wall_timber_frame_mineral_wool_140", 0.13, 0.04),
+    provenance: provenance({
+      origin: "proposed_by_typology",
+      reference: "P3B.catalog.assembly.wall_timber_frame_mineral_wool_140",
+      confidence: "low",
+      normativeReference: "Distinct timber typology seed resolved into Chapter 2 R and U calculations; confirmation required."
     })
   },
   roof_timber_mineral_wool_200: {

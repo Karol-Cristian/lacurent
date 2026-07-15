@@ -38,6 +38,10 @@ export {
 } from "./buildingRenovationInterventions.mjs";
 
 export {
+  buildBuildingInputPropagationDiff
+} from "./buildingInputPropagationAudit.mjs";
+
+export {
   buildBuildingKnowledgePlatformFromAdvancedModel,
   buildBuildingKnowledgePlatformFromAssistedAnswers
 } from "./buildingKnowledgePipeline.mjs";
