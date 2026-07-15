@@ -4722,6 +4722,133 @@ background:#fbfcfe;
 margin-top:16px;
 }
 
+@media(min-width:1200px){
+.dashboard:has(.p2c-technical-analysis){
+max-width:none;
+width:100%;
+padding:22px 28px 32px;
+}
+
+.p2c-technical-analysis{
+display:grid;
+grid-template-columns:260px minmax(620px,1fr) minmax(340px,420px);
+gap:16px;
+align-items:start;
+}
+
+.p2c-technical-analysis > #buildingPlatformIntro,
+.p2c-technical-analysis > #demoModeControls,
+.p2c-technical-analysis > #demoModeBanner{
+grid-column:1 / -1;
+}
+
+.p2c-progress-wrap{
+grid-column:1;
+position:sticky;
+top:18px;
+z-index:2;
+padding:14px;
+border:1px solid #d7dee8;
+border-radius:6px;
+background:#fff;
+box-shadow:0 10px 28px rgba(15,23,42,.06);
+}
+
+.technical-flow-nav{
+display:grid;
+grid-template-columns:1fr;
+gap:6px;
+margin-bottom:10px;
+}
+
+.technical-flow-nav button{
+justify-content:flex-start;
+text-align:left;
+border-radius:4px;
+padding:10px 12px;
+}
+
+.p2c-technical-analysis > form{
+grid-column:2;
+min-width:0;
+}
+
+.p2c-technical-analysis .step{
+border:1px solid #d7dee8;
+border-radius:6px;
+background:#fff;
+padding:16px;
+box-shadow:0 10px 28px rgba(15,23,42,.04);
+}
+
+.p2c-technical-analysis .form-grid{
+grid-template-columns:repeat(4,minmax(150px,1fr));
+gap:10px;
+}
+
+.p2c-technical-analysis .form-grid div{
+min-width:0;
+}
+
+.p2c-technical-analysis .form-grid label{
+font-size:12px;
+letter-spacing:0;
+}
+
+.p2c-technical-analysis .form-grid input,
+.p2c-technical-analysis .form-grid select{
+min-height:38px;
+border-radius:4px;
+font-size:13px;
+}
+
+.p2c-wizard-footer{
+grid-column:2;
+border:1px solid #d7dee8;
+border-radius:6px;
+margin-top:12px;
+}
+
+.technical-output-dock{
+grid-column:3;
+position:sticky;
+top:18px;
+max-height:calc(100vh - 36px);
+overflow:auto;
+margin-top:0;
+border:1px solid #d7dee8;
+border-radius:6px;
+box-shadow:0 10px 28px rgba(15,23,42,.06);
+}
+
+.technical-output-dock .section-heading h2{
+font-size:20px;
+line-height:1.25;
+}
+
+.technical-workspace-tabs{
+position:sticky;
+top:0;
+z-index:1;
+padding:8px;
+border:1px solid #e5e7eb;
+border-radius:6px;
+background:#f8fafc;
+}
+
+.technical-status-grid.p2b-annual-summary{
+grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+.technical-workspace-grid{
+grid-template-columns:1fr;
+}
+
+.technical-report-chapter-list{
+grid-template-columns:1fr;
+}
+}
+
 .technical-saved-model-list .recommendation-detail-card{
 grid-template-columns:auto 1fr;
 }
