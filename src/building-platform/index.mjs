@@ -38,7 +38,8 @@ export {
 } from "./buildingRenovationInterventions.mjs";
 
 export {
-  buildBuildingInputPropagationDiff
+  buildBuildingInputPropagationDiff,
+  buildOrientationComparisonTable
 } from "./buildingInputPropagationAudit.mjs";
 
 export {

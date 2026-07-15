@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {
   buildBuildingInputPropagationDiff,
+  buildBuildingTechnicalWorkspace,
+  buildOrientationComparisonTable,
   calculateChapter2ForBuildingDna,
   createBuildingDnaFromAssistedAnswers,
   createSyntheticSeasonalDemoClimateProfile
@@ -74,9 +76,18 @@ function exteriorWall(buildingDna) {
   return buildingDna.assemblies.find((assembly) => assembly.assemblyRole === "exterior_wall");
 }
 
+function assemblyByRole(buildingDna, role) {
+  return buildingDna.assemblies.find((assembly) => assembly.assemblyRole === role);
+}
+
 function wallU(calculation, buildingDna) {
   const wall = exteriorWall(buildingDna);
   return calculation.assemblyResult.assemblyResults.find((result) => result.assemblyId === wall.assemblyId).uValue;
+}
+
+function assemblyU(calculation, buildingDna, role) {
+  const assembly = assemblyByRole(buildingDna, role);
+  return calculation.assemblyResult.assemblyResults.find((result) => result.assemblyId === assembly.assemblyId).uValue;
 }
 
 function annualQHnd(calculation) {
@@ -85,6 +96,31 @@ function annualQHnd(calculation) {
 
 function annualQCnd(calculation) {
   return calculation.chapter2Result.result.annualQCnd;
+}
+
+function controlledOrientationRun(orientation) {
+  const dna = buildingDna({
+    buildingSpecificParameters: {
+      usefulFloorAreaM2: 120,
+      exteriorWallAreaM2: 50,
+      roofAreaM2: 120,
+      groundFloorAreaM2: 120,
+      atticCeilingAreaM2: 120,
+      windowAreaM2: 8,
+      mainOrientation: "south",
+      windowOrientation: orientation,
+      ventilationAch: 0.6
+    }
+  });
+  const calculation = calculate(dna);
+  const workspace = buildBuildingTechnicalWorkspace({
+    status: "ready",
+    buildingDna: dna,
+    calculation,
+    review: { dependencyTrees: {} }
+  });
+  assert.equal(workspace.status, "ready");
+  return { orientation, buildingDna: dna, calculation, workspace };
 }
 
 await test("propagation matrix covers active engineering fields without display-only status", () => {
@@ -211,6 +247,98 @@ await test("window orientation changes solar gains and useful demand but not Htr
   close(southCalculation.envelopeTransmissionResult.result.amount, northCalculation.envelopeTransmissionResult.result.amount);
   assert.notEqual(annualQHnd(southCalculation), annualQHnd(northCalculation));
   assert.notEqual(annualQCnd(southCalculation), annualQCnd(northCalculation));
+});
+
+await test("controlled north east south west orientation comparison has physically correct direction", () => {
+  const runs = ["north", "east", "south", "west"].map(controlledOrientationRun);
+  const [north, east, south, west] = runs;
+  const table = buildOrientationComparisonTable(runs);
+  const byOrientation = new Map(table.map((row) => [row.orientation, row]));
+
+  assert.equal(table.length, 4);
+  assert.deepEqual(table.map((row) => row.finalAzimuth), ["north", "east", "south", "west"]);
+  assert.equal(new Set(table.map((row) => row.calculationFingerprint)).size, 4);
+
+  for (const run of runs) {
+    const dna = run.buildingDna;
+    const calculation = run.calculation;
+    assert.equal(dna.buildingSpecificParameters.exteriorWallAreaM2.value, 50);
+    assert.equal(dna.buildingSpecificParameters.windowAreaM2.value, 8);
+    assert.equal(dna.buildingSpecificParameters.windowOrientation.value, run.orientation);
+    assert.equal(dna.monthlyProfiles[0].heatGains.solarOrientation, run.orientation);
+    assert.equal(dna.monthlyProfiles[0].heatGains.solarGainsSource, "monthly_record_orientation_solar_gains");
+    close(assemblyU(calculation, dna, "window"), 1.2);
+    close(calculation.envelopeTransmissionResult.result.amount, 112.5610825363045);
+    close(calculation.chapter2Result.result.monthlyResults[0].ventilation.heating.ventilationEnergy.amount, 312.48);
+    assert.equal(calculation.chapter2Result.result.monthlyResults[0].heatGains.internalGains, 10);
+    assert.equal(calculation.chapter2Result.result.monthlyResults[0].transmission.heating.transmissionEnergy.amount, north.calculation.chapter2Result.result.monthlyResults[0].transmission.heating.transmissionEnergy.amount);
+    assert.equal(calculation.chapter2Result.result.heatingResult.caseResults[0].formulaCode, "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH");
+    assert.equal(calculation.chapter2Result.result.coolingResult.caseResults[0].formulaCode, "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND");
+    assert.equal(run.workspace.report.calculationFingerprint.fingerprintId, run.workspace.calculationFingerprint.fingerprintId);
+  }
+
+  close(byOrientation.get("north").monthlySolarGainsKwh.find((item) => item.month === "january").solarGainsKwh, 3.5);
+  close(byOrientation.get("east").monthlySolarGainsKwh.find((item) => item.month === "january").solarGainsKwh, 7);
+  close(byOrientation.get("south").monthlySolarGainsKwh.find((item) => item.month === "january").solarGainsKwh, 10);
+  close(byOrientation.get("west").monthlySolarGainsKwh.find((item) => item.month === "january").solarGainsKwh, 7);
+  close(byOrientation.get("north").monthlySolarGainsKwh.find((item) => item.month === "july").solarGainsKwh, 91);
+  close(byOrientation.get("east").monthlySolarGainsKwh.find((item) => item.month === "july").solarGainsKwh, 182);
+  close(byOrientation.get("south").monthlySolarGainsKwh.find((item) => item.month === "july").solarGainsKwh, 260);
+  close(byOrientation.get("west").monthlySolarGainsKwh.find((item) => item.month === "july").solarGainsKwh, 182);
+
+  close(byOrientation.get("north").annualSolarGainsKwh, 418.25);
+  close(byOrientation.get("east").annualSolarGainsKwh, 836.5);
+  close(byOrientation.get("south").annualSolarGainsKwh, 1195);
+  close(byOrientation.get("west").annualSolarGainsKwh, 836.5);
+  close(byOrientation.get("north").htr, byOrientation.get("south").htr);
+  close(byOrientation.get("east").htr, byOrientation.get("west").htr);
+  close(byOrientation.get("north").annualQHnd, 9590.658503249895);
+  close(byOrientation.get("east").annualQHnd, 9478.012076348907);
+  close(byOrientation.get("south").annualQHnd, 9400.719053627552);
+  close(byOrientation.get("west").annualQHnd, 9478.012076348907);
+  close(byOrientation.get("north").annualQCnd, 0);
+  close(byOrientation.get("east").annualQCnd, 0);
+  close(byOrientation.get("south").annualQCnd, 8.202616299454178);
+  close(byOrientation.get("west").annualQCnd, 0);
+
+  assert.equal(byOrientation.get("south").annualSolarGainsKwh > byOrientation.get("north").annualSolarGainsKwh, true);
+  assert.equal(byOrientation.get("south").annualQHnd <= byOrientation.get("north").annualQHnd, true);
+  assert.equal(byOrientation.get("south").annualQCnd >= byOrientation.get("north").annualQCnd, true);
+  assert.equal(byOrientation.get("east").annualQHnd, byOrientation.get("west").annualQHnd);
+});
+
+await test("explicit window orientation is not rotated again by main building orientation", () => {
+  const explicitSouthOnNorthMain = buildingDna({
+    buildingSpecificParameters: {
+      usefulFloorAreaM2: 120,
+      exteriorWallAreaM2: 50,
+      roofAreaM2: 120,
+      groundFloorAreaM2: 120,
+      atticCeilingAreaM2: 120,
+      windowAreaM2: 8,
+      mainOrientation: "north",
+      windowOrientation: "south",
+      ventilationAch: 0.6
+    }
+  });
+  const fallbackEast = buildingDna({
+    buildingSpecificParameters: {
+      usefulFloorAreaM2: 120,
+      exteriorWallAreaM2: 50,
+      roofAreaM2: 120,
+      groundFloorAreaM2: 120,
+      atticCeilingAreaM2: 120,
+      windowAreaM2: 8,
+      mainOrientation: "east",
+      windowOrientation: "unknown",
+      ventilationAch: 0.6
+    }
+  });
+
+  assert.equal(explicitSouthOnNorthMain.monthlyProfiles[0].heatGains.solarOrientation, "south");
+  assert.equal(explicitSouthOnNorthMain.monthlyProfiles[0].heatGains.solarGains.amount, 10);
+  assert.equal(fallbackEast.monthlyProfiles[0].heatGains.solarOrientation, "east");
+  assert.equal(fallbackEast.monthlyProfiles[0].heatGains.solarGains.amount, 7);
 });
 
 await test("climate profile changes monthly transfer and annual useful demand", () => {
