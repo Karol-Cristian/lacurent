@@ -701,7 +701,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
         <section id="p2b-chapter_2" class="technical-workspace-panel">
           <h4>Chapter 2 authority</h4>
           <p>Displayed values are read from Building DNA and validated Chapter 2 engine outputs.</p>
-          <p>No Chapter 3, final energy, primary energy, CO2, CPE or certificate calculation is generated here.</p>
+          <p>The active workspace is limited to envelope modelling, monthly useful demand, annual useful demand and the technical report.</p>
         </section>
       </div>
       <section id="p2b-assemblies" class="technical-workspace-panel">

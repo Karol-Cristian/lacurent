@@ -584,8 +584,9 @@ await test("analysis page exposes the refocused technical workflow", () => {
 
 await test("active production analysis flow removes unsupported product domains", () => {
   const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
+  const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const sidebar = readFileSync(new URL("../components/sidebar.html", import.meta.url), "utf8");
-  const visibleSurface = `${html}\n${sidebar}`;
+  const visibleSurface = `${html}\n${index}\n${sidebar}`;
   for (const forbidden of [
     "monthlyBillForm",
     "Factura",
@@ -605,18 +606,57 @@ await test("active production analysis flow removes unsupported product domains"
     "Economii",
     "recomandari",
     "Recomandari",
-    "clasa energetica"
+    "clasa energetica",
+    "raport-v1.html",
+    "algoritmi.html",
+    "advanced-calculator.html",
+    "piata-energiei.html",
+    "asistent-ai.html",
+    "energy-data-hub.html"
   ]) {
     assert.equal(visibleSurface.includes(forbidden), false, forbidden);
   }
-  for (const explicitScope of [
+  for (const downstreamDomain of [
     "energie finala",
     "energie primara",
     "CO2",
     "CPE",
     "certificat"
   ]) {
-    assert.equal(visibleSurface.includes(explicitScope), true, explicitScope);
+    assert.equal(visibleSurface.includes(downstreamDomain), false, downstreamDomain);
+  }
+});
+
+await test("canonical production route imports only the current Building Platform flow", () => {
+  const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const analysisPage = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
+  const activeSurface = `${index}\n${analysisPage}`;
+
+  assert.equal(index.includes("js/product-dashboard.js"), false);
+  assert.equal(index.includes("js/segment-context.js"), false);
+  assert.equal(index.includes("js/home-context.js"), false);
+  assert.equal(analysisPage.includes("building-platform-wizard.mjs"), true);
+  assert.equal(activeSurface.includes("?new=1"), false);
+  assert.equal(activeSurface.includes("pages/analiza-casa.html"), true);
+  assert.equal(activeSurface.includes("pages/analiza-casa.html?demo=1"), true);
+});
+
+await test("active production modules do not import test fixtures", () => {
+  const activeFiles = [
+    "../js/building-platform-wizard.mjs",
+    "../js/analiza-casa.js",
+    "../src/building-platform/buildingDnaResolver.mjs",
+    "../src/building-platform/buildingKnowledgePipeline.mjs",
+    "../src/building-platform/buildingChapter2Adapter.mjs",
+    "../src/building-platform/buildingTechnicalReport.mjs",
+    "../src/climate-platform/romanianClimateProfiles.mjs"
+  ];
+  for (const file of activeFiles) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.equal(source.includes("/tests/"), false, file);
+    assert.equal(source.includes("test-fixtures"), false, file);
+    assert.equal(source.includes("p1SeedMonthlyProfiles"), false, file);
+    assert.equal(source.includes("mc001Chapter2ValidationMatrixFixture"), false, file);
   }
 });
 
