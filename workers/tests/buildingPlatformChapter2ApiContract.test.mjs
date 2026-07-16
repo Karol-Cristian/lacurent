@@ -626,19 +626,19 @@ await test("Building Platform load endpoint enforces analysis ownership", async 
   assert.equal(loaded.body.success, false);
 });
 
-await test("Building Platform v1 stable API aliases use the same versioned save list and load path", async () => {
+await test("Building Platform legacy Chapter 2 compatibility endpoints remain active", async () => {
   const db = new FakeDb();
   const saved = await post(
-    "/api/building-platform/v1/projects/create-and-calculate",
+    "/api/building-platform/chapter2/save",
     db,
     {
-      project_name: "Stable API Project",
+      project_name: "Stable Compatibility Project",
       building_dna: demoBuildingDna()
     }
   );
-  const listed = await post("/api/building-platform/v1/projects/list", db, {});
+  const listed = await post("/api/building-platform/chapter2/list", db, {});
   const loaded = await post(
-    "/api/building-platform/v1/analyses/load",
+    "/api/building-platform/chapter2/load",
     db,
     { analysis_id: saved.body.analysis_id }
   );
@@ -649,5 +649,5 @@ await test("Building Platform v1 stable API aliases use the same versioned save 
   assert.equal(listed.body.projects[0].analysis_fingerprint, saved.body.fingerprints.analysisFingerprint);
   assert.equal(loaded.status, 200);
   assert.deepEqual(loaded.body.fingerprints, saved.body.fingerprints);
-  assert.equal(db.versionedProjects[0].project_name, "Stable API Project");
+  assert.equal(db.versionedProjects[0].project_name, "Stable Compatibility Project");
 });

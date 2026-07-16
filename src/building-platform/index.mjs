@@ -103,6 +103,28 @@ export {
 } from "./backend/buildingPlatformPersistenceInventory.mjs";
 
 export {
+  BUILDING_PLATFORM_OPERATION_INVENTORY,
+  BUILDING_PLATFORM_OPERATION_INVENTORY_ID,
+  getBuildingPlatformOperationInventory
+} from "./backend/buildingPlatformOperationInventory.mjs";
+
+export {
+  LOCAL_PROJECT_DIRTY_STATES,
+  LOCAL_PROJECT_SESSION_SCHEMA,
+  LOCAL_PROJECT_VISIBLE_STATUS,
+  applyLocalBuildingDnaEdit,
+  buildProjectConcurrencyToken,
+  buildUnsavedExitOptions,
+  createLocalProjectSession,
+  isPresentationOnlyLocalEdit,
+  markDraftSaved,
+  markPermanentVersionSaved,
+  markVersionConflict,
+  recordUnsavedCalculation,
+  shouldWarnBeforeExit
+} from "./backend/buildingPlatformLocalSession.mjs";
+
+export {
   LEGACY_BUILDING_PLATFORM_KEYS,
   LEGACY_BUILDING_PLATFORM_MIGRATION_SCOPE,
   createLegacyBuildingDnaMigrationDraft,

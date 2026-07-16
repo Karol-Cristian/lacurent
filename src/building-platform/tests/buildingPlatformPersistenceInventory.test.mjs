@@ -15,10 +15,16 @@ function test(name, fn) {
   }
 }
 
-const migrationSql = readFileSync(
+const migrationSql = [
+  readFileSync(
   new URL("../../../migrations/010_building_platform_versioned_backend.sql", import.meta.url),
   "utf8"
-);
+  ),
+  readFileSync(
+    new URL("../../../migrations/011_building_platform_local_first_flow.sql", import.meta.url),
+    "utf8"
+  )
+].join("\n");
 const schemaSql = readFileSync(new URL("../../../schema.sql", import.meta.url), "utf8");
 
 test("P3E persistence inventory distinguishes canonical versioned and legacy compatibility storage", () => {
@@ -28,7 +34,9 @@ test("P3E persistence inventory distinguishes canonical versioned and legacy com
     inventory.inventoryId,
     "P3E_BUILDING_PLATFORM_VERSIONED_PERSISTENCE_INVENTORY_V1"
   );
-  assert.equal(inventory.canonicalVersionedTables.length, 8);
+  assert.equal(inventory.canonicalVersionedTables.length, 9);
+  assert.equal(inventory.localFirstPolicy.mutableDraftsPerProjectOwner, 1);
+  assert.equal(inventory.localFirstPolicy.ordinaryEditDatabaseWrites, 0);
   assert.equal(inventory.legacyTables.length >= 5, true);
   assert.equal(
     inventory.unsupportedDomainsExcluded.includes("primary_energy"),
@@ -66,6 +74,9 @@ test("versioned migration includes required lookup, fingerprint and version-hist
   const requiredIndexes = [
     "building_platform_projects_owner_idx",
     "building_platform_projects_current_versions_idx",
+    "building_platform_project_drafts_owner_idx",
+    "building_platform_project_drafts_project_idx",
+    "building_platform_project_drafts_expiry_idx",
     "building_dna_versions_project_idx",
     "building_dna_versions_fingerprint_idx",
     "building_platform_analysis_versions_project_idx",

@@ -1,4 +1,5 @@
 import {
+  buildBuildingPlatformVersionMetadata,
   buildBuildingKnowledgePlatformFromAssistedAnswers,
   buildBuildingTechnicalWorkspace,
   findRomanianClimateProfileById,
@@ -675,11 +676,18 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
 export function buildWizardEngineeringPreview(assistedAnswers) {
   const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers);
   const technicalWorkspace = buildBuildingTechnicalWorkspace(pipeline);
+  const versionMetadata = pipeline.status === "ready" && pipeline.calculation
+    ? buildBuildingPlatformVersionMetadata({
+        buildingDna: pipeline.buildingDna,
+        calculation: pipeline.calculation
+      })
+    : null;
   const annualQHnd = pipeline.review?.results?.annualQHnd ?? null;
   const annualQCnd = pipeline.review?.results?.annualQCnd ?? null;
   return {
     ...pipeline,
     technicalWorkspace,
+    versionMetadata,
     dependencyTree: pipeline.review?.dependencyTrees?.annualQHnd ?? null,
     summary: {
       annualQHnd,
@@ -849,10 +857,18 @@ function removeStaleNotice(previewTarget) {
 function markBuildingPlatformResultsFresh(root, preview) {
   const form = root.getElementById?.("houseForm");
   const previewTarget = root.getElementById?.("buildingModelReview");
-  const fingerprint = preview?.technicalWorkspace?.calculationFingerprint?.fingerprintId ?? "";
+  const fingerprint =
+    preview?.versionMetadata?.fingerprints?.analysisFingerprint ??
+    preview?.technicalWorkspace?.calculationFingerprint?.fingerprintId ??
+    "";
+  const reportFingerprint =
+    preview?.versionMetadata?.fingerprints?.reportFingerprint ??
+    preview?.technicalWorkspace?.calculationFingerprint?.fingerprintId ??
+    "";
   if (form?.dataset) {
     form.dataset.currentInputSnapshot = formInputSnapshot(form);
     form.dataset.currentCalculationFingerprint = fingerprint;
+    form.dataset.currentReportFingerprint = reportFingerprint;
     form.dataset.currentResultStale = "0";
   }
   if (previewTarget?.dataset) {
@@ -928,6 +944,14 @@ function currentHouseIdFromForm(form) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function currentVersionedProjectIdFromForm(form) {
+  return form?.dataset?.currentVersionedProjectId || null;
+}
+
+function currentProjectTokenFromForm(form) {
+  return form?.dataset?.currentProjectToken || null;
+}
+
 export function buildBuildingPlatformSavePayload(preview, formData, form = null) {
   if (preview?.status !== "ready" || !preview.buildingDna) {
     return {
@@ -945,6 +969,38 @@ export function buildBuildingPlatformSavePayload(preview, formData, form = null)
   };
 }
 
+async function ensureBuildingPlatformV1Project(root, form, formData, apiClient) {
+  const existingProjectId = currentVersionedProjectIdFromForm(form);
+  const existingToken = currentProjectTokenFromForm(form);
+  if (existingProjectId && existingToken) {
+    return {
+      ok: true,
+      projectId: existingProjectId,
+      concurrencyToken: existingToken,
+      created: false
+    };
+  }
+  const response = await apiClient("/api/building-platform/v1/projects/create", {
+    project_name: formData.get?.("display_name") || "Model termic al cladirii",
+    idempotency_key: `project-create-${Date.now()}`
+  });
+  if (!response?.success) {
+    setSaveStatus(root, response?.error || "Proiectul versionat nu a putut fi creat.", "blocked");
+    return { ok: false, response };
+  }
+  if (form?.dataset) {
+    form.dataset.currentVersionedProjectId = response.project?.project_id ?? "";
+    form.dataset.currentProjectToken = response.concurrency_token ?? "";
+  }
+  return {
+    ok: true,
+    projectId: response.project?.project_id,
+    concurrencyToken: response.concurrency_token,
+    created: true,
+    response
+  };
+}
+
 function analysisIdFromRoot(root, options = {}) {
   const explicit = options.analysisId ?? root.getElementById?.("buildingPlatformLoadAnalysisId")?.value;
   const parsed = Number(explicit);
@@ -954,6 +1010,11 @@ function analysisIdFromRoot(root, options = {}) {
 export function analysisIdFromSearch(search = "") {
   const parsed = Number(new URLSearchParams(search).get("analysis_id"));
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function projectIdFromSearch(search = "") {
+  const value = new URLSearchParams(search).get("project_id");
+  return value && /^[a-zA-Z0-9_.:-]+$/.test(value) ? value : null;
 }
 
 function renderLoadedReportChapters(report) {
@@ -977,10 +1038,24 @@ function renderLoadedReportChapters(report) {
 }
 
 export function renderLoadedBuildingPlatformAnalysis(record) {
-  const buildingDna = record?.building_dna ?? record?.technical_details?.buildingDna;
-  const summary = record?.technical_details?.resultSummary ?? {};
-  const report = record?.technical_report ?? record?.technical_details?.technicalReport;
-  const version = record?.building_dna_version ?? record?.technical_details?.buildingDnaVersion ?? {};
+  const buildingDna =
+    record?.building_dna ??
+    record?.technical_details?.buildingDna ??
+    record?.buildingDnaVersion?.complete_building_dna;
+  const summary = record?.technical_details?.resultSummary ?? {
+    annualQHnd: record?.analysisVersion?.annual_qhnd,
+    annualQCnd: record?.analysisVersion?.annual_qcnd,
+    monthCount: record?.analysisVersion?.monthly_qhnd?.length
+  };
+  const report =
+    record?.technical_report ??
+    record?.technical_details?.technicalReport ??
+    record?.reportVersion?.structured_report_model;
+  const version =
+    record?.building_dna_version ??
+    record?.technical_details?.buildingDnaVersion ??
+    record?.buildingDnaVersion ??
+    {};
   if (!buildingDna) {
     return `<p class="form-message error">Analiza salvata nu contine Building DNA.</p>`;
   }
@@ -1052,21 +1127,98 @@ export async function saveBuildingPlatformChapter2Analysis(root = document, opti
     return { saved: false, reason: payload.code, preview };
   }
 
-  setSaveStatus(root, "Se salveaza analiza Chapter 2...", "pending");
-  const response = await apiClient("/api/building-platform/chapter2/save", payload.value);
+  const hadVersionedProjectBeforeSave = Boolean(currentVersionedProjectIdFromForm(form));
+  const project = await ensureBuildingPlatformV1Project(root, form, formData, apiClient);
+  if (!project.ok) {
+    return { saved: false, reason: "project_create_failed", response: project.response, preview };
+  }
+  const fingerprints = preview.versionMetadata?.fingerprints;
+  if (!fingerprints?.analysisFingerprint || !fingerprints?.reportFingerprint) {
+    setSaveStatus(root, "Recalculeaza modelul inainte de salvarea versiunii permanente.", "blocked");
+    return { saved: false, reason: "missing_current_fingerprint", preview };
+  }
+
+  setSaveStatus(root, "Se salveaza versiunea calculata...", "pending");
+  const response = await apiClient("/api/building-platform/v1/permanent-save", {
+    project_id: project.projectId,
+    expected_project_token: project.concurrencyToken,
+    idempotency_key: `permanent-save-${Date.now()}`,
+    creation_reason: hadVersionedProjectBeforeSave ? "user_edit" : "initial_project_creation",
+    building_dna: payload.value.building_dna,
+    calculation_fingerprint: fingerprints.analysisFingerprint,
+    report_fingerprint: fingerprints.reportFingerprint
+  });
   if (!response?.success) {
-    setSaveStatus(root, response?.error || "Analiza nu a putut fi salvata.", "blocked");
+    setSaveStatus(root, response?.error || "Versiunea calculata nu a putut fi salvata.", "blocked");
     return { saved: false, reason: "api_save_failed", response, preview };
   }
   if (form?.dataset) {
-    form.dataset.currentHouseId = String(response.house_id ?? "");
-    form.dataset.currentAnalysisId = String(response.analysis_id ?? "");
+    form.dataset.currentVersionedProjectId = String(response.project?.project_id ?? project.projectId ?? "");
+    form.dataset.currentProjectToken = String(response.concurrency_token ?? "");
+    form.dataset.loadedBuildingDnaVersionId = String(response.buildingDnaVersion?.building_dna_version_id ?? "");
+    form.dataset.currentAnalysisId = String(response.analysisVersion?.analysis_version_id ?? "");
+    form.dataset.currentResultStale = "0";
   }
   setSaveStatus(
     root,
-    `Analiza salvata: proiect ${response.house_id}, analiza ${response.analysis_id}, versiune ${response.building_dna_version?.versionId ?? "necunoscuta"}.`,
+    `Versiune salvata: proiect ${response.project?.project_id ?? project.projectId}, analiza ${response.analysisVersion?.analysis_version_id ?? "necunoscuta"}.`,
     "ready"
   );
+  return {
+    saved: true,
+    response,
+    preview
+  };
+}
+
+export async function saveBuildingPlatformDraft(root = document, options = {}) {
+  const form = root.getElementById?.("houseForm");
+  const previewTarget = root.getElementById?.("buildingModelReview");
+  const formData = options.formData ?? (form ? new FormData(form) : null);
+  if (!formData) {
+    return { saved: false, reason: "missing_form_data" };
+  }
+  const apiClient = options.apiClient ?? globalThis.window?.LaCurentAuth?.api;
+  if (typeof apiClient !== "function") {
+    setSaveStatus(root, "Autentificarea este necesara pentru salvarea draftului.", "blocked");
+    return { saved: false, reason: "missing_authenticated_api_client" };
+  }
+
+  const answers = mapWizardAnswersToAssistedAnswers(formData);
+  const preview = buildWizardEngineeringPreview(answers);
+  if (previewTarget) {
+    previewTarget.innerHTML = renderEngineeringModelReview(preview, { openReport: false });
+  }
+  if (preview.status === "ready") {
+    markBuildingPlatformResultsFresh(root, preview);
+  }
+  if (preview.status !== "ready") {
+    setSaveStatus(root, "Modelul Building DNA nu este gata pentru draft.", "blocked");
+    return { saved: false, reason: "preview_not_ready", preview };
+  }
+
+  const project = await ensureBuildingPlatformV1Project(root, form, formData, apiClient);
+  if (!project.ok) {
+    return { saved: false, reason: "project_create_failed", response: project.response, preview };
+  }
+
+  setSaveStatus(root, "Se salveaza draftul editabil...", "pending");
+  const response = await apiClient("/api/building-platform/v1/drafts/save", {
+    project_id: project.projectId,
+    expected_project_token: project.concurrencyToken,
+    building_dna: preview.buildingDna,
+    last_calculation_fingerprint: preview.versionMetadata?.fingerprints?.analysisFingerprint ?? null
+  });
+  if (!response?.success) {
+    setSaveStatus(root, response?.error || "Draftul nu a putut fi salvat.", "blocked");
+    return { saved: false, reason: "api_draft_save_failed", response, preview };
+  }
+  if (form?.dataset) {
+    form.dataset.currentVersionedProjectId = String(project.projectId ?? "");
+    form.dataset.currentProjectToken = String(project.concurrencyToken ?? "");
+    form.dataset.currentDraftId = String(response.draft?.draft_id ?? "");
+  }
+  setSaveStatus(root, `Draft salvat: ${response.draft?.draft_id ?? "draft activ"}.`, "ready");
   return {
     saved: true,
     response,
@@ -1115,6 +1267,58 @@ export async function loadBuildingPlatformChapter2Analysis(root = document, opti
     `Analiza incarcata: proiect ${response.house_id}, analiza ${response.analysis_id}, versiune ${response.building_dna_version?.versionId ?? "necunoscuta"}.`,
     "ready"
   );
+  root.getElementById?.("p2b-report")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  return {
+    loaded: true,
+    response,
+    applied
+  };
+}
+
+export async function loadBuildingPlatformV1Project(root = document, options = {}) {
+  const form = root.getElementById?.("houseForm");
+  const previewTarget = root.getElementById?.("buildingModelReview");
+  const apiClient = options.apiClient ?? globalThis.window?.LaCurentAuth?.api;
+  if (typeof apiClient !== "function") {
+    setSaveStatus(root, "Autentificarea este necesara pentru incarcarea proiectului.", "blocked");
+    return { loaded: false, reason: "missing_authenticated_api_client" };
+  }
+  const projectId = options.projectId ?? projectIdFromSearch(globalThis.window?.location?.search ?? "");
+  if (!projectId) {
+    setSaveStatus(root, "Lipseste project_id pentru redeschidere.", "blocked");
+    return { loaded: false, reason: "invalid_project_id" };
+  }
+  setSaveStatus(root, "Se incarca proiectul versionat...", "pending");
+  const response = await apiClient("/api/building-platform/v1/projects/open", { project_id: projectId });
+  if (!response?.success) {
+    setSaveStatus(root, response?.error || "Proiectul versionat nu a putut fi incarcat.", "blocked");
+    return { loaded: false, reason: "api_project_open_failed", response };
+  }
+  const buildingDna = response.buildingDnaVersion?.complete_building_dna;
+  if (!buildingDna) {
+    setSaveStatus(root, "Proiectul nu are inca o versiune Building DNA permanenta.", "blocked");
+    return { loaded: false, reason: "missing_permanent_building_dna_version", response };
+  }
+  const applied = applyBuildingDnaToWizardForm(form, buildingDna, {
+    origin: "saved_building_dna",
+    confirmationStatus: "loaded_saved_project",
+    confidence: buildingDna?.source?.confidence ?? "medium"
+  });
+  if (form?.dataset) {
+    form.dataset.currentVersionedProjectId = String(response.project?.project_id ?? projectId);
+    form.dataset.currentProjectToken = String(response.concurrency_token ?? "");
+    form.dataset.loadedBuildingDnaVersionId = String(response.buildingDnaVersion?.building_dna_version_id ?? "");
+    form.dataset.currentAnalysisId = String(response.analysisVersion?.analysis_version_id ?? "");
+    form.dataset.currentResultStale = "0";
+  }
+  if (previewTarget) {
+    previewTarget.innerHTML = renderLoadedBuildingPlatformAnalysis(response);
+    if (previewTarget.dataset) {
+      previewTarget.dataset.resultState = "historical_saved_analysis";
+      previewTarget.dataset.calculationFingerprint = response.analysisVersion?.calculation_fingerprint ?? "";
+    }
+  }
+  setSaveStatus(root, `Proiect incarcat: ${response.project?.project_name ?? projectId}.`, "ready");
   root.getElementById?.("p2b-report")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   return {
     loaded: true,
@@ -1220,21 +1424,40 @@ export function attachBuildingPlatformWizard(root = document) {
   form.addEventListener?.("input", markStale);
   form.addEventListener?.("change", markStale);
   const saveButton = root.getElementById?.("saveBuildingPlatformAnalysisBtn");
+  const draftButton = root.getElementById?.("saveBuildingPlatformDraftBtn");
   const recalculateButton = root.getElementById?.("recalculateBuildingPlatformAnalysisBtn");
   const loadButton = root.getElementById?.("loadBuildingPlatformAnalysisBtn");
   const loadInput = root.getElementById?.("buildingPlatformLoadAnalysisId");
   saveButton?.addEventListener("click", () => {
     saveBuildingPlatformChapter2Analysis(root);
   });
+  draftButton?.addEventListener("click", () => {
+    saveBuildingPlatformDraft(root);
+  });
   recalculateButton?.addEventListener("click", () => {
-    saveBuildingPlatformChapter2Analysis(root);
+    const result = generateBuildingPlatformTechnicalReport(root, {
+      openReport: true,
+      scrollToReport: true
+    });
+    if (result.generated) {
+      setSaveStatus(root, "Rezultate recalculate, dar nesalvate.", "pending");
+    }
   });
   loadButton?.addEventListener("click", () => {
     loadBuildingPlatformChapter2Analysis(root);
   });
   if (typeof window !== "undefined") {
     const requestedAnalysisId = analysisIdFromSearch(window.location.search);
-    if (requestedAnalysisId !== null && !demoModeFromSearch(window.location.search)) {
+    const requestedProjectId = projectIdFromSearch(window.location.search);
+    if (requestedProjectId !== null && !demoModeFromSearch(window.location.search)) {
+      if (globalThis.window?.LaCurentAuth?.token?.()) {
+        queueMicrotask(() => {
+          loadBuildingPlatformV1Project(root, { projectId: requestedProjectId });
+        });
+      } else {
+        setSaveStatus(root, "Autentifica-te pentru a redeschide proiectul salvat din Proiectele mele.", "blocked");
+      }
+    } else if (requestedAnalysisId !== null && !demoModeFromSearch(window.location.search)) {
       if (loadInput) loadInput.value = String(requestedAnalysisId);
       if (globalThis.window?.LaCurentAuth?.token?.()) {
         queueMicrotask(() => {
@@ -1244,6 +1467,11 @@ export function attachBuildingPlatformWizard(root = document) {
         setSaveStatus(root, "Autentifica-te pentru a redeschide analiza salvata din Proiectele mele.", "blocked");
       }
     }
+    window.addEventListener("beforeunload", (event) => {
+      if (form?.dataset?.currentResultStale !== "1") return;
+      event.preventDefault();
+      event.returnValue = "Exista modificari nesalvate in proiect.";
+    });
   }
   if (typeof window !== "undefined" && demoModeFromSearch(window.location.search)) {
     demoControls.loadDemo({ updateUrl: false, scrollToReport: false });
@@ -1268,11 +1496,14 @@ if (typeof window !== "undefined") {
     generateBuildingPlatformTechnicalReport,
     getAssistedWizardDemoFixture,
     analysisIdFromSearch,
+    projectIdFromSearch,
     buildBuildingPlatformSavePayload,
     mapWizardAnswersToAssistedAnswers,
     renderEngineeringModelReview,
     renderLoadedBuildingPlatformAnalysis,
     loadBuildingPlatformChapter2Analysis,
+    loadBuildingPlatformV1Project,
+    saveBuildingPlatformDraft,
     saveBuildingPlatformChapter2Analysis,
     structuralSystemFromWallMaterial,
     markBuildingPlatformResultsStale

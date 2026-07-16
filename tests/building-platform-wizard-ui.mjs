@@ -14,8 +14,10 @@ import {
   loadBuildingPlatformChapter2Analysis,
   markBuildingPlatformResultsStale,
   mapWizardAnswersToAssistedAnswers,
+  projectIdFromSearch,
   renderEngineeringModelReview,
   renderLoadedBuildingPlatformAnalysis,
+  saveBuildingPlatformDraft,
   saveBuildingPlatformChapter2Analysis,
   structuralSystemFromWallMaterial
 } from "../js/building-platform-wizard.mjs";
@@ -295,12 +297,24 @@ await test("save action persists Building DNA through the authenticated API clie
     formData: formData(ASSISTED_WIZARD_DEMO_FIXTURE.values),
     apiClient: async (path, payload) => {
       calls.push({ path, payload });
+      if (path === "/api/building-platform/v1/projects/create") {
+        return {
+          success: true,
+          project: { project_id: "bp-project-ui" },
+          concurrency_token: "projecttoken-ui"
+        };
+      }
       return {
         success: true,
-        house_id: 7,
-        analysis_id: 100,
-        building_dna_version: {
-          versionId: "building-dna-100"
+        project: {
+          project_id: "bp-project-ui"
+        },
+        concurrency_token: "projecttoken-saved",
+        buildingDnaVersion: {
+          building_dna_version_id: "dna-version-ui"
+        },
+        analysisVersion: {
+          analysis_version_id: "analysis-version-ui"
         },
         result_summary: {
           annualQHnd: 9400,
@@ -311,12 +325,47 @@ await test("save action persists Building DNA through the authenticated API clie
   });
 
   assert.equal(result.saved, true);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].path, "/api/building-platform/chapter2/save");
-  assert.equal(calls[0].payload.building_dna.schema, "building_dna_v1");
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].path, "/api/building-platform/v1/projects/create");
+  assert.equal(calls[1].path, "/api/building-platform/v1/permanent-save");
+  assert.equal(calls[1].payload.building_dna.schema, "building_dna_v1");
+  assert.equal(calls[1].payload.calculation_fingerprint.startsWith("analysis_"), true);
+  assert.equal(calls[1].payload.report_fingerprint, calls[1].payload.calculation_fingerprint);
   assert.equal(root.status.dataset.state, "ready");
-  assert.equal(root.status.textContent.includes("analiza 100"), true);
+  assert.equal(root.status.textContent.includes("analysis-version-ui"), true);
   assert.equal(root.preview.innerHTML.includes("Raport tehnic generat"), true);
+});
+
+await test("draft save uses mutable v1 draft endpoint without permanent version payload", async () => {
+  const root = fakeRootForSave();
+  const calls = [];
+  const result = await saveBuildingPlatformDraft(root, {
+    formData: formData(ASSISTED_WIZARD_DEMO_FIXTURE.values),
+    apiClient: async (path, payload) => {
+      calls.push({ path, payload });
+      if (path === "/api/building-platform/v1/projects/create") {
+        return {
+          success: true,
+          project: { project_id: "bp-project-draft-ui" },
+          concurrency_token: "projecttoken-draft"
+        };
+      }
+      return {
+        success: true,
+        draft: {
+          draft_id: "draft-ui",
+          draft_fingerprint: "draft_fp"
+        }
+      };
+    }
+  });
+
+  assert.equal(result.saved, true);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].path, "/api/building-platform/v1/drafts/save");
+  assert.equal(calls[1].payload.building_dna.schema, "building_dna_v1");
+  assert.equal(Object.prototype.hasOwnProperty.call(calls[1].payload, "report_fingerprint"), false);
+  assert.equal(root.status.textContent.includes("Draft salvat"), true);
 });
 
 await test("save action blocks when no authenticated API client is available", async () => {
@@ -448,6 +497,8 @@ await test("saved project URL parameter is parsed for dashboard reopen links", (
   assert.equal(analysisIdFromSearch("?analysis_id=321"), 321);
   assert.equal(analysisIdFromSearch("?analysis_id=0"), null);
   assert.equal(analysisIdFromSearch("?demo=1"), null);
+  assert.equal(projectIdFromSearch("?project_id=bp-project-321"), "bp-project-321");
+  assert.equal(projectIdFromSearch("?project_id=bad/value"), null);
 });
 
 await test("My Projects rows open the canonical calculator without exposing unsupported domains", () => {
@@ -459,15 +510,15 @@ await test("My Projects rows open the canonical calculator without exposing unsu
     climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
     climate_profile_version: "climate_profile_v1",
     calculation_status: "estimated",
-    latest_analysis_id: 321,
-    version_count: 2,
+    project_id: "bp-project-321",
+    permanent_version_count: 2,
     annualQHnd: 1234.56,
     annualQCnd: 78.9
   }]);
 
   assert.equal(projectStatusLabel({ calculation_status: "estimated" }), "Estimativ");
   assert.equal(html.includes("Casa zidarie 1985"), true);
-  assert.equal(html.includes("pages/analiza-casa.html?analysis_id=321"), true);
+  assert.equal(html.includes("pages/analiza-casa.html?project_id=bp-project-321"), true);
   assert.equal(html.includes("1234.6 kWh"), true);
   assert.equal(html.includes("78.9 kWh"), true);
   for (const forbidden of ["primaryEnergy", "CO2", "certificate", "savings"]) {
@@ -654,6 +705,7 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("buildingModelReview"), true);
   assert.equal(html.includes("buildingModelPreviewBtn"), true);
   assert.equal(html.includes("saveBuildingPlatformAnalysisBtn"), true);
+  assert.equal(html.includes("saveBuildingPlatformDraftBtn"), true);
   assert.equal(html.includes("recalculateBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("buildingPlatformLoadAnalysisId"), true);
   assert.equal(html.includes("loadBuildingPlatformAnalysisBtn"), true);
@@ -674,8 +726,9 @@ await test("analysis page exposes the refocused technical workflow", () => {
     "Building DNA",
     "Raport tehnic",
     "Rezultate",
-    "Salveaza si calculeaza",
-    "Recalculeaza versiune noua",
+    "Salveaza draft",
+    "Salveaza versiunea calculata",
+    "Recalculeaza local",
     "Incarca analiza salvata",
     "QHnd",
     "QCnd"
