@@ -31,7 +31,7 @@
 </header>
 
 <main class="dashboard">
-<section class="analysis-page p2c-technical-analysis">
+<section class="analysis-page p2c-technical-analysis p3f-engineering-workspace" data-workspace-mode="engineering">
 <div id="existingHomesPanel" class="dashboard-band" hidden>
 <div class="section-heading">
 <span class="small-label">MODELE SALVATE</span>
@@ -87,12 +87,15 @@
 </form>
 </div>
 
-<section class="dashboard-band" id="buildingPlatformIntro">
+<section class="dashboard-band p3f-workspace-intro" id="buildingPlatformIntro">
 <div class="section-heading">
-<span class="small-label">FLUX VALIDAT</span>
-<h2>Descrierea cladirii devine Building DNA, apoi raport tehnic.</h2>
+<span class="small-label">SPATIU DE CALCUL</span>
+<h2>Introduci datele tehnice si verifici raportul in acelasi ecran.</h2>
 </div>
-<p>Interfata expune modelarea anvelopei, Building DNA, raportul tehnic si rezultatele Chapter 2 validate: QHnd si QCnd lunar/anual.</p>
+<p>Modelarea anvelopei si calculul QHnd/QCnd ruleaza prin Building DNA, adapterul Chapter 2 si motorul validat. Modul simplificat ramane disponibil ca flux secundar peste acelasi model canonic.</p>
+<div class="hero-buttons">
+<button type="button" class="secondary-btn" id="toggleSimplifiedModeBtn">Mod simplificat</button>
+</div>
 </section>
 
 <section class="dashboard-band demo-mode-controls" id="demoModeControls">
@@ -117,7 +120,7 @@
 <button class="secondary-btn" id="exitDemoModeBtn" type="button">Iesi din demo</button>
 </section>
 
-<div class="progress-wrap p2c-progress-wrap">
+<div class="progress-wrap p2c-progress-wrap p3f-simplified-flow-panel" aria-label="Navigare mod simplificat">
 <nav class="technical-flow-nav" aria-label="Sectiuni model termic">
 <button type="button" data-step-target="0">Geometrie</button>
 <button type="button" data-step-target="1">Anvelopa</button>
@@ -130,7 +133,8 @@
 <span id="stepText">Pas 1 din 6</span>
 </div>
 
-<form id="houseForm" hidden>
+<div class="p3f-engineering-shell">
+<form id="houseForm" class="p3f-input-pane">
 <input type="hidden" name="user_type" value="residential">
 <input type="hidden" name="analysis_purpose" value="technical_chapter_2_report">
 <input type="hidden" name="real_consumption_mode" value="not_used_in_chapter_2">
@@ -147,10 +151,10 @@
 <div><label>Localitate</label><input name="city" placeholder="Ex: Bucuresti"></div>
 <div><label>Profil climatic</label><select name="climate_profile_id"><option value="">Selecteaza un profil climatic</option></select></div>
 <div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1985"></div>
-<div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"></div>
+<div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"><small class="field-impact-note">Seed pentru arii cand acestea nu sunt introduse explicit.</small></div>
 <div><label>Numar niveluri incalzite</label><input name="number_of_floors" type="number" step="1" placeholder="Ex: 1"></div>
 <div><label>Inaltime medie nivel (m)</label><input name="floor_height_m" type="number" step="0.1" placeholder="Ex: 2.6"></div>
-<div><label>Volum incalzit (m3)</label><input name="heated_volume_m3" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Volum incalzit (m3)</label><input name="heated_volume_m3" type="number" step="0.1" placeholder="Optional"><small class="field-impact-note">Cu ACH, genereaza debitul de ventilatie lunar.</small></div>
 <div><label>Lungime aproximativa (m)</label><input name="building_length_m" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Latime aproximativa (m)</label><input name="building_width_m" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Orientare principala</label><select name="main_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
@@ -177,8 +181,7 @@
 <div><label>Orientare principala ferestre</label><select name="window_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
 <div><label>Arie usi exterioare (m2)</label><input name="door_area_m2" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Ventilatie</label><select name="ventilation_type"><option value="natural">Naturala</option><option value="mechanical_exhaust">Mecanica simpla</option><option value="mechanical_with_heat_recovery">Cu recuperare de caldura</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Schimburi aer estimate (ACH)</label><input name="ventilation_ach" type="number" step="0.1" placeholder="Ex: 0.6"></div>
-<div><label>Debit ventilatie (m3/h)</label><input name="airflow_m3h" type="number" step="0.1" placeholder="Optional"></div>
+<div><label>Schimburi aer estimate (ACH)</label><input name="ventilation_ach" type="number" step="0.1" placeholder="Ex: 0.6"><small class="field-impact-note">Folosit impreuna cu volumul incalzit pentru debitul de ventilatie.</small></div>
 <div><label>Punti termice explicite</label><select name="thermal_bridge_mode"><option value="platform_supported_explicit">Termeni expliciti validati de platforma</option><option value="none">Nu se introduc acum</option></select></div>
 </div>
 </div>
@@ -234,6 +237,7 @@
 <button type="button" class="secondary-btn" id="recalculateBuildingPlatformAnalysisBtn">Recalculeaza local</button>
 <button type="button" class="secondary-btn" id="saveBuildingPlatformDraftBtn">Salveaza draft</button>
 <button type="button" class="primary-btn" id="saveBuildingPlatformAnalysisBtn">Salveaza versiunea calculata</button>
+<button type="button" class="secondary-btn" id="printTechnicalReportBtn">Tipareste / Salveaza PDF</button>
 </div>
 <details class="technical-advanced-load">
 <summary>Redeschidere avansata dupa ID analiza</summary>
@@ -257,13 +261,14 @@
 </div>
 </form>
 
-<section class="dashboard-band technical-output-dock" id="buildingModelReview">
+<section class="dashboard-band technical-output-dock p3f-report-pane" id="buildingModelReview">
 <div class="section-heading">
-<span class="small-label">BUILDING DNA SI RAPORT</span>
-<h2>Modelul tehnic, rezultatele Chapter 2 si raportul vor aparea aici.</h2>
+<span class="small-label">RAPORT TEHNIC</span>
+<h2>Raportul de calcul curent va aparea aici.</h2>
 </div>
-<p>Completeaza sectiunile sau incarca demo-ul, apoi genereaza raportul. Valorile afisate provin din Building DNA si motorul Chapter 2 validat.</p>
+<p>Completeaza datele tehnice sau incarca demo-ul, apoi recalculeaza. Raportul afiseaza valorile curente din Building DNA si motorul Chapter 2 validat.</p>
 </section>
+</div>
 </section>
 </main>
 

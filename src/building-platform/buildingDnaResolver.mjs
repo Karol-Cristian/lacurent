@@ -197,6 +197,34 @@ function geometryOverridesFromBuildingSpecificParameters(parameters = {}) {
   return overrides;
 }
 
+function deriveVentilationAirFlowRateM3PerS(parameters = {}) {
+  const ach = parameters.ventilationAch;
+  const heatedVolume = parameters.heatedVolumeM3;
+  if (!finitePositive(ach) || !finitePositive(heatedVolume)) {
+    return null;
+  }
+  return (ach * heatedVolume) / 3600;
+}
+
+function monthlyProfilesWithGeometryVentilation(monthlyProfiles = [], parameters = {}, source = {}) {
+  const airFlowRate = deriveVentilationAirFlowRateM3PerS(parameters);
+  if (airFlowRate === null) {
+    return monthlyProfiles;
+  }
+  return monthlyProfiles.map(profile => ({
+    ...profile,
+    ventilationAirFlowRateM3PerS: airFlowRate,
+    provenance: {
+      ...(profile.provenance ?? {}),
+      ventilationAirflowSource: "ach_and_heated_volume",
+      ventilationAch: parameters.ventilationAch,
+      heatedVolumeM3: parameters.heatedVolumeM3,
+      reference: source.reference ?? profile.provenance?.reference ?? "P3F.geometry.ventilation_airflow",
+      confidence: source.confidence ?? profile.provenance?.confidence ?? "medium"
+    }
+  }));
+}
+
 function defaultGeometry(overrides = {}) {
   return {
     exteriorWallAreaM2: 50,
@@ -878,6 +906,11 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
   if (monthlySelection.status !== "ready") {
     return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
   }
+  const resolvedMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
+    monthlySelection.monthlyProfiles,
+    answers.buildingSpecificParameters ?? {},
+    answers.source ?? { reference: "P1.assisted_answers" }
+  );
   return resolveBuildingDna({
     userMode: ASSISTED_MODE,
     source: answers.source ?? { reference: "P1.assisted_answers" },
@@ -894,7 +927,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     },
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
-    monthlyProfiles: monthlySelection.monthlyProfiles,
+    monthlyProfiles: resolvedMonthlyProfiles,
     building: {
       buildingId: answers.buildingId,
       buildingType: answers.buildingType,
@@ -917,6 +950,11 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
   if (monthlySelection.status !== "ready") {
     return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
   }
+  const resolvedMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
+    monthlySelection.monthlyProfiles,
+    input.buildingSpecificParameters ?? {},
+    input.source ?? { reference: "P1.advanced_model" }
+  );
   return resolveBuildingDna({
     userMode: ADVANCED_MODE,
     source: input.source ?? { reference: "P1.advanced_model" },
@@ -927,7 +965,7 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     boundaryContext: input.boundaryContext,
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
-    monthlyProfiles: monthlySelection.monthlyProfiles,
+    monthlyProfiles: resolvedMonthlyProfiles,
     building: input.building
   });
 }
