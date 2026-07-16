@@ -255,18 +255,17 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   for (const expected of [
     "Rezultate principale",
     "Caiet de calcule ingineresti",
-    "Registru de variabile utilizate",
     "Calcule in ordinea dependentelor",
     "Amprenta calcul",
     "Necesar anual de incalzire QHnd",
     "Necesar anual de racire QCnd",
-    "R_layer = d / lambda_design",
-    "U = 1 / R_total",
-    "Qtr,H = Phi_tr,H * t / 1000",
-    "Qve,H = Phi_ve,H * t / 1000",
-    "QHgn = Qint + Qsol",
-    "QHnd_an = sum(QHnd_m)",
-    "QCnd_an = sum(QCnd_m)",
+    "R_caramida :=",
+    "U_ext_wall :=",
+    "QtrH_ianuarie :=",
+    "QveH_ianuarie :=",
+    "QHgn_ianuarie :=",
+    "QHnd_an :=",
+    "QCnd_an :=",
     "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH",
     "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND"
   ]) {
@@ -647,9 +646,9 @@ await test("demo query and fixture preload a complete editable technical dataset
   assert.equal(html.includes("data-engineering-calculation-notebook"), true);
   assert.equal(html.includes("technical-report-chapter\" open"), false);
   assert.equal(html.includes("<details"), false);
-  assert.equal(html.includes("Registru de variabile utilizate"), true);
-  assert.equal(html.includes("Qtr,H = Phi_tr,H * t / 1000"), true);
-  assert.equal(html.includes("QHnd_an ="), true);
+  assert.equal(html.includes("Registru de variabile utilizate"), false);
+  assert.equal(html.includes("QtrH_ianuarie :="), true);
+  assert.equal(html.includes("QHnd_an :="), true);
   assert.equal(html.includes("Necesar anual de incalzire QHnd"), true);
   assert.equal(html.includes("Necesar anual de racire QCnd"), true);
 });
@@ -759,43 +758,66 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(css.includes(".p3f-input-pane"), true);
   assert.equal(css.includes("display:none!important"), true);
   assert.equal(css.includes(".engineering-calculation-notebook"), true);
-  assert.equal(css.includes(".calculation-step"), true);
+  assert.equal(css.includes(".calculation-compact-line"), true);
   assert.equal(css.includes(".technical-report-title-block"), true);
 });
 
-await test("P3G report is a fully expanded print-ready calculation notebook", () => {
+await test("P3G report is a compact fully expanded print-ready calculation notebook", () => {
   const preview = buildWizardEngineeringPreview(
     mapWizardAnswersToAssistedAnswers(formData(ASSISTED_WIZARD_DEMO_FIXTURE.values))
   );
   const html = renderEngineeringModelReview(preview, { openReport: true });
   const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8");
+  const firstPage = html.slice(
+    html.indexOf("report-main-results"),
+    html.indexOf("engineering-calculation-notebook")
+  );
+  const mainReport = html.slice(
+    html.indexOf("report-main-results"),
+    html.indexOf("technical-report-appendix")
+  );
 
   assert.equal(html.includes("data-pdf-like-report"), true);
   assert.equal(html.includes("data-engineering-calculation-notebook"), true);
   assert.equal(html.includes("<details"), false);
   assert.equal(html.includes("Rezultate principale"), true);
-  assert.equal(html.includes("Registru de variabile utilizate"), true);
+  assert.equal(html.includes("Registru de variabile utilizate"), false);
   assert.equal(html.includes("Calcule in ordinea dependentelor"), true);
-  assert.equal(html.includes("QHnd_an = sum(QHnd_m)"), true);
-  assert.equal(html.includes("QCnd_an = sum(QCnd_m)"), true);
-  assert.equal(html.includes("Qtr,H = Phi_tr,H * t / 1000"), true);
-  assert.equal(html.includes("Qve,H = Phi_ve,H * t / 1000"), true);
-  assert.equal(html.includes("QHgn = Qint + Qsol"), true);
-  assert.equal(html.includes("QHnd = QHht - eta_Hgn * QHgn"), true);
-  assert.equal(html.includes("QCnd = QCgn - eta_Cht * QCht"), true);
+  assert.equal(html.includes("QHnd_an :="), true);
+  assert.equal(html.includes("QCnd_an :="), true);
+  assert.equal(html.includes("QtrH_ianuarie :="), true);
+  assert.equal(html.includes("QveH_ianuarie :="), true);
+  assert.equal(html.includes("QHgn_ianuarie :="), true);
+  assert.equal(html.includes("QHnd_ianuarie :="), true);
+  assert.equal(html.includes("QCnd_ianuarie :="), true);
+  assert.equal(html.includes("λ_eps := 0,040 W/(m·K) -- valoare introdusa explicit"), true);
+  assert.equal(html.includes("U_window := 1,2000 W/(m²K) -- valoare introdusa explicit"), true);
+  assert.equal(html.includes("0,000 × 0,000 = 0,040"), false);
+  assert.equal(html.includes("-- + + --"), false);
+  assert.equal(html.includes("lambda_ref"), false);
+  assert.equal(html.includes("VARIABILĂ"), false);
+  assert.equal(html.includes("Relatie"), false);
+  assert.equal(html.includes("Substitutie"), false);
+  assert.equal(firstPage.includes("Amprenta calcul"), false);
+  assert.equal(firstPage.includes("Caiet de calcule"), false);
+  assert.equal(firstPage.includes("QHnd_an"), false);
+  assert.equal(mainReport.includes("calculated_from_"), false);
+  assert.equal(mainReport.includes("chapter_2_"), false);
+  assert.equal(mainReport.includes("not_required_for_"), false);
+  assert.equal(mainReport.includes("explicit_material_lambda"), false);
   for (const month of [
-    "january",
-    "february",
-    "march",
-    "april",
-    "may",
-    "june",
-    "july",
+    "ianuarie",
+    "februarie",
+    "martie",
+    "aprilie",
+    "mai",
+    "iunie",
+    "iulie",
     "august",
-    "september",
-    "october",
-    "november",
-    "december"
+    "septembrie",
+    "octombrie",
+    "noiembrie",
+    "decembrie"
   ]) {
     assert.equal(html.includes(month), true, month);
   }
@@ -806,12 +828,12 @@ await test("P3G report is a fully expanded print-ready calculation notebook", ()
     "Assisted Answers ready",
     "Formula viewer"
   ]) {
-    assert.equal(html.includes(forbidden), false, forbidden);
+    assert.equal(mainReport.includes(forbidden), false, forbidden);
   }
   assert.equal(css.includes("@media print"), true);
-  assert.equal(css.includes(".calculation-step"), true);
+  assert.equal(css.includes(".calculation-compact-line"), true);
   assert.equal(css.includes("page-break-inside:avoid"), true);
-  assert.equal(css.includes(".calculation-equations code"), true);
+  assert.equal(css.includes(".calculation-compact-line code"), true);
 });
 
 await test("active production analysis flow removes unsupported product domains", () => {

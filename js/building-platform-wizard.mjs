@@ -574,50 +574,67 @@ function sectionTitle(sectionId) {
   return titles[sectionId] ?? sectionId ?? "Calcul";
 }
 
-function renderNotebookVariables(variables = []) {
-  return renderTable([
-    { label: "Simbol", value: row => row.symbol },
-    { label: "Valoare", value: row => Number.isFinite(Number(row.value)) ? formatNumber(row.value, 4) : row.value },
-    { label: "Unitate", value: row => row.unit ?? "-" },
-    { label: "Semnificatie", value: row => row.meaning ?? "--" },
-    { label: "Sursa", value: row => row.source ?? "--" }
-  ], variables);
+function renderLocalVariables(variables = []) {
+  if (!variables.length) return "";
+  return `
+    <dl class="notebook-local-variables">
+      ${variables.map(variable => `
+        <div>
+          <dt><code>${safeText(variable.symbol)}</code></dt>
+          <dd>${safeText(variable.meaning ?? "--")}</dd>
+        </div>
+      `).join("")}
+    </dl>
+  `;
 }
 
-function renderCalculationSheet(calculations = []) {
+function renderCalculationSheet(sections = []) {
+  return sections.map(group => `
+    <section class="calculation-notebook-section">
+      <h3>${safeText(group.title ?? sectionTitle(group.sectionId))}</h3>
+      ${renderLocalVariables(group.localVariables ?? [])}
+      <div class="calculation-compact-lines">
+        ${(group.lines ?? []).map(line => `
+          <div class="calculation-compact-line" data-line-kind="${safeText(line.kind ?? "calculation")}">
+            <code>${safeText(line.text ?? "")}</code>
+          </div>
+        `).join("")}
+      </div>
+      ${(group.lines ?? []).some(line => line.reference) ? `
+        <p class="calculation-section-reference">${safeText((group.lines ?? []).find(line => line.reference)?.reference ?? "")}</p>
+      ` : ""}
+    </section>
+  `).join("");
+}
+
+function renderLegacyCalculationSheet(calculations = []) {
   const sections = [];
   for (const calculation of calculations) {
     const section = calculation.section ?? "caiet_calcul";
     let current = sections.find(item => item.section === section);
     if (!current) {
-      current = { section, rows: [] };
+      current = { section, title: sectionTitle(section), localVariables: [], lines: [] };
       sections.push(current);
     }
-    current.rows.push(calculation);
+    current.lines.push({
+      text: [
+        calculation.substitutedFormula,
+        calculation.resultLine
+      ].filter(Boolean).join("\n"),
+      reference: calculation.normativeReference ?? null
+    });
   }
-  return sections.map(group => `
-    <section class="calculation-notebook-section">
-      <h3>${safeText(sectionTitle(group.section))}</h3>
-      ${group.rows.map((row, index) => `
-        <article class="calculation-step">
-          <div class="calculation-step-index">${safeText(index + 1)}</div>
-          <div class="calculation-step-body">
-            <h4>${safeText(row.formulaName ?? row.resultSymbol)}</h4>
-            <dl class="calculation-equations">
-              <div><dt>Variabila</dt><dd><code>${safeText(row.resultSymbol ?? "--")}</code></dd></div>
-              <div><dt>Relatie</dt><dd><code>${safeText(row.symbolicFormula ?? row.formulaId ?? "--")}</code></dd></div>
-              <div><dt>Substitutie</dt><dd><code>${safeText(row.substitutedFormula ?? "--")}</code></dd></div>
-              <div><dt>Rezultat</dt><dd><strong>${safeText(row.resultLine ?? `${row.resultSymbol} = ${formatNumber(row.resultValue, 4)} ${row.resultUnit ?? ""}`)}</strong></dd></div>
-              <div><dt>Referinta</dt><dd>${safeText(row.normativeReference ?? row.formulaId ?? "--")}</dd></div>
-            </dl>
-          </div>
-        </article>
-      `).join("")}
-    </section>
-  `).join("");
+  return renderCalculationSheet(sections);
 }
 
-function renderMainResultsDocument(report, fingerprintId) {
+function renderCalculationNotebook(notebook = {}) {
+  if (Array.isArray(notebook.sections) && notebook.sections.length > 0) {
+    return renderCalculationSheet(notebook.sections);
+  }
+  return renderLegacyCalculationSheet(notebook.calculations ?? []);
+}
+
+function renderMainResultsDocument(report) {
   const mainResults = report?.mainResults ?? {};
   return `
     <section class="report-main-results">
@@ -626,11 +643,10 @@ function renderMainResultsDocument(report, fingerprintId) {
         <tbody>
           <tr><th>Necesar anual de incalzire QHnd</th><td>${formatNumber(mainResults.annualQHnd, 4)} kWh</td></tr>
           <tr><th>Necesar anual de racire QCnd</th><td>${formatNumber(mainResults.annualQCnd, 4)} kWh</td></tr>
-          <tr><th>Amprenta calcul</th><td>${safeText(fingerprintId ?? "--")}</td></tr>
         </tbody>
       </table>
       ${renderTable([
-        { label: "Luna", value: row => row.month },
+        { label: "Luna", value: row => row.monthLabel ?? row.month },
         { label: "QHnd [kWh]", value: row => formatNumber(row.qHndKwh, 4) },
         { label: "QCnd [kWh]", value: row => formatNumber(row.qCndKwh, 4) }
       ], mainResults.monthly ?? [])}
@@ -653,25 +669,21 @@ function renderTechnicalAppendix(report, workspace = null) {
 
 function renderEngineeringNotebookReport(workspace) {
   const report = workspace.report ?? {};
-  const notebook = report.engineeringNotebook ?? workspace.engineeringNotebook ?? { variables: [], calculations: [] };
+  const notebook = report.engineeringNotebook ?? workspace.engineeringNotebook ?? { sections: [], calculations: [] };
   return `
     <div class="technical-report-document" data-pdf-like-report>
       <header class="technical-report-title-block">
         <p class="small-label">Raport tehnic MC001-2022</p>
         <h1>${safeText(report.title ?? "Caiet de calcul")}</h1>
-        <p>Rezultatele si formulele de mai jos afiseaza valorile curente furnizate de motorul validat si modelul de trasabilitate.</p>
+        <p>Rezultatele si calculele de mai jos afiseaza valorile curente furnizate de motorul validat.</p>
       </header>
-      ${renderMainResultsDocument(report, report.calculationFingerprint?.fingerprintId)}
+      ${renderMainResultsDocument(report)}
       <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
         <h2>2. Caiet de calcule ingineresti</h2>
-        <p>Variabilele sunt listate inaintea calculelor. Fiecare pas contine numele variabilei, relatia, substitutia numerica si rezultatul.</p>
-        <section class="notebook-variable-register">
-          <h3>2.1 Registru de variabile utilizate</h3>
-          ${renderNotebookVariables(notebook.variables ?? [])}
-        </section>
+        <p>Variabilele sunt definite local in fiecare sectiune, iar liniile de calcul sunt afisate continuu, in ordinea dependentelor.</p>
         <section class="notebook-calculation-steps">
-          <h3>2.2 Calcule in ordinea dependentelor</h3>
-          ${renderCalculationSheet(notebook.calculations ?? [])}
+          <h3>2.1 Calcule in ordinea dependentelor</h3>
+          ${renderCalculationNotebook(notebook)}
         </section>
       </section>
       ${renderTechnicalAppendix(report, workspace)}
@@ -680,23 +692,19 @@ function renderEngineeringNotebookReport(workspace) {
 }
 
 function renderSavedTechnicalReportDocument(report) {
-  const notebook = report?.engineeringNotebook ?? { variables: [], calculations: [] };
+  const notebook = report?.engineeringNotebook ?? { sections: [], calculations: [] };
   return `
     <div class="technical-report-document" data-pdf-like-report>
       <header class="technical-report-title-block">
         <p class="small-label">Raport tehnic MC001-2022</p>
         <h1>${safeText(report?.title ?? "Caiet de calcul")}</h1>
       </header>
-      ${renderMainResultsDocument(report, report?.calculationFingerprint?.fingerprintId)}
+      ${renderMainResultsDocument(report)}
       <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
         <h2>2. Caiet de calcule ingineresti</h2>
-        <section class="notebook-variable-register">
-          <h3>2.1 Registru de variabile utilizate</h3>
-          ${renderNotebookVariables(notebook.variables ?? [])}
-        </section>
         <section class="notebook-calculation-steps">
-          <h3>2.2 Calcule in ordinea dependentelor</h3>
-          ${renderCalculationSheet(notebook.calculations ?? [])}
+          <h3>2.1 Calcule in ordinea dependentelor</h3>
+          ${renderCalculationNotebook(notebook)}
         </section>
       </section>
       ${renderTechnicalAppendix(report)}
