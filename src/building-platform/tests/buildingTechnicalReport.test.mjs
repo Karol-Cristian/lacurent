@@ -57,12 +57,13 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   const workspace = buildBuildingTechnicalWorkspace(pipeline);
 
   assert.equal(workspace.status, "ready");
-  assert.equal(workspace.scope, "building_technical_workspace_p2b_report_generation_only");
+  assert.equal(workspace.scope, "engineering_calculation_notebook_p3g_report_generation_only");
   assert.deepEqual(
     workspace.tabs.map(tab => tab.tabId),
     ["building", "assemblies", "materials", "building_dna", "chapter_2", "results", "report", "traceability"]
   );
-  assert.equal(workspace.report.title, "Raport tehnic de calcul MC001-2022");
+  assert.equal(workspace.report.reportId, "engineering_calculation_notebook_p3g_v1");
+  assert.equal(workspace.report.title, "Caiet de calcul MC001-2022");
   assert.equal(workspace.calculationFingerprint.fingerprintId, "39cfaa3e");
   assert.equal(workspace.report.calculationFingerprint.fingerprintId, "39cfaa3e");
   assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
@@ -106,59 +107,53 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   assert.equal(january.monthlyProfileOrigin, "proposed_by_typology");
   close(january.heatingTransmissionKwh, 925.302090467682);
   close(january.heatingVentilationKwh, 288);
+  close(january.qHhtKwh, 1213.3020904676819);
   close(january.internalGainsKwh, 120);
   close(january.solarGainsKwh, 180);
+  close(january.qHgnKwh, 300);
+  close(january.gammaH, 0.24725911407962825);
+  close(january.etaHgn, 0.9999189561186483);
   close(january.qHndKwh, 913.3264036320874);
+  close(january.qChtKwh, 363.9906271403046);
+  close(january.qCgnKwh, 300);
+  close(january.gammaC, 0.8241970469320942);
+  close(january.etaCht, 0.7708498665299556);
   close(january.qCndKwh, 19.4178736507414);
   assert.equal(january.qHndFormulaCode, "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH");
   assert.equal(january.qCndFormulaCode, "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND");
+
+  assert.equal(workspace.report.mainResults.monthly.length, 12);
+  assert.equal(workspace.engineeringNotebook.calculations.length > 120, true);
+  assert.equal(workspace.engineeringNotebook.variables.length > workspace.engineeringNotebook.calculations.length, true);
 });
 
-await test("technical report contains the required engineering chapters and formula views", () => {
+await test("technical report contains the required P3G notebook chapters and formula views", () => {
   const workspace = buildBuildingTechnicalWorkspace(
     buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers())
   );
   const chapterTitles = workspace.report.chapters.map(chapter => chapter.title);
 
-  for (const expected of [
-    "Date generale ale proiectului",
-    "Statutul calculului",
-    "Date climatice utilizate",
-    "Geometria cladirii",
-    "Elemente de anvelopa",
-    "Materiale si straturi",
-    "Rezistente termice",
-    "Coeficienti U",
-    "Coeficienti de transfer termic",
-    "Pierderi prin transmisie",
-    "Pierderi prin ventilare",
-    "Aporturi interne",
-    "Aporturi solare",
-    "Calcul lunar al necesarului de incalzire",
-    "Calcul lunar al necesarului de racire",
-    "Rezultate anuale",
-    "Ipoteze si confirmari",
-    "Suprascrieri ingineresti",
-    "Trasabilitate matematica",
-    "Referinte normative",
-    "Anexa tehnica software si versiuni"
-  ]) {
-    assert.equal(chapterTitles.includes(expected), true, expected);
-  }
+  assert.deepEqual(chapterTitles, [
+    "Rezultate principale",
+    "Caiet de calcule ingineresti",
+    "Anexa tehnica interna"
+  ]);
 
   const formulaIds = workspace.formulaViews.map(view => view.formulaId);
-  assert.equal(
-    formulaIds.includes("MC001_2_7_U_VALUE_FROM_RELATION_2_6_RESISTANCE"),
-    true
-  );
-  assert.equal(
-    formulaIds.includes("MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"),
-    true
-  );
-  assert.equal(
-    formulaIds.includes("MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND"),
-    true
-  );
+  for (const expected of [
+    "MC001_LAYER_RESISTANCE_THICKNESS_OVER_LAMBDA",
+    "MC001_2_7_U_VALUE_FROM_RELATION_2_6_RESISTANCE",
+    "MC001_R17_RELATION_2_15_TOTAL_TRANSMISSION_COEFFICIENT",
+    "MC001_MONTHLY_TRANSMISSION_ENERGY_FROM_ENGINE_OUTPUT",
+    "MC001_MONTHLY_VENTILATION_ENERGY_FROM_ENGINE_OUTPUT",
+    "MC001_MONTHLY_HEAT_GAINS_SUM_FROM_ENGINE_OUTPUT",
+    "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH",
+    "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND",
+    "MC001_2_84_ANNUAL_HEATING_USEFUL_DEMAND",
+    "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND"
+  ]) {
+    assert.equal(formulaIds.includes(expected), true, expected);
+  }
   assert.equal(
     workspace.traceability.some(row => row.reference === "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"),
     true
@@ -168,6 +163,18 @@ await test("technical report contains the required engineering chapters and form
   assert.equal(uTrace.substitutedFormula.includes("U = 1 /"), true);
   assert.equal(uTrace.resultLine.includes("W/(m2*K)"), true);
   assert.equal(uTrace.normativeReference, "MC001-2022, relatia 2.7");
+
+  const annualHeating = workspace.formulaViews.find(view => view.formulaId === "MC001_2_84_ANNUAL_HEATING_USEFUL_DEMAND");
+  assert.equal(annualHeating.inputVariables.length, 12);
+  assert.equal(annualHeating.substitutedFormula.includes("913.3264"), true);
+  assert.equal(annualHeating.resultLine, "QHnd_an = 10286.4963 kWh");
+
+  const januaryHeating = workspace.formulaViews.find(view =>
+    view.formulaName === "Necesar util lunar de incalzire - january"
+  );
+  assert.equal(januaryHeating.symbolicFormula, "QHnd = QHht - eta_Hgn * QHgn");
+  assert.equal(januaryHeating.substitutedFormula.includes("1213.3021 kWh"), true);
+  assert.equal(januaryHeating.substitutedFormula.includes("0.9999"), true);
 });
 
 await test("calculation fingerprint changes when upstream Building DNA changes", () => {

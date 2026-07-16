@@ -2,7 +2,7 @@ import {
   analyzeMonthlyUsefulDemandSeasonality
 } from "../climate-platform/index.mjs";
 
-const TECHNICAL_WORKSPACE_SCOPE = "building_technical_workspace_p2b_report_generation_only";
+const TECHNICAL_WORKSPACE_SCOPE = "engineering_calculation_notebook_p3g_report_generation_only";
 
 export const TECHNICAL_WORKSPACE_TABS = Object.freeze([
   { tabId: "building", label: "Cladire" },
@@ -246,16 +246,38 @@ function monthlyRows(calculation, buildingDna) {
       solarGainsSource: dnaMonth?.heatGains?.solarGainsSource ?? null,
       monthlyProfileOrigin: dnaMonth?.provenance?.origin ?? null,
       monthlyProfileReference: dnaMonth?.provenance?.reference ?? null,
+      heatingTransmissionHeatFlowW: monthResult.transmission?.heating?.heatFlow?.amount ?? null,
+      coolingTransmissionHeatFlowW: monthResult.transmission?.cooling?.heatFlow?.amount ?? null,
       heatingTransmissionKwh: monthResult.transmission?.heating?.transmissionEnergy?.amount ?? null,
       coolingTransmissionKwh: monthResult.transmission?.cooling?.transmissionEnergy?.amount ?? null,
+      heatingVentilationHeatTransferWPerK: monthResult.ventilation?.heating?.ventilationHeatTransferCoefficient?.amount ?? null,
+      coolingVentilationHeatTransferWPerK: monthResult.ventilation?.cooling?.ventilationHeatTransferCoefficient?.amount ?? null,
+      heatingVentilationHeatFlowW: monthResult.ventilation?.heating?.heatFlow?.amount ?? null,
+      coolingVentilationHeatFlowW: monthResult.ventilation?.cooling?.heatFlow?.amount ?? null,
       heatingVentilationKwh: monthResult.ventilation?.heating?.ventilationEnergy?.amount ?? null,
       coolingVentilationKwh: monthResult.ventilation?.cooling?.ventilationEnergy?.amount ?? null,
+      qHhtKwh: monthResult.totalHeatingTransfer?.amount ?? heating?.qHht ?? null,
+      qChtKwh: cooling?.qCht ?? null,
       internalGainsKwh: monthResult.heatGains?.internalGains ?? null,
       solarGainsKwh: monthResult.heatGains?.solarGains ?? null,
       qHgnKwh: monthResult.heatGains?.qHgn ?? null,
+      qCgnKwh: cooling?.qCgn ?? monthResult.heatGains?.qHgn ?? null,
+      heatGainsFormulaCode: monthResult.heatGains?.formulaCode ?? heating?.heatGainsFormulaCode ?? cooling?.heatGainsFormulaCode ?? null,
+      gammaH: heating?.gammaH ?? null,
+      tauH: heating?.tauH ?? null,
+      aH: heating?.aH ?? null,
+      etaHgn: heating?.etaHgn ?? null,
+      qHndBranch: heating?.qHndBranch ?? null,
+      heatTransferCoefficientWK: heating?.heatTransferCoefficientWK ?? cooling?.heatTransferCoefficientWK ?? null,
+      effectiveInternalHeatCapacityJPerK: heating?.effectiveInternalHeatCapacityJPerK ?? cooling?.effectiveInternalHeatCapacityJPerK ?? null,
       qHndKwh: heating?.qHnd ?? null,
       qHndFormulaCode: heating?.formulaCode ?? null,
       qHndOrigin: heating?.etaHgnOrigin ?? null,
+      gammaC: cooling?.gammaC ?? null,
+      tauC: cooling?.tauC ?? null,
+      aC: cooling?.aC ?? null,
+      etaCht: cooling?.etaCht ?? null,
+      qCndBranch: cooling?.qCndBranch ?? null,
       qCndKwh: cooling?.qCnd ?? null,
       qCndFormulaCode: cooling?.formulaCode ?? null,
       qCndOrigin: cooling?.etaChtOrigin ?? null
@@ -335,6 +357,10 @@ function formatFormulaValue(value, unit, digits = 4) {
   return `${formatFormulaNumber(value, digits)}${unit ? ` ${unit}` : ""}`;
 }
 
+function formatFormulaTerm(value, unit, digits = 4) {
+  return formatFormulaValue(value, unit, digits);
+}
+
 function readableNormativeReference(reference) {
   if (!reference) return null;
   if (reference.includes("2_7")) return "MC001-2022, relatia 2.7";
@@ -353,6 +379,7 @@ function formulaTrace({
   resultValue,
   resultUnit,
   origin,
+  section = "caiet_calcul",
   inputVariables = [],
   sourceReference,
   symbolicFormula,
@@ -368,6 +395,7 @@ function formulaTrace({
     resultValue,
     resultUnit,
     origin,
+    section,
     inputVariables,
     sourceReference,
     normativeReference: readableNormativeReference(formulaId ?? sourceReference),
@@ -383,6 +411,30 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
   const htrFormulaReference = envelopeFormulaReferences.find(reference => reference.includes("2_15")) ??
     envelopeFormulaReferences[0] ??
     null;
+  const materialFormulaViews = assemblies.flatMap(assembly => assembly.layers
+    .filter(layer => Number.isFinite(Number(layer.lambdaNormatWmK)) && Number.isFinite(Number(layer.correctionCoefficientA)))
+    .map(layer => formulaTrace({
+      formulaId: layer.lambdaFormulaCode ?? "MC001_LAYER_DESIGN_LAMBDA_FROM_REFERENCE_AND_CORRECTION",
+      formulaName: `Conductivitate de calcul - ${assembly.displayName} / ${layer.materialName}`,
+      resultSymbol: `lambda_${layer.layerId}`,
+      resultValue: layer.lambdaWmK,
+      resultUnit: "W/(m*K)",
+      origin: layer.lambdaOrigin,
+      section: "materiale",
+      inputVariables: [
+        { symbol: "lambda_ref", value: layer.lambdaNormatWmK, unit: "W/(m*K)", meaning: "conductivitate de referinta" },
+        { symbol: "a", value: layer.correctionCoefficientA, unit: "-", meaning: "coeficient de corectie" }
+      ],
+      sourceReference: layer.lambdaFormulaCode,
+      symbolicFormula: "lambda_design = lambda_ref * a",
+      substitutedFormula: `lambda_design = ${formatFormulaTerm(layer.lambdaNormatWmK, "W/(m*K)")} * ${formatFormulaNumber(layer.correctionCoefficientA)}`,
+      resultLine: `lambda_design = ${formatFormulaValue(layer.lambdaWmK, "W/(m*K)")}`,
+      dependencies: [
+        `${assembly.assemblyId}.${layer.layerId}.lambda_ref`,
+        `${assembly.assemblyId}.${layer.layerId}.correction`
+      ]
+    })));
+
   const assemblyFormulaViews = assemblies.flatMap((assembly) => {
     const layerTraces = assembly.layers.map(layer => formulaTrace({
       formulaId: layer.resistanceFormulaCode,
@@ -391,9 +443,10 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       resultValue: layer.resistanceM2KPerW,
       resultUnit: "m2*K/W",
       origin: layer.lambdaOrigin,
+      section: "straturi_si_rezistente",
       inputVariables: [
-        { symbol: "d", value: layer.thicknessM, unit: "m" },
-        { symbol: "lambda_design", value: layer.lambdaWmK, unit: "W/(m*K)" }
+        { symbol: "d", value: layer.thicknessM, unit: "m", meaning: "grosime strat" },
+        { symbol: "lambda_design", value: layer.lambdaWmK, unit: "W/(m*K)", meaning: "conductivitate de calcul" }
       ],
       sourceReference: layer.resistanceFormulaCode,
       symbolicFormula: "R_layer = d / lambda_design",
@@ -414,14 +467,16 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       resultValue: assembly.totalResistance,
       resultUnit: assembly.totalResistanceUnit,
       origin: assembly.uValueOrigin,
+      section: "straturi_si_rezistente",
       inputVariables: [
-        { symbol: "Rsi", value: assembly.rsi, unit: assembly.totalResistanceUnit },
+        { symbol: "Rsi", value: assembly.rsi, unit: assembly.totalResistanceUnit, meaning: "rezistenta superficiala interioara" },
         ...assembly.layers.map(layer => ({
           symbol: `R_${layer.layerId}`,
           value: layer.resistanceM2KPerW,
-          unit: "m2*K/W"
+          unit: "m2*K/W",
+          meaning: `rezistenta strat ${layer.materialName}`
         })),
-        { symbol: "Rse", value: assembly.rse, unit: assembly.totalResistanceUnit }
+        { symbol: "Rse", value: assembly.rse, unit: assembly.totalResistanceUnit, meaning: "rezistenta superficiala exterioara" }
       ],
       sourceReference: assembly.sourceReference,
       symbolicFormula: "R_total = R_si + sum(R_layer) + R_se",
@@ -436,8 +491,9 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       resultValue: assembly.uValue,
       resultUnit: assembly.uValueUnit,
       origin: assembly.uValueOrigin,
+      section: "coeficienti_u",
       inputVariables: [
-        { symbol: "Rtotal", value: assembly.totalResistance, unit: assembly.totalResistanceUnit }
+        { symbol: "R_total", value: assembly.totalResistance, unit: assembly.totalResistanceUnit, meaning: "rezistenta termica totala" }
       ],
       sourceReference: assembly.sourceReference,
       symbolicFormula: "U = 1 / R_total",
@@ -452,6 +508,80 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
     ];
   });
 
+  const envelopeElementViews = (envelope.elementRows ?? []).map(element => formulaTrace({
+    formulaId: element.contributionFormulaCode,
+    formulaName: `Transfer element anvelopa - ${element.elementId}`,
+    resultSymbol: `H_${element.elementId}`,
+    resultValue: element.contributionWK,
+    resultUnit: "W/K",
+    origin: element.uValueOrigin,
+    section: "transfer_anvelopa",
+    inputVariables: [
+      { symbol: "U", value: element.uValue, unit: "W/(m2*K)", meaning: "coeficient U element" },
+      { symbol: "A", value: element.area, unit: "m2", meaning: "arie element" },
+      { symbol: "b", value: element.boundaryCorrectionFactor, unit: "-", meaning: "factor corectie limita" }
+    ],
+    sourceReference: element.contributionFormulaCode,
+    symbolicFormula: "H_el = U * A * b",
+    substitutedFormula: `H_el = ${formatFormulaTerm(element.uValue, "W/(m2*K)")} * ${formatFormulaTerm(element.area, "m2")} * ${formatFormulaNumber(element.boundaryCorrectionFactor)}`,
+    resultLine: `H_el = ${formatFormulaValue(element.contributionWK, "W/K")}`,
+    dependencies: [
+      `${element.assemblyId}.U`,
+      `${element.elementId}.area`,
+      `${element.elementId}.boundary_factor`
+    ]
+  }));
+
+  const thermalBridgeViews = (envelope.thermalBridgeRows ?? []).map(bridge => formulaTrace({
+    formulaId: bridge.contributionFormulaCode,
+    formulaName: `Punte termica - ${bridge.bridgeId}`,
+    resultSymbol: `H_tb_${bridge.bridgeId}`,
+    resultValue: bridge.contributionWK,
+    resultUnit: "W/K",
+    origin: "explicit_thermal_bridge_input",
+    section: "transfer_anvelopa",
+    inputVariables: [
+      { symbol: "psi", value: bridge.psiWmK, unit: "W/(m*K)", meaning: "coeficient liniar punte" },
+      { symbol: "l", value: bridge.lengthM, unit: "m", meaning: "lungime punte" }
+    ],
+    sourceReference: bridge.contributionFormulaCode,
+    symbolicFormula: "H_tb = psi * l",
+    substitutedFormula: `H_tb = ${formatFormulaTerm(bridge.psiWmK, "W/(m*K)")} * ${formatFormulaTerm(bridge.lengthM, "m")}`,
+    resultLine: `H_tb = ${formatFormulaValue(bridge.contributionWK, "W/K")}`,
+    dependencies: [`${bridge.bridgeId}.psi`, `${bridge.bridgeId}.length`]
+  }));
+
+  const componentFormulaViews = envelope.components.map(component => {
+    const elementTerms = (envelope.elementRows ?? [])
+      .filter(element => element.component === component.componentId)
+      .map(element => formatFormulaNumber(element.contributionWK));
+    const bridgeTerms = (envelope.thermalBridgeRows ?? [])
+      .filter(bridge => bridge.component === component.componentId)
+      .map(bridge => formatFormulaNumber(bridge.contributionWK));
+    const terms = [...elementTerms, ...bridgeTerms];
+    return formulaTrace({
+      formulaId: `${component.componentId}_TRANSMISSION_COMPONENT_SUM`,
+      formulaName: `Coeficient transmisie ${component.componentId}`,
+      resultSymbol: component.componentId,
+      resultValue: component.amount,
+      resultUnit: component.unit,
+      origin: "calculated_from_engine_component_breakdown",
+      section: "transfer_anvelopa",
+      inputVariables: [
+        { symbol: "H_elements", value: component.elementAmount, unit: component.unit, meaning: "suma elemente" },
+        { symbol: "H_tb", value: component.thermalBridgeAmount, unit: component.unit, meaning: "suma punti termice" }
+      ],
+      sourceReference: component.componentId,
+      symbolicFormula: `${component.componentId} = sum(H_el) + sum(H_tb)`,
+      substitutedFormula: `${component.componentId} = ${terms.length > 0 ? terms.join(" + ") : "0"}`,
+      resultLine: `${component.componentId} = ${formatFormulaValue(component.amount, component.unit)}`,
+      dependencies: [
+        ...(envelope.elementRows ?? []).filter(element => element.component === component.componentId).map(element => `H_${element.elementId}`),
+        ...(envelope.thermalBridgeRows ?? []).filter(bridge => bridge.component === component.componentId).map(bridge => `H_tb_${bridge.bridgeId}`)
+      ]
+    });
+  });
+
   const htrFormulaViews = [
     formulaTrace({
       formulaId: htrFormulaReference,
@@ -460,10 +590,12 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       resultValue: envelope.htr?.amount ?? null,
       resultUnit: envelope.htr?.unit ?? "W/K",
       origin: envelope.htr?.origin ?? null,
+      section: "transfer_anvelopa",
       inputVariables: envelope.components.map(component => ({
         symbol: component.componentId,
         value: component.amount,
-        unit: component.unit
+        unit: component.unit,
+        meaning: `componenta ${component.componentId}`
       })),
       sourceReference: htrFormulaReference,
       symbolicFormula: "H_tr = H_d + H_g + H_u + H_a",
@@ -476,22 +608,193 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
   const monthFormulaViews = [];
   for (const row of monthly.slice(0, 12)) {
     monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_MONTHLY_TRANSMISSION_ENERGY_FROM_ENGINE_OUTPUT",
+      formulaName: `Transfer prin transmisie pentru incalzire - ${row.month}`,
+      resultSymbol: "Qtr,H",
+      resultValue: row.heatingTransmissionKwh,
+      resultUnit: "kWh",
+      origin: "chapter_2_monthly_transmission_output",
+      section: "calcul_lunar_transmisie_ventilare",
+      inputVariables: [
+        { symbol: "Phi_tr,H", value: row.heatingTransmissionHeatFlowW, unit: "W", meaning: "flux termic transmisie incalzire" },
+        { symbol: "t", value: row.durationHours, unit: "h", meaning: "durata luna" }
+      ],
+      sourceReference: "MC001_MONTHLY_TRANSMISSION_ENERGY_FROM_ENGINE_OUTPUT",
+      symbolicFormula: "Qtr,H = Phi_tr,H * t / 1000",
+      substitutedFormula: `Qtr,H = ${formatFormulaTerm(row.heatingTransmissionHeatFlowW, "W")} * ${formatFormulaTerm(row.durationHours, "h", 0)} / 1000`,
+      resultLine: `Qtr,H = ${formatFormulaValue(row.heatingTransmissionKwh, "kWh")}`,
+      dependencies: [`${row.month}.Phi_tr,H`, `${row.month}.duration`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_MONTHLY_VENTILATION_ENERGY_FROM_ENGINE_OUTPUT",
+      formulaName: `Transfer prin ventilare pentru incalzire - ${row.month}`,
+      resultSymbol: "Qve,H",
+      resultValue: row.heatingVentilationKwh,
+      resultUnit: "kWh",
+      origin: "chapter_2_monthly_ventilation_output",
+      section: "calcul_lunar_transmisie_ventilare",
+      inputVariables: [
+        { symbol: "Phi_ve,H", value: row.heatingVentilationHeatFlowW, unit: "W", meaning: "flux termic ventilare incalzire" },
+        { symbol: "t", value: row.durationHours, unit: "h", meaning: "durata luna" }
+      ],
+      sourceReference: "MC001_MONTHLY_VENTILATION_ENERGY_FROM_ENGINE_OUTPUT",
+      symbolicFormula: "Qve,H = Phi_ve,H * t / 1000",
+      substitutedFormula: `Qve,H = ${formatFormulaTerm(row.heatingVentilationHeatFlowW, "W")} * ${formatFormulaTerm(row.durationHours, "h", 0)} / 1000`,
+      resultLine: `Qve,H = ${formatFormulaValue(row.heatingVentilationKwh, "kWh")}`,
+      dependencies: [`${row.month}.Phi_ve,H`, `${row.month}.duration`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_MONTHLY_HEAT_GAINS_SUM_FROM_ENGINE_OUTPUT",
+      formulaName: `Aporturi totale pentru incalzire - ${row.month}`,
+      resultSymbol: "QHgn",
+      resultValue: row.qHgnKwh,
+      resultUnit: "kWh",
+      origin: "chapter_2_monthly_heat_gains_output",
+      section: "calcul_lunar_aporturi",
+      inputVariables: [
+        { symbol: "Qint", value: row.internalGainsKwh, unit: "kWh", meaning: "aporturi interne" },
+        { symbol: "Qsol", value: row.solarGainsKwh, unit: "kWh", meaning: "aporturi solare" }
+      ],
+      sourceReference: row.heatGainsFormulaCode,
+      symbolicFormula: "QHgn = Qint + Qsol",
+      substitutedFormula: `QHgn = ${formatFormulaTerm(row.internalGainsKwh, "kWh")} + ${formatFormulaTerm(row.solarGainsKwh, "kWh")}`,
+      resultLine: `QHgn = ${formatFormulaValue(row.qHgnKwh, "kWh")}`,
+      dependencies: [`${row.month}.Qint`, `${row.month}.Qsol`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_MONTHLY_TOTAL_HEATING_TRANSFER_FROM_ENGINE_OUTPUT",
+      formulaName: `Transfer total pentru incalzire - ${row.month}`,
+      resultSymbol: "QHht",
+      resultValue: row.qHhtKwh,
+      resultUnit: "kWh",
+      origin: "chapter_2_monthly_total_transfer_output",
+      section: "calcul_lunar_transmisie_ventilare",
+      inputVariables: [
+        { symbol: "Qtr,H", value: row.heatingTransmissionKwh, unit: "kWh", meaning: "transfer transmisie" },
+        { symbol: "Qve,H", value: row.heatingVentilationKwh, unit: "kWh", meaning: "transfer ventilare" }
+      ],
+      sourceReference: "MC001_C5_DERIVED_TOTAL_HEATING_TRANSFER",
+      symbolicFormula: "QHht = Qtr,H + Qve,H",
+      substitutedFormula: `QHht = ${formatFormulaTerm(row.heatingTransmissionKwh, "kWh")} + ${formatFormulaTerm(row.heatingVentilationKwh, "kWh")}`,
+      resultLine: `QHht = ${formatFormulaValue(row.qHhtKwh, "kWh")}`,
+      dependencies: [`${row.month}.QtrH`, `${row.month}.QveH`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_HEATING_GAIN_RATIO_FROM_ENGINE_OUTPUT",
+      formulaName: `Raport castiguri / pierderi pentru incalzire - ${row.month}`,
+      resultSymbol: "gamma_H",
+      resultValue: row.gammaH,
+      resultUnit: "-",
+      origin: "chapter_2_heating_branch_output",
+      section: "calcul_lunar_incalzire",
+      inputVariables: [
+        { symbol: "QHgn", value: row.qHgnKwh, unit: "kWh", meaning: "aporturi totale" },
+        { symbol: "QHht", value: row.qHhtKwh, unit: "kWh", meaning: "transfer total" }
+      ],
+      sourceReference: row.qHndFormulaCode,
+      symbolicFormula: "gamma_H = QHgn / QHht",
+      substitutedFormula: `gamma_H = ${formatFormulaTerm(row.qHgnKwh, "kWh")} / ${formatFormulaTerm(row.qHhtKwh, "kWh")}`,
+      resultLine: `gamma_H = ${formatFormulaValue(row.gammaH, "-")}`,
+      dependencies: [`${row.month}.QHgn`, `${row.month}.QHht`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_HEATING_UTILIZATION_FACTOR_FROM_ENGINE_OUTPUT",
+      formulaName: `Factor de utilizare aporturi incalzire - ${row.month}`,
+      resultSymbol: "eta_Hgn",
+      resultValue: row.etaHgn,
+      resultUnit: "-",
+      origin: row.qHndOrigin,
+      section: "calcul_lunar_incalzire",
+      inputVariables: [
+        { symbol: "gamma_H", value: row.gammaH, unit: "-", meaning: "raport aporturi/transfer" },
+        { symbol: "a_H", value: row.aH, unit: "-", meaning: "parametru inertie" },
+        { symbol: "tau_H", value: row.tauH, unit: "h", meaning: "constanta timp" }
+      ],
+      sourceReference: "MC001_FIGURE_2_14_HEATING_GAIN_UTILIZATION_FACTOR",
+      symbolicFormula: "eta_Hgn = f(gamma_H, a_H, tau_H)",
+      substitutedFormula: `eta_Hgn = f(${formatFormulaNumber(row.gammaH)}, ${formatFormulaNumber(row.aH)}, ${formatFormulaTerm(row.tauH, "h")})`,
+      resultLine: `eta_Hgn = ${formatFormulaValue(row.etaHgn, "-")}`,
+      dependencies: [`${row.month}.gammaH`, `${row.month}.aH`, `${row.month}.tauH`]
+    }));
+    monthFormulaViews.push(formulaTrace({
       formulaId: row.qHndFormulaCode,
       formulaName: `Necesar util lunar de incalzire - ${row.month}`,
       resultSymbol: "QHnd",
       resultValue: row.qHndKwh,
       resultUnit: "kWh",
       origin: row.qHndOrigin,
+      section: "calcul_lunar_incalzire",
       inputVariables: [
+        { symbol: "QHht", value: row.qHhtKwh, unit: "kWh" },
         { symbol: "Qtr,H", value: row.heatingTransmissionKwh, unit: "kWh" },
         { symbol: "Qve,H", value: row.heatingVentilationKwh, unit: "kWh" },
-        { symbol: "QHgn", value: row.qHgnKwh, unit: "kWh" }
+        { symbol: "QHgn", value: row.qHgnKwh, unit: "kWh" },
+        { symbol: "eta_Hgn", value: row.etaHgn, unit: "-" }
       ],
       sourceReference: row.qHndFormulaCode,
-      symbolicFormula: "QHnd = f(Qtr,H, Qve,H, QHgn, eta_Hgn)",
-      substitutedFormula: `QHnd = f(${formatFormulaValue(row.heatingTransmissionKwh, "kWh")}, ${formatFormulaValue(row.heatingVentilationKwh, "kWh")}, ${formatFormulaValue(row.qHgnKwh, "kWh")})`,
+      symbolicFormula: row.qHndBranch === "gammaH_greater_than_two_zero_demand"
+        ? "QHnd = 0, pentru ramura gamma_H > 2"
+        : "QHnd = QHht - eta_Hgn * QHgn",
+      substitutedFormula: row.qHndBranch === "gammaH_greater_than_two_zero_demand"
+        ? `QHnd = 0, gamma_H = ${formatFormulaNumber(row.gammaH)}`
+        : `QHnd = ${formatFormulaTerm(row.qHhtKwh, "kWh")} - ${formatFormulaNumber(row.etaHgn)} * ${formatFormulaTerm(row.qHgnKwh, "kWh")}`,
       resultLine: `QHnd = ${formatFormulaValue(row.qHndKwh, "kWh")}`,
-      dependencies: [`${row.month}.QtrH`, `${row.month}.QveH`, `${row.month}.QHgn`]
+      dependencies: [`${row.month}.QHht`, `${row.month}.QHgn`, `${row.month}.etaHgn`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_MONTHLY_COOLING_TRANSFER_FROM_ENGINE_OUTPUT",
+      formulaName: `Transfer disponibil pentru racire - ${row.month}`,
+      resultSymbol: "QCht",
+      resultValue: row.qChtKwh,
+      resultUnit: "kWh",
+      origin: "chapter_2_cooling_transfer_output",
+      section: "calcul_lunar_racire",
+      inputVariables: [
+        { symbol: "Qtr,C", value: row.coolingTransmissionKwh, unit: "kWh", meaning: "transfer transmisie racire" },
+        { symbol: "Qve,C", value: row.coolingVentilationKwh, unit: "kWh", meaning: "transfer ventilare racire" }
+      ],
+      sourceReference: "MC001_COOLING_TRANSFER_FROM_ENGINE_OUTPUT",
+      symbolicFormula: "QCht = abs(Qtr,C + Qve,C)",
+      substitutedFormula: `QCht = valoare motor(${formatFormulaTerm(row.coolingTransmissionKwh, "kWh")}, ${formatFormulaTerm(row.coolingVentilationKwh, "kWh")})`,
+      resultLine: `QCht = ${formatFormulaValue(row.qChtKwh, "kWh")}`,
+      dependencies: [`${row.month}.QtrC`, `${row.month}.QveC`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_COOLING_GAIN_RATIO_FROM_ENGINE_OUTPUT",
+      formulaName: `Raport castiguri / transfer pentru racire - ${row.month}`,
+      resultSymbol: "gamma_C",
+      resultValue: row.gammaC,
+      resultUnit: "-",
+      origin: "chapter_2_cooling_branch_output",
+      section: "calcul_lunar_racire",
+      inputVariables: [
+        { symbol: "QCgn", value: row.qCgnKwh, unit: "kWh", meaning: "aporturi racire" },
+        { symbol: "QCht", value: row.qChtKwh, unit: "kWh", meaning: "transfer racire" }
+      ],
+      sourceReference: row.qCndFormulaCode,
+      symbolicFormula: "gamma_C = QCgn / QCht",
+      substitutedFormula: `gamma_C = ${formatFormulaTerm(row.qCgnKwh, "kWh")} / ${formatFormulaTerm(row.qChtKwh, "kWh")}`,
+      resultLine: `gamma_C = ${formatFormulaValue(row.gammaC, "-")}`,
+      dependencies: [`${row.month}.QCgn`, `${row.month}.QCht`]
+    }));
+    monthFormulaViews.push(formulaTrace({
+      formulaId: "MC001_COOLING_UTILIZATION_FACTOR_FROM_ENGINE_OUTPUT",
+      formulaName: `Factor de utilizare transfer racire - ${row.month}`,
+      resultSymbol: "eta_Cht",
+      resultValue: row.etaCht,
+      resultUnit: "-",
+      origin: row.qCndOrigin,
+      section: "calcul_lunar_racire",
+      inputVariables: [
+        { symbol: "gamma_C", value: row.gammaC, unit: "-", meaning: "raport castiguri/transfer" },
+        { symbol: "a_C", value: row.aC, unit: "-", meaning: "parametru inertie" },
+        { symbol: "tau_C", value: row.tauC, unit: "h", meaning: "constanta timp" }
+      ],
+      sourceReference: "MC001_FIGURE_2_15_COOLING_HEAT_TRANSFER_UTILIZATION_FACTOR",
+      symbolicFormula: "eta_Cht = f(gamma_C, a_C, tau_C)",
+      substitutedFormula: `eta_Cht = f(${formatFormulaNumber(row.gammaC)}, ${formatFormulaNumber(row.aC)}, ${formatFormulaTerm(row.tauC, "h")})`,
+      resultLine: `eta_Cht = ${formatFormulaValue(row.etaCht, "-")}`,
+      dependencies: [`${row.month}.gammaC`, `${row.month}.aC`, `${row.month}.tauC`]
     }));
     monthFormulaViews.push(formulaTrace({
       formulaId: row.qCndFormulaCode,
@@ -500,24 +803,100 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       resultValue: row.qCndKwh,
       resultUnit: "kWh",
       origin: row.qCndOrigin,
+      section: "calcul_lunar_racire",
       inputVariables: [
         { symbol: "Qtr,C", value: row.coolingTransmissionKwh, unit: "kWh" },
         { symbol: "Qve,C", value: row.coolingVentilationKwh, unit: "kWh" },
-        { symbol: "QCgn", value: row.qHgnKwh, unit: "kWh" }
+        { symbol: "QCht", value: row.qChtKwh, unit: "kWh" },
+        { symbol: "QCgn", value: row.qCgnKwh, unit: "kWh" },
+        { symbol: "eta_Cht", value: row.etaCht, unit: "-" }
       ],
       sourceReference: row.qCndFormulaCode,
-      symbolicFormula: "QCnd = f(Qtr,C, Qve,C, QCgn, eta_Cht)",
-      substitutedFormula: `QCnd = f(${formatFormulaValue(row.coolingTransmissionKwh, "kWh")}, ${formatFormulaValue(row.coolingVentilationKwh, "kWh")}, ${formatFormulaValue(row.qHgnKwh, "kWh")})`,
+      symbolicFormula: "QCnd = QCgn - eta_Cht * QCht",
+      substitutedFormula: `QCnd = ${formatFormulaTerm(row.qCgnKwh, "kWh")} - ${formatFormulaNumber(row.etaCht)} * ${formatFormulaTerm(row.qChtKwh, "kWh")}`,
       resultLine: `QCnd = ${formatFormulaValue(row.qCndKwh, "kWh")}`,
-      dependencies: [`${row.month}.QtrC`, `${row.month}.QveC`, `${row.month}.QCgn`]
+      dependencies: [`${row.month}.QCgn`, `${row.month}.etaCht`, `${row.month}.QCht`]
     }));
   }
 
-  return [
-    ...assemblyFormulaViews,
-    ...htrFormulaViews,
-    ...monthFormulaViews
+  const annualFormulaViews = [
+    formulaTrace({
+      formulaId: "MC001_2_84_ANNUAL_HEATING_USEFUL_DEMAND",
+      formulaName: "Necesar util anual de incalzire",
+      resultSymbol: "QHnd_an",
+      resultValue: calculation.chapter2Result?.result?.annualQHnd ?? null,
+      resultUnit: "kWh",
+      origin: "chapter_2_annual_output",
+      section: "totaluri_anuale",
+      inputVariables: monthly.map(row => ({
+        symbol: `QHnd_${row.month}`,
+        value: row.qHndKwh,
+        unit: "kWh",
+        meaning: `necesar incalzire ${row.month}`
+      })),
+      sourceReference: "MC001_2_84_ANNUAL_HEATING_USEFUL_DEMAND",
+      symbolicFormula: "QHnd_an = sum(QHnd_m)",
+      substitutedFormula: `QHnd_an = ${monthly.map(row => formatFormulaNumber(row.qHndKwh)).join(" + ")}`,
+      resultLine: `QHnd_an = ${formatFormulaValue(calculation.chapter2Result?.result?.annualQHnd, "kWh")}`,
+      dependencies: monthly.map(row => `${row.month}.QHnd`)
+    }),
+    formulaTrace({
+      formulaId: "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND",
+      formulaName: "Necesar util anual de racire",
+      resultSymbol: "QCnd_an",
+      resultValue: calculation.chapter2Result?.result?.annualQCnd ?? null,
+      resultUnit: "kWh",
+      origin: "chapter_2_annual_output",
+      section: "totaluri_anuale",
+      inputVariables: monthly.map(row => ({
+        symbol: `QCnd_${row.month}`,
+        value: row.qCndKwh,
+        unit: "kWh",
+        meaning: `necesar racire ${row.month}`
+      })),
+      sourceReference: "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND",
+      symbolicFormula: "QCnd_an = sum(QCnd_m)",
+      substitutedFormula: `QCnd_an = ${monthly.map(row => formatFormulaNumber(row.qCndKwh)).join(" + ")}`,
+      resultLine: `QCnd_an = ${formatFormulaValue(calculation.chapter2Result?.result?.annualQCnd, "kWh")}`,
+      dependencies: monthly.map(row => `${row.month}.QCnd`)
+    })
   ];
+
+  return [
+    ...materialFormulaViews,
+    ...assemblyFormulaViews,
+    ...envelopeElementViews,
+    ...thermalBridgeViews,
+    ...componentFormulaViews,
+    ...htrFormulaViews,
+    ...monthFormulaViews,
+    ...annualFormulaViews
+  ];
+}
+
+function notebookVariables(calculations) {
+  const variables = [];
+  for (const calculation of calculations) {
+    for (const variable of calculation.inputVariables ?? []) {
+      variables.push({
+        variableId: `${calculation.traceNodeId}.${variable.symbol}.input`,
+        symbol: variable.symbol,
+        value: variable.value,
+        unit: variable.unit ?? "-",
+        meaning: variable.meaning ?? `Intrare pentru ${calculation.formulaName}`,
+        source: calculation.origin ?? calculation.sourceReference ?? "model_calcul"
+      });
+    }
+    variables.push({
+      variableId: `${calculation.traceNodeId}.${calculation.resultSymbol}.result`,
+      symbol: calculation.resultSymbol,
+      value: calculation.resultValue,
+      unit: calculation.resultUnit ?? "-",
+      meaning: calculation.formulaName,
+      source: calculation.origin ?? calculation.sourceReference ?? "model_calcul"
+    });
+  }
+  return variables;
 }
 
 function traceabilityRows(buildingDna, calculation, formulas) {
@@ -536,124 +915,33 @@ function traceabilityRows(buildingDna, calculation, formulas) {
   }));
 }
 
-function reportChapters({ buildingDna, assemblies, materials, envelope, monthly, formulas, traceability, calculation, fingerprint, seasonalSanity }) {
+function reportChapters({ buildingDna, monthly, formulas, traceability, calculation, fingerprint, seasonalSanity }) {
   const chapter2 = calculation.chapter2Result?.result ?? {};
   return [
-    makeReportChapter("date_generale_ale_proiectului", "Date generale ale proiectului", "Identificarea modelului si contextul tehnic al calculului.", [
+    makeReportChapter("rezultate_principale", "Rezultate principale", "Necesar util anual si valori lunare pentru incalzire si racire.", [
+      { label: "Necesar anual de incalzire QHnd", value: chapter2.annualQHnd, unit: "kWh" },
+      { label: "Necesar anual de racire QCnd", value: chapter2.annualQCnd, unit: "kWh" },
+      ...monthly.map(row => ({
+        month: row.month,
+        qHndKwh: row.qHndKwh,
+        qCndKwh: row.qCndKwh
+      }))
+    ]),
+    makeReportChapter("caiet_de_calcule_ingineresti", "Caiet de calcule ingineresti", "Variabile, relatii, substitutii si rezultate in ordinea dependentelor.", formulas),
+    makeReportChapter("anexa_tehnica_interna", "Anexa tehnica interna", "Identificatori tehnici si diagnostice pastrate separat de calculul principal.", [
       { label: "Model", value: buildingDna.building?.buildingId },
       { label: "Tip cladire", value: buildingDna.building?.buildingType },
       { label: "Perioada constructie", value: buildingDna.building?.constructionPeriod },
-      { label: "Sistem structural", value: buildingDna.building?.structuralSystem }
-    ]),
-    makeReportChapter("statutul_calculului", "Statutul calculului", "Starea calculului curent si amprenta folosita pentru verificarea valorilor afisate.", [
-      { label: "Statut", value: buildingDna.calculationStatus },
+      { label: "Sistem structural", value: buildingDna.building?.structuralSystem },
       { label: "Amprenta calcul", value: fingerprint.fingerprintId },
-      { label: "Luni calculate", value: chapter2.monthCount }
-    ]),
-    makeReportChapter("date_climatice_utilizate", "Date climatice utilizate", "Profilul lunar folosit ca intrare pentru transfer, ventilare si aporturi.", monthly.map(row => ({
-      month: row.month,
-      durationHours: row.durationHours,
-      heatingOutdoorTemperatureC: row.heatingOutdoorTemperatureC,
-      coolingOutdoorTemperatureC: row.coolingOutdoorTemperatureC,
-      heatingTemperatureDifferenceK: row.heatingTemperatureDifferenceK,
-      coolingTemperatureDifferenceK: row.coolingTemperatureDifferenceK,
-      ventilationAirFlowRateM3PerS: row.ventilationAirFlowRateM3PerS,
-      solarOrientation: row.solarOrientation,
-      solarGainsSource: row.solarGainsSource,
-      monthlyProfileOrigin: row.monthlyProfileOrigin
-    }))),
-    makeReportChapter("geometria_cladirii", "Geometria cladirii", "Arii si parametri geometrici folositi in elementele de anvelopa.", [
-      ...Object.entries(buildingDna.geometry ?? {}).map(([label, value]) => ({ label, value })),
-      ...Object.entries(buildingDna.buildingSpecificParameters ?? {}).map(([label, entry]) => ({
-        label,
-        value: entry?.value,
-        unit: entry?.unit,
-        origin: entry?.provenance?.origin
-      }))
-    ]),
-    makeReportChapter("elemente_de_anvelopa", "Elemente de anvelopa", "Elementele prin care se calculeaza Hd, Hg, Hu si Ha.", envelope.elementRows.map(element => ({
-      elementId: element.elementId,
-      boundaryType: element.boundaryType,
-      component: element.component,
-      boundaryCorrectionFactor: element.boundaryCorrectionFactor,
-      boundaryCorrectionOrigin: element.boundaryCorrectionOrigin,
-      formulaCode: element.boundaryCorrectionFormulaCode ?? element.contributionFormulaCode
-    }))),
-    makeReportChapter("materiale_si_straturi", "Materiale si straturi", "Materiale, grosimi si conductivitati rezolvate din ansambluri.", assemblies.flatMap(assembly => assembly.layers.map(layer => ({
-      assemblyId: assembly.assemblyId,
-      assemblyName: assembly.displayName,
-      ...layer
-    })))),
-    makeReportChapter("rezistente_termice", "Rezistente termice", "Rezistentele de strat, suprafata si ansamblu emise de calculul Chapter 2.", assemblies.map(assembly => ({
-      assemblyId: assembly.assemblyId,
-      totalResistance: assembly.totalResistance,
-      totalResistanceUnit: assembly.totalResistanceUnit,
-      rsi: assembly.rsi,
-      rse: assembly.rse
-    }))),
-    makeReportChapter("coeficienti_u", "Coeficienti U", "Transmitantele termice calculate pentru ansamblurile folosite.", assemblies.map(assembly => ({
-      assemblyId: assembly.assemblyId,
-      uValue: assembly.uValue,
-      unit: assembly.uValueUnit,
-      origin: assembly.uValueOrigin,
-      formulaCode: assembly.formulaCode
-    }))),
-    makeReportChapter("coeficienti_de_transfer_termic", "Coeficienti de transfer termic", "Hd, Hg, Hu, Ha si Htr citite din rezultatul de transmisie.", [
-      ...envelope.components,
-      { componentId: "Htr", amount: envelope.htr?.amount, unit: envelope.htr?.unit, origin: envelope.htr?.origin }
-    ]),
-    makeReportChapter("pierderi_prin_transmisie", "Pierderi prin transmisie", "Energii lunare de transmisie emise de motor.", monthly.map(row => ({
-      month: row.month,
-      heatingTransmissionKwh: row.heatingTransmissionKwh,
-      coolingTransmissionKwh: row.coolingTransmissionKwh
-    }))),
-    makeReportChapter("pierderi_prin_ventilare", "Pierderi prin ventilare", "Transfer lunar prin ventilare emis de motor.", monthly.map(row => ({
-      month: row.month,
-      heatingVentilationKwh: row.heatingVentilationKwh,
-      coolingVentilationKwh: row.coolingVentilationKwh,
-      ventilationAirFlowRateM3PerS: row.ventilationAirFlowRateM3PerS
-    }))),
-    makeReportChapter("aporturi_interne", "Aporturi interne", "Aporturi interne lunare folosite in bilant.", monthly.map(row => ({
-      month: row.month,
-      internalGainsKwh: row.internalGainsKwh
-    }))),
-    makeReportChapter("aporturi_solare", "Aporturi solare", "Aporturi solare lunare si orientarea incidenta folosita.", monthly.map(row => ({
-      month: row.month,
-      solarOrientation: row.solarOrientation,
-      solarGainsSource: row.solarGainsSource,
-      solarGainsKwh: row.solarGainsKwh
-    }))),
-    makeReportChapter("calcul_lunar_incalzire", "Calcul lunar al necesarului de incalzire", "QHnd lunar emis de calculul util de incalzire.", monthly.map(row => ({
-      month: row.month,
-      qHndKwh: row.qHndKwh,
-      formulaCode: row.qHndFormulaCode,
-      origin: row.qHndOrigin
-    }))),
-    makeReportChapter("calcul_lunar_racire", "Calcul lunar al necesarului de racire", "QCnd lunar emis de calculul util de racire.", monthly.map(row => ({
-      month: row.month,
-      qCndKwh: row.qCndKwh,
-      formulaCode: row.qCndFormulaCode,
-      origin: row.qCndOrigin
-    }))),
-    makeReportChapter("rezultate_anuale", "Rezultate anuale", "Rezultate utile anuale separate. Nu se calculeaza energie finala, energie primara, CO2, CPE sau certificat.", [
-      { label: "QHnd anual", value: chapter2.annualQHnd, unit: "kWh" },
-      { label: "QCnd anual", value: chapter2.annualQCnd, unit: "kWh" },
-      { label: "Numar luni", value: chapter2.monthCount }
-    ]),
-    makeReportChapter("ipoteze_si_confirmari", "Ipoteze si confirmari", "Ipotezele vizibile si confirmarile necesare inainte de calcul verificat.", [
       ...(buildingDna.assumptions ?? []).map(item => ({ label: "Assumption", value: item.text })),
-      ...(buildingDna.missingConfirmations ?? []).map(item => ({ label: "Confirmation required", value: item }))
-    ]),
-    makeReportChapter("suprascrieri_ingineresti", "Suprascrieri ingineresti", "Override-uri upstream pastrate in Building DNA.", buildingDna.overrides ?? []),
-    makeReportChapter("trasabilitate_matematica", "Trasabilitate matematica", "Formule simbolice, formule substituite si rezultate citite din modelul de trasabilitate.", formulas),
-    makeReportChapter("referinte_normative", "Referinte normative", "Referinte MC001 raportate de motorul Chapter 2 validat.", traceability),
-    makeReportChapter("anexa_tehnica_software_si_versiuni", "Anexa tehnica software si versiuni", "Identificatori tehnici si diagnostice pentru audit. Nu reprezinta continutul principal al raportului.", [
-      { label: "Amprenta calcul", value: fingerprint.fingerprintId },
-      { label: "Building DNA schema", value: fingerprint.inputs.buildingDnaSchema },
+      ...(buildingDna.missingConfirmations ?? []).map(item => ({ label: "Confirmation required", value: item })),
+      ...(buildingDna.overrides ?? []),
       { label: "Profil climatic", value: fingerprint.inputs.climateProfileId },
       { label: "Versiune profil climatic", value: fingerprint.inputs.climateProfileVersion },
       { label: "Adapter stage", value: fingerprint.inputs.adapterStage },
       { label: "Engine scope", value: fingerprint.inputs.engineScope },
+      ...traceability.map(item => ({ label: "Referinta", value: item.reference })),
       { label: "Summer QCnd", value: seasonalSanity.checks.summerCoolingKwh, unit: "kWh" },
       { label: "May + October QCnd", value: seasonalSanity.checks.shoulderCoolingKwh, unit: "kWh" },
       {
@@ -680,6 +968,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
   const monthly = monthlyRows(calculation, buildingDna);
   const seasonalSanity = analyzeMonthlyUsefulDemandSeasonality(monthly);
   const formulas = formulaViews(assemblies, envelope, monthly, calculation);
+  const variables = notebookVariables(formulas);
   const traceability = traceabilityRows(buildingDna, calculation, formulas);
   const fingerprint = calculationFingerprint(buildingDna, calculation, monthly);
   const chapters = reportChapters({
@@ -717,13 +1006,31 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     seasonalSanity,
     calculationFingerprint: fingerprint,
     formulaViews: formulas,
+    engineeringNotebook: {
+      title: "Caiet de calcule ingineresti",
+      variables,
+      calculations: formulas
+    },
     dependencyTrees: pipelineResult.review?.dependencyTrees ?? {},
     traceability,
     report: {
-      reportId: "technical_chapter_2_report_v1",
-      title: "Raport tehnic de calcul MC001-2022",
-      source: "Building DNA si rezultate Chapter 2 validate",
+      reportId: "engineering_calculation_notebook_p3g_v1",
+      title: "Caiet de calcul MC001-2022",
+      source: "Model tehnic si rezultate Chapter 2 validate",
       calculationFingerprint: fingerprint,
+      mainResults: {
+        annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
+        annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
+        monthly: monthly.map(row => ({
+          month: row.month,
+          qHndKwh: row.qHndKwh,
+          qCndKwh: row.qCndKwh
+        }))
+      },
+      engineeringNotebook: {
+        variables,
+        calculations: formulas
+      },
       chapters
     },
     resultSummary: {

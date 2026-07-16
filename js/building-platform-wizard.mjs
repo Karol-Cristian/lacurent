@@ -391,7 +391,7 @@ function renderAnnualSummary(workspace) {
       <article>
         <span>Amprenta calcul</span>
         <strong>${safeText(workspace.calculationFingerprint?.fingerprintId ?? "--")}</strong>
-        <small>Building DNA + rezultat Chapter 2</small>
+        <small>model tehnic + rezultat Chapter 2</small>
       </article>
     </div>
   `;
@@ -507,7 +507,7 @@ function renderFormulaViewer(workspace) {
     { label: "Substitutie", value: row => row.substitutedFormula ?? row.inputVariables.map(item => `${item.symbol}=${formatNumber(item.value, 4)} ${item.unit ?? ""}`).join("; ") },
     { label: "Rezultat", value: row => row.resultLine ?? `${row.resultSymbol}=${formatNumber(row.resultValue, 4)} ${row.resultUnit ?? ""}` },
     { label: "Referinta", value: row => row.normativeReference ?? row.formulaId ?? "--" }
-  ], workspace.formulaViews.slice(0, 18));
+  ], workspace.formulaViews);
 }
 
 function renderTraceability(workspace) {
@@ -515,7 +515,7 @@ function renderTraceability(workspace) {
     { label: "Reference", value: row => row.reference },
     { label: "Chapter", value: row => row.chapter ?? "--" },
     { label: "Source", value: row => row.source },
-    { label: "Building DNA", value: row => row.buildingDnaLink }
+    { label: "Model", value: row => row.buildingDnaLink }
   ], workspace.traceability);
 }
 
@@ -523,11 +523,11 @@ function renderReportChapters(workspace, options = {}) {
   return `
     <div class="technical-report-document" data-pdf-like-report>
       ${workspace.report.chapters.map(chapter => `
-        <details class="technical-report-chapter"${options.openReport ? " open" : ""}>
-          <summary>${safeText(chapter.title)}</summary>
+        <section class="technical-report-chapter">
+          <h2>${safeText(chapter.title)}</h2>
           <p>${safeText(chapter.summary)}</p>
           <small>${safeText(chapter.chapterId)} · ${safeText(chapter.rows.length)} entries</small>
-        </details>
+        </section>
       `).join("")}
     </div>
   `;
@@ -555,16 +555,151 @@ function renderChapterRows(chapter) {
 }
 
 function renderTechnicalReportDocument(workspace, options = {}) {
+  void options;
+  return renderEngineeringNotebookReport(workspace);
+}
+
+function sectionTitle(sectionId) {
+  const titles = {
+    materiale: "Materiale si conductivitati",
+    straturi_si_rezistente: "Straturi, rezistente R si coeficienti U",
+    coeficienti_u: "Coeficienti U",
+    transfer_anvelopa: "Transfer prin anvelopa si Htr",
+    calcul_lunar_transmisie_ventilare: "Calcul lunar: transmisie si ventilare",
+    calcul_lunar_aporturi: "Calcul lunar: aporturi interne si solare",
+    calcul_lunar_incalzire: "Calcul lunar: QHnd",
+    calcul_lunar_racire: "Calcul lunar: QCnd",
+    totaluri_anuale: "Totaluri anuale"
+  };
+  return titles[sectionId] ?? sectionId ?? "Calcul";
+}
+
+function renderNotebookVariables(variables = []) {
+  return renderTable([
+    { label: "Simbol", value: row => row.symbol },
+    { label: "Valoare", value: row => Number.isFinite(Number(row.value)) ? formatNumber(row.value, 4) : row.value },
+    { label: "Unitate", value: row => row.unit ?? "-" },
+    { label: "Semnificatie", value: row => row.meaning ?? "--" },
+    { label: "Sursa", value: row => row.source ?? "--" }
+  ], variables);
+}
+
+function renderCalculationSheet(calculations = []) {
+  const sections = [];
+  for (const calculation of calculations) {
+    const section = calculation.section ?? "caiet_calcul";
+    let current = sections.find(item => item.section === section);
+    if (!current) {
+      current = { section, rows: [] };
+      sections.push(current);
+    }
+    current.rows.push(calculation);
+  }
+  return sections.map(group => `
+    <section class="calculation-notebook-section">
+      <h3>${safeText(sectionTitle(group.section))}</h3>
+      ${group.rows.map((row, index) => `
+        <article class="calculation-step">
+          <div class="calculation-step-index">${safeText(index + 1)}</div>
+          <div class="calculation-step-body">
+            <h4>${safeText(row.formulaName ?? row.resultSymbol)}</h4>
+            <dl class="calculation-equations">
+              <div><dt>Variabila</dt><dd><code>${safeText(row.resultSymbol ?? "--")}</code></dd></div>
+              <div><dt>Relatie</dt><dd><code>${safeText(row.symbolicFormula ?? row.formulaId ?? "--")}</code></dd></div>
+              <div><dt>Substitutie</dt><dd><code>${safeText(row.substitutedFormula ?? "--")}</code></dd></div>
+              <div><dt>Rezultat</dt><dd><strong>${safeText(row.resultLine ?? `${row.resultSymbol} = ${formatNumber(row.resultValue, 4)} ${row.resultUnit ?? ""}`)}</strong></dd></div>
+              <div><dt>Referinta</dt><dd>${safeText(row.normativeReference ?? row.formulaId ?? "--")}</dd></div>
+            </dl>
+          </div>
+        </article>
+      `).join("")}
+    </section>
+  `).join("");
+}
+
+function renderMainResultsDocument(report, fingerprintId) {
+  const mainResults = report?.mainResults ?? {};
+  return `
+    <section class="report-main-results">
+      <h2>1. Rezultate principale</h2>
+      <table class="technical-table report-results-table">
+        <tbody>
+          <tr><th>Necesar anual de incalzire QHnd</th><td>${formatNumber(mainResults.annualQHnd, 4)} kWh</td></tr>
+          <tr><th>Necesar anual de racire QCnd</th><td>${formatNumber(mainResults.annualQCnd, 4)} kWh</td></tr>
+          <tr><th>Amprenta calcul</th><td>${safeText(fingerprintId ?? "--")}</td></tr>
+        </tbody>
+      </table>
+      ${renderTable([
+        { label: "Luna", value: row => row.month },
+        { label: "QHnd [kWh]", value: row => formatNumber(row.qHndKwh, 4) },
+        { label: "QCnd [kWh]", value: row => formatNumber(row.qCndKwh, 4) }
+      ], mainResults.monthly ?? [])}
+    </section>
+  `;
+}
+
+function renderTechnicalAppendix(report, workspace = null) {
+  const appendix = (report?.chapters ?? []).find(chapter => chapter.chapterId === "anexa_tehnica_interna");
+  if (!appendix) return "";
+  return `
+    <section class="technical-report-appendix">
+      <h2>3. Anexa tehnica interna</h2>
+      <p>Informatii pentru audit tehnic intern si depanare. Continutul principal de calcul este in caietul de mai sus.</p>
+      ${renderChapterRows(appendix)}
+      ${workspace ? renderTraceability(workspace) : ""}
+    </section>
+  `;
+}
+
+function renderEngineeringNotebookReport(workspace) {
+  const report = workspace.report ?? {};
+  const notebook = report.engineeringNotebook ?? workspace.engineeringNotebook ?? { variables: [], calculations: [] };
   return `
     <div class="technical-report-document" data-pdf-like-report>
-      ${workspace.report.chapters.map((chapter, index) => `
-        <details class="technical-report-chapter"${options.openReport || index < 3 ? " open" : ""}>
-          <summary>${index + 1}. ${safeText(chapter.title)}</summary>
-          <p>${safeText(chapter.summary)}</p>
-          <small>${safeText(chapter.rows.length)} randuri documentate</small>
-          ${renderChapterRows(chapter)}
-        </details>
-      `).join("")}
+      <header class="technical-report-title-block">
+        <p class="small-label">Raport tehnic MC001-2022</p>
+        <h1>${safeText(report.title ?? "Caiet de calcul")}</h1>
+        <p>Rezultatele si formulele de mai jos afiseaza valorile curente furnizate de motorul validat si modelul de trasabilitate.</p>
+      </header>
+      ${renderMainResultsDocument(report, report.calculationFingerprint?.fingerprintId)}
+      <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
+        <h2>2. Caiet de calcule ingineresti</h2>
+        <p>Variabilele sunt listate inaintea calculelor. Fiecare pas contine numele variabilei, relatia, substitutia numerica si rezultatul.</p>
+        <section class="notebook-variable-register">
+          <h3>2.1 Registru de variabile utilizate</h3>
+          ${renderNotebookVariables(notebook.variables ?? [])}
+        </section>
+        <section class="notebook-calculation-steps">
+          <h3>2.2 Calcule in ordinea dependentelor</h3>
+          ${renderCalculationSheet(notebook.calculations ?? [])}
+        </section>
+      </section>
+      ${renderTechnicalAppendix(report, workspace)}
+    </div>
+  `;
+}
+
+function renderSavedTechnicalReportDocument(report) {
+  const notebook = report?.engineeringNotebook ?? { variables: [], calculations: [] };
+  return `
+    <div class="technical-report-document" data-pdf-like-report>
+      <header class="technical-report-title-block">
+        <p class="small-label">Raport tehnic MC001-2022</p>
+        <h1>${safeText(report?.title ?? "Caiet de calcul")}</h1>
+      </header>
+      ${renderMainResultsDocument(report, report?.calculationFingerprint?.fingerprintId)}
+      <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
+        <h2>2. Caiet de calcule ingineresti</h2>
+        <section class="notebook-variable-register">
+          <h3>2.1 Registru de variabile utilizate</h3>
+          ${renderNotebookVariables(notebook.variables ?? [])}
+        </section>
+        <section class="notebook-calculation-steps">
+          <h3>2.2 Calcule in ordinea dependentelor</h3>
+          ${renderCalculationSheet(notebook.calculations ?? [])}
+        </section>
+      </section>
+      ${renderTechnicalAppendix(report)}
     </div>
   `;
 }
@@ -818,7 +953,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
       <section id="p2b-report" class="technical-workspace-panel">
         <h4>Raport tehnic</h4>
         <div class="technical-report-success" data-technical-report-success>
-          Raport tehnic generat din Building DNA si rezultatele Chapter 2 validate.
+          Raport tehnic generat din modelul curent si rezultatele Chapter 2 validate.
         </div>
         <p>${safeText(workspace.report.title)} · ${safeText(workspace.report.source)}</p>
         ${renderTechnicalReportDocument(workspace, { openReport })}
@@ -837,92 +972,25 @@ export function renderEngineeringModelReview(preview, options = {}) {
     <section class="technical-workspace p3f-report-sheet" id="p2b-technical-workspace">
       <div class="section-heading">
         <span class="small-label">RAPORT TEHNIC</span>
-        <h3>Document de calcul si tabele de verificare</h3>
+        <h3>Rezultate principale si caiet complet de calcule</h3>
       </div>
-      ${renderTechnicalTabs(workspace)}
-      ${renderAnnualSummary(workspace)}
-      <div class="technical-workspace-grid">
-        <section id="p2b-building" class="technical-workspace-panel">
-          <h4>Cladire</h4>
-          <p>${safeText(workspace.buildingSummary.buildingType)} / ${safeText(workspace.buildingSummary.constructionPeriod)} / ${safeText(workspace.buildingSummary.structuralSystem)}</p>
-          <p>Profil climatic: ${safeText(dna.climateProfile?.displayName ?? "neales")} / ${safeText(dna.climateProfile?.verificationStatus ?? "not_selected")}</p>
-        </section>
-        <section id="p2b-building_dna" class="technical-workspace-panel">
-          <h4>Model canonic</h4>
-          <p>Ansambluri: ${safeText(dna.assemblies?.length ?? 0)} / Elemente anvelopa: ${safeText(dna.envelopeElements?.length ?? 0)}</p>
-          <p>Ipoteze: ${safeText(dna.assumptions.length)} / Confirmari necesare: ${safeText(dna.missingConfirmations.length)}</p>
-        </section>
-        <section id="p2b-chapter_2" class="technical-workspace-panel">
-          <h4>Calcul MC001-2022 Capitolul 2</h4>
-          <p>Valorile afisate sunt citite din modelul canonic si din rezultatele motorului validat.</p>
-          <p>Domeniul activ este anvelopa, transferul lunar, QHnd/QCnd si raportul tehnic.</p>
-        </section>
-      </div>
-      <section id="p2b-assemblies" class="technical-workspace-panel">
-        <h4>Ansambluri si coeficienti U</h4>
-        ${renderAssemblies(workspace)}
-      </section>
-      <section id="p2b-materials" class="technical-workspace-panel">
-        <h4>Materiale</h4>
-        ${renderMaterials(workspace)}
-      </section>
       ${dna.climateProfile?.sourceType === "synthetic_demo_profile" ? `
         <section class="technical-workspace-panel synthetic-climate-warning">
           <h4>Profil climatic sintetic</h4>
           <p>${safeText(dna.climateProfile.safetyLabel)}</p>
         </section>
       ` : ""}
-      <section class="technical-workspace-panel">
-        <h4>Straturi</h4>
-        ${renderLayerStacks(workspace)}
-      </section>
-      <section class="technical-workspace-panel">
-        <h4>Descompunere Htr</h4>
-        ${renderHtrBreakdown(workspace)}
-      </section>
-      <section id="p2b-results" class="technical-workspace-panel">
-        <h4>Date climatice lunare utilizate</h4>
-        ${renderMonthlyClimateInspector(workspace)}
-        ${renderSeasonalSanity(workspace)}
-      </section>
-      <section class="technical-workspace-panel">
-        <h4>QHnd / QCnd lunar</h4>
-        ${renderMonthlyResults(workspace)}
-      </section>
       <section id="p2b-report" class="technical-workspace-panel">
-        <h4>Raport tehnic</h4>
         <div class="technical-report-success" data-technical-report-success>
-          Raport tehnic generat din Building DNA si rezultatele Chapter 2 validate.
+          Raport tehnic generat din modelul curent si rezultatele Chapter 2 validate.
         </div>
-        <p>${safeText(workspace.report.title)} / ${safeText(workspace.report.source)}</p>
-        ${renderTechnicalReportDocument(workspace, { openReport })}
-      </section>
-      <section id="p2b-traceability" class="technical-workspace-panel">
-        <h4>Trasabilitate matematica</h4>
-        ${renderFormulaViewer(workspace)}
-      </section>
-      <section class="technical-workspace-panel">
-        <h4>Referinte normative</h4>
-        ${renderTraceability(workspace)}
+        ${renderTechnicalReportDocument(workspace)}
       </section>
     </section>
   ` : `<p class="form-message error">Raport indisponibil: ${safeText(workspace?.diagnostics?.blockers?.[0]?.code)}</p>`;
   return `
     <div class="recommendation-detail-card" data-building-platform-review>
       <div>
-        <h3>Raport tehnic de calcul MC001-2022</h3>
-        <p>Locuinta: ${safeText(dna.building.buildingType)} / ${safeText(dna.building.constructionPeriod)}</p>
-        <p>Incalzire anuala utila: <strong>${preview.summary.annualQHnd?.toFixed(2) ?? "--"} kWh</strong></p>
-        <p>Racire anuala utila: <strong>${preview.summary.annualQCnd?.toFixed(2) ?? "--"} kWh</strong></p>
-        <p>Rezultatele vin din motorul Chapter 2 validat. Valorile de intrare raman editabile si fiecare ipoteza este listata explicit.</p>
-        <h4>Interventii identificate</h4>
-        <ul>${interventions}</ul>
-        <h4>Ansambluri propuse</h4>
-        <ul>${assemblies}</ul>
-        <h4>Ipoteze afisate</h4>
-        <ul>${assumptions}</ul>
-        <h4>Confirmari necesare</h4>
-        <ul>${confirmations}</ul>
         ${p3fTechnicalWorkspaceHtml}
       </div>
     </div>
@@ -1137,11 +1205,14 @@ export function projectIdFromSearch(search = "") {
 }
 
 function renderLoadedReportChapters(report) {
+  if (report?.engineeringNotebook) {
+    return renderSavedTechnicalReportDocument(report);
+  }
   const chapters = Array.isArray(report?.chapters) ? report.chapters : [];
   if (chapters.length === 0) return "<p>Raportul salvat nu contine capitole structurate.</p>";
   return chapters.map(chapter => `
-    <details class="technical-report-chapter" open>
-      <summary>${safeText(chapter.title ?? chapter.chapterId)}</summary>
+    <section class="technical-report-chapter">
+      <h4>${safeText(chapter.title ?? chapter.chapterId)}</h4>
       <p>${safeText(chapter.summary ?? "")}</p>
       ${Array.isArray(chapter.rows) && chapter.rows.length > 0
         ? renderTable(
@@ -1152,7 +1223,7 @@ function renderLoadedReportChapters(report) {
           chapter.rows
         )
         : ""}
-    </details>
+    </section>
   `).join("");
 }
 
