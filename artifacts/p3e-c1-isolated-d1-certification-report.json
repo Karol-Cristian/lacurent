@@ -1,0 +1,439 @@
+{
+  "status": "PASS",
+  "environment": {
+    "kind": "Wrangler local D1 persistence directory with isolated file-backed D1-compatible SQL adapter",
+    "persistDir": "C:\\Users\\LEMNAR~1\\AppData\\Local\\Temp\\lacurent-p3e-c1-isolated-d1",
+    "sqliteFile": "C:\\Users\\LEMNAR~1\\AppData\\Local\\Temp\\lacurent-p3e-c1-isolated-d1\\v3\\d1\\miniflare-D1DatabaseObject\\c2c963dd411b38efb45f14a95cad15c0b7b1132f9efa2743734bfe961c649cde.sqlite"
+  },
+  "schema": {
+    "appliedBaseline": "schema.sql plus migrations 010-012 via wrangler d1 execute --local --persist-to",
+    "notes": "schema.sql is the repository's consolidated empty-database baseline; legacy incremental migrations 001-009 are not empty-database safe because they alter tables created by the baseline. Canonical P3E versioned migrations 010-012 are applied idempotently after the baseline and verified by direct table inspection."
+  },
+  "commands": [
+    "wrangler d1 execute lacurent-dev-db --local --persist-to C:\\Users\\LEMNAR~1\\AppData\\Local\\Temp\\lacurent-p3e-c1-isolated-d1 --file C:\\Users\\Lemnaru Karol\\OneDrive\\Documents\\Master\\An II\\PIGMC\\lacurent-p2d-production-calculator\\schema.sql --json",
+    "wrangler d1 execute lacurent-dev-db --local --persist-to C:\\Users\\LEMNAR~1\\AppData\\Local\\Temp\\lacurent-p3e-c1-isolated-d1 --file C:\\Users\\Lemnaru Karol\\OneDrive\\Documents\\Master\\An II\\PIGMC\\lacurent-p2d-production-calculator\\migrations\\010_building_platform_versioned_backend.sql --json",
+    "wrangler d1 execute lacurent-dev-db --local --persist-to C:\\Users\\LEMNAR~1\\AppData\\Local\\Temp\\lacurent-p3e-c1-isolated-d1 --file C:\\Users\\Lemnaru Karol\\OneDrive\\Documents\\Master\\An II\\PIGMC\\lacurent-p2d-production-calculator\\migrations\\011_building_platform_local_first_flow.sql --json",
+    "wrangler d1 execute lacurent-dev-db --local --persist-to C:\\Users\\LEMNAR~1\\AppData\\Local\\Temp\\lacurent-p3e-c1-isolated-d1 --file C:\\Users\\Lemnaru Karol\\OneDrive\\Documents\\Master\\An II\\PIGMC\\lacurent-p2d-production-calculator\\migrations\\012_building_platform_reprocessing_exports.sql --json"
+  ],
+  "operationCounts": {
+    "workerReadStatements": 81,
+    "workerWriteStatements": 78,
+    "batchTransactions": 18,
+    "directInspectionQueries": 267,
+    "endpointCalls": {
+      "/api/building-platform/v1/projects/create": 5,
+      "/api/building-platform/v1/projects/open": 4,
+      "/api/building-platform/v1/drafts/save": 2,
+      "/api/building-platform/v1/permanent-save": 14
+    }
+  },
+  "rowEvidence": {
+    "afterDraft": {
+      "projects": 1,
+      "activeDrafts": 1,
+      "committedDrafts": 0,
+      "buildingDnaVersions": 0,
+      "analysisVersions": 0,
+      "reportVersions": 0,
+      "idempotencyRows": 1,
+      "auditEvents": 2
+    },
+    "afterPermanentV1": {
+      "projects": 1,
+      "activeDrafts": 0,
+      "committedDrafts": 1,
+      "buildingDnaVersions": 1,
+      "analysisVersions": 1,
+      "reportVersions": 1,
+      "idempotencyRows": 2,
+      "auditEvents": 4
+    },
+    "afterPermanentV2": {
+      "projects": 1,
+      "activeDrafts": 0,
+      "committedDrafts": 1,
+      "buildingDnaVersions": 2,
+      "analysisVersions": 2,
+      "reportVersions": 2,
+      "idempotencyRows": 3,
+      "auditEvents": 5
+    }
+  },
+  "reopenParity": {
+    "exact": true,
+    "compared": [
+      "Building DNA",
+      "climate profile id/version",
+      "engine input",
+      "engine output including Hd/Hg/Hu/Ha/Htr/monthly QHnd/QCnd/annual QHnd/QCnd",
+      "structured report",
+      "fingerprints",
+      "version ids"
+    ]
+  },
+  "physicalDirection": {
+    "epsThicknessV1M": 0.16,
+    "epsThicknessV2M": 0.2,
+    "v1": {
+      "wallTotalResistance": 4.655436893203883,
+      "wallUValue": 0.21480261099872788,
+      "Hd": 47.19243694011837,
+      "Hg": 31.570802166623675,
+      "Hu": 27.692307692307686,
+      "Ha": 1,
+      "Htr": 107.45554679904973,
+      "annualQHnd": 9373.373685049499,
+      "annualQCnd": 191.16808911454922,
+      "monthlyQHnd": [
+        {
+          "month": "january",
+          "value": null
+        },
+        {
+          "month": "february",
+          "value": null
+        },
+        {
+          "month": "march",
+          "value": null
+        },
+        {
+          "month": "april",
+          "value": null
+        },
+        {
+          "month": "may",
+          "value": null
+        },
+        {
+          "month": "june",
+          "value": null
+        },
+        {
+          "month": "july",
+          "value": null
+        },
+        {
+          "month": "august",
+          "value": null
+        },
+        {
+          "month": "september",
+          "value": null
+        },
+        {
+          "month": "october",
+          "value": null
+        },
+        {
+          "month": "november",
+          "value": null
+        },
+        {
+          "month": "december",
+          "value": null
+        }
+      ],
+      "monthlyQCnd": [
+        {
+          "month": "january",
+          "value": null
+        },
+        {
+          "month": "february",
+          "value": null
+        },
+        {
+          "month": "march",
+          "value": null
+        },
+        {
+          "month": "april",
+          "value": null
+        },
+        {
+          "month": "may",
+          "value": null
+        },
+        {
+          "month": "june",
+          "value": null
+        },
+        {
+          "month": "july",
+          "value": null
+        },
+        {
+          "month": "august",
+          "value": null
+        },
+        {
+          "month": "september",
+          "value": null
+        },
+        {
+          "month": "october",
+          "value": null
+        },
+        {
+          "month": "november",
+          "value": null
+        },
+        {
+          "month": "december",
+          "value": null
+        }
+      ]
+    },
+    "v2": {
+      "wallTotalResistance": 5.655436893203883,
+      "wallUValue": 0.1768209987811368,
+      "Hd": 45.29335632923882,
+      "Hg": 31.570802166623675,
+      "Hu": 27.692307692307686,
+      "Ha": 1,
+      "Htr": 105.55646618817019,
+      "annualQHnd": 9227.874580862823,
+      "annualQCnd": 196.30321800822622,
+      "monthlyQHnd": [
+        {
+          "month": "january",
+          "value": null
+        },
+        {
+          "month": "february",
+          "value": null
+        },
+        {
+          "month": "march",
+          "value": null
+        },
+        {
+          "month": "april",
+          "value": null
+        },
+        {
+          "month": "may",
+          "value": null
+        },
+        {
+          "month": "june",
+          "value": null
+        },
+        {
+          "month": "july",
+          "value": null
+        },
+        {
+          "month": "august",
+          "value": null
+        },
+        {
+          "month": "september",
+          "value": null
+        },
+        {
+          "month": "october",
+          "value": null
+        },
+        {
+          "month": "november",
+          "value": null
+        },
+        {
+          "month": "december",
+          "value": null
+        }
+      ],
+      "monthlyQCnd": [
+        {
+          "month": "january",
+          "value": null
+        },
+        {
+          "month": "february",
+          "value": null
+        },
+        {
+          "month": "march",
+          "value": null
+        },
+        {
+          "month": "april",
+          "value": null
+        },
+        {
+          "month": "may",
+          "value": null
+        },
+        {
+          "month": "june",
+          "value": null
+        },
+        {
+          "month": "july",
+          "value": null
+        },
+        {
+          "month": "august",
+          "value": null
+        },
+        {
+          "month": "september",
+          "value": null
+        },
+        {
+          "month": "october",
+          "value": null
+        },
+        {
+          "month": "november",
+          "value": null
+        },
+        {
+          "month": "december",
+          "value": null
+        }
+      ]
+    }
+  },
+  "idempotency": {
+    "replayReturnedOriginalAnalysisVersion": true,
+    "duplicateVersionRowsCreated": false,
+    "modifiedRequestConflictStatus": 409,
+    "modifiedRequestConflictCode": "idempotency_key_reused_for_different_request"
+  },
+  "concurrency": {
+    "firstSessionStatus": 200,
+    "secondSessionStatus": 409,
+    "secondSessionCode": "stale_project_version_conflict",
+    "rowCountsAfterRejectedStaleSave": {
+      "projects": 5,
+      "activeDrafts": 0,
+      "committedDrafts": 1,
+      "buildingDnaVersions": 3,
+      "analysisVersions": 3,
+      "reportVersions": 3,
+      "idempotencyRows": 12,
+      "auditEvents": 6
+    }
+  },
+  "rollback": [
+    {
+      "stage": "after_dna_insert",
+      "failureStatus": 500,
+      "retryStatus": 200,
+      "versionCountsAfterFailure": {
+        "projects": 2,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 0,
+        "analysisVersions": 0,
+        "reportVersions": 0,
+        "idempotencyRows": 5,
+        "auditEvents": 1
+      },
+      "versionCountsAfterRetry": {
+        "projects": 2,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 1,
+        "analysisVersions": 1,
+        "reportVersions": 1,
+        "idempotencyRows": 6,
+        "auditEvents": 2
+      }
+    },
+    {
+      "stage": "after_analysis_insert",
+      "failureStatus": 500,
+      "retryStatus": 200,
+      "versionCountsAfterFailure": {
+        "projects": 3,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 0,
+        "analysisVersions": 0,
+        "reportVersions": 0,
+        "idempotencyRows": 7,
+        "auditEvents": 1
+      },
+      "versionCountsAfterRetry": {
+        "projects": 3,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 1,
+        "analysisVersions": 1,
+        "reportVersions": 1,
+        "idempotencyRows": 8,
+        "auditEvents": 2
+      }
+    },
+    {
+      "stage": "after_report_insert",
+      "failureStatus": 500,
+      "retryStatus": 200,
+      "versionCountsAfterFailure": {
+        "projects": 4,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 0,
+        "analysisVersions": 0,
+        "reportVersions": 0,
+        "idempotencyRows": 9,
+        "auditEvents": 1
+      },
+      "versionCountsAfterRetry": {
+        "projects": 4,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 1,
+        "analysisVersions": 1,
+        "reportVersions": 1,
+        "idempotencyRows": 10,
+        "auditEvents": 2
+      }
+    },
+    {
+      "stage": "after_project_pointer_update",
+      "failureStatus": 500,
+      "retryStatus": 200,
+      "versionCountsAfterFailure": {
+        "projects": 5,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 0,
+        "analysisVersions": 0,
+        "reportVersions": 0,
+        "idempotencyRows": 11,
+        "auditEvents": 1
+      },
+      "versionCountsAfterRetry": {
+        "projects": 5,
+        "activeDrafts": 0,
+        "committedDrafts": 0,
+        "buildingDnaVersions": 1,
+        "analysisVersions": 1,
+        "reportVersions": 1,
+        "idempotencyRows": 12,
+        "auditEvents": 2
+      }
+    }
+  ],
+  "inspectedTables": [
+    "users",
+    "user_sessions",
+    "building_platform_projects",
+    "building_platform_project_drafts",
+    "building_dna_versions",
+    "building_platform_analysis_versions",
+    "building_platform_report_versions",
+    "building_platform_idempotency_keys",
+    "building_platform_audit_events"
+  ],
+  "defects": [],
+  "artifacts": {
+    "reportJson": "C:\\Users\\Lemnaru Karol\\OneDrive\\Documents\\Master\\An II\\PIGMC\\lacurent-p2d-production-calculator\\artifacts\\p3e-c1-isolated-d1-certification-report.json",
+    "reportMarkdown": "C:\\Users\\Lemnaru Karol\\OneDrive\\Documents\\Master\\An II\\PIGMC\\lacurent-p2d-production-calculator\\artifacts\\p3e-c1-isolated-d1-certification-report.md"
+  }
+}
