@@ -23,6 +23,10 @@ const migrationSql = [
   readFileSync(
     new URL("../../../migrations/011_building_platform_local_first_flow.sql", import.meta.url),
     "utf8"
+  ),
+  readFileSync(
+    new URL("../../../migrations/012_building_platform_reprocessing_exports.sql", import.meta.url),
+    "utf8"
   )
 ].join("\n");
 const schemaSql = readFileSync(new URL("../../../schema.sql", import.meta.url), "utf8");
@@ -34,7 +38,7 @@ test("P3E persistence inventory distinguishes canonical versioned and legacy com
     inventory.inventoryId,
     "P3E_BUILDING_PLATFORM_VERSIONED_PERSISTENCE_INVENTORY_V1"
   );
-  assert.equal(inventory.canonicalVersionedTables.length, 9);
+  assert.equal(inventory.canonicalVersionedTables.length, 11);
   assert.equal(inventory.localFirstPolicy.mutableDraftsPerProjectOwner, 1);
   assert.equal(inventory.localFirstPolicy.ordinaryEditDatabaseWrites, 0);
   assert.equal(inventory.legacyTables.length >= 5, true);
@@ -86,7 +90,10 @@ test("versioned migration includes required lookup, fingerprint and version-hist
     "building_platform_climate_profile_versions_fingerprint_idx",
     "building_platform_scenarios_project_idx",
     "building_platform_audit_events_project_idx",
-    "building_platform_idempotency_owner_idx"
+    "building_platform_idempotency_owner_idx",
+    "building_platform_reprocessing_jobs_owner_idx",
+    "building_platform_reprocessing_jobs_project_idx",
+    "building_platform_export_manifests_checksum_idx"
   ];
 
   for (const indexName of requiredIndexes) {

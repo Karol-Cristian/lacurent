@@ -111,6 +111,26 @@ export const BUILDING_PLATFORM_OPERATION_INVENTORY = Object.freeze([
     expectedWrites: 0,
     activeStatus: "canonical_versioned_backend",
     classification: "required"
+  }),
+  Object.freeze({
+    operation: "reprocessing_dry_run",
+    frontendTrigger: "explicit one-project reprocessing inspection",
+    apiRoute: "/api/building-platform/v1/reprocessing/dry-run",
+    databaseAccess: "one current version graph read",
+    expectedReads: 1,
+    expectedWrites: 0,
+    activeStatus: "canonical_versioned_backend",
+    classification: "explicit_user_read"
+  }),
+  Object.freeze({
+    operation: "reprocessing_execute",
+    frontendTrigger: "explicit one-project reprocessing execution",
+    apiRoute: "/api/building-platform/v1/reprocessing/execute",
+    databaseAccess: "one bounded immutable analysis/report transaction",
+    expectedReads: 2,
+    expectedWrites: 1,
+    activeStatus: "canonical_versioned_backend",
+    classification: "explicit_user_write"
   })
 ]);
 

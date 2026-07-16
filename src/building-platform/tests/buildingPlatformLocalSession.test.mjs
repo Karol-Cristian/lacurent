@@ -191,4 +191,6 @@ test("operation inventory forbids database writes for local edit and unsaved rec
   assert.equal(byOperation.get("draft_get").expectedWrites, 0);
   assert.equal(byOperation.get("draft_save").classification, "explicit_user_write");
   assert.equal(byOperation.get("permanent_version_save").classification, "explicit_user_write");
+  assert.equal(byOperation.get("reprocessing_dry_run").expectedWrites, 0);
+  assert.equal(byOperation.get("reprocessing_execute").classification, "explicit_user_write");
 });
