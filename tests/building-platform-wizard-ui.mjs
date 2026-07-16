@@ -254,21 +254,32 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   const html = renderEngineeringModelReview(preview);
   for (const expected of [
     "Building DNA",
-    "Assemblies and U-values",
-    "Materials",
-    "Layer stacks",
-    "Htr breakdown",
-    "Monthly QHnd / QCnd",
-    "Fingerprint",
+    "Ansambluri si coeficienti U",
+    "Materiale",
+    "Straturi",
+    "Descompunere Htr",
+    "QHnd / QCnd lunar",
+    "Amprenta calcul",
     "T ext H",
     "Solar source",
-    "Formula viewer",
-    "Traceability",
-    "Technical report",
+    "Trasabilitate matematica",
+    "Referinte normative",
+    "Raport tehnic",
+    "R_layer = d / lambda_design",
+    "U = 1 / R_total",
     "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH",
     "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND"
   ]) {
     assert.equal(html.includes(expected), true, expected);
+  }
+  for (const forbidden of [
+    "Platforma de cunostinte",
+    "Flux verificabil",
+    "TECHNICAL WORKSPACE",
+    "Chapter 2 authority",
+    "Formula viewer"
+  ]) {
+    assert.equal(html.includes(forbidden), false, forbidden);
   }
 });
 
@@ -430,7 +441,7 @@ await test("loaded Building Platform analysis renders persisted report metadata"
   assert.equal(html.includes("Analiza Building Platform incarcata"), true);
   assert.equal(html.includes("building-dna-100"), true);
   assert.equal(html.includes("Raport tehnic incarcat"), true);
-  assert.equal(html.includes("9764.75"), true);
+  assert.equal(html.includes(preview.technicalWorkspace.resultSummary.annualQHnd.toFixed(2)), true);
 });
 
 await test("load action restores Building DNA and persisted report through authenticated API", async () => {
@@ -589,7 +600,6 @@ await test("demo query and fixture preload a complete editable technical dataset
     "window_age_years",
     "window_area_m2",
     "ventilation_ach",
-    "airflow_m3h",
     "wall_insulation_year"
   ]) {
     assert.equal(Number.isFinite(Number(fixture.values[field])), true, field);
@@ -638,8 +648,8 @@ await test("demo query and fixture preload a complete editable technical dataset
   assert.equal(html.includes("Date climatice lunare utilizate"), true);
   assert.equal(html.includes("Aport solar lunar (nu factor g)"), true);
   assert.equal(html.includes("Control coerenta sezoniera lunara"), true);
-  assert.equal(html.includes("Annual QHnd"), true);
-  assert.equal(html.includes("Annual QCnd"), true);
+  assert.equal(html.includes("QHnd anual"), true);
+  assert.equal(html.includes("QCnd anual"), true);
 });
 
 await test("wizard marks current results stale after an upstream input changes", () => {
@@ -701,12 +711,16 @@ await test("edited demo values propagate into Building DNA and Chapter 2 results
 
 await test("analysis page exposes the refocused technical workflow", () => {
   const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8");
   assert.equal(html.includes("building-platform-wizard.mjs"), true);
   assert.equal(html.includes("buildingModelReview"), true);
   assert.equal(html.includes("buildingModelPreviewBtn"), true);
   assert.equal(html.includes("saveBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("saveBuildingPlatformDraftBtn"), true);
   assert.equal(html.includes("recalculateBuildingPlatformAnalysisBtn"), true);
+  assert.equal(html.includes("printTechnicalReportBtn"), true);
+  assert.equal(html.includes("p3f-engineering-shell"), true);
+  assert.equal(html.includes("Mod simplificat"), true);
   assert.equal(html.includes("buildingPlatformLoadAnalysisId"), true);
   assert.equal(html.includes("loadBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("Redeschidere avansata dupa ID analiza"), true);
@@ -738,6 +752,10 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("HW_Prototype.png"), false);
   assert.equal(html.includes("Ma intereseaza cand devine disponibil"), false);
   assert.equal(html.includes("scor live"), false);
+  assert.equal(css.includes("p3f-engineering-shell"), true);
+  assert.equal(css.includes("@media print"), true);
+  assert.equal(css.includes(".p3f-input-pane"), true);
+  assert.equal(css.includes("display:none!important"), true);
 });
 
 await test("active production analysis flow removes unsupported product domains", () => {

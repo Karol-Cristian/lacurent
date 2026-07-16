@@ -6286,5 +6286,272 @@ transition:none!important;
 }
 }
 
+/* P3F engineering-first workspace */
+.p3f-engineering-workspace{
+display:block!important;
+max-width:none;
+padding:0;
+}
+
+.p3f-engineering-workspace .p3f-workspace-intro,
+.p3f-engineering-workspace .demo-mode-controls,
+.p3f-engineering-workspace .demo-mode-banner{
+margin-bottom:12px;
+}
+
+.p3f-engineering-workspace .p3f-simplified-flow-panel{
+display:none;
+}
+
+.p3f-engineering-workspace.simplified-mode-active .p3f-simplified-flow-panel{
+display:block;
+}
+
+.p3f-engineering-shell{
+display:grid;
+grid-template-columns:minmax(420px,42vw) minmax(560px,1fr);
+gap:16px;
+align-items:start;
+width:100%;
+}
+
+.p3f-input-pane,
+.p3f-report-pane{
+min-width:0;
+}
+
+.p3f-input-pane{
+display:block!important;
+max-height:calc(100vh - 24px);
+overflow:auto;
+padding-right:4px;
+}
+
+.p3f-input-pane .step,
+.p3f-input-pane .step.active{
+display:block!important;
+padding:14px;
+margin:0 0 10px;
+border:1px solid #d7dee8;
+border-radius:4px;
+box-shadow:none;
+animation:none;
+}
+
+.p3f-input-pane h2{
+font-size:18px;
+margin:0 0 6px;
+}
+
+.p3f-input-pane .section-description{
+margin:0 0 10px;
+font-size:13px;
+line-height:1.45;
+}
+
+.p3f-input-pane .form-grid{
+grid-template-columns:repeat(3,minmax(130px,1fr));
+gap:8px;
+margin-top:0;
+}
+
+.p3f-input-pane .form-grid label{
+font-size:11px;
+font-weight:900;
+text-transform:uppercase;
+color:#475569;
+}
+
+.p3f-input-pane .form-grid input,
+.p3f-input-pane .form-grid select{
+min-height:34px;
+padding:8px 9px;
+border-radius:3px;
+font-size:13px;
+}
+
+.field-impact-note{
+display:block;
+margin-top:4px;
+font-size:11px;
+font-weight:700;
+line-height:1.25;
+color:#64748b;
+}
+
+.p3f-input-pane .value-card-grid{
+display:grid;
+grid-template-columns:repeat(2,minmax(0,1fr));
+gap:8px;
+}
+
+.p3f-input-pane .value-card-grid article,
+.p3f-input-pane .compact-technical-note{
+border-radius:4px;
+box-shadow:none;
+}
+
+.p3f-input-pane .p2c-wizard-footer{
+display:none;
+}
+
+.p3f-report-pane{
+position:sticky;
+top:12px;
+max-height:calc(100vh - 24px);
+overflow:auto;
+padding:18px 22px;
+border:1px solid #cbd5e1;
+border-radius:2px;
+background:#fff;
+box-shadow:0 14px 34px rgba(15,23,42,.12);
+}
+
+.p3f-report-pane .recommendation-detail-card{
+display:block;
+padding:0;
+border:0;
+box-shadow:none;
+background:#fff;
+}
+
+.p3f-report-pane .technical-workspace{
+border-top:0;
+padding-top:0;
+}
+
+.technical-report-document{
+display:grid;
+gap:10px;
+counter-reset:reportChapter;
+}
+
+.technical-report-chapter{
+border:1px solid #d7dee8;
+border-radius:2px;
+background:#fff;
+break-inside:avoid;
+}
+
+.technical-report-chapter summary{
+padding:10px 12px;
+font-weight:900;
+color:#0f172a;
+cursor:pointer;
+}
+
+.technical-report-chapter p,
+.technical-report-chapter small{
+display:block;
+padding:0 12px 12px;
+margin:0;
+color:#475569;
+}
+
+.technical-table-wrap{
+border-radius:2px;
+}
+
+.technical-table th,
+.technical-table td{
+padding:7px 8px;
+font-size:12px;
+}
+
+[data-state="pending"]{
+color:#92400e;
+font-weight:900;
+}
+
+[data-state="ready"]{
+color:#166534;
+font-weight:900;
+}
+
+[data-state="blocked"]{
+color:#991b1b;
+font-weight:900;
+}
+
+@media(max-width:1100px){
+.p3f-engineering-shell{
+grid-template-columns:1fr;
+}
+
+.p3f-input-pane,
+.p3f-report-pane{
+max-height:none;
+overflow:visible;
+}
+
+.p3f-report-pane{
+position:static;
+padding:14px;
+}
+
+.p3f-input-pane .form-grid{
+grid-template-columns:repeat(2,minmax(0,1fr));
+}
+}
+
+@media(max-width:640px){
+.p3f-input-pane .form-grid,
+.p3f-input-pane .value-card-grid{
+grid-template-columns:1fr;
+}
+
+.p3f-report-pane{
+border-left:0;
+border-right:0;
+box-shadow:none;
+}
+}
+
+@media print{
+body{
+background:#fff!important;
+}
+
+#menuBtn,
+#sidebar,
+header,
+footer,
+.p3f-workspace-intro,
+.demo-mode-controls,
+.demo-mode-banner,
+.p3f-input-pane,
+.p3f-simplified-flow-panel,
+.technical-workspace-tabs,
+.wizard-footer{
+display:none!important;
+}
+
+.app-content,
+.dashboard,
+.analysis-page,
+.p3f-engineering-workspace,
+.p3f-engineering-shell,
+.p3f-report-pane{
+display:block!important;
+max-width:none!important;
+width:100%!important;
+padding:0!important;
+margin:0!important;
+border:0!important;
+box-shadow:none!important;
+overflow:visible!important;
+}
+
+.technical-report-chapter{
+break-inside:auto;
+page-break-inside:auto;
+}
+
+.technical-report-chapter summary{
+break-after:avoid;
+page-break-after:avoid;
+}
+}
+
 
             

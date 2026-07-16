@@ -66,6 +66,21 @@ function buildingDna(overrides = {}) {
   return result.buildingDna;
 }
 
+function baseBuildingSpecificParameters(overrides = {}) {
+  return {
+    usefulFloorAreaM2: 120,
+    exteriorWallAreaM2: 50,
+    roofAreaM2: 120,
+    groundFloorAreaM2: 120,
+    atticCeilingAreaM2: 120,
+    windowAreaM2: 8,
+    mainOrientation: "south",
+    windowOrientation: "south",
+    ventilationAch: 0.6,
+    ...overrides
+  };
+}
+
 function calculate(buildingDna) {
   const calculation = calculateChapter2ForBuildingDna(buildingDna);
   assert.equal(calculation.status, "ready");
@@ -208,6 +223,105 @@ await test("EPS thickness propagates monotonically through U, Htr and QHnd", () 
     assert.equal(cases[index].htr < cases[index - 1].htr, true, `Htr did not decrease at ${index}`);
     assert.equal(cases[index].qHnd < cases[index - 1].qHnd, true, `QHnd did not decrease at ${index}`);
   }
+});
+
+await test("explicit exterior wall area changes Hd, Htr and annual QHnd", () => {
+  const base = buildingDna({
+    buildingSpecificParameters: baseBuildingSpecificParameters({
+      exteriorWallAreaM2: 50
+    })
+  });
+  const larger = buildingDna({
+    buildingSpecificParameters: baseBuildingSpecificParameters({
+      exteriorWallAreaM2: 80
+    })
+  });
+  const baseCalculation = calculate(base);
+  const largerCalculation = calculate(larger);
+  const baseHd = baseCalculation.envelopeTransmissionResult.components.Hd.amount;
+  const largerHd = largerCalculation.envelopeTransmissionResult.components.Hd.amount;
+
+  assert.equal(base.geometry.exteriorWallAreaM2, 50);
+  assert.equal(larger.geometry.exteriorWallAreaM2, 80);
+  assert.equal(largerHd > baseHd, true);
+  assert.equal(
+    largerCalculation.envelopeTransmissionResult.result.amount >
+      baseCalculation.envelopeTransmissionResult.result.amount,
+    true
+  );
+  assert.equal(annualQHnd(largerCalculation) > annualQHnd(baseCalculation), true);
+});
+
+await test("heated volume with ACH derives ventilation flow and changes annual QHnd", () => {
+  const smallerVolume = buildingDna({
+    buildingSpecificParameters: baseBuildingSpecificParameters({
+      heatedVolumeM3: 156,
+      ventilationAch: 0.6
+    })
+  });
+  const largerVolume = buildingDna({
+    buildingSpecificParameters: baseBuildingSpecificParameters({
+      heatedVolumeM3: 312,
+      ventilationAch: 0.6
+    })
+  });
+  const smallerCalculation = calculate(smallerVolume);
+  const largerCalculation = calculate(largerVolume);
+
+  close(smallerVolume.monthlyProfiles[0].ventilation.heating.airFlowRate.amount, 0.026);
+  close(largerVolume.monthlyProfiles[0].ventilation.heating.airFlowRate.amount, 0.052);
+  assert.equal(
+    largerCalculation.chapter2Result.result.monthlyResults[0].ventilation.heating.ventilationEnergy.amount >
+      smallerCalculation.chapter2Result.result.monthlyResults[0].ventilation.heating.ventilationEnergy.amount,
+    true
+  );
+  assert.equal(annualQHnd(largerCalculation) > annualQHnd(smallerCalculation), true);
+});
+
+await test("useful floor area seeds roof and ground areas only when explicit envelope areas are absent", () => {
+  const seededSmall = buildingDna({
+    buildingSpecificParameters: {
+      usefulFloorAreaM2: 100,
+      exteriorWallAreaM2: 50,
+      atticCeilingAreaM2: 120,
+      windowAreaM2: 8,
+      mainOrientation: "south",
+      windowOrientation: "south",
+      ventilationAch: 0.6
+    }
+  });
+  const seededLarge = buildingDna({
+    buildingSpecificParameters: {
+      usefulFloorAreaM2: 140,
+      exteriorWallAreaM2: 50,
+      atticCeilingAreaM2: 120,
+      windowAreaM2: 8,
+      mainOrientation: "south",
+      windowOrientation: "south",
+      ventilationAch: 0.6
+    }
+  });
+  const explicitSmall = buildingDna({
+    buildingSpecificParameters: baseBuildingSpecificParameters({
+      usefulFloorAreaM2: 100
+    })
+  });
+  const explicitLarge = buildingDna({
+    buildingSpecificParameters: baseBuildingSpecificParameters({
+      usefulFloorAreaM2: 140
+    })
+  });
+  const seededSmallCalculation = calculate(seededSmall);
+  const seededLargeCalculation = calculate(seededLarge);
+  const explicitSmallCalculation = calculate(explicitSmall);
+  const explicitLargeCalculation = calculate(explicitLarge);
+
+  assert.equal(seededSmall.geometry.roofAreaM2, 100);
+  assert.equal(seededLarge.geometry.roofAreaM2, 140);
+  assert.equal(seededLargeCalculation.envelopeTransmissionResult.result.amount > seededSmallCalculation.envelopeTransmissionResult.result.amount, true);
+  assert.equal(explicitSmall.geometry.roofAreaM2, 120);
+  assert.equal(explicitLarge.geometry.roofAreaM2, 120);
+  close(explicitSmallCalculation.envelopeTransmissionResult.result.amount, explicitLargeCalculation.envelopeTransmissionResult.result.amount);
 });
 
 await test("window orientation changes solar gains and useful demand but not Htr", () => {

@@ -62,7 +62,7 @@ await test("technical report is generated from Building DNA and Chapter 2 output
     workspace.tabs.map(tab => tab.tabId),
     ["building", "assemblies", "materials", "building_dna", "chapter_2", "results", "report", "traceability"]
   );
-  assert.equal(workspace.report.title, "Chapter 2 Technical Engineering Report");
+  assert.equal(workspace.report.title, "Raport tehnic de calcul MC001-2022");
   assert.equal(workspace.calculationFingerprint.fingerprintId, "39cfaa3e");
   assert.equal(workspace.report.calculationFingerprint.fingerprintId, "39cfaa3e");
   assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
@@ -121,28 +121,27 @@ await test("technical report contains the required engineering chapters and form
   const chapterTitles = workspace.report.chapters.map(chapter => chapter.title);
 
   for (const expected of [
-    "General Project Information",
-    "Building Description",
-    "Building DNA",
-    "Engineering Assumptions",
-    "Envelope Assemblies",
-    "Materials",
-    "Layer Stacks",
-    "Thermal Resistances",
-    "U-values",
-    "Boundary Conditions",
-    "Heat Transfer Coefficients",
-    "Monthly Input Transparency",
-    "Transmission Losses",
-    "Ventilation Losses",
-    "Solar Gains",
-    "Internal Gains",
-    "Monthly Heating Demand",
-    "Monthly Cooling Demand",
-    "Annual Results",
-    "Calculation Fingerprint",
-    "Engineering Traceability",
-    "Normative References"
+    "Date generale ale proiectului",
+    "Statutul calculului",
+    "Date climatice utilizate",
+    "Geometria cladirii",
+    "Elemente de anvelopa",
+    "Materiale si straturi",
+    "Rezistente termice",
+    "Coeficienti U",
+    "Coeficienti de transfer termic",
+    "Pierderi prin transmisie",
+    "Pierderi prin ventilare",
+    "Aporturi interne",
+    "Aporturi solare",
+    "Calcul lunar al necesarului de incalzire",
+    "Calcul lunar al necesarului de racire",
+    "Rezultate anuale",
+    "Ipoteze si confirmari",
+    "Suprascrieri ingineresti",
+    "Trasabilitate matematica",
+    "Referinte normative",
+    "Anexa tehnica software si versiuni"
   ]) {
     assert.equal(chapterTitles.includes(expected), true, expected);
   }
@@ -164,6 +163,11 @@ await test("technical report contains the required engineering chapters and form
     workspace.traceability.some(row => row.reference === "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH"),
     true
   );
+  const uTrace = workspace.formulaViews.find(view => view.formulaId === "MC001_2_7_U_VALUE_FROM_RELATION_2_6_RESISTANCE");
+  assert.equal(uTrace.symbolicFormula, "U = 1 / R_total");
+  assert.equal(uTrace.substitutedFormula.includes("U = 1 /"), true);
+  assert.equal(uTrace.resultLine.includes("W/(m2*K)"), true);
+  assert.equal(uTrace.normativeReference, "MC001-2022, relatia 2.7");
 });
 
 await test("calculation fingerprint changes when upstream Building DNA changes", () => {

@@ -77,5 +77,27 @@ export const P3B_INPUT_PROPAGATION_FIELDS = Object.freeze([
     engineOutputDependencies: Object.freeze(["Hd", "Htr", "Qtr,H", "QHnd", "QCnd"]),
     reportPath: "technicalWorkspace.envelope.components",
     propagationStatus: "fully_propagated"
+  }),
+  Object.freeze({
+    fieldId: "exterior_wall_area_m2",
+    uiField: "exterior_wall_area_m2",
+    assistedAnswerPath: "buildingSpecificParameters.exteriorWallAreaM2",
+    buildingDnaPath: "envelopeElements[exterior-walls].area",
+    resolverPath: "makeEnvelopeElements",
+    adapterPath: "envelopeInput.elements[exterior-walls].area",
+    engineOutputDependencies: Object.freeze(["Hd", "Htr", "Qtr,H", "QHnd"]),
+    reportPath: "technicalWorkspace.envelope.elementRows",
+    propagationStatus: "fully_propagated"
+  }),
+  Object.freeze({
+    fieldId: "heated_volume_m3",
+    uiField: "heated_volume_m3",
+    assistedAnswerPath: "buildingSpecificParameters.heatedVolumeM3",
+    buildingDnaPath: "monthlyProfiles[*].ventilation.airFlowRate",
+    resolverPath: "monthlyProfilesWithGeometryVentilation",
+    adapterPath: "chapter2Input.monthlyCases[*].ventilation.components.airFlowRate",
+    engineOutputDependencies: Object.freeze(["Qve,H", "Qve,C", "QHnd", "QCnd"]),
+    reportPath: "technicalWorkspace.monthly.ventilationAirFlowRateM3PerS",
+    propagationStatus: "fully_propagated_when_ventilation_ach_is_present"
   })
 ]);

@@ -6,6 +6,7 @@ import {
   listRomanianClimateProfiles
 } from "../src/building-platform/index.mjs";
 
+// assisted abstraction pending redesign: keep it as a secondary view over the canonical model.
 export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
   {
     stepId: "geometry",
@@ -90,7 +91,6 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     door_area_m2: "2",
     ventilation_type: "natural",
     ventilation_ach: "0.6",
-    airflow_m3h: "216",
     thermal_bridge_mode: "platform_supported_explicit",
     wall_insulation: "10cm",
     wall_insulation_material: "eps",
@@ -369,14 +369,14 @@ function renderAnnualSummary(workspace) {
   return `
     <div class="technical-status-grid p2b-annual-summary">
       <article>
-        <span>Annual QHnd</span>
+        <span>QHnd anual</span>
         <strong>${formatNumber(workspace.resultSummary.annualQHnd)} kWh</strong>
-        <small>Chapter 2 heating useful demand</small>
+        <small>Necesar util de incalzire Chapter 2</small>
       </article>
       <article>
-        <span>Annual QCnd</span>
+        <span>QCnd anual</span>
         <strong>${formatNumber(workspace.resultSummary.annualQCnd)} kWh</strong>
-        <small>Chapter 2 cooling useful demand</small>
+        <small>Necesar util de racire Chapter 2</small>
       </article>
       <article>
         <span>Htr</span>
@@ -384,14 +384,14 @@ function renderAnnualSummary(workspace) {
         <small>${safeText(workspace.envelope.htr?.origin)}</small>
       </article>
       <article>
-        <span>Months</span>
+        <span>Luni</span>
         <strong>${formatNumber(workspace.resultSummary.monthCount, 0)}</strong>
-        <small>explicit monthly result set</small>
+        <small>profil lunar explicit</small>
       </article>
       <article>
-        <span>Fingerprint</span>
+        <span>Amprenta calcul</span>
         <strong>${safeText(workspace.calculationFingerprint?.fingerprintId ?? "--")}</strong>
-        <small>Building DNA + Chapter 2 output</small>
+        <small>Building DNA + rezultat Chapter 2</small>
       </article>
     </div>
   `;
@@ -502,11 +502,11 @@ function renderSeasonalSanity(workspace) {
 
 function renderFormulaViewer(workspace) {
   return renderTable([
-    { label: "Formula", value: row => row.formulaId },
-    { label: "Name", value: row => row.formulaName },
-    { label: "Inputs", value: row => row.inputVariables.map(item => `${item.symbol}=${formatNumber(item.value, 4)} ${item.unit ?? ""}`).join("; ") },
-    { label: "Result", value: row => `${row.resultSymbol}=${formatNumber(row.resultValue, 4)} ${row.resultUnit ?? ""}` },
-    { label: "Origin", value: row => row.origin ?? "--" }
+    { label: "Marime", value: row => row.formulaName },
+    { label: "Formula", value: row => row.symbolicFormula ?? row.formulaId },
+    { label: "Substitutie", value: row => row.substitutedFormula ?? row.inputVariables.map(item => `${item.symbol}=${formatNumber(item.value, 4)} ${item.unit ?? ""}`).join("; ") },
+    { label: "Rezultat", value: row => row.resultLine ?? `${row.resultSymbol}=${formatNumber(row.resultValue, 4)} ${row.resultUnit ?? ""}` },
+    { label: "Referinta", value: row => row.normativeReference ?? row.formulaId ?? "--" }
   ], workspace.formulaViews.slice(0, 18));
 }
 
@@ -521,12 +521,48 @@ function renderTraceability(workspace) {
 
 function renderReportChapters(workspace, options = {}) {
   return `
-    <div class="technical-report-chapter-list">
+    <div class="technical-report-document" data-pdf-like-report>
       ${workspace.report.chapters.map(chapter => `
         <details class="technical-report-chapter"${options.openReport ? " open" : ""}>
           <summary>${safeText(chapter.title)}</summary>
           <p>${safeText(chapter.summary)}</p>
           <small>${safeText(chapter.chapterId)} · ${safeText(chapter.rows.length)} entries</small>
+        </details>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderChapterRows(chapter) {
+  const rows = Array.isArray(chapter.rows) ? chapter.rows.slice(0, 12) : [];
+  if (rows.length === 0) return "";
+  const keys = [...new Set(rows.flatMap(row => Object.keys(row ?? {})))]
+    .filter(key => !["traceNodeId", "dependencies"].includes(key))
+    .slice(0, 6);
+  if (keys.length === 0) return "";
+  return renderTable(
+    keys.map(key => ({
+      label: key,
+      value: row => {
+        const value = row?.[key];
+        if (Array.isArray(value)) return value.map(item => item?.symbol ?? item).join(", ");
+        if (value && typeof value === "object") return value.label ?? value.reference ?? value.origin ?? JSON.stringify(value);
+        return value;
+      }
+    })),
+    rows
+  );
+}
+
+function renderTechnicalReportDocument(workspace, options = {}) {
+  return `
+    <div class="technical-report-document" data-pdf-like-report>
+      ${workspace.report.chapters.map((chapter, index) => `
+        <details class="technical-report-chapter"${options.openReport || index < 3 ? " open" : ""}>
+          <summary>${index + 1}. ${safeText(chapter.title)}</summary>
+          <p>${safeText(chapter.summary)}</p>
+          <small>${safeText(chapter.rows.length)} randuri documentate</small>
+          ${renderChapterRows(chapter)}
         </details>
       `).join("")}
     </div>
@@ -704,12 +740,6 @@ export function renderEngineeringModelReview(preview, options = {}) {
   const dna = preview.buildingDna;
   const workspace = preview.technicalWorkspace;
   const openReport = options.openReport === true || dna.source?.origin === "demo_fixture";
-  const stages = preview.stages.map(item => `
-    <li>
-      <strong>${safeText(item.label)}</strong>
-      <span>${safeText(item.status)}</span>
-    </li>
-  `).join("");
   const interventions = preview.review.renovationInterventions.length === 0
     ? "<li>Nu a fost selectata nicio interventie. Propunerea ramane editabila.</li>"
     : preview.review.renovationInterventions.map(item => `
@@ -731,35 +761,35 @@ export function renderEngineeringModelReview(preview, options = {}) {
   const technicalWorkspaceHtml = workspace?.status === "ready" ? `
     <section class="technical-workspace" id="p2b-technical-workspace">
       <div class="section-heading">
-        <span class="small-label">TECHNICAL WORKSPACE</span>
-        <h3>Building DNA, Chapter 2 results and technical report</h3>
+        <span class="small-label">RAPORT TEHNIC</span>
+        <h3>Document de calcul si tabele de verificare</h3>
       </div>
       ${renderTechnicalTabs(workspace)}
       ${renderAnnualSummary(workspace)}
       <div class="technical-workspace-grid">
         <section id="p2b-building" class="technical-workspace-panel">
-          <h4>Building</h4>
+          <h4>Cladire</h4>
           <p>${safeText(workspace.buildingSummary.buildingType)} / ${safeText(workspace.buildingSummary.constructionPeriod)} / ${safeText(workspace.buildingSummary.structuralSystem)}</p>
           <p>Typology: ${safeText(workspace.buildingSummary.typologyId)} · Mode: ${safeText(workspace.buildingSummary.userMode)}</p>
           <p>Climate profile: ${safeText(dna.climateProfile?.displayName ?? "missing")} / ${safeText(dna.climateProfile?.verificationStatus ?? "not_selected")}</p>
         </section>
         <section id="p2b-building_dna" class="technical-workspace-panel">
-          <h4>Building DNA</h4>
+          <h4>Model canonic</h4>
           <p>Schema: ${safeText(dna.schema)} · Platform: ${safeText(dna.platformVersion)}</p>
           <p>Assumptions: ${safeText(dna.assumptions.length)} · Confirmations: ${safeText(dna.missingConfirmations.length)}</p>
         </section>
         <section id="p2b-chapter_2" class="technical-workspace-panel">
-          <h4>Chapter 2 authority</h4>
-          <p>Displayed values are read from Building DNA and validated Chapter 2 engine outputs.</p>
-          <p>The active workspace is limited to envelope modelling, monthly useful demand, annual useful demand and the technical report.</p>
+          <h4>Calcul MC001-2022 Capitolul 2</h4>
+          <p>Valorile afisate sunt citite din modelul canonic si din rezultatele motorului validat.</p>
+          <p>Domeniul activ este anvelopa, transferul lunar, QHnd/QCnd si raportul tehnic.</p>
         </section>
       </div>
       <section id="p2b-assemblies" class="technical-workspace-panel">
-        <h4>Assemblies and U-values</h4>
+        <h4>Ansambluri si coeficienti U</h4>
         ${renderAssemblies(workspace)}
       </section>
       <section id="p2b-materials" class="technical-workspace-panel">
-        <h4>Materials</h4>
+        <h4>Materiale</h4>
         ${renderMaterials(workspace)}
       </section>
       ${dna.climateProfile?.sourceType === "synthetic_demo_profile" ? `
@@ -769,11 +799,11 @@ export function renderEngineeringModelReview(preview, options = {}) {
         </section>
       ` : ""}
       <section class="technical-workspace-panel">
-        <h4>Layer stacks</h4>
+        <h4>Straturi</h4>
         ${renderLayerStacks(workspace)}
       </section>
       <section class="technical-workspace-panel">
-        <h4>Htr breakdown</h4>
+        <h4>Descompunere Htr</h4>
         ${renderHtrBreakdown(workspace)}
       </section>
       <section id="p2b-results" class="technical-workspace-panel">
@@ -782,37 +812,109 @@ export function renderEngineeringModelReview(preview, options = {}) {
         ${renderSeasonalSanity(workspace)}
       </section>
       <section class="technical-workspace-panel">
-        <h4>Monthly QHnd / QCnd</h4>
+        <h4>QHnd / QCnd lunar</h4>
         ${renderMonthlyResults(workspace)}
       </section>
       <section id="p2b-report" class="technical-workspace-panel">
-        <h4>Technical report</h4>
+        <h4>Raport tehnic</h4>
         <div class="technical-report-success" data-technical-report-success>
           Raport tehnic generat din Building DNA si rezultatele Chapter 2 validate.
         </div>
         <p>${safeText(workspace.report.title)} · ${safeText(workspace.report.source)}</p>
-        ${renderReportChapters(workspace, { openReport })}
+        ${renderTechnicalReportDocument(workspace, { openReport })}
       </section>
       <section id="p2b-traceability" class="technical-workspace-panel">
-        <h4>Formula viewer</h4>
+        <h4>Trasabilitate matematica</h4>
         ${renderFormulaViewer(workspace)}
       </section>
       <section class="technical-workspace-panel">
-        <h4>Traceability</h4>
+        <h4>Referinte normative</h4>
         ${renderTraceability(workspace)}
       </section>
     </section>
   ` : `<p class="form-message error">Technical workspace unavailable: ${safeText(workspace?.diagnostics?.blockers?.[0]?.code)}</p>`;
+  const p3fTechnicalWorkspaceHtml = workspace?.status === "ready" ? `
+    <section class="technical-workspace p3f-report-sheet" id="p2b-technical-workspace">
+      <div class="section-heading">
+        <span class="small-label">RAPORT TEHNIC</span>
+        <h3>Document de calcul si tabele de verificare</h3>
+      </div>
+      ${renderTechnicalTabs(workspace)}
+      ${renderAnnualSummary(workspace)}
+      <div class="technical-workspace-grid">
+        <section id="p2b-building" class="technical-workspace-panel">
+          <h4>Cladire</h4>
+          <p>${safeText(workspace.buildingSummary.buildingType)} / ${safeText(workspace.buildingSummary.constructionPeriod)} / ${safeText(workspace.buildingSummary.structuralSystem)}</p>
+          <p>Profil climatic: ${safeText(dna.climateProfile?.displayName ?? "neales")} / ${safeText(dna.climateProfile?.verificationStatus ?? "not_selected")}</p>
+        </section>
+        <section id="p2b-building_dna" class="technical-workspace-panel">
+          <h4>Model canonic</h4>
+          <p>Ansambluri: ${safeText(dna.assemblies?.length ?? 0)} / Elemente anvelopa: ${safeText(dna.envelopeElements?.length ?? 0)}</p>
+          <p>Ipoteze: ${safeText(dna.assumptions.length)} / Confirmari necesare: ${safeText(dna.missingConfirmations.length)}</p>
+        </section>
+        <section id="p2b-chapter_2" class="technical-workspace-panel">
+          <h4>Calcul MC001-2022 Capitolul 2</h4>
+          <p>Valorile afisate sunt citite din modelul canonic si din rezultatele motorului validat.</p>
+          <p>Domeniul activ este anvelopa, transferul lunar, QHnd/QCnd si raportul tehnic.</p>
+        </section>
+      </div>
+      <section id="p2b-assemblies" class="technical-workspace-panel">
+        <h4>Ansambluri si coeficienti U</h4>
+        ${renderAssemblies(workspace)}
+      </section>
+      <section id="p2b-materials" class="technical-workspace-panel">
+        <h4>Materiale</h4>
+        ${renderMaterials(workspace)}
+      </section>
+      ${dna.climateProfile?.sourceType === "synthetic_demo_profile" ? `
+        <section class="technical-workspace-panel synthetic-climate-warning">
+          <h4>Profil climatic sintetic</h4>
+          <p>${safeText(dna.climateProfile.safetyLabel)}</p>
+        </section>
+      ` : ""}
+      <section class="technical-workspace-panel">
+        <h4>Straturi</h4>
+        ${renderLayerStacks(workspace)}
+      </section>
+      <section class="technical-workspace-panel">
+        <h4>Descompunere Htr</h4>
+        ${renderHtrBreakdown(workspace)}
+      </section>
+      <section id="p2b-results" class="technical-workspace-panel">
+        <h4>Date climatice lunare utilizate</h4>
+        ${renderMonthlyClimateInspector(workspace)}
+        ${renderSeasonalSanity(workspace)}
+      </section>
+      <section class="technical-workspace-panel">
+        <h4>QHnd / QCnd lunar</h4>
+        ${renderMonthlyResults(workspace)}
+      </section>
+      <section id="p2b-report" class="technical-workspace-panel">
+        <h4>Raport tehnic</h4>
+        <div class="technical-report-success" data-technical-report-success>
+          Raport tehnic generat din Building DNA si rezultatele Chapter 2 validate.
+        </div>
+        <p>${safeText(workspace.report.title)} / ${safeText(workspace.report.source)}</p>
+        ${renderTechnicalReportDocument(workspace, { openReport })}
+      </section>
+      <section id="p2b-traceability" class="technical-workspace-panel">
+        <h4>Trasabilitate matematica</h4>
+        ${renderFormulaViewer(workspace)}
+      </section>
+      <section class="technical-workspace-panel">
+        <h4>Referinte normative</h4>
+        ${renderTraceability(workspace)}
+      </section>
+    </section>
+  ` : `<p class="form-message error">Raport indisponibil: ${safeText(workspace?.diagnostics?.blockers?.[0]?.code)}</p>`;
   return `
     <div class="recommendation-detail-card" data-building-platform-review>
       <div>
-        <h3>Platforma de cunostinte a cladirii</h3>
+        <h3>Raport tehnic de calcul MC001-2022</h3>
         <p>Locuinta: ${safeText(dna.building.buildingType)} / ${safeText(dna.building.constructionPeriod)}</p>
         <p>Incalzire anuala utila: <strong>${preview.summary.annualQHnd?.toFixed(2) ?? "--"} kWh</strong></p>
         <p>Racire anuala utila: <strong>${preview.summary.annualQCnd?.toFixed(2) ?? "--"} kWh</strong></p>
-        <p>Rezultatele vin din motorul Chapter 2 validat. Modelul propus ramane editabil si explica fiecare ipoteza.</p>
-        <h4>Flux verificabil</h4>
-        <ul>${stages}</ul>
+        <p>Rezultatele vin din motorul Chapter 2 validat. Valorile de intrare raman editabile si fiecare ipoteza este listata explicit.</p>
         <h4>Interventii identificate</h4>
         <ul>${interventions}</ul>
         <h4>Ansambluri propuse</h4>
@@ -821,7 +923,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
         <ul>${assumptions}</ul>
         <h4>Confirmari necesare</h4>
         <ul>${confirmations}</ul>
-        ${technicalWorkspaceHtml}
+        ${p3fTechnicalWorkspaceHtml}
       </div>
     </div>
   `;
@@ -936,6 +1038,23 @@ function setSaveStatus(root, message, state = "info") {
   if (!target) return;
   target.textContent = message;
   target.dataset.state = state;
+}
+
+function setActionButtonBusy(root, buttonId, label) {
+  const button = root.getElementById?.(buttonId);
+  if (!button) return () => {};
+  const previousText = button.textContent;
+  const previousDisabled = button.disabled;
+  button.disabled = true;
+  button.dataset.busy = "1";
+  button.setAttribute?.("aria-busy", "true");
+  button.textContent = label;
+  return () => {
+    button.disabled = previousDisabled;
+    button.dataset.busy = "0";
+    button.setAttribute?.("aria-busy", "false");
+    button.textContent = previousText;
+  };
 }
 
 function currentHouseIdFromForm(form) {
@@ -1426,15 +1545,28 @@ export function attachBuildingPlatformWizard(root = document) {
   const saveButton = root.getElementById?.("saveBuildingPlatformAnalysisBtn");
   const draftButton = root.getElementById?.("saveBuildingPlatformDraftBtn");
   const recalculateButton = root.getElementById?.("recalculateBuildingPlatformAnalysisBtn");
+  const printButton = root.getElementById?.("printTechnicalReportBtn");
+  const simplifiedModeButton = root.getElementById?.("toggleSimplifiedModeBtn");
   const loadButton = root.getElementById?.("loadBuildingPlatformAnalysisBtn");
   const loadInput = root.getElementById?.("buildingPlatformLoadAnalysisId");
-  saveButton?.addEventListener("click", () => {
-    saveBuildingPlatformChapter2Analysis(root);
+  saveButton?.addEventListener("click", async () => {
+    const restore = setActionButtonBusy(root, "saveBuildingPlatformAnalysisBtn", "Se salveaza versiunea...");
+    try {
+      await saveBuildingPlatformChapter2Analysis(root);
+    } finally {
+      restore();
+    }
   });
-  draftButton?.addEventListener("click", () => {
-    saveBuildingPlatformDraft(root);
+  draftButton?.addEventListener("click", async () => {
+    const restore = setActionButtonBusy(root, "saveBuildingPlatformDraftBtn", "Se salveaza draftul...");
+    try {
+      await saveBuildingPlatformDraft(root);
+    } finally {
+      restore();
+    }
   });
   recalculateButton?.addEventListener("click", () => {
+    const restore = setActionButtonBusy(root, "recalculateBuildingPlatformAnalysisBtn", "Se recalculeaza...");
     const result = generateBuildingPlatformTechnicalReport(root, {
       openReport: true,
       scrollToReport: true
@@ -1442,6 +1574,13 @@ export function attachBuildingPlatformWizard(root = document) {
     if (result.generated) {
       setSaveStatus(root, "Rezultate recalculate, dar nesalvate.", "pending");
     }
+    restore();
+  });
+  printButton?.addEventListener("click", () => {
+    globalThis.window?.print?.();
+  });
+  simplifiedModeButton?.addEventListener("click", () => {
+    root.querySelector?.(".p2c-technical-analysis")?.classList?.toggle("simplified-mode-active");
   });
   loadButton?.addEventListener("click", () => {
     loadBuildingPlatformChapter2Analysis(root);
