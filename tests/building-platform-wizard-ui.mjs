@@ -243,7 +243,7 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   assert.equal(preview.status, "ready");
   assert.equal(preview.scope, "building_knowledge_platform_p2_review_mvp");
   assert.equal(preview.technicalWorkspace.status, "ready");
-  assert.equal(preview.technicalWorkspace.scope, "building_technical_workspace_p2b_report_generation_only");
+  assert.equal(preview.technicalWorkspace.scope, "engineering_calculation_notebook_p3g_report_generation_only");
   assert.equal(preview.buildingDna.schema, "building_dna_v1");
   assert.equal(preview.dependencyTree.physicsAuthority, "Chapter 2 physics engine");
   assert.equal(preview.buildingDna.climateProfile.profileId, "ro_synthetic_bucharest_seasonal_demo_v1");
@@ -253,20 +253,20 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
 
   const html = renderEngineeringModelReview(preview);
   for (const expected of [
-    "Building DNA",
-    "Ansambluri si coeficienti U",
-    "Materiale",
-    "Straturi",
-    "Descompunere Htr",
-    "QHnd / QCnd lunar",
+    "Rezultate principale",
+    "Caiet de calcule ingineresti",
+    "Registru de variabile utilizate",
+    "Calcule in ordinea dependentelor",
     "Amprenta calcul",
-    "T ext H",
-    "Solar source",
-    "Trasabilitate matematica",
-    "Referinte normative",
-    "Raport tehnic",
+    "Necesar anual de incalzire QHnd",
+    "Necesar anual de racire QCnd",
     "R_layer = d / lambda_design",
     "U = 1 / R_total",
+    "Qtr,H = Phi_tr,H * t / 1000",
+    "Qve,H = Phi_ve,H * t / 1000",
+    "QHgn = Qint + Qsol",
+    "QHnd_an = sum(QHnd_m)",
+    "QCnd_an = sum(QCnd_m)",
     "MC001_2_18_HEATING_MONTHLY_USEFUL_DEMAND_RESTRICTED_BRANCH",
     "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND"
   ]) {
@@ -644,12 +644,14 @@ await test("demo query and fixture preload a complete editable technical dataset
   const html = renderEngineeringModelReview(preview, { openReport: true });
   assert.equal(html.includes("Raport tehnic generat"), true);
   assert.equal(html.includes("data-technical-report-success"), true);
-  assert.equal(html.includes("technical-report-chapter\" open"), true);
-  assert.equal(html.includes("Date climatice lunare utilizate"), true);
-  assert.equal(html.includes("Aport solar lunar (nu factor g)"), true);
-  assert.equal(html.includes("Control coerenta sezoniera lunara"), true);
-  assert.equal(html.includes("QHnd anual"), true);
-  assert.equal(html.includes("QCnd anual"), true);
+  assert.equal(html.includes("data-engineering-calculation-notebook"), true);
+  assert.equal(html.includes("technical-report-chapter\" open"), false);
+  assert.equal(html.includes("<details"), false);
+  assert.equal(html.includes("Registru de variabile utilizate"), true);
+  assert.equal(html.includes("Qtr,H = Phi_tr,H * t / 1000"), true);
+  assert.equal(html.includes("QHnd_an ="), true);
+  assert.equal(html.includes("Necesar anual de incalzire QHnd"), true);
+  assert.equal(html.includes("Necesar anual de racire QCnd"), true);
 });
 
 await test("wizard marks current results stale after an upstream input changes", () => {
@@ -756,6 +758,60 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(css.includes("@media print"), true);
   assert.equal(css.includes(".p3f-input-pane"), true);
   assert.equal(css.includes("display:none!important"), true);
+  assert.equal(css.includes(".engineering-calculation-notebook"), true);
+  assert.equal(css.includes(".calculation-step"), true);
+  assert.equal(css.includes(".technical-report-title-block"), true);
+});
+
+await test("P3G report is a fully expanded print-ready calculation notebook", () => {
+  const preview = buildWizardEngineeringPreview(
+    mapWizardAnswersToAssistedAnswers(formData(ASSISTED_WIZARD_DEMO_FIXTURE.values))
+  );
+  const html = renderEngineeringModelReview(preview, { openReport: true });
+  const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8");
+
+  assert.equal(html.includes("data-pdf-like-report"), true);
+  assert.equal(html.includes("data-engineering-calculation-notebook"), true);
+  assert.equal(html.includes("<details"), false);
+  assert.equal(html.includes("Rezultate principale"), true);
+  assert.equal(html.includes("Registru de variabile utilizate"), true);
+  assert.equal(html.includes("Calcule in ordinea dependentelor"), true);
+  assert.equal(html.includes("QHnd_an = sum(QHnd_m)"), true);
+  assert.equal(html.includes("QCnd_an = sum(QCnd_m)"), true);
+  assert.equal(html.includes("Qtr,H = Phi_tr,H * t / 1000"), true);
+  assert.equal(html.includes("Qve,H = Phi_ve,H * t / 1000"), true);
+  assert.equal(html.includes("QHgn = Qint + Qsol"), true);
+  assert.equal(html.includes("QHnd = QHht - eta_Hgn * QHgn"), true);
+  assert.equal(html.includes("QCnd = QCgn - eta_Cht * QCht"), true);
+  for (const month of [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december"
+  ]) {
+    assert.equal(html.includes(month), true, month);
+  }
+  for (const forbidden of [
+    "Building DNA pipeline",
+    "Knowledge Platform",
+    "User Description ready",
+    "Assisted Answers ready",
+    "Formula viewer"
+  ]) {
+    assert.equal(html.includes(forbidden), false, forbidden);
+  }
+  assert.equal(css.includes("@media print"), true);
+  assert.equal(css.includes(".calculation-step"), true);
+  assert.equal(css.includes("page-break-inside:avoid"), true);
+  assert.equal(css.includes(".calculation-equations code"), true);
 });
 
 await test("active production analysis flow removes unsupported product domains", () => {
