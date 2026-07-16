@@ -233,6 +233,7 @@ function monthlyRows(calculation, buildingDna) {
     return {
       caseId: monthResult.caseId,
       month: monthResult.month,
+      monthLabel: monthLabel(monthResult.month),
       durationHours: quantityAmount(dnaMonth?.transmission?.heating?.duration),
       heatingIndoorTemperatureC: heatingIndoor,
       heatingOutdoorTemperatureC: heatingOutdoor,
@@ -361,6 +362,63 @@ function formatFormulaTerm(value, unit, digits = 4) {
   return formatFormulaValue(value, unit, digits);
 }
 
+const ROMANIAN_MONTH_LABELS = Object.freeze({
+  january: "ianuarie",
+  february: "februarie",
+  march: "martie",
+  april: "aprilie",
+  may: "mai",
+  june: "iunie",
+  july: "iulie",
+  august: "august",
+  september: "septembrie",
+  october: "octombrie",
+  november: "noiembrie",
+  december: "decembrie"
+});
+
+function monthLabel(month) {
+  return ROMANIAN_MONTH_LABELS[month] ?? month ?? "--";
+}
+
+function isFiniteAmount(value) {
+  return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
+}
+
+function formatNotebookNumber(value, digits = 4) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits).replace(".", ",") : "--";
+}
+
+function formatNotebookValue(value, unit, digits = 4) {
+  return `${formatNotebookNumber(value, digits)}${unit && unit !== "-" ? ` ${unit}` : ""}`;
+}
+
+function notebookName(value) {
+  return String(value ?? "")
+    .replace(/exterior/gi, "ext")
+    .replace(/Masonry exterior wall with EPS insulation/gi, "perete exterior")
+    .replace(/Timber roof with mineral wool insulation/gi, "acoperis")
+    .replace(/Concrete ground floor with EPS insulation/gi, "planseu pe sol")
+    .replace(/Wood and earth-fill ceiling with mineral wool/gi, "planseu spre pod")
+    .replace(/PVC double-glazed window/gi, "fereastra")
+    .replace(/Insulated exterior door/gi, "usa")
+    .replace(/brick masonry/gi, "caramida")
+    .replace(/EPS insulation/gi, "EPS")
+    .replace(/timber board/gi, "lemn")
+    .replace(/mineral wool/gi, "vata minerala")
+    .replace(/reinforced concrete/gi, "beton armat")
+    .replace(/earth fill/gi, "umplutura pamant")
+    .replace(/[^A-Za-z0-9_\u0100-\u024F]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function absoluteValue(value) {
+  const number = Number(value);
+  return number < 0 ? -number : number;
+}
+
 function readableNormativeReference(reference) {
   if (!reference) return null;
   if (reference.includes("2_7")) return "MC001-2022, relatia 2.7";
@@ -385,6 +443,9 @@ function formulaTrace({
   symbolicFormula,
   substitutedFormula,
   resultLine,
+  notebookLines = [],
+  localVariables = [],
+  numericVerification = null,
   dependencies = []
 }) {
   return {
@@ -402,6 +463,9 @@ function formulaTrace({
     symbolicFormula,
     substitutedFormula,
     resultLine: resultLine ?? `${resultSymbol} = ${formatFormulaValue(resultValue, resultUnit)}`,
+    notebookLines,
+    localVariables,
+    numericVerification,
     dependencies
   };
 }
@@ -412,7 +476,7 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
     envelopeFormulaReferences[0] ??
     null;
   const materialFormulaViews = assemblies.flatMap(assembly => assembly.layers
-    .filter(layer => Number.isFinite(Number(layer.lambdaNormatWmK)) && Number.isFinite(Number(layer.correctionCoefficientA)))
+    .filter(layer => isFiniteAmount(layer.lambdaNormatWmK) && isFiniteAmount(layer.correctionCoefficientA))
     .map(layer => formulaTrace({
       formulaId: layer.lambdaFormulaCode ?? "MC001_LAYER_DESIGN_LAMBDA_FROM_REFERENCE_AND_CORRECTION",
       formulaName: `Conductivitate de calcul - ${assembly.displayName} / ${layer.materialName}`,
@@ -436,6 +500,26 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
     })));
 
   const assemblyFormulaViews = assemblies.flatMap((assembly) => {
+    if ((assembly.layers ?? []).length === 0 && assembly.formulaCode === "EXPLICIT_ASSEMBLY_U_VALUE") {
+      return [formulaTrace({
+        formulaId: assembly.formulaCode,
+        formulaName: `Coeficient U - ${assembly.displayName}`,
+        resultSymbol: "U",
+        resultValue: assembly.uValue,
+        resultUnit: assembly.uValueUnit,
+        origin: assembly.uValueOrigin,
+        section: "coeficienti_u",
+        inputVariables: [],
+        sourceReference: assembly.sourceReference,
+        symbolicFormula: "U = valoare introdusa explicit",
+        substitutedFormula: `U = ${formatFormulaValue(assembly.uValue, assembly.uValueUnit)} -- valoare introdusa explicit`,
+        resultLine: `U = ${formatFormulaValue(assembly.uValue, assembly.uValueUnit)}`,
+        notebookLines: [
+          { text: explicitLine(`U_${notebookName(assembly.role ?? assembly.displayName)}`, assembly.uValue, "W/(m²K)") }
+        ],
+        dependencies: []
+      })];
+    }
     const layerTraces = assembly.layers.map(layer => formulaTrace({
       formulaId: layer.resistanceFormulaCode,
       formulaName: `Rezistenta strat - ${assembly.displayName} / ${layer.materialName}`,
@@ -874,29 +958,513 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
   ];
 }
 
-function notebookVariables(calculations) {
-  const variables = [];
-  for (const calculation of calculations) {
-    for (const variable of calculation.inputVariables ?? []) {
-      variables.push({
-        variableId: `${calculation.traceNodeId}.${variable.symbol}.input`,
-        symbol: variable.symbol,
-        value: variable.value,
-        unit: variable.unit ?? "-",
-        meaning: variable.meaning ?? `Intrare pentru ${calculation.formulaName}`,
-        source: calculation.origin ?? calculation.sourceReference ?? "model_calcul"
-      });
+function compactLine({
+  lineId,
+  text,
+  resultValue = null,
+  resultUnit = null,
+  computedValue = undefined,
+  variables = [],
+  reference = null,
+  kind = "calculation"
+}) {
+  return {
+    lineId,
+    text,
+    resultValue,
+    resultUnit,
+    computedValue,
+    variables,
+    reference: readableNormativeReference(reference) ?? reference,
+    kind
+  };
+}
+
+function localVariables(lines) {
+  const bySymbol = new Map();
+  for (const line of lines) {
+    for (const variable of line.variables ?? []) {
+      if (!variable?.symbol || bySymbol.has(variable.symbol)) continue;
+      bySymbol.set(variable.symbol, variable);
     }
-    variables.push({
-      variableId: `${calculation.traceNodeId}.${calculation.resultSymbol}.result`,
-      symbol: calculation.resultSymbol,
-      value: calculation.resultValue,
-      unit: calculation.resultUnit ?? "-",
-      meaning: calculation.formulaName,
-      source: calculation.origin ?? calculation.sourceReference ?? "model_calcul"
-    });
   }
-  return variables;
+  return [...bySymbol.values()];
+}
+
+function section(sectionId, title, lines) {
+  const visibleLines = lines.filter(Boolean);
+  return {
+    sectionId,
+    title,
+    localVariables: localVariables(visibleLines),
+    lines: visibleLines
+  };
+}
+
+function expressionLine(left, expression, value, unit, digits = 4) {
+  return `${left} := ${expression} = ${formatNotebookValue(value, unit, digits)}`;
+}
+
+function explicitLine(left, value, unit, digits = 4) {
+  return `${left} := ${formatNotebookValue(value, unit, digits)} -- valoare introdusa explicit`;
+}
+
+function sumExpression(values, unit, digits = 4) {
+  const terms = values
+    .filter(value => isFiniteAmount(value))
+    .map(value => formatNotebookNumber(value, digits));
+  return terms.length > 0 ? terms.join(" + ") : `0${unit ? ` ${unit}` : ""}`;
+}
+
+function compactAssemblySections(assemblies, envelope) {
+  const elementsByAssembly = new Map();
+  for (const element of envelope.elementRows ?? []) {
+    if (!element.assemblyId) continue;
+    const rows = elementsByAssembly.get(element.assemblyId) ?? [];
+    rows.push(element);
+    elementsByAssembly.set(element.assemblyId, rows);
+  }
+
+  const sections = assemblies.map((assembly) => {
+    const name = notebookName(assembly.role ?? assembly.displayName ?? assembly.assemblyId);
+    const lines = [];
+    for (const layer of assembly.layers ?? []) {
+      const layerName = notebookName(layer.materialName ?? layer.layerId);
+      const lambdaSymbol = `λ_${layerName}`;
+      if (isFiniteAmount(layer.lambdaNormatWmK) && isFiniteAmount(layer.correctionCoefficientA)) {
+        lines.push(compactLine({
+          lineId: `${assembly.assemblyId}.${layer.layerId}.lambda`,
+          text: expressionLine(
+            lambdaSymbol,
+            `${formatNotebookNumber(layer.lambdaNormatWmK, 3)} × ${formatNotebookNumber(layer.correctionCoefficientA, 3)}`,
+            layer.lambdaWmK,
+            "W/(m·K)",
+            3
+          ),
+          resultValue: layer.lambdaWmK,
+          resultUnit: "W/(m·K)",
+          computedValue: Number(layer.lambdaNormatWmK) * Number(layer.correctionCoefficientA),
+          variables: [
+            { symbol: lambdaSymbol, meaning: `conductivitate de calcul ${layer.materialName}` }
+          ],
+          reference: layer.lambdaFormulaCode
+        }));
+      } else {
+        lines.push(compactLine({
+          lineId: `${assembly.assemblyId}.${layer.layerId}.lambda.explicit`,
+          text: explicitLine(lambdaSymbol, layer.lambdaWmK, "W/(m·K)", 3),
+          resultValue: layer.lambdaWmK,
+          resultUnit: "W/(m·K)",
+          variables: [
+            { symbol: lambdaSymbol, meaning: `conductivitate ${layer.materialName}` }
+          ],
+          kind: "explicit_value"
+        }));
+      }
+
+      if (isFiniteAmount(layer.thicknessM) && isFiniteAmount(layer.lambdaWmK)) {
+        lines.push(compactLine({
+          lineId: `${assembly.assemblyId}.${layer.layerId}.r`,
+          text: expressionLine(
+            `R_${layerName}`,
+            `${formatNotebookNumber(layer.thicknessM, 3)} / ${formatNotebookNumber(layer.lambdaWmK, 3)}`,
+            layer.resistanceM2KPerW,
+            "m²K/W"
+          ),
+          resultValue: layer.resistanceM2KPerW,
+          resultUnit: "m²K/W",
+          computedValue: Number(layer.thicknessM) / Number(layer.lambdaWmK),
+          variables: [
+            { symbol: `R_${layerName}`, meaning: `rezistenta strat ${layer.materialName}` },
+            { symbol: lambdaSymbol, meaning: `conductivitate ${layer.materialName}` }
+          ],
+          reference: layer.resistanceFormulaCode
+        }));
+      }
+    }
+
+    if ((assembly.layers ?? []).length > 0) {
+      const resistanceTerms = [
+        assembly.rsi,
+        ...assembly.layers.map(layer => layer.resistanceM2KPerW),
+        assembly.rse
+      ];
+      lines.push(compactLine({
+        lineId: `${assembly.assemblyId}.r_total`,
+        text: `${`R_${name}`} := ${sumExpression(resistanceTerms, "m²K/W")}\n           = ${formatNotebookValue(assembly.totalResistance, "m²K/W")}`,
+        resultValue: assembly.totalResistance,
+        resultUnit: "m²K/W",
+        computedValue: resistanceTerms.reduce((sum, value) => sum + Number(value), 0),
+        variables: [
+          { symbol: `R_${name}`, meaning: `rezistenta totala ${assembly.displayName}` }
+        ],
+        reference: "MC001_2_6_TOTAL_THERMAL_RESISTANCE"
+      }));
+      lines.push(compactLine({
+        lineId: `${assembly.assemblyId}.u`,
+        text: `${`U_${name}`} := 1 / ${formatNotebookNumber(assembly.totalResistance)}\n          = ${formatNotebookValue(assembly.uValue, "W/(m²K)")}`,
+        resultValue: assembly.uValue,
+        resultUnit: "W/(m²K)",
+        computedValue: 1 / Number(assembly.totalResistance),
+        variables: [
+          { symbol: `U_${name}`, meaning: `coeficient U ${assembly.displayName}` },
+          { symbol: `R_${name}`, meaning: `rezistenta totala ${assembly.displayName}` }
+        ],
+        reference: assembly.formulaCode
+      }));
+    } else if (isFiniteAmount(assembly.uValue)) {
+      lines.push(compactLine({
+        lineId: `${assembly.assemblyId}.u.explicit`,
+        text: explicitLine(`U_${name}`, assembly.uValue, "W/(m²K)"),
+        resultValue: assembly.uValue,
+        resultUnit: "W/(m²K)",
+        variables: [
+          { symbol: `U_${name}`, meaning: `coeficient U ${assembly.displayName}` }
+        ],
+        kind: "explicit_value"
+      }));
+    }
+
+    for (const element of elementsByAssembly.get(assembly.assemblyId) ?? []) {
+      const elementName = notebookName(element.elementId);
+      lines.push(compactLine({
+        lineId: `${element.elementId}.h`,
+        text: expressionLine(
+          `H_${elementName}`,
+          `${formatNotebookNumber(element.uValue)} × ${formatNotebookNumber(element.area)} × ${formatNotebookNumber(element.boundaryCorrectionFactor)}`,
+          element.contributionWK,
+          "W/K"
+        ),
+        resultValue: element.contributionWK,
+        resultUnit: "W/K",
+        computedValue: Number(element.uValue) * Number(element.area) * Number(element.boundaryCorrectionFactor),
+        variables: [
+          { symbol: `H_${elementName}`, meaning: `contributie transfer ${element.elementId}` },
+          { symbol: `U_${name}`, meaning: `coeficient U ${assembly.displayName}` },
+          { symbol: `A_${elementName}`, meaning: `arie ${element.elementId}` }
+        ],
+        reference: element.contributionFormulaCode
+      }));
+    }
+
+    return section(`anvelopa_${assembly.assemblyId}`, assembly.displayName, lines);
+  });
+
+  const directElements = (envelope.elementRows ?? []).filter(element => !element.assemblyId);
+  if (directElements.length > 0) {
+    sections.push(section("anvelopa_u_direct", "Elemente cu U introdus direct", directElements.map(element => {
+      const elementName = notebookName(element.elementId);
+      return compactLine({
+        lineId: `${element.elementId}.direct_u_h`,
+        text: `${explicitLine(`U_${elementName}`, element.uValue, "W/(m²K)")}\n${expressionLine(
+          `H_${elementName}`,
+          `${formatNotebookNumber(element.uValue)} × ${formatNotebookNumber(element.area)} × ${formatNotebookNumber(element.boundaryCorrectionFactor)}`,
+          element.contributionWK,
+          "W/K"
+        )}`,
+        resultValue: element.contributionWK,
+        resultUnit: "W/K",
+        computedValue: Number(element.uValue) * Number(element.area) * Number(element.boundaryCorrectionFactor),
+        variables: [
+          { symbol: `U_${elementName}`, meaning: `coeficient U ${element.elementId}` },
+          { symbol: `H_${elementName}`, meaning: `contributie transfer ${element.elementId}` }
+        ],
+        reference: element.contributionFormulaCode
+      });
+    })));
+  }
+  return sections;
+}
+
+function compactTransferSections(envelope) {
+  const bridgeLines = (envelope.thermalBridgeRows ?? []).map(bridge => compactLine({
+    lineId: `${bridge.bridgeId}.bridge`,
+    text: expressionLine(
+      `H_punte_${notebookName(bridge.bridgeId)}`,
+      `${formatNotebookNumber(bridge.psiWmK)} × ${formatNotebookNumber(bridge.lengthM)}`,
+      bridge.contributionWK,
+      "W/K"
+    ),
+    resultValue: bridge.contributionWK,
+    resultUnit: "W/K",
+    computedValue: Number(bridge.psiWmK) * Number(bridge.lengthM),
+    variables: [
+      { symbol: `H_punte_${notebookName(bridge.bridgeId)}`, meaning: `contributie punte termica ${bridge.bridgeId}` }
+    ],
+    reference: bridge.contributionFormulaCode
+  }));
+
+  const componentLines = envelope.components.map(component => {
+    const elementTerms = (envelope.elementRows ?? [])
+      .filter(element => element.component === component.componentId)
+      .map(element => element.contributionWK);
+    const bridgeTerms = (envelope.thermalBridgeRows ?? [])
+      .filter(bridge => bridge.component === component.componentId)
+      .map(bridge => bridge.contributionWK);
+    const terms = [...elementTerms, ...bridgeTerms];
+    return compactLine({
+      lineId: `${component.componentId}.sum`,
+      text: `${component.componentId} := ${sumExpression(terms, "W/K")}\n     = ${formatNotebookValue(component.amount, "W/K")}`,
+      resultValue: component.amount,
+      resultUnit: "W/K",
+      computedValue: terms.reduce((sum, value) => sum + Number(value), 0),
+      variables: [
+        { symbol: component.componentId, meaning: `coeficient transmisie ${component.componentId}` }
+      ],
+      reference: "MC001_R17_RELATION_2_15_TOTAL_TRANSMISSION_COEFFICIENT"
+    });
+  });
+
+  const htrTerms = envelope.components.map(component => component.amount);
+  const htrLine = compactLine({
+    lineId: "htr.total",
+    text: `Htr := Hd + Hg + Hu + Ha\n    := ${sumExpression(htrTerms, "W/K")}\n     = ${formatNotebookValue(envelope.htr?.amount, "W/K")}`,
+    resultValue: envelope.htr?.amount,
+    resultUnit: "W/K",
+    computedValue: htrTerms.reduce((sum, value) => sum + Number(value), 0),
+    variables: [
+      { symbol: "Htr", meaning: "coeficient total de transfer prin transmisie" }
+    ],
+    reference: "MC001_R17_RELATION_2_15_TOTAL_TRANSMISSION_COEFFICIENT"
+  });
+
+  return [section("transfer_total", "Hd, Hg, Hu, Ha, punti termice si Htr", [
+    ...bridgeLines,
+    ...componentLines,
+    htrLine
+  ])];
+}
+
+function compactMonthlySections(monthly) {
+  return monthly.slice(0, 12).map(row => {
+    const label = row.monthLabel ?? monthLabel(row.month);
+    const idLabel = notebookName(label);
+    const lines = [
+      compactLine({
+        lineId: `${row.month}.qtrh`,
+        text: expressionLine(
+          `QtrH_${idLabel}`,
+          `${formatNotebookNumber(row.heatingTransmissionHeatFlowW)} × ${formatNotebookNumber(row.durationHours, 0)} / 1000`,
+          row.heatingTransmissionKwh,
+          "kWh"
+        ),
+        resultValue: row.heatingTransmissionKwh,
+        resultUnit: "kWh",
+        computedValue: Number(row.heatingTransmissionHeatFlowW) * Number(row.durationHours) / 1000,
+        variables: [
+          { symbol: `QtrH_${idLabel}`, meaning: `pierdere transmisie incalzire ${label}` }
+        ],
+        reference: "MC001_MONTHLY_TRANSMISSION_ENERGY_FROM_ENGINE_OUTPUT"
+      }),
+      compactLine({
+        lineId: `${row.month}.qveh`,
+        text: expressionLine(
+          `QveH_${idLabel}`,
+          `${formatNotebookNumber(row.heatingVentilationHeatFlowW)} × ${formatNotebookNumber(row.durationHours, 0)} / 1000`,
+          row.heatingVentilationKwh,
+          "kWh"
+        ),
+        resultValue: row.heatingVentilationKwh,
+        resultUnit: "kWh",
+        computedValue: Number(row.heatingVentilationHeatFlowW) * Number(row.durationHours) / 1000,
+        variables: [
+          { symbol: `QveH_${idLabel}`, meaning: `pierdere ventilare incalzire ${label}` }
+        ],
+        reference: "MC001_MONTHLY_VENTILATION_ENERGY_FROM_ENGINE_OUTPUT"
+      }),
+      compactLine({
+        lineId: `${row.month}.qhht`,
+        text: expressionLine(
+          `QHht_${idLabel}`,
+          `${formatNotebookNumber(row.heatingTransmissionKwh)} + ${formatNotebookNumber(row.heatingVentilationKwh)}`,
+          row.qHhtKwh,
+          "kWh"
+        ),
+        resultValue: row.qHhtKwh,
+        resultUnit: "kWh",
+        computedValue: Number(row.heatingTransmissionKwh) + Number(row.heatingVentilationKwh),
+        variables: [
+          { symbol: `QHht_${idLabel}`, meaning: `transfer total incalzire ${label}` }
+        ],
+        reference: "MC001_C5_DERIVED_TOTAL_HEATING_TRANSFER"
+      }),
+      compactLine({
+        lineId: `${row.month}.qhgn`,
+        text: expressionLine(
+          `QHgn_${idLabel}`,
+          `${formatNotebookNumber(row.internalGainsKwh)} + ${formatNotebookNumber(row.solarGainsKwh)}`,
+          row.qHgnKwh,
+          "kWh"
+        ),
+        resultValue: row.qHgnKwh,
+        resultUnit: "kWh",
+        computedValue: Number(row.internalGainsKwh) + Number(row.solarGainsKwh),
+        variables: [
+          { symbol: `QHgn_${idLabel}`, meaning: `aporturi totale incalzire ${label}` }
+        ],
+        reference: row.heatGainsFormulaCode
+      }),
+      compactLine({
+        lineId: `${row.month}.gammah`,
+        text: expressionLine(
+          `γH_${idLabel}`,
+          `${formatNotebookNumber(row.qHgnKwh)} / ${formatNotebookNumber(row.qHhtKwh)}`,
+          row.gammaH,
+          "-"
+        ),
+        resultValue: row.gammaH,
+        resultUnit: "-",
+        computedValue: Number(row.qHgnKwh) / Number(row.qHhtKwh),
+        variables: [
+          { symbol: `γH_${idLabel}`, meaning: `raport aporturi/transfer incalzire ${label}` }
+        ],
+        reference: row.qHndFormulaCode
+      })
+    ];
+
+    if (row.qHndBranch === "gammaH_greater_than_two_zero_demand") {
+      lines.push(compactLine({
+        lineId: `${row.month}.qhnd.zero_branch`,
+        text: `γH_${idLabel} > 2 => QHnd_${idLabel} := ${formatNotebookValue(row.qHndKwh, "kWh")}`,
+        resultValue: row.qHndKwh,
+        resultUnit: "kWh",
+        computedValue: 0,
+        variables: [
+          { symbol: `QHnd_${idLabel}`, meaning: `necesar util incalzire ${label}` }
+        ],
+        reference: row.qHndFormulaCode,
+        kind: "branch"
+      }));
+    } else {
+      lines.push(compactLine({
+        lineId: `${row.month}.eta_hgn`,
+        text: `ηHgn_${idLabel} := ${formatNotebookValue(row.etaHgn, "-")} -- coeficient furnizat de motor pentru ramura aplicata`,
+        resultValue: row.etaHgn,
+        resultUnit: "-",
+        variables: [
+          { symbol: `ηHgn_${idLabel}`, meaning: `factor utilizare aporturi incalzire ${label}` }
+        ],
+        reference: "MC001_FIGURE_2_14_HEATING_GAIN_UTILIZATION_FACTOR",
+        kind: "engine_intermediate"
+      }));
+      lines.push(compactLine({
+        lineId: `${row.month}.qhnd`,
+        text: expressionLine(
+          `QHnd_${idLabel}`,
+          `${formatNotebookNumber(row.qHhtKwh)} - ${formatNotebookNumber(row.etaHgn)} × ${formatNotebookNumber(row.qHgnKwh)}`,
+          row.qHndKwh,
+          "kWh"
+        ),
+        resultValue: row.qHndKwh,
+        resultUnit: "kWh",
+        computedValue: Number(row.qHhtKwh) - Number(row.etaHgn) * Number(row.qHgnKwh),
+        variables: [
+          { symbol: `QHnd_${idLabel}`, meaning: `necesar util incalzire ${label}` }
+        ],
+        reference: row.qHndFormulaCode
+      }));
+    }
+
+    lines.push(compactLine({
+      lineId: `${row.month}.qcht`,
+      text: expressionLine(
+        `QCht_${idLabel}`,
+        `abs(${formatNotebookNumber(row.coolingTransmissionKwh)} + ${formatNotebookNumber(row.coolingVentilationKwh)})`,
+        row.qChtKwh,
+        "kWh"
+      ),
+      resultValue: row.qChtKwh,
+      resultUnit: "kWh",
+      computedValue: absoluteValue(Number(row.coolingTransmissionKwh) + Number(row.coolingVentilationKwh)),
+      variables: [
+        { symbol: `QCht_${idLabel}`, meaning: `transfer disponibil racire ${label}` }
+      ],
+      reference: "MC001_COOLING_TRANSFER_FROM_ENGINE_OUTPUT"
+    }));
+    lines.push(compactLine({
+      lineId: `${row.month}.gammac`,
+      text: expressionLine(
+        `γC_${idLabel}`,
+        `${formatNotebookNumber(row.qCgnKwh)} / ${formatNotebookNumber(row.qChtKwh)}`,
+        row.gammaC,
+        "-"
+      ),
+      resultValue: row.gammaC,
+      resultUnit: "-",
+      computedValue: Number(row.qCgnKwh) / Number(row.qChtKwh),
+      variables: [
+        { symbol: `γC_${idLabel}`, meaning: `raport aporturi/transfer racire ${label}` }
+      ],
+      reference: row.qCndFormulaCode
+    }));
+    lines.push(compactLine({
+      lineId: `${row.month}.eta_cht`,
+      text: `ηCht_${idLabel} := ${formatNotebookValue(row.etaCht, "-")} -- coeficient furnizat de motor pentru ramura aplicata`,
+      resultValue: row.etaCht,
+      resultUnit: "-",
+      variables: [
+        { symbol: `ηCht_${idLabel}`, meaning: `factor utilizare transfer racire ${label}` }
+      ],
+      reference: "MC001_FIGURE_2_15_COOLING_HEAT_TRANSFER_UTILIZATION_FACTOR",
+      kind: "engine_intermediate"
+    }));
+    lines.push(compactLine({
+      lineId: `${row.month}.qcnd`,
+      text: expressionLine(
+        `QCnd_${idLabel}`,
+        `${formatNotebookNumber(row.qCgnKwh)} - ${formatNotebookNumber(row.etaCht)} × ${formatNotebookNumber(row.qChtKwh)}`,
+        row.qCndKwh,
+        "kWh"
+      ),
+      resultValue: row.qCndKwh,
+      resultUnit: "kWh",
+      computedValue: Number(row.qCgnKwh) - Number(row.etaCht) * Number(row.qChtKwh),
+      variables: [
+        { symbol: `QCnd_${idLabel}`, meaning: `necesar util racire ${label}` }
+      ],
+      reference: row.qCndFormulaCode
+    }));
+
+    return section(`luna_${row.month}`, `Calcul lunar - ${label}`, lines);
+  });
+}
+
+function compactAnnualSection(monthly, calculation) {
+  const qhValues = monthly.map(row => row.qHndKwh);
+  const qcValues = monthly.map(row => row.qCndKwh);
+  return section("totaluri_anuale", "Totaluri anuale", [
+    compactLine({
+      lineId: "annual.qhnd",
+      text: `QHnd_an := ${sumExpression(qhValues, "kWh")}\n        = ${formatNotebookValue(calculation.chapter2Result?.result?.annualQHnd, "kWh")}`,
+      resultValue: calculation.chapter2Result?.result?.annualQHnd,
+      resultUnit: "kWh",
+      computedValue: qhValues.reduce((sum, value) => sum + Number(value), 0),
+      variables: [
+        { symbol: "QHnd_an", meaning: "necesar anual de incalzire" }
+      ],
+      reference: "MC001_2_84_ANNUAL_HEATING_USEFUL_DEMAND"
+    }),
+    compactLine({
+      lineId: "annual.qcnd",
+      text: `QCnd_an := ${sumExpression(qcValues, "kWh")}\n        = ${formatNotebookValue(calculation.chapter2Result?.result?.annualQCnd, "kWh")}`,
+      resultValue: calculation.chapter2Result?.result?.annualQCnd,
+      resultUnit: "kWh",
+      computedValue: qcValues.reduce((sum, value) => sum + Number(value), 0),
+      variables: [
+        { symbol: "QCnd_an", meaning: "necesar anual de racire" }
+      ],
+      reference: "MC001_2_85_ANNUAL_COOLING_USEFUL_DEMAND"
+    })
+  ]);
+}
+
+function compactNotebookSections(assemblies, envelope, monthly, calculation) {
+  return [
+    ...compactAssemblySections(assemblies, envelope),
+    ...compactTransferSections(envelope),
+    ...compactMonthlySections(monthly),
+    compactAnnualSection(monthly, calculation)
+  ];
 }
 
 function traceabilityRows(buildingDna, calculation, formulas) {
@@ -923,6 +1491,7 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
       { label: "Necesar anual de racire QCnd", value: chapter2.annualQCnd, unit: "kWh" },
       ...monthly.map(row => ({
         month: row.month,
+        monthLabel: row.monthLabel,
         qHndKwh: row.qHndKwh,
         qCndKwh: row.qCndKwh
       }))
@@ -968,7 +1537,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
   const monthly = monthlyRows(calculation, buildingDna);
   const seasonalSanity = analyzeMonthlyUsefulDemandSeasonality(monthly);
   const formulas = formulaViews(assemblies, envelope, monthly, calculation);
-  const variables = notebookVariables(formulas);
+  const notebookSections = compactNotebookSections(assemblies, envelope, monthly, calculation);
   const traceability = traceabilityRows(buildingDna, calculation, formulas);
   const fingerprint = calculationFingerprint(buildingDna, calculation, monthly);
   const chapters = reportChapters({
@@ -1008,7 +1577,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     formulaViews: formulas,
     engineeringNotebook: {
       title: "Caiet de calcule ingineresti",
-      variables,
+      sections: notebookSections,
       calculations: formulas
     },
     dependencyTrees: pipelineResult.review?.dependencyTrees ?? {},
@@ -1023,12 +1592,13 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
         annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
         monthly: monthly.map(row => ({
           month: row.month,
+          monthLabel: row.monthLabel,
           qHndKwh: row.qHndKwh,
           qCndKwh: row.qCndKwh
         }))
       },
       engineeringNotebook: {
-        variables,
+        sections: notebookSections,
         calculations: formulas
       },
       chapters

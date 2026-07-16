@@ -6442,7 +6442,6 @@ color:#0f172a;
 .report-main-results,
 .engineering-calculation-notebook,
 .technical-report-appendix,
-.notebook-variable-register,
 .notebook-calculation-steps,
 .calculation-notebook-section{
 display:grid;
@@ -6460,13 +6459,81 @@ letter-spacing:0;
 color:#111827;
 }
 
-.notebook-variable-register h3,
 .notebook-calculation-steps h3,
 .calculation-notebook-section h3{
 margin:0;
 font-size:15px;
 letter-spacing:0;
 color:#1f2937;
+}
+
+.notebook-local-variables{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:4px 14px;
+margin:0;
+padding:8px 10px;
+border:1px solid #e2e8f0;
+background:#f8fafc;
+}
+
+.notebook-local-variables div{
+display:grid;
+grid-template-columns:minmax(72px,max-content) minmax(0,1fr);
+gap:8px;
+align-items:start;
+}
+
+.notebook-local-variables dt,
+.notebook-local-variables dd{
+margin:0;
+font-size:11px;
+line-height:1.35;
+}
+
+.notebook-local-variables code{
+font-size:11px;
+font-weight:800;
+color:#0f172a;
+background:transparent;
+padding:0;
+}
+
+.calculation-compact-lines{
+display:grid;
+gap:4px;
+}
+
+.calculation-compact-line{
+border-left:2px solid #cbd5e1;
+padding:3px 0 3px 10px;
+break-inside:avoid;
+page-break-inside:avoid;
+}
+
+.calculation-compact-line code{
+display:block;
+white-space:pre-wrap;
+overflow-wrap:anywhere;
+font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+font-size:12px;
+line-height:1.5;
+color:#111827;
+background:transparent;
+border:0;
+padding:0;
+}
+
+.calculation-compact-line[data-line-kind="explicit_value"] code,
+.calculation-compact-line[data-line-kind="engine_intermediate"] code,
+.calculation-compact-line[data-line-kind="branch"] code{
+color:#334155;
+}
+
+.calculation-section-reference{
+margin:0;
+font-size:11px;
+color:#64748b;
 }
 
 .report-results-table{
@@ -6642,6 +6709,10 @@ padding:6px 8px;
 grid-template-columns:1fr;
 gap:3px;
 }
+
+.notebook-local-variables{
+grid-template-columns:1fr;
+}
 }
 
 @media print{
@@ -6705,6 +6776,18 @@ page-break-inside:avoid;
 }
 
 .calculation-equations code{
+border:0;
+background:transparent;
+padding:0;
+}
+
+.calculation-compact-line{
+break-inside:avoid;
+page-break-inside:avoid;
+}
+
+.calculation-compact-line code{
+white-space:pre-wrap;
 border:0;
 background:transparent;
 padding:0;

@@ -123,11 +123,12 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   assert.equal(january.qCndFormulaCode, "MC001_FIGURE_2_19_COOLING_MONTHLY_USEFUL_DEMAND");
 
   assert.equal(workspace.report.mainResults.monthly.length, 12);
-  assert.equal(workspace.engineeringNotebook.calculations.length > 120, true);
-  assert.equal(workspace.engineeringNotebook.variables.length > workspace.engineeringNotebook.calculations.length, true);
+  assert.equal(workspace.report.mainResults.monthly[0].monthLabel, "ianuarie");
+  assert.equal(workspace.engineeringNotebook.sections.length >= 20, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(workspace.engineeringNotebook, "variables"), false);
 });
 
-await test("technical report contains the required P3G notebook chapters and formula views", () => {
+await test("technical report contains the required compact P3G notebook chapters and formula views", () => {
   const workspace = buildBuildingTechnicalWorkspace(
     buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers())
   );
@@ -175,6 +176,31 @@ await test("technical report contains the required P3G notebook chapters and for
   assert.equal(januaryHeating.symbolicFormula, "QHnd = QHht - eta_Hgn * QHgn");
   assert.equal(januaryHeating.substitutedFormula.includes("1213.3021 kWh"), true);
   assert.equal(januaryHeating.substitutedFormula.includes("0.9999"), true);
+});
+
+await test("compact calculation notebook has local variables, explicit values and no false numeric expressions", () => {
+  const workspace = buildBuildingTechnicalWorkspace(
+    buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers())
+  );
+  const notebook = workspace.report.engineeringNotebook;
+  const lines = notebook.sections.flatMap(section => section.lines);
+  const text = lines.map(line => line.text).join("\n");
+
+  assert.equal(notebook.sections.every(section => Array.isArray(section.localVariables)), true);
+  assert.equal(text.includes("lambda_ref"), false);
+  assert.equal(text.includes("0,000 × 0,000 = 0,040"), false);
+  assert.equal(text.includes("0.0000 * 0.0000"), false);
+  assert.equal(text.includes("-- + + --"), false);
+  assert.equal(text.includes("λ_eps := 0,040 W/(m·K) -- valoare introdusa explicit"), true);
+  assert.equal(text.includes("U_window := 1,2000 W/(m²K) -- valoare introdusa explicit"), true);
+  assert.equal(text.includes("R_window"), false);
+  assert.equal(text.includes("ianuarie"), true);
+  assert.equal(text.includes("decembrie"), true);
+
+  for (const line of lines) {
+    if (!Number.isFinite(Number(line.computedValue))) continue;
+    close(Number(line.computedValue), Number(line.resultValue), 1e-3);
+  }
 });
 
 await test("calculation fingerprint changes when upstream Building DNA changes", () => {
