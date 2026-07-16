@@ -15,7 +15,7 @@ function formatNumber(value, digits = 1) {
 }
 
 function projectStatusLabel(project) {
-  const status = project.calculation_status || project.climate_status || "requires_confirmation";
+  const status = project.calculation_status || project.project_status || project.climate_status || "requires_confirmation";
   const labels = {
     calculated: "Calculat",
     calculated_with_overrides: "Calculat cu override-uri",
@@ -42,9 +42,9 @@ function renderProjectRows(projects = []) {
       <td>${safeText(projectStatusLabel(project))}</td>
       <td>${formatNumber(project.annualQHnd)} kWh</td>
       <td>${formatNumber(project.annualQCnd)} kWh</td>
-      <td>${safeText(project.version_count)} versiuni</td>
+      <td>${safeText(project.permanent_version_count ?? project.version_count ?? 0)} versiuni</td>
       <td>
-        <a class="secondary-btn compact-action" href="pages/analiza-casa.html?analysis_id=${encodeURIComponent(project.latest_analysis_id)}">Deschide</a>
+        <a class="secondary-btn compact-action" href="pages/analiza-casa.html?project_id=${encodeURIComponent(project.project_id)}">Deschide</a>
       </td>
     </tr>
   `).join("");
@@ -124,7 +124,7 @@ async function loadMyProjects() {
   `;
 
   try {
-    const response = await auth.api("/api/building-platform/chapter2/list");
+    const response = await auth.api("/api/building-platform/v1/projects/list");
     renderProjects(panel, response.projects || []);
   } catch (error) {
     panel.innerHTML = `

@@ -22,6 +22,25 @@ export const BUILDING_PLATFORM_VERSIONED_TABLES = Object.freeze([
     ])
   }),
   Object.freeze({
+    table: "building_platform_project_drafts",
+    entity: "Mutable Project Draft",
+    activeStatus: "canonical_local_first_backend",
+    ownershipModel: "owner_user_id plus project_id",
+    versionModel: "one mutable draft per project/owner; not permanent history",
+    migrationNeed: "new explicit draft storage for local-first editing",
+    requiredFields: Object.freeze([
+      "draft_id",
+      "project_id",
+      "owner_user_id",
+      "base_building_dna_version_id",
+      "editable_building_dna_json",
+      "draft_fingerprint",
+      "concurrency_token",
+      "draft_status",
+      "updated_at"
+    ])
+  }),
+  Object.freeze({
     table: "building_dna_versions",
     entity: "Building DNA Version",
     activeStatus: "canonical_versioned_backend",
@@ -198,7 +217,14 @@ export function getBuildingPlatformPersistenceInventory() {
     inventoryId: BUILDING_PLATFORM_PERSISTENCE_INVENTORY_ID,
     canonicalVersionedTables: BUILDING_PLATFORM_VERSIONED_TABLES,
     legacyTables: BUILDING_PLATFORM_LEGACY_PERSISTENCE_INVENTORY,
-    closureStatus: "p3e_versioned_backend_schema_and_services_in_progress",
+    closureStatus: "p3e_b_local_first_versioned_database_flow_in_progress",
+    localFirstPolicy: Object.freeze({
+      ordinaryEditDatabaseWrites: 0,
+      unsavedRecalculationDatabaseWrites: 0,
+      mutableDraftsPerProjectOwner: 1,
+      permanentVersionTrigger: "explicit_calculated_save_only",
+      canonicalReopenSource: "versioned_tables"
+    }),
     unsupportedDomainsExcluded: Object.freeze([
       "chapter_3",
       "final_energy",

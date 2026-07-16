@@ -12,7 +12,9 @@ import { calculateMc001RestrictedHeatingQhndExplicit } from "../src/physics-engi
 import {
   buildBuildingTechnicalWorkspace,
   buildBuildingPlatformVersionMetadata,
-  calculateChapter2ForBuildingDna
+  calculateChapter2ForBuildingDna,
+  stableFingerprint,
+  stableStringify
 } from "../src/building-platform/index.mjs";
 import {
   calculateMc001DirectTransmissionCoefficient,
@@ -4352,6 +4354,1098 @@ async function handleBuildingPlatformChapter2Load(request, env, corsHeaders) {
   );
 }
 
+function buildingPlatformV1Id(prefix) {
+  const randomPart = globalThis.crypto?.randomUUID?.() ??
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${randomPart}`;
+}
+
+function buildingPlatformV1Now() {
+  return new Date().toISOString();
+}
+
+function buildingPlatformV1ProjectToken(project = {}) {
+  return stableFingerprint({
+    projectId: project.project_id ?? null,
+    currentBuildingDnaVersionId: project.current_building_dna_version_id ?? null,
+    currentAnalysisVersionId: project.current_analysis_version_id ?? null,
+    currentReportVersionId: project.current_report_version_id ?? null,
+    projectStatus: project.project_status ?? null,
+    updatedAt: project.updated_at ?? null
+  }, "projecttoken");
+}
+
+function buildingPlatformV1Json(value) {
+  return JSON.stringify(value ?? null);
+}
+
+function buildingPlatformV1Parse(value, fallback = null) {
+  return parseMc001HtrStoredJson(value, fallback);
+}
+
+function buildingPlatformV1PublicProject(row) {
+  if (!row) return null;
+  return {
+    project_id: row.project_id,
+    owner_user_id: row.owner_user_id,
+    project_name: row.project_name,
+    project_status: row.project_status,
+    current_building_dna_version_id: row.current_building_dna_version_id ?? null,
+    current_analysis_version_id: row.current_analysis_version_id ?? null,
+    current_report_version_id: row.current_report_version_id ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    archived_at: row.archived_at ?? null,
+    legacy_source_id: row.legacy_source_id ?? null,
+    schema_version: row.schema_version
+  };
+}
+
+function buildingPlatformV1DnaVersion(row) {
+  if (!row) return null;
+  return {
+    building_dna_version_id: row.building_dna_version_id,
+    project_id: row.project_id,
+    parent_building_dna_version_id: row.parent_building_dna_version_id ?? null,
+    schema_version: row.schema_version,
+    complete_building_dna: buildingPlatformV1Parse(row.complete_building_dna_json, null),
+    source: buildingPlatformV1Parse(row.source_json, null),
+    assumptions: buildingPlatformV1Parse(row.assumptions_json, []),
+    confirmations: buildingPlatformV1Parse(row.confirmations_json, []),
+    unresolved_uncertainties: buildingPlatformV1Parse(row.unresolved_uncertainties_json, []),
+    interventions: buildingPlatformV1Parse(row.interventions_json, []),
+    engineering_overrides: buildingPlatformV1Parse(row.engineering_overrides_json, []),
+    catalogue_versions: buildingPlatformV1Parse(row.catalogue_versions_json, {}),
+    climate_profile_id: row.climate_profile_id ?? null,
+    climate_profile_version: row.climate_profile_version ?? null,
+    creation_reason: row.creation_reason,
+    created_by: row.created_by ?? null,
+    created_at: row.created_at,
+    building_dna_fingerprint: row.building_dna_fingerprint
+  };
+}
+
+function buildingPlatformV1AnalysisVersion(row) {
+  if (!row) return null;
+  return {
+    analysis_version_id: row.analysis_version_id,
+    project_id: row.project_id,
+    building_dna_version_id: row.building_dna_version_id,
+    parent_analysis_version_id: row.parent_analysis_version_id ?? null,
+    adapter_version: row.adapter_version,
+    physics_engine_version: row.physics_engine_version,
+    normative_registry_version: row.normative_registry_version,
+    climate_profile_id: row.climate_profile_id ?? null,
+    climate_profile_version: row.climate_profile_version ?? null,
+    explicit_engine_input: buildingPlatformV1Parse(row.explicit_engine_input_json, null),
+    complete_engine_output: buildingPlatformV1Parse(row.complete_engine_output_json, null),
+    monthly_qhnd: buildingPlatformV1Parse(row.monthly_qhnd_json, []),
+    monthly_qcnd: buildingPlatformV1Parse(row.monthly_qcnd_json, []),
+    annual_qhnd: row.annual_qhnd ?? null,
+    annual_qcnd: row.annual_qcnd ?? null,
+    supported_latent_outputs: buildingPlatformV1Parse(row.supported_latent_outputs_json, null),
+    diagnostics: buildingPlatformV1Parse(row.diagnostics_json, []),
+    calculation_status: row.calculation_status,
+    calculation_fingerprint: row.calculation_fingerprint,
+    created_at: row.created_at,
+    execution_metadata: buildingPlatformV1Parse(row.execution_metadata_json, {}),
+    failure_metadata: buildingPlatformV1Parse(row.failure_metadata_json, null),
+    schema_version: row.schema_version
+  };
+}
+
+function buildingPlatformV1ReportVersion(row) {
+  if (!row) return null;
+  return {
+    technical_report_version_id: row.technical_report_version_id,
+    project_id: row.project_id,
+    analysis_version_id: row.analysis_version_id,
+    building_dna_version_id: row.building_dna_version_id,
+    report_schema_version: row.report_schema_version,
+    structured_report_model: buildingPlatformV1Parse(row.structured_report_model_json, null),
+    traceability_model: buildingPlatformV1Parse(row.traceability_model_json, []),
+    calculation_fingerprint: row.calculation_fingerprint,
+    generated_at: row.generated_at,
+    report_status: row.report_status,
+    schema_version: row.schema_version
+  };
+}
+
+function buildingPlatformV1Draft(row) {
+  if (!row) return null;
+  return {
+    draft_id: row.draft_id,
+    project_id: row.project_id,
+    owner_user_id: row.owner_user_id,
+    base_building_dna_version_id: row.base_building_dna_version_id ?? null,
+    editable_building_dna: buildingPlatformV1Parse(row.editable_building_dna_json, null),
+    climate_profile_id: row.climate_profile_id ?? null,
+    climate_profile_version: row.climate_profile_version ?? null,
+    draft_fingerprint: row.draft_fingerprint,
+    concurrency_token: row.concurrency_token,
+    draft_status: row.draft_status,
+    last_calculation_fingerprint: row.last_calculation_fingerprint ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    expires_at: row.expires_at ?? null
+  };
+}
+
+async function buildingPlatformV1ProjectForOwner(env, userId, projectId) {
+  if (!projectId) return null;
+  return env.DB.prepare(`
+    SELECT *
+    FROM building_platform_projects
+    WHERE project_id = ? AND owner_user_id = ? AND archived_at IS NULL
+    LIMIT 1
+  `)
+    .bind(projectId, userId)
+    .first();
+}
+
+function buildingPlatformV1CheckExpectedToken(project, body = {}) {
+  const expected =
+    body.expected_project_token ??
+    body.expectedProjectToken ??
+    body.concurrency_token ??
+    null;
+  if (!expected) {
+    return {
+      ok: false,
+      status: 409,
+      body: {
+        success: false,
+        error: "Tokenul de concurenta al proiectului lipseste.",
+        code: "missing_project_concurrency_token",
+        current_project_token: buildingPlatformV1ProjectToken(project)
+      }
+    };
+  }
+  const current = buildingPlatformV1ProjectToken(project);
+  if (expected !== current) {
+    return {
+      ok: false,
+      status: 409,
+      body: {
+        success: false,
+        error: "Proiectul a fost modificat in alta sesiune.",
+        code: "stale_project_version_conflict",
+        current_project_token: current,
+        current_version_summary: {
+          current_building_dna_version_id: project.current_building_dna_version_id ?? null,
+          current_analysis_version_id: project.current_analysis_version_id ?? null,
+          current_report_version_id: project.current_report_version_id ?? null,
+          updated_at: project.updated_at
+        }
+      }
+    };
+  }
+  return { ok: true, current };
+}
+
+async function buildingPlatformV1ReadIdempotency(env, userId, key) {
+  if (!key) return null;
+  return env.DB.prepare(`
+    SELECT request_fingerprint, response_json
+    FROM building_platform_idempotency_keys
+    WHERE idempotency_key = ? AND owner_user_id = ?
+    LIMIT 1
+  `)
+    .bind(key, userId)
+    .first();
+}
+
+function buildingPlatformV1RequestFingerprint(scope, userId, body = {}) {
+  return stableFingerprint({
+    scope,
+    ownerUserId: userId,
+    projectId: body.project_id ?? body.projectId ?? null,
+    projectName: body.project_name ?? body.projectName ?? null,
+    expectedProjectToken: body.expected_project_token ?? body.expectedProjectToken ?? null,
+    buildingDna: body.building_dna ?? body.buildingDna ?? null,
+    calculationFingerprint: body.calculation_fingerprint ?? body.fingerprints?.analysisFingerprint ?? null,
+    reportFingerprint: body.report_fingerprint ?? body.fingerprints?.reportFingerprint ?? null,
+    creationReason: body.creation_reason ?? body.creationReason ?? null
+  }, "request");
+}
+
+function buildingPlatformV1MonthlyUsefulDemand(calculation, side) {
+  return calculation.chapter2Result?.result?.monthlyResults?.map((month) => ({
+    month: month.month,
+    value: month[side]?.[side === "heating" ? "qHnd" : "qCnd"] ?? null,
+    unit: "kWh"
+  })) ?? [];
+}
+
+function buildingPlatformV1CalculationPipeline(buildingDna) {
+  const validation = validateBuildingPlatformBuildingDna(buildingDna);
+  if (!validation.ok) {
+    return { ok: false, status: 400, error: validation.error, code: "invalid_building_dna" };
+  }
+  const calculation = calculateChapter2ForBuildingDna(buildingDna);
+  if (calculation.status !== "ready") {
+    return {
+      ok: false,
+      status: 400,
+      error: "Calculul Chapter 2 nu este gata pentru Building DNA-ul transmis.",
+      code: "chapter_2_calculation_not_ready",
+      diagnostics: calculation.diagnostics ?? calculation.chapter2Result?.diagnostics ?? null
+    };
+  }
+  const workspace = buildBuildingTechnicalWorkspace(buildBuildingPlatformPipelineResult(buildingDna, calculation));
+  if (workspace.status !== "ready") {
+    return {
+      ok: false,
+      status: 500,
+      error: "Raportul tehnic nu a putut fi generat din rezultatul Chapter 2.",
+      code: "technical_report_generation_failed",
+      diagnostics: workspace.diagnostics ?? null
+    };
+  }
+  const versionMetadata = buildBuildingPlatformVersionMetadata({ buildingDna, calculation });
+  return {
+    ok: true,
+    calculation,
+    workspace,
+    versionMetadata,
+    resultSummary: workspace.resultSummary
+  };
+}
+
+async function handleBuildingPlatformV1ProjectCreate(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a crea proiecte." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const idempotencyKey = body.idempotency_key ?? body.idempotencyKey ?? null;
+  const requestFingerprint = buildingPlatformV1RequestFingerprint("project_create", user.id, body);
+  const existingIdempotency = await buildingPlatformV1ReadIdempotency(env, user.id, idempotencyKey);
+  if (existingIdempotency) {
+    if (existingIdempotency.request_fingerprint !== requestFingerprint) {
+      return jsonResponse(
+        { success: false, code: "idempotency_key_reused_for_different_request", error: "Cheia de idempotenta a fost refolosita pentru alta cerere." },
+        { status: 409, headers: corsHeaders }
+      );
+    }
+    return jsonResponse(buildingPlatformV1Parse(existingIdempotency.response_json, { success: false }), { headers: corsHeaders });
+  }
+
+  const projectId = buildingPlatformV1Id("bp-project");
+  const now = buildingPlatformV1Now();
+  const projectName = String(body.project_name || body.projectName || "Model termic al cladirii").slice(0, 160);
+  const project = {
+    project_id: projectId,
+    owner_user_id: user.id,
+    project_name: projectName,
+    project_status: "draft",
+    current_building_dna_version_id: null,
+    current_analysis_version_id: null,
+    current_report_version_id: null,
+    created_at: now,
+    updated_at: now,
+    archived_at: null,
+    legacy_source_id: null,
+    schema_version: "building_platform_project_v1"
+  };
+  const response = {
+    success: true,
+    project,
+    concurrency_token: buildingPlatformV1ProjectToken(project),
+    source: "versioned_tables"
+  };
+  const statements = [
+    env.DB.prepare(`
+      INSERT INTO building_platform_projects(
+        project_id, owner_user_id, project_name, project_status,
+        current_building_dna_version_id, current_analysis_version_id, current_report_version_id,
+        created_at, updated_at, archived_at, legacy_source_id, schema_version
+      )
+      VALUES(?, ?, ?, ?, NULL, NULL, NULL, ?, ?, NULL, NULL, ?)
+    `)
+      .bind(projectId, user.id, projectName, "draft", now, now, "building_platform_project_v1"),
+    env.DB.prepare(`
+      INSERT INTO building_platform_audit_events(
+        event_id, project_id, building_dna_version_id, analysis_version_id, technical_report_version_id,
+        actor_user_id, action, reason, metadata_json, created_at
+      )
+      VALUES(?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        buildingPlatformV1Id("audit"),
+        projectId,
+        user.id,
+        "project_created",
+        "explicit_project_create",
+        buildingPlatformV1Json({ source: "building_platform_v1" }),
+        now
+      )
+  ];
+  if (idempotencyKey) {
+    statements.push(env.DB.prepare(`
+      INSERT INTO building_platform_idempotency_keys(idempotency_key, owner_user_id, request_fingerprint, response_json, created_at)
+      VALUES(?, ?, ?, ?, ?)
+    `)
+      .bind(idempotencyKey, user.id, requestFingerprint, buildingPlatformV1Json(response), now));
+  }
+  await env.DB.batch(statements);
+  return jsonResponse(response, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1ProjectsList(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a vedea proiectele." }, { status: 401, headers: corsHeaders });
+  }
+  const result = await env.DB.prepare(`
+    SELECT
+      p.project_id, p.project_name, p.project_status, p.current_building_dna_version_id,
+      p.current_analysis_version_id, p.current_report_version_id, p.created_at, p.updated_at,
+      p.schema_version, p.legacy_source_id,
+      a.annual_qhnd, a.annual_qcnd, a.calculation_status, a.climate_profile_id, a.climate_profile_version,
+      d.draft_id, d.updated_at AS draft_updated_at,
+      (SELECT COUNT(*) FROM building_dna_versions v WHERE v.project_id = p.project_id) AS permanent_version_count
+    FROM building_platform_projects p
+    LEFT JOIN building_platform_analysis_versions a
+      ON a.analysis_version_id = p.current_analysis_version_id
+    LEFT JOIN building_platform_project_drafts d
+      ON d.project_id = p.project_id AND d.owner_user_id = p.owner_user_id AND d.draft_status = 'active'
+    WHERE p.owner_user_id = ? AND p.archived_at IS NULL
+    ORDER BY p.updated_at DESC
+    LIMIT 100
+  `)
+    .bind(user.id)
+    .all();
+  const projects = (result.results || []).map((row) => ({
+    project_id: row.project_id,
+    project_name: row.project_name,
+    project_status: row.project_status,
+    current_building_dna_version_id: row.current_building_dna_version_id ?? null,
+    current_analysis_version_id: row.current_analysis_version_id ?? null,
+    current_report_version_id: row.current_report_version_id ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    schema_version: row.schema_version,
+    legacy_source_id: row.legacy_source_id ?? null,
+    annualQHnd: row.annual_qhnd ?? null,
+    annualQCnd: row.annual_qcnd ?? null,
+    calculation_status: row.calculation_status ?? row.project_status,
+    climate_profile_id: row.climate_profile_id ?? null,
+    climate_profile_version: row.climate_profile_version ?? null,
+    has_active_draft: Boolean(row.draft_id),
+    draft_updated_at: row.draft_updated_at ?? null,
+    permanent_version_count: Number(row.permanent_version_count) || 0
+  }));
+  return jsonResponse({
+    success: true,
+    source: "versioned_tables",
+    projects,
+    operation_profile: {
+      database_reads: 1,
+      database_writes: 0,
+      n_plus_one_frontend_reads: false
+    }
+  }, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1ProjectOpen(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a deschide proiectul." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const projectId = body.project_id ?? body.projectId;
+  const projectRow = await buildingPlatformV1ProjectForOwner(env, user.id, projectId);
+  if (!projectRow) {
+    return jsonResponse(
+      { success: false, code: "project_not_found_or_legacy_compatibility_required", error: "Proiectul nu exista in tabelele versionate pentru acest utilizator." },
+      { status: 404, headers: corsHeaders }
+    );
+  }
+  const [dnaRow, analysisRow, reportRow, draftRow, historyRows] = await Promise.all([
+    projectRow.current_building_dna_version_id
+      ? env.DB.prepare("SELECT * FROM building_dna_versions WHERE building_dna_version_id = ? AND project_id = ? LIMIT 1")
+        .bind(projectRow.current_building_dna_version_id, projectId)
+        .first()
+      : null,
+    projectRow.current_analysis_version_id
+      ? env.DB.prepare("SELECT * FROM building_platform_analysis_versions WHERE analysis_version_id = ? AND project_id = ? LIMIT 1")
+        .bind(projectRow.current_analysis_version_id, projectId)
+        .first()
+      : null,
+    projectRow.current_report_version_id
+      ? env.DB.prepare("SELECT * FROM building_platform_report_versions WHERE technical_report_version_id = ? AND project_id = ? LIMIT 1")
+        .bind(projectRow.current_report_version_id, projectId)
+        .first()
+      : null,
+    env.DB.prepare(`
+      SELECT *
+      FROM building_platform_project_drafts
+      WHERE project_id = ? AND owner_user_id = ? AND draft_status = 'active'
+      LIMIT 1
+    `)
+      .bind(projectId, user.id)
+      .first(),
+    env.DB.prepare(`
+      SELECT
+        d.building_dna_version_id, d.parent_building_dna_version_id, d.creation_reason,
+        d.created_at, d.building_dna_fingerprint,
+        a.analysis_version_id, a.calculation_fingerprint, a.annual_qhnd, a.annual_qcnd,
+        a.climate_profile_id, a.climate_profile_version
+      FROM building_dna_versions d
+      LEFT JOIN building_platform_analysis_versions a
+        ON a.building_dna_version_id = d.building_dna_version_id
+      WHERE d.project_id = ?
+      ORDER BY d.created_at DESC
+      LIMIT 20
+    `)
+      .bind(projectId)
+      .all()
+  ]);
+  const project = buildingPlatformV1PublicProject(projectRow);
+  return jsonResponse({
+    success: true,
+    source: "versioned_tables",
+    project,
+    concurrency_token: buildingPlatformV1ProjectToken(projectRow),
+    buildingDnaVersion: buildingPlatformV1DnaVersion(dnaRow),
+    analysisVersion: buildingPlatformV1AnalysisVersion(analysisRow),
+    reportVersion: buildingPlatformV1ReportVersion(reportRow),
+    activeDraft: buildingPlatformV1Draft(draftRow),
+    versionSummary: (historyRows.results || []).map((row) => ({
+      building_dna_version_id: row.building_dna_version_id,
+      parent_building_dna_version_id: row.parent_building_dna_version_id ?? null,
+      analysis_version_id: row.analysis_version_id ?? null,
+      creation_reason: row.creation_reason,
+      created_at: row.created_at,
+      building_dna_fingerprint: row.building_dna_fingerprint,
+      analysis_fingerprint: row.calculation_fingerprint ?? null,
+      climate_profile_id: row.climate_profile_id ?? null,
+      climate_profile_version: row.climate_profile_version ?? null,
+      annualQHnd: row.annual_qhnd ?? null,
+      annualQCnd: row.annual_qcnd ?? null
+    })),
+    operation_profile: {
+      coherent_reopen_payload: true,
+      source_tables: [
+        "building_platform_projects",
+        "building_dna_versions",
+        "building_platform_analysis_versions",
+        "building_platform_report_versions",
+        "building_platform_project_drafts"
+      ]
+    }
+  }, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1DraftSave(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a salva draftul." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  if (buildingPlatformBodyHasForbiddenClientResults(body)) {
+    return jsonResponse({ success: false, error: "Draftul nu poate contine rezultate Chapter 2 generate in client." }, { status: 400, headers: corsHeaders });
+  }
+  const projectId = body.project_id ?? body.projectId;
+  const project = await buildingPlatformV1ProjectForOwner(env, user.id, projectId);
+  if (!project) {
+    return jsonResponse({ success: false, code: "project_not_found_for_owner", error: "Proiectul nu apartine contului curent." }, { status: 404, headers: corsHeaders });
+  }
+  const tokenCheck = buildingPlatformV1CheckExpectedToken(project, body);
+  if (!tokenCheck.ok) {
+    return jsonResponse(tokenCheck.body, { status: tokenCheck.status, headers: corsHeaders });
+  }
+  const buildingDna = body.building_dna ?? body.buildingDna;
+  const validation = validateBuildingPlatformBuildingDna(buildingDna);
+  if (!validation.ok) {
+    return jsonResponse({ success: false, code: "invalid_building_dna", error: validation.error }, { status: 400, headers: corsHeaders });
+  }
+  const existingDraft = await env.DB.prepare(`
+    SELECT draft_id
+    FROM building_platform_project_drafts
+    WHERE project_id = ? AND owner_user_id = ?
+    LIMIT 1
+  `)
+    .bind(projectId, user.id)
+    .first();
+  const now = buildingPlatformV1Now();
+  const draftId = existingDraft?.draft_id ?? buildingPlatformV1Id("draft");
+  const draftFingerprint = stableFingerprint({
+    buildingDna,
+    baseBuildingDnaVersionId: project.current_building_dna_version_id ?? null
+  }, "draft");
+  const concurrencyToken = stableFingerprint({
+    draftId,
+    draftFingerprint,
+    updatedAt: now
+  }, "drafttoken");
+  const expiresAt = body.expires_at ?? body.expiresAt ?? null;
+  const statements = [
+    existingDraft
+      ? env.DB.prepare(`
+        UPDATE building_platform_project_drafts
+        SET base_building_dna_version_id = ?, editable_building_dna_json = ?,
+          climate_profile_id = ?, climate_profile_version = ?, draft_fingerprint = ?,
+          concurrency_token = ?, draft_status = 'active', last_calculation_fingerprint = ?,
+          updated_at = ?, expires_at = ?
+        WHERE draft_id = ? AND project_id = ? AND owner_user_id = ?
+      `)
+        .bind(
+          project.current_building_dna_version_id ?? null,
+          buildingPlatformV1Json(buildingDna),
+          buildingDna.climateProfile?.profileId ?? null,
+          buildingDna.climateProfile?.datasetVersion ?? null,
+          draftFingerprint,
+          concurrencyToken,
+          body.last_calculation_fingerprint ?? body.lastCalculationFingerprint ?? null,
+          now,
+          expiresAt,
+          draftId,
+          projectId,
+          user.id
+        )
+      : env.DB.prepare(`
+        INSERT INTO building_platform_project_drafts(
+          draft_id, project_id, owner_user_id, base_building_dna_version_id,
+          editable_building_dna_json, climate_profile_id, climate_profile_version,
+          draft_fingerprint, concurrency_token, draft_status, last_calculation_fingerprint,
+          created_at, updated_at, expires_at
+        )
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+      `)
+        .bind(
+          draftId,
+          projectId,
+          user.id,
+          project.current_building_dna_version_id ?? null,
+          buildingPlatformV1Json(buildingDna),
+          buildingDna.climateProfile?.profileId ?? null,
+          buildingDna.climateProfile?.datasetVersion ?? null,
+          draftFingerprint,
+          concurrencyToken,
+          body.last_calculation_fingerprint ?? body.lastCalculationFingerprint ?? null,
+          now,
+          now,
+          expiresAt
+        ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_audit_events(
+        event_id, project_id, building_dna_version_id, analysis_version_id, technical_report_version_id,
+        actor_user_id, action, reason, metadata_json, created_at
+      )
+      VALUES(?, ?, NULL, NULL, NULL, ?, 'draft_explicitly_saved', ?, ?, ?)
+    `)
+      .bind(
+        buildingPlatformV1Id("audit"),
+        projectId,
+        user.id,
+        "explicit_draft_save",
+        buildingPlatformV1Json({ draftId, draftFingerprint }),
+        now
+      )
+  ];
+  await env.DB.batch(statements);
+  return jsonResponse({
+    success: true,
+    draft: {
+      draft_id: draftId,
+      project_id: projectId,
+      base_building_dna_version_id: project.current_building_dna_version_id ?? null,
+      draft_fingerprint: draftFingerprint,
+      concurrency_token: concurrencyToken,
+      draft_status: "active",
+      updated_at: now,
+      expires_at: expiresAt
+    },
+    permanent_versions_created: 0
+  }, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1DraftGet(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a incarca draftul." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const projectId = body.project_id ?? body.projectId;
+  const project = await buildingPlatformV1ProjectForOwner(env, user.id, projectId);
+  if (!project) {
+    return jsonResponse({ success: false, code: "project_not_found_for_owner", error: "Proiectul nu apartine contului curent." }, { status: 404, headers: corsHeaders });
+  }
+  const draft = await env.DB.prepare(`
+    SELECT *
+    FROM building_platform_project_drafts
+    WHERE project_id = ? AND owner_user_id = ? AND draft_status = 'active'
+    LIMIT 1
+  `)
+    .bind(projectId, user.id)
+    .first();
+  return jsonResponse({
+    success: true,
+    project_id: projectId,
+    concurrency_token: buildingPlatformV1ProjectToken(project),
+    draft: buildingPlatformV1Draft(draft)
+  }, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1DraftDiscard(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a sterge draftul." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const projectId = body.project_id ?? body.projectId;
+  const project = await buildingPlatformV1ProjectForOwner(env, user.id, projectId);
+  if (!project) {
+    return jsonResponse({ success: false, code: "project_not_found_for_owner", error: "Proiectul nu apartine contului curent." }, { status: 404, headers: corsHeaders });
+  }
+  const now = buildingPlatformV1Now();
+  await env.DB.batch([
+    env.DB.prepare(`
+      DELETE FROM building_platform_project_drafts
+      WHERE project_id = ? AND owner_user_id = ?
+    `)
+      .bind(projectId, user.id),
+    env.DB.prepare(`
+      INSERT INTO building_platform_audit_events(
+        event_id, project_id, building_dna_version_id, analysis_version_id, technical_report_version_id,
+        actor_user_id, action, reason, metadata_json, created_at
+      )
+      VALUES(?, ?, NULL, NULL, NULL, ?, 'draft_discarded', ?, ?, ?)
+    `)
+      .bind(
+        buildingPlatformV1Id("audit"),
+        projectId,
+        user.id,
+        "explicit_draft_discard",
+        buildingPlatformV1Json({ currentProjectToken: buildingPlatformV1ProjectToken(project) }),
+        now
+      )
+  ]);
+  return jsonResponse({ success: true, discarded: true }, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1PermanentSave(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru a salva versiunea calculata." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  if (buildingPlatformBodyHasForbiddenClientResults(body)) {
+    return jsonResponse(
+      { success: false, error: "Rezultatele Chapter 2 si raportul sunt generate server-side, nu sunt acceptate din client." },
+      { status: 400, headers: corsHeaders }
+    );
+  }
+  const idempotencyKey = body.idempotency_key ?? body.idempotencyKey ?? null;
+  const requestFingerprint = buildingPlatformV1RequestFingerprint("permanent_save", user.id, body);
+  const existingIdempotency = await buildingPlatformV1ReadIdempotency(env, user.id, idempotencyKey);
+  if (existingIdempotency) {
+    if (existingIdempotency.request_fingerprint !== requestFingerprint) {
+      return jsonResponse(
+        { success: false, code: "idempotency_key_reused_for_different_request", error: "Cheia de idempotenta a fost refolosita pentru alta cerere." },
+        { status: 409, headers: corsHeaders }
+      );
+    }
+    return jsonResponse(buildingPlatformV1Parse(existingIdempotency.response_json, { success: false }), { headers: corsHeaders });
+  }
+
+  const projectId = body.project_id ?? body.projectId;
+  const project = await buildingPlatformV1ProjectForOwner(env, user.id, projectId);
+  if (!project) {
+    return jsonResponse({ success: false, code: "project_not_found_for_owner", error: "Proiectul nu apartine contului curent." }, { status: 404, headers: corsHeaders });
+  }
+  const tokenCheck = buildingPlatformV1CheckExpectedToken(project, body);
+  if (!tokenCheck.ok) {
+    return jsonResponse(tokenCheck.body, { status: tokenCheck.status, headers: corsHeaders });
+  }
+  const buildingDna = body.building_dna ?? body.buildingDna;
+  const pipeline = buildingPlatformV1CalculationPipeline(buildingDna);
+  if (!pipeline.ok) {
+    return jsonResponse({ success: false, code: pipeline.code, error: pipeline.error, diagnostics: pipeline.diagnostics ?? null }, { status: pipeline.status, headers: corsHeaders });
+  }
+  const submittedCalculationFingerprint =
+    body.calculation_fingerprint ?? body.calculationFingerprint ?? body.fingerprints?.analysisFingerprint ?? null;
+  const submittedReportFingerprint =
+    body.report_fingerprint ?? body.reportFingerprint ?? body.fingerprints?.reportFingerprint ?? null;
+  if (!submittedCalculationFingerprint || !submittedReportFingerprint) {
+    return jsonResponse(
+      {
+        success: false,
+        code: "missing_current_calculation_fingerprint",
+        error: "Salvarea permanenta necesita o recalculare curenta si fingerprint de raport."
+      },
+      { status: 409, headers: corsHeaders }
+    );
+  }
+  if (submittedCalculationFingerprint !== pipeline.versionMetadata.fingerprints.analysisFingerprint) {
+    return jsonResponse(
+      {
+        success: false,
+        code: "stale_result_requires_recalculation",
+        error: "Rezultatul local nu corespunde Building DNA-ului curent. Recalculeaza inainte de salvare.",
+        expected_calculation_fingerprint: pipeline.versionMetadata.fingerprints.analysisFingerprint,
+        submitted_calculation_fingerprint: submittedCalculationFingerprint
+      },
+      { status: 409, headers: corsHeaders }
+    );
+  }
+  if (submittedReportFingerprint !== pipeline.versionMetadata.fingerprints.reportFingerprint) {
+    return jsonResponse(
+      {
+        success: false,
+        code: "report_fingerprint_mismatch",
+        error: "Raportul local nu corespunde rezultatului curent."
+      },
+      { status: 409, headers: corsHeaders }
+    );
+  }
+
+  const now = buildingPlatformV1Now();
+  const buildingDnaVersionId = buildingPlatformV1Id("dna-version");
+  const analysisVersionId = buildingPlatformV1Id("analysis-version");
+  const reportVersionId = buildingPlatformV1Id("report-version");
+  const metadata = pipeline.versionMetadata;
+  const projectStatus = buildingDna.calculationStatus === "synthetic_demo" ? "synthetic_demo" : "calculated";
+  const updatedProject = {
+    ...project,
+    project_status: projectStatus,
+    current_building_dna_version_id: buildingDnaVersionId,
+    current_analysis_version_id: analysisVersionId,
+    current_report_version_id: reportVersionId,
+    updated_at: now
+  };
+  const response = {
+    success: true,
+    source: "versioned_tables",
+    project: buildingPlatformV1PublicProject(updatedProject),
+    concurrency_token: buildingPlatformV1ProjectToken(updatedProject),
+    buildingDnaVersion: {
+      building_dna_version_id: buildingDnaVersionId,
+      project_id: project.project_id,
+      parent_building_dna_version_id: project.current_building_dna_version_id ?? null,
+      schema_version: metadata.buildingDnaSchemaVersion,
+      complete_building_dna: buildingDna,
+      climate_profile_id: metadata.climateProfileId,
+      climate_profile_version: metadata.climateProfileVersion,
+      creation_reason: body.creation_reason ?? body.creationReason ?? (project.current_building_dna_version_id ? "user_edit" : "initial_project_creation"),
+      created_by: user.id,
+      created_at: now,
+      building_dna_fingerprint: metadata.fingerprints.buildingDnaFingerprint
+    },
+    analysisVersion: {
+      analysis_version_id: analysisVersionId,
+      project_id: project.project_id,
+      building_dna_version_id: buildingDnaVersionId,
+      parent_analysis_version_id: project.current_analysis_version_id ?? null,
+      adapter_version: metadata.adapterVersion,
+      physics_engine_version: metadata.physicsEngineVersion,
+      normative_registry_version: metadata.normativeRegistryVersion,
+      climate_profile_id: metadata.climateProfileId,
+      climate_profile_version: metadata.climateProfileVersion,
+      explicit_engine_input: pipeline.calculation.chapter2Input,
+      complete_engine_output: pipeline.calculation.chapter2Result,
+      monthly_qhnd: buildingPlatformV1MonthlyUsefulDemand(pipeline.calculation, "heating"),
+      monthly_qcnd: buildingPlatformV1MonthlyUsefulDemand(pipeline.calculation, "cooling"),
+      annual_qhnd: pipeline.resultSummary.annualQHnd ?? null,
+      annual_qcnd: pipeline.resultSummary.annualQCnd ?? null,
+      diagnostics: pipeline.calculation.diagnostics ?? [],
+      calculation_status: projectStatus,
+      calculation_fingerprint: metadata.fingerprints.analysisFingerprint,
+      created_at: now,
+      schema_version: metadata.analysisSchemaVersion
+    },
+    reportVersion: {
+      technical_report_version_id: reportVersionId,
+      project_id: project.project_id,
+      analysis_version_id: analysisVersionId,
+      building_dna_version_id: buildingDnaVersionId,
+      report_schema_version: metadata.reportSchemaVersion,
+      structured_report_model: pipeline.workspace.report,
+      traceability_model: pipeline.workspace.traceability ?? [],
+      calculation_fingerprint: metadata.fingerprints.reportFingerprint,
+      generated_at: now,
+      report_status: "completed",
+      schema_version: metadata.technicalReportSchemaVersion
+    },
+    fingerprints: metadata.fingerprints,
+    result_summary: pipeline.resultSummary,
+    idempotentReplay: false
+  };
+  const creationReason = response.buildingDnaVersion.creation_reason;
+  const statements = [
+    env.DB.prepare(`
+      INSERT INTO building_dna_versions(
+        building_dna_version_id, project_id, parent_building_dna_version_id, schema_version,
+        complete_building_dna_json, source_json, assumptions_json, confirmations_json,
+        unresolved_uncertainties_json, interventions_json, engineering_overrides_json,
+        catalogue_versions_json, climate_profile_id, climate_profile_version, creation_reason,
+        created_by, created_at, building_dna_fingerprint
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        buildingDnaVersionId,
+        project.project_id,
+        project.current_building_dna_version_id ?? null,
+        metadata.buildingDnaSchemaVersion,
+        buildingPlatformV1Json(buildingDna),
+        buildingPlatformV1Json(buildingDna.source ?? null),
+        buildingPlatformV1Json(buildingDna.assumptions ?? []),
+        buildingPlatformV1Json(buildingDna.confirmations ?? []),
+        buildingPlatformV1Json(buildingDna.missingConfirmations ?? []),
+        buildingPlatformV1Json(buildingDna.renovationInterventions ?? []),
+        buildingPlatformV1Json(buildingDna.overrides ?? []),
+        buildingPlatformV1Json({
+          materialCatalogueVersion: metadata.materialCatalogueVersion,
+          assemblyCatalogueVersion: metadata.assemblyCatalogueVersion
+        }),
+        metadata.climateProfileId,
+        metadata.climateProfileVersion,
+        creationReason,
+        user.id,
+        now,
+        metadata.fingerprints.buildingDnaFingerprint
+      ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_analysis_versions(
+        analysis_version_id, project_id, building_dna_version_id, parent_analysis_version_id,
+        adapter_version, physics_engine_version, normative_registry_version,
+        climate_profile_id, climate_profile_version, explicit_engine_input_json,
+        complete_engine_output_json, monthly_qhnd_json, monthly_qcnd_json, annual_qhnd,
+        annual_qcnd, supported_latent_outputs_json, diagnostics_json, calculation_status,
+        calculation_fingerprint, created_at, execution_metadata_json, failure_metadata_json,
+        schema_version
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        analysisVersionId,
+        project.project_id,
+        buildingDnaVersionId,
+        project.current_analysis_version_id ?? null,
+        metadata.adapterVersion,
+        metadata.physicsEngineVersion,
+        metadata.normativeRegistryVersion,
+        metadata.climateProfileId,
+        metadata.climateProfileVersion,
+        buildingPlatformV1Json(pipeline.calculation.chapter2Input),
+        buildingPlatformV1Json(pipeline.calculation.chapter2Result),
+        buildingPlatformV1Json(response.analysisVersion.monthly_qhnd),
+        buildingPlatformV1Json(response.analysisVersion.monthly_qcnd),
+        pipeline.resultSummary.annualQHnd ?? null,
+        pipeline.resultSummary.annualQCnd ?? null,
+        buildingPlatformV1Json(pipeline.calculation.chapter2Result?.result?.latentDemand ?? null),
+        buildingPlatformV1Json(pipeline.calculation.diagnostics ?? []),
+        projectStatus,
+        metadata.fingerprints.analysisFingerprint,
+        now,
+        buildingPlatformV1Json({ backendVersion: metadata.backendVersion, localFirstPermanentSave: true }),
+        null,
+        metadata.analysisSchemaVersion
+      ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_report_versions(
+        technical_report_version_id, project_id, analysis_version_id, building_dna_version_id,
+        report_schema_version, structured_report_model_json, traceability_model_json,
+        calculation_fingerprint, generated_at, report_status, schema_version
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        reportVersionId,
+        project.project_id,
+        analysisVersionId,
+        buildingDnaVersionId,
+        metadata.reportSchemaVersion,
+        buildingPlatformV1Json(pipeline.workspace.report),
+        buildingPlatformV1Json(pipeline.workspace.traceability ?? []),
+        metadata.fingerprints.reportFingerprint,
+        now,
+        "completed",
+        metadata.technicalReportSchemaVersion
+      ),
+    env.DB.prepare(`
+      UPDATE building_platform_projects
+      SET project_status = ?, current_building_dna_version_id = ?, current_analysis_version_id = ?,
+        current_report_version_id = ?, updated_at = ?
+      WHERE project_id = ? AND owner_user_id = ?
+    `)
+      .bind(projectStatus, buildingDnaVersionId, analysisVersionId, reportVersionId, now, project.project_id, user.id),
+    env.DB.prepare(`
+      UPDATE building_platform_project_drafts
+      SET draft_status = 'committed', last_calculation_fingerprint = ?, updated_at = ?
+      WHERE project_id = ? AND owner_user_id = ?
+    `)
+      .bind(metadata.fingerprints.analysisFingerprint, now, project.project_id, user.id),
+    env.DB.prepare(`
+      INSERT INTO building_platform_audit_events(
+        event_id, project_id, building_dna_version_id, analysis_version_id, technical_report_version_id,
+        actor_user_id, action, reason, metadata_json, created_at
+      )
+      VALUES(?, ?, ?, ?, ?, ?, 'permanent_version_saved', ?, ?, ?)
+    `)
+      .bind(
+        buildingPlatformV1Id("audit"),
+        project.project_id,
+        buildingDnaVersionId,
+        analysisVersionId,
+        reportVersionId,
+        user.id,
+        creationReason,
+        buildingPlatformV1Json({
+          idempotencyKey: idempotencyKey ?? null,
+          buildingDnaFingerprint: metadata.fingerprints.buildingDnaFingerprint,
+          analysisFingerprint: metadata.fingerprints.analysisFingerprint
+        }),
+        now
+      )
+  ];
+  if (idempotencyKey) {
+    statements.push(env.DB.prepare(`
+      INSERT INTO building_platform_idempotency_keys(idempotency_key, owner_user_id, request_fingerprint, response_json, created_at)
+      VALUES(?, ?, ?, ?, ?)
+    `)
+      .bind(idempotencyKey, user.id, requestFingerprint, buildingPlatformV1Json(response), now));
+  }
+  await env.DB.batch(statements);
+  return jsonResponse(response, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1VersionsList(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru istoricul versiunilor." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const projectId = body.project_id ?? body.projectId;
+  const project = await buildingPlatformV1ProjectForOwner(env, user.id, projectId);
+  if (!project) {
+    return jsonResponse({ success: false, code: "project_not_found_for_owner", error: "Proiectul nu apartine contului curent." }, { status: 404, headers: corsHeaders });
+  }
+  const rows = await env.DB.prepare(`
+    SELECT
+      d.building_dna_version_id, d.parent_building_dna_version_id, d.creation_reason,
+      d.created_by, d.created_at, d.building_dna_fingerprint, d.climate_profile_id,
+      d.climate_profile_version,
+      a.analysis_version_id, a.parent_analysis_version_id, a.calculation_fingerprint,
+      a.annual_qhnd, a.annual_qcnd, a.calculation_status,
+      r.technical_report_version_id
+    FROM building_dna_versions d
+    LEFT JOIN building_platform_analysis_versions a ON a.building_dna_version_id = d.building_dna_version_id
+    LEFT JOIN building_platform_report_versions r ON r.analysis_version_id = a.analysis_version_id
+    WHERE d.project_id = ?
+    ORDER BY d.created_at ASC
+  `)
+    .bind(projectId)
+    .all();
+  return jsonResponse({
+    success: true,
+    project_id: projectId,
+    versions: (rows.results || []).map((row) => ({
+      building_dna_version_id: row.building_dna_version_id,
+      parent_building_dna_version_id: row.parent_building_dna_version_id ?? null,
+      analysis_version_id: row.analysis_version_id ?? null,
+      parent_analysis_version_id: row.parent_analysis_version_id ?? null,
+      technical_report_version_id: row.technical_report_version_id ?? null,
+      creation_reason: row.creation_reason,
+      actor: row.created_by ?? null,
+      created_at: row.created_at,
+      building_dna_fingerprint: row.building_dna_fingerprint,
+      analysis_fingerprint: row.calculation_fingerprint ?? null,
+      climate_profile_id: row.climate_profile_id ?? null,
+      climate_profile_version: row.climate_profile_version ?? null,
+      annualQHnd: row.annual_qhnd ?? null,
+      annualQCnd: row.annual_qcnd ?? null,
+      calculation_status: row.calculation_status ?? null
+    }))
+  }, { headers: corsHeaders });
+}
+
+function buildingPlatformV1Flatten(value, prefix = "") {
+  if (value == null || typeof value !== "object") {
+    return [[prefix || "$", value]];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => buildingPlatformV1Flatten(item, `${prefix}[${index}]`));
+  }
+  return Object.keys(value)
+    .sort()
+    .flatMap((key) => buildingPlatformV1Flatten(value[key], prefix ? `${prefix}.${key}` : key));
+}
+
+function buildingPlatformV1Diff(oldValue, newValue) {
+  const oldMap = new Map(buildingPlatformV1Flatten(oldValue));
+  const newMap = new Map(buildingPlatformV1Flatten(newValue));
+  return [...new Set([...oldMap.keys(), ...newMap.keys()])]
+    .sort()
+    .filter((path) => stableStringify(oldMap.get(path)) !== stableStringify(newMap.get(path)))
+    .map((path) => ({
+      path,
+      oldValue: oldMap.has(path) ? oldMap.get(path) : null,
+      newValue: newMap.has(path) ? newMap.get(path) : null
+    }));
+}
+
+async function handleBuildingPlatformV1VersionsCompare(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru comparatie." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const projectId = body.project_id ?? body.projectId;
+  const oldVersionId = body.old_building_dna_version_id ?? body.oldVersionId;
+  const newVersionId = body.new_building_dna_version_id ?? body.newVersionId;
+  const project = await buildingPlatformV1ProjectForOwner(env, user.id, projectId);
+  if (!project) {
+    return jsonResponse({ success: false, code: "project_not_found_for_owner", error: "Proiectul nu apartine contului curent." }, { status: 404, headers: corsHeaders });
+  }
+  const rows = await env.DB.prepare(`
+    SELECT d.*, a.analysis_version_id, a.complete_engine_output_json, a.explicit_engine_input_json,
+      a.annual_qhnd, a.annual_qcnd, a.calculation_fingerprint
+    FROM building_dna_versions d
+    LEFT JOIN building_platform_analysis_versions a ON a.building_dna_version_id = d.building_dna_version_id
+    WHERE d.project_id = ? AND d.building_dna_version_id IN (?, ?)
+  `)
+    .bind(projectId, oldVersionId, newVersionId)
+    .all();
+  const versions = new Map((rows.results || []).map((row) => [row.building_dna_version_id, row]));
+  const oldRow = versions.get(oldVersionId);
+  const newRow = versions.get(newVersionId);
+  if (!oldRow || !newRow) {
+    return jsonResponse({ success: false, code: "version_not_found", error: "Versiunile selectate nu exista pentru proiect." }, { status: 404, headers: corsHeaders });
+  }
+  return jsonResponse({
+    success: true,
+    project_id: projectId,
+    building_dna_changes: buildingPlatformV1Diff(
+      buildingPlatformV1Parse(oldRow.complete_building_dna_json, {}),
+      buildingPlatformV1Parse(newRow.complete_building_dna_json, {})
+    ),
+    engine_input_changes: buildingPlatformV1Diff(
+      buildingPlatformV1Parse(oldRow.explicit_engine_input_json, {}),
+      buildingPlatformV1Parse(newRow.explicit_engine_input_json, {})
+    ),
+    engine_output_changes: buildingPlatformV1Diff(
+      buildingPlatformV1Parse(oldRow.complete_engine_output_json, {}),
+      buildingPlatformV1Parse(newRow.complete_engine_output_json, {})
+    ),
+    annual_changes: {
+      annualQHnd: {
+        oldValue: oldRow.annual_qhnd ?? null,
+        newValue: newRow.annual_qhnd ?? null,
+        delta: (Number(newRow.annual_qhnd) || 0) - (Number(oldRow.annual_qhnd) || 0)
+      },
+      annualQCnd: {
+        oldValue: oldRow.annual_qcnd ?? null,
+        newValue: newRow.annual_qcnd ?? null,
+        delta: (Number(newRow.annual_qcnd) || 0) - (Number(oldRow.annual_qcnd) || 0)
+      }
+    }
+  }, { headers: corsHeaders });
+}
+
 async function saveHouse(request, env, corsHeaders) {
   const user = await getCurrentUser(request, env);
   if (!user) {
@@ -5769,9 +6863,17 @@ export default {
       "/api/building-platform/chapter2/save": handleBuildingPlatformChapter2Save,
       "/api/building-platform/chapter2/list": handleBuildingPlatformChapter2List,
       "/api/building-platform/chapter2/load": handleBuildingPlatformChapter2Load,
-      "/api/building-platform/v1/projects/create-and-calculate": handleBuildingPlatformChapter2Save,
-      "/api/building-platform/v1/projects/list": handleBuildingPlatformChapter2List,
-      "/api/building-platform/v1/analyses/load": handleBuildingPlatformChapter2Load,
+      "/api/building-platform/v1/projects/create": handleBuildingPlatformV1ProjectCreate,
+      "/api/building-platform/v1/projects/list": handleBuildingPlatformV1ProjectsList,
+      "/api/building-platform/v1/projects/open": handleBuildingPlatformV1ProjectOpen,
+      "/api/building-platform/v1/drafts/get": handleBuildingPlatformV1DraftGet,
+      "/api/building-platform/v1/drafts/save": handleBuildingPlatformV1DraftSave,
+      "/api/building-platform/v1/drafts/discard": handleBuildingPlatformV1DraftDiscard,
+      "/api/building-platform/v1/permanent-save": handleBuildingPlatformV1PermanentSave,
+      "/api/building-platform/v1/projects/create-and-calculate": handleBuildingPlatformV1PermanentSave,
+      "/api/building-platform/v1/versions/list": handleBuildingPlatformV1VersionsList,
+      "/api/building-platform/v1/versions/compare": handleBuildingPlatformV1VersionsCompare,
+      "/api/building-platform/v1/analyses/load": handleBuildingPlatformV1ProjectOpen,
       "/api/mc001/htr/run": handleMc001HtrRun,
       "/api/mc001/htr/load": handleMc001HtrLoad,
       "/api/homes": homes,

@@ -488,6 +488,33 @@ ON building_platform_projects(owner_user_id, updated_at);
 CREATE INDEX building_platform_projects_current_versions_idx
 ON building_platform_projects(current_building_dna_version_id, current_analysis_version_id);
 
+CREATE TABLE building_platform_project_drafts (
+draft_id TEXT PRIMARY KEY,
+project_id TEXT NOT NULL,
+owner_user_id INTEGER NOT NULL,
+base_building_dna_version_id TEXT,
+editable_building_dna_json TEXT NOT NULL,
+climate_profile_id TEXT,
+climate_profile_version TEXT,
+draft_fingerprint TEXT NOT NULL,
+concurrency_token TEXT NOT NULL,
+draft_status TEXT NOT NULL,
+last_calculation_fingerprint TEXT,
+created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+expires_at TEXT,
+UNIQUE(project_id, owner_user_id)
+);
+
+CREATE INDEX building_platform_project_drafts_owner_idx
+ON building_platform_project_drafts(owner_user_id, updated_at);
+
+CREATE INDEX building_platform_project_drafts_project_idx
+ON building_platform_project_drafts(project_id, updated_at);
+
+CREATE INDEX building_platform_project_drafts_expiry_idx
+ON building_platform_project_drafts(expires_at);
+
 CREATE TABLE building_dna_versions (
 building_dna_version_id TEXT PRIMARY KEY,
 project_id TEXT NOT NULL,
