@@ -161,6 +161,38 @@ export const BUILDING_PLATFORM_VERSIONED_TABLES = Object.freeze([
       "response_json",
       "created_at"
     ])
+  }),
+  Object.freeze({
+    table: "building_platform_reprocessing_jobs",
+    entity: "Reprocessing Job",
+    activeStatus: "canonical_versioned_backend",
+    ownershipModel: "owner_user_id plus project_id",
+    versionModel: "bounded one-project reprocessing record",
+    migrationNeed: "new explicit reprocessing audit boundary",
+    requiredFields: Object.freeze([
+      "reprocessing_job_id",
+      "project_id",
+      "owner_user_id",
+      "source_analysis_version_id",
+      "status",
+      "created_at"
+    ])
+  }),
+  Object.freeze({
+    table: "building_platform_export_manifests",
+    entity: "Export Manifest",
+    activeStatus: "canonical_operational_backend",
+    ownershipModel: "authorized administrator",
+    versionModel: "append-only export and restore verification manifest",
+    migrationNeed: "new annual database export audit record",
+    requiredFields: Object.freeze([
+      "export_id",
+      "export_scope",
+      "export_kind",
+      "table_manifest_json",
+      "manifest_checksum",
+      "restore_verification_status"
+    ])
   })
 ]);
 

@@ -109,6 +109,16 @@ export {
 } from "./backend/buildingPlatformOperationInventory.mjs";
 
 export {
+  BUILDING_PLATFORM_EXPORT_SCHEMA_VERSION,
+  BUILDING_PLATFORM_EXPORT_TABLES,
+  BUILDING_PLATFORM_OPERATIONAL_POLICY_VERSION,
+  BUILDING_PLATFORM_RETENTION_POLICY,
+  createBuildingPlatformExportManifest,
+  summarizeBuildingPlatformDatabaseGrowth,
+  verifyBuildingPlatformExportRestore
+} from "./backend/buildingPlatformOperationalPolicy.mjs";
+
+export {
   LOCAL_PROJECT_DIRTY_STATES,
   LOCAL_PROJECT_SESSION_SCHEMA,
   LOCAL_PROJECT_VISIBLE_STATUS,

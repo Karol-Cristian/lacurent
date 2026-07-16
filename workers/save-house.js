@@ -5446,6 +5446,281 @@ async function handleBuildingPlatformV1VersionsCompare(request, env, corsHeaders
   }, { headers: corsHeaders });
 }
 
+async function buildingPlatformV1CurrentRowsForReprocessing(env, userId, projectId) {
+  const project = await buildingPlatformV1ProjectForOwner(env, userId, projectId);
+  if (!project) {
+    return { ok: false, status: 404, code: "project_not_found_for_owner" };
+  }
+  if (!project.current_building_dna_version_id || !project.current_analysis_version_id) {
+    return { ok: false, status: 409, code: "project_has_no_current_calculated_version" };
+  }
+  const [dnaRow, analysisRow] = await Promise.all([
+    env.DB.prepare("SELECT * FROM building_dna_versions WHERE building_dna_version_id = ? AND project_id = ? LIMIT 1")
+      .bind(project.current_building_dna_version_id, projectId)
+      .first(),
+    env.DB.prepare("SELECT * FROM building_platform_analysis_versions WHERE analysis_version_id = ? AND project_id = ? LIMIT 1")
+      .bind(project.current_analysis_version_id, projectId)
+      .first()
+  ]);
+  if (!dnaRow || !analysisRow) {
+    return { ok: false, status: 409, code: "current_version_graph_incomplete" };
+  }
+  return { ok: true, project, dnaRow, analysisRow };
+}
+
+async function handleBuildingPlatformV1ReprocessingDryRun(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru reprocessing." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const projectId = body.project_id ?? body.projectId;
+  const rows = await buildingPlatformV1CurrentRowsForReprocessing(env, user.id, projectId);
+  if (!rows.ok) {
+    return jsonResponse({ success: false, code: rows.code, error: "Proiectul nu poate fi reprocessat." }, { status: rows.status, headers: corsHeaders });
+  }
+  return jsonResponse({
+    success: true,
+    status: "eligible",
+    project_id: projectId,
+    source_analysis_version_id: rows.analysisRow.analysis_version_id,
+    source_building_dna_version_id: rows.dnaRow.building_dna_version_id,
+    target_adapter_version: rows.analysisRow.adapter_version,
+    target_physics_engine_version: rows.analysisRow.physics_engine_version,
+    target_normative_registry_version: rows.analysisRow.normative_registry_version,
+    target_climate_profile_id: rows.analysisRow.climate_profile_id ?? null,
+    target_climate_profile_version: rows.analysisRow.climate_profile_version ?? null,
+    dry_run: {
+      operation: "bounded_one_project_reprocessing",
+      creates_new_building_dna_version: false,
+      creates_new_analysis_version: true,
+      creates_new_report_version: true,
+      preserves_previous_versions: true
+    }
+  }, { headers: corsHeaders });
+}
+
+async function handleBuildingPlatformV1ReprocessingExecute(request, env, corsHeaders) {
+  const user = await getCurrentUser(request, env);
+  if (!user) {
+    return jsonResponse({ success: false, error: "Trebuie sa fii autentificat pentru reprocessing." }, { status: 401, headers: corsHeaders });
+  }
+  const body = await readJson(request);
+  const idempotencyKey = body.idempotency_key ?? body.idempotencyKey ?? null;
+  const requestFingerprint = buildingPlatformV1RequestFingerprint("reprocessing_execute", user.id, body);
+  const existingIdempotency = await buildingPlatformV1ReadIdempotency(env, user.id, idempotencyKey);
+  if (existingIdempotency) {
+    if (existingIdempotency.request_fingerprint !== requestFingerprint) {
+      return jsonResponse(
+        { success: false, code: "idempotency_key_reused_for_different_request", error: "Cheia de idempotenta a fost refolosita pentru alta cerere." },
+        { status: 409, headers: corsHeaders }
+      );
+    }
+    return jsonResponse(buildingPlatformV1Parse(existingIdempotency.response_json, { success: false }), { headers: corsHeaders });
+  }
+  const projectId = body.project_id ?? body.projectId;
+  const rows = await buildingPlatformV1CurrentRowsForReprocessing(env, user.id, projectId);
+  if (!rows.ok) {
+    return jsonResponse({ success: false, code: rows.code, error: "Proiectul nu poate fi reprocessat." }, { status: rows.status, headers: corsHeaders });
+  }
+  const tokenCheck = buildingPlatformV1CheckExpectedToken(rows.project, body);
+  if (!tokenCheck.ok) {
+    return jsonResponse(tokenCheck.body, { status: tokenCheck.status, headers: corsHeaders });
+  }
+  const buildingDna = buildingPlatformV1Parse(rows.dnaRow.complete_building_dna_json, null);
+  const pipeline = buildingPlatformV1CalculationPipeline(buildingDna);
+  if (!pipeline.ok) {
+    return jsonResponse({ success: false, code: pipeline.code, error: pipeline.error, diagnostics: pipeline.diagnostics ?? null }, { status: pipeline.status, headers: corsHeaders });
+  }
+  const now = buildingPlatformV1Now();
+  const reprocessingJobId = buildingPlatformV1Id("reprocess");
+  const analysisVersionId = buildingPlatformV1Id("analysis-version");
+  const reportVersionId = buildingPlatformV1Id("report-version");
+  const metadata = pipeline.versionMetadata;
+  const updatedProject = {
+    ...rows.project,
+    current_analysis_version_id: analysisVersionId,
+    current_report_version_id: reportVersionId,
+    project_status: "calculated",
+    updated_at: now
+  };
+  const response = {
+    success: true,
+    source: "versioned_tables",
+    reprocessing_job_id: reprocessingJobId,
+    project: buildingPlatformV1PublicProject(updatedProject),
+    concurrency_token: buildingPlatformV1ProjectToken(updatedProject),
+    source_analysis_version_id: rows.analysisRow.analysis_version_id,
+    source_building_dna_version_id: rows.dnaRow.building_dna_version_id,
+    analysisVersion: {
+      analysis_version_id: analysisVersionId,
+      project_id: projectId,
+      building_dna_version_id: rows.dnaRow.building_dna_version_id,
+      parent_analysis_version_id: rows.analysisRow.analysis_version_id,
+      adapter_version: metadata.adapterVersion,
+      physics_engine_version: metadata.physicsEngineVersion,
+      normative_registry_version: metadata.normativeRegistryVersion,
+      climate_profile_id: metadata.climateProfileId,
+      climate_profile_version: metadata.climateProfileVersion,
+      monthly_qhnd: buildingPlatformV1MonthlyUsefulDemand(pipeline.calculation, "heating"),
+      monthly_qcnd: buildingPlatformV1MonthlyUsefulDemand(pipeline.calculation, "cooling"),
+      annual_qhnd: pipeline.resultSummary.annualQHnd ?? null,
+      annual_qcnd: pipeline.resultSummary.annualQCnd ?? null,
+      calculation_status: "calculated",
+      calculation_fingerprint: metadata.fingerprints.analysisFingerprint,
+      created_at: now,
+      schema_version: metadata.analysisSchemaVersion
+    },
+    reportVersion: {
+      technical_report_version_id: reportVersionId,
+      project_id: projectId,
+      analysis_version_id: analysisVersionId,
+      building_dna_version_id: rows.dnaRow.building_dna_version_id,
+      report_schema_version: metadata.reportSchemaVersion,
+      calculation_fingerprint: metadata.fingerprints.reportFingerprint,
+      generated_at: now,
+      report_status: "completed",
+      schema_version: metadata.technicalReportSchemaVersion
+    },
+    result_summary: pipeline.resultSummary
+  };
+  const comparison = {
+    annualQHnd: {
+      oldValue: rows.analysisRow.annual_qhnd ?? null,
+      newValue: pipeline.resultSummary.annualQHnd ?? null
+    },
+    annualQCnd: {
+      oldValue: rows.analysisRow.annual_qcnd ?? null,
+      newValue: pipeline.resultSummary.annualQCnd ?? null
+    },
+    sourceAnalysisFingerprint: rows.analysisRow.calculation_fingerprint,
+    newAnalysisFingerprint: metadata.fingerprints.analysisFingerprint
+  };
+  const statements = [
+    env.DB.prepare(`
+      INSERT INTO building_platform_analysis_versions(
+        analysis_version_id, project_id, building_dna_version_id, parent_analysis_version_id,
+        adapter_version, physics_engine_version, normative_registry_version,
+        climate_profile_id, climate_profile_version, explicit_engine_input_json,
+        complete_engine_output_json, monthly_qhnd_json, monthly_qcnd_json, annual_qhnd,
+        annual_qcnd, supported_latent_outputs_json, diagnostics_json, calculation_status,
+        calculation_fingerprint, created_at, execution_metadata_json, failure_metadata_json,
+        schema_version
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        analysisVersionId,
+        projectId,
+        rows.dnaRow.building_dna_version_id,
+        rows.analysisRow.analysis_version_id,
+        metadata.adapterVersion,
+        metadata.physicsEngineVersion,
+        metadata.normativeRegistryVersion,
+        metadata.climateProfileId,
+        metadata.climateProfileVersion,
+        buildingPlatformV1Json(pipeline.calculation.chapter2Input),
+        buildingPlatformV1Json(pipeline.calculation.chapter2Result),
+        buildingPlatformV1Json(response.analysisVersion.monthly_qhnd),
+        buildingPlatformV1Json(response.analysisVersion.monthly_qcnd),
+        pipeline.resultSummary.annualQHnd ?? null,
+        pipeline.resultSummary.annualQCnd ?? null,
+        buildingPlatformV1Json(pipeline.calculation.chapter2Result?.result?.latentDemand ?? null),
+        buildingPlatformV1Json(pipeline.calculation.diagnostics ?? []),
+        "calculated",
+        metadata.fingerprints.analysisFingerprint,
+        now,
+        buildingPlatformV1Json({ backendVersion: metadata.backendVersion, reprocessingJobId }),
+        null,
+        metadata.analysisSchemaVersion
+      ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_report_versions(
+        technical_report_version_id, project_id, analysis_version_id, building_dna_version_id,
+        report_schema_version, structured_report_model_json, traceability_model_json,
+        calculation_fingerprint, generated_at, report_status, schema_version
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        reportVersionId,
+        projectId,
+        analysisVersionId,
+        rows.dnaRow.building_dna_version_id,
+        metadata.reportSchemaVersion,
+        buildingPlatformV1Json(pipeline.workspace.report),
+        buildingPlatformV1Json(pipeline.workspace.traceability ?? []),
+        metadata.fingerprints.reportFingerprint,
+        now,
+        "completed",
+        metadata.technicalReportSchemaVersion
+      ),
+    env.DB.prepare(`
+      UPDATE building_platform_projects
+      SET project_status = 'calculated', current_analysis_version_id = ?, current_report_version_id = ?, updated_at = ?
+      WHERE project_id = ? AND owner_user_id = ?
+    `)
+      .bind(analysisVersionId, reportVersionId, now, projectId, user.id),
+    env.DB.prepare(`
+      INSERT INTO building_platform_reprocessing_jobs(
+        reprocessing_job_id, project_id, owner_user_id, source_analysis_version_id,
+        source_building_dna_version_id, target_adapter_version, target_physics_engine_version,
+        target_normative_registry_version, target_climate_profile_id, target_climate_profile_version,
+        resulting_analysis_version_id, resulting_report_version_id, status, reason, dry_run_json,
+        comparison_json, failure_diagnostic_json, created_at, started_at, completed_at
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, NULL, ?, ?, ?)
+    `)
+      .bind(
+        reprocessingJobId,
+        projectId,
+        user.id,
+        rows.analysisRow.analysis_version_id,
+        rows.dnaRow.building_dna_version_id,
+        metadata.adapterVersion,
+        metadata.physicsEngineVersion,
+        metadata.normativeRegistryVersion,
+        metadata.climateProfileId,
+        metadata.climateProfileVersion,
+        analysisVersionId,
+        reportVersionId,
+        body.reason ?? "explicit_one_project_reprocessing",
+        buildingPlatformV1Json({ createsNewBuildingDnaVersion: false }),
+        buildingPlatformV1Json(comparison),
+        now,
+        now,
+        now
+      ),
+    env.DB.prepare(`
+      INSERT INTO building_platform_audit_events(
+        event_id, project_id, building_dna_version_id, analysis_version_id, technical_report_version_id,
+        actor_user_id, action, reason, metadata_json, created_at
+      )
+      VALUES(?, ?, ?, ?, ?, ?, 'reprocessing_completed', ?, ?, ?)
+    `)
+      .bind(
+        buildingPlatformV1Id("audit"),
+        projectId,
+        rows.dnaRow.building_dna_version_id,
+        analysisVersionId,
+        reportVersionId,
+        user.id,
+        body.reason ?? "explicit_one_project_reprocessing",
+        buildingPlatformV1Json({ reprocessingJobId, sourceAnalysisVersionId: rows.analysisRow.analysis_version_id }),
+        now
+      )
+  ];
+  if (idempotencyKey) {
+    statements.push(env.DB.prepare(`
+      INSERT INTO building_platform_idempotency_keys(idempotency_key, owner_user_id, request_fingerprint, response_json, created_at)
+      VALUES(?, ?, ?, ?, ?)
+    `)
+      .bind(idempotencyKey, user.id, requestFingerprint, buildingPlatformV1Json(response), now));
+  }
+  await env.DB.batch(statements);
+  return jsonResponse(response, { headers: corsHeaders });
+}
+
 async function saveHouse(request, env, corsHeaders) {
   const user = await getCurrentUser(request, env);
   if (!user) {
@@ -6873,6 +7148,9 @@ export default {
       "/api/building-platform/v1/projects/create-and-calculate": handleBuildingPlatformV1PermanentSave,
       "/api/building-platform/v1/versions/list": handleBuildingPlatformV1VersionsList,
       "/api/building-platform/v1/versions/compare": handleBuildingPlatformV1VersionsCompare,
+      "/api/building-platform/v1/reprocessing/inspect": handleBuildingPlatformV1ReprocessingDryRun,
+      "/api/building-platform/v1/reprocessing/dry-run": handleBuildingPlatformV1ReprocessingDryRun,
+      "/api/building-platform/v1/reprocessing/execute": handleBuildingPlatformV1ReprocessingExecute,
       "/api/building-platform/v1/analyses/load": handleBuildingPlatformV1ProjectOpen,
       "/api/mc001/htr/run": handleMc001HtrRun,
       "/api/mc001/htr/load": handleMc001HtrLoad,

@@ -94,6 +94,10 @@ class SqliteD1 {
       new URL("../../migrations/011_building_platform_local_first_flow.sql", import.meta.url),
       "utf8"
     ));
+    this.sqlite.exec(readFileSync(
+      new URL("../../migrations/012_building_platform_reprocessing_exports.sql", import.meta.url),
+      "utf8"
+    ));
   }
 
   prepare(sql) {
@@ -383,11 +387,36 @@ await test("P3E-B v1 local-first lifecycle uses drafts explicitly and immutable 
   assert.equal(listed.body.projects[0].permanent_version_count, 2);
   assert.equal(listed.body.projects[0].annualQHnd, second.body.result_summary.annualQHnd);
 
+  const dryRun = await post("/api/building-platform/v1/reprocessing/dry-run", db, {
+    project_id: projectId
+  });
+  assert.equal(dryRun.status, 200);
+  assert.equal(dryRun.body.status, "eligible");
+  assert.equal(dryRun.body.dry_run.creates_new_building_dna_version, false);
+
+  const reprocessed = await post("/api/building-platform/v1/reprocessing/execute", db, {
+    project_id: projectId,
+    expected_project_token: second.body.concurrency_token,
+    idempotency_key: "reprocess-current",
+    reason: "test_reprocessing"
+  });
+  assert.equal(reprocessed.status, 200);
+  assert.equal(reprocessed.body.source_building_dna_version_id, second.body.buildingDnaVersion.building_dna_version_id);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM building_dna_versions"), 2);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM building_platform_analysis_versions"), 3);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM building_platform_report_versions"), 3);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM building_platform_reprocessing_jobs"), 1);
+  assert.equal(
+    db.scalar("SELECT status FROM building_platform_reprocessing_jobs WHERE reprocessing_job_id = ?", reprocessed.body.reprocessing_job_id),
+    "completed"
+  );
+
   const auditActions = db.rows("SELECT action FROM building_platform_audit_events ORDER BY created_at, action")
     .map((row) => row.action);
   assert.equal(auditActions.includes("project_created"), true);
   assert.equal(auditActions.includes("draft_explicitly_saved"), true);
   assert.equal(auditActions.includes("permanent_version_saved"), true);
+  assert.equal(auditActions.includes("reprocessing_completed"), true);
   assert.equal(db.batchTransactionCount >= 5, true);
 });
 
