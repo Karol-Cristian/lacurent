@@ -1,0 +1,295 @@
+import {
+  calculateChapter3SubsystemInputEnergyBalance,
+  calculateChapter3SubsystemRecoverableEnergy
+} from "./mc001Chapter3HeatingSystems.mjs";
+import {
+  calculateChapter3CoolingAuxiliaryEnergyTotal,
+  calculateChapter3HeatingAuxiliaryEnergyTotal,
+  calculateFanElectricEnergy,
+  calculateLightingLeniFromSubspaces,
+  calculateVentilationAuxiliaryTotal
+} from "./mc001Chapter3SystemEnergy.mjs";
+
+function assertFiniteNumber(value, name) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${name} must be a finite number`);
+  }
+}
+
+function assertFiniteNonNegativeNumber(value, name) {
+  assertFiniteNumber(value, name);
+  if (value < 0) {
+    throw new Error(`${name} must be a finite non-negative number`);
+  }
+}
+
+function assertArray(items, name) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error(`${name} must be a non-empty array`);
+  }
+}
+
+function assertFraction(value, name) {
+  assertFiniteNumber(value, name);
+  if (value < 0 || value > 1) {
+    throw new Error(`${name} must be between 0 and 1`);
+  }
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + Number(value ?? 0), 0);
+}
+
+function stageBalance({
+  service,
+  stage,
+  outputKWh,
+  lossKWh,
+  auxiliaryKWh,
+  auxiliaryRecoveredFraction,
+  lossRecoveredFraction
+}) {
+  return calculateChapter3SubsystemInputEnergyBalance({
+    subsystemId: `${service}.${stage}`,
+    subsystemOutputKWh: outputKWh,
+    subsystemLossKWh: lossKWh,
+    auxiliaryEnergyKWh: auxiliaryKWh,
+    auxiliaryRecoveredFraction,
+    lossRecoveredFraction
+  });
+}
+
+function recoverableStage({
+  service,
+  stage,
+  lossKWh,
+  auxiliaryKWh,
+  auxiliaryRecoverableFractionToHeating,
+  lossRecoverableFractionToHeating
+}) {
+  return calculateChapter3SubsystemRecoverableEnergy({
+    subsystemId: `${service}.${stage}`,
+    auxiliaryEnergyKWh: auxiliaryKWh,
+    auxiliaryRecoverableFractionToHeating,
+    subsystemLossKWh: lossKWh,
+    lossRecoverableFractionToHeating
+  });
+}
+
+function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
+  assertFiniteNonNegativeNumber(usefulDemandKWh, `${service}.${monthId}.usefulDemandKWh`);
+  assertArray(stages, `${service}.${monthId}.stages`);
+
+  let outputKWh = usefulDemandKWh;
+  const stageResults = [];
+  for (const [index, stage] of stages.entries()) {
+    const stageId = stage.stageId ?? `stage_${index + 1}`;
+    assertFiniteNonNegativeNumber(stage.lossKWh, `${service}.${monthId}.${stageId}.lossKWh`);
+    assertFiniteNonNegativeNumber(
+      stage.auxiliaryKWh,
+      `${service}.${monthId}.${stageId}.auxiliaryKWh`
+    );
+    assertFraction(
+      stage.auxiliaryRecoveredFraction,
+      `${service}.${monthId}.${stageId}.auxiliaryRecoveredFraction`
+    );
+    assertFraction(
+      stage.lossRecoveredFraction,
+      `${service}.${monthId}.${stageId}.lossRecoveredFraction`
+    );
+    assertFraction(
+      stage.auxiliaryRecoverableFractionToHeating,
+      `${service}.${monthId}.${stageId}.auxiliaryRecoverableFractionToHeating`
+    );
+    assertFraction(
+      stage.lossRecoverableFractionToHeating,
+      `${service}.${monthId}.${stageId}.lossRecoverableFractionToHeating`
+    );
+
+    const input = stageBalance({
+      service,
+      stage: stageId,
+      outputKWh,
+      lossKWh: stage.lossKWh,
+      auxiliaryKWh: stage.auxiliaryKWh,
+      auxiliaryRecoveredFraction: stage.auxiliaryRecoveredFraction,
+      lossRecoveredFraction: stage.lossRecoveredFraction
+    });
+    const recoverable = recoverableStage({
+      service,
+      stage: stageId,
+      lossKWh: stage.lossKWh,
+      auxiliaryKWh: stage.auxiliaryKWh,
+      auxiliaryRecoverableFractionToHeating: stage.auxiliaryRecoverableFractionToHeating,
+      lossRecoverableFractionToHeating: stage.lossRecoverableFractionToHeating
+    });
+
+    stageResults.push({
+      stageId,
+      outputKWh,
+      lossKWh: stage.lossKWh,
+      auxiliaryKWh: stage.auxiliaryKWh,
+      inputEnergy: input,
+      recoverableEnergy: recoverable
+    });
+    outputKWh = input.valueKWh;
+  }
+
+  return {
+    service,
+    usefulDemandKWh,
+    finalStageInputKWh: outputKWh,
+    stageResults,
+    lossTotalKWh: sum(stages.map(stage => stage.lossKWh)),
+    auxiliaryTotalKWh: sum(stages.map(stage => stage.auxiliaryKWh)),
+    recoverableTotalKWh: sum(stageResults.map(stage => stage.recoverableEnergy.valueKWh))
+  };
+}
+
+function calculateVentilationMonth(month) {
+  if (!month.ventilation) return null;
+  const fan =
+    month.ventilation.fanElectricEnergyInput
+      ? calculateFanElectricEnergy(month.ventilation.fanElectricEnergyInput)
+      : null;
+  const heatRecoveryAuxiliaryKWh =
+    month.ventilation.heatRecoveryAuxiliaryKWh ?? 0;
+  const preheatAuxiliaryKWh = month.ventilation.preheatAuxiliaryKWh ?? 0;
+  const controlAuxiliaryKWh = month.ventilation.controlAuxiliaryKWh ?? 0;
+  assertFiniteNonNegativeNumber(heatRecoveryAuxiliaryKWh, `${month.month}.heatRecoveryAuxiliaryKWh`);
+  assertFiniteNonNegativeNumber(preheatAuxiliaryKWh, `${month.month}.preheatAuxiliaryKWh`);
+  assertFiniteNonNegativeNumber(controlAuxiliaryKWh, `${month.month}.controlAuxiliaryKWh`);
+  const auxiliary = calculateVentilationAuxiliaryTotal({
+    heatRecoveryAuxiliaryKWh: heatRecoveryAuxiliaryKWh + (fan?.valueKWh ?? 0),
+    preheatAuxiliaryKWh,
+    controlAuxiliaryKWh
+  });
+
+  return {
+    fanElectricEnergy: fan,
+    auxiliaryEnergy: auxiliary,
+    valueKWh: auxiliary.valueKWh
+  };
+}
+
+function calculateLighting(input) {
+  if (!input) return null;
+  const leni = input.leniSubspaces
+    ? calculateLightingLeniFromSubspaces({
+        subspaces: input.leniSubspaces,
+        totalAreaM2: input.totalAreaM2
+      })
+    : null;
+  const monthly = input.monthlyEnergyKWh ?? [];
+  if (monthly.length > 0) {
+    for (const [index, value] of monthly.entries()) {
+      assertFiniteNonNegativeNumber(value, `lighting.monthlyEnergyKWh[${index}]`);
+    }
+  }
+  return {
+    leni,
+    monthlyEnergyKWh: monthly,
+    annualEnergyKWh: sum(monthly)
+  };
+}
+
+function monthlyValue(values, index, name) {
+  if (!Array.isArray(values) || index >= values.length) {
+    throw new Error(`${name} must provide a value for every Chapter 3 month`);
+  }
+  assertFiniteNonNegativeNumber(values[index], `${name}[${index}]`);
+  return values[index];
+}
+
+export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
+  const { months, lighting } = input;
+  assertArray(months, "months");
+
+  const lightingResult = calculateLighting(lighting);
+  const monthly = months.map((month, index) => {
+    const monthId = month.month ?? `month_${index + 1}`;
+    const heating = calculateServiceChain({
+      service: "heating",
+      monthId,
+      usefulDemandKWh: month.chapter2Useful?.qHndKWh,
+      stages: month.heatingStages
+    });
+    const cooling = calculateServiceChain({
+      service: "cooling",
+      monthId,
+      usefulDemandKWh: month.chapter2Useful?.qCndKWh,
+      stages: month.coolingStages
+    });
+    const dhw = month.dhw
+      ? calculateServiceChain({
+          service: "dhw",
+          monthId,
+          usefulDemandKWh: month.dhw.usefulDemandKWh,
+          stages: month.dhw.stages
+        })
+      : null;
+    const ventilation = calculateVentilationMonth(month);
+    const lightingEnergyKWh = lightingResult
+      ? monthlyValue(lightingResult.monthlyEnergyKWh, index, "lighting.monthlyEnergyKWh")
+      : 0;
+
+    return {
+      month: monthId,
+      heating,
+      cooling,
+      dhw,
+      ventilation,
+      lightingEnergyKWh,
+      totals: {
+        heatingInputKWh: heating.finalStageInputKWh,
+        coolingInputKWh: cooling.finalStageInputKWh,
+        dhwInputKWh: dhw?.finalStageInputKWh ?? 0,
+        ventilationAuxiliaryKWh: ventilation?.valueKWh ?? 0,
+        lightingEnergyKWh
+      }
+    };
+  });
+
+  const annual = {
+    heatingInputKWh: sum(monthly.map(month => month.totals.heatingInputKWh)),
+    coolingInputKWh: sum(monthly.map(month => month.totals.coolingInputKWh)),
+    dhwInputKWh: sum(monthly.map(month => month.totals.dhwInputKWh)),
+    ventilationAuxiliaryKWh: sum(monthly.map(month => month.totals.ventilationAuxiliaryKWh)),
+    lightingEnergyKWh: sum(monthly.map(month => month.totals.lightingEnergyKWh)),
+    heatingAuxiliaryKWh: sum(monthly.map(month => month.heating.auxiliaryTotalKWh)),
+    coolingAuxiliaryKWh: sum(monthly.map(month => month.cooling.auxiliaryTotalKWh))
+  };
+
+  const heatingAuxiliary = calculateChapter3HeatingAuxiliaryEnergyTotal({
+    emissionAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[0]?.auxiliaryKWh ?? 0)),
+    distributionAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[1]?.auxiliaryKWh ?? 0)),
+    storageAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[2]?.auxiliaryKWh ?? 0)),
+    generationAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[3]?.auxiliaryKWh ?? 0))
+  });
+  const coolingAuxiliary = calculateChapter3CoolingAuxiliaryEnergyTotal({
+    emissionAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[0]?.auxiliaryKWh ?? 0)),
+    distributionAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[1]?.auxiliaryKWh ?? 0)),
+    storageAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[2]?.auxiliaryKWh ?? 0)),
+    generationAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[3]?.auxiliaryKWh ?? 0))
+  });
+
+  return {
+    status: "calculated",
+    calculationScope: "MC001_CHAPTER_3_EXPLICIT_RUNTIME_CHAIN",
+    monthCount: monthly.length,
+    monthly,
+    annual,
+    lighting: lightingResult,
+    auxiliary: {
+      heating: heatingAuxiliary,
+      cooling: coolingAuxiliary
+    },
+    formulaReferences: [
+      "MC001_3_A_SUBSYSTEM_INPUT_ENERGY_BALANCE",
+      "MC001_3_B_SUBSYSTEM_RECOVERABLE_ENERGY",
+      "MC001_3_185_TOTAL_HEATING_AUXILIARY_ENERGY",
+      "MC001_3_186_TOTAL_COOLING_AUXILIARY_ENERGY",
+      ...(lightingResult ? ["MC001_3_4_34_LIGHTING_LENI_WEIGHTED_BUILDING"] : [])
+    ]
+  };
+}

@@ -8,6 +8,7 @@ import {
   calculateDhwDistributionRecoveryFactor,
   calculateDhwExponentialCoefficient,
   calculateDhwHeatTracingAuxiliaryEnergy,
+  calculateDhwHeatTracingProtectedPipeLoss,
   calculateDhwInsulatedPipeLinearTransmittance,
   calculateDhwMeanDistributionTemperature,
   calculateDhwPressureDrop,
@@ -16,10 +17,13 @@ import {
   calculateDhwPumpEnergyUseFactor,
   calculateDhwRecirculationLossWithoutDrawOff,
   calculateDhwRecirculationPumpEnergy,
+  calculateDhwRecoverableAuxiliaryDistributionEnergy,
   calculateDhwRecoverableDistributionLoss,
+  calculateDhwRecoveredAuxiliaryDistributionEnergy,
   calculateDhwRecoveredDistributionHeat,
   calculateDhwReferencePumpPower,
   calculateDhwSpecificLinearHeatLoss,
+  calculateDhwStorageStandingLossSingleVolume,
   calculateDhwStubLossWithoutRecirculation,
   calculateDhwTemperatureAfterNonUseInterval,
   calculateDhwTotalDistributionLoss,
@@ -314,6 +318,58 @@ test("calculates MC001 DHW auxiliary pump and heat tracing relations", () => {
   assertCloseTo(pumpEnergy.valueKWh, expectedPumpEnergy);
   assertCloseTo(auxiliary.valueKWh, expectedPumpEnergy * expectedUseFactor);
   assert.equal(heatTracing.valueKWh, 12.5);
+});
+
+test("calculates MC001 DHW relations 3.225 to 3.228 from explicit inputs", () => {
+  const protectedLoss = calculateDhwHeatTracingProtectedPipeLoss({
+    pipeSegments: [
+      {
+        linearTransmittanceWPerMK: 0.18,
+        thetaWMeanC: 48,
+        thetaWAmbientC: 12,
+        lengthM: 12,
+        equivalentLengthM: 1
+      }
+    ],
+    operationTimeHours: 200
+  });
+  const recoverableAux = calculateDhwRecoverableAuxiliaryDistributionEnergy({
+    recoverableFraction: 0.2,
+    distributionAuxiliaryEnergyKWh: 30
+  });
+  const recoveredAux = calculateDhwRecoveredAuxiliaryDistributionEnergy({
+    recoverableFraction: 0.2,
+    distributionAuxiliaryEnergyKWh: 30
+  });
+  const storageLoss = calculateDhwStorageStandingLossSingleVolume({
+    accessibleStorageVolumeFactor: 1,
+    distributionStorageLossFactor: 3,
+    storageHeatTransferCoefficientWPerK: 2,
+    storageSetpointTemperatureC: 60,
+    storageAmbientTemperatureC: 15,
+    calculationHours: 720
+  });
+
+  assert.equal(
+    protectedLoss.formulaId,
+    "MC001_3_225_DHW_HEAT_TRACING_PROTECTED_PIPE_LOSS"
+  );
+  assert.equal(
+    recoverableAux.formulaId,
+    "MC001_3_226_DHW_RECOVERABLE_AUXILIARY_DISTRIBUTION_ENERGY"
+  );
+  assert.equal(
+    recoveredAux.formulaId,
+    "MC001_3_227_DHW_RECOVERED_AUXILIARY_DISTRIBUTION_ENERGY"
+  );
+  assert.equal(
+    storageLoss.formulaId,
+    "MC001_3_228_DHW_STORAGE_STANDING_LOSS_SINGLE_VOLUME"
+  );
+  assertCloseTo(protectedLoss.valueKWh, 0.18 * (48 - 12) * (12 + 1) * 200 / 1000);
+  assertCloseTo(recoverableAux.valueKWh, 6);
+  assertCloseTo(recoveredAux.valueKWh, 6);
+  assertCloseTo(storageLoss.valueKWh, 1 * 3 * (2 / 1000) * (60 - 15) * 720);
 });
 
 test("rejects invalid DHW distribution-loss component inputs", () => {

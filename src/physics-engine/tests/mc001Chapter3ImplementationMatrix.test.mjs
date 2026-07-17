@@ -17,6 +17,8 @@ function test(name, fn) {
   }
 }
 
+const allowedStatuses = new Set(Object.values(CHAPTER_3_MATRIX_STATUS));
+
 test("Chapter 3 matrix classifies every discovered relation or relation group", () => {
   const covered = new Set(chapter3ImplementationMatrix.flatMap(entry => entry.relations));
   const missing = discoveredChapter3Relations.filter(relation => !covered.has(relation));
@@ -24,62 +26,84 @@ test("Chapter 3 matrix classifies every discovered relation or relation group", 
   assert.deepEqual(missing, []);
 });
 
-test("Chapter 3 matrix keeps blocked normative domains explicit instead of silently implemented", () => {
-  const summary = chapter3MatrixSummary();
-
-  assert.equal(summary.matrixStatus, "CHAPTER_3_MATRIX_INCOMPLETE");
-  assert.ok(summary.blockedEntryCount > 0);
-  assert.deepEqual(summary.uncoveredRelations, []);
-  assert.ok(summary.blockedMatrixIds.includes("CH3_HEATING_SYSTEMS_3_1"));
-  assert.ok(summary.blockedMatrixIds.includes("CH3_AHU_VISUAL_PENDING"));
-  assert.ok(summary.blockedMatrixIds.includes("CH3_LIGHTING_3_4"));
-});
-
-test("implemented Chapter 3 matrix rows identify runtime implementation, tests, dependencies and notebook traceability", () => {
-  const implemented = chapter3ImplementationMatrix.filter(entry =>
-    entry.implementationStatus === CHAPTER_3_MATRIX_STATUS.IMPLEMENTED ||
-    entry.implementationStatus === CHAPTER_3_MATRIX_STATUS.IMPLEMENTED_ISOLATED_EXPLICIT_INPUT
-  );
-
-  assert.ok(implemented.length >= 4);
-
-  for (const entry of implemented) {
-    assert.equal(typeof entry.implementation, "string", `${entry.matrixId} implementation`);
-    assert.ok(entry.tests.length > 0, `${entry.matrixId} tests`);
-    assert.ok(entry.dependencyList.length > 0, `${entry.matrixId} dependencies`);
-    assert.ok(entry.expectedInputs.length > 0, `${entry.matrixId} inputs`);
-    assert.ok(entry.expectedOutputs.length > 0, `${entry.matrixId} outputs`);
-    assert.match(entry.notebookTraceability, /trace_nodes_available/);
-    assert.match(entry.coverage, /implemented/);
+test("Chapter 3 matrix uses precise statuses and explicit coverage flags", () => {
+  for (const entry of chapter3ImplementationMatrix) {
+    assert.ok(allowedStatuses.has(entry.status), `${entry.matrixId} status`);
+    assert.equal(typeof entry.source, "string", `${entry.matrixId} source`);
+    assert.notEqual(entry.source.length, 0, `${entry.matrixId} source length`);
+    assert.ok("sourceExtracted" in entry, `${entry.matrixId} sourceExtracted`);
+    assert.ok("formulaImplemented" in entry, `${entry.matrixId} formulaImplemented`);
+    assert.ok("branchesImplemented" in entry, `${entry.matrixId} branchesImplemented`);
+    assert.ok("numericalFixtureCovered" in entry, `${entry.matrixId} numericalFixtureCovered`);
+    assert.ok("runtimeIntegrated" in entry, `${entry.matrixId} runtimeIntegrated`);
+    assert.ok("notebookTraceable" in entry, `${entry.matrixId} notebookTraceable`);
   }
 });
 
-test("blocked Chapter 3 matrix rows preserve blocker reason and source path", () => {
-  const blocked = chapter3ImplementationMatrix.filter(entry =>
-    entry.implementationStatus.startsWith("blocked")
+test("implemented Chapter 3 rows identify runtime implementation, tests and validation fixtures", () => {
+  const implemented = chapter3ImplementationMatrix.filter(
+    entry => entry.status !== CHAPTER_3_MATRIX_STATUS.GENUINELY_EXTERNALLY_BLOCKED
   );
 
-  assert.ok(blocked.length > 0);
+  assert.ok(implemented.length >= 8);
+  for (const entry of implemented) {
+    assert.equal(typeof entry.implementation, "string", `${entry.matrixId} implementation`);
+    assert.ok(entry.tests.length > 0, `${entry.matrixId} tests`);
+    assert.ok(entry.validationFixture, `${entry.matrixId} validation fixture`);
+    assert.notEqual(entry.formulaImplemented, false, `${entry.matrixId} formula implemented`);
+    assert.notEqual(entry.numericalFixtureCovered, false, `${entry.matrixId} fixture covered`);
+  }
+});
+
+test("genuine Chapter 3 blockers identify exact missing artifact and source location", () => {
+  const blocked = chapter3ImplementationMatrix.filter(
+    entry => entry.status === CHAPTER_3_MATRIX_STATUS.GENUINELY_EXTERNALLY_BLOCKED
+  );
+
+  assert.deepEqual(
+    blocked.map(entry => entry.matrixId),
+    [
+      "CH3_COOLING_STORAGE_3_94_TO_3_123",
+      "CH3_COOLING_REJECTION_REMAINING_3_156_TO_3_182",
+      "CH3_LIGHTING_SR_EN_15193_1_DELEGATED"
+    ]
+  );
 
   for (const entry of blocked) {
     assert.equal(entry.implementation, null, `${entry.matrixId} implementation`);
     assert.equal(entry.tests.length, 0, `${entry.matrixId} tests`);
-    assert.equal(typeof entry.blocker, "string", `${entry.matrixId} blocker`);
-    assert.notEqual(entry.blocker.length, 0, `${entry.matrixId} blocker length`);
-    assert.match(entry.coverage, /blocked/);
+    assert.equal(typeof entry.blocker.sourceLocation, "string", `${entry.matrixId} sourceLocation`);
+    assert.equal(typeof entry.blocker.unavailableArtifact, "string", `${entry.matrixId} unavailableArtifact`);
+    assert.equal(typeof entry.blocker.neededToUnblock, "string", `${entry.matrixId} neededToUnblock`);
+    assert.notEqual(entry.blocker.sourceLocation.length, 0);
+    assert.notEqual(entry.blocker.unavailableArtifact.length, 0);
+    assert.notEqual(entry.blocker.neededToUnblock.length, 0);
   }
 });
 
-test("Chapter 3 dependency graph separates useful demand, system energy, DHW and lighting domains", () => {
+test("Chapter 3 matrix summary exposes maximum available coverage counts", () => {
+  const summary = chapter3MatrixSummary();
+
+  assert.equal(summary.matrixStatus, "CHAPTER_3_MATRIX_MAXIMUM_AVAILABLE_COVERAGE");
+  assert.equal(summary.relationCount, discoveredChapter3Relations.length);
+  assert.equal(summary.blockerEntryCount, 3);
+  assert.deepEqual(summary.uncoveredRelations, []);
+  assert.ok(summary.implementedEntryCount >= 8);
+  assert.ok(summary.runtimeIntegratedEntryCount >= 5);
+  assert.ok(summary.notebookTraceableEntryCount >= 5);
+});
+
+test("Chapter 3 dependency graph separates useful energy, systems and delegated lighting domains", () => {
   assert.deepEqual(Object.keys(chapter3DependencyGraph).sort(), [
-    "coolingVentilationSystems",
-    "dhwDistributionAuxiliary",
-    "dhwStorageGeneration",
-    "dhwUsefulDemand",
+    "coolingSystems",
+    "dhwSystems",
     "heatingSystems",
-    "lighting"
+    "lighting",
+    "subsystemBalances",
+    "usefulEnergyInputs",
+    "ventilationAhu"
   ]);
 
-  assert.ok(chapter3DependencyGraph.dhwUsefulDemand.blockers.length === 0);
-  assert.ok(chapter3DependencyGraph.lighting.blockers.length > 0);
+  assert.ok(chapter3DependencyGraph.subsystemBalances.outputs.includes("subsystem input energy"));
+  assert.ok(chapter3DependencyGraph.lighting.sources.includes("SR EN 15193-1"));
 });

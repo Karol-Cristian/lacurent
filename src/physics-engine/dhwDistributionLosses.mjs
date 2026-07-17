@@ -20,6 +20,13 @@ function assertFinitePositiveNumber(value, name) {
   }
 }
 
+function assertFraction(value, name) {
+  assertFiniteNumber(value, name);
+  if (value < 0 || value > 1) {
+    throw new Error(`${name} must be between 0 and 1`);
+  }
+}
+
 function assertNonEmptyArray(items, name) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error(`${name} must be a non-empty array`);
@@ -757,6 +764,134 @@ export function calculateDhwHeatTracingAuxiliaryEnergy(input) {
     formulaText: "WW,dis,rib = QW,dis,ls",
     inputs: { protectedPipeDistributionLossKWh },
     assumptions: ["electric_heating_cable_selected_explicitly"]
+  });
+}
+
+export function calculateDhwHeatTracingProtectedPipeLoss(input) {
+  const { pipeSegments, operationTimeHours } = input ?? {};
+
+  assertNonEmptyArray(pipeSegments, "pipeSegments");
+  assertFiniteNonNegativeNumber(operationTimeHours, "operationTimeHours");
+  pipeSegments.forEach((segment, index) =>
+    assertPipeLossSegment(segment, `pipeSegments[${index}]`)
+  );
+
+  const heatLossRateW = pipeSegments.reduce(
+    (sum, segment) => sum + pipeHeatLossRateW(segment),
+    0
+  );
+  const valueKWh = (heatLossRateW * operationTimeHours) / 1000;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_225_DHW_HEAT_TRACING_PROTECTED_PIPE_LOSS",
+    formulaText:
+      "QW,dis,ls,rib = (1 / 1000) * sum(Psi_j * (thetaW,mean - thetaW,amb,j) * (L + Lequip)_j * t)",
+    inputs: { pipeSegments, operationTimeHours },
+    assumptions: [
+      "pipe_segments_include_only_lengths_protected_by_electric_heat_tracing"
+    ]
+  });
+}
+
+export function calculateDhwRecoverableAuxiliaryDistributionEnergy(input) {
+  const { recoverableFraction, distributionAuxiliaryEnergyKWh } = input ?? {};
+
+  assertFraction(recoverableFraction, "recoverableFraction");
+  assertFiniteNonNegativeNumber(
+    distributionAuxiliaryEnergyKWh,
+    "distributionAuxiliaryEnergyKWh"
+  );
+
+  const valueKWh = recoverableFraction * distributionAuxiliaryEnergyKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_226_DHW_RECOVERABLE_AUXILIARY_DISTRIBUTION_ENERGY",
+    formulaText: "QW,dis,rbl = frbl,dis * WW,dis",
+    inputs: { recoverableFraction, distributionAuxiliaryEnergyKWh },
+    assumptions: ["recoverable_fraction_is_explicit_or_sourced_upstream"]
+  });
+}
+
+export function calculateDhwRecoveredAuxiliaryDistributionEnergy(input) {
+  const { recoverableFraction, distributionAuxiliaryEnergyKWh } = input ?? {};
+
+  assertFraction(recoverableFraction, "recoverableFraction");
+  assertFiniteNonNegativeNumber(
+    distributionAuxiliaryEnergyKWh,
+    "distributionAuxiliaryEnergyKWh"
+  );
+
+  const valueKWh = recoverableFraction * distributionAuxiliaryEnergyKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_227_DHW_RECOVERED_AUXILIARY_DISTRIBUTION_ENERGY",
+    formulaText: "QW,dis,rvd = frbl,dis * WW,dis",
+    inputs: { recoverableFraction, distributionAuxiliaryEnergyKWh },
+    assumptions: [
+      "MC001_page_266_displays_the_same_multiplier_as_relation_3_226",
+      "destination_of_recovered_heat_is_traced_outside_this_component"
+    ]
+  });
+}
+
+export function calculateDhwStorageStandingLossSingleVolume(input) {
+  const {
+    accessibleStorageVolumeFactor,
+    distributionStorageLossFactor,
+    storageHeatTransferCoefficientWPerK,
+    storageSetpointTemperatureC,
+    storageAmbientTemperatureC,
+    calculationHours
+  } = input ?? {};
+
+  assertFraction(accessibleStorageVolumeFactor, "accessibleStorageVolumeFactor");
+  assertFinitePositiveNumber(distributionStorageLossFactor, "distributionStorageLossFactor");
+  if (distributionStorageLossFactor > 5) {
+    throw new Error("distributionStorageLossFactor must be less than or equal to 5");
+  }
+  assertFiniteNonNegativeNumber(
+    storageHeatTransferCoefficientWPerK,
+    "storageHeatTransferCoefficientWPerK"
+  );
+  assertFiniteNumber(storageSetpointTemperatureC, "storageSetpointTemperatureC");
+  assertFiniteNumber(storageAmbientTemperatureC, "storageAmbientTemperatureC");
+  assertFiniteNonNegativeNumber(calculationHours, "calculationHours");
+
+  const valueKWh =
+    accessibleStorageVolumeFactor *
+    distributionStorageLossFactor *
+    (storageHeatTransferCoefficientWPerK / 1000) *
+    (storageSetpointTemperatureC - storageAmbientTemperatureC) *
+    calculationHours;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_228_DHW_STORAGE_STANDING_LOSS_SINGLE_VOLUME",
+    formulaText:
+      "Qsto,ls,tot = fsto,bac,acc * fsto,dis,ls * (Hsto,ls / 1000) * (thetaSto,set - thetaSto,amb) * tci",
+    inputs: {
+      accessibleStorageVolumeFactor,
+      distributionStorageLossFactor,
+      storageHeatTransferCoefficientWPerK,
+      storageSetpointTemperatureC,
+      storageAmbientTemperatureC,
+      calculationHours
+    },
+    assumptions: [
+      "single_volume_storage_model_selected_explicitly",
+      "storage_heat_transfer_coefficient_is_explicit_manufacturer_or_project_input"
+    ]
   });
 }
 
