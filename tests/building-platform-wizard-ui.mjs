@@ -951,7 +951,13 @@ await test("wizard UI module delegates calculations and keeps technical workspac
   assert.equal(css.includes(".technical-flow-nav"), true);
   assert.equal(css.includes("@media(min-width:1200px)"), true);
   assert.equal(css.includes("grid-template-columns:260px minmax(620px,1fr) minmax(340px,420px)"), true);
-  assert.equal(css.includes(".technical-output-dock{\ngrid-column:3;\nposition:sticky;"), true);
-  assert.equal(css.includes(".p2c-technical-analysis .form-grid{\ngrid-template-columns:repeat(4,minmax(150px,1fr));"), true);
+  assert.match(
+    css,
+    /\.technical-output-dock\{[\s\S]*?grid-column:3;[\s\S]*?position:sticky;/
+  );
+  assert.match(
+    css,
+    /\.p2c-technical-analysis \.form-grid\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(150px,1fr\)\);/
+  );
   assert.equal(css.includes("@media(max-width:700px)"), true);
 });
