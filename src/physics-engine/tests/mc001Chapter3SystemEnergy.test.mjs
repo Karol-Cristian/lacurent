@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import {
   AHU_LOCATION,
+  COOLING_HEAT_REJECTION_REFERENCE_BRANCH,
+  COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE,
+  COOLING_HEAT_REJECTION_WATER_CONTROL,
   EXTRACT_FAN_POSITION,
   calculateAhuRecoverableGenerationLoss,
   calculateAhuCoolingCoilRequiredEnergy,
@@ -25,10 +28,52 @@ import {
   calculateCoolingDistributionLoss,
   calculateCoolingEerTemperatureCorrectionFactor,
   calculateCoolingExtractedEnergyLimitedByGenerator,
+  calculateCoolingAbsorptionHeatInput,
+  calculateCoolingAbsorptionPerformanceRatio,
+  calculateCoolingCompressionEer,
+  calculateCoolingCompressionElectricInput,
+  calculateCoolingControlAuxiliaryEnergy,
+  calculateCoolingDryHeatRejectionWaterTemperature,
+  calculateCoolingGeneratorAuxiliaryTotal,
   calculateCoolingGeneratorInputByCapacityLimit,
   calculateCoolingGeneratorInputRequiredAirWater,
   calculateCoolingGeneratorInputRequiredDirectExpansion,
+  calculateCoolingHeatRejectedAfterRecovery,
+  calculateCoolingHeatRejectedByAbsorption,
+  calculateCoolingHeatRejectedByCompression,
+  calculateCoolingHeatRejectionAuxiliaryAirCooledZero,
+  calculateCoolingHeatRejectionAuxiliaryEnergy,
+  calculateCoolingHeatRejectionDistributionAuxiliaryAirCooledZero,
+  calculateCoolingHeatRejectionDistributionAuxiliaryEnergy,
+  calculateCoolingHeatRejectionPartLoadFactor,
   calculateCoolingPartLoadFactor,
+  calculateCoolingRecoverableHeatByAbsorption,
+  calculateCoolingRecoverableHeatByCompression,
+  calculateCoolingRecoverableHeatMaximumTemperature,
+  calculateCoolingRecoverableHeatTemperatureUndefined,
+  calculateCoolingRecoverableHeatZero,
+  calculateCoolingStorageAuxiliaryEnergy,
+  calculateCoolingStorageAuxiliaryTotal,
+  calculateCoolingStorageGeneratorDeltaEnergy,
+  calculateCoolingStorageIceMassVariation,
+  calculateCoolingStorageIceThickness,
+  calculateCoolingStorageInitialIceThickness,
+  calculateCoolingStorageLatentEnergy,
+  calculateCoolingStorageOutputEnergy,
+  calculateCoolingStoragePcmLiquidTemperature,
+  calculateCoolingStoragePcmSolidMassVariation,
+  calculateCoolingStoragePcmSolidTemperature,
+  calculateCoolingStoragePumpOperationTime,
+  calculateCoolingStorageRecoverableAuxiliaryLoss,
+  calculateCoolingStorageRecoverableLossTotal,
+  calculateCoolingStorageRecoverableThermalLoss,
+  calculateCoolingStorageSensibleLiquidEnergy,
+  calculateCoolingStorageSensibleSolidEnergy,
+  calculateCoolingStorageSolidMassAfterUse,
+  calculateCoolingStorageThermalLoss,
+  calculateCoolingStorageTransformableEnergyWater,
+  calculateCoolingWaterHeatRejectionInletTemperature,
+  calculateCoolingWetHeatRejectionWaterTemperature,
   calculateDuctLeakageAirFlow,
   calculateDuctLeakageFactor,
   calculateDuctLeakageFlowFromFactor,
@@ -56,8 +101,18 @@ import {
   calculateSteamHumidificationPumpAuxiliaryEnergy,
   calculateVentilationAuxiliaryTotal,
   calculateVentilationControlAuxiliaryEnergy,
+  limitCoolingStoragePcmSolidMassToExistingSolid,
+  limitCoolingStoragePcmSolidMassToLiquid,
+  lookupCoolingHeatRejectionElectricPartLoadFactorTable323,
+  lookupCoolingHeatRejectionPolynomialCoefficientsTable320,
+  lookupCoolingHeatRejectionProcessDefaultsTable318,
+  lookupCoolingHeatRejectionReferenceTemperaturesTable319,
+  lookupCoolingHeatRejectionSpecificElectricDemandTable322,
+  selectCoolingHeatRejectionReferenceTemperatures,
+  selectCoolingHeatRejectionTemperature,
   selectCoolingGeneratorOutletTemperature,
   selectCoolingPartLoadBin,
+  validateCoolingStorageInputEnergy,
   allocateExtractAirFlowToZone,
   allocateSupplyAirFlowToZone
 } from "../mc001Chapter3SystemEnergy.mjs";
@@ -622,6 +677,403 @@ test("calculates cooling-system branch, distribution, generator and LENI relatio
   assertCloseTo(covered.value, 0.8);
   assertCloseTo(eer.value, 1);
   assertCloseTo(leni.valueKWhPerM2Year, (12 * 100 + 18 * 50) / 150);
+});
+
+test("calculates MC001 cooling-storage relations 3.94-3.123 with explicit storage inputs", () => {
+  const inputBoundary = validateCoolingStorageInputEnergy({ storageInputKWh: 48.29 });
+  const sensibleLiquid = calculateCoolingStorageSensibleLiquidEnergy({
+    liquidMassKg: 100,
+    liquidSpecificHeatKWhPerKgK: 0.00116,
+    generatorRequiredOutletTemperatureC: 6,
+    storageTemperatureC: 2
+  });
+  const latent = calculateCoolingStorageLatentEnergy({
+    latentHeatKWhPerKg: 0.092,
+    solidMassKg: 50
+  });
+  const sensibleSolid = calculateCoolingStorageSensibleSolidEnergy({
+    solidMassKg: 50,
+    solidSpecificHeatKWhPerKgK: 0.00058,
+    transitionTemperatureC: 0,
+    generatorOutletFlowTemperatureC: -4
+  });
+  const output = calculateCoolingStorageOutputEnergy({
+    sensibleLiquidEnergyKWh: sensibleLiquid.valueKWh,
+    latentEnergyKWh: latent.valueKWh,
+    sensibleSolidEnergyKWh: sensibleSolid.valueKWh,
+    distributionInputRequiredKWh: 6,
+    storageGeneratorOutputKWh: 1
+  });
+  const outputLoss = calculateCoolingStorageThermalLoss({
+    heatLossCoefficientKWPerK: 0.02,
+    ambientTemperatureC: 25,
+    storageTemperatureC: 7,
+    calculationHours: 10,
+    formulaId: "MC001_3_99_COOLING_STORAGE_OUTPUT_SIDE_LOSS",
+    branch: "output"
+  });
+  const inputLoss = calculateCoolingStorageThermalLoss({
+    heatLossCoefficientKWPerK: 0.01,
+    ambientTemperatureC: 25,
+    storageTemperatureC: 8,
+    calculationHours: 10,
+    formulaId: "MC001_3_100_COOLING_STORAGE_INPUT_SIDE_LOSS",
+    branch: "input"
+  });
+  const standbyLoss = calculateCoolingStorageThermalLoss({
+    heatLossCoefficientKWPerK: 0.005,
+    ambientTemperatureC: 25,
+    storageTemperatureC: 5,
+    calculationHours: 10,
+    formulaId: "MC001_3_101_COOLING_STORAGE_STANDBY_LOSS",
+    branch: "standby"
+  });
+  const transformable = calculateCoolingStorageTransformableEnergyWater({
+    storageInputKWh: 10,
+    storageInputLossKWh: 0.2,
+    storageStandbyLossKWh: 0.3,
+    storageOutputSideLossKWh: 0.4
+  });
+  const initialThickness = calculateCoolingStorageInitialIceThickness({
+    solidMassKg: 50,
+    solidDensityKgPerM3: 900,
+    storagePipeLengthM: 100,
+    storagePipeDiameterM: 0.02
+  });
+  const iceMassVariation = calculateCoolingStorageIceMassVariation({
+    transformableEnergyKWh: 0.76,
+    latentHeatKWhPerKg: 0.092,
+    solidSpecificHeatKWhPerKgK: 0.00058,
+    transitionTemperatureC: 0,
+    generatorOutletFlowTemperatureC: -4
+  });
+  const iceThickness = calculateCoolingStorageIceThickness({
+    maximumIceThicknessM: 0.02,
+    storagePipeDiameterM: 0.02,
+    solidMassKg: 50,
+    deltaSolidMassKg: -7,
+    solidDensityKgPerM3: 900,
+    storagePipeLengthM: 100
+  });
+  const solidMass = calculateCoolingStorageSolidMassAfterUse({
+    initialSolidMassKg: 50,
+    deltaSolidMassKg: -7
+  });
+  const pcmVariation = calculateCoolingStoragePcmSolidMassVariation({
+    transformableEnergyKWh: 0.5,
+    liquidSpecificHeatKWhPerKgK: 0.00116,
+    solidSpecificHeatKWhPerKgK: 0.0006,
+    transitionTemperatureC: 20
+  });
+  const limitedLiquid = limitCoolingStoragePcmSolidMassToLiquid({
+    deltaSolidMassKg: 60,
+    initialLiquidMassKg: 50
+  });
+  const limitedSolid = limitCoolingStoragePcmSolidMassToExistingSolid({
+    deltaSolidMassKg: 60,
+    initialSolidMassKg: 42
+  });
+  const solidTemperature = calculateCoolingStoragePcmSolidTemperature({
+    initialSolidTemperatureC: -2,
+    transformableEnergyKWh: 0.2,
+    solidSpecificHeatKWhPerKgK: 0.001,
+    deltaSolidMassKg: 5,
+    transitionTemperatureC: 0,
+    solidMassKg: 40,
+    generatorOutletFlowTemperatureC: -6
+  });
+  const liquidTemperature = calculateCoolingStoragePcmLiquidTemperature({
+    initialLiquidTemperatureC: 2,
+    transformableEnergyKWh: 0.2,
+    solidSpecificHeatKWhPerKgK: 0.001,
+    deltaSolidMassKg: 5,
+    transitionTemperatureC: 0,
+    liquidSpecificHeatKWhPerKgK: 0.00116,
+    initialLiquidMassKg: 45
+  });
+  const pumpTime = calculateCoolingStoragePumpOperationTime({
+    storageEnergyKWh: 1.2,
+    mediumSpecificHeatKWhPerKgK: 0.00116,
+    mediumDensityKgPerM3: 1000,
+    pumpVolumeFlowM3PerH: 2,
+    supplyTemperatureC: 12,
+    returnTemperatureC: 7
+  });
+  const pumpAux = calculateCoolingStorageAuxiliaryEnergy({
+    pumpOperationHours: pumpTime.valueH,
+    pumpElectricPowerKW: 0.4
+  });
+  const auxTotal = calculateCoolingStorageAuxiliaryTotal({
+    outputSideAuxiliaryKWh: 0.3,
+    inputSideAuxiliaryKWh: 0.2
+  });
+  const auxRecoverable = calculateCoolingStorageRecoverableAuxiliaryLoss({
+    auxiliaryEnergyKWh: 0.5,
+    recoverableAuxiliaryFraction: 0.4
+  });
+  const thermalRecoverable = calculateCoolingStorageRecoverableThermalLoss({
+    outputSideLossKWh: outputLoss.valueKWh,
+    standbyLossKWh: standbyLoss.valueKWh,
+    inputSideLossKWh: inputLoss.valueKWh,
+    recoverableStorageFraction: 0.5
+  });
+  const recoverableTotal = calculateCoolingStorageRecoverableLossTotal({
+    auxiliaryRecoverableLossKWh: auxRecoverable.valueKWh,
+    thermalRecoverableLossKWh: thermalRecoverable.valueKWh
+  });
+  const generatorDelta = calculateCoolingStorageGeneratorDeltaEnergy({
+    storageGeneratorEnergyKWh: 48.29,
+    storageOutputKWh: 48.0,
+    inputSideLossKWh: 0.02,
+    standbyLossKWh: 0.09,
+    outputSideLossKWh: 0.1
+  });
+
+  assert.equal(inputBoundary.formulaId, "MC001_3_94_COOLING_STORAGE_INPUT_EXPLICIT_BOUNDARY");
+  assert.equal(sensibleLiquid.formulaId, "MC001_3_95_COOLING_STORAGE_SENSIBLE_LIQUID_ENERGY");
+  assert.equal(latent.formulaId, "MC001_3_96_COOLING_STORAGE_LATENT_ENERGY");
+  assert.equal(sensibleSolid.formulaId, "MC001_3_97_COOLING_STORAGE_SENSIBLE_SOLID_ENERGY");
+  assert.equal(output.formulaId, "MC001_3_98_COOLING_STORAGE_OUTPUT_ENERGY");
+  assert.equal(transformable.formulaId, "MC001_3_102_COOLING_STORAGE_TRANSFORMABLE_ENERGY_WATER");
+  assert.equal(initialThickness.formulaId, "MC001_3_103_COOLING_STORAGE_INITIAL_ICE_THICKNESS");
+  assert.equal(iceMassVariation.formulaId, "MC001_3_104_COOLING_STORAGE_ICE_MASS_VARIATION");
+  assert.equal(iceThickness.formulaId, "MC001_3_105_COOLING_STORAGE_ICE_THICKNESS");
+  assert.equal(solidMass.formulaId, "MC001_3_106_COOLING_STORAGE_SOLID_MASS_AFTER_USE");
+  assert.equal(pcmVariation.formulaId, "MC001_3_107_COOLING_STORAGE_PCM_SOLID_MASS_VARIATION");
+  assert.equal(limitedLiquid.formulaId, "MC001_3_108_COOLING_STORAGE_PCM_SOLID_MASS_LIQUID_LIMIT");
+  assert.equal(limitedSolid.formulaId, "MC001_3_109_COOLING_STORAGE_PCM_SOLID_MASS_SOLID_LIMIT");
+  assert.equal(solidTemperature.formulaId, "MC001_3_110_COOLING_STORAGE_PCM_SOLID_TEMPERATURE");
+  assert.equal(liquidTemperature.formulaId, "MC001_3_114_COOLING_STORAGE_PCM_LIQUID_TEMPERATURE");
+  assert.equal(pumpTime.formulaId, "MC001_3_115_3_117_COOLING_STORAGE_PUMP_OPERATION_TIME");
+  assert.equal(pumpAux.formulaId, "MC001_3_116_3_118_COOLING_STORAGE_AUXILIARY_ENERGY");
+  assert.equal(auxTotal.formulaId, "MC001_3_119_COOLING_STORAGE_AUXILIARY_TOTAL");
+  assert.equal(auxRecoverable.formulaId, "MC001_3_120_COOLING_STORAGE_RECOVERABLE_AUXILIARY_LOSS");
+  assert.equal(thermalRecoverable.formulaId, "MC001_3_121_COOLING_STORAGE_RECOVERABLE_THERMAL_LOSS");
+  assert.equal(recoverableTotal.formulaId, "MC001_3_122_COOLING_STORAGE_RECOVERABLE_LOSS_TOTAL");
+  assert.equal(generatorDelta.formulaId, "MC001_3_123_COOLING_STORAGE_GENERATOR_DELTA_ENERGY");
+  assertCloseTo(sensibleLiquid.valueKWh, 0.464);
+  assertCloseTo(latent.valueKWh, 4.6);
+  assertCloseTo(sensibleSolid.valueKWh, 0.058);
+  assertCloseTo(output.valueKWh, 5);
+  assertCloseTo(outputLoss.valueKWh, 3.6);
+  assertCloseTo(inputLoss.valueKWh, 1.7);
+  assertCloseTo(standbyLoss.valueKWh, 1);
+  assertCloseTo(transformable.valueKWh, 10.9);
+  assertCloseTo(initialThickness.valueM, 0.013276948517414362);
+  assertCloseTo(iceMassVariation.valueKg, -8.158007728638902);
+  assertCloseTo(iceThickness.valueM, 0.011754142411067498);
+  assert.equal(solidMass.valueKg, 43);
+  assertCloseTo(pcmVariation.valueKg, 37.99392097264438);
+  assert.equal(limitedLiquid.valueKg, 50);
+  assert.equal(limitedSolid.valueKg, 42);
+  assertCloseTo(solidTemperature.valueC, 2.2222222222222223);
+  assertCloseTo(liquidTemperature.valueC, 5.620689655172415);
+  assertCloseTo(pumpTime.valueH, 0.10344827586206896);
+  assertCloseTo(pumpAux.valueKWh, 0.041379310344827586);
+  assert.equal(auxTotal.valueKWh, 0.5);
+  assert.equal(auxRecoverable.valueKWh, -0.2);
+  assertCloseTo(thermalRecoverable.valueKWh, -3.15);
+  assertCloseTo(recoverableTotal.valueKWh, -3.35);
+  assertCloseTo(generatorDelta.valueKWh, 0.08);
+});
+
+test("calculates MC001 cooling heat-rejection and generator relations 3.156-3.182", () => {
+  const referenceOutdoor = selectCoolingHeatRejectionReferenceTemperatures({
+    branch: COOLING_HEAT_REJECTION_REFERENCE_BRANCH.AIR_OUTDOOR,
+    outdoorReferenceTemperatureC: 32,
+    outdoorNominalTemperatureC: 35
+  });
+  const referenceIndoor = selectCoolingHeatRejectionReferenceTemperatures({
+    branch: COOLING_HEAT_REJECTION_REFERENCE_BRANCH.AIR_INDOOR,
+    indoorReferenceTemperatureC: 26,
+    indoorNominalTemperatureC: 27
+  });
+  const referenceWater = selectCoolingHeatRejectionReferenceTemperatures({
+    branch: COOLING_HEAT_REJECTION_REFERENCE_BRANCH.WATER,
+    waterReferenceInletTemperatureC: 33,
+    waterNominalInletTemperatureC: 30
+  });
+  const processDefaults = lookupCoolingHeatRejectionProcessDefaultsTable318({
+    processKey: "water_cooled_chiller"
+  });
+  const table319 = lookupCoolingHeatRejectionReferenceTemperaturesTable319({
+    systemKey: "water_cooled_wet_33_27"
+  });
+  const table320 = lookupCoolingHeatRejectionPolynomialCoefficientsTable320({
+    systemKey: "air_cooled_control_piston_or_scroll"
+  });
+  const partLoad = calculateCoolingHeatRejectionPartLoadFactor({
+    temperatureC: 25,
+    a2: table320.a2,
+    a1: table320.a1,
+    a0: table320.a0
+  });
+  const thetaOutdoor = selectCoolingHeatRejectionTemperature({
+    source: COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE.OUTDOOR_AIR,
+    outdoorTemperatureC: 31
+  });
+  const zeroRecoverable = calculateCoolingRecoverableHeatZero();
+  const undefinedTemperature = calculateCoolingRecoverableHeatTemperatureUndefined();
+  const rejectedCompression = calculateCoolingHeatRejectedByCompression({
+    generatorCoolingInputKWh: 100,
+    nominalEer: 3,
+    partLoadFactor: 0.9,
+    eerCorrectionFactor: 1
+  });
+  const rejectedAbsorption = calculateCoolingHeatRejectedByAbsorption({
+    generatorCoolingInputKWh: 100,
+    nominalHeatRatio: 0.7,
+    partLoadFactor: 0.9
+  });
+  const waterInlet = calculateCoolingWaterHeatRejectionInletTemperature({
+    controlMode: COOLING_HEAT_REJECTION_WATER_CONTROL.VARIABLE_TEMPERATURE,
+    heatRejectionOutletTemperatureC: 27,
+    heatRejectedKWh: 130,
+    operationHours: 10,
+    nominalHeatRejectionPowerKW: 20,
+    referenceInletTemperatureC: 33,
+    referenceOutletTemperatureC: 27,
+    inletTemperatureLowerLimitC: 25
+  });
+  const wetWater = calculateCoolingWetHeatRejectionWaterTemperature({
+    heatRejectionOutletTemperatureC: 27,
+    heatRejectionInletTemperatureC: 31,
+    outdoorWetBulbTemperatureC: 21,
+    evaporationTemperatureRatio: 0.7
+  });
+  const dryWater = calculateCoolingDryHeatRejectionWaterTemperature({
+    heatRejectionOutletTemperatureC: 32,
+    heatRejectionInletTemperatureC: 36,
+    outdoorAirTemperatureC: 30,
+    evaporationTemperatureRatio: 0.5
+  });
+  const recoverableCompression = calculateCoolingRecoverableHeatByCompression({
+    generatorCoolingInputKWh: 100,
+    nominalEer: 3,
+    partLoadFactor: 0.9,
+    eerCorrectionFactor: 1
+  });
+  const recoverableAbsorption = calculateCoolingRecoverableHeatByAbsorption({
+    generatorCoolingInputKWh: 100,
+    nominalHeatRatio: 0.7,
+    partLoadFactor: 0.9
+  });
+  const recoverableMaxTemp = calculateCoolingRecoverableHeatMaximumTemperature({
+    waterHeatRejectionInletTemperatureC: 31
+  });
+  const rejectedAfterRecovery = calculateCoolingHeatRejectedAfterRecovery({
+    recoverableHeatKWh: 137.037037037037,
+    requiredRecoveredHeatKWh: 40
+  });
+  const compressionElectric = calculateCoolingCompressionElectricInput({
+    generatorCoolingInputKWh: 100,
+    partLoadValue: 0.95,
+    nominalEer: 3,
+    eerCorrectionFactor: 1.1
+  });
+  const absorptionHeat = calculateCoolingAbsorptionHeatInput({
+    generatorCoolingInputKWh: 100,
+    partLoadValue: 0.8,
+    nominalHeatRatio: 0.7
+  });
+  const airCooledAux = calculateCoolingHeatRejectionAuxiliaryAirCooledZero();
+  const table322 = lookupCoolingHeatRejectionSpecificElectricDemandTable322({
+    systemKey: "wet_closed_axial_no_extra_silencer"
+  });
+  const table323 = lookupCoolingHeatRejectionElectricPartLoadFactorTable323({
+    controlKey: "variable_water_temperature",
+    rejectionTypeKey: "wet_or_hybrid_wet"
+  });
+  const heatRejectionAux = calculateCoolingHeatRejectionAuxiliaryEnergy({
+    heatRejectedKWh: 130,
+    specificElectricDemandKWPerKW: table322.valueKWPerKW,
+    electricPartLoadFactor: table323.value,
+    freeCoolingElectricFactor: 1
+  });
+  const controlAux = calculateCoolingControlAuxiliaryEnergy({
+    operationHours: 10,
+    controlPowersKW: [0.02, 0.03]
+  });
+  const distributionZero = calculateCoolingHeatRejectionDistributionAuxiliaryAirCooledZero();
+  const distributionAux = calculateCoolingHeatRejectionDistributionAuxiliaryEnergy({
+    heatRejectedKWh: 130,
+    distributionSpecificElectricDemandKWPerKW: 0.01
+  });
+  const generatorAux = calculateCoolingGeneratorAuxiliaryTotal({
+    heatRejectionAuxiliaryKWh: heatRejectionAux.valueKWh,
+    heatRejectionDistributionAuxiliaryKWh: distributionAux.valueKWh,
+    controlAuxiliaryKWh: controlAux.valueKWh
+  });
+  const eer = calculateCoolingCompressionEer({
+    generatorCoolingInputKWh: 130,
+    compressionElectricInputKWh: 31.5,
+    auxiliaryElectricInputKWh: generatorAux.valueKWh
+  });
+  const absorptionRatio = calculateCoolingAbsorptionPerformanceRatio({
+    generatorCoolingInputKWh: 100,
+    absorptionHeatInputKWh: absorptionHeat.valueKWh
+  });
+
+  assert.equal(referenceOutdoor.formulaId, "MC001_3_156_COOLING_HEAT_REJECTION_AIR_OUTDOOR_REFERENCE");
+  assert.equal(referenceIndoor.formulaId, "MC001_3_157_COOLING_HEAT_REJECTION_AIR_INDOOR_REFERENCE");
+  assert.equal(referenceWater.formulaId, "MC001_3_158_COOLING_HEAT_REJECTION_WATER_REFERENCE");
+  assert.equal(partLoad.formulaId, "MC001_3_159_HEAT_REJECTION_PART_LOAD_FACTOR");
+  assert.equal(thetaOutdoor.formulaId, "MC001_3_160_HEAT_REJECTION_OUTDOOR_AIR_TEMPERATURE");
+  assert.equal(zeroRecoverable.formulaId, "MC001_3_162_COOLING_RECOVERABLE_HEAT_ZERO_AIR_OR_WATER_CHILLER");
+  assert.equal(undefinedTemperature.formulaId, "MC001_3_163_COOLING_RECOVERABLE_HEAT_TEMPERATURE_UNDEFINED");
+  assert.equal(rejectedCompression.formulaId, "MC001_3_164_HEAT_REJECTED_COMPRESSION_GENERATOR");
+  assert.equal(rejectedAbsorption.formulaId, "MC001_3_165_HEAT_REJECTED_ABSORPTION_GENERATOR");
+  assert.equal(waterInlet.formulaId, "MC001_3_166_WATER_HEAT_REJECTION_INLET_TEMPERATURE");
+  assert.equal(wetWater.formulaId, "MC001_3_167_WET_HEAT_REJECTION_WATER_TEMPERATURE");
+  assert.equal(dryWater.formulaId, "MC001_3_168_DRY_HEAT_REJECTION_WATER_TEMPERATURE");
+  assert.equal(recoverableCompression.formulaId, "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR");
+  assert.equal(recoverableAbsorption.formulaId, "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR");
+  assert.equal(recoverableMaxTemp.formulaId, "MC001_3_171_RECOVERABLE_HEAT_MAXIMUM_TEMPERATURE");
+  assert.equal(rejectedAfterRecovery.formulaId, "MC001_3_172_HEAT_REJECTED_AFTER_RECOVERY");
+  assert.equal(compressionElectric.formulaId, "MC001_3_173_COOLING_COMPRESSION_ELECTRIC_INPUT");
+  assert.equal(absorptionHeat.formulaId, "MC001_3_174_COOLING_ABSORPTION_HEAT_INPUT");
+  assert.equal(airCooledAux.formulaId, "MC001_3_175_HEAT_REJECTION_AUXILIARY_AIR_COOLED_ZERO");
+  assert.equal(heatRejectionAux.formulaId, "MC001_3_176_HEAT_REJECTION_AUXILIARY_ENERGY");
+  assert.equal(controlAux.formulaId, "MC001_3_177_CONTROL_AUXILIARY_ENERGY");
+  assert.equal(distributionZero.formulaId, "MC001_3_178_HEAT_REJECTION_DISTRIBUTION_AIR_COOLED_ZERO");
+  assert.equal(distributionAux.formulaId, "MC001_3_179_HEAT_REJECTION_DISTRIBUTION_AUXILIARY_ENERGY");
+  assert.equal(generatorAux.formulaId, "MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL");
+  assert.equal(eer.formulaId, "MC001_3_181_COOLING_COMPRESSION_EER");
+  assert.equal(absorptionRatio.formulaId, "MC001_3_182_COOLING_ABSORPTION_PERFORMANCE_RATIO");
+  assert.equal(processDefaults.condenserTemperatureDifferenceK, 4);
+  assert.equal(processDefaults.evaporatorTemperatureDifferenceK, 6);
+  assert.equal(table319.heatRejectionReferenceInletTemperatureC, 33);
+  assert.equal(table319.heatRejectionReferenceOutletTemperatureC, 27);
+  assert.equal(referenceOutdoor.referenceC, 32);
+  assert.equal(referenceOutdoor.nominalC, 35);
+  assert.equal(referenceIndoor.referenceC, 26);
+  assert.equal(referenceIndoor.nominalC, 27);
+  assert.equal(referenceWater.referenceC, 33);
+  assertCloseTo(partLoad.value, 1.2205);
+  assert.equal(thetaOutdoor.valueC, 31);
+  assert.equal(zeroRecoverable.valueKWh, 0);
+  assert.equal(undefinedTemperature.valueC, null);
+  assertCloseTo(rejectedCompression.valueKWh, 137.037037037037);
+  assertCloseTo(rejectedAbsorption.valueKWh, 258.73015873015873);
+  assertCloseTo(waterInlet.valueC, 30.9);
+  assert.equal(wetWater.valueC, 20);
+  assert.equal(dryWater.valueC, 29);
+  assertCloseTo(recoverableCompression.valueKWh, 137.037037037037);
+  assertCloseTo(recoverableAbsorption.valueKWh, 258.73015873015873);
+  assert.equal(recoverableMaxTemp.valueC, 31);
+  assertCloseTo(rejectedAfterRecovery.valueKWh, 97.037037037037);
+  assertCloseTo(compressionElectric.valueKWh, 31.89792663476874);
+  assertCloseTo(absorptionHeat.valueKWh, 178.57142857142858);
+  assert.equal(airCooledAux.valueKWh, 0);
+  assert.equal(table322.valueKWPerKW, 0.018);
+  assert.equal(table323.value, 0.8);
+  assertCloseTo(heatRejectionAux.valueKWh, 1.872);
+  assert.equal(controlAux.valueKWh, 0.5);
+  assert.equal(distributionZero.valueKWh, 0);
+  assert.equal(distributionAux.valueKWh, 1.3);
+  assertCloseTo(generatorAux.valueKWh, 3.672);
+  assertCloseTo(eer.value, 3.6961219151597864);
+  assertCloseTo(absorptionRatio.value, 0.56);
 });
 
 test("rejects invalid Chapter 3 system-energy inputs", () => {

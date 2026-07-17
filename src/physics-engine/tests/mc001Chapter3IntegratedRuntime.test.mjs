@@ -17,6 +17,20 @@ function assertCloseTo(actual, expected, epsilon = 1e-9) {
   assert.ok(Math.abs(actual - expected) < epsilon, `${actual} is not close to ${expected}`);
 }
 
+function sum(values) {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function assertContainsNoFunction(value, path = "fixture") {
+  if (typeof value === "function") {
+    throw new Error(`${path} must not contain runtime functions`);
+  }
+  if (!value || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    assertContainsNoFunction(child, `${path}.${key}`);
+  }
+}
+
 test("runs the 12-month Chapter 3 integrated runtime chain with fixed expected outputs", () => {
   const result = calculateMc001Chapter3IntegratedRuntime(
     mc001Chapter3ReferenceBuildingFixture.input
@@ -58,6 +72,59 @@ test("runs the 12-month Chapter 3 integrated runtime chain with fixed expected o
   assertCloseTo(
     result.annual.coolingInputKWh,
     result.monthly.reduce((total, month) => total + month.totals.coolingInputKWh, 0)
+  );
+});
+
+test("certifies the Chapter 3 fixed 12-month fixture derivation ledger", () => {
+  const { input, expected, derivationLedger } = mc001Chapter3ReferenceBuildingFixture;
+
+  assert.equal(derivationLedger.expectedValuesPolicy, "hard_coded_constants_not_generated_by_runtime");
+  assertContainsNoFunction(expected, "expected");
+  assertContainsNoFunction(derivationLedger, "derivationLedger");
+  assert.deepEqual(
+    input.months.map(month => month.chapter2Useful.qHndKWh),
+    derivationLedger.chapter2UsefulInputsKWh.qHnd
+  );
+  assert.deepEqual(
+    input.months.map(month => month.chapter2Useful.qCndKWh),
+    derivationLedger.chapter2UsefulInputsKWh.qCnd
+  );
+  assert.deepEqual(
+    input.months[0].heatingStages.map(stage => stage.stageId),
+    derivationLedger.stageOrder.heating
+  );
+  assert.deepEqual(
+    input.months[0].coolingStages.map(stage => stage.stageId),
+    derivationLedger.stageOrder.cooling
+  );
+  assert.deepEqual(
+    input.months[0].dhw.stages.map(stage => stage.stageId),
+    derivationLedger.stageOrder.dhw
+  );
+  assertCloseTo(sum(expected.monthlyHeatingInputKWh), expected.annual.heatingInputKWh);
+  assertCloseTo(sum(expected.monthlyCoolingInputKWh), expected.annual.coolingInputKWh);
+  assertCloseTo(sum(expected.monthlyDhwInputKWh), expected.annual.dhwInputKWh);
+  assertCloseTo(
+    sum(expected.monthlyVentilationAuxiliaryKWh),
+    expected.annual.ventilationAuxiliaryKWh
+  );
+  assertCloseTo(
+    expected.monthlyHeatingInputKWh[0] - input.months[0].chapter2Useful.qHndKWh,
+    derivationLedger.monthlyStageDeltasKWh.heating.total
+  );
+  assertCloseTo(
+    expected.monthlyCoolingInputKWh[6] - input.months[6].chapter2Useful.qCndKWh,
+    derivationLedger.monthlyStageDeltasKWh.cooling.total
+  );
+  assertCloseTo(
+    expected.monthlyDhwInputKWh[0] - input.months[0].dhw.usefulDemandKWh,
+    derivationLedger.monthlyStageDeltasKWh.dhw.total
+  );
+  assert.equal(derivationLedger.auxiliarySeparationKWh.lightingMonthlyExplicitBoundary, 20);
+  assert.equal(input.lighting.monthlyEnergyKWh.length, 12);
+  assert.equal(expected.annual.lightingEnergyKWh, 240);
+  assert.ok(
+    derivationLedger.explicitInputBoundaries.includes("SR EN 15193-1 lighting monthly explicit boundary")
   );
 });
 

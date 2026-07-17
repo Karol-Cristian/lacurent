@@ -10,6 +10,130 @@ export const EXTRACT_FAN_POSITION = Object.freeze({
   DOWNSTREAM_OF_RECOVERY: "downstream_of_recovery"
 });
 
+export const COOLING_HEAT_REJECTION_REFERENCE_BRANCH = Object.freeze({
+  AIR_OUTDOOR: "air_outdoor",
+  AIR_INDOOR: "air_indoor",
+  WATER: "water"
+});
+
+export const COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE = Object.freeze({
+  OUTDOOR_AIR: "outdoor_air",
+  INDOOR_AIR: "indoor_air"
+});
+
+export const COOLING_HEAT_REJECTION_WATER_CONTROL = Object.freeze({
+  NO_CONTROL: "no_control",
+  CONSTANT_TEMPERATURE: "constant_temperature",
+  VARIABLE_TEMPERATURE: "variable_temperature"
+});
+
+const TABLE_3_18_PROCESS_DEFAULTS = Object.freeze({
+  water_cooled_chiller: Object.freeze({
+    condenserTemperatureDifferenceK: 4,
+    evaporatorTemperatureDifferenceK: 6
+  }),
+  air_cooled_room_or_chiller_outdoor_air: Object.freeze({
+    condenserTemperatureDifferenceK: 10,
+    evaporatorTemperatureDifferenceK: 20
+  }),
+  air_cooled_chiller_indoor_air: Object.freeze({
+    condenserTemperatureDifferenceK: 20,
+    evaporatorTemperatureDifferenceK: 6
+  })
+});
+
+const TABLE_3_19_REFERENCE_TEMPERATURES = Object.freeze({
+  room_air_conditioner_or_chiller_no_control: Object.freeze({
+    heatRejectionReferenceInletTemperatureC: 32,
+    heatRejectionReferenceOutletTemperatureC: null
+  }),
+  air_cooled_control_piston_or_scroll: Object.freeze({
+    heatRejectionReferenceInletTemperatureC: 32,
+    heatRejectionReferenceOutletTemperatureC: null
+  }),
+  air_cooled_control_screw_or_centrifugal: Object.freeze({
+    heatRejectionReferenceInletTemperatureC: 32,
+    heatRejectionReferenceOutletTemperatureC: null
+  }),
+  water_cooled_wet_33_27: Object.freeze({
+    heatRejectionReferenceInletTemperatureC: 33,
+    heatRejectionReferenceOutletTemperatureC: 27
+  }),
+  water_cooled_dry_45_40_piston_or_centrifugal: Object.freeze({
+    heatRejectionReferenceInletTemperatureC: 45,
+    heatRejectionReferenceOutletTemperatureC: 40
+  }),
+  water_cooled_dry_45_40_screw: Object.freeze({
+    heatRejectionReferenceInletTemperatureC: 45,
+    heatRejectionReferenceOutletTemperatureC: 40
+  })
+});
+
+const TABLE_3_20_HEAT_REJECTION_POLYNOMIALS = Object.freeze({
+  air_cooled_no_temperature_control: Object.freeze({
+    temperatureSource: null,
+    a2: 0,
+    a1: 0,
+    a0: 1,
+    validMinC: null,
+    validMaxC: null
+  }),
+  air_cooled_control_piston_or_scroll: Object.freeze({
+    temperatureSource: COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE.OUTDOOR_AIR,
+    a2: 0.00083,
+    a1: -0.07753,
+    a0: 2.64,
+    validMinC: 12,
+    validMaxC: 35
+  }),
+  air_cooled_control_screw_or_centrifugal: Object.freeze({
+    temperatureSource: COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE.OUTDOOR_AIR,
+    a2: 0.00071,
+    a1: -0.08224,
+    a0: 2.91,
+    validMinC: 12,
+    validMaxC: 35
+  }),
+  water_cooled_wet_33_27: Object.freeze({
+    temperatureSource: "cooling_water_inlet",
+    a2: 0,
+    a1: -0.0307,
+    a0: 2.0164,
+    validMinC: 12,
+    validMaxC: 40
+  }),
+  water_cooled_dry_45_40_piston_or_centrifugal: Object.freeze({
+    temperatureSource: "cooling_water_inlet",
+    a2: 0,
+    a1: -0.0249,
+    a0: 2.1181,
+    validMinC: 15,
+    validMaxC: 50
+  }),
+  water_cooled_dry_45_40_screw: Object.freeze({
+    temperatureSource: "cooling_water_inlet",
+    a2: 0,
+    a1: -0.0486,
+    a0: 3.1851,
+    validMinC: 15,
+    validMaxC: 50
+  })
+});
+
+const TABLE_3_22_HEAT_REJECTION_SPECIFIC_ELECTRIC_DEMAND = Object.freeze({
+  wet_open_axial_no_extra_silencer: 0.033,
+  wet_closed_axial_no_extra_silencer: 0.018,
+  dry_axial_no_extra_silencer: 0.045,
+  wet_open_radial_extra_silencer: 0.04,
+  wet_closed_radial_extra_silencer: 0.021
+});
+
+const TABLE_3_23_HEAT_REJECTION_ELECTRIC_PART_LOAD_FACTOR = Object.freeze({
+  no_control: Object.freeze({ dry_or_hybrid_dry: 1, wet_or_hybrid_wet: 1 }),
+  constant_water_temperature: Object.freeze({ dry_or_hybrid_dry: 0.1, wet_or_hybrid_wet: 0.1 }),
+  variable_water_temperature: Object.freeze({ dry_or_hybrid_dry: 0.45, wet_or_hybrid_wet: 0.8 })
+});
+
 function assertFiniteNumber(value, name) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`${name} must be a finite number`);
@@ -80,6 +204,12 @@ function sumNonNegativeTerms(terms) {
     assertFiniteNonNegativeNumber(value, name);
   }
   return Object.values(terms).reduce((sum, value) => sum + value, 0);
+}
+
+function assertObjectKey(map, key, name) {
+  if (!Object.hasOwn(map, key)) {
+    throw new Error(`${name} must be one of ${Object.keys(map).join(", ")}`);
+  }
 }
 
 export function calculateChapter3HeatingGeneratorInputEnergy(input) {
@@ -1777,6 +1907,1305 @@ export function calculateCoolingEerTemperatureCorrectionFactor(input) {
       condenserTemperatureDifferenceK
     },
     extra: { actualColdK, actualHotK, nominalColdK, nominalHotK }
+  });
+}
+
+export function validateCoolingStorageInputEnergy(input) {
+  const { storageInputKWh } = input ?? {};
+
+  assertFiniteNumber(storageInputKWh, "storageInputKWh");
+
+  return makeResult({
+    value: storageInputKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_94_COOLING_STORAGE_INPUT_EXPLICIT_BOUNDARY",
+    formulaText: "QC,sto,in is received from the cooling distribution module",
+    inputs: { storageInputKWh },
+    assumptions: ["relation_3_94_is_a_module_input_boundary_in_table_3_9"]
+  });
+}
+
+export function calculateCoolingStorageSensibleLiquidEnergy(input) {
+  const {
+    liquidMassKg,
+    liquidSpecificHeatKWhPerKgK,
+    mediumDensityKgPerM3 = 0,
+    mediumVolumeM3 = 0,
+    mediumSpecificHeatKWhPerKgK = 0,
+    generatorRequiredOutletTemperatureC,
+    storageTemperatureC
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(liquidMassKg, "liquidMassKg");
+  assertFiniteNonNegativeNumber(liquidSpecificHeatKWhPerKgK, "liquidSpecificHeatKWhPerKgK");
+  assertFiniteNonNegativeNumber(mediumDensityKgPerM3, "mediumDensityKgPerM3");
+  assertFiniteNonNegativeNumber(mediumVolumeM3, "mediumVolumeM3");
+  assertFiniteNonNegativeNumber(mediumSpecificHeatKWhPerKgK, "mediumSpecificHeatKWhPerKgK");
+  assertFiniteNumber(generatorRequiredOutletTemperatureC, "generatorRequiredOutletTemperatureC");
+  assertFiniteNumber(storageTemperatureC, "storageTemperatureC");
+
+  const equivalentHeatCapacityKWhPerK =
+    liquidMassKg * liquidSpecificHeatKWhPerKgK +
+    mediumDensityKgPerM3 * mediumVolumeM3 * mediumSpecificHeatKWhPerKgK;
+  const valueKWh = equivalentHeatCapacityKWhPerK *
+    (generatorRequiredOutletTemperatureC - storageTemperatureC);
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_95_COOLING_STORAGE_SENSIBLE_LIQUID_ENERGY",
+    formulaText:
+      "QC,sto,sens,lqd = (mC,sto,lqd Cp,lqd + rhoSto,med Vsto,med Cp,sto,med) (thetaC,gen,out,req - thetaC,sto)",
+    inputs: {
+      liquidMassKg,
+      liquidSpecificHeatKWhPerKgK,
+      mediumDensityKgPerM3,
+      mediumVolumeM3,
+      mediumSpecificHeatKWhPerKgK,
+      generatorRequiredOutletTemperatureC,
+      storageTemperatureC
+    },
+    extra: { equivalentHeatCapacityKWhPerK }
+  });
+}
+
+export function calculateCoolingStorageLatentEnergy(input) {
+  const { latentHeatKWhPerKg, solidMassKg } = input ?? {};
+
+  assertFiniteNonNegativeNumber(latentHeatKWhPerKg, "latentHeatKWhPerKg");
+  assertFiniteNonNegativeNumber(solidMassKg, "solidMassKg");
+  const valueKWh = latentHeatKWhPerKg * solidMassKg;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_96_COOLING_STORAGE_LATENT_ENERGY",
+    formulaText: "QC,sto,lat = Cp,lat * mC,sto,sld",
+    inputs: { latentHeatKWhPerKg, solidMassKg }
+  });
+}
+
+export function calculateCoolingStorageSensibleSolidEnergy(input) {
+  const {
+    solidMassKg,
+    solidSpecificHeatKWhPerKgK,
+    transitionTemperatureC,
+    generatorOutletFlowTemperatureC
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(solidMassKg, "solidMassKg");
+  assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
+  assertFiniteNumber(generatorOutletFlowTemperatureC, "generatorOutletFlowTemperatureC");
+  const valueKWh =
+    solidMassKg * solidSpecificHeatKWhPerKgK *
+    ((transitionTemperatureC - generatorOutletFlowTemperatureC) / 2);
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_97_COOLING_STORAGE_SENSIBLE_SOLID_ENERGY",
+    formulaText:
+      "QC,sto,sens,sld = mC,sto,sld Cp,sens,sld (thetaSto,tr - thetaC,sto,gen,out,flw) / 2",
+    inputs: {
+      solidMassKg,
+      solidSpecificHeatKWhPerKgK,
+      transitionTemperatureC,
+      generatorOutletFlowTemperatureC
+    }
+  });
+}
+
+export function calculateCoolingStorageOutputEnergy(input) {
+  const {
+    sensibleLiquidEnergyKWh,
+    latentEnergyKWh,
+    sensibleSolidEnergyKWh,
+    distributionInputRequiredKWh,
+    storageGeneratorOutputKWh
+  } = input ?? {};
+
+  assertFiniteNumber(sensibleLiquidEnergyKWh, "sensibleLiquidEnergyKWh");
+  assertFiniteNumber(latentEnergyKWh, "latentEnergyKWh");
+  assertFiniteNumber(sensibleSolidEnergyKWh, "sensibleSolidEnergyKWh");
+  assertFiniteNumber(distributionInputRequiredKWh, "distributionInputRequiredKWh");
+  assertFiniteNumber(storageGeneratorOutputKWh, "storageGeneratorOutputKWh");
+  const availableKWh = sensibleLiquidEnergyKWh + latentEnergyKWh + sensibleSolidEnergyKWh;
+  const demandAfterGeneratorKWh = distributionInputRequiredKWh - storageGeneratorOutputKWh;
+  const valueKWh = Math.min(availableKWh, demandAfterGeneratorKWh);
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_98_COOLING_STORAGE_OUTPUT_ENERGY",
+    formulaText:
+      "QC,sto,out = min(QC,sto,sens,lqd + QC,sto,lat + QC,sto,sens,sld; QC,dis,in,tot,req - QC,sto,gen,out)",
+    inputs: {
+      sensibleLiquidEnergyKWh,
+      latentEnergyKWh,
+      sensibleSolidEnergyKWh,
+      distributionInputRequiredKWh,
+      storageGeneratorOutputKWh
+    },
+    extra: { availableKWh, demandAfterGeneratorKWh }
+  });
+}
+
+export function calculateCoolingStorageThermalLoss(input) {
+  const {
+    heatLossCoefficientKWPerK,
+    ambientTemperatureC,
+    storageTemperatureC,
+    calculationHours,
+    formulaId = "MC001_3_99_TO_3_101_COOLING_STORAGE_THERMAL_LOSS",
+    branch = "storage"
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(heatLossCoefficientKWPerK, "heatLossCoefficientKWPerK");
+  assertFiniteNumber(ambientTemperatureC, "ambientTemperatureC");
+  assertFiniteNumber(storageTemperatureC, "storageTemperatureC");
+  assertFiniteNonNegativeNumber(calculationHours, "calculationHours");
+  const valueKWh = heatLossCoefficientKWPerK *
+    (ambientTemperatureC - storageTemperatureC) *
+    calculationHours;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId,
+    formulaText: "QC,sto,ls = Hc,sto,ls (thetaSto,amb - thetaC,sto) tci",
+    inputs: { heatLossCoefficientKWPerK, ambientTemperatureC, storageTemperatureC, calculationHours, branch }
+  });
+}
+
+export function calculateCoolingStorageTransformableEnergyWater(input) {
+  const {
+    storageInputKWh,
+    storageInputLossKWh,
+    storageStandbyLossKWh,
+    storageOutputSideLossKWh
+  } = input ?? {};
+
+  assertFiniteNumber(storageInputKWh, "storageInputKWh");
+  assertFiniteNumber(storageInputLossKWh, "storageInputLossKWh");
+  assertFiniteNumber(storageStandbyLossKWh, "storageStandbyLossKWh");
+  assertFiniteNumber(storageOutputSideLossKWh, "storageOutputSideLossKWh");
+  const valueKWh =
+    storageInputKWh + storageInputLossKWh + storageStandbyLossKWh + storageOutputSideLossKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_102_COOLING_STORAGE_TRANSFORMABLE_ENERGY_WATER",
+    formulaText: "DeltaQC,sto = QC,sto,in + QC,sto,in,ls + QC,sto,ls + QC,sto,out,ls",
+    inputs: { storageInputKWh, storageInputLossKWh, storageStandbyLossKWh, storageOutputSideLossKWh }
+  });
+}
+
+export function calculateCoolingStorageInitialIceThickness(input) {
+  const { solidMassKg, solidDensityKgPerM3, storagePipeLengthM, storagePipeDiameterM } =
+    input ?? {};
+
+  assertFiniteNonNegativeNumber(solidMassKg, "solidMassKg");
+  assertFinitePositiveNumber(solidDensityKgPerM3, "solidDensityKgPerM3");
+  assertFinitePositiveNumber(storagePipeLengthM, "storagePipeLengthM");
+  assertFinitePositiveNumber(storagePipeDiameterM, "storagePipeDiameterM");
+  const innerRadiusM = storagePipeDiameterM / 2;
+  const outerRadiusM = Math.sqrt(
+    innerRadiusM ** 2 + solidMassKg / (solidDensityKgPerM3 * Math.PI * storagePipeLengthM)
+  );
+  const valueM = 2 * (outerRadiusM - innerRadiusM);
+
+  return makeResult({
+    value: valueM,
+    valueKey: "valueM",
+    unit: "m",
+    formulaId: "MC001_3_103_COOLING_STORAGE_INITIAL_ICE_THICKNESS",
+    formulaText:
+      "dC,sto,0 = 2(sqrt(DC,sto^2/4 + mC,sto,sld,0/(rhoSld*pi*LC,sto)) - DC,sto/2)",
+    inputs: { solidMassKg, solidDensityKgPerM3, storagePipeLengthM, storagePipeDiameterM },
+    extra: { innerRadiusM, outerRadiusM }
+  });
+}
+
+export function calculateCoolingStorageIceMassVariation(input) {
+  const {
+    transformableEnergyKWh,
+    latentHeatKWhPerKg,
+    solidSpecificHeatKWhPerKgK,
+    transitionTemperatureC,
+    generatorOutletFlowTemperatureC
+  } = input ?? {};
+
+  assertFiniteNumber(transformableEnergyKWh, "transformableEnergyKWh");
+  assertFinitePositiveNumber(latentHeatKWhPerKg, "latentHeatKWhPerKg");
+  assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
+  assertFiniteNumber(generatorOutletFlowTemperatureC, "generatorOutletFlowTemperatureC");
+  const denominator =
+    latentHeatKWhPerKg +
+    solidSpecificHeatKWhPerKgK * ((transitionTemperatureC - generatorOutletFlowTemperatureC) / 2);
+  assertFinitePositiveNumber(denominator, "ice mass variation denominator");
+  const valueKg = -transformableEnergyKWh / denominator;
+
+  return makeResult({
+    value: valueKg,
+    valueKey: "valueKg",
+    unit: "kg",
+    formulaId: "MC001_3_104_COOLING_STORAGE_ICE_MASS_VARIATION",
+    formulaText:
+      "Delta mC,sto,sld = -DeltaQC,sto / (Cp,lat + Cp,sld (thetaSto,tr - thetaC,sto,gen,out,flw)/2)",
+    inputs: {
+      transformableEnergyKWh,
+      latentHeatKWhPerKg,
+      solidSpecificHeatKWhPerKgK,
+      transitionTemperatureC,
+      generatorOutletFlowTemperatureC
+    },
+    extra: { denominator }
+  });
+}
+
+export function calculateCoolingStorageIceThickness(input) {
+  const {
+    maximumIceThicknessM,
+    storagePipeDiameterM,
+    solidMassKg,
+    deltaSolidMassKg,
+    solidDensityKgPerM3,
+    storagePipeLengthM
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(maximumIceThicknessM, "maximumIceThicknessM");
+  assertFinitePositiveNumber(storagePipeDiameterM, "storagePipeDiameterM");
+  assertFiniteNonNegativeNumber(solidMassKg, "solidMassKg");
+  assertFiniteNumber(deltaSolidMassKg, "deltaSolidMassKg");
+  assertFinitePositiveNumber(solidDensityKgPerM3, "solidDensityKgPerM3");
+  assertFinitePositiveNumber(storagePipeLengthM, "storagePipeLengthM");
+  const innerRadiusM = storagePipeDiameterM / 2;
+  const candidateMassKg = Math.max(0, solidMassKg + deltaSolidMassKg);
+  const candidateThicknessM = 2 * (
+    Math.sqrt(
+      innerRadiusM ** 2 +
+      candidateMassKg / (solidDensityKgPerM3 * Math.PI * storagePipeLengthM)
+    ) -
+    innerRadiusM
+  );
+  const valueM = Math.min(maximumIceThicknessM, Math.max(0, candidateThicknessM));
+
+  return makeResult({
+    value: valueM,
+    valueKey: "valueM",
+    unit: "m",
+    formulaId: "MC001_3_105_COOLING_STORAGE_ICE_THICKNESS",
+    formulaText:
+      "dC,sto = min(dC,sto,max; max(0; 2(sqrt(DC,sto^2/4 + (mC,sto,sld + Delta m)/(rhoSld*pi*LC,sto)) - DC,sto/2)))",
+    inputs: {
+      maximumIceThicknessM,
+      storagePipeDiameterM,
+      solidMassKg,
+      deltaSolidMassKg,
+      solidDensityKgPerM3,
+      storagePipeLengthM
+    },
+    extra: { candidateThicknessM, candidateMassKg }
+  });
+}
+
+export function calculateCoolingStorageSolidMassAfterUse(input) {
+  const { initialSolidMassKg, deltaSolidMassKg } = input ?? {};
+
+  assertFiniteNonNegativeNumber(initialSolidMassKg, "initialSolidMassKg");
+  assertFiniteNumber(deltaSolidMassKg, "deltaSolidMassKg");
+  const valueKg = Math.max(0, initialSolidMassKg + deltaSolidMassKg);
+
+  return makeResult({
+    value: valueKg,
+    valueKey: "valueKg",
+    unit: "kg",
+    formulaId: "MC001_3_106_COOLING_STORAGE_SOLID_MASS_AFTER_USE",
+    formulaText: "mC,sto,sld = max(0; mC,sto,sld,0 + Delta mC,sto,sld)",
+    inputs: { initialSolidMassKg, deltaSolidMassKg }
+  });
+}
+
+export function calculateCoolingStoragePcmSolidMassVariation(input) {
+  const {
+    transformableEnergyKWh,
+    liquidSpecificHeatKWhPerKgK,
+    solidSpecificHeatKWhPerKgK,
+    transitionTemperatureC
+  } = input ?? {};
+
+  assertFiniteNumber(transformableEnergyKWh, "transformableEnergyKWh");
+  assertFiniteNonNegativeNumber(liquidSpecificHeatKWhPerKgK, "liquidSpecificHeatKWhPerKgK");
+  assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
+  const denominator =
+    liquidSpecificHeatKWhPerKgK +
+    solidSpecificHeatKWhPerKgK * transitionTemperatureC;
+  assertFinitePositiveNumber(denominator, "PCM solid mass variation denominator");
+  const valueKg = transformableEnergyKWh / denominator;
+
+  return makeResult({
+    value: valueKg,
+    valueKey: "valueKg",
+    unit: "kg",
+    formulaId: "MC001_3_107_COOLING_STORAGE_PCM_SOLID_MASS_VARIATION",
+    formulaText: "Delta mC,sto,sld = DeltaQC,sto / (Cp,lqd + Cp,sld * thetaSto,tr)",
+    inputs: {
+      transformableEnergyKWh,
+      liquidSpecificHeatKWhPerKgK,
+      solidSpecificHeatKWhPerKgK,
+      transitionTemperatureC
+    },
+    extra: { denominator }
+  });
+}
+
+export function limitCoolingStoragePcmSolidMassToLiquid(input) {
+  const { deltaSolidMassKg, initialLiquidMassKg } = input ?? {};
+
+  assertFiniteNumber(deltaSolidMassKg, "deltaSolidMassKg");
+  assertFiniteNonNegativeNumber(initialLiquidMassKg, "initialLiquidMassKg");
+  const valueKg = deltaSolidMassKg > initialLiquidMassKg ? initialLiquidMassKg : deltaSolidMassKg;
+
+  return makeResult({
+    value: valueKg,
+    valueKey: "valueKg",
+    unit: "kg",
+    formulaId: "MC001_3_108_COOLING_STORAGE_PCM_SOLID_MASS_LIQUID_LIMIT",
+    formulaText: "if Delta mC,sto,sld > mC,sto,lqd,0 then Delta mC,sto,sld = mC,sto,lqd,0",
+    inputs: { deltaSolidMassKg, initialLiquidMassKg }
+  });
+}
+
+export function limitCoolingStoragePcmSolidMassToExistingSolid(input) {
+  const { deltaSolidMassKg, initialSolidMassKg } = input ?? {};
+
+  assertFiniteNumber(deltaSolidMassKg, "deltaSolidMassKg");
+  assertFiniteNonNegativeNumber(initialSolidMassKg, "initialSolidMassKg");
+  const valueKg = deltaSolidMassKg > initialSolidMassKg ? initialSolidMassKg : deltaSolidMassKg;
+
+  return makeResult({
+    value: valueKg,
+    valueKey: "valueKg",
+    unit: "kg",
+    formulaId: "MC001_3_109_COOLING_STORAGE_PCM_SOLID_MASS_SOLID_LIMIT",
+    formulaText: "if Delta mC,sto,sld > mC,sto,sld,0 then Delta mC,sto,sld = mC,sto,sld,0",
+    inputs: { deltaSolidMassKg, initialSolidMassKg }
+  });
+}
+
+export function calculateCoolingStoragePcmSolidTemperature(input) {
+  const {
+    initialSolidTemperatureC,
+    transformableEnergyKWh,
+    solidSpecificHeatKWhPerKgK,
+    deltaSolidMassKg,
+    transitionTemperatureC,
+    solidMassKg,
+    generatorOutletFlowTemperatureC
+  } = input ?? {};
+
+  assertFiniteNumber(initialSolidTemperatureC, "initialSolidTemperatureC");
+  assertFiniteNumber(transformableEnergyKWh, "transformableEnergyKWh");
+  assertFinitePositiveNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNumber(deltaSolidMassKg, "deltaSolidMassKg");
+  assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
+  assertFiniteNonNegativeNumber(solidMassKg, "solidMassKg");
+  assertFiniteNumber(generatorOutletFlowTemperatureC, "generatorOutletFlowTemperatureC");
+  const denominator = solidSpecificHeatKWhPerKgK * (solidMassKg + deltaSolidMassKg);
+  assertFinitePositiveNumber(denominator, "PCM solid temperature denominator");
+  const candidateC = initialSolidTemperatureC +
+    (
+      transformableEnergyKWh -
+      solidSpecificHeatKWhPerKgK * deltaSolidMassKg *
+        (transitionTemperatureC - initialSolidTemperatureC)
+    ) / denominator;
+  const valueC = Math.max(candidateC, generatorOutletFlowTemperatureC);
+
+  return makeResult({
+    value: valueC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_110_COOLING_STORAGE_PCM_SOLID_TEMPERATURE",
+    formulaText:
+      "thetaC,sto,sld = max(thetaC,sto,sld,0 + adjusted DeltaQC/(Cp,sld (mC,sto,sld + Delta m)); thetaC,gen,out,flw)",
+    inputs: {
+      initialSolidTemperatureC,
+      transformableEnergyKWh,
+      solidSpecificHeatKWhPerKgK,
+      deltaSolidMassKg,
+      transitionTemperatureC,
+      solidMassKg,
+      generatorOutletFlowTemperatureC
+    },
+    extra: { candidateC }
+  });
+}
+
+export function calculateCoolingStoragePcmLiquidTemperature(input) {
+  const {
+    initialLiquidTemperatureC,
+    transformableEnergyKWh,
+    solidSpecificHeatKWhPerKgK,
+    deltaSolidMassKg,
+    transitionTemperatureC,
+    liquidSpecificHeatKWhPerKgK,
+    initialLiquidMassKg
+  } = input ?? {};
+
+  assertFiniteNumber(initialLiquidTemperatureC, "initialLiquidTemperatureC");
+  assertFiniteNumber(transformableEnergyKWh, "transformableEnergyKWh");
+  assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNumber(deltaSolidMassKg, "deltaSolidMassKg");
+  assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
+  assertFinitePositiveNumber(liquidSpecificHeatKWhPerKgK, "liquidSpecificHeatKWhPerKgK");
+  assertFiniteNonNegativeNumber(initialLiquidMassKg, "initialLiquidMassKg");
+  const denominator = liquidSpecificHeatKWhPerKgK * (initialLiquidMassKg + deltaSolidMassKg);
+  assertFinitePositiveNumber(denominator, "PCM liquid temperature denominator");
+  const valueC = initialLiquidTemperatureC +
+    (
+      transformableEnergyKWh -
+      solidSpecificHeatKWhPerKgK * deltaSolidMassKg *
+        (transitionTemperatureC - initialLiquidTemperatureC)
+    ) / denominator;
+
+  return makeResult({
+    value: valueC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_114_COOLING_STORAGE_PCM_LIQUID_TEMPERATURE",
+    formulaText:
+      "thetaC,sto,lqd = thetaC,sto,lqd,0 + adjusted DeltaQC/(Cp,lqd (mC,sto,lqd,0 + Delta m))",
+    inputs: {
+      initialLiquidTemperatureC,
+      transformableEnergyKWh,
+      solidSpecificHeatKWhPerKgK,
+      deltaSolidMassKg,
+      transitionTemperatureC,
+      liquidSpecificHeatKWhPerKgK,
+      initialLiquidMassKg
+    }
+  });
+}
+
+export function calculateCoolingStoragePumpOperationTime(input) {
+  const {
+    storageEnergyKWh,
+    mediumSpecificHeatKWhPerKgK,
+    mediumDensityKgPerM3,
+    pumpVolumeFlowM3PerH,
+    supplyTemperatureC,
+    returnTemperatureC,
+    formulaId = "MC001_3_115_3_117_COOLING_STORAGE_PUMP_OPERATION_TIME"
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(storageEnergyKWh, "storageEnergyKWh");
+  assertFinitePositiveNumber(mediumSpecificHeatKWhPerKgK, "mediumSpecificHeatKWhPerKgK");
+  assertFinitePositiveNumber(mediumDensityKgPerM3, "mediumDensityKgPerM3");
+  assertFinitePositiveNumber(pumpVolumeFlowM3PerH, "pumpVolumeFlowM3PerH");
+  assertFiniteNumber(supplyTemperatureC, "supplyTemperatureC");
+  assertFiniteNumber(returnTemperatureC, "returnTemperatureC");
+  const deltaK = Math.abs(supplyTemperatureC - returnTemperatureC);
+  assertFinitePositiveNumber(deltaK, "storage pump temperature difference");
+  const valueH = storageEnergyKWh /
+    (mediumSpecificHeatKWhPerKgK * mediumDensityKgPerM3 * pumpVolumeFlowM3PerH * deltaK);
+
+  return makeResult({
+    value: valueH,
+    valueKey: "valueH",
+    unit: "h",
+    formulaId,
+    formulaText:
+      "tC,sto,aux = QC,sto / (Cp,sto,sens,med rhoSto,med qC,sto,v,pmp Delta theta)",
+    inputs: {
+      storageEnergyKWh,
+      mediumSpecificHeatKWhPerKgK,
+      mediumDensityKgPerM3,
+      pumpVolumeFlowM3PerH,
+      supplyTemperatureC,
+      returnTemperatureC
+    },
+    extra: { deltaK }
+  });
+}
+
+export function calculateCoolingStorageAuxiliaryEnergy(input) {
+  const {
+    pumpOperationHours,
+    pumpElectricPowerKW,
+    formulaId = "MC001_3_116_3_118_COOLING_STORAGE_AUXILIARY_ENERGY"
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(pumpOperationHours, "pumpOperationHours");
+  assertFiniteNonNegativeNumber(pumpElectricPowerKW, "pumpElectricPowerKW");
+  const valueKWh = pumpOperationHours * pumpElectricPowerKW;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId,
+    formulaText: "WC,sto,aux = tC,sto,aux * PC,sto,pmp",
+    inputs: { pumpOperationHours, pumpElectricPowerKW }
+  });
+}
+
+export function calculateCoolingStorageAuxiliaryTotal(input) {
+  const { outputSideAuxiliaryKWh, inputSideAuxiliaryKWh } = input ?? {};
+
+  assertFiniteNonNegativeNumber(outputSideAuxiliaryKWh, "outputSideAuxiliaryKWh");
+  assertFiniteNonNegativeNumber(inputSideAuxiliaryKWh, "inputSideAuxiliaryKWh");
+  const valueKWh = outputSideAuxiliaryKWh + inputSideAuxiliaryKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_119_COOLING_STORAGE_AUXILIARY_TOTAL",
+    formulaText: "WC,sto,aux = WC,sto,gen,aux,out + WC,sto,aux,in",
+    inputs: { outputSideAuxiliaryKWh, inputSideAuxiliaryKWh }
+  });
+}
+
+export function calculateCoolingStorageRecoverableAuxiliaryLoss(input) {
+  const { auxiliaryEnergyKWh, recoverableAuxiliaryFraction } = input ?? {};
+
+  assertFiniteNonNegativeNumber(auxiliaryEnergyKWh, "auxiliaryEnergyKWh");
+  assertFraction(recoverableAuxiliaryFraction, "recoverableAuxiliaryFraction");
+  const valueKWh = -auxiliaryEnergyKWh * recoverableAuxiliaryFraction;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_120_COOLING_STORAGE_RECOVERABLE_AUXILIARY_LOSS",
+    formulaText: "QC,sto,aux,ls,rbl = -WC,sto,aux * faux,rbl",
+    inputs: { auxiliaryEnergyKWh, recoverableAuxiliaryFraction }
+  });
+}
+
+export function calculateCoolingStorageRecoverableThermalLoss(input) {
+  const {
+    outputSideLossKWh,
+    standbyLossKWh,
+    inputSideLossKWh,
+    recoverableStorageFraction
+  } = input ?? {};
+
+  assertFiniteNumber(outputSideLossKWh, "outputSideLossKWh");
+  assertFiniteNumber(standbyLossKWh, "standbyLossKWh");
+  assertFiniteNumber(inputSideLossKWh, "inputSideLossKWh");
+  assertFraction(recoverableStorageFraction, "recoverableStorageFraction");
+  const valueKWh =
+    -(outputSideLossKWh + standbyLossKWh + inputSideLossKWh) *
+    recoverableStorageFraction;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_121_COOLING_STORAGE_RECOVERABLE_THERMAL_LOSS",
+    formulaText:
+      "QC,sto,ls,rbl = -(QC,sto,out,ls + QC,sto,ls + QC,sto,in,ls) * fC,sto,rbl",
+    inputs: { outputSideLossKWh, standbyLossKWh, inputSideLossKWh, recoverableStorageFraction }
+  });
+}
+
+export function calculateCoolingStorageRecoverableLossTotal(input) {
+  const { auxiliaryRecoverableLossKWh, thermalRecoverableLossKWh } = input ?? {};
+
+  assertFiniteNumber(auxiliaryRecoverableLossKWh, "auxiliaryRecoverableLossKWh");
+  assertFiniteNumber(thermalRecoverableLossKWh, "thermalRecoverableLossKWh");
+  const valueKWh = auxiliaryRecoverableLossKWh + thermalRecoverableLossKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_122_COOLING_STORAGE_RECOVERABLE_LOSS_TOTAL",
+    formulaText: "QC,sto,ls,tot,rbl = QC,sto,aux,ls,rbl + QC,sto,ls,rbl",
+    inputs: { auxiliaryRecoverableLossKWh, thermalRecoverableLossKWh }
+  });
+}
+
+export function calculateCoolingStorageGeneratorDeltaEnergy(input) {
+  const {
+    storageGeneratorEnergyKWh,
+    storageOutputKWh,
+    inputSideLossKWh,
+    standbyLossKWh,
+    outputSideLossKWh
+  } = input ?? {};
+
+  assertFiniteNumber(storageGeneratorEnergyKWh, "storageGeneratorEnergyKWh");
+  assertFiniteNumber(storageOutputKWh, "storageOutputKWh");
+  assertFiniteNumber(inputSideLossKWh, "inputSideLossKWh");
+  assertFiniteNumber(standbyLossKWh, "standbyLossKWh");
+  assertFiniteNumber(outputSideLossKWh, "outputSideLossKWh");
+  const valueKWh =
+    storageGeneratorEnergyKWh -
+    storageOutputKWh -
+    inputSideLossKWh -
+    standbyLossKWh -
+    outputSideLossKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_123_COOLING_STORAGE_GENERATOR_DELTA_ENERGY",
+    formulaText:
+      "DeltaQC,sto = QC,sto,gen - QC,sto,out - QC,sto,in,ls - QC,sto,ls - QC,sto,out,ls",
+    inputs: {
+      storageGeneratorEnergyKWh,
+      storageOutputKWh,
+      inputSideLossKWh,
+      standbyLossKWh,
+      outputSideLossKWh
+    }
+  });
+}
+
+export function selectCoolingHeatRejectionReferenceTemperatures(input) {
+  const {
+    branch,
+    outdoorReferenceTemperatureC,
+    outdoorNominalTemperatureC,
+    indoorReferenceTemperatureC,
+    indoorNominalTemperatureC,
+    waterReferenceInletTemperatureC,
+    waterNominalInletTemperatureC
+  } = input ?? {};
+
+  assertEnum(branch, COOLING_HEAT_REJECTION_REFERENCE_BRANCH, "branch");
+  const refs = {
+    [COOLING_HEAT_REJECTION_REFERENCE_BRANCH.AIR_OUTDOOR]: {
+      referenceC: outdoorReferenceTemperatureC,
+      nominalC: outdoorNominalTemperatureC,
+      formulaId: "MC001_3_156_COOLING_HEAT_REJECTION_AIR_OUTDOOR_REFERENCE"
+    },
+    [COOLING_HEAT_REJECTION_REFERENCE_BRANCH.AIR_INDOOR]: {
+      referenceC: indoorReferenceTemperatureC ?? outdoorReferenceTemperatureC,
+      nominalC: indoorNominalTemperatureC,
+      formulaId: "MC001_3_157_COOLING_HEAT_REJECTION_AIR_INDOOR_REFERENCE"
+    },
+    [COOLING_HEAT_REJECTION_REFERENCE_BRANCH.WATER]: {
+      referenceC: waterReferenceInletTemperatureC,
+      nominalC: waterNominalInletTemperatureC,
+      formulaId: "MC001_3_158_COOLING_HEAT_REJECTION_WATER_REFERENCE"
+    }
+  };
+  const selected = refs[branch];
+  assertFiniteNumber(selected.referenceC, "selected.referenceC");
+  assertFiniteNumber(selected.nominalC, "selected.nominalC");
+
+  return makeResult({
+    value: selected.referenceC,
+    valueKey: "referenceC",
+    unit: "degC",
+    formulaId: selected.formulaId,
+    formulaText: "thetaC,gen,hr,req,in selected by MC001 heat-rejection branch",
+    inputs: {
+      branch,
+      outdoorReferenceTemperatureC,
+      outdoorNominalTemperatureC,
+      indoorReferenceTemperatureC,
+      indoorNominalTemperatureC,
+      waterReferenceInletTemperatureC,
+      waterNominalInletTemperatureC
+    },
+    extra: { nominalC: selected.nominalC }
+  });
+}
+
+export function lookupCoolingHeatRejectionProcessDefaultsTable318(input) {
+  const { processKey } = input ?? {};
+
+  assertObjectKey(TABLE_3_18_PROCESS_DEFAULTS, processKey, "processKey");
+  const row = TABLE_3_18_PROCESS_DEFAULTS[processKey];
+
+  return makeResult({
+    value: row.condenserTemperatureDifferenceK,
+    valueKey: "condenserTemperatureDifferenceK",
+    unit: "K",
+    formulaId: "MC001_TABLE_3_18_COOLING_PROCESS_DEFAULTS",
+    formulaText: "Table 3.18 default Delta theta_cond and Delta theta_evap",
+    inputs: { processKey },
+    extra: { ...row, table: "Tabel 3.18" }
+  });
+}
+
+export function lookupCoolingHeatRejectionReferenceTemperaturesTable319(input) {
+  const { systemKey } = input ?? {};
+
+  assertObjectKey(TABLE_3_19_REFERENCE_TEMPERATURES, systemKey, "systemKey");
+  const row = TABLE_3_19_REFERENCE_TEMPERATURES[systemKey];
+
+  return makeResult({
+    value: row.heatRejectionReferenceInletTemperatureC,
+    valueKey: "heatRejectionReferenceInletTemperatureC",
+    unit: "degC",
+    formulaId: "MC001_TABLE_3_19_HEAT_REJECTION_REFERENCE_TEMPERATURES",
+    formulaText: "Table 3.19 heat-rejection reference inlet/outlet temperatures",
+    inputs: { systemKey },
+    extra: { ...row, table: "Tabel 3.19" }
+  });
+}
+
+export function lookupCoolingHeatRejectionPolynomialCoefficientsTable320(input) {
+  const { systemKey } = input ?? {};
+
+  assertObjectKey(TABLE_3_20_HEAT_REJECTION_POLYNOMIALS, systemKey, "systemKey");
+  const row = TABLE_3_20_HEAT_REJECTION_POLYNOMIALS[systemKey];
+
+  return makeResult({
+    value: row.a0,
+    valueKey: "a0",
+    unit: "-",
+    formulaId: "MC001_TABLE_3_20_HEAT_REJECTION_PART_LOAD_COEFFICIENTS",
+    formulaText: "Table 3.20 coefficients a2, a1, a0 for fhr,PL",
+    inputs: { systemKey },
+    extra: { ...row, table: "Tabel 3.20" }
+  });
+}
+
+export function calculateCoolingHeatRejectionPartLoadFactor(input) {
+  const { temperatureC, a2, a1, a0 } = input ?? {};
+
+  assertFiniteNumber(temperatureC, "temperatureC");
+  assertFiniteNumber(a2, "a2");
+  assertFiniteNumber(a1, "a1");
+  assertFiniteNumber(a0, "a0");
+  const value = a2 * temperatureC ** 2 + a1 * temperatureC + a0;
+
+  return makeResult({
+    value,
+    valueKey: "value",
+    unit: "-",
+    formulaId: "MC001_3_159_HEAT_REJECTION_PART_LOAD_FACTOR",
+    formulaText: "fhr,PL = a2 * theta^2 + a1 * theta + a0",
+    inputs: { temperatureC, a2, a1, a0 }
+  });
+}
+
+export function selectCoolingHeatRejectionTemperature(input) {
+  const { source, outdoorTemperatureC, indoorTemperatureC } = input ?? {};
+
+  assertEnum(source, COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE, "source");
+  const valueC =
+    source === COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE.OUTDOOR_AIR
+      ? outdoorTemperatureC
+      : indoorTemperatureC;
+  assertFiniteNumber(valueC, "selected heat-rejection temperature");
+
+  return makeResult({
+    value: valueC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId:
+      source === COOLING_HEAT_REJECTION_TEMPERATURE_SOURCE.OUTDOOR_AIR
+        ? "MC001_3_160_HEAT_REJECTION_OUTDOOR_AIR_TEMPERATURE"
+        : "MC001_3_161_HEAT_REJECTION_INDOOR_AIR_TEMPERATURE",
+    formulaText: "theta = thetae or thetai according to heat-rejection air branch",
+    inputs: { source, outdoorTemperatureC, indoorTemperatureC }
+  });
+}
+
+export function calculateCoolingRecoverableHeatZero() {
+  return makeResult({
+    value: 0,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_162_COOLING_RECOVERABLE_HEAT_ZERO_AIR_OR_WATER_CHILLER",
+    formulaText: "QC,gen,out,rbl = 0",
+    inputs: {}
+  });
+}
+
+export function calculateCoolingRecoverableHeatTemperatureUndefined() {
+  return makeResult({
+    value: null,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_163_COOLING_RECOVERABLE_HEAT_TEMPERATURE_UNDEFINED",
+    formulaText: "thetaC,gen,out,max = undefined",
+    inputs: {}
+  });
+}
+
+export function calculateCoolingHeatRejectedByCompression(input) {
+  const {
+    generatorCoolingInputKWh,
+    nominalEer,
+    partLoadFactor,
+    eerCorrectionFactor = 1
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(generatorCoolingInputKWh, "generatorCoolingInputKWh");
+  assertFinitePositiveNumber(nominalEer, "nominalEer");
+  assertFinitePositiveNumber(partLoadFactor, "partLoadFactor");
+  assertFinitePositiveNumber(eerCorrectionFactor, "eerCorrectionFactor");
+  const valueKWh =
+    generatorCoolingInputKWh *
+    (1 + 1 / (nominalEer * partLoadFactor * eerCorrectionFactor));
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_164_HEAT_REJECTED_COMPRESSION_GENERATOR",
+    formulaText: "Qhr,out = QC,gen,in * (1 + 1/(EERn fC,PL,k fEER,corr))",
+    inputs: { generatorCoolingInputKWh, nominalEer, partLoadFactor, eerCorrectionFactor }
+  });
+}
+
+export function calculateCoolingHeatRejectedByAbsorption(input) {
+  const { generatorCoolingInputKWh, nominalHeatRatio, partLoadFactor } = input ?? {};
+
+  assertFiniteNonNegativeNumber(generatorCoolingInputKWh, "generatorCoolingInputKWh");
+  assertFinitePositiveNumber(nominalHeatRatio, "nominalHeatRatio");
+  assertFinitePositiveNumber(partLoadFactor, "partLoadFactor");
+  const valueKWh = generatorCoolingInputKWh * (1 + 1 / (nominalHeatRatio * partLoadFactor));
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_165_HEAT_REJECTED_ABSORPTION_GENERATOR",
+    formulaText: "Qhr,out = QC,gen,in * (1 + 1/(Bn fC,PL,k))",
+    inputs: { generatorCoolingInputKWh, nominalHeatRatio, partLoadFactor }
+  });
+}
+
+export function calculateCoolingWaterHeatRejectionInletTemperature(input) {
+  const {
+    controlMode,
+    heatRejectionOutletTemperatureC,
+    heatRejectedKWh,
+    operationHours,
+    nominalHeatRejectionPowerKW,
+    referenceInletTemperatureC,
+    referenceOutletTemperatureC,
+    inletTemperatureLowerLimitC
+  } = input ?? {};
+
+  assertEnum(controlMode, COOLING_HEAT_REJECTION_WATER_CONTROL, "controlMode");
+  assertFiniteNumber(heatRejectionOutletTemperatureC, "heatRejectionOutletTemperatureC");
+  assertFiniteNonNegativeNumber(heatRejectedKWh, "heatRejectedKWh");
+  assertFinitePositiveNumber(operationHours, "operationHours");
+  assertFinitePositiveNumber(nominalHeatRejectionPowerKW, "nominalHeatRejectionPowerKW");
+  assertFiniteNumber(referenceInletTemperatureC, "referenceInletTemperatureC");
+  assertFiniteNumber(referenceOutletTemperatureC, "referenceOutletTemperatureC");
+  const loadRatio = heatRejectedKWh / (operationHours * nominalHeatRejectionPowerKW);
+  const referenceDeltaK = referenceInletTemperatureC - referenceOutletTemperatureC;
+  let valueC;
+  if (controlMode === COOLING_HEAT_REJECTION_WATER_CONTROL.NO_CONTROL) {
+    valueC = heatRejectionOutletTemperatureC + loadRatio * referenceDeltaK;
+  } else if (controlMode === COOLING_HEAT_REJECTION_WATER_CONTROL.CONSTANT_TEMPERATURE) {
+    valueC = referenceInletTemperatureC;
+  } else {
+    assertFiniteNumber(inletTemperatureLowerLimitC, "inletTemperatureLowerLimitC");
+    valueC = Math.max(
+      inletTemperatureLowerLimitC,
+      heatRejectionOutletTemperatureC + loadRatio * referenceDeltaK
+    );
+  }
+
+  return makeResult({
+    value: valueC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_166_WATER_HEAT_REJECTION_INLET_TEMPERATURE",
+    formulaText:
+      "thetaC,wat,hr,in selected by NO_CTRL, CNST_TEMP or VAR_TEMP branch",
+    inputs: {
+      controlMode,
+      heatRejectionOutletTemperatureC,
+      heatRejectedKWh,
+      operationHours,
+      nominalHeatRejectionPowerKW,
+      referenceInletTemperatureC,
+      referenceOutletTemperatureC,
+      inletTemperatureLowerLimitC
+    },
+    extra: { loadRatio, referenceDeltaK }
+  });
+}
+
+export function calculateCoolingWetHeatRejectionWaterTemperature(input) {
+  const {
+    heatRejectionOutletTemperatureC,
+    heatRejectionInletTemperatureC,
+    outdoorWetBulbTemperatureC,
+    evaporationTemperatureRatio
+  } = input ?? {};
+
+  assertFiniteNumber(heatRejectionOutletTemperatureC, "heatRejectionOutletTemperatureC");
+  assertFiniteNumber(heatRejectionInletTemperatureC, "heatRejectionInletTemperatureC");
+  assertFiniteNumber(outdoorWetBulbTemperatureC, "outdoorWetBulbTemperatureC");
+  assertFiniteNumber(evaporationTemperatureRatio, "evaporationTemperatureRatio");
+  const valueC = heatRejectionOutletTemperatureC -
+    evaporationTemperatureRatio *
+      (heatRejectionInletTemperatureC - outdoorWetBulbTemperatureC);
+
+  return makeResult({
+    value: valueC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_167_WET_HEAT_REJECTION_WATER_TEMPERATURE",
+    formulaText:
+      "thetaC,wat,hr = thetaC,wat,hr,out - etae(thetaC,wat,hr,in - thetae,wb)",
+    inputs: {
+      heatRejectionOutletTemperatureC,
+      heatRejectionInletTemperatureC,
+      outdoorWetBulbTemperatureC,
+      evaporationTemperatureRatio
+    }
+  });
+}
+
+export function calculateCoolingDryHeatRejectionWaterTemperature(input) {
+  const {
+    heatRejectionOutletTemperatureC,
+    heatRejectionInletTemperatureC,
+    outdoorAirTemperatureC,
+    evaporationTemperatureRatio
+  } = input ?? {};
+
+  assertFiniteNumber(heatRejectionOutletTemperatureC, "heatRejectionOutletTemperatureC");
+  assertFiniteNumber(heatRejectionInletTemperatureC, "heatRejectionInletTemperatureC");
+  assertFiniteNumber(outdoorAirTemperatureC, "outdoorAirTemperatureC");
+  assertFiniteNumber(evaporationTemperatureRatio, "evaporationTemperatureRatio");
+  const valueC = heatRejectionOutletTemperatureC -
+    evaporationTemperatureRatio *
+      (heatRejectionInletTemperatureC - outdoorAirTemperatureC);
+
+  return makeResult({
+    value: valueC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_168_DRY_HEAT_REJECTION_WATER_TEMPERATURE",
+    formulaText:
+      "thetaC,wat,hr = thetaC,wat,hr,out - etae(thetaC,wat,hr,in - thetae)",
+    inputs: {
+      heatRejectionOutletTemperatureC,
+      heatRejectionInletTemperatureC,
+      outdoorAirTemperatureC,
+      evaporationTemperatureRatio
+    }
+  });
+}
+
+export function calculateCoolingRecoverableHeatByCompression(input) {
+  const result = calculateCoolingHeatRejectedByCompression(input);
+  return {
+    ...result,
+    formulaId: "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR",
+    trace: {
+      ...result.trace,
+      formulaId: "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR"
+    }
+  };
+}
+
+export function calculateCoolingRecoverableHeatByAbsorption(input) {
+  const result = calculateCoolingHeatRejectedByAbsorption(input);
+  return {
+    ...result,
+    formulaId: "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR",
+    trace: {
+      ...result.trace,
+      formulaId: "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR"
+    }
+  };
+}
+
+export function calculateCoolingRecoverableHeatMaximumTemperature(input) {
+  const { waterHeatRejectionInletTemperatureC } = input ?? {};
+
+  assertFiniteNumber(waterHeatRejectionInletTemperatureC, "waterHeatRejectionInletTemperatureC");
+
+  return makeResult({
+    value: waterHeatRejectionInletTemperatureC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_171_RECOVERABLE_HEAT_MAXIMUM_TEMPERATURE",
+    formulaText: "thetaC,gen,out,max = thetaC,wat,hr,in",
+    inputs: { waterHeatRejectionInletTemperatureC }
+  });
+}
+
+export function calculateCoolingHeatRejectedAfterRecovery(input) {
+  const { recoverableHeatKWh, requiredRecoveredHeatKWh } = input ?? {};
+
+  assertFiniteNonNegativeNumber(recoverableHeatKWh, "recoverableHeatKWh");
+  assertFiniteNonNegativeNumber(requiredRecoveredHeatKWh, "requiredRecoveredHeatKWh");
+  const valueKWh = Math.max(recoverableHeatKWh - requiredRecoveredHeatKWh, 0);
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_172_HEAT_REJECTED_AFTER_RECOVERY",
+    formulaText: "Qhr,out = max(QC,gen,out,rbl - QC,gen,out,req; 0)",
+    inputs: { recoverableHeatKWh, requiredRecoveredHeatKWh }
+  });
+}
+
+export function calculateCoolingCompressionElectricInput(input) {
+  const {
+    generatorCoolingInputKWh,
+    partLoadValue,
+    nominalEer,
+    eerCorrectionFactor = 1
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(generatorCoolingInputKWh, "generatorCoolingInputKWh");
+  assertFinitePositiveNumber(partLoadValue, "partLoadValue");
+  assertFinitePositiveNumber(nominalEer, "nominalEer");
+  assertFinitePositiveNumber(eerCorrectionFactor, "eerCorrectionFactor");
+  const valueKWh = generatorCoolingInputKWh / (partLoadValue * nominalEer * eerCorrectionFactor);
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_173_COOLING_COMPRESSION_ELECTRIC_INPUT",
+    formulaText: "EC,gen,el,in = QC,gen,in / (PLV * EERn * fEER,corr)",
+    inputs: { generatorCoolingInputKWh, partLoadValue, nominalEer, eerCorrectionFactor }
+  });
+}
+
+export function calculateCoolingAbsorptionHeatInput(input) {
+  const { generatorCoolingInputKWh, partLoadValue, nominalHeatRatio } = input ?? {};
+
+  assertFiniteNonNegativeNumber(generatorCoolingInputKWh, "generatorCoolingInputKWh");
+  assertFinitePositiveNumber(partLoadValue, "partLoadValue");
+  assertFinitePositiveNumber(nominalHeatRatio, "nominalHeatRatio");
+  const valueKWh = generatorCoolingInputKWh / (partLoadValue * nominalHeatRatio);
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_174_COOLING_ABSORPTION_HEAT_INPUT",
+    formulaText: "QH,C,gen,abs,in = QC,gen,in / (PLV * Bn)",
+    inputs: { generatorCoolingInputKWh, partLoadValue, nominalHeatRatio }
+  });
+}
+
+export function calculateCoolingHeatRejectionAuxiliaryAirCooledZero() {
+  return makeResult({
+    value: 0,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_175_HEAT_REJECTION_AUXILIARY_AIR_COOLED_ZERO",
+    formulaText: "Whr,el,in = 0 for air-cooled chiller branch",
+    inputs: {}
+  });
+}
+
+export function lookupCoolingHeatRejectionSpecificElectricDemandTable322(input) {
+  const { systemKey } = input ?? {};
+
+  assertObjectKey(TABLE_3_22_HEAT_REJECTION_SPECIFIC_ELECTRIC_DEMAND, systemKey, "systemKey");
+  const valueKWPerKW = TABLE_3_22_HEAT_REJECTION_SPECIFIC_ELECTRIC_DEMAND[systemKey];
+
+  return makeResult({
+    value: valueKWPerKW,
+    valueKey: "valueKWPerKW",
+    unit: "kW/kW",
+    formulaId: "MC001_TABLE_3_22_HEAT_REJECTION_SPECIFIC_ELECTRIC_DEMAND",
+    formulaText: "Table 3.22 phr,el specific electric demand",
+    inputs: { systemKey },
+    extra: { table: "Tabel 3.22" }
+  });
+}
+
+export function lookupCoolingHeatRejectionElectricPartLoadFactorTable323(input) {
+  const { controlKey, rejectionTypeKey } = input ?? {};
+
+  assertObjectKey(TABLE_3_23_HEAT_REJECTION_ELECTRIC_PART_LOAD_FACTOR, controlKey, "controlKey");
+  const row = TABLE_3_23_HEAT_REJECTION_ELECTRIC_PART_LOAD_FACTOR[controlKey];
+  assertObjectKey(row, rejectionTypeKey, "rejectionTypeKey");
+  const value = row[rejectionTypeKey];
+
+  return makeResult({
+    value,
+    valueKey: "value",
+    unit: "-",
+    formulaId: "MC001_TABLE_3_23_HEAT_REJECTION_ELECTRIC_PART_LOAD_FACTOR",
+    formulaText: "Table 3.23 fhr,PL,el",
+    inputs: { controlKey, rejectionTypeKey },
+    extra: { table: "Tabel 3.23" }
+  });
+}
+
+export function calculateCoolingHeatRejectionAuxiliaryEnergy(input) {
+  const {
+    heatRejectedKWh,
+    specificElectricDemandKWPerKW,
+    electricPartLoadFactor,
+    freeCoolingElectricFactor = 1
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(heatRejectedKWh, "heatRejectedKWh");
+  assertFiniteNonNegativeNumber(specificElectricDemandKWPerKW, "specificElectricDemandKWPerKW");
+  assertFinitePositiveNumber(electricPartLoadFactor, "electricPartLoadFactor");
+  assertFinitePositiveNumber(freeCoolingElectricFactor, "freeCoolingElectricFactor");
+  const valueKWh =
+    heatRejectedKWh *
+    specificElectricDemandKWPerKW *
+    electricPartLoadFactor *
+    freeCoolingElectricFactor;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_176_HEAT_REJECTION_AUXILIARY_ENERGY",
+    formulaText: "Whr,el,in = Qhr,out * phr,el * fhr,PL,el * fhr,fc,el",
+    inputs: {
+      heatRejectedKWh,
+      specificElectricDemandKWPerKW,
+      electricPartLoadFactor,
+      freeCoolingElectricFactor
+    }
+  });
+}
+
+export function calculateCoolingControlAuxiliaryEnergy(input) {
+  const { operationHours, controlPowersKW = [] } = input ?? {};
+
+  assertFiniteNonNegativeNumber(operationHours, "operationHours");
+  if (!Array.isArray(controlPowersKW)) {
+    throw new Error("controlPowersKW must be an array");
+  }
+  const powerTotalKW = controlPowersKW.reduce((sum, value, index) => {
+    assertFiniteNonNegativeNumber(value, `controlPowersKW[${index}]`);
+    return sum + value;
+  }, 0);
+  const valueKWh = operationHours * powerTotalKW;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_177_CONTROL_AUXILIARY_ENERGY",
+    formulaText: "Wctrl,el,in = tC,gen,op * sum_j Pctrl,el,j",
+    inputs: { operationHours, controlPowersKW },
+    extra: { powerTotalKW }
+  });
+}
+
+export function calculateCoolingHeatRejectionDistributionAuxiliaryAirCooledZero() {
+  return makeResult({
+    value: 0,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_178_HEAT_REJECTION_DISTRIBUTION_AIR_COOLED_ZERO",
+    formulaText: "Wdis,hr,el,in = 0 for air-cooled chiller branch",
+    inputs: {}
+  });
+}
+
+export function calculateCoolingHeatRejectionDistributionAuxiliaryEnergy(input) {
+  const { heatRejectedKWh, distributionSpecificElectricDemandKWPerKW } = input ?? {};
+
+  assertFiniteNonNegativeNumber(heatRejectedKWh, "heatRejectedKWh");
+  assertFiniteNonNegativeNumber(
+    distributionSpecificElectricDemandKWPerKW,
+    "distributionSpecificElectricDemandKWPerKW"
+  );
+  const valueKWh = heatRejectedKWh * distributionSpecificElectricDemandKWPerKW;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_179_HEAT_REJECTION_DISTRIBUTION_AUXILIARY_ENERGY",
+    formulaText: "Wdis,hr,el,in = Qhr,out * pdis,el",
+    inputs: { heatRejectedKWh, distributionSpecificElectricDemandKWPerKW }
+  });
+}
+
+export function calculateCoolingGeneratorAuxiliaryTotal(input) {
+  const {
+    heatRejectionAuxiliaryKWh,
+    heatRejectionDistributionAuxiliaryKWh,
+    controlAuxiliaryKWh
+  } = input ?? {};
+
+  assertFiniteNonNegativeNumber(heatRejectionAuxiliaryKWh, "heatRejectionAuxiliaryKWh");
+  assertFiniteNonNegativeNumber(
+    heatRejectionDistributionAuxiliaryKWh,
+    "heatRejectionDistributionAuxiliaryKWh"
+  );
+  assertFiniteNonNegativeNumber(controlAuxiliaryKWh, "controlAuxiliaryKWh");
+  const valueKWh =
+    heatRejectionAuxiliaryKWh +
+    heatRejectionDistributionAuxiliaryKWh +
+    controlAuxiliaryKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL",
+    formulaText: "Waux,el,in = Whr,el,in + Wdist,hr,el,in + Wctrl,el,in",
+    inputs: {
+      heatRejectionAuxiliaryKWh,
+      heatRejectionDistributionAuxiliaryKWh,
+      controlAuxiliaryKWh
+    }
+  });
+}
+
+export function calculateCoolingCompressionEer(input) {
+  const { generatorCoolingInputKWh, compressionElectricInputKWh, auxiliaryElectricInputKWh } =
+    input ?? {};
+
+  assertFiniteNonNegativeNumber(generatorCoolingInputKWh, "generatorCoolingInputKWh");
+  assertFiniteNonNegativeNumber(compressionElectricInputKWh, "compressionElectricInputKWh");
+  assertFiniteNonNegativeNumber(auxiliaryElectricInputKWh, "auxiliaryElectricInputKWh");
+  const denominator = compressionElectricInputKWh + auxiliaryElectricInputKWh;
+  assertFinitePositiveNumber(denominator, "compression EER denominator");
+  const value = generatorCoolingInputKWh / denominator;
+
+  return makeResult({
+    value,
+    valueKey: "value",
+    unit: "-",
+    formulaId: "MC001_3_181_COOLING_COMPRESSION_EER",
+    formulaText: "EER = QC,gen,in / (EC,gen,el,in + Waux,el,in)",
+    inputs: { generatorCoolingInputKWh, compressionElectricInputKWh, auxiliaryElectricInputKWh }
+  });
+}
+
+export function calculateCoolingAbsorptionPerformanceRatio(input) {
+  const { generatorCoolingInputKWh, absorptionHeatInputKWh } = input ?? {};
+
+  assertFiniteNonNegativeNumber(generatorCoolingInputKWh, "generatorCoolingInputKWh");
+  assertFinitePositiveNumber(absorptionHeatInputKWh, "absorptionHeatInputKWh");
+  const value = generatorCoolingInputKWh / absorptionHeatInputKWh;
+
+  return makeResult({
+    value,
+    valueKey: "value",
+    unit: "-",
+    formulaId: "MC001_3_182_COOLING_ABSORPTION_PERFORMANCE_RATIO",
+    formulaText: "B = QC,gen,in / QH,C,gen,abs,in",
+    inputs: { generatorCoolingInputKWh, absorptionHeatInputKWh }
   });
 }
 
