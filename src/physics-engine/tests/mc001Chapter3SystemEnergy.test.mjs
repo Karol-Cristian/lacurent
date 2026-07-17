@@ -61,6 +61,9 @@ import {
   calculateCoolingStorageLatentEnergy,
   calculateCoolingStorageOutputEnergy,
   calculateCoolingStoragePcmLiquidTemperature,
+  calculateCoolingStoragePcmInputEnergyLimitForSolidSensibleStorage,
+  calculateCoolingStoragePcmSensibleSolidStorageEnergy,
+  calculateCoolingStoragePcmSolidMassDecreaseVariation,
   calculateCoolingStoragePcmSolidMassVariation,
   calculateCoolingStoragePcmSolidTemperature,
   calculateCoolingStoragePumpOperationTime,
@@ -761,9 +764,53 @@ test("calculates MC001 cooling-storage relations 3.94-3.123 with explicit storag
   });
   const pcmVariation = calculateCoolingStoragePcmSolidMassVariation({
     transformableEnergyKWh: 0.5,
-    liquidSpecificHeatKWhPerKgK: 0.00116,
-    solidSpecificHeatKWhPerKgK: 0.0006,
+    latentHeatKWhPerKg: 0.0271,
+    solidSpecificHeatKWhPerKgK: 0.000392,
     transitionTemperatureC: 20
+  });
+  const pcmSensiblePositive = calculateCoolingStoragePcmSensibleSolidStorageEnergy({
+    transformableEnergyKWh: 1.5,
+    solidMassKg: 40,
+    solidSpecificHeatKWhPerKgK: 0.001,
+    generatorOutletFlowTemperatureC: 5,
+    transitionTemperatureC: 0
+  });
+  const pcmSensibleNegative = calculateCoolingStoragePcmSensibleSolidStorageEnergy({
+    transformableEnergyKWh: 0.1,
+    solidMassKg: 40,
+    solidSpecificHeatKWhPerKgK: 0.001,
+    generatorOutletFlowTemperatureC: 5,
+    transitionTemperatureC: 0
+  });
+  const pcmInputLimit = calculateCoolingStoragePcmInputEnergyLimitForSolidSensibleStorage({
+    solidMassKg: 40,
+    solidSpecificHeatKWhPerKgK: 0.001,
+    generatorOutletFlowDeltaK: 5
+  });
+  const pcmDecrease = calculateCoolingStoragePcmSolidMassDecreaseVariation({
+    transformableEnergyKWh: -0.5,
+    latentHeatKWhPerKg: 0.0271,
+    solidSpecificHeatKWhPerKgK: 0.000392,
+    transitionTemperatureC: 20,
+    initialSolidMassKg: 20
+  });
+  const pcmDecreaseLimited = calculateCoolingStoragePcmSolidMassDecreaseVariation({
+    transformableEnergyKWh: -2,
+    latentHeatKWhPerKg: 0.0271,
+    solidSpecificHeatKWhPerKgK: 0.000392,
+    transitionTemperatureC: 20,
+    initialSolidMassKg: 20
+  });
+  const pcmDecreaseZero = calculateCoolingStoragePcmSolidMassDecreaseVariation({
+    transformableEnergyKWh: 0,
+    latentHeatKWhPerKg: 0.0271,
+    solidSpecificHeatKWhPerKgK: 0.000392,
+    transitionTemperatureC: 20,
+    initialSolidMassKg: 20
+  });
+  const pcmMassAfterDecrease = calculateCoolingStorageSolidMassAfterUse({
+    initialSolidMassKg: 20,
+    deltaSolidMassKg: pcmDecrease.valueKg
   });
   const limitedLiquid = limitCoolingStoragePcmSolidMassToLiquid({
     deltaSolidMassKg: 60,
@@ -843,6 +890,15 @@ test("calculates MC001 cooling-storage relations 3.94-3.123 with explicit storag
   assert.equal(limitedLiquid.formulaId, "MC001_3_108_COOLING_STORAGE_PCM_SOLID_MASS_LIQUID_LIMIT");
   assert.equal(limitedSolid.formulaId, "MC001_3_109_COOLING_STORAGE_PCM_SOLID_MASS_SOLID_LIMIT");
   assert.equal(solidTemperature.formulaId, "MC001_3_110_COOLING_STORAGE_PCM_SOLID_TEMPERATURE");
+  assert.equal(
+    pcmSensiblePositive.formulaId,
+    "MC001_3_111_COOLING_STORAGE_PCM_SENSIBLE_SOLID_STORAGE_ENERGY"
+  );
+  assert.equal(pcmInputLimit.formulaId, "MC001_3_112_COOLING_STORAGE_PCM_INPUT_ENERGY_LIMIT");
+  assert.equal(
+    pcmDecrease.formulaId,
+    "MC001_3_113_COOLING_STORAGE_PCM_SOLID_MASS_DECREASE_VARIATION"
+  );
   assert.equal(liquidTemperature.formulaId, "MC001_3_114_COOLING_STORAGE_PCM_LIQUID_TEMPERATURE");
   assert.equal(pumpTime.formulaId, "MC001_3_115_3_117_COOLING_STORAGE_PUMP_OPERATION_TIME");
   assert.equal(pumpAux.formulaId, "MC001_3_116_3_118_COOLING_STORAGE_AUXILIARY_ENERGY");
@@ -863,7 +919,30 @@ test("calculates MC001 cooling-storage relations 3.94-3.123 with explicit storag
   assertCloseTo(iceMassVariation.valueKg, -8.158007728638902);
   assertCloseTo(iceThickness.valueM, 0.011754142411067498);
   assert.equal(solidMass.valueKg, 43);
-  assertCloseTo(pcmVariation.valueKg, 37.99392097264438);
+  assertCloseTo(pcmVariation.valueKg, 14.310246136233543);
+  assertCloseTo(pcmSensiblePositive.valueKWh, 1.3);
+  assertCloseTo(pcmSensibleNegative.valueKWh, -0.1);
+  assert.deepEqual(pcmSensibleNegative.warnings, ["mc001_3_112_input_energy_limit_required"]);
+  assertCloseTo(pcmInputLimit.valueKWh, 0.2);
+  assertCloseTo(pcmDecrease.valueKg, -14.310246136233543);
+  assert.equal(pcmDecrease.limitedByInitialSolidMass, false);
+  assert.equal(pcmDecrease.unit, "kg");
+  assert.equal(pcmDecreaseLimited.valueKg, -20);
+  assert.equal(pcmDecreaseLimited.limitedByInitialSolidMass, true);
+  assert.deepEqual(pcmDecreaseLimited.warnings, ["mc001_3_113_limited_to_initial_solid_mass"]);
+  assert.equal(pcmDecreaseZero.valueKg, 0);
+  assertCloseTo(pcmMassAfterDecrease.valueKg, 5.689753863766457);
+  assert.throws(
+    () =>
+      calculateCoolingStoragePcmSolidMassDecreaseVariation({
+        transformableEnergyKWh: 0.1,
+        latentHeatKWhPerKg: 0.0271,
+        solidSpecificHeatKWhPerKgK: 0.000392,
+        transitionTemperatureC: 20,
+        initialSolidMassKg: 20
+      }),
+    /non-positive/
+  );
   assert.equal(limitedLiquid.valueKg, 50);
   assert.equal(limitedSolid.valueKg, 42);
   assertCloseTo(solidTemperature.valueC, 2.2222222222222223);

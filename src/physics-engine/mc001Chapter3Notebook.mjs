@@ -100,6 +100,31 @@ export function buildChapter3NotebookSections(chapter3Result) {
       "kWh",
       "MC001_3_68_VENTILATION_AUXILIARY_TOTAL"
     ),
+    ...(monthHasPcmStorage(chapter3Result)
+      ? [
+          line(
+            "chapter3.annual.pcm_sensible",
+            `ΔQC,sto,senssld,an := ${value(annual.pcmSensibleSolidStorageEnergyKWh, "kWh")}`,
+            annual.pcmSensibleSolidStorageEnergyKWh,
+            "kWh",
+            "MC001_3_111_COOLING_STORAGE_PCM_SENSIBLE_SOLID_STORAGE_ENERGY"
+          ),
+          line(
+            "chapter3.annual.pcm_limit",
+            `ΔQC,sto,limit,an := ${value(annual.pcmInputEnergyLimitKWh, "kWh")}`,
+            annual.pcmInputEnergyLimitKWh,
+            "kWh",
+            "MC001_3_112_COOLING_STORAGE_PCM_INPUT_ENERGY_LIMIT"
+          ),
+          line(
+            "chapter3.annual.pcm_mass_decrease",
+            `ΔmC,sto,sld,an := ${value(annual.pcmSolidMassDecreaseKg, "kg")}`,
+            annual.pcmSolidMassDecreaseKg,
+            "kg",
+            "MC001_3_113_COOLING_STORAGE_PCM_SOLID_MASS_DECREASE_VARIATION"
+          )
+        ]
+      : []),
     line(
       "chapter3.annual.lighting",
       `WL,an := ${value(annual.lightingEnergyKWh, "kWh")}`,
@@ -125,6 +150,31 @@ export function buildChapter3NotebookSections(chapter3Result) {
             )
           ]
         : []),
+      ...(month.coolingStoragePcm
+        ? [
+            line(
+              `${month.month}.pcm.sensible`,
+              `ΔQC,sto,senssld,${month.month} := ${value(month.coolingStoragePcm.sensibleStorage.valueKWh, "kWh")}`,
+              month.coolingStoragePcm.sensibleStorage.valueKWh,
+              "kWh",
+              month.coolingStoragePcm.sensibleStorage.formulaId
+            ),
+            line(
+              `${month.month}.pcm.limit`,
+              `ΔQC,sto,limit,${month.month} := ${value(month.coolingStoragePcm.inputLimit.valueKWh, "kWh")}`,
+              month.coolingStoragePcm.inputLimit.valueKWh,
+              "kWh",
+              month.coolingStoragePcm.inputLimit.formulaId
+            ),
+            line(
+              `${month.month}.pcm.mass_decrease`,
+              `ΔmC,sto,sld,${month.month} := ${value(month.coolingStoragePcm.solidMassDecrease.valueKg, "kg")}`,
+              month.coolingStoragePcm.solidMassDecrease.valueKg,
+              "kg",
+              month.coolingStoragePcm.solidMassDecrease.formulaId
+            )
+          ]
+        : []),
       line(
         `${month.month}.lighting`,
         `WL,${month.month} := ${value(month.lightingEnergyKWh, "kWh")} -- valoare lunara explicita sau rezultat SR EN 15193-1 furnizat`,
@@ -139,4 +189,8 @@ export function buildChapter3NotebookSections(chapter3Result) {
     section("chapter3.annual", "Chapter 3 - totaluri sisteme", annualLines),
     ...monthlySections
   ];
+}
+
+function monthHasPcmStorage(chapter3Result) {
+  return (chapter3Result.monthly ?? []).some(month => month.coolingStoragePcm);
 }

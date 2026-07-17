@@ -5,6 +5,9 @@ import {
 import {
   calculateChapter3CoolingAuxiliaryEnergyTotal,
   calculateChapter3HeatingAuxiliaryEnergyTotal,
+  calculateCoolingStoragePcmInputEnergyLimitForSolidSensibleStorage,
+  calculateCoolingStoragePcmSensibleSolidStorageEnergy,
+  calculateCoolingStoragePcmSolidMassDecreaseVariation,
   calculateFanElectricEnergy,
   calculateLightingLeniFromSubspaces,
   calculateVentilationAuxiliaryTotal
@@ -201,8 +204,48 @@ function monthlyValue(values, index, name) {
   return values[index];
 }
 
+function monthlyOptionalValue(values, index) {
+  if (!Array.isArray(values)) return null;
+  return values[index] ?? null;
+}
+
+function calculatePcmStorageMonth(input, monthId) {
+  if (!input) return null;
+  const sensibleStorage = calculateCoolingStoragePcmSensibleSolidStorageEnergy({
+    transformableEnergyKWh: input.sensibleStorageTransformableEnergyKWh,
+    solidMassKg: input.solidMassKg,
+    solidSpecificHeatKWhPerKgK: input.solidSpecificHeatKWhPerKgK,
+    generatorOutletFlowTemperatureC: input.generatorOutletFlowTemperatureC,
+    transitionTemperatureC: input.transitionTemperatureC
+  });
+  const inputLimit = calculateCoolingStoragePcmInputEnergyLimitForSolidSensibleStorage({
+    solidMassKg: input.solidMassKg,
+    solidSpecificHeatKWhPerKgK: input.solidSpecificHeatKWhPerKgK,
+    generatorOutletFlowDeltaK: input.generatorOutletFlowDeltaK
+  });
+  const solidMassDecrease = calculateCoolingStoragePcmSolidMassDecreaseVariation({
+    transformableEnergyKWh: input.massDecreaseTransformableEnergyKWh,
+    latentHeatKWhPerKg: input.latentHeatKWhPerKg,
+    solidSpecificHeatKWhPerKgK: input.solidSpecificHeatKWhPerKgK,
+    transitionTemperatureC: input.transitionTemperatureC,
+    initialSolidMassKg: input.initialSolidMassKg
+  });
+
+  return {
+    month: monthId,
+    sensibleStorage,
+    inputLimit,
+    solidMassDecrease,
+    totals: {
+      sensibleSolidStorageEnergyKWh: sensibleStorage.valueKWh,
+      inputEnergyLimitKWh: inputLimit.valueKWh,
+      solidMassDecreaseKg: solidMassDecrease.valueKg
+    }
+  };
+}
+
 export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
-  const { months, lighting } = input;
+  const { months, lighting, coolingStoragePcm } = input;
   assertArray(months, "months");
 
   const lightingResult = calculateLighting(lighting);
@@ -232,6 +275,10 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     const lightingEnergyKWh = lightingResult
       ? monthlyValue(lightingResult.monthlyEnergyKWh, index, "lighting.monthlyEnergyKWh")
       : 0;
+    const pcmStorage = calculatePcmStorageMonth(
+      month.coolingStoragePcm ?? monthlyOptionalValue(coolingStoragePcm?.monthly, index),
+      monthId
+    );
 
     return {
       month: monthId,
@@ -239,12 +286,16 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       cooling,
       dhw,
       ventilation,
+      coolingStoragePcm: pcmStorage,
       lightingEnergyKWh,
       totals: {
         heatingInputKWh: heating.finalStageInputKWh,
         coolingInputKWh: cooling.finalStageInputKWh,
         dhwInputKWh: dhw?.finalStageInputKWh ?? 0,
         ventilationAuxiliaryKWh: ventilation?.valueKWh ?? 0,
+        pcmSensibleSolidStorageEnergyKWh: pcmStorage?.totals.sensibleSolidStorageEnergyKWh ?? 0,
+        pcmInputEnergyLimitKWh: pcmStorage?.totals.inputEnergyLimitKWh ?? 0,
+        pcmSolidMassDecreaseKg: pcmStorage?.totals.solidMassDecreaseKg ?? 0,
         lightingEnergyKWh
       }
     };
@@ -255,6 +306,9 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     coolingInputKWh: sum(monthly.map(month => month.totals.coolingInputKWh)),
     dhwInputKWh: sum(monthly.map(month => month.totals.dhwInputKWh)),
     ventilationAuxiliaryKWh: sum(monthly.map(month => month.totals.ventilationAuxiliaryKWh)),
+    pcmSensibleSolidStorageEnergyKWh: sum(monthly.map(month => month.totals.pcmSensibleSolidStorageEnergyKWh)),
+    pcmInputEnergyLimitKWh: sum(monthly.map(month => month.totals.pcmInputEnergyLimitKWh)),
+    pcmSolidMassDecreaseKg: sum(monthly.map(month => month.totals.pcmSolidMassDecreaseKg)),
     lightingEnergyKWh: sum(monthly.map(month => month.totals.lightingEnergyKWh)),
     heatingAuxiliaryKWh: sum(monthly.map(month => month.heating.auxiliaryTotalKWh)),
     coolingAuxiliaryKWh: sum(monthly.map(month => month.cooling.auxiliaryTotalKWh))
@@ -289,6 +343,13 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       "MC001_3_B_SUBSYSTEM_RECOVERABLE_ENERGY",
       "MC001_3_185_TOTAL_HEATING_AUXILIARY_ENERGY",
       "MC001_3_186_TOTAL_COOLING_AUXILIARY_ENERGY",
+      ...(monthly.some(month => month.coolingStoragePcm)
+        ? [
+            "MC001_3_111_COOLING_STORAGE_PCM_SENSIBLE_SOLID_STORAGE_ENERGY",
+            "MC001_3_112_COOLING_STORAGE_PCM_INPUT_ENERGY_LIMIT",
+            "MC001_3_113_COOLING_STORAGE_PCM_SOLID_MASS_DECREASE_VARIATION"
+          ]
+        : []),
       ...(lightingResult ? ["MC001_3_4_34_LIGHTING_LENI_WEIGHTED_BUILDING"] : [])
     ]
   };

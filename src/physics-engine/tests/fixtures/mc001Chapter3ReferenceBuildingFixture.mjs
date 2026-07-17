@@ -176,6 +176,53 @@ export const mc001Chapter3ReferenceBuildingFixture = Object.freeze({
       coolingMonthlyAuxiliary: 1.4,
       note: "Auxiliary electricity is reported separately from useful thermal demand and from lighting energy."
     }),
+    pcmStorageRelationsKWhOrKg: Object.freeze({
+      source: "MC001-2022 Chapter 3.2.4 page 199, relations 3.111-3.113",
+      expectedValuesPolicy: "hard_coded_constants_not_generated_by_runtime",
+      monthlySensibleSolidStorageEnergy3_111KWh: Object.freeze([
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3,
+        1.3
+      ]),
+      monthlyInputEnergyLimit3_112KWh: Object.freeze([
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2
+      ]),
+      monthlySolidMassDecrease3_113Kg: Object.freeze([
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543,
+        -14.310246136233543
+      ]),
+      massLimitedSolidMassDecrease3_113Kg: -20
+    }),
     annualIdentitiesKWh: Object.freeze({
       heatingInput: "sum(QHnd_month + 14.03)",
       coolingInput: "sum(QCnd_month + 5.79)",
@@ -190,6 +237,7 @@ export const mc001Chapter3ReferenceBuildingFixture = Object.freeze({
       "stage recovered/recoverable fractions",
       "DHW useful monthly demand",
       "ventilation fan and auxiliary inputs",
+      "PCM storage monthly explicit inputs for relations 3.111-3.113",
       "SR EN 15193-1 lighting monthly explicit boundary"
     ])
   }),
@@ -223,6 +271,22 @@ export const mc001Chapter3ReferenceBuildingFixture = Object.freeze({
         })
       })
     )),
+    coolingStoragePcm: Object.freeze({
+      monthly: Object.freeze(MONTHS.map(month =>
+        Object.freeze({
+          month,
+          sensibleStorageTransformableEnergyKWh: 1.5,
+          solidMassKg: 40,
+          solidSpecificHeatKWhPerKgK: 0.000392,
+          generatorOutletFlowTemperatureC: 32.755102040816325,
+          transitionTemperatureC: 20,
+          generatorOutletFlowDeltaK: 12.755102040816327,
+          massDecreaseTransformableEnergyKWh: -0.5,
+          latentHeatKWhPerKg: 0.0271,
+          initialSolidMassKg: 20
+        })
+      ))
+    }),
     lighting: Object.freeze({
       totalAreaM2: 120,
       leniSubspaces: Object.freeze([

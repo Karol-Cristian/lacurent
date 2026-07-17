@@ -40,6 +40,8 @@ test("runs the 12-month Chapter 3 integrated runtime chain with fixed expected o
   assert.equal(result.status, "calculated");
   assert.equal(result.monthCount, 12);
   assert.equal(result.monthly.length, 12);
+  const pcmLedger =
+    mc001Chapter3ReferenceBuildingFixture.derivationLedger.pcmStorageRelationsKWhOrKg;
 
   for (const [index, month] of result.monthly.entries()) {
     assertCloseTo(month.totals.heatingInputKWh, expected.monthlyHeatingInputKWh[index]);
@@ -50,6 +52,18 @@ test("runs the 12-month Chapter 3 integrated runtime chain with fixed expected o
       expected.monthlyVentilationAuxiliaryKWh[index]
     );
     assert.equal(month.totals.lightingEnergyKWh, 20);
+    assertCloseTo(
+      month.totals.pcmSensibleSolidStorageEnergyKWh,
+      pcmLedger.monthlySensibleSolidStorageEnergy3_111KWh[index]
+    );
+    assertCloseTo(
+      month.totals.pcmInputEnergyLimitKWh,
+      pcmLedger.monthlyInputEnergyLimit3_112KWh[index]
+    );
+    assertCloseTo(
+      month.totals.pcmSolidMassDecreaseKg,
+      pcmLedger.monthlySolidMassDecrease3_113Kg[index]
+    );
     assert.equal(month.heating.stageResults.length, 4);
     assert.equal(month.cooling.stageResults.length, 4);
     assert.equal(month.dhw.stageResults.length, 3);
@@ -63,6 +77,18 @@ test("runs the 12-month Chapter 3 integrated runtime chain with fixed expected o
     expected.annual.ventilationAuxiliaryKWh
   );
   assertCloseTo(result.annual.lightingEnergyKWh, expected.annual.lightingEnergyKWh);
+  assertCloseTo(
+    result.annual.pcmSensibleSolidStorageEnergyKWh,
+    sum(pcmLedger.monthlySensibleSolidStorageEnergy3_111KWh)
+  );
+  assertCloseTo(
+    result.annual.pcmInputEnergyLimitKWh,
+    sum(pcmLedger.monthlyInputEnergyLimit3_112KWh)
+  );
+  assertCloseTo(
+    result.annual.pcmSolidMassDecreaseKg,
+    sum(pcmLedger.monthlySolidMassDecrease3_113Kg)
+  );
   assertCloseTo(result.annual.heatingAuxiliaryKWh, expected.annual.heatingAuxiliaryKWh);
   assertCloseTo(result.annual.coolingAuxiliaryKWh, expected.annual.coolingAuxiliaryKWh);
   assertCloseTo(
@@ -121,6 +147,34 @@ test("certifies the Chapter 3 fixed 12-month fixture derivation ledger", () => {
     derivationLedger.monthlyStageDeltasKWh.dhw.total
   );
   assert.equal(derivationLedger.auxiliarySeparationKWh.lightingMonthlyExplicitBoundary, 20);
+  assert.equal(
+    derivationLedger.pcmStorageRelationsKWhOrKg.expectedValuesPolicy,
+    "hard_coded_constants_not_generated_by_runtime"
+  );
+  assert.equal(
+    derivationLedger.pcmStorageRelationsKWhOrKg.monthlySensibleSolidStorageEnergy3_111KWh.length,
+    12
+  );
+  assert.equal(
+    derivationLedger.pcmStorageRelationsKWhOrKg.monthlyInputEnergyLimit3_112KWh.length,
+    12
+  );
+  assert.equal(
+    derivationLedger.pcmStorageRelationsKWhOrKg.monthlySolidMassDecrease3_113Kg.length,
+    12
+  );
+  assertCloseTo(
+    sum(derivationLedger.pcmStorageRelationsKWhOrKg.monthlySensibleSolidStorageEnergy3_111KWh),
+    15.6
+  );
+  assertCloseTo(
+    sum(derivationLedger.pcmStorageRelationsKWhOrKg.monthlyInputEnergyLimit3_112KWh),
+    2.4
+  );
+  assertCloseTo(
+    derivationLedger.pcmStorageRelationsKWhOrKg.massLimitedSolidMassDecrease3_113Kg,
+    -20
+  );
   assert.equal(input.lighting.monthlyEnergyKWh.length, 12);
   assert.equal(expected.annual.lightingEnergyKWh, 240);
   assert.ok(
@@ -137,7 +191,9 @@ test("exposes Chapter 3 integrated runtime in compact notebook sections", () => 
   assert.equal(sections.length, 13);
   assert.equal(sections[0].sectionId, "chapter3.annual");
   assert.ok(sections[0].lines.some(line => line.text.includes("QH,sys,an")));
+  assert.ok(sections[0].lines.some(line => line.text.includes("ΔQC,sto,senssld,an")));
   assert.ok(sections[1].lines.some(line => line.text.includes("Q_heating_emission,in")));
+  assert.ok(sections[1].lines.some(line => line.text.includes("ΔmC,sto,sld,january")));
   assert.ok(sections[1].lines.some(line => line.text.includes("WL,january")));
   assert.ok(
     sections.every(section =>

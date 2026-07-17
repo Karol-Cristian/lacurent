@@ -36,9 +36,15 @@ function relationEntry(relation, options) {
     status: options.status,
     source: options.source,
     sourceLocation: options.sourceLocation ?? options.source,
+    mc001SourcePage: options.mc001SourcePage ?? options.sourceLocation ?? options.source,
     implementation: options.implementation ?? null,
+    implementedFunction: options.implementedFunction ?? options.implementation ?? null,
     tests: Object.freeze(options.tests ?? []),
     validationFixture: options.validationFixture ?? null,
+    productionRuntimePath: options.productionRuntimePath ?? options.runtimeIntegrated ?? null,
+    notebookPath: options.notebookPath ?? options.notebookTraceable ?? null,
+    fixtureExpectedValue: options.fixtureExpectedValue ?? options.validationFixture ?? null,
+    sourceToCodeAuditStatus: options.sourceToCodeAuditStatus ?? options.status,
     sourceExtracted: options.sourceExtracted ?? true,
     formulaImplemented: options.formulaImplemented ?? false,
     tableImplemented: options.tableImplemented ?? false,
@@ -51,23 +57,41 @@ function relationEntry(relation, options) {
   });
 }
 
+function optionForRelation(option, relation, fallback = null) {
+  if (typeof option === "function") {
+    return option(relation);
+  }
+  if (option && typeof option === "object" && !Array.isArray(option)) {
+    return option[relation] ?? fallback;
+  }
+  return option ?? fallback;
+}
+
 function implementedRange(relations, options) {
-  return relations.map(relation =>
-    relationEntry(relation, {
+  return relations.map(relation => {
+    const sourceLocation = optionForRelation(options.sourceLocation, relation, options.source);
+    return relationEntry(relation, {
       status: options.status ?? CHAPTER_3_MATRIX_STATUS.UNIT_TESTED,
       source: options.source,
+      sourceLocation,
+      mc001SourcePage: optionForRelation(options.mc001SourcePage, relation, sourceLocation),
       implementation: options.implementation,
+      implementedFunction: optionForRelation(options.implementedFunction, relation, options.implementation),
       tests: options.tests,
       validationFixture: options.validationFixture,
+      productionRuntimePath: optionForRelation(options.productionRuntimePath, relation, options.runtimeIntegrated ?? false),
+      notebookPath: optionForRelation(options.notebookPath, relation, options.notebookTraceable ?? false),
+      fixtureExpectedValue: optionForRelation(options.fixtureExpectedValue, relation, options.validationFixture),
       formulaImplemented: true,
       tableImplemented: options.tableImplemented ?? false,
       branchesImplemented: options.branchesImplemented ?? true,
       numericalFixtureCovered: options.numericalFixtureCovered ?? true,
       runtimeIntegrated: options.runtimeIntegrated ?? false,
       notebookTraceable: options.notebookTraceable ?? false,
-      explicitInputBoundary: options.explicitInputBoundary ?? false
-    })
-  );
+      explicitInputBoundary: options.explicitInputBoundary ?? false,
+      sourceToCodeAuditStatus: options.sourceToCodeAuditStatus ?? "source_to_code_audited"
+    });
+  });
 }
 
 const generalSubsystemRelations = [
@@ -137,6 +161,9 @@ const coolingStorageImplemented = implementedRange(
     "3.108",
     "3.109",
     "3.110",
+    "3.111",
+    "3.112",
+    "3.113",
     "3.114",
     "3.115",
     "3.116",
@@ -149,37 +176,59 @@ const coolingStorageImplemented = implementedRange(
     "3.123"
   ],
   {
-    source: "MC001-2022 Chapter 3.2.4, pages 205-210, Tabel 3.9 and Tabel 3.10",
+    source: "MC001-2022 Chapter 3.2.4, pages 193-200; relations 3.111-3.113 are normative equations on page 199 before Tabel 3.9",
+    sourceLocation: {
+      "3.111": "MC001-2022 Chapter 3.2.4, page 199, PCM storage sensible solid energy equation",
+      "3.112": "MC001-2022 Chapter 3.2.4, page 199, PCM input-energy limiting equation after negative 3.111 result",
+      "3.113": "MC001-2022 Chapter 3.2.4, page 199, PCM solid-mass decrease branch"
+    },
     implementation: SYSTEM_ENERGY,
+    implementedFunction: {
+      "3.94": "calculateCoolingStorageInputBoundary",
+      "3.95": "calculateCoolingStorageSensibleLiquidEnergy",
+      "3.96": "calculateCoolingStorageLatentEnergy",
+      "3.97": "calculateCoolingStorageSensibleSolidEnergy",
+      "3.98": "calculateCoolingStorageOutputEnergy",
+      "3.99": "calculateCoolingStorageThermalLoss",
+      "3.100": "calculateCoolingStorageThermalLoss",
+      "3.101": "calculateCoolingStorageThermalLoss",
+      "3.102": "calculateCoolingStorageTransformableEnergyWater",
+      "3.103": "calculateCoolingStorageInitialIceThickness",
+      "3.104": "calculateCoolingStorageIceMassVariation",
+      "3.105": "calculateCoolingStorageIceThickness",
+      "3.106": "calculateCoolingStorageSolidMassAfterUse",
+      "3.107": "calculateCoolingStoragePcmSolidMassVariation",
+      "3.108": "limitCoolingStoragePcmSolidMassToLiquid",
+      "3.109": "limitCoolingStoragePcmSolidMassToExistingSolid",
+      "3.110": "calculateCoolingStoragePcmSolidTemperature",
+      "3.111": "calculateCoolingStoragePcmSensibleSolidStorageEnergy",
+      "3.112": "calculateCoolingStoragePcmInputEnergyLimitForSolidSensibleStorage",
+      "3.113": "calculateCoolingStoragePcmSolidMassDecreaseVariation",
+      "3.114": "calculateCoolingStoragePcmLiquidTemperature",
+      "3.115": "calculateCoolingStoragePumpOperationTime",
+      "3.116": "calculateCoolingStorageAuxiliaryEnergy",
+      "3.117": "calculateCoolingStoragePumpOperationTime",
+      "3.118": "calculateCoolingStorageAuxiliaryEnergy",
+      "3.119": "calculateCoolingStorageAuxiliaryTotal",
+      "3.120": "calculateCoolingStorageRecoverableAuxiliaryLoss",
+      "3.121": "calculateCoolingStorageRecoverableThermalLoss",
+      "3.122": "calculateCoolingStorageRecoverableLossTotal",
+      "3.123": "calculateCoolingStorageGeneratorDeltaEnergy"
+    },
     tests: [SYSTEM_ENERGY_TEST],
     validationFixture: "independent fixed constants in mc001Chapter3SystemEnergy.test.mjs",
-    tableImplemented: true,
+    tableImplemented: false,
     runtimeIntegrated: "callable runtime relations; integrated project chain may use explicit storage stage balance when detailed storage inputs are absent",
     notebookTraceable: "storage stage balance is notebook-visible; detailed helpers expose compact trace objects",
+    productionRuntimePath: "src/physics-engine/mc001Chapter3SystemEnergy.mjs storage helper path and 12-month reference fixture explicit storage stage",
+    notebookPath: "src/physics-engine/mc001Chapter3Notebook.mjs storage/system-energy stage lines",
+    fixtureExpectedValue: {
+      "3.111": "1.3 kWh nominal positive, -0.1 kWh negative raw branch in mc001Chapter3SystemEnergy.test.mjs",
+      "3.112": "0.2 kWh input-energy limit in mc001Chapter3SystemEnergy.test.mjs",
+      "3.113": "-14.310246136233543 kg nominal decrease and -20 kg mass-limited decrease"
+    },
     explicitInputBoundary: true
   }
-);
-
-const coolingStorageUnreadable = ["3.111", "3.112", "3.113"].map(relation =>
-  relationEntry(relation, {
-    status: CHAPTER_3_MATRIX_STATUS.GENUINELY_UNAVAILABLE_UNREADABLE,
-    source: "MC001-2022 Chapter 3.2.4, pages 207-208, degraded Tabel 3.9 rows between relation 3.110 and 3.114",
-    sourceExtracted: false,
-    blocker: {
-      relation,
-      sourceLocation: "MC001-2022 pages 207-208, Tabel 3.9 cooling storage PCM liquid/solid transition continuation",
-      requiredEquationOrTable:
-        "The exact formula row between relation 3.110 and relation 3.114 in the PCM storage branch.",
-      missingElement:
-        "The local official PDF renders these rows as unreadable grey artifacts; pdftotext does not expose relation numbers 3.111-3.113 or recoverable symbols.",
-      sourceAvailability: "unreadable in local source scan",
-      externalStandard: "SR EN 16798-15 is referenced by the table context, but the MC001 row itself is unreadable.",
-      requiredInputContract:
-        "A reviewed row-by-row transcription of relations 3.111-3.113, including symbols, units and branch limits.",
-      whyDeterministicImplementationCannotProceed:
-        "Implementing these three PCM continuation rows from adjacent formulas would require guessing the missing equation text and would risk corrupting the normative method."
-    }
-  })
 );
 
 const coolingDistributionRelations = implementedRange(relationRange(136, 155), {
@@ -270,6 +319,8 @@ const lightingBlocked = [
     status: CHAPTER_3_MATRIX_STATUS.GENUINELY_EXTERNALLY_BLOCKED,
     source: "MC001-2022 Chapter 3.4, pages 283-287",
     sourceExtracted: true,
+    mc001SourcePage: "MC001-2022 Chapter 3.4, pages 283-287",
+    sourceToCodeAuditStatus: "external_standard_required_for_full_lighting_engine",
     blocker: {
       relation: "3.4_SR_EN_15193_1_DELEGATED",
       sourceLocation: "MC001-2022 pages 283-287",
@@ -286,6 +337,31 @@ const lightingBlocked = [
     }
   })
 ];
+
+export const chapter3LightingExternalImplementationPlan = Object.freeze({
+  status: "lighting_engine_external_source_required",
+  mc001EquationsAlreadyImplemented: Object.freeze([
+    "MC001 LENI building aggregation over explicit subspace LENI inputs",
+    "explicit monthly lighting-energy boundary used by the integrated Chapter 3 reference fixture"
+  ]),
+  srEn15193EquationsRequiredByMc001: Object.freeze([
+    "SR EN 15193-1 equations 1-13 for detailed lighting energy",
+    "SR EN 15193-1 equations 25-33 for simplified/auxiliary lighting terms referenced by MC001"
+  ]),
+  srEn15193TablesAndAnnexesRequired: Object.freeze([
+    "Annex B lighting power/default data including Table B.2",
+    "daylight dependency factors FD, FD,C, FD,S and related daylight/access parameters",
+    "occupancy/control factors Fo, FC, Fcc and control-type parameters",
+    "parasitic/control power Pci and emergency-lighting charging power Pei",
+    "operating-hour and building-use schedules"
+  ]),
+  absentRepositorySources: Object.freeze([
+    "licensed/reviewed SR EN 15193-1 equation text",
+    "licensed/reviewed SR EN 15193-1 lookup tables and annex datasets"
+  ]),
+  executableBoundaryUntilSourceSupplied:
+    "MC001 LENI aggregation may consume explicit professional subspace LENI/monthly lighting-energy inputs; it is not a complete lighting calculation engine."
+});
 
 export const chapter3DependencyGraph = Object.freeze({
   usefulEnergyInputs: {
@@ -335,7 +411,6 @@ export const chapter3ImplementationMatrix = Object.freeze([
   ...heatingRelations,
   ...ahuRelations,
   ...coolingStorageImplemented,
-  ...coolingStorageUnreadable,
   ...coolingDistributionRelations,
   ...coolingRejectionRelations,
   ...aggregateRelations,

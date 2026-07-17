@@ -3,6 +3,7 @@ import {
   CHAPTER_3_MATRIX_STATUS,
   chapter3DependencyGraph,
   chapter3ImplementationMatrix,
+  chapter3LightingExternalImplementationPlan,
   chapter3MatrixSummary,
   discoveredChapter3Relations
 } from "./fixtures/mc001Chapter3ImplementationMatrixFixture.mjs";
@@ -37,6 +38,13 @@ test("Chapter 3 matrix uses precise statuses and explicit coverage flags", () =>
     assert.ok("numericalFixtureCovered" in entry, `${entry.matrixId} numericalFixtureCovered`);
     assert.ok("runtimeIntegrated" in entry, `${entry.matrixId} runtimeIntegrated`);
     assert.ok("notebookTraceable" in entry, `${entry.matrixId} notebookTraceable`);
+    assert.equal(typeof entry.mc001SourcePage, "string", `${entry.matrixId} mc001SourcePage`);
+    assert.notEqual(entry.mc001SourcePage.length, 0, `${entry.matrixId} mc001SourcePage length`);
+    assert.ok("implementedFunction" in entry, `${entry.matrixId} implementedFunction`);
+    assert.ok("productionRuntimePath" in entry, `${entry.matrixId} productionRuntimePath`);
+    assert.ok("notebookPath" in entry, `${entry.matrixId} notebookPath`);
+    assert.ok("fixtureExpectedValue" in entry, `${entry.matrixId} fixtureExpectedValue`);
+    assert.ok("sourceToCodeAuditStatus" in entry, `${entry.matrixId} sourceToCodeAuditStatus`);
   }
 });
 
@@ -50,8 +58,13 @@ test("implemented Chapter 3 rows identify runtime implementation, tests and vali
   assert.ok(implemented.length >= 8);
   for (const entry of implemented) {
     assert.equal(typeof entry.implementation, "string", `${entry.matrixId} implementation`);
+    assert.equal(typeof entry.implementedFunction, "string", `${entry.matrixId} implemented function`);
+    assert.notEqual(entry.implementedFunction.length, 0, `${entry.matrixId} implemented function length`);
     assert.ok(entry.tests.length > 0, `${entry.matrixId} tests`);
     assert.ok(entry.validationFixture, `${entry.matrixId} validation fixture`);
+    assert.ok(entry.productionRuntimePath, `${entry.matrixId} production runtime path`);
+    assert.ok(entry.notebookPath, `${entry.matrixId} notebook path`);
+    assert.ok(entry.fixtureExpectedValue, `${entry.matrixId} fixture expected value`);
     assert.notEqual(entry.formulaImplemented, false, `${entry.matrixId} formula implemented`);
     assert.notEqual(entry.numericalFixtureCovered, false, `${entry.matrixId} fixture covered`);
   }
@@ -66,12 +79,7 @@ test("genuine Chapter 3 blockers identify exact missing artifact and source loca
 
   assert.deepEqual(
     blocked.map(entry => entry.matrixId),
-    [
-      "CH3_REL_3_111",
-      "CH3_REL_3_112",
-      "CH3_REL_3_113",
-      "CH3_REL_3_4_SR_EN_15193_1_DELEGATED"
-    ]
+    ["CH3_REL_3_4_SR_EN_15193_1_DELEGATED"]
   );
 
   for (const entry of blocked) {
@@ -93,9 +101,10 @@ test("Chapter 3 matrix summary exposes maximum available coverage counts", () =>
 
   assert.equal(summary.matrixStatus, "CHAPTER_3_MATRIX_MAXIMUM_AVAILABLE_COVERAGE");
   assert.equal(summary.relationCount, discoveredChapter3Relations.length);
-  assert.equal(summary.blockerEntryCount, 4);
+  assert.equal(summary.relationCount, 217);
+  assert.equal(summary.blockerEntryCount, 1);
   assert.equal(summary.genuinelyExternallyBlockedRelations, 1);
-  assert.equal(summary.genuinelyUnavailableUnreadableRelations, 3);
+  assert.equal(summary.genuinelyUnavailableUnreadableRelations, 0);
   assert.deepEqual(summary.uncoveredRelations, []);
   assert.ok(summary.totalChapter3RelationsIdentified > 190);
   assert.ok(summary.implementedEquations > 180);
@@ -118,4 +127,31 @@ test("Chapter 3 dependency graph separates useful energy, systems and delegated 
 
   assert.ok(chapter3DependencyGraph.subsystemBalances.outputs.includes("subsystem input energy"));
   assert.ok(chapter3DependencyGraph.lighting.sources.includes("SR EN 15193-1"));
+});
+
+test("Chapter 3 lighting plan keeps MC001 LENI boundary separate from the unavailable SR EN 15193-1 engine", () => {
+  assert.equal(
+    chapter3LightingExternalImplementationPlan.status,
+    "lighting_engine_external_source_required"
+  );
+  assert.ok(
+    chapter3LightingExternalImplementationPlan.mc001EquationsAlreadyImplemented.some(item =>
+      item.includes("LENI")
+    )
+  );
+  assert.ok(
+    chapter3LightingExternalImplementationPlan.srEn15193EquationsRequiredByMc001.some(item =>
+      item.includes("1-13")
+    )
+  );
+  assert.ok(
+    chapter3LightingExternalImplementationPlan.srEn15193TablesAndAnnexesRequired.some(item =>
+      item.includes("Annex B")
+    )
+  );
+  assert.ok(
+    chapter3LightingExternalImplementationPlan.executableBoundaryUntilSourceSupplied.includes(
+      "not a complete lighting calculation engine"
+    )
+  );
 });

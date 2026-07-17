@@ -2239,17 +2239,19 @@ export function calculateCoolingStorageSolidMassAfterUse(input) {
 export function calculateCoolingStoragePcmSolidMassVariation(input) {
   const {
     transformableEnergyKWh,
+    latentHeatKWhPerKg,
     liquidSpecificHeatKWhPerKgK,
     solidSpecificHeatKWhPerKgK,
     transitionTemperatureC
   } = input ?? {};
 
   assertFiniteNumber(transformableEnergyKWh, "transformableEnergyKWh");
-  assertFiniteNonNegativeNumber(liquidSpecificHeatKWhPerKgK, "liquidSpecificHeatKWhPerKgK");
+  const effectiveLatentHeatKWhPerKg = latentHeatKWhPerKg ?? liquidSpecificHeatKWhPerKgK;
+  assertFiniteNonNegativeNumber(effectiveLatentHeatKWhPerKg, "latentHeatKWhPerKg");
   assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
   assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
   const denominator =
-    liquidSpecificHeatKWhPerKgK +
+    effectiveLatentHeatKWhPerKg +
     solidSpecificHeatKWhPerKgK * transitionTemperatureC;
   assertFinitePositiveNumber(denominator, "PCM solid mass variation denominator");
   const valueKg = transformableEnergyKWh / denominator;
@@ -2259,10 +2261,10 @@ export function calculateCoolingStoragePcmSolidMassVariation(input) {
     valueKey: "valueKg",
     unit: "kg",
     formulaId: "MC001_3_107_COOLING_STORAGE_PCM_SOLID_MASS_VARIATION",
-    formulaText: "Delta mC,sto,sld = DeltaQC,sto / (Cp,lqd + Cp,sld * thetaSto,tr)",
+    formulaText: "Delta mC,sto,sld = DeltaQC,sto / (Cp,lat + Cp,sld * thetaSto,tr)",
     inputs: {
       transformableEnergyKWh,
-      liquidSpecificHeatKWhPerKgK,
+      latentHeatKWhPerKg: effectiveLatentHeatKWhPerKg,
       solidSpecificHeatKWhPerKgK,
       transitionTemperatureC
     },
@@ -2349,6 +2351,114 @@ export function calculateCoolingStoragePcmSolidTemperature(input) {
       generatorOutletFlowTemperatureC
     },
     extra: { candidateC }
+  });
+}
+
+export function calculateCoolingStoragePcmSensibleSolidStorageEnergy(input) {
+  const {
+    transformableEnergyKWh,
+    solidMassKg,
+    solidSpecificHeatKWhPerKgK,
+    generatorOutletFlowTemperatureC,
+    transitionTemperatureC
+  } = input ?? {};
+
+  assertFiniteNumber(transformableEnergyKWh, "transformableEnergyKWh");
+  assertFiniteNonNegativeNumber(solidMassKg, "solidMassKg");
+  assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNumber(generatorOutletFlowTemperatureC, "generatorOutletFlowTemperatureC");
+  assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
+
+  const sensibleShareKWh =
+    solidMassKg *
+    solidSpecificHeatKWhPerKgK *
+    (generatorOutletFlowTemperatureC - transitionTemperatureC);
+  const valueKWh = transformableEnergyKWh - sensibleShareKWh;
+  const warnings = valueKWh < 0 ? ["mc001_3_112_input_energy_limit_required"] : [];
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_111_COOLING_STORAGE_PCM_SENSIBLE_SOLID_STORAGE_ENERGY",
+    formulaText:
+      "DeltaQC,sto,senssld = DeltaQC,sto - mC,sto,sld * Cp,sens,sld * (thetaC,sto,gen,out,flw - thetaSto,tr)",
+    inputs: {
+      transformableEnergyKWh,
+      solidMassKg,
+      solidSpecificHeatKWhPerKgK,
+      generatorOutletFlowTemperatureC,
+      transitionTemperatureC
+    },
+    warnings,
+    extra: { sensibleShareKWh }
+  });
+}
+
+export function calculateCoolingStoragePcmInputEnergyLimitForSolidSensibleStorage(input) {
+  const { solidMassKg, solidSpecificHeatKWhPerKgK, generatorOutletFlowDeltaK } = input ?? {};
+
+  assertFiniteNonNegativeNumber(solidMassKg, "solidMassKg");
+  assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNonNegativeNumber(generatorOutletFlowDeltaK, "generatorOutletFlowDeltaK");
+
+  const valueKWh = solidMassKg * solidSpecificHeatKWhPerKgK * generatorOutletFlowDeltaK;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_112_COOLING_STORAGE_PCM_INPUT_ENERGY_LIMIT",
+    formulaText: "DeltaQC,sto = mC,sto,sld * Cp,sld,sens * Delta thetaC,sto,gen,out,flw",
+    inputs: {
+      solidMassKg,
+      solidSpecificHeatKWhPerKgK,
+      generatorOutletFlowDeltaK
+    }
+  });
+}
+
+export function calculateCoolingStoragePcmSolidMassDecreaseVariation(input) {
+  const {
+    transformableEnergyKWh,
+    latentHeatKWhPerKg,
+    solidSpecificHeatKWhPerKgK,
+    transitionTemperatureC,
+    initialSolidMassKg
+  } = input ?? {};
+
+  assertFiniteNumber(transformableEnergyKWh, "transformableEnergyKWh");
+  if (transformableEnergyKWh > 0) {
+    throw new Error("transformableEnergyKWh must be non-positive for MC001 3.113 solid-mass decrease branch");
+  }
+  assertFiniteNonNegativeNumber(latentHeatKWhPerKg, "latentHeatKWhPerKg");
+  assertFiniteNonNegativeNumber(solidSpecificHeatKWhPerKgK, "solidSpecificHeatKWhPerKgK");
+  assertFiniteNumber(transitionTemperatureC, "transitionTemperatureC");
+  assertFiniteNonNegativeNumber(initialSolidMassKg, "initialSolidMassKg");
+
+  const denominator =
+    latentHeatKWhPerKg +
+    solidSpecificHeatKWhPerKgK * transitionTemperatureC;
+  assertFinitePositiveNumber(denominator, "PCM solid mass decrease denominator");
+  const rawDeltaSolidMassKg = transformableEnergyKWh / denominator;
+  const valueKg = Math.max(rawDeltaSolidMassKg, -initialSolidMassKg);
+  const limitedByInitialSolidMass = rawDeltaSolidMassKg < -initialSolidMassKg;
+
+  return makeResult({
+    value: valueKg,
+    valueKey: "valueKg",
+    unit: "kg",
+    formulaId: "MC001_3_113_COOLING_STORAGE_PCM_SOLID_MASS_DECREASE_VARIATION",
+    formulaText: "Delta mC,sto,sld = DeltaQC,sto / (Cp,lat + Cp,sens,sld * thetaSto,tr)",
+    inputs: {
+      transformableEnergyKWh,
+      latentHeatKWhPerKg,
+      solidSpecificHeatKWhPerKgK,
+      transitionTemperatureC,
+      initialSolidMassKg
+    },
+    warnings: limitedByInitialSolidMass ? ["mc001_3_113_limited_to_initial_solid_mass"] : [],
+    extra: { denominator, rawDeltaSolidMassKg, limitedByInitialSolidMass }
   });
 }
 
