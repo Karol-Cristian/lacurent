@@ -31,6 +31,7 @@ function resultSummary(calculation) {
   return {
     annualQHnd: calculation?.chapter2Result?.result?.annualQHnd ?? null,
     annualQCnd: calculation?.chapter2Result?.result?.annualQCnd ?? null,
+    chapter3Annual: calculation?.chapter3Result?.annual ?? null,
     monthCount: calculation?.chapter2Result?.result?.monthCount ?? null,
     htr: calculation?.envelopeTransmissionResult?.result?.amount ?? null
   };
@@ -243,12 +244,14 @@ export class VersionedBuildingBackend {
       building_dna_version_id: buildingDnaVersion.building_dna_version_id,
       parent_analysis_version_id: parentAnalysisVersionId,
       adapter_version: metadata.adapterVersion,
+      chapter3_adapter_version: metadata.chapter3AdapterVersion ?? null,
+      chapter3_runtime_version: metadata.chapter3RuntimeVersion ?? null,
       physics_engine_version: metadata.physicsEngineVersion,
       normative_registry_version: metadata.normativeRegistryVersion,
       climate_profile_id: metadata.climateProfileId,
       climate_profile_version: metadata.climateProfileVersion,
-      explicit_engine_input: deepClone(calculation.chapter2Input),
-      complete_engine_output: deepClone(calculation.chapter2Result),
+      explicit_engine_input: deepClone(calculation.fullEngineInput ?? calculation.chapter2Input),
+      complete_engine_output: deepClone(calculation.fullEngineOutput ?? calculation.chapter2Result),
       monthly_qhnd: monthlyUsefulDemand(calculation, "heating"),
       monthly_qcnd: monthlyUsefulDemand(calculation, "cooling"),
       annual_qhnd: summary.annualQHnd,
@@ -260,6 +263,8 @@ export class VersionedBuildingBackend {
       created_at: createdAt,
       execution_metadata: {
         backendVersion: metadata.backendVersion,
+        chapter3AdapterVersion: metadata.chapter3AdapterVersion ?? null,
+        chapter3RuntimeVersion: metadata.chapter3RuntimeVersion ?? null,
         ...executionMetadata
       },
       failure_metadata: null,

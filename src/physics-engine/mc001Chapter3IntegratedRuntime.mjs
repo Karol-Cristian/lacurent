@@ -177,7 +177,7 @@ function calculateVentilationMonth(month) {
 
 function calculateLighting(input) {
   if (!input) return null;
-  const leni = input.leniSubspaces
+  const leni = Array.isArray(input.leniSubspaces) && input.leniSubspaces.length > 0
     ? calculateLightingLeniFromSubspaces({
         subspaces: input.leniSubspaces,
         totalAreaM2: input.totalAreaM2
@@ -245,25 +245,35 @@ function calculatePcmStorageMonth(input, monthId) {
 }
 
 export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
-  const { months, lighting, coolingStoragePcm } = input;
+  const { months, lighting, coolingStoragePcm, services = {}, systemMetadata = {} } = input;
   assertArray(months, "months");
 
-  const lightingResult = calculateLighting(lighting);
+  const heatingEnabled = services.heatingEnabled !== false;
+  const coolingEnabled = services.coolingEnabled !== false;
+  const dhwEnabled = services.dhwEnabled !== false;
+  const ventilationAhuEnabled = services.ventilationAhuEnabled !== false;
+  const coolingStoragePcmEnabled = services.coolingStoragePcmEnabled !== false;
+  const lightingEnabled = services.lightingEnabled !== false;
+  const lightingResult = lightingEnabled ? calculateLighting(lighting) : null;
   const monthly = months.map((month, index) => {
     const monthId = month.month ?? `month_${index + 1}`;
-    const heating = calculateServiceChain({
-      service: "heating",
-      monthId,
-      usefulDemandKWh: month.chapter2Useful?.qHndKWh,
-      stages: month.heatingStages
-    });
-    const cooling = calculateServiceChain({
-      service: "cooling",
-      monthId,
-      usefulDemandKWh: month.chapter2Useful?.qCndKWh,
-      stages: month.coolingStages
-    });
-    const dhw = month.dhw
+    const heating = heatingEnabled
+      ? calculateServiceChain({
+          service: "heating",
+          monthId,
+          usefulDemandKWh: month.chapter2Useful?.qHndKWh,
+          stages: month.heatingStages
+        })
+      : null;
+    const cooling = coolingEnabled
+      ? calculateServiceChain({
+          service: "cooling",
+          monthId,
+          usefulDemandKWh: month.chapter2Useful?.qCndKWh,
+          stages: month.coolingStages
+        })
+      : null;
+    const dhw = dhwEnabled && month.dhw
       ? calculateServiceChain({
           service: "dhw",
           monthId,
@@ -271,14 +281,16 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
           stages: month.dhw.stages
         })
       : null;
-    const ventilation = calculateVentilationMonth(month);
-    const lightingEnergyKWh = lightingResult
+    const ventilation = ventilationAhuEnabled ? calculateVentilationMonth(month) : null;
+    const lightingEnergyKWh = lightingEnabled && lightingResult
       ? monthlyValue(lightingResult.monthlyEnergyKWh, index, "lighting.monthlyEnergyKWh")
       : 0;
-    const pcmStorage = calculatePcmStorageMonth(
-      month.coolingStoragePcm ?? monthlyOptionalValue(coolingStoragePcm?.monthly, index),
-      monthId
-    );
+    const pcmStorage = coolingStoragePcmEnabled
+      ? calculatePcmStorageMonth(
+          month.coolingStoragePcm ?? monthlyOptionalValue(coolingStoragePcm?.monthly, index),
+          monthId
+        )
+      : null;
 
     return {
       month: monthId,
@@ -289,8 +301,8 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       coolingStoragePcm: pcmStorage,
       lightingEnergyKWh,
       totals: {
-        heatingInputKWh: heating.finalStageInputKWh,
-        coolingInputKWh: cooling.finalStageInputKWh,
+        heatingInputKWh: heating?.finalStageInputKWh ?? 0,
+        coolingInputKWh: cooling?.finalStageInputKWh ?? 0,
         dhwInputKWh: dhw?.finalStageInputKWh ?? 0,
         ventilationAuxiliaryKWh: ventilation?.valueKWh ?? 0,
         pcmSensibleSolidStorageEnergyKWh: pcmStorage?.totals.sensibleSolidStorageEnergyKWh ?? 0,
@@ -310,29 +322,65 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     pcmInputEnergyLimitKWh: sum(monthly.map(month => month.totals.pcmInputEnergyLimitKWh)),
     pcmSolidMassDecreaseKg: sum(monthly.map(month => month.totals.pcmSolidMassDecreaseKg)),
     lightingEnergyKWh: sum(monthly.map(month => month.totals.lightingEnergyKWh)),
-    heatingAuxiliaryKWh: sum(monthly.map(month => month.heating.auxiliaryTotalKWh)),
-    coolingAuxiliaryKWh: sum(monthly.map(month => month.cooling.auxiliaryTotalKWh))
+    heatingAuxiliaryKWh: sum(monthly.map(month => month.heating?.auxiliaryTotalKWh ?? 0)),
+    coolingAuxiliaryKWh: sum(monthly.map(month => month.cooling?.auxiliaryTotalKWh ?? 0))
   };
 
   const heatingAuxiliary = calculateChapter3HeatingAuxiliaryEnergyTotal({
-    emissionAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[0]?.auxiliaryKWh ?? 0)),
-    distributionAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[1]?.auxiliaryKWh ?? 0)),
-    storageAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[2]?.auxiliaryKWh ?? 0)),
-    generationAuxiliaryKWh: sum(monthly.map(month => month.heating.stageResults[3]?.auxiliaryKWh ?? 0))
+    emissionAuxiliaryKWh: sum(monthly.map(month => month.heating?.stageResults?.[0]?.auxiliaryKWh ?? 0)),
+    distributionAuxiliaryKWh: sum(monthly.map(month => month.heating?.stageResults?.[1]?.auxiliaryKWh ?? 0)),
+    storageAuxiliaryKWh: sum(monthly.map(month => month.heating?.stageResults?.[2]?.auxiliaryKWh ?? 0)),
+    generationAuxiliaryKWh: sum(monthly.map(month => month.heating?.stageResults?.[3]?.auxiliaryKWh ?? 0))
   });
   const coolingAuxiliary = calculateChapter3CoolingAuxiliaryEnergyTotal({
-    emissionAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[0]?.auxiliaryKWh ?? 0)),
-    distributionAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[1]?.auxiliaryKWh ?? 0)),
-    storageAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[2]?.auxiliaryKWh ?? 0)),
-    generationAuxiliaryKWh: sum(monthly.map(month => month.cooling.stageResults[3]?.auxiliaryKWh ?? 0))
+    emissionAuxiliaryKWh: sum(monthly.map(month => month.cooling?.stageResults?.[0]?.auxiliaryKWh ?? 0)),
+    distributionAuxiliaryKWh: sum(monthly.map(month => month.cooling?.stageResults?.[1]?.auxiliaryKWh ?? 0)),
+    storageAuxiliaryKWh: sum(monthly.map(month => month.cooling?.stageResults?.[2]?.auxiliaryKWh ?? 0)),
+    generationAuxiliaryKWh: sum(monthly.map(month => month.cooling?.stageResults?.[3]?.auxiliaryKWh ?? 0))
   });
+  const servicesSummary = {
+    heating: { enabled: heatingEnabled, annualKWh: annual.heatingInputKWh },
+    cooling: { enabled: coolingEnabled, annualKWh: annual.coolingInputKWh },
+    dhw: { enabled: dhwEnabled, annualKWh: annual.dhwInputKWh },
+    ventilationAhu: { enabled: ventilationAhuEnabled, annualKWh: annual.ventilationAuxiliaryKWh },
+    coolingStoragePcm: { enabled: coolingStoragePcmEnabled, annualKWh: annual.pcmInputEnergyLimitKWh },
+    lighting: { enabled: lightingEnabled && lightingResult !== null, annualKWh: annual.lightingEnergyKWh }
+  };
+  const energyByService = {
+    heating: annual.heatingInputKWh,
+    cooling: annual.coolingInputKWh,
+    domesticHotWater: annual.dhwInputKWh,
+    ventilationAuxiliary: annual.ventilationAuxiliaryKWh,
+    lighting: annual.lightingEnergyKWh
+  };
+  const energyByCarrier = {};
+  for (const [service, key] of [
+    ["heating", "heatingInputKWh"],
+    ["cooling", "coolingInputKWh"],
+    ["dhw", "dhwInputKWh"]
+  ]) {
+    const carrier = systemMetadata?.[service]?.energyCarrier;
+    if (carrier && annual[key] > 0) {
+      energyByCarrier[carrier] = (energyByCarrier[carrier] ?? 0) + annual[key];
+    }
+  }
+  if (annual.ventilationAuxiliaryKWh > 0) {
+    energyByCarrier.electricity = (energyByCarrier.electricity ?? 0) + annual.ventilationAuxiliaryKWh;
+  }
+  if (annual.lightingEnergyKWh > 0) {
+    energyByCarrier.electricity = (energyByCarrier.electricity ?? 0) + annual.lightingEnergyKWh;
+  }
 
   return {
     status: "calculated",
     calculationScope: "MC001_CHAPTER_3_EXPLICIT_RUNTIME_CHAIN",
+    services: servicesSummary,
+    systemMetadata,
     monthCount: monthly.length,
     monthly,
     annual,
+    energyByService,
+    energyByCarrier,
     lighting: lightingResult,
     auxiliary: {
       heating: heatingAuxiliary,

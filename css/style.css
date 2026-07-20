@@ -6648,6 +6648,17 @@ padding:7px 8px;
 font-size:12px;
 }
 
+.technical-table input,
+.technical-table select{
+width:100%;
+min-width:84px;
+padding:6px 7px;
+border:1px solid #cbd5e1;
+border-radius:2px;
+font-size:12px;
+background:#fff;
+}
+
 [data-state="pending"]{
 color:#92400e;
 font-weight:900;

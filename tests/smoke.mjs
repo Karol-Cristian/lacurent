@@ -9,7 +9,7 @@ const RUN_API_SMOKE = process.env.RUN_API_SMOKE === "1";
 const pages = [
   { path: "/index.html", includes: ["LA CURENT", "Proiectele cladirii", "pages/analiza-casa.html"] },
   { path: "/pages/profil.html", includes: ["Autentificare", "registerForm"] },
-  { path: "/pages/analiza-casa.html", includes: ["Modelul termic al cladirii", "Geometrie", "Raport tehnic"] },
+  { path: "/pages/analiza-casa.html", includes: ["Modelul termic al cladirii", "Geometrie", "Instalatii", "Raport tehnic"] },
   { path: "/pages/raport-energie.html", includes: ["Raport energetic LaCurent", "REZUMAT EXECUTIV"] },
   { path: "/pages/raport-v1.html", includes: ["Dosar de decizie energetica", "VERDICT PRINCIPAL", "SCENARII ANALIZATE"] },
   { path: "/pages/algoritmi.html", includes: ["Algoritmi", "BENCHMARK LIVE"] },
@@ -25,6 +25,7 @@ const syntaxFiles = [
   "js/auth.js",
   "js/guest-session.js",
   "js/analiza-casa.js",
+  "js/building-platform-wizard.mjs",
   "js/admin.js",
   "js/energy-report.js",
   "js/report-v1-demo-data.js",

@@ -36,6 +36,10 @@ function test(name, fn) {
     });
 }
 
+function close(actual, expected, tolerance = 1e-9) {
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
+}
+
 function formData(entries) {
   return {
     get(name) {
@@ -146,8 +150,8 @@ function fakeRootForStale(form) {
   };
 }
 
-await test("wizard exposes only the six validated technical sections", () => {
-  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 6);
+await test("wizard exposes the validated technical sections including installations", () => {
+  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 7);
   const serialized = JSON.stringify(BUILDING_PLATFORM_WIZARD_STEPS);
   for (const forbidden of ["lambda", "Htr", "gamma", "tau", "eta", "U-value", "coeficient"]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
@@ -156,6 +160,7 @@ await test("wizard exposes only the six validated technical sections", () => {
     "Geometrie",
     "Anvelopa",
     "Renovari",
+    "Instalatii",
     "Building DNA",
     "Raport tehnic",
     "Rezultate"
@@ -215,6 +220,96 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
   assert.equal(preview.status, "ready");
   assert.equal(preview.buildingDna.monthlyProfiles.length, 12);
   assert.equal(preview.buildingDna.monthlyProfiles[0].heatGains.solarOrientation, "south");
+});
+
+await test("wizard maps installation fields into canonical technical systems", () => {
+  const answers = mapWizardAnswersToAssistedAnswers(formData({
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    chapter3_heating_generation_loss_kwh_month: "9"
+  }));
+
+  assert.equal(answers.technicalSystems.schema, "technical_systems_v1");
+  assert.equal(answers.technicalSystems.heating.enabled, true);
+  assert.equal(answers.technicalSystems.heating.systems[0].energyCarrier, "natural_gas");
+  assert.equal(
+    answers.technicalSystems.heating.systems[0].stages.find(stage => stage.stageId === "generation").lossKWhPerMonth,
+    9
+  );
+  assert.equal(answers.technicalSystems.domesticHotWater.monthlyUsefulDemandKWh, 95);
+  assert.equal(answers.technicalSystems.lighting.boundaryStatus, "explicit_input_boundary_sr_en_15193_1");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.calculation.stage, "chapter_2_and_3_complete");
+  assert.equal(preview.technicalWorkspace.installations.status, "ready");
+  const html = renderEngineeringModelReview(preview);
+  assert.equal(html.includes("Instalatii tehnice - MC001 Capitolul 3"), true);
+  assert.equal(html.includes("Calculul detaliat normativ al iluminatului conform SR EN 15193-1"), true);
+});
+
+await test("demo installation configurations have fixed 12-month Chapter 3 expected outputs", () => {
+  const cases = [
+    {
+      id: "complex_cooling_pcm_dhw_leni",
+      values: ASSISTED_WIZARD_DEMO_FIXTURE.values,
+      expected: {
+        heatingInputKWh: 13121.884131914338,
+        coolingInputKWh: 147.70967139753265,
+        dhwInputKWh: 1248,
+        ventilationAuxiliaryKWh: 88.85454545454546,
+        pcmInputEnergyLimitKWh: 2.3999999999969277,
+        lightingEnergyKWh: 240
+      }
+    },
+    {
+      id: "conventional_heating_dhw_only",
+      values: {
+        ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+        chapter3_cooling_enabled: "no",
+        chapter3_ventilation_ahu_enabled: "no",
+        chapter3_pcm_enabled: "no",
+        chapter3_lighting_enabled: "no"
+      },
+      expected: {
+        heatingInputKWh: 13121.884131914338,
+        coolingInputKWh: 0,
+        dhwInputKWh: 1248,
+        ventilationAuxiliaryKWh: 0,
+        pcmInputEnergyLimitKWh: 0,
+        lightingEnergyKWh: 0
+      }
+    },
+    {
+      id: "heat_pump_cooling_ahu",
+      values: {
+        ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+        chapter3_heating_generator_type: "heat_pump",
+        chapter3_heating_energy_carrier: "electricity",
+        chapter3_dhw_enabled: "no",
+        chapter3_pcm_enabled: "no",
+        chapter3_lighting_enabled: "no"
+      },
+      expected: {
+        heatingInputKWh: 13121.884131914338,
+        coolingInputKWh: 147.70967139753265,
+        dhwInputKWh: 0,
+        ventilationAuxiliaryKWh: 88.85454545454546,
+        pcmInputEnergyLimitKWh: 0,
+        lightingEnergyKWh: 0
+      }
+    }
+  ];
+
+  for (const item of cases) {
+    const preview = buildWizardEngineeringPreview(
+      mapWizardAnswersToAssistedAnswers(formData(item.values))
+    );
+    assert.equal(preview.status, "ready", item.id);
+    assert.equal(preview.calculation.chapter3Result.monthly.length, 12, item.id);
+    for (const [key, expected] of Object.entries(item.expected)) {
+      close(preview.calculation.chapter3Result.annual[key], expected);
+    }
+  }
 });
 
 await test("period and structural helpers are deterministic", () => {
@@ -282,7 +377,7 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   }
 });
 
-await test("save payload sends only Building DNA to the server-side Chapter 2 endpoint", () => {
+await test("save payload sends canonical Building DNA to the server-side calculation endpoint", () => {
   const data = formData(ASSISTED_WIZARD_DEMO_FIXTURE.values);
   const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(data));
   const payload = buildBuildingPlatformSavePayload(preview, data, {
@@ -850,8 +945,6 @@ await test("active production analysis flow removes unsupported product domains"
     "Sursa incalzire",
     "Tip sistem principal",
     "Centrala",
-    "Pompa de caldura",
-    "Apa calda",
     "Boiler electric",
     "Panouri fotovoltaice",
     "Baterie",

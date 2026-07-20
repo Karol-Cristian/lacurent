@@ -128,13 +128,17 @@ export function fingerprintAnalysis({
   buildingDnaFingerprint,
   climateProfileFingerprint,
   chapter2Input,
+  chapter3Input = null,
+  chapter3AdapterVersion = null,
   versionIdentity = buildVersionIdentity()
 } = {}) {
   return stableFingerprint({
     buildingDnaFingerprint,
     climateProfileFingerprint,
     chapter2Input,
+    ...(chapter3Input === null ? {} : { chapter3Input }),
     adapterVersion: versionIdentity.adapterVersion,
+    ...(chapter3AdapterVersion === null ? {} : { chapter3AdapterVersion }),
     physicsEngineVersion: versionIdentity.physicsEngineVersion,
     normativeRegistryVersion: versionIdentity.normativeRegistryVersion
   }, "analysis");
@@ -156,6 +160,8 @@ export function buildBuildingPlatformVersionMetadata({
     buildingDnaFingerprint,
     climateProfileFingerprint,
     chapter2Input: calculation?.chapter2Input ?? null,
+    chapter3Input: calculation?.chapter3Input ?? null,
+    chapter3AdapterVersion: calculation?.chapter3AdapterVersion ?? null,
     versionIdentity
   });
   const reportFingerprint = fingerprintReport({ analysisFingerprint });
@@ -170,6 +176,10 @@ export function buildBuildingPlatformVersionMetadata({
     technicalReportSchemaVersion: versionIdentity.technicalReportSchemaVersion,
     reportSchemaVersion: versionIdentity.reportSchemaVersion,
     adapterVersion: versionIdentity.adapterVersion,
+    chapter3AdapterVersion: calculation?.chapter3AdapterVersion ?? null,
+    chapter3RuntimeVersion: calculation?.chapter3Result
+      ? "mc001_chapter_3_runtime_complete_for_mc001_explicit_relations_p4_product_flow"
+      : null,
     physicsEngineVersion: versionIdentity.physicsEngineVersion,
     normativeRegistryVersion: versionIdentity.normativeRegistryVersion,
     materialCatalogueVersion: versionIdentity.materialCatalogueVersion,

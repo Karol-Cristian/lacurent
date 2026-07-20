@@ -2,6 +2,8 @@
 .git/**
 .wrangler
 .wrangler/**
+dist
+dist/**
 migrations
 migrations/**
 workers

@@ -60,7 +60,7 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   assert.equal(workspace.scope, "engineering_calculation_notebook_p3g_report_generation_only");
   assert.deepEqual(
     workspace.tabs.map(tab => tab.tabId),
-    ["building", "assemblies", "materials", "building_dna", "chapter_2", "results", "report", "traceability"]
+    ["building", "assemblies", "materials", "building_dna", "chapter_2", "installations", "results", "report", "traceability"]
   );
   assert.equal(workspace.report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(workspace.report.title, "Caiet de calcul MC001-2022");

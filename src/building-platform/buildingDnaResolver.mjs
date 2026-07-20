@@ -16,6 +16,10 @@ import {
   climateProfileToBuildingMonthlyProfiles,
   resolveClimateProfileSelection
 } from "../climate-platform/index.mjs";
+import {
+  TECHNICAL_SYSTEMS_SCHEMA,
+  validateTechnicalSystems
+} from "./buildingChapter3InstallationsAdapter.mjs";
 
 const ASSISTED_MODE = "assisted";
 const ADVANCED_MODE = "advanced";
@@ -173,6 +177,14 @@ function normalizeBuildingSpecificParameters(parameters = {}, source = {}) {
     }
   }
   return output;
+}
+
+function normalizeTechnicalSystems(technicalSystems) {
+  if (technicalSystems === undefined || technicalSystems === null) return null;
+  return {
+    ...deepClone(technicalSystems),
+    schema: technicalSystems.schema ?? TECHNICAL_SYSTEMS_SCHEMA
+  };
 }
 
 function geometryOverridesFromBuildingSpecificParameters(parameters = {}) {
@@ -724,6 +736,7 @@ function resolveBuildingDna({
   climateProfile,
   calculationMode,
   monthlyProfiles,
+  technicalSystems,
   building
 }) {
   if (userMode !== ASSISTED_MODE && userMode !== ADVANCED_MODE) {
@@ -745,11 +758,28 @@ function resolveBuildingDna({
   if (!safeCode(source?.reference ?? "")) {
     return blocked("building_dna_missing_source_reference");
   }
+  const technicalSystemsCheck = validateTechnicalSystems(technicalSystems);
+  if (!technicalSystemsCheck.ok) {
+    return blocked(
+      technicalSystemsCheck.diagnostics?.[0]?.code ?? "invalid_technical_systems_model"
+    );
+  }
 
   const resolvedBoundaryContext = {
     ...seedBoundaryContext(),
     ...(boundaryContext ?? {})
   };
+  const normalizedTechnicalSystems = normalizeTechnicalSystems(technicalSystems);
+  const methodologyLimits = [
+    "engineering_model_generation_only",
+    "no_physics_calculation",
+    "no_hidden_defaults",
+    ...(normalizedTechnicalSystems ? [] : ["not_chapter_3"]),
+    "not_final_energy",
+    "not_primary_energy",
+    "not_CO2",
+    "not_certificate"
+  ];
   const dna = {
     schema: "building_dna_v1",
     platformVersion: BUILDING_PLATFORM_VERSION,
@@ -785,6 +815,7 @@ function resolveBuildingDna({
         : "requires_confirmation",
     typologyProposal: typologyProposal ?? null,
     buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters, source),
+    ...(normalizedTechnicalSystems === null ? {} : { technicalSystems: normalizedTechnicalSystems }),
     renovationInterventions: deepClone(renovationInterventions ?? []),
     geometry: deepClone(geometry),
     assemblies: assemblies.value,
@@ -850,16 +881,7 @@ function resolveBuildingDna({
     } : null,
     diagnostics: {
       blockers: [],
-      methodologyLimits: [
-        "engineering_model_generation_only",
-        "no_physics_calculation",
-        "no_hidden_defaults",
-        "not_chapter_3",
-        "not_final_energy",
-        "not_primary_energy",
-        "not_CO2",
-        "not_certificate"
-      ]
+      methodologyLimits
     }
   };
   return {
@@ -869,7 +891,7 @@ function resolveBuildingDna({
     diagnostics: {
       blockers: [],
       warnings: dna.warnings,
-      methodologyLimits: dna.diagnostics.methodologyLimits
+      methodologyLimits
     }
   };
 }
@@ -928,6 +950,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
     monthlyProfiles: resolvedMonthlyProfiles,
+    technicalSystems: answers.technicalSystems,
     building: {
       buildingId: answers.buildingId,
       buildingType: answers.buildingType,
@@ -966,6 +989,7 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
     monthlyProfiles: resolvedMonthlyProfiles,
+    technicalSystems: input.technicalSystems,
     building: input.building
   });
 }
