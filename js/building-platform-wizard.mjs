@@ -1,4 +1,7 @@
 import {
+  CHAPTER3_DHW_STAGE_IDS,
+  CHAPTER3_INSTALLATION_STAGE_IDS,
+  TECHNICAL_SYSTEMS_SCHEMA,
   buildBuildingPlatformVersionMetadata,
   buildBuildingKnowledgePlatformFromAssistedAnswers,
   buildBuildingTechnicalWorkspace,
@@ -22,6 +25,11 @@ export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
     stepId: "renovations",
     title: "Renovari",
     assistedPrompt: "Interventiile modifica ansamblurile in modelul canonic, fara arhetipuri rigide."
+  },
+  {
+    stepId: "installations",
+    title: "Instalatii",
+    assistedPrompt: "Introdu date explicite pentru sistemele Capitolului 3: pierderi, auxiliari, stocare si limita LENI."
   },
   {
     stepId: "building_dna",
@@ -63,7 +71,7 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
     climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
     display_name: "Demo tehnic - casa zidarie 1985",
-    analysis_purpose: "technical_chapter_2_report",
+    analysis_purpose: "technical_chapter_2_3_report",
     building_type: "house",
     city: "Bucharest",
     construction_year: "1985",
@@ -101,7 +109,63 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     floor_insulation_thickness_cm: "0",
     windows_replaced: "yes",
     window_age_years: "8",
-    door_replaced: "unknown"
+    door_replaced: "unknown",
+    chapter3_installations_enabled: "yes",
+    chapter3_heating_enabled: "yes",
+    chapter3_heating_generator_type: "condensing_boiler",
+    chapter3_heating_energy_carrier: "natural_gas",
+    chapter3_heating_emission_loss_kwh_month: "1.2",
+    chapter3_heating_emission_aux_kwh_month: "0.2",
+    chapter3_heating_distribution_loss_kwh_month: "2.4",
+    chapter3_heating_distribution_aux_kwh_month: "0.3",
+    chapter3_heating_storage_loss_kwh_month: "0.8",
+    chapter3_heating_storage_aux_kwh_month: "0.1",
+    chapter3_heating_generation_loss_kwh_month: "3.6",
+    chapter3_heating_generation_aux_kwh_month: "0.4",
+    chapter3_cooling_enabled: "yes",
+    chapter3_cooling_generator_type: "split_system",
+    chapter3_cooling_energy_carrier: "electricity",
+    chapter3_cooling_emission_loss_kwh_month: "0.4",
+    chapter3_cooling_emission_aux_kwh_month: "0.1",
+    chapter3_cooling_distribution_loss_kwh_month: "0.5",
+    chapter3_cooling_distribution_aux_kwh_month: "0.1",
+    chapter3_cooling_storage_loss_kwh_month: "0.2",
+    chapter3_cooling_storage_aux_kwh_month: "0.05",
+    chapter3_cooling_generation_loss_kwh_month: "1.1",
+    chapter3_cooling_generation_aux_kwh_month: "0.2",
+    chapter3_ventilation_ahu_enabled: "yes",
+    chapter3_supply_airflow_m3h: "300",
+    chapter3_supply_pressure_pa: "220",
+    chapter3_supply_fan_efficiency: "0.55",
+    chapter3_extract_airflow_m3h: "280",
+    chapter3_extract_pressure_pa: "180",
+    chapter3_extract_fan_efficiency: "0.55",
+    chapter3_fan_hours_month: "120",
+    chapter3_heat_recovery_aux_kwh_month: "0.2",
+    chapter3_preheat_aux_kwh_month: "0.1",
+    chapter3_control_aux_kwh_month: "0.05",
+    chapter3_dhw_enabled: "yes",
+    chapter3_dhw_energy_carrier: "natural_gas",
+    chapter3_dhw_useful_kwh_month: "95",
+    chapter3_dhw_distribution_loss_kwh_month: "2.0",
+    chapter3_dhw_distribution_aux_kwh_month: "0.1",
+    chapter3_dhw_storage_loss_kwh_month: "4.0",
+    chapter3_dhw_storage_aux_kwh_month: "0.2",
+    chapter3_dhw_generation_loss_kwh_month: "3.0",
+    chapter3_dhw_generation_aux_kwh_month: "0.2",
+    chapter3_pcm_enabled: "yes",
+    chapter3_pcm_transformable_kwh: "1.5",
+    chapter3_pcm_solid_mass_kg: "40",
+    chapter3_pcm_specific_heat_kwh_kgk: "0.000392",
+    chapter3_pcm_generator_outlet_c: "32.7551020408",
+    chapter3_pcm_transition_c: "20",
+    chapter3_pcm_generator_delta_k: "12.7551020408",
+    chapter3_pcm_mass_decrease_transformable_kwh: "-0.5",
+    chapter3_pcm_latent_heat_kwh_kg: "0.0271",
+    chapter3_pcm_initial_solid_mass_kg: "20",
+    chapter3_lighting_enabled: "yes",
+    chapter3_lighting_monthly_kwh: "20",
+    chapter3_lighting_leni_kwh_m2_year: "20"
   })
 });
 
@@ -258,6 +322,85 @@ function inferWallInsulation(buildingDna) {
   return "10cm";
 }
 
+function firstSystem(section) {
+  return Array.isArray(section?.systems) ? section.systems[0] : null;
+}
+
+function stageValue(section, stageId, field) {
+  const stage = firstSystem(section)?.stages?.find(item => item.stageId === stageId);
+  const value = stage?.[field];
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function systemValue(section, field, fallback = "") {
+  return firstSystem(section)?.[field] ?? fallback;
+}
+
+function fanValue(section, field) {
+  return firstSystem(section)?.fanElectricEnergyInput?.[field] ?? "";
+}
+
+function technicalSystemsToWizardValues(technicalSystems = {}) {
+  const values = {
+    chapter3_installations_enabled: technicalSystems && Object.values(technicalSystems).some(value => value?.enabled === true) ? "yes" : "no"
+  };
+  const sections = [
+    ["heating", "chapter3_heating", CHAPTER3_INSTALLATION_STAGE_IDS],
+    ["cooling", "chapter3_cooling", CHAPTER3_INSTALLATION_STAGE_IDS],
+    ["domesticHotWater", "chapter3_dhw", CHAPTER3_DHW_STAGE_IDS]
+  ];
+  for (const [sectionKey, prefix, stageIds] of sections) {
+    const section = technicalSystems?.[sectionKey] ?? {};
+    values[`${prefix}_enabled`] = section.enabled ? "yes" : "no";
+    values[`${prefix}_generator_type`] = systemValue(section, "generatorType", "explicit_other");
+    values[`${prefix}_energy_carrier`] = systemValue(section, "energyCarrier", "explicit_other");
+    for (const stageId of stageIds) {
+      values[`${prefix}_${stageId}_loss_kwh_month`] = stageValue(section, stageId, "lossKWhPerMonth");
+      values[`${prefix}_${stageId}_aux_kwh_month`] = stageValue(section, stageId, "auxiliaryKWhPerMonth");
+      values[`${prefix}_${stageId}_aux_recovered_fraction`] = stageValue(section, stageId, "auxiliaryRecoveredFraction");
+      values[`${prefix}_${stageId}_loss_recovered_fraction`] = stageValue(section, stageId, "lossRecoveredFraction");
+    }
+  }
+  const ventilation = technicalSystems?.ventilationAhu ?? {};
+  values.chapter3_ventilation_ahu_enabled = ventilation.enabled ? "yes" : "no";
+  values.chapter3_supply_airflow_m3h = fanValue(ventilation, "supplyAirFlowM3PerH");
+  values.chapter3_supply_pressure_pa = fanValue(ventilation, "supplyPressureDropPa");
+  values.chapter3_supply_fan_efficiency = fanValue(ventilation, "supplyFanEfficiency");
+  values.chapter3_extract_airflow_m3h = fanValue(ventilation, "extractAirFlowM3PerH");
+  values.chapter3_extract_pressure_pa = fanValue(ventilation, "extractPressureDropPa");
+  values.chapter3_extract_fan_efficiency = fanValue(ventilation, "extractFanEfficiency");
+  values.chapter3_fan_hours_month = fanValue(ventilation, "calculationHours");
+  values.chapter3_heat_recovery_aux_kwh_month = firstSystem(ventilation)?.heatRecoveryAuxiliaryKWhPerMonth ?? "";
+  values.chapter3_preheat_aux_kwh_month = firstSystem(ventilation)?.preheatAuxiliaryKWhPerMonth ?? "";
+  values.chapter3_control_aux_kwh_month = firstSystem(ventilation)?.controlAuxiliaryKWhPerMonth ?? "";
+
+  const dhw = technicalSystems?.domesticHotWater ?? {};
+  values.chapter3_dhw_useful_kwh_month = Array.isArray(dhw.monthlyUsefulDemandKWh)
+    ? dhw.monthlyUsefulDemandKWh[0] ?? ""
+    : dhw.monthlyUsefulDemandKWh ?? "";
+
+  const pcm = technicalSystems?.coolingStoragePcm ?? {};
+  const pcmTemplate = Array.isArray(pcm.monthly) ? pcm.monthly[0] : pcm.monthlyTemplate;
+  values.chapter3_pcm_enabled = pcm.enabled ? "yes" : "no";
+  values.chapter3_pcm_transformable_kwh = pcmTemplate?.sensibleStorageTransformableEnergyKWh ?? "";
+  values.chapter3_pcm_solid_mass_kg = pcmTemplate?.solidMassKg ?? "";
+  values.chapter3_pcm_specific_heat_kwh_kgk = pcmTemplate?.solidSpecificHeatKWhPerKgK ?? "";
+  values.chapter3_pcm_generator_outlet_c = pcmTemplate?.generatorOutletFlowTemperatureC ?? "";
+  values.chapter3_pcm_transition_c = pcmTemplate?.transitionTemperatureC ?? "";
+  values.chapter3_pcm_generator_delta_k = pcmTemplate?.generatorOutletFlowDeltaK ?? "";
+  values.chapter3_pcm_mass_decrease_transformable_kwh = pcmTemplate?.massDecreaseTransformableEnergyKWh ?? "";
+  values.chapter3_pcm_latent_heat_kwh_kg = pcmTemplate?.latentHeatKWhPerKg ?? "";
+  values.chapter3_pcm_initial_solid_mass_kg = pcmTemplate?.initialSolidMassKg ?? "";
+
+  const lighting = technicalSystems?.lighting ?? {};
+  values.chapter3_lighting_enabled = lighting.enabled ? "yes" : "no";
+  values.chapter3_lighting_monthly_kwh = Array.isArray(lighting.explicitMonthlyEnergyKWh)
+    ? lighting.explicitMonthlyEnergyKWh[0] ?? ""
+    : lighting.monthlyEnergyKWh?.[0] ?? "";
+  values.chapter3_lighting_leni_kwh_m2_year = lighting.leniSubspaces?.[0]?.leniKWhPerM2Year ?? "";
+  return values;
+}
+
 function inferRoofType(buildingDna) {
   const context = quantityValue(buildingDna?.buildingSpecificParameters?.atticContext);
   if (context === "heated") return "heated_attic";
@@ -310,7 +453,8 @@ export function buildingDnaToWizardValues(buildingDna) {
     wall_insulation_material: wallAssemblyIds(buildingDna).join(" ").includes("mineral_wool") ? "mineral_wool" : "eps",
     roof_insulated: hasIntervention(buildingDna, "roof_insulation") ? "yes" : "unknown",
     floor_insulated: hasIntervention(buildingDna, "floor_insulation") ? "yes" : "unknown",
-    windows_replaced: hasIntervention(buildingDna, "window_replacement") ? "yes" : "unknown"
+    windows_replaced: hasIntervention(buildingDna, "window_replacement") ? "yes" : "unknown",
+    ...technicalSystemsToWizardValues(buildingDna?.technicalSystems ?? {})
   };
 }
 
@@ -366,6 +510,7 @@ function renderTechnicalTabs(workspace) {
 }
 
 function renderAnnualSummary(workspace) {
+  const chapter3 = workspace.resultSummary?.chapter3Annual;
   return `
     <div class="technical-status-grid p2b-annual-summary">
       <article>
@@ -391,8 +536,20 @@ function renderAnnualSummary(workspace) {
       <article>
         <span>Amprenta calcul</span>
         <strong>${safeText(workspace.calculationFingerprint?.fingerprintId ?? "--")}</strong>
-        <small>model tehnic + rezultat Chapter 2</small>
+        <small>model tehnic + rezultat Chapter 2${chapter3 ? " + Chapter 3" : ""}</small>
       </article>
+      ${chapter3 ? `
+        <article>
+          <span>Instalatii incalzire</span>
+          <strong>${formatNumber(chapter3.heatingInputKWh)} kWh</strong>
+          <small>MC001 Capitolul 3</small>
+        </article>
+        <article>
+          <span>Instalatii racire</span>
+          <strong>${formatNumber(chapter3.coolingInputKWh)} kWh</strong>
+          <small>MC001 Capitolul 3</small>
+        </article>
+      ` : ""}
     </div>
   `;
 }
@@ -470,6 +627,45 @@ function renderMonthlyResults(workspace) {
     { label: "QHnd", value: row => `${formatNumber(row.qHndKwh)} kWh` },
     { label: "QCnd", value: row => `${formatNumber(row.qCndKwh)} kWh` }
   ], workspace.monthly);
+}
+
+function renderInstallationsResults(workspace) {
+  if (workspace.installations?.status !== "ready") {
+    return `
+      <div class="monthly-sanity-panel" data-chapter3-installations-status>
+        <strong>Instalatii Chapter 3</strong>
+        <span>Nu sunt configurate sisteme tehnice explicite pentru acest model.</span>
+      </div>
+    `;
+  }
+  const carrierRows = Object.entries(workspace.installations.energyByCarrier ?? {})
+    .map(([carrier, value]) => ({ carrier, value }));
+  return `
+    <section class="technical-workspace-panel" id="p2b-installations">
+      <h4>Instalatii tehnice - MC001 Capitolul 3</h4>
+      <p>Rezultatele de mai jos provin din runtime-ul Chapter 3 si din datele explicite de sistem salvate in Building DNA.</p>
+      ${renderTable([
+        { label: "Serviciu", value: row => row.service },
+        { label: "Valoare", value: row => `${formatNumber(row.value)} ${row.unit}` },
+        { label: "Stare", value: row => row.status },
+        { label: "Cheie output", value: row => row.outputKey }
+      ], workspace.installations.rows ?? [])}
+      ${carrierRows.length ? renderTable([
+        { label: "Purtator energie", value: row => row.carrier },
+        { label: "Total anual", value: row => `${formatNumber(row.value)} kWh/an` }
+      ], carrierRows) : ""}
+      ${renderTable([
+        { label: "Luna", value: row => row.monthLabel ?? row.month },
+        { label: "Incalzire [kWh]", value: row => formatNumber(row.heatingInputKWh) },
+        { label: "Racire [kWh]", value: row => formatNumber(row.coolingInputKWh) },
+        { label: "ACM [kWh]", value: row => formatNumber(row.dhwInputKWh) },
+        { label: "Vent. aux [kWh]", value: row => formatNumber(row.ventilationAuxiliaryKWh) },
+        { label: "Iluminat [kWh]", value: row => formatNumber(row.lightingEnergyKWh) },
+        { label: "PCM limita [kWh]", value: row => formatNumber(row.pcmInputEnergyLimitKWh) }
+      ], workspace.installations.monthly ?? [])}
+      <p class="section-description">${safeText(workspace.installations.lightingBoundaryStatement ?? "")}</p>
+    </section>
+  `;
 }
 
 function renderMonthlyClimateInspector(workspace) {
@@ -654,12 +850,42 @@ function renderMainResultsDocument(report) {
   `;
 }
 
+function renderInstallationsReportChapter(report) {
+  const chapter = (report?.chapters ?? []).find(item => item.chapterId === "instalatii_capitolul_3");
+  if (!chapter) return "";
+  const serviceRows = (chapter.rows ?? []).filter(row => row.service);
+  const monthlyRows = (chapter.rows ?? []).filter(row => row.month);
+  const limitation = (chapter.rows ?? []).find(row => row.label === "Limitare iluminat")?.value;
+  return `
+    <section class="report-installations-chapter">
+      <h2>2. Instalatii tehnice - MC001 Capitolul 3</h2>
+      <p>${safeText(chapter.summary)}</p>
+      ${renderTable([
+        { label: "Serviciu", value: row => row.service },
+        { label: "Valoare", value: row => `${formatNumber(row.value, 4)} ${row.unit ?? ""}` },
+        { label: "Stare", value: row => row.status },
+        { label: "Cheie trasabilitate", value: row => row.outputKey }
+      ], serviceRows)}
+      ${renderTable([
+        { label: "Luna", value: row => row.monthLabel ?? row.month },
+        { label: "Incalzire [kWh]", value: row => formatNumber(row.heatingInputKWh, 4) },
+        { label: "Racire [kWh]", value: row => formatNumber(row.coolingInputKWh, 4) },
+        { label: "ACM [kWh]", value: row => formatNumber(row.dhwInputKWh, 4) },
+        { label: "Ventilatie aux [kWh]", value: row => formatNumber(row.ventilationAuxiliaryKWh, 4) },
+        { label: "Iluminat [kWh]", value: row => formatNumber(row.lightingEnergyKWh, 4) },
+        { label: "PCM limita [kWh]", value: row => formatNumber(row.pcmInputEnergyLimitKWh, 4) }
+      ], monthlyRows)}
+      ${limitation ? `<p class="section-description">${safeText(limitation)}</p>` : ""}
+    </section>
+  `;
+}
+
 function renderTechnicalAppendix(report, workspace = null) {
   const appendix = (report?.chapters ?? []).find(chapter => chapter.chapterId === "anexa_tehnica_interna");
   if (!appendix) return "";
   return `
     <section class="technical-report-appendix">
-      <h2>3. Anexa tehnica interna</h2>
+      <h2>${report?.chapters?.some(chapter => chapter.chapterId === "instalatii_capitolul_3") ? "4" : "3"}. Anexa tehnica interna</h2>
       <p>Informatii pentru audit tehnic intern si depanare. Continutul principal de calcul este in caietul de mai sus.</p>
       ${renderChapterRows(appendix)}
       ${workspace ? renderTraceability(workspace) : ""}
@@ -678,11 +904,12 @@ function renderEngineeringNotebookReport(workspace) {
         <p>Rezultatele si calculele de mai jos afiseaza valorile curente furnizate de motorul validat.</p>
       </header>
       ${renderMainResultsDocument(report)}
+      ${renderInstallationsReportChapter(report)}
       <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
-        <h2>2. Caiet de calcule ingineresti</h2>
+        <h2>${report?.chapters?.some(chapter => chapter.chapterId === "instalatii_capitolul_3") ? "3" : "2"}. Caiet de calcule ingineresti</h2>
         <p>Variabilele sunt definite local in fiecare sectiune, iar liniile de calcul sunt afisate continuu, in ordinea dependentelor.</p>
         <section class="notebook-calculation-steps">
-          <h3>2.1 Calcule in ordinea dependentelor</h3>
+          <h3>Calcule in ordinea dependentelor</h3>
           ${renderCalculationNotebook(notebook)}
         </section>
       </section>
@@ -700,10 +927,11 @@ function renderSavedTechnicalReportDocument(report) {
         <h1>${safeText(report?.title ?? "Caiet de calcul")}</h1>
       </header>
       ${renderMainResultsDocument(report)}
+      ${renderInstallationsReportChapter(report)}
       <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
-        <h2>2. Caiet de calcule ingineresti</h2>
+        <h2>${report?.chapters?.some(chapter => chapter.chapterId === "instalatii_capitolul_3") ? "3" : "2"}. Caiet de calcule ingineresti</h2>
         <section class="notebook-calculation-steps">
-          <h3>2.1 Calcule in ordinea dependentelor</h3>
+          <h3>Calcule in ordinea dependentelor</h3>
           ${renderCalculationNotebook(notebook)}
         </section>
       </section>
@@ -719,6 +947,149 @@ function formValue(formData, name) {
 function positiveNumber(formData, name) {
   const value = Number(formValue(formData, name));
   return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function numberValue(formData, name) {
+  const raw = formValue(formData, name);
+  if (raw === null || raw === undefined || raw === "") return undefined;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function nonNegativeNumber(formData, name) {
+  const value = numberValue(formData, name);
+  return value !== undefined && value >= 0 ? value : undefined;
+}
+
+function fractionValue(formData, name, fallback = 0) {
+  const value = numberValue(formData, name);
+  if (value === undefined) return fallback;
+  return value >= 0 && value <= 1 ? value : undefined;
+}
+
+function yesValue(formData, name) {
+  return formValue(formData, name) === "yes";
+}
+
+function stageInput(formData, prefix, stageId) {
+  return {
+    stageId,
+    lossKWhPerMonth: nonNegativeNumber(formData, `${prefix}_${stageId}_loss_kwh_month`),
+    auxiliaryKWhPerMonth: nonNegativeNumber(formData, `${prefix}_${stageId}_aux_kwh_month`),
+    auxiliaryRecoveredFraction: fractionValue(formData, `${prefix}_${stageId}_aux_recovered_fraction`, 0),
+    lossRecoveredFraction: fractionValue(formData, `${prefix}_${stageId}_loss_recovered_fraction`, 0),
+    auxiliaryRecoverableFractionToHeating: fractionValue(formData, `${prefix}_${stageId}_aux_recoverable_fraction`, 0),
+    lossRecoverableFractionToHeating: fractionValue(formData, `${prefix}_${stageId}_loss_recoverable_fraction`, 0)
+  };
+}
+
+function serviceSystem(formData, prefix, stageIds, metadata = {}) {
+  return {
+    systemId: metadata.systemId,
+    enabled: true,
+    servedScope: "whole_building",
+    generatorType: formValue(formData, `${prefix}_generator_type`) || metadata.generatorType || "explicit_other",
+    energyCarrier: formValue(formData, `${prefix}_energy_carrier`) || metadata.energyCarrier || "explicit_other",
+    stages: stageIds.map(stageId => stageInput(formData, prefix, stageId)),
+    source: {
+      origin: "explicit_engineering_input",
+      reference: `${prefix}.chapter3_installations_form`
+    }
+  };
+}
+
+function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
+  if (!yesValue(formData, "chapter3_installations_enabled")) {
+    return undefined;
+  }
+  const systems = {
+    schema: TECHNICAL_SYSTEMS_SCHEMA,
+    source: {
+      origin: "explicit_engineering_input",
+      reference: "P4.installations_product_workflow"
+    },
+    heating: {
+      enabled: yesValue(formData, "chapter3_heating_enabled"),
+      systems: yesValue(formData, "chapter3_heating_enabled")
+        ? [serviceSystem(formData, "chapter3_heating", CHAPTER3_INSTALLATION_STAGE_IDS, { systemId: "heating-main" })]
+        : []
+    },
+    cooling: {
+      enabled: yesValue(formData, "chapter3_cooling_enabled"),
+      systems: yesValue(formData, "chapter3_cooling_enabled")
+        ? [serviceSystem(formData, "chapter3_cooling", CHAPTER3_INSTALLATION_STAGE_IDS, { systemId: "cooling-main" })]
+        : []
+    },
+    ventilationAhu: {
+      enabled: yesValue(formData, "chapter3_ventilation_ahu_enabled"),
+      systems: yesValue(formData, "chapter3_ventilation_ahu_enabled")
+        ? [{
+            systemId: "ventilation-ahu-main",
+            enabled: true,
+            configuration: formValue(formData, "chapter3_ventilation_configuration") || "balanced",
+            fanElectricEnergyInput: {
+              supplyAirFlowM3PerH: nonNegativeNumber(formData, "chapter3_supply_airflow_m3h"),
+              supplyPressureDropPa: nonNegativeNumber(formData, "chapter3_supply_pressure_pa"),
+              supplyFanEfficiency: fractionValue(formData, "chapter3_supply_fan_efficiency", undefined),
+              extractAirFlowM3PerH: nonNegativeNumber(formData, "chapter3_extract_airflow_m3h"),
+              extractPressureDropPa: nonNegativeNumber(formData, "chapter3_extract_pressure_pa"),
+              extractFanEfficiency: fractionValue(formData, "chapter3_extract_fan_efficiency", undefined),
+              calculationHours: nonNegativeNumber(formData, "chapter3_fan_hours_month")
+            },
+            heatRecoveryAuxiliaryKWhPerMonth: nonNegativeNumber(formData, "chapter3_heat_recovery_aux_kwh_month") ?? 0,
+            preheatAuxiliaryKWhPerMonth: nonNegativeNumber(formData, "chapter3_preheat_aux_kwh_month") ?? 0,
+            controlAuxiliaryKWhPerMonth: nonNegativeNumber(formData, "chapter3_control_aux_kwh_month") ?? 0,
+            source: {
+              origin: "explicit_engineering_input",
+              reference: "chapter3_ventilation_ahu.chapter3_installations_form"
+            }
+          }]
+        : []
+    },
+    domesticHotWater: {
+      enabled: yesValue(formData, "chapter3_dhw_enabled"),
+      monthlyUsefulDemandKWh: nonNegativeNumber(formData, "chapter3_dhw_useful_kwh_month"),
+      systems: yesValue(formData, "chapter3_dhw_enabled")
+        ? [serviceSystem(formData, "chapter3_dhw", CHAPTER3_DHW_STAGE_IDS, { systemId: "dhw-main" })]
+        : []
+    },
+    coolingStoragePcm: {
+      enabled: yesValue(formData, "chapter3_pcm_enabled"),
+      monthlyTemplate: yesValue(formData, "chapter3_pcm_enabled")
+        ? {
+            sensibleStorageTransformableEnergyKWh: numberValue(formData, "chapter3_pcm_transformable_kwh"),
+            solidMassKg: numberValue(formData, "chapter3_pcm_solid_mass_kg"),
+            solidSpecificHeatKWhPerKgK: numberValue(formData, "chapter3_pcm_specific_heat_kwh_kgk"),
+            generatorOutletFlowTemperatureC: numberValue(formData, "chapter3_pcm_generator_outlet_c"),
+            transitionTemperatureC: numberValue(formData, "chapter3_pcm_transition_c"),
+            generatorOutletFlowDeltaK: numberValue(formData, "chapter3_pcm_generator_delta_k"),
+            massDecreaseTransformableEnergyKWh: numberValue(formData, "chapter3_pcm_mass_decrease_transformable_kwh"),
+            latentHeatKWhPerKg: numberValue(formData, "chapter3_pcm_latent_heat_kwh_kg"),
+            initialSolidMassKg: numberValue(formData, "chapter3_pcm_initial_solid_mass_kg")
+          }
+        : null
+    },
+    lighting: {
+      enabled: yesValue(formData, "chapter3_lighting_enabled"),
+      totalAreaM2: usefulFloorAreaM2,
+      explicitMonthlyEnergyKWh: yesValue(formData, "chapter3_lighting_enabled")
+        ? Array.from({ length: 12 }, () => nonNegativeNumber(formData, "chapter3_lighting_monthly_kwh"))
+        : [],
+      leniSubspaces: yesValue(formData, "chapter3_lighting_enabled")
+        ? [{
+            subspaceId: "lighting-whole-building",
+            areaM2: usefulFloorAreaM2,
+            leniKWhPerM2Year: nonNegativeNumber(formData, "chapter3_lighting_leni_kwh_m2_year"),
+            source: {
+              origin: "explicit_engineering_input",
+              reference: "chapter3_lighting_leni_explicit_boundary"
+            }
+          }]
+        : [],
+      boundaryStatus: "explicit_input_boundary_sr_en_15193_1"
+    }
+  };
+  return systems;
 }
 
 export function constructionPeriodFromYear(yearValue) {
@@ -778,6 +1149,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
     "20cm+": 0.2
   };
   const wallInsulationThicknessM = wallInsulationThicknessByOption[wallInsulation];
+  const technicalSystems = buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2);
 
   return {
     buildingId: "building-platform-wizard-preview",
@@ -825,6 +1197,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
       ...(adjacentWallAreaM2 === undefined ? {} : { adjacentWallAreaM2 }),
       ...(usefulFloorAreaM2 === undefined ? {} : { usefulFloorAreaM2 })
     },
+    ...(technicalSystems === undefined ? {} : { technicalSystems }),
     context: {
       attic: roofType === "heated_attic" ? "heated" : "unheated",
       basement: floorType === "over_basement" ? "unheated" : "none"
@@ -924,7 +1297,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
         <section id="p2b-chapter_2" class="technical-workspace-panel">
           <h4>Calcul MC001-2022 Capitolul 2</h4>
           <p>Valorile afisate sunt citite din modelul canonic si din rezultatele motorului validat.</p>
-          <p>Domeniul activ este anvelopa, transferul lunar, QHnd/QCnd si raportul tehnic.</p>
+          <p>Domeniul activ este anvelopa, transferul lunar, QHnd/QCnd si, cand sunt introduse date explicite, instalatiile Capitolului 3.</p>
         </section>
       </div>
       <section id="p2b-assemblies" class="technical-workspace-panel">
@@ -958,10 +1331,11 @@ export function renderEngineeringModelReview(preview, options = {}) {
         <h4>QHnd / QCnd lunar</h4>
         ${renderMonthlyResults(workspace)}
       </section>
+      ${renderInstallationsResults(workspace)}
       <section id="p2b-report" class="technical-workspace-panel">
         <h4>Raport tehnic</h4>
         <div class="technical-report-success" data-technical-report-success>
-          Raport tehnic generat din modelul curent si rezultatele Chapter 2 validate.
+          Raport tehnic generat din modelul curent si rezultatele validate.
         </div>
         <p>${safeText(workspace.report.title)} · ${safeText(workspace.report.source)}</p>
         ${renderTechnicalReportDocument(workspace, { openReport })}
@@ -990,8 +1364,9 @@ export function renderEngineeringModelReview(preview, options = {}) {
       ` : ""}
       <section id="p2b-report" class="technical-workspace-panel">
         <div class="technical-report-success" data-technical-report-success>
-          Raport tehnic generat din modelul curent si rezultatele Chapter 2 validate.
+          Raport tehnic generat din modelul curent si rezultatele validate.
         </div>
+        ${renderInstallationsResults(workspace)}
         ${renderTechnicalReportDocument(workspace)}
       </section>
     </section>

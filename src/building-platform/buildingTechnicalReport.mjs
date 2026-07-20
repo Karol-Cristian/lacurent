@@ -13,6 +13,7 @@ export const TECHNICAL_WORKSPACE_TABS = Object.freeze([
   { tabId: "materials", label: "Materiale" },
   { tabId: "building_dna", label: "Building DNA" },
   { tabId: "chapter_2", label: "Calcul MC001" },
+  { tabId: "installations", label: "Instalatii" },
   { tabId: "results", label: "Rezultate" },
   { tabId: "report", label: "Raport" },
   { tabId: "traceability", label: "Trasabilitate" }
@@ -290,10 +291,12 @@ function monthlyRows(calculation, buildingDna) {
 }
 
 function calculationFingerprint(buildingDna, calculation, monthly) {
+  const chapter3Annual = calculation.chapter3Result?.annual ?? null;
   return {
     fingerprintId: stableFingerprint({
       buildingDnaSchema: buildingDna.schema,
       building: buildingDna.building,
+      ...(buildingDna.technicalSystems ? { technicalSystems: buildingDna.technicalSystems } : {}),
       climateProfile: {
         profileId: buildingDna.climateProfile?.profileId ?? null,
         datasetVersion: buildingDna.climateProfile?.datasetVersion ?? null,
@@ -329,12 +332,16 @@ function calculationFingerprint(buildingDna, calculation, monthly) {
       })),
       engine: {
         chapter2Scope: calculation.chapter2Result?.scope ?? null,
-        envelopeScope: calculation.envelopeTransmissionResult?.scope ?? null
+        envelopeScope: calculation.envelopeTransmissionResult?.scope ?? null,
+        ...(calculation.chapter3Result?.calculationScope
+          ? { chapter3Scope: calculation.chapter3Result.calculationScope }
+          : {})
       },
       outputs: {
         htr: calculation.envelopeTransmissionResult?.result?.amount ?? null,
         annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
-        annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null
+        annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
+        ...(chapter3Annual ? { chapter3Annual } : {})
       }
     }),
     inputs: {
@@ -342,12 +349,16 @@ function calculationFingerprint(buildingDna, calculation, monthly) {
       climateProfileId: buildingDna.climateProfile?.profileId ?? null,
       climateProfileVersion: buildingDna.climateProfile?.datasetVersion ?? null,
       adapterStage: calculation.stage ?? null,
-      engineScope: calculation.chapter2Result?.scope ?? null
+      engineScope: calculation.chapter2Result?.scope ?? null,
+      ...(calculation.chapter3Result?.calculationScope
+        ? { chapter3Scope: calculation.chapter3Result.calculationScope }
+        : {})
     },
     outputs: {
       annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
       annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
-      htr: calculation.envelopeTransmissionResult?.result?.amount ?? null
+      htr: calculation.envelopeTransmissionResult?.result?.amount ?? null,
+      ...(chapter3Annual ? { chapter3Annual } : {})
     }
   };
 }
@@ -1483,14 +1494,90 @@ function traceabilityRows(buildingDna, calculation, formulas) {
   ]);
   return [...references].map(reference => ({
     reference,
-    chapter: reference?.startsWith("MC001") ? "MC001 Chapter 2" : null,
-    source: "validated_chapter_2_physics_engine",
+    chapter: reference?.startsWith("MC001_3") ? "MC001 Chapter 3" : reference?.startsWith("MC001") ? "MC001 Chapter 2" : null,
+    source: reference?.startsWith("MC001_3")
+      ? "validated_chapter_3_installations_runtime"
+      : "validated_chapter_2_physics_engine",
     buildingDnaLink: buildingDna.schema
+  }));
+}
+
+function installationRows(calculation) {
+  const result = calculation.chapter3Result;
+  if (!result) return [];
+  const rows = [
+    {
+      service: "Incalzire",
+      value: result.annual?.heatingInputKWh ?? 0,
+      unit: "kWh/an",
+      status: result.services?.heating?.enabled ? "calculat" : "inactiv",
+      outputKey: "chapter3Result.annual.heatingInputKWh"
+    },
+    {
+      service: "Racire",
+      value: result.annual?.coolingInputKWh ?? 0,
+      unit: "kWh/an",
+      status: result.services?.cooling?.enabled ? "calculat" : "inactiv",
+      outputKey: "chapter3Result.annual.coolingInputKWh"
+    },
+    {
+      service: "Apa calda de consum",
+      value: result.annual?.dhwInputKWh ?? 0,
+      unit: "kWh/an",
+      status: result.services?.dhw?.enabled ? "calculat" : "inactiv",
+      outputKey: "chapter3Result.annual.dhwInputKWh"
+    },
+    {
+      service: "Ventilatie/AHU auxiliar",
+      value: result.annual?.ventilationAuxiliaryKWh ?? 0,
+      unit: "kWh/an",
+      status: result.services?.ventilationAhu?.enabled ? "calculat" : "inactiv",
+      outputKey: "chapter3Result.annual.ventilationAuxiliaryKWh"
+    },
+    {
+      service: "Iluminat - LENI explicit",
+      value: result.annual?.lightingEnergyKWh ?? 0,
+      unit: "kWh/an",
+      status: result.services?.lighting?.enabled ? "input explicit" : "inactiv",
+      outputKey: "chapter3Result.annual.lightingEnergyKWh"
+    }
+  ];
+  if (result.services?.coolingStoragePcm?.enabled) {
+    rows.push({
+      service: "Stocare PCM racire",
+      value: result.annual?.pcmInputEnergyLimitKWh ?? 0,
+      unit: "kWh/an",
+      status: "calculat",
+      outputKey: "chapter3Result.annual.pcmInputEnergyLimitKWh"
+    });
+  }
+  return rows;
+}
+
+function installationMonthlyRows(calculation) {
+  return (calculation.chapter3Result?.monthly ?? []).map(month => ({
+    month: month.month,
+    monthLabel: monthLabel(month.month),
+    heatingInputKWh: month.totals?.heatingInputKWh ?? 0,
+    coolingInputKWh: month.totals?.coolingInputKWh ?? 0,
+    dhwInputKWh: month.totals?.dhwInputKWh ?? 0,
+    ventilationAuxiliaryKWh: month.totals?.ventilationAuxiliaryKWh ?? 0,
+    lightingEnergyKWh: month.totals?.lightingEnergyKWh ?? 0,
+    pcmInputEnergyLimitKWh: month.totals?.pcmInputEnergyLimitKWh ?? 0
   }));
 }
 
 function reportChapters({ buildingDna, monthly, formulas, traceability, calculation, fingerprint, seasonalSanity }) {
   const chapter2 = calculation.chapter2Result?.result ?? {};
+  const chapter3Rows = calculation.chapter3Result ? [
+    ...installationRows(calculation),
+    ...installationMonthlyRows(calculation),
+    {
+      label: "Limitare iluminat",
+      value:
+        "Calculul detaliat normativ al iluminatului conform SR EN 15193-1 nu este inclus fara sursa normativa completa. Valorile LENI introduse explicit sunt tratate ca date tehnice furnizate."
+    }
+  ] : [];
   return [
     makeReportChapter("rezultate_principale", "Rezultate principale", "Necesar util anual si valori lunare pentru incalzire si racire.", [
       { label: "Necesar anual de incalzire QHnd", value: chapter2.annualQHnd, unit: "kWh" },
@@ -1502,6 +1589,15 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
         qCndKwh: row.qCndKwh
       }))
     ]),
+    ...(calculation.chapter3Result ? [
+      makeReportChapter(
+        "instalatii_capitolul_3",
+        "Instalatii tehnice - MC001 Capitolul 3",
+        "Rezultatele folosesc cereri utile Chapter 2 si date explicite pentru sisteme: pierderi, auxiliari, recuperari, stocare si limita LENI explicita.",
+        chapter3Rows,
+        calculation.chapter3Result.formulaReferences ?? []
+      )
+    ] : []),
     makeReportChapter("caiet_de_calcule_ingineresti", "Caiet de calcule ingineresti", "Variabile, relatii, substitutii si rezultate in ordinea dependentelor.", formulas),
     makeReportChapter("anexa_tehnica_interna", "Anexa tehnica interna", "Identificatori tehnici si diagnostice pastrate separat de calculul principal.", [
       { label: "Model", value: buildingDna.building?.buildingId },
@@ -1546,6 +1642,26 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
   const notebookSections = compactNotebookSections(assemblies, envelope, monthly, calculation);
   const traceability = traceabilityRows(buildingDna, calculation, formulas);
   const fingerprint = calculationFingerprint(buildingDna, calculation, monthly);
+  const installations = calculation.chapter3Result ? {
+    status: "ready",
+    annual: calculation.chapter3Result.annual ?? {},
+    monthly: installationMonthlyRows(calculation),
+    services: calculation.chapter3Result.services ?? {},
+    energyByService: calculation.chapter3Result.energyByService ?? {},
+    energyByCarrier: calculation.chapter3Result.energyByCarrier ?? {},
+    rows: installationRows(calculation),
+    lightingBoundaryStatement:
+      "Calculul detaliat normativ al iluminatului conform SR EN 15193-1 nu este inclus fara sursa normativa completa. Valorile LENI introduse explicit sunt tratate ca date tehnice furnizate."
+  } : {
+    status: "not_configured",
+    annual: {},
+    monthly: [],
+    services: {},
+    energyByService: {},
+    energyByCarrier: {},
+    rows: [],
+    lightingBoundaryStatement: null
+  };
   const chapters = reportChapters({
     buildingDna,
     assemblies,
@@ -1577,6 +1693,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     assemblies,
     materials,
     envelope,
+    installations,
     monthly,
     seasonalSanity,
     calculationFingerprint: fingerprint,
@@ -1591,11 +1708,14 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     report: {
       reportId: "engineering_calculation_notebook_p3g_v1",
       title: "Caiet de calcul MC001-2022",
-      source: "Model tehnic si rezultate Chapter 2 validate",
+      source: calculation.chapter3Result
+        ? "Model tehnic si rezultate Chapter 2 si Chapter 3 validate"
+        : "Model tehnic si rezultate Chapter 2 validate",
       calculationFingerprint: fingerprint,
       mainResults: {
         annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
         annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
+        installations: calculation.chapter3Result?.annual ?? null,
         monthly: monthly.map(row => ({
           month: row.month,
           monthLabel: row.monthLabel,
@@ -1612,6 +1732,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     resultSummary: {
       annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
       annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
+      chapter3Annual: calculation.chapter3Result?.annual ?? null,
       monthCount: calculation.chapter2Result?.result?.monthCount ?? null
     },
     diagnostics: {
@@ -1619,12 +1740,13 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
       warnings: [],
       methodologyLimits: [
         "report_generation_only",
-        "values_from_building_dna_and_chapter_2_results",
+        calculation.chapter3Result
+          ? "values_from_building_dna_chapter_2_and_chapter_3_results"
+          : "values_from_building_dna_and_chapter_2_results",
         "chapter_2_physics_engine_is_calculation_authority",
+        ...(calculation.chapter3Result ? ["chapter_3_installations_from_explicit_inputs"] : ["not_chapter_3"]),
         "no_duplicate_calculations",
         "no_hidden_defaults",
-        "not_chapter_3",
-        "not_final_energy",
         "not_primary_energy",
         "not_CO2",
         "not_certificate"

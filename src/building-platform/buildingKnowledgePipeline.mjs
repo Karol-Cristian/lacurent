@@ -79,10 +79,27 @@ function resultSummary(calculation) {
   return {
     annualQHnd: result?.annualQHnd ?? null,
     annualQCnd: result?.annualQCnd ?? null,
+    chapter3Annual: calculation.chapter3Result?.annual ?? null,
+    chapter3Services: calculation.chapter3Result?.services ?? null,
     monthCount: result?.summary?.monthCount ?? result?.heatingResult?.summary?.monthCount ?? null,
     heatingMonthlyCount: result?.heatingResult?.caseResults?.length ?? null,
     coolingMonthlyCount: result?.coolingResult?.caseResults?.length ?? null
   };
+}
+
+function methodologyLimitsForCalculation(calculation) {
+  return [
+    "platform_model_generation_until_physics_adapter",
+    "chapter_2_physics_engine_is_calculation_authority",
+    ...(calculation.chapter3Result
+      ? ["chapter_3_installations_runtime_from_explicit_system_inputs"]
+      : ["not_chapter_3"]),
+    "no_ui_calculations",
+    "no_hidden_defaults",
+    "not_primary_energy",
+    "not_CO2",
+    "not_certificate"
+  ];
 }
 
 function buildReview(buildingDna, calculation) {
@@ -139,7 +156,17 @@ function buildStages({ mode, answers, buildingDna, calculation, interventions })
     stage("validated_chapter_2_physics_engine", "Validated Chapter 2 Physics Engine", calculation.status, {
       annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
       annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null
-    })
+    }),
+    ...(calculation.chapter3Result ? [
+      stage("chapter_3_installations_runtime", "Chapter 3 Installations Runtime", calculation.status, {
+        calculationScope: calculation.chapter3Result.calculationScope,
+        heatingInputKWh: calculation.chapter3Result.annual?.heatingInputKWh ?? null,
+        coolingInputKWh: calculation.chapter3Result.annual?.coolingInputKWh ?? null,
+        dhwInputKWh: calculation.chapter3Result.annual?.dhwInputKWh ?? null,
+        ventilationAuxiliaryKWh: calculation.chapter3Result.annual?.ventilationAuxiliaryKWh ?? null,
+        lightingEnergyKWh: calculation.chapter3Result.annual?.lightingEnergyKWh ?? null
+      })
+    ] : [])
   ];
 }
 
@@ -181,15 +208,7 @@ export function buildBuildingKnowledgePlatformFromAssistedAnswers(answers = {}) 
         ...interventions.diagnostics.warnings
       ],
       methodologyLimits: [
-        "platform_model_generation_until_physics_adapter",
-        "chapter_2_physics_engine_is_calculation_authority",
-        "no_ui_calculations",
-        "no_hidden_defaults",
-        "not_chapter_3",
-        "not_final_energy",
-        "not_primary_energy",
-        "not_CO2",
-        "not_certificate"
+        ...methodologyLimitsForCalculation(calculation)
       ]
     }
   };
@@ -225,17 +244,7 @@ export function buildBuildingKnowledgePlatformFromAdvancedModel(input = {}) {
     diagnostics: {
       blockers: [],
       warnings: dnaResult.diagnostics.warnings,
-      methodologyLimits: [
-        "platform_model_generation_until_physics_adapter",
-        "chapter_2_physics_engine_is_calculation_authority",
-        "no_ui_calculations",
-        "no_hidden_defaults",
-        "not_chapter_3",
-        "not_final_energy",
-        "not_primary_energy",
-        "not_CO2",
-        "not_certificate"
-      ]
+      methodologyLimits: methodologyLimitsForCalculation(calculation)
     }
   };
 }

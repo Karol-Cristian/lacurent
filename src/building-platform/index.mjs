@@ -34,6 +34,18 @@ export {
 } from "./buildingChapter2Adapter.mjs";
 
 export {
+  CHAPTER3_DHW_STAGE_IDS,
+  CHAPTER3_INSTALLATIONS_ADAPTER_VERSION,
+  CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER,
+  CHAPTER3_INSTALLATION_STAGE_IDS,
+  TECHNICAL_SYSTEMS_SCHEMA,
+  buildChapter3RuntimeInputFromBuildingDna,
+  calculateChapter3InstallationsForBuildingDna,
+  hasActiveChapter3TechnicalSystems,
+  validateTechnicalSystems
+} from "./buildingChapter3InstallationsAdapter.mjs";
+
+export {
   resolveBuildingRenovationInterventions
 } from "./buildingRenovationInterventions.mjs";
 

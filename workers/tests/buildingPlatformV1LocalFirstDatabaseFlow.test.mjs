@@ -312,6 +312,19 @@ await test("P3E-B v1 local-first lifecycle uses drafts explicitly and immutable 
     db.scalar("SELECT draft_status FROM building_platform_project_drafts WHERE project_id = ?", projectId),
     "committed"
   );
+  const persistedEngineInput = JSON.parse(
+    db.scalar("SELECT explicit_engine_input_json FROM building_platform_analysis_versions WHERE analysis_version_id = ?", saved.body.analysisVersion.analysis_version_id)
+  );
+  const persistedEngineOutput = JSON.parse(
+    db.scalar("SELECT complete_engine_output_json FROM building_platform_analysis_versions WHERE analysis_version_id = ?", saved.body.analysisVersion.analysis_version_id)
+  );
+  assert.equal(persistedEngineInput.chapter3Input.schema, "mc001_chapter3_integrated_runtime_input_v1");
+  assert.equal(persistedEngineOutput.chapter3Result.status, "calculated");
+  assert.equal(persistedEngineOutput.chapter3Result.monthly.length, 12);
+  assert.equal(
+    persistedEngineOutput.chapter3Result.annual.dhwInputKWh,
+    saved.body.analysisVersion.complete_engine_output.chapter3Result.annual.dhwInputKWh
+  );
 
   const reopened = await post("/api/building-platform/v1/projects/open", db, { project_id: projectId });
   assert.equal(reopened.status, 200);

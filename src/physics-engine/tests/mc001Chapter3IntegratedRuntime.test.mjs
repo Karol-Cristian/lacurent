@@ -218,3 +218,54 @@ test("rejects incomplete integrated monthly chains instead of inventing defaults
     /heating.january.stages must be a non-empty array/
   );
 });
+
+test("supports explicitly inactive services without creating artificial system stages", () => {
+  const result = calculateMc001Chapter3IntegratedRuntime({
+    services: {
+      heatingEnabled: false,
+      coolingEnabled: false,
+      dhwEnabled: false,
+      ventilationAhuEnabled: false,
+      coolingStoragePcmEnabled: false,
+      lightingEnabled: true
+    },
+    months: mc001Chapter3ReferenceBuildingFixture.input.months.map(month => ({
+      month: month.month,
+      chapter2Useful: month.chapter2Useful
+    })),
+    lighting: {
+      monthlyEnergyKWh: Array.from({ length: 12 }, () => 3)
+    }
+  });
+
+  assert.equal(result.status, "calculated");
+  assert.equal(result.monthly[0].heating, null);
+  assert.equal(result.monthly[0].cooling, null);
+  assert.equal(result.annual.heatingInputKWh, 0);
+  assert.equal(result.annual.coolingInputKWh, 0);
+  assert.equal(result.annual.lightingEnergyKWh, 36);
+});
+
+test("does not validate inactive lighting boundary payloads", () => {
+  const result = calculateMc001Chapter3IntegratedRuntime({
+    services: {
+      heatingEnabled: false,
+      coolingEnabled: false,
+      dhwEnabled: false,
+      ventilationAhuEnabled: false,
+      coolingStoragePcmEnabled: false,
+      lightingEnabled: false
+    },
+    months: mc001Chapter3ReferenceBuildingFixture.input.months.map(month => ({
+      month: month.month,
+      chapter2Useful: month.chapter2Useful
+    })),
+    lighting: {
+      monthlyEnergyKWh: [1, 2]
+    }
+  });
+
+  assert.equal(result.status, "calculated");
+  assert.equal(result.lighting, null);
+  assert.equal(result.annual.lightingEnergyKWh, 0);
+});

@@ -3,6 +3,7 @@ import {
   calculateMc001EnvelopeTransmissionCoefficientExplicit
 } from "../physics-engine/mc001EnvelopePhysicsCalculation.mjs";
 import { calculateMc001Chapter2UsefulDemandExplicit } from "../physics-engine/mc001Chapter2UsefulDemandCalculation.mjs";
+import { calculateChapter3InstallationsForBuildingDna } from "./buildingChapter3InstallationsAdapter.mjs";
 
 function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -241,15 +242,65 @@ export function calculateChapter2ForBuildingDna(buildingDna) {
   }
   const chapter2Input = buildChapter2UsefulDemandPhysicsInput(buildingDna, envelopeTransmissionResult);
   const chapter2Result = calculateMc001Chapter2UsefulDemandExplicit(chapter2Input);
+  if (chapter2Result.status !== "ready") {
+    return {
+      status: chapter2Result.status,
+      stage: "chapter_2_useful_demand",
+      assemblyInput,
+      assemblyResult,
+      envelopeInput,
+      envelopeTransmissionResult,
+      chapter2Input,
+      chapter2Result,
+      diagnostics: chapter2Result.diagnostics
+    };
+  }
+
+  const chapter3Calculation = calculateChapter3InstallationsForBuildingDna(
+    buildingDna,
+    chapter2Result
+  );
+  if (chapter3Calculation.status === "blocked") {
+    return {
+      status: "blocked",
+      stage: "chapter_3_installations",
+      assemblyInput,
+      assemblyResult,
+      envelopeInput,
+      envelopeTransmissionResult,
+      chapter2Input,
+      chapter2Result,
+      chapter3Input: chapter3Calculation.input ?? null,
+      chapter3Result: null,
+      diagnostics: chapter3Calculation.diagnostics
+    };
+  }
+  const chapter3Ready = chapter3Calculation.status === "ready";
   return {
-    status: chapter2Result.status,
-    stage: chapter2Result.status === "ready" ? "chapter_2_complete" : "chapter_2_useful_demand",
+    status: "ready",
+    stage: chapter3Ready ? "chapter_2_and_3_complete" : "chapter_2_complete",
     assemblyInput,
     assemblyResult,
     envelopeInput,
     envelopeTransmissionResult,
     chapter2Input,
     chapter2Result,
+    ...(chapter3Ready ? {
+      chapter3AdapterVersion: chapter3Calculation.adapterVersion,
+      chapter3Input: chapter3Calculation.chapter3Input,
+      chapter3Result: chapter3Calculation.chapter3Result,
+      fullEngineInput: {
+        chapter2Input,
+        chapter3Input: chapter3Calculation.chapter3Input
+      },
+      fullEngineOutput: {
+        chapter2Result,
+        chapter3Result: chapter3Calculation.chapter3Result
+      }
+    } : {
+      fullEngineInput: chapter2Input,
+      fullEngineOutput: chapter2Result
+    }),
     diagnostics: chapter2Result.diagnostics
   };
 }

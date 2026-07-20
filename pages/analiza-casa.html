@@ -24,9 +24,9 @@
 <div>
 <div class="small-label">MODEL TEHNIC VALIDAT</div>
 <h1>Modelul termic al cladirii</h1>
-<p>Modelarea anvelopei si calculul necesarului util de incalzire si racire conform MC001-2022.</p>
+<p>Modelarea anvelopei, necesarul util si instalatiile tehnice conform MC001-2022.</p>
 </div>
-<div class="system-state"><span class="green-dot"></span>Chapter 2 physics engine</div>
+<div class="system-state"><span class="green-dot"></span>Chapter 2 + Chapter 3 runtime</div>
 </div>
 </header>
 
@@ -48,7 +48,7 @@
 <div id="authRequired" class="auth-panel analysis-auth-required standard-auth-card" hidden>
 <div class="small-label">CONT OPTIONAL</div>
 <h2>Poti genera raportul fara cont.</h2>
-<p>Modelul termic ruleaza local in pagina peste Building DNA si motorul Chapter 2 validat. Contul ramane optional pentru salvare ulterioara.</p>
+<p>Modelul termic ruleaza local in pagina peste Building DNA si motoarele validate Chapter 2/3 cand instalatiile sunt configurate. Contul ramane optional pentru salvare ulterioara.</p>
 <a class="primary-btn" href="profil.html">Creeaza cont dupa raport</a>
 <div class="auth-tabs">
 <button type="button" class="auth-tab active" data-auth-tab="login">Autentificare</button>
@@ -92,7 +92,7 @@
 <span class="small-label">SPATIU DE CALCUL</span>
 <h2>Introduci datele tehnice si verifici raportul in acelasi ecran.</h2>
 </div>
-<p>Modelarea anvelopei si calculul QHnd/QCnd ruleaza prin Building DNA, adapterul Chapter 2 si motorul validat. Modul simplificat ramane disponibil ca flux secundar peste acelasi model canonic.</p>
+<p>Modelarea anvelopei, calculul QHnd/QCnd si instalatiile Chapter 3 ruleaza prin Building DNA, adapterele validate si acelasi raport tehnic. Modul simplificat ramane disponibil ca flux secundar peste acelasi model canonic.</p>
 <div class="hero-buttons">
 <button type="button" class="secondary-btn" id="toggleSimplifiedModeBtn">Mod simplificat</button>
 </div>
@@ -125,18 +125,19 @@
 <button type="button" data-step-target="0">Geometrie</button>
 <button type="button" data-step-target="1">Anvelopa</button>
 <button type="button" data-step-target="2">Renovari</button>
-<button type="button" data-step-target="3">Building DNA</button>
-<button type="button" data-step-target="4">Raport tehnic</button>
-<button type="button" data-step-target="5">Rezultate</button>
+<button type="button" data-step-target="3">Instalatii</button>
+<button type="button" data-step-target="4">Building DNA</button>
+<button type="button" data-step-target="5">Raport tehnic</button>
+<button type="button" data-step-target="6">Rezultate</button>
 </nav>
 <div class="progress"><div id="progressBar"></div></div>
-<span id="stepText">Pas 1 din 6</span>
+<span id="stepText">Pas 1 din 7</span>
 </div>
 
 <div class="p3f-engineering-shell">
 <form id="houseForm" class="p3f-input-pane">
 <input type="hidden" name="user_type" value="residential">
-<input type="hidden" name="analysis_purpose" value="technical_chapter_2_report">
+<input type="hidden" name="analysis_purpose" value="technical_chapter_2_3_report">
 <input type="hidden" name="real_consumption_mode" value="not_used_in_chapter_2">
 <input type="hidden" name="building_platform_demo_mode" value="">
 <input type="hidden" name="building_platform_demo_fixture_id" value="">
@@ -203,6 +204,109 @@
 </div>
 </div>
 
+<div class="step" data-section-id="installations">
+<h2>Instalatii tehnice</h2>
+<p class="section-description">Date explicite pentru MC001 Capitolul 3. Valorile introduse sunt intrari tehnice editabile; formulele raman in motorul Chapter 3.</p>
+<div class="dashboard-band compact-technical-note">
+<h3>Activare Capitolul 3</h3>
+<div class="form-grid">
+<div><label>Calculeaza instalatii Chapter 3</label><select name="chapter3_installations_enabled"><option value="no">Nu - doar Chapter 2</option><option value="yes">Da - foloseste datele explicite de mai jos</option></select></div>
+<div><label>Stare iluminat</label><p class="field-impact-note">Limita LENI este input explicit. Motorul complet SR EN 15193-1 ramane in asteptarea sursei normative complete.</p></div>
+</div>
+</div>
+
+<div class="dashboard-band compact-technical-note">
+<h3>Incalzire</h3>
+<div class="form-grid">
+<div><label>Sistem incalzire activ</label><select name="chapter3_heating_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Generator incalzire</label><select name="chapter3_heating_generator_type"><option value="condensing_boiler">Cazan in condensare</option><option value="electric_resistance">Rezistenta electrica</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="explicit_other">Alt sistem explicit</option></select></div>
+<div><label>Purtator energie</label><select name="chapter3_heating_energy_carrier"><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
+</div>
+<div class="technical-table-wrap">
+<table class="technical-table">
+<thead><tr><th>Etapa</th><th>Pierdere [kWh/luna]</th><th>Auxiliar [kWh/luna]</th><th>Aux. recuperat [-]</th><th>Pierdere recuperata [-]</th></tr></thead>
+<tbody>
+<tr><th>Emisie</th><td><input name="chapter3_heating_emission_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_emission_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_emission_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_emission_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+<tr><th>Distributie</th><td><input name="chapter3_heating_distribution_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_distribution_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_distribution_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_distribution_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+<tr><th>Stocare</th><td><input name="chapter3_heating_storage_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_storage_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_storage_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_storage_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+<tr><th>Generare</th><td><input name="chapter3_heating_generation_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_generation_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_generation_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_generation_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="dashboard-band compact-technical-note">
+<h3>Racire</h3>
+<div class="form-grid">
+<div><label>Sistem racire activ</label><select name="chapter3_cooling_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Generator racire</label><select name="chapter3_cooling_generator_type"><option value="split_system">Sistem split</option><option value="chiller">Chiller</option><option value="heat_pump_reversible">Pompa de caldura reversibila</option><option value="district_cooling">Racire centralizata</option><option value="explicit_other">Alt sistem explicit</option></select></div>
+<div><label>Purtator energie</label><select name="chapter3_cooling_energy_carrier"><option value="electricity">Electricitate</option><option value="district_cooling">Racire centralizata</option><option value="explicit_other">Alt purtator explicit</option></select></div>
+</div>
+<div class="technical-table-wrap">
+<table class="technical-table">
+<thead><tr><th>Etapa</th><th>Pierdere [kWh/luna]</th><th>Auxiliar [kWh/luna]</th><th>Aux. recuperat [-]</th><th>Pierdere recuperata [-]</th></tr></thead>
+<tbody>
+<tr><th>Emisie</th><td><input name="chapter3_cooling_emission_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_emission_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_emission_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_emission_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+<tr><th>Distributie</th><td><input name="chapter3_cooling_distribution_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_distribution_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_distribution_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_distribution_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+<tr><th>Stocare</th><td><input name="chapter3_cooling_storage_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_storage_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_storage_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_storage_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+<tr><th>Generare</th><td><input name="chapter3_cooling_generation_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_generation_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_generation_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_generation_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="dashboard-band compact-technical-note">
+<h3>Ventilatie si AHU</h3>
+<div class="form-grid">
+<div><label>Ventilatie mecanica / AHU activa</label><select name="chapter3_ventilation_ahu_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Debit introducere [m3/h]</label><input name="chapter3_supply_airflow_m3h" type="number" step="0.1"></div>
+<div><label>Cadere presiune introducere [Pa]</label><input name="chapter3_supply_pressure_pa" type="number" step="0.1"></div>
+<div><label>Randament ventilator introducere [-]</label><input name="chapter3_supply_fan_efficiency" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Debit evacuare [m3/h]</label><input name="chapter3_extract_airflow_m3h" type="number" step="0.1"></div>
+<div><label>Cadere presiune evacuare [Pa]</label><input name="chapter3_extract_pressure_pa" type="number" step="0.1"></div>
+<div><label>Randament ventilator evacuare [-]</label><input name="chapter3_extract_fan_efficiency" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Ore functionare [h/luna]</label><input name="chapter3_fan_hours_month" type="number" step="0.1"></div>
+<div><label>Auxiliar recuperare [kWh/luna]</label><input name="chapter3_heat_recovery_aux_kwh_month" type="number" step="0.01"></div>
+<div><label>Auxiliar preincalzire [kWh/luna]</label><input name="chapter3_preheat_aux_kwh_month" type="number" step="0.01"></div>
+<div><label>Auxiliar control [kWh/luna]</label><input name="chapter3_control_aux_kwh_month" type="number" step="0.01"></div>
+</div>
+</div>
+
+<div class="dashboard-band compact-technical-note">
+<h3>Apa calda de consum</h3>
+<div class="form-grid">
+<div><label>ACM activa</label><select name="chapter3_dhw_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Purtator energie ACM</label><select name="chapter3_dhw_energy_carrier"><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
+<div><label>Cerere utila ACM [kWh/luna]</label><input name="chapter3_dhw_useful_kwh_month" type="number" step="0.01"></div>
+<div><label>Pierdere distributie [kWh/luna]</label><input name="chapter3_dhw_distribution_loss_kwh_month" type="number" step="0.01"></div>
+<div><label>Auxiliar distributie [kWh/luna]</label><input name="chapter3_dhw_distribution_aux_kwh_month" type="number" step="0.01"></div>
+<div><label>Pierdere stocare [kWh/luna]</label><input name="chapter3_dhw_storage_loss_kwh_month" type="number" step="0.01"></div>
+<div><label>Auxiliar stocare [kWh/luna]</label><input name="chapter3_dhw_storage_aux_kwh_month" type="number" step="0.01"></div>
+<div><label>Pierdere generare [kWh/luna]</label><input name="chapter3_dhw_generation_loss_kwh_month" type="number" step="0.01"></div>
+<div><label>Auxiliar generare [kWh/luna]</label><input name="chapter3_dhw_generation_aux_kwh_month" type="number" step="0.01"></div>
+</div>
+</div>
+
+<div class="dashboard-band compact-technical-note">
+<h3>Stocare PCM si iluminat explicit</h3>
+<div class="form-grid">
+<div><label>Stocare PCM activa</label><select name="chapter3_pcm_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Energie transformabila [kWh]</label><input name="chapter3_pcm_transformable_kwh" type="number" step="0.0001"></div>
+<div><label>Masa solida [kg]</label><input name="chapter3_pcm_solid_mass_kg" type="number" step="0.01"></div>
+<div><label>c solid [kWh/(kg*K)]</label><input name="chapter3_pcm_specific_heat_kwh_kgk" type="number" step="0.000001"></div>
+<div><label>Temperatura tur generator [C]</label><input name="chapter3_pcm_generator_outlet_c" type="number" step="0.01"></div>
+<div><label>Temperatura tranzitie [C]</label><input name="chapter3_pcm_transition_c" type="number" step="0.01"></div>
+<div><label>Delta T tur generator [K]</label><input name="chapter3_pcm_generator_delta_k" type="number" step="0.01"></div>
+<div><label>Energie pentru variatia masei [kWh]</label><input name="chapter3_pcm_mass_decrease_transformable_kwh" type="number" step="0.0001"></div>
+<div><label>Caldura latenta [kWh/kg]</label><input name="chapter3_pcm_latent_heat_kwh_kg" type="number" step="0.0001"></div>
+<div><label>Masa solida initiala [kg]</label><input name="chapter3_pcm_initial_solid_mass_kg" type="number" step="0.01"></div>
+<div><label>Iluminat LENI explicit activ</label><select name="chapter3_lighting_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Energie iluminat explicita [kWh/luna]</label><input name="chapter3_lighting_monthly_kwh" type="number" step="0.01"></div>
+<div><label>LENI explicit [kWh/(m2*an)]</label><input name="chapter3_lighting_leni_kwh_m2_year" type="number" step="0.01"></div>
+</div>
+</div>
+</div>
+
 <div class="step" data-section-id="building-dna">
 <h2>Building DNA</h2>
 <p class="section-description">Previzualizeaza modelul canonic: tipologie, geometrie, anvelopa, materiale, interventii, provenienta si ipoteze neconfirmate.</p>
@@ -215,13 +319,14 @@
 
 <div class="step" data-section-id="technical-report">
 <h2>Raport tehnic</h2>
-<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motorului Chapter 2. Este structurat pentru citire tehnica si print.</p>
+<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motoarelor Chapter 2 si Chapter 3 cand instalatiile sunt configurate. Este structurat pentru citire tehnica si print.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Capitole raport</h3>
 <div class="value-card-grid">
 <article>Geometrie, anvelopa si materiale</article>
 <article>Rezistente termice, coeficienti U si Htr</article>
 <article>QHnd/QCnd lunar si anual</article>
+<article>Instalatii Chapter 3, pierderi si auxiliari</article>
 <article>Formule, dependinte si surse normative</article>
 </div>
 </div>
@@ -229,10 +334,10 @@
 
 <div class="step" data-section-id="results">
 <h2>Rezultate</h2>
-<p class="section-description">Afisam rezultate validate in Chapter 2: QHnd, QCnd, pierderi prin anvelopa, ventilatie si castiguri.</p>
+<p class="section-description">Afisam QHnd/QCnd validate in Chapter 2 si, cand exista date explicite, rezultatele instalatiilor MC001 Capitolul 3.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Calculeaza modelul curent</h3>
-<p>Butonul de mai jos ruleaza adapterul Building DNA si motorul Chapter 2 validat, apoi deschide raportul tehnic.</p>
+<p>Butonul de mai jos ruleaza adapterele Building DNA, motorul Chapter 2 validat si runtime-ul Chapter 3 pentru sistemele configurate, apoi deschide raportul tehnic.</p>
 <div class="demo-action-row">
 <button type="button" class="secondary-btn" id="recalculateBuildingPlatformAnalysisBtn">Recalculeaza local</button>
 <button type="button" class="secondary-btn" id="saveBuildingPlatformDraftBtn">Salveaza draft</button>
@@ -266,13 +371,13 @@
 <span class="small-label">RAPORT TEHNIC</span>
 <h2>Raportul de calcul curent va aparea aici.</h2>
 </div>
-<p>Completeaza datele tehnice sau incarca demo-ul, apoi recalculeaza. Raportul afiseaza valorile curente din Building DNA si motorul Chapter 2 validat.</p>
+<p>Completeaza datele tehnice sau incarca demo-ul, apoi recalculeaza. Raportul afiseaza valorile curente din Building DNA si motoarele validate Chapter 2/3.</p>
 </section>
 </div>
 </section>
 </main>
 
-<footer><small>LA CURENT · Model termic MC001-2022 · Building DNA si raport tehnic Chapter 2</small></footer>
+<footer><small>LA CURENT · Model termic MC001-2022 · Building DNA si raport tehnic Chapter 2/3</small></footer>
 </div>
 
 <script>

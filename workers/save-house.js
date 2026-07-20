@@ -3940,8 +3940,8 @@ async function persistBuildingPlatformVersionGraph({
         buildingDnaVersion.normativeRegistryVersion,
         buildingDnaVersion.climateProfileId,
         buildingDnaVersion.climateProfileVersion,
-        JSON.stringify(calculation.chapter2Input),
-        JSON.stringify(calculation.chapter2Result),
+        JSON.stringify(buildingPlatformEngineInput(calculation)),
+        JSON.stringify(buildingPlatformEngineOutput(calculation)),
         JSON.stringify(calculation.chapter2Result?.result?.monthlyResults?.map(month => ({
           month: month.month,
           value: month.heating?.qHnd ?? null,
@@ -3959,7 +3959,11 @@ async function persistBuildingPlatformVersionGraph({
         buildingDna.calculationStatus === "synthetic_demo" ? "synthetic_demo" : "calculated",
         buildingDnaVersion.fingerprints.analysisFingerprint,
         completedAt,
-        JSON.stringify({ backendVersion: buildingDnaVersion.backendVersion }),
+        JSON.stringify({
+          backendVersion: buildingDnaVersion.backendVersion,
+          chapter3AdapterVersion: buildingDnaVersion.chapter3AdapterVersion ?? null,
+          chapter3RuntimeVersion: buildingDnaVersion.chapter3RuntimeVersion ?? null
+        }),
         null,
         buildingDnaVersion.analysisSchemaVersion
       ),
@@ -4577,6 +4581,14 @@ function buildingPlatformV1MonthlyUsefulDemand(calculation, side) {
   })) ?? [];
 }
 
+function buildingPlatformEngineInput(calculation) {
+  return calculation.fullEngineInput ?? calculation.chapter2Input;
+}
+
+function buildingPlatformEngineOutput(calculation) {
+  return calculation.fullEngineOutput ?? calculation.chapter2Result;
+}
+
 function buildingPlatformV1CalculationPipeline(buildingDna) {
   const validation = validateBuildingPlatformBuildingDna(buildingDna);
   if (!validation.ok) {
@@ -5144,8 +5156,8 @@ async function handleBuildingPlatformV1PermanentSave(request, env, corsHeaders) 
       normative_registry_version: metadata.normativeRegistryVersion,
       climate_profile_id: metadata.climateProfileId,
       climate_profile_version: metadata.climateProfileVersion,
-      explicit_engine_input: pipeline.calculation.chapter2Input,
-      complete_engine_output: pipeline.calculation.chapter2Result,
+      explicit_engine_input: buildingPlatformEngineInput(pipeline.calculation),
+      complete_engine_output: buildingPlatformEngineOutput(pipeline.calculation),
       monthly_qhnd: buildingPlatformV1MonthlyUsefulDemand(pipeline.calculation, "heating"),
       monthly_qcnd: buildingPlatformV1MonthlyUsefulDemand(pipeline.calculation, "cooling"),
       annual_qhnd: pipeline.resultSummary.annualQHnd ?? null,
@@ -5230,8 +5242,8 @@ async function handleBuildingPlatformV1PermanentSave(request, env, corsHeaders) 
         metadata.normativeRegistryVersion,
         metadata.climateProfileId,
         metadata.climateProfileVersion,
-        buildingPlatformV1Json(pipeline.calculation.chapter2Input),
-        buildingPlatformV1Json(pipeline.calculation.chapter2Result),
+        buildingPlatformV1Json(buildingPlatformEngineInput(pipeline.calculation)),
+        buildingPlatformV1Json(buildingPlatformEngineOutput(pipeline.calculation)),
         buildingPlatformV1Json(response.analysisVersion.monthly_qhnd),
         buildingPlatformV1Json(response.analysisVersion.monthly_qcnd),
         pipeline.resultSummary.annualQHnd ?? null,
@@ -5241,7 +5253,12 @@ async function handleBuildingPlatformV1PermanentSave(request, env, corsHeaders) 
         projectStatus,
         metadata.fingerprints.analysisFingerprint,
         now,
-        buildingPlatformV1Json({ backendVersion: metadata.backendVersion, localFirstPermanentSave: true }),
+        buildingPlatformV1Json({
+          backendVersion: metadata.backendVersion,
+          chapter3AdapterVersion: metadata.chapter3AdapterVersion ?? null,
+          chapter3RuntimeVersion: metadata.chapter3RuntimeVersion ?? null,
+          localFirstPermanentSave: true
+        }),
         null,
         metadata.analysisSchemaVersion
       ),
@@ -5619,8 +5636,8 @@ async function handleBuildingPlatformV1ReprocessingExecute(request, env, corsHea
         metadata.normativeRegistryVersion,
         metadata.climateProfileId,
         metadata.climateProfileVersion,
-        buildingPlatformV1Json(pipeline.calculation.chapter2Input),
-        buildingPlatformV1Json(pipeline.calculation.chapter2Result),
+        buildingPlatformV1Json(buildingPlatformEngineInput(pipeline.calculation)),
+        buildingPlatformV1Json(buildingPlatformEngineOutput(pipeline.calculation)),
         buildingPlatformV1Json(response.analysisVersion.monthly_qhnd),
         buildingPlatformV1Json(response.analysisVersion.monthly_qcnd),
         pipeline.resultSummary.annualQHnd ?? null,
@@ -5630,7 +5647,12 @@ async function handleBuildingPlatformV1ReprocessingExecute(request, env, corsHea
         "calculated",
         metadata.fingerprints.analysisFingerprint,
         now,
-        buildingPlatformV1Json({ backendVersion: metadata.backendVersion, reprocessingJobId }),
+        buildingPlatformV1Json({
+          backendVersion: metadata.backendVersion,
+          chapter3AdapterVersion: metadata.chapter3AdapterVersion ?? null,
+          chapter3RuntimeVersion: metadata.chapter3RuntimeVersion ?? null,
+          reprocessingJobId
+        }),
         null,
         metadata.analysisSchemaVersion
       ),
