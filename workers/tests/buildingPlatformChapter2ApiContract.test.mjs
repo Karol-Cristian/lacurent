@@ -433,7 +433,7 @@ await test("Building Platform save endpoint creates persisted Building DNA, anal
   assert.equal(result.body.calculation_status, "synthetic_demo");
   assert.equal(result.body.result_summary.annualQHnd > 0, true);
   assert.equal(result.body.result_summary.annualQCnd > 0, true);
-  assert.equal(result.body.technical_report.reportId, "technical_chapter_2_report_v1");
+  assert.equal(result.body.technical_report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(db.houses.length, 1);
   assert.equal(db.sites.length, 1);
   assert.equal(db.buildings.length, 1);
@@ -477,7 +477,7 @@ await test("Building Platform load endpoint returns saved structured model for o
     "mc001_chapter_2_runtime_complete_for_supported_inputs"
   );
   assert.equal(loaded.body.chapter2_result.status, "ready");
-  assert.equal(loaded.body.technical_report.reportId, "technical_chapter_2_report_v1");
+  assert.equal(loaded.body.technical_report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(
     loaded.body.technical_details.resultSummary.annualQHnd,
     saved.body.result_summary.annualQHnd

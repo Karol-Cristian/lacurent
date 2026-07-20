@@ -1,6 +1,9 @@
 import {
   analyzeMonthlyUsefulDemandSeasonality
 } from "../climate-platform/index.mjs";
+import {
+  buildChapter3NotebookSections
+} from "../physics-engine/mc001Chapter3Notebook.mjs";
 
 const TECHNICAL_WORKSPACE_SCOPE = "engineering_calculation_notebook_p3g_report_generation_only";
 
@@ -1463,7 +1466,8 @@ function compactNotebookSections(assemblies, envelope, monthly, calculation) {
     ...compactAssemblySections(assemblies, envelope),
     ...compactTransferSections(envelope),
     ...compactMonthlySections(monthly),
-    compactAnnualSection(monthly, calculation)
+    compactAnnualSection(monthly, calculation),
+    ...buildChapter3NotebookSections(calculation.chapter3Result ?? calculation.chapter3Runtime)
   ];
 }
 
@@ -1472,6 +1476,8 @@ function traceabilityRows(buildingDna, calculation, formulas) {
     ...(calculation.assemblyResult?.formulaReferences ?? []),
     ...(calculation.envelopeTransmissionResult?.formulaReferences ?? []),
     ...(calculation.chapter2Result?.formulaReferences ?? []),
+    ...(calculation.chapter3Result?.formulaReferences ?? []),
+    ...(calculation.chapter3Runtime?.formulaReferences ?? []),
     ...(calculation.chapter2Result?.result?.combinedUsefulDemandResult?.formulaReferences ?? []),
     ...formulas.map(item => item.formulaId).filter(Boolean)
   ]);

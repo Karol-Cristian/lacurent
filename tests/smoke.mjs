@@ -4,8 +4,10 @@ const LOCAL_BASE = process.env.SMOKE_LOCAL_BASE || "http://127.0.0.1:4173";
 const API_BASE = process.env.SMOKE_API_BASE || "https://lacurent-dev.lemnarukarol.workers.dev";
 const RUN_API_SMOKE = process.env.RUN_API_SMOKE === "1";
 
+// The home route now exposes the engineering project hub; the former visible
+// "Dashboard" label was replaced during the refocused production flow.
 const pages = [
-  { path: "/index.html", includes: ["LA CURENT", "Dashboard"] },
+  { path: "/index.html", includes: ["LA CURENT", "Proiectele cladirii", "pages/analiza-casa.html"] },
   { path: "/pages/profil.html", includes: ["Autentificare", "registerForm"] },
   { path: "/pages/analiza-casa.html", includes: ["Modelul termic al cladirii", "Geometrie", "Raport tehnic"] },
   { path: "/pages/raport-energie.html", includes: ["Raport energetic LaCurent", "REZUMAT EXECUTIV"] },
