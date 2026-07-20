@@ -14,6 +14,8 @@ import { resolveBuildingRenovationInterventions } from "./buildingRenovationInte
 import {
   MONTH_IDS,
   climateProfileToBuildingMonthlyProfiles,
+  getClimateZoneDependentRequirements,
+  resolveRomanianLocationClimate,
   resolveClimateProfileSelection
 } from "../climate-platform/index.mjs";
 import {
@@ -185,6 +187,20 @@ function normalizeTechnicalSystems(technicalSystems) {
     ...deepClone(technicalSystems),
     schema: technicalSystems.schema ?? TECHNICAL_SYSTEMS_SCHEMA
   };
+}
+
+function resolveLocationClimate(location = {}, climate = {}) {
+  return resolveRomanianLocationClimate({
+    country: location.country ?? climate.country ?? "RO",
+    countyCode: location.countyCode ?? climate.countyCode ?? null,
+    countyName: location.countyName ?? location.county ?? climate.countyName ?? null,
+    localityId: location.localityId ?? climate.localityId ?? null,
+    localityName: location.localityName ?? location.locality ?? location.city ?? climate.localityName ?? null,
+    climateZone: climate.climateZone ?? location.climateZone ?? null,
+    windZone: climate.windZone ?? location.windZone ?? null,
+    manualOverride: climate.manualOverride === true || location.manualOverride === true,
+    overrideReason: climate.overrideReason ?? location.overrideReason ?? null
+  });
 }
 
 function geometryOverridesFromBuildingSpecificParameters(parameters = {}) {
@@ -737,7 +753,8 @@ function resolveBuildingDna({
   calculationMode,
   monthlyProfiles,
   technicalSystems,
-  building
+  building,
+  locationClimate
 }) {
   if (userMode !== ASSISTED_MODE && userMode !== ADVANCED_MODE) {
     return blocked("building_dna_invalid_user_mode");
@@ -770,6 +787,12 @@ function resolveBuildingDna({
     ...(boundaryContext ?? {})
   };
   const normalizedTechnicalSystems = normalizeTechnicalSystems(technicalSystems);
+  const climateRequirements = locationClimate?.climate?.climateZone
+    ? getClimateZoneDependentRequirements({
+        climateZone: locationClimate.climate.climateZone,
+        buildingUse: building?.buildingType === "non_residential" ? "non_residential" : "residential"
+      })
+    : null;
   const methodologyLimits = [
     "engineering_model_generation_only",
     "no_physics_calculation",
@@ -791,8 +814,23 @@ function resolveBuildingDna({
       buildingType: building?.buildingType ?? typologyProposal?.buildingType ?? "detached_house",
       constructionPeriod: building?.constructionPeriod ?? typologyProposal?.constructionPeriod,
       structuralSystem: building?.structuralSystem ?? typologyProposal?.structuralSystem,
-      location: building?.location ?? null
+      location: {
+        ...(building?.location ?? {}),
+        ...(locationClimate?.location ?? {}),
+        climateZone: locationClimate?.climate?.climateZone ?? building?.location?.climateZone ?? null,
+        windZone: locationClimate?.climate?.windZone ?? building?.location?.windZone ?? null,
+        climateAssignmentOrigin: locationClimate?.climate?.assignmentOrigin ?? null,
+        climateDatasetId: locationClimate?.climate?.datasetId ?? null,
+        climateDatasetVersion: locationClimate?.climate?.datasetVersion ?? null
+      }
     },
+    climate: locationClimate?.climate ?? null,
+    climateZoneRequirements: climateRequirements?.status === "ready" ? {
+      climateZone: climateRequirements.climateZone,
+      solarFactor: climateRequirements.solarFactor,
+      nzebLimit: climateRequirements.nzebLimit,
+      renovationLimit: climateRequirements.renovationLimit
+    } : null,
     climateProfile: climateProfile == null ? null : {
       profileId: climateProfile.profileId,
       displayName: climateProfile.displayName,
@@ -866,7 +904,10 @@ function resolveBuildingDna({
       )
     }] : []),
     warnings: [
-      warning("building_dna_contains_unconfirmed_typology_proposals")
+      warning("building_dna_contains_unconfirmed_typology_proposals"),
+      ...(locationClimate?.diagnostics ?? [])
+        .filter(item => item.severity !== "blocking")
+        .map(item => warning(item.code))
     ],
     missingConfirmations: typologyProposal?.missingConfirmations ?? [
       "confirm_engineering_model"
@@ -933,6 +974,10 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     answers.buildingSpecificParameters ?? {},
     answers.source ?? { reference: "P1.assisted_answers" }
   );
+  const locationClimate = resolveLocationClimate(answers.location ?? {}, answers.climate ?? {});
+  if (locationClimate.status !== "ready") {
+    return blocked(locationClimate.diagnostics.find(item => item.severity === "blocking")?.code ?? "invalid_climate_location_selection");
+  }
   return resolveBuildingDna({
     userMode: ASSISTED_MODE,
     source: answers.source ?? { reference: "P1.assisted_answers" },
@@ -957,7 +1002,8 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
       constructionPeriod: answers.constructionPeriod,
       structuralSystem: answers.structuralSystem,
       location: answers.location ?? null
-    }
+    },
+    locationClimate
   });
 }
 
@@ -978,6 +1024,10 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     input.buildingSpecificParameters ?? {},
     input.source ?? { reference: "P1.advanced_model" }
   );
+  const locationClimate = resolveLocationClimate(input.building?.location ?? input.location ?? {}, input.climate ?? {});
+  if (locationClimate.status !== "ready") {
+    return blocked(locationClimate.diagnostics.find(item => item.severity === "blocking")?.code ?? "invalid_climate_location_selection");
+  }
   return resolveBuildingDna({
     userMode: ADVANCED_MODE,
     source: input.source ?? { reference: "P1.advanced_model" },
@@ -990,7 +1040,8 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     calculationMode: monthlySelection.calculationMode,
     monthlyProfiles: resolvedMonthlyProfiles,
     technicalSystems: input.technicalSystems,
-    building: input.building
+    building: input.building,
+    locationClimate
   });
 }
 

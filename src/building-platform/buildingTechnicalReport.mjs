@@ -298,6 +298,8 @@ function calculationFingerprint(buildingDna, calculation, monthly) {
       building: buildingDna.building,
       ...(buildingDna.technicalSystems ? { technicalSystems: buildingDna.technicalSystems } : {}),
       climateProfile: {
+        locationClimate: buildingDna.climate ?? null,
+        climateZoneRequirements: buildingDna.climateZoneRequirements ?? null,
         profileId: buildingDna.climateProfile?.profileId ?? null,
         datasetVersion: buildingDna.climateProfile?.datasetVersion ?? null,
         sourceType: buildingDna.climateProfile?.sourceType ?? null,
@@ -1472,8 +1474,57 @@ function compactAnnualSection(monthly, calculation) {
   ]);
 }
 
-function compactNotebookSections(assemblies, envelope, monthly, calculation) {
+function compactClimateSection(buildingDna, monthly) {
+  const climate = buildingDna.climate ?? {};
+  const location = buildingDna.building?.location ?? {};
+  return section("amplasare_clima", "Amplasare si clima", [
+    compactLine({
+      lineId: "climate.zone",
+      text: `Zona_climatica := ${climate.climateZone ?? "neselectata"} -- ${climate.assignmentOrigin ?? "fara atribuire automata"}`,
+      resultValue: climate.climateZone ?? null,
+      resultUnit: null,
+      variables: [
+        { symbol: "Zona_climatica", value: climate.climateZone ?? null, unit: "-", meaning: "zona climatica MC001 selectata" }
+      ],
+      reference: "MC001-2022, Tabel 2.5, Tabel 2.8, Tabel 2.10a si Tabel 2.10b",
+      kind: "input"
+    }),
+    compactLine({
+      lineId: "climate.location",
+      text: `Localitate := ${location.localityName ?? location.city ?? "neselectata"}; Judet := ${location.countyName ?? location.county ?? "neselectat"}`,
+      variables: [
+        { symbol: "Localitate", value: location.localityName ?? location.city ?? null, unit: "-", meaning: "localitatea proiectului" },
+        { symbol: "Judet", value: location.countyName ?? location.county ?? null, unit: "-", meaning: "judetul proiectului" }
+      ],
+      reference: climate.sourceReferences?.[0] ?? "MC001-2022, Chapter 2 climate-zone tables",
+      kind: "input"
+    }),
+    compactLine({
+      lineId: "climate.monthly-profile",
+      text: `Profil_lunar := ${buildingDna.climateProfile?.profileId ?? "profil explicit"} -- ${buildingDna.climateProfile?.verificationStatus ?? climate.monthlyClimateStatus ?? "date lunare furnizate explicit"}`,
+      variables: [
+        { symbol: "Profil_lunar", value: buildingDna.climateProfile?.profileId ?? null, unit: "-", meaning: "profilul lunar folosit de calcul" }
+      ],
+      reference: buildingDna.climateProfile?.sourceReferences?.[0] ?? "monthlyProfiles.BuildingDNA",
+      kind: "input"
+    }),
+    ...monthly.map(row => compactLine({
+      lineId: `climate.month.${row.month}`,
+      text: `${row.monthLabel} := theta_e,H ${formatNotebookValue(row.heatingOutdoorTemperatureC, "degC", 2)}; theta_e,C ${formatNotebookValue(row.coolingOutdoorTemperatureC, "degC", 2)}; t ${formatNotebookValue(row.durationHours, "h", 0)}; Qsol ${formatNotebookValue(row.solarGainsKwh, "kWh", 2)}`,
+      variables: [
+        { symbol: `theta_e_H_${row.month}`, value: row.heatingOutdoorTemperatureC, unit: "degC", meaning: `temperatura exterioara incalzire ${row.monthLabel}` },
+        { symbol: `theta_e_C_${row.month}`, value: row.coolingOutdoorTemperatureC, unit: "degC", meaning: `temperatura exterioara racire ${row.monthLabel}` },
+        { symbol: `Qsol_${row.month}`, value: row.solarGainsKwh, unit: "kWh", meaning: `aport solar lunar ${row.monthLabel}` }
+      ],
+      reference: row.monthlyProfileReference,
+      kind: "input"
+    }))
+  ]);
+}
+
+function compactNotebookSections(buildingDna, assemblies, envelope, monthly, calculation) {
   return [
+    compactClimateSection(buildingDna, monthly),
     ...compactAssemblySections(assemblies, envelope),
     ...compactTransferSections(envelope),
     ...compactMonthlySections(monthly),
@@ -1567,6 +1618,57 @@ function installationMonthlyRows(calculation) {
   }));
 }
 
+function climateRows(buildingDna, monthly) {
+  const climate = buildingDna.climate ?? {};
+  const location = buildingDna.building?.location ?? {};
+  const solarFactor = buildingDna.climateZoneRequirements?.solarFactor?.recommendation ?? null;
+  const nzebLimit = buildingDna.climateZoneRequirements?.nzebLimit?.limit ?? null;
+  const renovationLimit = buildingDna.climateZoneRequirements?.renovationLimit?.limit ?? null;
+  return [
+    { label: "Tara", value: location.country ?? "RO" },
+    { label: "Judet", value: location.countyName ?? location.county ?? "neselectat" },
+    { label: "Localitate", value: location.localityName ?? location.locality ?? location.city ?? "neselectat" },
+    { label: "Zona climatica MC001", value: climate.climateZone ?? "neselectata" },
+    { label: "Zona eoliana", value: climate.windZone ?? "neselectata" },
+    { label: "Dataset zone", value: climate.datasetVersion ?? "neselectat" },
+    { label: "Origine atribuire", value: climate.assignmentOrigin ?? "neselectat" },
+    { label: "Suprascriere manuala", value: climate.manualOverride ? "da" : "nu" },
+    { label: "Status mapare localitate", value: climate.localityMappingStatus ?? "nedefinit" },
+    { label: "Status profil lunar", value: climate.monthlyClimateStatus ?? "nedefinit" },
+    {
+      label: "Factor solar recomandat gn",
+      value: solarFactor
+        ? (solarFactor.comparator === "greater_than"
+            ? `> ${solarFactor.min}`
+            : `${solarFactor.min} - ${solarFactor.max}`)
+        : "indisponibil fara zona climatica"
+    },
+    {
+      label: "Limita NZEB tabel 2.10a",
+      value: nzebLimit
+        ? `${nzebLimit.primaryEnergyKwhM2Year} kWh/(m2*an), ${nzebLimit.co2KgM2Year} kgCO2/(m2*an)`
+        : "indisponibil fara zona climatica"
+    },
+    {
+      label: "Limita renovare tabel 2.10b",
+      value: renovationLimit
+        ? `${renovationLimit.primaryEnergyKwhM2Year} kWh/(m2*an), ${renovationLimit.co2KgM2Year} kgCO2/(m2*an)`
+        : "indisponibil fara zona climatica"
+    },
+    ...monthly.map(row => ({
+      month: row.month,
+      monthLabel: row.monthLabel,
+      heatingOutdoorTemperatureC: row.heatingOutdoorTemperatureC,
+      coolingOutdoorTemperatureC: row.coolingOutdoorTemperatureC,
+      durationHours: row.durationHours,
+      solarOrientation: row.solarOrientation,
+      solarGainsKwh: row.solarGainsKwh,
+      monthlyProfileOrigin: row.monthlyProfileOrigin,
+      monthlyProfileReference: row.monthlyProfileReference
+    }))
+  ];
+}
+
 function reportChapters({ buildingDna, monthly, formulas, traceability, calculation, fingerprint, seasonalSanity }) {
   const chapter2 = calculation.chapter2Result?.result ?? {};
   const chapter3Rows = calculation.chapter3Result ? [
@@ -1589,6 +1691,18 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
         qCndKwh: row.qCndKwh
       }))
     ]),
+    makeReportChapter(
+      "amplasare_si_clima",
+      "Amplasare si date climatice utilizate",
+      "Zona climatica, profilul lunar efectiv si lookup-urile dependente de zona sunt afisate separat de calculele software interne.",
+      climateRows(buildingDna, monthly),
+      [
+        "MC001-2022, Tabel 2.5",
+        "MC001-2022, Tabel 2.8",
+        "MC001-2022, Tabel 2.10a",
+        "MC001-2022, Tabel 2.10b"
+      ]
+    ),
     ...(calculation.chapter3Result ? [
       makeReportChapter(
         "instalatii_capitolul_3",
@@ -1610,6 +1724,8 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
       ...(buildingDna.overrides ?? []),
       { label: "Profil climatic", value: fingerprint.inputs.climateProfileId },
       { label: "Versiune profil climatic", value: fingerprint.inputs.climateProfileVersion },
+      { label: "Zona climatica", value: buildingDna.climate?.climateZone ?? null },
+      { label: "Zona eoliana", value: buildingDna.climate?.windZone ?? null },
       { label: "Adapter stage", value: fingerprint.inputs.adapterStage },
       { label: "Engine scope", value: fingerprint.inputs.engineScope },
       ...traceability.map(item => ({ label: "Referinta", value: item.reference })),
@@ -1639,7 +1755,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
   const monthly = monthlyRows(calculation, buildingDna);
   const seasonalSanity = analyzeMonthlyUsefulDemandSeasonality(monthly);
   const formulas = formulaViews(assemblies, envelope, monthly, calculation);
-  const notebookSections = compactNotebookSections(assemblies, envelope, monthly, calculation);
+  const notebookSections = compactNotebookSections(buildingDna, assemblies, envelope, monthly, calculation);
   const traceability = traceabilityRows(buildingDna, calculation, formulas);
   const fingerprint = calculationFingerprint(buildingDna, calculation, monthly);
   const installations = calculation.chapter3Result ? {

@@ -66,16 +66,34 @@ export {
 
 export {
   CLIMATE_PLATFORM_VERSION,
+  MC001_NZEB_LIMITS_TABLE_2_10A,
+  MC001_RENOVATION_LIMITS_TABLE_2_10B,
+  MC001_SOLAR_FACTOR_GN_RECOMMENDATIONS,
+  ROMANIAN_CLIMATE_COVERAGE,
   ROMANIAN_CLIMATE_SOURCE_AUDIT,
+  ROMANIAN_CLIMATE_SOURCE_INVENTORY,
+  ROMANIAN_CLIMATE_ZONE_IDS,
+  ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION,
+  ROMANIAN_CLIMATE_ZONES,
+  ROMANIAN_LOCALITY_CLIMATE_REGISTRY,
+  ROMANIAN_WIND_ZONE_IDS,
   climateProfileToBuildingMonthlyProfiles,
   createSyntheticSeasonalDemoClimateProfile,
   createSyntheticSeasonalDemoMonthlyProfiles,
   findRomanianClimateProfileById,
+  getClimateZoneDependentRequirements,
+  getMc001PrimaryCo2Limit,
+  getRomanianClimateZone,
+  getSolarFactorRecommendation,
   listClimateSourceContracts,
   listRomanianClimateProfiles,
+  listRomanianClimateZones,
   resolveClimateProfileSelection,
+  resolveRomanianLocationClimate,
   searchRomanianClimateProfiles,
-  validateClimateProfile
+  validateClimateProfile,
+  validateRomanianClimateZone,
+  validateRomanianWindZone
 } from "../climate-platform/index.mjs";
 
 export {

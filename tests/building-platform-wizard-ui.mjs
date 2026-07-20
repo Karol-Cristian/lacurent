@@ -25,6 +25,9 @@ import {
   projectStatusLabel,
   renderProjectRows
 } from "../js/my-projects.mjs";
+import {
+  getClimateZoneDependentRequirements
+} from "../src/climate-platform/index.mjs";
 
 function test(name, fn) {
   return Promise.resolve()
@@ -171,8 +174,13 @@ await test("wizard exposes the validated technical sections including installati
 
 await test("wizard maps technical answers to assisted Building DNA input", () => {
   const answers = mapWizardAnswersToAssistedAnswers(formData({
+    building_platform_demo_mode: "1",
+    building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
     building_type: "house",
     climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
+    county: "Bucuresti",
+    climate_zone: "II",
+    wind_zone: "II",
     construction_year: "1985",
     structural_system: "masonry",
     wall_material: "brick",
@@ -205,6 +213,9 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
   assert.equal(answers.climateProfile.sourceType, "synthetic_demo_profile");
   assert.equal(answers.monthlyProfiles, undefined);
   assert.equal(answers.allowSyntheticClimate, true);
+  assert.equal(answers.location.countyName, "Bucuresti");
+  assert.equal(answers.location.climateZone, "II");
+  assert.equal(answers.location.windZone, "II");
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, 120);
   assert.equal(answers.buildingSpecificParameters.heatedVolumeM3, 312);
   assert.equal(answers.buildingSpecificParameters.exteriorWallAreaM2, 50);
@@ -220,6 +231,35 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
   assert.equal(preview.status, "ready");
   assert.equal(preview.buildingDna.monthlyProfiles.length, 12);
   assert.equal(preview.buildingDna.monthlyProfiles[0].heatGains.solarOrientation, "south");
+  assert.equal(preview.buildingDna.climate.climateZone, "II");
+  assert.equal(preview.buildingDna.climate.windZone, "II");
+});
+
+await test("production wizard rejects synthetic climate profiles unless demo mode is explicit", () => {
+  const answers = mapWizardAnswersToAssistedAnswers(formData({
+    building_type: "house",
+    climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
+    climate_zone: "II",
+    construction_year: "1985",
+    wall_material: "brick",
+    wall_insulation: "10cm",
+    window_type: "modern_double_glazing",
+    roof_type: "unheated_attic",
+    floor_type: "on_ground"
+  }));
+
+  assert.equal(answers.source.origin, undefined);
+  assert.equal(answers.allowSyntheticClimate, false);
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "blocked");
+  assert.equal(preview.diagnostics.blockers[0].code, "building_dna_not_ready");
+  assert.equal(
+    preview.diagnostics.blockers.some(item =>
+      item.code === "synthetic_climate_profile_requires_demo_or_explicit_estimated_mode"
+    ),
+    true
+  );
 });
 
 await test("wizard maps installation fields into canonical technical systems", () => {
@@ -325,8 +365,13 @@ await test("period and structural helpers are deterministic", () => {
 
 await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(formData({
+    building_platform_demo_mode: "1",
+    building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
     building_type: "house",
     climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
+    county: "Bucuresti",
+    climate_zone: "II",
+    wind_zone: "II",
     construction_year: "1985",
     wall_material: "brick",
     wall_insulation: "10cm",
@@ -342,6 +387,8 @@ await test("wizard preview calls Building DNA and Chapter 2 authority", () => {
   assert.equal(preview.buildingDna.schema, "building_dna_v1");
   assert.equal(preview.dependencyTree.physicsAuthority, "Chapter 2 physics engine");
   assert.equal(preview.buildingDna.climateProfile.profileId, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(preview.buildingDna.climate.climateZone, "II");
+  assert.equal(preview.buildingDna.climate.datasetVersion, "mc001_2022_climate_zones_p5a_v1");
   assert.equal(preview.buildingDna.calculationStatus, "synthetic_demo");
   assert.equal(preview.summary.annualQHnd > 0, true);
   assert.equal(preview.summary.annualQCnd > 0, true);
@@ -823,6 +870,10 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("buildingPlatformSaveStatus"), true);
   assert.equal(html.includes("demoModeBanner"), true);
   assert.equal(html.includes("climate_profile_id"), true);
+  assert.equal(html.includes("Amplasare si clima"), true);
+  assert.equal(html.includes("climate_zone"), true);
+  assert.equal(html.includes("wind_zone"), true);
+  assert.equal(html.includes("mc001_2022_climate_zones_p5a_v1"), true);
   assert.equal(html.includes("Profil climatic sintetic pentru demonstra"), true);
   assert.equal(html.includes("Încarcă exemplu demonstrativ"), true);
   assert.equal(html.includes("Începe proiect gol"), true);
@@ -873,6 +924,10 @@ await test("P3G report is a compact fully expanded print-ready calculation noteb
   );
 
   assert.equal(html.includes("data-pdf-like-report"), true);
+  assert.equal(html.includes("Amplasare si date climatice utilizate"), true);
+  assert.equal(html.includes("Zona climatica MC001"), true);
+  assert.equal(html.includes("Tabel 2.5"), true);
+  assert.equal(html.includes("Tabel 2.10a"), true);
   assert.equal(html.includes("data-engineering-calculation-notebook"), true);
   assert.equal(html.includes("<details"), false);
   assert.equal(html.includes("Rezultate principale"), true);
@@ -929,6 +984,35 @@ await test("P3G report is a compact fully expanded print-ready calculation noteb
   assert.equal(css.includes(".calculation-compact-line"), true);
   assert.equal(css.includes("page-break-inside:avoid"), true);
   assert.equal(css.includes(".calculation-compact-line code"), true);
+});
+
+await test("Romanian climate zone changes requirements and calculation fingerprint", () => {
+  const baseValues = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    climate_zone: "I",
+    wind_zone: "I"
+  };
+  const colderZone = buildWizardEngineeringPreview(
+    mapWizardAnswersToAssistedAnswers(formData(baseValues))
+  );
+  const warmerZone = buildWizardEngineeringPreview(
+    mapWizardAnswersToAssistedAnswers(formData({
+      ...baseValues,
+      climate_zone: "V",
+      wind_zone: "IV"
+    }))
+  );
+
+  assert.equal(colderZone.status, "ready");
+  assert.equal(warmerZone.status, "ready");
+  assert.notEqual(
+    colderZone.technicalWorkspace.calculationFingerprint.fingerprintId,
+    warmerZone.technicalWorkspace.calculationFingerprint.fingerprintId
+  );
+  assert.notDeepEqual(
+    getClimateZoneDependentRequirements({ climateZone: "I" }),
+    getClimateZoneDependentRequirements({ climateZone: "V" })
+  );
 });
 
 await test("active production analysis flow removes unsupported product domains", () => {

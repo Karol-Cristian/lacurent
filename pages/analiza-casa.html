@@ -145,11 +145,24 @@
 <div class="step active" data-section-id="geometry">
 <h2>Geometrie</h2>
 <p class="section-description">Datele geometrice alimenteaza Building DNA. Nu introduci coeficienti finali precum Htr, U, gamma, tau sau eta.</p>
-<p class="section-description">Profilul climatic trebuie selectat explicit. Catalogul normativ romanesc nu este inca disponibil in repository; profilul demonstrativ este sintetic si este etichetat ca atare.</p>
+<p class="section-description">Profilul climatic lunar trebuie selectat explicit. Catalogul normativ romanesc pentru temperaturi si iradiere lunara nu este disponibil in repository; profilul demonstrativ este sintetic si este permis numai in demo.</p>
+<div class="dashboard-band compact-technical-note">
+<h3>Amplasare si clima</h3>
+<p class="section-description">Zonele climatice I-V si zona eoliana sunt metadate normative trasabile. Ele nu genereaza automat temperaturi lunare sau iradiere fara un profil climatic complet.</p>
+<div class="form-grid">
+<div><label>Judet</label><input name="county" placeholder="Ex: Bucuresti"></div>
+<div><label>Localitate</label><input name="city" placeholder="Ex: Bucuresti"></div>
+<div><label>Zona climatica MC001</label><select name="climate_zone"><option value="">Selecteaza zona I-V</option></select></div>
+<div><label>Zona eoliana</label><select name="wind_zone"><option value="">Nu se aplica / neselectat</option><option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option></select></div>
+<div><label>Origine atribuire clima</label><select name="climate_assignment_origin"><option value="manual_zone_selection">Selectie explicita</option><option value="manual_override">Suprascriere profesionala</option><option value="not_selected">Neselectat</option></select></div>
+<div><label>Suprascriere manuala</label><select name="climate_manual_override"><option value="">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Motiv suprascriere</label><input name="climate_override_reason" placeholder="Obligatoriu doar pentru suprascriere"></div>
+<div><label>Dataset zone</label><p class="field-impact-note">mc001_2022_climate_zones_p5a_v1</p></div>
+</div>
+</div>
 <div class="form-grid">
 <div><label>Nume model</label><input name="display_name" placeholder="Ex: Casa zidarie 1985"></div>
 <div><label>Tip cladire</label><select name="building_type"><option value="house">Casa individuala</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Localitate</label><input name="city" placeholder="Ex: Bucuresti"></div>
 <div><label>Profil climatic</label><select name="climate_profile_id"><option value="">Selecteaza un profil climatic</option></select></div>
 <div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1985"></div>
 <div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"><small class="field-impact-note">Seed pentru arii cand acestea nu sunt introduse explicit.</small></div>

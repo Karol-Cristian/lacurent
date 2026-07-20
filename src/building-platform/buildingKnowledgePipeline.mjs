@@ -17,7 +17,16 @@ function stage(stageId, label, status, summary = {}) {
   };
 }
 
-function blocked(code, stages = []) {
+function blocked(code, stages = [], causeBlockers = []) {
+  const blockers = [
+    { code, severity: "blocking" },
+    ...causeBlockers
+      .filter(item => item?.code && item.code !== code)
+      .map(item => ({
+        code: item.code,
+        severity: item.severity ?? "blocking"
+      }))
+  ];
   return {
     status: "blocked",
     scope: PIPELINE_SCOPE,
@@ -25,7 +34,7 @@ function blocked(code, stages = []) {
     buildingDna: null,
     chapter2Result: null,
     diagnostics: {
-      blockers: [{ code, severity: "blocking" }],
+      blockers,
       warnings: [],
       methodologyLimits: [
         "platform_model_generation_only_until_physics_adapter",
@@ -180,7 +189,7 @@ export function buildBuildingKnowledgePlatformFromAssistedAnswers(answers = {}) 
     return blocked("building_dna_not_ready", [
       stage("user_description", "User Description", "ready"),
       stage("resolved_building_dna", "Resolved Building DNA", "blocked")
-    ]);
+    ], dnaResult.diagnostics?.blockers ?? []);
   }
   const calculation = calculateChapter2ForBuildingDna(dnaResult.buildingDna);
   const stages = buildStages({
@@ -220,7 +229,7 @@ export function buildBuildingKnowledgePlatformFromAdvancedModel(input = {}) {
     return blocked("building_dna_not_ready", [
       stage("user_description", "User Description", "not_applicable"),
       stage("resolved_building_dna", "Resolved Building DNA", "blocked")
-    ]);
+    ], dnaResult.diagnostics?.blockers ?? []);
   }
   const calculation = calculateChapter2ForBuildingDna(dnaResult.buildingDna);
   const stages = buildStages({
