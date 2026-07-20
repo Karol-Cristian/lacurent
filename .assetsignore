@@ -6,6 +6,14 @@ dist
 dist/**
 migrations
 migrations/**
+tests
+tests/**
+validation-reference
+validation-reference/**
+**/__pycache__
+**/__pycache__/**
+*.pyc
+**/*.pyc
 workers
 workers/**
 .assetsignore
