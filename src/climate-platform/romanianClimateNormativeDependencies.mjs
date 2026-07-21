@@ -1,5 +1,10 @@
 import { MONTH_IDS, SOLAR_ORIENTATIONS } from "./romanianClimateProfiles.mjs";
 import {
+  MC001_6_2013_CLIMATE_DATASET_CHECKSUMS,
+  MC001_6_2013_CLIMATE_DATASET_VERSION,
+  MC001_6_2013_CLIMATE_SOURCE_DOCUMENT
+} from "./datasets/mc001_6_2013ClimateDataset.mjs";
+import {
   ROMANIAN_CLIMATE_ZONE_IDS,
   ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION,
   ROMANIAN_WIND_ZONE_IDS,
@@ -78,13 +83,26 @@ export const ROMANIAN_CLIMATE_DATA_DOMAINS = Object.freeze([
     currentRuntimeParameters: Object.freeze([])
   }),
   Object.freeze({
+    domainId: "locality_station_mapping",
+    label: "Locality to MC001/6-2013 climate-parameter station mapping",
+    status: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    purpose:
+      "selection of the source-backed MC001/6-2013 station/locality row for monthly and design-day climate parameters",
+    requiredResolution: "42 MC001/6-2013 localities/stations",
+    implementedDataset: "mc001_6_2013_locality_registry",
+    datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION,
+    sourceDocument: MC001_6_2013_CLIMATE_SOURCE_DOCUMENT.documentId
+  }),
+  Object.freeze({
     domainId: "locality_assignment",
     label: "Locality assignment",
     status: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    purpose: "automatic locality/county to climate-zone and wind-zone assignment",
-    requiredResolution: "locality or representative station",
-    delegatedSource: "Mc001/6-2013 and its source-backed station/locality tables",
-    presentInRepository: false
+    purpose:
+      "automatic locality/county to climate-zone and wind-zone assignment; not the same as locality-to-station selection",
+    requiredResolution: "locality/county to climate zone and wind zone",
+    delegatedSource: "not reproduced in the ingested MC001-2022 or MC001/6-2013 tables",
+    presentInRepository: false,
+    sourceBackedLocalityStationMappingAvailable: true
   }),
   Object.freeze({
     domainId: "monthly_energy_climate_data",
@@ -94,16 +112,29 @@ export const ROMANIAN_CLIMATE_DATA_DOMAINS = Object.freeze([
     requiredResolution:
       "twelve monthly exterior temperatures plus solar irradiation by required orientation/plane",
     delegatedSource:
-      "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; preprocessing rules are in SR EN ISO 52010-1",
-    presentInRepository: false
+      "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; solar irradiation is referenced to Mc001/1-2006 Anexa nr. A9.6; preprocessing rules are in SR EN ISO 52010-1",
+    presentInRepository: true,
+    availableDatasets: Object.freeze([
+      "monthly exterior temperature: Mc001/6-2013 Tabel II.1",
+      "monthly relative humidity: Mc001/6-2013 Tabel II.2"
+    ]),
+    missingDatasets: Object.freeze([
+      "monthly solar irradiation by locality/orientation/plane: Mc001/1-2006 Anexa nr. A9.6"
+    ]),
+    datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION
   }),
   Object.freeze({
     domainId: "heating_design_climate",
     label: "Heating design climate",
     status: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
     purpose: "winter design-temperature identity by climate zone",
-    requiredResolution: "climate zone for zone value; locality/station for exact project design data",
-    implementedDataset: MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE.datasetId
+    requiredResolution: "climate zone for zone value; MC001/6-2013 station/locality for winter design day",
+    implementedDataset: MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE.datasetId,
+    availableDatasets: Object.freeze([
+      "winter exterior design temperature by zone: MC001-2022 Figura 2.1",
+      "winter design day hourly temperature by station: Mc001/6-2013 Tabel III.1",
+      "winter design pentad temperature by station: Mc001/6-2013 Tabel III.2"
+    ])
   }),
   Object.freeze({
     domainId: "cooling_ventilation_design_climate",
@@ -111,7 +142,14 @@ export const ROMANIAN_CLIMATE_DATA_DOMAINS = Object.freeze([
     status: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
     purpose: "cooling/ventilation design parameters and humidity conditions",
     requiredResolution: "station/locality design day and associated humidity/radiation fields",
-    delegatedSource: "Mc001/6-2013, Capitolul IV"
+    delegatedSource: "Mc001/6-2013, Capitolul IV",
+    availableDatasets: Object.freeze([
+      "summer design day hourly temperature by station: Mc001/6-2013 Tabel IV.1",
+      "summer design pentad temperature by station: Mc001/6-2013 Tabel IV.2"
+    ]),
+    missingDatasets: Object.freeze([
+      "complete cooling/ventilation humidity or radiation fields when required by a selected design method"
+    ])
   }),
   Object.freeze({
     domainId: "degree_day_data",
@@ -141,12 +179,15 @@ export const ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES = Object.freeze([
       "Capitolul II Tabel II.1/II.2; Capitolul III Figura III.1/Tabel III.1/Tabel III.2; Capitolul IV Tabel IV.1/IV.2; Capitolul V; Anexa A9.6",
     availability: "public_official_mdlpa_pdf_identified",
     officialUrl: MC001_6_2013_OFFICIAL_URL,
-    presentInRepository: false,
-    implementationStatus: "dependency_identified_not_source_packed",
+    presentInRepository: true,
+    sourceDocumentChecksum: MC001_6_2013_CLIMATE_SOURCE_DOCUMENT.sha256,
+    datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION,
+    datasetChecksums: MC001_6_2013_CLIMATE_DATASET_CHECKSUMS,
+    implementationStatus: "source_packed_partial_ingestion_complete",
     acquisitionStatus:
-      "public official PDF located; ingestion requires a dedicated source-pack extraction and table QA pass",
+      "official PDF source-pack extracted for Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; monthly solar irradiation remains delegated to Mc001/1-2006 Anexa nr. A9.6 and is not present in the ingested source text",
     calculationsAffected: Object.freeze([
-      "locality climate assignment",
+      "locality to climate-parameter station selection",
       "monthly exterior temperatures",
       "monthly solar irradiation",
       "heating design climate",
@@ -155,7 +196,37 @@ export const ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES = Object.freeze([
     prohibitedSubstitute:
       "Do not infer locality assignment from latitude/GIS, weather sites, technical examples, or climate-zone label alone.",
     remediationAction:
-      "Create a source pack from the official PDF, extract tables with page/row evidence, add checksum, then enable normative monthly profiles."
+      "Use the ingested table registries for station-backed temperature and design-day data; acquire Mc001/1-2006 Anexa nr. A9.6 or another explicit normative chain before enabling source-backed solar profiles."
+  }),
+  Object.freeze({
+    dependencyId: "mc001_1_2006_annex_a9_6_monthly_solar_irradiation",
+    datasetName: "Mc001/1-2006 Anexa nr. A9.6 monthly solar irradiation for 30 localities",
+    runtimePurpose:
+      "orientation/plane solar irradiation inputs required for source-backed monthly solar gains",
+    mc001Section:
+      "Mc001/6-2013 Capitolul II.3, referenced by MC001-2022 Anexa D climate-parameter chain",
+    requiredResolution:
+      "monthly solar irradiation for 30 localities with the orientations/planes reproduced by Anexa nr. A9.6",
+    exactExternalDocument:
+      "Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2006, Anexa nr. A9.6",
+    edition: "2006",
+    clauseTableAnnex: "Anexa nr. A9.6",
+    availability: "not_present_in_repository_or_ingested_official_source_pack",
+    presentInRepository: false,
+    implementationStatus: "external_data_dependency",
+    acquisitionStatus:
+      "exact annex identified by the official Mc001/6-2013 source text; source-backed values not yet legally available in repository",
+    calculationsAffected: Object.freeze([
+      "monthly solar irradiation",
+      "transparent solar gains",
+      "opaque solar gains",
+      "cooling demand affected by solar gains",
+      "heating demand affected by solar gains"
+    ]),
+    prohibitedSubstitute:
+      "Do not substitute weather-site irradiation, GIS estimates or synthetic orientation tables for Anexa nr. A9.6.",
+    remediationAction:
+      "Acquire a legal source copy of Mc001/1-2006 Anexa nr. A9.6, extract row/column definitions and checksums, then publish immutable solar registries."
   }),
   Object.freeze({
     dependencyId: "sr_en_iso_52010_1_climate_preprocessing",
@@ -213,7 +284,7 @@ export const ROMANIAN_CLIMATE_ACQUISITION_LIST = Object.freeze([
     designation: "Mc001/6-2013",
     edition: "2013",
     expectedDataset:
-      "Romanian climate parameters: monthly temperature/humidity, solar irradiation, representative climate years, winter/summer design days",
+      "Romanian climate parameters: monthly temperature/humidity and winter/summer design-day temperatures already source-packed for the visible tables; other referenced annexes may require separate acquisition",
     affectedMc001Calculations: Object.freeze([
       "2.6.2.1",
       "2.6.2.3",
@@ -227,11 +298,25 @@ export const ROMANIAN_CLIMATE_ACQUISITION_LIST = Object.freeze([
       "locality mapping",
       "design temperature",
       "monthly temperature",
-      "solar irradiation",
       "cooling/ventilation design"
     ]),
     substituteOwnedByProject:
-      "none currently source-packed; official MDLPA URL identified but values not ingested"
+      "official MDLPA PDF source pack ingested for Tabel II.1, II.2, III.1 and IV.1"
+  }),
+  Object.freeze({
+    designation: "Mc001/1-2006 Anexa nr. A9.6",
+    edition: "2006",
+    expectedDataset:
+      "monthly solar irradiation values for 30 localities referenced by Mc001/6-2013 Capitolul II.3",
+    affectedMc001Calculations: Object.freeze([
+      "2.7.1.1",
+      "2.7.1.2",
+      "2.7.3",
+      "2.7.4",
+      "Chapter 3 cooling and solar-affected installation chains when solar inputs are required"
+    ]),
+    requiredFor: Object.freeze(["solar irradiation"]),
+    substituteOwnedByProject: "none"
   }),
   Object.freeze({
     designation: "SR EN ISO 52010-1",
@@ -347,6 +432,21 @@ function hasSolarData(profile, monthlyProfiles) {
     ));
 }
 
+function hasProviderMonthlyExteriorTemperature(climateProviderResult) {
+  const dataset = climateProviderResult?.datasets?.monthlyExteriorTemperature;
+  return dataset?.datasetStatus === CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET &&
+    Array.isArray(dataset.monthlyRecords) &&
+    dataset.monthlyRecords.length === 12 &&
+    dataset.monthlyRecords.every((record, index) =>
+      record?.month === MONTH_IDS[index] && isFiniteNumber(record.value)
+    );
+}
+
+function hasProviderMonthlySolar(climateProviderResult) {
+  return climateProviderResult?.datasets?.monthlySolarIrradiation?.datasetStatus ===
+    CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET;
+}
+
 export function getWinterDesignTemperatureByClimateZone(climateZone) {
   if (!validateRomanianClimateZone(climateZone)) {
     return { status: "blocked", code: "invalid_romanian_climate_zone" };
@@ -365,17 +465,22 @@ export function getWinterDesignTemperatureByClimateZone(climateZone) {
 export function evaluateClimateCalculationEligibility({
   climate = {},
   climateProfile = null,
-  monthlyProfiles = null
+  monthlyProfiles = null,
+  climateProviderResult = null
 } = {}) {
   const climateZone = climate?.climateZone ?? null;
   const profileStatus = normalizeStatus(climateProfile?.datasetStatus, climateProfile?.sourceType);
+  const providerHasMonthlyExteriorTemperature = hasProviderMonthlyExteriorTemperature(climateProviderResult);
+  const providerHasSolar = hasProviderMonthlySolar(climateProviderResult);
   const productionMonthlyDataset =
     profileStatus === CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET ||
-    profileStatus === CLIMATE_DATASET_STATUSES.USER_SUPPLIED_CERTIFIED_DATASET;
+    profileStatus === CLIMATE_DATASET_STATUSES.USER_SUPPLIED_CERTIFIED_DATASET ||
+    providerHasMonthlyExteriorTemperature;
   const testOnlyDataset = profileStatus === CLIMATE_DATASET_STATUSES.TEST_ONLY_SYNTHETIC_DATASET;
   return ROMANIAN_CLIMATE_REQUIREMENT_MATRIX.map((row) => {
     let status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE;
     let diagnostic = null;
+    let datasetStatus = profileStatus;
     if (row.requires.includes("climateZone") && !validateRomanianClimateZone(climateZone)) {
       status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_DATA;
       diagnostic = row.missingDiagnostic;
@@ -384,18 +489,25 @@ export function evaluateClimateCalculationEligibility({
       if (testOnlyDataset) {
         status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.TEST_ONLY_NOT_PRODUCTION;
         diagnostic = "TEST_ONLY_SYNTHETIC_DATASET_NOT_ALLOWED_FOR_PRODUCTION";
-      } else if (!productionMonthlyDataset || !hasTemperatureData(climateProfile, monthlyProfiles)) {
+      } else if (
+        !productionMonthlyDataset ||
+        (!hasTemperatureData(climateProfile, monthlyProfiles) && !providerHasMonthlyExteriorTemperature)
+      ) {
         status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_DATA;
         diagnostic = row.missingDiagnostic;
+      } else if (providerHasMonthlyExteriorTemperature) {
+        datasetStatus = CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET;
       }
     }
     if (row.calculationId === "chapter2_solar_gains") {
       if (testOnlyDataset) {
         status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.TEST_ONLY_NOT_PRODUCTION;
         diagnostic = "TEST_ONLY_SYNTHETIC_DATASET_NOT_ALLOWED_FOR_PRODUCTION";
-      } else if (!productionMonthlyDataset || !hasSolarData(climateProfile, monthlyProfiles)) {
+      } else if (!productionMonthlyDataset || (!hasSolarData(climateProfile, monthlyProfiles) && !providerHasSolar)) {
         status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_DATA;
         diagnostic = row.missingDiagnostic;
+      } else if (providerHasSolar) {
+        datasetStatus = CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET;
       }
     }
     if (row.calculationId === "cooling_ventilation_design_conditions") {
@@ -410,7 +522,7 @@ export function evaluateClimateCalculationEligibility({
       ...deepClone(row),
       status,
       diagnostic,
-      datasetStatus: profileStatus,
+      datasetStatus,
       climateZone: climateZone ?? null
     };
   });

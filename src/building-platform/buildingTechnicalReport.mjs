@@ -1480,6 +1480,17 @@ function compactAnnualSection(monthly, calculation) {
 function compactClimateSection(buildingDna, monthly) {
   const climate = buildingDna.climate ?? {};
   const location = buildingDna.building?.location ?? {};
+  const climateProvider = buildingDna.climateProvider ?? null;
+  const providerMonthlyTemperature =
+    climateProvider?.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? [];
+  const providerMonthlyHumidity =
+    climateProvider?.datasets?.monthlyRelativeHumidity?.monthlyRecords ?? [];
+  const providerTemperatureText = providerMonthlyTemperature
+    .map(record => `${monthLabel(record.month)} ${formatNotebookValue(record.value, record.unit, 2)}`)
+    .join("; ");
+  const providerHumidityText = providerMonthlyHumidity
+    .map(record => `${monthLabel(record.month)} ${formatNotebookValue(record.value, record.unit, 1)}`)
+    .join("; ");
   const winterDesignTemperature = buildingDna.climateZoneRequirements?.winterDesignTemperature ?? null;
   const eligibility = buildingDna.climateEligibility ?? [];
   return section("amplasare_clima", "Amplasare si clima", [
@@ -1529,6 +1540,64 @@ function compactClimateSection(buildingDna, monthly) {
       reference: buildingDna.climateProfile?.sourceReferences?.[0] ?? "monthlyProfiles.BuildingDNA",
       kind: "input"
     }),
+    ...(climateProvider ? [
+      compactLine({
+        lineId: "climate.provider.station",
+        text: `Statie_MC001_6_2013 := ${climateProvider.selection?.stationName ?? "neselectata"}; dataset := ${climateProvider.datasetVersion ?? "neselectat"}`,
+        variables: [
+          {
+            symbol: "Statie_MC001_6_2013",
+            value: climateProvider.selection?.stationName ?? null,
+            unit: "-",
+            meaning: "statia/localitatea din registrul climatic normativ MC001/6-2013"
+          }
+        ],
+        reference:
+          climateProvider.datasets?.monthlyExteriorTemperature?.sourceReference ?? "Mc001/6-2013",
+        kind: "lookup"
+      }),
+      compactLine({
+        lineId: "climate.provider.monthly-temperature",
+        text: `theta_e_lunar_MC001_6_2013 := ${providerTemperatureText || "indisponibil"}`,
+        variables: providerMonthlyTemperature.map(record => ({
+          symbol: `theta_e_${record.month}`,
+          value: record.value,
+          unit: record.unit,
+          meaning: `temperatura exterioara medie lunara MC001/6-2013 ${monthLabel(record.month)}`
+        })),
+        reference:
+          climateProvider.datasets?.monthlyExteriorTemperature?.sourceReference ?? "Mc001/6-2013, Tabel II.1",
+        kind: "lookup"
+      }),
+      compactLine({
+        lineId: "climate.provider.monthly-humidity",
+        text: `phi_e_lunar_MC001_6_2013 := ${providerHumidityText || "indisponibil"}`,
+        variables: providerMonthlyHumidity.map(record => ({
+          symbol: `phi_e_${record.month}`,
+          value: record.value,
+          unit: record.unit,
+          meaning: `umiditate relativa medie lunara MC001/6-2013 ${monthLabel(record.month)}`
+        })),
+        reference:
+          climateProvider.datasets?.monthlyRelativeHumidity?.sourceReference ?? "Mc001/6-2013, Tabel II.2",
+        kind: "lookup"
+      }),
+      compactLine({
+        lineId: "climate.provider.solar-boundary",
+        text: `I_solar_lunar := indisponibil in registrul curent -- ${climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ?? "Mc001/1-2006 Anexa nr. A9.6 necesara"}`,
+        variables: [
+          {
+            symbol: "I_solar_lunar",
+            value: null,
+            unit: "kWh/m2",
+            meaning: "iradiere solara lunara normativa necesara pentru aporturi solare"
+          }
+        ],
+        reference:
+          climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ?? "Mc001/1-2006 Anexa nr. A9.6",
+        kind: "diagnostic"
+      })
+    ] : []),
     ...eligibility.map(item => compactLine({
       lineId: `climate.eligibility.${item.calculationId}`,
       text: `${item.calculationId} := ${item.status}${item.diagnostic ? ` -- ${item.diagnostic}` : ""}`,
@@ -1656,6 +1725,11 @@ function installationMonthlyRows(calculation) {
 function climateRows(buildingDna, monthly) {
   const climate = buildingDna.climate ?? {};
   const location = buildingDna.building?.location ?? {};
+  const climateProvider = buildingDna.climateProvider ?? null;
+  const providerMonthlyTemperature =
+    climateProvider?.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? [];
+  const providerMonthlyHumidity =
+    climateProvider?.datasets?.monthlyRelativeHumidity?.monthlyRecords ?? [];
   const solarFactor = buildingDna.climateZoneRequirements?.solarFactor?.recommendation ?? null;
   const nzebLimit = buildingDna.climateZoneRequirements?.nzebLimit?.limit ?? null;
   const renovationLimit = buildingDna.climateZoneRequirements?.renovationLimit?.limit ?? null;
@@ -1676,6 +1750,38 @@ function climateRows(buildingDna, monthly) {
     { label: "Sursa profil lunar", value: buildingDna.climateProfile?.sourceTitle ?? buildingDna.climateProfile?.sourceType ?? "neselectata" },
     { label: "Versiune profil lunar", value: buildingDna.climateProfile?.datasetVersion ?? "neselectata" },
     { label: "Statie/localitate dataset", value: buildingDna.climateProfile?.stationName ?? buildingDna.climateProfile?.locality ?? "neselectata" },
+    ...(climateProvider ? [
+      {
+        label: "Statie normativa MC001/6-2013",
+        value: climateProvider.selection?.stationName ?? climateProvider.selection?.stationId ?? "neselectata"
+      },
+      {
+        label: "Versiune dataset MC001/6-2013",
+        value: climateProvider.datasetVersion ?? "neselectata"
+      },
+      {
+        label: "Sursa dataset MC001/6-2013",
+        value: climateProvider.datasets?.monthlyExteriorTemperature?.sourceReference ?? "Mc001/6-2013"
+      },
+      {
+        label: "Temperaturi exterioare lunare normative",
+        value: providerMonthlyTemperature
+          .map(record => `${monthLabel(record.month)} ${formatNotebookValue(record.value, record.unit, 2)}`)
+          .join("; ") || "indisponibile"
+      },
+      {
+        label: "Umiditati relative lunare normative",
+        value: providerMonthlyHumidity
+          .map(record => `${monthLabel(record.month)} ${formatNotebookValue(record.value, record.unit, 1)}`)
+          .join("; ") || "indisponibile"
+      },
+      {
+        label: "Iradiere solara lunara normativa",
+        value:
+          climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ??
+          "indisponibila fara Mc001/1-2006 Anexa nr. A9.6"
+      }
+    ] : []),
     {
       label: "Temperatura exterioara de calcul iarna",
       value: winterDesignTemperature

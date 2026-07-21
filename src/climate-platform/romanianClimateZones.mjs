@@ -37,24 +37,25 @@ export const ROMANIAN_CLIMATE_COVERAGE = Object.freeze({
   coverageId: "romanian_climate_zone_coverage_p5a_v1",
   datasetVersion: ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION,
   country: "RO",
-  totalClimateZones: 5,
-  coveredClimateZones: 5,
-  totalWindZonesIdentifiedInMc001Forms: 4,
-  coveredWindZones: 4,
-  totalSourceBackedLocalityMappings: 0,
-  exactLocalityProfiles: 0,
-  stationMappings: 0,
-  zoneMappings: 0,
-  unsupportedLocalities: "not_enumerated_in_mc001_pdf_body",
+    totalClimateZones: 5,
+    coveredClimateZones: 5,
+    totalWindZonesIdentifiedInMc001Forms: 4,
+    coveredWindZones: 4,
+    sourceBackedLocalityStationMappings: 42,
+    totalSourceBackedLocalityMappings: 0,
+    exactLocalityProfiles: 0,
+    stationMappings: 42,
+    zoneMappings: 0,
+    unsupportedLocalities: "not_enumerated_in_mc001_pdf_body",
   externalSourceDependencies: Object.freeze([
     Object.freeze({
       dependencyId: "official_romanian_locality_to_climate_zone_mapping",
-      status: "delegated_to_mc001_6_2013_not_source_packed",
+      status: "not_reproduced_in_ingested_mc001_6_2013_tables",
       requiredFor: "automatic county/locality climate-zone and wind-zone assignment"
     }),
     Object.freeze({
       dependencyId: "official_monthly_temperature_and_solar_climate_dataset",
-      status: "delegated_to_mc001_6_2013_not_source_packed",
+      status: "monthly_temperature_source_packed_solar_irradiation_external_to_mc001_1_2006_a9_6",
       requiredFor:
         "normative monthly exterior temperature and irradiation profiles by location/zone"
     })
@@ -319,12 +320,20 @@ export const ROMANIAN_CLIMATE_SOURCE_INVENTORY = Object.freeze([
     source: MC001_PDF,
     sourceLocation:
       "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
-    status: "external_or_unavailable_dataset_dependency",
+    status: "partially_implemented_temperature_available_solar_external",
     runtimeUse:
-      "required for normative monthly exterior temperatures and orientation-dependent irradiation; not silently defaulted",
-    containsMonthlyClimateInputs: false,
+      "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; orientation-dependent irradiation remains external and is not silently defaulted",
+    containsMonthlyClimateInputs: true,
+    implementedArtifacts: Object.freeze([
+      "Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities",
+      "Mc001/6-2013 Tabel II.2 monthly mean relative humidity for 42 localities",
+      "Mc001/6-2013 Tabel III.1 winter design-day temperature for 41 localities",
+      "Mc001/6-2013 Tabel III.2 winter design-pentad temperature for 41 localities",
+      "Mc001/6-2013 Tabel IV.1 summer design-day temperature for 41 localities",
+      "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities"
+    ]),
     missingArtifact:
-      "source-backed table of monthly exterior temperatures and solar irradiation by locality/zone/orientation"
+      "source-backed table of monthly solar irradiation by locality/orientation/plane from Mc001/1-2006 Anexa nr. A9.6"
   })
 ]);
 

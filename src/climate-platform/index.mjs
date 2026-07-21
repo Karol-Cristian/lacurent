@@ -53,3 +53,20 @@ export {
   getWinterDesignTemperatureByClimateZone,
   validateCertifiedClimateDataset
 } from "./romanianClimateNormativeDependencies.mjs";
+
+export {
+  ROMANIAN_NORMATIVE_CLIMATE_DATASET_STATUSES,
+  ROMANIAN_NORMATIVE_CLIMATE_PROVIDER_VERSION,
+  findRomanianNormativeStationByLocalityId,
+  getRomanianNormativeClimateDatasetMetadata,
+  getRomanianNormativeClimateStation,
+  getRomanianNormativeMonthlyExteriorTemperature,
+  getRomanianNormativeMonthlyRelativeHumidity,
+  getRomanianNormativeSummerDesignDayTemperature,
+  getRomanianNormativeSummerDesignPentadTemperature,
+  getRomanianNormativeWinterDesignDayTemperature,
+  getRomanianNormativeWinterDesignPentadTemperature,
+  listRomanianNormativeClimateStations,
+  listRomanianNormativeLocalityStationMappings,
+  resolveRomanianNormativeClimateSelection
+} from "./romanianNormativeClimateProvider.mjs";

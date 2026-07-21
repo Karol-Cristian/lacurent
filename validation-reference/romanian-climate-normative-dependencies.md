@@ -26,8 +26,9 @@ Reviewed but not a direct MC001-2022 dependency at this audit level: SR 1907-1, 
 | --- | --- | --- | --- |
 | climate_zone_classification | NORMATIVE_DATASET | zone-dependent MC001 limits and winter design-temperature identity | MC001-2022, Figura 2.1; MC001-2022, Tabel 2.5; MC001-2022, Tabel 2.8; MC001-2022, Tabel 2.10a; MC001-2022, Tabel 2.10b |
 | wind_zone_classification | NORMATIVE_DATASET | canonical metadata and future wind-dependent climate/runtime inputs | MC001-2022 certificate and audit forms list wind zones I-IV |
-| locality_assignment | DATASET_UNAVAILABLE | automatic locality/county to climate-zone and wind-zone assignment | Mc001/6-2013 and its source-backed station/locality tables |
-| monthly_energy_climate_data | DATASET_UNAVAILABLE | monthly transmission, ventilation, heat gains and useful demand | MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; preprocessing rules are in SR EN ISO 52010-1 |
+| locality_station_mapping | NORMATIVE_DATASET | selection of the source-backed MC001/6-2013 station/locality row for monthly and design-day climate parameters | mc001_6_2013_locality_registry |
+| locality_assignment | DATASET_UNAVAILABLE | automatic locality/county to climate-zone and wind-zone assignment; not the same as locality-to-station selection | not reproduced in the ingested MC001-2022 or MC001/6-2013 tables |
+| monthly_energy_climate_data | DATASET_UNAVAILABLE | monthly transmission, ventilation, heat gains and useful demand | MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; solar irradiation is referenced to Mc001/1-2006 Anexa nr. A9.6; preprocessing rules are in SR EN ISO 52010-1 |
 | heating_design_climate | NORMATIVE_DATASET | winter design-temperature identity by climate zone | mc001_2022_figure_2_1_winter_design_temperature_by_zone |
 | cooling_ventilation_design_climate | DATASET_UNAVAILABLE | cooling/ventilation design parameters and humidity conditions | Mc001/6-2013, Capitolul IV |
 | degree_day_data | DATASET_UNAVAILABLE | only for degree-day calculation paths; the current production runtime uses monthly MC001 Chapter 2/3 chains | - |
@@ -47,7 +48,8 @@ Reviewed but not a direct MC001-2022 dependency at this audit level: SR 1907-1, 
 
 | id | document | status | availability | calculations |
 | --- | --- | --- | --- | --- |
-| mc001_6_2013_climate_parameters_volume | Mc001/6-2013, Partea a VI-a, approved by MDRAP Order 2210/26.06.2013 | dependency_identified_not_source_packed | public_official_mdlpa_pdf_identified | locality climate assignment, monthly exterior temperatures, monthly solar irradiation, heating design climate, cooling and ventilation design climate |
+| mc001_6_2013_climate_parameters_volume | Mc001/6-2013, Partea a VI-a, approved by MDRAP Order 2210/26.06.2013 | source_packed_partial_ingestion_complete | public_official_mdlpa_pdf_identified | locality to climate-parameter station selection, monthly exterior temperatures, monthly solar irradiation, heating design climate, cooling and ventilation design climate |
+| mc001_1_2006_annex_a9_6_monthly_solar_irradiation | Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2006, Anexa nr. A9.6 | external_data_dependency | not_present_in_repository_or_ingested_official_source_pack | monthly solar irradiation, transparent solar gains, opaque solar gains, cooling demand affected by solar gains, heating demand affected by solar gains |
 | sr_en_iso_52010_1_climate_preprocessing | SR EN ISO 52010-1, Performanta energetica a cladirilor. Conditii climatice exterioare. Partea 1 | external_standard_dependency | paid_or_controlled_standard_metadata_only | preprocessed representative climate datasets, conversion/quality rules for climate sequences |
 | sr_1907_1_2_4839_6648_reviewed_not_direct_mc0012022_dependency | SR 1907-1, SR 1907-2, SR 4839, SR 6648-1, SR 6648-2 | reviewed_not_direct_runtime_dependency | ASRO/standard metadata; not present in repository | none |
 
@@ -55,7 +57,8 @@ Reviewed but not a direct MC001-2022 dependency at this audit level: SR 1907-1, 
 
 | designation | edition | requiredFor | replacement |
 | --- | --- | --- | --- |
-| Mc001/6-2013 | 2013 | locality mapping, design temperature, monthly temperature, solar irradiation, cooling/ventilation design | none currently source-packed; official MDLPA URL identified but values not ingested |
+| Mc001/6-2013 | 2013 | locality mapping, design temperature, monthly temperature, cooling/ventilation design | official MDLPA PDF source pack ingested for Tabel II.1, II.2, III.1 and IV.1 |
+| Mc001/1-2006 Anexa nr. A9.6 | 2006 | solar irradiation | none |
 | SR EN ISO 52010-1 | not bundled | monthly temperature, solar irradiation, cooling/ventilation design | none |
 
 ## Runtime Policy
