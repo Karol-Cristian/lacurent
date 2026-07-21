@@ -197,11 +197,13 @@ assert.equal(audit.climate.registryVersion, "mc001_2022_climate_zones_p5a_v1");
 assert.equal(audit.climate.coverage.totalClimateZones, 5);
 assert.equal(audit.climate.coverage.coveredClimateZones, 5);
 assert.equal(audit.climate.coverage.totalSourceBackedLocalityMappings, 0);
+assert.equal(audit.climate.coverage.sourceBackedLocalityStationMappings, 42);
 assert.equal(audit.climate.coverage.exactLocalityProfiles, 0);
 assert.equal(
   audit.climate.sourceInventory.some(item =>
     item.inventoryId === "mc001_monthly_temperature_and_solar_climate_annex" &&
-    item.status === "external_or_unavailable_dataset_dependency"
+    item.status === "partially_implemented_temperature_available_solar_external" &&
+    item.containsMonthlyClimateInputs === true
   ),
   true
 );

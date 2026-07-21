@@ -32,6 +32,68 @@ function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function compactClimateProviderResult(climateProviderResult) {
+  if (!climateProviderResult) return null;
+  const monthlyTemperature = climateProviderResult.datasets?.monthlyExteriorTemperature ?? null;
+  const monthlyHumidity = climateProviderResult.datasets?.monthlyRelativeHumidity ?? null;
+  const winterDesign = climateProviderResult.datasets?.winterDesignDayTemperature ?? null;
+  const summerDesign = climateProviderResult.datasets?.summerDesignDayTemperature ?? null;
+  return {
+    providerVersion: climateProviderResult.providerVersion ?? null,
+    datasetVersion: climateProviderResult.datasetVersion ?? null,
+    datasetStatus: climateProviderResult.datasetStatus ?? null,
+    sourceDocument: climateProviderResult.sourceDocument ?? null,
+    selection: climateProviderResult.selection ?? null,
+    datasets: {
+      monthlyExteriorTemperature: monthlyTemperature ? {
+        datasetId: monthlyTemperature.datasetId,
+        datasetVersion: monthlyTemperature.datasetVersion,
+        datasetStatus: monthlyTemperature.datasetStatus,
+        sourceReference: monthlyTemperature.sourceReference,
+        stationId: monthlyTemperature.stationId,
+        stationName: monthlyTemperature.stationName,
+        unit: monthlyTemperature.unit,
+        monthlyRecords: monthlyTemperature.monthlyRecords,
+        annualMeanExteriorTemperatureC: monthlyTemperature.annualMeanExteriorTemperatureC
+      } : null,
+      monthlyRelativeHumidity: monthlyHumidity ? {
+        datasetId: monthlyHumidity.datasetId,
+        datasetVersion: monthlyHumidity.datasetVersion,
+        datasetStatus: monthlyHumidity.datasetStatus,
+        sourceReference: monthlyHumidity.sourceReference,
+        stationId: monthlyHumidity.stationId,
+        stationName: monthlyHumidity.stationName,
+        unit: monthlyHumidity.unit,
+        monthlyRecords: monthlyHumidity.monthlyRecords,
+        annualMeanRelativeHumidityPct: monthlyHumidity.annualMeanRelativeHumidityPct
+      } : null,
+      winterDesignDayTemperature: winterDesign ? {
+        datasetId: winterDesign.datasetId,
+        datasetVersion: winterDesign.datasetVersion,
+        datasetStatus: winterDesign.datasetStatus,
+        sourceReference: winterDesign.sourceReference,
+        stationId: winterDesign.stationId,
+        stationName: winterDesign.stationName,
+        unit: winterDesign.unit,
+        meanDailyTemperatureC: winterDesign.meanDailyTemperatureC
+      } : null,
+      summerDesignDayTemperature: summerDesign ? {
+        datasetId: summerDesign.datasetId,
+        datasetVersion: summerDesign.datasetVersion,
+        datasetStatus: summerDesign.datasetStatus,
+        sourceReference: summerDesign.sourceReference,
+        stationId: summerDesign.stationId,
+        stationName: summerDesign.stationName,
+        unit: summerDesign.unit,
+        meanDailyTemperatureC: summerDesign.meanDailyTemperatureC
+      } : null,
+      monthlySolarIrradiation: climateProviderResult.datasets?.monthlySolarIrradiation ?? null,
+      degreeDays: climateProviderResult.datasets?.degreeDays ?? null
+    },
+    diagnostics: climateProviderResult.diagnostics ?? []
+  };
+}
+
 function blocker(code) {
   return { code, severity: "blocking" };
 }
@@ -754,6 +816,7 @@ function resolveBuildingDna({
   climateProfile,
   calculationMode,
   monthlyProfiles,
+  climateProviderResult,
   technicalSystems,
   building,
   locationClimate
@@ -801,7 +864,8 @@ function resolveBuildingDna({
   const climateEligibility = evaluateClimateCalculationEligibility({
     climate: locationClimate?.climate ?? {},
     climateProfile,
-    monthlyProfiles
+    monthlyProfiles,
+    climateProviderResult
   });
   const methodologyLimits = [
     "engineering_model_generation_only",
@@ -835,6 +899,7 @@ function resolveBuildingDna({
       }
     },
     climate: locationClimate?.climate ?? null,
+    ...(climateProviderResult ? { climateProvider: compactClimateProviderResult(climateProviderResult) } : {}),
     climateZoneRequirements: climateRequirements?.status === "ready" ? {
       climateZone: climateRequirements.climateZone,
       solarFactor: climateRequirements.solarFactor,
@@ -1016,6 +1081,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
     monthlyProfiles: resolvedMonthlyProfiles,
+    climateProviderResult: answers.climateProviderResult,
     technicalSystems: answers.technicalSystems,
     building: {
       buildingId: answers.buildingId,
@@ -1060,6 +1126,7 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
     monthlyProfiles: resolvedMonthlyProfiles,
+    climateProviderResult: input.climateProviderResult,
     technicalSystems: input.technicalSystems,
     building: input.building,
     locationClimate

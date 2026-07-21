@@ -13,6 +13,11 @@ import {
   ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION,
   ROMANIAN_WIND_ZONE_IDS
 } from "../src/climate-platform/index.mjs";
+import {
+  MC001_6_2013_CLIMATE_DATASET_CHECKSUMS,
+  MC001_6_2013_CLIMATE_DATASET_VERSION,
+  MC001_6_2013_CLIMATE_STATIONS
+} from "../src/climate-platform/datasets/mc001_6_2013ClimateDataset.mjs";
 
 const OUTPUT_JSON = resolve("validation-reference/normative-knowledge-graph.json");
 const OUTPUT_MD = resolve("validation-reference/normative-knowledge-graph.md");
@@ -45,10 +50,20 @@ const sourceDocuments = Object.freeze([
     title: "Mc001/6-2013 Partea a VI-a",
     edition: "2013",
     authority: "MDRAP / MDLPA",
-    repositoryStatus: "official_public_pdf_identified_not_source_packed",
+    repositoryStatus: "official_public_pdf_source_packed_partial_tables_ingested",
     path: "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
     canonicalUse:
-      "Delegated Romanian climate-parameter source for locality/station data, monthly exterior parameters, solar irradiation and design days."
+      "Delegated Romanian climate-parameter source. P5B2 ingests Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; solar remains delegated to Mc001/1-2006 Anexa nr. A9.6."
+  }),
+  Object.freeze({
+    id: "doc.mc001_1_2006_annex_a9_6",
+    title: "Mc001/1-2006 Anexa nr. A9.6",
+    edition: "2006",
+    authority: "MDLPA / original MC001 methodology source chain",
+    repositoryStatus: "not_present_exact_annex_required_for_monthly_solar_irradiation",
+    path: null,
+    canonicalUse:
+      "Exact annex referenced by Mc001/6-2013 Capitolul II.3 for monthly solar irradiation values for 30 localities."
   }),
   Object.freeze({
     id: "doc.sr_en_iso_52010_1",
@@ -216,26 +231,55 @@ const conceptNodes = Object.freeze([
     reportUsage: "Report station/location metadata for the climate inputs used.",
     sourceDocument: "doc.mc001_6_2013",
     sourceEdition: "2013",
-    table: "Capitolul II/III/IV station tables expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-    implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
-    datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_locality_station_zone_registry"
+    table: "Tabel II.1, II.2, III.1, III.2, IV.1, IV.2",
+    page: "Mc001/6-2013 PDF text p. 11-20",
+    sourceLocation:
+      "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+    implementationStatus: "LOOKUP_IMPLEMENTED",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    values: {
+      datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION,
+      stationCount: MC001_6_2013_CLIMATE_STATIONS.length,
+      checksum: MC001_6_2013_CLIMATE_DATASET_CHECKSUMS.climateStations
+    }
+  }),
+  node({
+    id: "concept.locality_station_mapping",
+    description:
+      "Source-backed mapping from each MC001/6-2013 table locality row to its canonical climate-parameter station id.",
+    units: "locality identifier -> station identifier",
+    runtimeUsage: Object.freeze(["station-level climate dataset selection"]),
+    notebookUsage: "Show station/locality row provenance when a source-backed station dataset is used.",
+    reportUsage: "Report station/locality source row and dataset version.",
+    sourceDocument: "doc.mc001_6_2013",
+    sourceEdition: "2013",
+    table: "Tabel II.1 and matching station rows in II.2/III.1/III.2/IV.1/IV.2",
+    page: "Mc001/6-2013 PDF text p. 11-20",
+    sourceLocation:
+      "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+    implementationStatus: "LOOKUP_IMPLEMENTED",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    values: {
+      datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION,
+      mappingCount: MC001_6_2013_CLIMATE_STATIONS.length,
+      checksum: MC001_6_2013_CLIMATE_DATASET_CHECKSUMS.localityRegistry
+    }
   }),
   node({
     id: "concept.locality_mapping",
-    description: "Source-backed locality/county assignment to climate zone, wind zone and representative station.",
-    units: "locality/county/station identifiers",
+    description:
+      "Source-backed locality/county assignment to climate zone and wind zone. This is separate from the available locality-to-station table rows.",
+    units: "locality/county -> climate zone and wind zone",
     runtimeUsage: Object.freeze(["automatic location-to-climate assignment"]),
     notebookUsage: "Show automatic or manual assignment origin and warn when mapping is unavailable.",
     reportUsage: "Report assignment origin, override reason and missing mapping diagnostics.",
     sourceDocument: "doc.mc001_6_2013",
     sourceEdition: "2013",
-    table: "Source-backed locality/station mapping tables expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+    table: "not reproduced in the ingested MC001-2022 or Mc001/6-2013 tables",
+    page: "not found in ingested source",
     implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_locality_station_zone_registry"
+    tbdId: "tbd.romanian_locality_climate_wind_zone_registry"
   }),
   node({
     id: "concept.month_duration",
@@ -260,11 +304,17 @@ const conceptNodes = Object.freeze([
     reportUsage: "Report the twelve monthly values with source, station/location and dataset version.",
     sourceDocument: "doc.mc001_6_2013",
     sourceEdition: "2013",
-    table: "Capitolul III monthly climate tables expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-    implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
-    datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_monthly_temperature_dataset"
+    table: "Tabel II.1",
+    page: "Mc001/6-2013 PDF text p. 11-12",
+    sourceLocation:
+      "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+    implementationStatus: "LOOKUP_IMPLEMENTED",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    values: {
+      datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION,
+      stationCount: MC001_6_2013_CLIMATE_STATIONS.length,
+      checksum: MC001_6_2013_CLIMATE_DATASET_CHECKSUMS.monthlyExteriorTemperature
+    }
   }),
   node({
     id: "concept.monthly_solar_irradiation",
@@ -274,13 +324,13 @@ const conceptNodes = Object.freeze([
     notebookUsage:
       "Show selected orientation/plane irradiation or explicit certified solar gains for each month.",
     reportUsage: "Report irradiation source, orientation mapping and monthly solar inputs.",
-    sourceDocument: "doc.mc001_6_2013",
-    sourceEdition: "2013",
-    table: "Capitolul III solar tables expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+    sourceDocument: "doc.mc001_1_2006_annex_a9_6",
+    sourceEdition: "2006",
+    table: "Anexa nr. A9.6",
+    page: "not present in repository",
     implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_monthly_solar_dataset"
+    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
   }),
   node({
     id: "concept.direct_diffuse_solar_irradiation",
@@ -289,13 +339,13 @@ const conceptNodes = Object.freeze([
     runtimeUsage: Object.freeze(["solar preprocessing", "future source-backed orientation/plane processing"]),
     notebookUsage: "Show only when supplied by a source-backed dataset or required by a selected method.",
     reportUsage: "Report component data and source when used.",
-    sourceDocument: "doc.mc001_6_2013",
-    sourceEdition: "2013",
-    table: "Solar component tables expected if reproduced by delegated source",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+    sourceDocument: "doc.mc001_1_2006_annex_a9_6",
+    sourceEdition: "2006",
+    table: "Anexa nr. A9.6 or the exact delegated solar-source table if component values are reproduced there",
+    page: "not present in repository",
     implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_monthly_solar_dataset"
+    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
   }),
   node({
     id: "concept.sky_radiation_inputs",
@@ -304,13 +354,13 @@ const conceptNodes = Object.freeze([
     runtimeUsage: Object.freeze(["solar preprocessing", "radiative exchange diagnostics"]),
     notebookUsage: "Show only when the selected source-backed method uses sky-radiation data.",
     reportUsage: "Report sky-radiation data source and whether it affected current calculations.",
-    sourceDocument: "doc.mc001_6_2013",
-    sourceEdition: "2013",
-    table: "Delegated climate/solar parameter tables expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+    sourceDocument: "doc.mc001_1_2006_annex_a9_6",
+    sourceEdition: "2006",
+    table: "Anexa nr. A9.6 or exact delegated sky-radiation source if reproduced there",
+    page: "not present in repository",
     implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_monthly_solar_dataset"
+    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
   }),
   node({
     id: "concept.heating_period_duration",
@@ -319,13 +369,12 @@ const conceptNodes = Object.freeze([
     runtimeUsage: Object.freeze(["chapter2_monthly_transmission_ventilation", "monthly heating aggregation"]),
     notebookUsage: "Show monthly applicability and duration when supplied by climate profile.",
     reportUsage: "Report period assumptions and exact monthly hours used.",
-    sourceDocument: "doc.mc001_6_2013",
-    sourceEdition: "2013",
-    table: "Heating-period climate data expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-    implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
-    datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_monthly_temperature_dataset"
+    sourceDocument: "doc.mc001_2022",
+    sourceEdition: "2022",
+    table: null,
+    page: "MC001 monthly method context",
+    implementationStatus: "REPRESENTED_AS_INPUT",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET
   }),
   node({
     id: "concept.cooling_period_duration",
@@ -334,13 +383,12 @@ const conceptNodes = Object.freeze([
     runtimeUsage: Object.freeze(["chapter2 monthly cooling aggregation", "Chapter 3 cooling-system operation"]),
     notebookUsage: "Show monthly applicability and duration when supplied by climate profile.",
     reportUsage: "Report period assumptions and exact monthly hours used.",
-    sourceDocument: "doc.mc001_6_2013",
-    sourceEdition: "2013",
-    table: "Cooling-period climate data expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-    implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
-    datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_monthly_temperature_dataset"
+    sourceDocument: "doc.mc001_2022",
+    sourceEdition: "2022",
+    table: null,
+    page: "MC001 monthly method context",
+    implementationStatus: "REPRESENTED_AS_INPUT",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET
   }),
   node({
     id: "concept.cooling_ventilation_design_climate",
@@ -351,9 +399,9 @@ const conceptNodes = Object.freeze([
     reportUsage: "Report missing or supplied cooling/ventilation design climate source.",
     sourceDocument: "doc.mc001_6_2013",
     sourceEdition: "2013",
-    table: "Capitolul IV Tabel IV.1/IV.2 expected",
-    page: "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-    implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
+    table: "Capitolul IV Tabel IV.1/IV.2 implemented for temperatures; humidity/radiation still method-dependent",
+    page: "Mc001/6-2013 PDF text p. 18-20",
+    implementationStatus: "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
     tbdId: "tbd.mc001_6_2013_cooling_ventilation_design_climate"
   }),
@@ -403,7 +451,7 @@ const conceptNodes = Object.freeze([
     page: "PDF text p. 73-74 and Anexa D p. 597",
     implementationStatus: "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_6_2013_monthly_temperature_dataset"
+    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
   }),
   node({
     id: "concept.user_supplied_certified_climate_dataset",
@@ -429,11 +477,12 @@ const conceptNodes = Object.freeze([
 
 const tbdRegistry = Object.freeze([
   Object.freeze({
-    id: "tbd.mc001_6_2013_locality_station_zone_registry",
-    description: "Canonical Romanian locality/county/station assignment registry.",
-    blockingDocument: "Mc001/6-2013 Partea a VI-a",
-    requiredEdition: "2013",
-    affectedCalculations: Object.freeze(["automatic climate assignment", "design climate selection"]),
+    id: "tbd.romanian_locality_climate_wind_zone_registry",
+    description:
+      "Canonical Romanian locality/county assignment to climate zone and wind zone. This excludes the already implemented MC001/6-2013 locality-to-station row registry.",
+    blockingDocument: "exact source not reproduced in MC001-2022 PDF or ingested MC001/6-2013 tables",
+    requiredEdition: "to be identified from an explicit normative source chain",
+    affectedCalculations: Object.freeze(["automatic climate-zone assignment", "automatic wind-zone assignment"]),
     affectedRuntimeModules: Object.freeze(["src/climate-platform/romanianClimateZones.mjs"]),
     affectedUi: Object.freeze(["Amplasare si clima searchable locality selector"]),
     affectedNotebook: Object.freeze(["climate metadata and assignment provenance"]),
@@ -441,35 +490,13 @@ const tbdRegistry = Object.freeze([
     affectedTests: Object.freeze(["locality-to-zone mapping", "save/reopen exact climate identity"]),
     implementationPriority: "HIGH",
     estimatedImplementationScope:
-      "Source-pack extraction, row-level QA, stable locality identifiers, county/station aliases and migration diagnostics."
+      "Acquire/source-pack the exact official mapping document, normalize locality identifiers, add county aliases and migration diagnostics."
   }),
   Object.freeze({
-    id: "tbd.mc001_6_2013_monthly_temperature_dataset",
-    description: "Twelve-month exterior temperature and period/applicability dataset.",
-    blockingDocument: "Mc001/6-2013 Partea a VI-a",
-    requiredEdition: "2013",
-    affectedCalculations: Object.freeze([
-      "chapter2_monthly_transmission_ventilation",
-      "monthly QHnd/QCnd",
-      "reference-building climate comparisons"
-    ]),
-    affectedRuntimeModules: Object.freeze([
-      "src/climate-platform/romanianClimateProfiles.mjs",
-      "src/building-platform/buildingDnaResolver.mjs"
-    ]),
-    affectedUi: Object.freeze(["monthly climate inspector", "calculation eligibility diagnostics"]),
-    affectedNotebook: Object.freeze(["monthly Qtr/Qve substitutions"]),
-    affectedReport: Object.freeze(["monthly climate table and source section"]),
-    affectedTests: Object.freeze(["five-zone or station monthly fixtures", "fingerprint sensitivity"]),
-    implementationPriority: "HIGH",
-    estimatedImplementationScope:
-      "Extract 12-month tables, normalize units, encode source references, add fixtures and end-to-end eligibility tests."
-  }),
-  Object.freeze({
-    id: "tbd.mc001_6_2013_monthly_solar_dataset",
+    id: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
     description: "Monthly solar irradiation by required orientation or plane, including components when required.",
-    blockingDocument: "Mc001/6-2013 Partea a VI-a",
-    requiredEdition: "2013",
+    blockingDocument: "Mc001/1-2006 Anexa nr. A9.6",
+    requiredEdition: "2006",
     affectedCalculations: Object.freeze(["chapter2_solar_gains", "solar-gain orientation diagnostics"]),
     affectedRuntimeModules: Object.freeze(["src/climate-platform/romanianClimateProfiles.mjs"]),
     affectedUi: Object.freeze(["orientation-dependent irradiation display"]),
@@ -587,6 +614,13 @@ const normativeEdges = Object.freeze([
       "MC001-2022 Anexa D, Monitorul Oficial p. 597, delegates climate parameters to Mc001/6-2013."
   }),
   Object.freeze({
+    from: "doc.mc001_6_2013",
+    to: "doc.mc001_1_2006_annex_a9_6",
+    relation: "delegates_monthly_solar_irradiation_to",
+    evidence:
+      "Mc001/6-2013 Capitolul II.3 states that monthly mean solar irradiance values for 30 localities are presented in Mc001/1-2006 Anexa nr. A9.6."
+  }),
+  Object.freeze({
     from: "doc.mc001_2022_annex_d",
     to: "doc.sr_en_iso_52010_1",
     relation: "delegates_climate_preprocessing_to",
@@ -628,9 +662,19 @@ const knowledgeEdges = Object.freeze([
     relation: "delegates_dataset"
   }),
   Object.freeze({
+    from: "doc.mc001_6_2013",
+    to: "concept.monthly_exterior_temperature",
+    relation: "defines_lookup"
+  }),
+  Object.freeze({
     from: "doc.mc001_2022_annex_d",
     to: "concept.monthly_solar_irradiation",
     relation: "delegates_dataset"
+  }),
+  Object.freeze({
+    from: "doc.mc001_1_2006_annex_a9_6",
+    to: "concept.monthly_solar_irradiation",
+    relation: "expected_source_for"
   }),
   Object.freeze({
     from: "doc.mc001_6_2013",
@@ -644,11 +688,16 @@ const knowledgeEdges = Object.freeze([
   }),
   Object.freeze({
     from: "doc.mc001_6_2013",
+    to: "concept.locality_station_mapping",
+    relation: "defines_lookup"
+  }),
+  Object.freeze({
+    from: "doc.mc001_1_2006_annex_a9_6",
     to: "concept.direct_diffuse_solar_irradiation",
     relation: "expected_source_for"
   }),
   Object.freeze({
-    from: "doc.mc001_6_2013",
+    from: "doc.mc001_1_2006_annex_a9_6",
     to: "concept.sky_radiation_inputs",
     relation: "expected_source_for"
   }),
@@ -694,17 +743,31 @@ const knowledgeEdges = Object.freeze([
   })
 ]);
 
+function acquisitionDocumentId(designation) {
+  if (designation === "Mc001/6-2013") return "doc.mc001_6_2013";
+  if (designation === "Mc001/1-2006 Anexa nr. A9.6") return "doc.mc001_1_2006_annex_a9_6";
+  return "doc.sr_en_iso_52010_1";
+}
+
+function acquisitionPriority(designation) {
+  if (designation === "Mc001/1-2006 Anexa nr. A9.6") return "HIGH";
+  if (designation === "Mc001/6-2013") return "MEDIUM";
+  return "MEDIUM";
+}
+
 const acquisitionPlanner = ROMANIAN_CLIMATE_ACQUISITION_LIST.map(item => ({
-  documentId: item.designation === "Mc001/6-2013" ? "doc.mc001_6_2013" : "doc.sr_en_iso_52010_1",
-  priority: item.designation === "Mc001/6-2013" ? "HIGH" : "MEDIUM",
+  documentId: acquisitionDocumentId(item.designation),
+  priority: acquisitionPriority(item.designation),
   designation: item.designation,
   edition: item.edition,
   whyRequired: item.expectedDataset,
   runtimeVariablesUnlocked: item.requiredFor,
   calculationsUnlocked: item.affectedMc001Calculations,
   estimatedImplementationEffort:
-    item.designation === "Mc001/6-2013"
+    item.designation === "Mc001/1-2006 Anexa nr. A9.6"
       ? "HIGH: source-pack extraction, OCR/visual QA, row-level provenance, schema migration and five-domain runtime fixtures."
+      : item.designation === "Mc001/6-2013"
+      ? "MEDIUM: remaining non-ingested tables or hourly annexes require the same source-pack QA if product-scoped."
       : "MEDIUM: licensed algorithm extraction, preprocessing tests and ingestion pipeline integration.",
   normativeReplacementOwnedByProject: item.substituteOwnedByProject
 })).concat([
@@ -726,9 +789,10 @@ const acquisitionPlanner = ROMANIAN_CLIMATE_ACQUISITION_LIST.map(item => ({
 const futureImplementationPackages = Object.freeze([
   Object.freeze({
     packageId: "pkg.ro_locality_registry",
-    title: "Romanian locality, county, station and zone registry",
-    dependsOnTbdIds: Object.freeze(["tbd.mc001_6_2013_locality_station_zone_registry"]),
-    runtimeImpact: "automatic climate/wind zone and representative station assignment",
+    title: "Romanian locality, county, climate-zone and wind-zone registry",
+    dependsOnTbdIds: Object.freeze(["tbd.romanian_locality_climate_wind_zone_registry"]),
+    runtimeImpact:
+      "automatic climate/wind zone assignment; MC001/6-2013 locality-to-station rows are already available",
     uiImpact: "searchable locality selector with source-backed assignment and explicit override handling",
     notebookImpact: "assignment provenance and override reason",
     reportImpact: "locality/station/zone mapping source section",
@@ -736,20 +800,9 @@ const futureImplementationPackages = Object.freeze([
     expectedPullRequestScope: "registry extraction, normalization, lookup service and UI binding"
   }),
   Object.freeze({
-    packageId: "pkg.ro_monthly_exterior_temperatures",
-    title: "Monthly exterior temperature profiles",
-    dependsOnTbdIds: Object.freeze(["tbd.mc001_6_2013_monthly_temperature_dataset"]),
-    runtimeImpact: "source-backed Chapter 2 monthly Qtr/Qve and useful demand eligibility",
-    uiImpact: "monthly climate values visible without synthetic fallback",
-    notebookImpact: "monthly transfer substitutions use source-backed temperatures",
-    reportImpact: "twelve-month climate table with station/source/version",
-    expectedTests: Object.freeze(["12-month completeness", "zone/station profile selection", "annual sum identity"]),
-    expectedPullRequestScope: "source-pack monthly temperature profiles and runtime eligibility upgrade"
-  }),
-  Object.freeze({
     packageId: "pkg.ro_monthly_solar_irradiation",
     title: "Monthly solar irradiation profiles",
-    dependsOnTbdIds: Object.freeze(["tbd.mc001_6_2013_monthly_solar_dataset"]),
+    dependsOnTbdIds: Object.freeze(["tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"]),
     runtimeImpact: "source-backed solar gains and orientation diagnostics",
     uiImpact: "orientation/plane irradiation selection and inspector values",
     notebookImpact: "transparent/opaque solar gain substitutions",

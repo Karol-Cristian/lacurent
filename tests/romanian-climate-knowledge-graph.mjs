@@ -19,6 +19,7 @@ const CLIMATE_CONCEPTS = [
   "concept.degree_days",
   "concept.wind_zone",
   "concept.climatic_station",
+  "concept.locality_station_mapping",
   "concept.locality_mapping",
   "concept.heating_period_duration",
   "concept.cooling_period_duration",
@@ -26,9 +27,8 @@ const CLIMATE_CONCEPTS = [
 ];
 
 const REQUIRED_TBD_IDS = [
-  "tbd.mc001_6_2013_locality_station_zone_registry",
-  "tbd.mc001_6_2013_monthly_temperature_dataset",
-  "tbd.mc001_6_2013_monthly_solar_dataset",
+  "tbd.romanian_locality_climate_wind_zone_registry",
+  "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
   "tbd.mc001_6_2013_cooling_ventilation_design_climate",
   "tbd.mc001_6_2013_degree_days",
   "tbd.sr_en_iso_52010_1_climate_preprocessing"
@@ -185,6 +185,7 @@ assert.deepEqual(
 assert.equal(graph.synchronization.climateCoverage.coveredClimateZones, 5);
 assert.equal(graph.synchronization.climateCoverage.coveredWindZones, 4);
 assert.equal(graph.synchronization.climateCoverage.totalSourceBackedLocalityMappings, 0);
+assert.equal(graph.synchronization.climateCoverage.sourceBackedLocalityStationMappings, 42);
 
 const sourceInventoryIds = new Set(climateDependencies.climateSourceInventory.map(item => item.inventoryId));
 for (const item of graph.sourceInventories) {
@@ -192,9 +193,13 @@ for (const item of graph.sourceInventories) {
 }
 
 const mc001Dependency = graph.acquisitionPlanner.find(item => item.documentId === "doc.mc001_6_2013");
-assert.equal(mc001Dependency.priority, "HIGH");
+assert.equal(mc001Dependency.priority, "MEDIUM");
 assert.equal(mc001Dependency.runtimeVariablesUnlocked.includes("monthly temperature"), true);
-assert.equal(mc001Dependency.runtimeVariablesUnlocked.includes("solar irradiation"), true);
+assert.equal(mc001Dependency.runtimeVariablesUnlocked.includes("solar irradiation"), false);
+
+const solarDependency = graph.acquisitionPlanner.find(item => item.documentId === "doc.mc001_1_2006_annex_a9_6");
+assert.equal(solarDependency.priority, "HIGH");
+assert.equal(solarDependency.runtimeVariablesUnlocked.includes("solar irradiation"), true);
 
 const reviewedStandards = graph.acquisitionPlanner.find(
   item => item.documentId === "doc.sr_1907_sr_4839_sr_6648_reviewed"

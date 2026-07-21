@@ -27,9 +27,18 @@
       "title": "Mc001/6-2013 Partea a VI-a",
       "edition": "2013",
       "authority": "MDRAP / MDLPA",
-      "repositoryStatus": "official_public_pdf_identified_not_source_packed",
+      "repositoryStatus": "official_public_pdf_source_packed_partial_tables_ingested",
       "path": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
-      "canonicalUse": "Delegated Romanian climate-parameter source for locality/station data, monthly exterior parameters, solar irradiation and design days."
+      "canonicalUse": "Delegated Romanian climate-parameter source. P5B2 ingests Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; solar remains delegated to Mc001/1-2006 Anexa nr. A9.6."
+    },
+    {
+      "id": "doc.mc001_1_2006_annex_a9_6",
+      "title": "Mc001/1-2006 Anexa nr. A9.6",
+      "edition": "2006",
+      "authority": "MDLPA / original MC001 methodology source chain",
+      "repositoryStatus": "not_present_exact_annex_required_for_monthly_solar_irradiation",
+      "path": null,
+      "canonicalUse": "Exact annex referenced by Mc001/6-2013 Capitolul II.3 for monthly solar irradiation values for 30 localities."
     },
     {
       "id": "doc.sr_en_iso_52010_1",
@@ -120,10 +129,18 @@
       "inventoryId": "mc001_monthly_temperature_and_solar_climate_annex",
       "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
       "sourceLocation": "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
-      "status": "external_or_unavailable_dataset_dependency",
-      "runtimeUse": "required for normative monthly exterior temperatures and orientation-dependent irradiation; not silently defaulted",
-      "containsMonthlyClimateInputs": false,
-      "missingArtifact": "source-backed table of monthly exterior temperatures and solar irradiation by locality/zone/orientation"
+      "status": "partially_implemented_temperature_available_solar_external",
+      "runtimeUse": "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; orientation-dependent irradiation remains external and is not silently defaulted",
+      "containsMonthlyClimateInputs": true,
+      "implementedArtifacts": [
+        "Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities",
+        "Mc001/6-2013 Tabel II.2 monthly mean relative humidity for 42 localities",
+        "Mc001/6-2013 Tabel III.1 winter design-day temperature for 41 localities",
+        "Mc001/6-2013 Tabel III.2 winter design-pentad temperature for 41 localities",
+        "Mc001/6-2013 Tabel IV.1 summer design-day temperature for 41 localities",
+        "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities"
+      ],
+      "missingArtifact": "source-backed table of monthly solar irradiation by locality/orientation/plane from Mc001/1-2006 Anexa nr. A9.6"
     }
   ],
   "dataDomains": [
@@ -164,13 +181,24 @@
       "currentRuntimeParameters": []
     },
     {
+      "domainId": "locality_station_mapping",
+      "label": "Locality to MC001/6-2013 climate-parameter station mapping",
+      "status": "NORMATIVE_DATASET",
+      "purpose": "selection of the source-backed MC001/6-2013 station/locality row for monthly and design-day climate parameters",
+      "requiredResolution": "42 MC001/6-2013 localities/stations",
+      "implementedDataset": "mc001_6_2013_locality_registry",
+      "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+      "sourceDocument": "mc001_6_2013"
+    },
+    {
       "domainId": "locality_assignment",
       "label": "Locality assignment",
       "status": "DATASET_UNAVAILABLE",
-      "purpose": "automatic locality/county to climate-zone and wind-zone assignment",
-      "requiredResolution": "locality or representative station",
-      "delegatedSource": "Mc001/6-2013 and its source-backed station/locality tables",
-      "presentInRepository": false
+      "purpose": "automatic locality/county to climate-zone and wind-zone assignment; not the same as locality-to-station selection",
+      "requiredResolution": "locality/county to climate zone and wind zone",
+      "delegatedSource": "not reproduced in the ingested MC001-2022 or MC001/6-2013 tables",
+      "presentInRepository": false,
+      "sourceBackedLocalityStationMappingAvailable": true
     },
     {
       "domainId": "monthly_energy_climate_data",
@@ -178,16 +206,29 @@
       "status": "DATASET_UNAVAILABLE",
       "purpose": "monthly transmission, ventilation, heat gains and useful demand",
       "requiredResolution": "twelve monthly exterior temperatures plus solar irradiation by required orientation/plane",
-      "delegatedSource": "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; preprocessing rules are in SR EN ISO 52010-1",
-      "presentInRepository": false
+      "delegatedSource": "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; solar irradiation is referenced to Mc001/1-2006 Anexa nr. A9.6; preprocessing rules are in SR EN ISO 52010-1",
+      "presentInRepository": true,
+      "availableDatasets": [
+        "monthly exterior temperature: Mc001/6-2013 Tabel II.1",
+        "monthly relative humidity: Mc001/6-2013 Tabel II.2"
+      ],
+      "missingDatasets": [
+        "monthly solar irradiation by locality/orientation/plane: Mc001/1-2006 Anexa nr. A9.6"
+      ],
+      "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1"
     },
     {
       "domainId": "heating_design_climate",
       "label": "Heating design climate",
       "status": "NORMATIVE_DATASET",
       "purpose": "winter design-temperature identity by climate zone",
-      "requiredResolution": "climate zone for zone value; locality/station for exact project design data",
-      "implementedDataset": "mc001_2022_figure_2_1_winter_design_temperature_by_zone"
+      "requiredResolution": "climate zone for zone value; MC001/6-2013 station/locality for winter design day",
+      "implementedDataset": "mc001_2022_figure_2_1_winter_design_temperature_by_zone",
+      "availableDatasets": [
+        "winter exterior design temperature by zone: MC001-2022 Figura 2.1",
+        "winter design day hourly temperature by station: Mc001/6-2013 Tabel III.1",
+        "winter design pentad temperature by station: Mc001/6-2013 Tabel III.2"
+      ]
     },
     {
       "domainId": "cooling_ventilation_design_climate",
@@ -195,7 +236,14 @@
       "status": "DATASET_UNAVAILABLE",
       "purpose": "cooling/ventilation design parameters and humidity conditions",
       "requiredResolution": "station/locality design day and associated humidity/radiation fields",
-      "delegatedSource": "Mc001/6-2013, Capitolul IV"
+      "delegatedSource": "Mc001/6-2013, Capitolul IV",
+      "availableDatasets": [
+        "summer design day hourly temperature by station: Mc001/6-2013 Tabel IV.1",
+        "summer design pentad temperature by station: Mc001/6-2013 Tabel IV.2"
+      ],
+      "missingDatasets": [
+        "complete cooling/ventilation humidity or radiation fields when required by a selected design method"
+      ]
     },
     {
       "domainId": "degree_day_data",
@@ -234,9 +282,19 @@
         "title": "Mc001/6-2013 Partea a VI-a",
         "edition": "2013",
         "authority": "MDRAP / MDLPA",
-        "repositoryStatus": "official_public_pdf_identified_not_source_packed",
+        "repositoryStatus": "official_public_pdf_source_packed_partial_tables_ingested",
         "path": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
-        "canonicalUse": "Delegated Romanian climate-parameter source for locality/station data, monthly exterior parameters, solar irradiation and design days."
+        "canonicalUse": "Delegated Romanian climate-parameter source. P5B2 ingests Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; solar remains delegated to Mc001/1-2006 Anexa nr. A9.6."
+      },
+      {
+        "id": "doc.mc001_1_2006_annex_a9_6",
+        "type": "source_document",
+        "title": "Mc001/1-2006 Anexa nr. A9.6",
+        "edition": "2006",
+        "authority": "MDLPA / original MC001 methodology source chain",
+        "repositoryStatus": "not_present_exact_annex_required_for_monthly_solar_irradiation",
+        "path": null,
+        "canonicalUse": "Exact annex referenced by Mc001/6-2013 Capitolul II.3 for monthly solar irradiation values for 30 localities."
       },
       {
         "id": "doc.sr_en_iso_52010_1",
@@ -402,21 +460,53 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Capitolul II/III/IV station tables expected",
+        "table": "Tabel II.1, II.2, III.1, III.2, IV.1, IV.2",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-        "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
-        "values": null
+        "page": "Mc001/6-2013 PDF text p. 11-20",
+        "sourceLocation": "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+          "stationCount": 42,
+          "checksum": "cb55e2b71c6c3b66bff178ffa9e917d531a5dccd4159d8b46c6769afdedf5258"
+        }
+      },
+      {
+        "id": "concept.locality_station_mapping",
+        "canonicalId": "concept.locality_station_mapping",
+        "type": "climate_concept",
+        "description": "Source-backed mapping from each MC001/6-2013 table locality row to its canonical climate-parameter station id.",
+        "units": "locality identifier -> station identifier",
+        "runtimeUsage": [
+          "station-level climate dataset selection"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show station/locality row provenance when a source-backed station dataset is used.",
+        "reportUsage": "Report station/locality source row and dataset version.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Tabel II.1 and matching station rows in II.2/III.1/III.2/IV.1/IV.2",
+        "figure": null,
+        "page": "Mc001/6-2013 PDF text p. 11-20",
+        "sourceLocation": "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+          "mappingCount": 42,
+          "checksum": "323953b2dab8194db7ea46f7ba77bd09bd92dee622977af9c53ec0dcdde46b3f"
+        }
       },
       {
         "id": "concept.locality_mapping",
         "canonicalId": "concept.locality_mapping",
         "type": "climate_concept",
-        "description": "Source-backed locality/county assignment to climate zone, wind zone and representative station.",
-        "units": "locality/county/station identifiers",
+        "description": "Source-backed locality/county assignment to climate zone and wind zone. This is separate from the available locality-to-station table rows.",
+        "units": "locality/county -> climate zone and wind zone",
         "runtimeUsage": [
           "automatic location-to-climate assignment"
         ],
@@ -426,13 +516,13 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Source-backed locality/station mapping tables expected",
+        "table": "not reproduced in the ingested MC001-2022 or Mc001/6-2013 tables",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not found in ingested source",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
+        "tbdId": "tbd.romanian_locality_climate_wind_zone_registry",
         "values": null
       },
       {
@@ -475,14 +565,18 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Capitolul III monthly climate tables expected",
+        "table": "Tabel II.1",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-        "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
-        "values": null
+        "page": "Mc001/6-2013 PDF text p. 11-12",
+        "sourceLocation": "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+          "stationCount": 42,
+          "checksum": "63cf017a3a3a3746832e2bad6b3950ba7ffeda2da998d5563d95d021511c59d8"
+        }
       },
       {
         "id": "concept.monthly_solar_irradiation",
@@ -496,16 +590,16 @@
         "formulas": [],
         "notebookUsage": "Show selected orientation/plane irradiation or explicit certified solar gains for each month.",
         "reportUsage": "Report irradiation source, orientation mapping and monthly solar inputs.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Capitolul III solar tables expected",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa nr. A9.6",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not present in repository",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -521,16 +615,16 @@
         "formulas": [],
         "notebookUsage": "Show only when supplied by a source-backed dataset or required by a selected method.",
         "reportUsage": "Report component data and source when used.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Solar component tables expected if reproduced by delegated source",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa nr. A9.6 or the exact delegated solar-source table if component values are reproduced there",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not present in repository",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -546,16 +640,16 @@
         "formulas": [],
         "notebookUsage": "Show only when the selected source-backed method uses sky-radiation data.",
         "reportUsage": "Report sky-radiation data source and whether it affected current calculations.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Delegated climate/solar parameter tables expected",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa nr. A9.6 or exact delegated sky-radiation source if reproduced there",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not present in repository",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -571,16 +665,16 @@
         "formulas": [],
         "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
         "reportUsage": "Report period assumptions and exact monthly hours used.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Heating-period climate data expected",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "MC001 monthly method context",
         "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
         "values": null
       },
       {
@@ -596,16 +690,16 @@
         "formulas": [],
         "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
         "reportUsage": "Report period assumptions and exact monthly hours used.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Cooling-period climate data expected",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "MC001 monthly method context",
         "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
         "values": null
       },
       {
@@ -624,11 +718,11 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Capitolul IV Tabel IV.1/IV.2 expected",
+        "table": "Capitolul IV Tabel IV.1/IV.2 implemented for temperatures; humidity/radiation still method-dependent",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "Mc001/6-2013 PDF text p. 18-20",
         "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "implementationStatus": "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
         "datasetStatus": "DATASET_UNAVAILABLE",
         "tbdId": "tbd.mc001_6_2013_cooling_ventilation_design_climate",
         "values": null
@@ -704,7 +798,7 @@
         "sourceLocation": null,
         "implementationStatus": "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -749,6 +843,12 @@
         "evidence": "MC001-2022 Anexa D, Monitorul Oficial p. 597, delegates climate parameters to Mc001/6-2013."
       },
       {
+        "from": "doc.mc001_6_2013",
+        "to": "doc.mc001_1_2006_annex_a9_6",
+        "relation": "delegates_monthly_solar_irradiation_to",
+        "evidence": "Mc001/6-2013 Capitolul II.3 states that monthly mean solar irradiance values for 30 localities are presented in Mc001/1-2006 Anexa nr. A9.6."
+      },
+      {
         "from": "doc.mc001_2022_annex_d",
         "to": "doc.sr_en_iso_52010_1",
         "relation": "delegates_climate_preprocessing_to",
@@ -785,9 +885,19 @@
         "relation": "delegates_dataset"
       },
       {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.monthly_exterior_temperature",
+        "relation": "defines_lookup"
+      },
+      {
         "from": "doc.mc001_2022_annex_d",
         "to": "concept.monthly_solar_irradiation",
         "relation": "delegates_dataset"
+      },
+      {
+        "from": "doc.mc001_1_2006_annex_a9_6",
+        "to": "concept.monthly_solar_irradiation",
+        "relation": "expected_source_for"
       },
       {
         "from": "doc.mc001_6_2013",
@@ -801,11 +911,16 @@
       },
       {
         "from": "doc.mc001_6_2013",
+        "to": "concept.locality_station_mapping",
+        "relation": "defines_lookup"
+      },
+      {
+        "from": "doc.mc001_1_2006_annex_a9_6",
         "to": "concept.direct_diffuse_solar_irradiation",
         "relation": "expected_source_for"
       },
       {
-        "from": "doc.mc001_6_2013",
+        "from": "doc.mc001_1_2006_annex_a9_6",
         "to": "concept.sky_radiation_inputs",
         "relation": "expected_source_for"
       },
@@ -879,9 +994,19 @@
         "title": "Mc001/6-2013 Partea a VI-a",
         "edition": "2013",
         "authority": "MDRAP / MDLPA",
-        "repositoryStatus": "official_public_pdf_identified_not_source_packed",
+        "repositoryStatus": "official_public_pdf_source_packed_partial_tables_ingested",
         "path": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
-        "canonicalUse": "Delegated Romanian climate-parameter source for locality/station data, monthly exterior parameters, solar irradiation and design days."
+        "canonicalUse": "Delegated Romanian climate-parameter source. P5B2 ingests Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; solar remains delegated to Mc001/1-2006 Anexa nr. A9.6."
+      },
+      {
+        "id": "doc.mc001_1_2006_annex_a9_6",
+        "type": "source_document",
+        "title": "Mc001/1-2006 Anexa nr. A9.6",
+        "edition": "2006",
+        "authority": "MDLPA / original MC001 methodology source chain",
+        "repositoryStatus": "not_present_exact_annex_required_for_monthly_solar_irradiation",
+        "path": null,
+        "canonicalUse": "Exact annex referenced by Mc001/6-2013 Capitolul II.3 for monthly solar irradiation values for 30 localities."
       },
       {
         "id": "doc.sr_en_iso_52010_1",
@@ -926,6 +1051,12 @@
         "to": "doc.mc001_6_2013",
         "relation": "delegates_climate_parameters_to",
         "evidence": "MC001-2022 Anexa D, Monitorul Oficial p. 597, delegates climate parameters to Mc001/6-2013."
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "doc.mc001_1_2006_annex_a9_6",
+        "relation": "delegates_monthly_solar_irradiation_to",
+        "evidence": "Mc001/6-2013 Capitolul II.3 states that monthly mean solar irradiance values for 30 localities are presented in Mc001/1-2006 Anexa nr. A9.6."
       },
       {
         "from": "doc.mc001_2022_annex_d",
@@ -1193,21 +1324,53 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Capitolul II/III/IV station tables expected",
+        "table": "Tabel II.1, II.2, III.1, III.2, IV.1, IV.2",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-        "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
-        "values": null
+        "page": "Mc001/6-2013 PDF text p. 11-20",
+        "sourceLocation": "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+          "stationCount": 42,
+          "checksum": "cb55e2b71c6c3b66bff178ffa9e917d531a5dccd4159d8b46c6769afdedf5258"
+        }
+      },
+      {
+        "id": "concept.locality_station_mapping",
+        "canonicalId": "concept.locality_station_mapping",
+        "type": "climate_concept",
+        "description": "Source-backed mapping from each MC001/6-2013 table locality row to its canonical climate-parameter station id.",
+        "units": "locality identifier -> station identifier",
+        "runtimeUsage": [
+          "station-level climate dataset selection"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show station/locality row provenance when a source-backed station dataset is used.",
+        "reportUsage": "Report station/locality source row and dataset version.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Tabel II.1 and matching station rows in II.2/III.1/III.2/IV.1/IV.2",
+        "figure": null,
+        "page": "Mc001/6-2013 PDF text p. 11-20",
+        "sourceLocation": "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+          "mappingCount": 42,
+          "checksum": "323953b2dab8194db7ea46f7ba77bd09bd92dee622977af9c53ec0dcdde46b3f"
+        }
       },
       {
         "id": "concept.locality_mapping",
         "canonicalId": "concept.locality_mapping",
         "type": "climate_concept",
-        "description": "Source-backed locality/county assignment to climate zone, wind zone and representative station.",
-        "units": "locality/county/station identifiers",
+        "description": "Source-backed locality/county assignment to climate zone and wind zone. This is separate from the available locality-to-station table rows.",
+        "units": "locality/county -> climate zone and wind zone",
         "runtimeUsage": [
           "automatic location-to-climate assignment"
         ],
@@ -1217,13 +1380,13 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Source-backed locality/station mapping tables expected",
+        "table": "not reproduced in the ingested MC001-2022 or Mc001/6-2013 tables",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not found in ingested source",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
+        "tbdId": "tbd.romanian_locality_climate_wind_zone_registry",
         "values": null
       },
       {
@@ -1266,14 +1429,18 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Capitolul III monthly climate tables expected",
+        "table": "Tabel II.1",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
-        "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
-        "values": null
+        "page": "Mc001/6-2013 PDF text p. 11-12",
+        "sourceLocation": "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+          "stationCount": 42,
+          "checksum": "63cf017a3a3a3746832e2bad6b3950ba7ffeda2da998d5563d95d021511c59d8"
+        }
       },
       {
         "id": "concept.monthly_solar_irradiation",
@@ -1287,16 +1454,16 @@
         "formulas": [],
         "notebookUsage": "Show selected orientation/plane irradiation or explicit certified solar gains for each month.",
         "reportUsage": "Report irradiation source, orientation mapping and monthly solar inputs.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Capitolul III solar tables expected",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa nr. A9.6",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not present in repository",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -1312,16 +1479,16 @@
         "formulas": [],
         "notebookUsage": "Show only when supplied by a source-backed dataset or required by a selected method.",
         "reportUsage": "Report component data and source when used.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Solar component tables expected if reproduced by delegated source",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa nr. A9.6 or the exact delegated solar-source table if component values are reproduced there",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not present in repository",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -1337,16 +1504,16 @@
         "formulas": [],
         "notebookUsage": "Show only when the selected source-backed method uses sky-radiation data.",
         "reportUsage": "Report sky-radiation data source and whether it affected current calculations.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Delegated climate/solar parameter tables expected",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa nr. A9.6 or exact delegated sky-radiation source if reproduced there",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "not present in repository",
         "sourceLocation": null,
         "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -1362,16 +1529,16 @@
         "formulas": [],
         "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
         "reportUsage": "Report period assumptions and exact monthly hours used.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Heating-period climate data expected",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "MC001 monthly method context",
         "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
         "values": null
       },
       {
@@ -1387,16 +1554,16 @@
         "formulas": [],
         "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
         "reportUsage": "Report period assumptions and exact monthly hours used.",
-        "canonicalSourceId": "doc.mc001_6_2013",
-        "sourceDocument": "doc.mc001_6_2013",
-        "sourceEdition": "2013",
-        "table": "Cooling-period climate data expected",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "MC001 monthly method context",
         "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
         "values": null
       },
       {
@@ -1415,11 +1582,11 @@
         "canonicalSourceId": "doc.mc001_6_2013",
         "sourceDocument": "doc.mc001_6_2013",
         "sourceEdition": "2013",
-        "table": "Capitolul IV Tabel IV.1/IV.2 expected",
+        "table": "Capitolul IV Tabel IV.1/IV.2 implemented for temperatures; humidity/radiation still method-dependent",
         "figure": null,
-        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "page": "Mc001/6-2013 PDF text p. 18-20",
         "sourceLocation": null,
-        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "implementationStatus": "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
         "datasetStatus": "DATASET_UNAVAILABLE",
         "tbdId": "tbd.mc001_6_2013_cooling_ventilation_design_climate",
         "values": null
@@ -1495,7 +1662,7 @@
         "sourceLocation": null,
         "implementationStatus": "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
         "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "tbdId": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
         "values": null
       },
       {
@@ -1571,13 +1738,13 @@
   },
   "canonicalTbdRegistry": [
     {
-      "id": "tbd.mc001_6_2013_locality_station_zone_registry",
-      "description": "Canonical Romanian locality/county/station assignment registry.",
-      "blockingDocument": "Mc001/6-2013 Partea a VI-a",
-      "requiredEdition": "2013",
+      "id": "tbd.romanian_locality_climate_wind_zone_registry",
+      "description": "Canonical Romanian locality/county assignment to climate zone and wind zone. This excludes the already implemented MC001/6-2013 locality-to-station row registry.",
+      "blockingDocument": "exact source not reproduced in MC001-2022 PDF or ingested MC001/6-2013 tables",
+      "requiredEdition": "to be identified from an explicit normative source chain",
       "affectedCalculations": [
-        "automatic climate assignment",
-        "design climate selection"
+        "automatic climate-zone assignment",
+        "automatic wind-zone assignment"
       ],
       "affectedRuntimeModules": [
         "src/climate-platform/romanianClimateZones.mjs"
@@ -1596,44 +1763,13 @@
         "save/reopen exact climate identity"
       ],
       "implementationPriority": "HIGH",
-      "estimatedImplementationScope": "Source-pack extraction, row-level QA, stable locality identifiers, county/station aliases and migration diagnostics."
+      "estimatedImplementationScope": "Acquire/source-pack the exact official mapping document, normalize locality identifiers, add county aliases and migration diagnostics."
     },
     {
-      "id": "tbd.mc001_6_2013_monthly_temperature_dataset",
-      "description": "Twelve-month exterior temperature and period/applicability dataset.",
-      "blockingDocument": "Mc001/6-2013 Partea a VI-a",
-      "requiredEdition": "2013",
-      "affectedCalculations": [
-        "chapter2_monthly_transmission_ventilation",
-        "monthly QHnd/QCnd",
-        "reference-building climate comparisons"
-      ],
-      "affectedRuntimeModules": [
-        "src/climate-platform/romanianClimateProfiles.mjs",
-        "src/building-platform/buildingDnaResolver.mjs"
-      ],
-      "affectedUi": [
-        "monthly climate inspector",
-        "calculation eligibility diagnostics"
-      ],
-      "affectedNotebook": [
-        "monthly Qtr/Qve substitutions"
-      ],
-      "affectedReport": [
-        "monthly climate table and source section"
-      ],
-      "affectedTests": [
-        "five-zone or station monthly fixtures",
-        "fingerprint sensitivity"
-      ],
-      "implementationPriority": "HIGH",
-      "estimatedImplementationScope": "Extract 12-month tables, normalize units, encode source references, add fixtures and end-to-end eligibility tests."
-    },
-    {
-      "id": "tbd.mc001_6_2013_monthly_solar_dataset",
+      "id": "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
       "description": "Monthly solar irradiation by required orientation or plane, including components when required.",
-      "blockingDocument": "Mc001/6-2013 Partea a VI-a",
-      "requiredEdition": "2013",
+      "blockingDocument": "Mc001/1-2006 Anexa nr. A9.6",
+      "requiredEdition": "2006",
       "affectedCalculations": [
         "chapter2_solar_gains",
         "solar-gain orientation diagnostics"
@@ -1742,15 +1878,14 @@
   "acquisitionPlanner": [
     {
       "documentId": "doc.mc001_6_2013",
-      "priority": "HIGH",
+      "priority": "MEDIUM",
       "designation": "Mc001/6-2013",
       "edition": "2013",
-      "whyRequired": "Romanian climate parameters: monthly temperature/humidity, solar irradiation, representative climate years, winter/summer design days",
+      "whyRequired": "Romanian climate parameters: monthly temperature/humidity and winter/summer design-day temperatures already source-packed for the visible tables; other referenced annexes may require separate acquisition",
       "runtimeVariablesUnlocked": [
         "locality mapping",
         "design temperature",
         "monthly temperature",
-        "solar irradiation",
         "cooling/ventilation design"
       ],
       "calculationsUnlocked": [
@@ -1762,8 +1897,27 @@
         "2.7.4",
         "Chapter 3 AHU/cooling/solar-dependent installation calculations when climate inputs are used"
       ],
+      "estimatedImplementationEffort": "MEDIUM: remaining non-ingested tables or hourly annexes require the same source-pack QA if product-scoped.",
+      "normativeReplacementOwnedByProject": "official MDLPA PDF source pack ingested for Tabel II.1, II.2, III.1 and IV.1"
+    },
+    {
+      "documentId": "doc.mc001_1_2006_annex_a9_6",
+      "priority": "HIGH",
+      "designation": "Mc001/1-2006 Anexa nr. A9.6",
+      "edition": "2006",
+      "whyRequired": "monthly solar irradiation values for 30 localities referenced by Mc001/6-2013 Capitolul II.3",
+      "runtimeVariablesUnlocked": [
+        "solar irradiation"
+      ],
+      "calculationsUnlocked": [
+        "2.7.1.1",
+        "2.7.1.2",
+        "2.7.3",
+        "2.7.4",
+        "Chapter 3 cooling and solar-affected installation chains when solar inputs are required"
+      ],
       "estimatedImplementationEffort": "HIGH: source-pack extraction, OCR/visual QA, row-level provenance, schema migration and five-domain runtime fixtures.",
-      "normativeReplacementOwnedByProject": "none currently source-packed; official MDLPA URL identified but values not ingested"
+      "normativeReplacementOwnedByProject": "none"
     },
     {
       "documentId": "doc.sr_en_iso_52010_1",
@@ -1797,11 +1951,11 @@
   "futureImplementationPackages": [
     {
       "packageId": "pkg.ro_locality_registry",
-      "title": "Romanian locality, county, station and zone registry",
+      "title": "Romanian locality, county, climate-zone and wind-zone registry",
       "dependsOnTbdIds": [
-        "tbd.mc001_6_2013_locality_station_zone_registry"
+        "tbd.romanian_locality_climate_wind_zone_registry"
       ],
-      "runtimeImpact": "automatic climate/wind zone and representative station assignment",
+      "runtimeImpact": "automatic climate/wind zone assignment; MC001/6-2013 locality-to-station rows are already available",
       "uiImpact": "searchable locality selector with source-backed assignment and explicit override handling",
       "notebookImpact": "assignment provenance and override reason",
       "reportImpact": "locality/station/zone mapping source section",
@@ -1813,27 +1967,10 @@
       "expectedPullRequestScope": "registry extraction, normalization, lookup service and UI binding"
     },
     {
-      "packageId": "pkg.ro_monthly_exterior_temperatures",
-      "title": "Monthly exterior temperature profiles",
-      "dependsOnTbdIds": [
-        "tbd.mc001_6_2013_monthly_temperature_dataset"
-      ],
-      "runtimeImpact": "source-backed Chapter 2 monthly Qtr/Qve and useful demand eligibility",
-      "uiImpact": "monthly climate values visible without synthetic fallback",
-      "notebookImpact": "monthly transfer substitutions use source-backed temperatures",
-      "reportImpact": "twelve-month climate table with station/source/version",
-      "expectedTests": [
-        "12-month completeness",
-        "zone/station profile selection",
-        "annual sum identity"
-      ],
-      "expectedPullRequestScope": "source-pack monthly temperature profiles and runtime eligibility upgrade"
-    },
-    {
       "packageId": "pkg.ro_monthly_solar_irradiation",
       "title": "Monthly solar irradiation profiles",
       "dependsOnTbdIds": [
-        "tbd.mc001_6_2013_monthly_solar_dataset"
+        "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
       ],
       "runtimeImpact": "source-backed solar gains and orientation diagnostics",
       "uiImpact": "orientation/plane irradiation selection and inspector values",
@@ -1907,20 +2044,21 @@
       "coveredClimateZones": 5,
       "totalWindZonesIdentifiedInMc001Forms": 4,
       "coveredWindZones": 4,
+      "sourceBackedLocalityStationMappings": 42,
       "totalSourceBackedLocalityMappings": 0,
       "exactLocalityProfiles": 0,
-      "stationMappings": 0,
+      "stationMappings": 42,
       "zoneMappings": 0,
       "unsupportedLocalities": "not_enumerated_in_mc001_pdf_body",
       "externalSourceDependencies": [
         {
           "dependencyId": "official_romanian_locality_to_climate_zone_mapping",
-          "status": "delegated_to_mc001_6_2013_not_source_packed",
+          "status": "not_reproduced_in_ingested_mc001_6_2013_tables",
           "requiredFor": "automatic county/locality climate-zone and wind-zone assignment"
         },
         {
           "dependencyId": "official_monthly_temperature_and_solar_climate_dataset",
-          "status": "delegated_to_mc001_6_2013_not_source_packed",
+          "status": "monthly_temperature_source_packed_solar_irradiation_external_to_mc001_1_2006_a9_6",
           "requiredFor": "normative monthly exterior temperature and irradiation profiles by location/zone"
         }
       ]
@@ -1935,6 +2073,7 @@
     ],
     "normativeDependencyIds": [
       "mc001_6_2013_climate_parameters_volume",
+      "mc001_1_2006_annex_a9_6_monthly_solar_irradiation",
       "sr_en_iso_52010_1_climate_preprocessing",
       "sr_1907_1_2_4839_6648_reviewed_not_direct_mc0012022_dependency"
     ]

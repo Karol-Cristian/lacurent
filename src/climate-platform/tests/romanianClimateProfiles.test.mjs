@@ -162,13 +162,17 @@ test("P5A climate-zone dependent requirements change when the selected zone chan
   );
 });
 
-test("P5A climate source inventory marks monthly normative climate values as unavailable, not defaulted", () => {
+test("P5B2 climate source inventory marks monthly temperature as available while solar remains external", () => {
   const monthly = ROMANIAN_CLIMATE_SOURCE_INVENTORY.find(
     entry => entry.inventoryId === "mc001_monthly_temperature_and_solar_climate_annex"
   );
-  assert.equal(monthly.status, "external_or_unavailable_dataset_dependency");
-  assert.equal(monthly.containsMonthlyClimateInputs, false);
-  assert.match(monthly.missingArtifact, /monthly exterior temperatures/);
+  assert.equal(monthly.status, "partially_implemented_temperature_available_solar_external");
+  assert.equal(monthly.containsMonthlyClimateInputs, true);
+  assert.equal(
+    monthly.implementedArtifacts.includes("Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities"),
+    true
+  );
+  assert.match(monthly.missingArtifact, /Anexa nr\. A9\.6/);
 });
 
 test("P5A separates climate zone wind zone locality monthly design and degree-day domains", () => {

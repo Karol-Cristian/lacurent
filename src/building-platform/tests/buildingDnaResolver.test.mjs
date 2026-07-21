@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   applyBuildingDnaOverride,
+  CLIMATE_RUNTIME_ELIGIBILITY_STATUSES,
   createBuildingDnaFromAdvancedModel,
   createBuildingDnaFromAssistedAnswers,
   createP1SeedGeometry,
-  getBuildingDnaDependencyTree
+  fingerprintBuildingDna,
+  getBuildingDnaDependencyTree,
+  resolveRomanianNormativeClimateSelection
 } from "../index.mjs";
 import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
@@ -178,6 +181,103 @@ test("advanced and assisted modes can represent equivalent engineering input", (
   assert.equal(advanced.buildingDna.userMode, "advanced");
   assert.equal(advanced.buildingDna.assemblies[0].assemblyId, assisted.assemblies[0].assemblyId);
   assert.equal(advanced.buildingDna.monthlyProfiles[0].heatGains.internalGains.amount, 120);
+});
+
+test("advanced Building DNA can carry source-backed Romanian normative climate provider metadata", () => {
+  const assisted = assistedDna().buildingDna;
+  const climateProviderResult = resolveRomanianNormativeClimateSelection({
+    stationId: "mc001_6_2013_bucuresti",
+    climateZone: "II",
+    windZone: "II"
+  });
+  const advanced = createBuildingDnaFromAdvancedModel({
+    source: { reference: "P5B2.test.normative_climate_provider" },
+    assemblySelections: assisted.typologyProposal.assemblySelections,
+    geometry: createP1SeedGeometry(),
+    monthlyProfiles: createP1SeedMonthlyProfiles(),
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    climateProviderResult,
+    building: {
+      buildingId: "p5b2-normative-climate-provider-house",
+      buildingType: "detached_house",
+      location: {
+        country: "RO",
+        localityId: "ro_bucuresti",
+        city: "Bucuresti"
+      }
+    }
+  });
+
+  assert.equal(advanced.status, "ready");
+  assert.equal(advanced.buildingDna.climateProvider.datasetVersion, climateProviderResult.datasetVersion);
+  assert.equal(advanced.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_bucuresti");
+  assert.equal(
+    advanced.buildingDna.climateProvider.datasets.monthlyExteriorTemperature.monthlyRecords[0].value,
+    -1.2
+  );
+  assert.equal(
+    advanced.buildingDna.climateProvider.diagnostics.some(item => item.code === "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"),
+    true
+  );
+  const eligibility = new Map(advanced.buildingDna.climateEligibility.map(item => [item.calculationId, item]));
+  assert.equal(
+    eligibility.get("chapter2_monthly_transmission_ventilation").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
+  );
+  assert.equal(
+    eligibility.get("chapter2_solar_gains").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
+  );
+
+  const repeated = createBuildingDnaFromAdvancedModel({
+    source: { reference: "P5B2.test.normative_climate_provider" },
+    assemblySelections: assisted.typologyProposal.assemblySelections,
+    geometry: createP1SeedGeometry(),
+    monthlyProfiles: createP1SeedMonthlyProfiles(),
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    climateProviderResult,
+    building: {
+      buildingId: "p5b2-normative-climate-provider-house",
+      buildingType: "detached_house",
+      location: {
+        country: "RO",
+        localityId: "ro_bucuresti",
+        city: "Bucuresti"
+      }
+    }
+  });
+  const cluj = createBuildingDnaFromAdvancedModel({
+    source: { reference: "P5B2.test.normative_climate_provider" },
+    assemblySelections: assisted.typologyProposal.assemblySelections,
+    geometry: createP1SeedGeometry(),
+    monthlyProfiles: createP1SeedMonthlyProfiles(),
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    climateProviderResult: resolveRomanianNormativeClimateSelection({
+      stationId: "mc001_6_2013_cluj_napoca",
+      climateZone: "II",
+      windZone: "II"
+    }),
+    building: {
+      buildingId: "p5b2-normative-climate-provider-house",
+      buildingType: "detached_house",
+      location: {
+        country: "RO",
+        localityId: "ro_cluj_napoca",
+        city: "Cluj-Napoca"
+      }
+    }
+  });
+  assert.equal(fingerprintBuildingDna(advanced.buildingDna), fingerprintBuildingDna(repeated.buildingDna));
+  assert.notEqual(fingerprintBuildingDna(advanced.buildingDna), fingerprintBuildingDna(cluj.buildingDna));
 });
 
 test("resolver blocks missing geometry before physics can run", () => {

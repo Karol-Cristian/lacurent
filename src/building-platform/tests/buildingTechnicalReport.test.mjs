@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   buildBuildingKnowledgePlatformFromAssistedAnswers,
-  buildBuildingTechnicalWorkspace
+  buildBuildingTechnicalWorkspace,
+  resolveRomanianNormativeClimateSelection
 } from "../index.mjs";
 import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
@@ -10,6 +11,17 @@ const EPSILON = 1e-9;
 
 function close(actual, expected, tolerance = EPSILON) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
+}
+
+function assistedAnswersWithNormativeClimateProvider() {
+  return {
+    ...assistedAnswers(),
+    climateProviderResult: resolveRomanianNormativeClimateSelection({
+      stationId: "mc001_6_2013_bucuresti",
+      climateZone: "II",
+      windZone: "II"
+    })
+  };
 }
 
 function test(name, fn) {
@@ -167,6 +179,45 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   );
   assert.equal(workspace.engineeringNotebook.sections.length >= 20, true);
   assert.equal(Object.prototype.hasOwnProperty.call(workspace.engineeringNotebook, "variables"), false);
+});
+
+await test("technical report and notebook expose source-backed Romanian climate provider values", () => {
+  const workspace = buildBuildingTechnicalWorkspace(
+    buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswersWithNormativeClimateProvider())
+  );
+  const climateChapter = workspace.report.chapters.find(
+    chapter => chapter.chapterId === "amplasare_si_clima"
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Statie normativa MC001/6-2013" &&
+      row.value === "Bucuresti"
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Temperaturi exterioare lunare normative" &&
+      row.value.includes("ianuarie -1,20 degC") &&
+      row.value.includes("iulie 23,40 degC")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Iradiere solara lunara normativa" &&
+      row.value.includes("Anexa nr. A9.6")
+    ),
+    true
+  );
+
+  const notebookText = workspace.report.engineeringNotebook.sections
+    .flatMap(section => section.lines)
+    .map(line => line.text)
+    .join("\n");
+  assert.equal(notebookText.includes("Statie_MC001_6_2013 := Bucuresti"), true);
+  assert.equal(notebookText.includes("theta_e_lunar_MC001_6_2013 := ianuarie -1,20 degC"), true);
+  assert.equal(notebookText.includes("I_solar_lunar := indisponibil"), true);
 });
 
 await test("technical report contains the required compact P3G notebook chapters and formula views", () => {
