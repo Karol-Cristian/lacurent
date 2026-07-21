@@ -1,0 +1,1952 @@
+{
+  "schema": "romanian_normative_climate_knowledge_graph_v1",
+  "generatedBy": "tools/generate-normative-knowledge-graph.mjs",
+  "registryVersion": "mc001_2022_climate_zones_p5a_v1",
+  "runtimeBehaviorChanged": false,
+  "sourceDocuments": [
+    {
+      "id": "doc.mc001_2022",
+      "title": "MC001-2022",
+      "edition": "2022",
+      "authority": "Monitorul Oficial / MDLPA",
+      "repositoryStatus": "present",
+      "path": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "canonicalUse": "Primary source for MC001 Chapter 2 and Chapter 3 climate-related references bundled in the repository."
+    },
+    {
+      "id": "doc.mc001_2022_annex_d",
+      "title": "MC001-2022 Anexa D",
+      "edition": "2022",
+      "authority": "Monitorul Oficial / MDLPA",
+      "repositoryStatus": "present_inside_mc001_2022_pdf",
+      "path": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "canonicalUse": "Direct MC001-2022 delegation point for external climate-parameter datasets and preprocessing rules."
+    },
+    {
+      "id": "doc.mc001_6_2013",
+      "title": "Mc001/6-2013 Partea a VI-a",
+      "edition": "2013",
+      "authority": "MDRAP / MDLPA",
+      "repositoryStatus": "official_public_pdf_identified_not_source_packed",
+      "path": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
+      "canonicalUse": "Delegated Romanian climate-parameter source for locality/station data, monthly exterior parameters, solar irradiation and design days."
+    },
+    {
+      "id": "doc.sr_en_iso_52010_1",
+      "title": "SR EN ISO 52010-1",
+      "edition": "not bundled in repository",
+      "authority": "ASRO / CEN / ISO",
+      "repositoryStatus": "not_present_paid_or_controlled_standard",
+      "path": null,
+      "canonicalUse": "Delegated EPB climate preprocessing algorithm source referenced by MC001-2022 Anexa D."
+    },
+    {
+      "id": "doc.user_supplied_certified_climate_dataset_contract",
+      "title": "LaCurent certified climate-data import contract",
+      "edition": "p5a_v1",
+      "authority": "Project technical data supplied by authorized professional",
+      "repositoryStatus": "implemented_contract",
+      "path": "src/climate-platform/romanianClimateNormativeDependencies.mjs",
+      "canonicalUse": "Strict project-input boundary for certified twelve-month climate data while official source-packed datasets remain unavailable."
+    },
+    {
+      "id": "doc.sr_1907_sr_4839_sr_6648_reviewed",
+      "title": "SR 1907-1/2, SR 4839, SR 6648-1/2 reviewed climate standards",
+      "edition": "various",
+      "authority": "ASRO",
+      "repositoryStatus": "reviewed_not_direct_mc001_2022_dependency",
+      "path": null,
+      "canonicalUse": "Reviewed because they were named as possible climate sources; not acquired or treated as runtime dependencies without an explicit MC001 or Mc001/6-2013 source chain."
+    }
+  ],
+  "sourceInventories": [
+    {
+      "inventoryId": "mc001_climate_zone_identifiers_i_v",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022, Figura 2.1 plus Chapter 2.2, Tabel 2.5, 2.8, 2.10a, 2.10b",
+      "status": "implemented_lookup",
+      "runtimeUse": "Building DNA climate-zone identity, winter design-temperature lookup and zone-dependent requirement lookups",
+      "containsMonthlyClimateInputs": false
+    },
+    {
+      "inventoryId": "mc001_figure_2_1_winter_design_temperature_by_zone",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022, Figura 2.1, pagina Monitorul Oficial 43",
+      "status": "implemented_lookup",
+      "runtimeUse": "heating exterior design-temperature identity by climate zone I-V",
+      "containsMonthlyClimateInputs": false
+    },
+    {
+      "inventoryId": "mc001_wind_zone_identifiers_i_iv",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022 certificate/audit forms list wind zones I-IV",
+      "status": "represented_as_input",
+      "runtimeUse": "canonical location/climate metadata; no Chapter 2/3 formula in current runtime consumes it",
+      "containsMonthlyClimateInputs": false
+    },
+    {
+      "inventoryId": "mc001_table_2_5_residential_gn_by_climate_zone",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022, Tabel 2.5, pagina PDF text 62",
+      "status": "implemented_lookup",
+      "runtimeUse": "zone-dependent solar-factor recommendation diagnostic",
+      "containsMonthlyClimateInputs": false
+    },
+    {
+      "inventoryId": "mc001_table_2_8_non_residential_gn_by_climate_zone",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022, Tabel 2.8, pagina PDF text 64",
+      "status": "implemented_lookup",
+      "runtimeUse": "zone-dependent solar-factor recommendation diagnostic",
+      "containsMonthlyClimateInputs": false
+    },
+    {
+      "inventoryId": "mc001_table_2_10a_nzeb_limits_by_climate_zone",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022, Tabel 2.10a, pagini PDF text 73-74",
+      "status": "implemented_lookup_not_active_energy_certificate",
+      "runtimeUse": "threshold registry only; product does not calculate primary energy or CO2 certificate outputs",
+      "containsMonthlyClimateInputs": false
+    },
+    {
+      "inventoryId": "mc001_table_2_10b_renovation_limits_by_climate_zone",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022, Tabel 2.10b, pagina PDF text 74",
+      "status": "implemented_lookup_not_active_energy_certificate",
+      "runtimeUse": "threshold registry only; product does not calculate primary energy or CO2 certificate outputs",
+      "containsMonthlyClimateInputs": false
+    },
+    {
+      "inventoryId": "mc001_monthly_temperature_and_solar_climate_annex",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceLocation": "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
+      "status": "external_or_unavailable_dataset_dependency",
+      "runtimeUse": "required for normative monthly exterior temperatures and orientation-dependent irradiation; not silently defaulted",
+      "containsMonthlyClimateInputs": false,
+      "missingArtifact": "source-backed table of monthly exterior temperatures and solar irradiation by locality/zone/orientation"
+    }
+  ],
+  "dataDomains": [
+    {
+      "domainId": "climate_zone_classification",
+      "label": "Climate-zone classification",
+      "zones": [
+        "I",
+        "II",
+        "III",
+        "IV",
+        "V"
+      ],
+      "status": "NORMATIVE_DATASET",
+      "purpose": "zone-dependent MC001 limits and winter design-temperature identity",
+      "sourceReferences": [
+        "MC001-2022, Figura 2.1",
+        "MC001-2022, Tabel 2.5",
+        "MC001-2022, Tabel 2.8",
+        "MC001-2022, Tabel 2.10a",
+        "MC001-2022, Tabel 2.10b"
+      ]
+    },
+    {
+      "domainId": "wind_zone_classification",
+      "label": "Wind-zone classification",
+      "zones": [
+        "I",
+        "II",
+        "III",
+        "IV"
+      ],
+      "status": "NORMATIVE_DATASET",
+      "purpose": "canonical metadata and future wind-dependent climate/runtime inputs",
+      "sourceReferences": [
+        "MC001-2022 certificate and audit forms list wind zones I-IV"
+      ],
+      "currentRuntimeParameters": []
+    },
+    {
+      "domainId": "locality_assignment",
+      "label": "Locality assignment",
+      "status": "DATASET_UNAVAILABLE",
+      "purpose": "automatic locality/county to climate-zone and wind-zone assignment",
+      "requiredResolution": "locality or representative station",
+      "delegatedSource": "Mc001/6-2013 and its source-backed station/locality tables",
+      "presentInRepository": false
+    },
+    {
+      "domainId": "monthly_energy_climate_data",
+      "label": "Monthly energy climate data",
+      "status": "DATASET_UNAVAILABLE",
+      "purpose": "monthly transmission, ventilation, heat gains and useful demand",
+      "requiredResolution": "twelve monthly exterior temperatures plus solar irradiation by required orientation/plane",
+      "delegatedSource": "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; preprocessing rules are in SR EN ISO 52010-1",
+      "presentInRepository": false
+    },
+    {
+      "domainId": "heating_design_climate",
+      "label": "Heating design climate",
+      "status": "NORMATIVE_DATASET",
+      "purpose": "winter design-temperature identity by climate zone",
+      "requiredResolution": "climate zone for zone value; locality/station for exact project design data",
+      "implementedDataset": "mc001_2022_figure_2_1_winter_design_temperature_by_zone"
+    },
+    {
+      "domainId": "cooling_ventilation_design_climate",
+      "label": "Cooling and ventilation design climate",
+      "status": "DATASET_UNAVAILABLE",
+      "purpose": "cooling/ventilation design parameters and humidity conditions",
+      "requiredResolution": "station/locality design day and associated humidity/radiation fields",
+      "delegatedSource": "Mc001/6-2013, Capitolul IV"
+    },
+    {
+      "domainId": "degree_day_data",
+      "label": "Degree-day data",
+      "status": "DATASET_UNAVAILABLE",
+      "purpose": "only for degree-day calculation paths; the current production runtime uses monthly MC001 Chapter 2/3 chains",
+      "requiredResolution": "locality/station, base temperature and period",
+      "directMc0012022Requirement": false
+    }
+  ],
+  "knowledgeGraph": {
+    "nodes": [
+      {
+        "id": "doc.mc001_2022",
+        "type": "source_document",
+        "title": "MC001-2022",
+        "edition": "2022",
+        "authority": "Monitorul Oficial / MDLPA",
+        "repositoryStatus": "present",
+        "path": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+        "canonicalUse": "Primary source for MC001 Chapter 2 and Chapter 3 climate-related references bundled in the repository."
+      },
+      {
+        "id": "doc.mc001_2022_annex_d",
+        "type": "source_document",
+        "title": "MC001-2022 Anexa D",
+        "edition": "2022",
+        "authority": "Monitorul Oficial / MDLPA",
+        "repositoryStatus": "present_inside_mc001_2022_pdf",
+        "path": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+        "canonicalUse": "Direct MC001-2022 delegation point for external climate-parameter datasets and preprocessing rules."
+      },
+      {
+        "id": "doc.mc001_6_2013",
+        "type": "source_document",
+        "title": "Mc001/6-2013 Partea a VI-a",
+        "edition": "2013",
+        "authority": "MDRAP / MDLPA",
+        "repositoryStatus": "official_public_pdf_identified_not_source_packed",
+        "path": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
+        "canonicalUse": "Delegated Romanian climate-parameter source for locality/station data, monthly exterior parameters, solar irradiation and design days."
+      },
+      {
+        "id": "doc.sr_en_iso_52010_1",
+        "type": "source_document",
+        "title": "SR EN ISO 52010-1",
+        "edition": "not bundled in repository",
+        "authority": "ASRO / CEN / ISO",
+        "repositoryStatus": "not_present_paid_or_controlled_standard",
+        "path": null,
+        "canonicalUse": "Delegated EPB climate preprocessing algorithm source referenced by MC001-2022 Anexa D."
+      },
+      {
+        "id": "doc.user_supplied_certified_climate_dataset_contract",
+        "type": "source_document",
+        "title": "LaCurent certified climate-data import contract",
+        "edition": "p5a_v1",
+        "authority": "Project technical data supplied by authorized professional",
+        "repositoryStatus": "implemented_contract",
+        "path": "src/climate-platform/romanianClimateNormativeDependencies.mjs",
+        "canonicalUse": "Strict project-input boundary for certified twelve-month climate data while official source-packed datasets remain unavailable."
+      },
+      {
+        "id": "doc.sr_1907_sr_4839_sr_6648_reviewed",
+        "type": "source_document",
+        "title": "SR 1907-1/2, SR 4839, SR 6648-1/2 reviewed climate standards",
+        "edition": "various",
+        "authority": "ASRO",
+        "repositoryStatus": "reviewed_not_direct_mc001_2022_dependency",
+        "path": null,
+        "canonicalUse": "Reviewed because they were named as possible climate sources; not acquired or treated as runtime dependencies without an explicit MC001 or Mc001/6-2013 source chain."
+      },
+      {
+        "id": "concept.climate_zone",
+        "canonicalId": "concept.climate_zone",
+        "type": "climate_concept",
+        "description": "Romanian climatic zone identifier I-V selected for a project.",
+        "units": "enum:I|II|III|IV|V",
+        "runtimeUsage": [
+          "climate_zone_threshold_lookup",
+          "winter_design_temperature_lookup",
+          "Building DNA climate identity and fingerprint"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show selected zone, assignment origin, dataset version and affected lookups.",
+        "reportUsage": "Report selected zone and zone-dependent values used by the calculation.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": "Tabel 2.5; Tabel 2.8; Tabel 2.10a; Tabel 2.10b",
+        "figure": "Figura 2.1",
+        "page": "Monitorul Oficial p. 43; PDF text p. 62, 64, 73-74",
+        "sourceLocation": "MC001-2022 Figura 2.1 plus Chapter 2.2 climate-zone dependent tables.",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ]
+      },
+      {
+        "id": "concept.wind_zone",
+        "canonicalId": "concept.wind_zone",
+        "type": "climate_concept",
+        "description": "Romanian wind zone identifier I-IV represented as location/climate metadata.",
+        "units": "enum:I|II|III|IV",
+        "runtimeUsage": [
+          "Building DNA climate metadata and future wind-dependent runtime inputs"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show selected wind zone when supplied; currently no Chapter 2/3 relation consumes a wind coefficient.",
+        "reportUsage": "Report selected wind zone as metadata and state whether it affected current calculations.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
+        "figure": null,
+        "page": "MC001-2022 certificate and audit forms",
+        "sourceLocation": "MC001-2022 certificate/audit forms list wind zones I-IV.",
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": [
+          "I",
+          "II",
+          "III",
+          "IV"
+        ]
+      },
+      {
+        "id": "concept.winter_design_temperature",
+        "canonicalId": "concept.winter_design_temperature",
+        "type": "climate_concept",
+        "description": "Exterior winter design temperature associated with climate zone I-V.",
+        "units": "degC",
+        "runtimeUsage": [
+          "winter_design_temperature_lookup",
+          "heating design diagnostics"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show the lookup theta_e from selected zone with MC001 Figure 2.1 reference.",
+        "reportUsage": "Report heating design temperature and source figure.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
+        "figure": "Figura 2.1",
+        "page": "Monitorul Oficial p. 43",
+        "sourceLocation": "MC001-2022, Figura 2.1, pagina Monitorul Oficial 43, legenda hartii de zonare climatica",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "I": -12,
+          "II": -15,
+          "III": -18,
+          "IV": -21,
+          "V": -24
+        }
+      },
+      {
+        "id": "concept.zone_dependent_thresholds",
+        "canonicalId": "concept.zone_dependent_thresholds",
+        "type": "climate_concept",
+        "description": "Zone-dependent MC001 tables for solar-factor recommendations and NZEB/renovation primary-energy and CO2 limits.",
+        "units": "dimensionless; kWh/(m2*an); kg/(m2*an)",
+        "runtimeUsage": [
+          "climate_zone_threshold_lookup",
+          "diagnostic lookups"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only thresholds relevant to the selected project context; no certificate output is created.",
+        "reportUsage": "Report zone-dependent diagnostics without claiming EPC class, primary energy or CO2 calculation.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": "Tabel 2.5; Tabel 2.8; Tabel 2.10a; Tabel 2.10b",
+        "figure": null,
+        "page": "PDF text p. 62, 64, 73-74",
+        "sourceLocation": null,
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": null
+      },
+      {
+        "id": "concept.climatic_station",
+        "canonicalId": "concept.climatic_station",
+        "type": "climate_concept",
+        "description": "Representative climatic station used to source locality-level or station-level climate parameters.",
+        "units": "station identifier",
+        "runtimeUsage": [
+          "monthly climate dataset selection",
+          "design climate selection",
+          "certified climate provenance"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show station identifier and provenance when a source-backed or certified dataset is used.",
+        "reportUsage": "Report station/location metadata for the climate inputs used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul II/III/IV station tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
+        "values": null
+      },
+      {
+        "id": "concept.locality_mapping",
+        "canonicalId": "concept.locality_mapping",
+        "type": "climate_concept",
+        "description": "Source-backed locality/county assignment to climate zone, wind zone and representative station.",
+        "units": "locality/county/station identifiers",
+        "runtimeUsage": [
+          "automatic location-to-climate assignment"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show automatic or manual assignment origin and warn when mapping is unavailable.",
+        "reportUsage": "Report assignment origin, override reason and missing mapping diagnostics.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Source-backed locality/station mapping tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
+        "values": null
+      },
+      {
+        "id": "concept.month_duration",
+        "canonicalId": "concept.month_duration",
+        "type": "climate_concept",
+        "description": "Twelve ordered calendar month durations used by monthly energy calculations.",
+        "units": "d; h",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation",
+          "monthly aggregation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show days/hours next to each monthly climate row.",
+        "reportUsage": "Report calendar month duration used by monthly calculations.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
+        "figure": null,
+        "page": "MC001 monthly method context",
+        "sourceLocation": null,
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": null
+      },
+      {
+        "id": "concept.monthly_exterior_temperature",
+        "canonicalId": "concept.monthly_exterior_temperature",
+        "type": "climate_concept",
+        "description": "Twelve monthly exterior temperatures required by monthly Chapter 2 transfer calculations.",
+        "units": "degC",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show the exact monthly exterior temperatures used by Qtr and Qve.",
+        "reportUsage": "Report the twelve monthly values with source, station/location and dataset version.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul III monthly climate tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.monthly_solar_irradiation",
+        "canonicalId": "concept.monthly_solar_irradiation",
+        "type": "climate_concept",
+        "description": "Monthly solar irradiation or explicit solar-gain inputs used for transparent and opaque gains.",
+        "units": "kWh/m2; kWh",
+        "runtimeUsage": [
+          "chapter2_solar_gains"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show selected orientation/plane irradiation or explicit certified solar gains for each month.",
+        "reportUsage": "Report irradiation source, orientation mapping and monthly solar inputs.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul III solar tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.direct_diffuse_solar_irradiation",
+        "canonicalId": "concept.direct_diffuse_solar_irradiation",
+        "type": "climate_concept",
+        "description": "Direct and diffuse solar components when a downstream method requires component-level radiation.",
+        "units": "kWh/m2",
+        "runtimeUsage": [
+          "solar preprocessing",
+          "future source-backed orientation/plane processing"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only when supplied by a source-backed dataset or required by a selected method.",
+        "reportUsage": "Report component data and source when used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Solar component tables expected if reproduced by delegated source",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.sky_radiation_inputs",
+        "canonicalId": "concept.sky_radiation_inputs",
+        "type": "climate_concept",
+        "description": "Sky-radiation inputs or correction terms when required by a selected solar/thermal exchange method.",
+        "units": "method dependent",
+        "runtimeUsage": [
+          "solar preprocessing",
+          "radiative exchange diagnostics"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only when the selected source-backed method uses sky-radiation data.",
+        "reportUsage": "Report sky-radiation data source and whether it affected current calculations.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Delegated climate/solar parameter tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.heating_period_duration",
+        "canonicalId": "concept.heating_period_duration",
+        "type": "climate_concept",
+        "description": "Heating-period duration or monthly applicability information used by heating calculations.",
+        "units": "h; d; boolean applicability",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation",
+          "monthly heating aggregation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
+        "reportUsage": "Report period assumptions and exact monthly hours used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Heating-period climate data expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.cooling_period_duration",
+        "canonicalId": "concept.cooling_period_duration",
+        "type": "climate_concept",
+        "description": "Cooling-period duration or monthly applicability information used by cooling calculations.",
+        "units": "h; d; boolean applicability",
+        "runtimeUsage": [
+          "chapter2 monthly cooling aggregation",
+          "Chapter 3 cooling-system operation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
+        "reportUsage": "Report period assumptions and exact monthly hours used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Cooling-period climate data expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.cooling_ventilation_design_climate",
+        "canonicalId": "concept.cooling_ventilation_design_climate",
+        "type": "climate_concept",
+        "description": "Exterior design temperature and humidity parameters for cooling and ventilation/AHU design conditions.",
+        "units": "degC; relative humidity or humidity ratio",
+        "runtimeUsage": [
+          "cooling_ventilation_design_conditions",
+          "AHU/cooling design diagnostics"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show explicit station design conditions when present; otherwise show the blocking diagnostic.",
+        "reportUsage": "Report missing or supplied cooling/ventilation design climate source.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul IV Tabel IV.1/IV.2 expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_cooling_ventilation_design_climate",
+        "values": null
+      },
+      {
+        "id": "concept.degree_days",
+        "canonicalId": "concept.degree_days",
+        "type": "climate_concept",
+        "description": "Degree-day values for explicit degree-day calculation paths.",
+        "units": "K*d; K*h",
+        "runtimeUsage": [
+          "degree_day_method"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only when a degree-day method is explicitly selected and source-backed.",
+        "reportUsage": "Report degree-day base temperature, period and source when used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Degree-day dataset expected if selected by runtime method",
+        "figure": null,
+        "page": "Delegated climate source chain; not required by current monthly Chapter 2/3 runtime",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_degree_days",
+        "values": null
+      },
+      {
+        "id": "concept.climate_preprocessing_rules",
+        "canonicalId": "concept.climate_preprocessing_rules",
+        "type": "climate_concept",
+        "description": "Rules for preprocessing external climate data before EPB use, including validation and transformation of source climate sequences.",
+        "units": "algorithmic rules",
+        "runtimeUsage": [
+          "future normative climate ingestion QA",
+          "source-pack preprocessing"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show preprocessing source only when source-packed data require transformed climate values.",
+        "reportUsage": "Report preprocessing standard and dataset checksum when used.",
+        "canonicalSourceId": "doc.sr_en_iso_52010_1",
+        "sourceDocument": "doc.sr_en_iso_52010_1",
+        "sourceEdition": "not bundled in repository",
+        "table": "exact clauses require owned standard",
+        "figure": null,
+        "page": null,
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_STANDARD_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.sr_en_iso_52010_1_climate_preprocessing",
+        "values": null
+      },
+      {
+        "id": "concept.reference_building_climate",
+        "canonicalId": "concept.reference_building_climate",
+        "type": "climate_concept",
+        "description": "Climate inputs required to evaluate reference-building or requirement comparisons that depend on location/zone.",
+        "units": "mixed climate and threshold units",
+        "runtimeUsage": [
+          "reference-building diagnostics",
+          "zone-dependent threshold lookup"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show available zone thresholds separately from unavailable monthly reference climate data.",
+        "reportUsage": "Report which reference-building climate values are available and which are external.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": "Tabel 2.10a; Tabel 2.10b plus delegated climate datasets",
+        "figure": null,
+        "page": "PDF text p. 73-74 and Anexa D p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.user_supplied_certified_climate_dataset",
+        "canonicalId": "concept.user_supplied_certified_climate_dataset",
+        "type": "climate_concept",
+        "description": "Strict explicit project-input boundary for a certified twelve-month profile while bundled normative monthly datasets are unavailable.",
+        "units": "degC; h; kWh; kWh/m2",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation",
+          "chapter2_solar_gains",
+          "Building DNA versioning",
+          "analysis fingerprint"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show source title, authority, edition, checksum, station and all monthly values.",
+        "reportUsage": "Report the dataset as user-supplied certified data, not as bundled normative registry data.",
+        "canonicalSourceId": "doc.user_supplied_certified_climate_dataset_contract",
+        "sourceDocument": "doc.user_supplied_certified_climate_dataset_contract",
+        "sourceEdition": "p5a_v1",
+        "table": null,
+        "figure": null,
+        "page": "src/climate-platform/romanianClimateNormativeDependencies.mjs",
+        "sourceLocation": null,
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "USER_SUPPLIED_CERTIFIED_DATASET",
+        "tbdId": null,
+        "values": null
+      }
+    ],
+    "edges": [
+      {
+        "from": "doc.mc001_2022",
+        "to": "doc.mc001_2022_annex_d",
+        "relation": "contains",
+        "evidence": "MC001-2022 includes Anexa D in the official PDF."
+      },
+      {
+        "from": "doc.mc001_2022_annex_d",
+        "to": "doc.mc001_6_2013",
+        "relation": "delegates_climate_parameters_to",
+        "evidence": "MC001-2022 Anexa D, Monitorul Oficial p. 597, delegates climate parameters to Mc001/6-2013."
+      },
+      {
+        "from": "doc.mc001_2022_annex_d",
+        "to": "doc.sr_en_iso_52010_1",
+        "relation": "delegates_climate_preprocessing_to",
+        "evidence": "MC001-2022 Tabel 1.3 row 13 and Anexa D reference SR EN ISO 52010-1 for climate preprocessing."
+      },
+      {
+        "from": "doc.mc001_2022",
+        "to": "concept.climate_zone",
+        "relation": "defines_or_uses"
+      },
+      {
+        "from": "doc.mc001_2022",
+        "to": "concept.wind_zone",
+        "relation": "lists"
+      },
+      {
+        "from": "doc.mc001_2022",
+        "to": "concept.winter_design_temperature",
+        "relation": "defines_lookup"
+      },
+      {
+        "from": "doc.mc001_2022",
+        "to": "concept.zone_dependent_thresholds",
+        "relation": "defines_lookup_tables"
+      },
+      {
+        "from": "doc.mc001_2022",
+        "to": "concept.month_duration",
+        "relation": "monthly_method_uses"
+      },
+      {
+        "from": "doc.mc001_2022_annex_d",
+        "to": "concept.monthly_exterior_temperature",
+        "relation": "delegates_dataset"
+      },
+      {
+        "from": "doc.mc001_2022_annex_d",
+        "to": "concept.monthly_solar_irradiation",
+        "relation": "delegates_dataset"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.climatic_station",
+        "relation": "expected_source_for"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.locality_mapping",
+        "relation": "expected_source_for"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.direct_diffuse_solar_irradiation",
+        "relation": "expected_source_for"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.sky_radiation_inputs",
+        "relation": "expected_source_for"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.heating_period_duration",
+        "relation": "expected_source_for"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.cooling_period_duration",
+        "relation": "expected_source_for"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.cooling_ventilation_design_climate",
+        "relation": "expected_source_for"
+      },
+      {
+        "from": "doc.mc001_6_2013",
+        "to": "concept.degree_days",
+        "relation": "possible_source_if_runtime_scope_selects_degree_day_method"
+      },
+      {
+        "from": "doc.sr_en_iso_52010_1",
+        "to": "concept.climate_preprocessing_rules",
+        "relation": "defines_external_algorithm"
+      },
+      {
+        "from": "doc.user_supplied_certified_climate_dataset_contract",
+        "to": "concept.user_supplied_certified_climate_dataset",
+        "relation": "defines_input_contract"
+      },
+      {
+        "from": "concept.zone_dependent_thresholds",
+        "to": "concept.reference_building_climate",
+        "relation": "partially_satisfies"
+      },
+      {
+        "from": "concept.monthly_exterior_temperature",
+        "to": "concept.reference_building_climate",
+        "relation": "required_for_full_monthly_reference_climate"
+      }
+    ]
+  },
+  "normativeDependencyGraph": {
+    "nodes": [
+      {
+        "id": "doc.mc001_2022",
+        "type": "source_document",
+        "title": "MC001-2022",
+        "edition": "2022",
+        "authority": "Monitorul Oficial / MDLPA",
+        "repositoryStatus": "present",
+        "path": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+        "canonicalUse": "Primary source for MC001 Chapter 2 and Chapter 3 climate-related references bundled in the repository."
+      },
+      {
+        "id": "doc.mc001_2022_annex_d",
+        "type": "source_document",
+        "title": "MC001-2022 Anexa D",
+        "edition": "2022",
+        "authority": "Monitorul Oficial / MDLPA",
+        "repositoryStatus": "present_inside_mc001_2022_pdf",
+        "path": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+        "canonicalUse": "Direct MC001-2022 delegation point for external climate-parameter datasets and preprocessing rules."
+      },
+      {
+        "id": "doc.mc001_6_2013",
+        "type": "source_document",
+        "title": "Mc001/6-2013 Partea a VI-a",
+        "edition": "2013",
+        "authority": "MDRAP / MDLPA",
+        "repositoryStatus": "official_public_pdf_identified_not_source_packed",
+        "path": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
+        "canonicalUse": "Delegated Romanian climate-parameter source for locality/station data, monthly exterior parameters, solar irradiation and design days."
+      },
+      {
+        "id": "doc.sr_en_iso_52010_1",
+        "type": "source_document",
+        "title": "SR EN ISO 52010-1",
+        "edition": "not bundled in repository",
+        "authority": "ASRO / CEN / ISO",
+        "repositoryStatus": "not_present_paid_or_controlled_standard",
+        "path": null,
+        "canonicalUse": "Delegated EPB climate preprocessing algorithm source referenced by MC001-2022 Anexa D."
+      },
+      {
+        "id": "doc.user_supplied_certified_climate_dataset_contract",
+        "type": "source_document",
+        "title": "LaCurent certified climate-data import contract",
+        "edition": "p5a_v1",
+        "authority": "Project technical data supplied by authorized professional",
+        "repositoryStatus": "implemented_contract",
+        "path": "src/climate-platform/romanianClimateNormativeDependencies.mjs",
+        "canonicalUse": "Strict project-input boundary for certified twelve-month climate data while official source-packed datasets remain unavailable."
+      },
+      {
+        "id": "doc.sr_1907_sr_4839_sr_6648_reviewed",
+        "type": "source_document",
+        "title": "SR 1907-1/2, SR 4839, SR 6648-1/2 reviewed climate standards",
+        "edition": "various",
+        "authority": "ASRO",
+        "repositoryStatus": "reviewed_not_direct_mc001_2022_dependency",
+        "path": null,
+        "canonicalUse": "Reviewed because they were named as possible climate sources; not acquired or treated as runtime dependencies without an explicit MC001 or Mc001/6-2013 source chain."
+      }
+    ],
+    "edges": [
+      {
+        "from": "doc.mc001_2022",
+        "to": "doc.mc001_2022_annex_d",
+        "relation": "contains",
+        "evidence": "MC001-2022 includes Anexa D in the official PDF."
+      },
+      {
+        "from": "doc.mc001_2022_annex_d",
+        "to": "doc.mc001_6_2013",
+        "relation": "delegates_climate_parameters_to",
+        "evidence": "MC001-2022 Anexa D, Monitorul Oficial p. 597, delegates climate parameters to Mc001/6-2013."
+      },
+      {
+        "from": "doc.mc001_2022_annex_d",
+        "to": "doc.sr_en_iso_52010_1",
+        "relation": "delegates_climate_preprocessing_to",
+        "evidence": "MC001-2022 Tabel 1.3 row 13 and Anexa D reference SR EN ISO 52010-1 for climate preprocessing."
+      }
+    ],
+    "reviewedNonDependencies": [
+      {
+        "documentId": "doc.sr_1907_sr_4839_sr_6648_reviewed",
+        "reason": "No direct MC001-2022 reference found in the official PDF; revisit only if Mc001/6-2013 extraction records an explicit chain."
+      }
+    ]
+  },
+  "runtimeDependencyGraph": {
+    "nodes": [
+      {
+        "id": "runtime.climate_zone_threshold_lookup",
+        "type": "runtime_calculation",
+        "label": "MC001 zone-dependent thresholds and solar-factor recommendations",
+        "requires": [
+          "concept.climate_zone"
+        ],
+        "requirementKeys": [
+          "climateZone"
+        ],
+        "outputs": [
+          "solar_factor_recommendation",
+          "nzeb_limit_lookup",
+          "renovation_limit_lookup"
+        ],
+        "eligibleWhen": "valid climate zone I-V is selected",
+        "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED",
+        "currentRuntimeUse": "active_when_inputs_are_available"
+      },
+      {
+        "id": "runtime.winter_design_temperature_lookup",
+        "type": "runtime_calculation",
+        "label": "Winter exterior design temperature by climate zone",
+        "requires": [
+          "concept.climate_zone"
+        ],
+        "requirementKeys": [
+          "climateZone"
+        ],
+        "outputs": [
+          "heating_design_temperature"
+        ],
+        "eligibleWhen": "valid climate zone I-V is selected",
+        "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED",
+        "currentRuntimeUse": "active_when_inputs_are_available"
+      },
+      {
+        "id": "runtime.chapter2_monthly_transmission_ventilation",
+        "type": "runtime_calculation",
+        "label": "Chapter 2 monthly transmission and ventilation transfer",
+        "requires": [
+          "concept.monthly_exterior_temperature",
+          "concept.month_duration"
+        ],
+        "requirementKeys": [
+          "monthlyExteriorTemperatures",
+          "monthDurations"
+        ],
+        "outputs": [
+          "Qtr",
+          "Qve",
+          "QHnd",
+          "QCnd"
+        ],
+        "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+        "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+        "currentRuntimeUse": "active_when_inputs_are_available"
+      },
+      {
+        "id": "runtime.chapter2_solar_gains",
+        "type": "runtime_calculation",
+        "label": "Chapter 2 solar gains",
+        "requires": [
+          "concept.monthly_solar_irradiation",
+          "concept.user_supplied_certified_climate_dataset"
+        ],
+        "requirementKeys": [
+          "monthlySolarIrradiationOrExplicitSolarGains"
+        ],
+        "outputs": [
+          "Qsol",
+          "QHgn",
+          "QCgn",
+          "QHnd",
+          "QCnd"
+        ],
+        "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+        "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+        "currentRuntimeUse": "active_when_inputs_are_available"
+      },
+      {
+        "id": "runtime.cooling_ventilation_design_conditions",
+        "type": "runtime_calculation",
+        "label": "Cooling and ventilation design climate",
+        "requires": [
+          "concept.cooling_ventilation_design_climate"
+        ],
+        "requirementKeys": [
+          "coolingDesignTemperature",
+          "coolingDesignHumidity"
+        ],
+        "outputs": [
+          "design_diagnostics"
+        ],
+        "eligibleWhen": "source-backed station/locality design data are present",
+        "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED",
+        "currentRuntimeUse": "active_when_inputs_are_available"
+      },
+      {
+        "id": "runtime.degree_day_method",
+        "type": "runtime_calculation",
+        "label": "Degree-day method",
+        "requires": [
+          "concept.degree_days"
+        ],
+        "requirementKeys": [
+          "degreeDays",
+          "baseTemperature"
+        ],
+        "outputs": [
+          "degree_day_result"
+        ],
+        "eligibleWhen": "only if a degree-day calculation path is explicitly selected and sourced",
+        "missingDiagnostic": "DEGREE_DAY_DATA_REQUIRED",
+        "currentRuntimeUse": "not_required_by_current_monthly_chapter2_3_runtime"
+      },
+      {
+        "id": "concept.climate_zone",
+        "canonicalId": "concept.climate_zone",
+        "type": "climate_concept",
+        "description": "Romanian climatic zone identifier I-V selected for a project.",
+        "units": "enum:I|II|III|IV|V",
+        "runtimeUsage": [
+          "climate_zone_threshold_lookup",
+          "winter_design_temperature_lookup",
+          "Building DNA climate identity and fingerprint"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show selected zone, assignment origin, dataset version and affected lookups.",
+        "reportUsage": "Report selected zone and zone-dependent values used by the calculation.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": "Tabel 2.5; Tabel 2.8; Tabel 2.10a; Tabel 2.10b",
+        "figure": "Figura 2.1",
+        "page": "Monitorul Oficial p. 43; PDF text p. 62, 64, 73-74",
+        "sourceLocation": "MC001-2022 Figura 2.1 plus Chapter 2.2 climate-zone dependent tables.",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ]
+      },
+      {
+        "id": "concept.wind_zone",
+        "canonicalId": "concept.wind_zone",
+        "type": "climate_concept",
+        "description": "Romanian wind zone identifier I-IV represented as location/climate metadata.",
+        "units": "enum:I|II|III|IV",
+        "runtimeUsage": [
+          "Building DNA climate metadata and future wind-dependent runtime inputs"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show selected wind zone when supplied; currently no Chapter 2/3 relation consumes a wind coefficient.",
+        "reportUsage": "Report selected wind zone as metadata and state whether it affected current calculations.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
+        "figure": null,
+        "page": "MC001-2022 certificate and audit forms",
+        "sourceLocation": "MC001-2022 certificate/audit forms list wind zones I-IV.",
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": [
+          "I",
+          "II",
+          "III",
+          "IV"
+        ]
+      },
+      {
+        "id": "concept.winter_design_temperature",
+        "canonicalId": "concept.winter_design_temperature",
+        "type": "climate_concept",
+        "description": "Exterior winter design temperature associated with climate zone I-V.",
+        "units": "degC",
+        "runtimeUsage": [
+          "winter_design_temperature_lookup",
+          "heating design diagnostics"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show the lookup theta_e from selected zone with MC001 Figure 2.1 reference.",
+        "reportUsage": "Report heating design temperature and source figure.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
+        "figure": "Figura 2.1",
+        "page": "Monitorul Oficial p. 43",
+        "sourceLocation": "MC001-2022, Figura 2.1, pagina Monitorul Oficial 43, legenda hartii de zonare climatica",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "I": -12,
+          "II": -15,
+          "III": -18,
+          "IV": -21,
+          "V": -24
+        }
+      },
+      {
+        "id": "concept.zone_dependent_thresholds",
+        "canonicalId": "concept.zone_dependent_thresholds",
+        "type": "climate_concept",
+        "description": "Zone-dependent MC001 tables for solar-factor recommendations and NZEB/renovation primary-energy and CO2 limits.",
+        "units": "dimensionless; kWh/(m2*an); kg/(m2*an)",
+        "runtimeUsage": [
+          "climate_zone_threshold_lookup",
+          "diagnostic lookups"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only thresholds relevant to the selected project context; no certificate output is created.",
+        "reportUsage": "Report zone-dependent diagnostics without claiming EPC class, primary energy or CO2 calculation.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": "Tabel 2.5; Tabel 2.8; Tabel 2.10a; Tabel 2.10b",
+        "figure": null,
+        "page": "PDF text p. 62, 64, 73-74",
+        "sourceLocation": null,
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": null
+      },
+      {
+        "id": "concept.climatic_station",
+        "canonicalId": "concept.climatic_station",
+        "type": "climate_concept",
+        "description": "Representative climatic station used to source locality-level or station-level climate parameters.",
+        "units": "station identifier",
+        "runtimeUsage": [
+          "monthly climate dataset selection",
+          "design climate selection",
+          "certified climate provenance"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show station identifier and provenance when a source-backed or certified dataset is used.",
+        "reportUsage": "Report station/location metadata for the climate inputs used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul II/III/IV station tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
+        "values": null
+      },
+      {
+        "id": "concept.locality_mapping",
+        "canonicalId": "concept.locality_mapping",
+        "type": "climate_concept",
+        "description": "Source-backed locality/county assignment to climate zone, wind zone and representative station.",
+        "units": "locality/county/station identifiers",
+        "runtimeUsage": [
+          "automatic location-to-climate assignment"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show automatic or manual assignment origin and warn when mapping is unavailable.",
+        "reportUsage": "Report assignment origin, override reason and missing mapping diagnostics.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Source-backed locality/station mapping tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_locality_station_zone_registry",
+        "values": null
+      },
+      {
+        "id": "concept.month_duration",
+        "canonicalId": "concept.month_duration",
+        "type": "climate_concept",
+        "description": "Twelve ordered calendar month durations used by monthly energy calculations.",
+        "units": "d; h",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation",
+          "monthly aggregation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show days/hours next to each monthly climate row.",
+        "reportUsage": "Report calendar month duration used by monthly calculations.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
+        "figure": null,
+        "page": "MC001 monthly method context",
+        "sourceLocation": null,
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": null
+      },
+      {
+        "id": "concept.monthly_exterior_temperature",
+        "canonicalId": "concept.monthly_exterior_temperature",
+        "type": "climate_concept",
+        "description": "Twelve monthly exterior temperatures required by monthly Chapter 2 transfer calculations.",
+        "units": "degC",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show the exact monthly exterior temperatures used by Qtr and Qve.",
+        "reportUsage": "Report the twelve monthly values with source, station/location and dataset version.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul III monthly climate tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.monthly_solar_irradiation",
+        "canonicalId": "concept.monthly_solar_irradiation",
+        "type": "climate_concept",
+        "description": "Monthly solar irradiation or explicit solar-gain inputs used for transparent and opaque gains.",
+        "units": "kWh/m2; kWh",
+        "runtimeUsage": [
+          "chapter2_solar_gains"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show selected orientation/plane irradiation or explicit certified solar gains for each month.",
+        "reportUsage": "Report irradiation source, orientation mapping and monthly solar inputs.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul III solar tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.direct_diffuse_solar_irradiation",
+        "canonicalId": "concept.direct_diffuse_solar_irradiation",
+        "type": "climate_concept",
+        "description": "Direct and diffuse solar components when a downstream method requires component-level radiation.",
+        "units": "kWh/m2",
+        "runtimeUsage": [
+          "solar preprocessing",
+          "future source-backed orientation/plane processing"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only when supplied by a source-backed dataset or required by a selected method.",
+        "reportUsage": "Report component data and source when used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Solar component tables expected if reproduced by delegated source",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.sky_radiation_inputs",
+        "canonicalId": "concept.sky_radiation_inputs",
+        "type": "climate_concept",
+        "description": "Sky-radiation inputs or correction terms when required by a selected solar/thermal exchange method.",
+        "units": "method dependent",
+        "runtimeUsage": [
+          "solar preprocessing",
+          "radiative exchange diagnostics"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only when the selected source-backed method uses sky-radiation data.",
+        "reportUsage": "Report sky-radiation data source and whether it affected current calculations.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Delegated climate/solar parameter tables expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_solar_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.heating_period_duration",
+        "canonicalId": "concept.heating_period_duration",
+        "type": "climate_concept",
+        "description": "Heating-period duration or monthly applicability information used by heating calculations.",
+        "units": "h; d; boolean applicability",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation",
+          "monthly heating aggregation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
+        "reportUsage": "Report period assumptions and exact monthly hours used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Heating-period climate data expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.cooling_period_duration",
+        "canonicalId": "concept.cooling_period_duration",
+        "type": "climate_concept",
+        "description": "Cooling-period duration or monthly applicability information used by cooling calculations.",
+        "units": "h; d; boolean applicability",
+        "runtimeUsage": [
+          "chapter2 monthly cooling aggregation",
+          "Chapter 3 cooling-system operation"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show monthly applicability and duration when supplied by climate profile.",
+        "reportUsage": "Report period assumptions and exact monthly hours used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Cooling-period climate data expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.cooling_ventilation_design_climate",
+        "canonicalId": "concept.cooling_ventilation_design_climate",
+        "type": "climate_concept",
+        "description": "Exterior design temperature and humidity parameters for cooling and ventilation/AHU design conditions.",
+        "units": "degC; relative humidity or humidity ratio",
+        "runtimeUsage": [
+          "cooling_ventilation_design_conditions",
+          "AHU/cooling design diagnostics"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show explicit station design conditions when present; otherwise show the blocking diagnostic.",
+        "reportUsage": "Report missing or supplied cooling/ventilation design climate source.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Capitolul IV Tabel IV.1/IV.2 expected",
+        "figure": null,
+        "page": "Delegated by MC001-2022 Anexa D, Monitorul Oficial p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_cooling_ventilation_design_climate",
+        "values": null
+      },
+      {
+        "id": "concept.degree_days",
+        "canonicalId": "concept.degree_days",
+        "type": "climate_concept",
+        "description": "Degree-day values for explicit degree-day calculation paths.",
+        "units": "K*d; K*h",
+        "runtimeUsage": [
+          "degree_day_method"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show only when a degree-day method is explicitly selected and source-backed.",
+        "reportUsage": "Report degree-day base temperature, period and source when used.",
+        "canonicalSourceId": "doc.mc001_6_2013",
+        "sourceDocument": "doc.mc001_6_2013",
+        "sourceEdition": "2013",
+        "table": "Degree-day dataset expected if selected by runtime method",
+        "figure": null,
+        "page": "Delegated climate source chain; not required by current monthly Chapter 2/3 runtime",
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_DATA_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_degree_days",
+        "values": null
+      },
+      {
+        "id": "concept.climate_preprocessing_rules",
+        "canonicalId": "concept.climate_preprocessing_rules",
+        "type": "climate_concept",
+        "description": "Rules for preprocessing external climate data before EPB use, including validation and transformation of source climate sequences.",
+        "units": "algorithmic rules",
+        "runtimeUsage": [
+          "future normative climate ingestion QA",
+          "source-pack preprocessing"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show preprocessing source only when source-packed data require transformed climate values.",
+        "reportUsage": "Report preprocessing standard and dataset checksum when used.",
+        "canonicalSourceId": "doc.sr_en_iso_52010_1",
+        "sourceDocument": "doc.sr_en_iso_52010_1",
+        "sourceEdition": "not bundled in repository",
+        "table": "exact clauses require owned standard",
+        "figure": null,
+        "page": null,
+        "sourceLocation": null,
+        "implementationStatus": "EXTERNAL_STANDARD_DEPENDENCY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.sr_en_iso_52010_1_climate_preprocessing",
+        "values": null
+      },
+      {
+        "id": "concept.reference_building_climate",
+        "canonicalId": "concept.reference_building_climate",
+        "type": "climate_concept",
+        "description": "Climate inputs required to evaluate reference-building or requirement comparisons that depend on location/zone.",
+        "units": "mixed climate and threshold units",
+        "runtimeUsage": [
+          "reference-building diagnostics",
+          "zone-dependent threshold lookup"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show available zone thresholds separately from unavailable monthly reference climate data.",
+        "reportUsage": "Report which reference-building climate values are available and which are external.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": "Tabel 2.10a; Tabel 2.10b plus delegated climate datasets",
+        "figure": null,
+        "page": "PDF text p. 73-74 and Anexa D p. 597",
+        "sourceLocation": null,
+        "implementationStatus": "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
+        "datasetStatus": "DATASET_UNAVAILABLE",
+        "tbdId": "tbd.mc001_6_2013_monthly_temperature_dataset",
+        "values": null
+      },
+      {
+        "id": "concept.user_supplied_certified_climate_dataset",
+        "canonicalId": "concept.user_supplied_certified_climate_dataset",
+        "type": "climate_concept",
+        "description": "Strict explicit project-input boundary for a certified twelve-month profile while bundled normative monthly datasets are unavailable.",
+        "units": "degC; h; kWh; kWh/m2",
+        "runtimeUsage": [
+          "chapter2_monthly_transmission_ventilation",
+          "chapter2_solar_gains",
+          "Building DNA versioning",
+          "analysis fingerprint"
+        ],
+        "formulas": [],
+        "notebookUsage": "Show source title, authority, edition, checksum, station and all monthly values.",
+        "reportUsage": "Report the dataset as user-supplied certified data, not as bundled normative registry data.",
+        "canonicalSourceId": "doc.user_supplied_certified_climate_dataset_contract",
+        "sourceDocument": "doc.user_supplied_certified_climate_dataset_contract",
+        "sourceEdition": "p5a_v1",
+        "table": null,
+        "figure": null,
+        "page": "src/climate-platform/romanianClimateNormativeDependencies.mjs",
+        "sourceLocation": null,
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "USER_SUPPLIED_CERTIFIED_DATASET",
+        "tbdId": null,
+        "values": null
+      }
+    ],
+    "edges": [
+      {
+        "from": "runtime.climate_zone_threshold_lookup",
+        "to": "concept.climate_zone",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.winter_design_temperature_lookup",
+        "to": "concept.climate_zone",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.chapter2_monthly_transmission_ventilation",
+        "to": "concept.monthly_exterior_temperature",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.chapter2_monthly_transmission_ventilation",
+        "to": "concept.month_duration",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.chapter2_solar_gains",
+        "to": "concept.monthly_solar_irradiation",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.chapter2_solar_gains",
+        "to": "concept.user_supplied_certified_climate_dataset",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.cooling_ventilation_design_conditions",
+        "to": "concept.cooling_ventilation_design_climate",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.degree_day_method",
+        "to": "concept.degree_days",
+        "relation": "requires_climate_concept"
+      }
+    ]
+  },
+  "canonicalTbdRegistry": [
+    {
+      "id": "tbd.mc001_6_2013_locality_station_zone_registry",
+      "description": "Canonical Romanian locality/county/station assignment registry.",
+      "blockingDocument": "Mc001/6-2013 Partea a VI-a",
+      "requiredEdition": "2013",
+      "affectedCalculations": [
+        "automatic climate assignment",
+        "design climate selection"
+      ],
+      "affectedRuntimeModules": [
+        "src/climate-platform/romanianClimateZones.mjs"
+      ],
+      "affectedUi": [
+        "Amplasare si clima searchable locality selector"
+      ],
+      "affectedNotebook": [
+        "climate metadata and assignment provenance"
+      ],
+      "affectedReport": [
+        "climate location and assignment source"
+      ],
+      "affectedTests": [
+        "locality-to-zone mapping",
+        "save/reopen exact climate identity"
+      ],
+      "implementationPriority": "HIGH",
+      "estimatedImplementationScope": "Source-pack extraction, row-level QA, stable locality identifiers, county/station aliases and migration diagnostics."
+    },
+    {
+      "id": "tbd.mc001_6_2013_monthly_temperature_dataset",
+      "description": "Twelve-month exterior temperature and period/applicability dataset.",
+      "blockingDocument": "Mc001/6-2013 Partea a VI-a",
+      "requiredEdition": "2013",
+      "affectedCalculations": [
+        "chapter2_monthly_transmission_ventilation",
+        "monthly QHnd/QCnd",
+        "reference-building climate comparisons"
+      ],
+      "affectedRuntimeModules": [
+        "src/climate-platform/romanianClimateProfiles.mjs",
+        "src/building-platform/buildingDnaResolver.mjs"
+      ],
+      "affectedUi": [
+        "monthly climate inspector",
+        "calculation eligibility diagnostics"
+      ],
+      "affectedNotebook": [
+        "monthly Qtr/Qve substitutions"
+      ],
+      "affectedReport": [
+        "monthly climate table and source section"
+      ],
+      "affectedTests": [
+        "five-zone or station monthly fixtures",
+        "fingerprint sensitivity"
+      ],
+      "implementationPriority": "HIGH",
+      "estimatedImplementationScope": "Extract 12-month tables, normalize units, encode source references, add fixtures and end-to-end eligibility tests."
+    },
+    {
+      "id": "tbd.mc001_6_2013_monthly_solar_dataset",
+      "description": "Monthly solar irradiation by required orientation or plane, including components when required.",
+      "blockingDocument": "Mc001/6-2013 Partea a VI-a",
+      "requiredEdition": "2013",
+      "affectedCalculations": [
+        "chapter2_solar_gains",
+        "solar-gain orientation diagnostics"
+      ],
+      "affectedRuntimeModules": [
+        "src/climate-platform/romanianClimateProfiles.mjs"
+      ],
+      "affectedUi": [
+        "orientation-dependent irradiation display"
+      ],
+      "affectedNotebook": [
+        "monthly transparent and opaque solar-gain substitutions"
+      ],
+      "affectedReport": [
+        "solar irradiation source and orientation tables"
+      ],
+      "affectedTests": [
+        "orientation direction",
+        "monthly solar completeness",
+        "no synthetic fallback"
+      ],
+      "implementationPriority": "HIGH",
+      "estimatedImplementationScope": "Extract irradiation tables, validate orientation/plane keys, add table lookups and source-backed solar fixtures."
+    },
+    {
+      "id": "tbd.mc001_6_2013_cooling_ventilation_design_climate",
+      "description": "Cooling and ventilation design-day temperature and humidity parameters.",
+      "blockingDocument": "Mc001/6-2013 Partea a VI-a",
+      "requiredEdition": "2013",
+      "affectedCalculations": [
+        "cooling_ventilation_design_conditions",
+        "AHU/cooling diagnostics"
+      ],
+      "affectedRuntimeModules": [
+        "src/climate-platform/romanianClimateNormativeDependencies.mjs"
+      ],
+      "affectedUi": [
+        "cooling/ventilation design climate status"
+      ],
+      "affectedNotebook": [
+        "cooling and AHU climate input traceability"
+      ],
+      "affectedReport": [
+        "cooling/ventilation climate dependency section"
+      ],
+      "affectedTests": [
+        "design climate availability",
+        "invalid missing humidity rejection"
+      ],
+      "implementationPriority": "MEDIUM",
+      "estimatedImplementationScope": "Extract station design tables, encode humidity units and bind to cooling/AHU eligibility gates."
+    },
+    {
+      "id": "tbd.mc001_6_2013_degree_days",
+      "description": "Degree-day dataset for optional degree-day paths.",
+      "blockingDocument": "Mc001/6-2013 Partea a VI-a or explicit source chain identified during extraction",
+      "requiredEdition": "2013 unless the source chain identifies a newer controlling edition",
+      "affectedCalculations": [
+        "degree_day_method"
+      ],
+      "affectedRuntimeModules": [
+        "future degree-day module only"
+      ],
+      "affectedUi": [
+        "degree-day method selection if product scope enables it"
+      ],
+      "affectedNotebook": [
+        "degree-day calculation notes if selected"
+      ],
+      "affectedReport": [
+        "degree-day source disclosure if selected"
+      ],
+      "affectedTests": [
+        "base-temperature and period fixtures"
+      ],
+      "implementationPriority": "LOW",
+      "estimatedImplementationScope": "Acquire source chain only if a degree-day runtime path is product-scoped; no current monthly runtime dependency."
+    },
+    {
+      "id": "tbd.sr_en_iso_52010_1_climate_preprocessing",
+      "description": "Normative climate-data preprocessing algorithms delegated to SR EN ISO 52010-1.",
+      "blockingDocument": "SR EN ISO 52010-1",
+      "requiredEdition": "owned edition referenced by MC001 implementation policy",
+      "affectedCalculations": [
+        "source-backed climate data ingestion QA"
+      ],
+      "affectedRuntimeModules": [
+        "future source-pack ingestion pipeline"
+      ],
+      "affectedUi": [
+        "dataset validation provenance"
+      ],
+      "affectedNotebook": [
+        "preprocessing reference where transformed values are used"
+      ],
+      "affectedReport": [
+        "preprocessing standard and checksum metadata"
+      ],
+      "affectedTests": [
+        "preprocessing golden cases from licensed source"
+      ],
+      "implementationPriority": "MEDIUM",
+      "estimatedImplementationScope": "Implement only after licensed standard is supplied; add algorithm tests and source-to-code coverage."
+    }
+  ],
+  "acquisitionPlanner": [
+    {
+      "documentId": "doc.mc001_6_2013",
+      "priority": "HIGH",
+      "designation": "Mc001/6-2013",
+      "edition": "2013",
+      "whyRequired": "Romanian climate parameters: monthly temperature/humidity, solar irradiation, representative climate years, winter/summer design days",
+      "runtimeVariablesUnlocked": [
+        "locality mapping",
+        "design temperature",
+        "monthly temperature",
+        "solar irradiation",
+        "cooling/ventilation design"
+      ],
+      "calculationsUnlocked": [
+        "2.6.2.1",
+        "2.6.2.3",
+        "2.7.1.1",
+        "2.7.1.2",
+        "2.7.3",
+        "2.7.4",
+        "Chapter 3 AHU/cooling/solar-dependent installation calculations when climate inputs are used"
+      ],
+      "estimatedImplementationEffort": "HIGH: source-pack extraction, OCR/visual QA, row-level provenance, schema migration and five-domain runtime fixtures.",
+      "normativeReplacementOwnedByProject": "none currently source-packed; official MDLPA URL identified but values not ingested"
+    },
+    {
+      "documentId": "doc.sr_en_iso_52010_1",
+      "priority": "MEDIUM",
+      "designation": "SR EN ISO 52010-1",
+      "edition": "not bundled",
+      "whyRequired": "preprocessing rules for climate data, not Romanian station values",
+      "runtimeVariablesUnlocked": [
+        "monthly temperature",
+        "solar irradiation",
+        "cooling/ventilation design"
+      ],
+      "calculationsUnlocked": [
+        "validated preprocessing of external climate sequences before use in monthly/hourly EPB calculations"
+      ],
+      "estimatedImplementationEffort": "MEDIUM: licensed algorithm extraction, preprocessing tests and ingestion pipeline integration.",
+      "normativeReplacementOwnedByProject": "none"
+    },
+    {
+      "documentId": "doc.sr_1907_sr_4839_sr_6648_reviewed",
+      "priority": "LOW",
+      "designation": "SR 1907-1/2, SR 4839, SR 6648-1/2",
+      "edition": "various",
+      "whyRequired": "Not required by the current MC001-2022 climate source chain; keep reviewed until Mc001/6-2013 extraction proves a direct dependency.",
+      "runtimeVariablesUnlocked": [],
+      "calculationsUnlocked": [],
+      "estimatedImplementationEffort": "LOW until a direct source-chain dependency is identified; do not acquire for current runtime solely by title similarity.",
+      "normativeReplacementOwnedByProject": "not applicable"
+    }
+  ],
+  "futureImplementationPackages": [
+    {
+      "packageId": "pkg.ro_locality_registry",
+      "title": "Romanian locality, county, station and zone registry",
+      "dependsOnTbdIds": [
+        "tbd.mc001_6_2013_locality_station_zone_registry"
+      ],
+      "runtimeImpact": "automatic climate/wind zone and representative station assignment",
+      "uiImpact": "searchable locality selector with source-backed assignment and explicit override handling",
+      "notebookImpact": "assignment provenance and override reason",
+      "reportImpact": "locality/station/zone mapping source section",
+      "expectedTests": [
+        "locality lookup",
+        "override diagnostics",
+        "fingerprint sensitivity"
+      ],
+      "expectedPullRequestScope": "registry extraction, normalization, lookup service and UI binding"
+    },
+    {
+      "packageId": "pkg.ro_monthly_exterior_temperatures",
+      "title": "Monthly exterior temperature profiles",
+      "dependsOnTbdIds": [
+        "tbd.mc001_6_2013_monthly_temperature_dataset"
+      ],
+      "runtimeImpact": "source-backed Chapter 2 monthly Qtr/Qve and useful demand eligibility",
+      "uiImpact": "monthly climate values visible without synthetic fallback",
+      "notebookImpact": "monthly transfer substitutions use source-backed temperatures",
+      "reportImpact": "twelve-month climate table with station/source/version",
+      "expectedTests": [
+        "12-month completeness",
+        "zone/station profile selection",
+        "annual sum identity"
+      ],
+      "expectedPullRequestScope": "source-pack monthly temperature profiles and runtime eligibility upgrade"
+    },
+    {
+      "packageId": "pkg.ro_monthly_solar_irradiation",
+      "title": "Monthly solar irradiation profiles",
+      "dependsOnTbdIds": [
+        "tbd.mc001_6_2013_monthly_solar_dataset"
+      ],
+      "runtimeImpact": "source-backed solar gains and orientation diagnostics",
+      "uiImpact": "orientation/plane irradiation selection and inspector values",
+      "notebookImpact": "transparent/opaque solar gain substitutions",
+      "reportImpact": "orientation-dependent solar table",
+      "expectedTests": [
+        "orientation coverage",
+        "invalid orientation rejection",
+        "solar gain direction"
+      ],
+      "expectedPullRequestScope": "solar source-pack extraction, profile schema extension and fixtures"
+    },
+    {
+      "packageId": "pkg.ro_cooling_ventilation_design_climate",
+      "title": "Cooling and ventilation design climate data",
+      "dependsOnTbdIds": [
+        "tbd.mc001_6_2013_cooling_ventilation_design_climate"
+      ],
+      "runtimeImpact": "cooling/AHU design-condition diagnostics and future system sizing branches",
+      "uiImpact": "cooling/ventilation design climate status and missing fields",
+      "notebookImpact": "design-condition substitutions where used",
+      "reportImpact": "cooling and ventilation climate source disclosure",
+      "expectedTests": [
+        "temperature/humidity units",
+        "missing design data diagnostics"
+      ],
+      "expectedPullRequestScope": "extract station design tables and bind to Chapter 3 eligibility"
+    },
+    {
+      "packageId": "pkg.ro_degree_days",
+      "title": "Degree-day datasets",
+      "dependsOnTbdIds": [
+        "tbd.mc001_6_2013_degree_days"
+      ],
+      "runtimeImpact": "degree-day method only when explicitly product-scoped",
+      "uiImpact": "degree-day source selection if enabled",
+      "notebookImpact": "degree-day equations if selected",
+      "reportImpact": "degree-day base temperature and source",
+      "expectedTests": [
+        "base-temperature validation",
+        "period validation"
+      ],
+      "expectedPullRequestScope": "future optional method package, not needed by current monthly runtime"
+    },
+    {
+      "packageId": "pkg.sr_en_iso_52010_1_preprocessing",
+      "title": "SR EN ISO 52010-1 climate preprocessing",
+      "dependsOnTbdIds": [
+        "tbd.sr_en_iso_52010_1_climate_preprocessing"
+      ],
+      "runtimeImpact": "source-backed preprocessing during climate dataset ingestion",
+      "uiImpact": "preprocessing status and checksum metadata",
+      "notebookImpact": "preprocessing reference where transformed values enter formulas",
+      "reportImpact": "preprocessing standard and dataset checksum",
+      "expectedTests": [
+        "licensed golden cases",
+        "unit conversion boundaries",
+        "input rejection"
+      ],
+      "expectedPullRequestScope": "licensed-standard algorithm implementation and ingestion validation"
+    }
+  ],
+  "synchronization": {
+    "p5aDependencyRegister": "validation-reference/romanian-climate-normative-dependencies.json",
+    "p5aSubchapterCoverage": "validation-reference/mc001-subchapter-coverage.json",
+    "climateCoverage": {
+      "coverageId": "romanian_climate_zone_coverage_p5a_v1",
+      "datasetVersion": "mc001_2022_climate_zones_p5a_v1",
+      "country": "RO",
+      "totalClimateZones": 5,
+      "coveredClimateZones": 5,
+      "totalWindZonesIdentifiedInMc001Forms": 4,
+      "coveredWindZones": 4,
+      "totalSourceBackedLocalityMappings": 0,
+      "exactLocalityProfiles": 0,
+      "stationMappings": 0,
+      "zoneMappings": 0,
+      "unsupportedLocalities": "not_enumerated_in_mc001_pdf_body",
+      "externalSourceDependencies": [
+        {
+          "dependencyId": "official_romanian_locality_to_climate_zone_mapping",
+          "status": "delegated_to_mc001_6_2013_not_source_packed",
+          "requiredFor": "automatic county/locality climate-zone and wind-zone assignment"
+        },
+        {
+          "dependencyId": "official_monthly_temperature_and_solar_climate_dataset",
+          "status": "delegated_to_mc001_6_2013_not_source_packed",
+          "requiredFor": "normative monthly exterior temperature and irradiation profiles by location/zone"
+        }
+      ]
+    },
+    "requirementMatrixIds": [
+      "climate_zone_threshold_lookup",
+      "winter_design_temperature_lookup",
+      "chapter2_monthly_transmission_ventilation",
+      "chapter2_solar_gains",
+      "cooling_ventilation_design_conditions",
+      "degree_day_method"
+    ],
+    "normativeDependencyIds": [
+      "mc001_6_2013_climate_parameters_volume",
+      "sr_en_iso_52010_1_climate_preprocessing",
+      "sr_1907_1_2_4839_6648_reviewed_not_direct_mc0012022_dependency"
+    ]
+  },
+  "validationInvariants": {
+    "everyRuntimeClimateDependencyRepresented": true,
+    "everyClimateNodeHasOneCanonicalSource": true,
+    "everyUnresolvedNodeHasOneTbd": true,
+    "noDuplicateNodes": true,
+    "dependencyGraphsAreAcyclic": true,
+    "auditReferencesSynchronized": true,
+    "runtimeReferencesSynchronized": true,
+    "noRuntimeBehaviorChanges": true
+  }
+}
