@@ -83,12 +83,12 @@
       "externalSourceDependencies": [
         {
           "dependencyId": "official_romanian_locality_to_climate_zone_mapping",
-          "status": "not_available_in_repository",
-          "requiredFor": "automatic county/locality climate-zone assignment"
+          "status": "delegated_to_mc001_6_2013_not_source_packed",
+          "requiredFor": "automatic county/locality climate-zone and wind-zone assignment"
         },
         {
           "dependencyId": "official_monthly_temperature_and_solar_climate_dataset",
-          "status": "not_available_in_repository",
+          "status": "delegated_to_mc001_6_2013_not_source_packed",
           "requiredFor": "normative monthly exterior temperature and irradiation profiles by location/zone"
         }
       ]
@@ -101,9 +101,17 @@
       {
         "inventoryId": "mc001_climate_zone_identifiers_i_v",
         "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
-        "sourceLocation": "MC001-2022, Chapter 2.2, Tabel 2.5, 2.8, 2.10a, 2.10b",
+        "sourceLocation": "MC001-2022, Figura 2.1 plus Chapter 2.2, Tabel 2.5, 2.8, 2.10a, 2.10b",
         "status": "implemented_lookup",
-        "runtimeUse": "Building DNA climate-zone identity and zone-dependent requirement lookups",
+        "runtimeUse": "Building DNA climate-zone identity, winter design-temperature lookup and zone-dependent requirement lookups",
+        "containsMonthlyClimateInputs": false
+      },
+      {
+        "inventoryId": "mc001_figure_2_1_winter_design_temperature_by_zone",
+        "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+        "sourceLocation": "MC001-2022, Figura 2.1, pagina Monitorul Oficial 43",
+        "status": "implemented_lookup",
+        "runtimeUse": "heating exterior design-temperature identity by climate zone I-V",
         "containsMonthlyClimateInputs": false
       },
       {
@@ -149,7 +157,7 @@
       {
         "inventoryId": "mc001_monthly_temperature_and_solar_climate_annex",
         "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
-        "sourceLocation": "MC001-2022, Chapter 2.7.3 and Chapter 4 examples reference an annex with climate data",
+        "sourceLocation": "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
         "status": "external_or_unavailable_dataset_dependency",
         "runtimeUse": "required for normative monthly exterior temperatures and orientation-dependent irradiation; not silently defaulted",
         "containsMonthlyClimateInputs": false,
@@ -172,16 +180,313 @@
       "externalSourceDependencies": [
         {
           "dependencyId": "official_romanian_locality_to_climate_zone_mapping",
-          "status": "not_available_in_repository",
-          "requiredFor": "automatic county/locality climate-zone assignment"
+          "status": "delegated_to_mc001_6_2013_not_source_packed",
+          "requiredFor": "automatic county/locality climate-zone and wind-zone assignment"
         },
         {
           "dependencyId": "official_monthly_temperature_and_solar_climate_dataset",
-          "status": "not_available_in_repository",
+          "status": "delegated_to_mc001_6_2013_not_source_packed",
           "requiredFor": "normative monthly exterior temperature and irradiation profiles by location/zone"
         }
       ]
     },
+    "refinedStatusLegend": [
+      "FORMULA_IMPLEMENTED",
+      "LOOKUP_IMPLEMENTED",
+      "REQUIRED_DATA_AVAILABLE",
+      "END_TO_END_CALCULATION_AVAILABLE",
+      "EXTERNAL_DATA_DEPENDENCY",
+      "EXTERNAL_STANDARD_DEPENDENCY"
+    ],
+    "datasetStatuses": {
+      "NORMATIVE_DATASET": "NORMATIVE_DATASET",
+      "USER_SUPPLIED_CERTIFIED_DATASET": "USER_SUPPLIED_CERTIFIED_DATASET",
+      "DATASET_UNAVAILABLE": "DATASET_UNAVAILABLE",
+      "TEST_ONLY_SYNTHETIC_DATASET": "TEST_ONLY_SYNTHETIC_DATASET"
+    },
+    "dataDomains": [
+      {
+        "domainId": "climate_zone_classification",
+        "label": "Climate-zone classification",
+        "zones": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "status": "NORMATIVE_DATASET",
+        "purpose": "zone-dependent MC001 limits and winter design-temperature identity",
+        "sourceReferences": [
+          "MC001-2022, Figura 2.1",
+          "MC001-2022, Tabel 2.5",
+          "MC001-2022, Tabel 2.8",
+          "MC001-2022, Tabel 2.10a",
+          "MC001-2022, Tabel 2.10b"
+        ]
+      },
+      {
+        "domainId": "wind_zone_classification",
+        "label": "Wind-zone classification",
+        "zones": [
+          "I",
+          "II",
+          "III",
+          "IV"
+        ],
+        "status": "NORMATIVE_DATASET",
+        "purpose": "canonical metadata and future wind-dependent climate/runtime inputs",
+        "sourceReferences": [
+          "MC001-2022 certificate and audit forms list wind zones I-IV"
+        ],
+        "currentRuntimeParameters": []
+      },
+      {
+        "domainId": "locality_assignment",
+        "label": "Locality assignment",
+        "status": "DATASET_UNAVAILABLE",
+        "purpose": "automatic locality/county to climate-zone and wind-zone assignment",
+        "requiredResolution": "locality or representative station",
+        "delegatedSource": "Mc001/6-2013 and its source-backed station/locality tables",
+        "presentInRepository": false
+      },
+      {
+        "domainId": "monthly_energy_climate_data",
+        "label": "Monthly energy climate data",
+        "status": "DATASET_UNAVAILABLE",
+        "purpose": "monthly transmission, ventilation, heat gains and useful demand",
+        "requiredResolution": "twelve monthly exterior temperatures plus solar irradiation by required orientation/plane",
+        "delegatedSource": "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; preprocessing rules are in SR EN ISO 52010-1",
+        "presentInRepository": false
+      },
+      {
+        "domainId": "heating_design_climate",
+        "label": "Heating design climate",
+        "status": "NORMATIVE_DATASET",
+        "purpose": "winter design-temperature identity by climate zone",
+        "requiredResolution": "climate zone for zone value; locality/station for exact project design data",
+        "implementedDataset": "mc001_2022_figure_2_1_winter_design_temperature_by_zone"
+      },
+      {
+        "domainId": "cooling_ventilation_design_climate",
+        "label": "Cooling and ventilation design climate",
+        "status": "DATASET_UNAVAILABLE",
+        "purpose": "cooling/ventilation design parameters and humidity conditions",
+        "requiredResolution": "station/locality design day and associated humidity/radiation fields",
+        "delegatedSource": "Mc001/6-2013, Capitolul IV"
+      },
+      {
+        "domainId": "degree_day_data",
+        "label": "Degree-day data",
+        "status": "DATASET_UNAVAILABLE",
+        "purpose": "only for degree-day calculation paths; the current production runtime uses monthly MC001 Chapter 2/3 chains",
+        "requiredResolution": "locality/station, base temperature and period",
+        "directMc0012022Requirement": false
+      }
+    ],
+    "winterDesignTemperatureByZone": {
+      "datasetId": "mc001_2022_figure_2_1_winter_design_temperature_by_zone",
+      "datasetVersion": "mc001_2022_climate_zones_p5a_v1",
+      "status": "NORMATIVE_DATASET",
+      "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "sourceReference": "MC001-2022, Figura 2.1, pagina Monitorul Oficial 43, legenda hartii de zonare climatica",
+      "unit": "degC",
+      "values": {
+        "I": -12,
+        "II": -15,
+        "III": -18,
+        "IV": -21,
+        "V": -24
+      }
+    },
+    "requirementMatrix": [
+      {
+        "calculationId": "climate_zone_threshold_lookup",
+        "label": "MC001 zone-dependent thresholds and solar-factor recommendations",
+        "requires": [
+          "climateZone"
+        ],
+        "outputDomains": [
+          "solar_factor_recommendation",
+          "nzeb_limit_lookup",
+          "renovation_limit_lookup"
+        ],
+        "eligibleWhen": "valid climate zone I-V is selected",
+        "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+      },
+      {
+        "calculationId": "winter_design_temperature_lookup",
+        "label": "Winter exterior design temperature by climate zone",
+        "requires": [
+          "climateZone"
+        ],
+        "outputDomains": [
+          "heating_design_temperature"
+        ],
+        "eligibleWhen": "valid climate zone I-V is selected",
+        "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+      },
+      {
+        "calculationId": "chapter2_monthly_transmission_ventilation",
+        "label": "Chapter 2 monthly transmission and ventilation transfer",
+        "requires": [
+          "monthlyExteriorTemperatures",
+          "monthDurations"
+        ],
+        "outputDomains": [
+          "Qtr",
+          "Qve",
+          "QHnd",
+          "QCnd"
+        ],
+        "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+        "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+      },
+      {
+        "calculationId": "chapter2_solar_gains",
+        "label": "Chapter 2 solar gains",
+        "requires": [
+          "monthlySolarIrradiationOrExplicitSolarGains"
+        ],
+        "outputDomains": [
+          "Qsol",
+          "QHgn",
+          "QCgn",
+          "QHnd",
+          "QCnd"
+        ],
+        "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+        "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+      },
+      {
+        "calculationId": "cooling_ventilation_design_conditions",
+        "label": "Cooling and ventilation design climate",
+        "requires": [
+          "coolingDesignTemperature",
+          "coolingDesignHumidity"
+        ],
+        "outputDomains": [
+          "design_diagnostics"
+        ],
+        "eligibleWhen": "source-backed station/locality design data are present",
+        "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+      },
+      {
+        "calculationId": "degree_day_method",
+        "label": "Degree-day method",
+        "requires": [
+          "degreeDays",
+          "baseTemperature"
+        ],
+        "outputDomains": [
+          "degree_day_result"
+        ],
+        "eligibleWhen": "only if a degree-day calculation path is explicitly selected and sourced",
+        "missingDiagnostic": "DEGREE_DAY_DATA_REQUIRED",
+        "currentRuntimeUse": "not_required_by_current_monthly_chapter2_3_runtime"
+      }
+    ],
+    "normativeDependencies": [
+      {
+        "dependencyId": "mc001_6_2013_climate_parameters_volume",
+        "datasetName": "Mc001/6-2013 Parametrii climatici necesari determinarii performantei energetice",
+        "runtimePurpose": "canonical source for Romanian climate parameters delegated by MC001-2022 Anexa D",
+        "mc001Section": "MC001-2022 Anexa D, pagina Monitorul Oficial 597",
+        "requiredResolution": "hourly representative years for 9 localities, monthly mean parameters for 42 localities, solar data for 30 localities, winter/summer design days",
+        "exactExternalDocument": "Mc001/6-2013, Partea a VI-a, approved by MDRAP Order 2210/26.06.2013",
+        "edition": "2013",
+        "clauseTableAnnex": "Capitolul II Tabel II.1/II.2; Capitolul III Figura III.1/Tabel III.1/Tabel III.2; Capitolul IV Tabel IV.1/IV.2; Capitolul V; Anexa A9.6",
+        "availability": "public_official_mdlpa_pdf_identified",
+        "officialUrl": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
+        "presentInRepository": false,
+        "implementationStatus": "dependency_identified_not_source_packed",
+        "acquisitionStatus": "public official PDF located; ingestion requires a dedicated source-pack extraction and table QA pass",
+        "calculationsAffected": [
+          "locality climate assignment",
+          "monthly exterior temperatures",
+          "monthly solar irradiation",
+          "heating design climate",
+          "cooling and ventilation design climate"
+        ],
+        "prohibitedSubstitute": "Do not infer locality assignment from latitude/GIS, weather sites, technical examples, or climate-zone label alone.",
+        "remediationAction": "Create a source pack from the official PDF, extract tables with page/row evidence, add checksum, then enable normative monthly profiles."
+      },
+      {
+        "dependencyId": "sr_en_iso_52010_1_climate_preprocessing",
+        "datasetName": "SR EN ISO 52010-1 climate data preprocessing rules",
+        "runtimePurpose": "preprocessing rules for external climatic data used by EPB calculations",
+        "mc001Section": "MC001-2022 Tabel 1.3 row 13 and Anexa D final paragraph",
+        "requiredResolution": "algorithmic preprocessing standard, not a Romanian station-value dataset",
+        "exactExternalDocument": "SR EN ISO 52010-1, Performanta energetica a cladirilor. Conditii climatice exterioare. Partea 1",
+        "edition": "edition not bundled in repository",
+        "clauseTableAnnex": "M1-13 preprocessing rules; exact clauses require owned standard",
+        "availability": "paid_or_controlled_standard_metadata_only",
+        "presentInRepository": false,
+        "implementationStatus": "external_standard_dependency",
+        "acquisitionStatus": "obtain licensed project copy before implementing preprocessing algorithms not reproduced by MC001",
+        "calculationsAffected": [
+          "preprocessed representative climate datasets",
+          "conversion/quality rules for climate sequences"
+        ],
+        "prohibitedSubstitute": "Do not implement preprocessing algorithms from secondary summaries.",
+        "remediationAction": "Acquire SR EN ISO 52010-1 and encode only clauses required by MC001 data ingestion."
+      },
+      {
+        "dependencyId": "sr_1907_1_2_4839_6648_reviewed_not_direct_mc0012022_dependency",
+        "datasetName": "SR 1907-1/2, SR 4839, SR 6648-1/2 reviewed relevance",
+        "runtimePurpose": "documents named in project request; not a direct MC001-2022 dependency found in the official PDF text",
+        "mc001Section": "No direct MC001-2022 reference found in the official PDF; Anexa D points to Mc001/6-2013 instead",
+        "requiredResolution": "not applicable unless the source-pack chain proves a direct dependency",
+        "exactExternalDocument": "SR 1907-1, SR 1907-2, SR 4839, SR 6648-1, SR 6648-2",
+        "edition": "various; exact edition to be confirmed only if required by a source chain",
+        "clauseTableAnnex": "not identified as directly required by MC001-2022",
+        "availability": "ASRO/standard metadata; not present in repository",
+        "presentInRepository": false,
+        "implementationStatus": "reviewed_not_direct_runtime_dependency",
+        "acquisitionStatus": "do not acquire for this runtime until MC001/6-2013 source-pack extraction proves a required underlying table/algorithm",
+        "calculationsAffected": [],
+        "prohibitedSubstitute": "Do not cite these standards as required unless a direct MC001 or MC001/6-2013 dependency is recorded.",
+        "remediationAction": "Keep under reviewed-not-required list; revisit during MC001/6-2013 extraction if a direct chain appears."
+      }
+    ],
+    "acquisitionList": [
+      {
+        "designation": "Mc001/6-2013",
+        "edition": "2013",
+        "expectedDataset": "Romanian climate parameters: monthly temperature/humidity, solar irradiation, representative climate years, winter/summer design days",
+        "affectedMc001Calculations": [
+          "2.6.2.1",
+          "2.6.2.3",
+          "2.7.1.1",
+          "2.7.1.2",
+          "2.7.3",
+          "2.7.4",
+          "Chapter 3 AHU/cooling/solar-dependent installation calculations when climate inputs are used"
+        ],
+        "requiredFor": [
+          "locality mapping",
+          "design temperature",
+          "monthly temperature",
+          "solar irradiation",
+          "cooling/ventilation design"
+        ],
+        "substituteOwnedByProject": "none currently source-packed; official MDLPA URL identified but values not ingested"
+      },
+      {
+        "designation": "SR EN ISO 52010-1",
+        "edition": "not bundled",
+        "expectedDataset": "preprocessing rules for climate data, not Romanian station values",
+        "affectedMc001Calculations": [
+          "validated preprocessing of external climate sequences before use in monthly/hourly EPB calculations"
+        ],
+        "requiredFor": [
+          "monthly temperature",
+          "solar irradiation",
+          "cooling/ventilation design"
+        ],
+        "substituteOwnedByProject": "none"
+      }
+    ],
     "policy": "All five MC001 climate-zone identifiers are implemented. Complete locality/monthly temperature and solar datasets are not silently fabricated."
   },
   "records": [
@@ -444,7 +749,41 @@
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -486,7 +825,41 @@
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -527,7 +900,41 @@
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -568,7 +975,41 @@
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -609,7 +1050,41 @@
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -650,7 +1125,41 @@
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -691,7 +1200,41 @@
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -731,7 +1274,41 @@
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -770,7 +1347,41 @@
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -809,7 +1420,41 @@
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -848,7 +1493,41 @@
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "LOOKUP_IMPLEMENTED",
+          "REQUIRED_DATA_AVAILABLE",
+          "END_TO_END_CALCULATION_AVAILABLE"
+        ],
+        "requiredDatasets": [
+          "climate_zone_classification"
+        ],
+        "currentDatasetStatus": {
+          "climate_zone_classification": "NORMATIVE_DATASET"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "climate_zone_threshold_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          },
+          {
+            "calculationId": "winter_design_temperature_lookup",
+            "requires": [
+              "climateZone"
+            ],
+            "eligibleWhen": "valid climate zone I-V is selected",
+            "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [],
+        "externalSourceDependencies": [],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -1415,7 +2094,46 @@
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -1495,7 +2213,46 @@
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -1544,6 +2301,45 @@
         "notebook": "compact P3G notebook sections generated from engine traceability",
         "report": "technical report main results, climate chapter, notebook and appendix",
         "persistence": "versioned Building DNA and analysis/report fingerprints"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -1597,6 +2393,45 @@
         "notebook": "compact P3G notebook sections generated from engine traceability",
         "report": "technical report main results, climate chapter, notebook and appendix",
         "persistence": "versioned Building DNA and analysis/report fingerprints"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -1648,6 +2483,45 @@
         "notebook": "compact P3G notebook sections generated from engine traceability",
         "report": "technical report main results, climate chapter, notebook and appendix",
         "persistence": "versioned Building DNA and analysis/report fingerprints"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -1699,6 +2573,45 @@
         "notebook": "compact P3G notebook sections generated from engine traceability",
         "report": "technical report main results, climate chapter, notebook and appendix",
         "persistence": "versioned Building DNA and analysis/report fingerprints"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -1751,6 +2664,45 @@
         "notebook": "compact P3G notebook sections generated from engine traceability",
         "report": "technical report main results, climate chapter, notebook and appendix",
         "persistence": "versioned Building DNA and analysis/report fingerprints"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -1802,6 +2754,45 @@
         "notebook": "compact P3G notebook sections generated from engine traceability",
         "report": "technical report main results, climate chapter, notebook and appendix",
         "persistence": "versioned Building DNA and analysis/report fingerprints"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -1841,7 +2832,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -1880,7 +2910,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -1920,7 +2989,46 @@
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
       "remediation": "Datele de radiatie/cer sunt pastrate ca input climatic explicit cand sunt disponibile; profilul sintetic ramane numai demo/test.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2000,7 +3108,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2040,7 +3187,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2079,7 +3265,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2115,7 +3340,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2151,7 +3415,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2191,7 +3494,46 @@
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2231,7 +3573,46 @@
       "currentStatus": "REPRESENTED_AS_OUTPUT",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2273,7 +3654,46 @@
         "Nu este expus ca indicator de produs in fluxul actual, care evita clase/CPE si ore de disconfort fara profil orar."
       ],
       "remediation": "Ramane diagnostic documentat; implementarea necesita profil orar si context de raportare CPE, in afara P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2309,7 +3729,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2345,7 +3804,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2381,7 +3879,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2435,6 +3972,45 @@
         "notebook": "compact P3G notebook sections generated from engine traceability",
         "report": "technical report main results, climate chapter, notebook and appendix",
         "persistence": "versioned Building DNA and analysis/report fingerprints"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -2475,7 +4051,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 2,
@@ -2820,6 +4435,45 @@
         "notebook": "src/physics-engine/mc001Chapter3Notebook.mjs",
         "report": "technical installations report chapter and engineering notebook",
         "persistence": "versioned Building DNA, analysis, report model and calculation fingerprint"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -3450,6 +5104,57 @@
         "notebook": "src/physics-engine/mc001Chapter3Notebook.mjs",
         "report": "technical installations report chapter and engineering notebook",
         "persistence": "versioned Building DNA, analysis, report model and calculation fingerprint"
+      },
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
       }
     },
     {
@@ -3492,7 +5197,36 @@
       "currentStatus": "IMPLEMENTED_WORKFLOW",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -3533,7 +5267,58 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -3574,7 +5359,58 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -3615,7 +5451,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -3656,7 +5531,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -3740,7 +5654,46 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -3989,7 +5942,58 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -4163,7 +6167,58 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -4246,7 +6301,58 @@
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -4287,7 +6393,58 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,
@@ -4372,7 +6529,58 @@
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
       "remediation": "Nu este necesara remediere suplimentara in P5A.",
-      "calculationPath": null
+      "calculationPath": null,
+      "climateAudit": {
+        "refinedStatuses": [
+          "FORMULA_IMPLEMENTED",
+          "EXTERNAL_DATA_DEPENDENCY"
+        ],
+        "requiredDatasets": [
+          "monthly_energy_climate_data",
+          "cooling_ventilation_design_climate"
+        ],
+        "currentDatasetStatus": {
+          "monthly_energy_climate_data": "DATASET_UNAVAILABLE",
+          "cooling_ventilation_design_climate": "DATASET_UNAVAILABLE"
+        },
+        "runtimeEligibility": [
+          {
+            "calculationId": "chapter2_monthly_transmission_ventilation",
+            "requires": [
+              "monthlyExteriorTemperatures",
+              "monthDurations"
+            ],
+            "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+            "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "chapter2_solar_gains",
+            "requires": [
+              "monthlySolarIrradiationOrExplicitSolarGains"
+            ],
+            "eligibleWhen": "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
+            "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+          },
+          {
+            "calculationId": "cooling_ventilation_design_conditions",
+            "requires": [
+              "coolingDesignTemperature",
+              "coolingDesignHumidity"
+            ],
+            "eligibleWhen": "source-backed station/locality design data are present",
+            "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+          }
+        ],
+        "exactDiagnostics": [
+          "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED",
+          "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED",
+          "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+        ],
+        "externalSourceDependencies": [
+          "mc001_6_2013_climate_parameters_volume"
+        ],
+        "note": "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+      }
     },
     {
       "chapter": 3,

@@ -1,7 +1,14 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import {
+  CLIMATE_AUDIT_REFINED_STATUSES,
+  CLIMATE_DATASET_STATUSES,
+  MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE,
+  ROMANIAN_CLIMATE_ACQUISITION_LIST,
   ROMANIAN_CLIMATE_COVERAGE,
+  ROMANIAN_CLIMATE_DATA_DOMAINS,
+  ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES,
+  ROMANIAN_CLIMATE_REQUIREMENT_MATRIX,
   ROMANIAN_CLIMATE_SOURCE_INVENTORY,
   ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION
 } from "../src/climate-platform/index.mjs";
@@ -84,6 +91,132 @@ function treatmentFor(status) {
   return treatment[status];
 }
 
+const climateZoneRequirementSections = new Set([
+  "2.2",
+  "2.2.1",
+  "2.2.1.1",
+  "2.2.1.2",
+  "2.2.2",
+  "2.2.2.1",
+  "2.2.2.2",
+  "2.2.3",
+  "2.2.3.1",
+  "2.2.3.2",
+  "2.2.3.3"
+]);
+
+const monthlyClimateSections = new Set([
+  "2.6.2.1",
+  "2.6.2.3",
+  "2.7",
+  "2.7.1",
+  "2.7.1.1",
+  "2.7.1.2",
+  "2.7.2",
+  "2.7.3",
+  "2.7.3.1",
+  "2.7.3.2",
+  "2.7.4",
+  "2.7.6",
+  "2.8",
+  "2.8.1",
+  "2.8.2",
+  "2.8.3",
+  "2.8.4",
+  "2.8.5",
+  "2.8.6",
+  "2.9",
+  "2.9.1",
+  "2.9.2",
+  "2.10",
+  "2.11",
+  "3.1",
+  "3.2",
+  "3.2.2",
+  "3.2.3",
+  "3.2.3.1",
+  "3.2.3.2",
+  "3.2.4",
+  "3.2.5",
+  "3.2.6",
+  "3.2.6.2",
+  "3.2.6.3",
+  "3.2.7"
+]);
+
+const coolingVentilationDesignSections = new Set([
+  "3.2",
+  "3.2.1",
+  "3.2.2",
+  "3.2.3",
+  "3.2.5",
+  "3.2.6",
+  "3.2.6.2",
+  "3.2.6.3",
+  "3.2.7"
+]);
+
+function requirement(calculationId) {
+  return ROMANIAN_CLIMATE_REQUIREMENT_MATRIX.find(item => item.calculationId === calculationId);
+}
+
+function climateAuditFor(input) {
+  const refinedStatuses = new Set();
+  const requiredDatasets = [];
+  const runtimeEligibility = [];
+  const exactDiagnostics = [];
+  const externalSourceDependencies = [];
+
+  if (climateZoneRequirementSections.has(input.sectionNumber)) {
+    refinedStatuses.add("LOOKUP_IMPLEMENTED");
+    refinedStatuses.add("REQUIRED_DATA_AVAILABLE");
+    refinedStatuses.add("END_TO_END_CALCULATION_AVAILABLE");
+    requiredDatasets.push("climate_zone_classification");
+    runtimeEligibility.push(requirement("climate_zone_threshold_lookup"));
+    runtimeEligibility.push(requirement("winter_design_temperature_lookup"));
+  }
+
+  if (monthlyClimateSections.has(input.sectionNumber)) {
+    refinedStatuses.add("FORMULA_IMPLEMENTED");
+    refinedStatuses.add("EXTERNAL_DATA_DEPENDENCY");
+    requiredDatasets.push("monthly_energy_climate_data");
+    runtimeEligibility.push(requirement("chapter2_monthly_transmission_ventilation"));
+    runtimeEligibility.push(requirement("chapter2_solar_gains"));
+    exactDiagnostics.push("MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED");
+    exactDiagnostics.push("MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED");
+    externalSourceDependencies.push("mc001_6_2013_climate_parameters_volume");
+  }
+
+  if (coolingVentilationDesignSections.has(input.sectionNumber)) {
+    refinedStatuses.add("EXTERNAL_DATA_DEPENDENCY");
+    requiredDatasets.push("cooling_ventilation_design_climate");
+    runtimeEligibility.push(requirement("cooling_ventilation_design_conditions"));
+    exactDiagnostics.push("COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED");
+    externalSourceDependencies.push("mc001_6_2013_climate_parameters_volume");
+  }
+
+  if (requiredDatasets.length === 0) return null;
+
+  return {
+    refinedStatuses: [...refinedStatuses],
+    requiredDatasets: [...new Set(requiredDatasets)],
+    currentDatasetStatus: Object.fromEntries([...new Set(requiredDatasets)].map((datasetId) => {
+      const domain = ROMANIAN_CLIMATE_DATA_DOMAINS.find(item => item.domainId === datasetId);
+      return [datasetId, domain?.status ?? CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE];
+    })),
+    runtimeEligibility: runtimeEligibility.filter(Boolean).map(item => ({
+      calculationId: item.calculationId,
+      requires: item.requires,
+      eligibleWhen: item.eligibleWhen,
+      missingDiagnostic: item.missingDiagnostic
+    })),
+    exactDiagnostics: [...new Set(exactDiagnostics)],
+    externalSourceDependencies: [...new Set(externalSourceDependencies)],
+    note:
+      "Formula coverage is tracked separately from source-backed dataset availability; zone I-V is not treated as a monthly climate profile."
+  };
+}
+
 function record(input) {
   const implementationFiles = input.implementationFiles ?? (
     input.chapter === 2 ? commonChapter2Files : commonChapter3Files
@@ -92,7 +225,7 @@ function record(input) {
     input.chapter === 2 ? commonChapter2Tests : commonChapter3Tests
   );
   const currentStatus = input.currentStatus;
-  return {
+  const output = {
     chapter: input.chapter,
     sectionNumber: input.sectionNumber,
     titleRo: input.titleRo,
@@ -118,6 +251,9 @@ function record(input) {
     remediation: input.remediation ?? "Nu este necesara remediere suplimentara in P5A.",
     calculationPath: input.calculationPath ?? null
   };
+  const climateAudit = input.climateAudit ?? climateAuditFor(input);
+  if (climateAudit) output.climateAudit = climateAudit;
+  return output;
 }
 
 function ch2(sectionNumber, titleRo, sourcePages, classification, currentStatus, details = {}) {
@@ -357,6 +493,13 @@ const audit = {
     registryVersion: ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION,
     sourceInventory: ROMANIAN_CLIMATE_SOURCE_INVENTORY,
     coverage: ROMANIAN_CLIMATE_COVERAGE,
+    refinedStatusLegend: CLIMATE_AUDIT_REFINED_STATUSES,
+    datasetStatuses: CLIMATE_DATASET_STATUSES,
+    dataDomains: ROMANIAN_CLIMATE_DATA_DOMAINS,
+    winterDesignTemperatureByZone: MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE,
+    requirementMatrix: ROMANIAN_CLIMATE_REQUIREMENT_MATRIX,
+    normativeDependencies: ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES,
+    acquisitionList: ROMANIAN_CLIMATE_ACQUISITION_LIST,
     policy:
       "All five MC001 climate-zone identifiers are implemented. Complete locality/monthly temperature and solar datasets are not silently fabricated."
   },
@@ -396,6 +539,22 @@ Generated by: \`${audit.generatedBy}\`.
 ${audit.climate.sourceInventory.map(item =>
   `- ${item.inventoryId}: ${item.status}; source ${item.sourceLocation}; runtime use: ${item.runtimeUse}`
 ).join("\n")}
+
+## Romanian Climate Dependency Boundary
+
+- Climate-zone classification, wind-zone classification and winter exterior design-temperature lookup are separate domains.
+- Selecting zone I-V never supplies monthly exterior temperatures or solar irradiation by itself.
+- Monthly energy calculations require either a source-backed normative dataset or a user-supplied certified dataset.
+- Main unavailable normative dataset: ${audit.climate.normativeDependencies.find(item => item.dependencyId === "mc001_6_2013_climate_parameters_volume").exactExternalDocument}.
+- Preprocessing standard dependency: ${audit.climate.normativeDependencies.find(item => item.dependencyId === "sr_en_iso_52010_1_climate_preprocessing").exactExternalDocument}.
+
+| Domain | Status | Purpose |
+| --- | --- | --- |
+${audit.climate.dataDomains.map(item => `${item.domainId} | ${item.status} | ${String(item.purpose).replace(/\|/g, "\\|")}`).join("\n")}
+
+| Calculation | Requires | Missing diagnostic |
+| --- | --- | --- |
+${audit.climate.requirementMatrix.map(item => `${item.calculationId} | ${item.requires.join(", ")} | ${item.missingDiagnostic}`).join("\n")}
 
 ## Chapter 2
 

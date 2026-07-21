@@ -4,6 +4,9 @@ import { readFileSync } from "node:fs";
 const audit = JSON.parse(
   readFileSync(new URL("../validation-reference/mc001-subchapter-coverage.json", import.meta.url), "utf8")
 );
+const climateDependencies = JSON.parse(
+  readFileSync(new URL("../validation-reference/romanian-climate-normative-dependencies.json", import.meta.url), "utf8")
+);
 
 const allowedStatuses = new Set([
   "IMPLEMENTED_CALCULATION",
@@ -207,5 +210,79 @@ for (const item of audit.climate.sourceInventory) {
   assert.equal(typeof item.sourceLocation, "string");
   assert.equal(typeof item.runtimeUse, "string");
 }
+
+assert.equal(audit.climate.datasetStatuses.NORMATIVE_DATASET, "NORMATIVE_DATASET");
+assert.equal(audit.climate.datasetStatuses.DATASET_UNAVAILABLE, "DATASET_UNAVAILABLE");
+assert.equal(audit.climate.winterDesignTemperatureByZone.values.I, -12);
+assert.equal(audit.climate.winterDesignTemperatureByZone.values.V, -24);
+assert.equal(
+  audit.climate.dataDomains.some(item =>
+    item.domainId === "monthly_energy_climate_data" &&
+    item.status === "DATASET_UNAVAILABLE"
+  ),
+  true
+);
+assert.equal(
+  audit.climate.requirementMatrix.some(item =>
+    item.calculationId === "chapter2_monthly_transmission_ventilation" &&
+    item.requires.includes("monthlyExteriorTemperatures")
+  ),
+  true
+);
+
+for (const sectionNumber of ["2.7.1.1", "2.7.1.2", "2.7.3", "3.2.6"]) {
+  const record = audit.records.find(item => item.sectionNumber === sectionNumber);
+  assert.ok(record.climateAudit, sectionNumber);
+  assert.equal(record.climateAudit.refinedStatuses.includes("FORMULA_IMPLEMENTED"), true, sectionNumber);
+  assert.equal(record.climateAudit.refinedStatuses.includes("EXTERNAL_DATA_DEPENDENCY"), true, sectionNumber);
+  assert.equal(
+    record.climateAudit.externalSourceDependencies.includes("mc001_6_2013_climate_parameters_volume"),
+    true,
+    sectionNumber
+  );
+}
+
+const zoneRecord = audit.records.find(item => item.sectionNumber === "2.2");
+assert.equal(zoneRecord.climateAudit.refinedStatuses.includes("LOOKUP_IMPLEMENTED"), true);
+assert.equal(zoneRecord.climateAudit.refinedStatuses.includes("REQUIRED_DATA_AVAILABLE"), true);
+assert.equal(zoneRecord.climateAudit.requiredDatasets.includes("monthly_energy_climate_data"), false);
+
+assert.equal(climateDependencies.schema, "romanian_climate_normative_dependencies_v1");
+assert.equal(climateDependencies.runtimePolicy.zoneIsNotMonthlyProfile, true);
+assert.equal(climateDependencies.runtimePolicy.noHiddenProductionSyntheticDataset, true);
+assert.equal(
+  climateDependencies.sourceAudit.reviewedButNotDirectMc0012022Dependencies.includes("SR 1907-1"),
+  true
+);
+for (const dependency of climateDependencies.normativeDependencies) {
+  assert.equal(typeof dependency.dependencyId, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.datasetName, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.runtimePurpose, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.mc001Section, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.requiredResolution, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.exactExternalDocument, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.edition, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.availability, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.implementationStatus, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.acquisitionStatus, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.prohibitedSubstitute, "string", dependency.dependencyId);
+  assert.equal(typeof dependency.remediationAction, "string", dependency.dependencyId);
+  assert.notEqual(dependency.exactExternalDocument, "external source missing", dependency.dependencyId);
+  assert.notEqual(dependency.remediationAction, "TBD", dependency.dependencyId);
+}
+assert.equal(
+  climateDependencies.normativeDependencies.some(item =>
+    item.dependencyId === "mc001_6_2013_climate_parameters_volume" &&
+    item.availability === "public_official_mdlpa_pdf_identified"
+  ),
+  true
+);
+assert.equal(
+  climateDependencies.acquisitionList.some(item =>
+    item.designation === "SR EN ISO 52010-1" &&
+    item.requiredFor.includes("solar irradiation")
+  ),
+  true
+);
 
 console.log("PASS MC001 subchapter coverage ledger is complete and deterministic");

@@ -874,6 +874,12 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("climate_zone"), true);
   assert.equal(html.includes("wind_zone"), true);
   assert.equal(html.includes("mc001_2022_climate_zones_p5a_v1"), true);
+  assert.equal(html.includes("Temperatura exterioara de calcul iarna"), true);
+  assert.equal(html.includes("Status dataset lunar"), true);
+  assert.equal(html.includes("TEST_ONLY_SYNTHETIC_DATASET"), true);
+  assert.equal(html.includes("Calcule eligibile cu zona"), true);
+  assert.equal(html.includes("Variabile climatice lipsa"), true);
+  assert.equal(html.includes("Temperatura/iradierea lunara necesita profil lunar complet"), true);
   assert.equal(html.includes("Profil climatic sintetic pentru demonstra"), true);
   assert.equal(html.includes("Încarcă exemplu demonstrativ"), true);
   assert.equal(html.includes("Începe proiect gol"), true);
@@ -926,6 +932,9 @@ await test("P3G report is a compact fully expanded print-ready calculation noteb
   assert.equal(html.includes("data-pdf-like-report"), true);
   assert.equal(html.includes("Amplasare si date climatice utilizate"), true);
   assert.equal(html.includes("Zona climatica MC001"), true);
+  assert.equal(html.includes("Temperatura exterioara de calcul iarna"), true);
+  assert.equal(html.includes("Status dataset lunar"), true);
+  assert.equal(html.includes("Calcule climatice indisponibile"), true);
   assert.equal(html.includes("Tabel 2.5"), true);
   assert.equal(html.includes("Tabel 2.10a"), true);
   assert.equal(html.includes("data-engineering-calculation-notebook"), true);
@@ -1052,7 +1061,8 @@ await test("active production analysis flow removes unsupported product domains"
     "energie primara",
     "CO2",
     "CPE",
-    "certificat"
+    "certificat energetic",
+    "certificat de performanta"
   ]) {
     assert.equal(visibleSurface.includes(downstreamDomain), false, downstreamDomain);
   }

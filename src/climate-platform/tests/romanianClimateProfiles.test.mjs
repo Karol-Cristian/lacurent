@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  CLIMATE_DATASET_STATUSES,
   CLIMATE_PLATFORM_VERSION,
+  CLIMATE_RUNTIME_ELIGIBILITY_STATUSES,
   CLIMATE_SOURCE_CONTRACTS,
   MC001_NZEB_LIMITS_TABLE_2_10A,
   MC001_RENOVATION_LIMITS_TABLE_2_10B,
   MC001_SOLAR_FACTOR_GN_RECOMMENDATIONS,
+  MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE,
   MONTH_IDS,
+  ROMANIAN_CLIMATE_ACQUISITION_LIST,
   ROMANIAN_CLIMATE_COVERAGE,
+  ROMANIAN_CLIMATE_DATA_DOMAINS,
+  ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES,
+  ROMANIAN_CLIMATE_REQUIREMENT_MATRIX,
   ROMANIAN_CLIMATE_PROFILES,
   ROMANIAN_CLIMATE_SOURCE_AUDIT,
   ROMANIAN_CLIMATE_SOURCE_INVENTORY,
@@ -18,16 +25,19 @@ import {
   analyzeMonthlyUsefulDemandSeasonality,
   climateProfileToBuildingMonthlyProfiles,
   createSyntheticSeasonalDemoClimateProfile,
+  evaluateClimateCalculationEligibility,
   findRomanianClimateProfileById,
   getClimateZoneDependentRequirements,
   getMc001PrimaryCo2Limit,
   getRomanianClimateZone,
   getSolarFactorRecommendation,
+  getWinterDesignTemperatureByClimateZone,
   listRomanianClimateZones,
   listRomanianClimateProfiles,
   resolveClimateProfileSelection,
   resolveRomanianLocationClimate,
   searchRomanianClimateProfiles,
+  validateCertifiedClimateDataset,
   validateClimateProfile,
   validateRomanianClimateZone,
   validateRomanianWindZone
@@ -161,6 +171,206 @@ test("P5A climate source inventory marks monthly normative climate values as una
   assert.match(monthly.missingArtifact, /monthly exterior temperatures/);
 });
 
+test("P5A separates climate zone wind zone locality monthly design and degree-day domains", () => {
+  const domains = new Map(ROMANIAN_CLIMATE_DATA_DOMAINS.map(item => [item.domainId, item]));
+  for (const domainId of [
+    "climate_zone_classification",
+    "wind_zone_classification",
+    "locality_assignment",
+    "monthly_energy_climate_data",
+    "heating_design_climate",
+    "cooling_ventilation_design_climate",
+    "degree_day_data"
+  ]) {
+    assert.equal(domains.has(domainId), true, domainId);
+  }
+  assert.equal(domains.get("climate_zone_classification").status, CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET);
+  assert.equal(domains.get("monthly_energy_climate_data").status, CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE);
+  assert.equal(domains.get("locality_assignment").status, CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE);
+  assert.equal(domains.get("heating_design_climate").implementedDataset, MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE.datasetId);
+});
+
+test("P5A winter exterior design temperature lookup is zone-backed but not a monthly profile", () => {
+  assert.deepEqual(MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE.values, {
+    I: -12,
+    II: -15,
+    III: -18,
+    IV: -21,
+    V: -24
+  });
+  const zoneI = getWinterDesignTemperatureByClimateZone("I");
+  const zoneV = getWinterDesignTemperatureByClimateZone("V");
+  assert.equal(zoneI.status, "ready");
+  assert.equal(zoneI.value, -12);
+  assert.equal(zoneV.value, -24);
+  assert.match(zoneI.sourceReference, /Figura 2\.1/);
+  assert.equal(getWinterDesignTemperatureByClimateZone("VI").code, "invalid_romanian_climate_zone");
+});
+
+test("P5A runtime eligibility does not treat zone labels as monthly climate datasets", () => {
+  const missingProfile = evaluateClimateCalculationEligibility({
+    climate: { climateZone: "III" },
+    climateProfile: null,
+    monthlyProfiles: null
+  });
+  const byId = new Map(missingProfile.map(item => [item.calculationId, item]));
+  assert.equal(byId.get("climate_zone_threshold_lookup").status, CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE);
+  assert.equal(byId.get("winter_design_temperature_lookup").status, CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE);
+  assert.equal(
+    byId.get("chapter2_monthly_transmission_ventilation").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_DATA
+  );
+  assert.equal(
+    byId.get("chapter2_solar_gains").diagnostic,
+    "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+  );
+
+  const demoSelection = resolveClimateProfileSelection({
+    profileId: DEMO_PROFILE_ID,
+    allowSynthetic: true
+  });
+  const demoEligibility = evaluateClimateCalculationEligibility({
+    climate: { climateZone: "III" },
+    climateProfile: demoSelection.profile,
+    monthlyProfiles: climateProfileToBuildingMonthlyProfiles(demoSelection.profile).monthlyProfiles
+  });
+  assert.equal(
+    demoEligibility.find(item => item.calculationId === "chapter2_monthly_transmission_ventilation").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.TEST_ONLY_NOT_PRODUCTION
+  );
+});
+
+test("P5A normative dependency register identifies exact external documents and prohibited substitutes", () => {
+  const dependencies = new Map(ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES.map(item => [item.dependencyId, item]));
+  assert.equal(dependencies.has("mc001_6_2013_climate_parameters_volume"), true);
+  assert.equal(dependencies.has("sr_en_iso_52010_1_climate_preprocessing"), true);
+  assert.equal(
+    dependencies.get("mc001_6_2013_climate_parameters_volume").availability,
+    "public_official_mdlpa_pdf_identified"
+  );
+  assert.match(
+    dependencies.get("mc001_6_2013_climate_parameters_volume").officialUrl,
+    /mdlpa\.ro/
+  );
+  assert.match(
+    dependencies.get("mc001_6_2013_climate_parameters_volume").prohibitedSubstitute,
+    /Do not infer locality assignment/
+  );
+  assert.equal(
+    dependencies.get("sr_1907_1_2_4839_6648_reviewed_not_direct_mc0012022_dependency").calculationsAffected.length,
+    0
+  );
+  assert.equal(ROMANIAN_CLIMATE_ACQUISITION_LIST.length >= 2, true);
+  assert.equal(
+    ROMANIAN_CLIMATE_REQUIREMENT_MATRIX.some(item => item.missingDiagnostic === "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"),
+    true
+  );
+});
+
+function certifiedClimateInput(overrides = {}) {
+  const demo = createSyntheticSeasonalDemoClimateProfile();
+  return {
+    datasetId: "certified_cluj_station_2026_v1",
+    datasetVersion: "2026.1",
+    displayName: "Profil certificat Cluj test",
+    sourceTitle: "Set climatic certificat de test",
+    sourceAuthority: "Inginer auditor test",
+    sourceEdition: "2026",
+    stationId: "cluj_test_station",
+    stationName: "Cluj Test",
+    localityName: "Cluj-Napoca",
+    countyName: "Cluj",
+    climateZone: "III",
+    units: {
+      temperature: "degC",
+      duration: "h",
+      solarEnergy: "kWh"
+    },
+    userConfirmation: true,
+    monthlyRecords: demo.monthlyRecords.map(record => ({
+      month: record.month,
+      durationHours: record.durationHours,
+      heatingOutdoorTemperatureC: record.heatingOutdoorTemperatureC,
+      coolingOutdoorTemperatureC: record.coolingOutdoorTemperatureC,
+      solarGainsKwh: record.solarGainsKwh,
+      solarGainsByOrientationKwh: record.solarGainsByOrientationKwh,
+      provenance: "certified test fixture row"
+    })),
+    ...overrides
+  };
+}
+
+test("P5A certified climate-data import validates completeness units provenance and fingerprintable output", () => {
+  const validation = validateCertifiedClimateDataset(certifiedClimateInput());
+  assert.equal(validation.ok, true);
+  assert.equal(validation.profile.datasetStatus, CLIMATE_DATASET_STATUSES.USER_SUPPLIED_CERTIFIED_DATASET);
+  assert.equal(validation.profile.stationId, "cluj_test_station");
+  assert.equal(validation.profile.checksum.startsWith("fnv1a32:"), true);
+  assert.equal(validateClimateProfile(validation.profile).ok, true);
+
+  const converted = climateProfileToBuildingMonthlyProfiles(validation.profile, { solarOrientation: "south" });
+  assert.equal(converted.status, "ready");
+  assert.equal(converted.monthlyProfiles.length, 12);
+
+  const eligibility = evaluateClimateCalculationEligibility({
+    climate: { climateZone: "III" },
+    climateProfile: validation.profile,
+    monthlyProfiles: converted.monthlyProfiles
+  });
+  assert.equal(
+    eligibility.find(item => item.calculationId === "chapter2_monthly_transmission_ventilation").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
+  );
+  assert.equal(
+    eligibility.find(item => item.calculationId === "chapter2_solar_gains").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
+  );
+});
+
+test("P5A certified climate-data import rejects incomplete hidden or unsupported data", () => {
+  assert.equal(
+    validateCertifiedClimateDataset(certifiedClimateInput({ userConfirmation: false })).code,
+    "certified_climate_dataset_requires_user_confirmation"
+  );
+  assert.equal(
+    validateCertifiedClimateDataset(certifiedClimateInput({ units: { temperature: "C", duration: "h", solarEnergy: "kWh" } })).code,
+    "certified_climate_dataset_missing_or_invalid_units"
+  );
+  assert.equal(
+    validateCertifiedClimateDataset(certifiedClimateInput({ monthlyRecords: certifiedClimateInput().monthlyRecords.slice(0, 11) })).code,
+    "certified_climate_dataset_requires_twelve_months"
+  );
+  assert.equal(
+    validateCertifiedClimateDataset(certifiedClimateInput({ climateZone: "VI" })).code,
+    "certified_climate_dataset_invalid_climate_zone"
+  );
+  assert.equal(
+    validateCertifiedClimateDataset(certifiedClimateInput({ windZone: "V" })).code,
+    "certified_climate_dataset_invalid_wind_zone"
+  );
+  const badOrientation = certifiedClimateInput();
+  badOrientation.monthlyRecords[0] = {
+    ...badOrientation.monthlyRecords[0],
+    solarGainsByOrientationKwh: {
+      ...badOrientation.monthlyRecords[0].solarGainsByOrientationKwh,
+      upward_diagonal: 1
+    }
+  };
+  assert.equal(
+    validateCertifiedClimateDataset(badOrientation).code,
+    "certified_climate_dataset_unsupported_orientation"
+  );
+  const missingProvenance = certifiedClimateInput();
+  missingProvenance.monthlyRecords[1] = {
+    ...missingProvenance.monthlyRecords[1],
+    provenance: ""
+  };
+  assert.equal(
+    validateCertifiedClimateDataset(missingProvenance).code,
+    "certified_climate_dataset_missing_monthly_provenance"
+  );
+});
+
 test("P3C climate inventory classifies production demo test and validation monthly sources", () => {
   assert.equal(P3C_CLIMATE_MONTHLY_INVENTORY_STATUS, "P3C_CLIMATE_MONTHLY_INVENTORY_V1");
   assert.equal(P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.length >= 5, true);
@@ -209,7 +419,7 @@ test("Romanian climate source audit distinguishes missing official data from leg
     ROMANIAN_CLIMATE_SOURCE_AUDIT.localExtractionNote,
     "docs/mc001-extraction/17_climate_annex.md"
   );
-  assert.match(ROMANIAN_CLIMATE_SOURCE_AUDIT.conclusion, /does not contain an official Romanian locality/);
+  assert.match(ROMANIAN_CLIMATE_SOURCE_AUDIT.conclusion, /delegates climate parameters to Mc001\/6-2013/);
   assert.equal(
     ROMANIAN_CLIMATE_SOURCE_AUDIT.existingRepositoryData.find(
       (entry) => entry.path === "src/features/energy/physics/registries/monthlyClimate.registry.ts"

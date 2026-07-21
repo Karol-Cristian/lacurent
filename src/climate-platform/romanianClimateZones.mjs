@@ -49,12 +49,12 @@ export const ROMANIAN_CLIMATE_COVERAGE = Object.freeze({
   externalSourceDependencies: Object.freeze([
     Object.freeze({
       dependencyId: "official_romanian_locality_to_climate_zone_mapping",
-      status: "not_available_in_repository",
-      requiredFor: "automatic county/locality climate-zone assignment"
+      status: "delegated_to_mc001_6_2013_not_source_packed",
+      requiredFor: "automatic county/locality climate-zone and wind-zone assignment"
     }),
     Object.freeze({
       dependencyId: "official_monthly_temperature_and_solar_climate_dataset",
-      status: "not_available_in_repository",
+      status: "delegated_to_mc001_6_2013_not_source_packed",
       requiredFor:
         "normative monthly exterior temperature and irradiation profiles by location/zone"
     })
@@ -261,9 +261,17 @@ export const ROMANIAN_CLIMATE_SOURCE_INVENTORY = Object.freeze([
   Object.freeze({
     inventoryId: "mc001_climate_zone_identifiers_i_v",
     source: MC001_PDF,
-    sourceLocation: "MC001-2022, Chapter 2.2, Tabel 2.5, 2.8, 2.10a, 2.10b",
+    sourceLocation: "MC001-2022, Figura 2.1 plus Chapter 2.2, Tabel 2.5, 2.8, 2.10a, 2.10b",
     status: "implemented_lookup",
-    runtimeUse: "Building DNA climate-zone identity and zone-dependent requirement lookups",
+    runtimeUse: "Building DNA climate-zone identity, winter design-temperature lookup and zone-dependent requirement lookups",
+    containsMonthlyClimateInputs: false
+  }),
+  Object.freeze({
+    inventoryId: "mc001_figure_2_1_winter_design_temperature_by_zone",
+    source: MC001_PDF,
+    sourceLocation: "MC001-2022, Figura 2.1, pagina Monitorul Oficial 43",
+    status: "implemented_lookup",
+    runtimeUse: "heating exterior design-temperature identity by climate zone I-V",
     containsMonthlyClimateInputs: false
   }),
   Object.freeze({
@@ -310,7 +318,7 @@ export const ROMANIAN_CLIMATE_SOURCE_INVENTORY = Object.freeze([
     inventoryId: "mc001_monthly_temperature_and_solar_climate_annex",
     source: MC001_PDF,
     sourceLocation:
-      "MC001-2022, Chapter 2.7.3 and Chapter 4 examples reference an annex with climate data",
+      "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
     status: "external_or_unavailable_dataset_dependency",
     runtimeUse:
       "required for normative monthly exterior temperatures and orientation-dependent irradiation; not silently defaulted",

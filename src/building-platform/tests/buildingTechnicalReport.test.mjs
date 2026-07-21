@@ -45,6 +45,15 @@ function assistedAnswers() {
       attic: "unheated",
       basement: "none"
     },
+    location: {
+      country: "RO",
+      countyName: "Bucuresti",
+      localityName: "Bucuresti"
+    },
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
     source: {
       reference: "P2B.test.technical_report"
     },
@@ -64,8 +73,8 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   );
   assert.equal(workspace.report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(workspace.report.title, "Caiet de calcul MC001-2022");
-  assert.equal(workspace.calculationFingerprint.fingerprintId, "4c647cf6");
-  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "4c647cf6");
+  assert.equal(workspace.calculationFingerprint.fingerprintId, "b6ff21d7");
+  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "b6ff21d7");
   assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
   assert.equal(
     workspace.diagnostics.methodologyLimits.includes("no_duplicate_calculations"),
@@ -132,6 +141,27 @@ await test("technical report is generated from Building DNA and Chapter 2 output
     climateChapter.rows.some(row =>
       row.label === "Status mapare localitate" &&
       row.value === "locality_mapping_not_available_in_mc001"
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Status dataset lunar" &&
+      row.value === "DATASET_UNAVAILABLE"
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Temperatura exterioara de calcul iarna" &&
+      row.value.includes("-15 degC")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Calcule climatice indisponibile" &&
+      row.value.includes("MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED")
     ),
     true
   );

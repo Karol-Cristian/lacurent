@@ -303,8 +303,10 @@ function calculationFingerprint(buildingDna, calculation, monthly) {
         profileId: buildingDna.climateProfile?.profileId ?? null,
         datasetVersion: buildingDna.climateProfile?.datasetVersion ?? null,
         sourceType: buildingDna.climateProfile?.sourceType ?? null,
+        datasetStatus: buildingDna.climateProfile?.datasetStatus ?? null,
         verificationStatus: buildingDna.climateProfile?.verificationStatus ?? null
       },
+      climateEligibility: buildingDna.climateEligibility ?? null,
       assemblies: (buildingDna.assemblies ?? []).map(assembly => ({
         assemblyId: assembly.assemblyId,
         role: assembly.assemblyRole,
@@ -350,6 +352,7 @@ function calculationFingerprint(buildingDna, calculation, monthly) {
       buildingDnaSchema: buildingDna.schema,
       climateProfileId: buildingDna.climateProfile?.profileId ?? null,
       climateProfileVersion: buildingDna.climateProfile?.datasetVersion ?? null,
+      climateDatasetStatus: buildingDna.climateProfile?.datasetStatus ?? null,
       adapterStage: calculation.stage ?? null,
       engineScope: calculation.chapter2Result?.scope ?? null,
       ...(calculation.chapter3Result?.calculationScope
@@ -1477,6 +1480,8 @@ function compactAnnualSection(monthly, calculation) {
 function compactClimateSection(buildingDna, monthly) {
   const climate = buildingDna.climate ?? {};
   const location = buildingDna.building?.location ?? {};
+  const winterDesignTemperature = buildingDna.climateZoneRequirements?.winterDesignTemperature ?? null;
+  const eligibility = buildingDna.climateEligibility ?? [];
   return section("amplasare_clima", "Amplasare si clima", [
     compactLine({
       lineId: "climate.zone",
@@ -1500,14 +1505,44 @@ function compactClimateSection(buildingDna, monthly) {
       kind: "input"
     }),
     compactLine({
+      lineId: "climate.winter-design-temperature",
+      text: `theta_e_design_H := ${winterDesignTemperature?.value ?? "indisponibil"} degC -- ${winterDesignTemperature?.sourceReference ?? "zona climatica neselectata"}`,
+      resultValue: winterDesignTemperature?.value ?? null,
+      resultUnit: "degC",
+      variables: [
+        {
+          symbol: "theta_e_design_H",
+          value: winterDesignTemperature?.value ?? null,
+          unit: "degC",
+          meaning: "temperatura exterioara de calcul pentru iarna, pe zona climatica"
+        }
+      ],
+      reference: winterDesignTemperature?.sourceReference ?? "MC001-2022, Figura 2.1",
+      kind: "lookup"
+    }),
+    compactLine({
       lineId: "climate.monthly-profile",
-      text: `Profil_lunar := ${buildingDna.climateProfile?.profileId ?? "profil explicit"} -- ${buildingDna.climateProfile?.verificationStatus ?? climate.monthlyClimateStatus ?? "date lunare furnizate explicit"}`,
+      text: `Profil_lunar := ${buildingDna.climateProfile?.profileId ?? "profil explicit"} -- ${buildingDna.climateProfile?.datasetStatus ?? buildingDna.climateProfile?.verificationStatus ?? climate.monthlyClimateStatus ?? "date lunare furnizate explicit"}`,
       variables: [
         { symbol: "Profil_lunar", value: buildingDna.climateProfile?.profileId ?? null, unit: "-", meaning: "profilul lunar folosit de calcul" }
       ],
       reference: buildingDna.climateProfile?.sourceReferences?.[0] ?? "monthlyProfiles.BuildingDNA",
       kind: "input"
     }),
+    ...eligibility.map(item => compactLine({
+      lineId: `climate.eligibility.${item.calculationId}`,
+      text: `${item.calculationId} := ${item.status}${item.diagnostic ? ` -- ${item.diagnostic}` : ""}`,
+      variables: [
+        {
+          symbol: item.calculationId,
+          value: item.status,
+          unit: "-",
+          meaning: item.label
+        }
+      ],
+      reference: "validation-reference/romanian-climate-normative-dependencies.json",
+      kind: "diagnostic"
+    })),
     ...monthly.map(row => compactLine({
       lineId: `climate.month.${row.month}`,
       text: `${row.monthLabel} := theta_e,H ${formatNotebookValue(row.heatingOutdoorTemperatureC, "degC", 2)}; theta_e,C ${formatNotebookValue(row.coolingOutdoorTemperatureC, "degC", 2)}; t ${formatNotebookValue(row.durationHours, "h", 0)}; Qsol ${formatNotebookValue(row.solarGainsKwh, "kWh", 2)}`,
@@ -1624,6 +1659,8 @@ function climateRows(buildingDna, monthly) {
   const solarFactor = buildingDna.climateZoneRequirements?.solarFactor?.recommendation ?? null;
   const nzebLimit = buildingDna.climateZoneRequirements?.nzebLimit?.limit ?? null;
   const renovationLimit = buildingDna.climateZoneRequirements?.renovationLimit?.limit ?? null;
+  const winterDesignTemperature = buildingDna.climateZoneRequirements?.winterDesignTemperature ?? null;
+  const eligibility = buildingDna.climateEligibility ?? [];
   return [
     { label: "Tara", value: location.country ?? "RO" },
     { label: "Judet", value: location.countyName ?? location.county ?? "neselectat" },
@@ -1635,6 +1672,30 @@ function climateRows(buildingDna, monthly) {
     { label: "Suprascriere manuala", value: climate.manualOverride ? "da" : "nu" },
     { label: "Status mapare localitate", value: climate.localityMappingStatus ?? "nedefinit" },
     { label: "Status profil lunar", value: climate.monthlyClimateStatus ?? "nedefinit" },
+    { label: "Status dataset lunar", value: buildingDna.climateProfile?.datasetStatus ?? "DATASET_UNAVAILABLE" },
+    { label: "Sursa profil lunar", value: buildingDna.climateProfile?.sourceTitle ?? buildingDna.climateProfile?.sourceType ?? "neselectata" },
+    { label: "Versiune profil lunar", value: buildingDna.climateProfile?.datasetVersion ?? "neselectata" },
+    { label: "Statie/localitate dataset", value: buildingDna.climateProfile?.stationName ?? buildingDna.climateProfile?.locality ?? "neselectata" },
+    {
+      label: "Temperatura exterioara de calcul iarna",
+      value: winterDesignTemperature
+        ? `${winterDesignTemperature.value} degC (${winterDesignTemperature.sourceReference})`
+        : "indisponibila fara zona climatica"
+    },
+    {
+      label: "Calcule climatice eligibile",
+      value: eligibility
+        .filter(item => item.status === "ELIGIBLE")
+        .map(item => item.calculationId)
+        .join(", ") || "niciun calcul climatic eligibil"
+    },
+    {
+      label: "Calcule climatice indisponibile",
+      value: eligibility
+        .filter(item => item.status !== "ELIGIBLE")
+        .map(item => `${item.calculationId}: ${item.diagnostic ?? item.status}`)
+        .join("; ") || "niciun calcul indisponibil"
+    },
     {
       label: "Factor solar recomandat gn",
       value: solarFactor

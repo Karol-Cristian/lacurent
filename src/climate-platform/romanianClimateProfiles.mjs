@@ -47,7 +47,7 @@ export const ROMANIAN_CLIMATE_SOURCE_AUDIT = Object.freeze({
   localMc001Pdf: "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
   localExtractionNote: "docs/mc001-extraction/17_climate_annex.md",
   conclusion:
-    "The repository does not contain an official Romanian locality/monthly climate dataset. MC001 Chapter 2 formulas require monthly climate and solar values but the local extraction marks those tables as blocked_missing_climate_dataset.",
+    "The repository does not contain an ingested official Romanian locality/monthly climate dataset. MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; runtime therefore reports exact missing-dataset diagnostics instead of hidden fallbacks.",
   existingRepositoryData: Object.freeze([
     Object.freeze({
       path: "src/features/energy/physics/registries/climate.registry.ts",
@@ -203,6 +203,11 @@ function profileSource(profile) {
     origin: profile.origin,
     profileId: profile.profileId,
     sourceType: profile.sourceType,
+    datasetStatus: profile.datasetStatus ?? null,
+    sourceAuthority: profile.sourceAuthority ?? null,
+    stationId: profile.stationId ?? null,
+    stationName: profile.stationName ?? null,
+    checksum: profile.checksum ?? null,
     reference: profile.sourceReferences?.[0] ?? profile.profileId,
     confidence: profile.confidence,
     confirmationStatus: profile.confirmationStatus,
@@ -223,6 +228,7 @@ export const ROMANIAN_CLIMATE_PROFILES = Object.freeze([
     sourceType: "synthetic_demo_profile",
     origin: "synthetic_demo_profile",
     normativeStatus: "not_normative",
+    datasetStatus: "TEST_ONLY_SYNTHETIC_DATASET",
     verificationStatus: "synthetic_demo_not_verified",
     confidence: "low",
     datasetVersion: CLIMATE_PLATFORM_VERSION,

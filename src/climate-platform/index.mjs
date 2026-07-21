@@ -39,3 +39,17 @@ export {
   validateRomanianClimateZone,
   validateRomanianWindZone
 } from "./romanianClimateZones.mjs";
+
+export {
+  CLIMATE_AUDIT_REFINED_STATUSES,
+  CLIMATE_DATASET_STATUSES,
+  CLIMATE_RUNTIME_ELIGIBILITY_STATUSES,
+  MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE,
+  ROMANIAN_CLIMATE_ACQUISITION_LIST,
+  ROMANIAN_CLIMATE_DATA_DOMAINS,
+  ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES,
+  ROMANIAN_CLIMATE_REQUIREMENT_MATRIX,
+  evaluateClimateCalculationEligibility,
+  getWinterDesignTemperatureByClimateZone,
+  validateCertifiedClimateDataset
+} from "./romanianClimateNormativeDependencies.mjs";

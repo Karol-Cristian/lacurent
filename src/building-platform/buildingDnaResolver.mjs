@@ -14,7 +14,9 @@ import { resolveBuildingRenovationInterventions } from "./buildingRenovationInte
 import {
   MONTH_IDS,
   climateProfileToBuildingMonthlyProfiles,
+  evaluateClimateCalculationEligibility,
   getClimateZoneDependentRequirements,
+  getWinterDesignTemperatureByClimateZone,
   resolveRomanianLocationClimate,
   resolveClimateProfileSelection
 } from "../climate-platform/index.mjs";
@@ -793,6 +795,14 @@ function resolveBuildingDna({
         buildingUse: building?.buildingType === "non_residential" ? "non_residential" : "residential"
       })
     : null;
+  const winterDesignTemperature = locationClimate?.climate?.climateZone
+    ? getWinterDesignTemperatureByClimateZone(locationClimate.climate.climateZone)
+    : null;
+  const climateEligibility = evaluateClimateCalculationEligibility({
+    climate: locationClimate?.climate ?? {},
+    climateProfile,
+    monthlyProfiles
+  });
   const methodologyLimits = [
     "engineering_model_generation_only",
     "no_physics_calculation",
@@ -829,8 +839,12 @@ function resolveBuildingDna({
       climateZone: climateRequirements.climateZone,
       solarFactor: climateRequirements.solarFactor,
       nzebLimit: climateRequirements.nzebLimit,
-      renovationLimit: climateRequirements.renovationLimit
+      renovationLimit: climateRequirements.renovationLimit,
+      winterDesignTemperature: winterDesignTemperature?.status === "ready"
+        ? winterDesignTemperature
+        : null
     } : null,
+    climateEligibility,
     climateProfile: climateProfile == null ? null : {
       profileId: climateProfile.profileId,
       displayName: climateProfile.displayName,
@@ -841,8 +855,15 @@ function resolveBuildingDna({
       sourceType: climateProfile.sourceType,
       origin: climateProfile.origin,
       normativeStatus: climateProfile.normativeStatus,
+      datasetStatus: climateProfile.datasetStatus ?? null,
       verificationStatus: climateProfile.verificationStatus,
       datasetVersion: climateProfile.datasetVersion,
+      sourceTitle: climateProfile.sourceTitle ?? null,
+      sourceAuthority: climateProfile.sourceAuthority ?? null,
+      sourceEdition: climateProfile.sourceEdition ?? null,
+      stationId: climateProfile.stationId ?? null,
+      stationName: climateProfile.stationName ?? null,
+      checksum: climateProfile.checksum ?? null,
       sourceReferences: climateProfile.sourceReferences,
       safetyLabel: climateProfile.safetyLabel ?? null
     },
