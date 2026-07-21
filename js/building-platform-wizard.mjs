@@ -6,7 +6,8 @@ import {
   buildBuildingKnowledgePlatformFromAssistedAnswers,
   buildBuildingTechnicalWorkspace,
   findRomanianClimateProfileById,
-  listRomanianClimateProfiles
+  listRomanianClimateProfiles,
+  listRomanianClimateZones
 } from "../src/building-platform/index.mjs";
 
 // assisted abstraction pending redesign: keep it as a secondary view over the canonical model.
@@ -70,6 +71,12 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     building_platform_demo_mode: "1",
     building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
     climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
+    county: "Bucuresti",
+    climate_zone: "II",
+    wind_zone: "II",
+    climate_assignment_origin: "manual_zone_selection",
+    climate_manual_override: "",
+    climate_override_reason: "",
     display_name: "Demo tehnic - casa zidarie 1985",
     analysis_purpose: "technical_chapter_2_3_report",
     building_type: "house",
@@ -220,6 +227,21 @@ function dispatchFormRefresh(form) {
   form?.dispatchEvent?.(new Event("input", { bubbles: true }));
 }
 
+function ensureClimateProfileOption(form, profileId) {
+  const select = form?.querySelector?.('[name="climate_profile_id"]');
+  if (!select?.appendChild || !profileId) return;
+  const existing = [...(select.options ?? [])].some(option => option.value === profileId);
+  if (existing) return;
+  const profile = findRomanianClimateProfileById(profileId);
+  const option = globalThis.document?.createElement?.("option");
+  if (!profile || !option) return;
+  option.value = profile.profileId;
+  option.textContent = `${profile.locality}, ${profile.county} - ${profile.displayName}`;
+  option.dataset.sourceType = profile.sourceType;
+  option.dataset.verificationStatus = profile.verificationStatus;
+  select.appendChild(option);
+}
+
 export function demoModeFromSearch(search = "") {
   return new URLSearchParams(search).get("demo") === "1";
 }
@@ -236,6 +258,7 @@ export function applyAssistedWizardDemoFixture(form, fixture = ASSISTED_WIZARD_D
   if (!form) return { applied: false };
   form.reset?.();
   clearFieldProvenance(form);
+  ensureClimateProfileOption(form, fixture.values?.climate_profile_id);
   for (const [name, value] of Object.entries(fixture.values ?? {})) {
     setFieldValue(form, name, value);
   }
@@ -427,6 +450,12 @@ export function buildingDnaToWizardValues(buildingDna) {
     display_name: building.buildingId ?? "Model termic Chapter 2 salvat",
     building_type: building.buildingType === "apartment" ? "apartment" : "house",
     city: building.location?.city ?? building.location?.locality ?? buildingDna?.climateProfile?.locality ?? "",
+    county: building.location?.countyName ?? building.location?.county ?? buildingDna?.climateProfile?.county ?? "",
+    climate_zone: buildingDna?.climate?.climateZone ?? building.location?.climateZone ?? "",
+    wind_zone: buildingDna?.climate?.windZone ?? building.location?.windZone ?? "",
+    climate_assignment_origin: buildingDna?.climate?.assignmentOrigin ?? building.location?.climateAssignmentOrigin ?? "",
+    climate_manual_override: buildingDna?.climate?.manualOverride ? "yes" : "",
+    climate_override_reason: buildingDna?.climate?.overrideReason ?? "",
     climate_profile_id: building.location?.climateProfileId ?? buildingDna?.climateProfile?.profileId ?? "",
     construction_year: constructionYearFromPeriod(building.constructionPeriod),
     useful_area_m2: quantityValue(parameters.usefulFloorAreaM2 ?? geometry.usefulFloorAreaM2) ?? "",
@@ -850,15 +879,61 @@ function renderMainResultsDocument(report) {
   `;
 }
 
+function renderClimateReportChapter(report) {
+  const chapter = (report?.chapters ?? []).find(item => item.chapterId === "amplasare_si_clima");
+  if (!chapter) return "";
+  const identityRows = (chapter.rows ?? []).filter(row => row.label);
+  const monthlyRows = (chapter.rows ?? []).filter(row => row.month);
+  return `
+    <section class="report-climate-chapter">
+      <h2>2. Amplasare si date climatice utilizate</h2>
+      <p>${safeText(chapter.summary)}</p>
+      ${renderTable([
+        { label: "Parametru", value: row => row.label },
+        { label: "Valoare", value: row => row.value }
+      ], identityRows)}
+      ${renderTable([
+        { label: "Luna", value: row => row.monthLabel ?? row.month },
+        { label: "theta e,H [degC]", value: row => formatNumber(row.heatingOutdoorTemperatureC, 4) },
+        { label: "theta e,C [degC]", value: row => formatNumber(row.coolingOutdoorTemperatureC, 4) },
+        { label: "Ore [h]", value: row => formatNumber(row.durationHours, 0) },
+        { label: "Orientare solara", value: row => row.solarOrientation ?? "--" },
+        { label: "Aport solar [kWh]", value: row => formatNumber(row.solarGainsKwh, 4) },
+        { label: "Origine", value: row => row.monthlyProfileOrigin ?? "--" }
+      ], monthlyRows)}
+      ${(chapter.references ?? []).length ? `
+        <p class="section-description">${safeText((chapter.references ?? []).join("; "))}</p>
+      ` : ""}
+    </section>
+  `;
+}
+
+function hasReportChapter(report, chapterId) {
+  return (report?.chapters ?? []).some(chapter => chapter.chapterId === chapterId);
+}
+
+function reportChapterNumbers(report) {
+  const hasClimate = hasReportChapter(report, "amplasare_si_clima");
+  const hasInstallations = hasReportChapter(report, "instalatii_capitolul_3");
+  const installations = hasClimate ? 3 : 2;
+  const notebook = 2 + (hasClimate ? 1 : 0) + (hasInstallations ? 1 : 0);
+  return {
+    installations,
+    notebook,
+    appendix: notebook + 1
+  };
+}
+
 function renderInstallationsReportChapter(report) {
   const chapter = (report?.chapters ?? []).find(item => item.chapterId === "instalatii_capitolul_3");
   if (!chapter) return "";
+  const numbers = reportChapterNumbers(report);
   const serviceRows = (chapter.rows ?? []).filter(row => row.service);
   const monthlyRows = (chapter.rows ?? []).filter(row => row.month);
   const limitation = (chapter.rows ?? []).find(row => row.label === "Limitare iluminat")?.value;
   return `
     <section class="report-installations-chapter">
-      <h2>2. Instalatii tehnice - MC001 Capitolul 3</h2>
+      <h2>${numbers.installations}. Instalatii tehnice - MC001 Capitolul 3</h2>
       <p>${safeText(chapter.summary)}</p>
       ${renderTable([
         { label: "Serviciu", value: row => row.service },
@@ -883,9 +958,10 @@ function renderInstallationsReportChapter(report) {
 function renderTechnicalAppendix(report, workspace = null) {
   const appendix = (report?.chapters ?? []).find(chapter => chapter.chapterId === "anexa_tehnica_interna");
   if (!appendix) return "";
+  const numbers = reportChapterNumbers(report);
   return `
     <section class="technical-report-appendix">
-      <h2>${report?.chapters?.some(chapter => chapter.chapterId === "instalatii_capitolul_3") ? "4" : "3"}. Anexa tehnica interna</h2>
+      <h2>${numbers.appendix}. Anexa tehnica interna</h2>
       <p>Informatii pentru audit tehnic intern si depanare. Continutul principal de calcul este in caietul de mai sus.</p>
       ${renderChapterRows(appendix)}
       ${workspace ? renderTraceability(workspace) : ""}
@@ -896,6 +972,7 @@ function renderTechnicalAppendix(report, workspace = null) {
 function renderEngineeringNotebookReport(workspace) {
   const report = workspace.report ?? {};
   const notebook = report.engineeringNotebook ?? workspace.engineeringNotebook ?? { sections: [], calculations: [] };
+  const numbers = reportChapterNumbers(report);
   return `
     <div class="technical-report-document" data-pdf-like-report>
       <header class="technical-report-title-block">
@@ -904,9 +981,10 @@ function renderEngineeringNotebookReport(workspace) {
         <p>Rezultatele si calculele de mai jos afiseaza valorile curente furnizate de motorul validat.</p>
       </header>
       ${renderMainResultsDocument(report)}
+      ${renderClimateReportChapter(report)}
       ${renderInstallationsReportChapter(report)}
       <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
-        <h2>${report?.chapters?.some(chapter => chapter.chapterId === "instalatii_capitolul_3") ? "3" : "2"}. Caiet de calcule ingineresti</h2>
+        <h2>${numbers.notebook}. Caiet de calcule ingineresti</h2>
         <p>Variabilele sunt definite local in fiecare sectiune, iar liniile de calcul sunt afisate continuu, in ordinea dependentelor.</p>
         <section class="notebook-calculation-steps">
           <h3>Calcule in ordinea dependentelor</h3>
@@ -920,6 +998,7 @@ function renderEngineeringNotebookReport(workspace) {
 
 function renderSavedTechnicalReportDocument(report) {
   const notebook = report?.engineeringNotebook ?? { sections: [], calculations: [] };
+  const numbers = reportChapterNumbers(report);
   return `
     <div class="technical-report-document" data-pdf-like-report>
       <header class="technical-report-title-block">
@@ -927,9 +1006,10 @@ function renderSavedTechnicalReportDocument(report) {
         <h1>${safeText(report?.title ?? "Caiet de calcul")}</h1>
       </header>
       ${renderMainResultsDocument(report)}
+      ${renderClimateReportChapter(report)}
       ${renderInstallationsReportChapter(report)}
       <section class="engineering-calculation-notebook" data-engineering-calculation-notebook>
-        <h2>${report?.chapters?.some(chapter => chapter.chapterId === "instalatii_capitolul_3") ? "3" : "2"}. Caiet de calcule ingineresti</h2>
+        <h2>${numbers.notebook}. Caiet de calcule ingineresti</h2>
         <section class="notebook-calculation-steps">
           <h3>Calcule in ordinea dependentelor</h3>
           ${renderCalculationNotebook(notebook)}
@@ -1142,6 +1222,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const climateProfile = climateProfileId
     ? findRomanianClimateProfileById(climateProfileId)
     : null;
+  const climateManualOverride = formValue(formData, "climate_manual_override") === "yes";
   const wallInsulationThicknessByOption = {
     "5cm": 0.05,
     "10cm": 0.1,
@@ -1203,14 +1284,28 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
       basement: floorType === "over_basement" ? "unheated" : "none"
     },
     location: {
+      country: "RO",
       city: formValue(formData, "city") || null,
+      localityName: formValue(formData, "city") || null,
+      countyName: formValue(formData, "county") || null,
+      climateZone: formValue(formData, "climate_zone") || null,
+      windZone: formValue(formData, "wind_zone") || null,
+      manualOverride: climateManualOverride,
+      overrideReason: formValue(formData, "climate_override_reason") || null,
       climateProfileId: climateProfile?.profileId ?? null,
       climateProfileSourceType: climateProfile?.sourceType ?? null
+    },
+    climate: {
+      climateZone: formValue(formData, "climate_zone") || null,
+      windZone: formValue(formData, "wind_zone") || null,
+      assignmentOrigin: formValue(formData, "climate_assignment_origin") || null,
+      manualOverride: climateManualOverride,
+      overrideReason: formValue(formData, "climate_override_reason") || null
     },
     ...(climateProfile === null ? {} : {
       climateProfile,
       climateProfileId: climateProfile.profileId,
-      allowSyntheticClimate: climateProfile.sourceType === "synthetic_demo_profile"
+      allowSyntheticClimate: isDemoFixture && climateProfile.sourceType === "synthetic_demo_profile"
     }),
     source: isDemoFixture ? {
       reference: `P2B.demo.${demoFixtureId}`,
@@ -1974,7 +2069,9 @@ export function attachBuildingPlatformWizard(root = document) {
   }
   const climateSelect = form.querySelector?.('[name="climate_profile_id"]');
   if (climateSelect && climateSelect.options.length <= 1) {
-    for (const profile of listRomanianClimateProfiles({ includeSynthetic: true })) {
+    const includeSynthetic = demoModeFromSearch(globalThis.window?.location?.search ?? "") ||
+      form.dataset.demoMode === "1";
+    for (const profile of listRomanianClimateProfiles({ includeSynthetic })) {
       const option = root.createElement?.("option");
       if (!option) continue;
       option.value = profile.profileId;
@@ -1982,6 +2079,17 @@ export function attachBuildingPlatformWizard(root = document) {
       option.dataset.sourceType = profile.sourceType;
       option.dataset.verificationStatus = profile.verificationStatus;
       climateSelect.appendChild(option);
+    }
+  }
+  const climateZoneSelect = form.querySelector?.('[name="climate_zone"]');
+  if (climateZoneSelect && climateZoneSelect.options.length <= 1) {
+    for (const zone of listRomanianClimateZones()) {
+      const option = root.createElement?.("option");
+      if (!option) continue;
+      option.value = zone.zoneId;
+      option.textContent = zone.label;
+      option.dataset.datasetVersion = zone.datasetVersion;
+      climateZoneSelect.appendChild(option);
     }
   }
   const demoControls = attachDemoControls(root, form);

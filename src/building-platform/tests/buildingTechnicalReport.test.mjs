@@ -45,6 +45,15 @@ function assistedAnswers() {
       attic: "unheated",
       basement: "none"
     },
+    location: {
+      country: "RO",
+      countyName: "Bucuresti",
+      localityName: "Bucuresti"
+    },
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
     source: {
       reference: "P2B.test.technical_report"
     },
@@ -64,8 +73,8 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   );
   assert.equal(workspace.report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(workspace.report.title, "Caiet de calcul MC001-2022");
-  assert.equal(workspace.calculationFingerprint.fingerprintId, "39cfaa3e");
-  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "39cfaa3e");
+  assert.equal(workspace.calculationFingerprint.fingerprintId, "b6ff21d7");
+  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "b6ff21d7");
   assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
   assert.equal(
     workspace.diagnostics.methodologyLimits.includes("no_duplicate_calculations"),
@@ -124,6 +133,38 @@ await test("technical report is generated from Building DNA and Chapter 2 output
 
   assert.equal(workspace.report.mainResults.monthly.length, 12);
   assert.equal(workspace.report.mainResults.monthly[0].monthLabel, "ianuarie");
+  const climateChapter = workspace.report.chapters.find(
+    chapter => chapter.chapterId === "amplasare_si_clima"
+  );
+  assert.equal(climateChapter.title, "Amplasare si date climatice utilizate");
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Status mapare localitate" &&
+      row.value === "locality_mapping_not_available_in_mc001"
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Status dataset lunar" &&
+      row.value === "DATASET_UNAVAILABLE"
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Temperatura exterioara de calcul iarna" &&
+      row.value.includes("-15 degC")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Calcule climatice indisponibile" &&
+      row.value.includes("MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED")
+    ),
+    true
+  );
   assert.equal(workspace.engineeringNotebook.sections.length >= 20, true);
   assert.equal(Object.prototype.hasOwnProperty.call(workspace.engineeringNotebook, "variables"), false);
 });
@@ -136,6 +177,7 @@ await test("technical report contains the required compact P3G notebook chapters
 
   assert.deepEqual(chapterTitles, [
     "Rezultate principale",
+    "Amplasare si date climatice utilizate",
     "Caiet de calcule ingineresti",
     "Anexa tehnica interna"
   ]);
@@ -239,7 +281,9 @@ await test("technical report module does not calculate physics or read runtime s
     "fetch(",
     ".pdf",
     "finalEnergy",
-    "primaryEnergy",
+    "primaryEnergyResult",
+    "annualPrimaryEnergy",
+    "co2Result",
     "certificateResult"
   ]) {
     assert.equal(source.includes(forbidden), false, forbidden);

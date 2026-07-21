@@ -65,17 +65,46 @@ export {
 } from "./buildingTechnicalReport.mjs";
 
 export {
+  CLIMATE_AUDIT_REFINED_STATUSES,
+  CLIMATE_DATASET_STATUSES,
   CLIMATE_PLATFORM_VERSION,
+  CLIMATE_RUNTIME_ELIGIBILITY_STATUSES,
+  MC001_NZEB_LIMITS_TABLE_2_10A,
+  MC001_RENOVATION_LIMITS_TABLE_2_10B,
+  MC001_SOLAR_FACTOR_GN_RECOMMENDATIONS,
+  MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE,
+  ROMANIAN_CLIMATE_ACQUISITION_LIST,
+  ROMANIAN_CLIMATE_COVERAGE,
+  ROMANIAN_CLIMATE_DATA_DOMAINS,
+  ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES,
+  ROMANIAN_CLIMATE_REQUIREMENT_MATRIX,
   ROMANIAN_CLIMATE_SOURCE_AUDIT,
+  ROMANIAN_CLIMATE_SOURCE_INVENTORY,
+  ROMANIAN_CLIMATE_ZONE_IDS,
+  ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION,
+  ROMANIAN_CLIMATE_ZONES,
+  ROMANIAN_LOCALITY_CLIMATE_REGISTRY,
+  ROMANIAN_WIND_ZONE_IDS,
   climateProfileToBuildingMonthlyProfiles,
   createSyntheticSeasonalDemoClimateProfile,
   createSyntheticSeasonalDemoMonthlyProfiles,
+  evaluateClimateCalculationEligibility,
   findRomanianClimateProfileById,
+  getClimateZoneDependentRequirements,
+  getMc001PrimaryCo2Limit,
+  getRomanianClimateZone,
+  getSolarFactorRecommendation,
+  getWinterDesignTemperatureByClimateZone,
   listClimateSourceContracts,
   listRomanianClimateProfiles,
+  listRomanianClimateZones,
   resolveClimateProfileSelection,
+  resolveRomanianLocationClimate,
   searchRomanianClimateProfiles,
-  validateClimateProfile
+  validateCertifiedClimateDataset,
+  validateClimateProfile,
+  validateRomanianClimateZone,
+  validateRomanianWindZone
 } from "../climate-platform/index.mjs";
 
 export {

@@ -40,6 +40,18 @@ function buildingDna(options = {}) {
       attic: "unheated",
       basement: "none"
     },
+    location: {
+      country: "RO",
+      countyName: "Bucuresti",
+      localityName: "Bucuresti",
+      climateZone: options.climateZone ?? "II",
+      windZone: options.windZone ?? "II"
+    },
+    climate: {
+      climateZone: options.climateZone ?? "II",
+      windZone: options.windZone ?? "II",
+      assignmentOrigin: "manual_zone_selection"
+    },
     climateProfileId: options.climateProfileId ?? "ro_synthetic_bucharest_seasonal_demo_v1",
     allowSyntheticClimate: true,
     source: {
@@ -65,11 +77,13 @@ test("Building DNA fingerprint changes for engineering orientation, insulation a
   const base = buildingDna();
   const north = buildingDna({ windowOrientation: "north" });
   const thicker = buildingDna({ wallInsulationThicknessM: 0.15 });
+  const climateZoneChanged = buildingDna({ climateZone: "V", windZone: "IV" });
   const climateChanged = JSON.parse(JSON.stringify(base));
   climateChanged.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount -= 1;
 
   assert.notEqual(fingerprintBuildingDna(base), fingerprintBuildingDna(north));
   assert.notEqual(fingerprintBuildingDna(base), fingerprintBuildingDna(thicker));
+  assert.notEqual(fingerprintBuildingDna(base), fingerprintBuildingDna(climateZoneChanged));
   assert.notEqual(fingerprintBuildingDna(base), fingerprintBuildingDna(climateChanged));
 });
 
