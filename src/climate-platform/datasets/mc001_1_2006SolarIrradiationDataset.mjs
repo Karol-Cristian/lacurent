@@ -1,0 +1,14213 @@
+// Generated from validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json.
+// Source: https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_1_2_3_2006.pdf
+// Source PDF SHA-256: e136e0fc961701aa033f5ff5194c6f3708fc5390cdf25a5c30c1b76371f5e4df
+
+export const MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION = "mc001_1_2006_annex_a9_6_solar_p5b3_v1";
+
+export const MC001_1_2006_SOLAR_IRRADIATION_SOURCE_DOCUMENT = Object.freeze({
+  "documentId": "mc001_1_2006_parts_1_2_3",
+  "title": "Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2-3/2006",
+  "indicativ": "Mc 001/1-2-3/2006",
+  "edition": "2006",
+  "authority": "MDLPA",
+  "officialUrl": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_1_2_3_2006.pdf",
+  "sha256": "e136e0fc961701aa033f5ff5194c6f3708fc5390cdf25a5c30c1b76371f5e4df",
+  "textExtractionChecksum": "c957dcb4a38971787bd06a8ec06091dcd74d563e966f74c55c903c3e910ee938"
+});
+
+export const MC001_1_2006_SOLAR_IRRADIATION_DATASET_CHECKSUMS = Object.freeze({
+  "localityRegistry": "5f9929a086c18f3900e91dcdd3e14d81d572de736fb37aa58ed60f0127cea62c",
+  "monthlySolarIrradianceRows": "937b9b0849b007ab3b40280d4d8780e3d2779ff014cf02809ffdf0ece3aa782c",
+  "rowDefinitions": "51ffad7365fe750b33998b40a9cf15029a4e54efe01df0454dc3a1995b1d8c00"
+});
+
+export const MC001_1_2006_SOLAR_IRRADIATION_ROW_DEFINITIONS = Object.freeze([
+  {
+    "rowKey": "it_south",
+    "canonicalKey": "south",
+    "sourceSymbol": "I_T S",
+    "meaning": "total_vertical_south"
+  },
+  {
+    "rowKey": "it_south_west",
+    "canonicalKey": "southWest",
+    "sourceSymbol": "I_T S-V",
+    "meaning": "total_vertical_south_west"
+  },
+  {
+    "rowKey": "it_west",
+    "canonicalKey": "west",
+    "sourceSymbol": "I_T V",
+    "meaning": "total_vertical_west"
+  },
+  {
+    "rowKey": "it_north_west",
+    "canonicalKey": "northWest",
+    "sourceSymbol": "I_T N-V",
+    "meaning": "total_vertical_north_west"
+  },
+  {
+    "rowKey": "it_north",
+    "canonicalKey": "north",
+    "sourceSymbol": "I_T N",
+    "meaning": "total_vertical_north"
+  },
+  {
+    "rowKey": "it_north_east",
+    "canonicalKey": "northEast",
+    "sourceSymbol": "I_T N-E",
+    "meaning": "total_vertical_north_east"
+  },
+  {
+    "rowKey": "it_east",
+    "canonicalKey": "east",
+    "sourceSymbol": "I_T E",
+    "meaning": "total_vertical_east"
+  },
+  {
+    "rowKey": "it_south_east",
+    "canonicalKey": "southEast",
+    "sourceSymbol": "I_T S-E",
+    "meaning": "total_vertical_south_east"
+  },
+  {
+    "rowKey": "it_horizontal",
+    "canonicalKey": "horizontal",
+    "sourceSymbol": "I_T Oriz.",
+    "meaning": "total_horizontal"
+  },
+  {
+    "rowKey": "id_vertical",
+    "canonicalKey": "vertical",
+    "sourceSymbol": "I_d Vert.",
+    "meaning": "diffuse_vertical"
+  },
+  {
+    "rowKey": "id_horizontal",
+    "canonicalKey": "horizontal",
+    "sourceSymbol": "I_d Oriz.",
+    "meaning": "diffuse_horizontal"
+  }
+]);
+
+export const MC001_1_2006_SOLAR_LOCALITY_REGISTRY = Object.freeze([
+  {
+    "localityId": "ro_alexandria",
+    "solarStationId": "mc001_1_2006_solar_alexandria",
+    "climateStationId": "mc001_6_2013_alexandria",
+    "localityName": "Alexandria",
+    "sourceLocalityId": "alexandria",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 119",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_bacau",
+    "solarStationId": "mc001_1_2006_solar_bacau",
+    "climateStationId": "mc001_6_2013_bacau",
+    "localityName": "Bacau",
+    "sourceLocalityId": "bacau",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 119",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_barlad",
+    "solarStationId": "mc001_1_2006_solar_barlad",
+    "climateStationId": null,
+    "localityName": "Barlad",
+    "sourceLocalityId": "barlad",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 120",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_botosani",
+    "solarStationId": "mc001_1_2006_solar_botosani",
+    "climateStationId": "mc001_6_2013_botosani",
+    "localityName": "Botosani",
+    "sourceLocalityId": "botosani",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 120",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_bucuresti",
+    "solarStationId": "mc001_1_2006_solar_municipiul_bucuresti",
+    "climateStationId": "mc001_6_2013_bucuresti",
+    "localityName": "Municipiul Bucuresti",
+    "sourceLocalityId": "municipiul_bucuresti",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 120",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_calafat",
+    "solarStationId": "mc001_1_2006_solar_calafat",
+    "climateStationId": null,
+    "localityName": "Calafat",
+    "sourceLocalityId": "calafat",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 121",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_calarasi",
+    "solarStationId": "mc001_1_2006_solar_calarasi",
+    "climateStationId": "mc001_6_2013_calarasi",
+    "localityName": "Calarasi",
+    "sourceLocalityId": "calarasi",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 121",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_campina",
+    "solarStationId": "mc001_1_2006_solar_campina",
+    "climateStationId": null,
+    "localityName": "Campina",
+    "sourceLocalityId": "campina",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 121",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_caransebes",
+    "solarStationId": "mc001_1_2006_solar_caransebes",
+    "climateStationId": null,
+    "localityName": "Caransebes",
+    "sourceLocalityId": "caransebes",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 122",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_cluj_napoca",
+    "solarStationId": "mc001_1_2006_solar_cluj_napoca",
+    "climateStationId": "mc001_6_2013_cluj_napoca",
+    "localityName": "Cluj-Napoca",
+    "sourceLocalityId": "cluj_napoca",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 122",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_constanta",
+    "solarStationId": "mc001_1_2006_solar_constanta",
+    "climateStationId": "mc001_6_2013_constanta",
+    "localityName": "Constanta",
+    "sourceLocalityId": "constanta",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 122",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_craiova",
+    "solarStationId": "mc001_1_2006_solar_craiova",
+    "climateStationId": "mc001_6_2013_craiova",
+    "localityName": "Craiova",
+    "sourceLocalityId": "craiova",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 123",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_curtea_de_arges",
+    "solarStationId": "mc001_1_2006_solar_curtea_de_arges",
+    "climateStationId": null,
+    "localityName": "Curtea de Arges",
+    "sourceLocalityId": "curtea_de_arges",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 123",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_dorohoi",
+    "solarStationId": "mc001_1_2006_solar_dorohoi",
+    "climateStationId": null,
+    "localityName": "Dorohoi",
+    "sourceLocalityId": "dorohoi",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 123",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_dragasani",
+    "solarStationId": "mc001_1_2006_solar_dragasani",
+    "climateStationId": null,
+    "localityName": "Dragasani",
+    "sourceLocalityId": "dragasani",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 124",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_galati",
+    "solarStationId": "mc001_1_2006_solar_galati",
+    "climateStationId": "mc001_6_2013_galati",
+    "localityName": "Galati",
+    "sourceLocalityId": "galati",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 124",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_iasi",
+    "solarStationId": "mc001_1_2006_solar_iasi",
+    "climateStationId": "mc001_6_2013_iasi",
+    "localityName": "Iasi",
+    "sourceLocalityId": "iasi",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 124",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_oradea",
+    "solarStationId": "mc001_1_2006_solar_oradea",
+    "climateStationId": "mc001_6_2013_oradea",
+    "localityName": "Oradea",
+    "sourceLocalityId": "oradea",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 125",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_predeal",
+    "solarStationId": "mc001_1_2006_solar_predeal",
+    "climateStationId": null,
+    "localityName": "Predeal",
+    "sourceLocalityId": "predeal",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 125",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_ramnicu_sarat",
+    "solarStationId": "mc001_1_2006_solar_ramnicu_sarat",
+    "climateStationId": null,
+    "localityName": "Ramnicu Sarat",
+    "sourceLocalityId": "ramnicu_sarat",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 125",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_rosiori_de_vede",
+    "solarStationId": "mc001_1_2006_solar_rosiori_de_vede",
+    "climateStationId": null,
+    "localityName": "Rosiori de Vede",
+    "sourceLocalityId": "rosiori_de_vede",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 126",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_satu_mare",
+    "solarStationId": "mc001_1_2006_solar_satu_mare",
+    "climateStationId": "mc001_6_2013_satu_mare",
+    "localityName": "Satu Mare",
+    "sourceLocalityId": "satu_mare",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 126",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_sibiu",
+    "solarStationId": "mc001_1_2006_solar_sibiu",
+    "climateStationId": "mc001_6_2013_sibiu",
+    "localityName": "Sibiu",
+    "sourceLocalityId": "sibiu",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 126",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_sighet",
+    "solarStationId": "mc001_1_2006_solar_sighet",
+    "climateStationId": null,
+    "localityName": "Sighet",
+    "sourceLocalityId": "sighet",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 127",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_targu_jiu",
+    "solarStationId": "mc001_1_2006_solar_targu_jiu",
+    "climateStationId": "mc001_6_2013_targu_jiu",
+    "localityName": "Targu Jiu",
+    "sourceLocalityId": "targu_jiu",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 127",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_targu_mures",
+    "solarStationId": "mc001_1_2006_solar_targu_mures",
+    "climateStationId": "mc001_6_2013_targu_mures",
+    "localityName": "Targu Mures",
+    "sourceLocalityId": "targu_mures",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 127",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_targu_secuiesc",
+    "solarStationId": "mc001_1_2006_solar_targu_secuiesc",
+    "climateStationId": null,
+    "localityName": "Targu Secuiesc",
+    "sourceLocalityId": "targu_secuiesc",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 128",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_timisoara",
+    "solarStationId": "mc001_1_2006_solar_timisoara",
+    "climateStationId": "mc001_6_2013_timisoara",
+    "localityName": "Timisoara",
+    "sourceLocalityId": "timisoara",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 128",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_turnu_magurele",
+    "solarStationId": "mc001_1_2006_solar_turnu_magurele",
+    "climateStationId": null,
+    "localityName": "Turnu Magurele",
+    "sourceLocalityId": "turnu_magurele",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 128",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  },
+  {
+    "localityId": "ro_turnu_severin",
+    "solarStationId": "mc001_1_2006_solar_turnu_severin",
+    "climateStationId": null,
+    "localityName": "Turnu Severin",
+    "sourceLocalityId": "turnu_severin",
+    "sourceReference": "Mc001/1-2006 Anexa A.9.6, PDF page 129",
+    "solarDatasetStatus": "NORMATIVE_DATASET"
+  }
+]);
+
+export const MC001_1_2006_MONTHLY_SOLAR_IRRADIANCE = Object.freeze({
+  "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+  "annex": "A.9.6",
+  "title": "Intensitatea radiatiei solare totale (I_T) si difuze (I_d) pe plan vertical si orizontal - valori medii zilnice",
+  "sourceReference": "Mc001/1-2-3/2006, Anexa A.9.6, PDF pages 119-129",
+  "sourcePdfPages": [
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129
+  ],
+  "unit": "W/m2",
+  "valueType": "mean_daily_irradiance",
+  "temporalResolution": "monthly_mean_daily",
+  "monthIds": [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december"
+  ],
+  "rowDefinitions": [
+    {
+      "rowKey": "it_south",
+      "canonicalKey": "south",
+      "sourceSymbol": "I_T S",
+      "meaning": "total_vertical_south"
+    },
+    {
+      "rowKey": "it_south_west",
+      "canonicalKey": "southWest",
+      "sourceSymbol": "I_T S-V",
+      "meaning": "total_vertical_south_west"
+    },
+    {
+      "rowKey": "it_west",
+      "canonicalKey": "west",
+      "sourceSymbol": "I_T V",
+      "meaning": "total_vertical_west"
+    },
+    {
+      "rowKey": "it_north_west",
+      "canonicalKey": "northWest",
+      "sourceSymbol": "I_T N-V",
+      "meaning": "total_vertical_north_west"
+    },
+    {
+      "rowKey": "it_north",
+      "canonicalKey": "north",
+      "sourceSymbol": "I_T N",
+      "meaning": "total_vertical_north"
+    },
+    {
+      "rowKey": "it_north_east",
+      "canonicalKey": "northEast",
+      "sourceSymbol": "I_T N-E",
+      "meaning": "total_vertical_north_east"
+    },
+    {
+      "rowKey": "it_east",
+      "canonicalKey": "east",
+      "sourceSymbol": "I_T E",
+      "meaning": "total_vertical_east"
+    },
+    {
+      "rowKey": "it_south_east",
+      "canonicalKey": "southEast",
+      "sourceSymbol": "I_T S-E",
+      "meaning": "total_vertical_south_east"
+    },
+    {
+      "rowKey": "it_horizontal",
+      "canonicalKey": "horizontal",
+      "sourceSymbol": "I_T Oriz.",
+      "meaning": "total_horizontal"
+    },
+    {
+      "rowKey": "id_vertical",
+      "canonicalKey": "vertical",
+      "sourceSymbol": "I_d Vert.",
+      "meaning": "diffuse_vertical"
+    },
+    {
+      "rowKey": "id_horizontal",
+      "canonicalKey": "horizontal",
+      "sourceSymbol": "I_d Oriz.",
+      "meaning": "diffuse_horizontal"
+    }
+  ],
+  "localityCount": 30,
+  "cellCount": 3960,
+  "rows": [
+    {
+      "localityId": "ro_alexandria",
+      "sourceLocalityId": "alexandria",
+      "solarStationId": "mc001_1_2006_solar_alexandria",
+      "climateStationId": "mc001_6_2013_alexandria",
+      "localityName": "Alexandria",
+      "sourceLabel": "Alexandria",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 119,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          74.5,
+          107.3,
+          100.3,
+          95.7,
+          92.5,
+          98.9,
+          119.1,
+          138.4,
+          138,
+          122.2,
+          74.6,
+          67.8
+        ],
+        "it_south_west": [
+          57.6,
+          87.8,
+          88.8,
+          92.5,
+          86.8,
+          94.7,
+          111.9,
+          124,
+          120.1,
+          101.4,
+          58.4,
+          52.2
+        ],
+        "it_west": [
+          30.3,
+          54.1,
+          64.3,
+          76.7,
+          75.5,
+          80.8,
+          85.7,
+          78.1,
+          85.3,
+          64.7,
+          33.6,
+          27.1
+        ],
+        "it_north_west": [
+          14.9,
+          28.2,
+          38.4,
+          53.1,
+          70.9,
+          79.5,
+          84.2,
+          76,
+          60.5,
+          36.1,
+          16.7,
+          12.3
+        ],
+        "it_north": [
+          13.6,
+          20.8,
+          29.9,
+          39.7,
+          66.4,
+          78.1,
+          82.6,
+          73.8,
+          51.5,
+          25.3,
+          15.5,
+          11.8
+        ],
+        "it_north_east": [
+          14.9,
+          28.2,
+          38.4,
+          53.1,
+          70.9,
+          79.5,
+          84.2,
+          76,
+          60.5,
+          36.1,
+          16.7,
+          12.3
+        ],
+        "it_east": [
+          30.3,
+          54.1,
+          64.3,
+          76.7,
+          75.5,
+          80.8,
+          85.7,
+          78.1,
+          85.3,
+          64.7,
+          33.6,
+          27.1
+        ],
+        "it_south_east": [
+          57.6,
+          87.8,
+          88.8,
+          92.5,
+          86.8,
+          94.7,
+          111.9,
+          124,
+          120.1,
+          101.4,
+          58.4,
+          52.2
+        ],
+        "it_horizontal": [
+          48.8,
+          85.5,
+          121.9,
+          168.8,
+          207.8,
+          239.3,
+          254.6,
+          233.7,
+          176.9,
+          112.2,
+          55.1,
+          41
+        ],
+        "id_vertical": [
+          13.6,
+          20.8,
+          29.9,
+          39.7,
+          47,
+          50.4,
+          50.3,
+          45.1,
+          35.7,
+          25.3,
+          15.5,
+          11.8
+        ],
+        "id_horizontal": [
+          27.1,
+          41.7,
+          59.8,
+          79.5,
+          94.1,
+          100.7,
+          100.7,
+          90.2,
+          71.5,
+          50.6,
+          31,
+          23.6
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 74.5,
+            "southWest": 57.6,
+            "west": 30.3,
+            "northWest": 14.9,
+            "north": 13.6,
+            "northEast": 14.9,
+            "east": 30.3,
+            "southEast": 57.6,
+            "horizontal": 48.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.6,
+            "horizontal": 27.1
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 107.3,
+            "southWest": 87.8,
+            "west": 54.1,
+            "northWest": 28.2,
+            "north": 20.8,
+            "northEast": 28.2,
+            "east": 54.1,
+            "southEast": 87.8,
+            "horizontal": 85.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.8,
+            "horizontal": 41.7
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.3,
+            "southWest": 88.8,
+            "west": 64.3,
+            "northWest": 38.4,
+            "north": 29.9,
+            "northEast": 38.4,
+            "east": 64.3,
+            "southEast": 88.8,
+            "horizontal": 121.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.9,
+            "horizontal": 59.8
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.7,
+            "southWest": 92.5,
+            "west": 76.7,
+            "northWest": 53.1,
+            "north": 39.7,
+            "northEast": 53.1,
+            "east": 76.7,
+            "southEast": 92.5,
+            "horizontal": 168.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.7,
+            "horizontal": 79.5
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 92.5,
+            "southWest": 86.8,
+            "west": 75.5,
+            "northWest": 70.9,
+            "north": 66.4,
+            "northEast": 70.9,
+            "east": 75.5,
+            "southEast": 86.8,
+            "horizontal": 207.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 47,
+            "horizontal": 94.1
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.9,
+            "southWest": 94.7,
+            "west": 80.8,
+            "northWest": 79.5,
+            "north": 78.1,
+            "northEast": 79.5,
+            "east": 80.8,
+            "southEast": 94.7,
+            "horizontal": 239.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.4,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.1,
+            "southWest": 111.9,
+            "west": 85.7,
+            "northWest": 84.2,
+            "north": 82.6,
+            "northEast": 84.2,
+            "east": 85.7,
+            "southEast": 111.9,
+            "horizontal": 254.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 138.4,
+            "southWest": 124,
+            "west": 78.1,
+            "northWest": 76,
+            "north": 73.8,
+            "northEast": 76,
+            "east": 78.1,
+            "southEast": 124,
+            "horizontal": 233.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 45.1,
+            "horizontal": 90.2
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 138,
+            "southWest": 120.1,
+            "west": 85.3,
+            "northWest": 60.5,
+            "north": 51.5,
+            "northEast": 60.5,
+            "east": 85.3,
+            "southEast": 120.1,
+            "horizontal": 176.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.7,
+            "horizontal": 71.5
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122.2,
+            "southWest": 101.4,
+            "west": 64.7,
+            "northWest": 36.1,
+            "north": 25.3,
+            "northEast": 36.1,
+            "east": 64.7,
+            "southEast": 101.4,
+            "horizontal": 112.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.3,
+            "horizontal": 50.6
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 74.6,
+            "southWest": 58.4,
+            "west": 33.6,
+            "northWest": 16.7,
+            "north": 15.5,
+            "northEast": 16.7,
+            "east": 33.6,
+            "southEast": 58.4,
+            "horizontal": 55.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.5,
+            "horizontal": 31
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 67.8,
+            "southWest": 52.2,
+            "west": 27.1,
+            "northWest": 12.3,
+            "north": 11.8,
+            "northEast": 12.3,
+            "east": 27.1,
+            "southEast": 52.2,
+            "horizontal": 41
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.8,
+            "horizontal": 23.6
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_bacau",
+      "sourceLocalityId": "bacau",
+      "solarStationId": "mc001_1_2006_solar_bacau",
+      "climateStationId": "mc001_6_2013_bacau",
+      "localityName": "Bacau",
+      "sourceLabel": "Bacau",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 119,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          66.2,
+          96.3,
+          102.3,
+          91.9,
+          88.2,
+          93.5,
+          107.8,
+          121.9,
+          116.4,
+          115,
+          61.1,
+          55.9
+        ],
+        "it_south_west": [
+          51.2,
+          78.8,
+          90.2,
+          88.8,
+          82.9,
+          89.8,
+          101.6,
+          109.8,
+          101.9,
+          95.4,
+          48,
+          43.1
+        ],
+        "it_west": [
+          26.8,
+          48.7,
+          64.7,
+          73.8,
+          72.5,
+          77.4,
+          79.2,
+          71,
+          73.8,
+          60.8,
+          28,
+          22.5
+        ],
+        "it_north_west": [
+          13.1,
+          25.5,
+          37.7,
+          51.4,
+          68.3,
+          76.2,
+          77.9,
+          69.2,
+          53.8,
+          33.7,
+          14.4,
+          10.4
+        ],
+        "it_north": [
+          11.9,
+          19,
+          28.8,
+          38.6,
+          64.1,
+          74.9,
+          76.6,
+          67.4,
+          46.5,
+          23.6,
+          13.4,
+          10
+        ],
+        "it_north_east": [
+          13.1,
+          25.5,
+          37.7,
+          51.4,
+          68.3,
+          76.2,
+          77.9,
+          69.2,
+          53.8,
+          33.7,
+          14.4,
+          10.4
+        ],
+        "it_east": [
+          26.8,
+          48.7,
+          64.7,
+          73.8,
+          72.5,
+          77.4,
+          79.2,
+          71,
+          73.8,
+          60.8,
+          28,
+          22.5
+        ],
+        "it_south_east": [
+          51.2,
+          78.8,
+          90.2,
+          88.8,
+          82.9,
+          89.8,
+          101.6,
+          109.8,
+          101.9,
+          95.4,
+          48,
+          43.1
+        ],
+        "it_horizontal": [
+          43.1,
+          77.1,
+          122.4,
+          162.2,
+          197.3,
+          224.2,
+          229.5,
+          207.5,
+          152.7,
+          105.2,
+          46.2,
+          34.3
+        ],
+        "id_vertical": [
+          11.9,
+          19,
+          28.8,
+          38.6,
+          46.3,
+          50.1,
+          48.9,
+          43.2,
+          33.7,
+          23.6,
+          13.4,
+          10
+        ],
+        "id_horizontal": [
+          23.8,
+          37.9,
+          57.6,
+          77.2,
+          92.6,
+          100.3,
+          97.8,
+          86.4,
+          67.5,
+          47.1,
+          26.8,
+          19.9
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 66.2,
+            "southWest": 51.2,
+            "west": 26.8,
+            "northWest": 13.1,
+            "north": 11.9,
+            "northEast": 13.1,
+            "east": 26.8,
+            "southEast": 51.2,
+            "horizontal": 43.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.9,
+            "horizontal": 23.8
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.3,
+            "southWest": 78.8,
+            "west": 48.7,
+            "northWest": 25.5,
+            "north": 19,
+            "northEast": 25.5,
+            "east": 48.7,
+            "southEast": 78.8,
+            "horizontal": 77.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19,
+            "horizontal": 37.9
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.3,
+            "southWest": 90.2,
+            "west": 64.7,
+            "northWest": 37.7,
+            "north": 28.8,
+            "northEast": 37.7,
+            "east": 64.7,
+            "southEast": 90.2,
+            "horizontal": 122.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.8,
+            "horizontal": 57.6
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.9,
+            "southWest": 88.8,
+            "west": 73.8,
+            "northWest": 51.4,
+            "north": 38.6,
+            "northEast": 51.4,
+            "east": 73.8,
+            "southEast": 88.8,
+            "horizontal": 162.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.6,
+            "horizontal": 77.2
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 88.2,
+            "southWest": 82.9,
+            "west": 72.5,
+            "northWest": 68.3,
+            "north": 64.1,
+            "northEast": 68.3,
+            "east": 72.5,
+            "southEast": 82.9,
+            "horizontal": 197.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.3,
+            "horizontal": 92.6
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.5,
+            "southWest": 89.8,
+            "west": 77.4,
+            "northWest": 76.2,
+            "north": 74.9,
+            "northEast": 76.2,
+            "east": 77.4,
+            "southEast": 89.8,
+            "horizontal": 224.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.1,
+            "horizontal": 100.3
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 107.8,
+            "southWest": 101.6,
+            "west": 79.2,
+            "northWest": 77.9,
+            "north": 76.6,
+            "northEast": 77.9,
+            "east": 79.2,
+            "southEast": 101.6,
+            "horizontal": 229.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.9,
+            "horizontal": 97.8
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 121.9,
+            "southWest": 109.8,
+            "west": 71,
+            "northWest": 69.2,
+            "north": 67.4,
+            "northEast": 69.2,
+            "east": 71,
+            "southEast": 109.8,
+            "horizontal": 207.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.2,
+            "horizontal": 86.4
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 116.4,
+            "southWest": 101.9,
+            "west": 73.8,
+            "northWest": 53.8,
+            "north": 46.5,
+            "northEast": 53.8,
+            "east": 73.8,
+            "southEast": 101.9,
+            "horizontal": 152.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.7,
+            "horizontal": 67.5
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 115,
+            "southWest": 95.4,
+            "west": 60.8,
+            "northWest": 33.7,
+            "north": 23.6,
+            "northEast": 33.7,
+            "east": 60.8,
+            "southEast": 95.4,
+            "horizontal": 105.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 23.6,
+            "horizontal": 47.1
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 61.1,
+            "southWest": 48,
+            "west": 28,
+            "northWest": 14.4,
+            "north": 13.4,
+            "northEast": 14.4,
+            "east": 28,
+            "southEast": 48,
+            "horizontal": 46.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.4,
+            "horizontal": 26.8
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 119,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 55.9,
+            "southWest": 43.1,
+            "west": 22.5,
+            "northWest": 10.4,
+            "north": 10,
+            "northEast": 10.4,
+            "east": 22.5,
+            "southEast": 43.1,
+            "horizontal": 34.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 10,
+            "horizontal": 19.9
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 7,
+        "ocrCrossCheckedCellCount": 125,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_barlad",
+      "sourceLocalityId": "barlad",
+      "solarStationId": "mc001_1_2006_solar_barlad",
+      "climateStationId": null,
+      "localityName": "Barlad",
+      "sourceLabel": "Barlad",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 120,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          70.2,
+          96.6,
+          100,
+          97.6,
+          88.7,
+          99.2,
+          111.6,
+          127,
+          124.1,
+          122.4,
+          64.5,
+          57.7
+        ],
+        "it_south_west": [
+          54.2,
+          79.1,
+          88.4,
+          94.3,
+          83.4,
+          95,
+          105.1,
+          114.2,
+          108.3,
+          101.2,
+          50.6,
+          44.5
+        ],
+        "it_west": [
+          28.2,
+          49,
+          63.6,
+          77.8,
+          72.8,
+          81.1,
+          81.4,
+          73.2,
+          77.6,
+          63.9,
+          29.3,
+          23.2
+        ],
+        "it_north_west": [
+          13.5,
+          25.7,
+          37.4,
+          53.1,
+          68.6,
+          79.7,
+          80,
+          71.3,
+          55.8,
+          34.8,
+          14.8,
+          10.7
+        ],
+        "it_north": [
+          12.3,
+          19.1,
+          28.8,
+          39.1,
+          64.4,
+          78.3,
+          78.6,
+          69.4,
+          47.9,
+          23.8,
+          13.8,
+          10.2
+        ],
+        "it_north_east": [
+          13.5,
+          25.7,
+          37.4,
+          53.1,
+          68.6,
+          79.7,
+          80,
+          71.3,
+          55.8,
+          34.8,
+          14.8,
+          10.7
+        ],
+        "it_east": [
+          28.2,
+          49,
+          63.6,
+          77.8,
+          72.8,
+          81.1,
+          81.4,
+          73.2,
+          77.6,
+          63.9,
+          29.3,
+          23.2
+        ],
+        "it_south_east": [
+          54.2,
+          79.1,
+          88.4,
+          94.3,
+          83.4,
+          95,
+          105.1,
+          114.2,
+          108.3,
+          101.2,
+          50.6,
+          44.5
+        ],
+        "it_horizontal": [
+          45.2,
+          77.5,
+          120.4,
+          171.6,
+          198.5,
+          240.3,
+          238.1,
+          215.5,
+          160.9,
+          110.3,
+          48.2,
+          35.2
+        ],
+        "id_vertical": [
+          12.3,
+          19.1,
+          28.8,
+          39.1,
+          46.4,
+          50.4,
+          49.3,
+          43.8,
+          34,
+          23.8,
+          13.8,
+          10.2
+        ],
+        "id_horizontal": [
+          24.5,
+          38.3,
+          57.7,
+          78.3,
+          92.8,
+          100.7,
+          98.6,
+          87.5,
+          67.9,
+          47.7,
+          27.6,
+          20.4
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 70.2,
+            "southWest": 54.2,
+            "west": 28.2,
+            "northWest": 13.5,
+            "north": 12.3,
+            "northEast": 13.5,
+            "east": 28.2,
+            "southEast": 54.2,
+            "horizontal": 45.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12.3,
+            "horizontal": 24.5
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.6,
+            "southWest": 79.1,
+            "west": 49,
+            "northWest": 25.7,
+            "north": 19.1,
+            "northEast": 25.7,
+            "east": 49,
+            "southEast": 79.1,
+            "horizontal": 77.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.1,
+            "horizontal": 38.3
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100,
+            "southWest": 88.4,
+            "west": 63.6,
+            "northWest": 37.4,
+            "north": 28.8,
+            "northEast": 37.4,
+            "east": 63.6,
+            "southEast": 88.4,
+            "horizontal": 120.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.8,
+            "horizontal": 57.7
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.6,
+            "southWest": 94.3,
+            "west": 77.8,
+            "northWest": 53.1,
+            "north": 39.1,
+            "northEast": 53.1,
+            "east": 77.8,
+            "southEast": 94.3,
+            "horizontal": 171.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.1,
+            "horizontal": 78.3
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 88.7,
+            "southWest": 83.4,
+            "west": 72.8,
+            "northWest": 68.6,
+            "north": 64.4,
+            "northEast": 68.6,
+            "east": 72.8,
+            "southEast": 83.4,
+            "horizontal": 198.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.4,
+            "horizontal": 92.8
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 99.2,
+            "southWest": 95,
+            "west": 81.1,
+            "northWest": 79.7,
+            "north": 78.3,
+            "northEast": 79.7,
+            "east": 81.1,
+            "southEast": 95,
+            "horizontal": 240.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.4,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 111.6,
+            "southWest": 105.1,
+            "west": 81.4,
+            "northWest": 80,
+            "north": 78.6,
+            "northEast": 80,
+            "east": 81.4,
+            "southEast": 105.1,
+            "horizontal": 238.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.3,
+            "horizontal": 98.6
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 127,
+            "southWest": 114.2,
+            "west": 73.2,
+            "northWest": 71.3,
+            "north": 69.4,
+            "northEast": 71.3,
+            "east": 73.2,
+            "southEast": 114.2,
+            "horizontal": 215.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.8,
+            "horizontal": 87.5
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 124.1,
+            "southWest": 108.3,
+            "west": 77.6,
+            "northWest": 55.8,
+            "north": 47.9,
+            "northEast": 55.8,
+            "east": 77.6,
+            "southEast": 108.3,
+            "horizontal": 160.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34,
+            "horizontal": 67.9
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122.4,
+            "southWest": 101.2,
+            "west": 63.9,
+            "northWest": 34.8,
+            "north": 23.8,
+            "northEast": 34.8,
+            "east": 63.9,
+            "southEast": 101.2,
+            "horizontal": 110.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 23.8,
+            "horizontal": 47.7
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 64.5,
+            "southWest": 50.6,
+            "west": 29.3,
+            "northWest": 14.8,
+            "north": 13.8,
+            "northEast": 14.8,
+            "east": 29.3,
+            "southEast": 50.6,
+            "horizontal": 48.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.8,
+            "horizontal": 27.6
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 57.7,
+            "southWest": 44.5,
+            "west": 23.2,
+            "northWest": 10.7,
+            "north": 10.2,
+            "northEast": 10.7,
+            "east": 23.2,
+            "southEast": 44.5,
+            "horizontal": 35.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 10.2,
+            "horizontal": 20.4
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 1,
+        "ocrCrossCheckedCellCount": 131,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_botosani",
+      "sourceLocalityId": "botosani",
+      "solarStationId": "mc001_1_2006_solar_botosani",
+      "climateStationId": "mc001_6_2013_botosani",
+      "localityName": "Botosani",
+      "sourceLabel": "Botosani",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 120,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          73.4,
+          94.4,
+          102.2,
+          91.9,
+          90.5,
+          90.2,
+          105,
+          119.4,
+          116.6,
+          112.9,
+          62.2,
+          58
+        ],
+        "it_south_west": [
+          56.4,
+          77.2,
+          90.1,
+          88.8,
+          85,
+          86.8,
+          99.1,
+          107.6,
+          101.9,
+          93.6,
+          48.7,
+          44.6
+        ],
+        "it_west": [
+          28.7,
+          47.6,
+          64.4,
+          73.7,
+          73.9,
+          75.2,
+          77.7,
+          69.8,
+          73.6,
+          59.5,
+          28.1,
+          22.9
+        ],
+        "it_north_west": [
+          13,
+          24.7,
+          37.2,
+          51.1,
+          69.5,
+          74.1,
+          76.4,
+          68.1,
+          53.4,
+          32.9,
+          14.1,
+          10.1
+        ],
+        "it_north": [
+          11.7,
+          18.3,
+          28.2,
+          38.3,
+          65.1,
+          72.9,
+          75.2,
+          66.3,
+          46.1,
+          22.8,
+          13,
+          9.7
+        ],
+        "it_north_east": [
+          13,
+          24.7,
+          37.2,
+          51.1,
+          69.5,
+          74.1,
+          76.4,
+          68.1,
+          53.4,
+          32.9,
+          14.1,
+          10.1
+        ],
+        "it_east": [
+          28.7,
+          47.6,
+          64.4,
+          73.7,
+          73.9,
+          75.2,
+          77.7,
+          69.8,
+          73.6,
+          59.5,
+          28.1,
+          22.9
+        ],
+        "it_south_east": [
+          56.4,
+          77.2,
+          90.1,
+          88.8,
+          85,
+          86.8,
+          99.1,
+          107.6,
+          101.9,
+          93.6,
+          48.7,
+          44.6
+        ],
+        "it_horizontal": [
+          45.4,
+          75.1,
+          121.7,
+          162.1,
+          203,
+          215.1,
+          223.4,
+          203.4,
+          152.3,
+          102.9,
+          46.1,
+          34.4
+        ],
+        "id_vertical": [
+          11.7,
+          18.3,
+          28.2,
+          38.3,
+          46.4,
+          49.8,
+          48.8,
+          42.7,
+          33.2,
+          22.8,
+          13,
+          9.7
+        ],
+        "id_horizontal": [
+          23.4,
+          36.5,
+          56.4,
+          76.6,
+          92.8,
+          99.6,
+          97.5,
+          85.4,
+          66.4,
+          45.7,
+          26.1,
+          19.3
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 73.4,
+            "southWest": 56.4,
+            "west": 28.7,
+            "northWest": 13,
+            "north": 11.7,
+            "northEast": 13,
+            "east": 28.7,
+            "southEast": 56.4,
+            "horizontal": 45.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.4
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.4,
+            "southWest": 77.2,
+            "west": 47.6,
+            "northWest": 24.7,
+            "north": 18.3,
+            "northEast": 24.7,
+            "east": 47.6,
+            "southEast": 77.2,
+            "horizontal": 75.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 18.3,
+            "horizontal": 36.5
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.2,
+            "southWest": 90.1,
+            "west": 64.4,
+            "northWest": 37.2,
+            "north": 28.2,
+            "northEast": 37.2,
+            "east": 64.4,
+            "southEast": 90.1,
+            "horizontal": 121.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.2,
+            "horizontal": 56.4
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.9,
+            "southWest": 88.8,
+            "west": 73.7,
+            "northWest": 51.1,
+            "north": 38.3,
+            "northEast": 51.1,
+            "east": 73.7,
+            "southEast": 88.8,
+            "horizontal": 162.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.3,
+            "horizontal": 76.6
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.5,
+            "southWest": 85,
+            "west": 73.9,
+            "northWest": 69.5,
+            "north": 65.1,
+            "northEast": 69.5,
+            "east": 73.9,
+            "southEast": 85,
+            "horizontal": 203
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.4,
+            "horizontal": 92.8
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.2,
+            "southWest": 86.8,
+            "west": 75.2,
+            "northWest": 74.1,
+            "north": 72.9,
+            "northEast": 74.1,
+            "east": 75.2,
+            "southEast": 86.8,
+            "horizontal": 215.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.8,
+            "horizontal": 99.6
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 105,
+            "southWest": 99.1,
+            "west": 77.7,
+            "northWest": 76.4,
+            "north": 75.2,
+            "northEast": 76.4,
+            "east": 77.7,
+            "southEast": 99.1,
+            "horizontal": 223.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.8,
+            "horizontal": 97.5
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.4,
+            "southWest": 107.6,
+            "west": 69.8,
+            "northWest": 68.1,
+            "north": 66.3,
+            "northEast": 68.1,
+            "east": 69.8,
+            "southEast": 107.6,
+            "horizontal": 203.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 42.7,
+            "horizontal": 85.4
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 116.6,
+            "southWest": 101.9,
+            "west": 73.6,
+            "northWest": 53.4,
+            "north": 46.1,
+            "northEast": 53.4,
+            "east": 73.6,
+            "southEast": 101.9,
+            "horizontal": 152.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.2,
+            "horizontal": 66.4
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 112.9,
+            "southWest": 93.6,
+            "west": 59.5,
+            "northWest": 32.9,
+            "north": 22.8,
+            "northEast": 32.9,
+            "east": 59.5,
+            "southEast": 93.6,
+            "horizontal": 102.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 22.8,
+            "horizontal": 45.7
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 62.2,
+            "southWest": 48.7,
+            "west": 28.1,
+            "northWest": 14.1,
+            "north": 13,
+            "northEast": 14.1,
+            "east": 28.1,
+            "southEast": 48.7,
+            "horizontal": 46.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13,
+            "horizontal": 26.1
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 58,
+            "southWest": 44.6,
+            "west": 22.9,
+            "northWest": 10.1,
+            "north": 9.7,
+            "northEast": 10.1,
+            "east": 22.9,
+            "southEast": 44.6,
+            "horizontal": 34.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9.7,
+            "horizontal": 19.3
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 7,
+        "ocrCrossCheckedCellCount": 125,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_bucuresti",
+      "sourceLocalityId": "municipiul_bucuresti",
+      "solarStationId": "mc001_1_2006_solar_municipiul_bucuresti",
+      "climateStationId": "mc001_6_2013_bucuresti",
+      "localityName": "Municipiul Bucuresti",
+      "sourceLabel": "Municipiul Bucuresti",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 120,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          76.7,
+          106.9,
+          103.5,
+          94.8,
+          91.6,
+          96.8,
+          94.9,
+          138.1,
+          136.8,
+          125.7,
+          73.3,
+          68.9
+        ],
+        "it_south_west": [
+          59.3,
+          87.3,
+          91.4,
+          91.6,
+          86,
+          92.8,
+          89.9,
+          123.8,
+          119.1,
+          104.1,
+          57.4,
+          53
+        ],
+        "it_west": [
+          30.9,
+          53.9,
+          65.9,
+          76,
+          74.9,
+          79.6,
+          72.2,
+          78,
+          84.6,
+          66,
+          33,
+          27.3
+        ],
+        "it_north_west": [
+          14.9,
+          28,
+          38.9,
+          52.8,
+          70.4,
+          78.2,
+          71.1,
+          75.8,
+          60.1,
+          36.3,
+          16.5,
+          12.3
+        ],
+        "it_north": [
+          13.6,
+          20.7,
+          30,
+          39.6,
+          65.9,
+          76.9,
+          70.1,
+          73.7,
+          51.2,
+          25.2,
+          15.3,
+          11.7
+        ],
+        "it_north_east": [
+          14.9,
+          28,
+          38.9,
+          52.8,
+          70.4,
+          78.2,
+          71.1,
+          75.8,
+          60.1,
+          36.3,
+          16.5,
+          12.3
+        ],
+        "it_east": [
+          30.9,
+          53.9,
+          65.9,
+          76,
+          74.9,
+          79.6,
+          72.2,
+          78,
+          84.6,
+          66,
+          33,
+          27.3
+        ],
+        "it_south_east": [
+          59.3,
+          87.3,
+          91.4,
+          91.6,
+          86,
+          92.8,
+          89.9,
+          123.8,
+          119.1,
+          104.1,
+          57.4,
+          53
+        ],
+        "it_horizontal": [
+          49.6,
+          85,
+          124.8,
+          167.2,
+          205.6,
+          233.5,
+          200.8,
+          233.2,
+          175.5,
+          114.2,
+          54.2,
+          41.3
+        ],
+        "id_vertical": [
+          13.6,
+          20.7,
+          30,
+          39.6,
+          46.9,
+          50.3,
+          48.2,
+          45,
+          35.6,
+          25.2,
+          15.3,
+          11.7
+        ],
+        "id_horizontal": [
+          27.1,
+          41.4,
+          60,
+          79.2,
+          93.9,
+          100.7,
+          96.3,
+          90.1,
+          71.1,
+          50.4,
+          30.6,
+          23.5
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 76.7,
+            "southWest": 59.3,
+            "west": 30.9,
+            "northWest": 14.9,
+            "north": 13.6,
+            "northEast": 14.9,
+            "east": 30.9,
+            "southEast": 59.3,
+            "horizontal": 49.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.6,
+            "horizontal": 27.1
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 106.9,
+            "southWest": 87.3,
+            "west": 53.9,
+            "northWest": 28,
+            "north": 20.7,
+            "northEast": 28,
+            "east": 53.9,
+            "southEast": 87.3,
+            "horizontal": 85
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.7,
+            "horizontal": 41.4
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 103.5,
+            "southWest": 91.4,
+            "west": 65.9,
+            "northWest": 38.9,
+            "north": 30,
+            "northEast": 38.9,
+            "east": 65.9,
+            "southEast": 91.4,
+            "horizontal": 124.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 30,
+            "horizontal": 60
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.8,
+            "southWest": 91.6,
+            "west": 76,
+            "northWest": 52.8,
+            "north": 39.6,
+            "northEast": 52.8,
+            "east": 76,
+            "southEast": 91.6,
+            "horizontal": 167.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.6,
+            "horizontal": 79.2
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.6,
+            "southWest": 86,
+            "west": 74.9,
+            "northWest": 70.4,
+            "north": 65.9,
+            "northEast": 70.4,
+            "east": 74.9,
+            "southEast": 86,
+            "horizontal": 205.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.9,
+            "horizontal": 93.9
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.8,
+            "southWest": 92.8,
+            "west": 79.6,
+            "northWest": 78.2,
+            "north": 76.9,
+            "northEast": 78.2,
+            "east": 79.6,
+            "southEast": 92.8,
+            "horizontal": 233.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.9,
+            "southWest": 89.9,
+            "west": 72.2,
+            "northWest": 71.1,
+            "north": 70.1,
+            "northEast": 71.1,
+            "east": 72.2,
+            "southEast": 89.9,
+            "horizontal": 200.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.2,
+            "horizontal": 96.3
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 138.1,
+            "southWest": 123.8,
+            "west": 78,
+            "northWest": 75.8,
+            "north": 73.7,
+            "northEast": 75.8,
+            "east": 78,
+            "southEast": 123.8,
+            "horizontal": 233.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 45,
+            "horizontal": 90.1
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 136.8,
+            "southWest": 119.1,
+            "west": 84.6,
+            "northWest": 60.1,
+            "north": 51.2,
+            "northEast": 60.1,
+            "east": 84.6,
+            "southEast": 119.1,
+            "horizontal": 175.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.6,
+            "horizontal": 71.1
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 125.7,
+            "southWest": 104.1,
+            "west": 66,
+            "northWest": 36.3,
+            "north": 25.2,
+            "northEast": 36.3,
+            "east": 66,
+            "southEast": 104.1,
+            "horizontal": 114.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.2,
+            "horizontal": 50.4
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 73.3,
+            "southWest": 57.4,
+            "west": 33,
+            "northWest": 16.5,
+            "north": 15.3,
+            "northEast": 16.5,
+            "east": 33,
+            "southEast": 57.4,
+            "horizontal": 54.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.3,
+            "horizontal": 30.6
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 120,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 68.9,
+            "southWest": 53,
+            "west": 27.3,
+            "northWest": 12.3,
+            "north": 11.7,
+            "northEast": 12.3,
+            "east": 27.3,
+            "southEast": 53,
+            "horizontal": 41.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.5
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 8,
+        "ocrCrossCheckedCellCount": 124,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_calafat",
+      "sourceLocalityId": "calafat",
+      "solarStationId": "mc001_1_2006_solar_calafat",
+      "climateStationId": null,
+      "localityName": "Calafat",
+      "sourceLabel": "Calafat",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 121,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          78.4,
+          113,
+          100.7,
+          93.5,
+          91.7,
+          98.4,
+          118,
+          129.1,
+          132.3,
+          121.4,
+          70.6,
+          65.2
+        ],
+        "it_south_west": [
+          60.6,
+          92.2,
+          89.1,
+          90.4,
+          86.1,
+          94.3,
+          110.9,
+          116.1,
+          115.3,
+          100.8,
+          55.4,
+          50.3
+        ],
+        "it_west": [
+          31.6,
+          56.4,
+          64.5,
+          75.1,
+          75,
+          80.6,
+          85.1,
+          74.4,
+          82.3,
+          64.4,
+          32.1,
+          26.2
+        ],
+        "it_north_west": [
+          15.2,
+          28.8,
+          38.5,
+          52.4,
+          70.5,
+          79.2,
+          83.6,
+          72.4,
+          58.8,
+          36,
+          16.4,
+          12.1
+        ],
+        "it_north": [
+          13.8,
+          21,
+          29.9,
+          39.5,
+          66,
+          77.8,
+          82.1,
+          70.5,
+          50.3,
+          25.3,
+          15.2,
+          11.6
+        ],
+        "it_north_east": [
+          15.2,
+          28.8,
+          38.5,
+          52.4,
+          70.5,
+          79.2,
+          83.6,
+          72.4,
+          58.8,
+          36,
+          16.4,
+          12.1
+        ],
+        "it_east": [
+          31.6,
+          56.4,
+          64.5,
+          75.1,
+          75,
+          80.6,
+          85.1,
+          74.4,
+          82.3,
+          64.4,
+          32.1,
+          26.2
+        ],
+        "it_south_east": [
+          60.6,
+          92.2,
+          89.1,
+          90.4,
+          86.1,
+          94.3,
+          110.9,
+          116.1,
+          115.3,
+          100.8,
+          55.4,
+          50.3
+        ],
+        "it_horizontal": [
+          50.6,
+          88.7,
+          122.2,
+          165.1,
+          205.9,
+          238,
+          252.1,
+          219.2,
+          170.6,
+          111.6,
+          53,
+          39.9
+        ],
+        "id_vertical": [
+          13.8,
+          21,
+          29.9,
+          39.5,
+          47,
+          50.4,
+          50.2,
+          44.4,
+          35.3,
+          25.3,
+          15.2,
+          11.6
+        ],
+        "id_horizontal": [
+          27.6,
+          42.1,
+          59.9,
+          79.1,
+          93.9,
+          100.7,
+          100.4,
+          88.8,
+          70.7,
+          50.5,
+          30.4,
+          23.2
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 78.4,
+            "southWest": 60.6,
+            "west": 31.6,
+            "northWest": 15.2,
+            "north": 13.8,
+            "northEast": 15.2,
+            "east": 31.6,
+            "southEast": 60.6,
+            "horizontal": 50.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.8,
+            "horizontal": 27.6
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 113,
+            "southWest": 92.2,
+            "west": 56.4,
+            "northWest": 28.8,
+            "north": 21,
+            "northEast": 28.8,
+            "east": 56.4,
+            "southEast": 92.2,
+            "horizontal": 88.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 21,
+            "horizontal": 42.1
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.7,
+            "southWest": 89.1,
+            "west": 64.5,
+            "northWest": 38.5,
+            "north": 29.9,
+            "northEast": 38.5,
+            "east": 64.5,
+            "southEast": 89.1,
+            "horizontal": 122.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.9,
+            "horizontal": 59.9
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.5,
+            "southWest": 90.4,
+            "west": 75.1,
+            "northWest": 52.4,
+            "north": 39.5,
+            "northEast": 52.4,
+            "east": 75.1,
+            "southEast": 90.4,
+            "horizontal": 165.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.5,
+            "horizontal": 79.1
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.7,
+            "southWest": 86.1,
+            "west": 75,
+            "northWest": 70.5,
+            "north": 66,
+            "northEast": 70.5,
+            "east": 75,
+            "southEast": 86.1,
+            "horizontal": 205.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 47,
+            "horizontal": 93.9
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.4,
+            "southWest": 94.3,
+            "west": 80.6,
+            "northWest": 79.2,
+            "north": 77.8,
+            "northEast": 79.2,
+            "east": 80.6,
+            "southEast": 94.3,
+            "horizontal": 238
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.4,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 118,
+            "southWest": 110.9,
+            "west": 85.1,
+            "northWest": 83.6,
+            "north": 82.1,
+            "northEast": 83.6,
+            "east": 85.1,
+            "southEast": 110.9,
+            "horizontal": 252.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.2,
+            "horizontal": 100.4
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 129.1,
+            "southWest": 116.1,
+            "west": 74.4,
+            "northWest": 72.4,
+            "north": 70.5,
+            "northEast": 72.4,
+            "east": 74.4,
+            "southEast": 116.1,
+            "horizontal": 219.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.4,
+            "horizontal": 88.8
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 132.3,
+            "southWest": 115.3,
+            "west": 82.3,
+            "northWest": 58.8,
+            "north": 50.3,
+            "northEast": 58.8,
+            "east": 82.3,
+            "southEast": 115.3,
+            "horizontal": 170.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.3,
+            "horizontal": 70.7
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 121.4,
+            "southWest": 100.8,
+            "west": 64.4,
+            "northWest": 36,
+            "north": 25.3,
+            "northEast": 36,
+            "east": 64.4,
+            "southEast": 100.8,
+            "horizontal": 111.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.3,
+            "horizontal": 50.5
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 70.6,
+            "southWest": 55.4,
+            "west": 32.1,
+            "northWest": 16.4,
+            "north": 15.2,
+            "northEast": 16.4,
+            "east": 32.1,
+            "southEast": 55.4,
+            "horizontal": 53
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.2,
+            "horizontal": 30.4
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 65.2,
+            "southWest": 50.3,
+            "west": 26.2,
+            "northWest": 12.1,
+            "north": 11.6,
+            "northEast": 12.1,
+            "east": 26.2,
+            "southEast": 50.3,
+            "horizontal": 39.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.6,
+            "horizontal": 23.2
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 6,
+        "ocrCrossCheckedCellCount": 126,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_calarasi",
+      "sourceLocalityId": "calarasi",
+      "solarStationId": "mc001_1_2006_solar_calarasi",
+      "climateStationId": "mc001_6_2013_calarasi",
+      "localityName": "Calarasi",
+      "sourceLabel": "Calarasi",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 121,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          78.6,
+          111,
+          103.8,
+          92.6,
+          90.2,
+          97.1,
+          117.7,
+          137.9,
+          131.3,
+          133,
+          76.1,
+          68.6
+        ],
+        "it_south_west": [
+          60.7,
+          90.6,
+          91.7,
+          89.5,
+          84.8,
+          93.1,
+          110.6,
+          123.6,
+          114.4,
+          109.8,
+          59.4,
+          52.8
+        ],
+        "it_west": [
+          31.5,
+          55.5,
+          66.1,
+          74.5,
+          73.9,
+          79.7,
+          84.9,
+          77.9,
+          81.7,
+          69,
+          34,
+          27.2
+        ],
+        "it_north_west": [
+          15,
+          28.4,
+          38.9,
+          52.1,
+          69.6,
+          78.4,
+          83.4,
+          75.7,
+          58.5,
+          37.2,
+          16.7,
+          12.2
+        ],
+        "it_north": [
+          13.7,
+          20.8,
+          30,
+          39.4,
+          65.2,
+          77,
+          81.9,
+          73.6,
+          50,
+          25.2,
+          15.5,
+          11.7
+        ],
+        "it_north_east": [
+          15,
+          28.4,
+          38.9,
+          52.1,
+          69.6,
+          78.4,
+          83.4,
+          75.7,
+          58.5,
+          37.2,
+          16.7,
+          12.2
+        ],
+        "it_east": [
+          31.5,
+          55.5,
+          66.1,
+          74.5,
+          73.9,
+          79.7,
+          84.9,
+          77.9,
+          81.7,
+          69,
+          34,
+          27.2
+        ],
+        "it_south_east": [
+          60.7,
+          90.6,
+          91.7,
+          89.5,
+          84.8,
+          93.1,
+          110.6,
+          123.6,
+          114.4,
+          109.8,
+          59.4,
+          52.8
+        ],
+        "it_horizontal": [
+          50.4,
+          87.3,
+          125.1,
+          163.6,
+          202,
+          234.2,
+          251.4,
+          232.9,
+          169.4,
+          118.8,
+          55.6,
+          41.2
+        ],
+        "id_vertical": [
+          13.7,
+          20.8,
+          30,
+          39.4,
+          46.8,
+          50.3,
+          50.2,
+          45,
+          35.2,
+          25.2,
+          15.5,
+          11.7
+        ],
+        "id_horizontal": [
+          27.3,
+          41.6,
+          60,
+          78.7,
+          93.6,
+          100.7,
+          100.3,
+          90,
+          70.3,
+          50.4,
+          31,
+          23.4
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 78.6,
+            "southWest": 60.7,
+            "west": 31.5,
+            "northWest": 15,
+            "north": 13.7,
+            "northEast": 15,
+            "east": 31.5,
+            "southEast": 60.7,
+            "horizontal": 50.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.7,
+            "horizontal": 27.3
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 111,
+            "southWest": 90.6,
+            "west": 55.5,
+            "northWest": 28.4,
+            "north": 20.8,
+            "northEast": 28.4,
+            "east": 55.5,
+            "southEast": 90.6,
+            "horizontal": 87.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.8,
+            "horizontal": 41.6
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 103.8,
+            "southWest": 91.7,
+            "west": 66.1,
+            "northWest": 38.9,
+            "north": 30,
+            "northEast": 38.9,
+            "east": 66.1,
+            "southEast": 91.7,
+            "horizontal": 125.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 30,
+            "horizontal": 60
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 92.6,
+            "southWest": 89.5,
+            "west": 74.5,
+            "northWest": 52.1,
+            "north": 39.4,
+            "northEast": 52.1,
+            "east": 74.5,
+            "southEast": 89.5,
+            "horizontal": 163.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.4,
+            "horizontal": 78.7
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.2,
+            "southWest": 84.8,
+            "west": 73.9,
+            "northWest": 69.6,
+            "north": 65.2,
+            "northEast": 69.6,
+            "east": 73.9,
+            "southEast": 84.8,
+            "horizontal": 202
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.8,
+            "horizontal": 93.6
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.1,
+            "southWest": 93.1,
+            "west": 79.7,
+            "northWest": 78.4,
+            "north": 77,
+            "northEast": 78.4,
+            "east": 79.7,
+            "southEast": 93.1,
+            "horizontal": 234.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 117.7,
+            "southWest": 110.6,
+            "west": 84.9,
+            "northWest": 83.4,
+            "north": 81.9,
+            "northEast": 83.4,
+            "east": 84.9,
+            "southEast": 110.6,
+            "horizontal": 251.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.2,
+            "horizontal": 100.3
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 137.9,
+            "southWest": 123.6,
+            "west": 77.9,
+            "northWest": 75.7,
+            "north": 73.6,
+            "northEast": 75.7,
+            "east": 77.9,
+            "southEast": 123.6,
+            "horizontal": 232.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 45,
+            "horizontal": 90
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 131.3,
+            "southWest": 114.4,
+            "west": 81.7,
+            "northWest": 58.5,
+            "north": 50,
+            "northEast": 58.5,
+            "east": 81.7,
+            "southEast": 114.4,
+            "horizontal": 169.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.2,
+            "horizontal": 70.3
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 133,
+            "southWest": 109.8,
+            "west": 69,
+            "northWest": 37.2,
+            "north": 25.2,
+            "northEast": 37.2,
+            "east": 69,
+            "southEast": 109.8,
+            "horizontal": 118.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.2,
+            "horizontal": 50.4
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 76.1,
+            "southWest": 59.4,
+            "west": 34,
+            "northWest": 16.7,
+            "north": 15.5,
+            "northEast": 16.7,
+            "east": 34,
+            "southEast": 59.4,
+            "horizontal": 55.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.5,
+            "horizontal": 31
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 68.6,
+            "southWest": 52.8,
+            "west": 27.2,
+            "northWest": 12.2,
+            "north": 11.7,
+            "northEast": 12.2,
+            "east": 27.2,
+            "southEast": 52.8,
+            "horizontal": 41.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.4
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 4,
+        "ocrCrossCheckedCellCount": 128,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_campina",
+      "sourceLocalityId": "campina",
+      "solarStationId": "mc001_1_2006_solar_campina",
+      "climateStationId": null,
+      "localityName": "Campina",
+      "sourceLabel": "Campina",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 121,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          98.8,
+          108.3,
+          95.8,
+          91,
+          90.9,
+          91.4,
+          99.6,
+          109.9,
+          122.5,
+          114.3,
+          89.1,
+          75
+        ],
+        "it_south_west": [
+          75.4,
+          88.3,
+          84.9,
+          88.1,
+          85.4,
+          87.8,
+          94.3,
+          99.6,
+          107.1,
+          95,
+          68.9,
+          57.4
+        ],
+        "it_west": [
+          37.2,
+          54.1,
+          61.7,
+          73.4,
+          74.3,
+          76,
+          74.9,
+          66.7,
+          77.1,
+          61,
+          38.2,
+          28.9
+        ],
+        "it_north_west": [
+          15.7,
+          27.6,
+          37.1,
+          51.4,
+          69.9,
+          74.8,
+          73.7,
+          65.2,
+          55.8,
+          34.4,
+          17.3,
+          12.2
+        ],
+        "it_north": [
+          13.9,
+          20.2,
+          29.1,
+          39,
+          65.5,
+          73.6,
+          72.6,
+          63.6,
+          48.1,
+          24.4,
+          15.8,
+          11.7
+        ],
+        "it_north_east": [
+          15.7,
+          27.6,
+          37.1,
+          51.4,
+          69.9,
+          74.8,
+          73.7,
+          65.2,
+          55.8,
+          34.4,
+          17.3,
+          12.2
+        ],
+        "it_east": [
+          37.2,
+          54.1,
+          61.7,
+          73.4,
+          74.3,
+          76,
+          74.9,
+          66.7,
+          77.1,
+          61,
+          38.2,
+          28.9
+        ],
+        "it_south_east": [
+          75.4,
+          88.3,
+          84.9,
+          88.1,
+          85.4,
+          87.8,
+          94.3,
+          99.6,
+          107.1,
+          95,
+          68.9,
+          57.4
+        ],
+        "it_horizontal": [
+          58,
+          85,
+          117,
+          161,
+          203.8,
+          218.2,
+          211.4,
+          189,
+          159.7,
+          105.9,
+          61.4,
+          43.1
+        ],
+        "id_vertical": [
+          13.9,
+          20.2,
+          29.1,
+          39,
+          46.8,
+          50,
+          48.6,
+          43.1,
+          34.5,
+          24.4,
+          15.8,
+          11.7
+        ],
+        "id_horizontal": [
+          27.8,
+          40.4,
+          58.2,
+          77.9,
+          93.5,
+          100,
+          97.2,
+          86.2,
+          69,
+          48.8,
+          31.6,
+          23.3
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.8,
+            "southWest": 75.4,
+            "west": 37.2,
+            "northWest": 15.7,
+            "north": 13.9,
+            "northEast": 15.7,
+            "east": 37.2,
+            "southEast": 75.4,
+            "horizontal": 58
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.9,
+            "horizontal": 27.8
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 108.3,
+            "southWest": 88.3,
+            "west": 54.1,
+            "northWest": 27.6,
+            "north": 20.2,
+            "northEast": 27.6,
+            "east": 54.1,
+            "southEast": 88.3,
+            "horizontal": 85
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.2,
+            "horizontal": 40.4
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.8,
+            "southWest": 84.9,
+            "west": 61.7,
+            "northWest": 37.1,
+            "north": 29.1,
+            "northEast": 37.1,
+            "east": 61.7,
+            "southEast": 84.9,
+            "horizontal": 117
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.1,
+            "horizontal": 58.2
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91,
+            "southWest": 88.1,
+            "west": 73.4,
+            "northWest": 51.4,
+            "north": 39,
+            "northEast": 51.4,
+            "east": 73.4,
+            "southEast": 88.1,
+            "horizontal": 161
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39,
+            "horizontal": 77.9
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.9,
+            "southWest": 85.4,
+            "west": 74.3,
+            "northWest": 69.9,
+            "north": 65.5,
+            "northEast": 69.9,
+            "east": 74.3,
+            "southEast": 85.4,
+            "horizontal": 203.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.8,
+            "horizontal": 93.5
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.4,
+            "southWest": 87.8,
+            "west": 76,
+            "northWest": 74.8,
+            "north": 73.6,
+            "northEast": 74.8,
+            "east": 76,
+            "southEast": 87.8,
+            "horizontal": 218.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50,
+            "horizontal": 100
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 99.6,
+            "southWest": 94.3,
+            "west": 74.9,
+            "northWest": 73.7,
+            "north": 72.6,
+            "northEast": 73.7,
+            "east": 74.9,
+            "southEast": 94.3,
+            "horizontal": 211.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.6,
+            "horizontal": 97.2
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 109.9,
+            "southWest": 99.6,
+            "west": 66.7,
+            "northWest": 65.2,
+            "north": 63.6,
+            "northEast": 65.2,
+            "east": 66.7,
+            "southEast": 99.6,
+            "horizontal": 189
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.1,
+            "horizontal": 86.2
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122.5,
+            "southWest": 107.1,
+            "west": 77.1,
+            "northWest": 55.8,
+            "north": 48.1,
+            "northEast": 55.8,
+            "east": 77.1,
+            "southEast": 107.1,
+            "horizontal": 159.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.5,
+            "horizontal": 69
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 114.3,
+            "southWest": 95,
+            "west": 61,
+            "northWest": 34.4,
+            "north": 24.4,
+            "northEast": 34.4,
+            "east": 61,
+            "southEast": 95,
+            "horizontal": 105.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.4,
+            "horizontal": 48.8
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 89.1,
+            "southWest": 68.9,
+            "west": 38.2,
+            "northWest": 17.3,
+            "north": 15.8,
+            "northEast": 17.3,
+            "east": 38.2,
+            "southEast": 68.9,
+            "horizontal": 61.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.8,
+            "horizontal": 31.6
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 121,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 75,
+            "southWest": 57.4,
+            "west": 28.9,
+            "northWest": 12.2,
+            "north": 11.7,
+            "northEast": 12.2,
+            "east": 28.9,
+            "southEast": 57.4,
+            "horizontal": 43.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.3
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 6,
+        "ocrCrossCheckedCellCount": 126,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_caransebes",
+      "sourceLocalityId": "caransebes",
+      "solarStationId": "mc001_1_2006_solar_caransebes",
+      "climateStationId": null,
+      "localityName": "Caransebes",
+      "sourceLabel": "Caransebes",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 122,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          72.9,
+          94.8,
+          95,
+          85.8,
+          85.9,
+          91.9,
+          107.1,
+          120,
+          124.3,
+          120.6,
+          69.1,
+          60
+        ],
+        "it_south_west": [
+          56.3,
+          77.8,
+          84.2,
+          83.1,
+          80.9,
+          88.3,
+          101,
+          108.2,
+          108.5,
+          99.9,
+          54.1,
+          46.3
+        ],
+        "it_west": [
+          29.3,
+          48.5,
+          61.2,
+          69.7,
+          71,
+          76.3,
+          78.9,
+          70.5,
+          77.9,
+          63.5,
+          31.2,
+          24.2
+        ],
+        "it_north_west": [
+          14.1,
+          25.9,
+          36.9,
+          49.7,
+          67,
+          75.1,
+          77.6,
+          68.7,
+          56.2,
+          35.1,
+          15.7,
+          11.2
+        ],
+        "it_north": [
+          12.8,
+          19.6,
+          28.9,
+          38.3,
+          63.1,
+          73.9,
+          76.3,
+          66.9,
+          48.3,
+          24.4,
+          14.5,
+          10.7
+        ],
+        "it_north_east": [
+          14.1,
+          25.9,
+          36.9,
+          49.7,
+          67,
+          75.1,
+          77.6,
+          68.7,
+          56.2,
+          35.1,
+          15.7,
+          11.2
+        ],
+        "it_east": [
+          29.3,
+          48.5,
+          61.2,
+          69.7,
+          71,
+          76.3,
+          78.9,
+          70.5,
+          77.9,
+          63.5,
+          31.2,
+          24.2
+        ],
+        "it_south_east": [
+          56.3,
+          77.8,
+          84.2,
+          83.1,
+          80.9,
+          88.3,
+          101,
+          108.2,
+          108.5,
+          99.9,
+          54.1,
+          46.3
+        ],
+        "it_horizontal": [
+          47,
+          77.2,
+          116.1,
+          152.4,
+          191.7,
+          219.6,
+          227.9,
+          204.7,
+          161.4,
+          109.9,
+          51.3,
+          36.8
+        ],
+        "id_vertical": [
+          12.8,
+          19.6,
+          28.9,
+          38.3,
+          46.2,
+          50,
+          49,
+          43.3,
+          34.4,
+          24.4,
+          14.5,
+          10.7
+        ],
+        "id_horizontal": [
+          25.7,
+          39.1,
+          57.9,
+          76.6,
+          92.3,
+          100,
+          97.9,
+          86.6,
+          68.8,
+          48.8,
+          29,
+          21.4
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 72.9,
+            "southWest": 56.3,
+            "west": 29.3,
+            "northWest": 14.1,
+            "north": 12.8,
+            "northEast": 14.1,
+            "east": 29.3,
+            "southEast": 56.3,
+            "horizontal": 47
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12.8,
+            "horizontal": 25.7
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.8,
+            "southWest": 77.8,
+            "west": 48.5,
+            "northWest": 25.9,
+            "north": 19.6,
+            "northEast": 25.9,
+            "east": 48.5,
+            "southEast": 77.8,
+            "horizontal": 77.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.6,
+            "horizontal": 39.1
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95,
+            "southWest": 84.2,
+            "west": 61.2,
+            "northWest": 36.9,
+            "north": 28.9,
+            "northEast": 36.9,
+            "east": 61.2,
+            "southEast": 84.2,
+            "horizontal": 116.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.9,
+            "horizontal": 57.9
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 85.8,
+            "southWest": 83.1,
+            "west": 69.7,
+            "northWest": 49.7,
+            "north": 38.3,
+            "northEast": 49.7,
+            "east": 69.7,
+            "southEast": 83.1,
+            "horizontal": 152.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.3,
+            "horizontal": 76.6
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 85.9,
+            "southWest": 80.9,
+            "west": 71,
+            "northWest": 67,
+            "north": 63.1,
+            "northEast": 67,
+            "east": 71,
+            "southEast": 80.9,
+            "horizontal": 191.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.2,
+            "horizontal": 92.3
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.9,
+            "southWest": 88.3,
+            "west": 76.3,
+            "northWest": 75.1,
+            "north": 73.9,
+            "northEast": 75.1,
+            "east": 76.3,
+            "southEast": 88.3,
+            "horizontal": 219.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50,
+            "horizontal": 100
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 107.1,
+            "southWest": 101,
+            "west": 78.9,
+            "northWest": 77.6,
+            "north": 76.3,
+            "northEast": 77.6,
+            "east": 78.9,
+            "southEast": 101,
+            "horizontal": 227.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49,
+            "horizontal": 97.9
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 120,
+            "southWest": 108.2,
+            "west": 70.5,
+            "northWest": 68.7,
+            "north": 66.9,
+            "northEast": 68.7,
+            "east": 70.5,
+            "southEast": 108.2,
+            "horizontal": 204.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.3,
+            "horizontal": 86.6
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 124.3,
+            "southWest": 108.5,
+            "west": 77.9,
+            "northWest": 56.2,
+            "north": 48.3,
+            "northEast": 56.2,
+            "east": 77.9,
+            "southEast": 108.5,
+            "horizontal": 161.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.4,
+            "horizontal": 68.8
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 120.6,
+            "southWest": 99.9,
+            "west": 63.5,
+            "northWest": 35.1,
+            "north": 24.4,
+            "northEast": 35.1,
+            "east": 63.5,
+            "southEast": 99.9,
+            "horizontal": 109.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.4,
+            "horizontal": 48.8
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 69.1,
+            "southWest": 54.1,
+            "west": 31.2,
+            "northWest": 15.7,
+            "north": 14.5,
+            "northEast": 15.7,
+            "east": 31.2,
+            "southEast": 54.1,
+            "horizontal": 51.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.5,
+            "horizontal": 29
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 60,
+            "southWest": 46.3,
+            "west": 24.2,
+            "northWest": 11.2,
+            "north": 10.7,
+            "northEast": 11.2,
+            "east": 24.2,
+            "southEast": 46.3,
+            "horizontal": 36.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 10.7,
+            "horizontal": 21.4
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_cluj_napoca",
+      "sourceLocalityId": "cluj_napoca",
+      "solarStationId": "mc001_1_2006_solar_cluj_napoca",
+      "climateStationId": "mc001_6_2013_cluj_napoca",
+      "localityName": "Cluj-Napoca",
+      "sourceLabel": "Cluj-Napoca",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 122,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          71.2,
+          101.6,
+          102.6,
+          94.2,
+          90.4,
+          97.8,
+          108.9,
+          120.2,
+          117.3,
+          120.8,
+          73.5,
+          49
+        ],
+        "it_south_west": [
+          54.9,
+          82.9,
+          90.5,
+          91,
+          84.9,
+          93.7,
+          102.6,
+          108.3,
+          102.7,
+          99.9,
+          57.2,
+          38
+        ],
+        "it_west": [
+          28.3,
+          50.8,
+          64.8,
+          75.4,
+          73.9,
+          80.2,
+          79.8,
+          70.3,
+          74.2,
+          63.1,
+          32.3,
+          20.2
+        ],
+        "it_north_west": [
+          13.4,
+          26.1,
+          37.7,
+          52,
+          69.5,
+          78.8,
+          78.4,
+          68.5,
+          53.9,
+          34.4,
+          15.5,
+          9.8
+        ],
+        "it_north": [
+          12.1,
+          19.1,
+          28.7,
+          38.8,
+          65.2,
+          77.4,
+          77.1,
+          66.7,
+          46.6,
+          23.6,
+          14.2,
+          9.4
+        ],
+        "it_north_east": [
+          13.4,
+          26.1,
+          37.7,
+          52,
+          69.5,
+          78.8,
+          78.4,
+          68.5,
+          53.9,
+          34.4,
+          15.5,
+          9.8
+        ],
+        "it_east": [
+          28.3,
+          50.8,
+          64.8,
+          75.4,
+          73.9,
+          80.2,
+          79.8,
+          70.3,
+          74.2,
+          63.1,
+          32.3,
+          20.2
+        ],
+        "it_south_east": [
+          54.9,
+          82.9,
+          90.5,
+          91,
+          84.9,
+          93.7,
+          102.6,
+          108.3,
+          102.7,
+          99.9,
+          57.2,
+          38
+        ],
+        "it_horizontal": [
+          45.3,
+          79.9,
+          122.6,
+          165.9,
+          202.7,
+          236.3,
+          232,
+          204.7,
+          153.6,
+          108.9,
+          52.6,
+          31.2
+        ],
+        "id_vertical": [
+          12.1,
+          19.1,
+          28.7,
+          38.8,
+          46.5,
+          50.3,
+          48.9,
+          43,
+          33.7,
+          23.6,
+          14.2,
+          9.4
+        ],
+        "id_horizontal": [
+          24.2,
+          38.2,
+          57.5,
+          77.5,
+          93,
+          100.6,
+          97.8,
+          85.9,
+          67.4,
+          47.1,
+          28.5,
+          18.8
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 71.2,
+            "southWest": 54.9,
+            "west": 28.3,
+            "northWest": 13.4,
+            "north": 12.1,
+            "northEast": 13.4,
+            "east": 28.3,
+            "southEast": 54.9,
+            "horizontal": 45.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12.1,
+            "horizontal": 24.2
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 101.6,
+            "southWest": 82.9,
+            "west": 50.8,
+            "northWest": 26.1,
+            "north": 19.1,
+            "northEast": 26.1,
+            "east": 50.8,
+            "southEast": 82.9,
+            "horizontal": 79.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.1,
+            "horizontal": 38.2
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.6,
+            "southWest": 90.5,
+            "west": 64.8,
+            "northWest": 37.7,
+            "north": 28.7,
+            "northEast": 37.7,
+            "east": 64.8,
+            "southEast": 90.5,
+            "horizontal": 122.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.7,
+            "horizontal": 57.5
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.2,
+            "southWest": 91,
+            "west": 75.4,
+            "northWest": 52,
+            "north": 38.8,
+            "northEast": 52,
+            "east": 75.4,
+            "southEast": 91,
+            "horizontal": 165.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.8,
+            "horizontal": 77.5
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.4,
+            "southWest": 84.9,
+            "west": 73.9,
+            "northWest": 69.5,
+            "north": 65.2,
+            "northEast": 69.5,
+            "east": 73.9,
+            "southEast": 84.9,
+            "horizontal": 202.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.5,
+            "horizontal": 93
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.8,
+            "southWest": 93.7,
+            "west": 80.2,
+            "northWest": 78.8,
+            "north": 77.4,
+            "northEast": 78.8,
+            "east": 80.2,
+            "southEast": 93.7,
+            "horizontal": 236.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.6
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 108.9,
+            "southWest": 102.6,
+            "west": 79.8,
+            "northWest": 78.4,
+            "north": 77.1,
+            "northEast": 78.4,
+            "east": 79.8,
+            "southEast": 102.6,
+            "horizontal": 232
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.9,
+            "horizontal": 97.8
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 120.2,
+            "southWest": 108.3,
+            "west": 70.3,
+            "northWest": 68.5,
+            "north": 66.7,
+            "northEast": 68.5,
+            "east": 70.3,
+            "southEast": 108.3,
+            "horizontal": 204.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43,
+            "horizontal": 85.9
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 117.3,
+            "southWest": 102.7,
+            "west": 74.2,
+            "northWest": 53.9,
+            "north": 46.6,
+            "northEast": 53.9,
+            "east": 74.2,
+            "southEast": 102.7,
+            "horizontal": 153.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.7,
+            "horizontal": 67.4
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 120.8,
+            "southWest": 99.9,
+            "west": 63.1,
+            "northWest": 34.4,
+            "north": 23.6,
+            "northEast": 34.4,
+            "east": 63.1,
+            "southEast": 99.9,
+            "horizontal": 108.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 23.6,
+            "horizontal": 47.1
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 73.5,
+            "southWest": 57.2,
+            "west": 32.3,
+            "northWest": 15.5,
+            "north": 14.2,
+            "northEast": 15.5,
+            "east": 32.3,
+            "southEast": 57.2,
+            "horizontal": 52.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.2,
+            "horizontal": 28.5
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 49,
+            "southWest": 38,
+            "west": 20.2,
+            "northWest": 9.8,
+            "north": 9.4,
+            "northEast": 9.8,
+            "east": 20.2,
+            "southEast": 38,
+            "horizontal": 31.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9.4,
+            "horizontal": 18.8
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 7,
+        "ocrCrossCheckedCellCount": 125,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_constanta",
+      "sourceLocalityId": "constanta",
+      "solarStationId": "mc001_1_2006_solar_constanta",
+      "climateStationId": "mc001_6_2013_constanta",
+      "localityName": "Constanta",
+      "sourceLabel": "Constanta",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 122,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          92.3,
+          110.7,
+          108.5,
+          100.2,
+          95.5,
+          102.1,
+          119.4,
+          134.3,
+          136.6,
+          123.9,
+          81,
+          70.7
+        ],
+        "it_south_west": [
+          70.8,
+          90.4,
+          95.7,
+          96.8,
+          89.4,
+          97.7,
+          112.1,
+          120.5,
+          118.9,
+          102.7,
+          63.1,
+          54.3
+        ],
+        "it_west": [
+          35.8,
+          55.5,
+          68.5,
+          79.8,
+          77.4,
+          83.1,
+          85.9,
+          76.5,
+          84.5,
+          65.3,
+          35.8,
+          27.9
+        ],
+        "it_north_west": [
+          16,
+          28.5,
+          39.8,
+          54.4,
+          72.5,
+          81.6,
+          84.3,
+          74.4,
+          60.1,
+          36.2,
+          17.2,
+          12.5
+        ],
+        "it_north": [
+          14.3,
+          20.9,
+          30.3,
+          40,
+          67.7,
+          80.1,
+          82.8,
+          72.4,
+          51.2,
+          25.2,
+          15.9,
+          11.9
+        ],
+        "it_north_east": [
+          16,
+          28.5,
+          39.8,
+          54.4,
+          72.5,
+          81.6,
+          84.3,
+          74.4,
+          60.1,
+          36.2,
+          17.2,
+          12.5
+        ],
+        "it_east": [
+          35.8,
+          55.5,
+          68.5,
+          79.8,
+          77.4,
+          83.1,
+          85.9,
+          76.5,
+          84.5,
+          65.3,
+          35.8,
+          27.9
+        ],
+        "it_south_east": [
+          70.8,
+          90.4,
+          95.7,
+          96.8,
+          89.4,
+          97.7,
+          112.1,
+          120.5,
+          118.9,
+          102.7,
+          63.1,
+          54.3
+        ],
+        "it_horizontal": [
+          56.4,
+          87.3,
+          129.6,
+          176.1,
+          215.1,
+          248,
+          255.1,
+          227.3,
+          175.3,
+          113.1,
+          58.3,
+          42.2
+        ],
+        "id_vertical": [
+          14.3,
+          20.9,
+          30.3,
+          40,
+          47.2,
+          50.9,
+          50.4,
+          44.8,
+          35.6,
+          25.2,
+          15.9,
+          11.9
+        ],
+        "id_horizontal": [
+          28.7,
+          41.8,
+          60.6,
+          80,
+          94.4,
+          101.8,
+          100.7,
+          89.6,
+          71.2,
+          50.5,
+          31.8,
+          23.8
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 92.3,
+            "southWest": 70.8,
+            "west": 35.8,
+            "northWest": 16,
+            "north": 14.3,
+            "northEast": 16,
+            "east": 35.8,
+            "southEast": 70.8,
+            "horizontal": 56.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.3,
+            "horizontal": 28.7
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 110.7,
+            "southWest": 90.4,
+            "west": 55.5,
+            "northWest": 28.5,
+            "north": 20.9,
+            "northEast": 28.5,
+            "east": 55.5,
+            "southEast": 90.4,
+            "horizontal": 87.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.9,
+            "horizontal": 41.8
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 108.5,
+            "southWest": 95.7,
+            "west": 68.5,
+            "northWest": 39.8,
+            "north": 30.3,
+            "northEast": 39.8,
+            "east": 68.5,
+            "southEast": 95.7,
+            "horizontal": 129.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 30.3,
+            "horizontal": 60.6
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.2,
+            "southWest": 96.8,
+            "west": 79.8,
+            "northWest": 54.4,
+            "north": 40,
+            "northEast": 54.4,
+            "east": 79.8,
+            "southEast": 96.8,
+            "horizontal": 176.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 40,
+            "horizontal": 80
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.5,
+            "southWest": 89.4,
+            "west": 77.4,
+            "northWest": 72.5,
+            "north": 67.7,
+            "northEast": 72.5,
+            "east": 77.4,
+            "southEast": 89.4,
+            "horizontal": 215.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 47.2,
+            "horizontal": 94.4
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.1,
+            "southWest": 97.7,
+            "west": 83.1,
+            "northWest": 81.6,
+            "north": 80.1,
+            "northEast": 81.6,
+            "east": 83.1,
+            "southEast": 97.7,
+            "horizontal": 248
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.9,
+            "horizontal": 101.8
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.4,
+            "southWest": 112.1,
+            "west": 85.9,
+            "northWest": 84.3,
+            "north": 82.8,
+            "northEast": 84.3,
+            "east": 85.9,
+            "southEast": 112.1,
+            "horizontal": 255.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.4,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 134.3,
+            "southWest": 120.5,
+            "west": 76.5,
+            "northWest": 74.4,
+            "north": 72.4,
+            "northEast": 74.4,
+            "east": 76.5,
+            "southEast": 120.5,
+            "horizontal": 227.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.8,
+            "horizontal": 89.6
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 136.6,
+            "southWest": 118.9,
+            "west": 84.5,
+            "northWest": 60.1,
+            "north": 51.2,
+            "northEast": 60.1,
+            "east": 84.5,
+            "southEast": 118.9,
+            "horizontal": 175.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.6,
+            "horizontal": 71.2
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 123.9,
+            "southWest": 102.7,
+            "west": 65.3,
+            "northWest": 36.2,
+            "north": 25.2,
+            "northEast": 36.2,
+            "east": 65.3,
+            "southEast": 102.7,
+            "horizontal": 113.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.2,
+            "horizontal": 50.5
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 81,
+            "southWest": 63.1,
+            "west": 35.8,
+            "northWest": 17.2,
+            "north": 15.9,
+            "northEast": 17.2,
+            "east": 35.8,
+            "southEast": 63.1,
+            "horizontal": 58.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.9,
+            "horizontal": 31.8
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 122,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 70.7,
+            "southWest": 54.3,
+            "west": 27.9,
+            "northWest": 12.5,
+            "north": 11.9,
+            "northEast": 12.5,
+            "east": 27.9,
+            "southEast": 54.3,
+            "horizontal": 42.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.9,
+            "horizontal": 23.8
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 6,
+        "ocrCrossCheckedCellCount": 126,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_craiova",
+      "sourceLocalityId": "craiova",
+      "solarStationId": "mc001_1_2006_solar_craiova",
+      "climateStationId": "mc001_6_2013_craiova",
+      "localityName": "Craiova",
+      "sourceLabel": "Craiova",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 123,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          76.9,
+          113.6,
+          99.7,
+          94.1,
+          90.8,
+          97.5,
+          115.2,
+          135.9,
+          136,
+          124,
+          73.2,
+          68.8
+        ],
+        "it_south_west": [
+          59.4,
+          92.6,
+          88.3,
+          91,
+          85.3,
+          93.5,
+          108.3,
+          121.9,
+          118.4,
+          102.8,
+          57.3,
+          52.9
+        ],
+        "it_west": [
+          31,
+          56.6,
+          64,
+          75.6,
+          74.3,
+          80,
+          83.5,
+          77.1,
+          84.2,
+          65.4,
+          33,
+          27.3
+        ],
+        "it_north_west": [
+          15,
+          28.8,
+          38.2,
+          52.6,
+          69.9,
+          78.6,
+          82,
+          75,
+          59.9,
+          36.2,
+          16.5,
+          12.3
+        ],
+        "it_north": [
+          13.6,
+          20.9,
+          29.8,
+          39.5,
+          65.5,
+          77.3,
+          80.5,
+          72.9,
+          51.1,
+          25.2,
+          15.3,
+          11.8
+        ],
+        "it_north_east": [
+          15,
+          28.8,
+          38.2,
+          52.6,
+          69.9,
+          78.6,
+          82,
+          75,
+          59.9,
+          36.2,
+          16.5,
+          12.3
+        ],
+        "it_east": [
+          31,
+          56.6,
+          64,
+          75.6,
+          74.3,
+          80,
+          83.5,
+          77.1,
+          84.2,
+          65.4,
+          33,
+          27.3
+        ],
+        "it_south_east": [
+          59.4,
+          92.6,
+          88.3,
+          91,
+          85.3,
+          93.5,
+          108.3,
+          121.9,
+          118.4,
+          102.8,
+          57.3,
+          52.9
+        ],
+        "it_horizontal": [
+          49.8,
+          88.8,
+          121.3,
+          166.1,
+          203.5,
+          235.5,
+          245.8,
+          229.8,
+          174.7,
+          113.1,
+          54.2,
+          41.3
+        ],
+        "id_vertical": [
+          13.6,
+          20.9,
+          29.8,
+          39.5,
+          46.9,
+          50.3,
+          49.9,
+          44.9,
+          35.5,
+          25.2,
+          15.3,
+          11.8
+        ],
+        "id_horizontal": [
+          27.2,
+          41.9,
+          59.6,
+          79.1,
+          93.7,
+          100.7,
+          99.7,
+          89.8,
+          71.1,
+          50.4,
+          30.7,
+          23.5
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 76.9,
+            "southWest": 59.4,
+            "west": 31,
+            "northWest": 15,
+            "north": 13.6,
+            "northEast": 15,
+            "east": 31,
+            "southEast": 59.4,
+            "horizontal": 49.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.6,
+            "horizontal": 27.2
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 113.6,
+            "southWest": 92.6,
+            "west": 56.6,
+            "northWest": 28.8,
+            "north": 20.9,
+            "northEast": 28.8,
+            "east": 56.6,
+            "southEast": 92.6,
+            "horizontal": 88.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.9,
+            "horizontal": 41.9
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 99.7,
+            "southWest": 88.3,
+            "west": 64,
+            "northWest": 38.2,
+            "north": 29.8,
+            "northEast": 38.2,
+            "east": 64,
+            "southEast": 88.3,
+            "horizontal": 121.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.8,
+            "horizontal": 59.6
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.1,
+            "southWest": 91,
+            "west": 75.6,
+            "northWest": 52.6,
+            "north": 39.5,
+            "northEast": 52.6,
+            "east": 75.6,
+            "southEast": 91,
+            "horizontal": 166.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.5,
+            "horizontal": 79.1
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.8,
+            "southWest": 85.3,
+            "west": 74.3,
+            "northWest": 69.9,
+            "north": 65.5,
+            "northEast": 69.9,
+            "east": 74.3,
+            "southEast": 85.3,
+            "horizontal": 203.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.9,
+            "horizontal": 93.7
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.5,
+            "southWest": 93.5,
+            "west": 80,
+            "northWest": 78.6,
+            "north": 77.3,
+            "northEast": 78.6,
+            "east": 80,
+            "southEast": 93.5,
+            "horizontal": 235.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 115.2,
+            "southWest": 108.3,
+            "west": 83.5,
+            "northWest": 82,
+            "north": 80.5,
+            "northEast": 82,
+            "east": 83.5,
+            "southEast": 108.3,
+            "horizontal": 245.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.9,
+            "horizontal": 99.7
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 135.9,
+            "southWest": 121.9,
+            "west": 77.1,
+            "northWest": 75,
+            "north": 72.9,
+            "northEast": 75,
+            "east": 77.1,
+            "southEast": 121.9,
+            "horizontal": 229.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.9,
+            "horizontal": 89.8
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 136,
+            "southWest": 118.4,
+            "west": 84.2,
+            "northWest": 59.9,
+            "north": 51.1,
+            "northEast": 59.9,
+            "east": 84.2,
+            "southEast": 118.4,
+            "horizontal": 174.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.5,
+            "horizontal": 71.1
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 124,
+            "southWest": 102.8,
+            "west": 65.4,
+            "northWest": 36.2,
+            "north": 25.2,
+            "northEast": 36.2,
+            "east": 65.4,
+            "southEast": 102.8,
+            "horizontal": 113.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.2,
+            "horizontal": 50.4
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 73.2,
+            "southWest": 57.3,
+            "west": 33,
+            "northWest": 16.5,
+            "north": 15.3,
+            "northEast": 16.5,
+            "east": 33,
+            "southEast": 57.3,
+            "horizontal": 54.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.3,
+            "horizontal": 30.7
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 68.8,
+            "southWest": 52.9,
+            "west": 27.3,
+            "northWest": 12.3,
+            "north": 11.8,
+            "northEast": 12.3,
+            "east": 27.3,
+            "southEast": 52.9,
+            "horizontal": 41.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.8,
+            "horizontal": 23.5
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_curtea_de_arges",
+      "sourceLocalityId": "curtea_de_arges",
+      "solarStationId": "mc001_1_2006_solar_curtea_de_arges",
+      "climateStationId": null,
+      "localityName": "Curtea de Arges",
+      "sourceLabel": "Curtea de Arges",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 123,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          90.4,
+          115.3,
+          99.4,
+          87,
+          86.2,
+          91.4,
+          110.4,
+          130.5,
+          129,
+          124,
+          79,
+          80.7
+        ],
+        "it_south_west": [
+          69.2,
+          93.8,
+          87.9,
+          84.2,
+          81.2,
+          87.8,
+          104,
+          117.2,
+          112.5,
+          102.7,
+          61.5,
+          61.6
+        ],
+        "it_west": [
+          34.8,
+          56.9,
+          63.6,
+          70.5,
+          71.2,
+          76,
+          80.7,
+          74.8,
+          80.4,
+          65,
+          34.8,
+          30.7
+        ],
+        "it_north_west": [
+          15.3,
+          28.4,
+          37.8,
+          50.1,
+          67.2,
+          74.8,
+          79.3,
+          72.8,
+          57.5,
+          35.6,
+          16.6,
+          12.5
+        ],
+        "it_north": [
+          13.7,
+          20.4,
+          29.3,
+          38.5,
+          63.2,
+          73.6,
+          77.9,
+          70.8,
+          49.3,
+          24.6,
+          15.3,
+          11.9
+        ],
+        "it_north_east": [
+          15.3,
+          28.4,
+          37.8,
+          50.1,
+          67.2,
+          74.8,
+          79.3,
+          72.8,
+          57.5,
+          35.6,
+          16.6,
+          12.5
+        ],
+        "it_east": [
+          34.8,
+          56.9,
+          63.6,
+          70.5,
+          71.2,
+          76,
+          80.7,
+          74.8,
+          80.4,
+          65,
+          34.8,
+          30.7
+        ],
+        "it_south_east": [
+          69.2,
+          93.8,
+          87.9,
+          84.2,
+          81.2,
+          87.8,
+          104,
+          117.2,
+          112.5,
+          102.7,
+          61.5,
+          61.6
+        ],
+        "it_horizontal": [
+          54.7,
+          88.8,
+          120.4,
+          154.4,
+          192.4,
+          218.2,
+          235.4,
+          221.2,
+          166.6,
+          112.3,
+          56.5,
+          45.3
+        ],
+        "id_vertical": [
+          13.7,
+          20.4,
+          29.3,
+          38.5,
+          46.2,
+          50,
+          49.1,
+          44.3,
+          34.7,
+          24.6,
+          15.3,
+          11.9
+        ],
+        "id_horizontal": [
+          27.4,
+          40.7,
+          58.6,
+          77,
+          92.4,
+          100,
+          98.3,
+          88.6,
+          69.3,
+          49.1,
+          30.6,
+          23.8
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.4,
+            "southWest": 69.2,
+            "west": 34.8,
+            "northWest": 15.3,
+            "north": 13.7,
+            "northEast": 15.3,
+            "east": 34.8,
+            "southEast": 69.2,
+            "horizontal": 54.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.7,
+            "horizontal": 27.4
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 115.3,
+            "southWest": 93.8,
+            "west": 56.9,
+            "northWest": 28.4,
+            "north": 20.4,
+            "northEast": 28.4,
+            "east": 56.9,
+            "southEast": 93.8,
+            "horizontal": 88.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.4,
+            "horizontal": 40.7
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 99.4,
+            "southWest": 87.9,
+            "west": 63.6,
+            "northWest": 37.8,
+            "north": 29.3,
+            "northEast": 37.8,
+            "east": 63.6,
+            "southEast": 87.9,
+            "horizontal": 120.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.3,
+            "horizontal": 58.6
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 87,
+            "southWest": 84.2,
+            "west": 70.5,
+            "northWest": 50.1,
+            "north": 38.5,
+            "northEast": 50.1,
+            "east": 70.5,
+            "southEast": 84.2,
+            "horizontal": 154.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.5,
+            "horizontal": 77
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 86.2,
+            "southWest": 81.2,
+            "west": 71.2,
+            "northWest": 67.2,
+            "north": 63.2,
+            "northEast": 67.2,
+            "east": 71.2,
+            "southEast": 81.2,
+            "horizontal": 192.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.2,
+            "horizontal": 92.4
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.4,
+            "southWest": 87.8,
+            "west": 76,
+            "northWest": 74.8,
+            "north": 73.6,
+            "northEast": 74.8,
+            "east": 76,
+            "southEast": 87.8,
+            "horizontal": 218.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50,
+            "horizontal": 100
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 110.4,
+            "southWest": 104,
+            "west": 80.7,
+            "northWest": 79.3,
+            "north": 77.9,
+            "northEast": 79.3,
+            "east": 80.7,
+            "southEast": 104,
+            "horizontal": 235.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.1,
+            "horizontal": 98.3
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 130.5,
+            "southWest": 117.2,
+            "west": 74.8,
+            "northWest": 72.8,
+            "north": 70.8,
+            "northEast": 72.8,
+            "east": 74.8,
+            "southEast": 117.2,
+            "horizontal": 221.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.3,
+            "horizontal": 88.6
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 129,
+            "southWest": 112.5,
+            "west": 80.4,
+            "northWest": 57.5,
+            "north": 49.3,
+            "northEast": 57.5,
+            "east": 80.4,
+            "southEast": 112.5,
+            "horizontal": 166.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.7,
+            "horizontal": 69.3
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 124,
+            "southWest": 102.7,
+            "west": 65,
+            "northWest": 35.6,
+            "north": 24.6,
+            "northEast": 35.6,
+            "east": 65,
+            "southEast": 102.7,
+            "horizontal": 112.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.6,
+            "horizontal": 49.1
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 79,
+            "southWest": 61.5,
+            "west": 34.8,
+            "northWest": 16.6,
+            "north": 15.3,
+            "northEast": 16.6,
+            "east": 34.8,
+            "southEast": 61.5,
+            "horizontal": 56.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.3,
+            "horizontal": 30.6
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 80.7,
+            "southWest": 61.6,
+            "west": 30.7,
+            "northWest": 12.5,
+            "north": 11.9,
+            "northEast": 12.5,
+            "east": 30.7,
+            "southEast": 61.6,
+            "horizontal": 45.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.9,
+            "horizontal": 23.8
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 3,
+        "ocrCrossCheckedCellCount": 129,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_dorohoi",
+      "sourceLocalityId": "dorohoi",
+      "solarStationId": "mc001_1_2006_solar_dorohoi",
+      "climateStationId": null,
+      "localityName": "Dorohoi",
+      "sourceLabel": "Dorohoi",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 123,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          66.9,
+          90.4,
+          96.4,
+          90.8,
+          87.4,
+          88.5,
+          102.5,
+          112.7,
+          116.2,
+          109.7,
+          61.9,
+          59.7
+        ],
+        "it_south_west": [
+          51.5,
+          74,
+          85.1,
+          87.8,
+          82.2,
+          85.2,
+          96.9,
+          101.9,
+          101.7,
+          91,
+          48.4,
+          45.8
+        ],
+        "it_west": [
+          26.6,
+          45.9,
+          61.3,
+          72.9,
+          71.9,
+          74.1,
+          76.4,
+          67.4,
+          73.4,
+          58.1,
+          27.9,
+          23.3
+        ],
+        "it_north_west": [
+          12.5,
+          24.1,
+          36.1,
+          50.7,
+          67.7,
+          73,
+          75.2,
+          65.8,
+          53.2,
+          32.3,
+          14,
+          10.1
+        ],
+        "it_north": [
+          11.3,
+          18,
+          27.8,
+          38.1,
+          63.6,
+          71.8,
+          73.9,
+          64.1,
+          45.9,
+          22.7,
+          12.9,
+          9.7
+        ],
+        "it_north_east": [
+          12.5,
+          24.1,
+          36.1,
+          50.7,
+          67.7,
+          73,
+          75.2,
+          65.8,
+          53.2,
+          32.3,
+          14,
+          10.1
+        ],
+        "it_east": [
+          26.6,
+          45.9,
+          61.3,
+          72.9,
+          71.9,
+          74.1,
+          76.4,
+          67.4,
+          73.4,
+          58.1,
+          27.9,
+          23.3
+        ],
+        "it_south_east": [
+          51.5,
+          74,
+          85.1,
+          87.8,
+          82.2,
+          85.2,
+          96.9,
+          101.9,
+          101.7,
+          91,
+          48.4,
+          45.8
+        ],
+        "it_horizontal": [
+          42.4,
+          72.7,
+          116.1,
+          160.3,
+          195.4,
+          210.5,
+          217.8,
+          193.1,
+          151.9,
+          100.6,
+          45.8,
+          34.9
+        ],
+        "id_vertical": [
+          11.3,
+          18,
+          27.8,
+          38.1,
+          46,
+          49.6,
+          48.6,
+          42.5,
+          33.1,
+          22.7,
+          12.9,
+          9.7
+        ],
+        "id_horizontal": [
+          22.7,
+          36,
+          55.7,
+          76.2,
+          92.1,
+          99.2,
+          97.3,
+          85.1,
+          66.2,
+          45.3,
+          25.9,
+          19.3
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 66.9,
+            "southWest": 51.5,
+            "west": 26.6,
+            "northWest": 12.5,
+            "north": 11.3,
+            "northEast": 12.5,
+            "east": 26.6,
+            "southEast": 51.5,
+            "horizontal": 42.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.3,
+            "horizontal": 22.7
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.4,
+            "southWest": 74,
+            "west": 45.9,
+            "northWest": 24.1,
+            "north": 18,
+            "northEast": 24.1,
+            "east": 45.9,
+            "southEast": 74,
+            "horizontal": 72.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 18,
+            "horizontal": 36
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.4,
+            "southWest": 85.1,
+            "west": 61.3,
+            "northWest": 36.1,
+            "north": 27.8,
+            "northEast": 36.1,
+            "east": 61.3,
+            "southEast": 85.1,
+            "horizontal": 116.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 27.8,
+            "horizontal": 55.7
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.8,
+            "southWest": 87.8,
+            "west": 72.9,
+            "northWest": 50.7,
+            "north": 38.1,
+            "northEast": 50.7,
+            "east": 72.9,
+            "southEast": 87.8,
+            "horizontal": 160.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.1,
+            "horizontal": 76.2
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 87.4,
+            "southWest": 82.2,
+            "west": 71.9,
+            "northWest": 67.7,
+            "north": 63.6,
+            "northEast": 67.7,
+            "east": 71.9,
+            "southEast": 82.2,
+            "horizontal": 195.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46,
+            "horizontal": 92.1
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 88.5,
+            "southWest": 85.2,
+            "west": 74.1,
+            "northWest": 73,
+            "north": 71.8,
+            "northEast": 73,
+            "east": 74.1,
+            "southEast": 85.2,
+            "horizontal": 210.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.6,
+            "horizontal": 99.2
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.5,
+            "southWest": 96.9,
+            "west": 76.4,
+            "northWest": 75.2,
+            "north": 73.9,
+            "northEast": 75.2,
+            "east": 76.4,
+            "southEast": 96.9,
+            "horizontal": 217.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.6,
+            "horizontal": 97.3
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 112.7,
+            "southWest": 101.9,
+            "west": 67.4,
+            "northWest": 65.8,
+            "north": 64.1,
+            "northEast": 65.8,
+            "east": 67.4,
+            "southEast": 101.9,
+            "horizontal": 193.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 42.5,
+            "horizontal": 85.1
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 116.2,
+            "southWest": 101.7,
+            "west": 73.4,
+            "northWest": 53.2,
+            "north": 45.9,
+            "northEast": 53.2,
+            "east": 73.4,
+            "southEast": 101.7,
+            "horizontal": 151.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.1,
+            "horizontal": 66.2
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 109.7,
+            "southWest": 91,
+            "west": 58.1,
+            "northWest": 32.3,
+            "north": 22.7,
+            "northEast": 32.3,
+            "east": 58.1,
+            "southEast": 91,
+            "horizontal": 100.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 22.7,
+            "horizontal": 45.3
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 61.9,
+            "southWest": 48.4,
+            "west": 27.9,
+            "northWest": 14,
+            "north": 12.9,
+            "northEast": 14,
+            "east": 27.9,
+            "southEast": 48.4,
+            "horizontal": 45.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12.9,
+            "horizontal": 25.9
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 123,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 59.7,
+            "southWest": 45.8,
+            "west": 23.3,
+            "northWest": 10.1,
+            "north": 9.7,
+            "northEast": 10.1,
+            "east": 23.3,
+            "southEast": 45.8,
+            "horizontal": 34.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9.7,
+            "horizontal": 19.3
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_dragasani",
+      "sourceLocalityId": "dragasani",
+      "solarStationId": "mc001_1_2006_solar_dragasani",
+      "climateStationId": null,
+      "localityName": "Dragasani",
+      "sourceLabel": "Dragasani",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 124,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          88.5,
+          119.8,
+          100.5,
+          93.3,
+          89.3,
+          96.8,
+          114.6,
+          135.3,
+          134.2,
+          126.5,
+          77.5,
+          77.2
+        ],
+        "it_south_west": [
+          67.9,
+          97.4,
+          88.8,
+          90.2,
+          83.9,
+          92.8,
+          107.7,
+          121.4,
+          116.9,
+          104.7,
+          60.4,
+          59.1
+        ],
+        "it_west": [
+          34.4,
+          58.9,
+          64.2,
+          74.9,
+          73.3,
+          79.6,
+          83.1,
+          76.8,
+          83.2,
+          66.2,
+          34.4,
+          29.8
+        ],
+        "it_north_west": [
+          15.5,
+          29.1,
+          38.2,
+          52.2,
+          69,
+          78.2,
+          81.6,
+          74.7,
+          59.2,
+          36.2,
+          16.7,
+          12.6
+        ],
+        "it_north": [
+          13.9,
+          20.8,
+          29.6,
+          39.3,
+          64.8,
+          76.9,
+          80.2,
+          72.6,
+          50.5,
+          24.9,
+          15.4,
+          12
+        ],
+        "it_north_east": [
+          15.5,
+          29.1,
+          38.2,
+          52.2,
+          69,
+          78.2,
+          81.6,
+          74.7,
+          59.2,
+          36.2,
+          16.7,
+          12.6
+        ],
+        "it_east": [
+          34.4,
+          58.9,
+          64.2,
+          74.9,
+          73.3,
+          79.6,
+          83.1,
+          76.8,
+          83.2,
+          66.2,
+          34.4,
+          29.8
+        ],
+        "it_south_east": [
+          67.9,
+          97.4,
+          88.8,
+          90.2,
+          83.9,
+          92.8,
+          107.7,
+          121.4,
+          116.9,
+          104.7,
+          60.4,
+          59.1
+        ],
+        "it_horizontal": [
+          54.4,
+          91.7,
+          121.7,
+          164.7,
+          199.9,
+          233.5,
+          244.5,
+          228.8,
+          172.5,
+          114.3,
+          56.1,
+          44.3
+        ],
+        "id_vertical": [
+          13.9,
+          20.8,
+          29.6,
+          39.3,
+          46.7,
+          50.3,
+          49.8,
+          44.8,
+          35.2,
+          24.9,
+          15.4,
+          12
+        ],
+        "id_horizontal": [
+          27.8,
+          41.5,
+          59.2,
+          78.6,
+          93.3,
+          100.7,
+          99.5,
+          89.5,
+          70.4,
+          49.8,
+          30.8,
+          24
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 88.5,
+            "southWest": 67.9,
+            "west": 34.4,
+            "northWest": 15.5,
+            "north": 13.9,
+            "northEast": 15.5,
+            "east": 34.4,
+            "southEast": 67.9,
+            "horizontal": 54.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.9,
+            "horizontal": 27.8
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.8,
+            "southWest": 97.4,
+            "west": 58.9,
+            "northWest": 29.1,
+            "north": 20.8,
+            "northEast": 29.1,
+            "east": 58.9,
+            "southEast": 97.4,
+            "horizontal": 91.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.8,
+            "horizontal": 41.5
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.5,
+            "southWest": 88.8,
+            "west": 64.2,
+            "northWest": 38.2,
+            "north": 29.6,
+            "northEast": 38.2,
+            "east": 64.2,
+            "southEast": 88.8,
+            "horizontal": 121.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.6,
+            "horizontal": 59.2
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.3,
+            "southWest": 90.2,
+            "west": 74.9,
+            "northWest": 52.2,
+            "north": 39.3,
+            "northEast": 52.2,
+            "east": 74.9,
+            "southEast": 90.2,
+            "horizontal": 164.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.3,
+            "horizontal": 78.6
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 89.3,
+            "southWest": 83.9,
+            "west": 73.3,
+            "northWest": 69,
+            "north": 64.8,
+            "northEast": 69,
+            "east": 73.3,
+            "southEast": 83.9,
+            "horizontal": 199.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.7,
+            "horizontal": 93.3
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.8,
+            "southWest": 92.8,
+            "west": 79.6,
+            "northWest": 78.2,
+            "north": 76.9,
+            "northEast": 78.2,
+            "east": 79.6,
+            "southEast": 92.8,
+            "horizontal": 233.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 114.6,
+            "southWest": 107.7,
+            "west": 83.1,
+            "northWest": 81.6,
+            "north": 80.2,
+            "northEast": 81.6,
+            "east": 83.1,
+            "southEast": 107.7,
+            "horizontal": 244.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.8,
+            "horizontal": 99.5
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 135.3,
+            "southWest": 121.4,
+            "west": 76.8,
+            "northWest": 74.7,
+            "north": 72.6,
+            "northEast": 74.7,
+            "east": 76.8,
+            "southEast": 121.4,
+            "horizontal": 228.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.8,
+            "horizontal": 89.5
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 134.2,
+            "southWest": 116.9,
+            "west": 83.2,
+            "northWest": 59.2,
+            "north": 50.5,
+            "northEast": 59.2,
+            "east": 83.2,
+            "southEast": 116.9,
+            "horizontal": 172.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.2,
+            "horizontal": 70.4
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 126.5,
+            "southWest": 104.7,
+            "west": 66.2,
+            "northWest": 36.2,
+            "north": 24.9,
+            "northEast": 36.2,
+            "east": 66.2,
+            "southEast": 104.7,
+            "horizontal": 114.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.9,
+            "horizontal": 49.8
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 77.5,
+            "southWest": 60.4,
+            "west": 34.4,
+            "northWest": 16.7,
+            "north": 15.4,
+            "northEast": 16.7,
+            "east": 34.4,
+            "southEast": 60.4,
+            "horizontal": 56.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.4,
+            "horizontal": 30.8
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 77.2,
+            "southWest": 59.1,
+            "west": 29.8,
+            "northWest": 12.6,
+            "north": 12,
+            "northEast": 12.6,
+            "east": 29.8,
+            "southEast": 59.1,
+            "horizontal": 44.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12,
+            "horizontal": 24
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 7,
+        "ocrCrossCheckedCellCount": 125,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_galati",
+      "sourceLocalityId": "galati",
+      "solarStationId": "mc001_1_2006_solar_galati",
+      "climateStationId": "mc001_6_2013_galati",
+      "localityName": "Galati",
+      "sourceLabel": "Galati",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 124,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          80,
+          102.6,
+          102.5,
+          92.6,
+          90.9,
+          96.9,
+          135.4,
+          134.8,
+          133.5,
+          127.6,
+          70.6,
+          69.5
+        ],
+        "it_south_west": [
+          61.5,
+          83.9,
+          90.5,
+          89.6,
+          85.4,
+          92.9,
+          126.5,
+          120.9,
+          116.2,
+          105.4,
+          55.3,
+          53.3
+        ],
+        "it_west": [
+          31.5,
+          51.7,
+          65.1,
+          74.4,
+          74.3,
+          79.6,
+          94.5,
+          76.5,
+          82.7,
+          66.3,
+          31.7,
+          27.1
+        ],
+        "it_north_west": [
+          14.6,
+          26.8,
+          38.2,
+          51.9,
+          69.9,
+          78.3,
+          92.6,
+          74.4,
+          58.8,
+          35.9,
+          15.8,
+          11.8
+        ],
+        "it_north": [
+          13.1,
+          19.8,
+          29.3,
+          39,
+          65.5,
+          77,
+          90.7,
+          72.3,
+          50.1,
+          24.4,
+          14.6,
+          11.2
+        ],
+        "it_north_east": [
+          14.6,
+          26.8,
+          38.2,
+          51.9,
+          69.9,
+          78.3,
+          92.6,
+          74.4,
+          58.8,
+          35.9,
+          15.8,
+          11.8
+        ],
+        "it_east": [
+          31.5,
+          51.7,
+          65.1,
+          74.4,
+          74.3,
+          79.6,
+          94.5,
+          76.5,
+          82.7,
+          66.3,
+          31.7,
+          27.1
+        ],
+        "it_south_east": [
+          61.5,
+          83.9,
+          90.5,
+          89.6,
+          85.4,
+          92.9,
+          126.5,
+          120.9,
+          116.2,
+          105.4,
+          55.3,
+          53.3
+        ],
+        "it_horizontal": [
+          50,
+          81.6,
+          123.2,
+          163.6,
+          203.8,
+          233.8,
+          290.7,
+          228,
+          171.4,
+          114.3,
+          52,
+          40.6
+        ],
+        "id_vertical": [
+          13.1,
+          19.8,
+          29.3,
+          39,
+          46.7,
+          50.3,
+          51.2,
+          44.6,
+          34.9,
+          24.4,
+          14.6,
+          11.2
+        ],
+        "id_horizontal": [
+          26.3,
+          39.7,
+          58.7,
+          78.1,
+          93.4,
+          100.6,
+          102.4,
+          89.1,
+          69.7,
+          48.8,
+          29.2,
+          22.5
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 80,
+            "southWest": 61.5,
+            "west": 31.5,
+            "northWest": 14.6,
+            "north": 13.1,
+            "northEast": 14.6,
+            "east": 31.5,
+            "southEast": 61.5,
+            "horizontal": 50
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.1,
+            "horizontal": 26.3
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.6,
+            "southWest": 83.9,
+            "west": 51.7,
+            "northWest": 26.8,
+            "north": 19.8,
+            "northEast": 26.8,
+            "east": 51.7,
+            "southEast": 83.9,
+            "horizontal": 81.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.8,
+            "horizontal": 39.7
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.5,
+            "southWest": 90.5,
+            "west": 65.1,
+            "northWest": 38.2,
+            "north": 29.3,
+            "northEast": 38.2,
+            "east": 65.1,
+            "southEast": 90.5,
+            "horizontal": 123.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.3,
+            "horizontal": 58.7
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 92.6,
+            "southWest": 89.6,
+            "west": 74.4,
+            "northWest": 51.9,
+            "north": 39,
+            "northEast": 51.9,
+            "east": 74.4,
+            "southEast": 89.6,
+            "horizontal": 163.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39,
+            "horizontal": 78.1
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.9,
+            "southWest": 85.4,
+            "west": 74.3,
+            "northWest": 69.9,
+            "north": 65.5,
+            "northEast": 69.9,
+            "east": 74.3,
+            "southEast": 85.4,
+            "horizontal": 203.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.7,
+            "horizontal": 93.4
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.9,
+            "southWest": 92.9,
+            "west": 79.6,
+            "northWest": 78.3,
+            "north": 77,
+            "northEast": 78.3,
+            "east": 79.6,
+            "southEast": 92.9,
+            "horizontal": 233.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.6
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 135.4,
+            "southWest": 126.5,
+            "west": 94.5,
+            "northWest": 92.6,
+            "north": 90.7,
+            "northEast": 92.6,
+            "east": 94.5,
+            "southEast": 126.5,
+            "horizontal": 290.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 51.2,
+            "horizontal": 102.4
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 134.8,
+            "southWest": 120.9,
+            "west": 76.5,
+            "northWest": 74.4,
+            "north": 72.3,
+            "northEast": 74.4,
+            "east": 76.5,
+            "southEast": 120.9,
+            "horizontal": 228
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.6,
+            "horizontal": 89.1
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 133.5,
+            "southWest": 116.2,
+            "west": 82.7,
+            "northWest": 58.8,
+            "north": 50.1,
+            "northEast": 58.8,
+            "east": 82.7,
+            "southEast": 116.2,
+            "horizontal": 171.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.9,
+            "horizontal": 69.7
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 127.6,
+            "southWest": 105.4,
+            "west": 66.3,
+            "northWest": 35.9,
+            "north": 24.4,
+            "northEast": 35.9,
+            "east": 66.3,
+            "southEast": 105.4,
+            "horizontal": 114.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.4,
+            "horizontal": 48.8
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 70.6,
+            "southWest": 55.3,
+            "west": 31.7,
+            "northWest": 15.8,
+            "north": 14.6,
+            "northEast": 15.8,
+            "east": 31.7,
+            "southEast": 55.3,
+            "horizontal": 52
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.6,
+            "horizontal": 29.2
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 69.5,
+            "southWest": 53.3,
+            "west": 27.1,
+            "northWest": 11.8,
+            "north": 11.2,
+            "northEast": 11.8,
+            "east": 27.1,
+            "southEast": 53.3,
+            "horizontal": 40.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.2,
+            "horizontal": 22.5
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 8,
+        "ocrCrossCheckedCellCount": 124,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_iasi",
+      "sourceLocalityId": "iasi",
+      "solarStationId": "mc001_1_2006_solar_iasi",
+      "climateStationId": "mc001_6_2013_iasi",
+      "localityName": "Iasi",
+      "sourceLabel": "Iasi",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 124,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          66.9,
+          87.4,
+          100.2,
+          92,
+          89.6,
+          95.6,
+          108.6,
+          122.1,
+          119.4,
+          113.1,
+          62.1,
+          56.5
+        ],
+        "it_south_west": [
+          51.6,
+          71.7,
+          88.4,
+          88.9,
+          84.2,
+          91.7,
+          102.3,
+          110,
+          104.3,
+          93.8,
+          48.7,
+          43.5
+        ],
+        "it_west": [
+          26.8,
+          44.9,
+          63.4,
+          73.8,
+          73.4,
+          78.8,
+          79.6,
+          71.1,
+          75.1,
+          59.7,
+          28.2,
+          22.5
+        ],
+        "it_north_west": [
+          12.8,
+          24.1,
+          37.1,
+          51.2,
+          69.1,
+          77.5,
+          78.2,
+          69.2,
+          54.3,
+          33.2,
+          14.3,
+          10.2
+        ],
+        "it_north": [
+          11.7,
+          18.2,
+          28.4,
+          38.4,
+          64.7,
+          76.2,
+          76.9,
+          67.4,
+          46.8,
+          23.2,
+          13.2,
+          9.8
+        ],
+        "it_north_east": [
+          12.8,
+          24.1,
+          37.1,
+          51.2,
+          69.1,
+          77.5,
+          78.2,
+          69.2,
+          54.3,
+          33.2,
+          14.3,
+          10.2
+        ],
+        "it_east": [
+          26.8,
+          44.9,
+          63.4,
+          73.8,
+          73.4,
+          78.8,
+          79.6,
+          71.1,
+          75.1,
+          59.7,
+          28.2,
+          22.5
+        ],
+        "it_south_east": [
+          51.6,
+          71.7,
+          88.4,
+          88.9,
+          84.2,
+          91.7,
+          102.3,
+          110,
+          104.3,
+          93.8,
+          48.7,
+          43.5
+        ],
+        "it_horizontal": [
+          43,
+          71.5,
+          120.1,
+          162.3,
+          200.8,
+          230.1,
+          231.3,
+          207.8,
+          155.5,
+          103.5,
+          46.4,
+          34.1
+        ],
+        "id_vertical": [
+          11.7,
+          18.2,
+          28.4,
+          38.4,
+          46.4,
+          50.2,
+          48.8,
+          43.1,
+          33.5,
+          23.2,
+          13.2,
+          9.8
+        ],
+        "id_horizontal": [
+          23.3,
+          36.5,
+          56.8,
+          76.9,
+          92.8,
+          100.5,
+          97.7,
+          86.2,
+          67,
+          46.3,
+          26.5,
+          19.5
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 66.9,
+            "southWest": 51.6,
+            "west": 26.8,
+            "northWest": 12.8,
+            "north": 11.7,
+            "northEast": 12.8,
+            "east": 26.8,
+            "southEast": 51.6,
+            "horizontal": 43
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.3
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 87.4,
+            "southWest": 71.7,
+            "west": 44.9,
+            "northWest": 24.1,
+            "north": 18.2,
+            "northEast": 24.1,
+            "east": 44.9,
+            "southEast": 71.7,
+            "horizontal": 71.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 18.2,
+            "horizontal": 36.5
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.2,
+            "southWest": 88.4,
+            "west": 63.4,
+            "northWest": 37.1,
+            "north": 28.4,
+            "northEast": 37.1,
+            "east": 63.4,
+            "southEast": 88.4,
+            "horizontal": 120.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.4,
+            "horizontal": 56.8
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 92,
+            "southWest": 88.9,
+            "west": 73.8,
+            "northWest": 51.2,
+            "north": 38.4,
+            "northEast": 51.2,
+            "east": 73.8,
+            "southEast": 88.9,
+            "horizontal": 162.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.4,
+            "horizontal": 76.9
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 89.6,
+            "southWest": 84.2,
+            "west": 73.4,
+            "northWest": 69.1,
+            "north": 64.7,
+            "northEast": 69.1,
+            "east": 73.4,
+            "southEast": 84.2,
+            "horizontal": 200.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.4,
+            "horizontal": 92.8
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.6,
+            "southWest": 91.7,
+            "west": 78.8,
+            "northWest": 77.5,
+            "north": 76.2,
+            "northEast": 77.5,
+            "east": 78.8,
+            "southEast": 91.7,
+            "horizontal": 230.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.2,
+            "horizontal": 100.5
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 108.6,
+            "southWest": 102.3,
+            "west": 79.6,
+            "northWest": 78.2,
+            "north": 76.9,
+            "northEast": 78.2,
+            "east": 79.6,
+            "southEast": 102.3,
+            "horizontal": 231.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.8,
+            "horizontal": 97.7
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122.1,
+            "southWest": 110,
+            "west": 71.1,
+            "northWest": 69.2,
+            "north": 67.4,
+            "northEast": 69.2,
+            "east": 71.1,
+            "southEast": 110,
+            "horizontal": 207.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.1,
+            "horizontal": 86.2
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.4,
+            "southWest": 104.3,
+            "west": 75.1,
+            "northWest": 54.3,
+            "north": 46.8,
+            "northEast": 54.3,
+            "east": 75.1,
+            "southEast": 104.3,
+            "horizontal": 155.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.5,
+            "horizontal": 67
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 113.1,
+            "southWest": 93.8,
+            "west": 59.7,
+            "northWest": 33.2,
+            "north": 23.2,
+            "northEast": 33.2,
+            "east": 59.7,
+            "southEast": 93.8,
+            "horizontal": 103.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 23.2,
+            "horizontal": 46.3
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 62.1,
+            "southWest": 48.7,
+            "west": 28.2,
+            "northWest": 14.3,
+            "north": 13.2,
+            "northEast": 14.3,
+            "east": 28.2,
+            "southEast": 48.7,
+            "horizontal": 46.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.2,
+            "horizontal": 26.5
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 124,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 56.5,
+            "southWest": 43.5,
+            "west": 22.5,
+            "northWest": 10.2,
+            "north": 9.8,
+            "northEast": 10.2,
+            "east": 22.5,
+            "southEast": 43.5,
+            "horizontal": 34.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9.8,
+            "horizontal": 19.5
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 8,
+        "ocrCrossCheckedCellCount": 124,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_oradea",
+      "sourceLocalityId": "oradea",
+      "solarStationId": "mc001_1_2006_solar_oradea",
+      "climateStationId": "mc001_6_2013_oradea",
+      "localityName": "Oradea",
+      "sourceLabel": "Oradea",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 125,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          69.9,
+          99.6,
+          95.2,
+          93.5,
+          90.1,
+          94.5,
+          108.4,
+          119.9,
+          125.9,
+          124.9,
+          71.3,
+          59.8
+        ],
+        "it_south_west": [
+          53.9,
+          81.3,
+          84.2,
+          90.4,
+          84.6,
+          90.7,
+          102.1,
+          108,
+          109.8,
+          103.1,
+          55.5,
+          45.9
+        ],
+        "it_west": [
+          27.9,
+          49.9,
+          60.9,
+          74.9,
+          73.7,
+          78,
+          79.5,
+          70.1,
+          78.4,
+          64.6,
+          31.5,
+          23.6
+        ],
+        "it_north_west": [
+          13.2,
+          25.7,
+          36.3,
+          51.8,
+          69.4,
+          76.7,
+          78.2,
+          68.3,
+          56.1,
+          34.7,
+          15.2,
+          10.5
+        ],
+        "it_north": [
+          11.9,
+          18.8,
+          28.2,
+          38.6,
+          65,
+          75.5,
+          76.8,
+          66.6,
+          48,
+          23.4,
+          14,
+          10.1
+        ],
+        "it_north_east": [
+          13.2,
+          25.7,
+          36.3,
+          51.8,
+          69.4,
+          76.7,
+          78.2,
+          68.3,
+          56.1,
+          34.7,
+          15.2,
+          10.5
+        ],
+        "it_east": [
+          27.9,
+          49.9,
+          60.9,
+          74.9,
+          73.7,
+          78,
+          79.5,
+          70.1,
+          78.4,
+          64.6,
+          31.5,
+          23.6
+        ],
+        "it_south_east": [
+          53.9,
+          81.3,
+          84.2,
+          90.4,
+          84.6,
+          90.7,
+          102.1,
+          108,
+          109.8,
+          103.1,
+          55.5,
+          45.9
+        ],
+        "it_horizontal": [
+          44.5,
+          78.6,
+          115.5,
+          164.8,
+          202,
+          226.9,
+          230.9,
+          204.2,
+          162.5,
+          111.2,
+          51.3,
+          35.6
+        ],
+        "id_vertical": [
+          11.9,
+          18.8,
+          28.2,
+          38.6,
+          46.5,
+          50.2,
+          48.9,
+          42.9,
+          33.8,
+          23.4,
+          14,
+          10.1
+        ],
+        "id_horizontal": [
+          23.8,
+          37.7,
+          56.4,
+          77.3,
+          92.9,
+          100.4,
+          97.7,
+          85.8,
+          67.5,
+          46.8,
+          27.9,
+          20.1
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 69.9,
+            "southWest": 53.9,
+            "west": 27.9,
+            "northWest": 13.2,
+            "north": 11.9,
+            "northEast": 13.2,
+            "east": 27.9,
+            "southEast": 53.9,
+            "horizontal": 44.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.9,
+            "horizontal": 23.8
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 99.6,
+            "southWest": 81.3,
+            "west": 49.9,
+            "northWest": 25.7,
+            "north": 18.8,
+            "northEast": 25.7,
+            "east": 49.9,
+            "southEast": 81.3,
+            "horizontal": 78.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 18.8,
+            "horizontal": 37.7
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.2,
+            "southWest": 84.2,
+            "west": 60.9,
+            "northWest": 36.3,
+            "north": 28.2,
+            "northEast": 36.3,
+            "east": 60.9,
+            "southEast": 84.2,
+            "horizontal": 115.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.2,
+            "horizontal": 56.4
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.5,
+            "southWest": 90.4,
+            "west": 74.9,
+            "northWest": 51.8,
+            "north": 38.6,
+            "northEast": 51.8,
+            "east": 74.9,
+            "southEast": 90.4,
+            "horizontal": 164.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.6,
+            "horizontal": 77.3
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.1,
+            "southWest": 84.6,
+            "west": 73.7,
+            "northWest": 69.4,
+            "north": 65,
+            "northEast": 69.4,
+            "east": 73.7,
+            "southEast": 84.6,
+            "horizontal": 202
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.5,
+            "horizontal": 92.9
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.5,
+            "southWest": 90.7,
+            "west": 78,
+            "northWest": 76.7,
+            "north": 75.5,
+            "northEast": 76.7,
+            "east": 78,
+            "southEast": 90.7,
+            "horizontal": 226.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.2,
+            "horizontal": 100.4
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 108.4,
+            "southWest": 102.1,
+            "west": 79.5,
+            "northWest": 78.2,
+            "north": 76.8,
+            "northEast": 78.2,
+            "east": 79.5,
+            "southEast": 102.1,
+            "horizontal": 230.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.9,
+            "horizontal": 97.7
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.9,
+            "southWest": 108,
+            "west": 70.1,
+            "northWest": 68.3,
+            "north": 66.6,
+            "northEast": 68.3,
+            "east": 70.1,
+            "southEast": 108,
+            "horizontal": 204.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 42.9,
+            "horizontal": 85.8
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 125.9,
+            "southWest": 109.8,
+            "west": 78.4,
+            "northWest": 56.1,
+            "north": 48,
+            "northEast": 56.1,
+            "east": 78.4,
+            "southEast": 109.8,
+            "horizontal": 162.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.8,
+            "horizontal": 67.5
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 124.9,
+            "southWest": 103.1,
+            "west": 64.6,
+            "northWest": 34.7,
+            "north": 23.4,
+            "northEast": 34.7,
+            "east": 64.6,
+            "southEast": 103.1,
+            "horizontal": 111.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 23.4,
+            "horizontal": 46.8
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 71.3,
+            "southWest": 55.5,
+            "west": 31.5,
+            "northWest": 15.2,
+            "north": 14,
+            "northEast": 15.2,
+            "east": 31.5,
+            "southEast": 55.5,
+            "horizontal": 51.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14,
+            "horizontal": 27.9
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 59.8,
+            "southWest": 45.9,
+            "west": 23.6,
+            "northWest": 10.5,
+            "north": 10.1,
+            "northEast": 10.5,
+            "east": 23.6,
+            "southEast": 45.9,
+            "horizontal": 35.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 10.1,
+            "horizontal": 20.1
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_predeal",
+      "sourceLocalityId": "predeal",
+      "solarStationId": "mc001_1_2006_solar_predeal",
+      "climateStationId": null,
+      "localityName": "Predeal",
+      "sourceLabel": "Predeal",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 125,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          82.1,
+          105.3,
+          95.1,
+          81.2,
+          75.9,
+          82.1,
+          97,
+          114.1,
+          114.8,
+          120.2,
+          76.1,
+          74.3
+        ],
+        "it_south_west": [
+          63.1,
+          86,
+          84.2,
+          78.7,
+          71.9,
+          79.3,
+          91.9,
+          103.2,
+          100.6,
+          99.6,
+          59.3,
+          56.8
+        ],
+        "it_west": [
+          32.2,
+          52.8,
+          61.2,
+          66.4,
+          64,
+          69.6,
+          73.4,
+          68.3,
+          73.2,
+          63.3,
+          33.6,
+          28.6
+        ],
+        "it_north_west": [
+          14.7,
+          27.1,
+          36.9,
+          48,
+          60.8,
+          68.7,
+          72.3,
+          66.7,
+          53.7,
+          35,
+          16.2,
+          12.1
+        ],
+        "it_north": [
+          13.2,
+          19.9,
+          28.9,
+          37.6,
+          57.7,
+          67.7,
+          71.2,
+          65,
+          46.7,
+          24.3,
+          15,
+          11.5
+        ],
+        "it_north_east": [
+          14.7,
+          27.1,
+          36.9,
+          48,
+          60.8,
+          68.7,
+          72.3,
+          66.7,
+          53.7,
+          35,
+          16.2,
+          12.1
+        ],
+        "it_east": [
+          32.2,
+          52.8,
+          61.2,
+          66.4,
+          64,
+          69.6,
+          73.4,
+          68.3,
+          73.2,
+          63.3,
+          33.6,
+          28.6
+        ],
+        "it_south_east": [
+          63.1,
+          86,
+          84.2,
+          78.7,
+          71.9,
+          79.3,
+          91.9,
+          103.2,
+          100.6,
+          99.6,
+          59.3,
+          56.8
+        ],
+        "it_horizontal": [
+          51,
+          83.1,
+          116.1,
+          144.7,
+          167.6,
+          193.1,
+          205.6,
+          195.5,
+          151.5,
+          109.6,
+          54.8,
+          42.5
+        ],
+        "id_vertical": [
+          13.2,
+          19.9,
+          28.9,
+          37.6,
+          44.2,
+          48.5,
+          48.4,
+          43.2,
+          34.2,
+          24.3,
+          15,
+          11.5
+        ],
+        "id_horizontal": [
+          26.4,
+          39.8,
+          57.8,
+          75.2,
+          88.4,
+          97,
+          96.7,
+          86.4,
+          68.4,
+          48.7,
+          29.9,
+          22.9
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 82.1,
+            "southWest": 63.1,
+            "west": 32.2,
+            "northWest": 14.7,
+            "north": 13.2,
+            "northEast": 14.7,
+            "east": 32.2,
+            "southEast": 63.1,
+            "horizontal": 51
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.2,
+            "horizontal": 26.4
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 105.3,
+            "southWest": 86,
+            "west": 52.8,
+            "northWest": 27.1,
+            "north": 19.9,
+            "northEast": 27.1,
+            "east": 52.8,
+            "southEast": 86,
+            "horizontal": 83.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.9,
+            "horizontal": 39.8
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.1,
+            "southWest": 84.2,
+            "west": 61.2,
+            "northWest": 36.9,
+            "north": 28.9,
+            "northEast": 36.9,
+            "east": 61.2,
+            "southEast": 84.2,
+            "horizontal": 116.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.9,
+            "horizontal": 57.8
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 81.2,
+            "southWest": 78.7,
+            "west": 66.4,
+            "northWest": 48,
+            "north": 37.6,
+            "northEast": 48,
+            "east": 66.4,
+            "southEast": 78.7,
+            "horizontal": 144.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 37.6,
+            "horizontal": 75.2
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 75.9,
+            "southWest": 71.9,
+            "west": 64,
+            "northWest": 60.8,
+            "north": 57.7,
+            "northEast": 60.8,
+            "east": 64,
+            "southEast": 71.9,
+            "horizontal": 167.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.2,
+            "horizontal": 88.4
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 82.1,
+            "southWest": 79.3,
+            "west": 69.6,
+            "northWest": 68.7,
+            "north": 67.7,
+            "northEast": 68.7,
+            "east": 69.6,
+            "southEast": 79.3,
+            "horizontal": 193.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.5,
+            "horizontal": 97
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97,
+            "southWest": 91.9,
+            "west": 73.4,
+            "northWest": 72.3,
+            "north": 71.2,
+            "northEast": 72.3,
+            "east": 73.4,
+            "southEast": 91.9,
+            "horizontal": 205.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.4,
+            "horizontal": 96.7
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 114.1,
+            "southWest": 103.2,
+            "west": 68.3,
+            "northWest": 66.7,
+            "north": 65,
+            "northEast": 66.7,
+            "east": 68.3,
+            "southEast": 103.2,
+            "horizontal": 195.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.2,
+            "horizontal": 86.4
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 114.8,
+            "southWest": 100.6,
+            "west": 73.2,
+            "northWest": 53.7,
+            "north": 46.7,
+            "northEast": 53.7,
+            "east": 73.2,
+            "southEast": 100.6,
+            "horizontal": 151.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.2,
+            "horizontal": 68.4
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 120.2,
+            "southWest": 99.6,
+            "west": 63.3,
+            "northWest": 35,
+            "north": 24.3,
+            "northEast": 35,
+            "east": 63.3,
+            "southEast": 99.6,
+            "horizontal": 109.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.3,
+            "horizontal": 48.7
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 76.1,
+            "southWest": 59.3,
+            "west": 33.6,
+            "northWest": 16.2,
+            "north": 15,
+            "northEast": 16.2,
+            "east": 33.6,
+            "southEast": 59.3,
+            "horizontal": 54.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15,
+            "horizontal": 29.9
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 74.3,
+            "southWest": 56.8,
+            "west": 28.6,
+            "northWest": 12.1,
+            "north": 11.5,
+            "northEast": 12.1,
+            "east": 28.6,
+            "southEast": 56.8,
+            "horizontal": 42.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.5,
+            "horizontal": 22.9
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 4,
+        "ocrCrossCheckedCellCount": 128,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_ramnicu_sarat",
+      "sourceLocalityId": "ramnicu_sarat",
+      "solarStationId": "mc001_1_2006_solar_ramnicu_sarat",
+      "climateStationId": null,
+      "localityName": "Ramnicu Sarat",
+      "sourceLabel": "Ramnicu Sarat",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 125,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          91.5,
+          116.5,
+          105.6,
+          93.6,
+          90.6,
+          95.6,
+          113.7,
+          133.5,
+          134,
+          132.2,
+          77.6,
+          77.6
+        ],
+        "it_south_west": [
+          70,
+          94.7,
+          93.1,
+          90.4,
+          85.1,
+          91.7,
+          107,
+          119.8,
+          116.6,
+          109.1,
+          60.4,
+          59.2
+        ],
+        "it_west": [
+          35,
+          57.3,
+          66.7,
+          75.1,
+          74.1,
+          78.8,
+          82.6,
+          76,
+          82.9,
+          68.3,
+          34.2,
+          29.7
+        ],
+        "it_north_west": [
+          15.3,
+          28.4,
+          38.7,
+          52.2,
+          69.8,
+          77.5,
+          81.2,
+          73.9,
+          58.9,
+          36.5,
+          16.4,
+          12.3
+        ],
+        "it_north": [
+          13.6,
+          20.2,
+          29.5,
+          39.1,
+          65.4,
+          76.2,
+          79.7,
+          71.9,
+          50.3,
+          24.5,
+          15.1,
+          11.7
+        ],
+        "it_north_east": [
+          15.3,
+          28.4,
+          38.7,
+          52.2,
+          69.8,
+          77.5,
+          81.2,
+          73.9,
+          58.9,
+          36.5,
+          16.4,
+          12.3
+        ],
+        "it_east": [
+          35,
+          57.3,
+          66.7,
+          75.1,
+          74.1,
+          78.8,
+          82.6,
+          76,
+          82.9,
+          68.3,
+          34.2,
+          29.7
+        ],
+        "it_south_east": [
+          70,
+          94.7,
+          93.1,
+          90.4,
+          85.1,
+          91.7,
+          107,
+          119.8,
+          116.6,
+          109.1,
+          60.4,
+          59.2
+        ],
+        "it_horizontal": [
+          54.9,
+          89.2,
+          126.2,
+          165.1,
+          203.1,
+          230,
+          242.7,
+          226,
+          172,
+          117.5,
+          55.6,
+          43.9
+        ],
+        "id_vertical": [
+          13.6,
+          20.2,
+          29.5,
+          39.1,
+          46.7,
+          50.3,
+          49.6,
+          44.5,
+          34.9,
+          24.5,
+          15.1,
+          11.7
+        ],
+        "id_horizontal": [
+          27.2,
+          40.5,
+          59.1,
+          78.3,
+          93.4,
+          100.5,
+          99.2,
+          89,
+          69.9,
+          49.1,
+          30.2,
+          23.3
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.5,
+            "southWest": 70,
+            "west": 35,
+            "northWest": 15.3,
+            "north": 13.6,
+            "northEast": 15.3,
+            "east": 35,
+            "southEast": 70,
+            "horizontal": 54.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.6,
+            "horizontal": 27.2
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 116.5,
+            "southWest": 94.7,
+            "west": 57.3,
+            "northWest": 28.4,
+            "north": 20.2,
+            "northEast": 28.4,
+            "east": 57.3,
+            "southEast": 94.7,
+            "horizontal": 89.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.2,
+            "horizontal": 40.5
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 105.6,
+            "southWest": 93.1,
+            "west": 66.7,
+            "northWest": 38.7,
+            "north": 29.5,
+            "northEast": 38.7,
+            "east": 66.7,
+            "southEast": 93.1,
+            "horizontal": 126.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.5,
+            "horizontal": 59.1
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.6,
+            "southWest": 90.4,
+            "west": 75.1,
+            "northWest": 52.2,
+            "north": 39.1,
+            "northEast": 52.2,
+            "east": 75.1,
+            "southEast": 90.4,
+            "horizontal": 165.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.1,
+            "horizontal": 78.3
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.6,
+            "southWest": 85.1,
+            "west": 74.1,
+            "northWest": 69.8,
+            "north": 65.4,
+            "northEast": 69.8,
+            "east": 74.1,
+            "southEast": 85.1,
+            "horizontal": 203.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.7,
+            "horizontal": 93.4
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.6,
+            "southWest": 91.7,
+            "west": 78.8,
+            "northWest": 77.5,
+            "north": 76.2,
+            "northEast": 77.5,
+            "east": 78.8,
+            "southEast": 91.7,
+            "horizontal": 230
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.5
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 113.7,
+            "southWest": 107,
+            "west": 82.6,
+            "northWest": 81.2,
+            "north": 79.7,
+            "northEast": 81.2,
+            "east": 82.6,
+            "southEast": 107,
+            "horizontal": 242.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.6,
+            "horizontal": 99.2
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 133.5,
+            "southWest": 119.8,
+            "west": 76,
+            "northWest": 73.9,
+            "north": 71.9,
+            "northEast": 73.9,
+            "east": 76,
+            "southEast": 119.8,
+            "horizontal": 226
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.5,
+            "horizontal": 89
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 134,
+            "southWest": 116.6,
+            "west": 82.9,
+            "northWest": 58.9,
+            "north": 50.3,
+            "northEast": 58.9,
+            "east": 82.9,
+            "southEast": 116.6,
+            "horizontal": 172
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.9,
+            "horizontal": 69.9
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 132.2,
+            "southWest": 109.1,
+            "west": 68.3,
+            "northWest": 36.5,
+            "north": 24.5,
+            "northEast": 36.5,
+            "east": 68.3,
+            "southEast": 109.1,
+            "horizontal": 117.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.5,
+            "horizontal": 49.1
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 77.6,
+            "southWest": 60.4,
+            "west": 34.2,
+            "northWest": 16.4,
+            "north": 15.1,
+            "northEast": 16.4,
+            "east": 34.2,
+            "southEast": 60.4,
+            "horizontal": 55.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.1,
+            "horizontal": 30.2
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 125,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 77.6,
+            "southWest": 59.2,
+            "west": 29.7,
+            "northWest": 12.3,
+            "north": 11.7,
+            "northEast": 12.3,
+            "east": 29.7,
+            "southEast": 59.2,
+            "horizontal": 43.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.3
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_rosiori_de_vede",
+      "sourceLocalityId": "rosiori_de_vede",
+      "solarStationId": "mc001_1_2006_solar_rosiori_de_vede",
+      "climateStationId": null,
+      "localityName": "Rosiori de Vede",
+      "sourceLabel": "Rosiori de Vede",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 126,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          79.1,
+          114.8,
+          101.3,
+          94,
+          91.4,
+          99.6,
+          117.5,
+          138.1,
+          132.3,
+          125.8,
+          75.2,
+          67.9
+        ],
+        "it_south_west": [
+          61,
+          93.5,
+          89.6,
+          90.9,
+          85.8,
+          95.4,
+          110.4,
+          123.7,
+          115.3,
+          104.2,
+          58.8,
+          52.3
+        ],
+        "it_west": [
+          31.7,
+          57.1,
+          64.8,
+          75.5,
+          74.7,
+          81.3,
+          84.8,
+          78,
+          82.3,
+          66.1,
+          33.7,
+          27
+        ],
+        "it_north_west": [
+          15.1,
+          28.9,
+          38.5,
+          52.6,
+          70.3,
+          79.9,
+          83.3,
+          75.8,
+          58.8,
+          36.4,
+          16.7,
+          12.2
+        ],
+        "it_north": [
+          13.7,
+          21,
+          29.9,
+          39.5,
+          65.8,
+          78.5,
+          81.8,
+          73.7,
+          50.3,
+          25.2,
+          15.5,
+          11.7
+        ],
+        "it_north_east": [
+          15.1,
+          28.9,
+          38.5,
+          52.6,
+          70.3,
+          79.9,
+          83.3,
+          75.8,
+          58.8,
+          36.4,
+          16.7,
+          12.2
+        ],
+        "it_east": [
+          31.7,
+          57.1,
+          64.8,
+          75.5,
+          74.7,
+          81.3,
+          84.8,
+          78,
+          82.3,
+          66.1,
+          33.7,
+          27
+        ],
+        "it_south_east": [
+          61,
+          93.5,
+          89.6,
+          90.9,
+          85.8,
+          95.4,
+          110.4,
+          123.7,
+          115.3,
+          104.2,
+          58.8,
+          52.3
+        ],
+        "it_horizontal": [
+          50.7,
+          89.4,
+          122.8,
+          165.9,
+          205,
+          241.2,
+          250.9,
+          233.2,
+          170.6,
+          114.3,
+          55.2,
+          40.9
+        ],
+        "id_vertical": [
+          13.7,
+          21,
+          29.9,
+          39.5,
+          46.9,
+          50.5,
+          50.1,
+          45,
+          35.3,
+          25.2,
+          15.5,
+          11.7
+        ],
+        "id_horizontal": [
+          27.4,
+          41.9,
+          59.8,
+          79.1,
+          93.8,
+          100.9,
+          100.3,
+          90.1,
+          70.5,
+          50.4,
+          30.9,
+          23.4
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 79.1,
+            "southWest": 61,
+            "west": 31.7,
+            "northWest": 15.1,
+            "north": 13.7,
+            "northEast": 15.1,
+            "east": 31.7,
+            "southEast": 61,
+            "horizontal": 50.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.7,
+            "horizontal": 27.4
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 114.8,
+            "southWest": 93.5,
+            "west": 57.1,
+            "northWest": 28.9,
+            "north": 21,
+            "northEast": 28.9,
+            "east": 57.1,
+            "southEast": 93.5,
+            "horizontal": 89.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 21,
+            "horizontal": 41.9
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 101.3,
+            "southWest": 89.6,
+            "west": 64.8,
+            "northWest": 38.5,
+            "north": 29.9,
+            "northEast": 38.5,
+            "east": 64.8,
+            "southEast": 89.6,
+            "horizontal": 122.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.9,
+            "horizontal": 59.8
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94,
+            "southWest": 90.9,
+            "west": 75.5,
+            "northWest": 52.6,
+            "north": 39.5,
+            "northEast": 52.6,
+            "east": 75.5,
+            "southEast": 90.9,
+            "horizontal": 165.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.5,
+            "horizontal": 79.1
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.4,
+            "southWest": 85.8,
+            "west": 74.7,
+            "northWest": 70.3,
+            "north": 65.8,
+            "northEast": 70.3,
+            "east": 74.7,
+            "southEast": 85.8,
+            "horizontal": 205
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.9,
+            "horizontal": 93.8
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 99.6,
+            "southWest": 95.4,
+            "west": 81.3,
+            "northWest": 79.9,
+            "north": 78.5,
+            "northEast": 79.9,
+            "east": 81.3,
+            "southEast": 95.4,
+            "horizontal": 241.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.5,
+            "horizontal": 100.9
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 117.5,
+            "southWest": 110.4,
+            "west": 84.8,
+            "northWest": 83.3,
+            "north": 81.8,
+            "northEast": 83.3,
+            "east": 84.8,
+            "southEast": 110.4,
+            "horizontal": 250.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.1,
+            "horizontal": 100.3
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 138.1,
+            "southWest": 123.7,
+            "west": 78,
+            "northWest": 75.8,
+            "north": 73.7,
+            "northEast": 75.8,
+            "east": 78,
+            "southEast": 123.7,
+            "horizontal": 233.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 45,
+            "horizontal": 90.1
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 132.3,
+            "southWest": 115.3,
+            "west": 82.3,
+            "northWest": 58.8,
+            "north": 50.3,
+            "northEast": 58.8,
+            "east": 82.3,
+            "southEast": 115.3,
+            "horizontal": 170.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.3,
+            "horizontal": 70.5
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 125.8,
+            "southWest": 104.2,
+            "west": 66.1,
+            "northWest": 36.4,
+            "north": 25.2,
+            "northEast": 36.4,
+            "east": 66.1,
+            "southEast": 104.2,
+            "horizontal": 114.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.2,
+            "horizontal": 50.4
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 75.2,
+            "southWest": 58.8,
+            "west": 33.7,
+            "northWest": 16.7,
+            "north": 15.5,
+            "northEast": 16.7,
+            "east": 33.7,
+            "southEast": 58.8,
+            "horizontal": 55.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.5,
+            "horizontal": 30.9
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 67.9,
+            "southWest": 52.3,
+            "west": 27,
+            "northWest": 12.2,
+            "north": 11.7,
+            "northEast": 12.2,
+            "east": 27,
+            "southEast": 52.3,
+            "horizontal": 40.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.4
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 4,
+        "ocrCrossCheckedCellCount": 128,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_satu_mare",
+      "sourceLocalityId": "satu_mare",
+      "solarStationId": "mc001_1_2006_solar_satu_mare",
+      "climateStationId": "mc001_6_2013_satu_mare",
+      "localityName": "Satu Mare",
+      "sourceLabel": "Satu Mare",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 126,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          71.1,
+          98.1,
+          100.9,
+          93.5,
+          88,
+          92.3,
+          106.6,
+          122.1,
+          125.2,
+          118.5,
+          64.2,
+          59.5
+        ],
+        "it_south_west": [
+          54.7,
+          80.1,
+          89,
+          90.3,
+          82.8,
+          88.6,
+          100.5,
+          110,
+          109.1,
+          98,
+          50.2,
+          45.7
+        ],
+        "it_west": [
+          27.9,
+          49.1,
+          63.7,
+          74.8,
+          72.3,
+          76.6,
+          78.5,
+          71,
+          77.9,
+          61.7,
+          28.7,
+          23.3
+        ],
+        "it_north_west": [
+          12.8,
+          25.1,
+          36.9,
+          51.6,
+          68.1,
+          75.4,
+          77.2,
+          69.2,
+          55.6,
+          33.5,
+          14.2,
+          10.2
+        ],
+        "it_north": [
+          11.6,
+          18.3,
+          28.1,
+          38.4,
+          63.9,
+          74.1,
+          76,
+          67.3,
+          47.6,
+          22.8,
+          13.1,
+          9.7
+        ],
+        "it_north_east": [
+          12.8,
+          25.1,
+          36.9,
+          51.6,
+          68.1,
+          75.4,
+          77.2,
+          69.2,
+          55.6,
+          33.5,
+          14.2,
+          10.2
+        ],
+        "it_east": [
+          27.9,
+          49.1,
+          63.7,
+          74.8,
+          72.3,
+          76.6,
+          78.5,
+          71,
+          77.9,
+          61.7,
+          28.7,
+          23.3
+        ],
+        "it_south_east": [
+          54.7,
+          80.1,
+          89,
+          90.3,
+          82.8,
+          88.6,
+          100.5,
+          110,
+          109.1,
+          98,
+          50.2,
+          45.7
+        ],
+        "it_horizontal": [
+          44.3,
+          77.1,
+          120.4,
+          164.7,
+          196.9,
+          220.7,
+          226.9,
+          207.8,
+          161.4,
+          106.4,
+          47,
+          34.9
+        ],
+        "id_vertical": [
+          11.6,
+          18.3,
+          28.1,
+          38.4,
+          46.1,
+          50,
+          48.8,
+          43,
+          33.4,
+          22.8,
+          13.1,
+          9.7
+        ],
+        "id_horizontal": [
+          23.1,
+          36.7,
+          56.2,
+          76.7,
+          92.3,
+          100,
+          97.6,
+          85.9,
+          66.8,
+          45.7,
+          26.3,
+          19.4
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 71.1,
+            "southWest": 54.7,
+            "west": 27.9,
+            "northWest": 12.8,
+            "north": 11.6,
+            "northEast": 12.8,
+            "east": 27.9,
+            "southEast": 54.7,
+            "horizontal": 44.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.6,
+            "horizontal": 23.1
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.1,
+            "southWest": 80.1,
+            "west": 49.1,
+            "northWest": 25.1,
+            "north": 18.3,
+            "northEast": 25.1,
+            "east": 49.1,
+            "southEast": 80.1,
+            "horizontal": 77.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 18.3,
+            "horizontal": 36.7
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.9,
+            "southWest": 89,
+            "west": 63.7,
+            "northWest": 36.9,
+            "north": 28.1,
+            "northEast": 36.9,
+            "east": 63.7,
+            "southEast": 89,
+            "horizontal": 120.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.1,
+            "horizontal": 56.2
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.5,
+            "southWest": 90.3,
+            "west": 74.8,
+            "northWest": 51.6,
+            "north": 38.4,
+            "northEast": 51.6,
+            "east": 74.8,
+            "southEast": 90.3,
+            "horizontal": 164.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.4,
+            "horizontal": 76.7
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 88,
+            "southWest": 82.8,
+            "west": 72.3,
+            "northWest": 68.1,
+            "north": 63.9,
+            "northEast": 68.1,
+            "east": 72.3,
+            "southEast": 82.8,
+            "horizontal": 196.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.1,
+            "horizontal": 92.3
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 92.3,
+            "southWest": 88.6,
+            "west": 76.6,
+            "northWest": 75.4,
+            "north": 74.1,
+            "northEast": 75.4,
+            "east": 76.6,
+            "southEast": 88.6,
+            "horizontal": 220.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50,
+            "horizontal": 100
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 106.6,
+            "southWest": 100.5,
+            "west": 78.5,
+            "northWest": 77.2,
+            "north": 76,
+            "northEast": 77.2,
+            "east": 78.5,
+            "southEast": 100.5,
+            "horizontal": 226.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.8,
+            "horizontal": 97.6
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122.1,
+            "southWest": 110,
+            "west": 71,
+            "northWest": 69.2,
+            "north": 67.3,
+            "northEast": 69.2,
+            "east": 71,
+            "southEast": 110,
+            "horizontal": 207.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43,
+            "horizontal": 85.9
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 125.2,
+            "southWest": 109.1,
+            "west": 77.9,
+            "northWest": 55.6,
+            "north": 47.6,
+            "northEast": 55.6,
+            "east": 77.9,
+            "southEast": 109.1,
+            "horizontal": 161.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.4,
+            "horizontal": 66.8
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 118.5,
+            "southWest": 98,
+            "west": 61.7,
+            "northWest": 33.5,
+            "north": 22.8,
+            "northEast": 33.5,
+            "east": 61.7,
+            "southEast": 98,
+            "horizontal": 106.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 22.8,
+            "horizontal": 45.7
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 64.2,
+            "southWest": 50.2,
+            "west": 28.7,
+            "northWest": 14.2,
+            "north": 13.1,
+            "northEast": 14.2,
+            "east": 28.7,
+            "southEast": 50.2,
+            "horizontal": 47
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.1,
+            "horizontal": 26.3
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 59.5,
+            "southWest": 45.7,
+            "west": 23.3,
+            "northWest": 10.2,
+            "north": 9.7,
+            "northEast": 10.2,
+            "east": 23.3,
+            "southEast": 45.7,
+            "horizontal": 34.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9.7,
+            "horizontal": 19.4
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_sibiu",
+      "sourceLocalityId": "sibiu",
+      "solarStationId": "mc001_1_2006_solar_sibiu",
+      "climateStationId": "mc001_6_2013_sibiu",
+      "localityName": "Sibiu",
+      "sourceLabel": "Sibiu",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 126,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          69.9,
+          97.2,
+          98.3,
+          91.7,
+          87.6,
+          90.6,
+          107.2,
+          116.9,
+          118,
+          121.1,
+          75.1,
+          51.7
+        ],
+        "it_south_west": [
+          54,
+          79.6,
+          86.9,
+          88.7,
+          82.5,
+          87.1,
+          101,
+          105.5,
+          103.3,
+          100.3,
+          58.5,
+          40.1
+        ],
+        "it_west": [
+          28.3,
+          49.4,
+          62.8,
+          73.8,
+          72.2,
+          75.5,
+          78.9,
+          69.3,
+          74.8,
+          63.6,
+          33.2,
+          21.3
+        ],
+        "it_north_west": [
+          13.7,
+          26,
+          37.3,
+          51.5,
+          68,
+          74.3,
+          77.6,
+          67.6,
+          54.4,
+          34.9,
+          16,
+          10.3
+        ],
+        "it_north": [
+          12.5,
+          19.4,
+          29,
+          38.9,
+          63.9,
+          73.2,
+          76.3,
+          65.9,
+          47.1,
+          24.2,
+          14.8,
+          9.9
+        ],
+        "it_north_east": [
+          13.7,
+          26,
+          37.3,
+          51.5,
+          68,
+          74.3,
+          77.6,
+          67.6,
+          54.4,
+          34.9,
+          16,
+          10.3
+        ],
+        "it_east": [
+          28.3,
+          49.4,
+          62.8,
+          73.8,
+          72.2,
+          75.5,
+          78.9,
+          69.3,
+          74.8,
+          63.6,
+          33.2,
+          21.3
+        ],
+        "it_south_east": [
+          54,
+          79.6,
+          86.9,
+          88.7,
+          82.5,
+          87.1,
+          101,
+          105.5,
+          103.3,
+          100.3,
+          58.5,
+          40.1
+        ],
+        "it_horizontal": [
+          45.4,
+          78.3,
+          119.1,
+          162,
+          195.9,
+          216.1,
+          228.1,
+          199.8,
+          154.7,
+          109.9,
+          54.1,
+          32.9
+        ],
+        "id_vertical": [
+          12.5,
+          19.4,
+          29,
+          38.9,
+          46.3,
+          49.9,
+          48.9,
+          43.2,
+          34.1,
+          24.2,
+          14.8,
+          9.9
+        ],
+        "id_horizontal": [
+          25,
+          38.9,
+          57.9,
+          77.7,
+          92.7,
+          99.8,
+          97.9,
+          86.4,
+          68.3,
+          48.3,
+          29.5,
+          19.9
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 69.9,
+            "southWest": 54,
+            "west": 28.3,
+            "northWest": 13.7,
+            "north": 12.5,
+            "northEast": 13.7,
+            "east": 28.3,
+            "southEast": 54,
+            "horizontal": 45.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12.5,
+            "horizontal": 25
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.2,
+            "southWest": 79.6,
+            "west": 49.4,
+            "northWest": 26,
+            "north": 19.4,
+            "northEast": 26,
+            "east": 49.4,
+            "southEast": 79.6,
+            "horizontal": 78.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.4,
+            "horizontal": 38.9
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.3,
+            "southWest": 86.9,
+            "west": 62.8,
+            "northWest": 37.3,
+            "north": 29,
+            "northEast": 37.3,
+            "east": 62.8,
+            "southEast": 86.9,
+            "horizontal": 119.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29,
+            "horizontal": 57.9
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.7,
+            "southWest": 88.7,
+            "west": 73.8,
+            "northWest": 51.5,
+            "north": 38.9,
+            "northEast": 51.5,
+            "east": 73.8,
+            "southEast": 88.7,
+            "horizontal": 162
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.9,
+            "horizontal": 77.7
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 87.6,
+            "southWest": 82.5,
+            "west": 72.2,
+            "northWest": 68,
+            "north": 63.9,
+            "northEast": 68,
+            "east": 72.2,
+            "southEast": 82.5,
+            "horizontal": 195.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.3,
+            "horizontal": 92.7
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.6,
+            "southWest": 87.1,
+            "west": 75.5,
+            "northWest": 74.3,
+            "north": 73.2,
+            "northEast": 74.3,
+            "east": 75.5,
+            "southEast": 87.1,
+            "horizontal": 216.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.9,
+            "horizontal": 99.8
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 107.2,
+            "southWest": 101,
+            "west": 78.9,
+            "northWest": 77.6,
+            "north": 76.3,
+            "northEast": 77.6,
+            "east": 78.9,
+            "southEast": 101,
+            "horizontal": 228.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.9,
+            "horizontal": 97.9
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 116.9,
+            "southWest": 105.5,
+            "west": 69.3,
+            "northWest": 67.6,
+            "north": 65.9,
+            "northEast": 67.6,
+            "east": 69.3,
+            "southEast": 105.5,
+            "horizontal": 199.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.2,
+            "horizontal": 86.4
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 118,
+            "southWest": 103.3,
+            "west": 74.8,
+            "northWest": 54.4,
+            "north": 47.1,
+            "northEast": 54.4,
+            "east": 74.8,
+            "southEast": 103.3,
+            "horizontal": 154.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.1,
+            "horizontal": 68.3
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 121.1,
+            "southWest": 100.3,
+            "west": 63.6,
+            "northWest": 34.9,
+            "north": 24.2,
+            "northEast": 34.9,
+            "east": 63.6,
+            "southEast": 100.3,
+            "horizontal": 109.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.2,
+            "horizontal": 48.3
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 75.1,
+            "southWest": 58.5,
+            "west": 33.2,
+            "northWest": 16,
+            "north": 14.8,
+            "northEast": 16,
+            "east": 33.2,
+            "southEast": 58.5,
+            "horizontal": 54.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.8,
+            "horizontal": 29.5
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 126,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 51.7,
+            "southWest": 40.1,
+            "west": 21.3,
+            "northWest": 10.3,
+            "north": 9.9,
+            "northEast": 10.3,
+            "east": 21.3,
+            "southEast": 40.1,
+            "horizontal": 32.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9.9,
+            "horizontal": 19.9
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 5,
+        "ocrCrossCheckedCellCount": 127,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_sighet",
+      "sourceLocalityId": "sighet",
+      "solarStationId": "mc001_1_2006_solar_sighet",
+      "climateStationId": null,
+      "localityName": "Sighet",
+      "sourceLabel": "Sighet",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 127,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          73.6,
+          97.6,
+          100.5,
+          95.6,
+          88.1,
+          90.7,
+          104.4,
+          114.7,
+          114.6,
+          127.6,
+          76.9,
+          49.1
+        ],
+        "it_south_west": [
+          56.5,
+          79.7,
+          88.6,
+          92.3,
+          82.8,
+          87.2,
+          98.6,
+          103.6,
+          100.3,
+          105.2,
+          59.6,
+          37.9
+        ],
+        "it_west": [
+          28.7,
+          48.8,
+          63.5,
+          76.2,
+          72.4,
+          75.6,
+          77.4,
+          68.1,
+          72.6,
+          65.6,
+          33.1,
+          20
+        ],
+        "it_north_west": [
+          13,
+          25,
+          36.8,
+          52.2,
+          68.2,
+          74.4,
+          76.1,
+          66.5,
+          52.8,
+          34.7,
+          15.2,
+          9.4
+        ],
+        "it_north": [
+          11.7,
+          18.3,
+          28.1,
+          38.5,
+          64,
+          73.2,
+          74.9,
+          64.8,
+          45.7,
+          23.1,
+          13.9,
+          9
+        ],
+        "it_north_east": [
+          13,
+          25,
+          36.8,
+          52.2,
+          68.2,
+          74.4,
+          76.1,
+          66.5,
+          52.8,
+          34.7,
+          15.2,
+          9.4
+        ],
+        "it_east": [
+          28.7,
+          48.8,
+          63.5,
+          76.2,
+          72.4,
+          75.6,
+          77.4,
+          68.1,
+          72.6,
+          65.6,
+          33.1,
+          20
+        ],
+        "it_south_east": [
+          56.5,
+          79.7,
+          88.6,
+          92.3,
+          82.8,
+          87.2,
+          98.6,
+          103.6,
+          100.3,
+          105.2,
+          59.6,
+          37.9
+        ],
+        "it_horizontal": [
+          45.4,
+          76.8,
+          120.1,
+          168,
+          197.1,
+          216.5,
+          222,
+          196.2,
+          150.2,
+          112.6,
+          53.4,
+          30.6
+        ],
+        "id_vertical": [
+          11.7,
+          18.3,
+          28.1,
+          38.5,
+          46.1,
+          49.9,
+          48.7,
+          42.6,
+          33.1,
+          23.1,
+          13.9,
+          9
+        ],
+        "id_horizontal": [
+          23.3,
+          36.6,
+          56.2,
+          77,
+          92.3,
+          99.7,
+          97.4,
+          85.2,
+          66.2,
+          46.2,
+          27.8,
+          18.1
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 73.6,
+            "southWest": 56.5,
+            "west": 28.7,
+            "northWest": 13,
+            "north": 11.7,
+            "northEast": 13,
+            "east": 28.7,
+            "southEast": 56.5,
+            "horizontal": 45.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.3
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.6,
+            "southWest": 79.7,
+            "west": 48.8,
+            "northWest": 25,
+            "north": 18.3,
+            "northEast": 25,
+            "east": 48.8,
+            "southEast": 79.7,
+            "horizontal": 76.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 18.3,
+            "horizontal": 36.6
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.5,
+            "southWest": 88.6,
+            "west": 63.5,
+            "northWest": 36.8,
+            "north": 28.1,
+            "northEast": 36.8,
+            "east": 63.5,
+            "southEast": 88.6,
+            "horizontal": 120.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 28.1,
+            "horizontal": 56.2
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 95.6,
+            "southWest": 92.3,
+            "west": 76.2,
+            "northWest": 52.2,
+            "north": 38.5,
+            "northEast": 52.2,
+            "east": 76.2,
+            "southEast": 92.3,
+            "horizontal": 168
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 38.5,
+            "horizontal": 77
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 88.1,
+            "southWest": 82.8,
+            "west": 72.4,
+            "northWest": 68.2,
+            "north": 64,
+            "northEast": 68.2,
+            "east": 72.4,
+            "southEast": 82.8,
+            "horizontal": 197.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.1,
+            "horizontal": 92.3
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.7,
+            "southWest": 87.2,
+            "west": 75.6,
+            "northWest": 74.4,
+            "north": 73.2,
+            "northEast": 74.4,
+            "east": 75.6,
+            "southEast": 87.2,
+            "horizontal": 216.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.9,
+            "horizontal": 99.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 104.4,
+            "southWest": 98.6,
+            "west": 77.4,
+            "northWest": 76.1,
+            "north": 74.9,
+            "northEast": 76.1,
+            "east": 77.4,
+            "southEast": 98.6,
+            "horizontal": 222
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 48.7,
+            "horizontal": 97.4
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 114.7,
+            "southWest": 103.6,
+            "west": 68.1,
+            "northWest": 66.5,
+            "north": 64.8,
+            "northEast": 66.5,
+            "east": 68.1,
+            "southEast": 103.6,
+            "horizontal": 196.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 42.6,
+            "horizontal": 85.2
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 114.6,
+            "southWest": 100.3,
+            "west": 72.6,
+            "northWest": 52.8,
+            "north": 45.7,
+            "northEast": 52.8,
+            "east": 72.6,
+            "southEast": 100.3,
+            "horizontal": 150.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 33.1,
+            "horizontal": 66.2
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 127.6,
+            "southWest": 105.2,
+            "west": 65.6,
+            "northWest": 34.7,
+            "north": 23.1,
+            "northEast": 34.7,
+            "east": 65.6,
+            "southEast": 105.2,
+            "horizontal": 112.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 23.1,
+            "horizontal": 46.2
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 76.9,
+            "southWest": 59.6,
+            "west": 33.1,
+            "northWest": 15.2,
+            "north": 13.9,
+            "northEast": 15.2,
+            "east": 33.1,
+            "southEast": 59.6,
+            "horizontal": 53.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.9,
+            "horizontal": 27.8
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 49.1,
+            "southWest": 37.9,
+            "west": 20,
+            "northWest": 9.4,
+            "north": 9,
+            "northEast": 9.4,
+            "east": 20,
+            "southEast": 37.9,
+            "horizontal": 30.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9,
+            "horizontal": 18.1
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 13,
+        "ocrCrossCheckedCellCount": 119,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_targu_jiu",
+      "sourceLocalityId": "targu_jiu",
+      "solarStationId": "mc001_1_2006_solar_targu_jiu",
+      "climateStationId": "mc001_6_2013_targu_jiu",
+      "localityName": "Targu Jiu",
+      "sourceLabel": "Targu Jiu",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 127,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          78.7,
+          112.7,
+          98.3,
+          98.5,
+          90.7,
+          94.9,
+          112,
+          130.5,
+          129.5,
+          117.9,
+          70.3,
+          69.5
+        ],
+        "it_south_west": [
+          60.6,
+          91.8,
+          87,
+          95.2,
+          85.2,
+          91.1,
+          105.4,
+          117.2,
+          112.9,
+          97.9,
+          55,
+          53.4
+        ],
+        "it_west": [
+          31.3,
+          56,
+          63,
+          78.5,
+          74.2,
+          78.3,
+          81.6,
+          74.8,
+          80.7,
+          62.5,
+          31.7,
+          27.3
+        ],
+        "it_north_west": [
+          14.7,
+          28.2,
+          37.7,
+          53.7,
+          69.8,
+          77.1,
+          80.2,
+          72.8,
+          57.7,
+          35,
+          15.9,
+          12
+        ],
+        "it_north": [
+          13.3,
+          20.4,
+          29.3,
+          39.6,
+          65.5,
+          75.8,
+          78.8,
+          70.8,
+          49.4,
+          24.6,
+          14.8,
+          11.5
+        ],
+        "it_north_east": [
+          14.7,
+          28.2,
+          37.7,
+          53.7,
+          69.8,
+          77.1,
+          80.2,
+          72.8,
+          57.7,
+          35,
+          15.9,
+          12
+        ],
+        "it_east": [
+          31.3,
+          56,
+          63,
+          78.5,
+          74.2,
+          78.3,
+          81.6,
+          74.8,
+          80.7,
+          62.5,
+          31.7,
+          27.3
+        ],
+        "it_south_east": [
+          60.6,
+          91.8,
+          87,
+          95.2,
+          85.2,
+          91.1,
+          105.4,
+          117.2,
+          112.9,
+          97.9,
+          55,
+          53.4
+        ],
+        "it_horizontal": [
+          49.9,
+          87.6,
+          119.5,
+          173.2,
+          203.4,
+          228.2,
+          238.9,
+          221.2,
+          167.2,
+          108.5,
+          52.1,
+          41
+        ],
+        "id_vertical": [
+          13.3,
+          20.4,
+          29.3,
+          39.6,
+          46.8,
+          50.2,
+          49.4,
+          44.3,
+          34.8,
+          24.6,
+          14.8,
+          11.5
+        ],
+        "id_horizontal": [
+          26.6,
+          40.8,
+          58.7,
+          79.2,
+          93.5,
+          100.5,
+          98.8,
+          88.7,
+          69.6,
+          49.2,
+          29.5,
+          22.9
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 78.7,
+            "southWest": 60.6,
+            "west": 31.3,
+            "northWest": 14.7,
+            "north": 13.3,
+            "northEast": 14.7,
+            "east": 31.3,
+            "southEast": 60.6,
+            "horizontal": 49.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.3,
+            "horizontal": 26.6
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 112.7,
+            "southWest": 91.8,
+            "west": 56,
+            "northWest": 28.2,
+            "north": 20.4,
+            "northEast": 28.2,
+            "east": 56,
+            "southEast": 91.8,
+            "horizontal": 87.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.4,
+            "horizontal": 40.8
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.3,
+            "southWest": 87,
+            "west": 63,
+            "northWest": 37.7,
+            "north": 29.3,
+            "northEast": 37.7,
+            "east": 63,
+            "southEast": 87,
+            "horizontal": 119.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.3,
+            "horizontal": 58.7
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.5,
+            "southWest": 95.2,
+            "west": 78.5,
+            "northWest": 53.7,
+            "north": 39.6,
+            "northEast": 53.7,
+            "east": 78.5,
+            "southEast": 95.2,
+            "horizontal": 173.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.6,
+            "horizontal": 79.2
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.7,
+            "southWest": 85.2,
+            "west": 74.2,
+            "northWest": 69.8,
+            "north": 65.5,
+            "northEast": 69.8,
+            "east": 74.2,
+            "southEast": 85.2,
+            "horizontal": 203.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.8,
+            "horizontal": 93.5
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.9,
+            "southWest": 91.1,
+            "west": 78.3,
+            "northWest": 77.1,
+            "north": 75.8,
+            "northEast": 77.1,
+            "east": 78.3,
+            "southEast": 91.1,
+            "horizontal": 228.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.2,
+            "horizontal": 100.5
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 112,
+            "southWest": 105.4,
+            "west": 81.6,
+            "northWest": 80.2,
+            "north": 78.8,
+            "northEast": 80.2,
+            "east": 81.6,
+            "southEast": 105.4,
+            "horizontal": 238.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.4,
+            "horizontal": 98.8
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 130.5,
+            "southWest": 117.2,
+            "west": 74.8,
+            "northWest": 72.8,
+            "north": 70.8,
+            "northEast": 72.8,
+            "east": 74.8,
+            "southEast": 117.2,
+            "horizontal": 221.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.3,
+            "horizontal": 88.7
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 129.5,
+            "southWest": 112.9,
+            "west": 80.7,
+            "northWest": 57.7,
+            "north": 49.4,
+            "northEast": 57.7,
+            "east": 80.7,
+            "southEast": 112.9,
+            "horizontal": 167.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.8,
+            "horizontal": 69.6
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 117.9,
+            "southWest": 97.9,
+            "west": 62.5,
+            "northWest": 35,
+            "north": 24.6,
+            "northEast": 35,
+            "east": 62.5,
+            "southEast": 97.9,
+            "horizontal": 108.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.6,
+            "horizontal": 49.2
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 70.3,
+            "southWest": 55,
+            "west": 31.7,
+            "northWest": 15.9,
+            "north": 14.8,
+            "northEast": 15.9,
+            "east": 31.7,
+            "southEast": 55,
+            "horizontal": 52.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.8,
+            "horizontal": 29.5
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 69.5,
+            "southWest": 53.4,
+            "west": 27.3,
+            "northWest": 12,
+            "north": 11.5,
+            "northEast": 12,
+            "east": 27.3,
+            "southEast": 53.4,
+            "horizontal": 41
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.5,
+            "horizontal": 22.9
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 3,
+        "ocrCrossCheckedCellCount": 129,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_targu_mures",
+      "sourceLocalityId": "targu_mures",
+      "solarStationId": "mc001_1_2006_solar_targu_mures",
+      "climateStationId": "mc001_6_2013_targu_mures",
+      "localityName": "Targu Mures",
+      "sourceLabel": "Targu Mures",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 127,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          65.5,
+          93.2,
+          100.5,
+          96.1,
+          89.6,
+          97.1,
+          111.7,
+          122,
+          120.4,
+          122.2,
+          73.2,
+          48.1
+        ],
+        "it_south_west": [
+          50.8,
+          76.5,
+          88.8,
+          92.8,
+          84.3,
+          93.1,
+          105.2,
+          109.9,
+          105.3,
+          101.2,
+          57.2,
+          37.4
+        ],
+        "it_west": [
+          26.9,
+          47.8,
+          64,
+          76.8,
+          73.5,
+          79.7,
+          81.4,
+          71.2,
+          76,
+          64.1,
+          32.6,
+          20.2
+        ],
+        "it_north_west": [
+          13.4,
+          25.6,
+          37.8,
+          52.9,
+          69.2,
+          78.4,
+          80,
+          69.4,
+          55.1,
+          35.2,
+          15.9,
+          10.1
+        ],
+        "it_north": [
+          12.3,
+          19.4,
+          29.2,
+          39.3,
+          64.9,
+          77,
+          78.6,
+          67.6,
+          47.6,
+          24.3,
+          14.7,
+          9.7
+        ],
+        "it_north_east": [
+          13.4,
+          25.6,
+          37.8,
+          52.9,
+          69.2,
+          78.4,
+          80,
+          69.4,
+          55.1,
+          35.2,
+          15.9,
+          10.1
+        ],
+        "it_east": [
+          26.9,
+          47.8,
+          64,
+          76.8,
+          73.5,
+          79.7,
+          81.4,
+          71.2,
+          76,
+          64.1,
+          32.6,
+          20.2
+        ],
+        "it_south_east": [
+          50.8,
+          76.5,
+          88.8,
+          92.8,
+          84.3,
+          93.1,
+          105.2,
+          109.9,
+          105.3,
+          101.2,
+          57.2,
+          37.4
+        ],
+        "it_horizontal": [
+          43.5,
+          76.2,
+          121.3,
+          169.2,
+          200.8,
+          234.2,
+          238.2,
+          207.8,
+          157.4,
+          110.8,
+          53.2,
+          31.4
+        ],
+        "id_vertical": [
+          12.3,
+          19.4,
+          29.2,
+          39.3,
+          46.6,
+          50.3,
+          49.3,
+          43.4,
+          34.3,
+          24.3,
+          14.7,
+          9.7
+        ],
+        "id_horizontal": [
+          24.6,
+          38.7,
+          58.4,
+          78.5,
+          93.2,
+          100.6,
+          98.6,
+          86.8,
+          68.5,
+          48.6,
+          29.5,
+          19.4
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 65.5,
+            "southWest": 50.8,
+            "west": 26.9,
+            "northWest": 13.4,
+            "north": 12.3,
+            "northEast": 13.4,
+            "east": 26.9,
+            "southEast": 50.8,
+            "horizontal": 43.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12.3,
+            "horizontal": 24.6
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.2,
+            "southWest": 76.5,
+            "west": 47.8,
+            "northWest": 25.6,
+            "north": 19.4,
+            "northEast": 25.6,
+            "east": 47.8,
+            "southEast": 76.5,
+            "horizontal": 76.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.4,
+            "horizontal": 38.7
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 100.5,
+            "southWest": 88.8,
+            "west": 64,
+            "northWest": 37.8,
+            "north": 29.2,
+            "northEast": 37.8,
+            "east": 64,
+            "southEast": 88.8,
+            "horizontal": 121.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.2,
+            "horizontal": 58.4
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.1,
+            "southWest": 92.8,
+            "west": 76.8,
+            "northWest": 52.9,
+            "north": 39.3,
+            "northEast": 52.9,
+            "east": 76.8,
+            "southEast": 92.8,
+            "horizontal": 169.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.3,
+            "horizontal": 78.5
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 89.6,
+            "southWest": 84.3,
+            "west": 73.5,
+            "northWest": 69.2,
+            "north": 64.9,
+            "northEast": 69.2,
+            "east": 73.5,
+            "southEast": 84.3,
+            "horizontal": 200.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.6,
+            "horizontal": 93.2
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.1,
+            "southWest": 93.1,
+            "west": 79.7,
+            "northWest": 78.4,
+            "north": 77,
+            "northEast": 78.4,
+            "east": 79.7,
+            "southEast": 93.1,
+            "horizontal": 234.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.6
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 111.7,
+            "southWest": 105.2,
+            "west": 81.4,
+            "northWest": 80,
+            "north": 78.6,
+            "northEast": 80,
+            "east": 81.4,
+            "southEast": 105.2,
+            "horizontal": 238.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.3,
+            "horizontal": 98.6
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122,
+            "southWest": 109.9,
+            "west": 71.2,
+            "northWest": 69.4,
+            "north": 67.6,
+            "northEast": 69.4,
+            "east": 71.2,
+            "southEast": 109.9,
+            "horizontal": 207.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.4,
+            "horizontal": 86.8
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 120.4,
+            "southWest": 105.3,
+            "west": 76,
+            "northWest": 55.1,
+            "north": 47.6,
+            "northEast": 55.1,
+            "east": 76,
+            "southEast": 105.3,
+            "horizontal": 157.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.3,
+            "horizontal": 68.5
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122.2,
+            "southWest": 101.2,
+            "west": 64.1,
+            "northWest": 35.2,
+            "north": 24.3,
+            "northEast": 35.2,
+            "east": 64.1,
+            "southEast": 101.2,
+            "horizontal": 110.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.3,
+            "horizontal": 48.6
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 73.2,
+            "southWest": 57.2,
+            "west": 32.6,
+            "northWest": 15.9,
+            "north": 14.7,
+            "northEast": 15.9,
+            "east": 32.6,
+            "southEast": 57.2,
+            "horizontal": 53.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.7,
+            "horizontal": 29.5
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 127,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 48.1,
+            "southWest": 37.4,
+            "west": 20.2,
+            "northWest": 10.1,
+            "north": 9.7,
+            "northEast": 10.1,
+            "east": 20.2,
+            "southEast": 37.4,
+            "horizontal": 31.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 9.7,
+            "horizontal": 19.4
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 7,
+        "ocrCrossCheckedCellCount": 125,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_targu_secuiesc",
+      "sourceLocalityId": "targu_secuiesc",
+      "solarStationId": "mc001_1_2006_solar_targu_secuiesc",
+      "climateStationId": null,
+      "localityName": "Targu Secuiesc",
+      "sourceLabel": "Targu Secuiesc",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 128,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          79.4,
+          102.5,
+          103.7,
+          93.7,
+          89.4,
+          89.7,
+          107.5,
+          119.6,
+          119.3,
+          128.7,
+          83,
+          53.6
+        ],
+        "it_south_west": [
+          61.1,
+          83.8,
+          91.6,
+          90.6,
+          84.1,
+          86.3,
+          101.3,
+          107.9,
+          104.4,
+          106.3,
+          64.4,
+          41.6
+        ],
+        "it_west": [
+          31.4,
+          51.7,
+          65.7,
+          75.2,
+          73.4,
+          74.9,
+          79.1,
+          70.3,
+          75.5,
+          66.9,
+          36,
+          22.1
+        ],
+        "it_north_west": [
+          14.6,
+          26.9,
+          38.4,
+          52.2,
+          69.1,
+          73.7,
+          77.8,
+          68.5,
+          54.9,
+          36.1,
+          16.8,
+          10.6
+        ],
+        "it_north": [
+          13.2,
+          19.9,
+          29.5,
+          39.2,
+          64.8,
+          72.6,
+          76.5,
+          66.8,
+          47.5,
+          24.5,
+          15.4,
+          10.2
+        ],
+        "it_north_east": [
+          14.6,
+          26.9,
+          38.4,
+          52.2,
+          69.1,
+          73.7,
+          77.8,
+          68.5,
+          54.9,
+          36.1,
+          16.8,
+          10.6
+        ],
+        "it_east": [
+          31.4,
+          51.7,
+          65.7,
+          75.2,
+          73.4,
+          74.9,
+          79.1,
+          70.3,
+          75.5,
+          66.9,
+          36,
+          22.1
+        ],
+        "it_south_east": [
+          61.1,
+          83.8,
+          91.6,
+          90.6,
+          84.1,
+          86.3,
+          101.3,
+          107.9,
+          104.4,
+          106.3,
+          64.4,
+          41.6
+        ],
+        "it_horizontal": [
+          49.9,
+          81.6,
+          124.4,
+          165.4,
+          200.3,
+          213.6,
+          228.8,
+          204,
+          156.3,
+          115.2,
+          58.3,
+          34
+        ],
+        "id_vertical": [
+          13.2,
+          19.9,
+          29.5,
+          39.2,
+          46.6,
+          49.8,
+          49,
+          43.3,
+          34.4,
+          24.5,
+          15.4,
+          10.2
+        ],
+        "id_horizontal": [
+          26.3,
+          39.8,
+          58.9,
+          78.3,
+          93.2,
+          99.6,
+          98,
+          86.6,
+          68.7,
+          48.9,
+          30.8,
+          20.5
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 79.4,
+            "southWest": 61.1,
+            "west": 31.4,
+            "northWest": 14.6,
+            "north": 13.2,
+            "northEast": 14.6,
+            "east": 31.4,
+            "southEast": 61.1,
+            "horizontal": 49.9
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.2,
+            "horizontal": 26.3
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 102.5,
+            "southWest": 83.8,
+            "west": 51.7,
+            "northWest": 26.9,
+            "north": 19.9,
+            "northEast": 26.9,
+            "east": 51.7,
+            "southEast": 83.8,
+            "horizontal": 81.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.9,
+            "horizontal": 39.8
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 103.7,
+            "southWest": 91.6,
+            "west": 65.7,
+            "northWest": 38.4,
+            "north": 29.5,
+            "northEast": 38.4,
+            "east": 65.7,
+            "southEast": 91.6,
+            "horizontal": 124.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.5,
+            "horizontal": 58.9
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 93.7,
+            "southWest": 90.6,
+            "west": 75.2,
+            "northWest": 52.2,
+            "north": 39.2,
+            "northEast": 52.2,
+            "east": 75.2,
+            "southEast": 90.6,
+            "horizontal": 165.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.2,
+            "horizontal": 78.3
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 89.4,
+            "southWest": 84.1,
+            "west": 73.4,
+            "northWest": 69.1,
+            "north": 64.8,
+            "northEast": 69.1,
+            "east": 73.4,
+            "southEast": 84.1,
+            "horizontal": 200.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.6,
+            "horizontal": 93.2
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 89.7,
+            "southWest": 86.3,
+            "west": 74.9,
+            "northWest": 73.7,
+            "north": 72.6,
+            "northEast": 73.7,
+            "east": 74.9,
+            "southEast": 86.3,
+            "horizontal": 213.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.8,
+            "horizontal": 99.6
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 107.5,
+            "southWest": 101.3,
+            "west": 79.1,
+            "northWest": 77.8,
+            "north": 76.5,
+            "northEast": 77.8,
+            "east": 79.1,
+            "southEast": 101.3,
+            "horizontal": 228.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49,
+            "horizontal": 98
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.6,
+            "southWest": 107.9,
+            "west": 70.3,
+            "northWest": 68.5,
+            "north": 66.8,
+            "northEast": 68.5,
+            "east": 70.3,
+            "southEast": 107.9,
+            "horizontal": 204
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.3,
+            "horizontal": 86.6
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 119.3,
+            "southWest": 104.4,
+            "west": 75.5,
+            "northWest": 54.9,
+            "north": 47.5,
+            "northEast": 54.9,
+            "east": 75.5,
+            "southEast": 104.4,
+            "horizontal": 156.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.4,
+            "horizontal": 68.7
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 128.7,
+            "southWest": 106.3,
+            "west": 66.9,
+            "northWest": 36.1,
+            "north": 24.5,
+            "northEast": 36.1,
+            "east": 66.9,
+            "southEast": 106.3,
+            "horizontal": 115.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.5,
+            "horizontal": 48.9
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 83,
+            "southWest": 64.4,
+            "west": 36,
+            "northWest": 16.8,
+            "north": 15.4,
+            "northEast": 16.8,
+            "east": 36,
+            "southEast": 64.4,
+            "horizontal": 58.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.4,
+            "horizontal": 30.8
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 53.6,
+            "southWest": 41.6,
+            "west": 22.1,
+            "northWest": 10.6,
+            "north": 10.2,
+            "northEast": 10.6,
+            "east": 22.1,
+            "southEast": 41.6,
+            "horizontal": 34
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 10.2,
+            "horizontal": 20.5
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 3,
+        "ocrCrossCheckedCellCount": 129,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_timisoara",
+      "sourceLocalityId": "timisoara",
+      "solarStationId": "mc001_1_2006_solar_timisoara",
+      "climateStationId": "mc001_6_2013_timisoara",
+      "localityName": "Timisoara",
+      "sourceLabel": "Timisoara",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 128,
+      "sourceTableIndex": 1,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          68.8,
+          97.5,
+          97.5,
+          91.8,
+          89.3,
+          96.9,
+          110.8,
+          122.8,
+          127.8,
+          121,
+          66.9,
+          58.2
+        ],
+        "it_south_west": [
+          53.3,
+          79.9,
+          86.3,
+          88.7,
+          84,
+          92.9,
+          104.3,
+          110.6,
+          111.5,
+          100.3,
+          52.5,
+          45
+        ],
+        "it_west": [
+          28,
+          49.6,
+          62.5,
+          73.8,
+          73.3,
+          79.6,
+          80.9,
+          71.5,
+          79.7,
+          63.7,
+          30.4,
+          23.6
+        ],
+        "it_north_west": [
+          13.8,
+          26.2,
+          37.3,
+          51.6,
+          69,
+          78.3,
+          79.5,
+          69.7,
+          57.1,
+          35.1,
+          15.4,
+          11
+        ],
+        "it_north": [
+          12.6,
+          19.6,
+          29.1,
+          39,
+          64.7,
+          76.9,
+          78.1,
+          67.9,
+          48.9,
+          24.4,
+          14.3,
+          10.6
+        ],
+        "it_north_east": [
+          13.8,
+          26.2,
+          37.3,
+          51.6,
+          69,
+          78.3,
+          79.5,
+          69.7,
+          57.1,
+          35.1,
+          15.4,
+          11
+        ],
+        "it_east": [
+          28,
+          49.6,
+          62.5,
+          73.8,
+          73.3,
+          79.6,
+          80.9,
+          71.5,
+          79.7,
+          63.7,
+          30.4,
+          23.6
+        ],
+        "it_south_east": [
+          53.3,
+          79.9,
+          86.3,
+          88.7,
+          84,
+          92.9,
+          104.3,
+          110.6,
+          111.5,
+          100.3,
+          52.5,
+          45
+        ],
+        "it_horizontal": [
+          45.2,
+          78.7,
+          118.5,
+          162.2,
+          200,
+          233.7,
+          236.2,
+          209,
+          165.2,
+          110.1,
+          50,
+          36
+        ],
+        "id_vertical": [
+          12.6,
+          19.6,
+          29.1,
+          39,
+          46.6,
+          50.3,
+          49.2,
+          43.5,
+          34.5,
+          24.4,
+          14.3,
+          10.6
+        ],
+        "id_horizontal": [
+          25.1,
+          39.3,
+          58.1,
+          77.9,
+          93.1,
+          100.6,
+          98.4,
+          87,
+          69,
+          48.7,
+          28.6,
+          21.1
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 68.8,
+            "southWest": 53.3,
+            "west": 28,
+            "northWest": 13.8,
+            "north": 12.6,
+            "northEast": 13.8,
+            "east": 28,
+            "southEast": 53.3,
+            "horizontal": 45.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 12.6,
+            "horizontal": 25.1
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.5,
+            "southWest": 79.9,
+            "west": 49.6,
+            "northWest": 26.2,
+            "north": 19.6,
+            "northEast": 26.2,
+            "east": 49.6,
+            "southEast": 79.9,
+            "horizontal": 78.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 19.6,
+            "horizontal": 39.3
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 97.5,
+            "southWest": 86.3,
+            "west": 62.5,
+            "northWest": 37.3,
+            "north": 29.1,
+            "northEast": 37.3,
+            "east": 62.5,
+            "southEast": 86.3,
+            "horizontal": 118.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.1,
+            "horizontal": 58.1
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.8,
+            "southWest": 88.7,
+            "west": 73.8,
+            "northWest": 51.6,
+            "north": 39,
+            "northEast": 51.6,
+            "east": 73.8,
+            "southEast": 88.7,
+            "horizontal": 162.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39,
+            "horizontal": 77.9
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 89.3,
+            "southWest": 84,
+            "west": 73.3,
+            "northWest": 69,
+            "north": 64.7,
+            "northEast": 69,
+            "east": 73.3,
+            "southEast": 84,
+            "horizontal": 200
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.6,
+            "horizontal": 93.1
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.9,
+            "southWest": 92.9,
+            "west": 79.6,
+            "northWest": 78.3,
+            "north": 76.9,
+            "northEast": 78.3,
+            "east": 79.6,
+            "southEast": 92.9,
+            "horizontal": 233.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.6
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 110.8,
+            "southWest": 104.3,
+            "west": 80.9,
+            "northWest": 79.5,
+            "north": 78.1,
+            "northEast": 79.5,
+            "east": 80.9,
+            "southEast": 104.3,
+            "horizontal": 236.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 49.2,
+            "horizontal": 98.4
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 122.8,
+            "southWest": 110.6,
+            "west": 71.5,
+            "northWest": 69.7,
+            "north": 67.9,
+            "northEast": 69.7,
+            "east": 71.5,
+            "southEast": 110.6,
+            "horizontal": 209
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 43.5,
+            "horizontal": 87
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 127.8,
+            "southWest": 111.5,
+            "west": 79.7,
+            "northWest": 57.1,
+            "north": 48.9,
+            "northEast": 57.1,
+            "east": 79.7,
+            "southEast": 111.5,
+            "horizontal": 165.2
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 34.5,
+            "horizontal": 69
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 121,
+            "southWest": 100.3,
+            "west": 63.7,
+            "northWest": 35.1,
+            "north": 24.4,
+            "northEast": 35.1,
+            "east": 63.7,
+            "southEast": 100.3,
+            "horizontal": 110.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.4,
+            "horizontal": 48.7
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 66.9,
+            "southWest": 52.5,
+            "west": 30.4,
+            "northWest": 15.4,
+            "north": 14.3,
+            "northEast": 15.4,
+            "east": 30.4,
+            "southEast": 52.5,
+            "horizontal": 50
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.3,
+            "horizontal": 28.6
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 1,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 58.2,
+            "southWest": 45,
+            "west": 23.6,
+            "northWest": 11,
+            "north": 10.6,
+            "northEast": 11,
+            "east": 23.6,
+            "southEast": 45,
+            "horizontal": 36
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 10.6,
+            "horizontal": 21.1
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 4,
+        "ocrCrossCheckedCellCount": 128,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_turnu_magurele",
+      "sourceLocalityId": "turnu_magurele",
+      "solarStationId": "mc001_1_2006_solar_turnu_magurele",
+      "climateStationId": null,
+      "localityName": "Turnu Magurele",
+      "sourceLabel": "Turnu Magurele",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 128,
+      "sourceTableIndex": 2,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          76.1,
+          111,
+          99.4,
+          94.1,
+          91.4,
+          101.5,
+          118.9,
+          139.1,
+          131.1,
+          124.3,
+          72.5,
+          65.6
+        ],
+        "it_south_west": [
+          58.8,
+          90.7,
+          88,
+          90.9,
+          85.9,
+          97.1,
+          111.7,
+          124.6,
+          114.3,
+          103.1,
+          56.8,
+          50.6
+        ],
+        "it_west": [
+          30.9,
+          55.7,
+          63.9,
+          75.6,
+          74.7,
+          82.6,
+          85.6,
+          78.4,
+          81.8,
+          65.6,
+          32.9,
+          26.4
+        ],
+        "it_north_west": [
+          15.1,
+          28.7,
+          38.3,
+          52.7,
+          70.3,
+          81.2,
+          84,
+          76.2,
+          58.5,
+          36.4,
+          16.6,
+          12.2
+        ],
+        "it_north": [
+          13.7,
+          21.1,
+          29.9,
+          39.7,
+          65.9,
+          79.7,
+          82.5,
+          74.1,
+          50.1,
+          25.4,
+          15.4,
+          11.7
+        ],
+        "it_north_east": [
+          15.1,
+          28.7,
+          38.3,
+          52.7,
+          70.3,
+          81.2,
+          84,
+          76.2,
+          58.5,
+          36.4,
+          16.6,
+          12.2
+        ],
+        "it_east": [
+          30.9,
+          55.7,
+          63.9,
+          75.6,
+          74.7,
+          82.6,
+          85.6,
+          78.4,
+          81.8,
+          65.6,
+          32.9,
+          26.4
+        ],
+        "it_south_east": [
+          58.8,
+          90.7,
+          88,
+          90.9,
+          85.9,
+          97.1,
+          111.7,
+          124.6,
+          114.3,
+          103.1,
+          56.8,
+          50.6
+        ],
+        "it_horizontal": [
+          49.7,
+          87.7,
+          121.1,
+          166.1,
+          205,
+          246.3,
+          254,
+          234.8,
+          169.4,
+          113.7,
+          54.1,
+          40.3
+        ],
+        "id_vertical": [
+          13.7,
+          21.1,
+          29.9,
+          39.7,
+          47,
+          50.8,
+          50.3,
+          45.2,
+          35.3,
+          25.4,
+          15.4,
+          11.7
+        ],
+        "id_horizontal": [
+          27.5,
+          42.2,
+          59.9,
+          79.3,
+          93.9,
+          101.6,
+          100.6,
+          90.4,
+          70.6,
+          50.9,
+          30.9,
+          23.4
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 76.1,
+            "southWest": 58.8,
+            "west": 30.9,
+            "northWest": 15.1,
+            "north": 13.7,
+            "northEast": 15.1,
+            "east": 30.9,
+            "southEast": 58.8,
+            "horizontal": 49.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.7,
+            "horizontal": 27.5
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 111,
+            "southWest": 90.7,
+            "west": 55.7,
+            "northWest": 28.7,
+            "north": 21.1,
+            "northEast": 28.7,
+            "east": 55.7,
+            "southEast": 90.7,
+            "horizontal": 87.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 21.1,
+            "horizontal": 42.2
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 99.4,
+            "southWest": 88,
+            "west": 63.9,
+            "northWest": 38.3,
+            "north": 29.9,
+            "northEast": 38.3,
+            "east": 63.9,
+            "southEast": 88,
+            "horizontal": 121.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.9,
+            "horizontal": 59.9
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 94.1,
+            "southWest": 90.9,
+            "west": 75.6,
+            "northWest": 52.7,
+            "north": 39.7,
+            "northEast": 52.7,
+            "east": 75.6,
+            "southEast": 90.9,
+            "horizontal": 166.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.7,
+            "horizontal": 79.3
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91.4,
+            "southWest": 85.9,
+            "west": 74.7,
+            "northWest": 70.3,
+            "north": 65.9,
+            "northEast": 70.3,
+            "east": 74.7,
+            "southEast": 85.9,
+            "horizontal": 205
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 47,
+            "horizontal": 93.9
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 101.5,
+            "southWest": 97.1,
+            "west": 82.6,
+            "northWest": 81.2,
+            "north": 79.7,
+            "northEast": 81.2,
+            "east": 82.6,
+            "southEast": 97.1,
+            "horizontal": 246.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.8,
+            "horizontal": 101.6
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 118.9,
+            "southWest": 111.7,
+            "west": 85.6,
+            "northWest": 84,
+            "north": 82.5,
+            "northEast": 84,
+            "east": 85.6,
+            "southEast": 111.7,
+            "horizontal": 254
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.6
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 139.1,
+            "southWest": 124.6,
+            "west": 78.4,
+            "northWest": 76.2,
+            "north": 74.1,
+            "northEast": 76.2,
+            "east": 78.4,
+            "southEast": 124.6,
+            "horizontal": 234.8
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 45.2,
+            "horizontal": 90.4
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 131.1,
+            "southWest": 114.3,
+            "west": 81.8,
+            "northWest": 58.5,
+            "north": 50.1,
+            "northEast": 58.5,
+            "east": 81.8,
+            "southEast": 114.3,
+            "horizontal": 169.4
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.3,
+            "horizontal": 70.6
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 124.3,
+            "southWest": 103.1,
+            "west": 65.6,
+            "northWest": 36.4,
+            "north": 25.4,
+            "northEast": 36.4,
+            "east": 65.6,
+            "southEast": 103.1,
+            "horizontal": 113.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 25.4,
+            "horizontal": 50.9
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 72.5,
+            "southWest": 56.8,
+            "west": 32.9,
+            "northWest": 16.6,
+            "north": 15.4,
+            "northEast": 16.6,
+            "east": 32.9,
+            "southEast": 56.8,
+            "horizontal": 54.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 15.4,
+            "horizontal": 30.9
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 128,
+          "sourceTableIndex": 2,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 65.6,
+            "southWest": 50.6,
+            "west": 26.4,
+            "northWest": 12.2,
+            "north": 11.7,
+            "northEast": 12.2,
+            "east": 26.4,
+            "southEast": 50.6,
+            "horizontal": 40.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.7,
+            "horizontal": 23.4
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 6,
+        "ocrCrossCheckedCellCount": 126,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    },
+    {
+      "localityId": "ro_turnu_severin",
+      "sourceLocalityId": "turnu_severin",
+      "solarStationId": "mc001_1_2006_solar_turnu_severin",
+      "climateStationId": null,
+      "localityName": "Turnu Severin",
+      "sourceLabel": "Turnu Severin",
+      "country": "RO",
+      "tableId": "mc001_1_2006_annex_a9_6_mean_daily_solar_irradiance",
+      "sourcePdfPage": 129,
+      "sourceTableIndex": 0,
+      "unit": "W/m2",
+      "valueType": "mean_daily_irradiance",
+      "temporalResolution": "monthly_mean_daily",
+      "byRow": {
+        "it_south": [
+          86,
+          117.5,
+          96.9,
+          91,
+          90.6,
+          98.8,
+          116.2,
+          137.3,
+          132.6,
+          117.8,
+          70.2,
+          73.8
+        ],
+        "it_south_west": [
+          66.1,
+          95.6,
+          85.8,
+          88,
+          85.1,
+          94.6,
+          109.2,
+          123.1,
+          115.5,
+          97.8,
+          55,
+          56.5
+        ],
+        "it_west": [
+          33.6,
+          58,
+          62.4,
+          73.4,
+          74.2,
+          80.8,
+          84,
+          77.6,
+          82.3,
+          62.6,
+          31.8,
+          28.7
+        ],
+        "it_north_west": [
+          15.3,
+          28.9,
+          37.5,
+          51.5,
+          69.8,
+          79.4,
+          82.5,
+          75.5,
+          58.7,
+          35.1,
+          16,
+          12.4
+        ],
+        "it_north": [
+          13.8,
+          20.7,
+          29.4,
+          39.1,
+          65.4,
+          78,
+          81.1,
+          73.3,
+          50.2,
+          24.8,
+          14.9,
+          11.8
+        ],
+        "it_north_east": [
+          15.3,
+          28.9,
+          37.5,
+          51.5,
+          69.8,
+          79.4,
+          82.5,
+          75.5,
+          58.7,
+          35.1,
+          16,
+          12.4
+        ],
+        "it_east": [
+          33.6,
+          58,
+          62.4,
+          73.4,
+          74.2,
+          80.8,
+          84,
+          77.6,
+          82.3,
+          62.6,
+          31.8,
+          28.7
+        ],
+        "it_south_east": [
+          66.1,
+          95.6,
+          85.8,
+          88,
+          85.1,
+          94.6,
+          109.2,
+          123.1,
+          115.5,
+          97.8,
+          55,
+          56.5
+        ],
+        "it_horizontal": [
+          53.3,
+          90.5,
+          118.3,
+          161,
+          203.1,
+          239,
+          248,
+          232,
+          170.7,
+          108.6,
+          52.3,
+          43
+        ],
+        "id_vertical": [
+          13.8,
+          20.7,
+          29.4,
+          39.1,
+          46.8,
+          50.3,
+          50,
+          44.9,
+          35.1,
+          24.8,
+          14.9,
+          11.8
+        ],
+        "id_horizontal": [
+          27.6,
+          41.4,
+          58.8,
+          78.2,
+          93.6,
+          100.7,
+          99.9,
+          89.8,
+          70.2,
+          49.5,
+          29.8,
+          23.6
+        ]
+      },
+      "monthlyRecords": [
+        {
+          "month": "january",
+          "monthIndex": 1,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 86,
+            "southWest": 66.1,
+            "west": 33.6,
+            "northWest": 15.3,
+            "north": 13.8,
+            "northEast": 15.3,
+            "east": 33.6,
+            "southEast": 66.1,
+            "horizontal": 53.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 13.8,
+            "horizontal": 27.6
+          }
+        },
+        {
+          "month": "february",
+          "monthIndex": 2,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 117.5,
+            "southWest": 95.6,
+            "west": 58,
+            "northWest": 28.9,
+            "north": 20.7,
+            "northEast": 28.9,
+            "east": 58,
+            "southEast": 95.6,
+            "horizontal": 90.5
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 20.7,
+            "horizontal": 41.4
+          }
+        },
+        {
+          "month": "march",
+          "monthIndex": 3,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 96.9,
+            "southWest": 85.8,
+            "west": 62.4,
+            "northWest": 37.5,
+            "north": 29.4,
+            "northEast": 37.5,
+            "east": 62.4,
+            "southEast": 85.8,
+            "horizontal": 118.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 29.4,
+            "horizontal": 58.8
+          }
+        },
+        {
+          "month": "april",
+          "monthIndex": 4,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 91,
+            "southWest": 88,
+            "west": 73.4,
+            "northWest": 51.5,
+            "north": 39.1,
+            "northEast": 51.5,
+            "east": 73.4,
+            "southEast": 88,
+            "horizontal": 161
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 39.1,
+            "horizontal": 78.2
+          }
+        },
+        {
+          "month": "may",
+          "monthIndex": 5,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 90.6,
+            "southWest": 85.1,
+            "west": 74.2,
+            "northWest": 69.8,
+            "north": 65.4,
+            "northEast": 69.8,
+            "east": 74.2,
+            "southEast": 85.1,
+            "horizontal": 203.1
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 46.8,
+            "horizontal": 93.6
+          }
+        },
+        {
+          "month": "june",
+          "monthIndex": 6,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 98.8,
+            "southWest": 94.6,
+            "west": 80.8,
+            "northWest": 79.4,
+            "north": 78,
+            "northEast": 79.4,
+            "east": 80.8,
+            "southEast": 94.6,
+            "horizontal": 239
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50.3,
+            "horizontal": 100.7
+          }
+        },
+        {
+          "month": "july",
+          "monthIndex": 7,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 116.2,
+            "southWest": 109.2,
+            "west": 84,
+            "northWest": 82.5,
+            "north": 81.1,
+            "northEast": 82.5,
+            "east": 84,
+            "southEast": 109.2,
+            "horizontal": 248
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 50,
+            "horizontal": 99.9
+          }
+        },
+        {
+          "month": "august",
+          "monthIndex": 8,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 137.3,
+            "southWest": 123.1,
+            "west": 77.6,
+            "northWest": 75.5,
+            "north": 73.3,
+            "northEast": 75.5,
+            "east": 77.6,
+            "southEast": 123.1,
+            "horizontal": 232
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 44.9,
+            "horizontal": 89.8
+          }
+        },
+        {
+          "month": "september",
+          "monthIndex": 9,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 132.6,
+            "southWest": 115.5,
+            "west": 82.3,
+            "northWest": 58.7,
+            "north": 50.2,
+            "northEast": 58.7,
+            "east": 82.3,
+            "southEast": 115.5,
+            "horizontal": 170.7
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 35.1,
+            "horizontal": 70.2
+          }
+        },
+        {
+          "month": "october",
+          "monthIndex": 10,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 117.8,
+            "southWest": 97.8,
+            "west": 62.6,
+            "northWest": 35.1,
+            "north": 24.8,
+            "northEast": 35.1,
+            "east": 62.6,
+            "southEast": 97.8,
+            "horizontal": 108.6
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 24.8,
+            "horizontal": 49.5
+          }
+        },
+        {
+          "month": "november",
+          "monthIndex": 11,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 70.2,
+            "southWest": 55,
+            "west": 31.8,
+            "northWest": 16,
+            "north": 14.9,
+            "northEast": 16,
+            "east": 31.8,
+            "southEast": 55,
+            "horizontal": 52.3
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 14.9,
+            "horizontal": 29.8
+          }
+        },
+        {
+          "month": "december",
+          "monthIndex": 12,
+          "sourcePdfPage": 129,
+          "sourceTableIndex": 0,
+          "unit": "W/m2",
+          "valueType": "mean_daily_irradiance",
+          "totalIrradianceWPerM2": {
+            "south": 73.8,
+            "southWest": 56.5,
+            "west": 28.7,
+            "northWest": 12.4,
+            "north": 11.8,
+            "northEast": 12.4,
+            "east": 28.7,
+            "southEast": 56.5,
+            "horizontal": 43
+          },
+          "diffuseIrradianceWPerM2": {
+            "vertical": 11.8,
+            "horizontal": 23.6
+          }
+        }
+      ],
+      "extractionQuality": {
+        "reviewedCellCount": 3,
+        "ocrCrossCheckedCellCount": 129,
+        "symmetryChecks": [
+          "I_T S-V equals I_T S-E",
+          "I_T V equals I_T E",
+          "I_T N-V equals I_T N-E"
+        ]
+      }
+    }
+  ]
+});

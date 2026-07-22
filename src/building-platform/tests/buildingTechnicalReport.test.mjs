@@ -13,17 +13,6 @@ function close(actual, expected, tolerance = EPSILON) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 }
 
-function assistedAnswersWithNormativeClimateProvider() {
-  return {
-    ...assistedAnswers(),
-    climateProviderResult: resolveRomanianNormativeClimateSelection({
-      stationId: "mc001_6_2013_bucuresti",
-      climateZone: "II",
-      windZone: "II"
-    })
-  };
-}
-
 function test(name, fn) {
   return Promise.resolve()
     .then(fn)
@@ -85,15 +74,15 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   );
   assert.equal(workspace.report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(workspace.report.title, "Caiet de calcul MC001-2022");
-  assert.equal(workspace.calculationFingerprint.fingerprintId, "b6ff21d7");
-  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "b6ff21d7");
+  assert.equal(workspace.calculationFingerprint.fingerprintId, "a2d3715d");
+  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "a2d3715d");
   assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
   assert.equal(
     workspace.diagnostics.methodologyLimits.includes("no_duplicate_calculations"),
     true
   );
 
-  close(workspace.resultSummary.annualQHnd, 10286.496332703064);
+  close(workspace.resultSummary.annualQHnd, 4554.844225632099);
   close(workspace.resultSummary.annualQCnd, 2786.7333161081524);
   close(workspace.envelope.htr.amount, 64.25708961581125);
   close(workspace.envelope.components.find(item => item.componentId === "Hd").amount, 40.871819482282156);
@@ -116,8 +105,8 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   const january = workspace.monthly.find(item => item.month === "january");
   assert.equal(january.durationHours, 720);
   assert.equal(january.heatingIndoorTemperatureC, 20);
-  assert.equal(january.heatingOutdoorTemperatureC, 0);
-  assert.equal(january.heatingTemperatureDifferenceK, 20);
+  assert.equal(january.heatingOutdoorTemperatureC, -1.2);
+  assert.equal(january.heatingTemperatureDifferenceK, 21.2);
   assert.equal(january.coolingIndoorTemperatureC, 24);
   assert.equal(january.coolingOutdoorTemperatureC, 30);
   assert.equal(january.coolingTemperatureDifferenceK, 6);
@@ -125,16 +114,16 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   assert.equal(january.ventilationAirHeatCapacityJPerM3K, 1200);
   assert.equal(january.solarOrientation, null);
   assert.equal(january.solarGainsSource, "monthly_profile_solar_gains");
-  assert.equal(january.monthlyProfileOrigin, "proposed_by_typology");
-  close(january.heatingTransmissionKwh, 925.302090467682);
-  close(january.heatingVentilationKwh, 288);
-  close(january.qHhtKwh, 1213.3020904676819);
+  assert.equal(january.monthlyProfileOrigin, "confirmed_by_user");
+  close(january.heatingTransmissionKwh, 980.820215895743);
+  close(january.heatingVentilationKwh, 305.28);
+  close(january.qHhtKwh, 1286.100215895743);
   close(january.internalGainsKwh, 120);
   close(january.solarGainsKwh, 180);
   close(january.qHgnKwh, 300);
-  close(january.gammaH, 0.24725911407962825);
-  close(january.etaHgn, 0.9999189561186483);
-  close(january.qHndKwh, 913.3264036320874);
+  close(january.gammaH, 0.23326331516946058);
+  close(january.etaHgn, 0.9999436035427236);
+  close(january.qHndKwh, 986.117134832926);
   close(january.qChtKwh, 363.9906271403046);
   close(january.qCgnKwh, 300);
   close(january.gammaC, 0.8241970469320942);
@@ -172,8 +161,15 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   );
   assert.equal(
     climateChapter.rows.some(row =>
+      row.label === "Calcule climatice eligibile" &&
+      row.value.includes("chapter2_monthly_transmission_ventilation")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
       row.label === "Calcule climatice indisponibile" &&
-      row.value.includes("MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED")
+      row.value.includes("COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED")
     ),
     true
   );
@@ -182,8 +178,38 @@ await test("technical report is generated from Building DNA and Chapter 2 output
 });
 
 await test("technical report and notebook expose source-backed Romanian climate provider values", () => {
+  const solarExtract = JSON.parse(
+    readFileSync(
+      new URL("../../../validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json", import.meta.url),
+      "utf8"
+    )
+  );
+  const sourceBucuresti = solarExtract.tables.monthlySolarIrradiance.rows.find(
+    row => row.localityId === "ro_bucuresti"
+  );
+  const sourceJanuary = sourceBucuresti.monthlyRecords.find(record => record.month === "january");
+  const sourceJuly = sourceBucuresti.monthlyRecords.find(record => record.month === "july");
+  const provider = resolveRomanianNormativeClimateSelection({
+    stationId: "mc001_6_2013_bucuresti",
+    climateZone: "II",
+    windZone: "II"
+  });
+  const providerJanuary = provider.datasets.monthlySolarIrradiation.monthlyRecords.find(
+    record => record.month === "january"
+  );
+  const providerJuly = provider.datasets.monthlySolarIrradiation.monthlyRecords.find(
+    record => record.month === "july"
+  );
+  assert.equal(providerJanuary.totalIrradianceWPerM2.south, sourceJanuary.totalIrradianceWPerM2.south);
+  assert.equal(providerJanuary.totalIrradianceWPerM2.horizontal, sourceJanuary.totalIrradianceWPerM2.horizontal);
+  assert.equal(providerJanuary.diffuseIrradianceWPerM2.horizontal, sourceJanuary.diffuseIrradianceWPerM2.horizontal);
+  assert.equal(providerJuly.totalIrradianceWPerM2.horizontal, sourceJuly.totalIrradianceWPerM2.horizontal);
+
   const workspace = buildBuildingTechnicalWorkspace(
-    buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswersWithNormativeClimateProvider())
+    buildBuildingKnowledgePlatformFromAssistedAnswers({
+      ...assistedAnswers(),
+      climateProviderResult: provider
+    })
   );
   const climateChapter = workspace.report.chapters.find(
     chapter => chapter.chapterId === "amplasare_si_clima"
@@ -206,7 +232,36 @@ await test("technical report and notebook expose source-backed Romanian climate 
   assert.equal(
     climateChapter.rows.some(row =>
       row.label === "Iradiere solara lunara normativa" &&
-      row.value.includes("Anexa nr. A9.6")
+      row.value.includes("ianuarie I_T,oriz 49,6 W/m2") &&
+      row.value.includes("iulie I_T,oriz 200,8 W/m2")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Sursa iradiere solara normativa" &&
+      row.value.includes("Mc001/1-2-3/2006, Anexa A.9.6")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Status preprocesare Qsol" &&
+      row.value.includes("A.9.6 supplies W/m2 monthly mean daily irradiance source rows")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Versiune registru climatic productie" &&
+      row.value === "romanian_production_climate_registry_p5c_v1"
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Preprocesare A.9.6 -> Hsol/Qsky pentru Qsol" &&
+      row.value.includes("SR EN ISO 52010-1")
     ),
     true
   );
@@ -217,7 +272,33 @@ await test("technical report and notebook expose source-backed Romanian climate 
     .join("\n");
   assert.equal(notebookText.includes("Statie_MC001_6_2013 := Bucuresti"), true);
   assert.equal(notebookText.includes("theta_e_lunar_MC001_6_2013 := ianuarie -1,20 degC"), true);
-  assert.equal(notebookText.includes("I_solar_lunar := indisponibil"), true);
+  assert.equal(
+    notebookText.includes(`I_solar_lunar_A9_6 := ianuarie I_T,S ${sourceJanuary.totalIrradianceWPerM2.south.toFixed(1).replace(".", ",")} W/m2`),
+    true
+  );
+  assert.equal(
+    notebookText.includes(`I_d,oriz ${sourceJanuary.diffuseIrradianceWPerM2.horizontal.toFixed(1).replace(".", ",")} W/m2`),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Iradiere solara lunara normativa" &&
+      row.value.includes(`ianuarie I_T,oriz ${sourceJanuary.totalIrradianceWPerM2.horizontal.toFixed(1).replace(".", ",")} W/m2`) &&
+      row.value.includes(`iulie I_T,oriz ${sourceJuly.totalIrradianceWPerM2.horizontal.toFixed(1).replace(".", ",")} W/m2`)
+    ),
+    true
+  );
+  assert.equal(
+    workspace.report.engineeringNotebook.sections
+      .flatMap(section => section.lines)
+      .some(line => line.text.includes("chapter2_solar_source_dataset_identity := ELIGIBLE")),
+    true
+  );
+  assert.equal(notebookText.includes("Profil_climatic_productie := ready_with_bounded_gaps"), true);
+  assert.equal(
+    notebookText.includes("source_backed_solar_gains_preprocessing := indisponibil -- necesita SR EN ISO 52010-1"),
+    true
+  );
 });
 
 await test("technical report contains the required compact P3G notebook chapters and formula views", () => {
@@ -260,14 +341,14 @@ await test("technical report contains the required compact P3G notebook chapters
 
   const annualHeating = workspace.formulaViews.find(view => view.formulaId === "MC001_2_84_ANNUAL_HEATING_USEFUL_DEMAND");
   assert.equal(annualHeating.inputVariables.length, 12);
-  assert.equal(annualHeating.substitutedFormula.includes("913.3264"), true);
-  assert.equal(annualHeating.resultLine, "QHnd_an = 10286.4963 kWh");
+  assert.equal(annualHeating.substitutedFormula.includes("986.1171"), true);
+  assert.equal(annualHeating.resultLine, "QHnd_an = 4554.8442 kWh");
 
   const januaryHeating = workspace.formulaViews.find(view =>
     view.formulaName === "Necesar util lunar de incalzire - january"
   );
   assert.equal(januaryHeating.symbolicFormula, "QHnd = QHht - eta_Hgn * QHgn");
-  assert.equal(januaryHeating.substitutedFormula.includes("1213.3021 kWh"), true);
+  assert.equal(januaryHeating.substitutedFormula.includes("1286.1002 kWh"), true);
   assert.equal(januaryHeating.substitutedFormula.includes("0.9999"), true);
 });
 

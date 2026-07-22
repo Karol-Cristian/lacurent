@@ -23,15 +23,16 @@ This graph is the permanent traceability layer for Romanian climate data used by
 | concept.locality_mapping | doc.mc001_6_2013 | EXTERNAL_DATA_DEPENDENCY | DATASET_UNAVAILABLE | tbd.romanian_locality_climate_wind_zone_registry |
 | concept.month_duration | doc.mc001_2022 | REPRESENTED_AS_INPUT | NORMATIVE_DATASET | - |
 | concept.monthly_exterior_temperature | doc.mc001_6_2013 | LOOKUP_IMPLEMENTED | NORMATIVE_DATASET | - |
-| concept.monthly_solar_irradiation | doc.mc001_1_2006_annex_a9_6 | EXTERNAL_DATA_DEPENDENCY | DATASET_UNAVAILABLE | tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset |
-| concept.direct_diffuse_solar_irradiation | doc.mc001_1_2006_annex_a9_6 | EXTERNAL_DATA_DEPENDENCY | DATASET_UNAVAILABLE | tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset |
-| concept.sky_radiation_inputs | doc.mc001_1_2006_annex_a9_6 | EXTERNAL_DATA_DEPENDENCY | DATASET_UNAVAILABLE | tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset |
+| concept.monthly_solar_irradiation | doc.mc001_1_2006_annex_a9_6 | LOOKUP_IMPLEMENTED | NORMATIVE_DATASET | - |
+| concept.preprocessed_solar_irradiation_hsol | doc.sr_en_iso_52010_1 | EXTERNAL_STANDARD_DEPENDENCY | DATASET_UNAVAILABLE | tbd.sr_en_iso_52010_1_climate_preprocessing |
+| concept.direct_diffuse_solar_irradiation | doc.mc001_1_2006_annex_a9_6 | LOOKUP_IMPLEMENTED_FOR_DIFFUSE_ROWS_DIRECT_COMPONENT_NOT_DERIVED | NORMATIVE_DATASET | - |
+| concept.sky_radiation_inputs | doc.mc001_1_2006_annex_a9_6 | EXTERNAL_DATA_DEPENDENCY | DATASET_UNAVAILABLE | tbd.sky_radiation_inputs_if_selected_method_requires |
 | concept.heating_period_duration | doc.mc001_2022 | REPRESENTED_AS_INPUT | NORMATIVE_DATASET | - |
 | concept.cooling_period_duration | doc.mc001_2022 | REPRESENTED_AS_INPUT | NORMATIVE_DATASET | - |
 | concept.cooling_ventilation_design_climate | doc.mc001_6_2013 | LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY | DATASET_UNAVAILABLE | tbd.mc001_6_2013_cooling_ventilation_design_climate |
 | concept.degree_days | doc.mc001_6_2013 | EXTERNAL_DATA_DEPENDENCY | DATASET_UNAVAILABLE | tbd.mc001_6_2013_degree_days |
 | concept.climate_preprocessing_rules | doc.sr_en_iso_52010_1 | EXTERNAL_STANDARD_DEPENDENCY | DATASET_UNAVAILABLE | tbd.sr_en_iso_52010_1_climate_preprocessing |
-| concept.reference_building_climate | doc.mc001_2022 | LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY | DATASET_UNAVAILABLE | tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset |
+| concept.reference_building_climate | doc.mc001_2022 | LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY | DATASET_UNAVAILABLE | tbd.romanian_locality_climate_wind_zone_registry |
 | concept.user_supplied_certified_climate_dataset | doc.user_supplied_certified_climate_dataset_contract | REPRESENTED_AS_INPUT | USER_SUPPLIED_CERTIFIED_DATASET | - |
 
 ## Normative Dependency Graph
@@ -56,7 +57,8 @@ Reviewed non-dependencies:
 | runtime.climate_zone_threshold_lookup | concept.climate_zone | solar_factor_recommendation, nzeb_limit_lookup, renovation_limit_lookup | CLIMATE_SELECTION_REQUIRED |
 | runtime.winter_design_temperature_lookup | concept.climate_zone | heating_design_temperature | CLIMATE_SELECTION_REQUIRED |
 | runtime.chapter2_monthly_transmission_ventilation | concept.monthly_exterior_temperature, concept.month_duration | Qtr, Qve, QHnd, QCnd | MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED |
-| runtime.chapter2_solar_gains | concept.monthly_solar_irradiation, concept.user_supplied_certified_climate_dataset | Qsol, QHgn, QCgn, QHnd, QCnd | MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED |
+| runtime.chapter2_solar_source_dataset_identity | concept.monthly_solar_irradiation | climate_dataset_traceability, notebook_report_solar_source_rows | MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION |
+| runtime.chapter2_solar_gains | concept.preprocessed_solar_irradiation_hsol, concept.sky_radiation_inputs, concept.user_supplied_certified_climate_dataset | Qsol, QHgn, QCgn, QHnd, QCnd | SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED |
 | runtime.cooling_ventilation_design_conditions | concept.cooling_ventilation_design_climate | design_diagnostics | COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED |
 | runtime.degree_day_method | concept.degree_days | degree_day_result | DEGREE_DAY_DATA_REQUIRED |
 
@@ -65,7 +67,7 @@ Reviewed non-dependencies:
 | id | document | priority | scope |
 | --- | --- | --- | --- |
 | tbd.romanian_locality_climate_wind_zone_registry | exact source not reproduced in MC001-2022 PDF or ingested MC001/6-2013 tables | HIGH | Acquire/source-pack the exact official mapping document, normalize locality identifiers, add county aliases and migration diagnostics. |
-| tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset | Mc001/1-2006 Anexa nr. A9.6 | HIGH | Extract irradiation tables, validate orientation/plane keys, add table lookups and source-backed solar fixtures. |
+| tbd.sky_radiation_inputs_if_selected_method_requires | exact MC001 delegated source or SR EN ISO 52010-1 clause to be identified by the selected method | LOW | Acquire the exact delegated method/source only if a runtime path selects sky-radiation correction inputs. |
 | tbd.mc001_6_2013_cooling_ventilation_design_climate | Mc001/6-2013 Partea a VI-a | MEDIUM | Extract station design tables, encode humidity units and bind to cooling/AHU eligibility gates. |
 | tbd.mc001_6_2013_degree_days | Mc001/6-2013 Partea a VI-a or explicit source chain identified during extraction | LOW | Acquire source chain only if a degree-day runtime path is product-scoped; no current monthly runtime dependency. |
 | tbd.sr_en_iso_52010_1_climate_preprocessing | SR EN ISO 52010-1 | MEDIUM | Implement only after licensed standard is supplied; add algorithm tests and source-to-code coverage. |
@@ -75,7 +77,7 @@ Reviewed non-dependencies:
 | document | priority | unlocks | effort |
 | --- | --- | --- | --- |
 | Mc001/6-2013 | MEDIUM | locality mapping, design temperature, monthly temperature, cooling/ventilation design | MEDIUM: remaining non-ingested tables or hourly annexes require the same source-pack QA if product-scoped. |
-| Mc001/1-2006 Anexa nr. A9.6 | HIGH | solar irradiation | HIGH: source-pack extraction, OCR/visual QA, row-level provenance, schema migration and five-domain runtime fixtures. |
+| Mc001/1-2006 Anexa nr. A9.6 | RESOLVED | solar irradiation | COMPLETE: source-pack extraction, OCR/visual QA, row-level provenance, provider integration and deterministic registry tests are included in P5B3. |
 | SR EN ISO 52010-1 | MEDIUM | monthly temperature, solar irradiation, cooling/ventilation design | MEDIUM: licensed algorithm extraction, preprocessing tests and ingestion pipeline integration. |
 | SR 1907-1/2, SR 4839, SR 6648-1/2 | LOW | none | LOW until a direct source-chain dependency is identified; do not acquire for current runtime solely by title similarity. |
 
@@ -84,7 +86,6 @@ Reviewed non-dependencies:
 | package | title | dependsOn | scope |
 | --- | --- | --- | --- |
 | pkg.ro_locality_registry | Romanian locality, county, climate-zone and wind-zone registry | tbd.romanian_locality_climate_wind_zone_registry | registry extraction, normalization, lookup service and UI binding |
-| pkg.ro_monthly_solar_irradiation | Monthly solar irradiation profiles | tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset | solar source-pack extraction, profile schema extension and fixtures |
 | pkg.ro_cooling_ventilation_design_climate | Cooling and ventilation design climate data | tbd.mc001_6_2013_cooling_ventilation_design_climate | extract station design tables and bind to Chapter 3 eligibility |
 | pkg.ro_degree_days | Degree-day datasets | tbd.mc001_6_2013_degree_days | future optional method package, not needed by current monthly runtime |
 | pkg.sr_en_iso_52010_1_preprocessing | SR EN ISO 52010-1 climate preprocessing | tbd.sr_en_iso_52010_1_climate_preprocessing | licensed-standard algorithm implementation and ingestion validation |

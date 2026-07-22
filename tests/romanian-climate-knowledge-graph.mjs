@@ -16,6 +16,7 @@ const CLIMATE_CONCEPTS = [
   "concept.winter_design_temperature",
   "concept.monthly_exterior_temperature",
   "concept.monthly_solar_irradiation",
+  "concept.preprocessed_solar_irradiation_hsol",
   "concept.degree_days",
   "concept.wind_zone",
   "concept.climatic_station",
@@ -28,7 +29,7 @@ const CLIMATE_CONCEPTS = [
 
 const REQUIRED_TBD_IDS = [
   "tbd.romanian_locality_climate_wind_zone_registry",
-  "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
+  "tbd.sky_radiation_inputs_if_selected_method_requires",
   "tbd.mc001_6_2013_cooling_ventilation_design_climate",
   "tbd.mc001_6_2013_degree_days",
   "tbd.sr_en_iso_52010_1_climate_preprocessing"
@@ -153,9 +154,24 @@ const monthlyRuntime = runtimeNodes.find(node => node.id === "runtime.chapter2_m
 assert.equal(monthlyRuntime.requires.includes("concept.monthly_exterior_temperature"), true);
 assert.equal(monthlyRuntime.requires.includes("concept.month_duration"), true);
 
+const solarSourceRuntime = runtimeNodes.find(node => node.id === "runtime.chapter2_solar_source_dataset_identity");
+assert.equal(solarSourceRuntime.requires.includes("concept.monthly_solar_irradiation"), true);
+
 const solarRuntime = runtimeNodes.find(node => node.id === "runtime.chapter2_solar_gains");
-assert.equal(solarRuntime.requires.includes("concept.monthly_solar_irradiation"), true);
+assert.equal(solarRuntime.requires.includes("concept.preprocessed_solar_irradiation_hsol"), true);
+assert.equal(solarRuntime.requires.includes("concept.sky_radiation_inputs"), true);
 assert.equal(solarRuntime.requires.includes("concept.user_supplied_certified_climate_dataset"), true);
+
+const monthlySolarConcept = concepts.find(concept => concept.id === "concept.monthly_solar_irradiation");
+assert.equal(monthlySolarConcept.datasetStatus, "NORMATIVE_DATASET");
+assert.equal(monthlySolarConcept.implementationStatus, "LOOKUP_IMPLEMENTED");
+assert.equal(monthlySolarConcept.tbdId, null);
+assert.equal(tbdIds.includes("tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"), false);
+
+const preprocessedSolarConcept = concepts.find(concept => concept.id === "concept.preprocessed_solar_irradiation_hsol");
+assert.equal(preprocessedSolarConcept.datasetStatus, "DATASET_UNAVAILABLE");
+assert.equal(preprocessedSolarConcept.implementationStatus, "EXTERNAL_STANDARD_DEPENDENCY");
+assert.equal(preprocessedSolarConcept.tbdId, "tbd.sr_en_iso_52010_1_climate_preprocessing");
 
 assert.equal(
   graph.normativeDependencyGraph.edges.some(edge =>
@@ -198,7 +214,7 @@ assert.equal(mc001Dependency.runtimeVariablesUnlocked.includes("monthly temperat
 assert.equal(mc001Dependency.runtimeVariablesUnlocked.includes("solar irradiation"), false);
 
 const solarDependency = graph.acquisitionPlanner.find(item => item.documentId === "doc.mc001_1_2006_annex_a9_6");
-assert.equal(solarDependency.priority, "HIGH");
+assert.equal(solarDependency.priority, "RESOLVED");
 assert.equal(solarDependency.runtimeVariablesUnlocked.includes("solar irradiation"), true);
 
 const reviewedStandards = graph.acquisitionPlanner.find(
@@ -207,7 +223,7 @@ const reviewedStandards = graph.acquisitionPlanner.find(
 assert.equal(reviewedStandards.priority, "LOW");
 assert.deepEqual(reviewedStandards.runtimeVariablesUnlocked, []);
 
-assert.equal(graph.futureImplementationPackages.length >= 5, true);
+assert.equal(graph.futureImplementationPackages.length >= 4, true);
 for (const pkg of graph.futureImplementationPackages) {
   assert.equal(Array.isArray(pkg.dependsOnTbdIds), true, pkg.packageId);
   assert.equal(pkg.dependsOnTbdIds.length > 0, true, pkg.packageId);

@@ -18,6 +18,11 @@ import {
   MC001_6_2013_CLIMATE_DATASET_VERSION,
   MC001_6_2013_CLIMATE_STATIONS
 } from "../src/climate-platform/datasets/mc001_6_2013ClimateDataset.mjs";
+import {
+  MC001_1_2006_SOLAR_IRRADIATION_DATASET_CHECKSUMS,
+  MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION,
+  MC001_1_2006_SOLAR_LOCALITY_REGISTRY
+} from "../src/climate-platform/datasets/mc001_1_2006SolarIrradiationDataset.mjs";
 
 const OUTPUT_JSON = resolve("validation-reference/normative-knowledge-graph.json");
 const OUTPUT_MD = resolve("validation-reference/normative-knowledge-graph.md");
@@ -50,20 +55,20 @@ const sourceDocuments = Object.freeze([
     title: "Mc001/6-2013 Partea a VI-a",
     edition: "2013",
     authority: "MDRAP / MDLPA",
-    repositoryStatus: "official_public_pdf_source_packed_partial_tables_ingested",
+    repositoryStatus: "official_public_pdf_source_packed_selected_tables_ingested",
     path: "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
     canonicalUse:
-      "Delegated Romanian climate-parameter source. P5B2 ingests Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; solar remains delegated to Mc001/1-2006 Anexa nr. A9.6."
+      "Delegated Romanian climate-parameter source. P5B2 ingests Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; solar is delegated onward to Mc001/1-2-3/2006 Anexa A.9.6."
   }),
   Object.freeze({
     id: "doc.mc001_1_2006_annex_a9_6",
-    title: "Mc001/1-2006 Anexa nr. A9.6",
+    title: "Mc001/1-2-3/2006 Anexa A.9.6",
     edition: "2006",
-    authority: "MDLPA / original MC001 methodology source chain",
-    repositoryStatus: "not_present_exact_annex_required_for_monthly_solar_irradiation",
-    path: null,
+    authority: "MDLPA",
+    repositoryStatus: "official_public_pdf_source_packed",
+    path: "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_1_2_3_2006.pdf",
     canonicalUse:
-      "Exact annex referenced by Mc001/6-2013 Capitolul II.3 for monthly solar irradiation values for 30 localities."
+      "Exact annex referenced by Mc001/6-2013 Capitolul II.3 for monthly mean daily total and diffuse solar irradiance values for 30 localities."
   }),
   Object.freeze({
     id: "doc.sr_en_iso_52010_1",
@@ -318,34 +323,70 @@ const conceptNodes = Object.freeze([
   }),
   node({
     id: "concept.monthly_solar_irradiation",
-    description: "Monthly solar irradiation or explicit solar-gain inputs used for transparent and opaque gains.",
-    units: "kWh/m2; kWh",
-    runtimeUsage: Object.freeze(["chapter2_solar_gains"]),
+    description:
+      "Monthly mean daily solar irradiance source rows from A.9.6. These rows are source-backed climate data, not direct Qsol or Hsol runtime values.",
+    units: "W/m2",
+    runtimeUsage: Object.freeze(["chapter2_solar_source_dataset_identity", "future source-backed solar preprocessing"]),
     notebookUsage:
-      "Show selected orientation/plane irradiation or explicit certified solar gains for each month.",
-    reportUsage: "Report irradiation source, orientation mapping and monthly solar inputs.",
+      "Show A.9.6 monthly total vertical/orientation and horizontal irradiance values used by the selected station/locality.",
+    reportUsage:
+      "Report A.9.6 source, dataset version, station/locality and monthly total/diffuse irradiance values.",
     sourceDocument: "doc.mc001_1_2006_annex_a9_6",
     sourceEdition: "2006",
-    table: "Anexa nr. A9.6",
-    page: "not present in repository",
-    implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
+    table: "Anexa A.9.6",
+    page: "PDF pages 119-129",
+    sourceLocation:
+      "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
+    implementationStatus: "LOOKUP_IMPLEMENTED",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    values: {
+      datasetVersion: MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION,
+      localityCount: MC001_1_2006_SOLAR_LOCALITY_REGISTRY.length,
+      checksum: MC001_1_2006_SOLAR_IRRADIATION_DATASET_CHECKSUMS.monthlySolarIrradianceRows
+    }
+  }),
+  node({
+    id: "concept.preprocessed_solar_irradiation_hsol",
+    description:
+      "Monthly solar irradiation Hsol;wi;m/Hsol;k;m in kWh/m2 required by MC001 relations 2.39 and 2.50 after applying the delegated preprocessing/source contract to source climate rows.",
+    units: "kWh/m2",
+    runtimeUsage: Object.freeze(["chapter2_solar_gains", "transparent_solar_gains", "opaque_solar_gains"]),
+    formulas: Object.freeze(["MC001-2022 relatiile 2.39 si 2.50 consume Hsol but do not reproduce the preprocessing algorithm."]),
+    notebookUsage:
+      "Show only after a source-backed preprocessing chain or certified explicit Hsol input supplies values.",
+    reportUsage:
+      "Report preprocessing source, dataset version and Hsol values when they are actually used by Qsol.",
+    sourceDocument: "doc.sr_en_iso_52010_1",
+    sourceEdition: "not bundled in repository",
+    table: "M1-13 preprocessing rules; exact clauses require owned standard",
+    page: "MC001-2022 Anexa D delegation",
+    sourceLocation:
+      "MC001-2022 Tabel 1.3 row 13 and Anexa D reference SR EN ISO 52010-1; no Hsol preprocessing equations are bundled.",
+    implementationStatus: "EXTERNAL_STANDARD_DEPENDENCY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
+    tbdId: "tbd.sr_en_iso_52010_1_climate_preprocessing"
   }),
   node({
     id: "concept.direct_diffuse_solar_irradiation",
-    description: "Direct and diffuse solar components when a downstream method requires component-level radiation.",
-    units: "kWh/m2",
+    description:
+      "Solar component data when a downstream method requires component-level radiation. A.9.6 source-packs diffuse vertical/horizontal rows and total orientation rows; it does not derive an additional direct component.",
+    units: "W/m2",
     runtimeUsage: Object.freeze(["solar preprocessing", "future source-backed orientation/plane processing"]),
-    notebookUsage: "Show only when supplied by a source-backed dataset or required by a selected method.",
-    reportUsage: "Report component data and source when used.",
+    notebookUsage:
+      "Show diffuse A.9.6 rows when used; do not fabricate direct components by subtraction unless a normative runtime method explicitly requires and defines that operation.",
+    reportUsage: "Report diffuse component data and source when used.",
     sourceDocument: "doc.mc001_1_2006_annex_a9_6",
     sourceEdition: "2006",
-    table: "Anexa nr. A9.6 or the exact delegated solar-source table if component values are reproduced there",
-    page: "not present in repository",
-    implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
-    datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
+    table: "Anexa A.9.6",
+    page: "PDF pages 119-129",
+    sourceLocation:
+      "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
+    implementationStatus: "LOOKUP_IMPLEMENTED_FOR_DIFFUSE_ROWS_DIRECT_COMPONENT_NOT_DERIVED",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    values: {
+      datasetVersion: MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION,
+      diffuseRows: Object.freeze(["I_d Vert.", "I_d Oriz."])
+    }
   }),
   node({
     id: "concept.sky_radiation_inputs",
@@ -356,11 +397,11 @@ const conceptNodes = Object.freeze([
     reportUsage: "Report sky-radiation data source and whether it affected current calculations.",
     sourceDocument: "doc.mc001_1_2006_annex_a9_6",
     sourceEdition: "2006",
-    table: "Anexa nr. A9.6 or exact delegated sky-radiation source if reproduced there",
-    page: "not present in repository",
+    table: "not reproduced in Anexa A.9.6",
+    page: "not found in integrated solar source pack",
     implementationStatus: "EXTERNAL_DATA_DEPENDENCY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
+    tbdId: "tbd.sky_radiation_inputs_if_selected_method_requires"
   }),
   node({
     id: "concept.heating_period_duration",
@@ -451,7 +492,7 @@ const conceptNodes = Object.freeze([
     page: "PDF text p. 73-74 and Anexa D p. 597",
     implementationStatus: "LOOKUP_IMPLEMENTED_WITH_EXTERNAL_DATA_BOUNDARY",
     datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"
+    tbdId: "tbd.romanian_locality_climate_wind_zone_registry"
   }),
   node({
     id: "concept.user_supplied_certified_climate_dataset",
@@ -493,19 +534,20 @@ const tbdRegistry = Object.freeze([
       "Acquire/source-pack the exact official mapping document, normalize locality identifiers, add county aliases and migration diagnostics."
   }),
   Object.freeze({
-    id: "tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset",
-    description: "Monthly solar irradiation by required orientation or plane, including components when required.",
-    blockingDocument: "Mc001/1-2006 Anexa nr. A9.6",
-    requiredEdition: "2006",
-    affectedCalculations: Object.freeze(["chapter2_solar_gains", "solar-gain orientation diagnostics"]),
-    affectedRuntimeModules: Object.freeze(["src/climate-platform/romanianClimateProfiles.mjs"]),
-    affectedUi: Object.freeze(["orientation-dependent irradiation display"]),
-    affectedNotebook: Object.freeze(["monthly transparent and opaque solar-gain substitutions"]),
-    affectedReport: Object.freeze(["solar irradiation source and orientation tables"]),
-    affectedTests: Object.freeze(["orientation direction", "monthly solar completeness", "no synthetic fallback"]),
-    implementationPriority: "HIGH",
+    id: "tbd.sky_radiation_inputs_if_selected_method_requires",
+    description:
+      "Sky-radiation input tables or correction terms if a selected source-backed calculation path explicitly requires them. A.9.6 does not reproduce these values.",
+    blockingDocument: "exact MC001 delegated source or SR EN ISO 52010-1 clause to be identified by the selected method",
+    requiredEdition: "to be identified from an explicit normative source chain",
+    affectedCalculations: Object.freeze(["future sky-radiation correction branches only"]),
+    affectedRuntimeModules: Object.freeze(["future source-backed solar preprocessing module"]),
+    affectedUi: Object.freeze(["solar dataset diagnostics only if a sky-radiation branch is selected"]),
+    affectedNotebook: Object.freeze(["sky-radiation correction traceability if used"]),
+    affectedReport: Object.freeze(["sky-radiation source disclosure if used"]),
+    affectedTests: Object.freeze(["sky-radiation branch fixtures if method is product-scoped"]),
+    implementationPriority: "LOW",
     estimatedImplementationScope:
-      "Extract irradiation tables, validate orientation/plane keys, add table lookups and source-backed solar fixtures."
+      "Acquire the exact delegated method/source only if a runtime path selects sky-radiation correction inputs."
   }),
   Object.freeze({
     id: "tbd.mc001_6_2013_cooling_ventilation_design_climate",
@@ -539,15 +581,27 @@ const tbdRegistry = Object.freeze([
   }),
   Object.freeze({
     id: "tbd.sr_en_iso_52010_1_climate_preprocessing",
-    description: "Normative climate-data preprocessing algorithms delegated to SR EN ISO 52010-1.",
+    description:
+      "Normative climate-data preprocessing algorithms delegated to SR EN ISO 52010-1, including the bridge from A.9.6 W/m2 source rows to Hsol [kWh/m2] runtime inputs when that source-backed path is selected.",
     blockingDocument: "SR EN ISO 52010-1",
     requiredEdition: "owned edition referenced by MC001 implementation policy",
-    affectedCalculations: Object.freeze(["source-backed climate data ingestion QA"]),
-    affectedRuntimeModules: Object.freeze(["future source-pack ingestion pipeline"]),
-    affectedUi: Object.freeze(["dataset validation provenance"]),
-    affectedNotebook: Object.freeze(["preprocessing reference where transformed values are used"]),
-    affectedReport: Object.freeze(["preprocessing standard and checksum metadata"]),
-    affectedTests: Object.freeze(["preprocessing golden cases from licensed source"]),
+    affectedCalculations: Object.freeze([
+      "A.9.6 W/m2 to Hsol kWh/m2 preprocessing",
+      "source-backed transparent solar gains relation 2.39",
+      "source-backed opaque solar gains relation 2.50",
+      "source-backed QHnd/QCnd effect of Qsol"
+    ]),
+    affectedRuntimeModules: Object.freeze([
+      "future source-pack ingestion pipeline",
+      "future Building DNA climate provider to mc001SolarGainsCalculation adapter"
+    ]),
+    affectedUi: Object.freeze(["dataset validation provenance", "source-backed solar-gain eligibility diagnostic"]),
+    affectedNotebook: Object.freeze(["preprocessing reference and Hsol substitutions where transformed values are used"]),
+    affectedReport: Object.freeze(["preprocessing standard, Hsol values and checksum metadata"]),
+    affectedTests: Object.freeze([
+      "preprocessing golden cases from licensed source",
+      "A.9.6 to Hsol to Qsol to QHnd/QCnd integration tests"
+    ]),
     implementationPriority: "MEDIUM",
     estimatedImplementationScope:
       "Implement only after licensed standard is supplied; add algorithm tests and source-to-code coverage."
@@ -558,8 +612,10 @@ const runtimeRequirementToConcepts = Object.freeze({
   climateZone: Object.freeze(["concept.climate_zone"]),
   monthlyExteriorTemperatures: Object.freeze(["concept.monthly_exterior_temperature"]),
   monthDurations: Object.freeze(["concept.month_duration"]),
-  monthlySolarIrradiationOrExplicitSolarGains: Object.freeze([
-    "concept.monthly_solar_irradiation",
+  monthlySolarIrradianceSourceRows: Object.freeze(["concept.monthly_solar_irradiation"]),
+  preprocessedSolarIrradiationHsolOrExplicitSolarGains: Object.freeze([
+    "concept.preprocessed_solar_irradiation_hsol",
+    "concept.sky_radiation_inputs",
     "concept.user_supplied_certified_climate_dataset"
   ]),
   coolingDesignTemperature: Object.freeze(["concept.cooling_ventilation_design_climate"]),
@@ -674,7 +730,12 @@ const knowledgeEdges = Object.freeze([
   Object.freeze({
     from: "doc.mc001_1_2006_annex_a9_6",
     to: "concept.monthly_solar_irradiation",
-    relation: "expected_source_for"
+    relation: "defines_lookup"
+  }),
+  Object.freeze({
+    from: "doc.sr_en_iso_52010_1",
+    to: "concept.preprocessed_solar_irradiation_hsol",
+    relation: "defines_external_preprocessing_algorithm"
   }),
   Object.freeze({
     from: "doc.mc001_6_2013",
@@ -694,7 +755,7 @@ const knowledgeEdges = Object.freeze([
   Object.freeze({
     from: "doc.mc001_1_2006_annex_a9_6",
     to: "concept.direct_diffuse_solar_irradiation",
-    relation: "expected_source_for"
+    relation: "defines_diffuse_lookup_rows"
   }),
   Object.freeze({
     from: "doc.mc001_1_2006_annex_a9_6",
@@ -750,7 +811,7 @@ function acquisitionDocumentId(designation) {
 }
 
 function acquisitionPriority(designation) {
-  if (designation === "Mc001/1-2006 Anexa nr. A9.6") return "HIGH";
+  if (designation === "Mc001/1-2006 Anexa nr. A9.6") return "RESOLVED";
   if (designation === "Mc001/6-2013") return "MEDIUM";
   return "MEDIUM";
 }
@@ -765,7 +826,7 @@ const acquisitionPlanner = ROMANIAN_CLIMATE_ACQUISITION_LIST.map(item => ({
   calculationsUnlocked: item.affectedMc001Calculations,
   estimatedImplementationEffort:
     item.designation === "Mc001/1-2006 Anexa nr. A9.6"
-      ? "HIGH: source-pack extraction, OCR/visual QA, row-level provenance, schema migration and five-domain runtime fixtures."
+      ? "COMPLETE: source-pack extraction, OCR/visual QA, row-level provenance, provider integration and deterministic registry tests are included in P5B3."
       : item.designation === "Mc001/6-2013"
       ? "MEDIUM: remaining non-ingested tables or hourly annexes require the same source-pack QA if product-scoped."
       : "MEDIUM: licensed algorithm extraction, preprocessing tests and ingestion pipeline integration.",
@@ -798,17 +859,6 @@ const futureImplementationPackages = Object.freeze([
     reportImpact: "locality/station/zone mapping source section",
     expectedTests: Object.freeze(["locality lookup", "override diagnostics", "fingerprint sensitivity"]),
     expectedPullRequestScope: "registry extraction, normalization, lookup service and UI binding"
-  }),
-  Object.freeze({
-    packageId: "pkg.ro_monthly_solar_irradiation",
-    title: "Monthly solar irradiation profiles",
-    dependsOnTbdIds: Object.freeze(["tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"]),
-    runtimeImpact: "source-backed solar gains and orientation diagnostics",
-    uiImpact: "orientation/plane irradiation selection and inspector values",
-    notebookImpact: "transparent/opaque solar gain substitutions",
-    reportImpact: "orientation-dependent solar table",
-    expectedTests: Object.freeze(["orientation coverage", "invalid orientation rejection", "solar gain direction"]),
-    expectedPullRequestScope: "solar source-pack extraction, profile schema extension and fixtures"
   }),
   Object.freeze({
     packageId: "pkg.ro_cooling_ventilation_design_climate",

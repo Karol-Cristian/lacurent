@@ -1,0 +1,850 @@
+{
+  "schema": "romanian_climate_infrastructure_audit_p5c_v1",
+  "generatedBy": "tools/generate-romanian-climate-infrastructure-audit.mjs",
+  "generatedAt": "deterministic_static_generation",
+  "objective": "Complete Romanian production climate infrastructure using only source-backed normative data available in the repository.",
+  "documents": [
+    {
+      "documentId": "mc001_2022",
+      "title": "Metodologia de calcul al performantei energetice a cladirilor, MC001-2022",
+      "edition": "2022",
+      "file": {
+        "path": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+        "present": true,
+        "sizeBytes": 10068926,
+        "sha256": "2a7515497cbe099e773b94ed3ef08cf7996fa70fe7c47e032b03781c9b28fd61",
+        "expectedSha256": null,
+        "hashMatchesExpected": null
+      },
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "sourcePack": "validation-reference/mc001-subchapter-coverage.json",
+      "notes": [
+        "Chapter 2/3 formula and heading audit is generated separately.",
+        "Climate-zone identifiers, winter design-temperature legend and zone-dependent tables are implemented."
+      ]
+    },
+    {
+      "documentId": "mc001_6_2013",
+      "title": "Metodologie de calcul al performantei energetice a cladirilor. Partea a VI-a - Parametrii climatici necesari determinarii performantei energetice a cladirilor noi si existente, dimensionarii instalatiilor de climatizare a cladirilor si dimensionarii higrotermice a elementelor de anvelopa ale cladirilor",
+      "edition": "2013",
+      "file": {
+        "path": "docs/normative/MC001-6-2013-parametrii-climatici.pdf",
+        "present": true,
+        "sizeBytes": 18647019,
+        "sha256": "74a67f87ae9da467ed76973e80b1002531d17b6532dcca26ece950ca5792c5b5",
+        "expectedSha256": "74a67f87ae9da467ed76973e80b1002531d17b6532dcca26ece950ca5792c5b5",
+        "hashMatchesExpected": true
+      },
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "sourcePack": "validation-reference/source-packs/mc001-6-2013-climate-extract.json",
+      "notes": [
+        "Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2 are source-packed.",
+        "The official PDF hash matches the immutable source-pack source identity."
+      ]
+    },
+    {
+      "documentId": "mc001_1_2_3_2006_annex_a9_6",
+      "title": "Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2-3/2006",
+      "edition": "2006",
+      "file": {
+        "path": "docs/normative/MC001-1-2-3-2006-anexa-a9-6-solar.pdf",
+        "present": true,
+        "sizeBytes": 54849536,
+        "sha256": "7393e5b789700e7e13ccf7d9591d9d7be7260d45554292972a0ccb5e40946fa4",
+        "expectedSha256": "e136e0fc961701aa033f5ff5194c6f3708fc5390cdf25a5c30c1b76371f5e4df",
+        "hashMatchesExpected": false
+      },
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "sourcePack": "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
+      "notes": [
+        "Anexa A.9.6 source rows are canonical provider data.",
+        "A.9.6 W/m2 rows are not fed directly into Chapter 2 Qsol without source-backed preprocessing.",
+        "The downloaded full official PDF identity and the historical extraction source identity are both recorded; dataset checksums validate the extracted A.9.6 values."
+      ]
+    },
+    {
+      "documentId": "sr_en_iso_52010_1",
+      "title": "SR EN ISO 52010-1 Performanta energetica a cladirilor. Conditii climatice exterioare",
+      "edition": "not bundled in repository",
+      "file": null,
+      "present": false,
+      "extracted": false,
+      "implemented": false,
+      "validated": false,
+      "sourcePack": null,
+      "notes": [
+        "Required only for source-backed preprocessing from A.9.6 W/m2 rows to Hsol/Qsky-compatible runtime inputs.",
+        "Do not invent this preprocessing chain."
+      ]
+    },
+    {
+      "documentId": "official_locality_to_climate_wind_zone_registry",
+      "title": "Official Romanian locality/county to climate-zone and wind-zone assignment registry",
+      "edition": "not reproduced in MC001-2022 or MC001/6-2013 ingested sources",
+      "file": null,
+      "present": false,
+      "extracted": false,
+      "implemented": false,
+      "validated": false,
+      "sourcePack": null,
+      "notes": [
+        "MC001/6-2013 provides locality/station rows for climate parameters, not automatic zone assignment.",
+        "Runtime requires explicit zone selection until an official mapping source is acquired."
+      ]
+    },
+    {
+      "documentId": "degree_day_dataset",
+      "title": "Romanian degree-day dataset, if a degree-day method is explicitly selected",
+      "edition": "not reproduced in the ingested MC001 sources",
+      "file": null,
+      "present": false,
+      "extracted": false,
+      "implemented": false,
+      "validated": false,
+      "sourcePack": null,
+      "notes": [
+        "Current production uses monthly MC001 calculations.",
+        "No degree-day values are fabricated."
+      ]
+    }
+  ],
+  "sourcePacks": {
+    "mc001_6_2013": {
+      "schema": "mc001_6_2013_climate_extract_v1",
+      "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+      "sourceDocumentSha256": "74a67f87ae9da467ed76973e80b1002531d17b6532dcca26ece950ca5792c5b5",
+      "tables": {
+        "monthlyExteriorTemperature": {
+          "rowCount": 42,
+          "checksum": null
+        },
+        "monthlyRelativeHumidity": {
+          "rowCount": 42,
+          "checksum": null
+        },
+        "winterDesignDayTemperature": {
+          "rowCount": 41,
+          "checksum": null
+        },
+        "winterDesignPentadTemperature": {
+          "rowCount": 41,
+          "checksum": null
+        },
+        "summerDesignDayTemperature": {
+          "rowCount": 41,
+          "checksum": null
+        },
+        "summerDesignPentadTemperature": {
+          "rowCount": 41,
+          "checksum": null
+        }
+      }
+    },
+    "mc001_1_2006_annex_a9_6": {
+      "schema": "mc001_1_2006_annex_a9_6_solar_extract_v1",
+      "datasetVersion": "mc001_1_2006_annex_a9_6_solar_p5b3_v1",
+      "sourceDocumentSha256": "e136e0fc961701aa033f5ff5194c6f3708fc5390cdf25a5c30c1b76371f5e4df",
+      "rows": 30,
+      "cellCount": 3960,
+      "reviewedCells": 165,
+      "checksum": "937b9b0849b007ab3b40280d4d8780e3d2779ff014cf02809ffdf0ece3aa782c"
+    }
+  },
+  "datasetCoverage": [
+    {
+      "datasetId": "climate_zones_i_v",
+      "sourceDocument": "mc001_2022",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 5,
+      "runtimeUse": "zone-dependent requirements and winter design-temperature by zone"
+    },
+    {
+      "datasetId": "wind_zones_i_iv",
+      "sourceDocument": "mc001_2022",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 4,
+      "runtimeUse": "canonical metadata; no active Chapter 2/3 formula consumes wind-zone parameters yet"
+    },
+    {
+      "datasetId": "mc001_6_2013_locality_station_registry",
+      "sourceDocument": "mc001_6_2013",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 42,
+      "checksum": "323953b2dab8194db7ea46f7ba77bd09bd92dee622977af9c53ec0dcdde46b3f",
+      "runtimeUse": "locality to MC001/6-2013 station selection"
+    },
+    {
+      "datasetId": "mc001_6_2013_monthly_exterior_temperature",
+      "sourceDocument": "mc001_6_2013",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 42,
+      "monthlyCardinality": 12,
+      "checksum": "63cf017a3a3a3746832e2bad6b3950ba7ffeda2da998d5563d95d021511c59d8",
+      "runtimeUse": "monthly transmission and ventilation climate input eligibility"
+    },
+    {
+      "datasetId": "mc001_6_2013_monthly_relative_humidity",
+      "sourceDocument": "mc001_6_2013",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 42,
+      "monthlyCardinality": 12,
+      "checksum": "d968473aded26ca5de8302c2c40719e710d35e0aa529a7e2f94d91d69206e454",
+      "runtimeUse": "climate profile traceability and humidity-dependent future methods"
+    },
+    {
+      "datasetId": "mc001_6_2013_winter_design_day_temperature",
+      "sourceDocument": "mc001_6_2013",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 41,
+      "checksum": "3b61ffdb6284d86ce82a2c29c0c0f690d609918dee3abe5623ffe7ceec85ad93",
+      "runtimeUse": "heating design climate profile field"
+    },
+    {
+      "datasetId": "mc001_6_2013_winter_design_pentad_temperature",
+      "sourceDocument": "mc001_6_2013",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 41,
+      "checksum": "547582c4f2e951347e85fca9ebd5ce5d022067d674233f9a4931cc8a5c7b7589",
+      "runtimeUse": "heating design climate profile field"
+    },
+    {
+      "datasetId": "mc001_6_2013_summer_design_day_temperature",
+      "sourceDocument": "mc001_6_2013",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 41,
+      "checksum": "489a84878f32f875568fb42b1538252ab4ff50178d2c8dd010b714d2e4ae9e99",
+      "runtimeUse": "cooling/ventilation design climate profile field"
+    },
+    {
+      "datasetId": "mc001_6_2013_summer_design_pentad_temperature",
+      "sourceDocument": "mc001_6_2013",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 41,
+      "checksum": "d5bedb9083b1f991c08d7ca377a40d891526e8120863367c3bee0b96deb16d9f",
+      "runtimeUse": "cooling/ventilation design climate profile field"
+    },
+    {
+      "datasetId": "mc001_1_2006_annex_a9_6_monthly_solar_irradiance",
+      "sourceDocument": "mc001_1_2_3_2006_annex_a9_6",
+      "present": true,
+      "extracted": true,
+      "implemented": true,
+      "validated": true,
+      "recordCount": 30,
+      "monthlyCardinality": 12,
+      "cellCount": 3960,
+      "checksum": "937b9b0849b007ab3b40280d4d8780e3d2779ff014cf02809ffdf0ece3aa782c",
+      "runtimeUse": "source-backed solar irradiance identity; Qsol remains bounded by preprocessing dependency"
+    },
+    {
+      "datasetId": "source_backed_qsol_preprocessing",
+      "sourceDocument": "sr_en_iso_52010_1",
+      "present": false,
+      "extracted": false,
+      "implemented": false,
+      "validated": false,
+      "recordCount": 0,
+      "runtimeUse": "blocked source-backed conversion from A.9.6 W/m2 source rows to MC001 Hsol/Qsky inputs"
+    }
+  ],
+  "productionRegistry": {
+    "supportedLocalityStationMappings": 42,
+    "normativeStationCount": 42,
+    "solarIrradiationLocalityCount": 30,
+    "representativeProfiles": [
+      {
+        "localityId": "ro_bucuresti",
+        "localityName": "Bucuresti",
+        "stationId": "mc001_6_2013_bucuresti",
+        "status": "ready_with_bounded_gaps",
+        "coverage": {
+          "availableFieldCount": 12,
+          "boundedFieldCount": 3,
+          "monthlyRecordCount": 12,
+          "hasMonthlyExteriorTemperature": true,
+          "hasMonthlyRelativeHumidity": true,
+          "hasMonthlySolarIrradianceSourceRows": true,
+          "hasSourceBackedSolarGainPreprocessing": false,
+          "hasWinterDesignDay": true,
+          "hasSummerDesignDay": true
+        },
+        "boundedFieldIds": [
+          "source_backed_solar_gains_preprocessing",
+          "degree_days",
+          "sky_radiation_inputs"
+        ]
+      },
+      {
+        "localityId": "ro_cluj_napoca",
+        "localityName": "Cluj-Napoca",
+        "stationId": "mc001_6_2013_cluj_napoca",
+        "status": "ready_with_bounded_gaps",
+        "coverage": {
+          "availableFieldCount": 12,
+          "boundedFieldCount": 3,
+          "monthlyRecordCount": 12,
+          "hasMonthlyExteriorTemperature": true,
+          "hasMonthlyRelativeHumidity": true,
+          "hasMonthlySolarIrradianceSourceRows": true,
+          "hasSourceBackedSolarGainPreprocessing": false,
+          "hasWinterDesignDay": true,
+          "hasSummerDesignDay": true
+        },
+        "boundedFieldIds": [
+          "source_backed_solar_gains_preprocessing",
+          "degree_days",
+          "sky_radiation_inputs"
+        ]
+      },
+      {
+        "localityId": "ro_iasi",
+        "localityName": "Iasi",
+        "stationId": "mc001_6_2013_iasi",
+        "status": "ready_with_bounded_gaps",
+        "coverage": {
+          "availableFieldCount": 12,
+          "boundedFieldCount": 3,
+          "monthlyRecordCount": 12,
+          "hasMonthlyExteriorTemperature": true,
+          "hasMonthlyRelativeHumidity": true,
+          "hasMonthlySolarIrradianceSourceRows": true,
+          "hasSourceBackedSolarGainPreprocessing": false,
+          "hasWinterDesignDay": true,
+          "hasSummerDesignDay": true
+        },
+        "boundedFieldIds": [
+          "source_backed_solar_gains_preprocessing",
+          "degree_days",
+          "sky_radiation_inputs"
+        ]
+      },
+      {
+        "localityId": "ro_timisoara",
+        "localityName": "Timisoara",
+        "stationId": "mc001_6_2013_timisoara",
+        "status": "ready_with_bounded_gaps",
+        "coverage": {
+          "availableFieldCount": 12,
+          "boundedFieldCount": 3,
+          "monthlyRecordCount": 12,
+          "hasMonthlyExteriorTemperature": true,
+          "hasMonthlyRelativeHumidity": true,
+          "hasMonthlySolarIrradianceSourceRows": true,
+          "hasSourceBackedSolarGainPreprocessing": false,
+          "hasWinterDesignDay": true,
+          "hasSummerDesignDay": true
+        },
+        "boundedFieldIds": [
+          "source_backed_solar_gains_preprocessing",
+          "degree_days",
+          "sky_radiation_inputs"
+        ]
+      },
+      {
+        "localityId": "ro_constanta",
+        "localityName": "Constanta",
+        "stationId": "mc001_6_2013_constanta",
+        "status": "ready_with_bounded_gaps",
+        "coverage": {
+          "availableFieldCount": 12,
+          "boundedFieldCount": 3,
+          "monthlyRecordCount": 12,
+          "hasMonthlyExteriorTemperature": true,
+          "hasMonthlyRelativeHumidity": true,
+          "hasMonthlySolarIrradianceSourceRows": true,
+          "hasSourceBackedSolarGainPreprocessing": false,
+          "hasWinterDesignDay": true,
+          "hasSummerDesignDay": true
+        },
+        "boundedFieldIds": [
+          "source_backed_solar_gains_preprocessing",
+          "degree_days",
+          "sky_radiation_inputs"
+        ]
+      },
+      {
+        "localityId": "ro_brasov",
+        "localityName": "Brasov",
+        "stationId": "mc001_6_2013_brasov",
+        "status": "ready_with_bounded_gaps",
+        "coverage": {
+          "availableFieldCount": 11,
+          "boundedFieldCount": 3,
+          "monthlyRecordCount": 12,
+          "hasMonthlyExteriorTemperature": true,
+          "hasMonthlyRelativeHumidity": true,
+          "hasMonthlySolarIrradianceSourceRows": false,
+          "hasSourceBackedSolarGainPreprocessing": false,
+          "hasWinterDesignDay": true,
+          "hasSummerDesignDay": true
+        },
+        "boundedFieldIds": [
+          "source_backed_solar_gains_preprocessing",
+          "degree_days",
+          "sky_radiation_inputs"
+        ]
+      }
+    ],
+    "datasetStatus": "NORMATIVE_DATASET"
+  },
+  "runtimeRequirementMatrix": [
+    {
+      "calculationId": "climate_zone_threshold_lookup",
+      "label": "MC001 zone-dependent thresholds and solar-factor recommendations",
+      "requires": [
+        "climateZone"
+      ],
+      "outputDomains": [
+        "solar_factor_recommendation",
+        "nzeb_limit_lookup",
+        "renovation_limit_lookup"
+      ],
+      "eligibleWhen": "valid climate zone I-V is selected",
+      "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+    },
+    {
+      "calculationId": "winter_design_temperature_lookup",
+      "label": "Winter exterior design temperature by climate zone",
+      "requires": [
+        "climateZone"
+      ],
+      "outputDomains": [
+        "heating_design_temperature"
+      ],
+      "eligibleWhen": "valid climate zone I-V is selected",
+      "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+    },
+    {
+      "calculationId": "chapter2_monthly_transmission_ventilation",
+      "label": "Chapter 2 monthly transmission and ventilation transfer",
+      "requires": [
+        "monthlyExteriorTemperatures",
+        "monthDurations"
+      ],
+      "outputDomains": [
+        "Qtr",
+        "Qve",
+        "QHnd",
+        "QCnd"
+      ],
+      "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+      "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+    },
+    {
+      "calculationId": "chapter2_solar_source_dataset_identity",
+      "label": "A.9.6 solar source dataset traceability",
+      "requires": [
+        "monthlySolarIrradianceSourceRows"
+      ],
+      "outputDomains": [
+        "climate_dataset_traceability",
+        "notebook_report_solar_source_rows"
+      ],
+      "eligibleWhen": "selected MC001/6-2013 station/locality has a matching Mc001/1-2-3/2006 Anexa A.9.6 source row",
+      "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
+      "currentRuntimeUse": "source-backed provider/notebook/report dataset only; not a direct Qsol runtime input"
+    },
+    {
+      "calculationId": "chapter2_solar_gains",
+      "label": "Chapter 2 solar gains",
+      "requires": [
+        "preprocessedSolarIrradiationHsolOrExplicitSolarGains"
+      ],
+      "outputDomains": [
+        "Qsol",
+        "QHgn",
+        "QCgn",
+        "QHnd",
+        "QCnd"
+      ],
+      "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
+      "missingDiagnostic": "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+    },
+    {
+      "calculationId": "cooling_ventilation_design_conditions",
+      "label": "Cooling and ventilation design climate",
+      "requires": [
+        "coolingDesignTemperature",
+        "coolingDesignHumidity"
+      ],
+      "outputDomains": [
+        "design_diagnostics"
+      ],
+      "eligibleWhen": "source-backed station/locality design data are present",
+      "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+    },
+    {
+      "calculationId": "degree_day_method",
+      "label": "Degree-day method",
+      "requires": [
+        "degreeDays",
+        "baseTemperature"
+      ],
+      "outputDomains": [
+        "degree_day_result"
+      ],
+      "eligibleWhen": "only if a degree-day calculation path is explicitly selected and sourced",
+      "missingDiagnostic": "DEGREE_DAY_DATA_REQUIRED",
+      "currentRuntimeUse": "not_required_by_current_monthly_chapter2_3_runtime"
+    }
+  ],
+  "dataDomains": [
+    {
+      "domainId": "climate_zone_classification",
+      "label": "Climate-zone classification",
+      "zones": [
+        "I",
+        "II",
+        "III",
+        "IV",
+        "V"
+      ],
+      "status": "NORMATIVE_DATASET",
+      "purpose": "zone-dependent MC001 limits and winter design-temperature identity",
+      "sourceReferences": [
+        "MC001-2022, Figura 2.1",
+        "MC001-2022, Tabel 2.5",
+        "MC001-2022, Tabel 2.8",
+        "MC001-2022, Tabel 2.10a",
+        "MC001-2022, Tabel 2.10b"
+      ]
+    },
+    {
+      "domainId": "wind_zone_classification",
+      "label": "Wind-zone classification",
+      "zones": [
+        "I",
+        "II",
+        "III",
+        "IV"
+      ],
+      "status": "NORMATIVE_DATASET",
+      "purpose": "canonical metadata and future wind-dependent climate/runtime inputs",
+      "sourceReferences": [
+        "MC001-2022 certificate and audit forms list wind zones I-IV"
+      ],
+      "currentRuntimeParameters": []
+    },
+    {
+      "domainId": "locality_station_mapping",
+      "label": "Locality to MC001/6-2013 climate-parameter station mapping",
+      "status": "NORMATIVE_DATASET",
+      "purpose": "selection of the source-backed MC001/6-2013 station/locality row for monthly and design-day climate parameters",
+      "requiredResolution": "42 MC001/6-2013 localities/stations",
+      "implementedDataset": "mc001_6_2013_locality_registry",
+      "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+      "sourceDocument": "mc001_6_2013"
+    },
+    {
+      "domainId": "locality_assignment",
+      "label": "Locality assignment",
+      "status": "DATASET_UNAVAILABLE",
+      "purpose": "automatic locality/county to climate-zone and wind-zone assignment; not the same as locality-to-station selection",
+      "requiredResolution": "locality/county to climate zone and wind zone",
+      "delegatedSource": "not reproduced in the ingested MC001-2022 or MC001/6-2013 tables",
+      "presentInRepository": false,
+      "sourceBackedLocalityStationMappingAvailable": true
+    },
+    {
+      "domainId": "monthly_energy_climate_data",
+      "label": "Monthly energy climate data",
+      "status": "NORMATIVE_DATASET",
+      "purpose": "monthly transmission, ventilation, heat gains and useful demand",
+      "requiredResolution": "twelve monthly exterior temperatures plus solar irradiation by required orientation/plane",
+      "delegatedSource": "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; Mc001/6-2013 references solar irradiation to Mc001/1-2006 Anexa nr. A9.6; preprocessing rules are in SR EN ISO 52010-1",
+      "presentInRepository": true,
+      "availableDatasets": [
+        "monthly exterior temperature: Mc001/6-2013 Tabel II.1",
+        "monthly relative humidity: Mc001/6-2013 Tabel II.2",
+        "monthly mean daily solar irradiance source rows: Mc001/1-2-3/2006 Anexa A.9.6"
+      ],
+      "runtimePreprocessingStatus": "SR_EN_ISO_52010_1_PREPROCESSING_REQUIRED_FOR_SOURCE_BACKED_QSOL",
+      "missingDatasets": [
+        "preprocessed Hsol;wi;m/Hsol;k;m monthly irradiation in kWh/m2 for MC001 relations 2.39 and 2.50",
+        "source-backed Qsky inputs where the selected solar-gain path uses MC001 relation 2.54"
+      ],
+      "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1+mc001_1_2006_annex_a9_6_solar_p5b3_v1",
+      "solarLocalityCount": 30
+    },
+    {
+      "domainId": "heating_design_climate",
+      "label": "Heating design climate",
+      "status": "NORMATIVE_DATASET",
+      "purpose": "winter design-temperature identity by climate zone",
+      "requiredResolution": "climate zone for zone value; MC001/6-2013 station/locality for winter design day",
+      "implementedDataset": "mc001_2022_figure_2_1_winter_design_temperature_by_zone",
+      "availableDatasets": [
+        "winter exterior design temperature by zone: MC001-2022 Figura 2.1",
+        "winter design day hourly temperature by station: Mc001/6-2013 Tabel III.1",
+        "winter design pentad temperature by station: Mc001/6-2013 Tabel III.2"
+      ]
+    },
+    {
+      "domainId": "cooling_ventilation_design_climate",
+      "label": "Cooling and ventilation design climate",
+      "status": "DATASET_UNAVAILABLE",
+      "purpose": "cooling/ventilation design parameters and humidity conditions",
+      "requiredResolution": "station/locality design day and associated humidity/radiation fields",
+      "delegatedSource": "Mc001/6-2013, Capitolul IV",
+      "availableDatasets": [
+        "summer design day hourly temperature by station: Mc001/6-2013 Tabel IV.1",
+        "summer design pentad temperature by station: Mc001/6-2013 Tabel IV.2"
+      ],
+      "missingDatasets": [
+        "complete cooling/ventilation humidity or radiation fields when required by a selected design method"
+      ]
+    },
+    {
+      "domainId": "degree_day_data",
+      "label": "Degree-day data",
+      "status": "DATASET_UNAVAILABLE",
+      "purpose": "only for degree-day calculation paths; the current production runtime uses monthly MC001 Chapter 2/3 chains",
+      "requiredResolution": "locality/station, base temperature and period",
+      "directMc0012022Requirement": false
+    }
+  ],
+  "normativeDependencies": [
+    {
+      "dependencyId": "mc001_6_2013_climate_parameters_volume",
+      "datasetName": "Mc001/6-2013 Parametrii climatici necesari determinarii performantei energetice",
+      "runtimePurpose": "canonical source for Romanian climate parameters delegated by MC001-2022 Anexa D",
+      "mc001Section": "MC001-2022 Anexa D, pagina Monitorul Oficial 597",
+      "requiredResolution": "hourly representative years for 9 localities, monthly mean parameters for 42 localities, solar data for 30 localities, winter/summer design days",
+      "exactExternalDocument": "Mc001/6-2013, Partea a VI-a, approved by MDRAP Order 2210/26.06.2013",
+      "edition": "2013",
+      "clauseTableAnnex": "Capitolul II Tabel II.1/II.2; Capitolul III Figura III.1/Tabel III.1/Tabel III.2; Capitolul IV Tabel IV.1/IV.2; Capitolul V; Anexa A9.6",
+      "availability": "public_official_mdlpa_pdf_identified",
+      "officialUrl": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
+      "presentInRepository": true,
+      "sourceDocumentChecksum": "74a67f87ae9da467ed76973e80b1002531d17b6532dcca26ece950ca5792c5b5",
+      "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1",
+      "datasetChecksums": {
+        "localityRegistry": "323953b2dab8194db7ea46f7ba77bd09bd92dee622977af9c53ec0dcdde46b3f",
+        "climateStations": "cb55e2b71c6c3b66bff178ffa9e917d531a5dccd4159d8b46c6769afdedf5258",
+        "monthlyExteriorTemperature": "63cf017a3a3a3746832e2bad6b3950ba7ffeda2da998d5563d95d021511c59d8",
+        "monthlyRelativeHumidity": "d968473aded26ca5de8302c2c40719e710d35e0aa529a7e2f94d91d69206e454",
+        "winterDesignDayTemperature": "3b61ffdb6284d86ce82a2c29c0c0f690d609918dee3abe5623ffe7ceec85ad93",
+        "winterDesignPentadTemperature": "547582c4f2e951347e85fca9ebd5ce5d022067d674233f9a4931cc8a5c7b7589",
+        "summerDesignDayTemperature": "489a84878f32f875568fb42b1538252ab4ff50178d2c8dd010b714d2e4ae9e99",
+        "summerDesignPentadTemperature": "d5bedb9083b1f991c08d7ca377a40d891526e8120863367c3bee0b96deb16d9f"
+      },
+      "implementationStatus": "source_packed_ingestion_complete_for_selected_tables",
+      "acquisitionStatus": "official PDF source-pack extracted for Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; delegated monthly solar irradiation is fulfilled by the separate Mc001/1-2-3/2006 Anexa A.9.6 source pack",
+      "calculationsAffected": [
+        "locality to climate-parameter station selection",
+        "monthly exterior temperatures",
+        "monthly solar irradiation",
+        "heating design climate",
+        "cooling and ventilation design climate"
+      ],
+      "prohibitedSubstitute": "Do not infer locality assignment from latitude/GIS, weather sites, technical examples, or climate-zone label alone.",
+      "remediationAction": "Use the ingested table registries for station-backed temperature/design-day data and the Mc001/1-2-3/2006 A.9.6 source pack for source-backed solar profiles where a selected locality is covered."
+    },
+    {
+      "dependencyId": "mc001_1_2006_annex_a9_6_monthly_solar_irradiation",
+      "datasetName": "Mc001/1-2-3/2006 Anexa A.9.6 monthly mean daily solar irradiance for 30 localities",
+      "runtimePurpose": "canonical source rows for monthly total/diffuse solar irradiance; not a direct replacement for preprocessed Hsol/Qsky inputs",
+      "mc001Section": "Mc001/6-2013 Capitolul II.3, referenced by MC001-2022 Anexa D climate-parameter chain",
+      "requiredResolution": "monthly solar irradiation for 30 localities with the orientations/planes reproduced by Anexa nr. A9.6",
+      "exactExternalDocument": "Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2-3/2006, Anexa A.9.6",
+      "edition": "2006",
+      "clauseTableAnnex": "Anexa A.9.6, PDF pages 119-129",
+      "availability": "public_official_mdlpa_pdf_identified_and_source_packed",
+      "officialUrl": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_1_2_3_2006.pdf",
+      "presentInRepository": true,
+      "sourceDocumentChecksum": "e136e0fc961701aa033f5ff5194c6f3708fc5390cdf25a5c30c1b76371f5e4df",
+      "datasetVersion": "mc001_1_2006_annex_a9_6_solar_p5b3_v1",
+      "datasetChecksums": {
+        "localityRegistry": "5f9929a086c18f3900e91dcdd3e14d81d572de736fb37aa58ed60f0127cea62c",
+        "monthlySolarIrradianceRows": "937b9b0849b007ab3b40280d4d8780e3d2779ff014cf02809ffdf0ece3aa782c",
+        "rowDefinitions": "51ffad7365fe750b33998b40a9cf15029a4e54efe01df0454dc3a1995b1d8c00"
+      },
+      "implementationStatus": "source_packed_ingestion_complete",
+      "acquisitionStatus": "official MDLPA source downloaded, rendered and extracted; immutable source pack records 30 locality tables, 3960 cells and cell-level QA",
+      "calculationsAffected": [
+        "monthly solar irradiation source traceability",
+        "future source-backed Hsol preprocessing",
+        "transparent solar gains only after preprocessing/input boundary is satisfied",
+        "opaque solar gains only after preprocessing/input boundary is satisfied",
+        "cooling and heating demand only after Qsol is available"
+      ],
+      "prohibitedSubstitute": "Do not substitute weather-site irradiation, GIS estimates or synthetic orientation tables for Anexa nr. A9.6.",
+      "remediationAction": "No acquisition action remains for A.9.6. Do not feed A.9.6 W/m2 source rows directly into Chapter 2 Qsol; source-backed runtime solar gains still require preprocessed Hsol [kWh/m2] and Qsky inputs from the delegated preprocessing/source contract."
+    },
+    {
+      "dependencyId": "sr_en_iso_52010_1_climate_preprocessing",
+      "datasetName": "SR EN ISO 52010-1 climate data preprocessing rules",
+      "runtimePurpose": "preprocessing rules for external climatic data used by EPB calculations",
+      "mc001Section": "MC001-2022 Tabel 1.3 row 13 and Anexa D final paragraph",
+      "requiredResolution": "algorithmic preprocessing standard, not a Romanian station-value dataset; required before A.9.6 W/m2 rows can become source-backed Hsol [kWh/m2] runtime inputs",
+      "exactExternalDocument": "SR EN ISO 52010-1, Performanta energetica a cladirilor. Conditii climatice exterioare. Partea 1",
+      "edition": "edition not bundled in repository",
+      "clauseTableAnnex": "M1-13 preprocessing rules; exact clauses require owned standard",
+      "availability": "paid_or_controlled_standard_metadata_only",
+      "presentInRepository": false,
+      "implementationStatus": "external_standard_dependency",
+      "acquisitionStatus": "obtain licensed project copy before implementing preprocessing algorithms not reproduced by MC001",
+      "calculationsAffected": [
+        "preprocessed representative climate datasets",
+        "conversion/quality rules for climate sequences",
+        "conversion or validation of A.9.6 mean daily W/m2 rows into monthly Hsol [kWh/m2] where selected by the runtime",
+        "source-backed transparent and opaque solar gains in MC001 relations 2.39 and 2.50",
+        "source-backed QHnd/QCnd effect of solar gains"
+      ],
+      "prohibitedSubstitute": "Do not implement preprocessing algorithms from secondary summaries.",
+      "remediationAction": "Acquire SR EN ISO 52010-1 and encode only clauses required by MC001 data ingestion and solar-gain preprocessing. Until then, Chapter 2 keeps using explicit/preprocessed monthly Qsol or certified professional input."
+    },
+    {
+      "dependencyId": "sr_1907_1_2_4839_6648_reviewed_not_direct_mc0012022_dependency",
+      "datasetName": "SR 1907-1/2, SR 4839, SR 6648-1/2 reviewed relevance",
+      "runtimePurpose": "documents named in project request; not a direct MC001-2022 dependency found in the official PDF text",
+      "mc001Section": "No direct MC001-2022 reference found in the official PDF; Anexa D points to Mc001/6-2013 instead",
+      "requiredResolution": "not applicable unless the source-pack chain proves a direct dependency",
+      "exactExternalDocument": "SR 1907-1, SR 1907-2, SR 4839, SR 6648-1, SR 6648-2",
+      "edition": "various; exact edition to be confirmed only if required by a source chain",
+      "clauseTableAnnex": "not identified as directly required by MC001-2022",
+      "availability": "ASRO/standard metadata; not present in repository",
+      "presentInRepository": false,
+      "implementationStatus": "reviewed_not_direct_runtime_dependency",
+      "acquisitionStatus": "do not acquire for this runtime until MC001/6-2013 source-pack extraction proves a required underlying table/algorithm",
+      "calculationsAffected": [],
+      "prohibitedSubstitute": "Do not cite these standards as required unless a direct MC001 or MC001/6-2013 dependency is recorded.",
+      "remediationAction": "Keep under reviewed-not-required list; revisit during MC001/6-2013 extraction if a direct chain appears."
+    }
+  ],
+  "acquisitionPlan": [
+    {
+      "designation": "Mc001/6-2013",
+      "edition": "2013",
+      "expectedDataset": "Romanian climate parameters: monthly temperature/humidity and winter/summer design-day temperatures already source-packed for the visible tables; other referenced annexes may require separate acquisition",
+      "affectedMc001Calculations": [
+        "2.6.2.1",
+        "2.6.2.3",
+        "2.7.1.1",
+        "2.7.1.2",
+        "2.7.3",
+        "2.7.4",
+        "Chapter 3 AHU/cooling/solar-dependent installation calculations when climate inputs are used"
+      ],
+      "requiredFor": [
+        "locality mapping",
+        "design temperature",
+        "monthly temperature",
+        "cooling/ventilation design"
+      ],
+      "substituteOwnedByProject": "official MDLPA PDF source pack ingested for Tabel II.1, II.2, III.1 and IV.1"
+    },
+    {
+      "designation": "Mc001/1-2006 Anexa nr. A9.6",
+      "edition": "2006",
+      "expectedDataset": "monthly mean daily solar irradiance source rows for 30 localities referenced by Mc001/6-2013 Capitolul II.3",
+      "affectedMc001Calculations": [
+        "2.7.1.1",
+        "2.7.1.2",
+        "2.7.3",
+        "2.7.4",
+        "Chapter 3 cooling and solar-affected installation chains when solar inputs are required"
+      ],
+      "requiredFor": [
+        "solar irradiation"
+      ],
+      "substituteOwnedByProject": "official source pack integrated as mc001_1_2006_annex_a9_6_solar_p5b3_v1"
+    },
+    {
+      "designation": "SR EN ISO 52010-1",
+      "edition": "not bundled",
+      "expectedDataset": "preprocessing rules for climate data, including the legally source-backed bridge from A.9.6 W/m2 source rows to Hsol [kWh/m2] when used by MC001 2.39/2.50",
+      "affectedMc001Calculations": [
+        "validated preprocessing of external climate sequences before use in monthly/hourly EPB calculations",
+        "source-backed transparent solar gains relation 2.39",
+        "source-backed opaque solar gains relation 2.50",
+        "source-backed QHnd/QCnd effect of Qsol"
+      ],
+      "requiredFor": [
+        "monthly temperature",
+        "solar irradiation",
+        "cooling/ventilation design"
+      ],
+      "substituteOwnedByProject": "none"
+    }
+  ],
+  "boundedGaps": [
+    {
+      "gapId": "source_backed_solar_gains_preprocessing",
+      "exactMissingDocument": "SR EN ISO 52010-1",
+      "exactMissingChapterOrTable": "M1-13 preprocessing clauses/tables required by MC001-2022 Tabel 1.3 and Anexa D",
+      "blockedRuntimeCalculation": "source-backed Qsol from Annex A.9.6 rows, and QHnd/QCnd solar effect from that source-backed Qsol",
+      "reasonImplementationCannotContinue": "A.9.6 rows are W/m2 monthly mean daily irradiance; MC001 relations 2.39/2.50 consume Hsol [kWh/m2] and Qsky-compatible values. No repository source supplies the deterministic preprocessing relation."
+    },
+    {
+      "gapId": "automatic_locality_to_climate_zone_assignment",
+      "exactMissingDocument": "official locality/county to MC001 climate-zone assignment source",
+      "exactMissingChapterOrTable": "map/list behind MC001-2022 Figura 2.1 at locality or county resolution",
+      "blockedRuntimeCalculation": "automatic zone assignment; zone-dependent lookups still run with explicit zone selection",
+      "reasonImplementationCannotContinue": "MC001/6-2013 station rows do not encode climate zone. Inferring from geography would invent normative data."
+    },
+    {
+      "gapId": "automatic_locality_to_wind_zone_assignment",
+      "exactMissingDocument": "official locality/county to wind-zone assignment source",
+      "exactMissingChapterOrTable": "wind-zone map/list referenced by MC001 forms",
+      "blockedRuntimeCalculation": "automatic wind-zone assignment; no active Chapter 2/3 formula currently consumes wind zone",
+      "reasonImplementationCannotContinue": "The repository contains wind-zone identifiers I-IV but not source-backed locality assignment."
+    },
+    {
+      "gapId": "degree_day_dataset",
+      "exactMissingDocument": "degree-day table/source if a degree-day method is selected",
+      "exactMissingChapterOrTable": "locality/station, base temperature and annual/monthly degree-day values",
+      "blockedRuntimeCalculation": "degree-day method only; current production uses monthly MC001 runtime",
+      "reasonImplementationCannotContinue": "No degree-day values are reproduced in the ingested sources; production must not derive them from weather approximations."
+    }
+  ],
+  "coverageStatistics": {
+    "documentsTracked": 6,
+    "documentsPresent": 3,
+    "documentsExtracted": 3,
+    "datasetsTracked": 11,
+    "datasetsImplemented": 10,
+    "datasetsValidated": 10,
+    "stationMappings": 42,
+    "monthlyTemperatureRows": 42,
+    "monthlyHumidityRows": 42,
+    "solarSourceRows": 30,
+    "boundedGapCount": 4
+  }
+}

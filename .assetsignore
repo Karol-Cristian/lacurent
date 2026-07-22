@@ -4,6 +4,8 @@
 .wrangler/**
 dist
 dist/**
+docs/normative
+docs/normative/**
 migrations
 migrations/**
 tests

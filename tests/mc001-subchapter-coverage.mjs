@@ -202,7 +202,7 @@ assert.equal(audit.climate.coverage.exactLocalityProfiles, 0);
 assert.equal(
   audit.climate.sourceInventory.some(item =>
     item.inventoryId === "mc001_monthly_temperature_and_solar_climate_annex" &&
-    item.status === "partially_implemented_temperature_available_solar_external" &&
+    item.status === "implemented_temperature_and_a9_6_solar_where_source_locality_is_covered" &&
     item.containsMonthlyClimateInputs === true
   ),
   true
@@ -220,7 +220,7 @@ assert.equal(audit.climate.winterDesignTemperatureByZone.values.V, -24);
 assert.equal(
   audit.climate.dataDomains.some(item =>
     item.domainId === "monthly_energy_climate_data" &&
-    item.status === "DATASET_UNAVAILABLE"
+    item.status === "NORMATIVE_DATASET"
   ),
   true
 );
@@ -232,17 +232,54 @@ assert.equal(
   true
 );
 
-for (const sectionNumber of ["2.7.1.1", "2.7.1.2", "2.7.3", "3.2.6"]) {
+for (const sectionNumber of ["2.7.1.1", "2.7.1.2"]) {
   const record = audit.records.find(item => item.sectionNumber === sectionNumber);
   assert.ok(record.climateAudit, sectionNumber);
   assert.equal(record.climateAudit.refinedStatuses.includes("FORMULA_IMPLEMENTED"), true, sectionNumber);
-  assert.equal(record.climateAudit.refinedStatuses.includes("EXTERNAL_DATA_DEPENDENCY"), true, sectionNumber);
+  assert.equal(record.climateAudit.refinedStatuses.includes("REQUIRED_DATA_AVAILABLE"), true, sectionNumber);
+  assert.equal(record.climateAudit.refinedStatuses.includes("END_TO_END_CALCULATION_AVAILABLE"), true, sectionNumber);
   assert.equal(
-    record.climateAudit.externalSourceDependencies.includes("mc001_6_2013_climate_parameters_volume"),
-    true,
+    record.climateAudit.externalSourceDependencies.length,
+    0,
     sectionNumber
   );
 }
+
+const solarGainsRecord = audit.records.find(item => item.sectionNumber === "2.7.3");
+assert.ok(solarGainsRecord.climateAudit);
+assert.equal(solarGainsRecord.climateAudit.refinedStatuses.includes("FORMULA_IMPLEMENTED"), true);
+assert.equal(solarGainsRecord.climateAudit.refinedStatuses.includes("REQUIRED_DATA_AVAILABLE"), true);
+assert.equal(solarGainsRecord.climateAudit.refinedStatuses.includes("EXTERNAL_STANDARD_DEPENDENCY"), true);
+assert.equal(solarGainsRecord.climateAudit.refinedStatuses.includes("END_TO_END_CALCULATION_AVAILABLE"), false);
+assert.equal(
+  solarGainsRecord.climateAudit.externalSourceDependencies.includes("sr_en_iso_52010_1_climate_preprocessing"),
+  true
+);
+assert.equal(
+  solarGainsRecord.climateAudit.runtimeEligibility.some(item =>
+    item.calculationId === "chapter2_solar_source_dataset_identity"
+  ),
+  true
+);
+assert.equal(
+  solarGainsRecord.climateAudit.runtimeEligibility.some(item =>
+    item.calculationId === "chapter2_solar_gains" &&
+    item.missingDiagnostic === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+  ),
+  true
+);
+
+const coolingDesignRecord = audit.records.find(item => item.sectionNumber === "3.2.6");
+assert.ok(coolingDesignRecord.climateAudit);
+assert.equal(coolingDesignRecord.climateAudit.refinedStatuses.includes("FORMULA_IMPLEMENTED"), true);
+assert.equal(coolingDesignRecord.climateAudit.refinedStatuses.includes("REQUIRED_DATA_AVAILABLE"), true);
+assert.equal(coolingDesignRecord.climateAudit.refinedStatuses.includes("END_TO_END_CALCULATION_AVAILABLE"), true);
+assert.equal(coolingDesignRecord.climateAudit.refinedStatuses.includes("EXTERNAL_DATA_DEPENDENCY"), true);
+assert.equal(
+  coolingDesignRecord.climateAudit.externalSourceDependencies.includes("mc001_6_2013_climate_parameters_volume"),
+    true,
+  "3.2.6"
+);
 
 const zoneRecord = audit.records.find(item => item.sectionNumber === "2.2");
 assert.equal(zoneRecord.climateAudit.refinedStatuses.includes("LOOKUP_IMPLEMENTED"), true);

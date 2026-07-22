@@ -219,12 +219,44 @@ test("advanced Building DNA can carry source-backed Romanian normative climate p
     -1.2
   );
   assert.equal(
+    advanced.buildingDna.climateProvider.datasets.monthlySolarIrradiation.datasetStatus,
+    "NORMATIVE_DATASET"
+  );
+  assert.equal(
+    advanced.buildingDna.climateProvider.datasets.monthlySolarIrradiation.monthlyRecords[0].totalIrradianceWPerM2.horizontal,
+    49.6
+  );
+  assert.equal(advanced.buildingDna.productionClimateProfile.status, "ready_with_bounded_gaps");
+  assert.equal(
+    advanced.buildingDna.productionClimateProfile.coverage.hasMonthlyExteriorTemperature,
+    true
+  );
+  assert.equal(
+    advanced.buildingDna.productionClimateProfile.coverage.hasMonthlySolarIrradianceSourceRows,
+    true
+  );
+  assert.equal(
+    advanced.buildingDna.productionClimateProfile.boundedFields.some(
+      field => field.parameterId === "source_backed_solar_gains_preprocessing" &&
+        field.missingDocument === "SR EN ISO 52010-1"
+    ),
+    true
+  );
+  assert.equal(
     advanced.buildingDna.climateProvider.diagnostics.some(item => item.code === "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"),
+    false
+  );
+  assert.equal(
+    advanced.buildingDna.climateProvider.diagnostics.some(item => item.code === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED_FOR_QSOL"),
     true
   );
   const eligibility = new Map(advanced.buildingDna.climateEligibility.map(item => [item.calculationId, item]));
   assert.equal(
     eligibility.get("chapter2_monthly_transmission_ventilation").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
+  );
+  assert.equal(
+    eligibility.get("chapter2_solar_source_dataset_identity").status,
     CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
   );
   assert.equal(
@@ -278,6 +310,57 @@ test("advanced Building DNA can carry source-backed Romanian normative climate p
   });
   assert.equal(fingerprintBuildingDna(advanced.buildingDna), fingerprintBuildingDna(repeated.buildingDna));
   assert.notEqual(fingerprintBuildingDna(advanced.buildingDna), fingerprintBuildingDna(cluj.buildingDna));
+});
+
+test("advanced Building DNA auto-resolves the production climate profile from supported locality selection", () => {
+  const assisted = assistedDna().buildingDna;
+  const advanced = createBuildingDnaFromAdvancedModel({
+    source: { reference: "P5C.test.production_climate_profile" },
+    assemblySelections: assisted.typologyProposal.assemblySelections,
+    geometry: createP1SeedGeometry(),
+    monthlyProfiles: createP1SeedMonthlyProfiles(),
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    building: {
+      buildingId: "p5c-production-climate-profile-house",
+      buildingType: "detached_house",
+      location: {
+        country: "RO",
+        localityId: "ro_bucuresti",
+        city: "Bucuresti"
+      }
+    }
+  });
+
+  assert.equal(advanced.status, "ready");
+  assert.equal(advanced.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_bucuresti");
+  assert.equal(advanced.buildingDna.productionClimateProfile.stationName, "Bucuresti");
+  assert.equal(
+    advanced.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    -1.2
+  );
+  assert.equal(
+    advanced.buildingDna.monthlyProfiles[0].transmission.cooling.outdoorTemperature.amount,
+    30
+  );
+  assert.equal(
+    advanced.buildingDna.productionClimateProfile.fields.some(
+      field => field.parameterId === "monthly_exterior_temperature" && field.value.length === 12
+    ),
+    true
+  );
+  assert.equal(
+    advanced.buildingDna.productionClimateProfile.fields.some(
+      field => field.parameterId === "monthly_solar_irradiance_a9_6" && field.value.length === 12
+    ),
+    true
+  );
+  assert.equal(
+    advanced.buildingDna.productionClimateProfile.coverage.hasSourceBackedSolarGainPreprocessing,
+    false
+  );
 });
 
 test("resolver blocks missing geometry before physics can run", () => {

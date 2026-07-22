@@ -144,6 +144,13 @@ const monthlyClimateSections = new Set([
   "3.2.7"
 ]);
 
+const solarPreprocessingSections = new Set([
+  "2.7.3",
+  "2.7.3.1",
+  "2.7.3.2",
+  "2.7.4"
+]);
+
 const coolingVentilationDesignSections = new Set([
   "3.2",
   "3.2.1",
@@ -178,13 +185,20 @@ function climateAuditFor(input) {
 
   if (monthlyClimateSections.has(input.sectionNumber)) {
     refinedStatuses.add("FORMULA_IMPLEMENTED");
-    refinedStatuses.add("EXTERNAL_DATA_DEPENDENCY");
+    refinedStatuses.add("REQUIRED_DATA_AVAILABLE");
     requiredDatasets.push("monthly_energy_climate_data");
     runtimeEligibility.push(requirement("chapter2_monthly_transmission_ventilation"));
-    runtimeEligibility.push(requirement("chapter2_solar_gains"));
-    exactDiagnostics.push("MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED");
-    exactDiagnostics.push("MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED");
-    externalSourceDependencies.push("mc001_6_2013_climate_parameters_volume");
+    exactDiagnostics.push("ROMANIAN_CLIMATE_STATION_SELECTION_REQUIRED");
+    if (solarPreprocessingSections.has(input.sectionNumber)) {
+      refinedStatuses.add("EXTERNAL_STANDARD_DEPENDENCY");
+      runtimeEligibility.push(requirement("chapter2_solar_source_dataset_identity"));
+      runtimeEligibility.push(requirement("chapter2_solar_gains"));
+      exactDiagnostics.push("MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION");
+      exactDiagnostics.push("SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED");
+      externalSourceDependencies.push("sr_en_iso_52010_1_climate_preprocessing");
+    } else {
+      refinedStatuses.add("END_TO_END_CALCULATION_AVAILABLE");
+    }
   }
 
   if (coolingVentilationDesignSections.has(input.sectionNumber)) {
