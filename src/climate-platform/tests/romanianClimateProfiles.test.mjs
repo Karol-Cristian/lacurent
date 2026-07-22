@@ -162,17 +162,17 @@ test("P5A climate-zone dependent requirements change when the selected zone chan
   );
 });
 
-test("P5B2 climate source inventory marks monthly temperature as available while solar remains external", () => {
+test("P5B3 climate source inventory marks monthly temperature and A.9.6 solar as source-backed", () => {
   const monthly = ROMANIAN_CLIMATE_SOURCE_INVENTORY.find(
     entry => entry.inventoryId === "mc001_monthly_temperature_and_solar_climate_annex"
   );
-  assert.equal(monthly.status, "partially_implemented_temperature_available_solar_external");
+  assert.equal(monthly.status, "implemented_temperature_and_a9_6_solar_where_source_locality_is_covered");
   assert.equal(monthly.containsMonthlyClimateInputs, true);
   assert.equal(
     monthly.implementedArtifacts.includes("Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities"),
     true
   );
-  assert.match(monthly.missingArtifact, /Anexa nr\. A9\.6/);
+  assert.match(monthly.solarArtifact, /Anexa A\.9\.6/);
 });
 
 test("P5A separates climate zone wind zone locality monthly design and degree-day domains", () => {
@@ -189,7 +189,7 @@ test("P5A separates climate zone wind zone locality monthly design and degree-da
     assert.equal(domains.has(domainId), true, domainId);
   }
   assert.equal(domains.get("climate_zone_classification").status, CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET);
-  assert.equal(domains.get("monthly_energy_climate_data").status, CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE);
+  assert.equal(domains.get("monthly_energy_climate_data").status, CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET);
   assert.equal(domains.get("locality_assignment").status, CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE);
   assert.equal(domains.get("heating_design_climate").implementedDataset, MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE.datasetId);
 });
@@ -226,7 +226,7 @@ test("P5A runtime eligibility does not treat zone labels as monthly climate data
   );
   assert.equal(
     byId.get("chapter2_solar_gains").diagnostic,
-    "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+    "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION"
   );
 
   const demoSelection = resolveClimateProfileSelection({
@@ -247,6 +247,7 @@ test("P5A runtime eligibility does not treat zone labels as monthly climate data
 test("P5A normative dependency register identifies exact external documents and prohibited substitutes", () => {
   const dependencies = new Map(ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES.map(item => [item.dependencyId, item]));
   assert.equal(dependencies.has("mc001_6_2013_climate_parameters_volume"), true);
+  assert.equal(dependencies.has("mc001_1_2006_annex_a9_6_monthly_solar_irradiation"), true);
   assert.equal(dependencies.has("sr_en_iso_52010_1_climate_preprocessing"), true);
   assert.equal(
     dependencies.get("mc001_6_2013_climate_parameters_volume").availability,
@@ -255,6 +256,14 @@ test("P5A normative dependency register identifies exact external documents and 
   assert.match(
     dependencies.get("mc001_6_2013_climate_parameters_volume").officialUrl,
     /mdlpa\.ro/
+  );
+  assert.equal(
+    dependencies.get("mc001_1_2006_annex_a9_6_monthly_solar_irradiation").implementationStatus,
+    "source_packed_ingestion_complete"
+  );
+  assert.equal(
+    dependencies.get("mc001_1_2006_annex_a9_6_monthly_solar_irradiation").presentInRepository,
+    true
   );
   assert.match(
     dependencies.get("mc001_6_2013_climate_parameters_volume").prohibitedSubstitute,

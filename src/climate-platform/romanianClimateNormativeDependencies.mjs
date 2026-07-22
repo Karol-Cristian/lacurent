@@ -5,6 +5,13 @@ import {
   MC001_6_2013_CLIMATE_SOURCE_DOCUMENT
 } from "./datasets/mc001_6_2013ClimateDataset.mjs";
 import {
+  MC001_1_2006_MONTHLY_SOLAR_IRRADIANCE,
+  MC001_1_2006_SOLAR_IRRADIATION_DATASET_CHECKSUMS,
+  MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION,
+  MC001_1_2006_SOLAR_IRRADIATION_SOURCE_DOCUMENT,
+  MC001_1_2006_SOLAR_LOCALITY_REGISTRY
+} from "./datasets/mc001_1_2006SolarIrradiationDataset.mjs";
+import {
   ROMANIAN_CLIMATE_ZONE_IDS,
   ROMANIAN_CLIMATE_ZONE_REGISTRY_VERSION,
   ROMANIAN_WIND_ZONE_IDS,
@@ -15,6 +22,8 @@ import {
 const MC001_2022_PDF = "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf";
 const MC001_6_2013_OFFICIAL_URL =
   "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf";
+const MC001_1_2006_OFFICIAL_URL =
+  "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_1_2_3_2006.pdf";
 
 export const CLIMATE_DATASET_STATUSES = Object.freeze({
   NORMATIVE_DATASET: "NORMATIVE_DATASET",
@@ -26,6 +35,7 @@ export const CLIMATE_DATASET_STATUSES = Object.freeze({
 export const CLIMATE_RUNTIME_ELIGIBILITY_STATUSES = Object.freeze({
   ELIGIBLE: "ELIGIBLE",
   SKIPPED_MISSING_DATA: "SKIPPED_MISSING_DATA",
+  SKIPPED_MISSING_PREPROCESSING: "SKIPPED_MISSING_PREPROCESSING",
   SKIPPED_NOT_APPLICABLE: "SKIPPED_NOT_APPLICABLE",
   TEST_ONLY_NOT_PRODUCTION: "TEST_ONLY_NOT_PRODUCTION"
 });
@@ -107,21 +117,25 @@ export const ROMANIAN_CLIMATE_DATA_DOMAINS = Object.freeze([
   Object.freeze({
     domainId: "monthly_energy_climate_data",
     label: "Monthly energy climate data",
-    status: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
+    status: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
     purpose: "monthly transmission, ventilation, heat gains and useful demand",
     requiredResolution:
       "twelve monthly exterior temperatures plus solar irradiation by required orientation/plane",
     delegatedSource:
-      "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; solar irradiation is referenced to Mc001/1-2006 Anexa nr. A9.6; preprocessing rules are in SR EN ISO 52010-1",
+      "MC001-2022 Anexa D delegates climate parameters to Mc001/6-2013; Mc001/6-2013 references solar irradiation to Mc001/1-2006 Anexa nr. A9.6; preprocessing rules are in SR EN ISO 52010-1",
     presentInRepository: true,
     availableDatasets: Object.freeze([
       "monthly exterior temperature: Mc001/6-2013 Tabel II.1",
-      "monthly relative humidity: Mc001/6-2013 Tabel II.2"
+      "monthly relative humidity: Mc001/6-2013 Tabel II.2",
+      "monthly mean daily solar irradiance source rows: Mc001/1-2-3/2006 Anexa A.9.6"
     ]),
+    runtimePreprocessingStatus: "SR_EN_ISO_52010_1_PREPROCESSING_REQUIRED_FOR_SOURCE_BACKED_QSOL",
     missingDatasets: Object.freeze([
-      "monthly solar irradiation by locality/orientation/plane: Mc001/1-2006 Anexa nr. A9.6"
+      "preprocessed Hsol;wi;m/Hsol;k;m monthly irradiation in kWh/m2 for MC001 relations 2.39 and 2.50",
+      "source-backed Qsky inputs where the selected solar-gain path uses MC001 relation 2.54"
     ]),
-    datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION
+    datasetVersion: `${MC001_6_2013_CLIMATE_DATASET_VERSION}+${MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION}`,
+    solarLocalityCount: MC001_1_2006_SOLAR_LOCALITY_REGISTRY.length
   }),
   Object.freeze({
     domainId: "heating_design_climate",
@@ -183,9 +197,9 @@ export const ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES = Object.freeze([
     sourceDocumentChecksum: MC001_6_2013_CLIMATE_SOURCE_DOCUMENT.sha256,
     datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION,
     datasetChecksums: MC001_6_2013_CLIMATE_DATASET_CHECKSUMS,
-    implementationStatus: "source_packed_partial_ingestion_complete",
+    implementationStatus: "source_packed_ingestion_complete_for_selected_tables",
     acquisitionStatus:
-      "official PDF source-pack extracted for Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; monthly solar irradiation remains delegated to Mc001/1-2006 Anexa nr. A9.6 and is not present in the ingested source text",
+      "official PDF source-pack extracted for Tabel II.1, II.2, III.1, III.2, IV.1 and IV.2; delegated monthly solar irradiation is fulfilled by the separate Mc001/1-2-3/2006 Anexa A.9.6 source pack",
     calculationsAffected: Object.freeze([
       "locality to climate-parameter station selection",
       "monthly exterior temperatures",
@@ -196,37 +210,41 @@ export const ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES = Object.freeze([
     prohibitedSubstitute:
       "Do not infer locality assignment from latitude/GIS, weather sites, technical examples, or climate-zone label alone.",
     remediationAction:
-      "Use the ingested table registries for station-backed temperature and design-day data; acquire Mc001/1-2006 Anexa nr. A9.6 or another explicit normative chain before enabling source-backed solar profiles."
+      "Use the ingested table registries for station-backed temperature/design-day data and the Mc001/1-2-3/2006 A.9.6 source pack for source-backed solar profiles where a selected locality is covered."
   }),
   Object.freeze({
     dependencyId: "mc001_1_2006_annex_a9_6_monthly_solar_irradiation",
-    datasetName: "Mc001/1-2006 Anexa nr. A9.6 monthly solar irradiation for 30 localities",
+    datasetName: "Mc001/1-2-3/2006 Anexa A.9.6 monthly mean daily solar irradiance for 30 localities",
     runtimePurpose:
-      "orientation/plane solar irradiation inputs required for source-backed monthly solar gains",
+      "canonical source rows for monthly total/diffuse solar irradiance; not a direct replacement for preprocessed Hsol/Qsky inputs",
     mc001Section:
       "Mc001/6-2013 Capitolul II.3, referenced by MC001-2022 Anexa D climate-parameter chain",
     requiredResolution:
       "monthly solar irradiation for 30 localities with the orientations/planes reproduced by Anexa nr. A9.6",
     exactExternalDocument:
-      "Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2006, Anexa nr. A9.6",
+      "Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2-3/2006, Anexa A.9.6",
     edition: "2006",
-    clauseTableAnnex: "Anexa nr. A9.6",
-    availability: "not_present_in_repository_or_ingested_official_source_pack",
-    presentInRepository: false,
-    implementationStatus: "external_data_dependency",
+    clauseTableAnnex: "Anexa A.9.6, PDF pages 119-129",
+    availability: "public_official_mdlpa_pdf_identified_and_source_packed",
+    officialUrl: MC001_1_2006_OFFICIAL_URL,
+    presentInRepository: true,
+    sourceDocumentChecksum: MC001_1_2006_SOLAR_IRRADIATION_SOURCE_DOCUMENT.sha256,
+    datasetVersion: MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION,
+    datasetChecksums: MC001_1_2006_SOLAR_IRRADIATION_DATASET_CHECKSUMS,
+    implementationStatus: "source_packed_ingestion_complete",
     acquisitionStatus:
-      "exact annex identified by the official Mc001/6-2013 source text; source-backed values not yet legally available in repository",
+      "official MDLPA source downloaded, rendered and extracted; immutable source pack records 30 locality tables, 3960 cells and cell-level QA",
     calculationsAffected: Object.freeze([
-      "monthly solar irradiation",
-      "transparent solar gains",
-      "opaque solar gains",
-      "cooling demand affected by solar gains",
-      "heating demand affected by solar gains"
+      "monthly solar irradiation source traceability",
+      "future source-backed Hsol preprocessing",
+      "transparent solar gains only after preprocessing/input boundary is satisfied",
+      "opaque solar gains only after preprocessing/input boundary is satisfied",
+      "cooling and heating demand only after Qsol is available"
     ]),
     prohibitedSubstitute:
       "Do not substitute weather-site irradiation, GIS estimates or synthetic orientation tables for Anexa nr. A9.6.",
     remediationAction:
-      "Acquire a legal source copy of Mc001/1-2006 Anexa nr. A9.6, extract row/column definitions and checksums, then publish immutable solar registries."
+      "No acquisition action remains for A.9.6. Do not feed A.9.6 W/m2 source rows directly into Chapter 2 Qsol; source-backed runtime solar gains still require preprocessed Hsol [kWh/m2] and Qsky inputs from the delegated preprocessing/source contract."
   }),
   Object.freeze({
     dependencyId: "sr_en_iso_52010_1_climate_preprocessing",
@@ -235,7 +253,7 @@ export const ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES = Object.freeze([
       "preprocessing rules for external climatic data used by EPB calculations",
     mc001Section: "MC001-2022 Tabel 1.3 row 13 and Anexa D final paragraph",
     requiredResolution:
-      "algorithmic preprocessing standard, not a Romanian station-value dataset",
+      "algorithmic preprocessing standard, not a Romanian station-value dataset; required before A.9.6 W/m2 rows can become source-backed Hsol [kWh/m2] runtime inputs",
     exactExternalDocument:
       "SR EN ISO 52010-1, Performanta energetica a cladirilor. Conditii climatice exterioare. Partea 1",
     edition: "edition not bundled in repository",
@@ -247,12 +265,15 @@ export const ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES = Object.freeze([
       "obtain licensed project copy before implementing preprocessing algorithms not reproduced by MC001",
     calculationsAffected: Object.freeze([
       "preprocessed representative climate datasets",
-      "conversion/quality rules for climate sequences"
+      "conversion/quality rules for climate sequences",
+      "conversion or validation of A.9.6 mean daily W/m2 rows into monthly Hsol [kWh/m2] where selected by the runtime",
+      "source-backed transparent and opaque solar gains in MC001 relations 2.39 and 2.50",
+      "source-backed QHnd/QCnd effect of solar gains"
     ]),
     prohibitedSubstitute:
       "Do not implement preprocessing algorithms from secondary summaries.",
     remediationAction:
-      "Acquire SR EN ISO 52010-1 and encode only clauses required by MC001 data ingestion."
+      "Acquire SR EN ISO 52010-1 and encode only clauses required by MC001 data ingestion and solar-gain preprocessing. Until then, Chapter 2 keeps using explicit/preprocessed monthly Qsol or certified professional input."
   }),
   Object.freeze({
     dependencyId: "sr_1907_1_2_4839_6648_reviewed_not_direct_mc0012022_dependency",
@@ -307,7 +328,7 @@ export const ROMANIAN_CLIMATE_ACQUISITION_LIST = Object.freeze([
     designation: "Mc001/1-2006 Anexa nr. A9.6",
     edition: "2006",
     expectedDataset:
-      "monthly solar irradiation values for 30 localities referenced by Mc001/6-2013 Capitolul II.3",
+      "monthly mean daily solar irradiance source rows for 30 localities referenced by Mc001/6-2013 Capitolul II.3",
     affectedMc001Calculations: Object.freeze([
       "2.7.1.1",
       "2.7.1.2",
@@ -316,15 +337,19 @@ export const ROMANIAN_CLIMATE_ACQUISITION_LIST = Object.freeze([
       "Chapter 3 cooling and solar-affected installation chains when solar inputs are required"
     ]),
     requiredFor: Object.freeze(["solar irradiation"]),
-    substituteOwnedByProject: "none"
+    substituteOwnedByProject:
+      `official source pack integrated as ${MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION}`
   }),
   Object.freeze({
     designation: "SR EN ISO 52010-1",
     edition: "not bundled",
     expectedDataset:
-      "preprocessing rules for climate data, not Romanian station values",
+      "preprocessing rules for climate data, including the legally source-backed bridge from A.9.6 W/m2 source rows to Hsol [kWh/m2] when used by MC001 2.39/2.50",
     affectedMc001Calculations: Object.freeze([
-      "validated preprocessing of external climate sequences before use in monthly/hourly EPB calculations"
+      "validated preprocessing of external climate sequences before use in monthly/hourly EPB calculations",
+      "source-backed transparent solar gains relation 2.39",
+      "source-backed opaque solar gains relation 2.50",
+      "source-backed QHnd/QCnd effect of Qsol"
     ]),
     requiredFor: Object.freeze(["monthly temperature", "solar irradiation", "cooling/ventilation design"]),
     substituteOwnedByProject: "none"
@@ -357,12 +382,23 @@ export const ROMANIAN_CLIMATE_REQUIREMENT_MATRIX = Object.freeze([
     missingDiagnostic: "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
   }),
   Object.freeze({
+    calculationId: "chapter2_solar_source_dataset_identity",
+    label: "A.9.6 solar source dataset traceability",
+    requires: Object.freeze(["monthlySolarIrradianceSourceRows"]),
+    outputDomains: Object.freeze(["climate_dataset_traceability", "notebook_report_solar_source_rows"]),
+    eligibleWhen: "selected MC001/6-2013 station/locality has a matching Mc001/1-2-3/2006 Anexa A.9.6 source row",
+    missingDiagnostic: "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
+    currentRuntimeUse:
+      "source-backed provider/notebook/report dataset only; not a direct Qsol runtime input"
+  }),
+  Object.freeze({
     calculationId: "chapter2_solar_gains",
     label: "Chapter 2 solar gains",
-    requires: Object.freeze(["monthlySolarIrradiationOrExplicitSolarGains"]),
+    requires: Object.freeze(["preprocessedSolarIrradiationHsolOrExplicitSolarGains"]),
     outputDomains: Object.freeze(["Qsol", "QHgn", "QCgn", "QHnd", "QCnd"]),
-    eligibleWhen: "a certified twelve-month solar dataset or explicit professional solar-gain input is present",
-    missingDiagnostic: "MONTHLY_SOLAR_IRRADIATION_DATASET_REQUIRED"
+    eligibleWhen:
+      "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
+    missingDiagnostic: "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
   }),
   Object.freeze({
     calculationId: "cooling_ventilation_design_conditions",
@@ -499,15 +535,29 @@ export function evaluateClimateCalculationEligibility({
         datasetStatus = CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET;
       }
     }
+    if (row.calculationId === "chapter2_solar_source_dataset_identity") {
+      if (!providerHasSolar) {
+        status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_DATA;
+        diagnostic = row.missingDiagnostic;
+      } else {
+        datasetStatus = CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET;
+      }
+    }
     if (row.calculationId === "chapter2_solar_gains") {
       if (testOnlyDataset) {
         status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.TEST_ONLY_NOT_PRODUCTION;
         diagnostic = "TEST_ONLY_SYNTHETIC_DATASET_NOT_ALLOWED_FOR_PRODUCTION";
-      } else if (!productionMonthlyDataset || (!hasSolarData(climateProfile, monthlyProfiles) && !providerHasSolar)) {
-        status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_DATA;
-        diagnostic = row.missingDiagnostic;
+      } else if (hasSolarData(climateProfile, monthlyProfiles)) {
+        datasetStatus = profileStatus === CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE
+          ? CLIMATE_DATASET_STATUSES.USER_SUPPLIED_CERTIFIED_DATASET
+          : profileStatus;
       } else if (providerHasSolar) {
+        status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_PREPROCESSING;
+        diagnostic = row.missingDiagnostic;
         datasetStatus = CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET;
+      } else {
+        status = CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_DATA;
+        diagnostic = "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION";
       }
     }
     if (row.calculationId === "cooling_ventilation_design_conditions") {

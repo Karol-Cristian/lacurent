@@ -17,8 +17,10 @@ import {
   evaluateClimateCalculationEligibility,
   getClimateZoneDependentRequirements,
   getWinterDesignTemperatureByClimateZone,
+  resolveRomanianNormativeClimateSelection,
   resolveRomanianLocationClimate,
-  resolveClimateProfileSelection
+  resolveClimateProfileSelection,
+  resolveRomanianProductionClimateProfile
 } from "../climate-platform/index.mjs";
 import {
   TECHNICAL_SYSTEMS_SCHEMA,
@@ -92,6 +94,32 @@ function compactClimateProviderResult(climateProviderResult) {
     },
     diagnostics: climateProviderResult.diagnostics ?? []
   };
+}
+
+function resolveCanonicalClimateProviderResult(locationClimate, suppliedProviderResult, source = {}) {
+  if (suppliedProviderResult) return suppliedProviderResult;
+  const location = locationClimate?.location ?? {};
+  const climate = locationClimate?.climate ?? {};
+  const stationId = source?.climateStationId ??
+    source?.stationId ??
+    location.stationId ??
+    climate.stationId ??
+    null;
+  const localityId = source?.localityId ?? location.localityId ?? null;
+  const localityName = source?.localityName ??
+    location.localityName ??
+    location.city ??
+    null;
+  if (!stationId && !localityId && !localityName) return null;
+  return resolveRomanianNormativeClimateSelection({
+    stationId,
+    localityId,
+    localityName,
+    climateZone: climate.climateZone ?? null,
+    windZone: climate.windZone ?? null,
+    manualOverride: climate.manualOverride === true,
+    overrideReason: climate.overrideReason ?? null
+  });
 }
 
 function blocker(code) {
@@ -315,6 +343,37 @@ function monthlyProfilesWithGeometryVentilation(monthlyProfiles = [], parameters
       confidence: source.confidence ?? profile.provenance?.confidence ?? "medium"
     }
   }));
+}
+
+function monthlyProfilesWithProviderClimate(monthlyProfiles = [], climateProviderResult, source = {}) {
+  const temperatureRecords =
+    climateProviderResult?.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? [];
+  if (temperatureRecords.length !== MONTH_IDS.length) return monthlyProfiles;
+  const byMonth = new Map(temperatureRecords.map(record => [record.month, record]));
+  return monthlyProfiles.map(profile => {
+    const temperature = byMonth.get(profile.month);
+    if (!temperature) return profile;
+    return {
+      ...profile,
+      heatingOutdoorTemperatureC: temperature.value,
+      provenance: {
+        ...(profile.provenance ?? {}),
+        monthlyExteriorTemperatureSource: "mc001_6_2013_provider",
+        monthlyExteriorTemperatureStationId: climateProviderResult.selection?.stationId ?? null,
+        monthlyExteriorTemperatureDatasetVersion:
+          climateProviderResult.datasets?.monthlyExteriorTemperature?.datasetVersion ??
+          climateProviderResult.datasetVersion ??
+          null,
+        monthlyExteriorTemperatureSourceReference:
+          climateProviderResult.datasets?.monthlyExteriorTemperature?.sourceReference ?? null,
+        reference:
+          source.reference ??
+          profile.provenance?.reference ??
+          "P5C.climate_provider.monthly_exterior_temperature",
+        confidence: source.confidence ?? profile.provenance?.confidence ?? "high"
+      }
+    };
+  });
 }
 
 function defaultGeometry(overrides = {}) {
@@ -852,6 +911,27 @@ function resolveBuildingDna({
     ...(boundaryContext ?? {})
   };
   const normalizedTechnicalSystems = normalizeTechnicalSystems(technicalSystems);
+  const canonicalClimateProviderResult = resolveCanonicalClimateProviderResult(
+    locationClimate,
+    climateProviderResult,
+    {
+      climateStationId: building?.location?.climateStationId ?? building?.location?.stationId,
+      stationId: building?.location?.stationId,
+      localityId: building?.location?.localityId,
+      localityName: building?.location?.localityName ?? building?.location?.city
+    }
+  );
+  const productionClimateProfile = canonicalClimateProviderResult
+    ? resolveRomanianProductionClimateProfile({
+        localityId: canonicalClimateProviderResult.selection?.localityId ?? locationClimate?.location?.localityId ?? null,
+        localityName: canonicalClimateProviderResult.selection?.localityName ?? locationClimate?.location?.localityName ?? locationClimate?.location?.city ?? null,
+        stationId: canonicalClimateProviderResult.selection?.stationId ?? building?.location?.climateStationId ?? building?.location?.stationId ?? null,
+        climateZone: canonicalClimateProviderResult.selection?.climateZone ?? locationClimate?.climate?.climateZone ?? null,
+        windZone: canonicalClimateProviderResult.selection?.windZone ?? locationClimate?.climate?.windZone ?? null,
+        manualOverride: locationClimate?.climate?.manualOverride === true,
+        overrideReason: locationClimate?.climate?.overrideReason ?? null
+      })
+    : null;
   const climateRequirements = locationClimate?.climate?.climateZone
     ? getClimateZoneDependentRequirements({
         climateZone: locationClimate.climate.climateZone,
@@ -865,7 +945,7 @@ function resolveBuildingDna({
     climate: locationClimate?.climate ?? {},
     climateProfile,
     monthlyProfiles,
-    climateProviderResult
+    climateProviderResult: canonicalClimateProviderResult
   });
   const methodologyLimits = [
     "engineering_model_generation_only",
@@ -893,13 +973,15 @@ function resolveBuildingDna({
         ...(locationClimate?.location ?? {}),
         climateZone: locationClimate?.climate?.climateZone ?? building?.location?.climateZone ?? null,
         windZone: locationClimate?.climate?.windZone ?? building?.location?.windZone ?? null,
+        climateStationId: canonicalClimateProviderResult?.selection?.stationId ?? building?.location?.climateStationId ?? null,
         climateAssignmentOrigin: locationClimate?.climate?.assignmentOrigin ?? null,
         climateDatasetId: locationClimate?.climate?.datasetId ?? null,
         climateDatasetVersion: locationClimate?.climate?.datasetVersion ?? null
       }
     },
     climate: locationClimate?.climate ?? null,
-    ...(climateProviderResult ? { climateProvider: compactClimateProviderResult(climateProviderResult) } : {}),
+    ...(canonicalClimateProviderResult ? { climateProvider: compactClimateProviderResult(canonicalClimateProviderResult) } : {}),
+    ...(productionClimateProfile ? { productionClimateProfile } : {}),
     climateZoneRequirements: climateRequirements?.status === "ready" ? {
       climateZone: climateRequirements.climateZone,
       solarFactor: climateRequirements.solarFactor,
@@ -1055,7 +1137,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
   if (monthlySelection.status !== "ready") {
     return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
   }
-  const resolvedMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
+  const baseMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
     monthlySelection.monthlyProfiles,
     answers.buildingSpecificParameters ?? {},
     answers.source ?? { reference: "P1.assisted_answers" }
@@ -1064,6 +1146,21 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
   if (locationClimate.status !== "ready") {
     return blocked(locationClimate.diagnostics.find(item => item.severity === "blocking")?.code ?? "invalid_climate_location_selection");
   }
+  const canonicalClimateProviderResult = resolveCanonicalClimateProviderResult(
+    locationClimate,
+    answers.climateProviderResult,
+    {
+      climateStationId: answers.location?.climateStationId ?? answers.location?.stationId,
+      stationId: answers.location?.stationId,
+      localityId: answers.location?.localityId,
+      localityName: answers.location?.localityName ?? answers.location?.city
+    }
+  );
+  const resolvedMonthlyProfiles = monthlyProfilesWithProviderClimate(
+    baseMonthlyProfiles,
+    canonicalClimateProviderResult,
+    answers.source ?? { reference: "P1.assisted_answers" }
+  );
   return resolveBuildingDna({
     userMode: ASSISTED_MODE,
     source: answers.source ?? { reference: "P1.assisted_answers" },
@@ -1081,7 +1178,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
     monthlyProfiles: resolvedMonthlyProfiles,
-    climateProviderResult: answers.climateProviderResult,
+    climateProviderResult: canonicalClimateProviderResult,
     technicalSystems: answers.technicalSystems,
     building: {
       buildingId: answers.buildingId,
@@ -1106,7 +1203,7 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
   if (monthlySelection.status !== "ready") {
     return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
   }
-  const resolvedMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
+  const baseMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
     monthlySelection.monthlyProfiles,
     input.buildingSpecificParameters ?? {},
     input.source ?? { reference: "P1.advanced_model" }
@@ -1115,6 +1212,21 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
   if (locationClimate.status !== "ready") {
     return blocked(locationClimate.diagnostics.find(item => item.severity === "blocking")?.code ?? "invalid_climate_location_selection");
   }
+  const canonicalClimateProviderResult = resolveCanonicalClimateProviderResult(
+    locationClimate,
+    input.climateProviderResult,
+    {
+      climateStationId: input.building?.location?.climateStationId ?? input.building?.location?.stationId ?? input.location?.climateStationId ?? input.location?.stationId,
+      stationId: input.building?.location?.stationId ?? input.location?.stationId,
+      localityId: input.building?.location?.localityId ?? input.location?.localityId,
+      localityName: input.building?.location?.localityName ?? input.building?.location?.city ?? input.location?.localityName ?? input.location?.city
+    }
+  );
+  const resolvedMonthlyProfiles = monthlyProfilesWithProviderClimate(
+    baseMonthlyProfiles,
+    canonicalClimateProviderResult,
+    input.source ?? { reference: "P1.advanced_model" }
+  );
   return resolveBuildingDna({
     userMode: ADVANCED_MODE,
     source: input.source ?? { reference: "P1.advanced_model" },
@@ -1126,7 +1238,7 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     climateProfile: monthlySelection.climateProfile,
     calculationMode: monthlySelection.calculationMode,
     monthlyProfiles: resolvedMonthlyProfiles,
-    climateProviderResult: input.climateProviderResult,
+    climateProviderResult: canonicalClimateProviderResult,
     technicalSystems: input.technicalSystems,
     building: input.building,
     locationClimate

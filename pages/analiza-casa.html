@@ -145,10 +145,10 @@
 <div class="step active" data-section-id="geometry">
 <h2>Geometrie</h2>
 <p class="section-description">Datele geometrice alimenteaza Building DNA. Nu introduci coeficienti finali precum Htr, U, gamma, tau sau eta.</p>
-<p class="section-description">Profilul climatic lunar trebuie selectat explicit. Catalogul normativ romanesc pentru temperaturi si iradiere lunara nu este disponibil in repository; profilul demonstrativ este sintetic si este permis numai in demo.</p>
+<p class="section-description">Profilul climatic lunar trebuie selectat explicit. Temperaturile lunare MC001/6-2013 si iradierea solara Mc001/1-2006 A.9.6 sunt afisate numai pentru statiile/localitatile sursa acoperite; profilul demonstrativ este sintetic si este permis numai in demo.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Amplasare si clima</h3>
-<p class="section-description">Zonele climatice I-V si zona eoliana sunt metadate normative trasabile. Ele nu genereaza automat temperaturi lunare sau iradiere fara un profil climatic complet.</p>
+<p class="section-description">Zonele climatice I-V si zona eoliana sunt metadate normative trasabile. Ele nu genereaza automat temperaturi lunare sau iradiere pentru o localitate fara un set climatic sursa complet.</p>
 <div class="form-grid">
 <div><label>Judet</label><input name="county" placeholder="Ex: Bucuresti"></div>
 <div><label>Localitate</label><input name="city" placeholder="Ex: Bucuresti"></div>
@@ -160,8 +160,8 @@
 <div><label>Dataset zone</label><p class="field-impact-note">mc001_2022_climate_zones_p5a_v1</p></div>
 <div><label>Temperatura exterioara de calcul iarna</label><p class="field-impact-note">Se determina din zona I-V, conform MC001-2022 Figura 2.1.</p></div>
 <div><label>Status dataset lunar</label><p class="field-impact-note">Neselectat: DATASET_UNAVAILABLE. Profil certificat: USER_SUPPLIED_CERTIFIED_DATASET. Demo: TEST_ONLY_SYNTHETIC_DATASET.</p></div>
-<div><label>Calcule eligibile cu zona</label><p class="field-impact-note">Lookup-uri de zona si temperatura de proiectare iarna. Temperatura/iradierea lunara necesita profil lunar complet.</p></div>
-<div><label>Variabile climatice lipsa</label><p class="field-impact-note">temperaturi lunare, iradiere solara lunara, date de proiectare racire/ventilare, mapare localitate-zona.</p></div>
+<div><label>Calcule eligibile cu zona</label><p class="field-impact-note">Lookup-uri de zona si temperatura de proiectare iarna. Temperaturile lunare pot alimenta transferul lunar; iradierea A.9.6 este dataset sursa, iar Qsol necesita Hsol/Qsky preprocesate sau input certificat.</p></div>
+<div><label>Variabile climatice lipsa</label><p class="field-impact-note">mapare localitate-zona, date de proiectare racire/ventilare, grade-zile sau iradiere pentru statiile neacoperite de A.9.6.</p></div>
 </div>
 </div>
 <div class="form-grid">

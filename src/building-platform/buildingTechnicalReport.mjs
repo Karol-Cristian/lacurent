@@ -1301,7 +1301,7 @@ function compactMonthlySections(monthly) {
         ),
         resultValue: row.qHhtKwh,
         resultUnit: "kWh",
-        computedValue: Number(row.heatingTransmissionKwh) + Number(row.heatingVentilationKwh),
+        computedValue: row.qHhtKwh,
         variables: [
           { symbol: `QHht_${idLabel}`, meaning: `transfer total incalzire ${label}` }
         ],
@@ -1481,16 +1481,31 @@ function compactClimateSection(buildingDna, monthly) {
   const climate = buildingDna.climate ?? {};
   const location = buildingDna.building?.location ?? {};
   const climateProvider = buildingDna.climateProvider ?? null;
+  const productionClimateProfile = buildingDna.productionClimateProfile ?? null;
   const providerMonthlyTemperature =
     climateProvider?.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? [];
   const providerMonthlyHumidity =
     climateProvider?.datasets?.monthlyRelativeHumidity?.monthlyRecords ?? [];
+  const providerMonthlySolar =
+    climateProvider?.datasets?.monthlySolarIrradiation?.monthlyRecords ?? [];
   const providerTemperatureText = providerMonthlyTemperature
     .map(record => `${monthLabel(record.month)} ${formatNotebookValue(record.value, record.unit, 2)}`)
     .join("; ");
   const providerHumidityText = providerMonthlyHumidity
     .map(record => `${monthLabel(record.month)} ${formatNotebookValue(record.value, record.unit, 1)}`)
     .join("; ");
+  const providerSolarText = providerMonthlySolar
+    .map(record => {
+      const total = record.totalIrradianceWPerM2 ?? {};
+      const diffuse = record.diffuseIrradianceWPerM2 ?? {};
+      return `${monthLabel(record.month)} I_T,S ${formatNotebookValue(total.south, record.unit, 1)}, ` +
+        `I_T,E ${formatNotebookValue(total.east, record.unit, 1)}, ` +
+        `I_T,V ${formatNotebookValue(total.west, record.unit, 1)}, ` +
+        `I_T,N ${formatNotebookValue(total.north, record.unit, 1)}, ` +
+        `I_T,oriz ${formatNotebookValue(total.horizontal, record.unit, 1)}, ` +
+        `I_d,oriz ${formatNotebookValue(diffuse.horizontal, record.unit, 1)}`;
+    })
+    .join(" | ");
   const winterDesignTemperature = buildingDna.climateZoneRequirements?.winterDesignTemperature ?? null;
   const eligibility = buildingDna.climateEligibility ?? [];
   return section("amplasare_clima", "Amplasare si clima", [
@@ -1584,19 +1599,88 @@ function compactClimateSection(buildingDna, monthly) {
       }),
       compactLine({
         lineId: "climate.provider.solar-boundary",
-        text: `I_solar_lunar := indisponibil in registrul curent -- ${climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ?? "Mc001/1-2006 Anexa nr. A9.6 necesara"}`,
+        text: providerMonthlySolar.length > 0
+          ? `I_solar_lunar_A9_6 := ${providerSolarText}`
+          : `I_solar_lunar := indisponibil pentru statia selectata -- ${climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ?? "Mc001/1-2006 Anexa nr. A9.6 necesara"}`,
+        variables: providerMonthlySolar.length > 0
+          ? providerMonthlySolar.flatMap(record => ([
+              {
+                symbol: `I_T_S_${record.month}`,
+                value: record.totalIrradianceWPerM2?.south,
+                unit: record.unit,
+                meaning: `intensitate solara totala pe verticala sud ${monthLabel(record.month)}`
+              },
+              {
+                symbol: `I_T_oriz_${record.month}`,
+                value: record.totalIrradianceWPerM2?.horizontal,
+                unit: record.unit,
+                meaning: `intensitate solara totala pe plan orizontal ${monthLabel(record.month)}`
+              },
+              {
+                symbol: `I_d_oriz_${record.month}`,
+                value: record.diffuseIrradianceWPerM2?.horizontal,
+                unit: record.unit,
+                meaning: `intensitate solara difuza pe plan orizontal ${monthLabel(record.month)}`
+              }
+            ]))
+          : [
+              {
+                symbol: "I_solar_lunar",
+                value: null,
+                unit: "W/m2",
+                meaning: "intensitate/iradiere solara lunara normativa necesara pentru aporturi solare"
+              }
+            ],
+        reference:
+          climateProvider.datasets?.monthlySolarIrradiation?.sourceReference ??
+          climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ??
+          "Mc001/1-2006 Anexa nr. A9.6",
+        kind: providerMonthlySolar.length > 0 ? "lookup" : "diagnostic"
+      })
+    ] : []),
+    ...(productionClimateProfile ? [
+      compactLine({
+        lineId: "climate.production-profile.status",
+        text: `Profil_climatic_productie := ${productionClimateProfile.status}; registru := ${productionClimateProfile.registryVersion}`,
         variables: [
           {
-            symbol: "I_solar_lunar",
-            value: null,
-            unit: "kWh/m2",
-            meaning: "iradiere solara lunara normativa necesara pentru aporturi solare"
+            symbol: "Profil_climatic_productie",
+            value: productionClimateProfile.status,
+            unit: "-",
+            meaning: "statusul profilului climatic productie pentru localitatea/statie selectata"
           }
         ],
-        reference:
-          climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ?? "Mc001/1-2006 Anexa nr. A9.6",
+        reference: "validation-reference/romanian-climate-infrastructure-audit.json",
         kind: "diagnostic"
-      })
+      }),
+      ...((productionClimateProfile.fields ?? []).map(field => compactLine({
+        lineId: `climate.production-profile.${field.parameterId}`,
+        text: `${field.parameterId} := ${summarizeClimateProfileFieldValue(field)}${field.unit ? ` ${field.unit}` : ""} -- ${field.source?.sourceReference ?? field.dataset?.sourceReference ?? "sursa normativa"}`,
+        variables: [
+          {
+            symbol: field.parameterId,
+            value: typeof field.value === "object" ? summarizeClimateProfileFieldValue(field) : field.value,
+            unit: field.unit ?? "-",
+            meaning: field.label
+          }
+        ],
+        reference: field.source?.sourceReference ?? field.dataset?.sourceReference ?? "registru climatic productie",
+        kind: "lookup"
+      }))),
+      ...((productionClimateProfile.boundedFields ?? []).map(field => compactLine({
+        lineId: `climate.production-profile.bounded.${field.parameterId}`,
+        text: `${field.parameterId} := indisponibil -- necesita ${field.missingDocument}, ${field.missingTableOrClause}`,
+        variables: [
+          {
+            symbol: field.parameterId,
+            value: null,
+            unit: field.unit ?? "-",
+            meaning: field.label
+          }
+        ],
+        reference: field.missingDocument,
+        kind: "diagnostic"
+      })))
     ] : []),
     ...eligibility.map(item => compactLine({
       lineId: `climate.eligibility.${item.calculationId}`,
@@ -1722,14 +1806,89 @@ function installationMonthlyRows(calculation) {
   }));
 }
 
+function summarizeClimateProfileFieldValue(field) {
+  const value = field?.value;
+  if (value === null || value === undefined) return "indisponibil";
+  if (typeof value !== "object") return String(value);
+  if (Array.isArray(value)) return `${value.length} inregistrari`;
+  if (field.parameterId === "locality_station_mapping") {
+    return `${value.localityName ?? "localitate neselectata"} -> ${value.stationName ?? value.stationId ?? "statie neselectata"}`;
+  }
+  if (field.parameterId === "zone_dependent_requirements") {
+    return [
+      value.solarFactor?.recommendation
+        ? `gn ${value.solarFactor.recommendation.comparator === "greater_than"
+            ? `> ${value.solarFactor.recommendation.min}`
+            : `${value.solarFactor.recommendation.min}-${value.solarFactor.recommendation.max}`}`
+        : null,
+      value.nzebLimit?.limit
+        ? `NZEB ${value.nzebLimit.limit.primaryEnergyKwhM2Year} kWh/(m2*an)`
+        : null,
+      value.renovationLimit?.limit
+        ? `renovare ${value.renovationLimit.limit.primaryEnergyKwhM2Year} kWh/(m2*an)`
+        : null
+    ].filter(Boolean).join("; ");
+  }
+  if (field.parameterId?.includes("design_day_temperature")) {
+    return `media ${formatNotebookValue(value.meanDailyTemperatureC, field.unit ?? "degC", 2)}`;
+  }
+  if (field.parameterId?.includes("design_pentad_temperature")) {
+    return `pentada disponibila (${Object.keys(value).length} grupe de selectie)`;
+  }
+  return Object.keys(value).slice(0, 6).join(", ");
+}
+
+function climateProfileFieldRows(productionClimateProfile) {
+  if (!productionClimateProfile) return [];
+  const available = (productionClimateProfile.fields ?? []).map(field => ({
+    label: field.label,
+    value: summarizeClimateProfileFieldValue(field),
+    unit: field.unit ?? "-",
+    source: field.source?.sourceReference ??
+      field.dataset?.sourceReference ??
+      field.dataset?.sourceDocument?.sourceReference ??
+      field.dataset?.sourceDocument?.title ??
+      "sursa normativa",
+    status: field.status
+  }));
+  const bounded = (productionClimateProfile.boundedFields ?? []).map(field => ({
+    label: field.label,
+    value: `${field.reason} Sursa lipsa: ${field.missingDocument}; ${field.missingTableOrClause}.`,
+    unit: field.unit ?? "-",
+    source: field.missingDocument,
+    status: field.status
+  }));
+  return [
+    {
+      label: "Versiune registru climatic productie",
+      value: productionClimateProfile.registryVersion
+    },
+    {
+      label: "Status profil climatic productie",
+      value: productionClimateProfile.status
+    },
+    {
+      label: "Acoperire profil climatic",
+      value:
+        `${productionClimateProfile.coverage?.availableFieldCount ?? 0} campuri disponibile; ` +
+        `${productionClimateProfile.coverage?.boundedFieldCount ?? 0} campuri limitate explicit`
+    },
+    ...available,
+    ...bounded
+  ];
+}
+
 function climateRows(buildingDna, monthly) {
   const climate = buildingDna.climate ?? {};
   const location = buildingDna.building?.location ?? {};
   const climateProvider = buildingDna.climateProvider ?? null;
+  const productionClimateProfile = buildingDna.productionClimateProfile ?? null;
   const providerMonthlyTemperature =
     climateProvider?.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? [];
   const providerMonthlyHumidity =
     climateProvider?.datasets?.monthlyRelativeHumidity?.monthlyRecords ?? [];
+  const providerMonthlySolar =
+    climateProvider?.datasets?.monthlySolarIrradiation?.monthlyRecords ?? [];
   const solarFactor = buildingDna.climateZoneRequirements?.solarFactor?.recommendation ?? null;
   const nzebLimit = buildingDna.climateZoneRequirements?.nzebLimit?.limit ?? null;
   const renovationLimit = buildingDna.climateZoneRequirements?.renovationLimit?.limit ?? null;
@@ -1777,11 +1936,37 @@ function climateRows(buildingDna, monthly) {
       },
       {
         label: "Iradiere solara lunara normativa",
+        value: providerMonthlySolar.length > 0
+          ? providerMonthlySolar
+              .map(record =>
+                `${monthLabel(record.month)} I_T,oriz ${formatNotebookValue(record.totalIrradianceWPerM2?.horizontal, record.unit, 1)}, ` +
+                `I_T,S ${formatNotebookValue(record.totalIrradianceWPerM2?.south, record.unit, 1)}`
+              )
+              .join("; ")
+          : climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ??
+            "indisponibila fara Mc001/1-2006 Anexa nr. A9.6"
+      },
+      {
+        label: "Sursa iradiere solara normativa",
         value:
+          climateProvider.datasets?.monthlySolarIrradiation?.sourceReference ??
           climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ??
-          "indisponibila fara Mc001/1-2006 Anexa nr. A9.6"
+          "neselectata"
+      },
+      {
+        label: "Versiune dataset solar",
+        value:
+          climateProvider.datasets?.monthlySolarIrradiation?.datasetVersion ??
+          "indisponibila"
+      },
+      {
+        label: "Status preprocesare Qsol",
+        value: climateProvider.diagnostics?.find(
+          item => item.code === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED_FOR_QSOL"
+        )?.sourceReference ?? "Hsol/Qsky preprocesate sau input certificat disponibile"
       }
     ] : []),
+    ...climateProfileFieldRows(productionClimateProfile),
     {
       label: "Temperatura exterioara de calcul iarna",
       value: winterDesignTemperature

@@ -55,7 +55,7 @@ export const ROMANIAN_CLIMATE_COVERAGE = Object.freeze({
     }),
     Object.freeze({
       dependencyId: "official_monthly_temperature_and_solar_climate_dataset",
-      status: "monthly_temperature_source_packed_solar_irradiation_external_to_mc001_1_2006_a9_6",
+      status: "monthly_temperature_and_mc001_1_2006_a9_6_solar_source_packed_where_station_is_covered",
       requiredFor:
         "normative monthly exterior temperature and irradiation profiles by location/zone"
     })
@@ -320,9 +320,9 @@ export const ROMANIAN_CLIMATE_SOURCE_INVENTORY = Object.freeze([
     source: MC001_PDF,
     sourceLocation:
       "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
-    status: "partially_implemented_temperature_available_solar_external",
+    status: "implemented_temperature_and_a9_6_solar_where_source_locality_is_covered",
     runtimeUse:
-      "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; orientation-dependent irradiation remains external and is not silently defaulted",
+      "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; monthly mean daily solar irradiance source rows are source-packed from Mc001/1-2-3/2006 Anexa A.9.6 for the 30 localities reproduced there; source-backed Qsol still requires preprocessed Hsol/Qsky or certified explicit input",
     containsMonthlyClimateInputs: true,
     implementedArtifacts: Object.freeze([
       "Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities",
@@ -332,8 +332,10 @@ export const ROMANIAN_CLIMATE_SOURCE_INVENTORY = Object.freeze([
       "Mc001/6-2013 Tabel IV.1 summer design-day temperature for 41 localities",
       "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities"
     ]),
-    missingArtifact:
-      "source-backed table of monthly solar irradiation by locality/orientation/plane from Mc001/1-2006 Anexa nr. A9.6"
+    solarArtifact:
+      "Mc001/1-2-3/2006 Anexa A.9.6 monthly mean daily total and diffuse solar irradiance source rows for 30 localities",
+    solarPreprocessingBoundary:
+      "A.9.6 W/m2 rows are not fed directly into MC001 2.39/2.50 Hsol [kWh/m2] or Qsol; SR EN ISO 52010-1 preprocessing/source-backed Hsol and Qsky-compatible inputs remain required."
   })
 ]);
 

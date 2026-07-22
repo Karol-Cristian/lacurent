@@ -481,7 +481,7 @@ function extractQHhtSource(inputCase, qHgn) {
 
   if (hasDirectQHht) {
     const qHht = finiteNumber(inputCase.qHht);
-    if (qHht === null || qHht <= 0) {
+    if (qHht === null || qHht < 0) {
       return { ok: false, code: "restricted_qhnd_invalid_qHht" };
     }
     return {
@@ -509,7 +509,7 @@ function extractQHhtSource(inputCase, qHgn) {
       c5Result.result.symbol !== C5_TOTAL_TRANSFER_SYMBOL ||
       c5Result.result.unit !== "kWh" ||
       amount === null ||
-      amount <= 0
+      amount < 0
     ) {
       return { ok: false, code: "invalid_explicit_C5_transfer_for_QHht" };
     }
@@ -804,6 +804,28 @@ function validateCase(inputCase) {
   const qHhtSource = extractQHhtSource(inputCase, qHgn);
   if (!qHhtSource.ok) return qHhtSource;
   const { qHht } = qHhtSource.value;
+  if (qHht === 0) {
+    return {
+      ok: true,
+      value: {
+        caseId: inputCase.caseId,
+        month: inputCase.month,
+        qHht,
+        ...qHhtSourceOutputFields(qHhtSource.value),
+        qHgn,
+        qHgnOrigin: qHgnSource.value.qHgnOrigin,
+        ...(qHgnSource.value.internalGains === undefined ? {} : { internalGains: qHgnSource.value.internalGains }),
+        ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
+        ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
+        ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
+        gammaHOrigin: "not_required_for_zero_heat_transfer_branch",
+        etaHgnOrigin: "not_required_for_zero_heat_transfer_branch",
+        qHndBranch: "zero_heat_transfer_zero_demand",
+        qHnd: 0,
+        sourceReference: inputCase.source.reference
+      }
+    };
+  }
   const gammaH = inputCase.gammaH === undefined || inputCase.gammaH === null
     ? qHgn / qHht
     : finiteNumber(inputCase.gammaH);

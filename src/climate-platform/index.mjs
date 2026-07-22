@@ -58,15 +58,25 @@ export {
   ROMANIAN_NORMATIVE_CLIMATE_DATASET_STATUSES,
   ROMANIAN_NORMATIVE_CLIMATE_PROVIDER_VERSION,
   findRomanianNormativeStationByLocalityId,
+  findRomanianNormativeStationByLocalityName,
   getRomanianNormativeClimateDatasetMetadata,
   getRomanianNormativeClimateStation,
   getRomanianNormativeMonthlyExteriorTemperature,
   getRomanianNormativeMonthlyRelativeHumidity,
+  getRomanianNormativeMonthlySolarIrradiance,
   getRomanianNormativeSummerDesignDayTemperature,
   getRomanianNormativeSummerDesignPentadTemperature,
   getRomanianNormativeWinterDesignDayTemperature,
   getRomanianNormativeWinterDesignPentadTemperature,
   listRomanianNormativeClimateStations,
   listRomanianNormativeLocalityStationMappings,
+  listRomanianNormativeSolarIrradiationLocalities,
   resolveRomanianNormativeClimateSelection
 } from "./romanianNormativeClimateProvider.mjs";
+
+export {
+  CLIMATE_PROFILE_FIELD_STATUSES,
+  ROMANIAN_PRODUCTION_CLIMATE_REGISTRY_VERSION,
+  listRomanianProductionClimateLocalities,
+  resolveRomanianProductionClimateProfile
+} from "./romanianProductionClimateRegistry.mjs";

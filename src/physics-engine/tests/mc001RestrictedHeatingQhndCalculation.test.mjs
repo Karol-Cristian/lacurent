@@ -538,7 +538,7 @@ await test("blocks missing or invalid C5 explicit transfer source for QHht", () 
 
   const invalidPayloadCase = sampleCase({
     explicitTotalHeatTransferResult: c5ExplicitTotalTransferResult({
-      result: { amount: 0 }
+      result: { amount: -1 }
     })
   });
   delete invalidPayloadCase.qHht;
@@ -604,6 +604,22 @@ await test("gammaH greater than two uses zero-demand branch", () => {
   close(result.caseResults[0].qHnd, 0);
   assert.equal(result.caseResults[0].qHndBranch, "gammaH_greater_than_two_zero_demand");
   assert.equal(result.caseResults[0].etaHgnOrigin, "not_required_for_gammaH_greater_than_two_zero_qhnd_branch");
+});
+
+await test("zero QHht uses zero-demand branch without gamma or eta calculation", () => {
+  const payloadCase = sampleCase({
+    qHht: 0,
+    qHgn: 300,
+    gammaH: undefined,
+    etaHgn: undefined
+  });
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHnd, 0);
+  assert.equal(result.caseResults[0].qHndBranch, "zero_heat_transfer_zero_demand");
+  assert.equal(result.caseResults[0].gammaHOrigin, "not_required_for_zero_heat_transfer_branch");
+  assert.equal(result.caseResults[0].etaHgnOrigin, "not_required_for_zero_heat_transfer_branch");
 });
 
 await test("annual aggregation sums monthly restricted QHnd", () => {
@@ -1016,9 +1032,9 @@ await test("rejects invalid monthly heat gains result for QHgn", () => {
   );
 });
 
-await test("rejects qHht less than or equal to zero", () => {
+await test("rejects qHht below zero", () => {
   assertBlocked(
-    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ qHht: 0 })])),
+    calculateMc001RestrictedHeatingQhndExplicit(input([sampleCase({ qHht: -1 })])),
     "restricted_qhnd_invalid_qHht"
   );
 });
@@ -1165,13 +1181,14 @@ await test("rejects missing explicit tauH coefficient component", () => {
   );
 });
 
-await test("rejects calculated etaHgn path with qHht less than or equal to zero", () => {
+await test("calculated etaHgn path accepts zero qHht as zero-demand branch", () => {
   const payloadCase = sampleCase({ qHht: 0, aH: 2 });
   delete payloadCase.etaHgn;
-  assertBlocked(
-    calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase])),
-    "restricted_qhnd_invalid_qHht"
-  );
+  const result = calculateMc001RestrictedHeatingQhndExplicit(input([payloadCase]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qHnd, 0);
+  assert.equal(result.caseResults[0].qHndBranch, "zero_heat_transfer_zero_demand");
 });
 
 await test("rejects calculated etaHgn path with qHgn below zero", () => {
