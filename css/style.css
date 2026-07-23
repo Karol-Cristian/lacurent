@@ -6379,6 +6379,50 @@ line-height:1.25;
 color:#64748b;
 }
 
+.resolved-climate-profile-panel{
+margin-top:10px;
+padding:10px;
+border:1px solid #cbd5e1;
+border-radius:3px;
+background:#f8fafc;
+}
+
+.resolved-climate-profile-panel h4{
+margin:0 0 8px;
+font-size:12px;
+font-weight:900;
+letter-spacing:0;
+text-transform:uppercase;
+color:#334155;
+}
+
+.resolved-climate-profile-grid{
+display:grid;
+grid-template-columns:repeat(3,minmax(0,1fr));
+gap:8px;
+margin:0;
+}
+
+.resolved-climate-profile-grid div{
+min-width:0;
+}
+
+.resolved-climate-profile-grid dt{
+font-size:10px;
+font-weight:900;
+letter-spacing:0;
+text-transform:uppercase;
+color:#64748b;
+}
+
+.resolved-climate-profile-grid dd{
+margin:2px 0 0;
+font-size:12px;
+font-weight:800;
+color:#0f172a;
+word-break:break-word;
+}
+
 .p3f-input-pane .value-card-grid{
 display:grid;
 grid-template-columns:repeat(2,minmax(0,1fr));
@@ -6697,7 +6741,8 @@ grid-template-columns:repeat(2,minmax(0,1fr));
 
 @media(max-width:640px){
 .p3f-input-pane .form-grid,
-.p3f-input-pane .value-card-grid{
+.p3f-input-pane .value-card-grid,
+.resolved-climate-profile-grid{
 grid-template-columns:1fr;
 }
 

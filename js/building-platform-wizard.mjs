@@ -7,7 +7,6 @@ import {
   buildBuildingTechnicalWorkspace,
   findRomanianClimateProfileById,
   findRomanianNormativeStationByLocalityId,
-  listRomanianClimateProfiles,
   listRomanianClimateZones,
   listRomanianProductionClimateLocalities
 } from "../src/building-platform/index.mjs";
@@ -231,21 +230,6 @@ function dispatchFormRefresh(form) {
   form?.dispatchEvent?.(new Event("input", { bubbles: true }));
 }
 
-function ensureClimateProfileOption(form, profileId) {
-  const select = form?.querySelector?.('[name="climate_profile_id"]');
-  if (!select?.appendChild || !profileId) return;
-  const existing = [...(select.options ?? [])].some(option => option.value === profileId);
-  if (existing) return;
-  const profile = findRomanianClimateProfileById(profileId);
-  const option = globalThis.document?.createElement?.("option");
-  if (!profile || !option) return;
-  option.value = profile.profileId;
-  option.textContent = `${profile.locality}, ${profile.county} - ${profile.displayName}`;
-  option.dataset.sourceType = profile.sourceType;
-  option.dataset.verificationStatus = profile.verificationStatus;
-  select.appendChild(option);
-}
-
 function createOption(root, value, textContent) {
   const option = root?.createElement?.("option") ?? globalThis.document?.createElement?.("option");
   if (!option) return null;
@@ -282,16 +266,62 @@ function selectedSelectOption(select) {
   return selectedIndex >= 0 ? select.options?.[selectedIndex] ?? null : null;
 }
 
+function setResolvedClimateField(panel, field, value) {
+  const node = panel?.querySelector?.(`[data-resolved-climate-field="${field}"]`);
+  if (node) node.textContent = value || "Neselectat";
+}
+
+function updateResolvedClimateProfilePanel(form) {
+  const panel = form?.querySelector?.("[data-resolved-climate-profile]");
+  if (!panel) return;
+  const localitySelect = form?.querySelector?.('[name="locality_id"]');
+  const selected = selectedSelectOption(localitySelect);
+  const localityId = selected?.value ?? "";
+  const station = localityId ? findRomanianNormativeStationByLocalityId(localityId) : null;
+  const localityName = station?.localityName ?? selected?.dataset?.localityName ?? "";
+  const stationId = station?.stationId ?? selected?.dataset?.stationId ?? "";
+  const datasetVersion = selected?.dataset?.datasetVersion ?? station?.datasetVersion ?? "";
+  const hasTemperature = selected?.dataset?.hasMonthlyTemperature === "true" ||
+    station?.coverage?.monthlyExteriorTemperature === true;
+  const hasSolar = selected?.dataset?.hasMonthlySolarIrradiation === "true" ||
+    station?.coverage?.monthlySolarIrradiation === true;
+
+  setResolvedClimateField(panel, "locality", localityName || "Neselectata");
+  setResolvedClimateField(panel, "station", stationId || "Neselectata");
+  setResolvedClimateField(panel, "dataset", datasetVersion || "Neselectat");
+  setResolvedClimateField(
+    panel,
+    "temperature",
+    hasTemperature ? "Disponibile prin Climate Provider" : "Indisponibile pentru localitatea selectata"
+  );
+  setResolvedClimateField(
+    panel,
+    "solar",
+    hasSolar ? "Disponibila prin Climate Provider" : "Limitata la date sursa sau set certificat"
+  );
+  setResolvedClimateField(
+    panel,
+    "note",
+    localityId
+      ? "Localitatea selectata este sursa unica pentru profilul climatic folosit la calcul."
+      : "Selecteaza o localitate pentru rezolvarea automata a profilului climatic."
+  );
+}
+
 function syncSelectedProductionLocality(form) {
   const localitySelect = form?.querySelector?.('[name="locality_id"]');
   const selected = selectedSelectOption(localitySelect);
-  if (!selected) return;
+  if (!selected) {
+    updateResolvedClimateProfilePanel(form);
+    return;
+  }
   const stationInput = form?.querySelector?.('[name="climate_station_id"]');
   const cityInput = form?.querySelector?.('[name="city"]');
   if (stationInput) stationInput.value = selected?.dataset?.stationId ?? "";
   if (cityInput && selected?.dataset?.localityName) {
     cityInput.value = selected.dataset.localityName;
   }
+  updateResolvedClimateProfilePanel(form);
 }
 
 export function demoModeFromSearch(search = "") {
@@ -310,7 +340,6 @@ export function applyAssistedWizardDemoFixture(form, fixture = ASSISTED_WIZARD_D
   if (!form) return { applied: false };
   form.reset?.();
   clearFieldProvenance(form);
-  ensureClimateProfileOption(form, fixture.values?.climate_profile_id);
   ensureProductionLocalityOption(form, fixture.values?.locality_id);
   for (const [name, value] of Object.entries(fixture.values ?? {})) {
     setFieldValue(form, name, value);
@@ -2176,20 +2205,6 @@ export function attachBuildingPlatformWizard(root = document) {
       localitySelect.appendChild(option);
     }
   }
-  const climateSelect = form.querySelector?.('[name="climate_profile_id"]');
-  if (climateSelect && climateSelect.options.length <= 1) {
-    const includeSynthetic = demoModeFromSearch(globalThis.window?.location?.search ?? "") ||
-      form.dataset.demoMode === "1";
-    for (const profile of listRomanianClimateProfiles({ includeSynthetic })) {
-      const option = root.createElement?.("option");
-      if (!option) continue;
-      option.value = profile.profileId;
-      option.textContent = `${profile.locality}, ${profile.county} - ${profile.displayName}`;
-      option.dataset.sourceType = profile.sourceType;
-      option.dataset.verificationStatus = profile.verificationStatus;
-      climateSelect.appendChild(option);
-    }
-  }
   const climateZoneSelect = form.querySelector?.('[name="climate_zone"]');
   if (climateZoneSelect && climateZoneSelect.options.length <= 1) {
     for (const zone of listRomanianClimateZones()) {
@@ -2204,6 +2219,7 @@ export function attachBuildingPlatformWizard(root = document) {
   localitySelect?.addEventListener?.("change", () => {
     syncSelectedProductionLocality(form);
   });
+  updateResolvedClimateProfilePanel(form);
   const demoControls = attachDemoControls(root, form);
   previewButton.addEventListener("click", () => {
     generateBuildingPlatformTechnicalReport(root, {
