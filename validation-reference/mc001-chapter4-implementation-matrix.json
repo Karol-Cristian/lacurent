@@ -1,0 +1,241 @@
+{
+  "schema": "mc001_chapter4_implementation_matrix_v1",
+  "milestone": "P7_MC001_CHAPTER_4_PRODUCTION_IMPLEMENTATION",
+  "sourceDocument": {
+    "title": "MC001-2022 - Metodologie de calcul al performantei energetice a cladirilor",
+    "repositoryPath": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+    "sourceType": "official_mc001_pdf_in_repository"
+  },
+  "implementationPolicy": {
+    "implementedScope": "Largest coherent production-quality Chapter 4 subset completed in P7: photovoltaic monthly production, MC001 4.5, relations 4.160-4.165.",
+    "excludedFromP7": [
+      "primary energy",
+      "CO2",
+      "certificate indicators",
+      "export/self-consumption allocation",
+      "RER crediting"
+    ],
+    "reason": "Those outputs belong to later MC001 accounting chapters or require separate coherent subsystem domains. P7 exposes physical PV electricity production only."
+  },
+  "chapter4Subchapters": [
+    {
+      "section": "4.1",
+      "titleRo": "Pompe de caldura",
+      "sourcePdfPages": "288-303",
+      "classification": [
+        "normative_calculation",
+        "external_standard_delegation",
+        "equipment_performance_method"
+      ],
+      "keyDependencies": [
+        "SR EN 15316-4-2",
+        "heat pump type",
+        "source/sink temperatures",
+        "load timestep",
+        "capacity/COP/performance data",
+        "auxiliary and backup data"
+      ],
+      "currentLaCurentTreatment": "covered_by_chapter3_installation_runtime_for_explicit_system_energy_inputs_only",
+      "p7Status": "DEFERRED_COHERENT_DOMAIN",
+      "implementation": null,
+      "tests": [],
+      "notebookVisibility": "no_chapter4_heat_pump_section_until_full_method_is_implemented",
+      "reasonNotImplementedInP7": "This subchapter is larger than the P7 coherent subset and depends on SR EN 15316-4-2 product/performance data. Implementing a COP shortcut would create a partial parallel method."
+    },
+    {
+      "section": "4.2",
+      "titleRo": "Sisteme solare termice",
+      "sourcePdfPages": "304-323",
+      "classification": [
+        "normative_calculation",
+        "collector_storage_heat_exchanger_method",
+        "monthly_renewable_heat"
+      ],
+      "keyDependencies": [
+        "collector area and optical data",
+        "collector heat transfer coefficients",
+        "storage volume",
+        "heat exchanger data",
+        "service load",
+        "monthly solar irradiation and exterior temperature"
+      ],
+      "currentLaCurentTreatment": "not_implemented",
+      "p7Status": "DEFERRED_COHERENT_DOMAIN",
+      "implementation": null,
+      "tests": [],
+      "notebookVisibility": "no_solar_thermal_section_until_full_method_is_implemented",
+      "reasonNotImplementedInP7": "The solar thermal monthly method has its own collector/storage/load chain and should be implemented as a separate complete subsystem, not as a partial UI shell."
+    },
+    {
+      "section": "4.3",
+      "titleRo": "Sisteme de cogenerare",
+      "sourcePdfPages": "324-338",
+      "classification": [
+        "normative_calculation",
+        "external_standard_delegation",
+        "primary_energy_interaction"
+      ],
+      "keyDependencies": [
+        "SR EN 15316-4-4",
+        "SR EN 50465",
+        "SR ISO 3046-1",
+        "SR CEN/TR 15316-6-7",
+        "part-load heat/electric performance",
+        "allocation and primary-energy accounting"
+      ],
+      "currentLaCurentTreatment": "not_implemented_as_chapter4_cogeneration_runtime",
+      "p7Status": "DEFERRED_COHERENT_DOMAIN_AND_LATER_CHAPTER_INTERACTION",
+      "implementation": null,
+      "tests": [],
+      "notebookVisibility": "no_cogeneration_section_until_full_method_is_implemented",
+      "reasonNotImplementedInP7": "Cogeneration needs product/tested performance curves and interacts with primary-energy allocation. P7 does not start primary energy or certificate accounting."
+    },
+    {
+      "section": "4.4",
+      "titleRo": "Sisteme urbane pentru incalzire/racire",
+      "sourcePdfPages": "339-353",
+      "classification": [
+        "normative_calculation",
+        "external_standard_delegation",
+        "district_energy_weighting"
+      ],
+      "keyDependencies": [
+        "SR EN 15316-4-5",
+        "system boundary definition",
+        "measured delivered heat/cooling",
+        "source mix",
+        "weighting factors"
+      ],
+      "currentLaCurentTreatment": "not_implemented_as_chapter4_district_runtime",
+      "p7Status": "DEFERRED_COHERENT_DOMAIN_AND_LATER_CHAPTER_INTERACTION",
+      "implementation": null,
+      "tests": [],
+      "notebookVisibility": "no_district_energy_section_until_full_method_is_implemented",
+      "reasonNotImplementedInP7": "This subchapter chiefly defines source/boundary/weighting-factor accounting for district systems and is not safely separable from later energy-factor work."
+    },
+    {
+      "section": "4.5",
+      "titleRo": "Panouri fotovoltaice",
+      "sourcePdfPages": "354-358",
+      "classification": [
+        "normative_calculation",
+        "normative_lookup_table",
+        "monthly_renewable_electricity_production"
+      ],
+      "keyDependencies": [
+        "explicit PV system inputs",
+        "MC001 Tabel 4.5 correction factor for tilt 45 deg and azimuth 0 deg",
+        "MC001 Anexa A2 monocrystalline temperature efficiency",
+        "Climate Provider monthly horizontal irradiance from MC001/1-2006 Annex A9.6"
+      ],
+      "currentLaCurentTreatment": "implemented_in_p7",
+      "p7Status": "IMPLEMENTED_PRODUCTION_SUBSET",
+      "implementation": {
+        "runtimeModule": "src/physics-engine/mc001Chapter4Photovoltaics.mjs",
+        "buildingAdapter": "src/building-platform/buildingChapter4RenewablesAdapter.mjs",
+        "productionCalculationPath": "Building DNA technicalSystems.renewableProduction.photovoltaic -> Climate Provider solar source rows -> Chapter 4 PV runtime -> immutable analysis/report output",
+        "ui": "pages/analiza-casa.html, js/building-platform-wizard.mjs",
+        "notebook": "src/physics-engine/mc001Chapter4Notebook.mjs",
+        "report": "src/building-platform/buildingTechnicalReport.mjs",
+        "fingerprints": "src/building-platform/backend/buildingPlatformFingerprints.mjs"
+      },
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter4Photovoltaics.test.mjs",
+        "src/building-platform/tests/buildingChapter4RenewablesProduct.test.mjs",
+        "tests/mc001-chapter4-implementation-matrix.mjs"
+      ],
+      "notebookVisibility": "visible_when_photovoltaic_system_is_configured_and_calculated",
+      "relationCoverage": [
+        {
+          "relation": "4.160",
+          "description": "Atot = Np * Apanou",
+          "status": "IMPLEMENTED_UNIT_TESTED_PRODUCT_INTEGRATED_NOTEBOOK_VISIBLE"
+        },
+        {
+          "relation": "4.161",
+          "description": "epsilonPV = (Pmax,1000 / Apanou) / I1000",
+          "status": "IMPLEMENTED_UNIT_TESTED_PRODUCT_INTEGRATED_NOTEBOOK_VISIBLE"
+        },
+        {
+          "relation": "4.162",
+          "description": "El,i = 1/1000 * 24 * Nzl * Atot * Io,i * fcap * eta_t * eta_inv * epsilonPV",
+          "status": "IMPLEMENTED_UNIT_TESTED_PRODUCT_INTEGRATED_NOTEBOOK_VISIBLE"
+        },
+        {
+          "relation": "4.163",
+          "description": "Etot = sum El,i",
+          "status": "IMPLEMENTED_UNIT_TESTED_PRODUCT_INTEGRATED_NOTEBOOK_VISIBLE"
+        },
+        {
+          "relation": "4.164",
+          "description": "Einc,i = Io,i * fcap * Atot * 24 * Nzl / 1000",
+          "status": "IMPLEMENTED_UNIT_TESTED_PRODUCT_INTEGRATED_NOTEBOOK_VISIBLE"
+        },
+        {
+          "relation": "4.165",
+          "description": "eta_captare,i = El,i / Einc,i",
+          "status": "IMPLEMENTED_UNIT_TESTED_PRODUCT_INTEGRATED_NOTEBOOK_VISIBLE"
+        }
+      ],
+      "lookupCoverage": [
+        {
+          "table": "Tabel 4.5",
+          "description": "fcap for betaI = 45 deg and betaA = 0 deg",
+          "status": "IMPLEMENTED_UNIT_TESTED"
+        },
+        {
+          "annex": "Anexa A2 informativa",
+          "description": "eta_t monthly factors for monocrystalline PV",
+          "status": "IMPLEMENTED_UNIT_TESTED"
+        }
+      ],
+      "boundedLimitations": [
+        "Only the source-backed Tabel 4.5 tilt 45 deg / azimuth 0 deg correction row is exposed. Other tilt/azimuth correction factors require source-backed lookup rows or explicit future extension.",
+        "PV production is not allocated to self-consumption, export, primary energy, CO2, CPE, certificate indicators or RER in P7."
+      ]
+    },
+    {
+      "section": "4.6",
+      "titleRo": "Centrale eoliene",
+      "sourcePdfPages": "359-362",
+      "classification": [
+        "normative_calculation",
+        "external_standard_delegation",
+        "wind_power_lookup"
+      ],
+      "keyDependencies": [
+        "SR EN 15316-4-10",
+        "wind turbine class",
+        "wind speed distribution",
+        "wind correction data",
+        "small wind turbine technical data"
+      ],
+      "currentLaCurentTreatment": "not_implemented",
+      "p7Status": "EXTERNAL_STANDARD_DEPENDENCY",
+      "implementation": null,
+      "tests": [],
+      "notebookVisibility": "no_wind_section_until_source_complete_method_is_implemented",
+      "reasonNotImplementedInP7": "MC001 names SR EN 15316-4-10 as source for wind production. P7 does not invent wind curves or wind datasets."
+    }
+  ],
+  "productionEvidence": {
+    "supportedUserInputs": [
+      "panel count",
+      "panel equivalent area",
+      "maximum panel power at 1000 W/m2",
+      "inverter efficiency",
+      "temperature efficiency mode",
+      "tilt/azimuth correction table selection"
+    ],
+    "providerInputs": [
+      "monthly horizontal solar irradiance from Climate Provider source-backed Annex A9.6 rows"
+    ],
+    "outputs": [
+      "monthly PV electric energy",
+      "annual PV electric energy",
+      "monthly incident energy",
+      "annual incident energy",
+      "monthly and annual capture efficiency"
+    ]
+  }
+}

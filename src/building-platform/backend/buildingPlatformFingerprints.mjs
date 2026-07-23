@@ -130,6 +130,8 @@ export function fingerprintAnalysis({
   chapter2Input,
   chapter3Input = null,
   chapter3AdapterVersion = null,
+  chapter4Input = null,
+  chapter4AdapterVersion = null,
   versionIdentity = buildVersionIdentity()
 } = {}) {
   return stableFingerprint({
@@ -139,6 +141,8 @@ export function fingerprintAnalysis({
     ...(chapter3Input === null ? {} : { chapter3Input }),
     adapterVersion: versionIdentity.adapterVersion,
     ...(chapter3AdapterVersion === null ? {} : { chapter3AdapterVersion }),
+    ...(chapter4Input === null ? {} : { chapter4Input }),
+    ...(chapter4AdapterVersion === null ? {} : { chapter4AdapterVersion }),
     physicsEngineVersion: versionIdentity.physicsEngineVersion,
     normativeRegistryVersion: versionIdentity.normativeRegistryVersion
   }, "analysis");
@@ -162,6 +166,8 @@ export function buildBuildingPlatformVersionMetadata({
     chapter2Input: calculation?.chapter2Input ?? null,
     chapter3Input: calculation?.chapter3Input ?? null,
     chapter3AdapterVersion: calculation?.chapter3AdapterVersion ?? null,
+    chapter4Input: calculation?.chapter4Input ?? null,
+    chapter4AdapterVersion: calculation?.chapter4AdapterVersion ?? null,
     versionIdentity
   });
   const reportFingerprint = fingerprintReport({ analysisFingerprint });
@@ -179,6 +185,10 @@ export function buildBuildingPlatformVersionMetadata({
     chapter3AdapterVersion: calculation?.chapter3AdapterVersion ?? null,
     chapter3RuntimeVersion: calculation?.chapter3Result
       ? "mc001_chapter_3_runtime_complete_for_mc001_explicit_relations_p4_product_flow"
+      : null,
+    chapter4AdapterVersion: calculation?.chapter4AdapterVersion ?? null,
+    chapter4RuntimeVersion: calculation?.chapter4Result
+      ? "mc001_chapter_4_5_photovoltaic_monthly_p7_v1"
       : null,
     physicsEngineVersion: versionIdentity.physicsEngineVersion,
     normativeRegistryVersion: versionIdentity.normativeRegistryVersion,

@@ -14,12 +14,13 @@ MC001 sections used:
 - MC001-2022, 5.4.2.9 - Contributia energiei din surse regenerabile
 - MC001-2022, Tabel 5.17, Tabel 5.21, Tabel 5.22, Tabel 5.23
 
-Extraction status: `partial_needs_verification`
+Extraction status: `partial_p7_photovoltaic_verified`
 
 Implementation relevance:
 - This module identifies renewable-system sources and the renewable/export/RER accounting rules needed by LaCurent Physics Engine.
 - Clear accounting formulas from Chapter 5 are extracted.
-- Detailed production formulas for solar thermal, heat pumps, and wind systems from Chapter 4 are not fully implementation-ready in this pass because several relations are visually/OCR unclear and rely on referenced SR EN methods.
+- Detailed production formulas for solar thermal, heat pumps, cogeneration, district systems, and wind systems from Chapter 4 remain outside the P7 production subset because they are separate coherent domains and/or rely on referenced SR EN methods.
+- The Chapter 4.5 photovoltaic monthly production path has been visually verified against the official MC001 PDF and implemented for relations (4.160)-(4.165), Tabel 4.5 and Anexa A2 monocrystalline `eta_t`.
 - Factor values remain owned by module `13_final_primary_co2_rer`.
 
 LaCurent disclaimer:
@@ -158,9 +159,24 @@ Generated energy vs credited renewable contribution:
 | inputs | `Np`; `thetaI`; `thetaA`; `kpk`; `Apanou`; `Pmax1000`; `etaInv`; `fcap`; `etaT`; monthly horizontal solar radiation |
 | MC001 reference | MC001-2022, 4.5.1-4.5.2; Tabel 4.5; Annex A2; Annex A3 |
 | status | `extracted_text_rule` |
-| implementationAllowed | `false` |
-| implementation notes | Relations (4.160)-(4.165) need visual extraction before generated monthly PV energy is implementation-ready. |
+| implementationAllowed | `true` |
+| implementation notes | P7 implements relations (4.160)-(4.165) in `src/physics-engine/mc001Chapter4Photovoltaics.mjs`, with product mapping through `src/building-platform/buildingChapter4RenewablesAdapter.mjs`. |
 | validation notes | Missing panel count, panel data, inverter efficiency, orientation/tilt, or solar radiation blocks default PV generation. |
+
+### P7 visual verification note - MC001 Chapter 4.5 PV
+
+| Item | Source | P7 treatment |
+| --- | --- | --- |
+| Relation (4.160) | MC001-2022 PDF page 357 | Implemented as `Atot = Np * Apanou` |
+| Relation (4.161) | MC001-2022 PDF page 357 | Implemented as `epsilonPV = (Pmax,1000 / Apanou) / I1000` |
+| Relation (4.162) | MC001-2022 PDF page 357 | Implemented as monthly PV electric energy |
+| Relation (4.163) | MC001-2022 PDF page 357 | Implemented as annual sum of monthly PV electric energy |
+| Relation (4.164) | MC001-2022 PDF page 357 | Implemented as monthly incident energy on collector area |
+| Relation (4.165) | MC001-2022 PDF page 357 | Implemented as monthly capture efficiency |
+| Tabel 4.5 | MC001-2022 PDF pages 355-356 | Implemented only for source-backed `betaI = 45 deg`, `betaA = 0 deg` row |
+| Anexa A2 informativa | MC001-2022 PDF page 358 | Implemented for monocrystalline monthly `eta_t` values |
+
+P7 follows the numbered normative relations, not the worked-example display table as a separate algorithm. The worked example appears to present some rows per panel while the formula chain uses `Atot`; production code follows the formulas.
 
 ### Formula 2 - On-site produced electricity aggregation
 

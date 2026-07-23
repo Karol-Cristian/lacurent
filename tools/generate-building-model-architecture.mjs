@@ -17,6 +17,8 @@ const refs = Object.freeze({
   resolver: "src/building-platform/buildingDnaResolver.mjs",
   chapter2Adapter: "src/building-platform/buildingChapter2Adapter.mjs",
   chapter3Adapter: "src/building-platform/buildingChapter3InstallationsAdapter.mjs",
+  chapter4Adapter: "src/building-platform/buildingChapter4RenewablesAdapter.mjs",
+  chapter4PvRuntime: "src/physics-engine/mc001Chapter4Photovoltaics.mjs",
   technicalReport: "src/building-platform/buildingTechnicalReport.mjs",
   climateProvider: "src/climate-platform/romanianNormativeClimateProvider.mjs",
   productionClimateRegistry: "src/climate-platform/romanianProductionClimateRegistry.mjs",
@@ -36,6 +38,7 @@ const refs = Object.freeze({
   wizardTest: "tests/building-platform-wizard-ui.mjs",
   backendTest: "src/building-platform/tests/buildingPlatformVersionedBackend.test.mjs",
   chapter3ProductTest: "src/building-platform/tests/buildingChapter3InstallationsProduct.test.mjs",
+  chapter4ProductTest: "src/building-platform/tests/buildingChapter4RenewablesProduct.test.mjs",
   climateProviderTest: "src/climate-platform/tests/romanianNormativeClimateProvider.test.mjs"
 });
 
@@ -194,6 +197,19 @@ const domains = Object.freeze([
     implementationRefs: [refs.chapter3Adapter, refs.chapter3ProductTest, refs.wizard]
   },
   {
+    domainId: "renewable_production",
+    concept: "Chapter 4 renewable production",
+    owner: "Technical Systems schema and Chapter 4 renewable adapter",
+    sourceOfTruth: "buildingDna.technicalSystems.renewableProduction",
+    lifecycle: "explicit user engineering input; persisted with Building DNA when configured",
+    responsibilities: [
+      "photovoltaic monthly production from MC001 Chapter 4.5",
+      "source-backed Climate Provider solar irradiation consumption",
+      "no primary energy, CO2, export, certificate or RER crediting in P7"
+    ],
+    implementationRefs: [refs.chapter4Adapter, refs.chapter4PvRuntime, refs.chapter4ProductTest, refs.wizard]
+  },
+  {
     domainId: "physics_engine",
     concept: "MC001 physics engine",
     owner: "Physics Engine",
@@ -202,9 +218,10 @@ const domains = Object.freeze([
     responsibilities: [
       "Chapter 2 useful demand",
       "Chapter 3 installation energy chains",
+      "Chapter 4 photovoltaic renewable production",
       "deterministic intermediate values"
     ],
-    implementationRefs: [refs.chapter2Adapter, refs.chapter3Adapter, "src/physics-engine"]
+    implementationRefs: [refs.chapter2Adapter, refs.chapter3Adapter, refs.chapter4Adapter, "src/physics-engine"]
   },
   {
     domainId: "technical_workspace_report",
@@ -524,21 +541,21 @@ const fields = [
   field({
     fieldId: "provider.monthly_solar_irradiation_source_rows",
     path: "climateProvider.datasets.monthlySolarIrradiation",
-    purpose: "Annex A.9.6 monthly irradiance source rows; not yet preprocessed into Qsol.",
+    purpose: "Annex A.9.6 monthly irradiance source rows; drives Chapter 4.5 PV production and remains bounded for Chapter 2 Qsol preprocessing.",
     category: "provider_resolved",
     owner: "Romanian Climate Provider",
     sourceOfTruth: "Mc001/1-2-3/2006 Anexa A.9.6",
     producer: "getRomanianNormativeMonthlySolarIrradiance",
-    consumer: "notebook/report provenance; future solar preprocessing",
+    consumer: "Chapter 4 photovoltaic runtime; notebook/report provenance; future Chapter 2 solar preprocessing",
     dataType: "12 monthly irradiance rows where locality covered",
     providerGenerated: true,
-    productionUsage: "source_dataset_available_Qsol_preprocessing_bounded",
+    productionUsage: "drives_Chapter4_PV_production; source_dataset_available_Qsol_preprocessing_bounded",
     notebookLocation: "Date climatice",
     reportLocation: "Anexa climatica",
     dependencies: ["provider.climate_station", "location.locality_id"],
     uiRecommendation: "read_only",
-    implementationRefs: [refs.climateProvider, refs.technicalReport],
-    tests: [refs.climateProviderTest]
+    implementationRefs: [refs.climateProvider, refs.chapter4Adapter, refs.technicalReport],
+    tests: [refs.climateProviderTest, refs.chapter4ProductTest]
   }),
   field({
     fieldId: "provider.production_climate_profile",
@@ -1176,6 +1193,26 @@ const fields = [
     tests: [refs.chapter3ProductTest]
   }),
   field({
+    fieldId: "technical_systems.photovoltaic",
+    path: "technicalSystems.renewableProduction.photovoltaic.systems[] / chapter4_pv_*",
+    purpose: "Explicit MC001 Chapter 4.5 photovoltaic system inputs for monthly electric production.",
+    category: "primitive_user_input",
+    owner: "User through Technical Systems schema",
+    sourceOfTruth: "buildingDna.technicalSystems.renewableProduction.photovoltaic",
+    producer: "buildTechnicalSystemsFromForm",
+    consumer: "buildChapter4RuntimeInputFromBuildingDna",
+    dataType: "PV system array: panel count, area, peak power, inverter efficiency, temperature efficiency mode and mounting correction",
+    editable: true,
+    productionUsage: "drives_Chapter4_PV_monthly_and_annual_electric_production_only",
+    uiLocation: "Instalatii tehnice si surse regenerabile / Panouri fotovoltaice",
+    notebookLocation: "Chapter 4 photovoltaic sections",
+    reportLocation: "Surse regenerabile / Panouri fotovoltaice",
+    dependencies: ["provider.monthly_solar_irradiation_source_rows"],
+    uiRecommendation: "remain_editable",
+    implementationRefs: [refs.wizard, refs.chapter4Adapter, refs.chapter4PvRuntime],
+    tests: [refs.chapter4ProductTest, "src/physics-engine/tests/mc001Chapter4Photovoltaics.test.mjs"]
+  }),
+  field({
     fieldId: "runtime.assembly_u_values",
     path: "calculation.assemblyResult.assemblyResults[*].uValue",
     purpose: "U-values and layer resistances calculated by Chapter 2 envelope assembly runtime.",
@@ -1264,6 +1301,26 @@ const fields = [
     tests: [refs.chapter3ProductTest, "src/physics-engine/tests/mc001Chapter3IntegratedRuntime.test.mjs"]
   }),
   field({
+    fieldId: "runtime.chapter4_photovoltaic_production",
+    path: "calculation.chapter4Result",
+    purpose: "MC001 Chapter 4.5 monthly and annual photovoltaic production when PV systems are active.",
+    category: "physics_runtime_state",
+    owner: "Physics Engine",
+    sourceOfTruth: "calculateMc001Chapter4PhotovoltaicMonthlyProduction output",
+    producer: "Chapter 4 renewable adapter and Physics Engine",
+    consumer: "notebook, report, analysis version output",
+    dataType: "monthly/annual PV production result",
+    persisted: false,
+    runtimeOnly: true,
+    productionUsage: "active_only_when_technicalSystems_renewableProduction_photovoltaic_enabled",
+    notebookLocation: "Chapter 4 photovoltaic sections",
+    reportLocation: "Surse regenerabile Chapter 4",
+    dependencies: ["technical_systems.photovoltaic", "provider.monthly_solar_irradiation_source_rows"],
+    uiRecommendation: "read_only",
+    implementationRefs: [refs.chapter4Adapter, refs.chapter4PvRuntime],
+    tests: [refs.chapter4ProductTest, "src/physics-engine/tests/mc001Chapter4Photovoltaics.test.mjs"]
+  }),
+  field({
     fieldId: "output.annual_qhnd_qcnd",
     path: "analysisVersion.annual_qhnd/annual_qcnd and report.mainResults",
     purpose: "Annual useful heating and cooling demand from Chapter 2.",
@@ -1302,6 +1359,25 @@ const fields = [
     tests: [refs.chapter3ProductTest]
   }),
   field({
+    fieldId: "output.chapter4_photovoltaic_summary",
+    path: "analysisVersion.complete_engine_output.chapter4Result.annual",
+    purpose: "Annual PV production summary from MC001 Chapter 4.5.",
+    category: "output",
+    owner: "Physics Engine output persisted by Versioned Backend",
+    sourceOfTruth: "building_platform_analysis_versions.complete_engine_output_json",
+    producer: "calculateMc001Chapter4PhotovoltaicMonthlyProduction",
+    consumer: "UI, notebook, report",
+    dataType: "annual PV production summary object",
+    productionUsage: "primary_renewable_production_result_when_available_no_primary_CO2_or_export_credit",
+    uiLocation: "Surse regenerabile / Results",
+    notebookLocation: "Chapter 4 annual totals",
+    reportLocation: "Surse regenerabile annual summary",
+    dependencies: ["runtime.chapter4_photovoltaic_production"],
+    uiRecommendation: "read_only",
+    implementationRefs: [refs.versionedBackend, refs.technicalReport],
+    tests: [refs.chapter4ProductTest]
+  }),
+  field({
     fieldId: "output.report_model",
     path: "building_platform_report_versions.structured_report_model_json",
     purpose: "Structured technical report model generated from Building DNA and engine outputs.",
@@ -1314,7 +1390,12 @@ const fields = [
     productionUsage: "authoritative_report_data_not_rendered_html_only",
     reportOnly: true,
     reportLocation: "All technical report chapters",
-    dependencies: ["output.annual_qhnd_qcnd", "runtime.chapter3_installation_energy", "provider.production_climate_profile"],
+    dependencies: [
+      "output.annual_qhnd_qcnd",
+      "runtime.chapter3_installation_energy",
+      "runtime.chapter4_photovoltaic_production",
+      "provider.production_climate_profile"
+    ],
     uiRecommendation: "read_only",
     implementationRefs: [refs.technicalReport, refs.versionedBackend],
     tests: ["src/building-platform/tests/buildingTechnicalReport.test.mjs", refs.backendTest]
@@ -1470,6 +1551,8 @@ const dependencyGraph = Object.freeze({
     "chapter2_physics",
     "chapter3_adapter",
     "chapter3_physics",
+    "chapter4_adapter",
+    "chapter4_physics",
     "engineering_runtime",
     "technical_report",
     "versioned_persistence",
@@ -1486,8 +1569,12 @@ const dependencyGraph = Object.freeze({
     { from: "chapter2_physics", to: "chapter3_adapter", owner: "Chapter 3 Adapter", issue: "none" },
     { from: "building_dna", to: "chapter3_adapter", owner: "Chapter 3 Adapter", issue: "none" },
     { from: "chapter3_adapter", to: "chapter3_physics", owner: "Physics Engine", issue: "none" },
+    { from: "providers", to: "chapter4_adapter", owner: "Chapter 4 Adapter", issue: "source_backed_solar_required" },
+    { from: "building_dna", to: "chapter4_adapter", owner: "Chapter 4 Adapter", issue: "active_only_when_pv_configured" },
+    { from: "chapter4_adapter", to: "chapter4_physics", owner: "Physics Engine", issue: "none" },
     { from: "chapter2_physics", to: "engineering_runtime", owner: "Physics Engine", issue: "none" },
     { from: "chapter3_physics", to: "engineering_runtime", owner: "Physics Engine", issue: "optional_when_systems_active" },
+    { from: "chapter4_physics", to: "engineering_runtime", owner: "Physics Engine", issue: "optional_when_pv_systems_active" },
     { from: "engineering_runtime", to: "technical_report", owner: "Technical Report Builder", issue: "none" },
     { from: "building_dna", to: "versioned_persistence", owner: "Versioned Backend", issue: "none" },
     { from: "engineering_runtime", to: "versioned_persistence", owner: "Versioned Backend", issue: "none" },
@@ -1556,15 +1643,15 @@ const uiAudit = Object.freeze([
     architectureReason: "main toggles reach interventions/assemblies; detail metadata has no current canonical owner"
   },
   {
-    section: "Instalatii tehnice",
-    visibleFields: ["chapter3_heating_*", "chapter3_cooling_*", "chapter3_ventilation_ahu_*", "chapter3_dhw_*", "chapter3_pcm_*", "chapter3_lighting_*"],
-    recommendation: "keep editable with validation; continue showing explicit SR EN 15193-1 lighting boundary",
+    section: "Instalatii tehnice si surse regenerabile",
+    visibleFields: ["chapter3_heating_*", "chapter3_cooling_*", "chapter3_ventilation_ahu_*", "chapter3_dhw_*", "chapter3_pcm_*", "chapter3_lighting_*", "chapter4_pv_*"],
+    recommendation: "keep editable with validation; continue showing explicit SR EN 15193-1 lighting boundary and Chapter 4.5 PV production boundary",
     fieldsToHideOrRemove: [],
-    architectureReason: "technicalSystems is the canonical Chapter 3 product input model"
+    architectureReason: "technicalSystems is the canonical Chapter 3 systems and Chapter 4 renewable production input model"
   },
   {
     section: "Results/report",
-    visibleFields: ["QHnd", "QCnd", "Htr", "Chapter 3 annuals", "fingerprints"],
+    visibleFields: ["QHnd", "QCnd", "Htr", "Chapter 3 annuals", "Chapter 4 PV production", "fingerprints"],
     recommendation: "read-only calculated outputs only",
     fieldsToHideOrRemove: [],
     architectureReason: "reports and UI must read engine outputs, not collect editable output fields"
@@ -1657,6 +1744,8 @@ const simplificationReport = Object.freeze({
     "locality to climate-zone mapping requires source-backed registry",
     "locality to wind-zone mapping requires source-backed registry",
     "Annex A.9.6 solar source rows require normative preprocessing to Qsol",
+    "Chapter 4.5 PV production is implemented only for source-backed Tabel 4.5 tilt 45 deg and azimuth 0 deg",
+    "PV self-consumption, export allocation, primary energy, CO2, CPE, certificate and RER are later-chapter boundaries",
     "SR EN 15193-1 full lighting engine remains external"
   ]
 });

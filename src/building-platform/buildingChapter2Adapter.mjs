@@ -4,6 +4,7 @@ import {
 } from "../physics-engine/mc001EnvelopePhysicsCalculation.mjs";
 import { calculateMc001Chapter2UsefulDemandExplicit } from "../physics-engine/mc001Chapter2UsefulDemandCalculation.mjs";
 import { calculateChapter3InstallationsForBuildingDna } from "./buildingChapter3InstallationsAdapter.mjs";
+import { calculateChapter4RenewableProductionForBuildingDna } from "./buildingChapter4RenewablesAdapter.mjs";
 
 function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -276,9 +277,47 @@ export function calculateChapter2ForBuildingDna(buildingDna) {
     };
   }
   const chapter3Ready = chapter3Calculation.status === "ready";
+  const chapter4Calculation = calculateChapter4RenewableProductionForBuildingDna(buildingDna);
+  if (chapter4Calculation.status === "blocked") {
+    return {
+      status: "blocked",
+      stage: "chapter_4_renewable_production",
+      assemblyInput,
+      assemblyResult,
+      envelopeInput,
+      envelopeTransmissionResult,
+      chapter2Input,
+      chapter2Result,
+      ...(chapter3Ready ? {
+        chapter3AdapterVersion: chapter3Calculation.adapterVersion,
+        chapter3Input: chapter3Calculation.chapter3Input,
+        chapter3Result: chapter3Calculation.chapter3Result
+      } : {}),
+      chapter4Input: chapter4Calculation.input ?? null,
+      chapter4Result: null,
+      diagnostics: chapter4Calculation.diagnostics
+    };
+  }
+  const chapter4Ready = chapter4Calculation.status === "ready";
+  const fullEngineInput = {
+    chapter2Input,
+    ...(chapter3Ready ? { chapter3Input: chapter3Calculation.chapter3Input } : {}),
+    ...(chapter4Ready ? { chapter4Input: chapter4Calculation.chapter4Input } : {})
+  };
+  const fullEngineOutput = {
+    chapter2Result,
+    ...(chapter3Ready ? { chapter3Result: chapter3Calculation.chapter3Result } : {}),
+    ...(chapter4Ready ? { chapter4Result: chapter4Calculation.chapter4Result } : {})
+  };
   return {
     status: "ready",
-    stage: chapter3Ready ? "chapter_2_and_3_complete" : "chapter_2_complete",
+    stage: chapter3Ready && chapter4Ready
+      ? "chapter_2_3_4_complete"
+      : chapter3Ready
+        ? "chapter_2_and_3_complete"
+        : chapter4Ready
+          ? "chapter_2_and_4_complete"
+          : "chapter_2_complete",
     assemblyInput,
     assemblyResult,
     envelopeInput,
@@ -288,19 +327,15 @@ export function calculateChapter2ForBuildingDna(buildingDna) {
     ...(chapter3Ready ? {
       chapter3AdapterVersion: chapter3Calculation.adapterVersion,
       chapter3Input: chapter3Calculation.chapter3Input,
-      chapter3Result: chapter3Calculation.chapter3Result,
-      fullEngineInput: {
-        chapter2Input,
-        chapter3Input: chapter3Calculation.chapter3Input
-      },
-      fullEngineOutput: {
-        chapter2Result,
-        chapter3Result: chapter3Calculation.chapter3Result
-      }
-    } : {
-      fullEngineInput: chapter2Input,
-      fullEngineOutput: chapter2Result
-    }),
+      chapter3Result: chapter3Calculation.chapter3Result
+    } : {}),
+    ...(chapter4Ready ? {
+      chapter4AdapterVersion: chapter4Calculation.adapterVersion,
+      chapter4Input: chapter4Calculation.chapter4Input,
+      chapter4Result: chapter4Calculation.chapter4Result
+    } : {}),
+    fullEngineInput: chapter3Ready || chapter4Ready ? fullEngineInput : chapter2Input,
+    fullEngineOutput: chapter3Ready || chapter4Ready ? fullEngineOutput : chapter2Result,
     diagnostics: chapter2Result.diagnostics
   };
 }

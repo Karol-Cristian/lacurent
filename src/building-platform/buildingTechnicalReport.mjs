@@ -4,6 +4,9 @@ import {
 import {
   buildChapter3NotebookSections
 } from "../physics-engine/mc001Chapter3Notebook.mjs";
+import {
+  buildChapter4NotebookSections
+} from "../physics-engine/mc001Chapter4Notebook.mjs";
 
 const TECHNICAL_WORKSPACE_SCOPE = "engineering_calculation_notebook_p3g_report_generation_only";
 
@@ -1718,7 +1721,8 @@ function compactNotebookSections(buildingDna, assemblies, envelope, monthly, cal
     ...compactTransferSections(envelope),
     ...compactMonthlySections(monthly),
     compactAnnualSection(monthly, calculation),
-    ...buildChapter3NotebookSections(calculation.chapter3Result ?? calculation.chapter3Runtime)
+    ...buildChapter3NotebookSections(calculation.chapter3Result ?? calculation.chapter3Runtime),
+    ...buildChapter4NotebookSections(calculation.chapter4Result ?? calculation.chapter4Runtime)
   ];
 }
 
@@ -1729,13 +1733,23 @@ function traceabilityRows(buildingDna, calculation, formulas) {
     ...(calculation.chapter2Result?.formulaReferences ?? []),
     ...(calculation.chapter3Result?.formulaReferences ?? []),
     ...(calculation.chapter3Runtime?.formulaReferences ?? []),
+    ...(calculation.chapter4Result?.formulaReferences ?? []),
+    ...(calculation.chapter4Runtime?.formulaReferences ?? []),
     ...(calculation.chapter2Result?.result?.combinedUsefulDemandResult?.formulaReferences ?? []),
     ...formulas.map(item => item.formulaId).filter(Boolean)
   ]);
   return [...references].map(reference => ({
     reference,
-    chapter: reference?.startsWith("MC001_3") ? "MC001 Chapter 3" : reference?.startsWith("MC001") ? "MC001 Chapter 2" : null,
-    source: reference?.startsWith("MC001_3")
+    chapter: reference?.startsWith("MC001_4")
+      ? "MC001 Chapter 4"
+      : reference?.startsWith("MC001_3")
+        ? "MC001 Chapter 3"
+        : reference?.startsWith("MC001")
+          ? "MC001 Chapter 2"
+          : null,
+    source: reference?.startsWith("MC001_4")
+      ? "validated_chapter_4_renewable_runtime"
+      : reference?.startsWith("MC001_3")
       ? "validated_chapter_3_installations_runtime"
       : "validated_chapter_2_physics_engine",
     buildingDnaLink: buildingDna.schema
@@ -1804,6 +1818,38 @@ function installationMonthlyRows(calculation) {
     ventilationAuxiliaryKWh: month.totals?.ventilationAuxiliaryKWh ?? 0,
     lightingEnergyKWh: month.totals?.lightingEnergyKWh ?? 0,
     pcmInputEnergyLimitKWh: month.totals?.pcmInputEnergyLimitKWh ?? 0
+  }));
+}
+
+function renewableProductionRows(calculation) {
+  const result = calculation.chapter4Result;
+  if (!result) return [];
+  const rows = [];
+  if (result.services?.photovoltaic?.enabled) {
+    rows.push({
+      service: "Panouri fotovoltaice",
+      value: result.annual?.photovoltaicElectricEnergyKWh ?? 0,
+      unit: "kWh/an",
+      status: "calculat",
+      outputKey: "chapter4Result.annual.photovoltaicElectricEnergyKWh"
+    });
+    rows.push({
+      service: "Energie solara incidenta pe captatori PV",
+      value: result.annual?.photovoltaicIncidentEnergyKWh ?? 0,
+      unit: "kWh/an",
+      status: "calculat",
+      outputKey: "chapter4Result.annual.photovoltaicIncidentEnergyKWh"
+    });
+  }
+  return rows;
+}
+
+function renewableProductionMonthlyRows(calculation) {
+  return (calculation.chapter4Result?.monthly ?? []).map(month => ({
+    month: month.month,
+    monthLabel: monthLabel(month.month),
+    photovoltaicElectricEnergyKWh: month.photovoltaicElectricEnergyKWh ?? 0,
+    photovoltaicIncidentEnergyKWh: month.photovoltaicIncidentEnergyKWh ?? 0
   }));
 }
 
@@ -2108,6 +2154,15 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
         "Calculul detaliat normativ al iluminatului conform SR EN 15193-1 nu este inclus fara sursa normativa completa. Valorile LENI introduse explicit sunt tratate ca date tehnice furnizate."
     }
   ] : [];
+  const chapter4Rows = calculation.chapter4Result ? [
+    ...renewableProductionRows(calculation),
+    ...renewableProductionMonthlyRows(calculation),
+    {
+      label: "Limita domeniu",
+      value:
+        "Rezultatele Chapter 4 indica energia produsa de sistemele fotovoltaice configurate. Indicatorii din capitole ulterioare raman in afara acestui calcul."
+    }
+  ] : [];
   return [
     makeReportChapter("rezultate_principale", "Rezultate principale", "Necesar util anual si valori lunare pentru incalzire si racire.", [
       { label: "Necesar anual de incalzire QHnd", value: chapter2.annualQHnd, unit: "kWh" },
@@ -2138,6 +2193,15 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
         "Rezultatele folosesc cereri utile Chapter 2 si date explicite pentru sisteme: pierderi, auxiliari, recuperari, stocare si limita LENI explicita.",
         chapter3Rows,
         calculation.chapter3Result.formulaReferences ?? []
+      )
+    ] : []),
+    ...(calculation.chapter4Result ? [
+      makeReportChapter(
+        "surse_regenerabile_capitolul_4",
+        "Surse regenerabile - MC001 Capitolul 4",
+        "Energia produsa de panourile fotovoltaice este calculata lunar din datele explicite ale sistemului si iradierea orizontala sursa-backed din Climate Provider.",
+        chapter4Rows,
+        calculation.chapter4Result.formulaReferences ?? []
       )
     ] : []),
     makeReportChapter("caiet_de_calcule_ingineresti", "Caiet de calcule ingineresti", "Variabile, relatii, substitutii si rezultate in ordinea dependentelor.", formulas),
@@ -2206,6 +2270,22 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     rows: [],
     lightingBoundaryStatement: null
   };
+  const renewableProduction = calculation.chapter4Result ? {
+    status: "ready",
+    annual: calculation.chapter4Result.annual ?? {},
+    monthly: renewableProductionMonthlyRows(calculation),
+    services: calculation.chapter4Result.services ?? {},
+    rows: renewableProductionRows(calculation),
+    scopeStatement:
+      "MC001 Capitolul 4.5 este integrat pentru panouri fotovoltaice cu fcap Tabel 4.5 si iradiere orizontala furnizata de Climate Provider."
+  } : {
+    status: "not_configured",
+    annual: {},
+    monthly: [],
+    services: {},
+    rows: [],
+    scopeStatement: null
+  };
   const chapters = reportChapters({
     buildingDna,
     assemblies,
@@ -2238,6 +2318,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     materials,
     envelope,
     installations,
+    renewableProduction,
     monthly,
     seasonalSanity,
     calculationFingerprint: fingerprint,
@@ -2253,13 +2334,18 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
       reportId: "engineering_calculation_notebook_p3g_v1",
       title: "Caiet de calcul MC001-2022",
       source: calculation.chapter3Result
-        ? "Model tehnic si rezultate Chapter 2 si Chapter 3 validate"
-        : "Model tehnic si rezultate Chapter 2 validate",
+        ? (calculation.chapter4Result
+            ? "Model tehnic si rezultate Chapter 2, Chapter 3 si Chapter 4 validate"
+            : "Model tehnic si rezultate Chapter 2 si Chapter 3 validate")
+        : (calculation.chapter4Result
+            ? "Model tehnic si rezultate Chapter 2 si Chapter 4 validate"
+            : "Model tehnic si rezultate Chapter 2 validate"),
       calculationFingerprint: fingerprint,
       mainResults: {
         annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
         annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
         installations: calculation.chapter3Result?.annual ?? null,
+        renewableProduction: calculation.chapter4Result?.annual ?? null,
         monthly: monthly.map(row => ({
           month: row.month,
           monthLabel: row.monthLabel,
@@ -2277,6 +2363,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
       annualQHnd: calculation.chapter2Result?.result?.annualQHnd ?? null,
       annualQCnd: calculation.chapter2Result?.result?.annualQCnd ?? null,
       chapter3Annual: calculation.chapter3Result?.annual ?? null,
+      chapter4Annual: calculation.chapter4Result?.annual ?? null,
       monthCount: calculation.chapter2Result?.result?.monthCount ?? null
     },
     diagnostics: {
@@ -2289,6 +2376,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
           : "values_from_building_dna_and_chapter_2_results",
         "chapter_2_physics_engine_is_calculation_authority",
         ...(calculation.chapter3Result ? ["chapter_3_installations_from_explicit_inputs"] : ["not_chapter_3"]),
+        ...(calculation.chapter4Result ? ["chapter_4_renewable_production_from_explicit_inputs"] : ["not_chapter_4"]),
         "no_duplicate_calculations",
         "no_hidden_defaults",
         "not_primary_energy",
