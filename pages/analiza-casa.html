@@ -227,13 +227,21 @@
 </div>
 
 <div class="step" data-section-id="installations">
-<h2>Instalatii tehnice</h2>
-<p class="section-description">Date explicite pentru MC001 Capitolul 3. Valorile introduse sunt intrari tehnice editabile; formulele raman in motorul Chapter 3.</p>
+<h2>Instalatii tehnice si surse regenerabile</h2>
+<p class="section-description">Date explicite pentru MC001 Capitolul 3 si Capitolul 4. Valorile introduse sunt intrari tehnice editabile; formulele raman in motoarele validate.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Activare Capitolul 3</h3>
 <div class="form-grid">
 <div><label>Calculeaza instalatii Chapter 3</label><select name="chapter3_installations_enabled"><option value="no">Nu - doar Chapter 2</option><option value="yes">Da - foloseste datele explicite de mai jos</option></select></div>
 <div><label>Stare iluminat</label><p class="field-impact-note">Limita LENI este input explicit. Motorul complet SR EN 15193-1 ramane in asteptarea sursei normative complete.</p></div>
+</div>
+</div>
+
+<div class="dashboard-band compact-technical-note">
+<h3>Activare Capitolul 4</h3>
+<div class="form-grid">
+<div><label>Calculeaza surse regenerabile Chapter 4</label><select name="chapter4_renewables_enabled"><option value="no">Nu</option><option value="yes">Da - foloseste sistemele configurate mai jos</option></select></div>
+<div><label>Domeniu activ</label><p class="field-impact-note">P7 integreaza metoda lunara MC001 4.5 pentru panouri fotovoltaice. Indicatorii din capitole ulterioare raman in afara acestui calcul.</p></div>
 </div>
 </div>
 
@@ -327,6 +335,21 @@
 <div><label>LENI explicit [kWh/(m2*an)]</label><input name="chapter3_lighting_leni_kwh_m2_year" type="number" step="0.01"></div>
 </div>
 </div>
+
+<div class="dashboard-band compact-technical-note">
+<h3>Panouri fotovoltaice - MC001 Capitolul 4.5</h3>
+<p class="section-description">Iradierea lunara orizontala este rezolvata automat prin Climate Provider pentru localitatea selectata. Configuratia suportata in P7 foloseste fcap din Tabelul 4.5: inclinare 45 grade si azimut 0 grade fata de Sud.</p>
+<div class="form-grid">
+<div><label>Sistem PV activ</label><select name="chapter4_pv_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Numar panouri Np [-]</label><input name="chapter4_pv_panel_count" type="number" min="1" step="1"></div>
+<div><label>Suprafata panou Apanou [m2]</label><input name="chapter4_pv_panel_area_m2" type="number" min="0" step="0.01"></div>
+<div><label>Putere maxima Pmax,1000 [W]</label><input name="chapter4_pv_peak_power_w" type="number" min="0" step="0.1"></div>
+<div><label>Randament invertor eta_inv [-]</label><input name="chapter4_pv_inverter_efficiency" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Randament temperatura eta_t</label><select name="chapter4_pv_temperature_efficiency_mode"><option value="">Selecteaza sursa eta_t</option><option value="annex_a2_monocrystalline">Anexa A2 - monocristalin</option><option value="explicit_constant">Explicit constant lunar</option></select></div>
+<div><label>eta_t explicit [-]</label><input name="chapter4_pv_temperature_efficiency" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Corectie fcap</label><select name="chapter4_pv_correction_table_id"><option value="">Selecteaza corectia fcap</option><option value="mc001_2022_table_4_5_beta45_azimuth0">MC001 Tabel 4.5 - 45 grade, Sud</option></select></div>
+</div>
+</div>
 </div>
 
 <div class="step" data-section-id="building-dna">
@@ -341,7 +364,7 @@
 
 <div class="step" data-section-id="technical-report">
 <h2>Raport tehnic</h2>
-<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motoarelor Chapter 2 si Chapter 3 cand instalatiile sunt configurate. Este structurat pentru citire tehnica si print.</p>
+<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motoarelor Chapter 2, Chapter 3 si Chapter 4 cand sistemele sunt configurate. Este structurat pentru citire tehnica si print.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Capitole raport</h3>
 <div class="value-card-grid">
@@ -349,6 +372,7 @@
 <article>Rezistente termice, coeficienti U si Htr</article>
 <article>QHnd/QCnd lunar si anual</article>
 <article>Instalatii Chapter 3, pierderi si auxiliari</article>
+<article>Surse regenerabile Chapter 4, productie PV</article>
 <article>Formule, dependinte si surse normative</article>
 </div>
 </div>
@@ -356,7 +380,7 @@
 
 <div class="step" data-section-id="results">
 <h2>Rezultate</h2>
-<p class="section-description">Afisam QHnd/QCnd validate in Chapter 2 si, cand exista date explicite, rezultatele instalatiilor MC001 Capitolul 3.</p>
+<p class="section-description">Afisam QHnd/QCnd validate in Chapter 2 si, cand exista date explicite, rezultatele instalatiilor MC001 Capitolul 3 si productia fotovoltaica MC001 Capitolul 4.5.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Calculeaza modelul curent</h3>
 <p>Butonul de mai jos ruleaza adapterele Building DNA, motorul Chapter 2 validat si runtime-ul Chapter 3 pentru sistemele configurate, apoi deschide raportul tehnic.</p>

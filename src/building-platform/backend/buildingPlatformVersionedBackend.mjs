@@ -246,6 +246,8 @@ export class VersionedBuildingBackend {
       adapter_version: metadata.adapterVersion,
       chapter3_adapter_version: metadata.chapter3AdapterVersion ?? null,
       chapter3_runtime_version: metadata.chapter3RuntimeVersion ?? null,
+      chapter4_adapter_version: metadata.chapter4AdapterVersion ?? null,
+      chapter4_runtime_version: metadata.chapter4RuntimeVersion ?? null,
       physics_engine_version: metadata.physicsEngineVersion,
       normative_registry_version: metadata.normativeRegistryVersion,
       climate_profile_id: metadata.climateProfileId,
@@ -265,6 +267,8 @@ export class VersionedBuildingBackend {
         backendVersion: metadata.backendVersion,
         chapter3AdapterVersion: metadata.chapter3AdapterVersion ?? null,
         chapter3RuntimeVersion: metadata.chapter3RuntimeVersion ?? null,
+        chapter4AdapterVersion: metadata.chapter4AdapterVersion ?? null,
+        chapter4RuntimeVersion: metadata.chapter4RuntimeVersion ?? null,
         ...executionMetadata
       },
       failure_metadata: null,

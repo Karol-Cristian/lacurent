@@ -267,6 +267,8 @@ await test("production wizard resolves locality climate through the Climate Prov
     ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
     building_platform_demo_mode: "",
     building_platform_demo_fixture_id: "",
+    chapter4_renewables_enabled: "no",
+    chapter4_pv_enabled: "no",
     climate_profile_id: "",
     locality_id: "ro_brasov",
     climate_station_id: "mc001_6_2013_brasov",
@@ -318,6 +320,8 @@ await test("locality-driven climate reaches Chapter 2 runtime and overrides stal
       ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
       building_platform_demo_mode: "",
       building_platform_demo_fixture_id: "",
+      chapter4_renewables_enabled: "no",
+      chapter4_pv_enabled: "no",
       climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
       locality_id: localityId,
       climate_station_id: stationId,
@@ -386,11 +390,43 @@ await test("wizard maps installation fields into canonical technical systems", (
 
   const preview = buildWizardEngineeringPreview(answers);
   assert.equal(preview.status, "ready");
-  assert.equal(preview.calculation.stage, "chapter_2_and_3_complete");
+  assert.equal(preview.calculation.stage, "chapter_2_3_4_complete");
   assert.equal(preview.technicalWorkspace.installations.status, "ready");
+  assert.equal(preview.technicalWorkspace.renewableProduction.status, "ready");
   const html = renderEngineeringModelReview(preview);
   assert.equal(html.includes("Instalatii tehnice - MC001 Capitolul 3"), true);
+  assert.equal(html.includes("Surse regenerabile - MC001 Capitolul 4"), true);
   assert.equal(html.includes("Calculul detaliat normativ al iluminatului conform SR EN 15193-1"), true);
+});
+
+await test("wizard does not inject hidden Chapter 4 PV source defaults on reopen", () => {
+  const values = buildingDnaToWizardValues({
+    building: { buildingId: "pv-incomplete-reopen" },
+    technicalSystems: {
+      renewableProduction: {
+        enabled: true,
+        photovoltaic: {
+          enabled: true,
+          systems: [{
+            systemId: "pv-main",
+            enabled: true,
+            panelCount: 3,
+            panelAreaM2: 1.68,
+            maximumPowerWAt1000: 252,
+            inverterEfficiency: 0.97,
+            mounting: {
+              tiltDeg: 45,
+              azimuthDegFromSouth: 0
+            }
+          }]
+        }
+      }
+    }
+  });
+
+  assert.equal(values.chapter4_pv_enabled, "yes");
+  assert.equal(values.chapter4_pv_temperature_efficiency_mode, "");
+  assert.equal(values.chapter4_pv_correction_table_id, "");
 });
 
 await test("demo installation configurations have fixed 12-month Chapter 3 expected outputs", () => {
@@ -1165,7 +1201,6 @@ await test("active production analysis flow removes unsupported product domains"
     "Tip sistem principal",
     "Centrala",
     "Boiler electric",
-    "Panouri fotovoltaice",
     "Baterie",
     "Simuleaza fara salvare",
     "Scor actual",
@@ -1192,6 +1227,16 @@ await test("active production analysis flow removes unsupported product domains"
   ]) {
     assert.equal(visibleSurface.includes(downstreamDomain), false, downstreamDomain);
   }
+  assert.equal(
+    visibleSurface.includes("Panouri fotovoltaice"),
+    true,
+    "Chapter 4.5 photovoltaic production is now an explicitly supported production surface"
+  );
+  assert.equal(
+    visibleSurface.includes("MC001 Capitolul 4.5"),
+    true,
+    "PV surface must remain scoped to MC001 Chapter 4.5"
+  );
 });
 
 await test("canonical production route imports only the current Building Platform flow", () => {

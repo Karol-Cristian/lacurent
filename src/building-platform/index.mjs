@@ -46,6 +46,15 @@ export {
 } from "./buildingChapter3InstallationsAdapter.mjs";
 
 export {
+  CHAPTER4_RENEWABLES_ADAPTER_VERSION,
+  CHAPTER4_RENEWABLES_PRODUCT_MAPPING_LEDGER,
+  buildChapter4RuntimeInputFromBuildingDna,
+  calculateChapter4RenewableProductionForBuildingDna,
+  hasActiveChapter4RenewableSystems,
+  validateChapter4RenewableSystems
+} from "./buildingChapter4RenewablesAdapter.mjs";
+
+export {
   resolveBuildingRenovationInterventions
 } from "./buildingRenovationInterventions.mjs";
 

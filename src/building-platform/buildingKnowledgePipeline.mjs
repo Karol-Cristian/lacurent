@@ -90,6 +90,8 @@ function resultSummary(calculation) {
     annualQCnd: result?.annualQCnd ?? null,
     chapter3Annual: calculation.chapter3Result?.annual ?? null,
     chapter3Services: calculation.chapter3Result?.services ?? null,
+    chapter4Annual: calculation.chapter4Result?.annual ?? null,
+    chapter4Services: calculation.chapter4Result?.services ?? null,
     monthCount: result?.summary?.monthCount ?? result?.heatingResult?.summary?.monthCount ?? null,
     heatingMonthlyCount: result?.heatingResult?.caseResults?.length ?? null,
     coolingMonthlyCount: result?.coolingResult?.caseResults?.length ?? null
@@ -103,6 +105,9 @@ function methodologyLimitsForCalculation(calculation) {
     ...(calculation.chapter3Result
       ? ["chapter_3_installations_runtime_from_explicit_system_inputs"]
       : ["not_chapter_3"]),
+    ...(calculation.chapter4Result
+      ? ["chapter_4_renewable_production_runtime_from_explicit_system_inputs"]
+      : ["not_chapter_4"]),
     "no_ui_calculations",
     "no_hidden_defaults",
     "not_primary_energy",
@@ -174,6 +179,15 @@ function buildStages({ mode, answers, buildingDna, calculation, interventions })
         dhwInputKWh: calculation.chapter3Result.annual?.dhwInputKWh ?? null,
         ventilationAuxiliaryKWh: calculation.chapter3Result.annual?.ventilationAuxiliaryKWh ?? null,
         lightingEnergyKWh: calculation.chapter3Result.annual?.lightingEnergyKWh ?? null
+      })
+    ] : []),
+    ...(calculation.chapter4Result ? [
+      stage("chapter_4_renewable_production_runtime", "Chapter 4 Renewable Production Runtime", calculation.status, {
+        calculationScope: calculation.chapter4Result.calculationScope,
+        photovoltaicElectricEnergyKWh:
+          calculation.chapter4Result.annual?.photovoltaicElectricEnergyKWh ?? null,
+        photovoltaicIncidentEnergyKWh:
+          calculation.chapter4Result.annual?.photovoltaicIncidentEnergyKWh ?? null
       })
     ] : [])
   ];

@@ -23,6 +23,7 @@ Every production concept exists once, has exactly one owner and is extended thro
 | geometry | Thermal building geometry | Building DNA Resolver | explicit user geometry plus documented resolver-derived seeds | editable primitive inputs normalized into Building DNA |
 | envelope_and_materials | Envelope, assemblies and material catalogue | Building Platform Catalogue plus Building DNA Resolver | catalogue selections resolved into Building DNA assemblies and explicit envelope elements | catalogue-resolved inputs; physics engine calculates R, U and H coefficients |
 | technical_systems | Chapter 3 technical systems | Technical Systems schema and Chapter 3 adapter | buildingDna.technicalSystems | explicit user engineering input; persisted with Building DNA |
+| renewable_production | Chapter 4 renewable production | Technical Systems schema and Chapter 4 renewable adapter | buildingDna.technicalSystems.renewableProduction | explicit user engineering input; persisted with Building DNA when configured |
 | physics_engine | MC001 physics engine | Physics Engine | explicit adapter input | runtime calculation only; persisted as immutable analysis version output |
 | technical_workspace_report | Engineering notebook and technical report | Technical Report Builder | Building DNA plus persisted engine output | generated model persisted as report version; presentation regenerated from structure |
 | legacy_compatibility | Legacy saved-house compatibility | Legacy migration boundary | legacy houses/analyses/analysis_answers/report_snapshots until migrated | read and migration boundary only |
@@ -31,11 +32,11 @@ Every production concept exists once, has exactly one owner and is extended thro
 
 | Category | Field count |
 | --- | --- |
-| primitive_user_input | 38 |
+| primitive_user_input | 39 |
 | provider_resolved | 8 |
 | derived_engineering_value | 4 |
-| physics_runtime_state | 4 |
-| output | 4 |
+| physics_runtime_state | 5 |
+| output | 5 |
 | legacy | 6 |
 
 ## Field Inventory
@@ -57,7 +58,7 @@ Every production concept exists once, has exactly one owner and is extended thro
 | provider.monthly_relative_humidity | provider_resolved | Romanian Climate Provider | Mc001/6-2013 Tabel II.2 | read_only | available_not_currently_core_chapter2_useful_demand_driver |
 | provider.winter_design_temperature | provider_resolved | Romanian Climate Provider | Mc001/6-2013 winter design tables | read_only | source_backed_design_metadata_current_runtime_reported |
 | provider.summer_design_temperature | provider_resolved | Romanian Climate Provider | Mc001/6-2013 summer design tables | read_only | source_backed_design_metadata_current_runtime_reported |
-| provider.monthly_solar_irradiation_source_rows | provider_resolved | Romanian Climate Provider | Mc001/1-2-3/2006 Anexa A.9.6 | read_only | source_dataset_available_Qsol_preprocessing_bounded |
+| provider.monthly_solar_irradiation_source_rows | provider_resolved | Romanian Climate Provider | Mc001/1-2-3/2006 Anexa A.9.6 | read_only | drives_Chapter4_PV_production; source_dataset_available_Qsol_preprocessing_bounded |
 | provider.production_climate_profile | provider_resolved | Romanian Production Climate Registry | Climate Provider plus bounded dependency registry | read_only | transparent_climate_profile_for_production |
 | geometry.useful_floor_area | primitive_user_input | User through Building DNA Resolver | buildingDna.geometry.usefulFloorAreaM2 and buildingSpecificParameters.usefulFloorAreaM2 | remain_editable | geometry_seed_and_internal_gains_area |
 | geometry.number_of_floors | primitive_user_input | User through Building DNA Resolver | buildingDna.buildingSpecificParameters.numberOfFloors | remain_editable | currently_traceability_metadata_not_direct_engine_driver |
@@ -92,12 +93,15 @@ Every production concept exists once, has exactly one owner and is extended thro
 | technical_systems.dhw | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.domesticHotWater | remain_editable | drives_Chapter3_DHW_system_energy |
 | technical_systems.pcm_storage | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.coolingStoragePcm | remain_editable | drives_PCM_relations_3_111_3_113_and_storage_chain |
 | technical_systems.lighting_boundary | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.lighting | remain_editable | explicit_input_boundary_only_SR_EN_15193_1_pending |
+| technical_systems.photovoltaic | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.renewableProduction.photovoltaic | remain_editable | drives_Chapter4_PV_monthly_and_annual_electric_production_only |
 | runtime.assembly_u_values | physics_runtime_state | Physics Engine | calculateMc001EnvelopeAssemblyUValueExplicit output | read_only | intermediate_traceable_engine_result |
 | runtime.hd_hg_hu_ha_htr | physics_runtime_state | Physics Engine | calculateMc001EnvelopeTransmissionCoefficientExplicit output | read_only | core_Chapter2_transfer_runtime_state |
 | runtime.chapter2_monthly_useful_demand | physics_runtime_state | Physics Engine | calculateMc001Chapter2UsefulDemandExplicit output | read_only | core_Chapter2_output_and_Chapter3_input |
 | runtime.chapter3_installation_energy | physics_runtime_state | Physics Engine | calculateMc001Chapter3IntegratedRuntime output | read_only | active_only_when_technicalSystems_enabled |
+| runtime.chapter4_photovoltaic_production | physics_runtime_state | Physics Engine | calculateMc001Chapter4PhotovoltaicMonthlyProduction output | read_only | active_only_when_technicalSystems_renewableProduction_photovoltaic_enabled |
 | output.annual_qhnd_qcnd | output | Physics Engine output persisted by Versioned Backend | building_platform_analysis_versions annual_qhnd/annual_qcnd | read_only | primary_product_result |
 | output.chapter3_annual_summary | output | Physics Engine output persisted by Versioned Backend | building_platform_analysis_versions.complete_engine_output_json | read_only | primary_installation_result_when_available |
+| output.chapter4_photovoltaic_summary | output | Physics Engine output persisted by Versioned Backend | building_platform_analysis_versions.complete_engine_output_json | read_only | primary_renewable_production_result_when_available_no_primary_CO2_or_export_credit |
 | output.report_model | output | Technical Report Builder | building_platform_report_versions.structured_report_model_json | read_only | authoritative_report_data_not_rendered_html_only |
 | output.fingerprints | output | Versioned Building Backend | buildingPlatformFingerprints.mjs | read_only | persistence_integrity_and_duplicate_protection |
 | legacy.climate_profile_id | legacy | Legacy compatibility boundary | hidden compatibility input or legacy saved Building DNA | hidden | demo_and_compatibility_only_not_primary_climate_path |
@@ -121,8 +125,12 @@ Every production concept exists once, has exactly one owner and is extended thro
 | chapter2_physics | chapter3_adapter | Chapter 3 Adapter | none |
 | building_dna | chapter3_adapter | Chapter 3 Adapter | none |
 | chapter3_adapter | chapter3_physics | Physics Engine | none |
+| providers | chapter4_adapter | Chapter 4 Adapter | source_backed_solar_required |
+| building_dna | chapter4_adapter | Chapter 4 Adapter | active_only_when_pv_configured |
+| chapter4_adapter | chapter4_physics | Physics Engine | none |
 | chapter2_physics | engineering_runtime | Physics Engine | none |
 | chapter3_physics | engineering_runtime | Physics Engine | optional_when_systems_active |
+| chapter4_physics | engineering_runtime | Physics Engine | optional_when_pv_systems_active |
 | engineering_runtime | technical_report | Technical Report Builder | none |
 | building_dna | versioned_persistence | Versioned Backend | none |
 | engineering_runtime | versioned_persistence | Versioned Backend | none |
@@ -145,7 +153,7 @@ Obsolete or bounded paths:
 | Geometrie | keep explicit area/volume fields editable and show direct/runtime impact | building_length_m removed in P6B, building_width_m removed in P6B, thermal_mass_class removed in P6B |
 | Anvelopa | keep active fields; make bridge inventory explicit in a future milestone | wall_thickness removed in P6B until assembly selection consumes it |
 | Renovari | keep intervention toggles; remove or wire detail fields | wall_insulation_year removed in P6B, roof_insulation_thickness_cm removed in P6B, floor_insulation_thickness_cm removed in P6B, window_age_years removed in P6B, door_replaced removed in P6B |
-| Instalatii tehnice | keep editable with validation; continue showing explicit SR EN 15193-1 lighting boundary | - |
+| Instalatii tehnice si surse regenerabile | keep editable with validation; continue showing explicit SR EN 15193-1 lighting boundary and Chapter 4.5 PV production boundary | - |
 | Results/report | read-only calculated outputs only | - |
 
 ## Generic Building Audit
@@ -203,6 +211,8 @@ Explicit future boundaries:
 - locality to climate-zone mapping requires source-backed registry
 - locality to wind-zone mapping requires source-backed registry
 - Annex A.9.6 solar source rows require normative preprocessing to Qsol
+- Chapter 4.5 PV production is implemented only for source-backed Tabel 4.5 tilt 45 deg and azimuth 0 deg
+- PV self-consumption, export allocation, primary energy, CO2, CPE, certificate and RER are later-chapter boundaries
 - SR EN 15193-1 full lighting engine remains external
 
 ## Architecture Rules
