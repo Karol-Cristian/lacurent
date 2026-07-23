@@ -1,0 +1,187 @@
+{
+  "schema": "building_model_architecture_conformance_v1",
+  "milestone": "P6B_PRODUCTION_ARCHITECTURE_SIMPLIFICATION",
+  "base": {
+    "branch": "origin/main",
+    "commit": "66a2afd8b2c106b68c7fbf137d088182a990382f"
+  },
+  "objective": "Align production implementation with BUILDING_MODEL_ARCHITECTURE.md and building-model-registry.json without changing engineering behavior.",
+  "runtimeBehaviorChanged": false,
+  "physicsBehaviorChanged": false,
+  "reportCalculationBehaviorChanged": false,
+  "notebookCalculationBehaviorChanged": false,
+  "resolvedArchitectureViolations": [
+    {
+      "violationId": "dead_visible_geometry_dimensions",
+      "registryFields": [
+        "legacy.length_width_geometry_inputs"
+      ],
+      "removedUiControls": [
+        "building_length_m",
+        "building_width_m"
+      ],
+      "reason": "The controls were visible production inputs but had no Building DNA resolver consumer and no physics effect.",
+      "result": "Removed from the production calculator form and demo fixture."
+    },
+    {
+      "violationId": "dead_visible_thermal_mass_selector",
+      "registryFields": [
+        "legacy.thermal_mass_class_ui"
+      ],
+      "removedUiControls": [
+        "thermal_mass_class"
+      ],
+      "reason": "The selector was visible but not mapped into MC001 Table 2.19/2.20 effective capacity or utilization-factor inputs.",
+      "result": "Removed from the production calculator form and demo fixture."
+    },
+    {
+      "violationId": "dead_visible_envelope_detail_inputs",
+      "registryFields": [
+        "legacy.unused_envelope_detail_inputs"
+      ],
+      "removedUiControls": [
+        "wall_thickness",
+        "wall_insulation_year",
+        "roof_insulation_thickness_cm",
+        "floor_insulation_thickness_cm",
+        "window_age_years",
+        "door_replaced"
+      ],
+      "reason": "The controls were visible but not mapped into canonical assemblies or intervention semantics in the Building DNA path.",
+      "result": "Removed from the production calculator form and demo fixture."
+    }
+  ],
+  "preservedCompatibilityBoundaries": [
+    {
+      "boundaryId": "legacy_worker_payload_fields",
+      "files": [
+        "workers/save-house.js",
+        "workers/energy-model.js"
+      ],
+      "reason": "The Worker still accepts older non-canonical payload fields for legacy compatibility. They are not exposed by the canonical production UI."
+    },
+    {
+      "boundaryId": "hidden_climate_profile_id",
+      "files": [
+        "pages/analiza-casa.html",
+        "js/building-platform-wizard.mjs"
+      ],
+      "reason": "The hidden field remains bounded to demo and legacy compatibility. Production climate resolution remains locality and provider driven."
+    },
+    {
+      "boundaryId": "legacy_persistence_tables",
+      "files": [
+        "src/building-platform/backend/legacyBuildingPlatformMigration.mjs",
+        "workers/save-house.js"
+      ],
+      "reason": "Legacy rows are preserved for safe migration and reopen compatibility, not as the canonical new write path."
+    }
+  ],
+  "singleSourceOfTruthChecks": [
+    {
+      "concept": "Climate profile",
+      "owner": "Romanian Climate Provider",
+      "status": "conformant",
+      "evidence": "The visible manual climate profile selector is absent; the hidden climate_profile_id is ignored when a source-backed locality station resolves."
+    },
+    {
+      "concept": "Production geometry",
+      "owner": "Building DNA Resolver",
+      "status": "improved",
+      "evidence": "Only geometry fields consumed by Building DNA remain visible in the production calculator."
+    },
+    {
+      "concept": "Chapter 2 and Chapter 3 calculations",
+      "owner": "Physics Engine",
+      "status": "unchanged",
+      "evidence": "No physics source files, normative registries or oracle fixtures changed."
+    },
+    {
+      "concept": "Technical report and notebook values",
+      "owner": "Technical Report Builder",
+      "status": "unchanged",
+      "evidence": "No report or notebook calculation code changed."
+    }
+  ],
+  "updatedArchitectureArtifacts": [
+    "BUILDING_MODEL_ARCHITECTURE.md",
+    "building-model-registry.json",
+    "tools/generate-building-model-architecture.mjs",
+    "tests/building-model-architecture-registry.mjs"
+  ],
+  "validationCommands": [
+    {
+      "command": "node --check tools/generate-building-model-architecture.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node tools/generate-building-model-architecture.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node --check tests/building-model-architecture-registry.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node tests/building-model-architecture-registry.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node tests/building-platform-wizard-ui.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "npm.cmd run build",
+      "result": "PASS"
+    },
+    {
+      "command": "npm.cmd run test:physics",
+      "result": "PASS"
+    },
+    {
+      "command": "npm.cmd run test:mc001",
+      "result": "PASS"
+    },
+    {
+      "command": "npm.cmd run test:p3v",
+      "result": "PASS"
+    },
+    {
+      "command": "all src/building-platform/tests/*.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "all workers/tests/*.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node tests/physics-source-of-truth-parity.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node tests/physics-reference-registries.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node tests/smoke.mjs with local static server at 127.0.0.1:4173",
+      "result": "PASS"
+    }
+  ],
+  "deferredItems": [
+    {
+      "itemId": "geometry_duplicate_storage",
+      "status": "deferred_no_behavior_change",
+      "reason": "buildingSpecificParameters and geometry duplicate some values by design today. Removing either would change fingerprints/reopen semantics and is not safe in this simplification milestone."
+    },
+    {
+      "itemId": "legacy_worker_payload_support",
+      "status": "deferred_compatibility_boundary",
+      "reason": "Legacy Worker inputs remain accepted for old payloads. They are hidden from the canonical production UI."
+    },
+    {
+      "itemId": "full_thermal_mass_mapping",
+      "status": "external_future_engineering_work",
+      "reason": "Thermal mass must not be reintroduced until source-backed Building DNA and runtime semantics are implemented."
+    }
+  ]
+}

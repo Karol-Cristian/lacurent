@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
 const registry = JSON.parse(readFileSync("building-model-registry.json", "utf8"));
+const conformance = JSON.parse(readFileSync("validation-reference/building-model-architecture-conformance.json", "utf8"));
 const architectureMarkdown = readFileSync("BUILDING_MODEL_ARCHITECTURE.md", "utf8");
+const conformanceMarkdown = readFileSync("validation-reference/building-model-architecture-conformance.md", "utf8");
+const calculatorHtml = readFileSync("pages/analiza-casa.html", "utf8");
 
 const allowedCategories = [
   "primitive_user_input",
@@ -208,17 +211,28 @@ for (const requiredCategory of [
 }
 
 assert.ok(
-  registry.simplificationReport.removableUiControls.includes("building_length_m"),
-  "length UI control must be listed as removable unless wired"
+  Array.isArray(registry.simplificationReport.removedUiControls),
+  "registry must track UI controls removed by architecture simplification"
 );
-assert.ok(
-  registry.simplificationReport.removableUiControls.includes("thermal_mass_class"),
-  "thermal mass UI control must be listed as removable unless wired"
-);
-assert.ok(
-  registry.simplificationReport.removableUiControls.includes("wall_thickness"),
-  "wall thickness UI control must be listed as removable unless wired"
-);
+assert.equal(registry.simplificationReport.removableUiControls.length, 0, "no dead visible UI controls should remain");
+
+for (const removedControl of [
+  "building_length_m",
+  "building_width_m",
+  "thermal_mass_class",
+  "wall_thickness",
+  "wall_insulation_year",
+  "roof_insulation_thickness_cm",
+  "floor_insulation_thickness_cm",
+  "window_age_years",
+  "door_replaced"
+]) {
+  assert.ok(
+    registry.simplificationReport.removedUiControls.includes(removedControl),
+    `${removedControl} must be listed as removed`
+  );
+  assert.equal(calculatorHtml.includes(`name="${removedControl}"`), false, `${removedControl} must not be visible in the production form`);
+}
 
 assert.ok(
   registry.legacyInventory.some(item => item.legacyId === "legacy_database_tables"),
@@ -232,6 +246,22 @@ assert.ok(
 assert.ok(architectureMarkdown.includes("## Core Rule"), "architecture markdown missing core rule");
 assert.ok(architectureMarkdown.includes("## Field Inventory"), "architecture markdown missing field inventory");
 assert.ok(architectureMarkdown.includes("## Target Architecture"), "architecture markdown missing target architecture");
+
+assert.equal(conformance.schema, "building_model_architecture_conformance_v1");
+assert.equal(conformance.milestone, "P6B_PRODUCTION_ARCHITECTURE_SIMPLIFICATION");
+assert.equal(conformance.runtimeBehaviorChanged, false);
+assert.equal(conformance.physicsBehaviorChanged, false);
+assert.equal(conformance.reportCalculationBehaviorChanged, false);
+assert.equal(conformance.notebookCalculationBehaviorChanged, false);
+assert.ok(conformanceMarkdown.includes("P6B Production Architecture Simplification Report"));
+assert.ok(
+  conformance.resolvedArchitectureViolations.some(item => item.violationId === "dead_visible_geometry_dimensions"),
+  "conformance report must record the removed geometry dimensions"
+);
+assert.ok(
+  conformance.preservedCompatibilityBoundaries.some(item => item.boundaryId === "legacy_worker_payload_fields"),
+  "conformance report must preserve the legacy Worker payload boundary"
+);
 
 console.log("building-model architecture registry validation passed", {
   domains: registry.domains.length,

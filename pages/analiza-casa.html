@@ -187,10 +187,7 @@
 <div><label>Numar niveluri incalzite</label><input name="number_of_floors" type="number" step="1" placeholder="Ex: 1"></div>
 <div><label>Inaltime medie nivel (m)</label><input name="floor_height_m" type="number" step="0.1" placeholder="Ex: 2.6"></div>
 <div><label>Volum incalzit (m3)</label><input name="heated_volume_m3" type="number" step="0.1" placeholder="Optional"><small class="field-impact-note">Cu ACH, genereaza debitul de ventilatie lunar.</small></div>
-<div><label>Lungime aproximativa (m)</label><input name="building_length_m" type="number" step="0.1" placeholder="Optional"></div>
-<div><label>Latime aproximativa (m)</label><input name="building_width_m" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Orientare principala</label><select name="main_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
-<div><label>Masa termica</label><select name="thermal_mass_class"><option value="unknown">Nu stiu</option><option value="heavy">Grea: caramida/beton/piatra</option><option value="medium">Medie</option><option value="light">Usoara: lemn/structura usoara</option></select></div>
 <div><label>Arie pereti exteriori (m2)</label><input name="exterior_wall_area_m2" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Arie acoperis / planseu superior (m2)</label><input name="roof_area_m2" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Arie planseu inferior (m2)</label><input name="ground_floor_area_m2" type="number" step="0.1" placeholder="Optional"></div>
@@ -205,7 +202,6 @@
 <div class="form-grid">
 <div><label>Sistem structural</label><select name="structural_system"><option value="masonry">Zidarie</option><option value="reinforced_concrete_frames">Cadre beton armat</option><option value="reinforced_concrete_walls">Pereti beton armat</option><option value="precast_concrete_panels">Panouri prefabricate</option><option value="timber">Lemn</option><option value="unknown">Nu stiu</option></select></div>
 <div><label>Material pereti exteriori</label><select name="wall_material"><option value="brick">Caramida</option><option value="bca">BCA / AAC</option><option value="concrete">Beton</option><option value="wood">Lemn</option><option value="stone">Piatra</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Grosime perete existent (cm)</label><input name="wall_thickness" type="number" step="0.1" placeholder="Ex: 30"></div>
 <div><label>Tip pod/acoperis</label><select name="roof_type"><option value="unheated_attic">Pod neincalzit</option><option value="heated_attic">Mansarda incalzita</option><option value="flat_roof">Acoperis plat</option><option value="pitched_roof_no_attic">Acoperis fara pod</option><option value="unknown">Nu stiu</option></select></div>
 <div><label>Limita inferioara</label><select name="floor_type"><option value="on_ground">Pe sol</option><option value="over_basement">Peste subsol neincalzit</option><option value="over_unheated_space">Peste spatiu neincalzit</option><option value="over_heated_space">Peste spatiu incalzit</option><option value="unknown">Nu stiu</option></select></div>
 <div><label>Tip ferestre</label><select name="window_type"><option value="single_glazing">Geam simplu</option><option value="old_double_glazing">Termopan vechi</option><option value="modern_double_glazing">PVC / termopan modern</option><option value="triple_glazing">Tripan</option><option value="unknown">Nu stiu</option></select></div>
@@ -224,14 +220,9 @@
 <div class="form-grid">
 <div><label>Izolatie pereti exteriori</label><select name="wall_insulation"><option value="unknown">Nu stiu</option><option value="Fara">Fara</option><option value="5cm">EPS / vata aproximativ 5 cm</option><option value="10cm">EPS / vata aproximativ 10 cm</option><option value="15cm">EPS / vata aproximativ 15 cm</option><option value="20cm+">20 cm sau mai mult</option></select></div>
 <div><label>Material izolatie pereti</label><select name="wall_insulation_material"><option value="eps">EPS</option><option value="mineral_wool">Vata minerala</option><option value="xps">XPS</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Data interventie pereti</label><input name="wall_insulation_year" type="number" placeholder="Optional"></div>
 <div><label>Izolatie pod/acoperis</label><select name="roof_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
-<div><label>Grosime izolatie pod/acoperis (cm)</label><input name="roof_insulation_thickness_cm" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Izolatie planseu inferior</label><select name="floor_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
-<div><label>Grosime izolatie planseu inferior (cm)</label><input name="floor_insulation_thickness_cm" type="number" step="0.1" placeholder="Optional"></div>
 <div><label>Ferestre inlocuite</label><select name="windows_replaced"><option value="unknown">Deducere din tipul ferestrei</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
-<div><label>Vechime ferestre (ani)</label><input name="window_age_years" type="number" placeholder="Optional"></div>
-<div><label>Usa exterioara inlocuita</label><select name="door_replaced"><option value="unknown">Nu stiu</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
 </div>
 </div>
 
