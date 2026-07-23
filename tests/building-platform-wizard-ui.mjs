@@ -843,21 +843,14 @@ await test("demo query and fixture preload a complete editable technical dataset
     "number_of_floors",
     "floor_height_m",
     "heated_volume_m3",
-    "building_length_m",
-    "building_width_m",
     "exterior_wall_area_m2",
     "roof_area_m2",
     "ground_floor_area_m2",
     "attic_ceiling_area_m2",
     "adjacent_wall_area_m2",
-    "wall_thickness",
     "door_area_m2",
-    "roof_insulation_thickness_cm",
-    "floor_insulation_thickness_cm",
-    "window_age_years",
     "window_area_m2",
-    "ventilation_ach",
-    "wall_insulation_year"
+    "ventilation_ach"
   ]) {
     assert.equal(Number.isFinite(Number(fixture.values[field])), true, field);
   }
@@ -987,6 +980,19 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("demoModeBanner"), true);
   assert.equal(html.includes('type="hidden" name="climate_profile_id"'), true);
   assert.equal(html.includes('<select name="climate_profile_id"'), false);
+  for (const removedLegacyField of [
+    "building_length_m",
+    "building_width_m",
+    "thermal_mass_class",
+    "wall_thickness",
+    "wall_insulation_year",
+    "roof_insulation_thickness_cm",
+    "floor_insulation_thickness_cm",
+    "window_age_years",
+    "door_replaced"
+  ]) {
+    assert.equal(html.includes(`name="${removedLegacyField}"`), false, removedLegacyField);
+  }
   assert.equal(html.includes("Profil lunar explicit / demo"), false);
   assert.equal(html.includes("Profil climatic rezolvat"), true);
   assert.equal(html.includes("data-resolved-climate-profile"), true);

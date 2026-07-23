@@ -2,7 +2,7 @@
 
 Milestone: P6_PRODUCTION_BUILDING_MODEL_ARCHITECTURE_BASELINE
 
-Source baseline: `origin/main` @ `8f36d5b80415e1358c27b0b92eae218a712f4513`
+Source baseline: `origin/main` @ `66a2afd8b2c106b68c7fbf137d088182a990382f`
 
 This document is the permanent baseline for the LaCurent production building model. It inventories engineering concepts, field ownership, dependencies, visible UI fields, legacy compatibility and the target architecture. It does not introduce new physics and does not modify Chapter 2 or Chapter 3 formulas.
 
@@ -102,9 +102,9 @@ Every production concept exists once, has exactly one owner and is extended thro
 | output.fingerprints | output | Versioned Building Backend | buildingPlatformFingerprints.mjs | read_only | persistence_integrity_and_duplicate_protection |
 | legacy.climate_profile_id | legacy | Legacy compatibility boundary | hidden compatibility input or legacy saved Building DNA | hidden | demo_and_compatibility_only_not_primary_climate_path |
 | legacy.synthetic_demo_profile | legacy | Demo fixture boundary | romanianClimateProfiles.mjs explicit demo profile | hidden | demo_only |
-| legacy.length_width_geometry_inputs | legacy | Legacy/simplified UI compatibility | UI only | remove | dead_visible_input_no_current_runtime_effect |
-| legacy.thermal_mass_class_ui | legacy | Legacy/simplified UI compatibility | UI only | remove | dead_visible_input_no_current_runtime_effect |
-| legacy.unused_envelope_detail_inputs | legacy | Legacy/simplified UI compatibility | UI only unless future resolver consumes them | remove | dead_visible_inputs_no_current_runtime_effect |
+| legacy.length_width_geometry_inputs | legacy | Legacy/simplified UI compatibility | none in production UI; historical payloads only | hidden | removed_from_production_ui_no_runtime_effect |
+| legacy.thermal_mass_class_ui | legacy | Legacy/simplified UI compatibility | none in production UI; historical payloads only | hidden | removed_from_production_ui_no_runtime_effect |
+| legacy.unused_envelope_detail_inputs | legacy | Legacy/simplified UI compatibility | legacy payloads only unless future resolver consumes them | hidden | removed_from_production_ui_legacy_payload_compatibility_only |
 | legacy.old_persistence_tables | legacy | Legacy migration boundary | existing database rows before canonical migration | hidden | compatibility_only_not_canonical_new_write_path |
 
 ## Dependency Graph
@@ -142,9 +142,9 @@ Obsolete or bounded paths:
 | Section | Recommendation | Hide or remove |
 | --- | --- | --- |
 | Amplasare si clima | keep locality editable; keep zone/wind explicit until normative mappings exist; all resolved provider fields read-only | climate_profile_id visible selector already removed; hidden compatibility field remains only for demo/legacy |
-| Geometrie | keep explicit area/volume fields editable and show direct/runtime impact | building_length_m, building_width_m, thermal_mass_class |
-| Anvelopa | keep active fields; make bridge inventory explicit in a future milestone | wall_thickness until assembly selection consumes it |
-| Renovari | keep intervention toggles; remove or wire detail fields | wall_insulation_year, roof_insulation_thickness_cm, floor_insulation_thickness_cm, window_age_years, door_replaced |
+| Geometrie | keep explicit area/volume fields editable and show direct/runtime impact | building_length_m removed in P6B, building_width_m removed in P6B, thermal_mass_class removed in P6B |
+| Anvelopa | keep active fields; make bridge inventory explicit in a future milestone | wall_thickness removed in P6B until assembly selection consumes it |
+| Renovari | keep intervention toggles; remove or wire detail fields | wall_insulation_year removed in P6B, roof_insulation_thickness_cm removed in P6B, floor_insulation_thickness_cm removed in P6B, window_age_years removed in P6B, door_replaced removed in P6B |
 | Instalatii tehnice | keep editable with validation; continue showing explicit SR EN 15193-1 lighting boundary | - |
 | Results/report | read-only calculated outputs only | - |
 
@@ -172,11 +172,23 @@ Obsolete or bounded paths:
 | --- | --- | --- |
 | climate_profile_id vs locality-driven Climate Provider | legacy_compatibility_only | keep hidden until demo/legacy path is retired; never expose as production selector |
 | buildingSpecificParameters.* duplicated with geometry.* | intentional_but_should_be_simplified | future milestone should choose one public geometry owner and keep alternate as provenance/seed metadata |
-| visible dimensions length/width without resolver consumer | obsolete_visible_control | remove or implement a source-backed geometry generator before showing |
-| thermal_mass_class selector without utilization mapping | obsolete_visible_control | remove until Table 2.19/2.20 effective capacity mapping is integrated into Building DNA |
-| renovation detail metadata not consumed | partial_ui_only | remove or add explicit intervention fields with downstream semantics |
+| visible dimensions length/width without resolver consumer | removed_from_production_ui | keep absent unless a source-backed geometry generator is introduced through the architecture registry |
+| thermal_mass_class selector without utilization mapping | removed_from_production_ui | keep absent until Table 2.19/2.20 effective capacity mapping is integrated into Building DNA |
+| renovation detail metadata not consumed | removed_from_production_ui | keep absent or add explicit intervention fields with downstream semantics |
 
-Removable UI controls estimate: 9
+Removable UI controls estimate: 0
+
+Removed UI controls:
+
+- building_length_m
+- building_width_m
+- thermal_mass_class
+- wall_thickness
+- wall_insulation_year
+- roof_insulation_thickness_cm
+- floor_insulation_thickness_cm
+- window_age_years
+- door_replaced
 
 Automatically derivable fields:
 

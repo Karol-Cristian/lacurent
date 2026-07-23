@@ -11,7 +11,7 @@ const CATEGORY_IDS = Object.freeze([
 
 const UI_RECOMMENDATIONS = Object.freeze(["remain_editable", "auto_resolved", "calculated", "read_only", "hidden", "remove"]);
 
-const SOURCE_BASELINE_COMMIT = "8f36d5b80415e1358c27b0b92eae218a712f4513";
+const SOURCE_BASELINE_COMMIT = "66a2afd8b2c106b68c7fbf137d088182a990382f";
 
 const refs = Object.freeze({
   resolver: "src/building-platform/buildingDnaResolver.mjs",
@@ -1381,64 +1381,61 @@ const fields = [
   field({
     fieldId: "legacy.length_width_geometry_inputs",
     path: "form.building_length_m / form.building_width_m",
-    purpose: "Visible approximate dimensions currently not consumed by Building DNA resolver.",
+    purpose: "Approximate dimensions removed from the production form because they were not consumed by Building DNA resolver.",
     category: "legacy",
     owner: "Legacy/simplified UI compatibility",
-    sourceOfTruth: "UI only",
-    producer: "UI",
+    sourceOfTruth: "none in production UI; historical payloads only",
+    producer: "none in production UI",
     consumer: "none in current production Building DNA",
     dataType: "number",
-    editable: true,
+    editable: false,
     persisted: false,
     deprecated: true,
     legacy: true,
-    productionUsage: "dead_visible_input_no_current_runtime_effect",
-    uiLocation: "Geometrie / Lungime si latime aproximativa",
-    uiRecommendation: "remove",
-    removalAssessment: "remove_or_wire_into_future_geometry_generator_before_prominent_display",
+    productionUsage: "removed_from_production_ui_no_runtime_effect",
+    uiRecommendation: "hidden",
+    removalAssessment: "removed_in_P6B; future geometry generator must reintroduce this through the architecture baseline first",
     implementationRefs: [refs.calculatorPage, refs.wizard],
     tests: [refs.wizardTest]
   }),
   field({
     fieldId: "legacy.thermal_mass_class_ui",
     path: "form.thermal_mass_class",
-    purpose: "Visible thermal-mass selector not currently mapped into utilization dependencies.",
+    purpose: "Thermal-mass selector removed from the production form because it was not mapped into utilization dependencies.",
     category: "legacy",
     owner: "Legacy/simplified UI compatibility",
-    sourceOfTruth: "UI only",
-    producer: "UI",
+    sourceOfTruth: "none in production UI; historical payloads only",
+    producer: "none in production UI",
     consumer: "none in current production Building DNA",
     dataType: "enum",
-    editable: true,
+    editable: false,
     persisted: false,
     deprecated: true,
     legacy: true,
-    productionUsage: "dead_visible_input_no_current_runtime_effect",
-    uiLocation: "Geometrie / Masa termica",
-    uiRecommendation: "remove",
-    removalAssessment: "remove_until_source_backed_mapping_to_Table_2_19_2_20_is_exposed",
+    productionUsage: "removed_from_production_ui_no_runtime_effect",
+    uiRecommendation: "hidden",
+    removalAssessment: "removed_in_P6B; reintroduce only after source-backed mapping to Table 2.19/2.20 is implemented",
     implementationRefs: [refs.calculatorPage],
     tests: [refs.wizardTest]
   }),
   field({
     fieldId: "legacy.unused_envelope_detail_inputs",
     path: "form.wall_thickness / wall_insulation_year / roof_insulation_thickness_cm / floor_insulation_thickness_cm / window_age_years / door_replaced",
-    purpose: "Visible detail inputs not yet mapped into canonical assemblies/interventions.",
+    purpose: "Detail inputs removed from the production form because they were not mapped into canonical assemblies/interventions.",
     category: "legacy",
     owner: "Legacy/simplified UI compatibility",
-    sourceOfTruth: "UI only unless future resolver consumes them",
-    producer: "UI",
-    consumer: "none in current production Building DNA",
+    sourceOfTruth: "legacy payloads only unless future resolver consumes them",
+    producer: "none in production UI",
+    consumer: "legacy Worker compatibility only",
     dataType: "mixed numbers/enums",
-    editable: true,
+    editable: false,
     persisted: false,
     deprecated: true,
     legacy: true,
-    productionUsage: "dead_visible_inputs_no_current_runtime_effect",
-    uiLocation: "Anvelopa/Renovari details",
-    uiRecommendation: "remove",
-    removalAssessment: "remove_or_wire_to_catalogue/intervention_schema_in_future_simplification",
-    implementationRefs: [refs.calculatorPage],
+    productionUsage: "removed_from_production_ui_legacy_payload_compatibility_only",
+    uiRecommendation: "hidden",
+    removalAssessment: "removed_in_P6B; reintroduce only as explicit intervention/catalogue semantics",
+    implementationRefs: [refs.calculatorPage, refs.workers],
     tests: [refs.wizardTest]
   }),
   field({
@@ -1535,21 +1532,27 @@ const uiAudit = Object.freeze([
     section: "Geometrie",
     visibleFields: ["useful_area_m2", "number_of_floors", "floor_height_m", "heated_volume_m3", "exterior_wall_area_m2", "roof_area_m2", "ground_floor_area_m2", "attic_ceiling_area_m2", "adjacent_wall_area_m2"],
     recommendation: "keep explicit area/volume fields editable and show direct/runtime impact",
-    fieldsToHideOrRemove: ["building_length_m", "building_width_m", "thermal_mass_class"],
+    fieldsToHideOrRemove: ["building_length_m removed in P6B", "building_width_m removed in P6B", "thermal_mass_class removed in P6B"],
     architectureReason: "explicit envelope areas and volume are active; approximate dimensions and thermal mass selector are not wired"
   },
   {
     section: "Anvelopa",
     visibleFields: ["structural_system", "wall_material", "roof_type", "floor_type", "window_type", "window_area_m2", "window_orientation", "door_area_m2", "ventilation_type", "ventilation_ach", "thermal_bridge_mode"],
     recommendation: "keep active fields; make bridge inventory explicit in a future milestone",
-    fieldsToHideOrRemove: ["wall_thickness until assembly selection consumes it"],
+    fieldsToHideOrRemove: ["wall_thickness removed in P6B until assembly selection consumes it"],
     architectureReason: "active fields reach catalogue, envelope elements, ventilation and report; wall thickness is currently not consumed"
   },
   {
     section: "Renovari",
     visibleFields: ["wall_insulation", "wall_insulation_material", "roof_insulated", "floor_insulated", "windows_replaced"],
     recommendation: "keep intervention toggles; remove or wire detail fields",
-    fieldsToHideOrRemove: ["wall_insulation_year", "roof_insulation_thickness_cm", "floor_insulation_thickness_cm", "window_age_years", "door_replaced"],
+    fieldsToHideOrRemove: [
+      "wall_insulation_year removed in P6B",
+      "roof_insulation_thickness_cm removed in P6B",
+      "floor_insulation_thickness_cm removed in P6B",
+      "window_age_years removed in P6B",
+      "door_replaced removed in P6B"
+    ],
     architectureReason: "main toggles reach interventions/assemblies; detail metadata has no current canonical owner"
   },
   {
@@ -1615,22 +1618,23 @@ const simplificationReport = Object.freeze({
     },
     {
       concept: "visible dimensions length/width without resolver consumer",
-      status: "obsolete_visible_control",
-      action: "remove or implement a source-backed geometry generator before showing"
+      status: "removed_from_production_ui",
+      action: "keep absent unless a source-backed geometry generator is introduced through the architecture registry"
     },
     {
       concept: "thermal_mass_class selector without utilization mapping",
-      status: "obsolete_visible_control",
-      action: "remove until Table 2.19/2.20 effective capacity mapping is integrated into Building DNA"
+      status: "removed_from_production_ui",
+      action: "keep absent until Table 2.19/2.20 effective capacity mapping is integrated into Building DNA"
     },
     {
       concept: "renovation detail metadata not consumed",
-      status: "partial_ui_only",
-      action: "remove or add explicit intervention fields with downstream semantics"
+      status: "removed_from_production_ui",
+      action: "keep absent or add explicit intervention fields with downstream semantics"
     }
   ]),
-  removableFieldsEstimate: 8,
-  removableUiControls: [
+  removableFieldsEstimate: 0,
+  removableUiControls: [],
+  removedUiControls: [
     "building_length_m",
     "building_width_m",
     "thermal_mass_class",
@@ -1858,6 +1862,10 @@ ${mdTable(["Legacy area", "Owner", "Compatibility role", "Target disposition"], 
 ${mdTable(["Concept", "Status", "Action"], obsoleteRows)}
 
 Removable UI controls estimate: ${data.simplificationReport.removableUiControls.length}
+
+Removed UI controls:
+
+${data.simplificationReport.removedUiControls.map(item => `- ${item}`).join("\n")}
 
 Automatically derivable fields:
 
