@@ -312,6 +312,62 @@ await test("production wizard resolves locality climate through the Climate Prov
   assert.equal(html.includes("monthly_temperature_and_solar_dataset_not_reproduced"), false);
 });
 
+await test("locality-driven climate reaches Chapter 2 runtime and overrides stale hidden profile ids", () => {
+  const run = ({ localityId, stationId }) => {
+    const answers = mapWizardAnswersToAssistedAnswers(formData({
+      ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+      building_platform_demo_mode: "",
+      building_platform_demo_fixture_id: "",
+      climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
+      locality_id: localityId,
+      climate_station_id: stationId,
+      city: "",
+      climate_zone: "",
+      wind_zone: "",
+      climate_assignment_origin: "not_selected"
+    }));
+    const preview = buildWizardEngineeringPreview(answers);
+    assert.equal(preview.status, "ready");
+    assert.equal(answers.climateProfileId, undefined);
+    assert.equal(preview.buildingDna.climateProfile, null);
+    assert.equal(preview.buildingDna.calculationStatus, "source_backed_climate_provider");
+    return preview;
+  };
+  const bucuresti = run({
+    localityId: "ro_bucuresti",
+    stationId: "mc001_6_2013_bucuresti"
+  });
+  const cluj = run({
+    localityId: "ro_cluj_napoca",
+    stationId: "mc001_6_2013_cluj_napoca"
+  });
+
+  assert.equal(bucuresti.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_bucuresti");
+  assert.equal(cluj.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_cluj_napoca");
+  assert.equal(
+    bucuresti.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    -1.2
+  );
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    -2.4
+  );
+  assert.equal(
+    bucuresti.calculation.chapter2Input.monthlyCases[0].transmission.heating.outdoorTemperature.amount,
+    -1.2
+  );
+  assert.equal(
+    cluj.calculation.chapter2Input.monthlyCases[0].transmission.heating.outdoorTemperature.amount,
+    -2.4
+  );
+  assert.notEqual(bucuresti.summary.annualQHnd, cluj.summary.annualQHnd);
+  assert.equal(
+    bucuresti.technicalWorkspace.report.mainResults.annualQHnd,
+    bucuresti.summary.annualQHnd
+  );
+  assert.equal(cluj.technicalWorkspace.report.mainResults.annualQHnd, cluj.summary.annualQHnd);
+});
+
 await test("wizard maps installation fields into canonical technical systems", () => {
   const answers = mapWizardAnswersToAssistedAnswers(formData({
     ...ASSISTED_WIZARD_DEMO_FIXTURE.values,

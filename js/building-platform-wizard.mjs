@@ -253,6 +253,8 @@ function ensureProductionLocalityOption(form, localityId) {
     option.dataset.stationId = locality.stationId;
     option.dataset.localityName = locality.localityName;
     option.dataset.datasetVersion = locality.datasetVersion;
+    option.dataset.climateZone = locality.climateZone ?? "";
+    option.dataset.windZone = locality.windZone ?? "";
     option.dataset.hasMonthlyTemperature = String(locality.coverage?.monthlyExteriorTemperature === true);
     option.dataset.hasMonthlySolarIrradiation = String(locality.coverage?.monthlySolarIrradiation === true);
   }
@@ -271,6 +273,11 @@ function setResolvedClimateField(panel, field, value) {
   if (node) node.textContent = value || "Neselectat";
 }
 
+function setNamedControlValue(form, name, value) {
+  const control = form?.querySelector?.(`[name="${name}"]`);
+  if (control) control.value = value ?? "";
+}
+
 function updateResolvedClimateProfilePanel(form) {
   const panel = form?.querySelector?.("[data-resolved-climate-profile]");
   if (!panel) return;
@@ -281,6 +288,8 @@ function updateResolvedClimateProfilePanel(form) {
   const localityName = station?.localityName ?? selected?.dataset?.localityName ?? "";
   const stationId = station?.stationId ?? selected?.dataset?.stationId ?? "";
   const datasetVersion = selected?.dataset?.datasetVersion ?? station?.datasetVersion ?? "";
+  const climateZone = selected?.dataset?.climateZone ?? station?.climateZone ?? "";
+  const windZone = selected?.dataset?.windZone ?? station?.windZone ?? "";
   const hasTemperature = selected?.dataset?.hasMonthlyTemperature === "true" ||
     station?.coverage?.monthlyExteriorTemperature === true;
   const hasSolar = selected?.dataset?.hasMonthlySolarIrradiation === "true" ||
@@ -288,6 +297,8 @@ function updateResolvedClimateProfilePanel(form) {
 
   setResolvedClimateField(panel, "locality", localityName || "Neselectata");
   setResolvedClimateField(panel, "station", stationId || "Neselectata");
+  setResolvedClimateField(panel, "climateZone", climateZone || "Nereprodusa in sursa localitatii");
+  setResolvedClimateField(panel, "windZone", windZone || "Nereprodusa in sursa localitatii");
   setResolvedClimateField(panel, "dataset", datasetVersion || "Neselectat");
   setResolvedClimateField(
     panel,
@@ -308,7 +319,10 @@ function updateResolvedClimateProfilePanel(form) {
   );
 }
 
-function syncSelectedProductionLocality(form) {
+function syncSelectedProductionLocality(
+  form,
+  { preserveClimateProfileId = false, preserveExplicitZoneSelection = false } = {}
+) {
   const localitySelect = form?.querySelector?.('[name="locality_id"]');
   const selected = selectedSelectOption(localitySelect);
   if (!selected) {
@@ -320,6 +334,20 @@ function syncSelectedProductionLocality(form) {
   if (stationInput) stationInput.value = selected?.dataset?.stationId ?? "";
   if (cityInput && selected?.dataset?.localityName) {
     cityInput.value = selected.dataset.localityName;
+  }
+  const climateProfileInput = form?.querySelector?.('[name="climate_profile_id"]');
+  if (climateProfileInput && !preserveClimateProfileId) climateProfileInput.value = "";
+  const manualOverride = form?.querySelector?.('[name="climate_manual_override"]')?.value === "yes";
+  if (!manualOverride && !preserveExplicitZoneSelection) {
+    const climateZone = selected?.dataset?.climateZone ?? "";
+    const windZone = selected?.dataset?.windZone ?? "";
+    setNamedControlValue(form, "climate_zone", climateZone);
+    setNamedControlValue(form, "wind_zone", windZone);
+    setNamedControlValue(
+      form,
+      "climate_assignment_origin",
+      climateZone || windZone ? "source_backed_locality_assignment" : "not_selected"
+    );
   }
   updateResolvedClimateProfilePanel(form);
 }
@@ -344,7 +372,10 @@ export function applyAssistedWizardDemoFixture(form, fixture = ASSISTED_WIZARD_D
   for (const [name, value] of Object.entries(fixture.values ?? {})) {
     setFieldValue(form, name, value);
   }
-  syncSelectedProductionLocality(form);
+  syncSelectedProductionLocality(form, {
+    preserveClimateProfileId: true,
+    preserveExplicitZoneSelection: true
+  });
   form.dataset.demoMode = "1";
   form.dataset.demoFixtureId = fixture.fixtureId;
   dispatchFormRefresh(form);
@@ -604,7 +635,10 @@ export function applyBuildingDnaToWizardForm(form, buildingDna, provenance = {})
     if (name === "locality_id") ensureProductionLocalityOption(form, value);
     setFieldValue(form, name, value, fieldProvenance);
   }
-  syncSelectedProductionLocality(form);
+  syncSelectedProductionLocality(form, {
+    preserveClimateProfileId: true,
+    preserveExplicitZoneSelection: true
+  });
   form.dataset.demoMode = "";
   form.dataset.demoFixtureId = "";
   const hiddenDemoMode = form.querySelector?.('[name="building_platform_demo_mode"]');
@@ -1323,13 +1357,16 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const explicitStructuralSystem = formValue(formData, "structural_system");
   const wallMaterial = formValue(formData, "wall_material") || "unknown";
   const windowsReplaced = formValue(formData, "windows_replaced");
-  const climateProfileId = formValue(formData, "climate_profile_id");
-  const climateProfile = climateProfileId
-    ? findRomanianClimateProfileById(climateProfileId)
-    : null;
   const localityId = formValue(formData, "locality_id");
   const stationFromLocality = localityId
     ? findRomanianNormativeStationByLocalityId(localityId)
+    : null;
+  const legacyClimateProfileId = formValue(formData, "climate_profile_id");
+  const climateProfileId = legacyClimateProfileId && (isDemoFixture || !stationFromLocality)
+    ? legacyClimateProfileId
+    : "";
+  const climateProfile = climateProfileId
+    ? findRomanianClimateProfileById(climateProfileId)
     : null;
   const climateStationId =
     formValue(formData, "climate_station_id") ||
@@ -2198,6 +2235,8 @@ export function attachBuildingPlatformWizard(root = document) {
       option.dataset.stationId = locality.stationId;
       option.dataset.localityName = locality.localityName;
       option.dataset.datasetVersion = locality.datasetVersion;
+      option.dataset.climateZone = locality.climateZone ?? "";
+      option.dataset.windZone = locality.windZone ?? "";
       option.dataset.hasMonthlyTemperature =
         String(locality.coverage?.monthlyExteriorTemperature === true);
       option.dataset.hasMonthlySolarIrradiation =
