@@ -1482,6 +1482,7 @@ function compactClimateSection(buildingDna, monthly) {
   const location = buildingDna.building?.location ?? {};
   const climateProvider = buildingDna.climateProvider ?? null;
   const productionClimateProfile = buildingDna.productionClimateProfile ?? null;
+  const monthlyProfileSummary = monthlyClimateProfileReportSummary(buildingDna);
   const providerMonthlyTemperature =
     climateProvider?.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? [];
   const providerMonthlyHumidity =
@@ -1548,11 +1549,11 @@ function compactClimateSection(buildingDna, monthly) {
     }),
     compactLine({
       lineId: "climate.monthly-profile",
-      text: `Profil_lunar := ${buildingDna.climateProfile?.profileId ?? "profil explicit"} -- ${buildingDna.climateProfile?.datasetStatus ?? buildingDna.climateProfile?.verificationStatus ?? climate.monthlyClimateStatus ?? "date lunare furnizate explicit"}`,
+      text: `Profil_lunar := ${monthlyProfileSummary.profileLabel} -- ${monthlyProfileSummary.status}`,
       variables: [
-        { symbol: "Profil_lunar", value: buildingDna.climateProfile?.profileId ?? null, unit: "-", meaning: "profilul lunar folosit de calcul" }
+        { symbol: "Profil_lunar", value: monthlyProfileSummary.profileLabel, unit: "-", meaning: "profilul lunar folosit de calcul" }
       ],
-      reference: buildingDna.climateProfile?.sourceReferences?.[0] ?? "monthlyProfiles.BuildingDNA",
+      reference: monthlyProfileSummary.source,
       kind: "input"
     }),
     ...(climateProvider ? [
@@ -1878,11 +1879,86 @@ function climateProfileFieldRows(productionClimateProfile) {
   ];
 }
 
+function sourceDocumentLabel(sourceDocument) {
+  if (!sourceDocument) return null;
+  return [
+    sourceDocument.indicativ,
+    sourceDocument.title,
+    sourceDocument.edition
+  ].filter(Boolean).join(" - ");
+}
+
+function monthlyClimateProfileReportSummary(buildingDna) {
+  const climate = buildingDna.climate ?? {};
+  const climateProfile = buildingDna.climateProfile ?? null;
+  const climateProvider = buildingDna.climateProvider ?? null;
+  const temperatureDataset = climateProvider?.datasets?.monthlyExteriorTemperature ?? null;
+  const selection = climateProvider?.selection ?? {};
+  if (climateProfile) {
+    return {
+      profileLabel: climateProfile.profileId ?? "profil lunar explicit",
+      status:
+        climateProfile.datasetStatus ??
+        climateProfile.verificationStatus ??
+        climate.monthlyClimateStatus ??
+        "date lunare furnizate explicit",
+      datasetStatus: climateProfile.datasetStatus ?? climateProfile.verificationStatus ?? "nedefinit",
+      source:
+        climateProfile.sourceReferences?.[0] ??
+        climateProfile.sourceTitle ??
+        climateProfile.sourceType ??
+        "profil lunar explicit",
+      datasetVersion: climateProfile.datasetVersion ?? "neselectata",
+      stationLocality:
+        climateProfile.stationName ??
+        climateProfile.locality ??
+        "neselectata"
+    };
+  }
+  if (climateProvider) {
+    const stationLabel = [
+      selection.localityName,
+      selection.stationName ?? selection.stationId
+    ].filter(Boolean).join(" / ");
+    return {
+      profileLabel:
+        selection.stationId ??
+        selection.localityId ??
+        "climate_provider_mc001_6_2013",
+      status: (temperatureDataset?.status === "ready" || temperatureDataset?.monthlyRecords?.length === 12)
+        ? "source_backed_climate_provider"
+        : climateProvider.datasetStatus ?? climate.monthlyClimateStatus ?? "DATASET_UNAVAILABLE",
+      datasetStatus:
+        temperatureDataset?.datasetStatus ??
+        climateProvider.datasetStatus ??
+        "DATASET_UNAVAILABLE",
+      source:
+        temperatureDataset?.sourceReference ??
+        sourceDocumentLabel(climateProvider.sourceDocument) ??
+        "Mc001/6-2013",
+      datasetVersion:
+        temperatureDataset?.datasetVersion ??
+        climateProvider.datasetVersion ??
+        "neselectata",
+      stationLocality: stationLabel || "neselectata"
+    };
+  }
+  return {
+    profileLabel: "neselectat",
+    status: climate.monthlyClimateStatus ?? "nedefinit",
+    datasetStatus: "DATASET_UNAVAILABLE",
+    source: "neselectata",
+    datasetVersion: "neselectata",
+    stationLocality: "neselectata"
+  };
+}
+
 function climateRows(buildingDna, monthly) {
   const climate = buildingDna.climate ?? {};
   const location = buildingDna.building?.location ?? {};
   const climateProvider = buildingDna.climateProvider ?? null;
   const productionClimateProfile = buildingDna.productionClimateProfile ?? null;
+  const monthlyProfileSummary = monthlyClimateProfileReportSummary(buildingDna);
   const providerMonthlyTemperature =
     climateProvider?.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? [];
   const providerMonthlyHumidity =
@@ -1904,11 +1980,11 @@ function climateRows(buildingDna, monthly) {
     { label: "Origine atribuire", value: climate.assignmentOrigin ?? "neselectat" },
     { label: "Suprascriere manuala", value: climate.manualOverride ? "da" : "nu" },
     { label: "Status mapare localitate", value: climate.localityMappingStatus ?? "nedefinit" },
-    { label: "Status profil lunar", value: climate.monthlyClimateStatus ?? "nedefinit" },
-    { label: "Status dataset lunar", value: buildingDna.climateProfile?.datasetStatus ?? "DATASET_UNAVAILABLE" },
-    { label: "Sursa profil lunar", value: buildingDna.climateProfile?.sourceTitle ?? buildingDna.climateProfile?.sourceType ?? "neselectata" },
-    { label: "Versiune profil lunar", value: buildingDna.climateProfile?.datasetVersion ?? "neselectata" },
-    { label: "Statie/localitate dataset", value: buildingDna.climateProfile?.stationName ?? buildingDna.climateProfile?.locality ?? "neselectata" },
+    { label: "Status profil lunar", value: monthlyProfileSummary.status },
+    { label: "Status dataset lunar", value: monthlyProfileSummary.datasetStatus },
+    { label: "Sursa profil lunar", value: monthlyProfileSummary.source },
+    { label: "Versiune profil lunar", value: monthlyProfileSummary.datasetVersion },
+    { label: "Statie/localitate dataset", value: monthlyProfileSummary.stationLocality },
     ...(climateProvider ? [
       {
         label: "Statie normativa MC001/6-2013",

@@ -6,8 +6,10 @@ import {
   buildBuildingKnowledgePlatformFromAssistedAnswers,
   buildBuildingTechnicalWorkspace,
   findRomanianClimateProfileById,
+  findRomanianNormativeStationByLocalityId,
   listRomanianClimateProfiles,
-  listRomanianClimateZones
+  listRomanianClimateZones,
+  listRomanianProductionClimateLocalities
 } from "../src/building-platform/index.mjs";
 
 // assisted abstraction pending redesign: keep it as a secondary view over the canonical model.
@@ -71,6 +73,8 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     building_platform_demo_mode: "1",
     building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
     climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
+    locality_id: "ro_bucuresti",
+    climate_station_id: "mc001_6_2013_bucuresti",
     county: "Bucuresti",
     climate_zone: "II",
     wind_zone: "II",
@@ -80,7 +84,7 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     display_name: "Demo tehnic - casa zidarie 1985",
     analysis_purpose: "technical_chapter_2_3_report",
     building_type: "house",
-    city: "Bucharest",
+    city: "Bucuresti",
     construction_year: "1985",
     structural_system: "masonry",
     useful_area_m2: "120",
@@ -242,6 +246,54 @@ function ensureClimateProfileOption(form, profileId) {
   select.appendChild(option);
 }
 
+function createOption(root, value, textContent) {
+  const option = root?.createElement?.("option") ?? globalThis.document?.createElement?.("option");
+  if (!option) return null;
+  option.value = value;
+  option.textContent = textContent;
+  return option;
+}
+
+function ensureProductionLocalityOption(form, localityId) {
+  const select = form?.querySelector?.('[name="locality_id"]');
+  if (!select?.appendChild || !localityId) return;
+  const existing = [...(select.options ?? [])].some(option => option.value === localityId);
+  if (existing) return;
+  const locality = listRomanianProductionClimateLocalities()
+    .find(item => item.localityId === localityId);
+  const option = createOption(globalThis.document, localityId, locality
+    ? `${locality.localityName} - statia ${locality.stationId}`
+    : localityId);
+  if (!option) return;
+  if (locality) {
+    option.dataset.stationId = locality.stationId;
+    option.dataset.localityName = locality.localityName;
+    option.dataset.datasetVersion = locality.datasetVersion;
+    option.dataset.hasMonthlyTemperature = String(locality.coverage?.monthlyExteriorTemperature === true);
+    option.dataset.hasMonthlySolarIrradiation = String(locality.coverage?.monthlySolarIrradiation === true);
+  }
+  select.appendChild(option);
+}
+
+function selectedSelectOption(select) {
+  if (!select) return null;
+  if (select.selectedOptions?.length) return select.selectedOptions[0];
+  const selectedIndex = Number.isInteger(select.selectedIndex) ? select.selectedIndex : -1;
+  return selectedIndex >= 0 ? select.options?.[selectedIndex] ?? null : null;
+}
+
+function syncSelectedProductionLocality(form) {
+  const localitySelect = form?.querySelector?.('[name="locality_id"]');
+  const selected = selectedSelectOption(localitySelect);
+  if (!selected) return;
+  const stationInput = form?.querySelector?.('[name="climate_station_id"]');
+  const cityInput = form?.querySelector?.('[name="city"]');
+  if (stationInput) stationInput.value = selected?.dataset?.stationId ?? "";
+  if (cityInput && selected?.dataset?.localityName) {
+    cityInput.value = selected.dataset.localityName;
+  }
+}
+
 export function demoModeFromSearch(search = "") {
   return new URLSearchParams(search).get("demo") === "1";
 }
@@ -259,9 +311,11 @@ export function applyAssistedWizardDemoFixture(form, fixture = ASSISTED_WIZARD_D
   form.reset?.();
   clearFieldProvenance(form);
   ensureClimateProfileOption(form, fixture.values?.climate_profile_id);
+  ensureProductionLocalityOption(form, fixture.values?.locality_id);
   for (const [name, value] of Object.entries(fixture.values ?? {})) {
     setFieldValue(form, name, value);
   }
+  syncSelectedProductionLocality(form);
   form.dataset.demoMode = "1";
   form.dataset.demoFixtureId = fixture.fixtureId;
   dispatchFormRefresh(form);
@@ -446,10 +500,30 @@ export function buildingDnaToWizardValues(buildingDna) {
   const parameters = buildingDna?.buildingSpecificParameters ?? {};
   const geometry = buildingDna?.geometry ?? {};
   const building = buildingDna?.building ?? {};
+  const climateSelection = buildingDna?.climateProvider?.selection ?? {};
+  const productionClimateProfile = buildingDna?.productionClimateProfile ?? {};
   return {
     display_name: building.buildingId ?? "Model termic Chapter 2 salvat",
     building_type: building.buildingType === "apartment" ? "apartment" : "house",
-    city: building.location?.city ?? building.location?.locality ?? buildingDna?.climateProfile?.locality ?? "",
+    locality_id:
+      building.location?.localityId ??
+      climateSelection.localityId ??
+      productionClimateProfile.localityId ??
+      "",
+    climate_station_id:
+      building.location?.climateStationId ??
+      building.location?.stationId ??
+      climateSelection.stationId ??
+      productionClimateProfile.stationId ??
+      "",
+    city:
+      building.location?.localityName ??
+      building.location?.city ??
+      building.location?.locality ??
+      climateSelection.localityName ??
+      productionClimateProfile.localityName ??
+      buildingDna?.climateProfile?.locality ??
+      "",
     county: building.location?.countyName ?? building.location?.county ?? buildingDna?.climateProfile?.county ?? "",
     climate_zone: buildingDna?.climate?.climateZone ?? building.location?.climateZone ?? "",
     wind_zone: buildingDna?.climate?.windZone ?? building.location?.windZone ?? "",
@@ -498,8 +572,10 @@ export function applyBuildingDnaToWizardForm(form, buildingDna, provenance = {})
     confidence: provenance.confidence ?? buildingDna.source?.confidence ?? "medium"
   };
   for (const [name, value] of Object.entries(values)) {
+    if (name === "locality_id") ensureProductionLocalityOption(form, value);
     setFieldValue(form, name, value, fieldProvenance);
   }
+  syncSelectedProductionLocality(form);
   form.dataset.demoMode = "";
   form.dataset.demoFixtureId = "";
   const hiddenDemoMode = form.querySelector?.('[name="building_platform_demo_mode"]');
@@ -1222,6 +1298,17 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const climateProfile = climateProfileId
     ? findRomanianClimateProfileById(climateProfileId)
     : null;
+  const localityId = formValue(formData, "locality_id");
+  const stationFromLocality = localityId
+    ? findRomanianNormativeStationByLocalityId(localityId)
+    : null;
+  const climateStationId =
+    formValue(formData, "climate_station_id") ||
+    stationFromLocality?.stationId ||
+    null;
+  const localityName =
+    stationFromLocality?.localityName ??
+    (formValue(formData, "city") || null);
   const climateManualOverride = formValue(formData, "climate_manual_override") === "yes";
   const wallInsulationThicknessByOption = {
     "5cm": 0.05,
@@ -1285,8 +1372,11 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
     },
     location: {
       country: "RO",
-      city: formValue(formData, "city") || null,
-      localityName: formValue(formData, "city") || null,
+      city: localityName,
+      localityId: localityId || stationFromLocality?.localityId || null,
+      localityName,
+      climateStationId,
+      stationId: climateStationId,
       countyName: formValue(formData, "county") || null,
       climateZone: formValue(formData, "climate_zone") || null,
       windZone: formValue(formData, "wind_zone") || null,
@@ -2067,6 +2157,25 @@ export function attachBuildingPlatformWizard(root = document) {
   if (!form || !previewTarget || !previewButton) {
     return { attached: false };
   }
+  const localitySelect = form.querySelector?.('[name="locality_id"]');
+  if (localitySelect && localitySelect.options.length <= 1) {
+    for (const locality of listRomanianProductionClimateLocalities()) {
+      const option = createOption(
+        root,
+        locality.localityId,
+        `${locality.localityName} - statia ${locality.stationId}`
+      );
+      if (!option) continue;
+      option.dataset.stationId = locality.stationId;
+      option.dataset.localityName = locality.localityName;
+      option.dataset.datasetVersion = locality.datasetVersion;
+      option.dataset.hasMonthlyTemperature =
+        String(locality.coverage?.monthlyExteriorTemperature === true);
+      option.dataset.hasMonthlySolarIrradiation =
+        String(locality.coverage?.monthlySolarIrradiation === true);
+      localitySelect.appendChild(option);
+    }
+  }
   const climateSelect = form.querySelector?.('[name="climate_profile_id"]');
   if (climateSelect && climateSelect.options.length <= 1) {
     const includeSynthetic = demoModeFromSearch(globalThis.window?.location?.search ?? "") ||
@@ -2092,6 +2201,9 @@ export function attachBuildingPlatformWizard(root = document) {
       climateZoneSelect.appendChild(option);
     }
   }
+  localitySelect?.addEventListener?.("change", () => {
+    syncSelectedProductionLocality(form);
+  });
   const demoControls = attachDemoControls(root, form);
   previewButton.addEventListener("click", () => {
     generateBuildingPlatformTechnicalReport(root, {

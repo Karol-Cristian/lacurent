@@ -363,6 +363,100 @@ test("advanced Building DNA auto-resolves the production climate profile from su
   );
 });
 
+test("assisted Building DNA resolves source-backed monthly climate by locality without legacy profile selection", () => {
+  const cluj = createBuildingDnaFromAssistedAnswers({
+    buildingId: "p5c-assisted-cluj-locality-climate",
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: "eps",
+      windowsReplaced: true
+    },
+    context: {
+      attic: "unheated",
+      basement: "none"
+    },
+    location: {
+      country: "RO",
+      localityId: "ro_cluj_napoca",
+      localityName: "Cluj-Napoca",
+      climateStationId: "mc001_6_2013_cluj_napoca"
+    },
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    source: {
+      reference: "P5C.test.assisted_locality_provider"
+    }
+  });
+  const brasov = createBuildingDnaFromAssistedAnswers({
+    buildingId: "p5c-assisted-brasov-locality-climate",
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: "eps",
+      windowsReplaced: true
+    },
+    context: {
+      attic: "unheated",
+      basement: "none"
+    },
+    location: {
+      country: "RO",
+      localityId: "ro_brasov",
+      localityName: "Brasov",
+      climateStationId: "mc001_6_2013_brasov"
+    },
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    source: {
+      reference: "P5C.test.assisted_locality_provider"
+    }
+  });
+
+  assert.equal(cluj.status, "ready");
+  assert.equal(brasov.status, "ready");
+  assert.equal(cluj.buildingDna.climateProfile, null);
+  assert.equal(cluj.buildingDna.calculationStatus, "source_backed_climate_provider");
+  assert.equal(cluj.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_cluj_napoca");
+  assert.equal(brasov.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_brasov");
+  assert.equal(cluj.buildingDna.productionClimateProfile.localityId, "ro_cluj_napoca");
+  assert.equal(brasov.buildingDna.productionClimateProfile.localityId, "ro_brasov");
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    -2.4
+  );
+  assert.equal(
+    brasov.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    -3.3
+  );
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].heatGains.solarGainsSource,
+    "provider_climate_profile_without_qsol_preprocessing"
+  );
+  assert.equal(
+    cluj.buildingDna.warnings.some(
+      item => item.code === "solar_gains_qsol_preprocessing_or_certified_input_required"
+    ),
+    true
+  );
+  const eligibility = new Map(cluj.buildingDna.climateEligibility.map(item => [item.calculationId, item]));
+  assert.equal(
+    eligibility.get("chapter2_monthly_transmission_ventilation").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
+  );
+  assert.equal(
+    eligibility.get("chapter2_solar_gains").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_PREPROCESSING
+  );
+  assert.notEqual(fingerprintBuildingDna(cluj.buildingDna), fingerprintBuildingDna(brasov.buildingDna));
+});
+
 test("resolver blocks missing geometry before physics can run", () => {
   const result = createBuildingDnaFromAdvancedModel({
     source: { reference: "P1.test.invalid_advanced_model" },

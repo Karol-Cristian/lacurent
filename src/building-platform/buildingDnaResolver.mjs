@@ -12,6 +12,7 @@ import {
 } from "./buildingTypologyEngine.mjs";
 import { resolveBuildingRenovationInterventions } from "./buildingRenovationInterventions.mjs";
 import {
+  CALENDAR_MONTHLY_HOURS,
   MONTH_IDS,
   climateProfileToBuildingMonthlyProfiles,
   evaluateClimateCalculationEligibility,
@@ -26,6 +27,7 @@ import {
   TECHNICAL_SYSTEMS_SCHEMA,
   validateTechnicalSystems
 } from "./buildingChapter3InstallationsAdapter.mjs";
+import { resolveInternalGainsTable2_15Value } from "../physics-engine/datasets/mc001InternalGainsTable2_15.mjs";
 
 const ASSISTED_MODE = "assisted";
 const ADVANCED_MODE = "advanced";
@@ -376,6 +378,112 @@ function monthlyProfilesWithProviderClimate(monthlyProfiles = [], climateProvide
   });
 }
 
+function internalGainsCategoryIdForBuildingType(buildingType) {
+  if (buildingType === "apartment") return "residential_collective";
+  if (buildingType === "detached_house" || buildingType === "house") {
+    return "residential_single_family";
+  }
+  return null;
+}
+
+function monthlyInternalGainsFromTable2_15({ buildingType, usefulFloorAreaM2, durationHours } = {}) {
+  const categoryId = internalGainsCategoryIdForBuildingType(buildingType);
+  if (!categoryId || !finitePositive(usefulFloorAreaM2)) {
+    return {
+      amount: 0,
+      source: "explicit_internal_gains_not_available",
+      categoryId: null,
+      constantInternalGainWPerM2: null
+    };
+  }
+  const lookup = resolveInternalGainsTable2_15Value({ categoryId });
+  if (lookup.status !== "ready") {
+    return {
+      amount: 0,
+      source: "explicit_internal_gains_not_available",
+      categoryId,
+      constantInternalGainWPerM2: null
+    };
+  }
+  return {
+    amount: (lookup.constantInternalGainWPerM2 * usefulFloorAreaM2 * durationHours) / 1000,
+    source: "mc001_table_2_15_category_area_duration",
+    categoryId,
+    categoryRo: lookup.categoryRo,
+    constantInternalGainWPerM2: lookup.constantInternalGainWPerM2,
+    sourceTable: lookup.sourceTable,
+    sourceSection: lookup.sourceSection,
+    sourcePage: lookup.sourcePage
+  };
+}
+
+function monthlyProfilesFromProviderClimate(climateProviderResult, source = {}, context = {}) {
+  const temperatureDataset = climateProviderResult?.datasets?.monthlyExteriorTemperature;
+  const temperatureRecords = temperatureDataset?.monthlyRecords ?? [];
+  if (temperatureRecords.length !== MONTH_IDS.length) return null;
+  const byMonth = new Map(temperatureRecords.map(record => [record.month, record]));
+  const stationId = climateProviderResult?.selection?.stationId ?? null;
+  const localityId = climateProviderResult?.selection?.localityId ?? null;
+  const localityName = climateProviderResult?.selection?.localityName ?? null;
+  const datasetVersion = temperatureDataset?.datasetVersion ??
+    climateProviderResult?.datasetVersion ??
+    null;
+  const monthlyProfiles = MONTH_IDS.map(month => {
+    const record = byMonth.get(month);
+    if (!record || typeof record.value !== "number" || !Number.isFinite(record.value)) {
+      return null;
+    }
+    const durationHours = CALENDAR_MONTHLY_HOURS[month];
+    const internalGains = monthlyInternalGainsFromTable2_15({
+      buildingType: context.buildingType,
+      usefulFloorAreaM2: context.usefulFloorAreaM2,
+      durationHours
+    });
+    return {
+      month,
+      heatingIndoorTemperatureC: 20,
+      heatingOutdoorTemperatureC: record.value,
+      coolingIndoorTemperatureC: 24,
+      coolingOutdoorTemperatureC: record.value,
+      durationHours,
+      ventilationAirHeatCapacityJPerM3K: 1200,
+      ventilationAirFlowRateM3PerS: 0,
+      internalGainsKwh: internalGains.amount,
+      solarGainsKwh: 0,
+      solarOrientation: null,
+      solarGainsSource: "provider_climate_profile_without_qsol_preprocessing",
+      internalGainsSource: internalGains.source,
+      provenance: {
+        origin: "selected_from_mc001_catalogue",
+        reference:
+          source.reference ??
+          "P5C.climate_provider.generated_monthly_profile_from_mc001_6_2013",
+        confidence: "high",
+        sourceOrigin: "source_backed_romanian_climate_provider",
+        monthlyDataSource: "mc001_6_2013_monthly_exterior_temperature",
+        monthlyExteriorTemperatureSource: "mc001_6_2013_provider",
+        monthlyExteriorTemperatureStationId: stationId,
+        monthlyExteriorTemperatureDatasetVersion: datasetVersion,
+        monthlyExteriorTemperatureSourceReference: temperatureDataset?.sourceReference ?? null,
+        localityId,
+        localityName,
+        stationId,
+        internalGainsSource: internalGains.source,
+        internalGainsCategoryId: internalGains.categoryId,
+        internalGainsConstantWPerM2: internalGains.constantInternalGainWPerM2,
+        internalGainsSourceTable: internalGains.sourceTable ?? null,
+        internalGainsSourceSection: internalGains.sourceSection ?? null,
+        internalGainsSourcePage: internalGains.sourcePage ?? null,
+        solarGainsSource: "provider_climate_profile_without_qsol_preprocessing",
+        notes:
+          "Temperaturile lunare sunt rezolvate din providerul climatic normativ. Aporturile interne sunt calculate din Tabelul 2.15 numai cand tipul cladirii si aria utila sunt explicite. Aporturile solare Qsol raman 0 pana cand preprocessing-ul normativ SR EN ISO 52010-1 sau un set certificat explicit furnizeaza Qsol."
+      }
+    };
+  });
+  if (monthlyProfiles.some(profile => profile === null)) return null;
+  return monthlyProfiles;
+}
+
 function defaultGeometry(overrides = {}) {
   return {
     exteriorWallAreaM2: 50,
@@ -395,8 +503,11 @@ function resolveMonthlyProfileSelection({
   climateProfile,
   climateProfileId,
   allowSyntheticClimate,
+  climateProviderResult,
+  monthlyProfileContext,
   solarOrientation,
-  mainOrientation
+  mainOrientation,
+  source
 } = {}) {
   if (Array.isArray(monthlyProfiles)) {
     return {
@@ -407,6 +518,21 @@ function resolveMonthlyProfileSelection({
         ? "synthetic_demo"
         : "explicit_monthly_profile"
     };
+  }
+  if (!climateProfile && !climateProfileId) {
+    const providerMonthlyProfiles = monthlyProfilesFromProviderClimate(
+      climateProviderResult,
+      source,
+      monthlyProfileContext
+    );
+    if (providerMonthlyProfiles !== null) {
+      return {
+        status: "ready",
+        monthlyProfiles: providerMonthlyProfiles,
+        climateProfile: null,
+        calculationMode: "source_backed_romanian_climate_provider"
+      };
+    }
   }
   const selection = resolveClimateProfileSelection({
     profileId: climateProfileId,
@@ -762,6 +888,7 @@ function monthlyQuantity(profile, amount, unit, reference, confidence = "low") {
         ...(source.verificationStatus === undefined ? {} : { verificationStatus: source.verificationStatus }),
         ...(source.confirmationStatus === undefined ? {} : { confirmationStatus: source.confirmationStatus }),
         ...(source.monthlyDataSource === undefined ? {} : { monthlyDataSource: source.monthlyDataSource }),
+        ...(source.internalGainsSource === undefined ? {} : { internalGainsSource: source.internalGainsSource }),
         ...(source.solarOrientation === undefined ? {} : { solarOrientation: source.solarOrientation }),
         ...(source.solarGainsSource === undefined ? {} : { solarGainsSource: source.solarGainsSource }),
         editable: source.editable ?? true
@@ -787,6 +914,7 @@ function makeMonthlyProfile(profile) {
           ...(profile.provenance.verificationStatus === undefined ? {} : { verificationStatus: profile.provenance.verificationStatus }),
           ...(profile.provenance.confirmationStatus === undefined ? {} : { confirmationStatus: profile.provenance.confirmationStatus }),
           ...(profile.provenance.monthlyDataSource === undefined ? {} : { monthlyDataSource: profile.provenance.monthlyDataSource }),
+          ...(profile.provenance.internalGainsSource === undefined ? {} : { internalGainsSource: profile.provenance.internalGainsSource }),
           ...(profile.provenance.solarOrientation === undefined ? {} : { solarOrientation: profile.provenance.solarOrientation }),
           ...(profile.provenance.solarGainsSource === undefined ? {} : { solarGainsSource: profile.provenance.solarGainsSource }),
           editable: profile.provenance.editable ?? true
@@ -1018,7 +1146,9 @@ function resolveBuildingDna({
       ? "synthetic_demo"
       : calculationMode === "explicit_professional_climate_profile"
         ? "estimated"
-        : "requires_confirmation",
+        : calculationMode === "source_backed_romanian_climate_provider"
+          ? "source_backed_climate_provider"
+          : "requires_confirmation",
     typologyProposal: typologyProposal ?? null,
     buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters, source),
     ...(normalizedTechnicalSystems === null ? {} : { technicalSystems: normalizedTechnicalSystems }),
@@ -1073,6 +1203,10 @@ function resolveBuildingDna({
     }] : []),
     warnings: [
       warning("building_dna_contains_unconfirmed_typology_proposals"),
+      ...(calculationMode === "source_backed_romanian_climate_provider" ? [
+        warning("source_backed_monthly_temperature_from_climate_provider"),
+        warning("solar_gains_qsol_preprocessing_or_certified_input_required")
+      ] : []),
       ...(locationClimate?.diagnostics ?? [])
         .filter(item => item.severity !== "blocking")
         .map(item => warning(item.code))
@@ -1125,23 +1259,6 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
   if (!validation.ok) {
     return blocked(validation.code);
   }
-  const monthlySelection = resolveMonthlyProfileSelection({
-    monthlyProfiles: answers.monthlyProfiles,
-    climateProfile: answers.climateProfile,
-    climateProfileId: answers.climateProfileId,
-    solarOrientation: answers.buildingSpecificParameters?.windowOrientation,
-    mainOrientation: answers.buildingSpecificParameters?.mainOrientation,
-    allowSyntheticClimate: answers.allowSyntheticClimate === true ||
-      answers.source?.origin === "demo_fixture"
-  });
-  if (monthlySelection.status !== "ready") {
-    return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
-  }
-  const baseMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
-    monthlySelection.monthlyProfiles,
-    answers.buildingSpecificParameters ?? {},
-    answers.source ?? { reference: "P1.assisted_answers" }
-  );
   const locationClimate = resolveLocationClimate(answers.location ?? {}, answers.climate ?? {});
   if (locationClimate.status !== "ready") {
     return blocked(locationClimate.diagnostics.find(item => item.severity === "blocking")?.code ?? "invalid_climate_location_selection");
@@ -1156,11 +1273,37 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
       localityName: answers.location?.localityName ?? answers.location?.city
     }
   );
-  const resolvedMonthlyProfiles = monthlyProfilesWithProviderClimate(
-    baseMonthlyProfiles,
-    canonicalClimateProviderResult,
+  const monthlySelection = resolveMonthlyProfileSelection({
+    monthlyProfiles: answers.monthlyProfiles,
+    climateProfile: answers.climateProfile,
+    climateProfileId: answers.climateProfileId,
+    climateProviderResult: canonicalClimateProviderResult,
+    monthlyProfileContext: {
+      buildingType: answers.buildingType,
+      usefulFloorAreaM2: answers.buildingSpecificParameters?.usefulFloorAreaM2 ??
+        answers.geometry?.usefulFloorAreaM2
+    },
+    solarOrientation: answers.buildingSpecificParameters?.windowOrientation,
+    mainOrientation: answers.buildingSpecificParameters?.mainOrientation,
+    allowSyntheticClimate: answers.allowSyntheticClimate === true ||
+      answers.source?.origin === "demo_fixture",
+    source: answers.source ?? { reference: "P1.assisted_answers" }
+  });
+  if (monthlySelection.status !== "ready") {
+    return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
+  }
+  const baseMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
+    monthlySelection.monthlyProfiles,
+    answers.buildingSpecificParameters ?? {},
     answers.source ?? { reference: "P1.assisted_answers" }
   );
+  const resolvedMonthlyProfiles = monthlySelection.calculationMode === "synthetic_demo"
+    ? baseMonthlyProfiles
+    : monthlyProfilesWithProviderClimate(
+      baseMonthlyProfiles,
+      canonicalClimateProviderResult,
+      answers.source ?? { reference: "P1.assisted_answers" }
+    );
   return resolveBuildingDna({
     userMode: ASSISTED_MODE,
     source: answers.source ?? { reference: "P1.assisted_answers" },
@@ -1192,22 +1335,6 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
 }
 
 export function createBuildingDnaFromAdvancedModel(input = {}) {
-  const monthlySelection = resolveMonthlyProfileSelection({
-    monthlyProfiles: input.monthlyProfiles,
-    climateProfile: input.climateProfile,
-    climateProfileId: input.climateProfileId,
-    solarOrientation: input.buildingSpecificParameters?.windowOrientation,
-    mainOrientation: input.buildingSpecificParameters?.mainOrientation,
-    allowSyntheticClimate: input.allowSyntheticClimate === true
-  });
-  if (monthlySelection.status !== "ready") {
-    return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
-  }
-  const baseMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
-    monthlySelection.monthlyProfiles,
-    input.buildingSpecificParameters ?? {},
-    input.source ?? { reference: "P1.advanced_model" }
-  );
   const locationClimate = resolveLocationClimate(input.building?.location ?? input.location ?? {}, input.climate ?? {});
   if (locationClimate.status !== "ready") {
     return blocked(locationClimate.diagnostics.find(item => item.severity === "blocking")?.code ?? "invalid_climate_location_selection");
@@ -1222,11 +1349,36 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
       localityName: input.building?.location?.localityName ?? input.building?.location?.city ?? input.location?.localityName ?? input.location?.city
     }
   );
-  const resolvedMonthlyProfiles = monthlyProfilesWithProviderClimate(
-    baseMonthlyProfiles,
-    canonicalClimateProviderResult,
+  const monthlySelection = resolveMonthlyProfileSelection({
+    monthlyProfiles: input.monthlyProfiles,
+    climateProfile: input.climateProfile,
+    climateProfileId: input.climateProfileId,
+    climateProviderResult: canonicalClimateProviderResult,
+    monthlyProfileContext: {
+      buildingType: input.building?.buildingType,
+      usefulFloorAreaM2: input.buildingSpecificParameters?.usefulFloorAreaM2 ??
+        input.geometry?.usefulFloorAreaM2
+    },
+    solarOrientation: input.buildingSpecificParameters?.windowOrientation,
+    mainOrientation: input.buildingSpecificParameters?.mainOrientation,
+    allowSyntheticClimate: input.allowSyntheticClimate === true,
+    source: input.source ?? { reference: "P1.advanced_model" }
+  });
+  if (monthlySelection.status !== "ready") {
+    return blocked(monthlySelection.code ?? "building_dna_missing_climate_profile");
+  }
+  const baseMonthlyProfiles = monthlyProfilesWithGeometryVentilation(
+    monthlySelection.monthlyProfiles,
+    input.buildingSpecificParameters ?? {},
     input.source ?? { reference: "P1.advanced_model" }
   );
+  const resolvedMonthlyProfiles = monthlySelection.calculationMode === "synthetic_demo"
+    ? baseMonthlyProfiles
+    : monthlyProfilesWithProviderClimate(
+      baseMonthlyProfiles,
+      canonicalClimateProviderResult,
+      input.source ?? { reference: "P1.advanced_model" }
+    );
   return resolveBuildingDna({
     userMode: ADVANCED_MODE,
     source: input.source ?? { reference: "P1.advanced_model" },

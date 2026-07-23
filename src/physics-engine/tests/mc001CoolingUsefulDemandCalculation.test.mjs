@@ -197,6 +197,26 @@ await test("qCgn can come from explicit monthly heat gains result", () => {
   assert.equal(result.caseResults[0].qCgnOrigin, "calculated_from_explicit_monthly_heat_gains_result");
 });
 
+await test("zero cooling heat-transfer term produces zero monthly cooling demand", () => {
+  const result = calculateMc001CoolingUsefulDemandExplicit(input([
+    sampleCase({
+      caseId: "jan-zero-cooling-transfer",
+      qCht: 0,
+      qCgn: 300,
+      etaCht: undefined,
+      aC: undefined,
+      aCred: undefined
+    })
+  ]));
+
+  assert.equal(result.status, "ready");
+  close(result.caseResults[0].qCnd, 0);
+  assert.equal(result.caseResults[0].gammaC, null);
+  assert.equal(result.caseResults[0].qCndBranch, "qCht_zero_zero_cooling_demand");
+  assert.equal(result.caseResults[0].etaChtOrigin, "not_required_for_qCht_zero_zero_cooling_demand");
+  close(result.summary.annualQCnd, 0);
+});
+
 await test("cooling zero demand boundary branches are implemented", () => {
   const zeroGamma = calculateMc001CoolingUsefulDemandExplicit(input([
     sampleCase({

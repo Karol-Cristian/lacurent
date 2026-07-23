@@ -66,7 +66,7 @@ function availableField({ parameterId, label, value, unit, source, dataset, impl
     parameterId,
     label,
     status: CLIMATE_PROFILE_FIELD_STATUSES.AVAILABLE,
-    value,
+    value: deepClone(value),
     unit,
     source: deepClone(source),
     dataset: deepClone(dataset),

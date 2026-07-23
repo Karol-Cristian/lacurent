@@ -699,12 +699,35 @@ function validateCase(inputCase) {
   }
 
   const qCht = finiteNumber(inputCase.qCht);
-  if (qCht === null || qCht <= 0) {
+  if (qCht === null || qCht < 0) {
     return { ok: false, code: "restricted_qcnd_invalid_qCht" };
   }
   const qCgnSource = extractQCgn(inputCase);
   if (!qCgnSource.ok) return qCgnSource;
   const { qCgn } = qCgnSource.value;
+  if (qCht === 0) {
+    return {
+      ok: true,
+      value: {
+        caseId: inputCase.caseId,
+        month: inputCase.month,
+        qCht,
+        qChtOrigin: "explicit_input",
+        qCgn,
+        qCgnOrigin: qCgnSource.value.qCgnOrigin,
+        ...(qCgnSource.value.internalGains === undefined ? {} : { internalGains: qCgnSource.value.internalGains }),
+        ...(qCgnSource.value.solarGains === undefined ? {} : { solarGains: qCgnSource.value.solarGains }),
+        ...(qCgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qCgnSource.value.heatGainsFormulaCode }),
+        ...(qCgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qCgnSource.value.heatGainsScope }),
+        gammaC: null,
+        etaChtOrigin: "not_required_for_qCht_zero_zero_cooling_demand",
+        aCredOrigin: "not_required_for_qCht_zero_zero_cooling_demand",
+        qCndBranch: "qCht_zero_zero_cooling_demand",
+        qCnd: 0,
+        sourceReference: inputCase.source.reference
+      }
+    };
+  }
   const gammaC = inputCase.gammaC === undefined || inputCase.gammaC === null
     ? qCgn / qCht
     : finiteNumber(inputCase.gammaC);
