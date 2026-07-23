@@ -262,6 +262,56 @@ await test("production wizard rejects synthetic climate profiles unless demo mod
   );
 });
 
+await test("production wizard resolves locality climate through the Climate Provider without manual profile selection", () => {
+  const answers = mapWizardAnswersToAssistedAnswers(formData({
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    building_platform_demo_mode: "",
+    building_platform_demo_fixture_id: "",
+    climate_profile_id: "",
+    locality_id: "ro_brasov",
+    climate_station_id: "mc001_6_2013_brasov",
+    county: "Brasov",
+    city: "",
+    climate_zone: "II",
+    wind_zone: "II"
+  }));
+
+  assert.equal(answers.source.origin, undefined);
+  assert.equal(answers.climateProfileId, undefined);
+  assert.equal(answers.location.localityId, "ro_brasov");
+  assert.equal(answers.location.climateStationId, "mc001_6_2013_brasov");
+  assert.equal(answers.location.localityName, "Brasov");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.buildingDna.climateProfile, null);
+  assert.equal(preview.buildingDna.calculationStatus, "source_backed_climate_provider");
+  assert.equal(preview.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_brasov");
+  assert.equal(preview.buildingDna.productionClimateProfile.localityId, "ro_brasov");
+  assert.equal(
+    preview.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    -3.3
+  );
+  assert.equal(
+    preview.buildingDna.monthlyProfiles[0].heatGains.solarGainsSource,
+    "provider_climate_profile_without_qsol_preprocessing"
+  );
+  const climateChapter = preview.technicalWorkspace.report.chapters.find(chapter =>
+    chapter.chapterId === "amplasare_si_clima"
+  );
+  const climateRowByLabel = new Map(climateChapter.rows.map(row => [row.label, row.value]));
+  assert.equal(climateRowByLabel.get("Status profil lunar"), "source_backed_climate_provider");
+  assert.equal(climateRowByLabel.get("Status dataset lunar"), "NORMATIVE_DATASET");
+  assert.equal(climateRowByLabel.get("Versiune profil lunar"), "mc001_6_2013_climate_dataset_p5b2_v1");
+  assert.equal(climateRowByLabel.get("Statie/localitate dataset"), "Brasov / Brasov");
+  assert.match(climateRowByLabel.get("Sursa profil lunar"), /Mc001\/6-2013/);
+
+  const html = renderEngineeringModelReview(preview, { openReport: true });
+  assert.equal(html.includes("source_backed_climate_provider"), true);
+  assert.equal(html.includes("Brasov"), true);
+  assert.equal(html.includes("monthly_temperature_and_solar_dataset_not_reproduced"), false);
+});
+
 await test("wizard maps installation fields into canonical technical systems", () => {
   const answers = mapWizardAnswersToAssistedAnswers(formData({
     ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
@@ -543,6 +593,8 @@ await test("saved Building DNA maps back into supported wizard fields with load 
   const form = fakeWizardForm([
     "display_name",
     "building_type",
+    "locality_id",
+    "climate_station_id",
     "city",
     "climate_profile_id",
     "construction_year",
@@ -553,6 +605,8 @@ await test("saved Building DNA maps back into supported wizard fields with load 
   const applied = applyBuildingDnaToWizardForm(form, preview.buildingDna);
   assert.equal(applied.applied, true);
   const byName = Object.fromEntries(form.controls.map(control => [control.name, control]));
+  assert.equal(byName.locality_id.value, "ro_bucuresti");
+  assert.equal(byName.climate_station_id.value, "mc001_6_2013_bucuresti");
   assert.equal(byName.climate_profile_id.value, "ro_synthetic_bucharest_seasonal_demo_v1");
   assert.equal(byName.useful_area_m2.value, 120);
   assert.equal(byName.window_type.value, "modern_double_glazing");
@@ -589,6 +643,8 @@ await test("load action restores Building DNA and persisted report through authe
   const data = formData(ASSISTED_WIZARD_DEMO_FIXTURE.values);
   const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(data));
   const form = fakeWizardForm([
+    "locality_id",
+    "climate_station_id",
     "climate_profile_id",
     "useful_area_m2",
     "window_type",
@@ -624,6 +680,8 @@ await test("load action restores Building DNA and persisted report through authe
   assert.equal(form.dataset.currentHouseId, "7");
   assert.equal(form.dataset.currentAnalysisId, "100");
   assert.equal(form.dataset.loadedBuildingDnaVersionId, "building-dna-100");
+  assert.equal(form.controls.find(control => control.name === "locality_id").value, "ro_bucuresti");
+  assert.equal(form.controls.find(control => control.name === "climate_station_id").value, "mc001_6_2013_bucuresti");
   assert.equal(form.controls.find(control => control.name === "climate_profile_id").value, "ro_synthetic_bucharest_seasonal_demo_v1");
   assert.equal(root.preview.innerHTML.includes("Raport tehnic incarcat"), true);
   assert.equal(root.status.dataset.state, "ready");
@@ -693,6 +751,8 @@ await test("demo query and fixture preload a complete editable technical dataset
     "building_platform_demo_mode",
     "building_platform_demo_fixture_id",
     "climate_profile_id",
+    "locality_id",
+    "climate_station_id",
     "building_type",
     "construction_year",
     "useful_area_m2",

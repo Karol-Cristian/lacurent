@@ -456,7 +456,10 @@ function hasSolarData(profile, monthlyProfiles) {
   const records = profile?.monthlyRecords ?? monthlyProfiles;
   return hasTwelveMonthlyRecords(profile, monthlyProfiles) &&
     records.every(record => (
-      isFiniteNumber(record.solarGainsKwh) ||
+      (
+        isFiniteNumber(record.solarGainsKwh) &&
+        record.solarGainsSource !== "provider_climate_profile_without_qsol_preprocessing"
+      ) ||
       (record.solarGainsByOrientationKwh &&
         ["north", "east", "south", "west"].every(
           orientation => isFiniteNumber(record.solarGainsByOrientationKwh[orientation])

@@ -145,13 +145,14 @@
 <div class="step active" data-section-id="geometry">
 <h2>Geometrie</h2>
 <p class="section-description">Datele geometrice alimenteaza Building DNA. Nu introduci coeficienti finali precum Htr, U, gamma, tau sau eta.</p>
-<p class="section-description">Profilul climatic lunar trebuie selectat explicit. Temperaturile lunare MC001/6-2013 si iradierea solara Mc001/1-2006 A.9.6 sunt afisate numai pentru statiile/localitatile sursa acoperite; profilul demonstrativ este sintetic si este permis numai in demo.</p>
+<p class="section-description">Selectia localitatii rezolva profilul climatic disponibil prin Climate Provider. Temperaturile lunare MC001/6-2013 si iradierea solara Mc001/1-2006 A.9.6 sunt afisate numai pentru statiile/localitatile sursa acoperite; profilul demonstrativ este sintetic si este permis numai in demo.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Amplasare si clima</h3>
-<p class="section-description">Zonele climatice I-V si zona eoliana sunt metadate normative trasabile. Ele nu genereaza automat temperaturi lunare sau iradiere pentru o localitate fara un set climatic sursa complet.</p>
+<p class="section-description">Zonele climatice I-V si zona eoliana sunt metadate normative trasabile. Selectia de localitate incarca automat statia climatica si toate seturile lunare implementate pentru acea statie.</p>
 <div class="form-grid">
 <div><label>Judet</label><input name="county" placeholder="Ex: Bucuresti"></div>
-<div><label>Localitate</label><input name="city" placeholder="Ex: Bucuresti"></div>
+<div><label>Localitate MC001/6-2013</label><select name="locality_id"><option value="">Selecteaza localitatea</option></select><input type="hidden" name="climate_station_id" value=""><small class="field-impact-note">Selectia incarca statia climatica si temperaturile lunare disponibile in registry.</small></div>
+<div><label>Localitate libera / certificat</label><input name="city" placeholder="Ex: Bucuresti"><small class="field-impact-note">Folosit numai cand introduci un set climatic certificat separat.</small></div>
 <div><label>Zona climatica MC001</label><select name="climate_zone"><option value="">Selecteaza zona I-V</option></select></div>
 <div><label>Zona eoliana</label><select name="wind_zone"><option value="">Nu se aplica / neselectat</option><option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option></select></div>
 <div><label>Origine atribuire clima</label><select name="climate_assignment_origin"><option value="manual_zone_selection">Selectie explicita</option><option value="manual_override">Suprascriere profesionala</option><option value="not_selected">Neselectat</option></select></div>
@@ -167,7 +168,7 @@
 <div class="form-grid">
 <div><label>Nume model</label><input name="display_name" placeholder="Ex: Casa zidarie 1985"></div>
 <div><label>Tip cladire</label><select name="building_type"><option value="house">Casa individuala</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Profil climatic</label><select name="climate_profile_id"><option value="">Selecteaza un profil climatic</option></select></div>
+<div><label>Profil lunar explicit / demo</label><select name="climate_profile_id"><option value="">Nu este necesar pentru localitati MC001/6-2013</option></select><small class="field-impact-note">Control secundar pentru profil certificat explicit sau pentru demo; localitatile sursa folosesc Climate Provider.</small></div>
 <div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1985"></div>
 <div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"><small class="field-impact-note">Seed pentru arii cand acestea nu sunt introduse explicit.</small></div>
 <div><label>Numar niveluri incalzite</label><input name="number_of_floors" type="number" step="1" placeholder="Ex: 1"></div>

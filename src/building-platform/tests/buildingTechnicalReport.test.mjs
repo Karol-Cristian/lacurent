@@ -148,7 +148,14 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   assert.equal(
     climateChapter.rows.some(row =>
       row.label === "Status dataset lunar" &&
-      row.value === "DATASET_UNAVAILABLE"
+      row.value === "NORMATIVE_DATASET"
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Sursa profil lunar" &&
+      row.value.includes("Mc001/6-2013")
     ),
     true
   );

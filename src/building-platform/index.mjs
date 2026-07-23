@@ -107,6 +107,7 @@ export {
   getSolarFactorRecommendation,
   getWinterDesignTemperatureByClimateZone,
   listClimateSourceContracts,
+  listRomanianProductionClimateLocalities,
   listRomanianNormativeClimateStations,
   listRomanianNormativeLocalityStationMappings,
   listRomanianClimateProfiles,
