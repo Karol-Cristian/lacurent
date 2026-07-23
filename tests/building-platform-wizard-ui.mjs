@@ -929,7 +929,11 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("Redeschidere avansata dupa ID analiza"), true);
   assert.equal(html.includes("buildingPlatformSaveStatus"), true);
   assert.equal(html.includes("demoModeBanner"), true);
-  assert.equal(html.includes("climate_profile_id"), true);
+  assert.equal(html.includes('type="hidden" name="climate_profile_id"'), true);
+  assert.equal(html.includes('<select name="climate_profile_id"'), false);
+  assert.equal(html.includes("Profil lunar explicit / demo"), false);
+  assert.equal(html.includes("Profil climatic rezolvat"), true);
+  assert.equal(html.includes("data-resolved-climate-profile"), true);
   assert.equal(html.includes("Amplasare si clima"), true);
   assert.equal(html.includes("climate_zone"), true);
   assert.equal(html.includes("wind_zone"), true);

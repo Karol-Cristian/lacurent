@@ -141,6 +141,7 @@
 <input type="hidden" name="real_consumption_mode" value="not_used_in_chapter_2">
 <input type="hidden" name="building_platform_demo_mode" value="">
 <input type="hidden" name="building_platform_demo_fixture_id" value="">
+<input type="hidden" name="climate_profile_id" value="">
 
 <div class="step active" data-section-id="geometry">
 <h2>Geometrie</h2>
@@ -164,11 +165,21 @@
 <div><label>Calcule eligibile cu zona</label><p class="field-impact-note">Lookup-uri de zona si temperatura de proiectare iarna. Temperaturile lunare pot alimenta transferul lunar; iradierea A.9.6 este dataset sursa, iar Qsol necesita Hsol/Qsky preprocesate sau input certificat.</p></div>
 <div><label>Variabile climatice lipsa</label><p class="field-impact-note">mapare localitate-zona, date de proiectare racire/ventilare, grade-zile sau iradiere pentru statiile neacoperite de A.9.6.</p></div>
 </div>
+<div class="resolved-climate-profile-panel" data-resolved-climate-profile aria-live="polite">
+<h4>Profil climatic rezolvat</h4>
+<dl class="resolved-climate-profile-grid">
+<div><dt>Localitate</dt><dd data-resolved-climate-field="locality">Neselectata</dd></div>
+<div><dt>Statie climatica</dt><dd data-resolved-climate-field="station">Neselectata</dd></div>
+<div><dt>Versiune dataset</dt><dd data-resolved-climate-field="dataset">Neselectat</dd></div>
+<div><dt>Temperaturi lunare</dt><dd data-resolved-climate-field="temperature">Neselectate</dd></div>
+<div><dt>Iradiere solara A.9.6</dt><dd data-resolved-climate-field="solar">Neselectata</dd></div>
+</dl>
+<p class="field-impact-note" data-resolved-climate-field="note">Selecteaza o localitate pentru rezolvarea automata a profilului climatic.</p>
+</div>
 </div>
 <div class="form-grid">
 <div><label>Nume model</label><input name="display_name" placeholder="Ex: Casa zidarie 1985"></div>
 <div><label>Tip cladire</label><select name="building_type"><option value="house">Casa individuala</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Profil lunar explicit / demo</label><select name="climate_profile_id"><option value="">Nu este necesar pentru localitati MC001/6-2013</option></select><small class="field-impact-note">Control secundar pentru profil certificat explicit sau pentru demo; localitatile sursa folosesc Climate Provider.</small></div>
 <div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1985"></div>
 <div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"><small class="field-impact-note">Seed pentru arii cand acestea nu sunt introduse explicit.</small></div>
 <div><label>Numar niveluri incalzite</label><input name="number_of_floors" type="number" step="1" placeholder="Ex: 1"></div>
