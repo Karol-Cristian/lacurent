@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { calculateMc001CoolingUsefulDemandExplicit } from "../mc001CoolingUsefulDemandCalculation.mjs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "../mc001MonthlyHeatGainsCalculation.mjs";
+import { validateMc001ExecutionTrace } from "../mc001ExecutionTrace.mjs";
 
 const EPSILON = 1e-9;
 
@@ -61,6 +62,8 @@ await test("normal monthly cooling case calculates QCnd from explicit aC", () =>
   close(result.summary.annualQCnd, 342.8571428571429);
   assert.equal(result.caseResults[0].etaChtOrigin, "calculated_from_explicit_aC");
   assert.equal(result.caseResults[0].qCndBranch, "figure_2_19_cooling_utilized_transfer_branch");
+  assert.equal(result.caseResults[0].executionTrace.branchId, "figure_2_19_cooling_utilized_transfer_branch");
+  assert.equal(validateMc001ExecutionTrace(result.caseResults[0].executionTrace).ok, true);
 });
 
 await test("explicit etaCht path remains available", () => {
@@ -214,6 +217,9 @@ await test("zero cooling heat-transfer term produces zero monthly cooling demand
   assert.equal(result.caseResults[0].gammaC, null);
   assert.equal(result.caseResults[0].qCndBranch, "qCht_zero_zero_cooling_demand");
   assert.equal(result.caseResults[0].etaChtOrigin, "not_required_for_qCht_zero_zero_cooling_demand");
+  assert.equal(result.caseResults[0].executionTrace.status, "branch_result");
+  assert.equal(result.caseResults[0].executionTrace.expression, undefined);
+  assert.equal(validateMc001ExecutionTrace(result.caseResults[0].executionTrace).ok, true);
   close(result.summary.annualQCnd, 0);
 });
 
@@ -242,9 +248,14 @@ await test("cooling zero demand boundary branches are implemented", () => {
   assert.equal(zeroGamma.status, "ready");
   close(zeroGamma.caseResults[0].qCnd, 0);
   assert.equal(zeroGamma.caseResults[0].qCndBranch, "gammaC_less_or_equal_zero_zero_demand");
+  assert.equal(zeroGamma.caseResults[0].executionTrace.status, "branch_result");
+  assert.equal(validateMc001ExecutionTrace(zeroGamma.caseResults[0].executionTrace).ok, true);
   assert.equal(inverseGamma.status, "ready");
   close(inverseGamma.caseResults[0].qCnd, 0);
   assert.equal(inverseGamma.caseResults[0].qCndBranch, "inverse_gammaC_greater_than_two_zero_demand");
+  assert.equal(inverseGamma.caseResults[0].executionTrace.status, "branch_result");
+  assert.equal(inverseGamma.caseResults[0].executionTrace.condition.expression, "(1 / gammaC) > 2");
+  assert.equal(validateMc001ExecutionTrace(inverseGamma.caseResults[0].executionTrace).ok, true);
 });
 
 await test("relation 2.77 long unoccupied cooling interpolation is implemented", () => {

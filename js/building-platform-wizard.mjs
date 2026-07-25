@@ -1492,8 +1492,11 @@ export function buildWizardEngineeringPreview(assistedAnswers) {
 
 export function renderEngineeringModelReview(preview, options = {}) {
   if (preview.status !== "ready") {
-    const code = preview.diagnostics?.blockers?.[0]?.code ?? "model_incomplet";
-    return `<p class="form-message error">Modelul tehnic nu este gata: ${safeText(code)}</p>`;
+    const codes = (preview.diagnostics?.blockers ?? [])
+      .map(item => item.code)
+      .filter(Boolean);
+    const message = codes.length > 0 ? codes.join(", ") : "model_incomplet";
+    return `<p class="form-message error">Modelul tehnic nu este gata: ${safeText(message)}</p>`;
   }
   const dna = preview.buildingDna;
   const workspace = preview.technicalWorkspace;

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { calculateMc001ExplicitTotalHeatTransferSummary } from "../mc001ExplicitTotalHeatTransferCalculation.mjs";
+import { validateMc001ExecutionTrace } from "../mc001ExecutionTrace.mjs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "../mc001MonthlyHeatGainsCalculation.mjs";
 import { calculateMc001RestrictedHeatingQhndExplicit } from "../mc001RestrictedHeatingQhndCalculation.mjs";
 
@@ -586,6 +587,8 @@ await test("gamma can be calculated from qHgn over qHht when omitted", () => {
   close(result.caseResults[0].gammaH, 300 / 1026.72);
   close(result.caseResults[0].qHnd, 786.72);
   assert.equal(result.caseResults[0].etaHgnOrigin, "explicit_input");
+  assert.equal(result.caseResults[0].executionTrace.branchId, "restricted_heating_monthly_balance");
+  assert.equal(validateMc001ExecutionTrace(result.caseResults[0].executionTrace).ok, true);
 });
 
 await test("gammaH less than or equal to zero with positive gains uses resolved zero-demand branch", () => {
@@ -595,6 +598,8 @@ await test("gammaH less than or equal to zero with positive gains uses resolved 
   close(result.caseResults[0].qHnd, 0);
   assert.equal(result.caseResults[0].qHndBranch, "gammaH_less_or_equal_zero_positive_gains_zero_demand");
   assert.equal(result.caseResults[0].etaHgnOrigin, "not_required_for_resolved_zero_qhnd_branch");
+  assert.equal(result.caseResults[0].executionTrace.status, "branch_result");
+  assert.equal(validateMc001ExecutionTrace(result.caseResults[0].executionTrace).ok, true);
 });
 
 await test("gammaH greater than two uses zero-demand branch", () => {
@@ -604,6 +609,9 @@ await test("gammaH greater than two uses zero-demand branch", () => {
   close(result.caseResults[0].qHnd, 0);
   assert.equal(result.caseResults[0].qHndBranch, "gammaH_greater_than_two_zero_demand");
   assert.equal(result.caseResults[0].etaHgnOrigin, "not_required_for_gammaH_greater_than_two_zero_qhnd_branch");
+  assert.equal(result.caseResults[0].executionTrace.status, "branch_result");
+  assert.equal(result.caseResults[0].executionTrace.condition.expression, "gammaH > 2");
+  assert.equal(validateMc001ExecutionTrace(result.caseResults[0].executionTrace).ok, true);
 });
 
 await test("zero QHht uses zero-demand branch without gamma or eta calculation", () => {
@@ -620,6 +628,8 @@ await test("zero QHht uses zero-demand branch without gamma or eta calculation",
   assert.equal(result.caseResults[0].qHndBranch, "zero_heat_transfer_zero_demand");
   assert.equal(result.caseResults[0].gammaHOrigin, "not_required_for_zero_heat_transfer_branch");
   assert.equal(result.caseResults[0].etaHgnOrigin, "not_required_for_zero_heat_transfer_branch");
+  assert.equal(result.caseResults[0].executionTrace.status, "branch_result");
+  assert.equal(validateMc001ExecutionTrace(result.caseResults[0].executionTrace).ok, true);
 });
 
 await test("annual aggregation sums monthly restricted QHnd", () => {

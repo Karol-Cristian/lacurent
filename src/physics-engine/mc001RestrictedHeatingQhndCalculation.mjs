@@ -1,6 +1,14 @@
 import { calculateMc001HeatingGainUtilizationFactor } from "./mc001HeatingGainUtilizationFactorCalculation.mjs";
 import { calculateMc001HeatingIntermittencyExplicit } from "./mc001HeatingIntermittencyCalculation.mjs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "./mc001MonthlyHeatGainsCalculation.mjs";
+import {
+  buildArithmeticExecutionTrace,
+  buildBranchExecutionTrace,
+  inputExpression,
+  operatorExpression,
+  traceInput,
+  valueExpression
+} from "./mc001ExecutionTrace.mjs";
 import { resolveEffectiveInternalHeatCapacityTable2_20Value } from "./datasets/mc001EffectiveInternalHeatCapacityTables.mjs";
 
 const MODE = "restricted_heating_qhnd_explicit_v1";
@@ -93,6 +101,7 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "heatingIntermittencyResult",
   "heatingIntermittencyFormulaCode",
   "heatingIntermittencySourcePackCode",
+  "executionTrace",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -116,6 +125,87 @@ function isPlainObject(value) {
 
 function finiteNumber(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function heatingTraceInputs(values = {}) {
+  return Object.fromEntries(
+    Object.entries(values)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, traceInput(value.amount ?? value, value.unit ?? (key.startsWith("Q") ? "kWh" : "-"))])
+  );
+}
+
+function heatingZeroBranchTrace({
+  branchId,
+  conditionExpression,
+  inputs,
+  qHnd = 0,
+  reason
+}) {
+  return buildBranchExecutionTrace({
+    formulaId: FORMULA_CODE,
+    branchId,
+    inputs: heatingTraceInputs(inputs),
+    condition: {
+      expression: conditionExpression,
+      evaluated: true
+    },
+    finalResult: qHnd,
+    unit: "kWh",
+    reason
+  });
+}
+
+function heatingNormalTrace({
+  branchId = "restricted_heating_monthly_balance",
+  qHht,
+  etaHgn,
+  qHgn,
+  qHnd
+}) {
+  return buildArithmeticExecutionTrace({
+    formulaId: FORMULA_CODE,
+    branchId,
+    inputs: heatingTraceInputs({
+      QHht: { amount: qHht, unit: "kWh" },
+      etaHgn: { amount: etaHgn, unit: "-" },
+      QHgn: { amount: qHgn, unit: "kWh" }
+    }),
+    expression: operatorExpression("subtract", [
+      inputExpression("QHht"),
+      operatorExpression("multiply", [
+        inputExpression("etaHgn"),
+        inputExpression("QHgn")
+      ])
+    ]),
+    rawResult: qHnd,
+    finalResult: qHnd,
+    unit: "kWh",
+    clampApplied: false
+  });
+}
+
+function heatingLongUnoccupiedTrace({ qHndOccupied, qHndUnoccupied, unoccupiedFraction, qHnd }) {
+  return buildArithmeticExecutionTrace({
+    formulaId: LONG_UNOCCUPIED_FORMULA_CODE,
+    branchId: "long_unoccupied_period_explicit_interpolation",
+    inputs: heatingTraceInputs({
+      QHnd_occ: { amount: qHndOccupied, unit: "kWh" },
+      QHnd_nocc: { amount: qHndUnoccupied, unit: "kWh" },
+      fH_nocc: { amount: unoccupiedFraction, unit: "-" }
+    }),
+    expression: operatorExpression("add", [
+      operatorExpression("multiply", [
+        operatorExpression("subtract", [valueExpression(1), inputExpression("fH_nocc")]),
+        inputExpression("QHnd_occ")
+      ]),
+      operatorExpression("multiply", [inputExpression("fH_nocc"), inputExpression("QHnd_nocc")])
+    ]),
+    rawResult: qHnd,
+    finalResult: qHnd,
+    unit: "kWh",
+    clampApplied: false
+  });
 }
 
 function safeCode(value, maxLength = 96) {
@@ -771,6 +861,12 @@ function validateLongUnoccupiedPeriodAdjustmentCase(inputCase) {
       qHnd,
       qHndOrigin: "calculated_from_explicit_long_unoccupied_interpolation",
       qHndBranch: "long_unoccupied_period_explicit_interpolation",
+      executionTrace: heatingLongUnoccupiedTrace({
+        qHndOccupied,
+        qHndUnoccupied,
+        unoccupiedFraction,
+        qHnd
+      }),
       longUnoccupiedFormulaCode: LONG_UNOCCUPIED_FORMULA_CODE,
       formulaCode: LONG_UNOCCUPIED_FORMULA_CODE,
       sourceReference: inputCase.source.reference
@@ -821,6 +917,15 @@ function validateCase(inputCase) {
         gammaHOrigin: "not_required_for_zero_heat_transfer_branch",
         etaHgnOrigin: "not_required_for_zero_heat_transfer_branch",
         qHndBranch: "zero_heat_transfer_zero_demand",
+        executionTrace: heatingZeroBranchTrace({
+          branchId: "zero_heat_transfer_zero_demand",
+          conditionExpression: "QHht = 0",
+          inputs: {
+            QHht: { amount: qHht, unit: "kWh" },
+            QHgn: { amount: qHgn, unit: "kWh" }
+          },
+          reason: "No heating heat transfer term is available for this month."
+        }),
         qHnd: 0,
         sourceReference: inputCase.source.reference
       }
@@ -859,6 +964,16 @@ function validateCase(inputCase) {
         gammaH,
         etaHgnOrigin: "not_required_for_resolved_zero_qhnd_branch",
         qHndBranch: "gammaH_less_or_equal_zero_positive_gains_zero_demand",
+        executionTrace: heatingZeroBranchTrace({
+          branchId: "gammaH_less_or_equal_zero_positive_gains_zero_demand",
+          conditionExpression: "gammaH <= 0 and QHgn > 0",
+          inputs: {
+            QHht: { amount: qHht, unit: "kWh" },
+            QHgn: { amount: qHgn, unit: "kWh" },
+            gammaH: { amount: gammaH, unit: "-" }
+          },
+          reason: "MC001 restricted branch resolves heating useful demand to zero for non-positive gain ratio with positive gains."
+        }),
         qHnd: 0,
         sourceReference: inputCase.source.reference
       }
@@ -894,6 +1009,16 @@ function validateCase(inputCase) {
         gammaH,
         etaHgnOrigin: "not_required_for_gammaH_greater_than_two_zero_qhnd_branch",
         qHndBranch: "gammaH_greater_than_two_zero_demand",
+        executionTrace: heatingZeroBranchTrace({
+          branchId: "gammaH_greater_than_two_zero_demand",
+          conditionExpression: "gammaH > 2",
+          inputs: {
+            QHht: { amount: qHht, unit: "kWh" },
+            QHgn: { amount: qHgn, unit: "kWh" },
+            gammaH: { amount: gammaH, unit: "-" }
+          },
+          reason: "MC001 restricted branch sets useful heating demand to zero when the gain ratio exceeds 2."
+        }),
         qHnd: 0,
         sourceReference: inputCase.source.reference
       }
@@ -1000,6 +1125,12 @@ function validateCase(inputCase) {
       ...(etaHgnFormulaCode === undefined ? {} : { etaHgnFormulaCode }),
       ...(utilizationDependencyResult === undefined ? {} : utilizationDependencyResult),
       qHnd,
+      executionTrace: heatingNormalTrace({
+        qHht,
+        etaHgn,
+        qHgn,
+        qHnd
+      }),
       sourceReference: inputCase.source.reference
     }
   };

@@ -1,0 +1,97 @@
+{
+  "schema": "p7a_chapter2_ui_runtime_mapping_v1",
+  "basePurpose": "Trace Chapter 2 production inputs from UI/Building DNA through Climate Provider, runtime and report.",
+  "fields": [
+    {
+      "field": "locality",
+      "uiSource": "pages/analiza-casa.html locality selector via js/building-platform-wizard.mjs",
+      "buildingDnaPath": "building.location.localityId, building.location.localityName",
+      "providerPath": "climateProvider.selection.localityId, climateProvider.selection.stationId",
+      "runtimeInputPath": "not passed directly; resolves monthly profiles before runtime",
+      "reportPath": "report.chapters[amplasare_si_clima].rows Localitate/Statie",
+      "status": "connected"
+    },
+    {
+      "field": "climateZone",
+      "uiSource": "auto-resolved from locality when available, manual selector when mapping is absent",
+      "buildingDnaPath": "climate.climateZone, building.location.climateZone",
+      "providerPath": "climateProvider.selection.climateZone",
+      "runtimeInputPath": "climateZoneRequirements and diagnostics; not a monthly profile substitute",
+      "reportPath": "report.chapters[amplasare_si_clima].rows Zona climatica MC001",
+      "status": "connected"
+    },
+    {
+      "field": "windZone",
+      "uiSource": "auto/manual location climate section",
+      "buildingDnaPath": "climate.windZone, building.location.windZone",
+      "providerPath": "climateProvider.selection.windZone",
+      "runtimeInputPath": "Chapter 2 diagnostics only until a formula requires wind parameters",
+      "reportPath": "report.chapters[amplasare_si_clima].rows Zona eoliana",
+      "status": "connected"
+    },
+    {
+      "field": "monthlyExteriorTemperature",
+      "uiSource": "resolved by selected locality/station",
+      "buildingDnaPath": "monthlyProfiles[*].transmission.heating.outdoorTemperature.amount; monthlyProfiles[*].transmission.cooling.outdoorTemperature.amount",
+      "providerPath": "climateProvider.datasets.monthlyExteriorTemperature.monthlyRecords[*].value",
+      "runtimeInputPath": "chapter2Input.monthlyCases[*].transmission.{heating,cooling}.outdoorTemperature.amount",
+      "reportPath": "monthly[*].heatingOutdoorTemperatureC, monthly[*].coolingOutdoorTemperatureC",
+      "status": "connected"
+    },
+    {
+      "field": "monthlyDurationHours",
+      "uiSource": "calendar month lookup",
+      "buildingDnaPath": "monthlyProfiles[*].transmission.heating.duration.amount",
+      "providerPath": "calendar constants, not climate provider",
+      "runtimeInputPath": "chapter2Input.monthlyCases[*].transmission.duration.amount and ventilation.duration.amount",
+      "reportPath": "monthly[*].durationHours",
+      "status": "connected"
+    },
+    {
+      "field": "internalGains",
+      "uiSource": "building type and useful floor area",
+      "buildingDnaPath": "monthlyProfiles[*].heatGains.internalGains.amount",
+      "providerPath": "MC001 Table 2.15 lookup in Building DNA resolver",
+      "runtimeInputPath": "chapter2Input.monthlyCases[*].heatGains.internalGains",
+      "reportPath": "monthly[*].internalGainsKwh",
+      "status": "connected"
+    },
+    {
+      "field": "solarGains",
+      "uiSource": "explicit monthly profile or future certified preprocessing/import",
+      "buildingDnaPath": "monthlyProfiles[*].heatGains.solarGains.amount and solarGainsSource",
+      "providerPath": "climateProvider.datasets.monthlySolarIrradiation supplies source rows, not Qsol",
+      "runtimeInputPath": "chapter2Input.monthlyCases[*].heatGains.solarGains only when source is explicit or preprocessed",
+      "reportPath": "monthly[*].solarGainsKwh",
+      "status": "unavailable_for_source_backed_provider_profiles",
+      "diagnostic": "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
+    },
+    {
+      "field": "ventilationRate",
+      "uiSource": "ventilation ACH and heated volume inputs where provided",
+      "buildingDnaPath": "monthlyProfiles[*].ventilation.{heating,cooling}.airFlowRate.amount",
+      "providerPath": "not provider-resolved",
+      "runtimeInputPath": "chapter2Input.monthlyCases[*].ventilation.{heating,cooling}.components",
+      "reportPath": "monthly[*].ventilationAirFlowRateM3PerS",
+      "status": "connected"
+    },
+    {
+      "field": "transmissionCoefficients",
+      "uiSource": "envelope geometry, assemblies and thermal bridges",
+      "buildingDnaPath": "envelopeElements, assemblies, thermalBridges",
+      "providerPath": "material catalogue/provider only for material properties",
+      "runtimeInputPath": "envelopeTransmissionResult consumed by Chapter 2 useful demand",
+      "reportPath": "envelope.components, monthly[*].heatingTransmissionKwh",
+      "status": "connected"
+    },
+    {
+      "field": "coolingBranch",
+      "uiSource": "not user editable",
+      "buildingDnaPath": "not persisted; runtime output",
+      "providerPath": "not provider-resolved",
+      "runtimeInputPath": "coolingResult.caseResults[*].executionTrace",
+      "reportPath": "engineeringNotebook.sections[*].lines[*].executionTrace",
+      "status": "connected"
+    }
+  ]
+}

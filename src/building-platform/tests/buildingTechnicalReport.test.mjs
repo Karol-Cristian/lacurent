@@ -355,8 +355,8 @@ await test("technical report contains the required compact P3G notebook chapters
     view.formulaName === "Necesar util lunar de incalzire - january"
   );
   assert.equal(januaryHeating.symbolicFormula, "QHnd = QHht - eta_Hgn * QHgn");
-  assert.equal(januaryHeating.substitutedFormula.includes("1286.1002 kWh"), true);
-  assert.equal(januaryHeating.substitutedFormula.includes("0.9999"), true);
+  assert.equal(januaryHeating.substitutedFormula.includes("1286,1002"), true);
+  assert.equal(januaryHeating.substitutedFormula.includes("0,9999"), true);
 });
 
 await test("compact calculation notebook has local variables, explicit values and no false numeric expressions", () => {
@@ -382,6 +382,39 @@ await test("compact calculation notebook has local variables, explicit values an
     if (!Number.isFinite(Number(line.computedValue))) continue;
     close(Number(line.computedValue), Number(line.resultValue), 1e-3);
   }
+});
+
+await test("cooling zero-demand branch renders the executed branch instead of a false generic equation", () => {
+  const lowGainMonthlyProfiles = createP1SeedMonthlyProfiles().map(profile => ({
+    ...profile,
+    internalGainsKwh: 20,
+    solarGainsKwh: 0
+  }));
+  const workspace = buildBuildingTechnicalWorkspace(
+    buildBuildingKnowledgePlatformFromAssistedAnswers({
+      ...assistedAnswers(),
+      monthlyProfiles: lowGainMonthlyProfiles
+    })
+  );
+  const january = workspace.monthly.find(row => row.month === "january");
+  assert.equal(january.qCndBranch, "inverse_gammaC_greater_than_two_zero_demand");
+  close(january.qCgnKwh, 20);
+  close(january.qCndKwh, 0);
+  assert.equal(january.etaCht, null);
+
+  const januarySection = workspace.report.engineeringNotebook.sections.find(
+    section => section.sectionId === "luna_january"
+  );
+  const qcndLine = januarySection.lines.find(line => line.lineId === "january.qcnd");
+  assert.equal(qcndLine.kind, "calculation");
+  assert.equal(qcndLine.text.includes("Ramura executata: inverse_gammaC_greater_than_two_zero_demand"), true);
+  assert.equal(qcndLine.text.includes("Formula generala de bilant nu a fost evaluata"), true);
+  assert.equal(qcndLine.text.includes("20,0000 - 0,0000"), false);
+  assert.equal(Number(qcndLine.computedValue), 0);
+  close(Number(qcndLine.resultValue), 0);
+
+  const etaLine = januarySection.lines.find(line => line.lineId === "january.eta_cht");
+  assert.equal(etaLine, undefined);
 });
 
 await test("calculation fingerprint changes when upstream Building DNA changes", () => {

@@ -200,7 +200,11 @@ export function buildBuildingKnowledgePlatformFromAssistedAnswers(answers = {}) 
     interventions: interventions.interventions
   });
   if (calculation.status !== "ready") {
-    return blocked("chapter_2_physics_result_not_ready", stages);
+    return blocked(
+      "chapter_2_physics_result_not_ready",
+      stages,
+      calculation.diagnostics?.blockers ?? []
+    );
   }
   return {
     status: "ready",
@@ -240,7 +244,11 @@ export function buildBuildingKnowledgePlatformFromAdvancedModel(input = {}) {
     interventions: input.renovationInterventions ?? []
   });
   if (calculation.status !== "ready") {
-    return blocked("chapter_2_physics_result_not_ready", stages);
+    return blocked(
+      "chapter_2_physics_result_not_ready",
+      stages,
+      calculation.diagnostics?.blockers ?? []
+    );
   }
   return {
     status: "ready",

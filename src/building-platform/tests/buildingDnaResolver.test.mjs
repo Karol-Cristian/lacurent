@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   applyBuildingDnaOverride,
+  calculateChapter2ForBuildingDna,
   CLIMATE_RUNTIME_ELIGIBILITY_STATUSES,
   createBuildingDnaFromAdvancedModel,
   createBuildingDnaFromAssistedAnswers,
@@ -455,6 +456,58 @@ test("assisted Building DNA resolves source-backed monthly climate by locality w
     CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_PREPROCESSING
   );
   assert.notEqual(fingerprintBuildingDna(cluj.buildingDna), fingerprintBuildingDna(brasov.buildingDna));
+});
+
+test("source-backed provider profiles do not enter Chapter 2 with fake zero solar gains", () => {
+  const cluj = createBuildingDnaFromAssistedAnswers({
+    buildingId: "p7a-cluj-provider-solar-preprocessing-gate",
+    buildingType: "detached_house",
+    constructionPeriod: "1978_1990",
+    structuralSystem: "masonry",
+    renovations: {
+      wallInsulation: "eps",
+      windowsReplaced: true
+    },
+    context: {
+      attic: "unheated",
+      basement: "none"
+    },
+    location: {
+      country: "RO",
+      localityId: "ro_cluj_napoca",
+      localityName: "Cluj-Napoca",
+      climateStationId: "mc001_6_2013_cluj_napoca"
+    },
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    source: {
+      reference: "P7A.test.provider_gate"
+    }
+  });
+
+  assert.equal(cluj.status, "ready");
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    -2.4
+  );
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].heatGains.solarGainsSource,
+    "provider_climate_profile_without_qsol_preprocessing"
+  );
+  const calculation = calculateChapter2ForBuildingDna(cluj.buildingDna);
+  assert.equal(calculation.status, "incomplete");
+  assert.equal(calculation.stage, "chapter_2_climate_inputs");
+  assert.equal(
+    calculation.diagnostics.blockers[0].code,
+    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
+  );
+  assert.deepEqual(
+    calculation.diagnostics.blockers[0].missingInputs,
+    ["Qsol", "Qsky", "Hsol"]
+  );
+  assert.equal(calculation.chapter2Input, null);
 });
 
 test("resolver blocks missing geometry before physics can run", () => {
