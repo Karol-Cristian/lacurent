@@ -4,6 +4,9 @@ import {
 import {
   buildChapter3NotebookSections
 } from "../physics-engine/mc001Chapter3Notebook.mjs";
+import {
+  evaluateMc001TraceExpression
+} from "../physics-engine/mc001ExecutionTrace.mjs";
 
 const TECHNICAL_WORKSPACE_SCOPE = "engineering_calculation_notebook_p3g_report_generation_only";
 
@@ -273,6 +276,7 @@ function monthlyRows(calculation, buildingDna) {
       aH: heating?.aH ?? null,
       etaHgn: heating?.etaHgn ?? null,
       qHndBranch: heating?.qHndBranch ?? null,
+      heatingExecutionTrace: heating?.executionTrace ?? null,
       heatTransferCoefficientWK: heating?.heatTransferCoefficientWK ?? cooling?.heatTransferCoefficientWK ?? null,
       effectiveInternalHeatCapacityJPerK: heating?.effectiveInternalHeatCapacityJPerK ?? cooling?.effectiveInternalHeatCapacityJPerK ?? null,
       qHndKwh: heating?.qHnd ?? null,
@@ -283,6 +287,7 @@ function monthlyRows(calculation, buildingDna) {
       aC: cooling?.aC ?? null,
       etaCht: cooling?.etaCht ?? null,
       qCndBranch: cooling?.qCndBranch ?? null,
+      coolingExecutionTrace: cooling?.executionTrace ?? null,
       qCndKwh: cooling?.qCnd ?? null,
       qCndFormulaCode: cooling?.formulaCode ?? null,
       qCndOrigin: cooling?.etaChtOrigin ?? null
@@ -405,6 +410,7 @@ function isFiniteAmount(value) {
 }
 
 function formatNotebookNumber(value, digits = 4) {
+  if (value === null || value === undefined || value === "") return "--";
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(digits).replace(".", ",") : "--";
 }
@@ -710,6 +716,14 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
 
   const monthFormulaViews = [];
   for (const row of monthly.slice(0, 12)) {
+    const heatingIsBranch = row.heatingExecutionTrace?.status === "branch_result";
+    const coolingIsBranch = row.coolingExecutionTrace?.status === "branch_result";
+    const heatingTraceExpression = row.heatingExecutionTrace
+      ? traceExpressionText(row.heatingExecutionTrace.expression, row.heatingExecutionTrace.inputs)
+      : null;
+    const coolingTraceExpression = row.coolingExecutionTrace
+      ? traceExpressionText(row.coolingExecutionTrace.expression, row.coolingExecutionTrace.inputs)
+      : null;
     monthFormulaViews.push(formulaTrace({
       formulaId: "MC001_MONTHLY_TRANSMISSION_ENERGY_FROM_ENGINE_OUTPUT",
       formulaName: `Transfer prin transmisie pentru incalzire - ${row.month}`,
@@ -800,7 +814,8 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       resultLine: `gamma_H = ${formatFormulaValue(row.gammaH, "-")}`,
       dependencies: [`${row.month}.QHgn`, `${row.month}.QHht`]
     }));
-    monthFormulaViews.push(formulaTrace({
+    if (!heatingIsBranch) {
+      monthFormulaViews.push(formulaTrace({
       formulaId: "MC001_HEATING_UTILIZATION_FACTOR_FROM_ENGINE_OUTPUT",
       formulaName: `Factor de utilizare aporturi incalzire - ${row.month}`,
       resultSymbol: "eta_Hgn",
@@ -818,7 +833,8 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       substitutedFormula: `eta_Hgn = f(${formatFormulaNumber(row.gammaH)}, ${formatFormulaNumber(row.aH)}, ${formatFormulaTerm(row.tauH, "h")})`,
       resultLine: `eta_Hgn = ${formatFormulaValue(row.etaHgn, "-")}`,
       dependencies: [`${row.month}.gammaH`, `${row.month}.aH`, `${row.month}.tauH`]
-    }));
+      }));
+    }
     monthFormulaViews.push(formulaTrace({
       formulaId: row.qHndFormulaCode,
       formulaName: `Necesar util lunar de incalzire - ${row.month}`,
@@ -835,12 +851,14 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
         { symbol: "eta_Hgn", value: row.etaHgn, unit: "-" }
       ],
       sourceReference: row.qHndFormulaCode,
-      symbolicFormula: row.qHndBranch === "gammaH_greater_than_two_zero_demand"
-        ? "QHnd = 0, pentru ramura gamma_H > 2"
-        : "QHnd = QHht - eta_Hgn * QHgn",
-      substitutedFormula: row.qHndBranch === "gammaH_greater_than_two_zero_demand"
-        ? `QHnd = 0, gamma_H = ${formatFormulaNumber(row.gammaH)}`
-        : `QHnd = ${formatFormulaTerm(row.qHhtKwh, "kWh")} - ${formatFormulaNumber(row.etaHgn)} * ${formatFormulaTerm(row.qHgnKwh, "kWh")}`,
+      symbolicFormula: row.heatingExecutionTrace
+        ? `Ramura executata: ${row.heatingExecutionTrace.branchId}`
+        : "Execution trace unavailable.",
+      substitutedFormula: row.heatingExecutionTrace
+        ? (heatingIsBranch
+          ? `${row.heatingExecutionTrace.condition?.expression ?? "conditie ramura"} => true; QHnd = 0`
+          : `QHnd = ${heatingTraceExpression}`)
+        : "Execution trace unavailable.",
       resultLine: `QHnd = ${formatFormulaValue(row.qHndKwh, "kWh")}`,
       dependencies: [`${row.month}.QHht`, `${row.month}.QHgn`, `${row.month}.etaHgn`]
     }));
@@ -880,7 +898,8 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       resultLine: `gamma_C = ${formatFormulaValue(row.gammaC, "-")}`,
       dependencies: [`${row.month}.QCgn`, `${row.month}.QCht`]
     }));
-    monthFormulaViews.push(formulaTrace({
+    if (!coolingIsBranch) {
+      monthFormulaViews.push(formulaTrace({
       formulaId: "MC001_COOLING_UTILIZATION_FACTOR_FROM_ENGINE_OUTPUT",
       formulaName: `Factor de utilizare transfer racire - ${row.month}`,
       resultSymbol: "eta_Cht",
@@ -898,7 +917,8 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
       substitutedFormula: `eta_Cht = f(${formatFormulaNumber(row.gammaC)}, ${formatFormulaNumber(row.aC)}, ${formatFormulaTerm(row.tauC, "h")})`,
       resultLine: `eta_Cht = ${formatFormulaValue(row.etaCht, "-")}`,
       dependencies: [`${row.month}.gammaC`, `${row.month}.aC`, `${row.month}.tauC`]
-    }));
+      }));
+    }
     monthFormulaViews.push(formulaTrace({
       formulaId: row.qCndFormulaCode,
       formulaName: `Necesar util lunar de racire - ${row.month}`,
@@ -915,8 +935,14 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
         { symbol: "eta_Cht", value: row.etaCht, unit: "-" }
       ],
       sourceReference: row.qCndFormulaCode,
-      symbolicFormula: "QCnd = QCgn - eta_Cht * QCht",
-      substitutedFormula: `QCnd = ${formatFormulaTerm(row.qCgnKwh, "kWh")} - ${formatFormulaNumber(row.etaCht)} * ${formatFormulaTerm(row.qChtKwh, "kWh")}`,
+      symbolicFormula: row.coolingExecutionTrace
+        ? `Ramura executata: ${row.coolingExecutionTrace.branchId}`
+        : "Execution trace unavailable.",
+      substitutedFormula: row.coolingExecutionTrace
+        ? (coolingIsBranch
+          ? `${row.coolingExecutionTrace.condition?.expression ?? "conditie ramura"} => true; QCnd = 0`
+          : `QCnd = ${coolingTraceExpression}`)
+        : "Execution trace unavailable.",
       resultLine: `QCnd = ${formatFormulaValue(row.qCndKwh, "kWh")}`,
       dependencies: [`${row.month}.QCgn`, `${row.month}.etaCht`, `${row.month}.QCht`]
     }));
@@ -985,17 +1011,28 @@ function compactLine({
   computedValue = undefined,
   variables = [],
   reference = null,
-  kind = "calculation"
+  kind = "calculation",
+  executionTrace = null,
+  traceResultSymbol = null
 }) {
+  const renderedText = traceResultSymbol
+    ? (executionTrace
+      ? executedTraceLine(traceResultSymbol, executionTrace, resultValue, resultUnit)
+      : executionTraceUnavailableLine(traceResultSymbol))
+    : text;
+  const renderedComputedValue = traceResultSymbol
+    ? traceComputedValue(executionTrace)
+    : computedValue;
   return {
     lineId,
-    text,
+    text: renderedText,
     resultValue,
     resultUnit,
-    computedValue,
+    computedValue: renderedComputedValue,
     variables,
     reference: readableNormativeReference(reference) ?? reference,
-    kind
+    kind,
+    executionTrace
   };
 }
 
@@ -1022,6 +1059,83 @@ function section(sectionId, title, lines) {
 
 function expressionLine(left, expression, value, unit, digits = 4) {
   return `${left} := ${expression} = ${formatNotebookValue(value, unit, digits)}`;
+}
+
+function executionTraceUnavailableLine(left) {
+  return `${left} := Execution trace unavailable.`;
+}
+
+function traceInputSymbol(name) {
+  return String(name ?? "")
+    .replace("etaHgn", "eta_Hgn")
+    .replace("etaCht", "eta_Cht");
+}
+
+function traceExpressionText(expression, inputs = {}, parentOp = null) {
+  if (!expression || typeof expression !== "object") return "--";
+  if (expression.op === "input") {
+    const input = inputs[expression.name];
+    return input && Number.isFinite(Number(input.value))
+      ? formatNotebookNumber(input.value)
+      : traceInputSymbol(expression.name);
+  }
+  if (expression.op === "value") {
+    return formatNotebookNumber(expression.value);
+  }
+  const terms = (expression.terms ?? []).map(term => traceExpressionText(term, inputs, expression.op));
+  if (expression.op === "abs") {
+    return `abs(${terms[0] ?? "--"})`;
+  }
+  const separator = {
+    add: " + ",
+    subtract: " - ",
+    multiply: " × ",
+    divide: " / "
+  }[expression.op] ?? " ? ";
+  const text = terms.join(separator);
+  if (
+    parentOp === "multiply" &&
+    (expression.op === "add" || expression.op === "subtract")
+  ) {
+    return `(${text})`;
+  }
+  return text;
+}
+
+function traceComputedValue(trace) {
+  if (trace?.status === "branch_result") {
+    return Number(trace.finalResult);
+  }
+  const evaluated = evaluateMc001TraceExpression(trace?.expression, trace?.inputs);
+  return evaluated.ok ? evaluated.value : undefined;
+}
+
+function executedTraceLine(left, trace, fallbackValue, fallbackUnit) {
+  if (!trace) return null;
+  const unit = trace.unit ?? fallbackUnit;
+  const finalValue = trace.finalResult ?? fallbackValue;
+  if (trace.status === "branch_result") {
+    return [
+      `Ramura executata: ${trace.branchId}`,
+      `Conditie evaluata: ${trace.condition?.expression ?? "--"} => ${trace.condition?.evaluated === true ? "true" : "false"}`,
+      `${left} := ${formatNotebookValue(finalValue, unit)}`,
+      "Formula generala de bilant nu a fost evaluata in aceasta ramura."
+    ].join("\n");
+  }
+  const expression = traceExpressionText(trace.expression, trace.inputs);
+  const rawLine = `${left} := ${expression}`;
+  if (trace.clampApplied === true) {
+    return [
+      `Ramura executata: ${trace.branchId}`,
+      rawLine,
+      `raw := ${formatNotebookValue(trace.rawResult, unit)}`,
+      `${left} := ${formatNotebookValue(finalValue, unit)}`
+    ].join("\n");
+  }
+  return [
+    `Ramura executata: ${trace.branchId}`,
+    `${rawLine}\n      = ${formatNotebookValue(finalValue, unit)}`
+  ].join("\n");
 }
 
 function explicitLine(left, value, unit, digits = 4) {
@@ -1341,18 +1455,20 @@ function compactMonthlySections(monthly) {
       })
     ];
 
-    if (row.qHndBranch === "gammaH_greater_than_two_zero_demand") {
+    if (row.heatingExecutionTrace?.status === "branch_result") {
       lines.push(compactLine({
-        lineId: `${row.month}.qhnd.zero_branch`,
-        text: `γH_${idLabel} > 2 => QHnd_${idLabel} := ${formatNotebookValue(row.qHndKwh, "kWh")}`,
+        lineId: `${row.month}.qhnd.branch`,
+        traceResultSymbol: `QHnd_${idLabel}`,
+        text: executionTraceUnavailableLine(`QHnd_${idLabel}`),
         resultValue: row.qHndKwh,
         resultUnit: "kWh",
-        computedValue: 0,
+        computedValue: traceComputedValue(row.heatingExecutionTrace),
         variables: [
           { symbol: `QHnd_${idLabel}`, meaning: `necesar util incalzire ${label}` }
         ],
         reference: row.qHndFormulaCode,
-        kind: "branch"
+        kind: "branch",
+        executionTrace: row.heatingExecutionTrace
       }));
     } else {
       lines.push(compactLine({
@@ -1368,19 +1484,16 @@ function compactMonthlySections(monthly) {
       }));
       lines.push(compactLine({
         lineId: `${row.month}.qhnd`,
-        text: expressionLine(
-          `QHnd_${idLabel}`,
-          `${formatNotebookNumber(row.qHhtKwh)} - ${formatNotebookNumber(row.etaHgn)} × ${formatNotebookNumber(row.qHgnKwh)}`,
-          row.qHndKwh,
-          "kWh"
-        ),
+        traceResultSymbol: `QHnd_${idLabel}`,
+        text: executionTraceUnavailableLine(`QHnd_${idLabel}`),
         resultValue: row.qHndKwh,
         resultUnit: "kWh",
-        computedValue: Number(row.qHhtKwh) - Number(row.etaHgn) * Number(row.qHgnKwh),
+        computedValue: traceComputedValue(row.heatingExecutionTrace),
         variables: [
           { symbol: `QHnd_${idLabel}`, meaning: `necesar util incalzire ${label}` }
         ],
-        reference: row.qHndFormulaCode
+        reference: row.qHndFormulaCode,
+        executionTrace: row.heatingExecutionTrace
       }));
     }
 
@@ -1416,7 +1529,8 @@ function compactMonthlySections(monthly) {
       ],
       reference: row.qCndFormulaCode
     }));
-    lines.push(compactLine({
+    if (row.coolingExecutionTrace?.status !== "branch_result") {
+      lines.push(compactLine({
       lineId: `${row.month}.eta_cht`,
       text: `ηCht_${idLabel} := ${formatNotebookValue(row.etaCht, "-")} -- coeficient furnizat de motor pentru ramura aplicata`,
       resultValue: row.etaCht,
@@ -1426,22 +1540,20 @@ function compactMonthlySections(monthly) {
       ],
       reference: "MC001_FIGURE_2_15_COOLING_HEAT_TRANSFER_UTILIZATION_FACTOR",
       kind: "engine_intermediate"
-    }));
+      }));
+    }
     lines.push(compactLine({
       lineId: `${row.month}.qcnd`,
-      text: expressionLine(
-        `QCnd_${idLabel}`,
-        `${formatNotebookNumber(row.qCgnKwh)} - ${formatNotebookNumber(row.etaCht)} × ${formatNotebookNumber(row.qChtKwh)}`,
-        row.qCndKwh,
-        "kWh"
-      ),
+      traceResultSymbol: `QCnd_${idLabel}`,
+      text: executionTraceUnavailableLine(`QCnd_${idLabel}`),
       resultValue: row.qCndKwh,
       resultUnit: "kWh",
-      computedValue: Number(row.qCgnKwh) - Number(row.etaCht) * Number(row.qChtKwh),
+      computedValue: traceComputedValue(row.coolingExecutionTrace),
       variables: [
         { symbol: `QCnd_${idLabel}`, meaning: `necesar util racire ${label}` }
       ],
-      reference: row.qCndFormulaCode
+      reference: row.qCndFormulaCode,
+      executionTrace: row.coolingExecutionTrace
     }));
 
     return section(`luna_${row.month}`, `Calcul lunar - ${label}`, lines);

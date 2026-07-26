@@ -26,6 +26,10 @@ import {
   renderProjectRows
 } from "../js/my-projects.mjs";
 import {
+  calculateChapter2ForBuildingDna,
+  createBuildingDnaFromAssistedAnswers
+} from "../src/building-platform/index.mjs";
+import {
   getClimateZoneDependentRequirements
 } from "../src/climate-platform/index.mjs";
 
@@ -283,36 +287,39 @@ await test("production wizard resolves locality climate through the Climate Prov
   assert.equal(answers.location.localityName, "Brasov");
 
   const preview = buildWizardEngineeringPreview(answers);
-  assert.equal(preview.status, "ready");
-  assert.equal(preview.buildingDna.climateProfile, null);
-  assert.equal(preview.buildingDna.calculationStatus, "source_backed_climate_provider");
-  assert.equal(preview.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_brasov");
-  assert.equal(preview.buildingDna.productionClimateProfile.localityId, "ro_brasov");
+  assert.equal(preview.status, "blocked");
   assert.equal(
-    preview.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    preview.diagnostics.blockers.some(item => item.code === "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"),
+    true
+  );
+  assert.equal(preview.technicalWorkspace.status, "blocked");
+  const dnaResult = createBuildingDnaFromAssistedAnswers(answers);
+  assert.equal(dnaResult.status, "ready");
+  assert.equal(dnaResult.buildingDna.climateProfile, null);
+  assert.equal(dnaResult.buildingDna.calculationStatus, "source_backed_climate_provider");
+  assert.equal(dnaResult.buildingDna.climateProvider.selection.stationId, "mc001_6_2013_brasov");
+  assert.equal(dnaResult.buildingDna.productionClimateProfile.localityId, "ro_brasov");
+  assert.equal(
+    dnaResult.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
     -3.3
   );
   assert.equal(
-    preview.buildingDna.monthlyProfiles[0].heatGains.solarGainsSource,
+    dnaResult.buildingDna.monthlyProfiles[0].heatGains.solarGainsSource,
     "provider_climate_profile_without_qsol_preprocessing"
   );
-  const climateChapter = preview.technicalWorkspace.report.chapters.find(chapter =>
-    chapter.chapterId === "amplasare_si_clima"
+  const calculation = calculateChapter2ForBuildingDna(dnaResult.buildingDna);
+  assert.equal(calculation.status, "incomplete");
+  assert.equal(calculation.stage, "chapter_2_climate_inputs");
+  assert.equal(
+    calculation.diagnostics.blockers[0].code,
+    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
   );
-  const climateRowByLabel = new Map(climateChapter.rows.map(row => [row.label, row.value]));
-  assert.equal(climateRowByLabel.get("Status profil lunar"), "source_backed_climate_provider");
-  assert.equal(climateRowByLabel.get("Status dataset lunar"), "NORMATIVE_DATASET");
-  assert.equal(climateRowByLabel.get("Versiune profil lunar"), "mc001_6_2013_climate_dataset_p5b2_v1");
-  assert.equal(climateRowByLabel.get("Statie/localitate dataset"), "Brasov / Brasov");
-  assert.match(climateRowByLabel.get("Sursa profil lunar"), /Mc001\/6-2013/);
 
   const html = renderEngineeringModelReview(preview, { openReport: true });
-  assert.equal(html.includes("source_backed_climate_provider"), true);
-  assert.equal(html.includes("Brasov"), true);
-  assert.equal(html.includes("monthly_temperature_and_solar_dataset_not_reproduced"), false);
+  assert.equal(html.includes("CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"), true);
 });
 
-await test("locality-driven climate reaches Chapter 2 runtime and overrides stale hidden profile ids", () => {
+await test("locality-driven climate reaches Building DNA and blocks Chapter 2 before fake solar zero", () => {
   const run = ({ localityId, stationId }) => {
     const answers = mapWizardAnswersToAssistedAnswers(formData({
       ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
@@ -327,11 +334,20 @@ await test("locality-driven climate reaches Chapter 2 runtime and overrides stal
       climate_assignment_origin: "not_selected"
     }));
     const preview = buildWizardEngineeringPreview(answers);
-    assert.equal(preview.status, "ready");
+    assert.equal(preview.status, "blocked");
+    assert.equal(
+      preview.diagnostics.blockers.some(item => item.code === "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"),
+      true
+    );
     assert.equal(answers.climateProfileId, undefined);
-    assert.equal(preview.buildingDna.climateProfile, null);
-    assert.equal(preview.buildingDna.calculationStatus, "source_backed_climate_provider");
-    return preview;
+    const dnaResult = createBuildingDnaFromAssistedAnswers(answers);
+    assert.equal(dnaResult.status, "ready");
+    assert.equal(dnaResult.buildingDna.climateProfile, null);
+    assert.equal(dnaResult.buildingDna.calculationStatus, "source_backed_climate_provider");
+    const calculation = calculateChapter2ForBuildingDna(dnaResult.buildingDna);
+    assert.equal(calculation.status, "incomplete");
+    assert.equal(calculation.chapter2Input, null);
+    return { preview, buildingDna: dnaResult.buildingDna, calculation };
   };
   const bucuresti = run({
     localityId: "ro_bucuresti",
@@ -352,20 +368,18 @@ await test("locality-driven climate reaches Chapter 2 runtime and overrides stal
     cluj.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
     -2.4
   );
-  assert.equal(
-    bucuresti.calculation.chapter2Input.monthlyCases[0].transmission.heating.outdoorTemperature.amount,
-    -1.2
+  assert.notEqual(
+    bucuresti.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount,
+    cluj.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount
   );
   assert.equal(
-    cluj.calculation.chapter2Input.monthlyCases[0].transmission.heating.outdoorTemperature.amount,
-    -2.4
+    bucuresti.calculation.diagnostics.blockers[0].code,
+    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
   );
-  assert.notEqual(bucuresti.summary.annualQHnd, cluj.summary.annualQHnd);
   assert.equal(
-    bucuresti.technicalWorkspace.report.mainResults.annualQHnd,
-    bucuresti.summary.annualQHnd
+    cluj.calculation.diagnostics.blockers[0].code,
+    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
   );
-  assert.equal(cluj.technicalWorkspace.report.mainResults.annualQHnd, cluj.summary.annualQHnd);
 });
 
 await test("wizard maps installation fields into canonical technical systems", () => {

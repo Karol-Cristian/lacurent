@@ -95,6 +95,7 @@ Every production concept exists once, has exactly one owner and is extended thro
 | runtime.assembly_u_values | physics_runtime_state | Physics Engine | calculateMc001EnvelopeAssemblyUValueExplicit output | read_only | intermediate_traceable_engine_result |
 | runtime.hd_hg_hu_ha_htr | physics_runtime_state | Physics Engine | calculateMc001EnvelopeTransmissionCoefficientExplicit output | read_only | core_Chapter2_transfer_runtime_state |
 | runtime.chapter2_monthly_useful_demand | physics_runtime_state | Physics Engine | calculateMc001Chapter2UsefulDemandExplicit output | read_only | core_Chapter2_output_and_Chapter3_input |
+| runtime.chapter2_execution_trace | physics_runtime_state | Physics Engine | heating/cooling monthly case `executionTrace` | read_only | authoritative_executed_formula_and_branch_trace_for_report |
 | runtime.chapter3_installation_energy | physics_runtime_state | Physics Engine | calculateMc001Chapter3IntegratedRuntime output | read_only | active_only_when_technicalSystems_enabled |
 | output.annual_qhnd_qcnd | output | Physics Engine output persisted by Versioned Backend | building_platform_analysis_versions annual_qhnd/annual_qcnd | read_only | primary_product_result |
 | output.chapter3_annual_summary | output | Physics Engine output persisted by Versioned Backend | building_platform_analysis_versions.complete_engine_output_json | read_only | primary_installation_result_when_available |
@@ -213,6 +214,7 @@ Explicit future boundaries:
 - Building DNA is the only persisted engineering input model.
 - Adapters map Building DNA to physics input without duplicating formulas.
 - Reports render persisted Building DNA and engine outputs without recalculation.
+- Displayed Chapter 2 demand equations must render the Physics Engine execution trace. Branch results must show the executed branch and must not reconstruct a generic formula that was not evaluated.
 - Legacy fields remain explicitly classified until removed.
 
 ## Target Architecture

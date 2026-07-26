@@ -1,6 +1,14 @@
 import { calculateMc001CoolingHeatTransferUtilizationFactor } from "./mc001CoolingHeatTransferUtilizationFactorCalculation.mjs";
 import { calculateMc001CoolingIntermittencyExplicit } from "./mc001CoolingIntermittencyCalculation.mjs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "./mc001MonthlyHeatGainsCalculation.mjs";
+import {
+  buildArithmeticExecutionTrace,
+  buildBranchExecutionTrace,
+  inputExpression,
+  operatorExpression,
+  traceInput,
+  valueExpression
+} from "./mc001ExecutionTrace.mjs";
 import { resolveEffectiveInternalHeatCapacityTable2_20Value } from "./datasets/mc001EffectiveInternalHeatCapacityTables.mjs";
 
 const MODE = "restricted_cooling_qcnd_explicit_v1";
@@ -106,6 +114,7 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "coolingIntermittencyFormulaCode",
   "coolingIntermittencySourcePackCode",
   "longUnoccupiedFormulaCode",
+  "executionTrace",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -116,6 +125,92 @@ function isPlainObject(value) {
 
 function finiteNumber(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function coolingTraceInputs(values = {}) {
+  return Object.fromEntries(
+    Object.entries(values)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, traceInput(value.amount ?? value, value.unit ?? (key.startsWith("Q") ? "kWh" : "-"))])
+  );
+}
+
+function coolingZeroBranchTrace({
+  branchId,
+  conditionExpression,
+  inputs,
+  qCnd = 0,
+  reason
+}) {
+  return buildBranchExecutionTrace({
+    formulaId: FORMULA_CODE,
+    branchId,
+    inputs: coolingTraceInputs(inputs),
+    condition: {
+      expression: conditionExpression,
+      evaluated: true
+    },
+    finalResult: qCnd,
+    unit: "kWh",
+    reason
+  });
+}
+
+function coolingNormalTrace({
+  branchId = "figure_2_19_cooling_utilized_transfer_branch",
+  qCgn,
+  etaCht,
+  qCht,
+  aCred,
+  qCnd
+}) {
+  return buildArithmeticExecutionTrace({
+    formulaId: FORMULA_CODE,
+    branchId,
+    inputs: coolingTraceInputs({
+      QCgn: { amount: qCgn, unit: "kWh" },
+      etaCht: { amount: etaCht, unit: "-" },
+      QCht: { amount: qCht, unit: "kWh" },
+      aCred: { amount: aCred, unit: "-" }
+    }),
+    expression: operatorExpression("multiply", [
+      inputExpression("aCred"),
+      operatorExpression("subtract", [
+        inputExpression("QCgn"),
+        operatorExpression("multiply", [
+          inputExpression("etaCht"),
+          inputExpression("QCht")
+        ])
+      ])
+    ]),
+    rawResult: qCnd,
+    finalResult: qCnd,
+    unit: "kWh",
+    clampApplied: false
+  });
+}
+
+function coolingLongUnoccupiedTrace({ qCndOccupied, qCndUnoccupied, unoccupiedFraction, qCnd }) {
+  return buildArithmeticExecutionTrace({
+    formulaId: LONG_UNOCCUPIED_FORMULA_CODE,
+    branchId: "long_unoccupied_period_explicit_interpolation",
+    inputs: coolingTraceInputs({
+      QCnd_occ: { amount: qCndOccupied, unit: "kWh" },
+      QCnd_nocc: { amount: qCndUnoccupied, unit: "kWh" },
+      fC_nocc: { amount: unoccupiedFraction, unit: "-" }
+    }),
+    expression: operatorExpression("add", [
+      operatorExpression("multiply", [
+        operatorExpression("subtract", [valueExpression(1), inputExpression("fC_nocc")]),
+        inputExpression("QCnd_occ")
+      ]),
+      operatorExpression("multiply", [inputExpression("fC_nocc"), inputExpression("QCnd_nocc")])
+    ]),
+    rawResult: qCnd,
+    finalResult: qCnd,
+    unit: "kWh",
+    clampApplied: false
+  });
 }
 
 function safeCode(value, maxLength = 96) {
@@ -671,6 +766,12 @@ function validateLongUnoccupiedPeriodAdjustmentCase(inputCase) {
       qCnd,
       qCndOrigin: "calculated_from_explicit_cooling_long_unoccupied_interpolation",
       qCndBranch: "long_unoccupied_period_explicit_interpolation",
+      executionTrace: coolingLongUnoccupiedTrace({
+        qCndOccupied,
+        qCndUnoccupied,
+        unoccupiedFraction,
+        qCnd
+      }),
       longUnoccupiedFormulaCode: LONG_UNOCCUPIED_FORMULA_CODE,
       formulaCode: LONG_UNOCCUPIED_FORMULA_CODE,
       sourceReference: inputCase.source.reference
@@ -723,6 +824,15 @@ function validateCase(inputCase) {
         etaChtOrigin: "not_required_for_qCht_zero_zero_cooling_demand",
         aCredOrigin: "not_required_for_qCht_zero_zero_cooling_demand",
         qCndBranch: "qCht_zero_zero_cooling_demand",
+        executionTrace: coolingZeroBranchTrace({
+          branchId: "qCht_zero_zero_cooling_demand",
+          conditionExpression: "QCht = 0",
+          inputs: {
+            QCht: { amount: qCht, unit: "kWh" },
+            QCgn: { amount: qCgn, unit: "kWh" }
+          },
+          reason: "No cooling heat transfer term is available for this month."
+        }),
         qCnd: 0,
         sourceReference: inputCase.source.reference
       }
@@ -758,6 +868,16 @@ function validateCase(inputCase) {
         etaChtOrigin: "not_required_for_gammaC_less_or_equal_zero_zero_cooling_demand",
         aCredOrigin: "not_required_for_gammaC_less_or_equal_zero_zero_cooling_demand",
         qCndBranch: "gammaC_less_or_equal_zero_zero_demand",
+        executionTrace: coolingZeroBranchTrace({
+          branchId: "gammaC_less_or_equal_zero_zero_demand",
+          conditionExpression: "gammaC <= 0",
+          inputs: {
+            QCht: { amount: qCht, unit: "kWh" },
+            QCgn: { amount: qCgn, unit: "kWh" },
+            gammaC: { amount: gammaC, unit: "-" }
+          },
+          reason: "Cooling gain ratio is non-positive."
+        }),
         qCnd: 0
       }
     };
@@ -771,6 +891,16 @@ function validateCase(inputCase) {
         etaChtOrigin: "not_required_for_inverse_gammaC_greater_than_two_zero_cooling_demand",
         aCredOrigin: "not_required_for_inverse_gammaC_greater_than_two_zero_cooling_demand",
         qCndBranch: "inverse_gammaC_greater_than_two_zero_demand",
+        executionTrace: coolingZeroBranchTrace({
+          branchId: "inverse_gammaC_greater_than_two_zero_demand",
+          conditionExpression: "(1 / gammaC) > 2",
+          inputs: {
+            QCht: { amount: qCht, unit: "kWh" },
+            QCgn: { amount: qCgn, unit: "kWh" },
+            gammaC: { amount: gammaC, unit: "-" }
+          },
+          reason: "MC001 cooling branch sets useful cooling demand to zero when the inverse gain ratio exceeds 2."
+        }),
         qCnd: 0
       }
     };
@@ -853,6 +983,13 @@ function validateCase(inputCase) {
       ...(utilizationDependencyResult === undefined ? {} : utilizationDependencyResult),
       ...aCred.value,
       qCnd,
+      executionTrace: coolingNormalTrace({
+        qCgn,
+        etaCht,
+        qCht,
+        aCred: aCred.value.aCred,
+        qCnd
+      }),
       qCndBranch: "figure_2_19_cooling_utilized_transfer_branch"
     }
   };

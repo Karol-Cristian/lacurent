@@ -24,6 +24,37 @@ function physicsValue(quantity, fallbackReference) {
   };
 }
 
+const CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE =
+  "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE";
+
+function chapter2ClimateInputBlockers(buildingDna) {
+  if (buildingDna?.calculationStatus !== "source_backed_climate_provider") {
+    return [];
+  }
+  const blockedSolarMonths = (buildingDna.monthlyProfiles ?? [])
+    .filter(profile =>
+      profile?.heatGains?.solarGainsSource === "provider_climate_profile_without_qsol_preprocessing"
+    )
+    .map(profile => profile.month);
+  if (blockedSolarMonths.length === 0) {
+    return [];
+  }
+  return [{
+    code: CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE,
+    severity: "blocking",
+    reason:
+      "MC001/1-2006 Annex A9.6 solar source rows are available, but the source-backed preprocessing into Chapter 2 Qsol/Qsky is not implemented from an owned normative source.",
+    missingInputs: ["Qsol", "Qsky", "Hsol"],
+    affectedCalculations: [
+      "chapter2_solar_gains",
+      "chapter2_heating_useful_demand",
+      "chapter2_cooling_useful_demand"
+    ],
+    months: blockedSolarMonths,
+    prohibitedSubstitute: "Do not silently substitute provider solar gains with zero."
+  }];
+}
+
 function physicsMaterial(layer) {
   const material = layer.material.physicsMaterial;
   const base = {
@@ -238,6 +269,34 @@ export function calculateChapter2ForBuildingDna(buildingDna) {
       assemblyResult,
       envelopeInput,
       envelopeTransmissionResult
+    };
+  }
+  const climateInputBlockers = chapter2ClimateInputBlockers(buildingDna);
+  if (climateInputBlockers.length > 0) {
+    const diagnostics = {
+      blockers: climateInputBlockers,
+      warnings: [],
+      methodologyLimits: [
+        "chapter_2_useful_demand_requires_complete_heat_gain_inputs",
+        "source_backed_solar_preprocessing_must_not_be_silently_replaced",
+        "no_hidden_defaults"
+      ]
+    };
+    return {
+      status: "incomplete",
+      stage: "chapter_2_climate_inputs",
+      assemblyInput,
+      assemblyResult,
+      envelopeInput,
+      envelopeTransmissionResult,
+      chapter2Input: null,
+      chapter2Result: {
+        status: "incomplete",
+        scope: "chapter_2_useful_demand_climate_input_eligibility",
+        result: null,
+        diagnostics
+      },
+      diagnostics
     };
   }
   const chapter2Input = buildChapter2UsefulDemandPhysicsInput(buildingDna, envelopeTransmissionResult);

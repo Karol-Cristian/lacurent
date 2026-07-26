@@ -2162,6 +2162,47 @@
       ]
     },
     {
+      "fieldId": "runtime.chapter2_execution_trace",
+      "path": "calculation.chapter2Result.result.{heatingResult,coolingResult}.caseResults[*].executionTrace",
+      "purpose": "Authoritative executed formula, branch, inputs and result trace for displayed Chapter 2 demand calculations.",
+      "category": "physics_runtime_state",
+      "owner": "Physics Engine",
+      "sourceOfTruth": "heating/cooling monthly demand runtime case result",
+      "producer": "Physics Engine",
+      "consumer": "Technical Report Builder, engineering notebook, trace validation tests",
+      "dataType": "mc001_execution_trace_v1",
+      "editable": false,
+      "derived": false,
+      "persisted": false,
+      "runtimeOnly": true,
+      "providerGenerated": false,
+      "reportOnly": false,
+      "notebookOnly": false,
+      "deprecated": false,
+      "legacy": false,
+      "productionUsage": "authoritative_executed_formula_and_branch_trace_for_report",
+      "uiLocation": null,
+      "notebookLocation": "Chapter 2 monthly calculation notebook",
+      "reportLocation": "Caiet de calcule ingineresti",
+      "dependencies": [
+        "runtime.chapter2_monthly_useful_demand"
+      ],
+      "uiRecommendation": "read_only",
+      "genericity": "generic_mc001_concept",
+      "removalAssessment": "retain",
+      "implementationRefs": [
+        "src/physics-engine/mc001ExecutionTrace.mjs",
+        "src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs",
+        "src/physics-engine/mc001CoolingUsefulDemandCalculation.mjs",
+        "src/building-platform/buildingTechnicalReport.mjs"
+      ],
+      "tests": [
+        "src/physics-engine/tests/mc001RestrictedHeatingQhndCalculation.test.mjs",
+        "src/physics-engine/tests/mc001CoolingUsefulDemandCalculation.test.mjs",
+        "src/building-platform/tests/buildingTechnicalReport.test.mjs"
+      ]
+    },
+    {
       "fieldId": "runtime.chapter3_installation_energy",
       "path": "calculation.chapter3Result",
       "purpose": "Chapter 3 monthly and annual installation energy chains when technical systems are active.",
