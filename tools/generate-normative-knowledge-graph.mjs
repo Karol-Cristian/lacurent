@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import {
   CLIMATE_DATASET_STATUSES,
+  MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
   MC001_WINTER_DESIGN_TEMPERATURES_BY_ZONE,
   ROMANIAN_CLIMATE_ACQUISITION_LIST,
   ROMANIAN_CLIMATE_COVERAGE,
@@ -324,9 +325,9 @@ const conceptNodes = Object.freeze([
   node({
     id: "concept.monthly_solar_irradiation",
     description:
-      "Monthly mean daily solar irradiance source rows from A.9.6. These rows are source-backed climate data, not direct Qsol or Hsol runtime values.",
+      "Monthly mean daily solar irradiance source rows from A.9.6. These rows are source-backed climate data and the canonical source for tabulated vertical/horizontal Hsol integration, not direct Qsol runtime values.",
     units: "W/m2",
-    runtimeUsage: Object.freeze(["chapter2_solar_source_dataset_identity", "future source-backed solar preprocessing"]),
+    runtimeUsage: Object.freeze(["chapter2_solar_source_dataset_identity", "chapter2_hsol_vertical_horizontal"]),
     notebookUsage:
       "Show A.9.6 monthly total vertical/orientation and horizontal irradiance values used by the selected station/locality.",
     reportUsage:
@@ -348,23 +349,48 @@ const conceptNodes = Object.freeze([
   node({
     id: "concept.preprocessed_solar_irradiation_hsol",
     description:
-      "Monthly solar irradiation Hsol;wi;m/Hsol;k;m in kWh/m2 required by MC001 relations 2.39 and 2.50 after applying the delegated preprocessing/source contract to source climate rows.",
+      "Monthly solar irradiation Hsol;wi;m/Hsol;k;m in kWh/m2 required by MC001 relations 2.39 and 2.50. P7B exposes source-backed Hsol for the A.9.6 tabulated vertical and horizontal planes by integrating the monthly mean daily W/m2 source rows over the calendar monthly duration.",
     units: "kWh/m2",
-    runtimeUsage: Object.freeze(["chapter2_solar_gains", "transparent_solar_gains", "opaque_solar_gains"]),
-    formulas: Object.freeze(["MC001-2022 relatiile 2.39 si 2.50 consume Hsol but do not reproduce the preprocessing algorithm."]),
+    runtimeUsage: Object.freeze(["chapter2_hsol_vertical_horizontal", "chapter2_solar_gains", "transparent_solar_gains", "opaque_solar_gains"]),
+    formulas: Object.freeze([
+      "MC001-2022 relatiile 2.39 si 2.50 consume Hsol.",
+      "P7B_A9_6_MEAN_DAILY_IRRADIANCE_TO_MONTHLY_HSOL_UNIT_INTEGRATION: Hsol = I_T,A9.6 * deltaT_m / 1000 for A.9.6 tabulated vertical/horizontal planes."
+    ]),
     notebookUsage:
-      "Show only after a source-backed preprocessing chain or certified explicit Hsol input supplies values.",
+      "Show A.9.6 Hsol values and execution trace for tabulated vertical/horizontal planes; show bounded diagnostics for unsupported tilted surfaces.",
     reportUsage:
-      "Report preprocessing source, dataset version and Hsol values when they are actually used by Qsol.",
-    sourceDocument: "doc.sr_en_iso_52010_1",
-    sourceEdition: "not bundled in repository",
-    table: "M1-13 preprocessing rules; exact clauses require owned standard",
-    page: "MC001-2022 Anexa D delegation",
+      "Report Hsol source, dataset version, monthly values and whether Qsol remains blocked by Qsky/element inputs.",
+    sourceDocument: "doc.mc001_1_2006_annex_a9_6",
+    sourceEdition: "2006",
+    table: "Anexa A.9.6",
+    page: "PDF pages 119-129; MC001-2022 relation 2.39 source statement",
     sourceLocation:
-      "MC001-2022 Tabel 1.3 row 13 and Anexa D reference SR EN ISO 52010-1; no Hsol preprocessing equations are bundled.",
-    implementationStatus: "EXTERNAL_STANDARD_DEPENDENCY",
-    datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
-    tbdId: "tbd.sr_en_iso_52010_1_climate_preprocessing"
+      "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
+    implementationStatus: "LOOKUP_IMPLEMENTED",
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    values: {
+      datasetVersion: MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
+      localityCount: MC001_1_2006_SOLAR_LOCALITY_REGISTRY.length,
+      supportedSurfaces: Object.freeze(["vertical N/NE/E/SE/S/SV/V/NV", "horizontal"])
+    }
+  }),
+  node({
+    id: "concept.solar_element_inputs",
+    description:
+      "MC001 relation 2.39/2.50 solar element inputs: area, glazing solar transmittance, frame factor, shading factor, absorptance, exterior surface resistance and corrected U-value where applicable.",
+    units: "mixed engineering units",
+    runtimeUsage: Object.freeze(["chapter2_solar_gains", "transparent_solar_gains", "opaque_solar_gains"]),
+    formulas: Object.freeze(["MC001-2022 relatiile 2.39, 2.40, 2.50 and 2.54 consume these values."]),
+    notebookUsage:
+      "Show only when a solar-gain element is supplied explicitly or source-backed by the project model.",
+    reportUsage:
+      "Report solar element inputs and provenance when they affect Qsol.",
+    sourceDocument: "doc.mc001_2022",
+    sourceEdition: "2022",
+    table: null,
+    page: "MC001-2022 2.7.3",
+    implementationStatus: "REPRESENTED_AS_INPUT",
+    datasetStatus: CLIMATE_DATASET_STATUSES.USER_SUPPLIED_CERTIFIED_DATASET
   }),
   node({
     id: "concept.direct_diffuse_solar_irradiation",
@@ -582,17 +608,16 @@ const tbdRegistry = Object.freeze([
   Object.freeze({
     id: "tbd.sr_en_iso_52010_1_climate_preprocessing",
     description:
-      "Normative climate-data preprocessing algorithms delegated to SR EN ISO 52010-1, including the bridge from A.9.6 W/m2 source rows to Hsol [kWh/m2] runtime inputs when that source-backed path is selected.",
+      "Normative climate-data preprocessing algorithms delegated to SR EN ISO 52010-1 for climate-processing branches not reproduced by MC001, including non-tabulated tilted-surface Hsol.",
     blockingDocument: "SR EN ISO 52010-1",
     requiredEdition: "owned edition referenced by MC001 implementation policy",
     affectedCalculations: Object.freeze([
-      "A.9.6 W/m2 to Hsol kWh/m2 preprocessing",
+      "non-tabulated tilted-surface Hsol generation",
       "source-backed transparent solar gains relation 2.39",
       "source-backed opaque solar gains relation 2.50",
       "source-backed QHnd/QCnd effect of Qsol"
     ]),
     affectedRuntimeModules: Object.freeze([
-      "future source-pack ingestion pipeline",
       "future Building DNA climate provider to mc001SolarGainsCalculation adapter"
     ]),
     affectedUi: Object.freeze(["dataset validation provenance", "source-backed solar-gain eligibility diagnostic"]),
@@ -600,7 +625,7 @@ const tbdRegistry = Object.freeze([
     affectedReport: Object.freeze(["preprocessing standard, Hsol values and checksum metadata"]),
     affectedTests: Object.freeze([
       "preprocessing golden cases from licensed source",
-      "A.9.6 to Hsol to Qsol to QHnd/QCnd integration tests"
+      "tilted-surface Hsol to Qsol to QHnd/QCnd integration tests"
     ]),
     implementationPriority: "MEDIUM",
     estimatedImplementationScope:
@@ -613,11 +638,12 @@ const runtimeRequirementToConcepts = Object.freeze({
   monthlyExteriorTemperatures: Object.freeze(["concept.monthly_exterior_temperature"]),
   monthDurations: Object.freeze(["concept.month_duration"]),
   monthlySolarIrradianceSourceRows: Object.freeze(["concept.monthly_solar_irradiation"]),
-  preprocessedSolarIrradiationHsolOrExplicitSolarGains: Object.freeze([
+  sourceBackedHsolOrExplicitSolarGains: Object.freeze([
     "concept.preprocessed_solar_irradiation_hsol",
-    "concept.sky_radiation_inputs",
     "concept.user_supplied_certified_climate_dataset"
   ]),
+  Qsky: Object.freeze(["concept.sky_radiation_inputs"]),
+  solarElementInputs: Object.freeze(["concept.solar_element_inputs"]),
   coolingDesignTemperature: Object.freeze(["concept.cooling_ventilation_design_climate"]),
   coolingDesignHumidity: Object.freeze(["concept.cooling_ventilation_design_climate"]),
   degreeDays: Object.freeze(["concept.degree_days"]),
@@ -733,9 +759,9 @@ const knowledgeEdges = Object.freeze([
     relation: "defines_lookup"
   }),
   Object.freeze({
-    from: "doc.sr_en_iso_52010_1",
+    from: "doc.mc001_1_2006_annex_a9_6",
     to: "concept.preprocessed_solar_irradiation_hsol",
-    relation: "defines_external_preprocessing_algorithm"
+    relation: "defines_tabulated_source_rows_for_hsol"
   }),
   Object.freeze({
     from: "doc.mc001_6_2013",

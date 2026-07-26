@@ -263,8 +263,14 @@ assert.equal(
 );
 assert.equal(
   solarGainsRecord.climateAudit.runtimeEligibility.some(item =>
+    item.calculationId === "chapter2_hsol_vertical_horizontal"
+  ),
+  true
+);
+assert.equal(
+  solarGainsRecord.climateAudit.runtimeEligibility.some(item =>
     item.calculationId === "chapter2_solar_gains" &&
-    item.missingDiagnostic === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+    item.missingDiagnostic === "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
   ),
   true
 );

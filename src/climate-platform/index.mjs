@@ -56,11 +56,13 @@ export {
 
 export {
   ROMANIAN_NORMATIVE_CLIMATE_DATASET_STATUSES,
+  MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
   ROMANIAN_NORMATIVE_CLIMATE_PROVIDER_VERSION,
   findRomanianNormativeStationByLocalityId,
   findRomanianNormativeStationByLocalityName,
   getRomanianNormativeClimateDatasetMetadata,
   getRomanianNormativeClimateStation,
+  getRomanianNormativeMonthlyHsolFromAnnexA96,
   getRomanianNormativeMonthlyExteriorTemperature,
   getRomanianNormativeMonthlyRelativeHumidity,
   getRomanianNormativeMonthlySolarIrradiance,

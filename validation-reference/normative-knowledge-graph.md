@@ -24,7 +24,8 @@ This graph is the permanent traceability layer for Romanian climate data used by
 | concept.month_duration | doc.mc001_2022 | REPRESENTED_AS_INPUT | NORMATIVE_DATASET | - |
 | concept.monthly_exterior_temperature | doc.mc001_6_2013 | LOOKUP_IMPLEMENTED | NORMATIVE_DATASET | - |
 | concept.monthly_solar_irradiation | doc.mc001_1_2006_annex_a9_6 | LOOKUP_IMPLEMENTED | NORMATIVE_DATASET | - |
-| concept.preprocessed_solar_irradiation_hsol | doc.sr_en_iso_52010_1 | EXTERNAL_STANDARD_DEPENDENCY | DATASET_UNAVAILABLE | tbd.sr_en_iso_52010_1_climate_preprocessing |
+| concept.preprocessed_solar_irradiation_hsol | doc.mc001_1_2006_annex_a9_6 | LOOKUP_IMPLEMENTED | NORMATIVE_DATASET | - |
+| concept.solar_element_inputs | doc.mc001_2022 | REPRESENTED_AS_INPUT | USER_SUPPLIED_CERTIFIED_DATASET | - |
 | concept.direct_diffuse_solar_irradiation | doc.mc001_1_2006_annex_a9_6 | LOOKUP_IMPLEMENTED_FOR_DIFFUSE_ROWS_DIRECT_COMPONENT_NOT_DERIVED | NORMATIVE_DATASET | - |
 | concept.sky_radiation_inputs | doc.mc001_1_2006_annex_a9_6 | EXTERNAL_DATA_DEPENDENCY | DATASET_UNAVAILABLE | tbd.sky_radiation_inputs_if_selected_method_requires |
 | concept.heating_period_duration | doc.mc001_2022 | REPRESENTED_AS_INPUT | NORMATIVE_DATASET | - |
@@ -58,7 +59,8 @@ Reviewed non-dependencies:
 | runtime.winter_design_temperature_lookup | concept.climate_zone | heating_design_temperature | CLIMATE_SELECTION_REQUIRED |
 | runtime.chapter2_monthly_transmission_ventilation | concept.monthly_exterior_temperature, concept.month_duration | Qtr, Qve, QHnd, QCnd | MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED |
 | runtime.chapter2_solar_source_dataset_identity | concept.monthly_solar_irradiation | climate_dataset_traceability, notebook_report_solar_source_rows | MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION |
-| runtime.chapter2_solar_gains | concept.preprocessed_solar_irradiation_hsol, concept.sky_radiation_inputs, concept.user_supplied_certified_climate_dataset | Qsol, QHgn, QCgn, QHnd, QCnd | SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED |
+| runtime.chapter2_hsol_vertical_horizontal | concept.monthly_solar_irradiation, concept.month_duration | Hsol, notebook_report_solar_source_rows | MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION |
+| runtime.chapter2_solar_gains | concept.preprocessed_solar_irradiation_hsol, concept.user_supplied_certified_climate_dataset, concept.sky_radiation_inputs, concept.solar_element_inputs | Qsol, QHgn, QCgn, QHnd, QCnd | SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED |
 | runtime.cooling_ventilation_design_conditions | concept.cooling_ventilation_design_climate | design_diagnostics | COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED |
 | runtime.degree_day_method | concept.degree_days | degree_day_result | DEGREE_DAY_DATA_REQUIRED |
 

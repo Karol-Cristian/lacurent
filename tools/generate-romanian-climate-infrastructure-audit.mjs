@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   CLIMATE_DATASET_STATUSES,
+  MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
   ROMANIAN_CLIMATE_ACQUISITION_LIST,
   ROMANIAN_CLIMATE_DATA_DOMAINS,
   ROMANIAN_CLIMATE_NORMATIVE_DEPENDENCIES,
@@ -140,7 +141,8 @@ const documents = [
     sourcePack: "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
     notes: [
       "Anexa A.9.6 source rows are canonical provider data.",
-      "A.9.6 W/m2 rows are not fed directly into Chapter 2 Qsol without source-backed preprocessing.",
+      "A.9.6 W/m2 rows are integrated to source-backed Hsol [kWh/m2] for tabulated vertical/horizontal planes.",
+      "A.9.6 Hsol rows are not fed directly into Chapter 2 Qsol without Qsky and complete solar element inputs.",
       "The downloaded full official PDF identity and the historical extraction source identity are both recorded; dataset checksums validate the extracted A.9.6 values."
     ]
   }),
@@ -154,8 +156,8 @@ const documents = [
     implemented: false,
     validated: false,
     notes: [
-      "Required only for source-backed preprocessing from A.9.6 W/m2 rows to Hsol/Qsky-compatible runtime inputs.",
-      "Do not invent this preprocessing chain."
+      "Required only for climate preprocessing not reproduced by MC001, including non-tabulated tilted-surface Hsol and selected Qsky-related branches.",
+      "Do not invent unavailable preprocessing branches."
     ]
   }),
   doc({
@@ -324,28 +326,41 @@ const datasetCoverage = [
     monthlyCardinality: 12,
     cellCount: MC001_1_2006_MONTHLY_SOLAR_IRRADIANCE.cellCount,
     checksum: MC001_1_2006_SOLAR_IRRADIATION_DATASET_CHECKSUMS.monthlySolarIrradianceRows,
-    runtimeUse: "source-backed solar irradiance identity; Qsol remains bounded by preprocessing dependency"
+    runtimeUse: "source-backed solar irradiance identity and Hsol source rows for tabulated vertical/horizontal planes"
   },
   {
-    datasetId: "source_backed_qsol_preprocessing",
-    sourceDocument: "sr_en_iso_52010_1",
+    datasetId: "mc001_1_2006_annex_a9_6_monthly_hsol_vertical_horizontal",
+    sourceDocument: "mc001_1_2_3_2006_annex_a9_6",
+    present: true,
+    extracted: true,
+    implemented: true,
+    validated: true,
+    recordCount: MC001_1_2006_MONTHLY_SOLAR_IRRADIANCE.rows.length,
+    monthlyCardinality: 12,
+    datasetVersion: MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
+    runtimeUse: "source-backed Hsol [kWh/m2] for A.9.6 tabulated vertical and horizontal planes"
+  },
+  {
+    datasetId: "source_backed_qsol_qsky_completion",
+    sourceDocument: "sr_en_iso_52010_1_or_explicit_qsky_solar_element_source",
     present: false,
     extracted: false,
     implemented: false,
     validated: false,
     recordCount: 0,
-    runtimeUse: "blocked source-backed conversion from A.9.6 W/m2 source rows to MC001 Hsol/Qsky inputs"
+    runtimeUse: "bounded Qsol completion from source-backed Hsol, Qsky-compatible inputs and complete solar element inputs"
   }
 ];
 
 const boundedGaps = [
   {
-    gapId: "source_backed_solar_gains_preprocessing",
-    exactMissingDocument: "SR EN ISO 52010-1",
-    exactMissingChapterOrTable: "M1-13 preprocessing clauses/tables required by MC001-2022 Tabel 1.3 and Anexa D",
+    gapId: "source_backed_qsol_qsky_completion",
+    exactMissingDocument: "SR EN ISO 52010-1 sau sursa explicita pentru Qsky/elemente solare",
+    exactMissingChapterOrTable:
+      "MC001 relation 2.54 hlr;e;k/Qsky-compatible inputs plus complete glazing/shading/surface inputs; SR EN ISO 52010-1 for non-tabulated tilted Hsol",
     blockedRuntimeCalculation: "source-backed Qsol from Annex A.9.6 rows, and QHnd/QCnd solar effect from that source-backed Qsol",
     reasonImplementationCannotContinue:
-      "A.9.6 rows are W/m2 monthly mean daily irradiance; MC001 relations 2.39/2.50 consume Hsol [kWh/m2] and Qsky-compatible values. No repository source supplies the deterministic preprocessing relation."
+      "P7B exposes source-backed Hsol from A.9.6 for tabulated vertical/horizontal planes. Automatic Qsol still requires Qsky-compatible inputs and complete solar element inputs; the repository does not contain a source-backed automatic contract for every required input."
   },
   {
     gapId: "automatic_locality_to_climate_zone_assignment",
@@ -478,8 +493,7 @@ function writeMarkdown(value) {
     "| --- | --- | --- | --- |",
     ...value.boundedGaps.map(item =>
       `| ${item.gapId} | ${item.exactMissingDocument} | ${item.exactMissingChapterOrTable} | ${item.blockedRuntimeCalculation} |`
-    ),
-    ""
+    )
   ];
   return `${lines.join("\n")}\n`;
 }

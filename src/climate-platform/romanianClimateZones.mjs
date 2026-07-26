@@ -322,7 +322,7 @@ export const ROMANIAN_CLIMATE_SOURCE_INVENTORY = Object.freeze([
       "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
     status: "implemented_temperature_and_a9_6_solar_where_source_locality_is_covered",
     runtimeUse:
-      "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; monthly mean daily solar irradiance source rows are source-packed from Mc001/1-2-3/2006 Anexa A.9.6 for the 30 localities reproduced there; source-backed Qsol still requires preprocessed Hsol/Qsky or certified explicit input",
+      "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; monthly mean daily solar irradiance source rows are source-packed from Mc001/1-2-3/2006 Anexa A.9.6 for the 30 localities reproduced there; source-backed Hsol is exposed for tabulated vertical/horizontal planes; source-backed Qsol still requires Qsky and complete solar-element inputs or certified explicit input",
     containsMonthlyClimateInputs: true,
     implementedArtifacts: Object.freeze([
       "Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities",
@@ -330,12 +330,13 @@ export const ROMANIAN_CLIMATE_SOURCE_INVENTORY = Object.freeze([
       "Mc001/6-2013 Tabel III.1 winter design-day temperature for 41 localities",
       "Mc001/6-2013 Tabel III.2 winter design-pentad temperature for 41 localities",
       "Mc001/6-2013 Tabel IV.1 summer design-day temperature for 41 localities",
-      "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities"
+      "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities",
+      "P7B source-backed Hsol integration from A.9.6 W/m2 rows to kWh/m2 for tabulated vertical/horizontal planes"
     ]),
     solarArtifact:
       "Mc001/1-2-3/2006 Anexa A.9.6 monthly mean daily total and diffuse solar irradiance source rows for 30 localities",
     solarPreprocessingBoundary:
-      "A.9.6 W/m2 rows are not fed directly into MC001 2.39/2.50 Hsol [kWh/m2] or Qsol; SR EN ISO 52010-1 preprocessing/source-backed Hsol and Qsky-compatible inputs remain required."
+      "A.9.6 W/m2 rows are exposed as Hsol [kWh/m2] for tabulated vertical/horizontal planes; Qsol remains bounded by Qsky-compatible inputs, complete solar element inputs, and SR EN ISO 52010-1 for non-tabulated tilted surfaces."
   })
 ]);
 

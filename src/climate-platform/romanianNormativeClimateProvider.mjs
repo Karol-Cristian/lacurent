@@ -20,6 +20,7 @@ import {
   MC001_1_2006_SOLAR_LOCALITY_REGISTRY
 } from "./datasets/mc001_1_2006SolarIrradiationDataset.mjs";
 import { CLIMATE_DATASET_STATUSES } from "./romanianClimateNormativeDependencies.mjs";
+import { CALENDAR_MONTHLY_HOURS } from "./romanianClimateProfiles.mjs";
 import {
   ROMANIAN_CLIMATE_ZONE_IDS,
   ROMANIAN_WIND_ZONE_IDS,
@@ -28,7 +29,54 @@ import {
 } from "./romanianClimateZones.mjs";
 
 export const ROMANIAN_NORMATIVE_CLIMATE_PROVIDER_VERSION =
-  "romanian_normative_climate_provider_p5b3_v1";
+  "romanian_normative_climate_provider_p7b_v1";
+
+export const MC001_1_2006_A9_6_HSOL_DATASET_VERSION =
+  `${MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION}_hsol_vertical_horizontal_p7b_v1`;
+
+const A9_6_HSOL_DATASET_ID =
+  "mc001_1_2006_annex_a9_6_monthly_hsol_vertical_horizontal";
+
+const A9_6_SUPPORTED_HSOL_ORIENTATION_KEYS = Object.freeze([
+  "north",
+  "northEast",
+  "east",
+  "southEast",
+  "south",
+  "southWest",
+  "west",
+  "northWest",
+  "horizontal"
+]);
+
+const A9_6_HSOL_ORIENTATION_ALIASES = Object.freeze({
+  north: "north",
+  n: "north",
+  northeast: "northEast",
+  north_east: "northEast",
+  "north-east": "northEast",
+  ne: "northEast",
+  east: "east",
+  e: "east",
+  southeast: "southEast",
+  south_east: "southEast",
+  "south-east": "southEast",
+  se: "southEast",
+  south: "south",
+  s: "south",
+  southwest: "southWest",
+  south_west: "southWest",
+  "south-west": "southWest",
+  sw: "southWest",
+  west: "west",
+  w: "west",
+  northwest: "northWest",
+  north_west: "northWest",
+  "north-west": "northWest",
+  nw: "northWest",
+  horizontal: "horizontal",
+  orizontal: "horizontal"
+});
 
 export const ROMANIAN_NORMATIVE_CLIMATE_DATASET_STATUSES = Object.freeze({
   NORMATIVE_DATASET: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
@@ -45,6 +93,7 @@ const DATASET_IDS = Object.freeze({
   summerDesignDayTemperature: MC001_6_2013_SUMMER_DESIGN_DAY_TEMPERATURES.tableId,
   summerDesignPentadTemperature: MC001_6_2013_SUMMER_DESIGN_PENTAD_TEMPERATURES.tableId,
   monthlySolarIrradiation: MC001_1_2006_MONTHLY_SOLAR_IRRADIANCE.tableId,
+  monthlyHsolVerticalHorizontal: A9_6_HSOL_DATASET_ID,
   degreeDays: "romanian_normative_degree_day_dataset"
 });
 
@@ -93,6 +142,128 @@ const SOLAR_BY_SOLAR_STATION = new Map(
 const SOLAR_LOCALITY_BY_ID = new Map(
   MC001_1_2006_SOLAR_LOCALITY_REGISTRY.map(locality => [locality.localityId, locality])
 );
+
+function normalizeHsolOrientation(orientation) {
+  const key = String(orientation ?? "")
+    .trim()
+    .replace(/[\s/]+/g, "_")
+    .replace(/[A-Z]/g, char => char.toLowerCase());
+  return A9_6_HSOL_ORIENTATION_ALIASES[key] ?? null;
+}
+
+function hsolSurfaceFromOrientation(orientation) {
+  return orientation === "horizontal"
+    ? { plane: "horizontal", tiltDegrees: 0, sourceScope: "plan orizontal A.9.6" }
+    : { plane: "vertical", tiltDegrees: 90, sourceScope: "plan vertical A.9.6" };
+}
+
+function hsolTrace({ month, orientation, sourceIrradianceWPerM2, durationHours, hsolKwhPerM2 }) {
+  return {
+    formulaId: "P7B_A9_6_MEAN_DAILY_IRRADIANCE_TO_MONTHLY_HSOL_UNIT_INTEGRATION",
+    normativeSource:
+      "MC001-2022, 2.7.3: Hsol pentru suprafete verticale/orizontale se cunoaste din date climatice; Mc001/1-2-3/2006 Anexa A.9.6",
+    branchId: "A9_6_VERTICAL_HORIZONTAL_SOURCE_ROW",
+    status: "calculated",
+    inputs: {
+      I_T_A9_6: {
+        value: sourceIrradianceWPerM2,
+        unit: "W/m2",
+        meaning: "intensitatea radiatiei solare totale medii zilnice lunare A.9.6",
+        origin: "NORMATIVE_DATASET"
+      },
+      deltaT_m: {
+        value: durationHours,
+        unit: "h",
+        meaning: "durata lunii de calcul"
+      }
+    },
+    expression: {
+      operator: "multiply",
+      terms: [
+        "I_T_A9_6",
+        {
+          operator: "divide",
+          terms: ["deltaT_m", 1000]
+        }
+      ]
+    },
+    substitutedFormula:
+      `Hsol_${orientation}_${month} := ${sourceIrradianceWPerM2} W/m2 * ${durationHours} h / 1000`,
+    rawResult: hsolKwhPerM2,
+    finalResult: hsolKwhPerM2,
+    unit: "kWh/m2",
+    clampApplied: false
+  };
+}
+
+function hsolDataset(row) {
+  if (!row) return null;
+  const monthlyRecords = row.monthlyRecords.map(record => {
+    const hsolKwhPerM2ByOrientation = {};
+    const executionTraceByOrientation = {};
+    for (const orientation of A9_6_SUPPORTED_HSOL_ORIENTATION_KEYS) {
+      const sourceIrradianceWPerM2 = record.totalIrradianceWPerM2?.[orientation];
+      const durationHours = CALENDAR_MONTHLY_HOURS[record.month];
+      const hsolKwhPerM2 = Number((sourceIrradianceWPerM2 * durationHours / 1000).toFixed(6));
+      hsolKwhPerM2ByOrientation[orientation] = hsolKwhPerM2;
+      executionTraceByOrientation[orientation] = hsolTrace({
+        month: record.month,
+        orientation,
+        sourceIrradianceWPerM2,
+        durationHours,
+        hsolKwhPerM2
+      });
+    }
+    return {
+      month: record.month,
+      monthIndex: record.monthIndex,
+      unit: "kWh/m2",
+      valueType: "monthly_solar_irradiation_hsol",
+      temporalResolution: "monthly_total",
+      sourcePdfPage: record.sourcePdfPage,
+      sourceTableIndex: record.sourceTableIndex,
+      sourceIrradianceUnit: record.unit,
+      sourceIrradianceValueType: record.valueType,
+      sourceIrradianceTemporalResolution: record.temporalResolution ?? row.temporalResolution,
+      durationHours: CALENDAR_MONTHLY_HOURS[record.month],
+      hsolKwhPerM2ByOrientation,
+      executionTraceByOrientation,
+      provenance:
+        "MC001-2022 relation 2.39 accepts Hsol from climatic data for vertical orientations and horizontal surfaces; source rows from Mc001/1-2-3/2006 Anexa A.9.6 are integrated over the calendar month."
+    };
+  });
+  return {
+    status: "ready",
+    datasetId: A9_6_HSOL_DATASET_ID,
+    datasetVersion: MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
+    datasetStatus: CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET,
+    sourceDocument: deepClone(MC001_1_2006_SOLAR_IRRADIATION_SOURCE_DOCUMENT),
+    sourceReference:
+      "MC001-2022, 2.7.3 relatia 2.39; Mc001/1-2-3/2006 Anexa A.9.6",
+    localityId: row.localityId,
+    solarStationId: row.solarStationId,
+    climateStationId: row.climateStationId,
+    stationId: row.solarStationId,
+    stationName: row.localityName,
+    sourceLabel: row.sourceLabel,
+    unit: "kWh/m2",
+    valueType: "monthly_solar_irradiation_hsol",
+    temporalResolution: "monthly_total",
+    supportedOrientations: [...A9_6_SUPPORTED_HSOL_ORIENTATION_KEYS],
+    supportedSurfaces: Object.freeze([
+      "vertical north/northEast/east/southEast/south/southWest/west/northWest",
+      "horizontal"
+    ]),
+    excludedSurfaces: Object.freeze([
+      "tilted surfaces other than the vertical and horizontal planes reproduced by A.9.6"
+    ]),
+    preprocessingStatus:
+      "HSOL_SOURCE_BACKED_FOR_A9_6_VERTICAL_HORIZONTAL_ONLY_QSKY_STILL_REQUIRED_FOR_QSOL",
+    monthlyRecords,
+    sourceIrradianceDatasetId: MC001_1_2006_MONTHLY_SOLAR_IRRADIANCE.tableId,
+    sourceIrradianceDatasetVersion: MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION
+  };
+}
 
 function sourceEnvelopeForSolar(table) {
   return {
@@ -377,6 +548,69 @@ export function getRomanianNormativeMonthlySolarIrradiance({ localityId = null, 
   return null;
 }
 
+export function getRomanianNormativeMonthlyHsolFromAnnexA96({
+  localityId = null,
+  stationId = null,
+  orientation = null
+} = {}) {
+  const source = getRomanianNormativeMonthlySolarIrradiance({ localityId, stationId });
+  if (!source) {
+    return {
+      status: "blocked",
+      code: "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
+      datasetId: A9_6_HSOL_DATASET_ID,
+      datasetVersion: MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
+      datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
+      diagnostics: [{
+        code: "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
+        severity: "blocking_for_hsol_lookup"
+      }]
+    };
+  }
+  const resolvedOrientation = orientation === null ? null : normalizeHsolOrientation(orientation);
+  if (orientation !== null && resolvedOrientation === null) {
+    return {
+      status: "blocked",
+      code: "A9_6_HSOL_ORIENTATION_NOT_SOURCE_BACKED",
+      datasetId: A9_6_HSOL_DATASET_ID,
+      datasetVersion: MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
+      datasetStatus: CLIMATE_DATASET_STATUSES.DATASET_UNAVAILABLE,
+      diagnostics: [{
+        code: "A9_6_HSOL_ORIENTATION_NOT_SOURCE_BACKED",
+        severity: "blocking_for_hsol_lookup",
+        supportedOrientations: [...A9_6_SUPPORTED_HSOL_ORIENTATION_KEYS],
+        missingDocument: "SR EN ISO 52010-1",
+        reason:
+          "MC001-2022 points non-tabulated tilt/orientation calculations to SR EN ISO 52010-1; A.9.6 only supplies vertical orientation and horizontal source rows."
+      }]
+    };
+  }
+  const dataset = hsolDataset(SOLAR_BY_LOCALITY.get(source.localityId));
+  if (resolvedOrientation === null) return dataset;
+  const surface = hsolSurfaceFromOrientation(resolvedOrientation);
+  return {
+    ...dataset,
+    orientation: resolvedOrientation,
+    surface,
+    monthlyRecords: dataset.monthlyRecords.map(record => ({
+      month: record.month,
+      monthIndex: record.monthIndex,
+      unit: record.unit,
+      value: record.hsolKwhPerM2ByOrientation[resolvedOrientation],
+      orientation: resolvedOrientation,
+      surface,
+      sourceIrradianceWPerM2:
+        source.monthlyRecords.find(sourceRecord => sourceRecord.month === record.month)
+          ?.totalIrradianceWPerM2?.[resolvedOrientation] ?? null,
+      durationHours: record.durationHours,
+      sourcePdfPage: record.sourcePdfPage,
+      sourceTableIndex: record.sourceTableIndex,
+      executionTrace: record.executionTraceByOrientation[resolvedOrientation],
+      provenance: record.provenance
+    }))
+  };
+}
+
 export function getRomanianNormativeWinterDesignDayTemperature(stationId) {
   return withStationRecord(
     WINTER_DESIGN_DAY_BY_STATION.get(stationId),
@@ -415,7 +649,8 @@ export function getRomanianNormativeClimateDatasetMetadata() {
     datasetVersion: MC001_6_2013_CLIMATE_DATASET_VERSION,
     datasetVersions: {
       mc001_6_2013: MC001_6_2013_CLIMATE_DATASET_VERSION,
-      mc001_1_2006_solar: MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION
+      mc001_1_2006_solar: MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION,
+      mc001_1_2006_hsol: MC001_1_2006_A9_6_HSOL_DATASET_VERSION
     },
     sourceDocument: deepClone(MC001_6_2013_CLIMATE_SOURCE_DOCUMENT),
     sourceDocuments: {
@@ -478,6 +713,12 @@ export function resolveRomanianNormativeClimateSelection({
     stationId: resolvedStationId,
     localityId
   });
+  const monthlyHsolVerticalHorizontal = monthlySolarIrradiation
+    ? getRomanianNormativeMonthlyHsolFromAnnexA96({
+        stationId: resolvedStationId,
+        localityId
+      })
+    : null;
 
   if (!station) {
     diagnostics.push({
@@ -521,11 +762,11 @@ export function resolveRomanianNormativeClimateSelection({
     });
   } else {
     diagnostics.push({
-      code: "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED_FOR_QSOL",
+      code: "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL",
       severity: "blocking_for_source_backed_solar_gain_preprocessing",
       affectedCalculations: ["chapter2_solar_gains", "QHnd/QCnd source-backed solar-gain effect"],
       sourceReference:
-        "A.9.6 supplies W/m2 monthly mean daily irradiance source rows; MC001 relations 2.39 and 2.50 require preprocessed Hsol [kWh/m2] plus Qsky-compatible inputs."
+        "A.9.6 supplies source-backed vertical/horizontal solar rows now exposed as Hsol [kWh/m2]; automatic Chapter 2 Qsol still requires Qsky-compatible inputs and complete solar element inputs."
     });
   }
   diagnostics.push({
@@ -583,6 +824,12 @@ export function resolveRomanianNormativeClimateSelection({
       monthlySolarIrradiation: monthlySolarIrradiation ?? unavailableDataset(
         DATASET_IDS.monthlySolarIrradiation,
         "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
+        "Mc001/1-2-3/2006 Anexa A.9.6",
+        ["chapter2_solar_gains"]
+      ),
+      monthlyHsolVerticalHorizontal: monthlyHsolVerticalHorizontal ?? unavailableDataset(
+        DATASET_IDS.monthlyHsolVerticalHorizontal,
+        "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION",
         "Mc001/1-2-3/2006 Anexa A.9.6",
         ["chapter2_solar_gains"]
       ),

@@ -237,9 +237,13 @@ test("advanced Building DNA can carry source-backed Romanian normative climate p
     true
   );
   assert.equal(
+    advanced.buildingDna.productionClimateProfile.coverage.hasMonthlyHsolVerticalHorizontal,
+    true
+  );
+  assert.equal(
     advanced.buildingDna.productionClimateProfile.boundedFields.some(
-      field => field.parameterId === "source_backed_solar_gains_preprocessing" &&
-        field.missingDocument === "SR EN ISO 52010-1"
+      field => field.parameterId === "source_backed_qsol_qsky_completion" &&
+        field.missingDocument === "SR EN ISO 52010-1 sau sursa explicita pentru Qsky/elemente solare"
     ),
     true
   );
@@ -248,7 +252,11 @@ test("advanced Building DNA can carry source-backed Romanian normative climate p
     false
   );
   assert.equal(
-    advanced.buildingDna.climateProvider.diagnostics.some(item => item.code === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED_FOR_QSOL"),
+    advanced.buildingDna.climateProvider.datasets.monthlyHsolVerticalHorizontal.monthlyRecords[0].hsolKwhPerM2ByOrientation.south,
+    57.0648
+  );
+  assert.equal(
+    advanced.buildingDna.climateProvider.diagnostics.some(item => item.code === "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"),
     true
   );
   const eligibility = new Map(advanced.buildingDna.climateEligibility.map(item => [item.calculationId, item]));
@@ -442,7 +450,7 @@ test("assisted Building DNA resolves source-backed monthly climate by locality w
   );
   assert.equal(
     cluj.buildingDna.warnings.some(
-      item => item.code === "solar_gains_qsol_preprocessing_or_certified_input_required"
+      item => item.code === "solar_gains_qsky_and_complete_solar_element_inputs_required"
     ),
     true
   );
@@ -505,7 +513,7 @@ test("source-backed provider profiles do not enter Chapter 2 with fake zero sola
   );
   assert.deepEqual(
     calculation.diagnostics.blockers[0].missingInputs,
-    ["Qsol", "Qsky", "Hsol"]
+    ["Qsol", "Qsky", "solarElementInputs"]
   );
   assert.equal(calculation.chapter2Input, null);
 });

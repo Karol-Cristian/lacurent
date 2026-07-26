@@ -160,7 +160,7 @@
         "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
         "sourceLocation": "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
         "status": "implemented_temperature_and_a9_6_solar_where_source_locality_is_covered",
-        "runtimeUse": "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; monthly mean daily solar irradiance source rows are source-packed from Mc001/1-2-3/2006 Anexa A.9.6 for the 30 localities reproduced there; source-backed Qsol still requires preprocessed Hsol/Qsky or certified explicit input",
+        "runtimeUse": "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; monthly mean daily solar irradiance source rows are source-packed from Mc001/1-2-3/2006 Anexa A.9.6 for the 30 localities reproduced there; source-backed Hsol is exposed for tabulated vertical/horizontal planes; source-backed Qsol still requires Qsky and complete solar-element inputs or certified explicit input",
         "containsMonthlyClimateInputs": true,
         "implementedArtifacts": [
           "Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities",
@@ -168,10 +168,11 @@
           "Mc001/6-2013 Tabel III.1 winter design-day temperature for 41 localities",
           "Mc001/6-2013 Tabel III.2 winter design-pentad temperature for 41 localities",
           "Mc001/6-2013 Tabel IV.1 summer design-day temperature for 41 localities",
-          "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities"
+          "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities",
+          "P7B source-backed Hsol integration from A.9.6 W/m2 rows to kWh/m2 for tabulated vertical/horizontal planes"
         ],
         "solarArtifact": "Mc001/1-2-3/2006 Anexa A.9.6 monthly mean daily total and diffuse solar irradiance source rows for 30 localities",
-        "solarPreprocessingBoundary": "A.9.6 W/m2 rows are not fed directly into MC001 2.39/2.50 Hsol [kWh/m2] or Qsol; SR EN ISO 52010-1 preprocessing/source-backed Hsol and Qsky-compatible inputs remain required."
+        "solarPreprocessingBoundary": "A.9.6 W/m2 rows are exposed as Hsol [kWh/m2] for tabulated vertical/horizontal planes; Qsol remains bounded by Qsky-compatible inputs, complete solar element inputs, and SR EN ISO 52010-1 for non-tabulated tilted surfaces."
       }
     ],
     "coverage": {
@@ -285,9 +286,9 @@
           "monthly relative humidity: Mc001/6-2013 Tabel II.2",
           "monthly mean daily solar irradiance source rows: Mc001/1-2-3/2006 Anexa A.9.6"
         ],
-        "runtimePreprocessingStatus": "SR_EN_ISO_52010_1_PREPROCESSING_REQUIRED_FOR_SOURCE_BACKED_QSOL",
+        "runtimePreprocessingStatus": "A9_6_VERTICAL_HORIZONTAL_HSOL_SOURCE_BACKED_QSKY_AND_ELEMENT_INPUTS_REQUIRED_FOR_QSOL",
         "missingDatasets": [
-          "preprocessed Hsol;wi;m/Hsol;k;m monthly irradiation in kWh/m2 for MC001 relations 2.39 and 2.50",
+          "non-tabulated tilted-surface Hsol values outside the vertical/horizontal A.9.6 planes",
           "source-backed Qsky inputs where the selected solar-gain path uses MC001 relation 2.54"
         ],
         "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1+mc001_1_2006_annex_a9_6_solar_p5b3_v1",
@@ -400,13 +401,30 @@
         ],
         "eligibleWhen": "selected MC001/6-2013 station/locality has a matching Mc001/1-2-3/2006 Anexa A.9.6 source row",
         "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
-        "currentRuntimeUse": "source-backed provider/notebook/report dataset only; not a direct Qsol runtime input"
+        "currentRuntimeUse": "source-backed provider/notebook/report dataset plus vertical/horizontal Hsol source rows; not a direct Qsol runtime input"
+      },
+      {
+        "calculationId": "chapter2_hsol_vertical_horizontal",
+        "label": "Chapter 2 Hsol from A.9.6 vertical/horizontal climate rows",
+        "requires": [
+          "monthlySolarIrradianceSourceRows",
+          "monthDurations"
+        ],
+        "outputDomains": [
+          "Hsol",
+          "notebook_report_solar_source_rows"
+        ],
+        "eligibleWhen": "selected MC001/6-2013 station/locality has A.9.6 rows and the surface orientation is one of the vertical/horizontal planes reproduced by A.9.6",
+        "missingDiagnostic": "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION",
+        "currentRuntimeUse": "source-backed Hsol lookup/integration for explicit solar-element inputs; automatic Qsol still requires Qsky and full element inputs"
       },
       {
         "calculationId": "chapter2_solar_gains",
         "label": "Chapter 2 solar gains",
         "requires": [
-          "preprocessedSolarIrradiationHsolOrExplicitSolarGains"
+          "sourceBackedHsolOrExplicitSolarGains",
+          "Qsky",
+          "solarElementInputs"
         ],
         "outputDomains": [
           "Qsol",
@@ -415,8 +433,8 @@
           "QHnd",
           "QCnd"
         ],
-        "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
-        "missingDiagnostic": "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+        "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or source-backed Hsol plus Qsky-compatible inputs and complete solar element data are present",
+        "missingDiagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
       },
       {
         "calculationId": "cooling_ventilation_design_conditions",
@@ -486,7 +504,7 @@
       {
         "dependencyId": "mc001_1_2006_annex_a9_6_monthly_solar_irradiation",
         "datasetName": "Mc001/1-2-3/2006 Anexa A.9.6 monthly mean daily solar irradiance for 30 localities",
-        "runtimePurpose": "canonical source rows for monthly total/diffuse solar irradiance; not a direct replacement for preprocessed Hsol/Qsky inputs",
+        "runtimePurpose": "canonical source rows for monthly total/diffuse solar irradiance and source-backed Hsol for vertical/horizontal A.9.6 planes; not a direct replacement for Qsol/Qsky inputs",
         "mc001Section": "Mc001/6-2013 Capitolul II.3, referenced by MC001-2022 Anexa D climate-parameter chain",
         "requiredResolution": "monthly solar irradiation for 30 localities with the orientations/planes reproduced by Anexa nr. A9.6",
         "exactExternalDocument": "Metodologia de calcul al performantei energetice a cladirilor, Mc001/1-2-3/2006, Anexa A.9.6",
@@ -506,20 +524,20 @@
         "acquisitionStatus": "official MDLPA source downloaded, rendered and extracted; immutable source pack records 30 locality tables, 3960 cells and cell-level QA",
         "calculationsAffected": [
           "monthly solar irradiation source traceability",
-          "future source-backed Hsol preprocessing",
-          "transparent solar gains only after preprocessing/input boundary is satisfied",
-          "opaque solar gains only after preprocessing/input boundary is satisfied",
+          "source-backed Hsol for vertical/horizontal A.9.6 planes",
+          "transparent solar gains only after Qsky and element input boundaries are satisfied",
+          "opaque solar gains only after Qsky and element input boundaries are satisfied",
           "cooling and heating demand only after Qsol is available"
         ],
         "prohibitedSubstitute": "Do not substitute weather-site irradiation, GIS estimates or synthetic orientation tables for Anexa nr. A9.6.",
-        "remediationAction": "No acquisition action remains for A.9.6. Do not feed A.9.6 W/m2 source rows directly into Chapter 2 Qsol; source-backed runtime solar gains still require preprocessed Hsol [kWh/m2] and Qsky inputs from the delegated preprocessing/source contract."
+        "remediationAction": "No acquisition action remains for A.9.6 vertical/horizontal Hsol. Do not feed A.9.6 source rows directly into Chapter 2 Qsol; source-backed runtime solar gains still require Qsky-compatible inputs and complete element/shading/glazing inputs."
       },
       {
         "dependencyId": "sr_en_iso_52010_1_climate_preprocessing",
         "datasetName": "SR EN ISO 52010-1 climate data preprocessing rules",
         "runtimePurpose": "preprocessing rules for external climatic data used by EPB calculations",
         "mc001Section": "MC001-2022 Tabel 1.3 row 13 and Anexa D final paragraph",
-        "requiredResolution": "algorithmic preprocessing standard, not a Romanian station-value dataset; required before A.9.6 W/m2 rows can become source-backed Hsol [kWh/m2] runtime inputs",
+        "requiredResolution": "algorithmic preprocessing standard, not a Romanian station-value dataset; required for non-tabulated tilted-surface Hsol and external climate-processing rules not reproduced by MC001",
         "exactExternalDocument": "SR EN ISO 52010-1, Performanta energetica a cladirilor. Conditii climatice exterioare. Partea 1",
         "edition": "edition not bundled in repository",
         "clauseTableAnnex": "M1-13 preprocessing rules; exact clauses require owned standard",
@@ -530,7 +548,7 @@
         "calculationsAffected": [
           "preprocessed representative climate datasets",
           "conversion/quality rules for climate sequences",
-          "conversion or validation of A.9.6 mean daily W/m2 rows into monthly Hsol [kWh/m2] where selected by the runtime",
+          "non-tabulated tilted-surface Hsol generation outside the vertical/horizontal A.9.6 planes",
           "source-backed transparent and opaque solar gains in MC001 relations 2.39 and 2.50",
           "source-backed QHnd/QCnd effect of solar gains"
         ],
@@ -596,7 +614,7 @@
       {
         "designation": "SR EN ISO 52010-1",
         "edition": "not bundled",
-        "expectedDataset": "preprocessing rules for climate data, including the legally source-backed bridge from A.9.6 W/m2 source rows to Hsol [kWh/m2] when used by MC001 2.39/2.50",
+        "expectedDataset": "preprocessing rules for climate data not reproduced by MC001, including non-tabulated tilted-surface Hsol generation outside the vertical/horizontal A.9.6 planes",
         "affectedMc001Calculations": [
           "validated preprocessing of external climate sequences before use in monthly/hourly EPB calculations",
           "source-backed transparent solar gains relation 2.39",
@@ -2840,18 +2858,29 @@
             "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION"
           },
           {
+            "calculationId": "chapter2_hsol_vertical_horizontal",
+            "requires": [
+              "monthlySolarIrradianceSourceRows",
+              "monthDurations"
+            ],
+            "eligibleWhen": "selected MC001/6-2013 station/locality has A.9.6 rows and the surface orientation is one of the vertical/horizontal planes reproduced by A.9.6",
+            "missingDiagnostic": "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION"
+          },
+          {
             "calculationId": "chapter2_solar_gains",
             "requires": [
-              "preprocessedSolarIrradiationHsolOrExplicitSolarGains"
+              "sourceBackedHsolOrExplicitSolarGains",
+              "Qsky",
+              "solarElementInputs"
             ],
-            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
-            "missingDiagnostic": "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or source-backed Hsol plus Qsky-compatible inputs and complete solar element data are present",
+            "missingDiagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
           }
         ],
         "exactDiagnostics": [
           "ROMANIAN_CLIMATE_STATION_SELECTION_REQUIRED",
           "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
-          "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+          "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
         ],
         "externalSourceDependencies": [
           "sr_en_iso_52010_1_climate_preprocessing"
@@ -2928,18 +2957,29 @@
             "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION"
           },
           {
+            "calculationId": "chapter2_hsol_vertical_horizontal",
+            "requires": [
+              "monthlySolarIrradianceSourceRows",
+              "monthDurations"
+            ],
+            "eligibleWhen": "selected MC001/6-2013 station/locality has A.9.6 rows and the surface orientation is one of the vertical/horizontal planes reproduced by A.9.6",
+            "missingDiagnostic": "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION"
+          },
+          {
             "calculationId": "chapter2_solar_gains",
             "requires": [
-              "preprocessedSolarIrradiationHsolOrExplicitSolarGains"
+              "sourceBackedHsolOrExplicitSolarGains",
+              "Qsky",
+              "solarElementInputs"
             ],
-            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
-            "missingDiagnostic": "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or source-backed Hsol plus Qsky-compatible inputs and complete solar element data are present",
+            "missingDiagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
           }
         ],
         "exactDiagnostics": [
           "ROMANIAN_CLIMATE_STATION_SELECTION_REQUIRED",
           "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
-          "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+          "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
         ],
         "externalSourceDependencies": [
           "sr_en_iso_52010_1_climate_preprocessing"
@@ -3016,18 +3056,29 @@
             "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION"
           },
           {
+            "calculationId": "chapter2_hsol_vertical_horizontal",
+            "requires": [
+              "monthlySolarIrradianceSourceRows",
+              "monthDurations"
+            ],
+            "eligibleWhen": "selected MC001/6-2013 station/locality has A.9.6 rows and the surface orientation is one of the vertical/horizontal planes reproduced by A.9.6",
+            "missingDiagnostic": "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION"
+          },
+          {
             "calculationId": "chapter2_solar_gains",
             "requires": [
-              "preprocessedSolarIrradiationHsolOrExplicitSolarGains"
+              "sourceBackedHsolOrExplicitSolarGains",
+              "Qsky",
+              "solarElementInputs"
             ],
-            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
-            "missingDiagnostic": "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or source-backed Hsol plus Qsky-compatible inputs and complete solar element data are present",
+            "missingDiagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
           }
         ],
         "exactDiagnostics": [
           "ROMANIAN_CLIMATE_STATION_SELECTION_REQUIRED",
           "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
-          "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+          "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
         ],
         "externalSourceDependencies": [
           "sr_en_iso_52010_1_climate_preprocessing"
@@ -3105,18 +3156,29 @@
             "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION"
           },
           {
+            "calculationId": "chapter2_hsol_vertical_horizontal",
+            "requires": [
+              "monthlySolarIrradianceSourceRows",
+              "monthDurations"
+            ],
+            "eligibleWhen": "selected MC001/6-2013 station/locality has A.9.6 rows and the surface orientation is one of the vertical/horizontal planes reproduced by A.9.6",
+            "missingDiagnostic": "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION"
+          },
+          {
             "calculationId": "chapter2_solar_gains",
             "requires": [
-              "preprocessedSolarIrradiationHsolOrExplicitSolarGains"
+              "sourceBackedHsolOrExplicitSolarGains",
+              "Qsky",
+              "solarElementInputs"
             ],
-            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
-            "missingDiagnostic": "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+            "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or source-backed Hsol plus Qsky-compatible inputs and complete solar element data are present",
+            "missingDiagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
           }
         ],
         "exactDiagnostics": [
           "ROMANIAN_CLIMATE_STATION_SELECTION_REQUIRED",
           "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
-          "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+          "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
         ],
         "externalSourceDependencies": [
           "sr_en_iso_52010_1_climate_preprocessing"

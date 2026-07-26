@@ -1601,6 +1601,8 @@ function compactClimateSection(buildingDna, monthly) {
     climateProvider?.datasets?.monthlyRelativeHumidity?.monthlyRecords ?? [];
   const providerMonthlySolar =
     climateProvider?.datasets?.monthlySolarIrradiation?.monthlyRecords ?? [];
+  const providerMonthlyHsol =
+    climateProvider?.datasets?.monthlyHsolVerticalHorizontal?.monthlyRecords ?? [];
   const providerTemperatureText = providerMonthlyTemperature
     .map(record => `${monthLabel(record.month)} ${formatNotebookValue(record.value, record.unit, 2)}`)
     .join("; ");
@@ -1617,6 +1619,16 @@ function compactClimateSection(buildingDna, monthly) {
         `I_T,N ${formatNotebookValue(total.north, record.unit, 1)}, ` +
         `I_T,oriz ${formatNotebookValue(total.horizontal, record.unit, 1)}, ` +
         `I_d,oriz ${formatNotebookValue(diffuse.horizontal, record.unit, 1)}`;
+    })
+    .join(" | ");
+  const providerHsolText = providerMonthlyHsol
+    .map(record => {
+      const values = record.hsolKwhPerM2ByOrientation ?? {};
+      return `${monthLabel(record.month)} Hsol,S ${formatNotebookValue(values.south, record.unit, 4)}, ` +
+        `Hsol,E ${formatNotebookValue(values.east, record.unit, 4)}, ` +
+        `Hsol,V ${formatNotebookValue(values.west, record.unit, 4)}, ` +
+        `Hsol,N ${formatNotebookValue(values.north, record.unit, 4)}, ` +
+        `Hsol,oriz ${formatNotebookValue(values.horizontal, record.unit, 4)}`;
     })
     .join(" | ");
   const winterDesignTemperature = buildingDna.climateZoneRequirements?.winterDesignTemperature ?? null;
@@ -1749,6 +1761,39 @@ function compactClimateSection(buildingDna, monthly) {
           climateProvider.datasets?.monthlySolarIrradiation?.diagnostic?.sourceReference ??
           "Mc001/1-2006 Anexa nr. A9.6",
         kind: providerMonthlySolar.length > 0 ? "lookup" : "diagnostic"
+      }),
+      compactLine({
+        lineId: "climate.provider.hsol",
+        text: providerMonthlyHsol.length > 0
+          ? `Hsol_A9_6_vertical_orizontal := ${providerHsolText}`
+          : "Hsol_A9_6_vertical_orizontal := indisponibil pentru statia selectata",
+        variables: providerMonthlyHsol.length > 0
+          ? providerMonthlyHsol.flatMap(record => ([
+              {
+                symbol: `Hsol_S_${record.month}`,
+                value: record.hsolKwhPerM2ByOrientation?.south,
+                unit: record.unit,
+                meaning: `Hsol pe verticala sud ${monthLabel(record.month)}`
+              },
+              {
+                symbol: `Hsol_oriz_${record.month}`,
+                value: record.hsolKwhPerM2ByOrientation?.horizontal,
+                unit: record.unit,
+                meaning: `Hsol pe plan orizontal ${monthLabel(record.month)}`
+              }
+            ]))
+          : [
+              {
+                symbol: "Hsol_A9_6_vertical_orizontal",
+                value: null,
+                unit: "kWh/m2",
+                meaning: "Hsol din A.9.6 pentru planuri verticale/orizontale"
+              }
+            ],
+        reference:
+          climateProvider.datasets?.monthlyHsolVerticalHorizontal?.sourceReference ??
+          "MC001-2022, 2.7.3; Mc001/1-2-3/2006 Anexa A.9.6",
+        kind: providerMonthlyHsol.length > 0 ? "lookup" : "diagnostic"
       })
     ] : []),
     ...(productionClimateProfile ? [
@@ -2077,6 +2122,8 @@ function climateRows(buildingDna, monthly) {
     climateProvider?.datasets?.monthlyRelativeHumidity?.monthlyRecords ?? [];
   const providerMonthlySolar =
     climateProvider?.datasets?.monthlySolarIrradiation?.monthlyRecords ?? [];
+  const providerMonthlyHsol =
+    climateProvider?.datasets?.monthlyHsolVerticalHorizontal?.monthlyRecords ?? [];
   const solarFactor = buildingDna.climateZoneRequirements?.solarFactor?.recommendation ?? null;
   const nzebLimit = buildingDna.climateZoneRequirements?.nzebLimit?.limit ?? null;
   const renovationLimit = buildingDna.climateZoneRequirements?.renovationLimit?.limit ?? null;
@@ -2148,10 +2195,38 @@ function climateRows(buildingDna, monthly) {
           "indisponibila"
       },
       {
-        label: "Status preprocesare Qsol",
+        label: "Hsol lunar A.9.6 pentru verticale/orizontal",
+        value: providerMonthlyHsol.length > 0
+          ? providerMonthlyHsol
+              .map(record =>
+                `${monthLabel(record.month)} Hsol,S ${formatNotebookValue(record.hsolKwhPerM2ByOrientation?.south, record.unit, 4)}, ` +
+                `Hsol,E ${formatNotebookValue(record.hsolKwhPerM2ByOrientation?.east, record.unit, 4)}, ` +
+                `Hsol,V ${formatNotebookValue(record.hsolKwhPerM2ByOrientation?.west, record.unit, 4)}, ` +
+                `Hsol,N ${formatNotebookValue(record.hsolKwhPerM2ByOrientation?.north, record.unit, 4)}, ` +
+                `Hsol,oriz ${formatNotebookValue(record.hsolKwhPerM2ByOrientation?.horizontal, record.unit, 4)}`
+              )
+              .join("; ")
+          : climateProvider.datasets?.monthlyHsolVerticalHorizontal?.diagnostic?.sourceReference ??
+            "indisponibil fara Mc001/1-2-3/2006 Anexa A.9.6"
+      },
+      {
+        label: "Sursa Hsol A.9.6",
+        value:
+          climateProvider.datasets?.monthlyHsolVerticalHorizontal?.sourceReference ??
+          climateProvider.datasets?.monthlyHsolVerticalHorizontal?.diagnostic?.sourceReference ??
+          "neselectata"
+      },
+      {
+        label: "Versiune dataset Hsol",
+        value:
+          climateProvider.datasets?.monthlyHsolVerticalHorizontal?.datasetVersion ??
+          "indisponibila"
+      },
+      {
+        label: "Status completare Qsol/Qsky",
         value: climateProvider.diagnostics?.find(
-          item => item.code === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED_FOR_QSOL"
-        )?.sourceReference ?? "Hsol/Qsky preprocesate sau input certificat disponibile"
+          item => item.code === "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"
+        )?.sourceReference ?? "Qsol/Qsky disponibile prin inputuri complete sau certificate"
       }
     ] : []),
     ...climateProfileFieldRows(productionClimateProfile),
