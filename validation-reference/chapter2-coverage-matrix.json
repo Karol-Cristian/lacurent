@@ -1,0 +1,3582 @@
+{
+  "schema": "p7c_chapter2_coverage_matrix_v1",
+  "baseCommit": "b710fdecca3c0a62bee7b3e2c83a07ca8624078d",
+  "generatedBy": "tools/generate-chapter2-coverage-matrix.mjs",
+  "sourceBasis": {
+    "officialPdfCoveragePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+    "officialPdfPageRange": {
+      "firstPage": 41,
+      "lastPage": 126,
+      "totalPages": 86
+    },
+    "p7aMapping": "validation-reference/p7a-chapter2-ui-runtime-mapping.json",
+    "p7aMappingFieldCount": 10,
+    "p7cPostP7BMappingFieldCount": 11,
+    "p7bSolarAudit": "validation-reference/p7b-solar-preprocessing-audit.json",
+    "extractionDocs": [
+      "docs/mc001-extraction/01_geometry_envelope_definitions.md",
+      "docs/mc001-extraction/02_materials_lambda_R_U.md",
+      "docs/mc001-extraction/03_thermal_bridges.md",
+      "docs/mc001-extraction/05_transmission_heat_transfer.md",
+      "docs/mc001-extraction/06_ventilation_and_infiltration.md",
+      "docs/mc001-extraction/07_monthly_heating_cooling_demand.md",
+      "docs/mc001-extraction/08_internal_and_solar_gains.md",
+      "docs/mc001-extraction/17_climate_annex.md"
+    ]
+  },
+  "summary": {
+    "officialRelationSlots": 87,
+    "formulaBearingRelationSlots": 85,
+    "formulaStatusCounts": {
+      "COMPLETE": 52,
+      "PARTIAL": 14,
+      "BOUNDED": 0,
+      "NOT_IMPLEMENTED": 19
+    },
+    "completeFormulaCoveragePercent": 61.2,
+    "completeOrPartialFormulaCoveragePercent": 77.6,
+    "tablesTracked": 21,
+    "tableStatusCounts": {
+      "COMPLETE": 14,
+      "PARTIAL": 1,
+      "BOUNDED": 6,
+      "NOT_IMPLEMENTED": 0
+    },
+    "figuresTracked": 21,
+    "figureStatusCounts": {
+      "COMPLETE": 9,
+      "PARTIAL": 1,
+      "BOUNDED": 11,
+      "NOT_IMPLEMENTED": 0
+    }
+  },
+  "baselineValidation": {
+    "note": "Executed from the clean P7C worktree before audit artifact changes.",
+    "commands": [
+      {
+        "command": "git diff --check",
+        "result": "PASS"
+      },
+      {
+        "command": "node --check on 344 JS/MJS files excluding node_modules/.git/dist",
+        "result": "PASS"
+      },
+      {
+        "command": "all src/building-platform/tests/*.mjs",
+        "result": "PASS",
+        "note": "14 files"
+      },
+      {
+        "command": "all workers/tests/*.mjs",
+        "result": "PASS",
+        "note": "3 files"
+      },
+      {
+        "command": "all src/physics-engine/tests/*.test.mjs",
+        "result": "PASS",
+        "note": "75 files"
+      },
+      {
+        "command": "npm.cmd run test:physics",
+        "result": "PASS"
+      },
+      {
+        "command": "npm.cmd run test:mc001",
+        "result": "PASS",
+        "note": "46 passed, 0 failures"
+      },
+      {
+        "command": "npm.cmd run test:p3v",
+        "result": "PASS"
+      },
+      {
+        "command": "node tests/physics-source-of-truth-parity.mjs",
+        "result": "PASS"
+      },
+      {
+        "command": "node tests/physics-reference-registries.mjs",
+        "result": "PASS"
+      },
+      {
+        "command": "node tests/smoke.mjs",
+        "result": "PASS",
+        "note": "local static server on 127.0.0.1:4173"
+      },
+      {
+        "command": "npm.cmd run build",
+        "result": "PASS"
+      },
+      {
+        "command": "npm.cmd run deploy:dev:dry-run",
+        "result": "PASS"
+      }
+    ]
+  },
+  "formulas": [
+    {
+      "id": "MC001_RELATION_2_1",
+      "formulaIdentifier": "2.1",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Envelope area and heated/useful volume definitions",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/building-platform/buildingChapter2Adapter.mjs",
+      "tests": [
+        "src/building-platform/tests/buildingInputPropagationAudit.test.mjs"
+      ],
+      "executionTraceSupport": "represented_as_input_provenance",
+      "reportSupport": "geometry/report metadata",
+      "productionEligibility": "represented_as_explicit_geometry_input",
+      "limitation": "Relation 2.1 envelope/volume definitions are represented as explicit Building DNA geometry; no independent measured-geometry workflow is implemented."
+    },
+    {
+      "id": "MC001_RELATION_2_2",
+      "formulaIdentifier": "2.2",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.2",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "numbering_gap_absent_from_owned_source"
+      },
+      "classification": "numbering_gap_not_a_formula",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "classified_only",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_3",
+      "formulaIdentifier": "2.3",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Corrected design thermal conductivity",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/materialsUValues.mjs",
+      "tests": [
+        "src/physics-engine/tests/materialsUValues.test.mjs",
+        "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "materials/layers notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_4",
+      "formulaIdentifier": "2.4",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.4",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Classified by the R20 source audit as outside the current QHnd/QCnd runtime: latent/free-temperature indicator not part of production useful-demand output."
+    },
+    {
+      "id": "MC001_RELATION_2_5",
+      "formulaIdentifier": "2.5",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.5",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "numbering_gap_absent_from_owned_source"
+      },
+      "classification": "numbering_gap_not_a_formula",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "classified_only",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_6",
+      "formulaIdentifier": "2.6",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Total thermal resistance",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/materialsUValues.mjs",
+      "tests": [
+        "src/physics-engine/tests/materialsUValues.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "R total notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_7",
+      "formulaIdentifier": "2.7",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Thermal transmittance from total resistance",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/materialsUValues.mjs",
+      "tests": [
+        "src/physics-engine/tests/materialsUValues.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "U-value notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_8",
+      "formulaIdentifier": "2.8",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.8",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001EnvelopePhysicsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001EnvelopePhysicsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "transparent element thermal resistance/U reporting",
+      "productionEligibility": "production_ready_with_explicit_window_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_9",
+      "formulaIdentifier": "2.9",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.9",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001EnvelopePhysicsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001EnvelopePhysicsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "special element thermal resistance/U reporting",
+      "productionEligibility": "production_ready_with_explicit_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_10",
+      "formulaIdentifier": "2.10",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.10",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001EnvelopePhysicsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001EnvelopePhysicsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "thermal transmittance correction reporting",
+      "productionEligibility": "production_ready_with_explicit_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_11",
+      "formulaIdentifier": "2.11",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Direct transmission including bridge terms",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/transmissionCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/transmissionCoefficients.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "envelope transmission notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_12",
+      "formulaIdentifier": "2.12",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Direct transmission with corrected U values",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/transmissionCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/transmissionCoefficients.test.mjs",
+        "src/physics-engine/tests/validation/fixture004TransmissionLossTotals.validation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "envelope transmission notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_13",
+      "formulaIdentifier": "2.13",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Linear thermal bridge coefficient",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/transmissionCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/transmissionCoefficients.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "thermal bridge notebook",
+      "productionEligibility": "production_ready_with_explicit_bridge_geometry",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_14",
+      "formulaIdentifier": "2.14",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Transmission heat flow",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001TransmissionFormulaCalculations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001TransmissionFormulaCalculations.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "monthly transmission notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_15",
+      "formulaIdentifier": "2.15",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Total transmission coefficient Htr",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/transmissionCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/transmissionCoefficients.test.mjs",
+        "src/physics-engine/tests/mc001HtrTotalCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "Htr notebook/report",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_16",
+      "formulaIdentifier": "2.16",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.16",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+    },
+    {
+      "id": "MC001_RELATION_2_17",
+      "formulaIdentifier": "2.17",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.17",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+    },
+    {
+      "id": "MC001_RELATION_2_18",
+      "formulaIdentifier": "2.18",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.18",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+    },
+    {
+      "id": "MC001_RELATION_2_19",
+      "formulaIdentifier": "2.19",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "MC001-2022 relation 2.19",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+    },
+    {
+      "id": "MC001_RELATION_2_20",
+      "formulaIdentifier": "2.20",
+      "chapter": "2",
+      "section": "2.1-2.5",
+      "title": "Weighted ventilation/infiltration lookup aggregation",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001VentilationInfiltrationTable2_14.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001VentilationInfiltrationTable2_14.test.mjs"
+      ],
+      "executionTraceSupport": "lookup_result_metadata",
+      "reportSupport": "ventilation source trace",
+      "productionEligibility": "production_ready_for_table_2_14_lookup_paths",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_21",
+      "formulaIdentifier": "2.21",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Monthly unconditioned-zone temperature",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001BztuDirectInputGate.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001BztuDirectInputGate.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "unconditioned-zone boundary diagnostics",
+      "productionEligibility": "production_ready_with_explicit_bztu_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_22",
+      "formulaIdentifier": "2.22",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Unconditioned-zone correction factor",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001BztuDirectInputGate.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001BztuDirectInputGate.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "unconditioned-zone boundary diagnostics",
+      "productionEligibility": "production_ready_with_explicit_bztu_balance_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_23",
+      "formulaIdentifier": "2.23",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Unconditioned-zone total heat transfer",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001BztuDirectInputGate.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001BztuDirectInputGate.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "unconditioned-zone boundary diagnostics",
+      "productionEligibility": "production_ready_with_explicit_bztu_balance_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_24",
+      "formulaIdentifier": "2.24",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Unconditioned-zone exterior heat transfer",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001BztuDirectInputGate.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001BztuDirectInputGate.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "unconditioned-zone boundary diagnostics",
+      "productionEligibility": "production_ready_with_explicit_cztu_ve_or_source_backed_factor",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_25",
+      "formulaIdentifier": "2.25",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.25",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001TransmissionFormulaCalculations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001TransmissionFormulaCalculations.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "boundary correction diagnostics",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Detailed delegated ground-contact methods are not reproduced by MC001 Chapter 2; runtime accepts explicit source-backed factors."
+    },
+    {
+      "id": "MC001_RELATION_2_26",
+      "formulaIdentifier": "2.26",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.26",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001TransmissionFormulaCalculations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001TransmissionFormulaCalculations.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "boundary correction diagnostics",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Detailed delegated adjacent/ground correction paths are represented through explicit source-backed factors."
+    },
+    {
+      "id": "MC001_RELATION_2_27",
+      "formulaIdentifier": "2.27",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Global transmission excluding ground",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001TransmissionFormulaCalculations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001TransmissionFormulaCalculations.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "monthly Htr notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_28",
+      "formulaIdentifier": "2.28",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Thermal bridge global coefficient",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001TransmissionFormulaCalculations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001TransmissionFormulaCalculations.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "thermal bridge notebook",
+      "productionEligibility": "production_ready_with_explicit_bridge_geometry",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_29",
+      "formulaIdentifier": "2.29",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Monthly ventilation transfer",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/ventilationCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/ventilationCoefficients.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "monthly ventilation notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_30",
+      "formulaIdentifier": "2.30",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Ventilation heat-transfer coefficient",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/ventilationCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/ventilationCoefficients.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "ventilation coefficient notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_31",
+      "formulaIdentifier": "2.31",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Ventilation temperature correction factor",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/ventilationCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/ventilationCoefficients.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "ventilation correction diagnostics",
+      "productionEligibility": "production_ready_with_explicit_temperatures",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_32",
+      "formulaIdentifier": "2.32",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Unconditioned-zone ventilation correction factor",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/ventilationCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/ventilationCoefficients.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "ventilation correction diagnostics",
+      "productionEligibility": "production_ready_with_explicit_temperatures",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_33",
+      "formulaIdentifier": "2.33",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Total monthly internal plus solar gains",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "monthly gains notebook",
+      "productionEligibility": "production_ready_when_Qint_and_Qsol_are_available",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_34",
+      "formulaIdentifier": "2.34",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Adjacent unconditioned-zone internal gains",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "adjacent-zone gains trace",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Adjacent unconditioned-zone gains require explicit bztu/distribution/reduction inputs; no hidden defaults are used."
+    },
+    {
+      "id": "MC001_RELATION_2_35",
+      "formulaIdentifier": "2.35",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Direct internal gains from source components",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+        "src/physics-engine/tests/mc001InternalGainsTable2_15.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "internal gains notebook",
+      "productionEligibility": "partial_source_backed_table_2_15_or_explicit_inputs",
+      "limitation": "Default internal-gain components outside encoded Table 2.15/explicit inputs remain explicit-input boundaries."
+    },
+    {
+      "id": "MC001_RELATION_2_36",
+      "formulaIdentifier": "2.36",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Single-zone monthly solar gains",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "solar gains notebook when eligible",
+      "productionEligibility": "explicit_monthly_Qsol_or_source_backed_Hsol_with_Qsky_and_complete_solar_element_inputs",
+      "limitation": "P7B provides source-backed A.9.6 Hsol for tabulated vertical/horizontal planes; automatic Qsol still requires Qsky-compatible inputs and complete solar element inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_37",
+      "formulaIdentifier": "2.37",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Adjacent unconditioned-zone solar gains",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "adjacent-zone solar gains trace",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Adjacent unconditioned-zone solar distribution/reduction factors must be explicit or source-backed."
+    },
+    {
+      "id": "MC001_RELATION_2_38",
+      "formulaIdentifier": "2.38",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Direct solar gains from transparent and opaque components",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "solar gains notebook when eligible",
+      "productionEligibility": "explicit_monthly_Qsol_or_source_backed_Hsol_with_Qsky_and_complete_solar_element_inputs",
+      "limitation": "Direct solar gains require source-backed transparent/opaque component inputs; P7B supplies Hsol but not Qsky or full element data."
+    },
+    {
+      "id": "MC001_RELATION_2_39",
+      "formulaIdentifier": "2.39",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Transparent-element solar gains",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "transparent solar notebook when eligible",
+      "productionEligibility": "source_backed_A9_6_vertical_horizontal_Hsol_available_Qsky_and_element_inputs_required",
+      "limitation": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete transparent-element inputs remain required before automatic Qsol can be claimed."
+    },
+    {
+      "id": "MC001_RELATION_2_40",
+      "formulaIdentifier": "2.40",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Effective glazing solar transmittance",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001SolarTransmissionTable2_13.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarTransmissionTable2_13.test.mjs"
+      ],
+      "executionTraceSupport": "lookup_result_metadata",
+      "reportSupport": "transparent solar input provenance",
+      "productionEligibility": "production_ready_for_table_2_13_lookup_paths",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_41",
+      "formulaIdentifier": "2.41",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.41",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_42",
+      "formulaIdentifier": "2.42",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.42",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_43",
+      "formulaIdentifier": "2.43",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.43",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_44",
+      "formulaIdentifier": "2.44",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.44",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_45",
+      "formulaIdentifier": "2.45",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.45",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_46",
+      "formulaIdentifier": "2.46",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.46",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_47",
+      "formulaIdentifier": "2.47",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.47",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_48",
+      "formulaIdentifier": "2.48",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.48",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_49",
+      "formulaIdentifier": "2.49",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "MC001-2022 relation 2.49",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_50",
+      "formulaIdentifier": "2.50",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Opaque-element solar gains",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "opaque solar notebook when eligible",
+      "productionEligibility": "source_backed_A9_6_vertical_horizontal_Hsol_available_Qsky_and_element_inputs_required",
+      "limitation": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete opaque-element inputs remain required before automatic Qsol can be claimed."
+    },
+    {
+      "id": "MC001_RELATION_2_51",
+      "formulaIdentifier": "2.51",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Single adjacent-zone gain reduction",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "adjacent-zone gain trace",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Requires explicit/source-backed adjacent-zone reduction inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_52",
+      "formulaIdentifier": "2.52",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Multiple adjacent-zone gain reduction",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "adjacent-zone gain trace",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Requires explicit/source-backed adjacent-zone reduction inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_53",
+      "formulaIdentifier": "2.53",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Unconditioned-zone internal gain reduction",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "adjacent-zone internal gain trace",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Requires explicit/source-backed adjacent-zone internal gain inputs."
+    },
+    {
+      "id": "MC001_RELATION_2_54",
+      "formulaIdentifier": "2.54",
+      "chapter": "2",
+      "section": "2.6-2.7",
+      "title": "Sky radiation correction",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "sky-radiation trace when eligible",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Qsky may be supplied explicitly; automatic source-backed sky-radiation preprocessing remains a bounded dependency."
+    },
+    {
+      "id": "MC001_RELATION_2_55",
+      "formulaIdentifier": "2.55",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "Heating utilization exponent aH",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingGainUtilizationFactorCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingGainUtilizationFactorCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "heating utilization notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_56",
+      "formulaIdentifier": "2.56",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "Cooling utilization exponent aC",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001CoolingHeatTransferUtilizationFactorCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001CoolingHeatTransferUtilizationFactorCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "cooling utilization notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_57",
+      "formulaIdentifier": "2.57",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "Heating time constant tauH",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingGainUtilizationFactorCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingGainUtilizationFactorCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "heating time-constant notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_58",
+      "formulaIdentifier": "2.58",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "Cooling time constant tauC",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001CoolingHeatTransferUtilizationFactorCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001CoolingHeatTransferUtilizationFactorCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "cooling time-constant notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_59",
+      "formulaIdentifier": "2.59",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.59",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_60",
+      "formulaIdentifier": "2.60",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.60",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_61",
+      "formulaIdentifier": "2.61",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.61",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_62",
+      "formulaIdentifier": "2.62",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.62",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_63",
+      "formulaIdentifier": "2.63",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.63",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_64",
+      "formulaIdentifier": "2.64",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.64",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_65",
+      "formulaIdentifier": "2.65",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.65",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_66",
+      "formulaIdentifier": "2.66",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.66",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_67",
+      "formulaIdentifier": "2.67",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.67",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_68",
+      "formulaIdentifier": "2.68",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.68",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_69",
+      "formulaIdentifier": "2.69",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.69",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_70",
+      "formulaIdentifier": "2.70",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.70",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_71",
+      "formulaIdentifier": "2.71",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.71",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_72",
+      "formulaIdentifier": "2.72",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.72",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_73",
+      "formulaIdentifier": "2.73",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.73",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted heating branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_74",
+      "formulaIdentifier": "2.74",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.74",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001CoolingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001CoolingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted cooling branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_75",
+      "formulaIdentifier": "2.75",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "MC001-2022 relation 2.75",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001CoolingIntermittencyCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001CoolingIntermittencyCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "restricted cooling branch notebook",
+      "productionEligibility": "production_ready_for_restricted_intermitency_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_76",
+      "formulaIdentifier": "2.76",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "Long-unoccupied heating interpolation",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001RestrictedHeatingQhndCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "heating long-unoccupied branch notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_77",
+      "formulaIdentifier": "2.77",
+      "chapter": "2",
+      "section": "2.8",
+      "title": "Long-unoccupied cooling interpolation",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001CoolingUsefulDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001CoolingUsefulDemandCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "cooling long-unoccupied branch notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_78",
+      "formulaIdentifier": "2.78",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "MC001-2022 relation 2.78",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+    },
+    {
+      "id": "MC001_RELATION_2_79",
+      "formulaIdentifier": "2.79",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "MC001-2022 relation 2.79",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+    },
+    {
+      "id": "MC001_RELATION_2_80",
+      "formulaIdentifier": "2.80",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "MC001-2022 relation 2.80",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+    },
+    {
+      "id": "MC001_RELATION_2_81",
+      "formulaIdentifier": "2.81",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "MC001-2022 relation 2.81",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+    },
+    {
+      "id": "MC001_RELATION_2_82",
+      "formulaIdentifier": "2.82",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "Monthly humidification latent demand",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001LatentDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001LatentDemandCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "latent humidification notebook/report",
+      "productionEligibility": "production_ready_with_explicit_humidity_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_83",
+      "formulaIdentifier": "2.83",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "Monthly dehumidification latent demand",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001LatentDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001LatentDemandCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "latent dehumidification notebook/report",
+      "productionEligibility": "production_ready_with_explicit_humidity_inputs",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_84",
+      "formulaIdentifier": "2.84",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "Annual heating useful-demand sum",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2UsefulDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "annual heating notebook/report",
+      "productionEligibility": "production_ready_when_12_months_are_complete",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_85",
+      "formulaIdentifier": "2.85",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "Annual cooling useful-demand sum",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2UsefulDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "annual cooling notebook/report",
+      "productionEligibility": "production_ready_when_12_months_are_complete",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_86",
+      "formulaIdentifier": "2.86",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "Annual latent demand sum",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001LatentDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001LatentDemandCalculation.test.mjs"
+      ],
+      "executionTraceSupport": "formula_result_metadata",
+      "reportSupport": "annual latent notebook/report",
+      "productionEligibility": "production_ready_when_12_months_are_complete",
+      "limitation": null
+    },
+    {
+      "id": "MC001_RELATION_2_87",
+      "formulaIdentifier": "2.87",
+      "chapter": "2",
+      "section": "2.9-2.12",
+      "title": "MC001-2022 relation 2.87",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null,
+        "sourceStatus": "classified_from_owned_source"
+      },
+      "classification": "owned_formula_or_procedure_not_integrated",
+      "status": "NOT_IMPLEMENTED",
+      "implementationFile": null,
+      "tests": [],
+      "executionTraceSupport": "none",
+      "reportSupport": "none",
+      "productionEligibility": "not_available",
+      "limitation": "Heating-period duration relation is not production-integrated; current runtime uses explicit 12 calendar months and annual sums 2.84/2.85/2.86."
+    }
+  ],
+  "tables": [
+    {
+      "id": "MC001_TABLE_2_1",
+      "tableIdentifier": "2.1",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.1",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "input_definition_table",
+      "status": "BOUNDED",
+      "implementationFile": "src/building-platform/buildingChapter2Adapter.mjs",
+      "tests": [
+        "src/building-platform/tests/buildingInputPropagationAudit.test.mjs"
+      ],
+      "reportSupport": "geometry report section",
+      "productionEligibility": "represented_as_explicit_project_geometry",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_2",
+      "tableIdentifier": "2.2",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.2",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001Table2_2MaterialCorrectionCoefficients.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Table2_2MaterialCorrectionCoefficients.test.mjs"
+      ],
+      "reportSupport": "materials/layers notebook",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_3",
+      "tableIdentifier": "2.3",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.3",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "external_example_or_appendix_table",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [
+        "src/physics-engine/tests/validation/fixture002EnvelopeBridges.validation.test.mjs"
+      ],
+      "reportSupport": "explicit bridge provenance only",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "Table 2.3 bridge values are source-inspected but missing numeric L2D context; runtime uses explicit/source-backed bridge inputs."
+    },
+    {
+      "id": "MC001_TABLE_2_4",
+      "tableIdentifier": "2.4",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.4",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "external_example_or_appendix_table",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [
+        "src/physics-engine/tests/validation/fixture001Envelope.validation.test.mjs"
+      ],
+      "reportSupport": "explicit envelope provenance only",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_5",
+      "tableIdentifier": "2.5",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.5",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "climate_zone_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/climate-platform/romanianClimateZones.mjs",
+      "tests": [
+        "src/climate-platform/tests/romanianClimateProfiles.test.mjs"
+      ],
+      "reportSupport": "climate requirements appendix",
+      "productionEligibility": "production_ready_with_climate_zone",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_6",
+      "tableIdentifier": "2.6",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.6",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "requirement_or_context_table",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not a current calculator output",
+      "productionEligibility": "classified_not_current_runtime_dependency",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_7",
+      "tableIdentifier": "2.7",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.7",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "requirement_or_context_table",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not a current calculator output",
+      "productionEligibility": "classified_not_current_runtime_dependency",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_8",
+      "tableIdentifier": "2.8",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.8",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "climate_zone_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/climate-platform/romanianClimateZones.mjs",
+      "tests": [
+        "src/climate-platform/tests/romanianClimateProfiles.test.mjs"
+      ],
+      "reportSupport": "climate requirements appendix",
+      "productionEligibility": "production_ready_with_climate_zone",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_9",
+      "tableIdentifier": "2.9",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.9",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "requirement_or_context_table",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not a current calculator output",
+      "productionEligibility": "classified_not_current_runtime_dependency",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_10",
+      "tableIdentifier": "2.10",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.10",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "climate_zone_threshold_table",
+      "status": "PARTIAL",
+      "implementationFile": "src/climate-platform/romanianClimateZones.mjs",
+      "tests": [
+        "src/climate-platform/tests/romanianClimateProfiles.test.mjs"
+      ],
+      "reportSupport": "climate requirements appendix",
+      "productionEligibility": "lookup_ready; primary_energy_CO2_certificate_outputs_are_outside_current_chapter_2_runtime",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_11",
+      "tableIdentifier": "2.11",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.11",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001SurfaceResistanceTables.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SurfaceResistanceTables.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_12",
+      "tableIdentifier": "2.12",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.12",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001SurfaceResistanceTables.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SurfaceResistanceTables.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_13",
+      "tableIdentifier": "2.13",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.13",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001SolarTransmissionTable2_13.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarTransmissionTable2_13.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_14",
+      "tableIdentifier": "2.14",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.14",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001VentilationInfiltrationTable2_14.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001VentilationInfiltrationTable2_14.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_15",
+      "tableIdentifier": "2.15",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.15",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001InternalGainsTable2_15.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001InternalGainsTable2_15.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_16",
+      "tableIdentifier": "2.16",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.16",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001SolarShadingTables.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarShadingTables.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_17",
+      "tableIdentifier": "2.17",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.17",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001SolarShadingTables.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarShadingTables.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_18",
+      "tableIdentifier": "2.18",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.18",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001SolarShadingTables.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001SolarShadingTables.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_19",
+      "tableIdentifier": "2.19",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.19",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001EffectiveInternalHeatCapacityTables.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001EffectiveInternalHeatCapacityTables.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_20",
+      "tableIdentifier": "2.20",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.20",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001EffectiveInternalHeatCapacityTables.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001EffectiveInternalHeatCapacityTables.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    },
+    {
+      "id": "MC001_TABLE_2_21",
+      "tableIdentifier": "2.21",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 table 2.21",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "normative_lookup_table",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/datasets/mc001HumidificationTable2_21.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HumidificationTable2_21.test.mjs"
+      ],
+      "reportSupport": "lookup provenance where consumed",
+      "productionEligibility": "production_ready_when_consumed",
+      "limitation": null
+    }
+  ],
+  "figures": [
+    {
+      "id": "MC001_FIGURE_2_1",
+      "figureIdentifier": "2.1",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.1",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "climate_zone_map",
+      "status": "PARTIAL",
+      "implementationFile": "src/climate-platform/romanianClimateZones.mjs",
+      "tests": [
+        "src/climate-platform/tests/romanianClimateProfiles.test.mjs"
+      ],
+      "reportSupport": "climate section",
+      "productionEligibility": "zone identifiers and design-temperature legend implemented; automatic locality-zone map remains external",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_2",
+      "figureIdentifier": "2.2",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.2",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_3",
+      "figureIdentifier": "2.3",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.3",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_4",
+      "figureIdentifier": "2.4",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.4",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_5",
+      "figureIdentifier": "2.5",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.5",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_6",
+      "figureIdentifier": "2.6",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.6",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_7",
+      "figureIdentifier": "2.7",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.7",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_8",
+      "figureIdentifier": "2.8",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.8",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "adjacent_zone_distribution_logic",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+      ],
+      "reportSupport": "adjacent-zone gain trace",
+      "productionEligibility": "explicit_input_boundary",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_9",
+      "figureIdentifier": "2.9",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.9",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_10",
+      "figureIdentifier": "2.10",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.10",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "monthly_total_heat_transfer",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2UsefulDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
+      ],
+      "reportSupport": "monthly heat transfer notebook",
+      "productionEligibility": "production_ready",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_11",
+      "figureIdentifier": "2.11",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.11",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "monthly_transmission_transfer",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/monthlyTransmissionTransfer.mjs",
+      "tests": [
+        "src/physics-engine/tests/monthlyTransmissionTransfer.test.mjs"
+      ],
+      "reportSupport": "monthly transmission notebook",
+      "productionEligibility": "production_ready",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_12",
+      "figureIdentifier": "2.12",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.12",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "element_transmission_components",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HuComponentTermCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HuComponentTermCalculation.test.mjs"
+      ],
+      "reportSupport": "envelope component notebook",
+      "productionEligibility": "production_ready_with_explicit_boundary_inputs",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_13",
+      "figureIdentifier": "2.13",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.13",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "monthly_total_gains",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+      ],
+      "reportSupport": "monthly gains notebook",
+      "productionEligibility": "production_ready_when_internal_and_solar_gains_available",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_14",
+      "figureIdentifier": "2.14",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.14",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "heating_gain_utilization_branch",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001HeatingGainUtilizationFactorCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001HeatingGainUtilizationFactorCalculation.test.mjs"
+      ],
+      "reportSupport": "executed branch trace",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_FIGURE_2_15",
+      "figureIdentifier": "2.15",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.15",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "cooling_heat_transfer_utilization_branch",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001CoolingHeatTransferUtilizationFactorCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001CoolingHeatTransferUtilizationFactorCalculation.test.mjs"
+      ],
+      "reportSupport": "executed branch trace",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_FIGURE_2_16",
+      "figureIdentifier": "2.16",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.16",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_17",
+      "figureIdentifier": "2.17",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.17",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_18",
+      "figureIdentifier": "2.18",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.18",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "monthly_heating_useful_demand_branch",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001RestrictedHeatingQhndCalculation.test.mjs"
+      ],
+      "reportSupport": "executed branch trace",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_FIGURE_2_19",
+      "figureIdentifier": "2.19",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.19",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "monthly_cooling_useful_demand_branch",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001CoolingUsefulDemandCalculation.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001CoolingUsefulDemandCalculation.test.mjs"
+      ],
+      "reportSupport": "executed branch trace",
+      "productionEligibility": "production_ready",
+      "limitation": null
+    },
+    {
+      "id": "MC001_FIGURE_2_20",
+      "figureIdentifier": "2.20",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.20",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    },
+    {
+      "id": "MC001_FIGURE_2_21",
+      "figureIdentifier": "2.21",
+      "chapter": "2",
+      "section": "Chapter 2",
+      "title": "MC001-2022 figure 2.21",
+      "source": {
+        "authority": "MC001-2022 official local PDF",
+        "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
+        "page": null
+      },
+      "classification": "explanatory_or_context_figure",
+      "status": "BOUNDED",
+      "implementationFile": null,
+      "tests": [],
+      "reportSupport": "not directly reportable",
+      "productionEligibility": "context_only",
+      "limitation": "figure_classified_as_normative_context_not_formula_runtime"
+    }
+  ],
+  "climate": {
+    "productionLocalityCount": 42,
+    "solarSourceLocalityCount": 30,
+    "climateZonesImplemented": 5,
+    "windZonesImplemented": 4,
+    "p7aFieldMapping": [
+      {
+        "field": "locality",
+        "uiSource": "pages/analiza-casa.html locality selector via js/building-platform-wizard.mjs",
+        "buildingDnaPath": "building.location.localityId, building.location.localityName",
+        "providerPath": "climateProvider.selection.localityId, climateProvider.selection.stationId",
+        "runtimeInputPath": "not passed directly; resolves monthly profiles before runtime",
+        "reportPath": "report.chapters[amplasare_si_clima].rows Localitate/Statie",
+        "status": "connected"
+      },
+      {
+        "field": "climateZone",
+        "uiSource": "auto-resolved from locality when available, manual selector when mapping is absent",
+        "buildingDnaPath": "climate.climateZone, building.location.climateZone",
+        "providerPath": "climateProvider.selection.climateZone",
+        "runtimeInputPath": "climateZoneRequirements and diagnostics; not a monthly profile substitute",
+        "reportPath": "report.chapters[amplasare_si_clima].rows Zona climatica MC001",
+        "status": "connected"
+      },
+      {
+        "field": "windZone",
+        "uiSource": "auto/manual location climate section",
+        "buildingDnaPath": "climate.windZone, building.location.windZone",
+        "providerPath": "climateProvider.selection.windZone",
+        "runtimeInputPath": "Chapter 2 diagnostics only until a formula requires wind parameters",
+        "reportPath": "report.chapters[amplasare_si_clima].rows Zona eoliana",
+        "status": "connected"
+      },
+      {
+        "field": "monthlyExteriorTemperature",
+        "uiSource": "resolved by selected locality/station",
+        "buildingDnaPath": "monthlyProfiles[*].transmission.heating.outdoorTemperature.amount; monthlyProfiles[*].transmission.cooling.outdoorTemperature.amount",
+        "providerPath": "climateProvider.datasets.monthlyExteriorTemperature.monthlyRecords[*].value",
+        "runtimeInputPath": "chapter2Input.monthlyCases[*].transmission.{heating,cooling}.outdoorTemperature.amount",
+        "reportPath": "monthly[*].heatingOutdoorTemperatureC, monthly[*].coolingOutdoorTemperatureC",
+        "status": "connected"
+      },
+      {
+        "field": "monthlyDurationHours",
+        "uiSource": "calendar month lookup",
+        "buildingDnaPath": "monthlyProfiles[*].transmission.heating.duration.amount",
+        "providerPath": "calendar constants, not climate provider",
+        "runtimeInputPath": "chapter2Input.monthlyCases[*].transmission.duration.amount and ventilation.duration.amount",
+        "reportPath": "monthly[*].durationHours",
+        "status": "connected"
+      },
+      {
+        "field": "internalGains",
+        "uiSource": "building type and useful floor area",
+        "buildingDnaPath": "monthlyProfiles[*].heatGains.internalGains.amount",
+        "providerPath": "MC001 Table 2.15 lookup in Building DNA resolver",
+        "runtimeInputPath": "chapter2Input.monthlyCases[*].heatGains.internalGains",
+        "reportPath": "monthly[*].internalGainsKwh",
+        "status": "connected"
+      },
+      {
+        "field": "solarGains",
+        "uiSource": "explicit monthly Qsol profile, or future source-backed Hsol plus Qsky and complete solar element inputs",
+        "buildingDnaPath": "monthlyProfiles[*].heatGains.solarGains.amount and solarGainsSource",
+        "providerPath": "climateProvider.datasets.monthlySolarIrradiation and climateProvider.datasets.monthlyHsolVerticalHorizontal",
+        "runtimeInputPath": "chapter2Input.monthlyCases[*].heatGains.solarGains only when explicit/preprocessed Qsol is present; Hsol remains climate-provider input until Qsol can be completed",
+        "reportPath": "monthly[*].solarGainsKwh plus climate appendix Hsol rows",
+        "status": "hsol_connected_qsol_qsky_bounded",
+        "diagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
+        "availableInputs": [
+          "Hsol_vertical_horizontal_A9_6"
+        ],
+        "missingInputs": [
+          "Qsol",
+          "Qsky",
+          "solarElementInputs"
+        ]
+      },
+      {
+        "field": "ventilationRate",
+        "uiSource": "ventilation ACH and heated volume inputs where provided",
+        "buildingDnaPath": "monthlyProfiles[*].ventilation.{heating,cooling}.airFlowRate.amount",
+        "providerPath": "not provider-resolved",
+        "runtimeInputPath": "chapter2Input.monthlyCases[*].ventilation.{heating,cooling}.components",
+        "reportPath": "monthly[*].ventilationAirFlowRateM3PerS",
+        "status": "connected"
+      },
+      {
+        "field": "transmissionCoefficients",
+        "uiSource": "envelope geometry, assemblies and thermal bridges",
+        "buildingDnaPath": "envelopeElements, assemblies, thermalBridges",
+        "providerPath": "material catalogue/provider only for material properties",
+        "runtimeInputPath": "envelopeTransmissionResult consumed by Chapter 2 useful demand",
+        "reportPath": "envelope.components, monthly[*].heatingTransmissionKwh",
+        "status": "connected"
+      },
+      {
+        "field": "coolingBranch",
+        "uiSource": "not user editable",
+        "buildingDnaPath": "not persisted; runtime output",
+        "providerPath": "not provider-resolved",
+        "runtimeInputPath": "coolingResult.caseResults[*].executionTrace",
+        "reportPath": "engineeringNotebook.sections[*].lines[*].executionTrace",
+        "status": "connected"
+      },
+      {
+        "field": "monthlyHsolVerticalHorizontal",
+        "uiSource": "resolved by selected locality/station from Mc001/1-2-3/2006 Annex A.9.6",
+        "buildingDnaPath": "climateProvider.datasets.monthlyHsolVerticalHorizontal.monthlyRecords",
+        "providerPath": "climateProvider.datasets.monthlyHsolVerticalHorizontal.monthlyRecords",
+        "runtimeInputPath": "available to solar-gain preprocessing for A.9.6 tabulated vertical/horizontal planes; not a direct Qsol substitute",
+        "reportPath": "climate appendix and engineering notebook Hsol A.9.6 rows",
+        "status": "connected",
+        "diagnostic": null
+      }
+    ],
+    "requirementMatrix": [
+      {
+        "calculationId": "climate_zone_threshold_lookup",
+        "label": "MC001 zone-dependent thresholds and solar-factor recommendations",
+        "requires": [
+          "climateZone"
+        ],
+        "outputDomains": [
+          "solar_factor_recommendation",
+          "nzeb_limit_lookup",
+          "renovation_limit_lookup"
+        ],
+        "eligibleWhen": "valid climate zone I-V is selected",
+        "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+      },
+      {
+        "calculationId": "winter_design_temperature_lookup",
+        "label": "Winter exterior design temperature by climate zone",
+        "requires": [
+          "climateZone"
+        ],
+        "outputDomains": [
+          "heating_design_temperature"
+        ],
+        "eligibleWhen": "valid climate zone I-V is selected",
+        "missingDiagnostic": "CLIMATE_SELECTION_REQUIRED"
+      },
+      {
+        "calculationId": "chapter2_monthly_transmission_ventilation",
+        "label": "Chapter 2 monthly transmission and ventilation transfer",
+        "requires": [
+          "monthlyExteriorTemperatures",
+          "monthDurations"
+        ],
+        "outputDomains": [
+          "Qtr",
+          "Qve",
+          "QHnd",
+          "QCnd"
+        ],
+        "eligibleWhen": "a normative or user-supplied certified twelve-month dataset is present",
+        "missingDiagnostic": "MONTHLY_EXTERIOR_TEMPERATURE_DATASET_REQUIRED"
+      },
+      {
+        "calculationId": "chapter2_solar_source_dataset_identity",
+        "label": "A.9.6 solar source dataset traceability",
+        "requires": [
+          "monthlySolarIrradianceSourceRows"
+        ],
+        "outputDomains": [
+          "climate_dataset_traceability",
+          "notebook_report_solar_source_rows"
+        ],
+        "eligibleWhen": "selected MC001/6-2013 station/locality has a matching Mc001/1-2-3/2006 Anexa A.9.6 source row",
+        "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
+        "currentRuntimeUse": "source-backed provider/notebook/report dataset plus vertical/horizontal Hsol source rows; not a direct Qsol runtime input"
+      },
+      {
+        "calculationId": "chapter2_hsol_vertical_horizontal",
+        "label": "Chapter 2 Hsol from A.9.6 vertical/horizontal climate rows",
+        "requires": [
+          "monthlySolarIrradianceSourceRows",
+          "monthDurations"
+        ],
+        "outputDomains": [
+          "Hsol",
+          "notebook_report_solar_source_rows"
+        ],
+        "eligibleWhen": "selected MC001/6-2013 station/locality has A.9.6 rows and the surface orientation is one of the vertical/horizontal planes reproduced by A.9.6",
+        "missingDiagnostic": "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION",
+        "currentRuntimeUse": "source-backed Hsol lookup/integration for explicit solar-element inputs; automatic Qsol still requires Qsky and full element inputs"
+      },
+      {
+        "calculationId": "chapter2_solar_gains",
+        "label": "Chapter 2 solar gains",
+        "requires": [
+          "sourceBackedHsolOrExplicitSolarGains",
+          "Qsky",
+          "solarElementInputs"
+        ],
+        "outputDomains": [
+          "Qsol",
+          "QHgn",
+          "QCgn",
+          "QHnd",
+          "QCnd"
+        ],
+        "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or source-backed Hsol plus Qsky-compatible inputs and complete solar element data are present",
+        "missingDiagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
+      },
+      {
+        "calculationId": "cooling_ventilation_design_conditions",
+        "label": "Cooling and ventilation design climate",
+        "requires": [
+          "coolingDesignTemperature",
+          "coolingDesignHumidity"
+        ],
+        "outputDomains": [
+          "design_diagnostics"
+        ],
+        "eligibleWhen": "source-backed station/locality design data are present",
+        "missingDiagnostic": "COOLING_VENTILATION_DESIGN_CLIMATE_REQUIRED"
+      },
+      {
+        "calculationId": "degree_day_method",
+        "label": "Degree-day method",
+        "requires": [
+          "degreeDays",
+          "baseTemperature"
+        ],
+        "outputDomains": [
+          "degree_day_result"
+        ],
+        "eligibleWhen": "only if a degree-day calculation path is explicitly selected and sourced",
+        "missingDiagnostic": "DEGREE_DAY_DATA_REQUIRED",
+        "currentRuntimeUse": "not_required_by_current_monthly_chapter2_3_runtime"
+      }
+    ],
+    "solarClimatePipeline": [
+      {
+        "id": "annex_a9_6_monthly_solar_irradiance_source_rows",
+        "status": "COMPLETE",
+        "implementationFile": "src/climate-platform/datasets/mc001_1_2006SolarIrradiationDataset.mjs",
+        "tests": [
+          "src/climate-platform/tests/romanianNormativeClimateProvider.test.mjs",
+          "tests/p7b-solar-preprocessing-audit.mjs"
+        ],
+        "productionPath": "climateProvider.datasets.monthlySolarIrradiation.monthlyRecords",
+        "note": "30 A.9.6 localities expose source-backed monthly total/diffuse irradiance rows."
+      },
+      {
+        "id": "annex_a9_6_monthly_hsol_vertical_horizontal",
+        "status": "COMPLETE",
+        "implementationFile": "src/climate-platform/romanianNormativeClimateProvider.mjs",
+        "tests": [
+          "src/climate-platform/tests/romanianNormativeClimateProvider.test.mjs",
+          "src/building-platform/tests/buildingDnaResolver.test.mjs",
+          "src/building-platform/tests/buildingTechnicalReport.test.mjs",
+          "tests/p7b-solar-preprocessing-audit.mjs"
+        ],
+        "productionPath": "climateProvider.datasets.monthlyHsolVerticalHorizontal.monthlyRecords",
+        "formulaId": "P7B_A9_6_MEAN_DAILY_IRRADIANCE_TO_MONTHLY_HSOL_UNIT_INTEGRATION",
+        "note": "P7B source-backed unit integration: Hsol_m = I_T,A9.6,m * deltaT_m / 1000 for A.9.6 tabulated vertical and horizontal planes."
+      },
+      {
+        "id": "non_tabulated_tilted_surface_hsol",
+        "status": "BOUNDED",
+        "implementationFile": null,
+        "tests": [
+          "src/climate-platform/tests/romanianNormativeClimateProvider.test.mjs"
+        ],
+        "productionPath": null,
+        "missingSource": "SR EN ISO 52010-1 or another owned normative source for non-tabulated tilted-surface preprocessing",
+        "note": "P7B rejects unsupported tilted orientations instead of inferring them."
+      },
+      {
+        "id": "source_backed_qsol_qsky_completion",
+        "status": "BOUNDED",
+        "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+        "tests": [
+          "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs",
+          "src/building-platform/tests/buildingDnaResolver.test.mjs",
+          "src/building-platform/tests/buildingTechnicalReport.test.mjs"
+        ],
+        "productionPath": "Chapter 2 solar gains only when explicit/preprocessed Qsol or Hsol+Qsky+complete solar element inputs exist",
+        "diagnosticCode": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
+        "availableInputs": [
+          "Hsol_vertical_horizontal_A9_6"
+        ],
+        "missingInputs": [
+          "Qsol",
+          "Qsky",
+          "solarElementInputs"
+        ],
+        "note": "The remaining blocker is not Hsol. It is automatic Qsol/Qsky completion for the selected project solar elements."
+      }
+    ],
+    "postP7BProductionDiagnostics": [
+      {
+        "locality": "Bucuresti",
+        "stationId": "mc001_6_2013_bucuresti",
+        "status": "ready_with_bounded_gaps",
+        "sourceBackedHsolResolved": true,
+        "hsolJanuarySouthKwhPerM2": 57.0648,
+        "hsolJulyHorizontalKwhPerM2": 149.3952,
+        "expectedDiagnostics": [
+          "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL",
+          "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
+        ],
+        "note": "Changing the demo locality to Bucuresti resolves Bucuresti-specific A.9.6 Hsol. Any remaining Chapter 2 solar-gain blocker must name Qsol/Qsky/solarElementInputs instead of a broad preprocessing gap."
+      },
+      {
+        "locality": "Cluj-Napoca",
+        "stationId": "mc001_6_2013_cluj_napoca",
+        "status": "ready_with_bounded_gaps",
+        "sourceBackedHsolResolved": true,
+        "hsolJanuarySouthKwhPerM2": 52.9728,
+        "hsolJulyHorizontalKwhPerM2": 172.608,
+        "expectedDiagnostics": [
+          "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL",
+          "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
+        ],
+        "note": "Changing the demo locality to Cluj-Napoca resolves Cluj-specific A.9.6 Hsol. Values differ from Bucuresti, proving the source-backed provider path is locality-sensitive after P7B."
+      }
+    ]
+  },
+  "remainingGaps": [
+    {
+      "id": "MC001_RELATION_2_1",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Relation 2.1 envelope/volume definitions are represented as explicit Building DNA geometry; no independent measured-geometry workflow is implemented.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_4",
+      "category": "Intentional future milestone",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Classified by the R20 source audit as outside the current QHnd/QCnd runtime: latent/free-temperature indicator not part of production useful-demand output.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_16",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_17",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_18",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_19",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_25",
+      "category": "External standard dependency",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Detailed delegated ground-contact methods are not reproduced by MC001 Chapter 2; runtime accepts explicit source-backed factors.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_26",
+      "category": "External standard dependency",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Detailed delegated adjacent/ground correction paths are represented through explicit source-backed factors.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_34",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Adjacent unconditioned-zone gains require explicit bztu/distribution/reduction inputs; no hidden defaults are used.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_35",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Default internal-gain components outside encoded Table 2.15/explicit inputs remain explicit-input boundaries.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_36",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "P7B provides source-backed A.9.6 Hsol for tabulated vertical/horizontal planes; automatic Qsol still requires Qsky-compatible inputs and complete solar element inputs.",
+      "recommendedMilestone": "P7D"
+    },
+    {
+      "id": "MC001_RELATION_2_37",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Adjacent unconditioned-zone solar distribution/reduction factors must be explicit or source-backed.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_38",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Direct solar gains require source-backed transparent/opaque component inputs; P7B supplies Hsol but not Qsky or full element data.",
+      "recommendedMilestone": "P7D"
+    },
+    {
+      "id": "MC001_RELATION_2_39",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete transparent-element inputs remain required before automatic Qsol can be claimed.",
+      "recommendedMilestone": "P7D"
+    },
+    {
+      "id": "MC001_RELATION_2_41",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_42",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_43",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_44",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_45",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_46",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_47",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_48",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_49",
+      "category": "Implementation work",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_50",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete opaque-element inputs remain required before automatic Qsol can be claimed.",
+      "recommendedMilestone": "P7D"
+    },
+    {
+      "id": "MC001_RELATION_2_51",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Requires explicit/source-backed adjacent-zone reduction inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_52",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Requires explicit/source-backed adjacent-zone reduction inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_53",
+      "category": "Implementation work",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Requires explicit/source-backed adjacent-zone internal gain inputs.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_54",
+      "category": "External standard dependency",
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "Qsky may be supplied explicitly; automatic source-backed sky-radiation preprocessing remains a bounded dependency.",
+      "recommendedMilestone": "P7D"
+    },
+    {
+      "id": "MC001_RELATION_2_78",
+      "category": "Intentional future milestone",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_79",
+      "category": "Intentional future milestone",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_80",
+      "category": "Intentional future milestone",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_81",
+      "category": "Intentional future milestone",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "MC001_RELATION_2_87",
+      "category": "Intentional future milestone",
+      "gapClass": "implementation_work",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Heating-period duration relation is not production-integrated; current runtime uses explicit 12 calendar months and annual sums 2.84/2.85/2.86.",
+      "recommendedMilestone": "P7E/P7F"
+    },
+    {
+      "id": "CHAPTER_2_QSOL_QSKY_COMPLETION_BOUNDED",
+      "category": "Implementation work",
+      "gapClass": "missing_Qsol_Qsky_or_solar_element_runtime_inputs",
+      "status": "BOUNDED",
+      "reason": "P7B transforms Annex A.9.6 source rows into production Hsol for tabulated vertical/horizontal planes. Automatic source-backed Qsol still requires Qsky-compatible inputs and complete transparent/opaque solar element inputs.",
+      "diagnosticCode": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
+      "availableInputs": [
+        "Hsol_vertical_horizontal_A9_6"
+      ],
+      "missingInputs": [
+        "Qsol",
+        "Qsky",
+        "solarElementInputs"
+      ],
+      "recommendedMilestone": "P7D"
+    },
+    {
+      "id": "OFFICIAL_LOCALITY_TO_CLIMATE_ZONE_MAPPING",
+      "category": "Missing owned normative source",
+      "gapClass": "missing_owned_normative_dataset",
+      "status": "BOUNDED",
+      "reason": "The owned MC001 material does not include a complete official locality-to-climate-zone map; supported production localities resolve via station-backed climate profiles where available, with explicit diagnostics for unsupported locality mapping.",
+      "recommendedMilestone": "Romanian climate acquisition package"
+    }
+  ],
+  "recommendedMilestoneOrder": [
+    {
+      "milestone": "P7D",
+      "title": "Complete automatic Chapter 2 Qsol/Qsky production path",
+      "scope": [
+        "source-backed Qsky inputs or calculation path",
+        "complete transparent/opaque solar element input contracts",
+        "provider-backed Qsol into relations 2.36-2.39 and 2.50-2.54 after P7B Hsol availability"
+      ],
+      "priority": "highest"
+    },
+    {
+      "milestone": "P7E",
+      "title": "Target relation audit for R20 out-of-runtime Chapter 2 relations",
+      "scope": [
+        "relations 2.4, 2.16-2.19, 2.41-2.49, 2.78-2.81 and 2.87",
+        "decide implementable runtime, reporting-only diagnostic, or external dependency per relation"
+      ],
+      "priority": "high"
+    },
+    {
+      "milestone": "P7F",
+      "title": "Expand default internal-gain and adjacent-zone source contracts",
+      "scope": [
+        "non-residential internal-gain source tables/procedures",
+        "adjacent-zone distribution/reduction source contracts",
+        "production UI for those explicit source-backed inputs"
+      ],
+      "priority": "medium"
+    }
+  ]
+}
