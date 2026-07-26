@@ -157,10 +157,15 @@ assert.equal(monthlyRuntime.requires.includes("concept.month_duration"), true);
 const solarSourceRuntime = runtimeNodes.find(node => node.id === "runtime.chapter2_solar_source_dataset_identity");
 assert.equal(solarSourceRuntime.requires.includes("concept.monthly_solar_irradiation"), true);
 
+const hsolRuntime = runtimeNodes.find(node => node.id === "runtime.chapter2_hsol_vertical_horizontal");
+assert.equal(hsolRuntime.requires.includes("concept.monthly_solar_irradiation"), true);
+assert.equal(hsolRuntime.requires.includes("concept.month_duration"), true);
+
 const solarRuntime = runtimeNodes.find(node => node.id === "runtime.chapter2_solar_gains");
 assert.equal(solarRuntime.requires.includes("concept.preprocessed_solar_irradiation_hsol"), true);
 assert.equal(solarRuntime.requires.includes("concept.sky_radiation_inputs"), true);
 assert.equal(solarRuntime.requires.includes("concept.user_supplied_certified_climate_dataset"), true);
+assert.equal(solarRuntime.requires.includes("concept.solar_element_inputs"), true);
 
 const monthlySolarConcept = concepts.find(concept => concept.id === "concept.monthly_solar_irradiation");
 assert.equal(monthlySolarConcept.datasetStatus, "NORMATIVE_DATASET");
@@ -169,9 +174,9 @@ assert.equal(monthlySolarConcept.tbdId, null);
 assert.equal(tbdIds.includes("tbd.mc001_1_2006_annex_a9_6_monthly_solar_dataset"), false);
 
 const preprocessedSolarConcept = concepts.find(concept => concept.id === "concept.preprocessed_solar_irradiation_hsol");
-assert.equal(preprocessedSolarConcept.datasetStatus, "DATASET_UNAVAILABLE");
-assert.equal(preprocessedSolarConcept.implementationStatus, "EXTERNAL_STANDARD_DEPENDENCY");
-assert.equal(preprocessedSolarConcept.tbdId, "tbd.sr_en_iso_52010_1_climate_preprocessing");
+assert.equal(preprocessedSolarConcept.datasetStatus, "NORMATIVE_DATASET");
+assert.equal(preprocessedSolarConcept.implementationStatus, "LOOKUP_IMPLEMENTED");
+assert.equal(preprocessedSolarConcept.tbdId, null);
 
 assert.equal(
   graph.normativeDependencyGraph.edges.some(edge =>

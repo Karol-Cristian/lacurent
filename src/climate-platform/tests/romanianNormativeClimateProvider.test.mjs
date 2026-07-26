@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   CLIMATE_DATASET_STATUSES,
   CLIMATE_RUNTIME_ELIGIBILITY_STATUSES,
+  MC001_1_2006_A9_6_HSOL_DATASET_VERSION,
   MONTH_IDS,
   evaluateClimateCalculationEligibility,
   findRomanianNormativeStationByLocalityId,
@@ -11,6 +12,7 @@ import {
   getRomanianNormativeClimateDatasetMetadata,
   getRomanianNormativeClimateStation,
   getRomanianNormativeMonthlyExteriorTemperature,
+  getRomanianNormativeMonthlyHsolFromAnnexA96,
   getRomanianNormativeMonthlyRelativeHumidity,
   getRomanianNormativeMonthlySolarIrradiance,
   getRomanianNormativeSummerDesignDayTemperature,
@@ -238,7 +240,27 @@ test("P5B3 climate provider returns exact datasets and source-backed solar irrad
     false
   );
   assert.equal(
-    selection.diagnostics.some(item => item.code === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED_FOR_QSOL"),
+    selection.datasets.monthlyHsolVerticalHorizontal.datasetStatus,
+    CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET
+  );
+  assert.equal(
+    selection.datasets.monthlyHsolVerticalHorizontal.datasetVersion,
+    MC001_1_2006_A9_6_HSOL_DATASET_VERSION
+  );
+  assert.equal(
+    selection.datasets.monthlyHsolVerticalHorizontal.monthlyRecords[0].hsolKwhPerM2ByOrientation.south,
+    57.0648
+  );
+  assert.equal(
+    selection.datasets.monthlyHsolVerticalHorizontal.monthlyRecords[0].hsolKwhPerM2ByOrientation.horizontal,
+    36.9024
+  );
+  assert.equal(
+    selection.datasets.monthlyHsolVerticalHorizontal.monthlyRecords[6].hsolKwhPerM2ByOrientation.horizontal,
+    149.3952
+  );
+  assert.equal(
+    selection.diagnostics.some(item => item.code === "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"),
     true
   );
   assert.equal(
@@ -280,7 +302,65 @@ test("P5B3 climate provider returns exact datasets and source-backed solar irrad
   );
 });
 
-test("P5B3 eligibility uses normative monthly temperature and bounds A.9.6 solar preprocessing", () => {
+test("P7B provider derives source-backed Hsol for A.9.6 vertical and horizontal planes", () => {
+  const hsol = getRomanianNormativeMonthlyHsolFromAnnexA96({
+    localityId: "ro_bucuresti"
+  });
+  assert.equal(hsol.status, "ready");
+  assert.equal(hsol.datasetStatus, CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET);
+  assert.equal(hsol.datasetVersion, MC001_1_2006_A9_6_HSOL_DATASET_VERSION);
+  assert.deepEqual(hsol.supportedOrientations, [
+    "north",
+    "northEast",
+    "east",
+    "southEast",
+    "south",
+    "southWest",
+    "west",
+    "northWest",
+    "horizontal"
+  ]);
+  assert.equal(hsol.monthlyRecords[0].hsolKwhPerM2ByOrientation.south, 57.0648);
+  assert.equal(hsol.monthlyRecords[0].hsolKwhPerM2ByOrientation.horizontal, 36.9024);
+  assert.equal(hsol.monthlyRecords[6].hsolKwhPerM2ByOrientation.horizontal, 149.3952);
+  assert.equal(
+    hsol.monthlyRecords[0].executionTraceByOrientation.south.formulaId,
+    "P7B_A9_6_MEAN_DAILY_IRRADIANCE_TO_MONTHLY_HSOL_UNIT_INTEGRATION"
+  );
+  assert.equal(hsol.monthlyRecords[0].executionTraceByOrientation.south.finalResult, 57.0648);
+  assert.deepEqual(JSON.parse(JSON.stringify(hsol)), hsol);
+
+  const south = getRomanianNormativeMonthlyHsolFromAnnexA96({
+    stationId: "mc001_6_2013_bucuresti",
+    orientation: "S"
+  });
+  assert.equal(south.orientation, "south");
+  assert.equal(south.monthlyRecords[0].sourceIrradianceWPerM2, 76.7);
+  assert.equal(south.monthlyRecords[0].durationHours, 744);
+  assert.equal(south.monthlyRecords[0].value, 57.0648);
+
+  const unsupported = getRomanianNormativeMonthlyHsolFromAnnexA96({
+    localityId: "ro_bucuresti",
+    orientation: "tilt_35"
+  });
+  assert.equal(unsupported.status, "blocked");
+  assert.equal(unsupported.code, "A9_6_HSOL_ORIENTATION_NOT_SOURCE_BACKED");
+  assert.equal(unsupported.diagnostics[0].missingDocument, "SR EN ISO 52010-1");
+
+  for (const locality of listRomanianNormativeSolarIrradiationLocalities()) {
+    const localityHsol = getRomanianNormativeMonthlyHsolFromAnnexA96({
+      localityId: locality.localityId
+    });
+    assert.equal(localityHsol.monthlyRecords.length, 12);
+    for (const record of localityHsol.monthlyRecords) {
+      for (const orientation of localityHsol.supportedOrientations) {
+        assert.equal(Number.isFinite(record.hsolKwhPerM2ByOrientation[orientation]), true);
+      }
+    }
+  }
+});
+
+test("P5B3 eligibility uses normative monthly temperature and bounds Qsol/Qsky completion", () => {
   const selection = resolveRomanianNormativeClimateSelection({
     stationId: "mc001_6_2013_bucuresti",
     climateZone: "II"
@@ -303,6 +383,10 @@ test("P5B3 eligibility uses normative monthly temperature and bounds A.9.6 solar
     CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
   );
   assert.equal(
+    byCalculation.get("chapter2_hsol_vertical_horizontal").status,
+    CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.ELIGIBLE
+  );
+  assert.equal(
     byCalculation.get("chapter2_solar_gains").status,
     CLIMATE_RUNTIME_ELIGIBILITY_STATUSES.SKIPPED_MISSING_PREPROCESSING
   );
@@ -312,7 +396,7 @@ test("P5B3 eligibility uses normative monthly temperature and bounds A.9.6 solar
   );
   assert.equal(
     byCalculation.get("chapter2_solar_gains").diagnostic,
-    "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+    "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
   );
 
   const uncoveredStation = resolveRomanianNormativeClimateSelection({
@@ -341,6 +425,7 @@ test("P5B3 metadata exposes temperature and solar sources, dataset versions and 
   const metadata = getRomanianNormativeClimateDatasetMetadata();
   assert.equal(metadata.datasetVersion, MC001_6_2013_CLIMATE_DATASET_VERSION);
   assert.equal(metadata.datasetVersions.mc001_1_2006_solar, MC001_1_2006_SOLAR_IRRADIATION_DATASET_VERSION);
+  assert.equal(metadata.datasetVersions.mc001_1_2006_hsol, MC001_1_2006_A9_6_HSOL_DATASET_VERSION);
   assert.equal(metadata.stationCount, 42);
   assert.equal(metadata.localityStationMappingCount, 42);
   assert.equal(metadata.solarLocalityCount, 30);
@@ -375,6 +460,7 @@ test("P5C production ClimateProfile resolves all source-backed locality fields a
   assert.equal(profile.coverage.hasMonthlyExteriorTemperature, true);
   assert.equal(profile.coverage.hasMonthlyRelativeHumidity, true);
   assert.equal(profile.coverage.hasMonthlySolarIrradianceSourceRows, true);
+  assert.equal(profile.coverage.hasMonthlyHsolVerticalHorizontal, true);
   assert.equal(profile.coverage.hasWinterDesignDay, true);
   assert.equal(profile.coverage.hasSummerDesignDay, true);
   assert.equal(profile.coverage.hasSourceBackedSolarGainPreprocessing, false);
@@ -384,16 +470,17 @@ test("P5C production ClimateProfile resolves all source-backed locality fields a
   assert.equal(fields.get("monthly_exterior_temperature").value[0].value, -1.2);
   assert.equal(fields.get("monthly_relative_humidity").value[0].value, 87.7);
   assert.equal(fields.get("monthly_solar_irradiance_a9_6").value[0].totalIrradianceWPerM2.horizontal, 49.6);
+  assert.equal(fields.get("monthly_hsol_a9_6_vertical_horizontal").value[0].hsolKwhPerM2ByOrientation.south, 57.0648);
   assert.equal(fields.get("winter_design_day_temperature").value.meanDailyTemperatureC, -12.32);
   assert.equal(fields.get("summer_design_day_temperature").value.meanDailyTemperatureC, 29.56);
 
   const bounded = new Map(profile.boundedFields.map(field => [field.parameterId, field]));
   assert.equal(
-    bounded.get("source_backed_solar_gains_preprocessing").missingDocument,
-    "SR EN ISO 52010-1"
+    bounded.get("source_backed_qsol_qsky_completion").missingDocument,
+    "SR EN ISO 52010-1 sau sursa explicita pentru Qsky/elemente solare"
   );
   assert.equal(
-    profile.diagnostics.some(item => item.code === "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"),
+    profile.diagnostics.some(item => item.code === "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"),
     true
   );
 

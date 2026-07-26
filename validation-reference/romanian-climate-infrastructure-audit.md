@@ -7,9 +7,9 @@ This report is generated from source-pack metadata and provider registries. It d
 - Documents tracked: 6
 - Documents present: 3
 - Documents extracted: 3
-- Datasets tracked: 11
-- Datasets implemented: 10
-- Datasets validated: 10
+- Datasets tracked: 12
+- Datasets implemented: 11
+- Datasets validated: 11
 - MC001/6-2013 station mappings: 42
 - Monthly temperature rows: 42
 - Monthly humidity rows: 42
@@ -40,8 +40,9 @@ This report is generated from source-pack metadata and provider registries. It d
 | mc001_6_2013_winter_design_pentad_temperature | mc001_6_2013 | 41 | yes | heating design climate profile field |
 | mc001_6_2013_summer_design_day_temperature | mc001_6_2013 | 41 | yes | cooling/ventilation design climate profile field |
 | mc001_6_2013_summer_design_pentad_temperature | mc001_6_2013 | 41 | yes | cooling/ventilation design climate profile field |
-| mc001_1_2006_annex_a9_6_monthly_solar_irradiance | mc001_1_2_3_2006_annex_a9_6 | 30 | yes | source-backed solar irradiance identity; Qsol remains bounded by preprocessing dependency |
-| source_backed_qsol_preprocessing | sr_en_iso_52010_1 | 0 | no | blocked source-backed conversion from A.9.6 W/m2 source rows to MC001 Hsol/Qsky inputs |
+| mc001_1_2006_annex_a9_6_monthly_solar_irradiance | mc001_1_2_3_2006_annex_a9_6 | 30 | yes | source-backed solar irradiance identity and Hsol source rows for tabulated vertical/horizontal planes |
+| mc001_1_2006_annex_a9_6_monthly_hsol_vertical_horizontal | mc001_1_2_3_2006_annex_a9_6 | 30 | yes | source-backed Hsol [kWh/m2] for A.9.6 tabulated vertical and horizontal planes |
+| source_backed_qsol_qsky_completion | sr_en_iso_52010_1_or_explicit_qsky_solar_element_source | 0 | no | bounded Qsol completion from source-backed Hsol, Qsky-compatible inputs and complete solar element inputs |
 
 ## Representative Localities
 
@@ -58,7 +59,7 @@ This report is generated from source-pack metadata and provider registries. It d
 
 | Gap | Missing document | Missing clause/table | Blocked runtime calculation |
 | --- | --- | --- | --- |
-| source_backed_solar_gains_preprocessing | SR EN ISO 52010-1 | M1-13 preprocessing clauses/tables required by MC001-2022 Tabel 1.3 and Anexa D | source-backed Qsol from Annex A.9.6 rows, and QHnd/QCnd solar effect from that source-backed Qsol |
+| source_backed_qsol_qsky_completion | SR EN ISO 52010-1 sau sursa explicita pentru Qsky/elemente solare | MC001 relation 2.54 hlr;e;k/Qsky-compatible inputs plus complete glazing/shading/surface inputs; SR EN ISO 52010-1 for non-tabulated tilted Hsol | source-backed Qsol from Annex A.9.6 rows, and QHnd/QCnd solar effect from that source-backed Qsol |
 | automatic_locality_to_climate_zone_assignment | official locality/county to MC001 climate-zone assignment source | map/list behind MC001-2022 Figura 2.1 at locality or county resolution | automatic zone assignment; zone-dependent lookups still run with explicit zone selection |
 | automatic_locality_to_wind_zone_assignment | official locality/county to wind-zone assignment source | wind-zone map/list referenced by MC001 forms | automatic wind-zone assignment; no active Chapter 2/3 formula currently consumes wind zone |
 | degree_day_dataset | degree-day table/source if a degree-day method is selected | locality/station, base temperature and annual/monthly degree-day values | degree-day method only; current production uses monthly MC001 runtime |

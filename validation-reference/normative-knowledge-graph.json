@@ -130,7 +130,7 @@
       "source": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
       "sourceLocation": "MC001-2022, Anexa D, pagina Monitorul Oficial 597; delegates climate parameters to Mc001/6-2013",
       "status": "implemented_temperature_and_a9_6_solar_where_source_locality_is_covered",
-      "runtimeUse": "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; monthly mean daily solar irradiance source rows are source-packed from Mc001/1-2-3/2006 Anexa A.9.6 for the 30 localities reproduced there; source-backed Qsol still requires preprocessed Hsol/Qsky or certified explicit input",
+      "runtimeUse": "monthly exterior temperature is source-packed from Mc001/6-2013 Tabel II.1; monthly mean daily solar irradiance source rows are source-packed from Mc001/1-2-3/2006 Anexa A.9.6 for the 30 localities reproduced there; source-backed Hsol is exposed for tabulated vertical/horizontal planes; source-backed Qsol still requires Qsky and complete solar-element inputs or certified explicit input",
       "containsMonthlyClimateInputs": true,
       "implementedArtifacts": [
         "Mc001/6-2013 Tabel II.1 monthly mean exterior temperature for 42 localities",
@@ -138,10 +138,11 @@
         "Mc001/6-2013 Tabel III.1 winter design-day temperature for 41 localities",
         "Mc001/6-2013 Tabel III.2 winter design-pentad temperature for 41 localities",
         "Mc001/6-2013 Tabel IV.1 summer design-day temperature for 41 localities",
-        "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities"
+        "Mc001/6-2013 Tabel IV.2 summer design-pentad temperature for 41 localities",
+        "P7B source-backed Hsol integration from A.9.6 W/m2 rows to kWh/m2 for tabulated vertical/horizontal planes"
       ],
       "solarArtifact": "Mc001/1-2-3/2006 Anexa A.9.6 monthly mean daily total and diffuse solar irradiance source rows for 30 localities",
-      "solarPreprocessingBoundary": "A.9.6 W/m2 rows are not fed directly into MC001 2.39/2.50 Hsol [kWh/m2] or Qsol; SR EN ISO 52010-1 preprocessing/source-backed Hsol and Qsky-compatible inputs remain required."
+      "solarPreprocessingBoundary": "A.9.6 W/m2 rows are exposed as Hsol [kWh/m2] for tabulated vertical/horizontal planes; Qsol remains bounded by Qsky-compatible inputs, complete solar element inputs, and SR EN ISO 52010-1 for non-tabulated tilted surfaces."
     }
   ],
   "dataDomains": [
@@ -214,9 +215,9 @@
         "monthly relative humidity: Mc001/6-2013 Tabel II.2",
         "monthly mean daily solar irradiance source rows: Mc001/1-2-3/2006 Anexa A.9.6"
       ],
-      "runtimePreprocessingStatus": "SR_EN_ISO_52010_1_PREPROCESSING_REQUIRED_FOR_SOURCE_BACKED_QSOL",
+      "runtimePreprocessingStatus": "A9_6_VERTICAL_HORIZONTAL_HSOL_SOURCE_BACKED_QSKY_AND_ELEMENT_INPUTS_REQUIRED_FOR_QSOL",
       "missingDatasets": [
-        "preprocessed Hsol;wi;m/Hsol;k;m monthly irradiation in kWh/m2 for MC001 relations 2.39 and 2.50",
+        "non-tabulated tilted-surface Hsol values outside the vertical/horizontal A.9.6 planes",
         "source-backed Qsky inputs where the selected solar-gain path uses MC001 relation 2.54"
       ],
       "datasetVersion": "mc001_6_2013_climate_dataset_p5b2_v1+mc001_1_2006_annex_a9_6_solar_p5b3_v1",
@@ -587,11 +588,11 @@
         "id": "concept.monthly_solar_irradiation",
         "canonicalId": "concept.monthly_solar_irradiation",
         "type": "climate_concept",
-        "description": "Monthly mean daily solar irradiance source rows from A.9.6. These rows are source-backed climate data, not direct Qsol or Hsol runtime values.",
+        "description": "Monthly mean daily solar irradiance source rows from A.9.6. These rows are source-backed climate data and the canonical source for tabulated vertical/horizontal Hsol integration, not direct Qsol runtime values.",
         "units": "W/m2",
         "runtimeUsage": [
           "chapter2_solar_source_dataset_identity",
-          "future source-backed solar preprocessing"
+          "chapter2_hsol_vertical_horizontal"
         ],
         "formulas": [],
         "notebookUsage": "Show A.9.6 monthly total vertical/orientation and horizontal irradiance values used by the selected station/locality.",
@@ -616,28 +617,65 @@
         "id": "concept.preprocessed_solar_irradiation_hsol",
         "canonicalId": "concept.preprocessed_solar_irradiation_hsol",
         "type": "climate_concept",
-        "description": "Monthly solar irradiation Hsol;wi;m/Hsol;k;m in kWh/m2 required by MC001 relations 2.39 and 2.50 after applying the delegated preprocessing/source contract to source climate rows.",
+        "description": "Monthly solar irradiation Hsol;wi;m/Hsol;k;m in kWh/m2 required by MC001 relations 2.39 and 2.50. P7B exposes source-backed Hsol for the A.9.6 tabulated vertical and horizontal planes by integrating the monthly mean daily W/m2 source rows over the calendar monthly duration.",
         "units": "kWh/m2",
+        "runtimeUsage": [
+          "chapter2_hsol_vertical_horizontal",
+          "chapter2_solar_gains",
+          "transparent_solar_gains",
+          "opaque_solar_gains"
+        ],
+        "formulas": [
+          "MC001-2022 relatiile 2.39 si 2.50 consume Hsol.",
+          "P7B_A9_6_MEAN_DAILY_IRRADIANCE_TO_MONTHLY_HSOL_UNIT_INTEGRATION: Hsol = I_T,A9.6 * deltaT_m / 1000 for A.9.6 tabulated vertical/horizontal planes."
+        ],
+        "notebookUsage": "Show A.9.6 Hsol values and execution trace for tabulated vertical/horizontal planes; show bounded diagnostics for unsupported tilted surfaces.",
+        "reportUsage": "Report Hsol source, dataset version, monthly values and whether Qsol remains blocked by Qsky/element inputs.",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa A.9.6",
+        "figure": null,
+        "page": "PDF pages 119-129; MC001-2022 relation 2.39 source statement",
+        "sourceLocation": "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_1_2006_annex_a9_6_solar_p5b3_v1_hsol_vertical_horizontal_p7b_v1",
+          "localityCount": 30,
+          "supportedSurfaces": [
+            "vertical N/NE/E/SE/S/SV/V/NV",
+            "horizontal"
+          ]
+        }
+      },
+      {
+        "id": "concept.solar_element_inputs",
+        "canonicalId": "concept.solar_element_inputs",
+        "type": "climate_concept",
+        "description": "MC001 relation 2.39/2.50 solar element inputs: area, glazing solar transmittance, frame factor, shading factor, absorptance, exterior surface resistance and corrected U-value where applicable.",
+        "units": "mixed engineering units",
         "runtimeUsage": [
           "chapter2_solar_gains",
           "transparent_solar_gains",
           "opaque_solar_gains"
         ],
         "formulas": [
-          "MC001-2022 relatiile 2.39 si 2.50 consume Hsol but do not reproduce the preprocessing algorithm."
+          "MC001-2022 relatiile 2.39, 2.40, 2.50 and 2.54 consume these values."
         ],
-        "notebookUsage": "Show only after a source-backed preprocessing chain or certified explicit Hsol input supplies values.",
-        "reportUsage": "Report preprocessing source, dataset version and Hsol values when they are actually used by Qsol.",
-        "canonicalSourceId": "doc.sr_en_iso_52010_1",
-        "sourceDocument": "doc.sr_en_iso_52010_1",
-        "sourceEdition": "not bundled in repository",
-        "table": "M1-13 preprocessing rules; exact clauses require owned standard",
+        "notebookUsage": "Show only when a solar-gain element is supplied explicitly or source-backed by the project model.",
+        "reportUsage": "Report solar element inputs and provenance when they affect Qsol.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
         "figure": null,
-        "page": "MC001-2022 Anexa D delegation",
-        "sourceLocation": "MC001-2022 Tabel 1.3 row 13 and Anexa D reference SR EN ISO 52010-1; no Hsol preprocessing equations are bundled.",
-        "implementationStatus": "EXTERNAL_STANDARD_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.sr_en_iso_52010_1_climate_preprocessing",
+        "page": "MC001-2022 2.7.3",
+        "sourceLocation": null,
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "USER_SUPPLIED_CERTIFIED_DATASET",
+        "tbdId": null,
         "values": null
       },
       {
@@ -944,9 +982,9 @@
         "relation": "defines_lookup"
       },
       {
-        "from": "doc.sr_en_iso_52010_1",
+        "from": "doc.mc001_1_2006_annex_a9_6",
         "to": "concept.preprocessed_solar_irradiation_hsol",
-        "relation": "defines_external_preprocessing_algorithm"
+        "relation": "defines_tabulated_source_rows_for_hsol"
       },
       {
         "from": "doc.mc001_6_2013",
@@ -1197,7 +1235,27 @@
         ],
         "eligibleWhen": "selected MC001/6-2013 station/locality has a matching Mc001/1-2-3/2006 Anexa A.9.6 source row",
         "missingDiagnostic": "MONTHLY_SOLAR_IRRADIATION_NOT_AVAILABLE_FOR_SELECTED_STATION",
-        "currentRuntimeUse": "source-backed provider/notebook/report dataset only; not a direct Qsol runtime input"
+        "currentRuntimeUse": "source-backed provider/notebook/report dataset plus vertical/horizontal Hsol source rows; not a direct Qsol runtime input"
+      },
+      {
+        "id": "runtime.chapter2_hsol_vertical_horizontal",
+        "type": "runtime_calculation",
+        "label": "Chapter 2 Hsol from A.9.6 vertical/horizontal climate rows",
+        "requires": [
+          "concept.monthly_solar_irradiation",
+          "concept.month_duration"
+        ],
+        "requirementKeys": [
+          "monthlySolarIrradianceSourceRows",
+          "monthDurations"
+        ],
+        "outputs": [
+          "Hsol",
+          "notebook_report_solar_source_rows"
+        ],
+        "eligibleWhen": "selected MC001/6-2013 station/locality has A.9.6 rows and the surface orientation is one of the vertical/horizontal planes reproduced by A.9.6",
+        "missingDiagnostic": "MONTHLY_HSOL_VERTICAL_HORIZONTAL_NOT_AVAILABLE_FOR_SELECTED_STATION",
+        "currentRuntimeUse": "source-backed Hsol lookup/integration for explicit solar-element inputs; automatic Qsol still requires Qsky and full element inputs"
       },
       {
         "id": "runtime.chapter2_solar_gains",
@@ -1205,11 +1263,14 @@
         "label": "Chapter 2 solar gains",
         "requires": [
           "concept.preprocessed_solar_irradiation_hsol",
+          "concept.user_supplied_certified_climate_dataset",
           "concept.sky_radiation_inputs",
-          "concept.user_supplied_certified_climate_dataset"
+          "concept.solar_element_inputs"
         ],
         "requirementKeys": [
-          "preprocessedSolarIrradiationHsolOrExplicitSolarGains"
+          "sourceBackedHsolOrExplicitSolarGains",
+          "Qsky",
+          "solarElementInputs"
         ],
         "outputs": [
           "Qsol",
@@ -1218,8 +1279,8 @@
           "QHnd",
           "QCnd"
         ],
-        "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or a future source-backed preprocessing chain supplies Hsol and Qsky-compatible inputs",
-        "missingDiagnostic": "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED",
+        "eligibleWhen": "explicit/preprocessed monthly solar gains are present, or source-backed Hsol plus Qsky-compatible inputs and complete solar element data are present",
+        "missingDiagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
         "currentRuntimeUse": "active_when_inputs_are_available"
       },
       {
@@ -1514,11 +1575,11 @@
         "id": "concept.monthly_solar_irradiation",
         "canonicalId": "concept.monthly_solar_irradiation",
         "type": "climate_concept",
-        "description": "Monthly mean daily solar irradiance source rows from A.9.6. These rows are source-backed climate data, not direct Qsol or Hsol runtime values.",
+        "description": "Monthly mean daily solar irradiance source rows from A.9.6. These rows are source-backed climate data and the canonical source for tabulated vertical/horizontal Hsol integration, not direct Qsol runtime values.",
         "units": "W/m2",
         "runtimeUsage": [
           "chapter2_solar_source_dataset_identity",
-          "future source-backed solar preprocessing"
+          "chapter2_hsol_vertical_horizontal"
         ],
         "formulas": [],
         "notebookUsage": "Show A.9.6 monthly total vertical/orientation and horizontal irradiance values used by the selected station/locality.",
@@ -1543,28 +1604,65 @@
         "id": "concept.preprocessed_solar_irradiation_hsol",
         "canonicalId": "concept.preprocessed_solar_irradiation_hsol",
         "type": "climate_concept",
-        "description": "Monthly solar irradiation Hsol;wi;m/Hsol;k;m in kWh/m2 required by MC001 relations 2.39 and 2.50 after applying the delegated preprocessing/source contract to source climate rows.",
+        "description": "Monthly solar irradiation Hsol;wi;m/Hsol;k;m in kWh/m2 required by MC001 relations 2.39 and 2.50. P7B exposes source-backed Hsol for the A.9.6 tabulated vertical and horizontal planes by integrating the monthly mean daily W/m2 source rows over the calendar monthly duration.",
         "units": "kWh/m2",
+        "runtimeUsage": [
+          "chapter2_hsol_vertical_horizontal",
+          "chapter2_solar_gains",
+          "transparent_solar_gains",
+          "opaque_solar_gains"
+        ],
+        "formulas": [
+          "MC001-2022 relatiile 2.39 si 2.50 consume Hsol.",
+          "P7B_A9_6_MEAN_DAILY_IRRADIANCE_TO_MONTHLY_HSOL_UNIT_INTEGRATION: Hsol = I_T,A9.6 * deltaT_m / 1000 for A.9.6 tabulated vertical/horizontal planes."
+        ],
+        "notebookUsage": "Show A.9.6 Hsol values and execution trace for tabulated vertical/horizontal planes; show bounded diagnostics for unsupported tilted surfaces.",
+        "reportUsage": "Report Hsol source, dataset version, monthly values and whether Qsol remains blocked by Qsky/element inputs.",
+        "canonicalSourceId": "doc.mc001_1_2006_annex_a9_6",
+        "sourceDocument": "doc.mc001_1_2006_annex_a9_6",
+        "sourceEdition": "2006",
+        "table": "Anexa A.9.6",
+        "figure": null,
+        "page": "PDF pages 119-129; MC001-2022 relation 2.39 source statement",
+        "sourceLocation": "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
+        "implementationStatus": "LOOKUP_IMPLEMENTED",
+        "datasetStatus": "NORMATIVE_DATASET",
+        "tbdId": null,
+        "values": {
+          "datasetVersion": "mc001_1_2006_annex_a9_6_solar_p5b3_v1_hsol_vertical_horizontal_p7b_v1",
+          "localityCount": 30,
+          "supportedSurfaces": [
+            "vertical N/NE/E/SE/S/SV/V/NV",
+            "horizontal"
+          ]
+        }
+      },
+      {
+        "id": "concept.solar_element_inputs",
+        "canonicalId": "concept.solar_element_inputs",
+        "type": "climate_concept",
+        "description": "MC001 relation 2.39/2.50 solar element inputs: area, glazing solar transmittance, frame factor, shading factor, absorptance, exterior surface resistance and corrected U-value where applicable.",
+        "units": "mixed engineering units",
         "runtimeUsage": [
           "chapter2_solar_gains",
           "transparent_solar_gains",
           "opaque_solar_gains"
         ],
         "formulas": [
-          "MC001-2022 relatiile 2.39 si 2.50 consume Hsol but do not reproduce the preprocessing algorithm."
+          "MC001-2022 relatiile 2.39, 2.40, 2.50 and 2.54 consume these values."
         ],
-        "notebookUsage": "Show only after a source-backed preprocessing chain or certified explicit Hsol input supplies values.",
-        "reportUsage": "Report preprocessing source, dataset version and Hsol values when they are actually used by Qsol.",
-        "canonicalSourceId": "doc.sr_en_iso_52010_1",
-        "sourceDocument": "doc.sr_en_iso_52010_1",
-        "sourceEdition": "not bundled in repository",
-        "table": "M1-13 preprocessing rules; exact clauses require owned standard",
+        "notebookUsage": "Show only when a solar-gain element is supplied explicitly or source-backed by the project model.",
+        "reportUsage": "Report solar element inputs and provenance when they affect Qsol.",
+        "canonicalSourceId": "doc.mc001_2022",
+        "sourceDocument": "doc.mc001_2022",
+        "sourceEdition": "2022",
+        "table": null,
         "figure": null,
-        "page": "MC001-2022 Anexa D delegation",
-        "sourceLocation": "MC001-2022 Tabel 1.3 row 13 and Anexa D reference SR EN ISO 52010-1; no Hsol preprocessing equations are bundled.",
-        "implementationStatus": "EXTERNAL_STANDARD_DEPENDENCY",
-        "datasetStatus": "DATASET_UNAVAILABLE",
-        "tbdId": "tbd.sr_en_iso_52010_1_climate_preprocessing",
+        "page": "MC001-2022 2.7.3",
+        "sourceLocation": null,
+        "implementationStatus": "REPRESENTED_AS_INPUT",
+        "datasetStatus": "USER_SUPPLIED_CERTIFIED_DATASET",
+        "tbdId": null,
         "values": null
       },
       {
@@ -1827,8 +1925,23 @@
         "relation": "requires_climate_concept"
       },
       {
+        "from": "runtime.chapter2_hsol_vertical_horizontal",
+        "to": "concept.monthly_solar_irradiation",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.chapter2_hsol_vertical_horizontal",
+        "to": "concept.month_duration",
+        "relation": "requires_climate_concept"
+      },
+      {
         "from": "runtime.chapter2_solar_gains",
         "to": "concept.preprocessed_solar_irradiation_hsol",
+        "relation": "requires_climate_concept"
+      },
+      {
+        "from": "runtime.chapter2_solar_gains",
+        "to": "concept.user_supplied_certified_climate_dataset",
         "relation": "requires_climate_concept"
       },
       {
@@ -1838,7 +1951,7 @@
       },
       {
         "from": "runtime.chapter2_solar_gains",
-        "to": "concept.user_supplied_certified_climate_dataset",
+        "to": "concept.solar_element_inputs",
         "relation": "requires_climate_concept"
       },
       {
@@ -1964,17 +2077,16 @@
     },
     {
       "id": "tbd.sr_en_iso_52010_1_climate_preprocessing",
-      "description": "Normative climate-data preprocessing algorithms delegated to SR EN ISO 52010-1, including the bridge from A.9.6 W/m2 source rows to Hsol [kWh/m2] runtime inputs when that source-backed path is selected.",
+      "description": "Normative climate-data preprocessing algorithms delegated to SR EN ISO 52010-1 for climate-processing branches not reproduced by MC001, including non-tabulated tilted-surface Hsol.",
       "blockingDocument": "SR EN ISO 52010-1",
       "requiredEdition": "owned edition referenced by MC001 implementation policy",
       "affectedCalculations": [
-        "A.9.6 W/m2 to Hsol kWh/m2 preprocessing",
+        "non-tabulated tilted-surface Hsol generation",
         "source-backed transparent solar gains relation 2.39",
         "source-backed opaque solar gains relation 2.50",
         "source-backed QHnd/QCnd effect of Qsol"
       ],
       "affectedRuntimeModules": [
-        "future source-pack ingestion pipeline",
         "future Building DNA climate provider to mc001SolarGainsCalculation adapter"
       ],
       "affectedUi": [
@@ -1989,7 +2101,7 @@
       ],
       "affectedTests": [
         "preprocessing golden cases from licensed source",
-        "A.9.6 to Hsol to Qsol to QHnd/QCnd integration tests"
+        "tilted-surface Hsol to Qsol to QHnd/QCnd integration tests"
       ],
       "implementationPriority": "MEDIUM",
       "estimatedImplementationScope": "Implement only after licensed standard is supplied; add algorithm tests and source-to-code coverage."
@@ -2044,7 +2156,7 @@
       "priority": "MEDIUM",
       "designation": "SR EN ISO 52010-1",
       "edition": "not bundled",
-      "whyRequired": "preprocessing rules for climate data, including the legally source-backed bridge from A.9.6 W/m2 source rows to Hsol [kWh/m2] when used by MC001 2.39/2.50",
+      "whyRequired": "preprocessing rules for climate data not reproduced by MC001, including non-tabulated tilted-surface Hsol generation outside the vertical/horizontal A.9.6 planes",
       "runtimeVariablesUnlocked": [
         "monthly temperature",
         "solar irradiation",
@@ -2174,6 +2286,7 @@
       "winter_design_temperature_lookup",
       "chapter2_monthly_transmission_ventilation",
       "chapter2_solar_source_dataset_identity",
+      "chapter2_hsol_vertical_horizontal",
       "chapter2_solar_gains",
       "cooling_ventilation_design_conditions",
       "degree_day_method"

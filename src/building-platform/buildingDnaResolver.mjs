@@ -42,6 +42,7 @@ function compactClimateProviderResult(climateProviderResult) {
   const monthlyHumidity = climateProviderResult.datasets?.monthlyRelativeHumidity ?? null;
   const winterDesign = climateProviderResult.datasets?.winterDesignDayTemperature ?? null;
   const summerDesign = climateProviderResult.datasets?.summerDesignDayTemperature ?? null;
+  const monthlyHsol = climateProviderResult.datasets?.monthlyHsolVerticalHorizontal ?? null;
   return {
     providerVersion: climateProviderResult.providerVersion ?? null,
     datasetVersion: climateProviderResult.datasetVersion ?? null,
@@ -92,6 +93,22 @@ function compactClimateProviderResult(climateProviderResult) {
         meanDailyTemperatureC: summerDesign.meanDailyTemperatureC
       } : null,
       monthlySolarIrradiation: climateProviderResult.datasets?.monthlySolarIrradiation ?? null,
+      monthlyHsolVerticalHorizontal: monthlyHsol ? {
+        datasetId: monthlyHsol.datasetId,
+        datasetVersion: monthlyHsol.datasetVersion,
+        datasetStatus: monthlyHsol.datasetStatus,
+        sourceReference: monthlyHsol.sourceReference,
+        stationId: monthlyHsol.stationId,
+        stationName: monthlyHsol.stationName,
+        solarStationId: monthlyHsol.solarStationId,
+        climateStationId: monthlyHsol.climateStationId,
+        unit: monthlyHsol.unit,
+        valueType: monthlyHsol.valueType,
+        temporalResolution: monthlyHsol.temporalResolution,
+        supportedOrientations: monthlyHsol.supportedOrientations,
+        preprocessingStatus: monthlyHsol.preprocessingStatus,
+        monthlyRecords: monthlyHsol.monthlyRecords
+      } : null,
       degreeDays: climateProviderResult.datasets?.degreeDays ?? null
     },
     diagnostics: climateProviderResult.diagnostics ?? []
@@ -476,7 +493,7 @@ function monthlyProfilesFromProviderClimate(climateProviderResult, source = {}, 
         internalGainsSourcePage: internalGains.sourcePage ?? null,
         solarGainsSource: "provider_climate_profile_without_qsol_preprocessing",
         notes:
-          "Temperaturile lunare sunt rezolvate din providerul climatic normativ. Aporturile interne sunt calculate din Tabelul 2.15 numai cand tipul cladirii si aria utila sunt explicite. Aporturile solare Qsol raman 0 pana cand preprocessing-ul normativ SR EN ISO 52010-1 sau un set certificat explicit furnizeaza Qsol."
+          "Temperaturile lunare sunt rezolvate din providerul climatic normativ. Aporturile interne sunt calculate din Tabelul 2.15 numai cand tipul cladirii si aria utila sunt explicite. Hsol este disponibil din A.9.6 pentru planurile verticale/orizontale tabelate, dar aporturile solare Qsol raman neexecutate pana cand Qsky si inputurile complete ale elementelor solare sunt furnizate sau certificate."
       }
     };
   });
@@ -1205,7 +1222,7 @@ function resolveBuildingDna({
       warning("building_dna_contains_unconfirmed_typology_proposals"),
       ...(calculationMode === "source_backed_romanian_climate_provider" ? [
         warning("source_backed_monthly_temperature_from_climate_provider"),
-        warning("solar_gains_qsol_preprocessing_or_certified_input_required")
+        warning("solar_gains_qsky_and_complete_solar_element_inputs_required")
       ] : []),
       ...(locationClimate?.diagnostics ?? [])
         .filter(item => item.severity !== "blocking")

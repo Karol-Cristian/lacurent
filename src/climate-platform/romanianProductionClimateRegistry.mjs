@@ -117,15 +117,18 @@ function monthlyClimateRecords(provider) {
   const temperature = byMonth(provider.datasets?.monthlyExteriorTemperature?.monthlyRecords ?? []);
   const humidity = byMonth(provider.datasets?.monthlyRelativeHumidity?.monthlyRecords ?? []);
   const solar = byMonth(provider.datasets?.monthlySolarIrradiation?.monthlyRecords ?? []);
+  const hsol = byMonth(provider.datasets?.monthlyHsolVerticalHorizontal?.monthlyRecords ?? []);
   const months = [...new Set([
     ...temperature.keys(),
     ...humidity.keys(),
-    ...solar.keys()
+    ...solar.keys(),
+    ...hsol.keys()
   ])];
   return months.map(month => {
     const temp = temperature.get(month);
     const hum = humidity.get(month);
     const sol = solar.get(month);
+    const hsolRecord = hsol.get(month);
     return {
       month,
       exteriorTemperature: temp ? {
@@ -147,6 +150,15 @@ function monthlyClimateRecords(provider) {
         diffuseIrradianceWPerM2: deepClone(sol.diffuseIrradianceWPerM2),
         sourcePdfPage: sol.sourcePdfPage,
         sourceTableIndex: sol.sourceTableIndex
+      } : null,
+      hsol: hsolRecord ? {
+        valueType: hsolRecord.valueType,
+        unit: hsolRecord.unit,
+        durationHours: hsolRecord.durationHours,
+        hsolKwhPerM2ByOrientation: deepClone(hsolRecord.hsolKwhPerM2ByOrientation),
+        sourcePdfPage: hsolRecord.sourcePdfPage,
+        sourceTableIndex: hsolRecord.sourceTableIndex,
+        provenance: hsolRecord.provenance
       } : null
     };
   });
@@ -247,7 +259,8 @@ function collectFields(provider, { climateZone, windZone } = {}) {
     ["winter_design_pentad_temperature", "Pentada de calcul iarna", datasets.winterDesignPentadTemperature, null, "degC"],
     ["summer_design_day_temperature", "Zi de calcul vara", datasets.summerDesignDayTemperature, null, "degC"],
     ["summer_design_pentad_temperature", "Pentada de calcul vara", datasets.summerDesignPentadTemperature, null, "degC"],
-    ["monthly_solar_irradiance_a9_6", "Iradiere solara medie zilnica lunara A.9.6", datasets.monthlySolarIrradiation, "monthlyRecords", "W/m2"]
+    ["monthly_solar_irradiance_a9_6", "Iradiere solara medie zilnica lunara A.9.6", datasets.monthlySolarIrradiation, "monthlyRecords", "W/m2"],
+    ["monthly_hsol_a9_6_vertical_horizontal", "Hsol lunar A.9.6 pentru verticale si orizontal", datasets.monthlyHsolVerticalHorizontal, "monthlyRecords", "kWh/m2"]
   ]) {
     if (dataset?.datasetStatus === CLIMATE_DATASET_STATUSES.NORMATIVE_DATASET && dataset.status === "ready") {
       fields.push(availableField({
@@ -263,14 +276,14 @@ function collectFields(provider, { climateZone, windZone } = {}) {
 
   bounded.push(
     boundedField({
-      parameterId: "source_backed_solar_gains_preprocessing",
-      label: "Preprocesare A.9.6 -> Hsol/Qsky pentru Qsol",
-      unit: "kWh/m2",
-      missingDocument: "SR EN ISO 52010-1",
-      missingTableOrClause: "M1-13 preprocessing rules; exact clauses require owned standard",
+      parameterId: "source_backed_qsol_qsky_completion",
+      label: "Completare Qsol/Qsky pentru aporturi solare",
+      unit: "kWh",
+      missingDocument: "SR EN ISO 52010-1 sau sursa explicita pentru Qsky/elemente solare",
+      missingTableOrClause: "coeficienti/conditii pentru Qsky si pentru suprafete inclinate netabelate; inputuri complete de element solar",
       blockedRuntimeCalculations: ["source_backed_Qsol", "source_backed_QHnd_QCnd_solar_effect"],
-      reason: "A.9.6 furnizeaza W/m2 valori medii zilnice; MC001 2.39/2.50 consuma Hsol [kWh/m2] si termeni Qsky compatibili.",
-      diagnosticCode: "SOLAR_IRRADIATION_PREPROCESSING_STANDARD_REQUIRED"
+      reason: "Hsol este disponibil din A.9.6 pentru verticale/orizontal, dar Qsol nu poate fi calculat automat fara Qsky si parametrii completi de vitraj/umbrire/suprafata.",
+      diagnosticCode: "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
     }),
     boundedField({
       parameterId: "degree_days",
@@ -379,6 +392,7 @@ export function resolveRomanianProductionClimateProfile({
       hasMonthlyExteriorTemperature: Boolean(provider.datasets?.monthlyExteriorTemperature?.monthlyRecords?.length === 12),
       hasMonthlyRelativeHumidity: Boolean(provider.datasets?.monthlyRelativeHumidity?.monthlyRecords?.length === 12),
       hasMonthlySolarIrradianceSourceRows: Boolean(provider.datasets?.monthlySolarIrradiation?.monthlyRecords?.length === 12),
+      hasMonthlyHsolVerticalHorizontal: Boolean(provider.datasets?.monthlyHsolVerticalHorizontal?.monthlyRecords?.length === 12),
       hasSourceBackedSolarGainPreprocessing: false,
       hasWinterDesignDay: Boolean(provider.datasets?.winterDesignDayTemperature?.status === "ready"),
       hasSummerDesignDay: Boolean(provider.datasets?.summerDesignDayTemperature?.status === "ready")

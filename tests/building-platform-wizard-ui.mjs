@@ -1019,7 +1019,7 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("TEST_ONLY_SYNTHETIC_DATASET"), true);
   assert.equal(html.includes("Calcule eligibile cu zona"), true);
   assert.equal(html.includes("Variabile climatice lipsa"), true);
-  assert.equal(html.includes("iradierea A.9.6 este dataset sursa, iar Qsol necesita Hsol/Qsky preprocesate sau input certificat"), true);
+  assert.equal(html.includes("iradierea A.9.6 furnizeaza Hsol pentru planuri verticale/orizontale, iar Qsol necesita Qsky si inputuri solare complete"), true);
   assert.equal(html.includes("Profil climatic sintetic pentru demonstra"), true);
   assert.equal(html.includes("Încarcă exemplu demonstrativ"), true);
   assert.equal(html.includes("Începe proiect gol"), true);

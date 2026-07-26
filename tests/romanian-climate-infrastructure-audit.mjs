@@ -51,7 +51,8 @@ test("P5C climate infrastructure audit has exact dataset coverage and no generic
     "mc001_6_2013_monthly_relative_humidity",
     "mc001_6_2013_winter_design_day_temperature",
     "mc001_6_2013_summer_design_day_temperature",
-    "mc001_1_2006_annex_a9_6_monthly_solar_irradiance"
+    "mc001_1_2006_annex_a9_6_monthly_solar_irradiance",
+    "mc001_1_2006_annex_a9_6_monthly_hsol_vertical_horizontal"
   ]) {
     assert.equal(coverage.get(id).present, true);
     assert.equal(coverage.get(id).implemented, true);
@@ -59,7 +60,8 @@ test("P5C climate infrastructure audit has exact dataset coverage and no generic
   }
   assert.equal(coverage.get("mc001_6_2013_monthly_exterior_temperature").recordCount, 42);
   assert.equal(coverage.get("mc001_1_2006_annex_a9_6_monthly_solar_irradiance").recordCount, 30);
-  assert.equal(coverage.get("source_backed_qsol_preprocessing").implemented, false);
+  assert.equal(coverage.get("mc001_1_2006_annex_a9_6_monthly_hsol_vertical_horizontal").recordCount, 30);
+  assert.equal(coverage.get("source_backed_qsol_qsky_completion").implemented, false);
   assert.equal(
     JSON.stringify(audit).includes("generic external source missing"),
     false
@@ -78,9 +80,12 @@ test("P5C production registry examples separate available fields from bounded ga
 
 test("P5C bounded gaps identify exact missing documents and affected runtime calculations", () => {
   const gaps = byId(audit.boundedGaps, "gapId");
-  assert.equal(gaps.get("source_backed_solar_gains_preprocessing").exactMissingDocument, "SR EN ISO 52010-1");
+  assert.equal(
+    gaps.get("source_backed_qsol_qsky_completion").exactMissingDocument,
+    "SR EN ISO 52010-1 sau sursa explicita pentru Qsky/elemente solare"
+  );
   assert.match(
-    gaps.get("source_backed_solar_gains_preprocessing").blockedRuntimeCalculation,
+    gaps.get("source_backed_qsol_qsky_completion").blockedRuntimeCalculation,
     /QHnd\/QCnd/
   );
   assert.match(

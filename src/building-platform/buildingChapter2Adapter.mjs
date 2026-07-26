@@ -43,15 +43,16 @@ function chapter2ClimateInputBlockers(buildingDna) {
     code: CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE,
     severity: "blocking",
     reason:
-      "MC001/1-2006 Annex A9.6 solar source rows are available, but the source-backed preprocessing into Chapter 2 Qsol/Qsky is not implemented from an owned normative source.",
-    missingInputs: ["Qsol", "Qsky", "Hsol"],
+      "MC001/1-2006 Annex A9.6 now provides source-backed Hsol for the tabulated vertical/horizontal planes, but automatic Chapter 2 Qsol still requires Qsky-compatible inputs and complete solar element inputs.",
+    availableInputs: ["Hsol_vertical_horizontal_A9_6"],
+    missingInputs: ["Qsol", "Qsky", "solarElementInputs"],
     affectedCalculations: [
       "chapter2_solar_gains",
       "chapter2_heating_useful_demand",
       "chapter2_cooling_useful_demand"
     ],
     months: blockedSolarMonths,
-    prohibitedSubstitute: "Do not silently substitute provider solar gains with zero."
+    prohibitedSubstitute: "Do not silently substitute provider solar gains with zero or omit Qsky."
   }];
 }
 

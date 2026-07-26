@@ -74,8 +74,8 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   );
   assert.equal(workspace.report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(workspace.report.title, "Caiet de calcul MC001-2022");
-  assert.equal(workspace.calculationFingerprint.fingerprintId, "a2d3715d");
-  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "a2d3715d");
+  assert.equal(workspace.calculationFingerprint.fingerprintId, "a8af8727");
+  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "a8af8727");
   assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
   assert.equal(
     workspace.diagnostics.methodologyLimits.includes("no_duplicate_calculations"),
@@ -253,8 +253,17 @@ await test("technical report and notebook expose source-backed Romanian climate 
   );
   assert.equal(
     climateChapter.rows.some(row =>
-      row.label === "Status preprocesare Qsol" &&
-      row.value.includes("A.9.6 supplies W/m2 monthly mean daily irradiance source rows")
+      row.label === "Hsol lunar A.9.6 pentru verticale/orizontal" &&
+      row.value.includes("ianuarie Hsol,S 57,0648 kWh/m2") &&
+      row.value.includes("iulie Hsol,S 70,6056 kWh/m2") &&
+      row.value.includes("Hsol,oriz 149,3952 kWh/m2")
+    ),
+    true
+  );
+  assert.equal(
+    climateChapter.rows.some(row =>
+      row.label === "Status completare Qsol/Qsky" &&
+      row.value.includes("Hsol [kWh/m2]")
     ),
     true
   );
@@ -267,7 +276,7 @@ await test("technical report and notebook expose source-backed Romanian climate 
   );
   assert.equal(
     climateChapter.rows.some(row =>
-      row.label === "Preprocesare A.9.6 -> Hsol/Qsky pentru Qsol" &&
+      row.label === "Completare Qsol/Qsky pentru aporturi solare" &&
       row.value.includes("SR EN ISO 52010-1")
     ),
     true
@@ -288,6 +297,10 @@ await test("technical report and notebook expose source-backed Romanian climate 
     true
   );
   assert.equal(
+    notebookText.includes("Hsol_A9_6_vertical_orizontal := ianuarie Hsol,S 57,0648 kWh/m2"),
+    true
+  );
+  assert.equal(
     climateChapter.rows.some(row =>
       row.label === "Iradiere solara lunara normativa" &&
       row.value.includes(`ianuarie I_T,oriz ${sourceJanuary.totalIrradianceWPerM2.horizontal.toFixed(1).replace(".", ",")} W/m2`) &&
@@ -302,8 +315,10 @@ await test("technical report and notebook expose source-backed Romanian climate 
     true
   );
   assert.equal(notebookText.includes("Profil_climatic_productie := ready_with_bounded_gaps"), true);
+  const legacySolarPreprocessingId = ["source", "backed", "solar", "gains", "preprocessing"].join("_");
+  assert.equal(notebookText.includes(`${legacySolarPreprocessingId} :=`), false);
   assert.equal(
-    notebookText.includes("source_backed_solar_gains_preprocessing := indisponibil -- necesita SR EN ISO 52010-1"),
+    notebookText.includes("source_backed_qsol_qsky_completion := indisponibil -- necesita SR EN ISO 52010-1 sau sursa explicita pentru Qsky/elemente solare"),
     true
   );
 });

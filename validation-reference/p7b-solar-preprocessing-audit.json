@@ -1,0 +1,98 @@
+{
+  "schema": "p7b_solar_preprocessing_audit_v1",
+  "baseMilestone": "P7B",
+  "objective": "Complete every source-backed link from Mc001/1-2-3/2006 Annex A.9.6 into Chapter 2 solar quantities without inventing missing normative inputs.",
+  "ownedSources": [
+    {
+      "documentId": "mc001_2022",
+      "document": "MC001-2022",
+      "edition": "2022",
+      "repositoryPath": "docs/Mc_001-2022_-_Metodologie_calcul_performanta_energetica_caldiri.pdf",
+      "relevantContent": [
+        "2.7.3 transparent solar gains relation 2.39 consumes Hsol and Qsky",
+        "2.7.3 relation 2.40 adjusts glazing solar transmittance",
+        "2.7.3 opaque solar gains relation 2.50 consumes Hsol and Qsky",
+        "2.7.3 sky radiation relation 2.54 defines Qsky when its inputs are supplied",
+        "2.7.3 states Hsol for vertical orientations and horizontal surfaces is known from climate data; other tilt angles require SR EN ISO 52010-1"
+      ]
+    },
+    {
+      "documentId": "mc001_1_2_3_2006_annex_a9_6",
+      "document": "Mc001/1-2-3/2006 Annex A.9.6",
+      "edition": "2006",
+      "repositoryPath": "docs/normative/MC001-1-2-3-2006-anexa-a9-6-solar.pdf",
+      "sourcePack": "validation-reference/source-packs/mc001-1-2006-annex-a9-6-solar-extract.json",
+      "sourceDocumentSha256": "e136e0fc961701aa033f5ff5194c6f3708fc5390cdf25a5c30c1b76371f5e4df",
+      "datasetVersion": "mc001_1_2006_annex_a9_6_solar_p5b3_v1",
+      "rowCount": 30,
+      "cellCount": 3960,
+      "sourcePdfPages": [119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129]
+    }
+  ],
+  "runtimeMapping": [
+    {
+      "normativeSource": "Mc001/1-2-3/2006 Annex A.9.6",
+      "runtimeQuantity": "monthlySolarIrradiance",
+      "unit": "W/m2",
+      "physicsModule": "src/climate-platform/romanianNormativeClimateProvider.mjs",
+      "providerPath": "climateProvider.datasets.monthlySolarIrradiation.monthlyRecords",
+      "reportField": "Iradiere solara lunara normativa",
+      "status": "implemented_source_backed"
+    },
+    {
+      "normativeSource": "MC001-2022 relation 2.39 source statement + Mc001/1-2-3/2006 Annex A.9.6",
+      "runtimeQuantity": "Hsol",
+      "unit": "kWh/m2",
+      "physicsModule": "src/climate-platform/romanianNormativeClimateProvider.mjs",
+      "providerPath": "climateProvider.datasets.monthlyHsolVerticalHorizontal.monthlyRecords",
+      "reportField": "Hsol lunar A.9.6 pentru verticale/orizontal",
+      "formulaId": "P7B_A9_6_MEAN_DAILY_IRRADIANCE_TO_MONTHLY_HSOL_UNIT_INTEGRATION",
+      "status": "implemented_source_backed_for_a9_6_tabulated_vertical_and_horizontal_planes"
+    },
+    {
+      "normativeSource": "MC001-2022 relation 2.54",
+      "runtimeQuantity": "Qsky",
+      "unit": "kWh",
+      "physicsModule": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "providerPath": null,
+      "reportField": "Status completare Qsol/Qsky",
+      "status": "implemented_when_explicit_qsky_or_all_qsky_inputs_are_supplied"
+    },
+    {
+      "normativeSource": "MC001-2022 relations 2.36, 2.38, 2.39, 2.50",
+      "runtimeQuantity": "Qsol",
+      "unit": "kWh",
+      "physicsModule": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "providerPath": null,
+      "reportField": "Status completare Qsol/Qsky",
+      "status": "bounded_until_qsky_and_complete_solar_element_inputs_are_available"
+    }
+  ],
+  "implementedChain": [
+    "locality",
+    "Annex A.9.6 source row",
+    "monthly total irradiance by A.9.6 vertical/horizontal orientation",
+    "monthly duration",
+    "Hsol for tabulated vertical/horizontal planes",
+    "Climate Provider dataset",
+    "Building DNA climateProvider compact envelope",
+    "Production ClimateProfile field",
+    "Notebook climate section",
+    "Technical report climate rows"
+  ],
+  "notImplementedWithoutInventingData": [
+    {
+      "gapId": "source_backed_qsol_qsky_completion",
+      "missingDocumentOrInput": "SR EN ISO 52010-1 for non-tabulated tilted surfaces, or explicit source-backed Qsky/solar element inputs for the selected project elements",
+      "blockedCalculation": "automatic provider-only Qsol and QHnd/QCnd solar effect",
+      "reason": "Owned sources provide A.9.6 vertical/horizontal irradiance rows and MC001 solar formulas. They do not provide complete project-specific glazing/shading/surface inputs or an automatic Qsky source for every element."
+    }
+  ],
+  "validationTargets": [
+    "all 30 A.9.6 localities expose twelve monthly Hsol records",
+    "unsupported non-tabulated orientation is rejected with A9_6_HSOL_ORIENTATION_NOT_SOURCE_BACKED",
+    "Building DNA preserves climateProvider.datasets.monthlyHsolVerticalHorizontal",
+    "Production ClimateProfile exposes monthly_hsol_a9_6_vertical_horizontal",
+    "report and notebook render source-backed Hsol values and keep Qsol/Qsky bounded"
+  ]
+}
