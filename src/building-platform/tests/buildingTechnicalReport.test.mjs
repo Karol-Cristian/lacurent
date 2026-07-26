@@ -354,7 +354,7 @@ await test("technical report contains the required compact P3G notebook chapters
   const januaryHeating = workspace.formulaViews.find(view =>
     view.formulaName === "Necesar util lunar de incalzire - january"
   );
-  assert.equal(januaryHeating.symbolicFormula, "QHnd = QHht - eta_Hgn * QHgn");
+  assert.equal(januaryHeating.symbolicFormula, "Ramura executata: restricted_heating_monthly_balance");
   assert.equal(januaryHeating.substitutedFormula.includes("1286,1002"), true);
   assert.equal(januaryHeating.substitutedFormula.includes("0,9999"), true);
 });
@@ -415,6 +415,66 @@ await test("cooling zero-demand branch renders the executed branch instead of a 
 
   const etaLine = januarySection.lines.find(line => line.lineId === "january.eta_cht");
   assert.equal(etaLine, undefined);
+});
+
+await test("trace-backed demand lines render only runtime execution traces", () => {
+  const workspace = buildBuildingTechnicalWorkspace(
+    buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers())
+  );
+  const notebook = workspace.report.engineeringNotebook;
+  const traceDemandLines = notebook.sections
+    .flatMap(section => section.lines)
+    .filter(line =>
+      line.executionTrace &&
+      (String(line.lineId).endsWith(".qhnd") ||
+        String(line.lineId).endsWith(".qhnd.branch") ||
+        String(line.lineId).endsWith(".qcnd"))
+    );
+
+  assert.equal(traceDemandLines.length > 0, true);
+  for (const line of traceDemandLines) {
+    assert.equal(line.text.includes(`Ramura executata: ${line.executionTrace.branchId}`), true);
+    assert.equal(line.text.includes("Execution trace unavailable."), false);
+  }
+
+  const renderedText = [
+    ...notebook.sections.flatMap(section => section.lines.map(line => line.text)),
+    ...notebook.calculations.flatMap(calculation => [
+      calculation.symbolicFormula,
+      calculation.substitutedFormula,
+      calculation.resultLine
+    ])
+  ].join("\n");
+
+  assert.equal(renderedText.includes("QHnd = QHht - eta_Hgn * QHgn"), false);
+  assert.equal(renderedText.includes("QCnd = QCgn - eta_Cht * QCht"), false);
+  assert.equal(renderedText.includes("QCnd = aCred * (QCgn - eta_Cht * QCht)"), false);
+});
+
+await test("missing execution traces render a neutral unavailable message instead of reconstructed demand arithmetic", () => {
+  const pipeline = structuredClone(buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers()));
+  for (const result of pipeline.calculation.chapter2Result.result.heatingResult.caseResults) {
+    delete result.executionTrace;
+  }
+  for (const result of pipeline.calculation.chapter2Result.result.coolingResult.caseResults) {
+    delete result.executionTrace;
+  }
+
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  const januarySection = workspace.report.engineeringNotebook.sections.find(
+    section => section.sectionId === "luna_january"
+  );
+  const qhndLine = januarySection.lines.find(line => line.lineId === "january.qhnd");
+  const qcndLine = januarySection.lines.find(line => line.lineId === "january.qcnd");
+
+  assert.equal(qhndLine.text, "QHnd_ianuarie := Execution trace unavailable.");
+  assert.equal(qcndLine.text, "QCnd_ianuarie := Execution trace unavailable.");
+  assert.equal(qhndLine.computedValue, undefined);
+  assert.equal(qcndLine.computedValue, undefined);
+
+  const text = [qhndLine.text, qcndLine.text].join("\n");
+  assert.equal(text.includes("-"), false);
+  assert.equal(text.includes("×"), false);
 });
 
 await test("calculation fingerprint changes when upstream Building DNA changes", () => {

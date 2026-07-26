@@ -851,12 +851,14 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
         { symbol: "eta_Hgn", value: row.etaHgn, unit: "-" }
       ],
       sourceReference: row.qHndFormulaCode,
-      symbolicFormula: heatingIsBranch
-        ? `QHnd = 0, ramura ${row.heatingExecutionTrace.branchId}`
-        : "QHnd = QHht - eta_Hgn * QHgn",
-      substitutedFormula: heatingIsBranch
-        ? `${row.heatingExecutionTrace.condition?.expression ?? "conditie ramura"} => true; QHnd = 0`
-        : `QHnd = ${heatingTraceExpression ?? `${formatFormulaTerm(row.qHhtKwh, "kWh")} - ${formatFormulaNumber(row.etaHgn)} * ${formatFormulaTerm(row.qHgnKwh, "kWh")}`}`,
+      symbolicFormula: row.heatingExecutionTrace
+        ? `Ramura executata: ${row.heatingExecutionTrace.branchId}`
+        : "Execution trace unavailable.",
+      substitutedFormula: row.heatingExecutionTrace
+        ? (heatingIsBranch
+          ? `${row.heatingExecutionTrace.condition?.expression ?? "conditie ramura"} => true; QHnd = 0`
+          : `QHnd = ${heatingTraceExpression}`)
+        : "Execution trace unavailable.",
       resultLine: `QHnd = ${formatFormulaValue(row.qHndKwh, "kWh")}`,
       dependencies: [`${row.month}.QHht`, `${row.month}.QHgn`, `${row.month}.etaHgn`]
     }));
@@ -933,12 +935,14 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
         { symbol: "eta_Cht", value: row.etaCht, unit: "-" }
       ],
       sourceReference: row.qCndFormulaCode,
-      symbolicFormula: coolingIsBranch
-        ? `QCnd = 0, ramura ${row.coolingExecutionTrace.branchId}`
-        : "QCnd = aCred * (QCgn - eta_Cht * QCht)",
-      substitutedFormula: coolingIsBranch
-        ? `${row.coolingExecutionTrace.condition?.expression ?? "conditie ramura"} => true; QCnd = 0`
-        : `QCnd = ${coolingTraceExpression ?? `${formatFormulaTerm(row.qCgnKwh, "kWh")} - ${formatFormulaNumber(row.etaCht)} * ${formatFormulaTerm(row.qChtKwh, "kWh")}`}`,
+      symbolicFormula: row.coolingExecutionTrace
+        ? `Ramura executata: ${row.coolingExecutionTrace.branchId}`
+        : "Execution trace unavailable.",
+      substitutedFormula: row.coolingExecutionTrace
+        ? (coolingIsBranch
+          ? `${row.coolingExecutionTrace.condition?.expression ?? "conditie ramura"} => true; QCnd = 0`
+          : `QCnd = ${coolingTraceExpression}`)
+        : "Execution trace unavailable.",
       resultLine: `QCnd = ${formatFormulaValue(row.qCndKwh, "kWh")}`,
       dependencies: [`${row.month}.QCgn`, `${row.month}.etaCht`, `${row.month}.QCht`]
     }));
@@ -1011,15 +1015,20 @@ function compactLine({
   executionTrace = null,
   traceResultSymbol = null
 }) {
-  const renderedText = executionTrace && traceResultSymbol
-    ? executedTraceLine(traceResultSymbol, executionTrace, resultValue, resultUnit) ?? text
+  const renderedText = traceResultSymbol
+    ? (executionTrace
+      ? executedTraceLine(traceResultSymbol, executionTrace, resultValue, resultUnit)
+      : executionTraceUnavailableLine(traceResultSymbol))
     : text;
+  const renderedComputedValue = traceResultSymbol
+    ? traceComputedValue(executionTrace)
+    : computedValue;
   return {
     lineId,
     text: renderedText,
     resultValue,
     resultUnit,
-    computedValue,
+    computedValue: renderedComputedValue,
     variables,
     reference: readableNormativeReference(reference) ?? reference,
     kind,
@@ -1050,6 +1059,10 @@ function section(sectionId, title, lines) {
 
 function expressionLine(left, expression, value, unit, digits = 4) {
   return `${left} := ${expression} = ${formatNotebookValue(value, unit, digits)}`;
+}
+
+function executionTraceUnavailableLine(left) {
+  return `${left} := Execution trace unavailable.`;
 }
 
 function traceInputSymbol(name) {
@@ -1446,13 +1459,7 @@ function compactMonthlySections(monthly) {
       lines.push(compactLine({
         lineId: `${row.month}.qhnd.branch`,
         traceResultSymbol: `QHnd_${idLabel}`,
-        text: executedTraceLine(`QHnd_${idLabel}`, row.heatingExecutionTrace, row.qHndKwh, "kWh") ??
-          expressionLine(
-            `QHnd_${idLabel}`,
-            `${formatNotebookNumber(row.qHhtKwh)} - ${formatNotebookNumber(row.etaHgn)} Ã— ${formatNotebookNumber(row.qHgnKwh)}`,
-            row.qHndKwh,
-            "kWh"
-          ),
+        text: executionTraceUnavailableLine(`QHnd_${idLabel}`),
         resultValue: row.qHndKwh,
         resultUnit: "kWh",
         computedValue: traceComputedValue(row.heatingExecutionTrace),
@@ -1478,16 +1485,10 @@ function compactMonthlySections(monthly) {
       lines.push(compactLine({
         lineId: `${row.month}.qhnd`,
         traceResultSymbol: `QHnd_${idLabel}`,
-        text: expressionLine(
-          `QHnd_${idLabel}`,
-          `${formatNotebookNumber(row.qHhtKwh)} - ${formatNotebookNumber(row.etaHgn)} × ${formatNotebookNumber(row.qHgnKwh)}`,
-          row.qHndKwh,
-          "kWh"
-        ),
+        text: executionTraceUnavailableLine(`QHnd_${idLabel}`),
         resultValue: row.qHndKwh,
         resultUnit: "kWh",
-        computedValue: traceComputedValue(row.heatingExecutionTrace) ??
-          Number(row.qHhtKwh) - Number(row.etaHgn) * Number(row.qHgnKwh),
+        computedValue: traceComputedValue(row.heatingExecutionTrace),
         variables: [
           { symbol: `QHnd_${idLabel}`, meaning: `necesar util incalzire ${label}` }
         ],
@@ -1544,16 +1545,10 @@ function compactMonthlySections(monthly) {
     lines.push(compactLine({
       lineId: `${row.month}.qcnd`,
       traceResultSymbol: `QCnd_${idLabel}`,
-      text: expressionLine(
-        `QCnd_${idLabel}`,
-        `${formatNotebookNumber(row.qCgnKwh)} - ${formatNotebookNumber(row.etaCht)} × ${formatNotebookNumber(row.qChtKwh)}`,
-        row.qCndKwh,
-        "kWh"
-      ),
+      text: executionTraceUnavailableLine(`QCnd_${idLabel}`),
       resultValue: row.qCndKwh,
       resultUnit: "kWh",
-      computedValue: traceComputedValue(row.coolingExecutionTrace) ??
-        Number(row.qCgnKwh) - Number(row.etaCht) * Number(row.qChtKwh),
+      computedValue: traceComputedValue(row.coolingExecutionTrace),
       variables: [
         { symbol: `QCnd_${idLabel}`, meaning: `necesar util racire ${label}` }
       ],
