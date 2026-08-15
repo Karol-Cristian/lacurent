@@ -582,6 +582,110 @@ await test("wizard maps ACM component contracts to calculated Chapter 3 stage in
   assert.equal(html.includes("calculat normativ"), true);
 });
 
+await test("wizard maps heating component contracts to calculated Chapter 3 stage inputs", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    chapter3_heating_component_mode: "component_contract",
+    chapter3_heating_storage_mode: "no_storage",
+    chapter3_heating_operation_hours_month: "120",
+    chapter3_heating_emission_temp_increase_k: "1.25",
+    chapter3_heating_indoor_temp_c: "20",
+    chapter3_heating_combined_outdoor_temp_c: "-5",
+    chapter3_heating_pump_component_factor: "0.2",
+    chapter3_heating_pump_linear_pressure_kpa_m: "0.05",
+    chapter3_heating_pump_circuit_length_m: "35",
+    chapter3_heating_pump_additional_pressure_kpa: "6",
+    chapter3_heating_pump_flow_m3h: "1.6",
+    chapter3_heating_pump_load_factor: "0.5",
+    chapter3_heating_pump_correction_factor: "1.1",
+    chapter3_heating_pump_cp1: "0.25",
+    chapter3_heating_pump_cp2: "0.75",
+    chapter3_heating_pump_eei: "0.23",
+    chapter3_heating_pump_recoverable_fraction: "0.3",
+    chapter3_heating_pump_setback_power_kw: "0.03",
+    chapter3_heating_pump_setback_hours_month: "40",
+    chapter3_heating_pump_boost_hours_month: "5",
+    chapter3_heating_generator_nominal_kw: "24",
+    chapter3_heating_generator_intermediate_kw: "8",
+    chapter3_heating_generator_nominal_load_factor: "1",
+    chapter3_heating_generator_loss_power_nominal_kw: "1.2",
+    chapter3_heating_generator_loss_power_intermediate_kw: "0.4",
+    chapter3_heating_generator_envelope_loss_fraction_percent: "1.5",
+    chapter3_heating_generator_chimney_off_loss_fraction_percent: "0.5",
+    chapter3_heating_generator_delivered_power_kw: "24",
+    chapter3_heating_generator_envelope_recoverable_fraction: "0.2",
+    chapter3_heating_generator_aux_power_standby_kw: "0.02",
+    chapter3_heating_generator_aux_power_intermediate_kw: "0.08",
+    chapter3_heating_generator_aux_power_nominal_kw: "0.12",
+    chapter3_heating_generator_aux_recovered_product_fraction: "0.25",
+    chapter3_heating_generator_boiler_room_recovery_factor: "0.1"
+  };
+  const answers = mapWizardAnswersToAssistedAnswers(formData(values));
+  const heatingStages = answers.technicalSystems.heating.systems[0].stages;
+  const emission = heatingStages.find(stage => stage.stageId === "emission");
+  const distribution = heatingStages.find(stage => stage.stageId === "distribution");
+  const storage = heatingStages.find(stage => stage.stageId === "storage");
+  const generation = heatingStages.find(stage => stage.stageId === "generation");
+
+  assert.equal(emission.lossKWhPerMonth, undefined);
+  assert.equal(emission.lossCalculation.mode, "heating_emission_temperature_increase");
+  assert.equal(distribution.auxiliaryKWhPerMonth, undefined);
+  assert.equal(distribution.auxiliaryCalculation.mode, "heating_hydronic_pump_auxiliary");
+  assert.equal(distribution.auxiliaryCalculation.setbackPumpPowerKW, 0.03);
+  assert.equal(distribution.auxiliaryCalculation.boostCalculationHours, 5);
+  assert.equal(storage.lossKWhPerMonth, undefined);
+  assert.equal(storage.lossCalculation.mode, "no_heating_storage");
+  assert.equal(generation.lossKWhPerMonth, undefined);
+  assert.equal(generation.auxiliaryKWhPerMonth, undefined);
+  assert.equal(generation.lossCalculation.mode, "heating_generator_loss_power_curve");
+  assert.equal(generation.lossCalculation.envelopeLossFractionPercent, 1.5);
+  assert.equal(generation.lossCalculation.envelopeLossFraction, 0.2);
+  assert.equal(generation.auxiliaryCalculation.mode, "heating_generator_auxiliary_power_curve");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  const januaryHeating = preview.calculation.chapter3Result.monthly[0].heating;
+  const emissionResult = januaryHeating.stageResults.find(stage => stage.stageId === "emission");
+  const distributionResult = januaryHeating.stageResults.find(stage => stage.stageId === "distribution");
+  const storageResult = januaryHeating.stageResults.find(stage => stage.stageId === "storage");
+  const generationResult = januaryHeating.stageResults.find(stage => stage.stageId === "generation");
+
+  assert.equal(emissionResult.lossSource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(distributionResult.auxiliarySource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(storageResult.lossSource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(generationResult.lossSource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(generationResult.auxiliarySource.classification, "NUMERICALLY_IMPLEMENTED");
+});
+
+await test("wizard maps ventilation auxiliary component contracts to calculated Chapter 3 inputs", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    chapter3_ventilation_heat_recovery_mode: "rotary_heat_recovery_auxiliary",
+    chapter3_ventilation_rotary_power_kw: "0.1",
+    chapter3_ventilation_rotation_ratio: "0.5",
+    chapter3_ventilation_preheat_mode: "no_preheater",
+    chapter3_ventilation_control_mode: "control_auxiliary_energy",
+    chapter3_ventilation_controller_power_kw: "0.02",
+    chapter3_ventilation_control_operation_factor: "0.5"
+  };
+  const answers = mapWizardAnswersToAssistedAnswers(formData(values));
+  const ventilation = answers.technicalSystems.ventilationAhu.systems[0];
+
+  assert.equal(ventilation.heatRecoveryAuxiliaryKWhPerMonth, undefined);
+  assert.equal(ventilation.heatRecoveryAuxiliaryCalculation.mode, "rotary_heat_recovery_auxiliary");
+  assert.equal(ventilation.preheatAuxiliaryKWhPerMonth, undefined);
+  assert.equal(ventilation.preheatAuxiliaryCalculation.mode, "no_preheater");
+  assert.equal(ventilation.controlAuxiliaryKWhPerMonth, undefined);
+  assert.equal(ventilation.controlAuxiliaryCalculation.mode, "control_auxiliary_energy");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  const januaryVentilation = preview.calculation.chapter3Result.monthly[0].ventilation;
+  assert.equal(januaryVentilation.sources.heatRecoveryAuxiliary.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(januaryVentilation.sources.preheatAuxiliary.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(januaryVentilation.sources.controlAuxiliary.classification, "NUMERICALLY_IMPLEMENTED");
+});
+
 await test("demo installation configurations have fixed 12-month Chapter 3 expected outputs", () => {
   const cases = [
     {

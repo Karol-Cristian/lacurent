@@ -1119,22 +1119,22 @@ const fields = [
   field({
     fieldId: "technical_systems.heating",
     path: "technicalSystems.heating.systems[].stages[] / chapter3_heating_*",
-    purpose: "Explicit Chapter 3 heating system stages, losses, auxiliaries, recovered fractions and optional allocationFraction for multiple active systems.",
+    purpose: "Chapter 3 heating system topology with legacy explicit stage values plus P8D component contracts for emission, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.heating",
     producer: "buildTechnicalSystemsFromForm",
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
-    dataType: "system stage array, kWh/month, fractions and optional allocationFraction",
+    dataType: "system stage array, component lossCalculation/auxiliaryCalculation contracts, kWh/month legacy explicit values, fractions and optional allocationFraction",
     editable: true,
-    productionUsage: "drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1",
+    productionUsage: "drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8D component contracts calculate relations 3.1-3.14 where exposed, 3.17, 3.23-3.27, 3.29-3.32 and 3.34-3.37 when complete project/product inputs are supplied",
     uiLocation: "Instalatii tehnice / Incalzire",
     notebookLocation: "Chapter 3 heating sections",
     reportLocation: "Instalatii / Incalzire",
     dependencies: ["runtime.chapter2_monthly_useful_demand"],
     uiRecommendation: "remain_editable",
     implementationRefs: [refs.wizard, refs.chapter3Adapter],
-    tests: [refs.chapter3ProductTest]
+    tests: [refs.chapter3ProductTest, "tests/building-platform-wizard-ui.mjs", "validation-reference/python-mc001/tests/test_chapter3_heating.py"]
   }),
   field({
     fieldId: "technical_systems.cooling",
@@ -1159,21 +1159,21 @@ const fields = [
   field({
     fieldId: "technical_systems.ventilation_ahu",
     path: "technicalSystems.ventilationAhu.systems[] / chapter3_*airflow*",
-    purpose: "Explicit AHU fan and auxiliary inputs for Chapter 3 ventilation system energy.",
+    purpose: "AHU fan inputs plus P8D component contracts for heat-recovery, preheat and control auxiliary energy; legacy monthly auxiliary values remain explicit compatibility inputs.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.ventilationAhu",
     producer: "buildTechnicalSystemsFromForm",
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
-    dataType: "airflow, pressure, efficiency, monthly auxiliaries",
+    dataType: "airflow, pressure, efficiency, monthly legacy auxiliaries and heatRecoveryAuxiliaryCalculation/preheatAuxiliaryCalculation/controlAuxiliaryCalculation component contracts",
     editable: true,
-    productionUsage: "drives_Chapter3_AHU_auxiliary_energy",
+    productionUsage: "drives_Chapter3_AHU_auxiliary_energy; P8D component contracts calculate relations 3.69-3.71 and 3.73-3.75 where product/operation inputs are supplied",
     uiLocation: "Instalatii tehnice / Ventilatie si AHU",
     notebookLocation: "Chapter 3 ventilation sections",
     reportLocation: "Instalatii / Ventilatie si AHU",
     uiRecommendation: "remain_editable",
     implementationRefs: [refs.wizard, refs.chapter3Adapter],
-    tests: [refs.chapter3ProductTest]
+    tests: [refs.chapter3ProductTest, "tests/building-platform-wizard-ui.mjs", "validation-reference/python-mc001/tests/test_chapter3_ventilation.py"]
   }),
   field({
     fieldId: "technical_systems.dhw",
