@@ -1,6 +1,6 @@
 {
   "schema": "p7c_chapter2_coverage_matrix_v1",
-  "baseCommit": "b710fdecca3c0a62bee7b3e2c83a07ca8624078d",
+  "baseCommit": "63d9b075e1c882c85024e24c125f046cda41abd4",
   "generatedBy": "tools/generate-chapter2-coverage-matrix.mjs",
   "sourceBasis": {
     "officialPdfCoveragePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
@@ -28,13 +28,13 @@
     "officialRelationSlots": 87,
     "formulaBearingRelationSlots": 85,
     "formulaStatusCounts": {
-      "COMPLETE": 52,
-      "PARTIAL": 14,
+      "COMPLETE": 67,
+      "PARTIAL": 15,
       "BOUNDED": 0,
-      "NOT_IMPLEMENTED": 19
+      "NOT_IMPLEMENTED": 3
     },
-    "completeFormulaCoveragePercent": 61.2,
-    "completeOrPartialFormulaCoveragePercent": 77.6,
+    "completeFormulaCoveragePercent": 78.8,
+    "completeOrPartialFormulaCoveragePercent": 96.5,
     "tablesTracked": 21,
     "tableStatusCounts": {
       "COMPLETE": 14,
@@ -186,21 +186,23 @@
       "formulaIdentifier": "2.4",
       "chapter": "2",
       "section": "2.1-2.5",
-      "title": "MC001-2022 relation 2.4",
+      "title": "Surface temperature factor fRsi",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Classified by the R20 source audit as outside the current QHnd/QCnd runtime: latent/free-temperature indicator not part of production useful-demand output."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "surface condensation diagnostic helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_temperature_or_resistance_inputs",
+      "limitation": "Relation 2.4 is a surface-temperature factor/condensation-risk helper; it does not modify the useful-demand balance."
     },
     {
       "id": "MC001_RELATION_2_5",
@@ -460,84 +462,92 @@
       "formulaIdentifier": "2.16",
       "chapter": "2",
       "section": "2.1-2.5",
-      "title": "MC001-2022 relation 2.16",
+      "title": "Average corrected thermal resistance/transmittance of one envelope element",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "average corrected element U/R diagnostic helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_surface_areas_and_corrected_u_values",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_17",
       "formulaIdentifier": "2.17",
       "chapter": "2",
       "section": "2.1-2.5",
-      "title": "MC001-2022 relation 2.17",
+      "title": "Average corrected thermal resistance/transmittance of the building envelope",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "average corrected envelope U/R diagnostic helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_surface_areas_and_corrected_u_values",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_18",
       "formulaIdentifier": "2.18",
       "chapter": "2",
       "section": "2.1-2.5",
-      "title": "MC001-2022 relation 2.18",
+      "title": "Thermal coupling coefficient",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "thermal coupling diagnostic helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_area_and_corrected_u_value",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_19",
       "formulaIdentifier": "2.19",
       "chapter": "2",
       "section": "2.1-2.5",
-      "title": "MC001-2022 relation 2.19",
+      "title": "Heat flow from thermal coupling and temperature difference",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "heat-flow diagnostic helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_coupling_and_temperature_difference",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_20",
@@ -1028,70 +1038,76 @@
       "formulaIdentifier": "2.41",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.41",
+      "title": "Diffuse glazing solar transmittance correction",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "diffuse glazing transmittance helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_altitude_and_diffuse_glazing_transmittance",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_42",
       "formulaIdentifier": "2.42",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.42",
+      "title": "Monthly effective window U-value with shutter",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "monthly shutter U-value helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_window_shutter_and_use_fraction_inputs",
+      "limitation": "Uw;sht and fsht;with remain explicit/source-backed inputs; delegated SR EN ISO 13789 and schedule derivation are not inferred."
     },
     {
       "id": "MC001_RELATION_2_43",
       "formulaIdentifier": "2.43",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.43",
+      "title": "Monthly effective solar transmittance with movable shading",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "monthly movable-shading transmittance helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_unshaded_shaded_and_use_fraction_inputs",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_44",
       "formulaIdentifier": "2.44",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.44",
+      "title": "Dynamic transparent-element monthly U weighted average",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
@@ -1105,14 +1121,14 @@
       "executionTraceSupport": "none",
       "reportSupport": "none",
       "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "limitation": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing."
     },
     {
       "id": "MC001_RELATION_2_45",
       "formulaIdentifier": "2.45",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.45",
+      "title": "Dynamic transparent-element monthly g weighted average",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
@@ -1126,14 +1142,14 @@
       "executionTraceSupport": "none",
       "reportSupport": "none",
       "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "limitation": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing."
     },
     {
       "id": "MC001_RELATION_2_46",
       "formulaIdentifier": "2.46",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.46",
+      "title": "Dynamic transparent-element monthly tau_sol weighted average",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
@@ -1147,70 +1163,77 @@
       "executionTraceSupport": "none",
       "reportSupport": "none",
       "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "limitation": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing."
     },
     {
       "id": "MC001_RELATION_2_47",
       "formulaIdentifier": "2.47",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.47",
+      "title": "External obstacle shading factor",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs",
+        "src/physics-engine/tests/mc001SolarShadingTables.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "obstacle shading helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_direct_shading_and_table_2_17_2_18_fsol_dir",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_48",
       "formulaIdentifier": "2.48",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.48",
+      "title": "Unconditioned-zone exterior enclosure solar reduction factor",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "unconditioned-zone solar reduction helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_unconditioned_zone_glazing_and_frame_fraction",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_49",
       "formulaIdentifier": "2.49",
       "chapter": "2",
       "section": "2.6-2.7",
-      "title": "MC001-2022 relation 2.49",
+      "title": "Unconditioned-zone internal solar gains from opaque surfaces",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "unconditioned-zone solar gains helper when supplied",
+      "productionEligibility": "production_ready_with_explicit_reduction_shading_absorptance_area_and_Hsol",
+      "limitation": "classified_for_later_domain_specific_runtime_audit"
     },
     {
       "id": "MC001_RELATION_2_50",
@@ -1861,84 +1884,92 @@
       "formulaIdentifier": "2.78",
       "chapter": "2",
       "section": "2.9-2.12",
-      "title": "MC001-2022 relation 2.78",
+      "title": "Cooling operative temperature output",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "cooling operative-temperature metadata helper when supplied",
+      "productionEligibility": "production_ready_after_QCnd_with_explicit_month_duration_and_HCht",
+      "limitation": "latent_or_free_temperature_indicator_not_part_of_current_QHnd_QCnd_output"
     },
     {
       "id": "MC001_RELATION_2_79",
       "formulaIdentifier": "2.79",
       "chapter": "2",
       "section": "2.9-2.12",
-      "title": "MC001-2022 relation 2.79",
+      "title": "Cooling heat-transfer coefficient from monthly cooling transfer",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "cooling heat-transfer coefficient metadata helper when supplied",
+      "productionEligibility": "production_ready_from_QCht_setpoint_exterior_temperature_and_month_duration",
+      "limitation": "latent_or_free_temperature_indicator_not_part_of_current_QHnd_QCnd_output"
     },
     {
       "id": "MC001_RELATION_2_80",
       "formulaIdentifier": "2.80",
       "chapter": "2",
       "section": "2.9-2.12",
-      "title": "MC001-2022 relation 2.80",
+      "title": "Annual overheating indicator",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "annual overheating indicator helper when OH monthly values are supplied",
+      "productionEligibility": "production_ready_with_explicit_monthly_overheating_indicators",
+      "limitation": "latent_or_free_temperature_indicator_not_part_of_current_QHnd_QCnd_output"
     },
     {
       "id": "MC001_RELATION_2_81",
       "formulaIdentifier": "2.81",
       "chapter": "2",
       "section": "2.9-2.12",
-      "title": "MC001-2022 relation 2.81",
+      "title": "Monthly overheating indicator",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output."
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "monthly overheating indicator helper when OH inputs are supplied",
+      "productionEligibility": "production_ready_with_explicit_overheating_gains_transfer_and_coefficients",
+      "limitation": "latent_or_free_temperature_indicator_not_part_of_current_QHnd_QCnd_output"
     },
     {
       "id": "MC001_RELATION_2_82",
@@ -2060,21 +2091,23 @@
       "formulaIdentifier": "2.87",
       "chapter": "2",
       "section": "2.9-2.12",
-      "title": "MC001-2022 relation 2.87",
+      "title": "Season-boundary exterior temperature threshold",
       "source": {
         "authority": "MC001-2022 official local PDF",
         "sourcePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "owned_formula_or_procedure_not_integrated",
-      "status": "NOT_IMPLEMENTED",
-      "implementationFile": null,
-      "tests": [],
-      "executionTraceSupport": "none",
-      "reportSupport": "none",
-      "productionEligibility": "not_available",
-      "limitation": "Heating-period duration relation is not production-integrated; current runtime uses explicit 12 calendar months and annual sums 2.84/2.85/2.86."
+      "classification": "implemented_with_explicit_input_or_limited_production_contract",
+      "status": "PARTIAL",
+      "implementationFile": "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+      "tests": [
+        "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"
+      ],
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "season-boundary threshold helper when supplied",
+      "productionEligibility": "explicit_threshold_equation_ready_graphic_period_intersection_bounded",
+      "limitation": "P7D implements the explicit theta_emz threshold equation; the full graphic annual heating/cooling period intersection remains a procedural bounded gap."
     }
   ],
   "tables": [
@@ -3271,46 +3304,6 @@
       "recommendedMilestone": "P7E/P7F"
     },
     {
-      "id": "MC001_RELATION_2_4",
-      "category": "Intentional future milestone",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Classified by the R20 source audit as outside the current QHnd/QCnd runtime: latent/free-temperature indicator not part of production useful-demand output.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_16",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_17",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_18",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_19",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
       "id": "MC001_RELATION_2_25",
       "category": "External standard dependency",
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
@@ -3348,7 +3341,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "P7B provides source-backed A.9.6 Hsol for tabulated vertical/horizontal planes; automatic Qsol still requires Qsky-compatible inputs and complete solar element inputs.",
-      "recommendedMilestone": "P7D"
+      "recommendedMilestone": "P7E"
     },
     {
       "id": "MC001_RELATION_2_37",
@@ -3364,7 +3357,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Direct solar gains require source-backed transparent/opaque component inputs; P7B supplies Hsol but not Qsky or full element data.",
-      "recommendedMilestone": "P7D"
+      "recommendedMilestone": "P7E"
     },
     {
       "id": "MC001_RELATION_2_39",
@@ -3372,79 +3365,31 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete transparent-element inputs remain required before automatic Qsol can be claimed.",
-      "recommendedMilestone": "P7D"
-    },
-    {
-      "id": "MC001_RELATION_2_41",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_42",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_43",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
+      "recommendedMilestone": "P7E"
     },
     {
       "id": "MC001_RELATION_2_44",
-      "category": "Implementation work",
+      "category": "External standard dependency",
       "gapClass": "implementation_work",
       "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
+      "reason": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_45",
-      "category": "Implementation work",
+      "category": "External standard dependency",
       "gapClass": "implementation_work",
       "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
+      "reason": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_46",
-      "category": "Implementation work",
+      "category": "External standard dependency",
       "gapClass": "implementation_work",
       "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_47",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_48",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_49",
-      "category": "Implementation work",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-      "recommendedMilestone": "P7E/P7F"
+      "reason": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_50",
@@ -3452,7 +3397,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete opaque-element inputs remain required before automatic Qsol can be claimed.",
-      "recommendedMilestone": "P7D"
+      "recommendedMilestone": "P7E"
     },
     {
       "id": "MC001_RELATION_2_51",
@@ -3484,47 +3429,15 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Qsky may be supplied explicitly; automatic source-backed sky-radiation preprocessing remains a bounded dependency.",
-      "recommendedMilestone": "P7D"
-    },
-    {
-      "id": "MC001_RELATION_2_78",
-      "category": "Intentional future milestone",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_79",
-      "category": "Intentional future milestone",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_80",
-      "category": "Intentional future milestone",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_81",
-      "category": "Intentional future milestone",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-      "recommendedMilestone": "P7E/P7F"
+      "recommendedMilestone": "P7E"
     },
     {
       "id": "MC001_RELATION_2_87",
       "category": "Intentional future milestone",
-      "gapClass": "implementation_work",
-      "status": "NOT_IMPLEMENTED",
-      "reason": "Heating-period duration relation is not production-integrated; current runtime uses explicit 12 calendar months and annual sums 2.84/2.85/2.86.",
-      "recommendedMilestone": "P7E/P7F"
+      "gapClass": "implementation_work_or_limited_explicit_input_contract",
+      "status": "PARTIAL",
+      "reason": "P7D implements the explicit theta_emz threshold equation; the full graphic annual heating/cooling period intersection remains a procedural bounded gap.",
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "CHAPTER_2_QSOL_QSKY_COMPLETION_BOUNDED",
@@ -3541,7 +3454,7 @@
         "Qsol",
         "solarElementInputs"
       ],
-      "recommendedMilestone": "P7D"
+      "recommendedMilestone": "P7E"
     },
     {
       "id": "OFFICIAL_LOCALITY_TO_CLIMATE_ZONE_MAPPING",
@@ -3554,7 +3467,7 @@
   ],
   "recommendedMilestoneOrder": [
     {
-      "milestone": "P7D",
+      "milestone": "P7E",
       "title": "Complete automatic Chapter 2 Qsol/Qsky production path",
       "scope": [
         "source-backed Qsky inputs or calculation path",
@@ -3564,16 +3477,16 @@
       "priority": "highest"
     },
     {
-      "milestone": "P7E",
-      "title": "Target relation audit for R20 out-of-runtime Chapter 2 relations",
+      "milestone": "P7F",
+      "title": "Dynamic transparent elements and seasonal-period procedure",
       "scope": [
-        "relations 2.4, 2.16-2.19, 2.41-2.49, 2.78-2.81 and 2.87",
-        "decide implementable runtime, reporting-only diagnostic, or external dependency per relation"
+        "relations 2.44-2.46 after SR EN ISO 52016-1 Annex G source is available",
+        "complete graphic annual heating/cooling period intersection procedure downstream of relation 2.87"
       ],
       "priority": "high"
     },
     {
-      "milestone": "P7F",
+      "milestone": "P7G",
       "title": "Expand default internal-gain and adjacent-zone source contracts",
       "scope": [
         "non-residential internal-gain source tables/procedures",

@@ -13,7 +13,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
-const BASE_COMMIT = "b710fdecca3c0a62bee7b3e2c83a07ca8624078d";
+const BASE_COMMIT = "63d9b075e1c882c85024e24c125f046cda41abd4";
 const MATRIX_PATH = join(rootDir, "validation-reference", "chapter2-coverage-matrix.json");
 const REPORT_PATH = join(rootDir, "docs", "validation", "P7C_CHAPTER2_COVERAGE_AUDIT.md");
 const P7A_MAPPING_PATH = join(rootDir, "validation-reference", "p7a-chapter2-ui-runtime-mapping.json");
@@ -35,28 +35,13 @@ const PARTIAL_RELATIONS = new Set([
   "2.51",
   "2.52",
   "2.53",
-  "2.54"
+  "2.54",
+  "2.87"
 ]);
 const NOT_IMPLEMENTED_RELATIONS = new Set([
-  "2.4",
-  "2.16",
-  "2.17",
-  "2.18",
-  "2.19",
-  "2.41",
-  "2.42",
-  "2.43",
   "2.44",
   "2.45",
-  "2.46",
-  "2.47",
-  "2.48",
-  "2.49",
-  "2.78",
-  "2.79",
-  "2.80",
-  "2.81",
-  "2.87"
+  "2.46"
 ]);
 
 const RELATION_EVIDENCE = Object.freeze({
@@ -68,6 +53,16 @@ const RELATION_EVIDENCE = Object.freeze({
     productionEligibility: "represented_as_explicit_geometry_input",
     limitation:
       "Relation 2.1 envelope/volume definitions are represented as explicit Building DNA geometry; no independent measured-geometry workflow is implemented."
+  },
+  "2.4": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "surface condensation diagnostic helper when supplied",
+    productionEligibility: "production_ready_with_explicit_temperature_or_resistance_inputs",
+    limitation:
+      "Relation 2.4 is a surface-temperature factor/condensation-risk helper; it does not modify the useful-demand balance."
   },
   "2.3": {
     implementationFile: "src/physics-engine/materialsUValues.mjs",
@@ -154,6 +149,38 @@ const RELATION_EVIDENCE = Object.freeze({
     executionTraceSupport: "formula_result_metadata",
     reportSupport: "Htr notebook/report",
     productionEligibility: "production_ready"
+  },
+  "2.16": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "average corrected element U/R diagnostic helper when supplied",
+    productionEligibility: "production_ready_with_explicit_surface_areas_and_corrected_u_values"
+  },
+  "2.17": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "average corrected envelope U/R diagnostic helper when supplied",
+    productionEligibility: "production_ready_with_explicit_surface_areas_and_corrected_u_values"
+  },
+  "2.18": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "thermal coupling diagnostic helper when supplied",
+    productionEligibility: "production_ready_with_explicit_area_and_corrected_u_value"
+  },
+  "2.19": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "heat-flow diagnostic helper when supplied",
+    productionEligibility: "production_ready_with_explicit_coupling_and_temperature_difference"
   },
   "2.20": {
     implementationFile: "src/physics-engine/datasets/mc001VentilationInfiltrationTable2_14.mjs",
@@ -320,6 +347,59 @@ const RELATION_EVIDENCE = Object.freeze({
     productionEligibility: "production_ready_for_table_2_13_lookup_paths",
     limitation: null
   },
+  "2.41": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "diffuse glazing transmittance helper when supplied",
+    productionEligibility: "production_ready_with_explicit_altitude_and_diffuse_glazing_transmittance"
+  },
+  "2.42": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "monthly shutter U-value helper when supplied",
+    productionEligibility: "production_ready_with_explicit_window_shutter_and_use_fraction_inputs",
+    limitation:
+      "Uw;sht and fsht;with remain explicit/source-backed inputs; delegated SR EN ISO 13789 and schedule derivation are not inferred."
+  },
+  "2.43": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "monthly movable-shading transmittance helper when supplied",
+    productionEligibility: "production_ready_with_explicit_unshaded_shaded_and_use_fraction_inputs"
+  },
+  "2.47": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: [
+      "src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs",
+      "src/physics-engine/tests/mc001SolarShadingTables.test.mjs"
+    ],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "obstacle shading helper when supplied",
+    productionEligibility: "production_ready_with_explicit_direct_shading_and_table_2_17_2_18_fsol_dir"
+  },
+  "2.48": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "unconditioned-zone solar reduction helper when supplied",
+    productionEligibility: "production_ready_with_explicit_unconditioned_zone_glazing_and_frame_fraction"
+  },
+  "2.49": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "unconditioned-zone solar gains helper when supplied",
+    productionEligibility: "production_ready_with_explicit_reduction_shading_absorptance_area_and_Hsol"
+  },
   "2.50": {
     implementationFile: "src/physics-engine/mc001SolarGainsCalculation.mjs",
     tests: ["src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"],
@@ -416,6 +496,38 @@ const RELATION_EVIDENCE = Object.freeze({
     reportSupport: "cooling long-unoccupied branch notebook",
     productionEligibility: "production_ready"
   },
+  "2.78": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "cooling operative-temperature metadata helper when supplied",
+    productionEligibility: "production_ready_after_QCnd_with_explicit_month_duration_and_HCht"
+  },
+  "2.79": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "cooling heat-transfer coefficient metadata helper when supplied",
+    productionEligibility: "production_ready_from_QCht_setpoint_exterior_temperature_and_month_duration"
+  },
+  "2.80": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "annual overheating indicator helper when OH monthly values are supplied",
+    productionEligibility: "production_ready_with_explicit_monthly_overheating_indicators"
+  },
+  "2.81": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "monthly overheating indicator helper when OH inputs are supplied",
+    productionEligibility: "production_ready_with_explicit_overheating_gains_transfer_and_coefficients"
+  },
   "2.82": {
     implementationFile: "src/physics-engine/mc001LatentDemandCalculation.mjs",
     tests: ["src/physics-engine/tests/mc001LatentDemandCalculation.test.mjs"],
@@ -429,6 +541,16 @@ const RELATION_EVIDENCE = Object.freeze({
     executionTraceSupport: "formula_result_metadata",
     reportSupport: "latent dehumidification notebook/report",
     productionEligibility: "production_ready_with_explicit_humidity_inputs"
+  },
+  "2.87": {
+    status: "PARTIAL",
+    implementationFile: "src/physics-engine/mc001Chapter2SupplementaryRelations.mjs",
+    tests: ["src/physics-engine/tests/mc001Chapter2SupplementaryRelations.test.mjs"],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "season-boundary threshold helper when supplied",
+    productionEligibility: "explicit_threshold_equation_ready_graphic_period_intersection_bounded",
+    limitation:
+      "P7D implements the explicit theta_emz threshold equation; the full graphic annual heating/cooling period intersection remains a procedural bounded gap."
   },
   "2.84": {
     implementationFile: "src/physics-engine/mc001Chapter2UsefulDemandCalculation.mjs",
@@ -624,6 +746,7 @@ const FIGURE_OVERRIDES = Object.freeze({
 
 const FORMULA_TITLES = Object.freeze({
   "2.1": "Envelope area and heated/useful volume definitions",
+  "2.4": "Surface temperature factor fRsi",
   "2.3": "Corrected design thermal conductivity",
   "2.6": "Total thermal resistance",
   "2.7": "Thermal transmittance from total resistance",
@@ -632,6 +755,10 @@ const FORMULA_TITLES = Object.freeze({
   "2.13": "Linear thermal bridge coefficient",
   "2.14": "Transmission heat flow",
   "2.15": "Total transmission coefficient Htr",
+  "2.16": "Average corrected thermal resistance/transmittance of one envelope element",
+  "2.17": "Average corrected thermal resistance/transmittance of the building envelope",
+  "2.18": "Thermal coupling coefficient",
+  "2.19": "Heat flow from thermal coupling and temperature difference",
   "2.20": "Weighted ventilation/infiltration lookup aggregation",
   "2.21": "Monthly unconditioned-zone temperature",
   "2.22": "Unconditioned-zone correction factor",
@@ -651,6 +778,15 @@ const FORMULA_TITLES = Object.freeze({
   "2.38": "Direct solar gains from transparent and opaque components",
   "2.39": "Transparent-element solar gains",
   "2.40": "Effective glazing solar transmittance",
+  "2.41": "Diffuse glazing solar transmittance correction",
+  "2.42": "Monthly effective window U-value with shutter",
+  "2.43": "Monthly effective solar transmittance with movable shading",
+  "2.44": "Dynamic transparent-element monthly U weighted average",
+  "2.45": "Dynamic transparent-element monthly g weighted average",
+  "2.46": "Dynamic transparent-element monthly tau_sol weighted average",
+  "2.47": "External obstacle shading factor",
+  "2.48": "Unconditioned-zone exterior enclosure solar reduction factor",
+  "2.49": "Unconditioned-zone internal solar gains from opaque surfaces",
   "2.50": "Opaque-element solar gains",
   "2.51": "Single adjacent-zone gain reduction",
   "2.52": "Multiple adjacent-zone gain reduction",
@@ -662,38 +798,28 @@ const FORMULA_TITLES = Object.freeze({
   "2.58": "Cooling time constant tauC",
   "2.76": "Long-unoccupied heating interpolation",
   "2.77": "Long-unoccupied cooling interpolation",
+  "2.78": "Cooling operative temperature output",
+  "2.79": "Cooling heat-transfer coefficient from monthly cooling transfer",
+  "2.80": "Annual overheating indicator",
+  "2.81": "Monthly overheating indicator",
   "2.82": "Monthly humidification latent demand",
   "2.83": "Monthly dehumidification latent demand",
   "2.84": "Annual heating useful-demand sum",
   "2.85": "Annual cooling useful-demand sum",
-  "2.86": "Annual latent demand sum"
+  "2.86": "Annual latent demand sum",
+  "2.87": "Season-boundary exterior temperature threshold"
 });
 
 const GENERIC_NOT_IMPLEMENTED_REASON = Object.freeze({
-  "2.4": "Classified by the R20 source audit as outside the current QHnd/QCnd runtime: latent/free-temperature indicator not part of production useful-demand output.",
-  "2.16": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-  "2.17": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-  "2.18": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-  "2.19": "Classified by R20 for later domain-specific runtime audit; no production runtime formula currently consumes this relation.",
-  "2.41": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.42": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.43": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.44": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.45": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.46": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.47": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.48": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.49": "Solar/shading sub-relation is not production-integrated on this base; requires targeted P7D source-to-runtime audit for complete element/shading inputs.",
-  "2.78": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-  "2.79": "Cooling/free-temperature downstream relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-  "2.80": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-  "2.81": "Overheating/downstream comfort relation is classified by R20 as metadata-only and not part of the current useful-demand runtime output.",
-  "2.87": "Heating-period duration relation is not production-integrated; current runtime uses explicit 12 calendar months and annual sums 2.84/2.85/2.86."
+  "2.44": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
+  "2.45": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
+  "2.46": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
+  "2.87": "P7D implements the explicit theta_emz threshold equation; graphic annual heating/cooling period intersection remains bounded."
 });
 
 const RECOMMENDED_MILESTONES = Object.freeze([
   {
-    milestone: "P7D",
+    milestone: "P7E",
     title: "Complete automatic Chapter 2 Qsol/Qsky production path",
     scope: [
       "source-backed Qsky inputs or calculation path",
@@ -703,16 +829,16 @@ const RECOMMENDED_MILESTONES = Object.freeze([
     priority: "highest"
   },
   {
-    milestone: "P7E",
-    title: "Target relation audit for R20 out-of-runtime Chapter 2 relations",
+    milestone: "P7F",
+    title: "Dynamic transparent elements and seasonal-period procedure",
     scope: [
-      "relations 2.4, 2.16-2.19, 2.41-2.49, 2.78-2.81 and 2.87",
-      "decide implementable runtime, reporting-only diagnostic, or external dependency per relation"
+      "relations 2.44-2.46 after SR EN ISO 52016-1 Annex G source is available",
+      "complete graphic annual heating/cooling period intersection procedure downstream of relation 2.87"
     ],
     priority: "high"
   },
   {
-    milestone: "P7F",
+    milestone: "P7G",
     title: "Expand default internal-gain and adjacent-zone source contracts",
     scope: [
       "non-residential internal-gain source tables/procedures",
@@ -724,6 +850,12 @@ const RECOMMENDED_MILESTONES = Object.freeze([
 ]);
 
 function gapCategoryForFormula(entry) {
+  if (entry.id.match(/2_(44|45|46)$/)) {
+    return "External standard dependency";
+  }
+  if (entry.id.match(/2_87$/)) {
+    return "Intentional future milestone";
+  }
   if (entry.status === "NOT_IMPLEMENTED") {
     return entry.id.match(/2_(4|78|79|80|81|87)$/)
       ? "Intentional future milestone"
@@ -763,6 +895,8 @@ function relationGroupEvidence(number) {
 
 function relationStatus(number, r20Status) {
   if (NUMBERING_GAPS.has(number)) return "BOUNDED";
+  const evidenceStatus = RELATION_EVIDENCE[number]?.status;
+  if (STATUS.includes(evidenceStatus)) return evidenceStatus;
   if (NOT_IMPLEMENTED_RELATIONS.has(number)) return "NOT_IMPLEMENTED";
   if (PARTIAL_RELATIONS.has(number)) return "PARTIAL";
   if (r20Status === "golden_covered" || r20Status === "runtime_implemented") return "COMPLETE";
@@ -771,6 +905,7 @@ function relationStatus(number, r20Status) {
 
 function relationClassification(number, status) {
   if (NUMBERING_GAPS.has(number)) return "numbering_gap_not_a_formula";
+  if (RELATION_EVIDENCE[number]?.classification) return RELATION_EVIDENCE[number].classification;
   if (status === "NOT_IMPLEMENTED") return "owned_formula_or_procedure_not_integrated";
   if (status === "PARTIAL") return "implemented_with_explicit_input_or_limited_production_contract";
   return "normative_calculation";
@@ -960,7 +1095,7 @@ Generated by \`tools/generate-chapter2-coverage-matrix.mjs\`.
 
 - Base commit: \`${matrix.baseCommit}\`
 - Source basis: MC001-2022 official local PDF inventory from \`MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX\`, P7A UI/runtime mapping, runtime modules and existing tests.
-- Runtime behavior changes: none. This milestone adds audit artifacts and a matrix validation test only.
+- Runtime behavior changes: P7D adds supplementary Chapter 2 helper calculations with execution traces for source-complete relations. Validated Chapter 2 useful-demand formulas and numerical oracles are unchanged.
 
 ## Coverage Summary
 
@@ -1124,7 +1259,12 @@ function main() {
           entry.id.includes("2_39") ||
           entry.id.includes("2_50") ||
           entry.id.includes("2_54")
-            ? "P7D"
+            ? "P7E"
+            : entry.id.includes("2_44") ||
+                entry.id.includes("2_45") ||
+                entry.id.includes("2_46") ||
+                entry.id.includes("2_87")
+              ? "P7F"
             : "P7E/P7F"
       })),
     {
@@ -1137,7 +1277,7 @@ function main() {
       diagnosticCode: "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
       availableInputs: ["Hsol_vertical_horizontal_A9_6"],
       missingInputs: ["Qsky", "Qsol", "solarElementInputs"],
-      recommendedMilestone: "P7D"
+      recommendedMilestone: "P7E"
     },
     {
       id: "OFFICIAL_LOCALITY_TO_CLIMATE_ZONE_MAPPING",

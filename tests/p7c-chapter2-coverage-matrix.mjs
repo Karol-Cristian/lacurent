@@ -29,7 +29,7 @@ function assertAllowedStatus(entry) {
 
 test("P7C Chapter 2 coverage matrix is complete and machine-readable", () => {
   assert.equal(matrix.schema, "p7c_chapter2_coverage_matrix_v1");
-  assert.equal(matrix.baseCommit, "b710fdecca3c0a62bee7b3e2c83a07ca8624078d");
+  assert.equal(matrix.baseCommit, "63d9b075e1c882c85024e24c125f046cda41abd4");
   assert.equal(matrix.formulas.length, matrix.summary.officialRelationSlots);
   assert.equal(matrix.tables.length, matrix.summary.tablesTracked);
   assert.equal(matrix.figures.length, matrix.summary.figuresTracked);
