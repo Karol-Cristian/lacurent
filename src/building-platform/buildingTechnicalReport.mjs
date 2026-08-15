@@ -2175,6 +2175,28 @@ function installationMonthlyRows(calculation) {
   }));
 }
 
+function installationSystemTopologyRows(calculation) {
+  const totals = new Map();
+  for (const month of calculation.chapter3Result?.monthly ?? []) {
+    for (const service of ["heating", "cooling", "dhw"]) {
+      for (const system of month[service]?.systemResults ?? []) {
+        const key = `${service}:${system.systemId}`;
+        const current = totals.get(key) ?? {
+          service,
+          systemId: system.systemId,
+          allocationFraction: system.allocationFraction,
+          generatorType: system.metadata?.generatorType ?? null,
+          energyCarrier: system.metadata?.energyCarrier ?? null,
+          annualInputKWh: 0
+        };
+        current.annualInputKWh += system.finalStageInputKWh ?? 0;
+        totals.set(key, current);
+      }
+    }
+  }
+  return [...totals.values()];
+}
+
 function summarizeClimateProfileFieldValue(field) {
   const value = field?.value;
   if (value === null || value === undefined) return "indisponibil";
@@ -2588,6 +2610,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     status: "ready",
     annual: calculation.chapter3Result.annual ?? {},
     monthly: installationMonthlyRows(calculation),
+    systemTopology: installationSystemTopologyRows(calculation),
     services: calculation.chapter3Result.services ?? {},
     energyByService: calculation.chapter3Result.energyByService ?? {},
     energyByCarrier: calculation.chapter3Result.energyByCarrier ?? {},

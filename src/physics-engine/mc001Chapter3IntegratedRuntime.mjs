@@ -43,6 +43,74 @@ function sum(values) {
   return values.reduce((total, value) => total + Number(value ?? 0), 0);
 }
 
+function directExecutionTrace({
+  formulaId,
+  branchId,
+  inputs,
+  rawResult,
+  finalResult,
+  unit,
+  provenance
+}) {
+  return {
+    schema: "mc001_execution_trace_v1",
+    chapter: "3",
+    formulaId,
+    branchId,
+    inputs,
+    rawResult,
+    finalResult,
+    unit,
+    clampApplied: false,
+    status: "direct_result",
+    provenance
+  };
+}
+
+function aggregateCalculatedResults(results, valueKey, unit, formulaId, branchId) {
+  const value = sum(results.map(result => result?.[valueKey] ?? result?.value ?? 0));
+  const inputs = Object.fromEntries(
+    results.map((result, index) => [
+      `system_${index + 1}`,
+      {
+        value: result?.[valueKey] ?? result?.value ?? 0,
+        unit,
+        formulaId: result?.formulaId ?? null
+      }
+    ])
+  );
+  return {
+    status: "calculated",
+    value,
+    [valueKey]: value,
+    unit,
+    formulaId,
+    inputs,
+    warnings: [],
+    executionTrace: directExecutionTrace({
+      formulaId,
+      branchId,
+      inputs,
+      rawResult: value,
+      finalResult: value,
+      unit,
+      provenance: {
+        source: "MC001 Chapter 3 explicit parallel-system aggregation",
+        aggregation: "sum of explicitly allocated system chains"
+      }
+    }),
+    trace: {
+      formulaId,
+      formulaText: "parallel-system aggregation := sum(system results)",
+      inputValues: inputs,
+      result: value,
+      unit,
+      assumptions: ["Multiple systems require explicit allocation fractions; no hidden default split is inferred."],
+      warnings: []
+    }
+  };
+}
+
 function stageBalance({
   service,
   stage,
@@ -146,6 +214,172 @@ function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
     lossTotalKWh: sum(stages.map(stage => stage.lossKWh)),
     auxiliaryTotalKWh: sum(stages.map(stage => stage.auxiliaryKWh)),
     recoverableTotalKWh: sum(stageResults.map(stage => stage.recoverableEnergy.valueKWh))
+  };
+}
+
+function defaultSystemMetadata(systemMetadata, service) {
+  const pluralKey = service === "dhw" ? "dhwSystems" : `${service}Systems`;
+  if (Array.isArray(systemMetadata?.[pluralKey]) && systemMetadata[pluralKey].length > 0) {
+    return systemMetadata[pluralKey];
+  }
+  return systemMetadata?.[service] ? [systemMetadata[service]] : [];
+}
+
+function normalizeSystemsForService({
+  service,
+  month,
+  systemMetadata,
+  systems,
+  legacyStages
+}) {
+  const metadata = defaultSystemMetadata(systemMetadata, service);
+  const explicitSystems = Array.isArray(systems) && systems.length > 0
+    ? systems
+    : null;
+  if (!explicitSystems) {
+    return [
+      {
+        systemId: metadata[0]?.systemId ?? `${service}-system-1`,
+        allocationFraction: 1,
+        stages: legacyStages,
+        metadata: metadata[0] ?? {}
+      }
+    ];
+  }
+
+  return explicitSystems.map((system, index) => ({
+    systemId: system.systemId ?? metadata[index]?.systemId ?? `${service}-system-${index + 1}`,
+    allocationFraction: system.allocationFraction,
+    stages: system.stages,
+    metadata: {
+      ...(metadata[index] ?? {}),
+      ...(system.metadata ?? {})
+    },
+    source: system.source ?? null,
+    month: month?.month ?? null
+  }));
+}
+
+function aggregateStageResults(systemResults) {
+  const stageOrder = [];
+  for (const system of systemResults) {
+    for (const stage of system.stageResults ?? []) {
+      if (!stageOrder.includes(stage.stageId)) stageOrder.push(stage.stageId);
+    }
+  }
+
+  return stageOrder.map(stageId => {
+    const stageParts = systemResults.flatMap(system =>
+      (system.stageResults ?? [])
+        .filter(stage => stage.stageId === stageId)
+        .map(stage => ({ ...stage, systemId: system.systemId }))
+    );
+    const inputResults = stageParts.map(stage => stage.inputEnergy);
+    const recoverableResults = stageParts.map(stage => stage.recoverableEnergy);
+    return {
+      stageId,
+      outputKWh: sum(stageParts.map(stage => stage.outputKWh)),
+      lossKWh: sum(stageParts.map(stage => stage.lossKWh)),
+      auxiliaryKWh: sum(stageParts.map(stage => stage.auxiliaryKWh)),
+      inputEnergy: aggregateCalculatedResults(
+        inputResults,
+        "valueKWh",
+        "kWh",
+        "MC001_CHAPTER_3_PARALLEL_STAGE_INPUT_AGGREGATION",
+        `parallel_${stageId}_input_sum`
+      ),
+      recoverableEnergy: aggregateCalculatedResults(
+        recoverableResults,
+        "valueKWh",
+        "kWh",
+        "MC001_CHAPTER_3_PARALLEL_STAGE_RECOVERABLE_AGGREGATION",
+        `parallel_${stageId}_recoverable_sum`
+      ),
+      systemBreakdown: stageParts.map(stage => ({
+        systemId: stage.systemId,
+        outputKWh: stage.outputKWh,
+        lossKWh: stage.lossKWh,
+        auxiliaryKWh: stage.auxiliaryKWh,
+        inputKWh: stage.inputEnergy.valueKWh,
+        recoverableKWh: stage.recoverableEnergy.valueKWh
+      }))
+    };
+  });
+}
+
+function calculateServiceTopology({
+  service,
+  usefulDemandKWh,
+  monthId,
+  month,
+  systems,
+  legacyStages,
+  systemMetadata
+}) {
+  assertFiniteNonNegativeNumber(usefulDemandKWh, `${service}.${monthId}.usefulDemandKWh`);
+  const serviceSystems = normalizeSystemsForService({
+    service,
+    month,
+    systemMetadata,
+    systems,
+    legacyStages
+  });
+  assertArray(serviceSystems, `${service}.${monthId}.systems`);
+
+  let allocationSum = 0;
+  const systemResults = serviceSystems.map((system, index) => {
+    assertFraction(
+      system.allocationFraction,
+      `${service}.${monthId}.systems[${index}].allocationFraction`
+    );
+    allocationSum += system.allocationFraction;
+    const allocatedUsefulDemandKWh = usefulDemandKWh * system.allocationFraction;
+    const chain = calculateServiceChain({
+      service,
+      usefulDemandKWh: allocatedUsefulDemandKWh,
+      stages: system.stages,
+      monthId
+    });
+    return {
+      ...chain,
+      systemId: system.systemId,
+      allocationFraction: system.allocationFraction,
+      allocatedUsefulDemandKWh,
+      metadata: system.metadata,
+      source: system.source
+    };
+  });
+
+  if (Math.abs(allocationSum - 1) > 1e-9) {
+    throw new Error(`${service}.${monthId}.systems allocationFraction values must sum to 1`);
+  }
+
+  if (systemResults.length === 1) {
+    return {
+      ...systemResults[0],
+      usefulDemandKWh,
+      finalStageInputKWh: systemResults[0].finalStageInputKWh,
+      systemResults,
+      topology: {
+        systemCount: 1,
+        allocationPolicy: "implicit_single_system_allocation"
+      }
+    };
+  }
+
+  return {
+    service,
+    usefulDemandKWh,
+    finalStageInputKWh: sum(systemResults.map(system => system.finalStageInputKWh)),
+    stageResults: aggregateStageResults(systemResults),
+    systemResults,
+    lossTotalKWh: sum(systemResults.map(system => system.lossTotalKWh)),
+    auxiliaryTotalKWh: sum(systemResults.map(system => system.auxiliaryTotalKWh)),
+    recoverableTotalKWh: sum(systemResults.map(system => system.recoverableTotalKWh)),
+    topology: {
+      systemCount: systemResults.length,
+      allocationPolicy: "explicit_allocation_fraction"
+    }
   };
 }
 
@@ -258,27 +492,36 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
   const monthly = months.map((month, index) => {
     const monthId = month.month ?? `month_${index + 1}`;
     const heating = heatingEnabled
-      ? calculateServiceChain({
+      ? calculateServiceTopology({
           service: "heating",
           monthId,
+          month,
           usefulDemandKWh: month.chapter2Useful?.qHndKWh,
-          stages: month.heatingStages
+          legacyStages: month.heatingStages,
+          systems: month.heatingSystems,
+          systemMetadata
         })
       : null;
     const cooling = coolingEnabled
-      ? calculateServiceChain({
+      ? calculateServiceTopology({
           service: "cooling",
           monthId,
+          month,
           usefulDemandKWh: month.chapter2Useful?.qCndKWh,
-          stages: month.coolingStages
+          legacyStages: month.coolingStages,
+          systems: month.coolingSystems,
+          systemMetadata
         })
       : null;
     const dhw = dhwEnabled && month.dhw
-      ? calculateServiceChain({
+      ? calculateServiceTopology({
           service: "dhw",
           monthId,
+          month,
           usefulDemandKWh: month.dhw.usefulDemandKWh,
-          stages: month.dhw.stages
+          legacyStages: month.dhw.stages,
+          systems: month.dhw.systems,
+          systemMetadata
         })
       : null;
     const ventilation = ventilationAhuEnabled ? calculateVentilationMonth(month) : null;
@@ -354,14 +597,14 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     lighting: annual.lightingEnergyKWh
   };
   const energyByCarrier = {};
-  for (const [service, key] of [
-    ["heating", "heatingInputKWh"],
-    ["cooling", "coolingInputKWh"],
-    ["dhw", "dhwInputKWh"]
-  ]) {
-    const carrier = systemMetadata?.[service]?.energyCarrier;
-    if (carrier && annual[key] > 0) {
-      energyByCarrier[carrier] = (energyByCarrier[carrier] ?? 0) + annual[key];
+  for (const service of ["heating", "cooling", "dhw"]) {
+    for (const month of monthly) {
+      for (const system of month[service]?.systemResults ?? []) {
+        const carrier = system.metadata?.energyCarrier ?? systemMetadata?.[service]?.energyCarrier;
+        if (carrier && system.finalStageInputKWh > 0) {
+          energyByCarrier[carrier] = (energyByCarrier[carrier] ?? 0) + system.finalStageInputKWh;
+        }
+      }
     }
   }
   if (annual.ventilationAuxiliaryKWh > 0) {

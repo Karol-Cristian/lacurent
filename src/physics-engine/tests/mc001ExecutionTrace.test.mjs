@@ -69,3 +69,29 @@ test("branch result traces require a true condition and do not need arithmetic e
   };
   assert.equal(validateMc001ExecutionTrace(invalid).code, "trace_branch_condition_not_true");
 });
+
+test("direct result traces validate runtime-emitted non-reconstructed formula results", () => {
+  const trace = {
+    schema: "mc001_execution_trace_v1",
+    formulaId: "MC001_3_A_SUBSYSTEM_INPUT_ENERGY_BALANCE",
+    branchId: "direct_normative_relation",
+    inputs: {
+      subsystemOutputKWh: traceInput(100, "kWh"),
+      subsystemLossKWh: traceInput(5, "kWh")
+    },
+    rawResult: 105,
+    finalResult: 105,
+    unit: "kWh",
+    clampApplied: false,
+    status: "direct_result"
+  };
+
+  assert.deepEqual(validateMc001ExecutionTrace(trace), {
+    ok: true,
+    evaluatedExpression: null
+  });
+  assert.equal(
+    validateMc001ExecutionTrace({ ...trace, finalResult: 104 }).code,
+    "trace_final_result_mismatch"
+  );
+});
