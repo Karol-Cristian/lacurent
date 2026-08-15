@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { buildChapter3NotebookSections } from "../mc001Chapter3Notebook.mjs";
 import { calculateMc001Chapter3IntegratedRuntime } from "../mc001Chapter3IntegratedRuntime.mjs";
+import { validateMc001ExecutionTrace } from "../mc001ExecutionTrace.mjs";
 import { mc001Chapter3ReferenceBuildingFixture } from "./fixtures/mc001Chapter3ReferenceBuildingFixture.mjs";
 
 function test(name, fn) {
@@ -268,4 +269,118 @@ test("does not validate inactive lighting boundary payloads", () => {
   assert.equal(result.status, "calculated");
   assert.equal(result.lighting, null);
   assert.equal(result.annual.lightingEnergyKWh, 0);
+});
+
+test("aggregates explicit parallel Chapter 3 heating systems without hidden allocation defaults", () => {
+  const result = calculateMc001Chapter3IntegratedRuntime({
+    services: {
+      heatingEnabled: true,
+      coolingEnabled: false,
+      dhwEnabled: false,
+      ventilationAhuEnabled: false,
+      coolingStoragePcmEnabled: false,
+      lightingEnabled: false
+    },
+    systemMetadata: {
+      heatingSystems: [
+        {
+          systemId: "boiler-loop",
+          energyCarrier: "natural_gas",
+          generatorType: "condensing_boiler"
+        },
+        {
+          systemId: "electric-backup",
+          energyCarrier: "electricity",
+          generatorType: "electric_resistance"
+        }
+      ]
+    },
+    months: [
+      {
+        month: "january",
+        chapter2Useful: { qHndKWh: 100, qCndKWh: 0 },
+        heatingSystems: [
+          {
+            systemId: "boiler-loop",
+            allocationFraction: 0.6,
+            stages: [
+              { stageId: "emission", lossKWh: 1, auxiliaryKWh: 0.1, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "distribution", lossKWh: 2, auxiliaryKWh: 0.2, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "storage", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "generation", lossKWh: 3, auxiliaryKWh: 0.3, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 }
+            ]
+          },
+          {
+            systemId: "electric-backup",
+            allocationFraction: 0.4,
+            stages: [
+              { stageId: "emission", lossKWh: 0.5, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "distribution", lossKWh: 0.5, auxiliaryKWh: 0.1, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "storage", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "generation", lossKWh: 1, auxiliaryKWh: 0.2, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  const heating = result.monthly[0].heating;
+  assert.equal(heating.topology.systemCount, 2);
+  assert.equal(heating.topology.allocationPolicy, "explicit_allocation_fraction");
+  assertCloseTo(heating.systemResults[0].allocatedUsefulDemandKWh, 60);
+  assertCloseTo(heating.systemResults[1].allocatedUsefulDemandKWh, 40);
+  assertCloseTo(heating.systemResults[0].finalStageInputKWh, 66);
+  assertCloseTo(heating.systemResults[1].finalStageInputKWh, 42);
+  assertCloseTo(heating.finalStageInputKWh, 108);
+  assertCloseTo(result.energyByCarrier.natural_gas, 66);
+  assertCloseTo(result.energyByCarrier.electricity, 42);
+  assert.equal(heating.stageResults.length, 4);
+  assert.deepEqual(validateMc001ExecutionTrace(heating.stageResults[0].inputEnergy.executionTrace), {
+    ok: true,
+    evaluatedExpression: null
+  });
+  assert.deepEqual(validateMc001ExecutionTrace(heating.systemResults[0].stageResults[0].inputEnergy.executionTrace), {
+    ok: true,
+    evaluatedExpression: null
+  });
+});
+
+test("rejects multiple Chapter 3 systems when explicit allocation fractions do not sum to one", () => {
+  assert.throws(
+    () =>
+      calculateMc001Chapter3IntegratedRuntime({
+        services: {
+          heatingEnabled: true,
+          coolingEnabled: false,
+          dhwEnabled: false,
+          ventilationAhuEnabled: false,
+          coolingStoragePcmEnabled: false,
+          lightingEnabled: false
+        },
+        months: [
+          {
+            month: "january",
+            chapter2Useful: { qHndKWh: 100, qCndKWh: 0 },
+            heatingSystems: [
+              {
+                systemId: "boiler-loop",
+                allocationFraction: 0.5,
+                stages: [
+                  { stageId: "emission", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 }
+                ]
+              },
+              {
+                systemId: "electric-backup",
+                allocationFraction: 0.2,
+                stages: [
+                  { stageId: "emission", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 }
+                ]
+              }
+            ]
+          }
+        ]
+      }),
+    /allocationFraction values must sum to 1/
+  );
 });

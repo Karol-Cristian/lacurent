@@ -3,7 +3,7 @@ import { calculateMc001Chapter3IntegratedRuntime } from "../physics-engine/mc001
 
 export const TECHNICAL_SYSTEMS_SCHEMA = "technical_systems_v1";
 export const CHAPTER3_INSTALLATIONS_ADAPTER_VERSION =
-  "building_chapter_3_installations_adapter_p4_v1";
+  "building_chapter_3_installations_adapter_p8_v1";
 
 export const CHAPTER3_INSTALLATION_STAGE_IDS = Object.freeze([
   "emission",
@@ -34,6 +34,7 @@ export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
       "energyCarrier",
       "servedScope",
       "nominalCapacityKW",
+      "systems[].allocationFraction",
       "stages[].auxiliaryRecoverableFractionToHeating",
       "stages[].lossRecoverableFractionToHeating"
     ]),
@@ -59,7 +60,13 @@ export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
       "technicalSystems.cooling.systems[].stages[].auxiliaryRecoveredFraction",
       "technicalSystems.cooling.systems[].stages[].lossRecoveredFraction"
     ]),
-    optionalInputFields: Object.freeze(["generatorType", "energyCarrier", "servedScope", "nominalCapacityKW"]),
+    optionalInputFields: Object.freeze([
+      "generatorType",
+      "energyCarrier",
+      "servedScope",
+      "nominalCapacityKW",
+      "systems[].allocationFraction"
+    ]),
     units: Object.freeze(["kWh/month", "fraction", "kW"]),
     enumValues: Object.freeze({
       generatorType: Object.freeze(["split_system", "chiller", "heat_pump_reversible", "district_cooling", "explicit_other"]),
@@ -107,7 +114,7 @@ export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
       "technicalSystems.domesticHotWater.systems[].stages[].lossKWhPerMonth",
       "technicalSystems.domesticHotWater.systems[].stages[].auxiliaryKWhPerMonth"
     ]),
-    optionalInputFields: Object.freeze(["generatorType", "energyCarrier", "circulationEnabled"]),
+    optionalInputFields: Object.freeze(["generatorType", "energyCarrier", "circulationEnabled", "systems[].allocationFraction"]),
     units: Object.freeze(["kWh/month", "fraction"]),
     outputs: Object.freeze(["monthly.dhw.finalStageInputKWh", "annual.dhwInputKWh"]),
     notebookSection: "chapter3.month.*.dhw",
@@ -229,17 +236,53 @@ function fraction(value, path, diagnostics, fallback = null) {
   return value;
 }
 
-function firstActiveSystem(section, path, diagnostics) {
+function activeSystems(section, path, diagnostics, { allowMultiple = false } = {}) {
   if (!enabled(section)) return null;
   const systems = Array.isArray(section.systems) ? section.systems.filter(item => item?.enabled !== false) : [];
   if (systems.length === 0) {
     diagnostics.push(diagnostic("missing_installation_system", `${path}.systems`));
     return null;
   }
-  if (systems.length > 1) {
+  if (!allowMultiple && systems.length > 1) {
     diagnostics.push(diagnostic("multiple_installation_systems_require_explicit_runtime_allocation", `${path}.systems`));
     return null;
   }
+  if (allowMultiple && systems.length === 1 && systems[0].allocationFraction !== undefined) {
+    if (!finiteNumber(systems[0].allocationFraction) || Math.abs(systems[0].allocationFraction - 1) > 1e-9) {
+      diagnostics.push(diagnostic(
+        "invalid_single_installation_system_allocation_fraction",
+        `${path}.systems[0].allocationFraction`,
+        "A single active system must either omit allocationFraction or set it to 1."
+      ));
+    }
+  }
+  if (allowMultiple && systems.length > 1) {
+    let allocationSum = 0;
+    for (const [index, system] of systems.entries()) {
+      if (!finiteNumber(system.allocationFraction) || system.allocationFraction < 0 || system.allocationFraction > 1) {
+        diagnostics.push(diagnostic(
+          "missing_multiple_installation_system_allocation_fraction",
+          `${path}.systems[${index}].allocationFraction`,
+          "Multiple active systems require explicit allocationFraction values between 0 and 1."
+        ));
+      } else {
+        allocationSum += system.allocationFraction;
+      }
+    }
+    if (Math.abs(allocationSum - 1) > 1e-9) {
+      diagnostics.push(diagnostic(
+        "invalid_multiple_installation_system_allocation_sum",
+        `${path}.systems[].allocationFraction`,
+        "Multiple active systems require allocationFraction values that sum to 1."
+      ));
+    }
+  }
+  return systems;
+}
+
+function firstActiveSystem(section, path, diagnostics) {
+  const systems = activeSystems(section, path, diagnostics);
+  if (!systems) return null;
   return systems[0];
 }
 
@@ -287,6 +330,28 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
   return stages;
 }
 
+function serviceSystemsForMonth(section, service, path, stageIds, monthIndex, diagnostics) {
+  const systems = activeSystems(section, path, diagnostics, { allowMultiple: true });
+  if (!systems) return null;
+  const multiple = systems.length > 1;
+  return systems.map((system, index) => ({
+    systemId: system.systemId ?? `${service}-system-${index + 1}`,
+    allocationFraction: multiple ? system.allocationFraction : 1,
+    stages: serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostics),
+    metadata: {
+      systemId: system.systemId ?? `${service}-system-${index + 1}`,
+      generatorType: system.generatorType ?? null,
+      energyCarrier: system.energyCarrier ?? null,
+      servedScope: system.servedScope ?? "whole_building",
+      nominalCapacityKW: system.nominalCapacityKW ?? null
+    },
+    source: system.source ?? {
+      origin: multiple ? "explicit_parallel_system_allocation" : "explicit_engineering_input",
+      reference: `${path}.systems[${index}]`
+    }
+  }));
+}
+
 function monthlyUsefulDemand(chapter2Result) {
   const heatingByMonth = new Map(
     (chapter2Result?.result?.heatingResult?.caseResults ?? []).map(item => [item.month, item])
@@ -328,8 +393,15 @@ function ventilationForMonth(section, monthIndex, diagnostics) {
 }
 
 function dhwForMonth(section, monthIndex, diagnostics) {
-  const system = firstActiveSystem(section, "technicalSystems.domesticHotWater", diagnostics);
-  if (!system) return null;
+  const systems = serviceSystemsForMonth(
+    section,
+    "dhw",
+    "technicalSystems.domesticHotWater",
+    CHAPTER3_DHW_STAGE_IDS,
+    monthIndex,
+    diagnostics
+  );
+  if (!systems) return null;
   return {
     usefulDemandKWh: monthlyScalar(
       section.monthlyUsefulDemandKWh,
@@ -337,7 +409,8 @@ function dhwForMonth(section, monthIndex, diagnostics) {
       "technicalSystems.domesticHotWater.monthlyUsefulDemandKWh",
       diagnostics
     ),
-    stages: serviceStagesForMonth(system, "dhw", CHAPTER3_DHW_STAGE_IDS, monthIndex, diagnostics)
+    systems,
+    ...(systems.length === 1 ? { stages: systems[0].stages } : {})
   };
 }
 
@@ -444,38 +517,69 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
     diagnostics.push(diagnostic("missing_chapter_2_monthly_useful_demand", "chapter2Result.result.monthlyResults"));
   }
 
-  const heatingSystem = firstActiveSystem(technicalSystems.heating, "technicalSystems.heating", diagnostics);
-  const coolingSystem = firstActiveSystem(technicalSystems.cooling, "technicalSystems.cooling", diagnostics);
   const heatingEnabled = enabled(technicalSystems.heating);
   const coolingEnabled = enabled(technicalSystems.cooling);
   const dhwEnabled = enabled(technicalSystems.domesticHotWater);
   const ventilationAhuEnabled = enabled(technicalSystems.ventilationAhu);
   const pcmEnabled = enabled(technicalSystems.coolingStoragePcm);
   const lighting = lightingInput(technicalSystems.lighting, buildingDna, diagnostics);
+  const heatingSystems = heatingEnabled
+    ? activeSystems(technicalSystems.heating, "technicalSystems.heating", diagnostics, { allowMultiple: true })
+    : null;
+  const coolingSystems = coolingEnabled
+    ? activeSystems(technicalSystems.cooling, "technicalSystems.cooling", diagnostics, { allowMultiple: true })
+    : null;
+  const dhwSystems = dhwEnabled
+    ? activeSystems(technicalSystems.domesticHotWater, "technicalSystems.domesticHotWater", diagnostics, { allowMultiple: true })
+    : null;
 
   const months = MONTH_IDS.map((month, index) => ({
     month,
     chapter2Useful: usefulDemand[index] ?? { month, qHndKWh: 0, qCndKWh: 0 },
-    ...(heatingEnabled && heatingSystem
+    ...(heatingEnabled && heatingSystems
       ? {
-          heatingStages: serviceStagesForMonth(
-            heatingSystem,
+          heatingSystems: serviceSystemsForMonth(
+            technicalSystems.heating,
             "heating",
+            "technicalSystems.heating",
             CHAPTER3_INSTALLATION_STAGE_IDS,
             index,
             diagnostics
-          )
+          ),
+          ...(heatingSystems.length === 1
+            ? {
+                heatingStages: serviceStagesForMonth(
+                  heatingSystems[0],
+                  "heating",
+                  CHAPTER3_INSTALLATION_STAGE_IDS,
+                  index,
+                  diagnostics
+                )
+              }
+            : {})
         }
       : {}),
-    ...(coolingEnabled && coolingSystem
+    ...(coolingEnabled && coolingSystems
       ? {
-          coolingStages: serviceStagesForMonth(
-            coolingSystem,
+          coolingSystems: serviceSystemsForMonth(
+            technicalSystems.cooling,
             "cooling",
+            "technicalSystems.cooling",
             CHAPTER3_INSTALLATION_STAGE_IDS,
             index,
             diagnostics
-          )
+          ),
+          ...(coolingSystems.length === 1
+            ? {
+                coolingStages: serviceStagesForMonth(
+                  coolingSystems[0],
+                  "cooling",
+                  CHAPTER3_INSTALLATION_STAGE_IDS,
+                  index,
+                  diagnostics
+                )
+              }
+            : {})
         }
       : {}),
     ...(dhwEnabled ? { dhw: dhwForMonth(technicalSystems.domesticHotWater, index, diagnostics) } : {}),
@@ -505,23 +609,44 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
         lightingEnabled: lighting !== null
       },
       systemMetadata: {
-        heating: heatingSystem ? {
-          systemId: heatingSystem.systemId ?? "heating-system-1",
-          generatorType: heatingSystem.generatorType ?? null,
-          energyCarrier: heatingSystem.energyCarrier ?? null,
-          servedScope: heatingSystem.servedScope ?? "whole_building"
+        heating: heatingSystems?.[0] ? {
+          systemId: heatingSystems[0].systemId ?? "heating-system-1",
+          generatorType: heatingSystems[0].generatorType ?? null,
+          energyCarrier: heatingSystems[0].energyCarrier ?? null,
+          servedScope: heatingSystems[0].servedScope ?? "whole_building"
         } : null,
-        cooling: coolingSystem ? {
-          systemId: coolingSystem.systemId ?? "cooling-system-1",
-          generatorType: coolingSystem.generatorType ?? null,
-          energyCarrier: coolingSystem.energyCarrier ?? null,
-          servedScope: coolingSystem.servedScope ?? "whole_building"
+        heatingSystems: (heatingSystems ?? []).map((system, index) => ({
+          systemId: system.systemId ?? `heating-system-${index + 1}`,
+          generatorType: system.generatorType ?? null,
+          energyCarrier: system.energyCarrier ?? null,
+          servedScope: system.servedScope ?? "whole_building",
+          allocationFraction: heatingSystems.length > 1 ? system.allocationFraction : 1
+        })),
+        cooling: coolingSystems?.[0] ? {
+          systemId: coolingSystems[0].systemId ?? "cooling-system-1",
+          generatorType: coolingSystems[0].generatorType ?? null,
+          energyCarrier: coolingSystems[0].energyCarrier ?? null,
+          servedScope: coolingSystems[0].servedScope ?? "whole_building"
         } : null,
-        dhw: firstActiveSystem(technicalSystems.domesticHotWater, "technicalSystems.domesticHotWater", [])
+        coolingSystems: (coolingSystems ?? []).map((system, index) => ({
+          systemId: system.systemId ?? `cooling-system-${index + 1}`,
+          generatorType: system.generatorType ?? null,
+          energyCarrier: system.energyCarrier ?? null,
+          servedScope: system.servedScope ?? "whole_building",
+          allocationFraction: coolingSystems.length > 1 ? system.allocationFraction : 1
+        })),
+        dhw: dhwSystems?.[0]
           ? {
-              energyCarrier: firstActiveSystem(technicalSystems.domesticHotWater, "technicalSystems.domesticHotWater", [])?.energyCarrier ?? null
+              energyCarrier: dhwSystems[0].energyCarrier ?? null
             }
           : null,
+        dhwSystems: (dhwSystems ?? []).map((system, index) => ({
+          systemId: system.systemId ?? `dhw-system-${index + 1}`,
+          generatorType: system.generatorType ?? null,
+          energyCarrier: system.energyCarrier ?? null,
+          servedScope: system.servedScope ?? "whole_building",
+          allocationFraction: dhwSystems.length > 1 ? system.allocationFraction : 1
+        })),
         lightingBoundary:
           lighting === null
             ? null

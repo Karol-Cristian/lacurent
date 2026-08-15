@@ -54,6 +54,13 @@ function serviceSystem(systemId, stageIds, losses, auxiliaries = []) {
   };
 }
 
+function withAllocation(system, allocationFraction) {
+  return {
+    ...system,
+    allocationFraction
+  };
+}
+
 function technicalSystems(overrides = {}) {
   return {
     schema: TECHNICAL_SYSTEMS_SCHEMA,
@@ -242,7 +249,7 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
     buildingDna: pipeline.buildingDna,
     calculation: pipeline.calculation
   });
-  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p4_v1");
+  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8_v1");
   assert.ok(metadata.chapter3RuntimeVersion);
 
   const backend = createInMemoryVersionedBuildingBackend();
@@ -333,5 +340,113 @@ await test("installation input changes alter deterministic analysis fingerprints
   close(
     changed.calculation.chapter2Result.result.annualQHnd,
     base.calculation.chapter2Result.result.annualQHnd
+  );
+});
+
+await test("Building DNA Chapter 3 adapter supports multiple explicit heating systems with allocation", () => {
+  const multiHeating = technicalSystems();
+  multiHeating.cooling.enabled = false;
+  multiHeating.cooling.systems = [];
+  multiHeating.ventilationAhu.enabled = false;
+  multiHeating.ventilationAhu.systems = [];
+  multiHeating.domesticHotWater.enabled = false;
+  multiHeating.domesticHotWater.systems = [];
+  multiHeating.coolingStoragePcm.enabled = false;
+  multiHeating.lighting.enabled = false;
+  multiHeating.lighting.explicitMonthlyEnergyKWh = [];
+  multiHeating.lighting.leniSubspaces = [];
+  multiHeating.heating.systems = [
+    {
+      ...withAllocation(
+        serviceSystem(
+          "heating-boiler",
+          CHAPTER3_INSTALLATION_STAGE_IDS,
+          [1, 2, 0, 3],
+          [0.1, 0.2, 0, 0.3]
+        ),
+        0.6
+      ),
+      generatorType: "condensing_boiler",
+      energyCarrier: "natural_gas"
+    },
+    {
+      ...withAllocation(
+        serviceSystem(
+          "heating-electric-backup",
+          CHAPTER3_INSTALLATION_STAGE_IDS,
+          [0.5, 0.5, 0, 1],
+          [0, 0.1, 0, 0.2]
+        ),
+        0.4
+      ),
+      generatorType: "electric_resistance",
+      energyCarrier: "electricity"
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: multiHeating })
+  );
+
+  assert.equal(pipeline.status, "ready");
+  assert.equal(pipeline.calculation.chapter3Result.status, "calculated");
+  const january = pipeline.calculation.chapter3Result.monthly[0].heating;
+  assert.equal(january.topology.systemCount, 2);
+  assert.equal(january.systemResults[0].allocationFraction, 0.6);
+  assert.equal(january.systemResults[1].allocationFraction, 0.4);
+  assert.equal(
+    pipeline.calculation.chapter3Input.months[0].heatingSystems.length,
+    2
+  );
+  close(
+    pipeline.calculation.chapter3Result.annual.heatingInputKWh,
+    pipeline.calculation.chapter2Result.result.annualQHnd + 96
+  );
+  assert.ok(pipeline.calculation.chapter3Result.energyByCarrier.natural_gas > 0);
+  assert.ok(pipeline.calculation.chapter3Result.energyByCarrier.electricity > 0);
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  assert.equal(workspace.installations.systemTopology.length, 2);
+  assert.ok(
+    workspace.engineeringNotebook.sections
+      .find(section => section.sectionId === "chapter3.month.january")
+      .lines.some(line => line.lineId.includes("heating-boiler.allocation"))
+  );
+});
+
+await test("Building DNA Chapter 3 adapter rejects multiple systems without explicit allocation", () => {
+  const invalidSystems = technicalSystems();
+  invalidSystems.heating.systems = [
+    serviceSystem("heating-one", CHAPTER3_INSTALLATION_STAGE_IDS, [1, 0, 0, 0]),
+    serviceSystem("heating-two", CHAPTER3_INSTALLATION_STAGE_IDS, [1, 0, 0, 0])
+  ];
+  const dnaResult = createBuildingDnaFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: invalidSystems })
+  );
+  assert.equal(dnaResult.status, "ready");
+  const calculation = calculateChapter2ForBuildingDna(dnaResult.buildingDna);
+  assert.equal(calculation.status, "blocked");
+  assert.equal(calculation.stage, "chapter_3_installations");
+  assert.ok(
+    calculation.diagnostics.some(
+      item => item.code === "missing_multiple_installation_system_allocation_fraction"
+    )
+  );
+});
+
+await test("Building DNA Chapter 3 adapter rejects partial allocation on a single active system", () => {
+  const invalidSystems = technicalSystems();
+  invalidSystems.heating.systems[0].allocationFraction = 0.75;
+  const dnaResult = createBuildingDnaFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: invalidSystems })
+  );
+  assert.equal(dnaResult.status, "ready");
+  const calculation = calculateChapter2ForBuildingDna(dnaResult.buildingDna);
+
+  assert.equal(calculation.status, "blocked");
+  assert.equal(calculation.stage, "chapter_3_installations");
+  assert.ok(
+    calculation.diagnostics.some(
+      item => item.code === "invalid_single_installation_system_allocation_fraction"
+    )
   );
 });

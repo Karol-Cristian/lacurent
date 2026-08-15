@@ -813,6 +813,14 @@ function renderInstallationsResults(workspace) {
         { label: "Purtator energie", value: row => row.carrier },
         { label: "Total anual", value: row => `${formatNumber(row.value)} kWh/an` }
       ], carrierRows) : ""}
+      ${(workspace.installations.systemTopology ?? []).length ? renderTable([
+        { label: "Serviciu", value: row => row.service },
+        { label: "Sistem", value: row => row.systemId },
+        { label: "Alocare", value: row => formatNumber(row.allocationFraction, 4) },
+        { label: "Generator", value: row => row.generatorType ?? "--" },
+        { label: "Purtator", value: row => row.energyCarrier ?? "--" },
+        { label: "Total anual", value: row => `${formatNumber(row.annualInputKWh)} kWh/an` }
+      ], workspace.installations.systemTopology) : ""}
       ${renderTable([
         { label: "Luna", value: row => row.monthLabel ?? row.month },
         { label: "Incalzire [kWh]", value: row => formatNumber(row.heatingInputKWh) },

@@ -152,6 +152,19 @@ export function validateMc001ExecutionTrace(trace, { tolerance = 1e-9 } = {}) {
     }
     return { ok: true, evaluatedExpression: null };
   }
+  if (trace.status === "direct_result") {
+    const rawResult = finiteNumber(trace.rawResult);
+    if (rawResult === null) return { ok: false, code: "trace_invalid_raw_result" };
+    if (trace.clampApplied !== true && Math.abs(rawResult - finalResult) > tolerance) {
+      return {
+        ok: false,
+        code: "trace_final_result_mismatch",
+        rawResult,
+        finalResult
+      };
+    }
+    return { ok: true, evaluatedExpression: null };
+  }
   const rawResult = finiteNumber(trace.rawResult);
   if (rawResult === null) return { ok: false, code: "trace_invalid_raw_result" };
   const evaluated = evaluateMc001TraceExpression(trace.expression, trace.inputs);

@@ -43,9 +43,34 @@ function stageLine(monthId, service, stage) {
   );
 }
 
+function systemLines(monthId, serviceKey, system) {
+  return [
+    line(
+      `${monthId}.${serviceKey}.${system.systemId}.allocation`,
+      `Q_${serviceKey},util,${system.systemId},${monthId} := ${value(system.allocatedUsefulDemandKWh, "kWh")} (f=${number(system.allocationFraction, 4)})`,
+      system.allocatedUsefulDemandKWh,
+      "kWh",
+      "MC001_CHAPTER_3_EXPLICIT_PARALLEL_SYSTEM_ALLOCATION"
+    ),
+    ...(system.stageResults ?? []).map(stage =>
+      stageLine(monthId, `${serviceKey}_${system.systemId}`, stage)
+    ),
+    line(
+      `${monthId}.${serviceKey}.${system.systemId}.final_stage`,
+      `Q_${serviceKey},in,${system.systemId},${monthId} := ${value(system.finalStageInputKWh, "kWh")}`,
+      system.finalStageInputKWh,
+      "kWh",
+      "MC001_3_A_SUBSYSTEM_INPUT_ENERGY_BALANCE"
+    )
+  ];
+}
+
 function monthlyServiceLines(month, serviceKey) {
   const service = month[serviceKey];
   if (!service) return [];
+  const parallelSystemLines = (service.systemResults?.length ?? 0) > 1
+    ? service.systemResults.flatMap(system => systemLines(month.month, serviceKey, system))
+    : [];
   const lines = [
     line(
       `${month.month}.${serviceKey}.useful`,
@@ -54,6 +79,7 @@ function monthlyServiceLines(month, serviceKey) {
       "kWh",
       "MC001_CHAPTER_3_EXPLICIT_INPUT_BOUNDARY"
     ),
+    ...parallelSystemLines,
     ...service.stageResults.map(stage => stageLine(month.month, serviceKey, stage)),
     line(
       `${month.month}.${serviceKey}.final_stage`,
