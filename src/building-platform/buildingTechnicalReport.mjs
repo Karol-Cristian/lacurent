@@ -5,6 +5,13 @@ import {
   buildChapter3NotebookSections
 } from "../physics-engine/mc001Chapter3Notebook.mjs";
 import {
+  calculateAverageCorrectedElementProperties2_16,
+  calculateAverageCorrectedEnvelopeProperties2_17,
+  calculateCoolingHeatTransferCoefficient2_79,
+  calculateCoolingOperativeTemperature2_78,
+  calculateThermalCouplingCoefficient2_18
+} from "../physics-engine/mc001Chapter2SupplementaryRelations.mjs";
+import {
   evaluateMc001TraceExpression
 } from "../physics-engine/mc001ExecutionTrace.mjs";
 
@@ -493,6 +500,161 @@ function formulaTrace({
     numericVerification,
     dependencies
   };
+}
+
+function envelopeSurfaceInput(element) {
+  if (!isFiniteAmount(element?.area) || !isFiniteAmount(element?.uValue)) return null;
+  return {
+    surfaceId: element.elementId,
+    areaM2: Number(element.area),
+    uValueWm2K: Number(element.uValue)
+  };
+}
+
+function supplementaryChapter2FormulaViews(envelope, monthly) {
+  const elementRows = envelope.elementRows ?? [];
+  const surfaceInputs = elementRows.map(envelopeSurfaceInput).filter(Boolean);
+  const views = [];
+
+  for (const component of envelope.components ?? []) {
+    const componentSurfaces = elementRows
+      .filter(element => element.component === component.componentId)
+      .map(envelopeSurfaceInput)
+      .filter(Boolean);
+    if (componentSurfaces.length === 0) continue;
+    const average = calculateAverageCorrectedElementProperties2_16({ surfaces: componentSurfaces });
+    if (average.status !== "ready") continue;
+    views.push(formulaTrace({
+      formulaId: average.formulaCode,
+      formulaName: `U mediu corectat element - ${component.componentId}`,
+      resultSymbol: `U_m_${component.componentId}`,
+      resultValue: average.averageUValueWm2K,
+      resultUnit: "W/(m2*K)",
+      origin: "calculated_from_MC001_2_16_existing_envelope_rows",
+      section: "transfer_anvelopa",
+      inputVariables: [
+        { symbol: "sum_UA", value: average.sumUA, unit: "W/K", meaning: "suma U'_j * A_j" },
+        { symbol: "sum_A", value: average.totalAreaM2, unit: "m2", meaning: "suma ariilor" }
+      ],
+      sourceReference: average.formulaCode,
+      symbolicFormula: "U'_m = sum(U'_j * A_j) / sum(A_j)",
+      substitutedFormula: `U'_m = ${formatFormulaNumber(average.sumUA)} / ${formatFormulaNumber(average.totalAreaM2)}`,
+      resultLine: `U'_m = ${formatFormulaValue(average.averageUValueWm2K, "W/(m2*K)")}`,
+      dependencies: componentSurfaces.map(surface => `${surface.surfaceId}.U_A`)
+    }));
+  }
+
+  const envelopeAverage = calculateAverageCorrectedEnvelopeProperties2_17({
+    surfaces: surfaceInputs
+  });
+  if (envelopeAverage.status === "ready") {
+    views.push(formulaTrace({
+      formulaId: envelopeAverage.formulaCode,
+      formulaName: "U mediu corectat al anvelopei",
+      resultSymbol: "U_m_anvelopa",
+      resultValue: envelopeAverage.averageUValueWm2K,
+      resultUnit: "W/(m2*K)",
+      origin: "calculated_from_MC001_2_17_existing_envelope_rows",
+      section: "transfer_anvelopa",
+      inputVariables: [
+        { symbol: "sum_UA", value: envelopeAverage.sumUA, unit: "W/K", meaning: "suma U'_j * A_j" },
+        { symbol: "sum_A", value: envelopeAverage.totalAreaM2, unit: "m2", meaning: "suma ariilor" }
+      ],
+      sourceReference: envelopeAverage.formulaCode,
+      symbolicFormula: "U'_M = sum(U'_j * A_j) / sum(A_j)",
+      substitutedFormula: `U'_M = ${formatFormulaNumber(envelopeAverage.sumUA)} / ${formatFormulaNumber(envelopeAverage.totalAreaM2)}`,
+      resultLine: `U'_M = ${formatFormulaValue(envelopeAverage.averageUValueWm2K, "W/(m2*K)")}`,
+      dependencies: surfaceInputs.map(surface => `${surface.surfaceId}.U_A`)
+    }));
+  }
+
+  for (const element of elementRows) {
+    const coupling = calculateThermalCouplingCoefficient2_18({
+      areaM2: element.area,
+      uValueWm2K: element.uValue
+    });
+    if (coupling.status !== "ready") continue;
+    views.push(formulaTrace({
+      formulaId: coupling.formulaCode,
+      formulaName: `Coeficient de cuplaj termic - ${element.elementId}`,
+      resultSymbol: `L_${element.elementId}`,
+      resultValue: coupling.result.amount,
+      resultUnit: "W/K",
+      origin: "calculated_from_MC001_2_18_existing_envelope_rows",
+      section: "transfer_anvelopa",
+      inputVariables: [
+        { symbol: "A", value: element.area, unit: "m2", meaning: "arie element" },
+        { symbol: "U'", value: element.uValue, unit: "W/(m2*K)", meaning: "transmitanta corectata" }
+      ],
+      sourceReference: coupling.formulaCode,
+      symbolicFormula: "L = A * U'",
+      substitutedFormula: `L = ${formatFormulaTerm(element.area, "m2")} * ${formatFormulaTerm(element.uValue, "W/(m2*K)")}`,
+      resultLine: `L = ${formatFormulaValue(coupling.result.amount, "W/K")}`,
+      dependencies: [`${element.elementId}.area`, `${element.elementId}.U`]
+    }));
+  }
+
+  for (const row of monthly.slice(0, 12)) {
+    const hCht = calculateCoolingHeatTransferCoefficient2_79({
+      qChtKwh: row.qChtKwh,
+      indoorCoolingSetpointC: row.coolingIndoorTemperatureC,
+      outdoorTemperatureC: row.coolingOutdoorTemperatureC,
+      durationHours: row.durationHours
+    });
+    if (hCht.status !== "ready") continue;
+    views.push(formulaTrace({
+      formulaId: hCht.formulaCode,
+      formulaName: `Coeficient transfer racire calculat - ${row.month}`,
+      resultSymbol: `HCht_${row.month}`,
+      resultValue: hCht.result.amount,
+      resultUnit: "W/K",
+      origin: "calculated_from_MC001_2_79_monthly_runtime_values",
+      section: "calcul_lunar_racire",
+      inputVariables: [
+        { symbol: "QCht", value: row.qChtKwh, unit: "kWh", meaning: "transfer racire" },
+        { symbol: "theta_int", value: row.coolingIndoorTemperatureC, unit: "degC" },
+        { symbol: "theta_e", value: row.coolingOutdoorTemperatureC, unit: "degC" },
+        { symbol: "t", value: row.durationHours, unit: "h" }
+      ],
+      sourceReference: hCht.formulaCode,
+      symbolicFormula: "HCht = QCht / ((theta_int - theta_e) * 0.001 * t)",
+      substitutedFormula: `HCht = ${formatFormulaNumber(row.qChtKwh)} / ((${formatFormulaNumber(row.coolingIndoorTemperatureC)} - ${formatFormulaNumber(row.coolingOutdoorTemperatureC)}) * 0.001 * ${formatFormulaNumber(row.durationHours)})`,
+      resultLine: `HCht = ${formatFormulaValue(hCht.result.amount, "W/K")}`,
+      dependencies: [`${row.month}.QCht`, `${row.month}.theta_int_C`, `${row.month}.theta_e`]
+    }));
+
+    const thetaOp = calculateCoolingOperativeTemperature2_78({
+      outdoorTemperatureC: row.coolingOutdoorTemperatureC,
+      qCndKwh: row.qCndKwh,
+      qCgnKwh: row.qCgnKwh,
+      coolingHeatTransferCoefficientWK: hCht.result.amount,
+      durationHours: row.durationHours
+    });
+    if (thetaOp.status !== "ready") continue;
+    views.push(formulaTrace({
+      formulaId: thetaOp.formulaCode,
+      formulaName: `Temperatura operativa racire - ${row.month}`,
+      resultSymbol: `theta_op_C_${row.month}`,
+      resultValue: thetaOp.result.amount,
+      resultUnit: "degC",
+      origin: "calculated_from_MC001_2_78_monthly_runtime_values",
+      section: "calcul_lunar_racire",
+      inputVariables: [
+        { symbol: "theta_e", value: row.coolingOutdoorTemperatureC, unit: "degC" },
+        { symbol: "QCnd", value: row.qCndKwh, unit: "kWh" },
+        { symbol: "QCgn", value: row.qCgnKwh, unit: "kWh" },
+        { symbol: "HCht", value: hCht.result.amount, unit: "W/K" },
+        { symbol: "t", value: row.durationHours, unit: "h" }
+      ],
+      sourceReference: thetaOp.formulaCode,
+      symbolicFormula: "theta_op,C = theta_e + (QCnd + QCgn) / (HCht * 0.001 * t)",
+      substitutedFormula: `theta_op,C = ${formatFormulaNumber(row.coolingOutdoorTemperatureC)} + (${formatFormulaNumber(row.qCndKwh)} + ${formatFormulaNumber(row.qCgnKwh)}) / (${formatFormulaNumber(hCht.result.amount)} * 0.001 * ${formatFormulaNumber(row.durationHours)})`,
+      resultLine: `theta_op,C = ${formatFormulaValue(thetaOp.result.amount, "degC")}`,
+      dependencies: [`${row.month}.QCnd`, `${row.month}.QCgn`, `${row.month}.HCht`]
+    }));
+  }
+
+  return views;
 }
 
 function formulaViews(assemblies, envelope, monthly, calculation) {
@@ -996,6 +1158,7 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
     ...assemblyFormulaViews,
     ...envelopeElementViews,
     ...thermalBridgeViews,
+    ...supplementaryChapter2FormulaViews(envelope, monthly),
     ...componentFormulaViews,
     ...htrFormulaViews,
     ...monthFormulaViews,
