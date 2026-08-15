@@ -11,6 +11,7 @@ import {
   getBuildingDnaDependencyTree,
   resolveRomanianNormativeClimateSelection
 } from "../index.mjs";
+import { validateMc001ExecutionTrace } from "../../physics-engine/mc001ExecutionTrace.mjs";
 import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
 function test(name, fn) {
@@ -449,6 +450,28 @@ test("assisted Building DNA resolves source-backed monthly climate by locality w
     "provider_climate_profile_without_qsol_preprocessing"
   );
   assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].heatGains.internalGainsSource,
+    "mc001_table_2_15_category_area_duration"
+  );
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].heatGains.internalGainsCategoryId,
+    "residential_single_family"
+  );
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].heatGains.internalGainsConstantWPerM2,
+    2.4
+  );
+  assert.equal(
+    cluj.buildingDna.monthlyProfiles[0].heatGains.internalGains.amount,
+    214.272
+  );
+  assert.equal(
+    validateMc001ExecutionTrace(
+      cluj.buildingDna.monthlyProfiles[0].heatGains.internalGainsExecutionTrace
+    ).ok,
+    true
+  );
+  assert.equal(
     cluj.buildingDna.warnings.some(
       item => item.code === "solar_gains_qsky_and_complete_solar_element_inputs_required"
     ),
@@ -524,6 +547,84 @@ test("source-backed provider profiles do not enter Chapter 2 with fake zero sola
     ["A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"]
   );
   assert.equal(calculation.diagnostics.blockers[0].productionEligible, false);
+  assert.equal(
+    calculation.diagnostics.blockers.some(
+      blocker => blocker.code === "INTERNAL_GAINS_TABLE_2_15_CATEGORY_AND_AREA_REQUIRED"
+    ),
+    false
+  );
+  assert.equal(calculation.chapter2Input, null);
+});
+
+test("advanced Building DNA derives non-residential internal gains from Table 2.15 without house-only assumptions", () => {
+  const assisted = assistedDna().buildingDna;
+  const office = createBuildingDnaFromAdvancedModel({
+    source: { reference: "P7E.test.office_internal_gains_table_2_15" },
+    assemblySelections: assisted.typologyProposal.assemblySelections,
+    geometry: createP1SeedGeometry({ usefulFloorAreaM2: 250 }),
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    building: {
+      buildingId: "p7e-office-internal-gains",
+      buildingType: "office",
+      useCategory: "Administrative",
+      location: {
+        country: "RO",
+        localityId: "ro_bucuresti",
+        localityName: "Bucuresti",
+        climateStationId: "mc001_6_2013_bucuresti"
+      }
+    }
+  });
+
+  assert.equal(office.status, "ready");
+  const january = office.buildingDna.monthlyProfiles[0].heatGains;
+  assert.equal(january.internalGainsSource, "mc001_table_2_15_category_area_duration");
+  assert.equal(january.internalGainsCategoryId, "administrative");
+  assert.equal(january.internalGainsConstantWPerM2, 3.3);
+  assert.equal(january.internalGains.amount, 613.8);
+  assert.equal(
+    january.internalGainsFormulaCode,
+    "MC001_RELATION_2_35_TABLE_2_15_MONTHLY_INTERNAL_GAINS"
+  );
+  assert.equal(validateMc001ExecutionTrace(january.internalGainsExecutionTrace).ok, true);
+  assert.equal(office.buildingDna.building.useCategory, "Administrative");
+});
+
+test("source-backed provider blocks unknown internal-gain categories instead of substituting zero", () => {
+  const assisted = assistedDna().buildingDna;
+  const commercial = createBuildingDnaFromAdvancedModel({
+    source: { reference: "P7E.test.unknown_internal_gains_category" },
+    assemblySelections: assisted.typologyProposal.assemblySelections,
+    geometry: createP1SeedGeometry({ usefulFloorAreaM2: 400 }),
+    climate: {
+      climateZone: "II",
+      windZone: "II"
+    },
+    building: {
+      buildingId: "p7e-commercial-internal-gains-boundary",
+      buildingType: "commercial_building",
+      location: {
+        country: "RO",
+        localityId: "ro_bucuresti",
+        localityName: "Bucuresti",
+        climateStationId: "mc001_6_2013_bucuresti"
+      }
+    }
+  });
+
+  assert.equal(commercial.status, "ready");
+  assert.equal(commercial.buildingDna.monthlyProfiles[0].heatGains.internalGains.amount, 0);
+  assert.equal(
+    commercial.buildingDna.monthlyProfiles[0].heatGains.internalGainsSource,
+    "internal_gains_table_2_15_category_or_area_missing"
+  );
+  const calculation = calculateChapter2ForBuildingDna(commercial.buildingDna);
+  const blockerCodes = calculation.diagnostics.blockers.map(blocker => blocker.code);
+  assert.equal(blockerCodes.includes("SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"), true);
+  assert.equal(blockerCodes.includes("INTERNAL_GAINS_TABLE_2_15_CATEGORY_AND_AREA_REQUIRED"), true);
   assert.equal(calculation.chapter2Input, null);
 });
 

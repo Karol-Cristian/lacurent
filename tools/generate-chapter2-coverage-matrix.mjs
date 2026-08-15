@@ -13,7 +13,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
-const BASE_COMMIT = "63d9b075e1c882c85024e24c125f046cda41abd4";
+const BASE_COMMIT = "c4a26b05b2e7aead145be2c7174b0916169c7bb3";
 const MATRIX_PATH = join(rootDir, "validation-reference", "chapter2-coverage-matrix.json");
 const REPORT_PATH = join(rootDir, "docs", "validation", "P7C_CHAPTER2_COVERAGE_AUDIT.md");
 const P7A_MAPPING_PATH = join(rootDir, "validation-reference", "p7a-chapter2-ui-runtime-mapping.json");
@@ -25,16 +25,10 @@ const PARTIAL_RELATIONS = new Set([
   "2.1",
   "2.25",
   "2.26",
-  "2.34",
-  "2.35",
   "2.36",
-  "2.37",
   "2.38",
   "2.39",
   "2.50",
-  "2.51",
-  "2.52",
-  "2.53",
   "2.54",
   "2.87"
 ]);
@@ -285,25 +279,33 @@ const RELATION_EVIDENCE = Object.freeze({
     productionEligibility: "production_ready_when_Qint_and_Qsol_are_available"
   },
   "2.34": {
-    implementationFile: "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
-    tests: ["src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"],
-    executionTraceSupport: "formula_result_metadata",
-    reportSupport: "adjacent-zone gains trace",
-    productionEligibility: "explicit_input_boundary",
-    limitation:
-      "Adjacent unconditioned-zone gains require explicit bztu/distribution/reduction inputs; no hidden defaults are used."
-  },
-  "2.35": {
+    status: "COMPLETE",
     implementationFile: "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
     tests: [
       "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
-      "src/physics-engine/tests/mc001InternalGainsTable2_15.test.mjs"
+      "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
     ],
-    executionTraceSupport: "formula_result_metadata",
-    reportSupport: "internal gains notebook",
-    productionEligibility: "partial_source_backed_table_2_15_or_explicit_inputs",
+    executionTraceSupport: "execution_trace",
+    reportSupport: "adjacent-zone gains trace through monthly heat-gains runtime",
+    productionEligibility: "production_ready_with_explicit_source_backed_adjacent_zone_inputs",
     limitation:
-      "Default internal-gain components outside encoded Table 2.15/explicit inputs remain explicit-input boundaries."
+      "P7E closes the runtime/report/test chain for explicit/source-backed bztu, distribution and reduction inputs; hidden adjacent-zone defaults remain prohibited."
+  },
+  "2.35": {
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001InternalGainsCalculation.mjs",
+    tests: [
+      "src/physics-engine/tests/mc001InternalGainsCalculation.test.mjs",
+      "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+      "src/physics-engine/tests/mc001InternalGainsTable2_15.test.mjs",
+      "src/building-platform/tests/buildingDnaResolver.test.mjs",
+      "src/building-platform/tests/buildingTechnicalReport.test.mjs"
+    ],
+    executionTraceSupport: "execution_trace",
+    reportSupport: "internal gains notebook/report via runtime trace",
+    productionEligibility: "production_ready_for_table_2_15_category_area_duration_or_explicit_monthly_input",
+    limitation:
+      "P7E implements Table 2.15 category-area-duration derivation and explicit monthly input contracts; source-specific occupant/equipment schedules outside owned MC001 tables remain explicit expert inputs, not hidden defaults."
   },
   "2.36": {
     implementationFile: "src/physics-engine/mc001SolarGainsCalculation.mjs",
@@ -315,13 +317,17 @@ const RELATION_EVIDENCE = Object.freeze({
       "P7B provides source-backed A.9.6 Hsol for tabulated vertical/horizontal planes; automatic Qsol still requires Qsky-compatible inputs and complete solar element inputs."
   },
   "2.37": {
-    implementationFile: "src/physics-engine/mc001SolarGainsCalculation.mjs",
-    tests: ["src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"],
-    executionTraceSupport: "formula_result_metadata",
+    status: "COMPLETE",
+    implementationFile: "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+    tests: [
+      "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+      "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
+    ],
+    executionTraceSupport: "execution_trace",
     reportSupport: "adjacent-zone solar gains trace",
-    productionEligibility: "explicit_input_boundary",
+    productionEligibility: "production_ready_with_explicit_source_backed_adjacent_zone_solar_inputs",
     limitation:
-      "Adjacent unconditioned-zone solar distribution/reduction factors must be explicit or source-backed."
+      "P7E closes the adjacent-zone distribution/reduction contract; automatic direct Qsol generation remains tracked under relations 2.36, 2.38, 2.39, 2.50 and 2.54."
   },
   "2.38": {
     implementationFile: "src/physics-engine/mc001SolarGainsCalculation.mjs",
@@ -409,28 +415,40 @@ const RELATION_EVIDENCE = Object.freeze({
     limitation: "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete opaque-element inputs remain required before automatic Qsol can be claimed."
   },
   "2.51": {
+    status: "COMPLETE",
     implementationFile: "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
-    tests: ["src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"],
-    executionTraceSupport: "formula_result_metadata",
+    tests: [
+      "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+      "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
+    ],
+    executionTraceSupport: "execution_trace",
     reportSupport: "adjacent-zone gain trace",
-    productionEligibility: "explicit_input_boundary",
-    limitation: "Requires explicit/source-backed adjacent-zone reduction inputs."
+    productionEligibility: "production_ready_with_explicit_single_adjacent_zone_inputs",
+    limitation: "No hidden adjacent-zone coefficients are inferred; required inputs must be explicit or source-backed."
   },
   "2.52": {
+    status: "COMPLETE",
     implementationFile: "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
-    tests: ["src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"],
-    executionTraceSupport: "formula_result_metadata",
+    tests: [
+      "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+      "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
+    ],
+    executionTraceSupport: "execution_trace",
     reportSupport: "adjacent-zone gain trace",
-    productionEligibility: "explicit_input_boundary",
-    limitation: "Requires explicit/source-backed adjacent-zone reduction inputs."
+    productionEligibility: "production_ready_with_explicit_multiple_adjacent_zone_inputs",
+    limitation: "No hidden adjacent-zone coefficients are inferred; required inputs must be explicit or source-backed."
   },
   "2.53": {
+    status: "COMPLETE",
     implementationFile: "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
-    tests: ["src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"],
-    executionTraceSupport: "formula_result_metadata",
+    tests: [
+      "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+      "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
+    ],
+    executionTraceSupport: "execution_trace",
     reportSupport: "adjacent-zone internal gain trace",
-    productionEligibility: "explicit_input_boundary",
-    limitation: "Requires explicit/source-backed adjacent-zone internal gain inputs."
+    productionEligibility: "production_ready_with_explicit_internal_unconditioned_zone_inputs",
+    limitation: "The insignificant-gain branch must be explicitly confirmed; hidden adjacent-zone defaults remain prohibited."
   },
   "2.54": {
     implementationFile: "src/physics-engine/mc001SolarGainsCalculation.mjs",
@@ -811,15 +829,15 @@ const FORMULA_TITLES = Object.freeze({
 });
 
 const GENERIC_NOT_IMPLEMENTED_REASON = Object.freeze({
-  "2.44": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
-  "2.45": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
-  "2.46": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
+  "2.44": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing.",
+  "2.45": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing.",
+  "2.46": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing.",
   "2.87": "P7D implements the explicit theta_emz threshold equation; graphic annual heating/cooling period intersection remains bounded."
 });
 
 const RECOMMENDED_MILESTONES = Object.freeze([
   {
-    milestone: "P7E",
+    milestone: "P7F",
     title: "Complete automatic Chapter 2 Qsol/Qsky production path",
     scope: [
       "source-backed Qsky inputs or calculation path",
@@ -829,7 +847,7 @@ const RECOMMENDED_MILESTONES = Object.freeze([
     priority: "highest"
   },
   {
-    milestone: "P7F",
+    milestone: "P7G",
     title: "Dynamic transparent elements and seasonal-period procedure",
     scope: [
       "relations 2.44-2.46 after SR EN ISO 52016-1 Annex G source is available",
@@ -838,12 +856,12 @@ const RECOMMENDED_MILESTONES = Object.freeze([
     priority: "high"
   },
   {
-    milestone: "P7G",
-    title: "Expand default internal-gain and adjacent-zone source contracts",
+    milestone: "P7H",
+    title: "Expand optional building-use schedules and expert source contracts",
     scope: [
-      "non-residential internal-gain source tables/procedures",
-      "adjacent-zone distribution/reduction source contracts",
-      "production UI for those explicit source-backed inputs"
+      "project-specific occupant/equipment/lighting/appliance schedules beyond Table 2.15 where owned sources permit",
+      "production UI refinements for expert source-backed adjacent-zone inputs",
+      "generic building-category workflows beyond the current Table 2.15 supported categories"
     ],
     priority: "medium"
   }
@@ -1095,7 +1113,7 @@ Generated by \`tools/generate-chapter2-coverage-matrix.mjs\`.
 
 - Base commit: \`${matrix.baseCommit}\`
 - Source basis: MC001-2022 official local PDF inventory from \`MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX\`, P7A UI/runtime mapping, runtime modules and existing tests.
-- Runtime behavior changes: P7D adds supplementary Chapter 2 helper calculations with execution traces for source-complete relations. Validated Chapter 2 useful-demand formulas and numerical oracles are unchanged.
+- Runtime behavior changes: P7E closes source-backed Table 2.15 internal-gain derivation and adjacent-zone gain contracts with execution traces. Validated Chapter 2 useful-demand formulas and numerical oracles are unchanged.
 
 ## Coverage Summary
 
@@ -1216,7 +1234,7 @@ ${matrix.recommendedMilestoneOrder
 
 ## Conclusion
 
-Chapter 2 useful-demand runtime coverage is strong for the explicit-input production path and is backed by P2V/P3V regression suites. After P7B, Annex A.9.6 source rows are no longer merely provenance: tabulated vertical/horizontal \`Hsol\` is source-backed, provider-backed and report-visible. The main bounded production gap is now automatic \`Qsol/Qsky\` completion for project solar elements. Several R20-classified relation slots remain outside the current runtime and require targeted source-to-runtime decisions before they can be claimed as complete.
+Chapter 2 useful-demand runtime coverage is strong for the explicit-input production path and is backed by P2V/P3V regression suites. After P7E, internal gains can be derived from MC001 Tabel 2.15 for the supported building-use categories, adjacent-zone gain relations 2.34/2.37/2.51/2.52/2.53 are traceable through the runtime, and Annex A.9.6 tabulated vertical/horizontal \`Hsol\` remains source-backed, provider-backed and report-visible. The main bounded production gap is automatic \`Qsol/Qsky\` completion for project solar elements plus the externally delegated dynamic transparent-element procedure.
 `;
 }
 
@@ -1259,13 +1277,13 @@ function main() {
           entry.id.includes("2_39") ||
           entry.id.includes("2_50") ||
           entry.id.includes("2_54")
-            ? "P7E"
+            ? "P7F"
             : entry.id.includes("2_44") ||
                 entry.id.includes("2_45") ||
                 entry.id.includes("2_46") ||
                 entry.id.includes("2_87")
-              ? "P7F"
-            : "P7E/P7F"
+              ? "P7G"
+            : "P7F/P7G"
       })),
     {
       id: "CHAPTER_2_QSOL_QSKY_COMPLETION_BOUNDED",
@@ -1277,7 +1295,7 @@ function main() {
       diagnosticCode: "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
       availableInputs: ["Hsol_vertical_horizontal_A9_6"],
       missingInputs: ["Qsky", "Qsol", "solarElementInputs"],
-      recommendedMilestone: "P7E"
+      recommendedMilestone: "P7F"
     },
     {
       id: "OFFICIAL_LOCALITY_TO_CLIMATE_ZONE_MAPPING",
@@ -1327,7 +1345,7 @@ function main() {
       figureStatusCounts
     },
     baselineValidation: {
-      note: "Executed from the clean P7C worktree before audit artifact changes.",
+      note: "Executed from the clean P7E worktree before implementation and re-run after P7E changes.",
       commands: [
         { command: "git diff --check", result: "PASS" },
         { command: "node --check on 344 JS/MJS files excluding node_modules/.git/dist", result: "PASS" },

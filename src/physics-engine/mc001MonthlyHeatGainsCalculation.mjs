@@ -1,4 +1,12 @@
 import { MC001_MONTHLY_SOLAR_GAINS_SCOPE } from "./mc001SolarGainsCalculation.mjs";
+import {
+  buildArithmeticExecutionTrace,
+  buildBranchExecutionTrace,
+  inputExpression,
+  operatorExpression,
+  traceInput,
+  valueExpression
+} from "./mc001ExecutionTrace.mjs";
 
 const MODE = "monthly_heat_gains_explicit_v1";
 const SCOPE = "monthly_heat_gains_explicit_input_only_not_full_QHnd";
@@ -76,6 +84,10 @@ const FORBIDDEN_INPUT_KEYS = new Set([
   "heatGainsResult",
   "adjacentUnconditionedZoneResults",
   "solarGainsResult",
+  "executionTrace",
+  "gainReductionExecutionTrace",
+  "internalGainContributionExecutionTrace",
+  "solarGainContributionExecutionTrace",
   "formulaCode",
   "formulaReferences"
 ]);
@@ -124,6 +136,7 @@ function hasForbiddenDerivedInput(value, path = []) {
         "summary",
         "formulaCode",
         "formulaReferences",
+        "executionTrace",
         "annualSolarGains",
         "qSolDir",
         "transparentElementResults",
@@ -445,7 +458,21 @@ function resolveGainReductionFactor(zone, adjacentInternalGains, adjacentSolarGa
       value: {
         gainReductionFactor: direct.value,
         gainReductionFactorOrigin: "explicit_input",
-        gainReductionFormulaCode: "EXPLICIT_GAIN_REDUCTION_FACTOR"
+        gainReductionFormulaCode: "EXPLICIT_GAIN_REDUCTION_FACTOR",
+        gainReductionExecutionTrace: buildBranchExecutionTrace({
+          formulaId: "EXPLICIT_GAIN_REDUCTION_FACTOR",
+          branchId: "explicit_gain_reduction_factor",
+          inputs: {
+            fgnMax: traceInput(direct.value, "-")
+          },
+          condition: {
+            expression: "explicit source-backed gain-reduction factor supplied",
+            evaluated: true
+          },
+          finalResult: direct.value,
+          unit: "-",
+          reason: "Explicit source-backed gain-reduction factor supplied."
+        })
       }
     };
   }
@@ -466,7 +493,18 @@ function resolveGainReductionFactor(zone, adjacentInternalGains, adjacentSolarGa
       value: {
         gainReductionFactor: 1,
         gainReductionFactorOrigin: "calculated_from_MC001_2_53_internal_unconditioned_zone",
-        gainReductionFormulaCode: GAIN_REDUCTION_INTERNAL_FORMULA_CODE
+        gainReductionFormulaCode: GAIN_REDUCTION_INTERNAL_FORMULA_CODE,
+        gainReductionExecutionTrace: buildBranchExecutionTrace({
+          formulaId: GAIN_REDUCTION_INTERNAL_FORMULA_CODE,
+          branchId: "internal_unconditioned_zone_insignificant_gains",
+          condition: {
+            expression: "insignificant internal unconditioned-zone gains confirmed",
+            evaluated: true
+          },
+          finalResult: 1,
+          unit: "-",
+          reason: "MC001 relation 2.53 branch treats insignificant gains with fgn,max = 1."
+        })
       }
     };
   }
@@ -489,6 +527,7 @@ function resolveGainReductionFactor(zone, adjacentInternalGains, adjacentSolarGa
   let numeratorHeatTransfer = null;
   let origin = null;
   let formulaCode = null;
+  let traceTerms = null;
   if (input.mode === "external_single_adjacent_conditioned_zone_explicit_v1") {
     const heatTransfer = numberInRange(
       input.heatTransferCoefficientToConditionedZone,
@@ -503,11 +542,18 @@ function resolveGainReductionFactor(zone, adjacentInternalGains, adjacentSolarGa
     numeratorHeatTransfer = heatTransfer.value * (setpoint - exteriorAirTemperature);
     origin = "calculated_from_MC001_2_51_single_adjacent_zone";
     formulaCode = GAIN_REDUCTION_SINGLE_FORMULA_CODE;
+    traceTerms = {
+      mode: "single",
+      heatTransferCoefficient: heatTransfer.value,
+      internalSetpointTemperature: setpoint,
+      exteriorAirTemperature
+    };
   } else if (input.mode === "external_multiple_adjacent_conditioned_zones_explicit_v1") {
     if (!Array.isArray(input.conditionedZoneHeatTransfers) || input.conditionedZoneHeatTransfers.length === 0) {
       return { ok: false, code: "monthly_heat_gains_missing_gain_reduction_conditioned_zones" };
     }
     numeratorHeatTransfer = 0;
+    const traceTransfers = [];
     for (const transfer of input.conditionedZoneHeatTransfers) {
       if (!isPlainObject(transfer)) {
         return { ok: false, code: "monthly_heat_gains_invalid_gain_reduction_conditioned_zone" };
@@ -523,9 +569,18 @@ function resolveGainReductionFactor(zone, adjacentInternalGains, adjacentSolarGa
         return { ok: false, code: "monthly_heat_gains_invalid_gain_reduction_conditioned_setpoint" };
       }
       numeratorHeatTransfer += coefficient.value * (setpoint - exteriorAirTemperature);
+      traceTransfers.push({
+        heatTransferCoefficient: coefficient.value,
+        internalSetpointTemperature: setpoint
+      });
     }
     origin = "calculated_from_MC001_2_52_multiple_adjacent_zones";
     formulaCode = GAIN_REDUCTION_MULTIPLE_FORMULA_CODE;
+    traceTerms = {
+      mode: "multiple",
+      exteriorAirTemperature,
+      conditionedZoneHeatTransfers: traceTransfers
+    };
   } else {
     return { ok: false, code: "monthly_heat_gains_unsupported_gain_reduction_factor_input_mode" };
   }
@@ -534,14 +589,121 @@ function resolveGainReductionFactor(zone, adjacentInternalGains, adjacentSolarGa
   if (!Number.isFinite(gainReductionFactor) || gainReductionFactor < 0) {
     return { ok: false, code: "monthly_heat_gains_invalid_calculated_gain_reduction_factor" };
   }
+  const multipleNumeratorTerms = traceTerms?.mode === "multiple"
+    ? traceTerms.conditionedZoneHeatTransfers.map((_, index) =>
+        operatorExpression("multiply", [
+          inputExpression(`Hztc${index + 1}`),
+          operatorExpression("subtract", [
+            inputExpression(`theta_i${index + 1}`),
+            inputExpression("theta_e")
+          ])
+        ])
+      )
+    : null;
+  const numeratorExpression = traceTerms?.mode === "multiple"
+    ? (multipleNumeratorTerms.length === 1
+        ? multipleNumeratorTerms[0]
+        : operatorExpression("add", multipleNumeratorTerms))
+    : operatorExpression("multiply", [
+        inputExpression("Hztc"),
+        operatorExpression("subtract", [
+          inputExpression("theta_i"),
+          inputExpression("theta_e")
+        ])
+      ]);
+  const traceInputs = {
+    bztu: traceInput(bztu, "-"),
+    t: traceInput(durationHours.value, "h"),
+    Qadj: traceInput(denominator, "kWh"),
+    theta_e: traceInput(exteriorAirTemperature, "degC")
+  };
+  if (traceTerms?.mode === "multiple") {
+    traceTerms.conditionedZoneHeatTransfers.forEach((transfer, index) => {
+      traceInputs[`Hztc${index + 1}`] = traceInput(transfer.heatTransferCoefficient, "W/K");
+      traceInputs[`theta_i${index + 1}`] = traceInput(transfer.internalSetpointTemperature, "degC");
+    });
+  } else {
+    traceInputs.Hztc = traceInput(traceTerms.heatTransferCoefficient, "W/K");
+    traceInputs.theta_i = traceInput(traceTerms.internalSetpointTemperature, "degC");
+  }
   return {
     ok: true,
     value: {
       gainReductionFactor,
       gainReductionFactorOrigin: origin,
-      gainReductionFormulaCode: formulaCode
+      gainReductionFormulaCode: formulaCode,
+      gainReductionExecutionTrace: buildArithmeticExecutionTrace({
+        formulaId: formulaCode,
+        branchId: traceTerms?.mode === "multiple"
+          ? "multiple_adjacent_conditioned_zones"
+          : "single_adjacent_conditioned_zone",
+        inputs: traceInputs,
+        expression: operatorExpression("divide", [
+          operatorExpression("multiply", [
+            inputExpression("bztu"),
+            numeratorExpression,
+            valueExpression(0.001),
+            inputExpression("t")
+          ]),
+          inputExpression("Qadj")
+        ]),
+        rawResult: gainReductionFactor,
+        finalResult: gainReductionFactor,
+        unit: "-",
+        clampApplied: false
+      })
     }
   };
+}
+
+function adjacentGainContributionTrace({
+  formulaId,
+  branchId,
+  bztu,
+  distributionFactor,
+  gainReductionFactor,
+  directGains,
+  contribution
+}) {
+  return buildArithmeticExecutionTrace({
+    formulaId,
+    branchId,
+    inputs: {
+      bztu: traceInput(bztu, "-"),
+      FztcZtu: traceInput(distributionFactor, "-"),
+      fgnMax: traceInput(gainReductionFactor, "-"),
+      QdirZtu: traceInput(directGains, "kWh")
+    },
+    expression: operatorExpression("multiply", [
+      operatorExpression("subtract", [valueExpression(1), inputExpression("bztu")]),
+      inputExpression("FztcZtu"),
+      inputExpression("fgnMax"),
+      inputExpression("QdirZtu")
+    ]),
+    rawResult: contribution,
+    finalResult: contribution,
+    unit: "kWh",
+    clampApplied: false
+  });
+}
+
+function heatGainsSumTrace({ internalGains, solarGains, qHgn }) {
+  return buildArithmeticExecutionTrace({
+    formulaId: FORMULA_CODE,
+    branchId: "monthly_total_internal_plus_solar_gains",
+    inputs: {
+      Qint: traceInput(internalGains, "kWh"),
+      Qsol: traceInput(solarGains, "kWh")
+    },
+    expression: operatorExpression("add", [
+      inputExpression("Qint"),
+      inputExpression("Qsol")
+    ]),
+    rawResult: qHgn,
+    finalResult: qHgn,
+    unit: "kWh",
+    clampApplied: false
+  });
 }
 
 function resolveAdjacentUnconditionedZone(zone, month) {
@@ -594,6 +756,7 @@ function resolveAdjacentUnconditionedZone(zone, month) {
       gainReductionFactor: reduction.value.gainReductionFactor,
       gainReductionFactorOrigin: reduction.value.gainReductionFactorOrigin,
       gainReductionFormulaCode: reduction.value.gainReductionFormulaCode,
+      gainReductionExecutionTrace: reduction.value.gainReductionExecutionTrace,
       adjacentInternalGains: internalGains,
       adjacentSolarGains: solar.value.solarGains,
       ...(solar.value.solarGainsFormulaCode === undefined ? {} : {
@@ -601,6 +764,24 @@ function resolveAdjacentUnconditionedZone(zone, month) {
       }),
       internalGainContribution,
       solarGainContribution,
+      internalGainContributionExecutionTrace: adjacentGainContributionTrace({
+        formulaId: ADJACENT_UNCONDITIONED_GAINS_FORMULA_CODE,
+        branchId: "relation_2_34_internal_adjacent_unconditioned_zone",
+        bztu: bztu.value.bztu,
+        distributionFactor: distribution.value.distributionFactor,
+        gainReductionFactor: reduction.value.gainReductionFactor,
+        directGains: internalGains,
+        contribution: internalGainContribution
+      }),
+      solarGainContributionExecutionTrace: adjacentGainContributionTrace({
+        formulaId: "MC001_RELATION_2_37_ADJACENT_UNCONDITIONED_ZONE_SOLAR_GAINS",
+        branchId: "relation_2_37_solar_adjacent_unconditioned_zone",
+        bztu: bztu.value.bztu,
+        distributionFactor: distribution.value.distributionFactor,
+        gainReductionFactor: reduction.value.gainReductionFactor,
+        directGains: solar.value.solarGains,
+        contribution: solarGainContribution
+      }),
       formulaCode: ADJACENT_UNCONDITIONED_GAINS_FORMULA_CODE,
       sourceScope: "mc001_relations_2_34_2_37_adjacent_unconditioned_zone_gains"
     }
@@ -693,6 +874,11 @@ function validateCase(inputCase) {
         adjacentUnconditionedGainsFormulaCode: ADJACENT_UNCONDITIONED_GAINS_FORMULA_CODE
       } : {}),
       qHgn: totalInternalGains + solarGains,
+      executionTrace: heatGainsSumTrace({
+        internalGains: totalInternalGains,
+        solarGains,
+        qHgn: totalInternalGains + solarGains
+      }),
       sourceReference: inputCase.source.reference
     }
   };

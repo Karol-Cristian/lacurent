@@ -267,6 +267,10 @@ function runSingleHeatGains(inputCase) {
         month: inputCase.month,
         internalGains: gains.internalGains,
         solarGains: gains.solarGains,
+        ...(Array.isArray(gains.adjacentUnconditionedZones) &&
+          gains.adjacentUnconditionedZones.length > 0
+          ? { adjacentUnconditionedZones: gains.adjacentUnconditionedZones }
+          : {}),
         source: {
           reference: inputCase.source.reference,
           notes: inputCase.source.notes

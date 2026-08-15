@@ -31,9 +31,9 @@ Every production concept exists once, has exactly one owner and is extended thro
 
 | Category | Field count |
 | --- | --- |
-| primitive_user_input | 38 |
+| primitive_user_input | 39 |
 | provider_resolved | 8 |
-| derived_engineering_value | 4 |
+| derived_engineering_value | 5 |
 | physics_runtime_state | 4 |
 | output | 4 |
 | legacy | 6 |
@@ -44,6 +44,7 @@ Every production concept exists once, has exactly one owner and is extended thro
 | --- | --- | --- | --- | --- | --- |
 | project.name | primitive_user_input | Versioned Building Backend | building_platform_projects.project_name | remain_editable | metadata_only_no_physics_effect |
 | building.identity.type | primitive_user_input | Building DNA Resolver | buildingDna.building.buildingType | remain_editable | affects typology and Table 2.15 internal gains when applicable |
+| building.identity.use_category | primitive_user_input | Building DNA Resolver | buildingDna.building.useCategory or buildingDna.building.internalGainsCategoryId | remain_editable | drives_source_backed_internal_gains_when_useful_area_and_monthly_duration_are_available |
 | building.identity.construction_period | primitive_user_input | Building DNA Resolver | buildingDna.building.constructionPeriod | remain_editable | typology_input_may_affect_catalogue_selection |
 | location.locality_id | primitive_user_input | User through Building DNA Resolver | buildingDna.building.location.localityId | remain_editable | drives station, monthly temperature, humidity, design climate and available solar source rows |
 | location.county | primitive_user_input | User through Building DNA Resolver | buildingDna.building.location.countyName | remain_editable | metadata_traceability_currently_no_physics_effect |
@@ -81,6 +82,7 @@ Every production concept exists once, has exactly one owner and is extended thro
 | ventilation.ach | primitive_user_input | User through Building DNA Resolver | buildingDna.buildingSpecificParameters.ventilationAch | remain_editable | affects_Qve_when_heated_volume_present |
 | derived.ventilation_airflow | derived_engineering_value | Building DNA Resolver | monthlyProfilesWithGeometryVentilation | calculated | direct_input_to_Hve_Qve |
 | derived.monthly_profiles | derived_engineering_value | Building DNA Resolver | buildingDna.monthlyProfiles | read_only | primary_monthly_runtime_input |
+| derived.internal_gains_table_2_15 | derived_engineering_value | Building DNA Resolver with Physics Engine source-formula helper | buildingDna.monthlyProfiles[*].heatGains.internalGains | read_only | source_backed_internal_gains_for_supported_Table_2_15_categories |
 | derived.envelope_elements | derived_engineering_value | Building DNA Resolver | buildingDna.envelopeElements | calculated | primary_envelope_transmission_input |
 | provider.assembly_catalogue_selection | provider_resolved | Building Platform Catalogue and Typology Engine | catalogue entries copied into Building DNA | read_only | material_layer_input_to_R_U_calculation |
 | derived.thermal_bridges | derived_engineering_value | Building DNA Resolver | buildingDna.thermalBridges | calculated | affects_Hd_Htr |
@@ -95,7 +97,6 @@ Every production concept exists once, has exactly one owner and is extended thro
 | runtime.assembly_u_values | physics_runtime_state | Physics Engine | calculateMc001EnvelopeAssemblyUValueExplicit output | read_only | intermediate_traceable_engine_result |
 | runtime.hd_hg_hu_ha_htr | physics_runtime_state | Physics Engine | calculateMc001EnvelopeTransmissionCoefficientExplicit output | read_only | core_Chapter2_transfer_runtime_state |
 | runtime.chapter2_monthly_useful_demand | physics_runtime_state | Physics Engine | calculateMc001Chapter2UsefulDemandExplicit output | read_only | core_Chapter2_output_and_Chapter3_input |
-| runtime.chapter2_execution_trace | physics_runtime_state | Physics Engine | heating/cooling monthly case `executionTrace` | read_only | authoritative_executed_formula_and_branch_trace_for_report |
 | runtime.chapter3_installation_energy | physics_runtime_state | Physics Engine | calculateMc001Chapter3IntegratedRuntime output | read_only | active_only_when_technicalSystems_enabled |
 | output.annual_qhnd_qcnd | output | Physics Engine output persisted by Versioned Backend | building_platform_analysis_versions annual_qhnd/annual_qcnd | read_only | primary_product_result |
 | output.chapter3_annual_summary | output | Physics Engine output persisted by Versioned Backend | building_platform_analysis_versions.complete_engine_output_json | read_only | primary_installation_result_when_available |
@@ -214,7 +215,6 @@ Explicit future boundaries:
 - Building DNA is the only persisted engineering input model.
 - Adapters map Building DNA to physics input without duplicating formulas.
 - Reports render persisted Building DNA and engine outputs without recalculation.
-- Displayed Chapter 2 demand equations must render the Physics Engine execution trace. Branch results must show the executed branch and must not reconstruct a generic formula that was not evaluated.
 - Legacy fields remain explicitly classified until removed.
 
 ## Target Architecture

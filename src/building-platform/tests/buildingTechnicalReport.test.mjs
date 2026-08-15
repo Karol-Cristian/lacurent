@@ -74,8 +74,8 @@ await test("technical report is generated from Building DNA and Chapter 2 output
   );
   assert.equal(workspace.report.reportId, "engineering_calculation_notebook_p3g_v1");
   assert.equal(workspace.report.title, "Caiet de calcul MC001-2022");
-  assert.equal(workspace.calculationFingerprint.fingerprintId, "a8af8727");
-  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "a8af8727");
+  assert.equal(workspace.calculationFingerprint.fingerprintId, "d7a31320");
+  assert.equal(workspace.report.calculationFingerprint.fingerprintId, "d7a31320");
   assert.equal(workspace.calculationFingerprint.inputs.engineScope, "mc001_chapter_2_useful_demand_explicit_v1_not_certificate");
   assert.equal(
     workspace.diagnostics.methodologyLimits.includes("no_duplicate_calculations"),
@@ -372,6 +372,14 @@ await test("technical report contains the required compact P3G notebook chapters
   assert.equal(januaryHeating.symbolicFormula, "Ramura executata: restricted_heating_monthly_balance");
   assert.equal(januaryHeating.substitutedFormula.includes("1286,1002"), true);
   assert.equal(januaryHeating.substitutedFormula.includes("0,9999"), true);
+
+  const januaryHeatGains = workspace.formulaViews.find(view =>
+    view.formulaName === "Aporturi totale pentru incalzire - january"
+  );
+  assert.equal(januaryHeatGains.symbolicFormula, "Ramura executata: monthly_total_internal_plus_solar_gains");
+  assert.equal(januaryHeatGains.executionTrace.branchId, "monthly_total_internal_plus_solar_gains");
+  assert.equal(januaryHeatGains.substitutedFormula.includes("120,0000"), true);
+  assert.equal(januaryHeatGains.substitutedFormula.includes("180,0000"), true);
 });
 
 await test("compact calculation notebook has local variables, explicit values and no false numeric expressions", () => {
@@ -443,6 +451,7 @@ await test("trace-backed demand lines render only runtime execution traces", () 
       line.executionTrace &&
       (String(line.lineId).endsWith(".qhnd") ||
         String(line.lineId).endsWith(".qhnd.branch") ||
+        String(line.lineId).endsWith(".qhgn") ||
         String(line.lineId).endsWith(".qcnd"))
     );
 

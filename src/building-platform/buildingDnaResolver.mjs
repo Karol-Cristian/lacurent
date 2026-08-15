@@ -27,7 +27,7 @@ import {
   TECHNICAL_SYSTEMS_SCHEMA,
   validateTechnicalSystems
 } from "./buildingChapter3InstallationsAdapter.mjs";
-import { resolveInternalGainsTable2_15Value } from "../physics-engine/datasets/mc001InternalGainsTable2_15.mjs";
+import { deriveMc001MonthlyInternalGainsFromTable2_15 } from "../physics-engine/mc001InternalGainsCalculation.mjs";
 
 const ASSISTED_MODE = "assisted";
 const ADVANCED_MODE = "advanced";
@@ -395,42 +395,109 @@ function monthlyProfilesWithProviderClimate(monthlyProfiles = [], climateProvide
   });
 }
 
-function internalGainsCategoryIdForBuildingType(buildingType) {
-  if (buildingType === "apartment") return "residential_collective";
-  if (buildingType === "detached_house" || buildingType === "house") {
-    return "residential_single_family";
+const INTERNAL_GAINS_CATEGORY_ALIASES = Object.freeze({
+  residential_collective: "residential_collective",
+  collective_residential: "residential_collective",
+  apartment: "residential_collective",
+  apartment_building: "residential_collective",
+  multifamily_residential: "residential_collective",
+  residential_single_family: "residential_single_family",
+  detached_house: "residential_single_family",
+  house: "residential_single_family",
+  single_family_house: "residential_single_family",
+  administrative: "administrative",
+  office: "administrative",
+  office_building: "administrative",
+  administrative_building: "administrative",
+  schools: "schools",
+  school: "schools",
+  educational_building: "schools",
+  hospitals: "hospitals",
+  hospital: "hospitals",
+  healthcare_building: "hospitals"
+});
+
+function internalGainsCategoryIdForBuildingUse({
+  buildingType,
+  useCategory,
+  internalGainsCategoryId
+} = {}) {
+  for (const value of [internalGainsCategoryId, useCategory, buildingType]) {
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (INTERNAL_GAINS_CATEGORY_ALIASES[normalized]) {
+        return INTERNAL_GAINS_CATEGORY_ALIASES[normalized];
+      }
+    }
   }
   return null;
 }
 
-function monthlyInternalGainsFromTable2_15({ buildingType, usefulFloorAreaM2, durationHours } = {}) {
-  const categoryId = internalGainsCategoryIdForBuildingType(buildingType);
+function monthlyInternalGainsFromTable2_15({
+  buildingType,
+  useCategory,
+  internalGainsCategoryId,
+  usefulFloorAreaM2,
+  durationHours,
+  month,
+  source = {}
+} = {}) {
+  const categoryId = internalGainsCategoryIdForBuildingUse({
+    buildingType,
+    useCategory,
+    internalGainsCategoryId
+  });
   if (!categoryId || !finitePositive(usefulFloorAreaM2)) {
     return {
       amount: 0,
-      source: "explicit_internal_gains_not_available",
+      source: "internal_gains_table_2_15_category_or_area_missing",
       categoryId: null,
-      constantInternalGainWPerM2: null
+      constantInternalGainWPerM2: null,
+      productionEligible: false,
+      blockerCode: "INTERNAL_GAINS_TABLE_2_15_CATEGORY_AND_AREA_REQUIRED"
     };
   }
-  const lookup = resolveInternalGainsTable2_15Value({ categoryId });
-  if (lookup.status !== "ready") {
+  const result = deriveMc001MonthlyInternalGainsFromTable2_15({
+    mode: "monthly_internal_gains_table_2_15_v1",
+    cases: [
+      {
+        caseId: `${month}.internal_gains_table_2_15`,
+        month,
+        categoryId,
+        usefulFloorAreaM2,
+        durationHours,
+        source: {
+          reference: source.reference ?? "P7E.internal_gains.table_2_15",
+          notes: source.notes
+        }
+      }
+    ]
+  });
+  if (result.status !== "ready" || result.caseResults.length !== 1) {
     return {
       amount: 0,
-      source: "explicit_internal_gains_not_available",
+      source: "internal_gains_table_2_15_category_or_area_missing",
       categoryId,
-      constantInternalGainWPerM2: null
+      constantInternalGainWPerM2: null,
+      productionEligible: false,
+      blockerCode: result.diagnostics?.blockers?.[0]?.code ??
+        "INTERNAL_GAINS_TABLE_2_15_CATEGORY_AND_AREA_REQUIRED"
     };
   }
+  const row = result.caseResults[0];
   return {
-    amount: (lookup.constantInternalGainWPerM2 * usefulFloorAreaM2 * durationHours) / 1000,
+    amount: row.internalGainsKwh,
     source: "mc001_table_2_15_category_area_duration",
     categoryId,
-    categoryRo: lookup.categoryRo,
-    constantInternalGainWPerM2: lookup.constantInternalGainWPerM2,
-    sourceTable: lookup.sourceTable,
-    sourceSection: lookup.sourceSection,
-    sourcePage: lookup.sourcePage
+    categoryRo: row.categoryRo,
+    constantInternalGainWPerM2: row.constantInternalGainWPerM2,
+    sourceTable: row.sourceTable,
+    sourceSection: row.sourceSection,
+    sourcePage: row.sourcePage,
+    formulaCode: row.formulaCode,
+    scope: row.scope,
+    executionTrace: row.executionTrace,
+    productionEligible: true
   };
 }
 
@@ -453,8 +520,12 @@ function monthlyProfilesFromProviderClimate(climateProviderResult, source = {}, 
     const durationHours = CALENDAR_MONTHLY_HOURS[month];
     const internalGains = monthlyInternalGainsFromTable2_15({
       buildingType: context.buildingType,
+      useCategory: context.useCategory,
+      internalGainsCategoryId: context.internalGainsCategoryId,
       usefulFloorAreaM2: context.usefulFloorAreaM2,
-      durationHours
+      durationHours,
+      month,
+      source
     });
     return {
       month,
@@ -487,13 +558,18 @@ function monthlyProfilesFromProviderClimate(climateProviderResult, source = {}, 
         stationId,
         internalGainsSource: internalGains.source,
         internalGainsCategoryId: internalGains.categoryId,
+        internalGainsCategoryRo: internalGains.categoryRo ?? null,
         internalGainsConstantWPerM2: internalGains.constantInternalGainWPerM2,
         internalGainsSourceTable: internalGains.sourceTable ?? null,
         internalGainsSourceSection: internalGains.sourceSection ?? null,
         internalGainsSourcePage: internalGains.sourcePage ?? null,
+        internalGainsFormulaCode: internalGains.formulaCode ?? null,
+        internalGainsExecutionTrace: internalGains.executionTrace ?? null,
+        internalGainsProductionEligible: internalGains.productionEligible === true,
+        internalGainsBlockerCode: internalGains.blockerCode ?? null,
         solarGainsSource: "provider_climate_profile_without_qsol_preprocessing",
         notes:
-          "Temperaturile lunare sunt rezolvate din providerul climatic normativ. Aporturile interne sunt calculate din Tabelul 2.15 numai cand tipul cladirii si aria utila sunt explicite. Hsol este disponibil din A.9.6 pentru planurile verticale/orizontale tabelate, dar aporturile solare Qsol raman neexecutate pana cand Qsky si inputurile complete ale elementelor solare sunt furnizate sau certificate."
+          "Temperaturile lunare sunt rezolvate din providerul climatic normativ. Aporturile interne sunt calculate din Tabelul 2.15 numai cand categoria de utilizare si aria utila sunt explicite. Hsol este disponibil din A.9.6 pentru planurile verticale/orizontale tabelate, dar aporturile solare Qsol raman neexecutate pana cand Qsky si inputurile complete ale elementelor solare sunt furnizate sau certificate."
       }
     };
   });
@@ -906,6 +982,15 @@ function monthlyQuantity(profile, amount, unit, reference, confidence = "low") {
         ...(source.confirmationStatus === undefined ? {} : { confirmationStatus: source.confirmationStatus }),
         ...(source.monthlyDataSource === undefined ? {} : { monthlyDataSource: source.monthlyDataSource }),
         ...(source.internalGainsSource === undefined ? {} : { internalGainsSource: source.internalGainsSource }),
+        ...(source.internalGainsCategoryId === undefined ? {} : { internalGainsCategoryId: source.internalGainsCategoryId }),
+        ...(source.internalGainsCategoryRo === undefined ? {} : { internalGainsCategoryRo: source.internalGainsCategoryRo }),
+        ...(source.internalGainsConstantWPerM2 === undefined ? {} : { internalGainsConstantWPerM2: source.internalGainsConstantWPerM2 }),
+        ...(source.internalGainsFormulaCode === undefined ? {} : { internalGainsFormulaCode: source.internalGainsFormulaCode }),
+        ...(source.internalGainsSourceTable === undefined ? {} : { internalGainsSourceTable: source.internalGainsSourceTable }),
+        ...(source.internalGainsSourceSection === undefined ? {} : { internalGainsSourceSection: source.internalGainsSourceSection }),
+        ...(source.internalGainsSourcePage === undefined ? {} : { internalGainsSourcePage: source.internalGainsSourcePage }),
+        ...(source.internalGainsProductionEligible === undefined ? {} : { internalGainsProductionEligible: source.internalGainsProductionEligible }),
+        ...(source.internalGainsBlockerCode === undefined ? {} : { internalGainsBlockerCode: source.internalGainsBlockerCode }),
         ...(source.solarOrientation === undefined ? {} : { solarOrientation: source.solarOrientation }),
         ...(source.solarGainsSource === undefined ? {} : { solarGainsSource: source.solarGainsSource }),
         editable: source.editable ?? true
@@ -932,6 +1017,15 @@ function makeMonthlyProfile(profile) {
           ...(profile.provenance.confirmationStatus === undefined ? {} : { confirmationStatus: profile.provenance.confirmationStatus }),
           ...(profile.provenance.monthlyDataSource === undefined ? {} : { monthlyDataSource: profile.provenance.monthlyDataSource }),
           ...(profile.provenance.internalGainsSource === undefined ? {} : { internalGainsSource: profile.provenance.internalGainsSource }),
+          ...(profile.provenance.internalGainsCategoryId === undefined ? {} : { internalGainsCategoryId: profile.provenance.internalGainsCategoryId }),
+          ...(profile.provenance.internalGainsCategoryRo === undefined ? {} : { internalGainsCategoryRo: profile.provenance.internalGainsCategoryRo }),
+          ...(profile.provenance.internalGainsConstantWPerM2 === undefined ? {} : { internalGainsConstantWPerM2: profile.provenance.internalGainsConstantWPerM2 }),
+          ...(profile.provenance.internalGainsFormulaCode === undefined ? {} : { internalGainsFormulaCode: profile.provenance.internalGainsFormulaCode }),
+          ...(profile.provenance.internalGainsSourceTable === undefined ? {} : { internalGainsSourceTable: profile.provenance.internalGainsSourceTable }),
+          ...(profile.provenance.internalGainsSourceSection === undefined ? {} : { internalGainsSourceSection: profile.provenance.internalGainsSourceSection }),
+          ...(profile.provenance.internalGainsSourcePage === undefined ? {} : { internalGainsSourcePage: profile.provenance.internalGainsSourcePage }),
+          ...(profile.provenance.internalGainsProductionEligible === undefined ? {} : { internalGainsProductionEligible: profile.provenance.internalGainsProductionEligible }),
+          ...(profile.provenance.internalGainsBlockerCode === undefined ? {} : { internalGainsBlockerCode: profile.provenance.internalGainsBlockerCode }),
           ...(profile.provenance.solarOrientation === undefined ? {} : { solarOrientation: profile.provenance.solarOrientation }),
           ...(profile.provenance.solarGainsSource === undefined ? {} : { solarGainsSource: profile.provenance.solarGainsSource }),
           editable: profile.provenance.editable ?? true
@@ -994,8 +1088,47 @@ function makeMonthlyProfile(profile) {
     heatGains: {
       internalGains: monthlyQuantity(profile, profile.internalGainsKwh, "kWh", `${ref}.internal_gains`, "low"),
       solarGains: monthlyQuantity(profile, profile.solarGainsKwh, "kWh", `${ref}.solar_gains`, "low"),
+      internalGainsSource: profile.provenance?.internalGainsSource ?? profile.internalGainsSource ?? null,
+      internalGainsCategoryId: profile.provenance?.internalGainsCategoryId ?? profile.internalGainsCategoryId ?? null,
+      internalGainsCategoryRo: profile.provenance?.internalGainsCategoryRo ?? profile.internalGainsCategoryRo ?? null,
+      internalGainsConstantWPerM2:
+        profile.provenance?.internalGainsConstantWPerM2 ??
+        profile.internalGainsConstantWPerM2 ??
+        null,
+      internalGainsFormulaCode:
+        profile.provenance?.internalGainsFormulaCode ??
+        profile.internalGainsFormulaCode ??
+        null,
+      internalGainsSourceTable:
+        profile.provenance?.internalGainsSourceTable ??
+        profile.internalGainsSourceTable ??
+        null,
+      internalGainsSourceSection:
+        profile.provenance?.internalGainsSourceSection ??
+        profile.internalGainsSourceSection ??
+        null,
+      internalGainsSourcePage:
+        profile.provenance?.internalGainsSourcePage ??
+        profile.internalGainsSourcePage ??
+        null,
+      internalGainsProductionEligible:
+        profile.provenance?.internalGainsProductionEligible ??
+        profile.internalGainsProductionEligible ??
+        null,
+      internalGainsBlockerCode:
+        profile.provenance?.internalGainsBlockerCode ??
+        profile.internalGainsBlockerCode ??
+        null,
+      internalGainsExecutionTrace:
+        profile.provenance?.internalGainsExecutionTrace ??
+        profile.internalGainsExecutionTrace ??
+        null,
       solarOrientation: profile.solarOrientation ?? null,
-      solarGainsSource: profile.solarGainsSource ?? "monthly_profile_solar_gains"
+      solarGainsSource: profile.solarGainsSource ?? "monthly_profile_solar_gains",
+      adjacentUnconditionedZones:
+        profile.heatGains?.adjacentUnconditionedZones ??
+        profile.adjacentUnconditionedZones ??
+        null
     },
     heating: {
       utilizationDependencies: seedUtilizationDependencies()
@@ -1111,6 +1244,10 @@ function resolveBuildingDna({
     building: {
       buildingId: building?.buildingId ?? "building-dna-p1",
       buildingType: building?.buildingType ?? typologyProposal?.buildingType ?? "detached_house",
+      ...(building?.useCategory === undefined ? {} : { useCategory: building.useCategory }),
+      ...(building?.internalGainsCategoryId === undefined
+        ? {}
+        : { internalGainsCategoryId: building.internalGainsCategoryId }),
       constructionPeriod: building?.constructionPeriod ?? typologyProposal?.constructionPeriod,
       structuralSystem: building?.structuralSystem ?? typologyProposal?.structuralSystem,
       location: {
@@ -1257,6 +1394,10 @@ function resolveBuildingDna({
 }
 
 export function createBuildingDnaFromAssistedAnswers(answers = {}) {
+  const assistedGeometry = defaultGeometry({
+    ...geometryOverridesFromBuildingSpecificParameters(answers.buildingSpecificParameters ?? {}),
+    ...(answers.geometry ?? {})
+  });
   const interventions = resolveBuildingRenovationInterventions({
     renovations: answers.renovations ?? {},
     source: answers.source ?? { reference: "P2.assisted_answers" }
@@ -1297,8 +1438,10 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     climateProviderResult: canonicalClimateProviderResult,
     monthlyProfileContext: {
       buildingType: answers.buildingType,
+      useCategory: answers.buildingUseCategory ?? answers.useCategory,
+      internalGainsCategoryId: answers.internalGainsCategoryId,
       usefulFloorAreaM2: answers.buildingSpecificParameters?.usefulFloorAreaM2 ??
-        answers.geometry?.usefulFloorAreaM2
+        assistedGeometry.usefulFloorAreaM2
     },
     solarOrientation: answers.buildingSpecificParameters?.windowOrientation,
     mainOrientation: answers.buildingSpecificParameters?.mainOrientation,
@@ -1325,10 +1468,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     userMode: ASSISTED_MODE,
     source: answers.source ?? { reference: "P1.assisted_answers" },
     typologyProposal: typology.proposal,
-    geometry: defaultGeometry({
-      ...geometryOverridesFromBuildingSpecificParameters(answers.buildingSpecificParameters ?? {}),
-      ...(answers.geometry ?? {})
-    }),
+    geometry: assistedGeometry,
     buildingSpecificParameters: answers.buildingSpecificParameters,
     renovationInterventions: interventions.interventions,
     boundaryContext: {
@@ -1343,6 +1483,8 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     building: {
       buildingId: answers.buildingId,
       buildingType: answers.buildingType,
+      useCategory: answers.buildingUseCategory ?? answers.useCategory ?? null,
+      internalGainsCategoryId: answers.internalGainsCategoryId ?? null,
       constructionPeriod: answers.constructionPeriod,
       structuralSystem: answers.structuralSystem,
       location: answers.location ?? null
@@ -1373,6 +1515,10 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     climateProviderResult: canonicalClimateProviderResult,
     monthlyProfileContext: {
       buildingType: input.building?.buildingType,
+      useCategory: input.building?.useCategory ?? input.useCategory,
+      internalGainsCategoryId:
+        input.building?.internalGainsCategoryId ??
+        input.internalGainsCategoryId,
       usefulFloorAreaM2: input.buildingSpecificParameters?.usefulFloorAreaM2 ??
         input.geometry?.usefulFloorAreaM2
     },

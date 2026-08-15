@@ -275,6 +275,31 @@ const fields = [
     tests: [refs.wizardTest, refs.propagationTest]
   }),
   field({
+    fieldId: "building.identity.use_category",
+    path: "building.useCategory / building.internalGainsCategoryId",
+    purpose: "Canonical building-use category used to resolve MC001 Tabel 2.15 internal-gain intensity when the category is source-backed.",
+    category: "primitive_user_input",
+    owner: "Building DNA Resolver",
+    sourceOfTruth: "buildingDna.building.useCategory or buildingDna.building.internalGainsCategoryId",
+    producer: "UI building-use selector or expert category override",
+    consumer: "monthlyProfilesFromProviderClimate, Table 2.15 internal-gains derivation, report",
+    dataType: "enum:residential_collective|residential_single_family|administrative|schools|hospitals|expert category override",
+    editable: true,
+    productionUsage: "drives_source_backed_internal_gains_when_useful_area_and_monthly_duration_are_available",
+    uiLocation: "Geometrie / Utilizare cladire or expert settings",
+    notebookLocation: "Aporturi interne lunare",
+    reportLocation: "Caiet de calcule ingineresti",
+    dependencies: ["building.identity.type"],
+    uiRecommendation: "remain_editable",
+    genericity: "generic_for_supported_MC001_Table_2_15_categories",
+    removalAssessment: "retain_as_canonical_use_input",
+    implementationRefs: [refs.resolver, refs.chapter2Adapter, refs.technicalReport],
+    tests: [
+      "src/building-platform/tests/buildingDnaResolver.test.mjs",
+      "src/building-platform/tests/buildingTechnicalReport.test.mjs"
+    ]
+  }),
+  field({
     fieldId: "building.identity.construction_period",
     path: "building.constructionPeriod / form.construction_year",
     purpose: "Normalizes a construction year into the resolver typology period.",
@@ -956,6 +981,38 @@ const fields = [
     uiRecommendation: "read_only",
     implementationRefs: [refs.resolver, refs.chapter2Adapter, refs.technicalReport],
     tests: [refs.wizardTest, refs.backendTest]
+  }),
+  field({
+    fieldId: "derived.internal_gains_table_2_15",
+    path: "monthlyProfiles[*].heatGains.internalGains / monthlyProfiles[*].heatGains.internalGainsExecutionTrace",
+    purpose: "Monthly internal heat gains derived from MC001 Tabel 2.15 category intensity, useful floor area and calendar hours.",
+    category: "derived_engineering_value",
+    owner: "Building DNA Resolver with Physics Engine source-formula helper",
+    sourceOfTruth: "buildingDna.monthlyProfiles[*].heatGains.internalGains",
+    producer: "monthlyInternalGainsFromTable2_15",
+    consumer: "buildChapter2UsefulDemandPhysicsInput, monthly heat-gains runtime, technical report",
+    dataType: "kWh monthly quantity with provenance and execution trace",
+    derived: true,
+    productionUsage: "source_backed_internal_gains_for_supported_Table_2_15_categories",
+    notebookLocation: "Aporturi interne lunare",
+    reportLocation: "Caiet de calcule ingineresti",
+    dependencies: [
+      "building.identity.use_category",
+      "geometry.useful_floor_area",
+      "derived.monthly_profiles"
+    ],
+    uiRecommendation: "read_only",
+    implementationRefs: [
+      "src/physics-engine/mc001InternalGainsCalculation.mjs",
+      refs.resolver,
+      refs.chapter2Adapter,
+      refs.technicalReport
+    ],
+    tests: [
+      "src/physics-engine/tests/mc001InternalGainsCalculation.test.mjs",
+      "src/building-platform/tests/buildingDnaResolver.test.mjs",
+      "src/building-platform/tests/buildingTechnicalReport.test.mjs"
+    ]
   }),
   field({
     fieldId: "derived.envelope_elements",

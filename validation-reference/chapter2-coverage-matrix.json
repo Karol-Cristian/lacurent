@@ -1,6 +1,6 @@
 {
   "schema": "p7c_chapter2_coverage_matrix_v1",
-  "baseCommit": "63d9b075e1c882c85024e24c125f046cda41abd4",
+  "baseCommit": "c4a26b05b2e7aead145be2c7174b0916169c7bb3",
   "generatedBy": "tools/generate-chapter2-coverage-matrix.mjs",
   "sourceBasis": {
     "officialPdfCoveragePack": "MC001_R20_CHAPTER_2_EXHAUSTIVE_COVERAGE_MATRIX",
@@ -28,12 +28,12 @@
     "officialRelationSlots": 87,
     "formulaBearingRelationSlots": 85,
     "formulaStatusCounts": {
-      "COMPLETE": 67,
-      "PARTIAL": 15,
+      "COMPLETE": 73,
+      "PARTIAL": 9,
       "BOUNDED": 0,
       "NOT_IMPLEMENTED": 3
     },
-    "completeFormulaCoveragePercent": 78.8,
+    "completeFormulaCoveragePercent": 85.9,
     "completeOrPartialFormulaCoveragePercent": 96.5,
     "tablesTracked": 21,
     "tableStatusCounts": {
@@ -51,7 +51,7 @@
     }
   },
   "baselineValidation": {
-    "note": "Executed from the clean P7C worktree before audit artifact changes.",
+    "note": "Executed from the clean P7E worktree before implementation and re-run after P7E changes.",
     "commands": [
       {
         "command": "git diff --check",
@@ -883,16 +883,17 @@
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "implemented_with_explicit_input_or_limited_production_contract",
-      "status": "PARTIAL",
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
       "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
       "tests": [
-        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
       ],
-      "executionTraceSupport": "formula_result_metadata",
-      "reportSupport": "adjacent-zone gains trace",
-      "productionEligibility": "explicit_input_boundary",
-      "limitation": "Adjacent unconditioned-zone gains require explicit bztu/distribution/reduction inputs; no hidden defaults are used."
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "adjacent-zone gains trace through monthly heat-gains runtime",
+      "productionEligibility": "production_ready_with_explicit_source_backed_adjacent_zone_inputs",
+      "limitation": "P7E closes the runtime/report/test chain for explicit/source-backed bztu, distribution and reduction inputs; hidden adjacent-zone defaults remain prohibited."
     },
     {
       "id": "MC001_RELATION_2_35",
@@ -906,17 +907,20 @@
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "implemented_with_explicit_input_or_limited_production_contract",
-      "status": "PARTIAL",
-      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001InternalGainsCalculation.mjs",
       "tests": [
+        "src/physics-engine/tests/mc001InternalGainsCalculation.test.mjs",
         "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
-        "src/physics-engine/tests/mc001InternalGainsTable2_15.test.mjs"
+        "src/physics-engine/tests/mc001InternalGainsTable2_15.test.mjs",
+        "src/building-platform/tests/buildingDnaResolver.test.mjs",
+        "src/building-platform/tests/buildingTechnicalReport.test.mjs"
       ],
-      "executionTraceSupport": "formula_result_metadata",
-      "reportSupport": "internal gains notebook",
-      "productionEligibility": "partial_source_backed_table_2_15_or_explicit_inputs",
-      "limitation": "Default internal-gain components outside encoded Table 2.15/explicit inputs remain explicit-input boundaries."
+      "executionTraceSupport": "execution_trace",
+      "reportSupport": "internal gains notebook/report via runtime trace",
+      "productionEligibility": "production_ready_for_table_2_15_category_area_duration_or_explicit_monthly_input",
+      "limitation": "P7E implements Table 2.15 category-area-duration derivation and explicit monthly input contracts; source-specific occupant/equipment schedules outside owned MC001 tables remain explicit expert inputs, not hidden defaults."
     },
     {
       "id": "MC001_RELATION_2_36",
@@ -953,16 +957,17 @@
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "implemented_with_explicit_input_or_limited_production_contract",
-      "status": "PARTIAL",
-      "implementationFile": "src/physics-engine/mc001SolarGainsCalculation.mjs",
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
+      "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
       "tests": [
-        "src/physics-engine/tests/mc001SolarGainsCalculation.test.mjs"
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
       ],
-      "executionTraceSupport": "formula_result_metadata",
+      "executionTraceSupport": "execution_trace",
       "reportSupport": "adjacent-zone solar gains trace",
-      "productionEligibility": "explicit_input_boundary",
-      "limitation": "Adjacent unconditioned-zone solar distribution/reduction factors must be explicit or source-backed."
+      "productionEligibility": "production_ready_with_explicit_source_backed_adjacent_zone_solar_inputs",
+      "limitation": "P7E closes the adjacent-zone distribution/reduction contract; automatic direct Qsol generation remains tracked under relations 2.36, 2.38, 2.39, 2.50 and 2.54."
     },
     {
       "id": "MC001_RELATION_2_38",
@@ -1121,7 +1126,7 @@
       "executionTraceSupport": "none",
       "reportSupport": "none",
       "productionEligibility": "not_available",
-      "limitation": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing."
+      "limitation": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing."
     },
     {
       "id": "MC001_RELATION_2_45",
@@ -1142,7 +1147,7 @@
       "executionTraceSupport": "none",
       "reportSupport": "none",
       "productionEligibility": "not_available",
-      "limitation": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing."
+      "limitation": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing."
     },
     {
       "id": "MC001_RELATION_2_46",
@@ -1163,7 +1168,7 @@
       "executionTraceSupport": "none",
       "reportSupport": "none",
       "productionEligibility": "not_available",
-      "limitation": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing."
+      "limitation": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing."
     },
     {
       "id": "MC001_RELATION_2_47",
@@ -1270,16 +1275,17 @@
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "implemented_with_explicit_input_or_limited_production_contract",
-      "status": "PARTIAL",
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
       "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
       "tests": [
-        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
       ],
-      "executionTraceSupport": "formula_result_metadata",
+      "executionTraceSupport": "execution_trace",
       "reportSupport": "adjacent-zone gain trace",
-      "productionEligibility": "explicit_input_boundary",
-      "limitation": "Requires explicit/source-backed adjacent-zone reduction inputs."
+      "productionEligibility": "production_ready_with_explicit_single_adjacent_zone_inputs",
+      "limitation": "No hidden adjacent-zone coefficients are inferred; required inputs must be explicit or source-backed."
     },
     {
       "id": "MC001_RELATION_2_52",
@@ -1293,16 +1299,17 @@
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "implemented_with_explicit_input_or_limited_production_contract",
-      "status": "PARTIAL",
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
       "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
       "tests": [
-        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
       ],
-      "executionTraceSupport": "formula_result_metadata",
+      "executionTraceSupport": "execution_trace",
       "reportSupport": "adjacent-zone gain trace",
-      "productionEligibility": "explicit_input_boundary",
-      "limitation": "Requires explicit/source-backed adjacent-zone reduction inputs."
+      "productionEligibility": "production_ready_with_explicit_multiple_adjacent_zone_inputs",
+      "limitation": "No hidden adjacent-zone coefficients are inferred; required inputs must be explicit or source-backed."
     },
     {
       "id": "MC001_RELATION_2_53",
@@ -1316,16 +1323,17 @@
         "page": null,
         "sourceStatus": "classified_from_owned_source"
       },
-      "classification": "implemented_with_explicit_input_or_limited_production_contract",
-      "status": "PARTIAL",
+      "classification": "normative_calculation",
+      "status": "COMPLETE",
       "implementationFile": "src/physics-engine/mc001MonthlyHeatGainsCalculation.mjs",
       "tests": [
-        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs"
+        "src/physics-engine/tests/mc001MonthlyHeatGainsCalculation.test.mjs",
+        "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs"
       ],
-      "executionTraceSupport": "formula_result_metadata",
+      "executionTraceSupport": "execution_trace",
       "reportSupport": "adjacent-zone internal gain trace",
-      "productionEligibility": "explicit_input_boundary",
-      "limitation": "Requires explicit/source-backed adjacent-zone internal gain inputs."
+      "productionEligibility": "production_ready_with_explicit_internal_unconditioned_zone_inputs",
+      "limitation": "The insignificant-gain branch must be explicitly confirmed; hidden adjacent-zone defaults remain prohibited."
     },
     {
       "id": "MC001_RELATION_2_54",
@@ -3301,7 +3309,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Relation 2.1 envelope/volume definitions are represented as explicit Building DNA geometry; no independent measured-geometry workflow is implemented.",
-      "recommendedMilestone": "P7E/P7F"
+      "recommendedMilestone": "P7F/P7G"
     },
     {
       "id": "MC001_RELATION_2_25",
@@ -3309,7 +3317,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Detailed delegated ground-contact methods are not reproduced by MC001 Chapter 2; runtime accepts explicit source-backed factors.",
-      "recommendedMilestone": "P7E/P7F"
+      "recommendedMilestone": "P7F/P7G"
     },
     {
       "id": "MC001_RELATION_2_26",
@@ -3317,23 +3325,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Detailed delegated adjacent/ground correction paths are represented through explicit source-backed factors.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_34",
-      "category": "Implementation work",
-      "gapClass": "implementation_work_or_limited_explicit_input_contract",
-      "status": "PARTIAL",
-      "reason": "Adjacent unconditioned-zone gains require explicit bztu/distribution/reduction inputs; no hidden defaults are used.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_35",
-      "category": "Implementation work",
-      "gapClass": "implementation_work_or_limited_explicit_input_contract",
-      "status": "PARTIAL",
-      "reason": "Default internal-gain components outside encoded Table 2.15/explicit inputs remain explicit-input boundaries.",
-      "recommendedMilestone": "P7E/P7F"
+      "recommendedMilestone": "P7F/P7G"
     },
     {
       "id": "MC001_RELATION_2_36",
@@ -3341,15 +3333,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "P7B provides source-backed A.9.6 Hsol for tabulated vertical/horizontal planes; automatic Qsol still requires Qsky-compatible inputs and complete solar element inputs.",
-      "recommendedMilestone": "P7E"
-    },
-    {
-      "id": "MC001_RELATION_2_37",
-      "category": "Implementation work",
-      "gapClass": "implementation_work_or_limited_explicit_input_contract",
-      "status": "PARTIAL",
-      "reason": "Adjacent unconditioned-zone solar distribution/reduction factors must be explicit or source-backed.",
-      "recommendedMilestone": "P7E/P7F"
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_38",
@@ -3357,7 +3341,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Direct solar gains require source-backed transparent/opaque component inputs; P7B supplies Hsol but not Qsky or full element data.",
-      "recommendedMilestone": "P7E"
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_39",
@@ -3365,31 +3349,31 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete transparent-element inputs remain required before automatic Qsol can be claimed.",
-      "recommendedMilestone": "P7E"
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_44",
       "category": "External standard dependency",
       "gapClass": "implementation_work",
       "status": "NOT_IMPLEMENTED",
-      "reason": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
-      "recommendedMilestone": "P7F"
+      "reason": "Dynamic transparent-element monthly U weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing.",
+      "recommendedMilestone": "P7G"
     },
     {
       "id": "MC001_RELATION_2_45",
       "category": "External standard dependency",
       "gapClass": "implementation_work",
       "status": "NOT_IMPLEMENTED",
-      "reason": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
-      "recommendedMilestone": "P7F"
+      "reason": "Dynamic transparent-element monthly g weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing.",
+      "recommendedMilestone": "P7G"
     },
     {
       "id": "MC001_RELATION_2_46",
       "category": "External standard dependency",
       "gapClass": "implementation_work",
       "status": "NOT_IMPLEMENTED",
-      "reason": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7D does not invent the state/hourly preprocessing.",
-      "recommendedMilestone": "P7F"
+      "reason": "Dynamic transparent-element monthly tau_sol weighted average is delegated by MC001 to the SR EN ISO 52016-1 Annex G special procedure; P7E does not invent the state/hourly preprocessing.",
+      "recommendedMilestone": "P7G"
     },
     {
       "id": "MC001_RELATION_2_50",
@@ -3397,31 +3381,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Hsol from A.9.6 is production-integrated for vertical/horizontal tabulated planes; Qsky and complete opaque-element inputs remain required before automatic Qsol can be claimed.",
-      "recommendedMilestone": "P7E"
-    },
-    {
-      "id": "MC001_RELATION_2_51",
-      "category": "Implementation work",
-      "gapClass": "implementation_work_or_limited_explicit_input_contract",
-      "status": "PARTIAL",
-      "reason": "Requires explicit/source-backed adjacent-zone reduction inputs.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_52",
-      "category": "Implementation work",
-      "gapClass": "implementation_work_or_limited_explicit_input_contract",
-      "status": "PARTIAL",
-      "reason": "Requires explicit/source-backed adjacent-zone reduction inputs.",
-      "recommendedMilestone": "P7E/P7F"
-    },
-    {
-      "id": "MC001_RELATION_2_53",
-      "category": "Implementation work",
-      "gapClass": "implementation_work_or_limited_explicit_input_contract",
-      "status": "PARTIAL",
-      "reason": "Requires explicit/source-backed adjacent-zone internal gain inputs.",
-      "recommendedMilestone": "P7E/P7F"
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_54",
@@ -3429,7 +3389,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "Qsky may be supplied explicitly; automatic source-backed sky-radiation preprocessing remains a bounded dependency.",
-      "recommendedMilestone": "P7E"
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "MC001_RELATION_2_87",
@@ -3437,7 +3397,7 @@
       "gapClass": "implementation_work_or_limited_explicit_input_contract",
       "status": "PARTIAL",
       "reason": "P7D implements the explicit theta_emz threshold equation; the full graphic annual heating/cooling period intersection remains a procedural bounded gap.",
-      "recommendedMilestone": "P7F"
+      "recommendedMilestone": "P7G"
     },
     {
       "id": "CHAPTER_2_QSOL_QSKY_COMPLETION_BOUNDED",
@@ -3454,7 +3414,7 @@
         "Qsol",
         "solarElementInputs"
       ],
-      "recommendedMilestone": "P7E"
+      "recommendedMilestone": "P7F"
     },
     {
       "id": "OFFICIAL_LOCALITY_TO_CLIMATE_ZONE_MAPPING",
@@ -3467,7 +3427,7 @@
   ],
   "recommendedMilestoneOrder": [
     {
-      "milestone": "P7E",
+      "milestone": "P7F",
       "title": "Complete automatic Chapter 2 Qsol/Qsky production path",
       "scope": [
         "source-backed Qsky inputs or calculation path",
@@ -3477,7 +3437,7 @@
       "priority": "highest"
     },
     {
-      "milestone": "P7F",
+      "milestone": "P7G",
       "title": "Dynamic transparent elements and seasonal-period procedure",
       "scope": [
         "relations 2.44-2.46 after SR EN ISO 52016-1 Annex G source is available",
@@ -3486,12 +3446,12 @@
       "priority": "high"
     },
     {
-      "milestone": "P7G",
-      "title": "Expand default internal-gain and adjacent-zone source contracts",
+      "milestone": "P7H",
+      "title": "Expand optional building-use schedules and expert source contracts",
       "scope": [
-        "non-residential internal-gain source tables/procedures",
-        "adjacent-zone distribution/reduction source contracts",
-        "production UI for those explicit source-backed inputs"
+        "project-specific occupant/equipment/lighting/appliance schedules beyond Table 2.15 where owned sources permit",
+        "production UI refinements for expert source-backed adjacent-zone inputs",
+        "generic building-category workflows beyond the current Table 2.15 supported categories"
       ],
       "priority": "medium"
     }
