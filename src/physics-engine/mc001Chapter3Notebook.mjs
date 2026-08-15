@@ -33,10 +33,12 @@ function stageLine(monthId, service, stage) {
   const inputs = stage.inputEnergy.inputs;
   const recoveredAux = stage.inputEnergy.recoveredAuxiliaryKWh ?? 0;
   const recoveredLoss = stage.inputEnergy.recoveredLossKWh ?? 0;
+  const lossReference = sourceReference(stage.lossSource, "MC001_CHAPTER_3_INPUT_BOUNDARY");
+  const auxiliaryReference = sourceReference(stage.auxiliarySource, "MC001_CHAPTER_3_INPUT_BOUNDARY");
   return line(
     `${monthId}.${service}.${stage.stageId}.input`,
     `Q_${service}_${stage.stageId},in,${monthId} := ${number(inputs.subsystemOutputKWh)} + ${number(inputs.subsystemLossKWh)} - ${number(recoveredAux)} - ${number(recoveredLoss)}\n` +
-      `                              = ${value(stage.inputEnergy.valueKWh, "kWh")} -- pierdere ${sourceLabel(stage.lossSource)}; auxiliar ${sourceLabel(stage.auxiliarySource)}`,
+      `                              = ${value(stage.inputEnergy.valueKWh, "kWh")} -- pierdere ${sourceLabel(stage.lossSource)} (${lossReference}); auxiliar ${sourceLabel(stage.auxiliarySource)} (${auxiliaryReference})`,
     stage.inputEnergy.valueKWh,
     "kWh",
     stage.inputEnergy.formulaId

@@ -413,7 +413,12 @@ function calculateVentilationMonth(month) {
   return {
     fanElectricEnergy: fan,
     auxiliaryEnergy: auxiliary,
-    valueKWh: auxiliary.valueKWh
+    valueKWh: auxiliary.valueKWh,
+    sources: {
+      heatRecoveryAuxiliary: month.ventilation.heatRecoveryAuxiliarySource ?? null,
+      preheatAuxiliary: month.ventilation.preheatAuxiliarySource ?? null,
+      controlAuxiliary: month.ventilation.controlAuxiliarySource ?? null
+    }
   };
 }
 

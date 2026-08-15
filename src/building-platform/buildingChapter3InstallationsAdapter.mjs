@@ -16,6 +16,45 @@ import {
   calculateResidentialSpecificDhwVolume
 } from "../physics-engine/dhwUsefulDemand.mjs";
 import {
+  calculateChapter3SubsystemInputEnergyBalance,
+  calculateHeatingDistributionAuxiliaryEnergy,
+  calculateHeatingDistributionAuxiliaryRecoverableEnergy,
+  calculateHeatingDistributionAuxiliaryRecoveredEnergy,
+  calculateHeatingDistributionBoostPumpEnergy,
+  calculateHeatingDistributionSetbackPumpEnergy,
+  calculateHeatingEmissionEfficiency,
+  calculateHeatingEmissionInputEnergy,
+  calculateHeatingEmissionLoss,
+  calculateHeatingGeneratorAuxiliaryEnergy,
+  calculateHeatingGeneratorAuxiliaryPowerHighLoad,
+  calculateHeatingGeneratorAuxiliaryPowerLowLoad,
+  calculateHeatingGeneratorAuxiliaryRecoverableFraction,
+  calculateHeatingGeneratorAuxiliaryRecoverableLoss,
+  calculateHeatingGeneratorAuxiliaryRecoveredLoss,
+  calculateHeatingGeneratorEnvelopeRecoverableLoss,
+  calculateHeatingGeneratorFullLoadHours,
+  calculateHeatingGeneratorLoadFactor,
+  calculateHeatingGeneratorLossEnergy,
+  calculateHeatingGeneratorLossPowerHighLoad,
+  calculateHeatingGeneratorLossPowerLowLoad,
+  calculateHeatingGeneratorStandbyLossPower,
+  calculateHydronicDesignPower,
+  calculateHydronicPressureDrop,
+  calculateHydronicPumpEfficiencyFactor,
+  calculateHydronicPumpEnergy,
+  calculateHydronicPumpEnergyUseFactor,
+  calculateHydronicReferencePumpPower,
+  calculateIntermediateLoadFactor
+} from "../physics-engine/mc001Chapter3HeatingSystems.mjs";
+import {
+  calculateNoPreheaterEnergy,
+  calculateOtherHeatRecoveryAuxiliaryEnergy,
+  calculatePreheaterEnergy,
+  calculatePumpHeatRecoveryAuxiliaryEnergy,
+  calculateRotaryHeatRecoveryAuxiliaryEnergy,
+  calculateVentilationControlAuxiliaryEnergy
+} from "../physics-engine/mc001Chapter3SystemEnergy.mjs";
+import {
   calculateDhwAuxiliaryDistributionEnergy,
   calculateDhwAverageTemperatureFromProfile,
   calculateDhwAverageTemperatureSimplified,
@@ -50,7 +89,7 @@ import { calculateMc001Chapter3IntegratedRuntime } from "../physics-engine/mc001
 
 export const TECHNICAL_SYSTEMS_SCHEMA = "technical_systems_v1";
 export const CHAPTER3_INSTALLATIONS_ADAPTER_VERSION =
-  "building_chapter_3_installations_adapter_p8c_v1";
+  "building_chapter_3_installations_adapter_p8d_v1";
 
 export const CHAPTER3_INPUT_CLASSIFICATION = Object.freeze({
   NUMERICALLY_IMPLEMENTED: "NUMERICALLY_IMPLEMENTED",
@@ -341,6 +380,376 @@ function calculatedStageSource({ origin, reference, results, details = {} }) {
       ...details
     }
   });
+}
+
+function calculatedComponentSource({ origin, reference, results, details = {} }) {
+  return sourceDescriptor({
+    classification: CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+    origin,
+    reference,
+    formulaIds: traceFormulaIds(results),
+    details: {
+      calculationChain: results.filter(Boolean),
+      executionTrace: results.filter(Boolean).at(-1)?.executionTrace ?? null,
+      ...details
+    }
+  });
+}
+
+function noHeatingStorageBranch(path) {
+  const result = {
+    status: "calculated",
+    value: 0,
+    valueKWh: 0,
+    unit: "kWh",
+    formulaId: "MC001_3_HEATING_STORAGE_NO_STORAGE_BRANCH",
+    executionTrace: {
+      schema: "mc001_execution_trace_v1",
+      chapter: "3",
+      formulaId: "MC001_3_HEATING_STORAGE_NO_STORAGE_BRANCH",
+      branchId: "no_heating_storage_zero_loss",
+      inputs: {},
+      formulaText: "QH,sto,ls = 0 when no heating storage component exists",
+      rawResult: 0,
+      finalResult: 0,
+      unit: "kWh",
+      clampApplied: false,
+      status: "branch_result",
+      provenance: {
+        source: "MC001-2022 Chapter 3 heating service topology",
+        assumptions: ["heating_storage_absent_is_explicit_in_building_dna"]
+      }
+    }
+  };
+  return {
+    value: 0,
+    source: calculatedStageSource({
+      origin: "mc001_heating_no_storage_branch",
+      reference: `${path}.lossCalculation`,
+      results: [result],
+      details: { mode: "no_heating_storage" }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function calculateHeatingEmissionLossContract(input, monthIndex, path, stageOutputKWh) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "heating_emission_temperature_increase") return null;
+
+  const loss = calculateHeatingEmissionLoss({
+    emissionOutputKWh: stageOutputKWh,
+    increasedIndoorTemperatureK: monthlyField(contract, "increasedIndoorTemperatureK", monthIndex),
+    indoorTemperatureC: monthlyField(contract, "indoorTemperatureC", monthIndex),
+    combinedOutdoorTemperatureC: monthlyField(contract, "combinedOutdoorTemperatureC", monthIndex)
+  });
+  const inputEnergy = calculateHeatingEmissionInputEnergy({
+    annualEmissionOutputKWh: stageOutputKWh,
+    annualEmissionLossKWh: loss.valueKWh
+  });
+  const efficiency = stageOutputKWh > 0
+    ? calculateHeatingEmissionEfficiency({
+        annualEmissionOutputKWh: stageOutputKWh,
+        annualEmissionLossKWh: loss.valueKWh
+      })
+    : null;
+  const results = [loss, inputEnergy, efficiency].filter(Boolean);
+  return {
+    value: loss.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_heating_emission_component_contract",
+      reference: `${path}.lossCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        stageOutputKWh,
+        emissionInputKWh: inputEnergy.valueKWh,
+        emissionEfficiencyFactor: efficiency?.value ?? null
+      }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function calculateHeatingHydronicPumpAuxiliaryContract(input, monthIndex, path) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "heating_hydronic_pump_auxiliary") return null;
+
+  const pressureDrop = contract.pressureDropInput
+    ? calculateHydronicPressureDrop(contract.pressureDropInput)
+    : null;
+  const designPower = calculateHydronicDesignPower({
+    pressureDropKPa: pressureDrop?.valueKPa ?? contract.pressureDropKPa,
+    designFlowRateM3PerH: contract.designFlowRateM3PerH
+  });
+  const referencePower = calculateHydronicReferencePumpPower({
+    hydronicDesignPowerKW: designPower.valueKW
+  });
+  const efficiencyFactor = calculateHydronicPumpEfficiencyFactor({
+    referencePumpPowerKW: referencePower.valueKW,
+    hydronicDesignPowerKW: designPower.valueKW
+  });
+  const energyUseFactor = calculateHydronicPumpEnergyUseFactor({
+    pumpEfficiencyFactor: efficiencyFactor.value,
+    controlConstantCp1: contract.controlConstantCp1,
+    controlConstantCp2: contract.controlConstantCp2,
+    operationLoadFactor: contract.operationLoadFactor,
+    energyEfficiencyIndex: contract.energyEfficiencyIndex
+  });
+  const pumpEnergy = calculateHydronicPumpEnergy({
+    designPowerKW: designPower.valueKW,
+    operationLoadFactor: contract.operationLoadFactor,
+    annualOperationHours: monthlyField(contract, "operationHours", monthIndex),
+    correctionFactor: contract.correctionFactor
+  });
+  const auxiliary = calculateHeatingDistributionAuxiliaryEnergy({
+    hydronicPumpEnergyKWh: pumpEnergy.valueKWh,
+    pumpEnergyUseFactor: energyUseFactor.value
+  });
+  const setback = finiteNumber(contract.setbackPumpPowerKW) &&
+    finiteNumber(monthlyField(contract, "setbackCalculationHours", monthIndex))
+    ? calculateHeatingDistributionSetbackPumpEnergy({
+        setbackPumpPowerKW: contract.setbackPumpPowerKW,
+        calculationHours: monthlyField(contract, "setbackCalculationHours", monthIndex)
+      })
+    : null;
+  const boost = finiteNumber(monthlyField(contract, "boostCalculationHours", monthIndex))
+    ? calculateHeatingDistributionBoostPumpEnergy({
+        hydronicDesignPowerKW: designPower.valueKW,
+        calculationHours: monthlyField(contract, "boostCalculationHours", monthIndex)
+      })
+    : null;
+  const totalAuxiliaryKWh =
+    auxiliary.valueKWh +
+    (setback?.valueKWh ?? 0) +
+    (boost?.valueKWh ?? 0);
+  const recoverable = finiteNumber(contract.recoverableFraction)
+    ? calculateHeatingDistributionAuxiliaryRecoverableEnergy({
+        recoverableFraction: contract.recoverableFraction,
+        distributionAuxiliaryEnergyKWh: totalAuxiliaryKWh
+      })
+    : null;
+  const recovered = finiteNumber(contract.recoverableFraction)
+    ? calculateHeatingDistributionAuxiliaryRecoveredEnergy({
+        recoverableFraction: contract.recoverableFraction,
+        distributionAuxiliaryEnergyKWh: totalAuxiliaryKWh
+      })
+    : null;
+  const results = [
+    pressureDrop,
+    designPower,
+    referencePower,
+    efficiencyFactor,
+    energyUseFactor,
+    pumpEnergy,
+    auxiliary,
+    setback,
+    boost,
+    recoverable,
+    recovered
+  ].filter(Boolean);
+  return {
+    value: totalAuxiliaryKWh,
+    source: calculatedStageSource({
+      origin: "mc001_heating_distribution_pump_component_contract",
+      reference: `${path}.auxiliaryCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        hydronicAuxiliaryKWh: auxiliary.valueKWh,
+        setbackAuxiliaryKWh: setback?.valueKWh ?? null,
+        boostAuxiliaryKWh: boost?.valueKWh ?? null,
+        recoverableAuxiliaryKWh: recoverable?.valueKWh ?? null,
+        recoveredAuxiliaryKWh: recovered?.valueKWh ?? null
+      }
+    }),
+    derivedFractions: {
+      ...(finiteNumber(contract.recoverableFraction)
+        ? { auxiliaryRecoverableFractionToHeating: contract.recoverableFraction }
+        : {})
+    }
+  };
+}
+
+function heatingGeneratorCurveLoadResults(contract, monthIndex, stageOutputKWh) {
+  const operationHours = monthlyField(contract, "operationHours", monthIndex);
+  const fullLoadHours = calculateHeatingGeneratorFullLoadHours({
+    generatorOutputKWh: stageOutputKWh,
+    nominalPowerKW: contract.nominalPowerKW
+  });
+  const loadFactor = calculateHeatingGeneratorLoadFactor({
+    generatorOutputKWh: stageOutputKWh,
+    nominalPowerKW: contract.nominalPowerKW,
+    heatingOperationHours: operationHours
+  });
+  const intermediateLoadFactor = calculateIntermediateLoadFactor({
+    intermediatePowerKW: contract.intermediatePowerKW,
+    nominalPowerKW: contract.nominalPowerKW
+  });
+  return { operationHours, fullLoadHours, loadFactor, intermediateLoadFactor };
+}
+
+function calculateHeatingGeneratorLossContract(input, monthIndex, path, stageOutputKWh) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "heating_generator_loss_power_curve") return null;
+
+  const load = heatingGeneratorCurveLoadResults(contract, monthIndex, stageOutputKWh);
+  const lossPower =
+    load.loadFactor.value <= load.intermediateLoadFactor.value
+      ? calculateHeatingGeneratorLossPowerLowLoad({
+          generatorLoadFactor: load.loadFactor.value,
+          intermediateLoadFactor: load.intermediateLoadFactor.value,
+          lossPowerNominalKW: contract.lossPowerNominalKW,
+          lossPowerIntermediateKW: contract.lossPowerIntermediateKW
+        })
+      : calculateHeatingGeneratorLossPowerHighLoad({
+          generatorLoadFactor: load.loadFactor.value,
+          intermediateLoadFactor: load.intermediateLoadFactor.value,
+          nominalLoadFactor: contract.nominalLoadFactor,
+          lossPowerNominalKW: contract.lossPowerNominalKW,
+          lossPowerIntermediateKW: contract.lossPowerIntermediateKW
+        });
+  const lossEnergy = calculateHeatingGeneratorLossEnergy({
+    generatorLossPowerKW: lossPower.valueKW,
+    operationHours: load.operationHours
+  });
+  const standbyLossInput = contract.standbyLossInput ??
+    (finiteNumber(contract.envelopeLossFractionPercent) &&
+    finiteNumber(contract.chimneyOffLossFractionPercent) &&
+    finiteNumber(contract.generatorDeliveredPowerKW)
+      ? {
+          envelopeLossFractionPercent: contract.envelopeLossFractionPercent,
+          chimneyOffLossFractionPercent: contract.chimneyOffLossFractionPercent,
+          generatorDeliveredPowerKW: contract.generatorDeliveredPowerKW
+        }
+      : null);
+  const standbyLossPower = standbyLossInput
+    ? calculateHeatingGeneratorStandbyLossPower(standbyLossInput)
+    : null;
+  const envelopeRecoverableInput = contract.envelopeRecoverableInput ??
+    (standbyLossPower &&
+    finiteNumber(contract.boilerRoomRecoveryFactor) &&
+    finiteNumber(contract.envelopeLossFraction)
+      ? {
+          correctedStandbyLossPowerKW: standbyLossPower.valueKW,
+          boilerRoomRecoveryFactor: contract.boilerRoomRecoveryFactor,
+          envelopeLossFraction: contract.envelopeLossFraction
+        }
+      : null);
+  const envelopeRecoverable = envelopeRecoverableInput
+    ? calculateHeatingGeneratorEnvelopeRecoverableLoss({
+        ...envelopeRecoverableInput,
+        operationHours: load.operationHours
+      })
+    : null;
+  const results = [
+    load.fullLoadHours,
+    load.loadFactor,
+    load.intermediateLoadFactor,
+    lossPower,
+    lossEnergy,
+    standbyLossPower,
+    envelopeRecoverable
+  ].filter(Boolean);
+  return {
+    value: lossEnergy.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_heating_generator_loss_power_curve_contract",
+      reference: `${path}.lossCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        stageOutputKWh,
+        branch:
+          load.loadFactor.value <= load.intermediateLoadFactor.value
+            ? "low_load_loss_power"
+            : "high_load_loss_power",
+        recoverableGenerationLossKWh: envelopeRecoverable?.valueKWh ?? null
+      }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function calculateHeatingGeneratorAuxiliaryContract(input, monthIndex, path, stageOutputKWh) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "heating_generator_auxiliary_power_curve") return null;
+
+  const load = heatingGeneratorCurveLoadResults(contract, monthIndex, stageOutputKWh);
+  const auxiliaryPower =
+    load.loadFactor.value <= load.intermediateLoadFactor.value
+      ? calculateHeatingGeneratorAuxiliaryPowerLowLoad({
+          generatorLoadFactor: load.loadFactor.value,
+          intermediateLoadFactor: load.intermediateLoadFactor.value,
+          auxiliaryPowerIntermediateKW: contract.auxiliaryPowerIntermediateKW,
+          auxiliaryPowerStandbyKW: contract.auxiliaryPowerStandbyKW
+        })
+      : calculateHeatingGeneratorAuxiliaryPowerHighLoad({
+          generatorLoadFactor: load.loadFactor.value,
+          intermediateLoadFactor: load.intermediateLoadFactor.value,
+          auxiliaryPowerNominalKW: contract.auxiliaryPowerNominalKW,
+          auxiliaryPowerIntermediateKW: contract.auxiliaryPowerIntermediateKW
+        });
+  const auxiliaryEnergy = calculateHeatingGeneratorAuxiliaryEnergy({
+    auxiliaryPowerKW: auxiliaryPower.valueKW,
+    operationHours: load.operationHours
+  });
+  const recoverableFraction = finiteNumber(contract.recoveredAuxiliaryFraction)
+    ? calculateHeatingGeneratorAuxiliaryRecoverableFraction({
+        recoveredAuxiliaryFraction: contract.recoveredAuxiliaryFraction
+      })
+    : null;
+  const recovered = finiteNumber(contract.recoveredAuxiliaryFraction)
+    ? calculateHeatingGeneratorAuxiliaryRecoveredLoss({
+        generationAuxiliaryEnergyKWh: auxiliaryEnergy.valueKWh,
+        recoveredAuxiliaryFraction: contract.recoveredAuxiliaryFraction
+      })
+    : null;
+  const recoverable = recoverableFraction && finiteNumber(contract.boilerRoomRecoveryFactor)
+    ? calculateHeatingGeneratorAuxiliaryRecoverableLoss({
+        generationAuxiliaryEnergyKWh: auxiliaryEnergy.valueKWh,
+        boilerRoomRecoveryFactor: contract.boilerRoomRecoveryFactor,
+        auxiliaryRecoverableFraction: recoverableFraction.value
+      })
+    : null;
+  const results = [
+    load.fullLoadHours,
+    load.loadFactor,
+    load.intermediateLoadFactor,
+    auxiliaryPower,
+    auxiliaryEnergy,
+    recoverableFraction,
+    recovered,
+    recoverable
+  ].filter(Boolean);
+  return {
+    value: auxiliaryEnergy.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_heating_generator_auxiliary_power_curve_contract",
+      reference: `${path}.auxiliaryCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        stageOutputKWh,
+        branch:
+          load.loadFactor.value <= load.intermediateLoadFactor.value
+            ? "low_load_auxiliary_power"
+            : "high_load_auxiliary_power",
+        recoveredAuxiliaryKWh: recovered?.valueKWh ?? null,
+        recoverableAuxiliaryKWh: recoverable?.valueKWh ?? null
+      }
+    }),
+    derivedFractions: {
+      ...(finiteNumber(contract.recoveredAuxiliaryFraction)
+        ? { auxiliaryRecoveredFraction: contract.recoveredAuxiliaryFraction }
+        : {}),
+      ...(recoverableFraction ? { auxiliaryRecoverableFractionToHeating: recoverableFraction.value } : {})
+    }
+  };
 }
 
 function calculateDhwPipeMeanTemperature(input) {
@@ -657,8 +1066,30 @@ function calculateDhwPumpAuxiliaryContract(input, monthIndex, path) {
   };
 }
 
-function calculatedStageLoss(stage, service, stageId, monthIndex, path, diagnostics) {
+function calculatedStageLoss(stage, service, stageId, monthIndex, path, diagnostics, stageOutputKWh) {
   try {
+    if (service === "heating" && stageId === "emission") {
+      return calculateHeatingEmissionLossContract(
+        stage.lossCalculation,
+        monthIndex,
+        path,
+        stageOutputKWh
+      );
+    }
+    if (service === "heating" && stageId === "storage") {
+      const contract = monthlyComponent(stage.lossCalculation, monthIndex);
+      if (isPlainObject(contract) && contract.mode === "no_heating_storage") {
+        return noHeatingStorageBranch(path);
+      }
+    }
+    if (service === "heating" && stageId === "generation") {
+      return calculateHeatingGeneratorLossContract(
+        stage.lossCalculation,
+        monthIndex,
+        path,
+        stageOutputKWh
+      );
+    }
     if (service === "dhw" && stageId === "distribution") {
       return calculateDhwDistributionLossContract(stage.lossCalculation, monthIndex, path);
     }
@@ -671,8 +1102,23 @@ function calculatedStageLoss(stage, service, stageId, monthIndex, path, diagnost
   return null;
 }
 
-function calculatedStageAuxiliary(stage, service, stageId, monthIndex, path, diagnostics) {
+function calculatedStageAuxiliary(stage, service, stageId, monthIndex, path, diagnostics, stageOutputKWh) {
   try {
+    if (service === "heating" && stageId === "distribution") {
+      return calculateHeatingHydronicPumpAuxiliaryContract(
+        stage.auxiliaryCalculation,
+        monthIndex,
+        path
+      );
+    }
+    if (service === "heating" && stageId === "generation") {
+      return calculateHeatingGeneratorAuxiliaryContract(
+        stage.auxiliaryCalculation,
+        monthIndex,
+        path,
+        stageOutputKWh
+      );
+    }
     if (service === "dhw" && stageId === "distribution") {
       return (
         calculateDhwPumpAuxiliaryContract(stage.auxiliaryCalculation, monthIndex, path) ??
@@ -683,6 +1129,115 @@ function calculatedStageAuxiliary(stage, service, stageId, monthIndex, path, dia
     diagnostics.push(diagnostic("invalid_chapter3_stage_auxiliary_component_contract", path, error.message));
   }
   return null;
+}
+
+function monthlyFieldWithFallback(record, field, monthIndex, fallback) {
+  const value = monthlyField(record, field, monthIndex);
+  return value === undefined || value === null ? fallback : value;
+}
+
+function calculatedVentilationHeatRecoveryAuxiliary(system, monthIndex, path) {
+  const contract = monthlyComponent(system.heatRecoveryAuxiliaryCalculation, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  const fan = system.fanElectricEnergyInput ?? {};
+  const calculationHours = monthlyFieldWithFallback(
+    contract,
+    "calculationHours",
+    monthIndex,
+    fan.calculationHours
+  );
+  let result = null;
+  if (contract.mode === "rotary_heat_recovery_auxiliary") {
+    result = calculateRotaryHeatRecoveryAuxiliaryEnergy({
+      maxRotaryPowerKW: contract.maxRotaryPowerKW,
+      calculationHours,
+      rotationRatio: monthlyField(contract, "rotationRatio", monthIndex)
+    });
+  } else if (contract.mode === "pump_heat_recovery_auxiliary") {
+    result = calculatePumpHeatRecoveryAuxiliaryEnergy({
+      supplyAirFlowM3PerH: contract.supplyAirFlowM3PerH ?? fan.supplyAirFlowM3PerH,
+      outdoorAirFraction: contract.outdoorAirFraction,
+      maxPumpSpecificPowerKWhPerM3: contract.maxPumpSpecificPowerKWhPerM3,
+      calculationHours,
+      minimumPartLoadFactor: contract.minimumPartLoadFactor,
+      recoveredHeatKWh: monthlyField(contract, "recoveredHeatKWh", monthIndex),
+      maxRecoveredHeatPowerKW: contract.maxRecoveredHeatPowerKW
+    });
+  } else if (contract.mode === "other_heat_recovery_auxiliary_zero") {
+    result = calculateOtherHeatRecoveryAuxiliaryEnergy();
+  }
+  if (!result) return null;
+  return {
+    value: result.valueKWh,
+    source: calculatedComponentSource({
+      origin: "mc001_ventilation_heat_recovery_auxiliary_contract",
+      reference: `${path}.heatRecoveryAuxiliaryCalculation`,
+      results: [result],
+      details: { mode: contract.mode }
+    })
+  };
+}
+
+function calculatedVentilationPreheatAuxiliary(system, monthIndex, path) {
+  const contract = monthlyComponent(system.preheatAuxiliaryCalculation, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  const fan = system.fanElectricEnergyInput ?? {};
+  const calculationHours = monthlyFieldWithFallback(
+    contract,
+    "calculationHours",
+    monthIndex,
+    fan.calculationHours
+  );
+  let result = null;
+  if (contract.mode === "preheater_energy") {
+    result = calculatePreheaterEnergy({
+      airDensityKgPerM3: contract.airDensityKgPerM3,
+      airSpecificHeatKJPerKgK: contract.airSpecificHeatKJPerKgK,
+      supplyAirFlowM3PerH: contract.supplyAirFlowM3PerH ?? fan.supplyAirFlowM3PerH,
+      outdoorAirFraction: contract.outdoorAirFraction,
+      frostProtectionTemperatureC: monthlyField(contract, "frostProtectionTemperatureC", monthIndex),
+      outdoorTemperatureC: monthlyField(contract, "outdoorTemperatureC", monthIndex),
+      calculationHours
+    });
+  } else if (contract.mode === "no_preheater") {
+    result = calculateNoPreheaterEnergy();
+  }
+  if (!result) return null;
+  return {
+    value: result.valueKWh,
+    source: calculatedComponentSource({
+      origin: "mc001_ventilation_preheat_auxiliary_contract",
+      reference: `${path}.preheatAuxiliaryCalculation`,
+      results: [result],
+      details: { mode: contract.mode }
+    })
+  };
+}
+
+function calculatedVentilationControlAuxiliary(system, monthIndex, path) {
+  const contract = monthlyComponent(system.controlAuxiliaryCalculation, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  const fan = system.fanElectricEnergyInput ?? {};
+  if (contract.mode !== "control_auxiliary_energy") return null;
+  const result = calculateVentilationControlAuxiliaryEnergy({
+    controllerPowerKW: contract.controllerPowerKW,
+    operationFactor: monthlyField(contract, "operationFactor", monthIndex),
+    calculationHours: monthlyFieldWithFallback(
+      contract,
+      "calculationHours",
+      monthIndex,
+      fan.calculationHours
+    )
+  });
+  return {
+    value: result.valueKWh,
+    source: calculatedComponentSource({
+      origin: "mc001_ventilation_control_auxiliary_contract",
+      reference: `${path}.controlAuxiliaryCalculation`,
+      results: [result],
+      details: { mode: contract.mode }
+    })
+  };
 }
 
 function optionalMonthlyScalar(value, monthIndex, fallback = 0) {
@@ -756,9 +1311,20 @@ function firstActiveSystem(section, path, diagnostics) {
   return systems[0];
 }
 
-function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostics) {
+function serviceStagesForMonth(
+  system,
+  service,
+  stageIds,
+  monthIndex,
+  diagnostics,
+  { usefulDemandKWh = null, allocationFraction = 1 } = {}
+) {
   const stages = [];
   const stageMap = new Map((system?.stages ?? []).map(stage => [stage.stageId, stage]));
+  let stageOutputKWh =
+    finiteNonNegative(usefulDemandKWh) && finiteNumber(allocationFraction)
+      ? usefulDemandKWh * allocationFraction
+      : null;
   for (const stageId of stageIds) {
     const stage = stageMap.get(stageId);
     if (!stage) {
@@ -773,7 +1339,8 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
       stageId,
       monthIndex,
       `${service}.stages.${stageId}`,
-      diagnostics
+      diagnostics,
+      stageOutputKWh
     );
     const calculatedAuxiliary = calculatedStageAuxiliary(
       stage,
@@ -781,7 +1348,8 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
       stageId,
       monthIndex,
       `${service}.stages.${stageId}`,
-      diagnostics
+      diagnostics,
+      stageOutputKWh
     );
     const loss =
       calculatedLoss ??
@@ -789,7 +1357,7 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
     const auxiliary =
       calculatedAuxiliary ??
       monthlyScalarWithSource(stage.auxiliaryKWhPerMonth, monthIndex, auxiliaryPath, diagnostics, stage.auxiliarySource);
-    stages.push({
+    const resolvedStage = {
       stageId,
       lossKWh: loss.value,
       auxiliaryKWh: auxiliary.value,
@@ -799,7 +1367,7 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
         stage.auxiliaryRecoveredFraction,
         `${service}.stages.${stageId}.auxiliaryRecoveredFraction`,
         diagnostics,
-        0
+        auxiliary.derivedFractions?.auxiliaryRecoveredFraction ?? 0
       ),
       lossRecoveredFraction: fraction(
         stage.lossRecoveredFraction,
@@ -819,19 +1387,50 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
         diagnostics,
         loss.derivedFractions?.lossRecoverableFractionToHeating ?? 0
       )
-    });
+    };
+    stages.push(resolvedStage);
+    if (
+      finiteNonNegative(stageOutputKWh) &&
+      finiteNonNegative(resolvedStage.lossKWh) &&
+      finiteNonNegative(resolvedStage.auxiliaryKWh) &&
+      finiteNumber(resolvedStage.auxiliaryRecoveredFraction) &&
+      finiteNumber(resolvedStage.lossRecoveredFraction)
+    ) {
+      const stageInput = calculateChapter3SubsystemInputEnergyBalance({
+        subsystemId: `${service}.${stageId}`,
+        subsystemOutputKWh: stageOutputKWh,
+        subsystemLossKWh: resolvedStage.lossKWh,
+        auxiliaryEnergyKWh: resolvedStage.auxiliaryKWh,
+        auxiliaryRecoveredFraction: resolvedStage.auxiliaryRecoveredFraction,
+        lossRecoveredFraction: resolvedStage.lossRecoveredFraction
+      });
+      stageOutputKWh = stageInput.valueKWh;
+    } else {
+      stageOutputKWh = null;
+    }
   }
   return stages;
 }
 
-function serviceSystemsForMonth(section, service, path, stageIds, monthIndex, diagnostics) {
+function serviceSystemsForMonth(
+  section,
+  service,
+  path,
+  stageIds,
+  monthIndex,
+  diagnostics,
+  { usefulDemandKWh = null } = {}
+) {
   const systems = activeSystems(section, path, diagnostics, { allowMultiple: true });
   if (!systems) return null;
   const multiple = systems.length > 1;
   return systems.map((system, index) => ({
     systemId: system.systemId ?? `${service}-system-${index + 1}`,
     allocationFraction: multiple ? system.allocationFraction : 1,
-    stages: serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostics),
+    stages: serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostics, {
+      usefulDemandKWh,
+      allocationFraction: multiple ? system.allocationFraction : 1
+    }),
     metadata: {
       systemId: system.systemId ?? `${service}-system-${index + 1}`,
       generatorType: system.generatorType ?? null,
@@ -1066,11 +1665,46 @@ function ventilationForMonth(section, monthIndex, diagnostics) {
     const ok = field.endsWith("Efficiency") ? finitePositive(value) && value <= 1 : finiteNonNegative(value);
     if (!ok) diagnostics.push(diagnostic("invalid_ventilation_ahu_fan_input", `technicalSystems.ventilationAhu.${field}`));
   }
+  let heatRecoveryAuxiliary = null;
+  let preheatAuxiliary = null;
+  let controlAuxiliary = null;
+  try {
+    heatRecoveryAuxiliary = calculatedVentilationHeatRecoveryAuxiliary(
+      system,
+      monthIndex,
+      "technicalSystems.ventilationAhu.systems[0]"
+    );
+    preheatAuxiliary = calculatedVentilationPreheatAuxiliary(
+      system,
+      monthIndex,
+      "technicalSystems.ventilationAhu.systems[0]"
+    );
+    controlAuxiliary = calculatedVentilationControlAuxiliary(
+      system,
+      monthIndex,
+      "technicalSystems.ventilationAhu.systems[0]"
+    );
+  } catch (error) {
+    diagnostics.push(diagnostic(
+      "invalid_ventilation_ahu_auxiliary_component_contract",
+      "technicalSystems.ventilationAhu.systems[0]",
+      error.message
+    ));
+  }
   return {
     fanElectricEnergyInput: deepClone(fan),
-    heatRecoveryAuxiliaryKWh: optionalMonthlyScalar(system.heatRecoveryAuxiliaryKWhPerMonth, monthIndex, 0),
-    preheatAuxiliaryKWh: optionalMonthlyScalar(system.preheatAuxiliaryKWhPerMonth, monthIndex, 0),
-    controlAuxiliaryKWh: optionalMonthlyScalar(system.controlAuxiliaryKWhPerMonth, monthIndex, 0)
+    heatRecoveryAuxiliaryKWh:
+      heatRecoveryAuxiliary?.value ??
+      optionalMonthlyScalar(system.heatRecoveryAuxiliaryKWhPerMonth, monthIndex, 0),
+    preheatAuxiliaryKWh:
+      preheatAuxiliary?.value ??
+      optionalMonthlyScalar(system.preheatAuxiliaryKWhPerMonth, monthIndex, 0),
+    controlAuxiliaryKWh:
+      controlAuxiliary?.value ??
+      optionalMonthlyScalar(system.controlAuxiliaryKWhPerMonth, monthIndex, 0),
+    heatRecoveryAuxiliarySource: heatRecoveryAuxiliary?.source ?? null,
+    preheatAuxiliarySource: preheatAuxiliary?.source ?? null,
+    controlAuxiliarySource: controlAuxiliary?.source ?? null
   };
 }
 
@@ -1236,7 +1870,8 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
             "technicalSystems.heating",
             CHAPTER3_INSTALLATION_STAGE_IDS,
             index,
-            diagnostics
+            diagnostics,
+            { usefulDemandKWh: usefulDemand[index]?.qHndKWh ?? 0 }
           ),
           ...(heatingSystems.length === 1
             ? {
@@ -1245,7 +1880,8 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
                   "heating",
                   CHAPTER3_INSTALLATION_STAGE_IDS,
                   index,
-                  diagnostics
+                  diagnostics,
+                  { usefulDemandKWh: usefulDemand[index]?.qHndKWh ?? 0 }
                 )
               }
             : {})
@@ -1259,7 +1895,8 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
             "technicalSystems.cooling",
             CHAPTER3_INSTALLATION_STAGE_IDS,
             index,
-            diagnostics
+            diagnostics,
+            { usefulDemandKWh: usefulDemand[index]?.qCndKWh ?? 0 }
           ),
           ...(coolingSystems.length === 1
             ? {
@@ -1268,7 +1905,8 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
                   "cooling",
                   CHAPTER3_INSTALLATION_STAGE_IDS,
                   index,
-                  diagnostics
+                  diagnostics,
+                  { usefulDemandKWh: usefulDemand[index]?.qCndKWh ?? 0 }
                 )
               }
             : {})

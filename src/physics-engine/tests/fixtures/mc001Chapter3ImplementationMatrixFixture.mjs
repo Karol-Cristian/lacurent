@@ -27,6 +27,9 @@ const INTEGRATED_TEST = "src/physics-engine/tests/mc001Chapter3IntegratedRuntime
 const DHW_USEFUL_TEST = "src/physics-engine/tests/dhwUsefulDemand.test.mjs";
 const DHW_DISTRIBUTION_TEST = "src/physics-engine/tests/dhwDistributionLosses.test.mjs";
 const BUILDING_PLATFORM_TEST = "src/building-platform/tests/buildingChapter3InstallationsProduct.test.mjs";
+const WIZARD_UI_TEST = "tests/building-platform-wizard-ui.mjs";
+const P3V_HEATING_TEST = "validation-reference/python-mc001/tests/test_chapter3_heating.py";
+const P3V_VENTILATION_TEST = "validation-reference/python-mc001/tests/test_chapter3_ventilation.py";
 const REFERENCE_FIXTURE = "MC001_CHAPTER_3_REFERENCE_12_MONTH_EXPLICIT_SYSTEMS_V1";
 
 function relationRange(first, last) {
@@ -101,14 +104,14 @@ function implementedRange(relations, options) {
   return relations.map(relation => {
     const sourceLocation = optionForRelation(options.sourceLocation, relation, options.source);
     return relationEntry(relation, {
-      status: options.status ?? CHAPTER_3_MATRIX_STATUS.UNIT_TESTED,
+      status: optionForRelation(options.status, relation, CHAPTER_3_MATRIX_STATUS.UNIT_TESTED),
       source: options.source,
       sourceLocation,
       mc001SourcePage: optionForRelation(options.mc001SourcePage, relation, sourceLocation),
       implementation: options.implementation,
       implementedFunction: optionForRelation(options.implementedFunction, relation, options.implementation),
-      tests: options.tests,
-      validationFixture: options.validationFixture,
+      tests: optionForRelation(options.tests, relation, []),
+      validationFixture: optionForRelation(options.validationFixture, relation, null),
       productionRuntimePath: optionForRelation(options.productionRuntimePath, relation, options.runtimeIntegrated ?? false),
       notebookPath: optionForRelation(options.notebookPath, relation, options.notebookTraceable ?? false),
       fixtureExpectedValue: optionForRelation(options.fixtureExpectedValue, relation, options.validationFixture),
@@ -116,8 +119,8 @@ function implementedRange(relations, options) {
       tableImplemented: options.tableImplemented ?? false,
       branchesImplemented: options.branchesImplemented ?? true,
       numericalFixtureCovered: options.numericalFixtureCovered ?? true,
-      runtimeIntegrated: options.runtimeIntegrated ?? false,
-      notebookTraceable: options.notebookTraceable ?? false,
+      runtimeIntegrated: optionForRelation(options.runtimeIntegrated, relation, false),
+      notebookTraceable: optionForRelation(options.notebookTraceable, relation, false),
       explicitInputBoundary: optionForRelation(
         options.explicitInputBoundary,
         relation,
@@ -170,37 +173,180 @@ const generalSubsystemRelations = [
   })
 ];
 
+const p8dHeatingNumericalRelations = new Set([
+  "3.1",
+  "3.2",
+  "3.3",
+  "3.4",
+  "3.5",
+  "3.6",
+  "3.7",
+  "3.8",
+  "3.9",
+  "3.10",
+  "3.11",
+  "3.12",
+  "3.13",
+  "3.14",
+  "3.17",
+  "3.23",
+  "3.24",
+  "3.25",
+  "3.26",
+  "3.27",
+  "3.29",
+  "3.30",
+  "3.31",
+  "3.32",
+  "3.34",
+  "3.35",
+  "3.36",
+  "3.37"
+]);
+
+const p8dHeatingImplementedFunctions = {
+  "3.1": "calculateHeatingEmissionLoss",
+  "3.2": "calculateHeatingEmissionEfficiency",
+  "3.3": "calculateHeatingEmissionInputEnergy",
+  "3.4": "calculateHydronicDesignPower",
+  "3.5": "calculateHydronicPressureDrop",
+  "3.6": "calculateHydronicPumpEnergy",
+  "3.7": "calculateHeatingDistributionAuxiliaryEnergy",
+  "3.8": "calculateHydronicPumpEnergyUseFactor",
+  "3.9": "calculateHydronicPumpEfficiencyFactor",
+  "3.10": "calculateHydronicReferencePumpPower",
+  "3.11": "calculateHeatingDistributionSetbackPumpEnergy",
+  "3.12": "calculateHeatingDistributionBoostPumpEnergy",
+  "3.13": "calculateHeatingDistributionAuxiliaryRecoverableEnergy",
+  "3.14": "calculateHeatingDistributionAuxiliaryRecoveredEnergy",
+  "3.17": "calculateHeatingGeneratorStandbyLossPower",
+  "3.23": "calculateHeatingGeneratorLoadFactor",
+  "3.24": "calculateHeatingGeneratorFullLoadHours",
+  "3.25": "calculateHeatingGeneratorLossPowerLowLoad",
+  "3.26": "calculateHeatingGeneratorLossPowerHighLoad",
+  "3.27": "calculateHeatingGeneratorLossEnergy",
+  "3.29": "calculateHeatingGeneratorEnvelopeRecoverableLoss",
+  "3.30": "calculateHeatingGeneratorAuxiliaryRecoverableFraction",
+  "3.31": "calculateHeatingGeneratorAuxiliaryRecoveredLoss",
+  "3.32": "calculateHeatingGeneratorAuxiliaryRecoverableLoss",
+  "3.34": "calculateHeatingGeneratorAuxiliaryPowerLowLoad",
+  "3.35": "calculateHeatingGeneratorAuxiliaryPowerHighLoad",
+  "3.36": "calculateIntermediateLoadFactor",
+  "3.37": "calculateHeatingGeneratorAuxiliaryEnergy"
+};
+
 const heatingRelations = implementedRange(relationRange(1, 39), {
+  status: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? CHAPTER_3_MATRIX_STATUS.PRODUCTION_INTEGRATED
+      : CHAPTER_3_MATRIX_STATUS.UNIT_TESTED,
   source: "MC001-2022 Chapter 3.1, pages 136-152",
   implementation: HEATING_SYSTEMS,
-  tests: [HEATING_TEST],
-  validationFixture: "independent fixed constants in mc001Chapter3HeatingSystems.test.mjs",
-  runtimeIntegrated: "integrated through explicit subsystem stage balances; detailed coefficient paths remain callable runtime relations",
-  notebookTraceable: "stage balances are notebook-visible; detailed generator helpers expose trace objects",
-  explicitInputBoundary: relation => !["3.55", "3.68"].includes(relation),
-  explicitBoundaryReason:
-    "Production service-chain stages still receive heating subsystem losses, generator/product coefficients or manufacturer data as explicit technical inputs unless a detailed helper is invoked with project-specific data."
+  implementedFunction: relation => p8dHeatingImplementedFunctions[relation] ?? HEATING_SYSTEMS,
+  tests: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? [HEATING_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_HEATING_TEST]
+      : [HEATING_TEST],
+  validationFixture: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? "P8D heating component-contract fixture plus independent Python reference constants"
+      : "independent fixed constants in mc001Chapter3HeatingSystems.test.mjs",
+  runtimeIntegrated: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? true
+      : "callable helper or explicit boundary; production requires a more detailed component/product contract before the result can be calculated",
+  productionRuntimePath: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? "Building DNA technicalSystems.heating.systems[].stages[].lossCalculation/auxiliaryCalculation -> buildingChapter3InstallationsAdapter -> MC001 heating helper -> integrated service-chain stage balance"
+      : "callable helper or explicit boundary; production requires a more detailed component/product contract before the result can be calculated",
+  notebookTraceable: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? true
+      : "stage balance visible only when final explicit technical value is supplied",
+  notebookPath: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? "src/physics-engine/mc001Chapter3Notebook.mjs heating stage lines with source formula IDs"
+      : "stage balance visible only when final explicit technical value is supplied",
+  explicitInputBoundary: relation => !p8dHeatingNumericalRelations.has(relation),
+  implementationClassification: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+      : CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
+  inputSourceClassification: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? "heating_component_contract_project_and_product_data"
+      : "heating_legacy_explicit_or_unexposed_component_contract_input",
+  explicitBoundaryReason: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? null
+      : "The relation still requires an unexposed heating component/product contract or remains a total/alternative branch not yet owned by the production heating component model."
 });
+
+const p8dVentilationNumericalRelations = new Set([
+  "3.69",
+  "3.70",
+  "3.71",
+  "3.73",
+  "3.74",
+  "3.75"
+]);
+
+const p8dVentilationImplementedFunctions = {
+  "3.69": "calculateRotaryHeatRecoveryAuxiliaryEnergy",
+  "3.70": "calculatePumpHeatRecoveryAuxiliaryEnergy",
+  "3.71": "calculateOtherHeatRecoveryAuxiliaryEnergy",
+  "3.73": "calculatePreheaterEnergy",
+  "3.74": "calculateNoPreheaterEnergy",
+  "3.75": "calculateVentilationControlAuxiliaryEnergy"
+};
 
 const ahuRelations = implementedRange(relationRange(40, 93), {
   source: "MC001-2022 Chapter 3.2.2-3.2.3, pages 155-163",
   implementation: SYSTEM_ENERGY,
-  tests: [SYSTEM_ENERGY_TEST],
-  validationFixture: "independent fixed constants in mc001Chapter3SystemEnergy.test.mjs and integrated reference fixture fan-energy path",
+  implementedFunction: relation => p8dVentilationImplementedFunctions[relation] ?? SYSTEM_ENERGY,
+  tests: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_VENTILATION_TEST]
+      : [SYSTEM_ENERGY_TEST],
+  validationFixture: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? "P8D ventilation component-contract fixture plus independent Python reference constants"
+      : "independent fixed constants in mc001Chapter3SystemEnergy.test.mjs and integrated reference fixture fan-energy path",
   tableImplemented: "explicit-input boundary for leakage class values and fan-function curves",
-  runtimeIntegrated: "fan electric energy and ventilation auxiliary total integrated in the 12-month reference fixture",
-  notebookTraceable: "ventilation monthly auxiliary is visible in the Chapter 3 notebook section",
-  explicitInputBoundary: true,
-  implementationClassification: {
+  runtimeIntegrated: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? true
+      : "fan electric energy and ventilation auxiliary total integrated in the 12-month reference fixture",
+  productionRuntimePath: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? "Building DNA technicalSystems.ventilationAhu.systems[].*AuxiliaryCalculation -> buildingChapter3InstallationsAdapter.ventilationForMonth -> MC001 AHU helper"
+      : "fan electric energy and ventilation auxiliary total integrated in the 12-month reference fixture",
+  notebookTraceable: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? true
+      : "ventilation monthly auxiliary is visible in the Chapter 3 notebook section",
+  notebookPath: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? "Chapter 3 runtime ventilation.sources carries source formula IDs for report/notebook consumers"
+      : "ventilation monthly auxiliary is visible in the Chapter 3 notebook section",
+  explicitInputBoundary: relation =>
+    !["3.55", "3.68"].includes(relation) && !p8dVentilationNumericalRelations.has(relation),
+  implementationClassification: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+      : ({
     "3.55": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
     "3.68": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
-  },
-  inputSourceClassification: {
+  })[relation],
+  inputSourceClassification: relation =>
+    p8dVentilationNumericalRelations.has(relation)
+      ? "ventilation_ahu_component_contract_product_and_operation_inputs"
+      : ({
     "3.55": "fan_airflow_pressure_efficiency_hours_from_building_dna",
     "3.68": "fan_energy_calculated_plus_heat_recovery_preheat_control_auxiliary_inputs"
-  },
+  })[relation],
   explicitBoundaryReason: relation =>
-    ["3.55", "3.68"].includes(relation)
+    ["3.55", "3.68"].includes(relation) || p8dVentilationNumericalRelations.has(relation)
       ? null
       : "Detailed AHU coil, leakage, humidification, control or recovery inputs are project/system-specific and are not yet exposed as a complete production chain; current production path integrates fan energy and auxiliary aggregation only."
 });

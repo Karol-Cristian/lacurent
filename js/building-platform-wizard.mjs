@@ -494,6 +494,82 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
       values[`${prefix}_${stageId}_loss_recovered_fraction`] = stageValue(section, stageId, "lossRecoveredFraction");
     }
   }
+  const heating = technicalSystems?.heating ?? {};
+  const heatingEmission = stageObject(heating, "emission")?.lossCalculation;
+  const heatingDistributionAux = stageObject(heating, "distribution")?.auxiliaryCalculation;
+  const heatingStorageLoss = stageObject(heating, "storage")?.lossCalculation;
+  const heatingGenerationLoss = stageObject(heating, "generation")?.lossCalculation;
+  const heatingGenerationAux = stageObject(heating, "generation")?.auxiliaryCalculation;
+  values.chapter3_heating_component_mode =
+    heatingEmission?.mode ||
+    heatingDistributionAux?.mode ||
+    heatingStorageLoss?.mode ||
+    heatingGenerationLoss?.mode ||
+    heatingGenerationAux?.mode
+      ? "component_contract"
+      : "explicit_monthly";
+  values.chapter3_heating_emission_temp_increase_k =
+    heatingEmission?.increasedIndoorTemperatureK ?? "";
+  values.chapter3_heating_indoor_temp_c = heatingEmission?.indoorTemperatureC ?? "";
+  values.chapter3_heating_combined_outdoor_temp_c =
+    heatingEmission?.combinedOutdoorTemperatureC ?? "";
+  values.chapter3_heating_storage_mode =
+    heatingStorageLoss?.mode === "no_heating_storage" ? "no_storage" : "explicit_monthly";
+  values.chapter3_heating_operation_hours_month =
+    heatingGenerationLoss?.operationHours ??
+    heatingGenerationAux?.operationHours ??
+    heatingDistributionAux?.operationHours ??
+    "";
+  values.chapter3_heating_pump_component_factor =
+    heatingDistributionAux?.pressureDropInput?.componentResistanceFactor ?? "";
+  values.chapter3_heating_pump_linear_pressure_kpa_m =
+    heatingDistributionAux?.pressureDropInput?.maxLinearPressureDropKPaPerM ?? "";
+  values.chapter3_heating_pump_circuit_length_m =
+    heatingDistributionAux?.pressureDropInput?.maxCircuitLengthM ?? "";
+  values.chapter3_heating_pump_additional_pressure_kpa =
+    heatingDistributionAux?.pressureDropInput?.additionalPressureDropKPa ?? "";
+  values.chapter3_heating_pump_flow_m3h = heatingDistributionAux?.designFlowRateM3PerH ?? "";
+  values.chapter3_heating_pump_load_factor = heatingDistributionAux?.operationLoadFactor ?? "";
+  values.chapter3_heating_pump_correction_factor = heatingDistributionAux?.correctionFactor ?? "";
+  values.chapter3_heating_pump_cp1 = heatingDistributionAux?.controlConstantCp1 ?? "";
+  values.chapter3_heating_pump_cp2 = heatingDistributionAux?.controlConstantCp2 ?? "";
+  values.chapter3_heating_pump_eei = heatingDistributionAux?.energyEfficiencyIndex ?? "";
+  values.chapter3_heating_pump_recoverable_fraction =
+    heatingDistributionAux?.recoverableFraction ?? "";
+  values.chapter3_heating_pump_setback_power_kw =
+    heatingDistributionAux?.setbackPumpPowerKW ?? "";
+  values.chapter3_heating_pump_setback_hours_month =
+    heatingDistributionAux?.setbackCalculationHours ?? "";
+  values.chapter3_heating_pump_boost_hours_month =
+    heatingDistributionAux?.boostCalculationHours ?? "";
+  values.chapter3_heating_generator_nominal_kw =
+    heatingGenerationLoss?.nominalPowerKW ?? heatingGenerationAux?.nominalPowerKW ?? "";
+  values.chapter3_heating_generator_intermediate_kw =
+    heatingGenerationLoss?.intermediatePowerKW ?? heatingGenerationAux?.intermediatePowerKW ?? "";
+  values.chapter3_heating_generator_nominal_load_factor =
+    heatingGenerationLoss?.nominalLoadFactor ?? "";
+  values.chapter3_heating_generator_loss_power_nominal_kw =
+    heatingGenerationLoss?.lossPowerNominalKW ?? "";
+  values.chapter3_heating_generator_loss_power_intermediate_kw =
+    heatingGenerationLoss?.lossPowerIntermediateKW ?? "";
+  values.chapter3_heating_generator_envelope_loss_fraction_percent =
+    heatingGenerationLoss?.envelopeLossFractionPercent ?? "";
+  values.chapter3_heating_generator_chimney_off_loss_fraction_percent =
+    heatingGenerationLoss?.chimneyOffLossFractionPercent ?? "";
+  values.chapter3_heating_generator_delivered_power_kw =
+    heatingGenerationLoss?.generatorDeliveredPowerKW ?? "";
+  values.chapter3_heating_generator_envelope_recoverable_fraction =
+    heatingGenerationLoss?.envelopeLossFraction ?? "";
+  values.chapter3_heating_generator_aux_power_standby_kw =
+    heatingGenerationAux?.auxiliaryPowerStandbyKW ?? "";
+  values.chapter3_heating_generator_aux_power_intermediate_kw =
+    heatingGenerationAux?.auxiliaryPowerIntermediateKW ?? "";
+  values.chapter3_heating_generator_aux_power_nominal_kw =
+    heatingGenerationAux?.auxiliaryPowerNominalKW ?? "";
+  values.chapter3_heating_generator_aux_recovered_product_fraction =
+    heatingGenerationAux?.recoveredAuxiliaryFraction ?? "";
+  values.chapter3_heating_generator_boiler_room_recovery_factor =
+    heatingGenerationAux?.boilerRoomRecoveryFactor ?? "";
   const ventilation = technicalSystems?.ventilationAhu ?? {};
   values.chapter3_ventilation_ahu_enabled = ventilation.enabled ? "yes" : "no";
   values.chapter3_supply_airflow_m3h = fanValue(ventilation, "supplyAirFlowM3PerH");
@@ -506,6 +582,31 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
   values.chapter3_heat_recovery_aux_kwh_month = firstSystem(ventilation)?.heatRecoveryAuxiliaryKWhPerMonth ?? "";
   values.chapter3_preheat_aux_kwh_month = firstSystem(ventilation)?.preheatAuxiliaryKWhPerMonth ?? "";
   values.chapter3_control_aux_kwh_month = firstSystem(ventilation)?.controlAuxiliaryKWhPerMonth ?? "";
+  const ventilationSystem = firstSystem(ventilation);
+  const heatRecoveryAux = ventilationSystem?.heatRecoveryAuxiliaryCalculation;
+  const preheatAux = ventilationSystem?.preheatAuxiliaryCalculation;
+  const controlAux = ventilationSystem?.controlAuxiliaryCalculation;
+  values.chapter3_ventilation_heat_recovery_mode = heatRecoveryAux?.mode ?? "explicit_monthly";
+  values.chapter3_ventilation_preheat_mode = preheatAux?.mode ?? "explicit_monthly";
+  values.chapter3_ventilation_control_mode = controlAux?.mode ?? "explicit_monthly";
+  values.chapter3_ventilation_rotary_power_kw = heatRecoveryAux?.maxRotaryPowerKW ?? "";
+  values.chapter3_ventilation_rotation_ratio = heatRecoveryAux?.rotationRatio ?? "";
+  values.chapter3_ventilation_outdoor_air_fraction =
+    heatRecoveryAux?.outdoorAirFraction ?? preheatAux?.outdoorAirFraction ?? "";
+  values.chapter3_ventilation_hr_pump_specific_kwh_m3 =
+    heatRecoveryAux?.maxPumpSpecificPowerKWhPerM3 ?? "";
+  values.chapter3_ventilation_hr_min_part_load =
+    heatRecoveryAux?.minimumPartLoadFactor ?? "";
+  values.chapter3_ventilation_recovered_heat_kwh = heatRecoveryAux?.recoveredHeatKWh ?? "";
+  values.chapter3_ventilation_max_recovered_heat_kw =
+    heatRecoveryAux?.maxRecoveredHeatPowerKW ?? "";
+  values.chapter3_ventilation_air_density_kg_m3 = preheatAux?.airDensityKgPerM3 ?? "";
+  values.chapter3_ventilation_air_cp_kj_kgk = preheatAux?.airSpecificHeatKJPerKgK ?? "";
+  values.chapter3_ventilation_frost_protection_c =
+    preheatAux?.frostProtectionTemperatureC ?? "";
+  values.chapter3_ventilation_outdoor_temp_c = preheatAux?.outdoorTemperatureC ?? "";
+  values.chapter3_ventilation_controller_power_kw = controlAux?.controllerPowerKW ?? "";
+  values.chapter3_ventilation_control_operation_factor = controlAux?.operationFactor ?? "";
 
   const dhw = technicalSystems?.domesticHotWater ?? {};
   values.chapter3_dhw_useful_mode = dhw.usefulDemandSource?.mode ?? "explicit_monthly";
@@ -1264,6 +1365,267 @@ function dhwComponentMode(formData) {
     : "explicit_monthly";
 }
 
+function heatingComponentMode(formData) {
+  return formValue(formData, "chapter3_heating_component_mode") === "component_contract"
+    ? "component_contract"
+    : "explicit_monthly";
+}
+
+function applyHeatingComponentContracts(formData, system) {
+  if (heatingComponentMode(formData) !== "component_contract") return system;
+
+  const operationHours = nonNegativeNumber(formData, "chapter3_heating_operation_hours_month");
+  const stages = system.stages.map(stage => {
+    if (stage.stageId === "emission") {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        lossCalculation: {
+          mode: "heating_emission_temperature_increase",
+          increasedIndoorTemperatureK: nonNegativeNumber(formData, "chapter3_heating_emission_temp_increase_k"),
+          indoorTemperatureC: numberValue(formData, "chapter3_heating_indoor_temp_c"),
+          combinedOutdoorTemperatureC: numberValue(formData, "chapter3_heating_combined_outdoor_temp_c"),
+          source: {
+            origin: "expert_override",
+            reference: "chapter3_heating_emission_component_contract"
+          }
+        }
+      };
+    }
+    if (stage.stageId === "distribution") {
+      return {
+        ...stage,
+        auxiliaryKWhPerMonth: undefined,
+        auxiliaryRecoverableFractionToHeating: undefined,
+        auxiliaryCalculation: {
+          mode: "heating_hydronic_pump_auxiliary",
+          pressureDropInput: {
+            componentResistanceFactor: nonNegativeNumber(formData, "chapter3_heating_pump_component_factor"),
+            maxLinearPressureDropKPaPerM: nonNegativeNumber(formData, "chapter3_heating_pump_linear_pressure_kpa_m"),
+            maxCircuitLengthM: nonNegativeNumber(formData, "chapter3_heating_pump_circuit_length_m"),
+            additionalPressureDropKPa: nonNegativeNumber(formData, "chapter3_heating_pump_additional_pressure_kpa")
+          },
+          designFlowRateM3PerH: nonNegativeNumber(formData, "chapter3_heating_pump_flow_m3h"),
+          operationLoadFactor: nonNegativeNumber(formData, "chapter3_heating_pump_load_factor"),
+          operationHours,
+          correctionFactor: nonNegativeNumber(formData, "chapter3_heating_pump_correction_factor"),
+          controlConstantCp1: numberValue(formData, "chapter3_heating_pump_cp1"),
+          controlConstantCp2: numberValue(formData, "chapter3_heating_pump_cp2"),
+          energyEfficiencyIndex: nonNegativeNumber(formData, "chapter3_heating_pump_eei"),
+          recoverableFraction: fractionValue(formData, "chapter3_heating_pump_recoverable_fraction", undefined),
+          setbackPumpPowerKW: nonNegativeNumber(formData, "chapter3_heating_pump_setback_power_kw"),
+          setbackCalculationHours: nonNegativeNumber(formData, "chapter3_heating_pump_setback_hours_month"),
+          boostCalculationHours: nonNegativeNumber(formData, "chapter3_heating_pump_boost_hours_month"),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_heating_distribution_pump_component_contract"
+          }
+        }
+      };
+    }
+    if (
+      stage.stageId === "storage" &&
+      formValue(formData, "chapter3_heating_storage_mode") === "no_storage"
+    ) {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        lossCalculation: {
+          mode: "no_heating_storage",
+          source: {
+            origin: "user_explicit_system_topology",
+            reference: "chapter3_heating_storage_mode"
+          }
+        }
+      };
+    }
+    if (stage.stageId === "generation") {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        auxiliaryKWhPerMonth: undefined,
+        auxiliaryRecoveredFraction: undefined,
+        auxiliaryRecoverableFractionToHeating: undefined,
+        lossRecoveredFraction: undefined,
+        lossRecoverableFractionToHeating: undefined,
+        lossCalculation: {
+          mode: "heating_generator_loss_power_curve",
+          nominalPowerKW: positiveNumber(formData, "chapter3_heating_generator_nominal_kw"),
+          intermediatePowerKW: nonNegativeNumber(formData, "chapter3_heating_generator_intermediate_kw"),
+          nominalLoadFactor: positiveNumber(formData, "chapter3_heating_generator_nominal_load_factor"),
+          operationHours,
+          lossPowerNominalKW: nonNegativeNumber(formData, "chapter3_heating_generator_loss_power_nominal_kw"),
+          lossPowerIntermediateKW: nonNegativeNumber(formData, "chapter3_heating_generator_loss_power_intermediate_kw"),
+          envelopeLossFractionPercent: nonNegativeNumber(
+            formData,
+            "chapter3_heating_generator_envelope_loss_fraction_percent"
+          ),
+          chimneyOffLossFractionPercent: nonNegativeNumber(
+            formData,
+            "chapter3_heating_generator_chimney_off_loss_fraction_percent"
+          ),
+          generatorDeliveredPowerKW: nonNegativeNumber(
+            formData,
+            "chapter3_heating_generator_delivered_power_kw"
+          ),
+          envelopeLossFraction: fractionValue(
+            formData,
+            "chapter3_heating_generator_envelope_recoverable_fraction",
+            undefined
+          ),
+          boilerRoomRecoveryFactor: fractionValue(
+            formData,
+            "chapter3_heating_generator_boiler_room_recovery_factor",
+            undefined
+          ),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_heating_generator_loss_curve_contract"
+          }
+        },
+        auxiliaryCalculation: {
+          mode: "heating_generator_auxiliary_power_curve",
+          nominalPowerKW: positiveNumber(formData, "chapter3_heating_generator_nominal_kw"),
+          intermediatePowerKW: nonNegativeNumber(formData, "chapter3_heating_generator_intermediate_kw"),
+          operationHours,
+          auxiliaryPowerStandbyKW: nonNegativeNumber(formData, "chapter3_heating_generator_aux_power_standby_kw"),
+          auxiliaryPowerIntermediateKW: nonNegativeNumber(formData, "chapter3_heating_generator_aux_power_intermediate_kw"),
+          auxiliaryPowerNominalKW: nonNegativeNumber(formData, "chapter3_heating_generator_aux_power_nominal_kw"),
+          recoveredAuxiliaryFraction: fractionValue(
+            formData,
+            "chapter3_heating_generator_aux_recovered_product_fraction",
+            undefined
+          ),
+          boilerRoomRecoveryFactor: fractionValue(
+            formData,
+            "chapter3_heating_generator_boiler_room_recovery_factor",
+            undefined
+          ),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_heating_generator_auxiliary_curve_contract"
+          }
+        }
+      };
+    }
+    return stage;
+  });
+
+  return {
+    ...system,
+    stages,
+    source: {
+      ...system.source,
+      componentContractMode: "heating_component_contract_p8d"
+    }
+  };
+}
+
+function ventilationAuxiliaryContractsFromForm(formData) {
+  const heatRecoveryMode = formValue(formData, "chapter3_ventilation_heat_recovery_mode");
+  const preheatMode = formValue(formData, "chapter3_ventilation_preheat_mode");
+  const controlMode = formValue(formData, "chapter3_ventilation_control_mode");
+  const calculationHours = nonNegativeNumber(formData, "chapter3_fan_hours_month");
+  return {
+    ...(heatRecoveryMode === "rotary_heat_recovery_auxiliary"
+      ? {
+          heatRecoveryAuxiliaryCalculation: {
+            mode: "rotary_heat_recovery_auxiliary",
+            maxRotaryPowerKW: nonNegativeNumber(formData, "chapter3_ventilation_rotary_power_kw"),
+            calculationHours,
+            rotationRatio: nonNegativeNumber(formData, "chapter3_ventilation_rotation_ratio"),
+            source: {
+              origin: "product_data",
+              reference: "chapter3_ventilation_rotary_heat_recovery_contract"
+            }
+          },
+          heatRecoveryAuxiliaryKWhPerMonth: undefined
+        }
+      : {}),
+    ...(heatRecoveryMode === "pump_heat_recovery_auxiliary"
+      ? {
+          heatRecoveryAuxiliaryCalculation: {
+            mode: "pump_heat_recovery_auxiliary",
+            outdoorAirFraction: fractionValue(formData, "chapter3_ventilation_outdoor_air_fraction", undefined),
+            maxPumpSpecificPowerKWhPerM3: nonNegativeNumber(
+              formData,
+              "chapter3_ventilation_hr_pump_specific_kwh_m3"
+            ),
+            calculationHours,
+            minimumPartLoadFactor: nonNegativeNumber(
+              formData,
+              "chapter3_ventilation_hr_min_part_load"
+            ),
+            recoveredHeatKWh: nonNegativeNumber(formData, "chapter3_ventilation_recovered_heat_kwh"),
+            maxRecoveredHeatPowerKW: positiveNumber(formData, "chapter3_ventilation_max_recovered_heat_kw"),
+            source: {
+              origin: "product_data",
+              reference: "chapter3_ventilation_pump_heat_recovery_contract"
+            }
+          },
+          heatRecoveryAuxiliaryKWhPerMonth: undefined
+        }
+      : {}),
+    ...(heatRecoveryMode === "other_heat_recovery_auxiliary_zero"
+      ? {
+          heatRecoveryAuxiliaryCalculation: {
+            mode: "other_heat_recovery_auxiliary_zero",
+            source: {
+              origin: "system_type_derived",
+              reference: "chapter3_ventilation_heat_recovery_mode"
+            }
+          },
+          heatRecoveryAuxiliaryKWhPerMonth: undefined
+        }
+      : {}),
+    ...(preheatMode === "preheater_energy"
+      ? {
+          preheatAuxiliaryCalculation: {
+            mode: "preheater_energy",
+            airDensityKgPerM3: positiveNumber(formData, "chapter3_ventilation_air_density_kg_m3"),
+            airSpecificHeatKJPerKgK: positiveNumber(formData, "chapter3_ventilation_air_cp_kj_kgk"),
+            outdoorAirFraction: fractionValue(formData, "chapter3_ventilation_outdoor_air_fraction", undefined),
+            frostProtectionTemperatureC: numberValue(formData, "chapter3_ventilation_frost_protection_c"),
+            outdoorTemperatureC: numberValue(formData, "chapter3_ventilation_outdoor_temp_c"),
+            calculationHours,
+            source: {
+              origin: "expert_override",
+              reference: "chapter3_ventilation_preheater_contract"
+            }
+          },
+          preheatAuxiliaryKWhPerMonth: undefined
+        }
+      : {}),
+    ...(preheatMode === "no_preheater"
+      ? {
+          preheatAuxiliaryCalculation: {
+            mode: "no_preheater",
+            source: {
+              origin: "user_explicit_system_topology",
+              reference: "chapter3_ventilation_preheat_mode"
+            }
+          },
+          preheatAuxiliaryKWhPerMonth: undefined
+        }
+      : {}),
+    ...(controlMode === "control_auxiliary_energy"
+      ? {
+          controlAuxiliaryCalculation: {
+            mode: "control_auxiliary_energy",
+            controllerPowerKW: nonNegativeNumber(formData, "chapter3_ventilation_controller_power_kw"),
+            operationFactor: nonNegativeNumber(formData, "chapter3_ventilation_control_operation_factor"),
+            calculationHours,
+            source: {
+              origin: "product_data",
+              reference: "chapter3_ventilation_control_auxiliary_contract"
+            }
+          },
+          controlAuxiliaryKWhPerMonth: undefined
+        }
+      : {})
+  };
+}
+
 function dhwPipeComponentFromForm(
   formData,
   {
@@ -1423,7 +1785,14 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
     heating: {
       enabled: yesValue(formData, "chapter3_heating_enabled"),
       systems: yesValue(formData, "chapter3_heating_enabled")
-        ? [serviceSystem(formData, "chapter3_heating", CHAPTER3_INSTALLATION_STAGE_IDS, { systemId: "heating-main" })]
+        ? [
+            applyHeatingComponentContracts(
+              formData,
+              serviceSystem(formData, "chapter3_heating", CHAPTER3_INSTALLATION_STAGE_IDS, {
+                systemId: "heating-main"
+              })
+            )
+          ]
         : []
     },
     cooling: {
@@ -1451,6 +1820,7 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
             heatRecoveryAuxiliaryKWhPerMonth: nonNegativeNumber(formData, "chapter3_heat_recovery_aux_kwh_month") ?? 0,
             preheatAuxiliaryKWhPerMonth: nonNegativeNumber(formData, "chapter3_preheat_aux_kwh_month") ?? 0,
             controlAuxiliaryKWhPerMonth: nonNegativeNumber(formData, "chapter3_control_aux_kwh_month") ?? 0,
+            ...ventilationAuxiliaryContractsFromForm(formData),
             source: {
               origin: "explicit_engineering_input",
               reference: "chapter3_ventilation_ahu.chapter3_installations_form"

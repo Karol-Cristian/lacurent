@@ -255,6 +255,42 @@
 </tbody>
 </table>
 </div>
+<div class="form-grid">
+<div><label>Mod calcul incalzire</label><select name="chapter3_heating_component_mode"><option value="explicit_monthly">Input tehnic explicit</option><option value="component_contract">Contract componente MC001</option></select></div>
+<div><label>Stocare incalzire</label><select name="chapter3_heating_storage_mode"><option value="explicit_monthly">Valoare explicita</option><option value="no_storage">Fara stocare</option></select></div>
+<div><label>Ore functionare incalzire [h/luna]</label><input name="chapter3_heating_operation_hours_month" type="number" step="0.1"></div>
+<div><label>Crestere temperatura emisie [K]</label><input name="chapter3_heating_emission_temp_increase_k" type="number" step="0.1"></div>
+<div><label>Temperatura interioara incalzire [degC]</label><input name="chapter3_heating_indoor_temp_c" type="number" step="0.1"></div>
+<div><label>Temperatura exterioara combinata [degC]</label><input name="chapter3_heating_combined_outdoor_temp_c" type="number" step="0.1"></div>
+<div><label>Factor componente pompa [-]</label><input name="chapter3_heating_pump_component_factor" type="number" step="0.01"></div>
+<div><label>Pierdere liniara presiune [kPa/m]</label><input name="chapter3_heating_pump_linear_pressure_kpa_m" type="number" step="0.001"></div>
+<div><label>Lungime circuit maxim [m]</label><input name="chapter3_heating_pump_circuit_length_m" type="number" step="0.1"></div>
+<div><label>Cadere presiune suplimentara [kPa]</label><input name="chapter3_heating_pump_additional_pressure_kpa" type="number" step="0.1"></div>
+<div><label>Debit pompa incalzire [m3/h]</label><input name="chapter3_heating_pump_flow_m3h" type="number" step="0.01"></div>
+<div><label>Factor incarcare pompa [-]</label><input name="chapter3_heating_pump_load_factor" type="number" step="0.01"></div>
+<div><label>Corectie pompa [-]</label><input name="chapter3_heating_pump_correction_factor" type="number" step="0.01"></div>
+<div><label>Constanta pompa CP1 [-]</label><input name="chapter3_heating_pump_cp1" type="number" step="0.01"></div>
+<div><label>Constanta pompa CP2 [-]</label><input name="chapter3_heating_pump_cp2" type="number" step="0.01"></div>
+<div><label>EEI pompa incalzire [-]</label><input name="chapter3_heating_pump_eei" type="number" step="0.01"></div>
+<div><label>Fractie auxiliari pompa recuperabila [-]</label><input name="chapter3_heating_pump_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Putere pompa regim redus [kW]</label><input name="chapter3_heating_pump_setback_power_kw" type="number" step="0.001"></div>
+<div><label>Ore regim redus pompa [h/luna]</label><input name="chapter3_heating_pump_setback_hours_month" type="number" step="0.1"></div>
+<div><label>Ore regim accelerat pompa [h/luna]</label><input name="chapter3_heating_pump_boost_hours_month" type="number" step="0.1"></div>
+<div><label>Putere nominala generator [kW]</label><input name="chapter3_heating_generator_nominal_kw" type="number" step="0.1"></div>
+<div><label>Putere intermediara generator [kW]</label><input name="chapter3_heating_generator_intermediate_kw" type="number" step="0.1"></div>
+<div><label>Factor sarcina nominala [-]</label><input name="chapter3_heating_generator_nominal_load_factor" type="number" step="0.01"></div>
+<div><label>Pierdere putere nominala generator [kW]</label><input name="chapter3_heating_generator_loss_power_nominal_kw" type="number" step="0.001"></div>
+<div><label>Pierdere putere intermediara generator [kW]</label><input name="chapter3_heating_generator_loss_power_intermediate_kw" type="number" step="0.001"></div>
+<div><label>Fractie pierdere anvelopa generator [%]</label><input name="chapter3_heating_generator_envelope_loss_fraction_percent" type="number" step="0.01"></div>
+<div><label>Fractie pierdere cos oprit [%]</label><input name="chapter3_heating_generator_chimney_off_loss_fraction_percent" type="number" step="0.01"></div>
+<div><label>Putere livrata generator [kW]</label><input name="chapter3_heating_generator_delivered_power_kw" type="number" step="0.1"></div>
+<div><label>Fractie recuperabila pierdere anvelopa [-]</label><input name="chapter3_heating_generator_envelope_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Auxiliar generator standby [kW]</label><input name="chapter3_heating_generator_aux_power_standby_kw" type="number" step="0.001"></div>
+<div><label>Auxiliar generator intermediar [kW]</label><input name="chapter3_heating_generator_aux_power_intermediate_kw" type="number" step="0.001"></div>
+<div><label>Auxiliar generator nominal [kW]</label><input name="chapter3_heating_generator_aux_power_nominal_kw" type="number" step="0.001"></div>
+<div><label>Fractie auxiliari generator recuperata [-]</label><input name="chapter3_heating_generator_aux_recovered_product_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Factor recuperare camera cazan [-]</label><input name="chapter3_heating_generator_boiler_room_recovery_factor" type="number" min="0" max="1" step="0.01"></div>
+</div>
 </div>
 
 <div class="dashboard-band compact-technical-note">
@@ -291,6 +327,22 @@
 <div><label>Auxiliar recuperare [kWh/luna]</label><input name="chapter3_heat_recovery_aux_kwh_month" type="number" step="0.01"></div>
 <div><label>Auxiliar preincalzire [kWh/luna]</label><input name="chapter3_preheat_aux_kwh_month" type="number" step="0.01"></div>
 <div><label>Auxiliar control [kWh/luna]</label><input name="chapter3_control_aux_kwh_month" type="number" step="0.01"></div>
+<div><label>Calcul auxiliar recuperare</label><select name="chapter3_ventilation_heat_recovery_mode"><option value="explicit_monthly">Input explicit</option><option value="rotary_heat_recovery_auxiliary">Recuperator rotativ</option><option value="pump_heat_recovery_auxiliary">Pompa recuperare caldura</option><option value="other_heat_recovery_auxiliary_zero">Alt recuperator fara auxiliar</option></select></div>
+<div><label>Putere maxima rotor [kW]</label><input name="chapter3_ventilation_rotary_power_kw" type="number" step="0.001"></div>
+<div><label>Raport rotatie [-]</label><input name="chapter3_ventilation_rotation_ratio" type="number" step="0.01"></div>
+<div><label>Fractie aer exterior [-]</label><input name="chapter3_ventilation_outdoor_air_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Putere specifica pompa recuperare [kWh/m3]</label><input name="chapter3_ventilation_hr_pump_specific_kwh_m3" type="number" step="0.000001"></div>
+<div><label>Sarcina minima recuperare [-]</label><input name="chapter3_ventilation_hr_min_part_load" type="number" step="0.01"></div>
+<div><label>Caldura recuperata [kWh/luna]</label><input name="chapter3_ventilation_recovered_heat_kwh" type="number" step="0.01"></div>
+<div><label>Putere maxima recuperata [kW]</label><input name="chapter3_ventilation_max_recovered_heat_kw" type="number" step="0.01"></div>
+<div><label>Calcul preincalzire</label><select name="chapter3_ventilation_preheat_mode"><option value="explicit_monthly">Input explicit</option><option value="preheater_energy">Preincalzitor</option><option value="no_preheater">Fara preincalzitor</option></select></div>
+<div><label>Densitate aer [kg/m3]</label><input name="chapter3_ventilation_air_density_kg_m3" type="number" step="0.001"></div>
+<div><label>Caldura specifica aer [kJ/kgK]</label><input name="chapter3_ventilation_air_cp_kj_kgk" type="number" step="0.001"></div>
+<div><label>Temperatura protectie inghet [degC]</label><input name="chapter3_ventilation_frost_protection_c" type="number" step="0.1"></div>
+<div><label>Temperatura exterioara ventilatie [degC]</label><input name="chapter3_ventilation_outdoor_temp_c" type="number" step="0.1"></div>
+<div><label>Calcul auxiliar control</label><select name="chapter3_ventilation_control_mode"><option value="explicit_monthly">Input explicit</option><option value="control_auxiliary_energy">Putere control</option></select></div>
+<div><label>Putere control [kW]</label><input name="chapter3_ventilation_controller_power_kw" type="number" step="0.001"></div>
+<div><label>Factor functionare control [-]</label><input name="chapter3_ventilation_control_operation_factor" type="number" step="0.01"></div>
 </div>
 </div>
 

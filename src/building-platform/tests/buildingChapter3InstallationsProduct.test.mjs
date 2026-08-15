@@ -251,7 +251,7 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
     buildingDna: pipeline.buildingDna,
     calculation: pipeline.calculation
   });
-  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8c_v1");
+  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8d_v1");
   assert.ok(metadata.chapter3RuntimeVersion);
 
   const backend = createInMemoryVersionedBuildingBackend();
@@ -569,6 +569,243 @@ await test("DHW distribution and storage component contracts calculate stage los
   const workspace = buildBuildingTechnicalWorkspace(pipeline);
   assert.ok(JSON.stringify(workspace.report).includes("calculat normativ"));
   assert.ok(JSON.stringify(workspace.engineeringNotebook).includes("calculat normativ"));
+});
+
+await test("heating component contracts calculate emission, pump and generator stages", () => {
+  const systems = technicalSystems();
+  systems.cooling.enabled = false;
+  systems.cooling.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.domesticHotWater.enabled = false;
+  systems.domesticHotWater.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.heating.systems = [
+    {
+      systemId: "heating-component-contract",
+      enabled: true,
+      servedScope: "whole_building",
+      generatorType: "condensing_boiler",
+      energyCarrier: "natural_gas",
+      stages: [
+        {
+          stageId: "emission",
+          lossCalculation: {
+            mode: "heating_emission_temperature_increase",
+            increasedIndoorTemperatureK: 1.25,
+            indoorTemperatureC: 20,
+            combinedOutdoorTemperatureC: -5
+          },
+          auxiliaryKWhPerMonth: 0,
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        },
+        {
+          stageId: "distribution",
+          lossKWhPerMonth: 2,
+          auxiliaryCalculation: {
+            mode: "heating_hydronic_pump_auxiliary",
+            pressureDropInput: {
+              componentResistanceFactor: 0.2,
+              maxLinearPressureDropKPaPerM: 0.05,
+              maxCircuitLengthM: 35,
+              additionalPressureDropKPa: 6
+            },
+            designFlowRateM3PerH: 1.6,
+            operationLoadFactor: 0.5,
+            operationHours: 120,
+            correctionFactor: 1.1,
+            controlConstantCp1: 0.25,
+            controlConstantCp2: 0.75,
+            energyEfficiencyIndex: 0.23,
+            recoverableFraction: 0.3,
+            setbackPumpPowerKW: 0.03,
+            setbackCalculationHours: 40,
+            boostCalculationHours: 5
+          },
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          lossRecoverableFractionToHeating: 0
+        },
+        {
+          stageId: "storage",
+          lossCalculation: {
+            mode: "no_heating_storage"
+          },
+          auxiliaryKWhPerMonth: 0,
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        },
+        {
+          stageId: "generation",
+          lossCalculation: {
+            mode: "heating_generator_loss_power_curve",
+            nominalPowerKW: 24,
+            intermediatePowerKW: 8,
+            nominalLoadFactor: 1,
+            operationHours: 120,
+            lossPowerNominalKW: 1.2,
+            lossPowerIntermediateKW: 0.4,
+            envelopeLossFractionPercent: 1.5,
+            chimneyOffLossFractionPercent: 0.5,
+            generatorDeliveredPowerKW: 24,
+            envelopeLossFraction: 0.2,
+            boilerRoomRecoveryFactor: 0.1
+          },
+          auxiliaryCalculation: {
+            mode: "heating_generator_auxiliary_power_curve",
+            nominalPowerKW: 24,
+            intermediatePowerKW: 8,
+            operationHours: 120,
+            auxiliaryPowerStandbyKW: 0.02,
+            auxiliaryPowerIntermediateKW: 0.08,
+            auxiliaryPowerNominalKW: 0.12,
+            recoveredAuxiliaryFraction: 0.25,
+            boilerRoomRecoveryFactor: 0.1
+          }
+        }
+      ]
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+  assert.equal(pipeline.status, "ready");
+  const januaryHeating = pipeline.calculation.chapter3Result.monthly[0].heating;
+  const emission = januaryHeating.stageResults.find(stageResult => stageResult.stageId === "emission");
+  const distribution = januaryHeating.stageResults.find(stageResult => stageResult.stageId === "distribution");
+  const storage = januaryHeating.stageResults.find(stageResult => stageResult.stageId === "storage");
+  const generation = januaryHeating.stageResults.find(stageResult => stageResult.stageId === "generation");
+
+  const qHnd = januaryHeating.usefulDemandKWh;
+  const emissionLossExpected = qHnd * 1.25 / 25;
+  const pressureDrop = (1 + 0.2) * 0.05 * 35 + 6;
+  const designPower = pressureDrop * 1.6 / 3600;
+  const referencePower =
+    (1.7 * designPower + 17 * (1 - Math.exp(-0.3 * designPower))) * 10 ** -3;
+  const pumpEfficiencyFactor = referencePower / designPower;
+  const pumpUseFactor = pumpEfficiencyFactor * (0.25 + 0.75 * 0.5 ** -1) * 0.23 / 0.25;
+  const hydronicAuxiliaryExpected = designPower * 0.5 * 120 * 1.1 * pumpUseFactor;
+  const setbackAuxiliaryExpected = 0.3 * 0.03 * 40;
+  const boostAuxiliaryExpected = 3.3 * designPower * 5;
+  const pumpAuxiliaryExpected =
+    hydronicAuxiliaryExpected + setbackAuxiliaryExpected + boostAuxiliaryExpected;
+  const generatorOutput = qHnd + emissionLossExpected + 2;
+  const generatorLoad = generatorOutput / (24 * 120);
+  const betaPint = 8 / 24;
+  const generatorLossPower = generatorLoad <= betaPint
+    ? generatorLoad / betaPint * (1.2 - 0.4) + 0.4
+    : ((generatorLoad - betaPint) / (1 - betaPint)) * (1.2 - 0.4) + 0.4;
+  const generatorLossExpected = generatorLossPower * 120;
+  const standbyLossPower = ((1.5 + 0.5) / 100) * 24;
+  const recoverableEnvelopeLossExpected = standbyLossPower * (1 - 0.1) * 0.2 * 120;
+  const generatorAuxPower = generatorLoad <= betaPint
+    ? generatorLoad / betaPint * (0.08 - 0.02) + 0.02
+    : ((generatorLoad - betaPint) / (1 - betaPint)) * (0.12 - 0.08) + 0.08;
+  const generatorAuxExpected = generatorAuxPower * 120;
+
+  close(emission.lossKWh, emissionLossExpected, 1e-9);
+  close(distribution.auxiliaryKWh, pumpAuxiliaryExpected, 1e-12);
+  close(storage.lossKWh, 0);
+  close(generation.lossKWh, generatorLossExpected, 1e-9);
+  close(generation.auxiliaryKWh, generatorAuxExpected, 1e-9);
+  close(
+    januaryHeating.finalStageInputKWh,
+    generatorOutput + generatorLossExpected - generatorAuxExpected * 0.25,
+    1e-9
+  );
+  assert.equal(emission.lossSource.classification, CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED);
+  assert.ok(emission.lossSource.formulaIds.includes("MC001_3_1_HEATING_EMISSION_LOSS"));
+  assert.ok(distribution.auxiliarySource.formulaIds.includes("MC001_3_7_HEATING_DISTRIBUTION_AUXILIARY_ENERGY"));
+  assert.ok(distribution.auxiliarySource.formulaIds.includes("MC001_3_11_HEATING_DISTRIBUTION_SETBACK_PUMP_ENERGY"));
+  assert.ok(distribution.auxiliarySource.formulaIds.includes("MC001_3_12_HEATING_DISTRIBUTION_BOOST_PUMP_ENERGY"));
+  assert.ok(generation.lossSource.formulaIds.includes("MC001_3_17_HEATING_GENERATOR_STANDBY_LOSS_POWER"));
+  assert.ok(generation.lossSource.formulaIds.includes("MC001_3_27_HEATING_GENERATOR_LOSS_ENERGY"));
+  assert.ok(generation.lossSource.formulaIds.includes("MC001_3_29_HEATING_GENERATOR_ENVELOPE_RECOVERABLE_LOSS"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_37_HEATING_GENERATOR_AUXILIARY_ENERGY"));
+
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  assert.ok(JSON.stringify(workspace.report).includes("calculat normativ"));
+  assert.ok(JSON.stringify(workspace.engineeringNotebook).includes("MC001_3_29_HEATING_GENERATOR_ENVELOPE_RECOVERABLE_LOSS"));
+});
+
+await test("ventilation auxiliary component contracts calculate heat recovery, preheat and control values", () => {
+  const systems = technicalSystems();
+  systems.heating.enabled = false;
+  systems.heating.systems = [];
+  systems.cooling.enabled = false;
+  systems.cooling.systems = [];
+  systems.domesticHotWater.enabled = false;
+  systems.domesticHotWater.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.ventilationAhu.systems = [
+    {
+      systemId: "ventilation-component-contract",
+      enabled: true,
+      fanElectricEnergyInput: {
+        supplyAirFlowM3PerH: 300,
+        supplyPressureDropPa: 220,
+        supplyFanEfficiency: 0.55,
+        extractAirFlowM3PerH: 280,
+        extractPressureDropPa: 180,
+        extractFanEfficiency: 0.55,
+        calculationHours: 120
+      },
+      heatRecoveryAuxiliaryCalculation: {
+        mode: "rotary_heat_recovery_auxiliary",
+        maxRotaryPowerKW: 0.1,
+        calculationHours: 120,
+        rotationRatio: 0.5
+      },
+      preheatAuxiliaryCalculation: {
+        mode: "no_preheater"
+      },
+      controlAuxiliaryCalculation: {
+        mode: "control_auxiliary_energy",
+        controllerPowerKW: 0.02,
+        operationFactor: 0.5,
+        calculationHours: 120
+      }
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+  assert.equal(pipeline.status, "ready");
+  const januaryVentilation = pipeline.calculation.chapter3Result.monthly[0].ventilation;
+  const fanExpected =
+    (300 * 220 / 0.55 + 280 * 180 / 0.55) * 120 / (3.6 * 10 ** 6);
+  const heatRecoveryExpected = 0.1 * 120 * 0.5;
+  const controlExpected = 0.02 * 0.5 * 120;
+
+  close(januaryVentilation.fanElectricEnergy.valueKWh, fanExpected, 1e-12);
+  close(januaryVentilation.valueKWh, fanExpected + heatRecoveryExpected + controlExpected, 1e-12);
+  assert.equal(
+    januaryVentilation.sources.heatRecoveryAuxiliary.classification,
+    CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+  );
+  assert.ok(
+    januaryVentilation.sources.heatRecoveryAuxiliary.formulaIds.includes(
+      "MC001_3_69_ROTARY_HEAT_RECOVERY_AUXILIARY_ENERGY"
+    )
+  );
+  assert.ok(
+    januaryVentilation.sources.controlAuxiliary.formulaIds.includes(
+      "MC001_3_75_VENTILATION_CONTROL_AUXILIARY_ENERGY"
+    )
+  );
 });
 
 await test("Chapter 2-only buildings remain openable without Chapter 3 output", () => {
