@@ -503,6 +503,8 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
   values.chapter3_control_aux_kwh_month = firstSystem(ventilation)?.controlAuxiliaryKWhPerMonth ?? "";
 
   const dhw = technicalSystems?.domesticHotWater ?? {};
+  values.chapter3_dhw_useful_mode = dhw.usefulDemandSource?.mode ?? "explicit_monthly";
+  values.chapter3_dhw_dwelling_type = dhw.usefulDemandSource?.dwellingType ?? "single_family_or_terraced";
   values.chapter3_dhw_useful_kwh_month = Array.isArray(dhw.monthlyUsefulDemandKWh)
     ? dhw.monthlyUsefulDemandKWh[0] ?? ""
     : dhw.monthlyUsefulDemandKWh ?? "";
@@ -1266,7 +1268,29 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
     },
     domesticHotWater: {
       enabled: yesValue(formData, "chapter3_dhw_enabled"),
-      monthlyUsefulDemandKWh: nonNegativeNumber(formData, "chapter3_dhw_useful_kwh_month"),
+      ...(formValue(formData, "chapter3_dhw_useful_mode") === "residential_normative"
+        ? {
+            usefulDemandSource: {
+              mode: "residential_normative",
+              dwellingType:
+                formValue(formData, "chapter3_dhw_dwelling_type") ||
+                "single_family_or_terraced",
+              source: {
+                origin: "building_dna_derived",
+                reference: "buildingSpecificParameters.usefulFloorAreaM2"
+              }
+            }
+          }
+        : {
+            monthlyUsefulDemandKWh: nonNegativeNumber(formData, "chapter3_dhw_useful_kwh_month"),
+            usefulDemandSource: {
+              mode: "explicit_monthly",
+              source: {
+                origin: "expert_explicit_monthly_input",
+                reference: "chapter3_dhw_useful_kwh_month"
+              }
+            }
+          }),
       systems: yesValue(formData, "chapter3_dhw_enabled")
         ? [serviceSystem(formData, "chapter3_dhw", CHAPTER3_DHW_STAGE_IDS, { systemId: "dhw-main" })]
         : []

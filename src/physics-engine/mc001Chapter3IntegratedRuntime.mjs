@@ -200,6 +200,8 @@ function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
       outputKWh,
       lossKWh: stage.lossKWh,
       auxiliaryKWh: stage.auxiliaryKWh,
+      lossSource: stage.lossSource ?? null,
+      auxiliarySource: stage.auxiliarySource ?? null,
       inputEnergy: input,
       recoverableEnergy: recoverable
     });
@@ -300,6 +302,8 @@ function aggregateStageResults(systemResults) {
         outputKWh: stage.outputKWh,
         lossKWh: stage.lossKWh,
         auxiliaryKWh: stage.auxiliaryKWh,
+        lossSource: stage.lossSource ?? null,
+        auxiliarySource: stage.auxiliarySource ?? null,
         inputKWh: stage.inputEnergy.valueKWh,
         recoverableKWh: stage.recoverableEnergy.valueKWh
       }))
@@ -310,6 +314,7 @@ function aggregateStageResults(systemResults) {
 function calculateServiceTopology({
   service,
   usefulDemandKWh,
+  usefulDemandSource,
   monthId,
   month,
   systems,
@@ -345,6 +350,7 @@ function calculateServiceTopology({
       systemId: system.systemId,
       allocationFraction: system.allocationFraction,
       allocatedUsefulDemandKWh,
+      usefulDemandSource: usefulDemandSource ?? null,
       metadata: system.metadata,
       source: system.source
     };
@@ -358,6 +364,7 @@ function calculateServiceTopology({
     return {
       ...systemResults[0],
       usefulDemandKWh,
+      usefulDemandSource: usefulDemandSource ?? null,
       finalStageInputKWh: systemResults[0].finalStageInputKWh,
       systemResults,
       topology: {
@@ -370,6 +377,7 @@ function calculateServiceTopology({
   return {
     service,
     usefulDemandKWh,
+    usefulDemandSource: usefulDemandSource ?? null,
     finalStageInputKWh: sum(systemResults.map(system => system.finalStageInputKWh)),
     stageResults: aggregateStageResults(systemResults),
     systemResults,
@@ -519,6 +527,7 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
           monthId,
           month,
           usefulDemandKWh: month.dhw.usefulDemandKWh,
+          usefulDemandSource: month.dhw.usefulDemandSource,
           legacyStages: month.dhw.stages,
           systems: month.dhw.systems,
           systemMetadata
@@ -614,6 +623,12 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     energyByCarrier.electricity = (energyByCarrier.electricity ?? 0) + annual.lightingEnergyKWh;
   }
 
+  const dhwUsefulFormulaReferences = [
+    ...new Set(
+      monthly.flatMap(month => month.dhw?.usefulDemandSource?.formulaIds ?? [])
+    )
+  ];
+
   return {
     status: "calculated",
     calculationScope: "MC001_CHAPTER_3_EXPLICIT_RUNTIME_CHAIN",
@@ -641,6 +656,7 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
             "MC001_3_113_COOLING_STORAGE_PCM_SOLID_MASS_DECREASE_VARIATION"
           ]
         : []),
+      ...dhwUsefulFormulaReferences,
       ...(lightingResult ? ["MC001_3_4_34_LIGHTING_LENI_WEIGHTED_BUILDING"] : [])
     ]
   };

@@ -469,6 +469,7 @@ await test("wizard maps installation fields into canonical technical systems", (
     9
   );
   assert.equal(answers.technicalSystems.domesticHotWater.monthlyUsefulDemandKWh, 95);
+  assert.equal(answers.technicalSystems.domesticHotWater.usefulDemandSource.mode, "explicit_monthly");
   assert.equal(answers.technicalSystems.lighting.boundaryStatus, "explicit_input_boundary_sr_en_15193_1");
 
   const preview = buildWizardEngineeringPreview(answers);
@@ -478,6 +479,37 @@ await test("wizard maps installation fields into canonical technical systems", (
   const html = renderEngineeringModelReview(preview);
   assert.equal(html.includes("Instalatii tehnice - MC001 Capitolul 3"), true);
   assert.equal(html.includes("Calculul detaliat normativ al iluminatului conform SR EN 15193-1"), true);
+});
+
+await test("wizard can map ACM useful demand to the normative residential calculation source", () => {
+  const answers = mapWizardAnswersToAssistedAnswers(formData({
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    chapter3_dhw_useful_mode: "residential_normative",
+    chapter3_dhw_dwelling_type: "apartment",
+    chapter3_dhw_useful_kwh_month: ""
+  }));
+
+  assert.equal(answers.technicalSystems.domesticHotWater.monthlyUsefulDemandKWh, undefined);
+  assert.deepEqual(answers.technicalSystems.domesticHotWater.usefulDemandSource, {
+    mode: "residential_normative",
+    dwellingType: "apartment",
+    source: {
+      origin: "building_dna_derived",
+      reference: "buildingSpecificParameters.usefulFloorAreaM2"
+    }
+  });
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  assert.equal(
+    preview.calculation.chapter3Result.monthly[0].dhw.usefulDemandSource.classification,
+    "NUMERICALLY_IMPLEMENTED"
+  );
+  assert.ok(
+    preview.technicalWorkspace.engineeringNotebook.sections
+      .find(section => section.sectionId === "chapter3.month.january")
+      .lines.some(line => line.lineId === "january.dhw.useful" && line.text.includes("calculat normativ"))
+  );
 });
 
 await test("demo installation configurations have fixed 12-month Chapter 3 expected outputs", () => {

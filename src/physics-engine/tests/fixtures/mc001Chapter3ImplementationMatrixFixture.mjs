@@ -9,6 +9,14 @@ export const CHAPTER_3_MATRIX_STATUS = Object.freeze({
   NORMATIVELY_NOT_APPLICABLE: "normatively-not-applicable"
 });
 
+export const CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION = Object.freeze({
+  NUMERICALLY_IMPLEMENTED: "NUMERICALLY_IMPLEMENTED",
+  PROCEDURALLY_IMPLEMENTED: "PROCEDURALLY_IMPLEMENTED",
+  EXPLICIT_INPUT_BOUNDARY: "EXPLICIT_INPUT_BOUNDARY",
+  EXTERNAL_STANDARD_BLOCKED: "EXTERNAL_STANDARD_BLOCKED",
+  NOT_APPLICABLE: "NOT_APPLICABLE"
+});
+
 const SYSTEM_ENERGY = "src/physics-engine/mc001Chapter3SystemEnergy.mjs";
 const HEATING_SYSTEMS = "src/physics-engine/mc001Chapter3HeatingSystems.mjs";
 const DHW_USEFUL = "src/physics-engine/dhwUsefulDemand.mjs";
@@ -29,6 +37,15 @@ function relationIdForMatrix(relation) {
 }
 
 function relationEntry(relation, options) {
+  const implementationClassification =
+    options.implementationClassification ??
+    (options.status === CHAPTER_3_MATRIX_STATUS.GENUINELY_EXTERNALLY_BLOCKED
+      ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXTERNAL_STANDARD_BLOCKED
+      : options.status === CHAPTER_3_MATRIX_STATUS.NORMATIVELY_NOT_APPLICABLE
+        ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NOT_APPLICABLE
+        : options.explicitInputBoundary === true
+          ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY
+          : CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED);
   return Object.freeze({
     matrixId: `CH3_REL_${relationIdForMatrix(relation)}`,
     relation,
@@ -53,6 +70,18 @@ function relationEntry(relation, options) {
     runtimeIntegrated: options.runtimeIntegrated ?? false,
     notebookTraceable: options.notebookTraceable ?? false,
     explicitInputBoundary: options.explicitInputBoundary ?? false,
+    implementationClassification,
+    primaryImplementationClassification: implementationClassification,
+    runtimeCalculatesResult:
+      implementationClassification === CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED ||
+      implementationClassification === CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.PROCEDURALLY_IMPLEMENTED,
+    userMustProvideResultDirectly:
+      implementationClassification === CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
+    inputSourceClassification: options.inputSourceClassification ??
+      (options.explicitInputBoundary
+        ? "expert_or_project_specific_technical_input"
+        : "runtime_or_normative_calculation_input"),
+    explicitBoundaryReason: options.explicitBoundaryReason ?? null,
     blocker: options.blocker ?? null
   });
 }
@@ -88,7 +117,26 @@ function implementedRange(relations, options) {
       numericalFixtureCovered: options.numericalFixtureCovered ?? true,
       runtimeIntegrated: options.runtimeIntegrated ?? false,
       notebookTraceable: options.notebookTraceable ?? false,
-      explicitInputBoundary: options.explicitInputBoundary ?? false,
+      explicitInputBoundary: optionForRelation(
+        options.explicitInputBoundary,
+        relation,
+        false
+      ),
+      implementationClassification: optionForRelation(
+        options.implementationClassification,
+        relation,
+        undefined
+      ),
+      inputSourceClassification: optionForRelation(
+        options.inputSourceClassification,
+        relation,
+        undefined
+      ),
+      explicitBoundaryReason: optionForRelation(
+        options.explicitBoundaryReason,
+        relation,
+        null
+      ),
       sourceToCodeAuditStatus: options.sourceToCodeAuditStatus ?? "source_to_code_audited"
     });
   });
@@ -128,7 +176,9 @@ const heatingRelations = implementedRange(relationRange(1, 39), {
   validationFixture: "independent fixed constants in mc001Chapter3HeatingSystems.test.mjs",
   runtimeIntegrated: "integrated through explicit subsystem stage balances; detailed coefficient paths remain callable runtime relations",
   notebookTraceable: "stage balances are notebook-visible; detailed generator helpers expose trace objects",
-  explicitInputBoundary: true
+  explicitInputBoundary: relation => !["3.55", "3.68"].includes(relation),
+  explicitBoundaryReason:
+    "Production service-chain stages still receive heating subsystem losses, generator/product coefficients or manufacturer data as explicit technical inputs unless a detailed helper is invoked with project-specific data."
 });
 
 const ahuRelations = implementedRange(relationRange(40, 93), {
@@ -139,7 +189,19 @@ const ahuRelations = implementedRange(relationRange(40, 93), {
   tableImplemented: "explicit-input boundary for leakage class values and fan-function curves",
   runtimeIntegrated: "fan electric energy and ventilation auxiliary total integrated in the 12-month reference fixture",
   notebookTraceable: "ventilation monthly auxiliary is visible in the Chapter 3 notebook section",
-  explicitInputBoundary: true
+  explicitInputBoundary: true,
+  implementationClassification: {
+    "3.55": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+    "3.68": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+  },
+  inputSourceClassification: {
+    "3.55": "fan_airflow_pressure_efficiency_hours_from_building_dna",
+    "3.68": "fan_energy_calculated_plus_heat_recovery_preheat_control_auxiliary_inputs"
+  },
+  explicitBoundaryReason: relation =>
+    ["3.55", "3.68"].includes(relation)
+      ? null
+      : "Detailed AHU coil, leakage, humidification, control or recovery inputs are project/system-specific and are not yet exposed as a complete production chain; current production path integrates fan energy and auxiliary aggregation only."
 });
 
 const coolingStorageImplemented = implementedRange(
@@ -227,7 +289,21 @@ const coolingStorageImplemented = implementedRange(
       "3.112": "0.2 kWh input-energy limit in mc001Chapter3SystemEnergy.test.mjs",
       "3.113": "-14.310246136233543 kg nominal decrease and -20 kg mass-limited decrease"
     },
-    explicitInputBoundary: true
+    explicitInputBoundary: relation => !["3.111", "3.112", "3.113"].includes(relation),
+    implementationClassification: {
+      "3.111": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+      "3.112": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+      "3.113": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+    },
+    inputSourceClassification: {
+      "3.111": "pcm_storage_monthly_component_inputs_from_building_dna",
+      "3.112": "pcm_storage_monthly_component_inputs_from_building_dna",
+      "3.113": "pcm_storage_monthly_component_inputs_from_building_dna"
+    },
+    explicitBoundaryReason: relation =>
+      ["3.111", "3.112", "3.113"].includes(relation)
+        ? null
+        : "Detailed cooling-storage relations remain callable helpers, but production stage losses and non-PCM storage quantities still require explicit project/component inputs."
   }
 );
 
@@ -239,7 +315,9 @@ const coolingDistributionRelations = implementedRange(relationRange(136, 155), {
   tableImplemented: "part-load bins implemented; manufacturer PLV/EER data remain explicit inputs",
   runtimeIntegrated: "cooling explicit stage chain integrated in the 12-month reference fixture",
   notebookTraceable: "cooling monthly stage balances are visible in Chapter 3 notebook section",
-  explicitInputBoundary: true
+  explicitInputBoundary: true,
+  explicitBoundaryReason:
+    "Cooling distribution/generator detailed inputs such as PLV/EER, capacities, operating bins and distribution losses remain product/project-specific explicit technical inputs in the production chain."
 });
 
 const coolingRejectionRelations = implementedRange(relationRange(156, 182), {
@@ -250,7 +328,9 @@ const coolingRejectionRelations = implementedRange(relationRange(156, 182), {
   tableImplemented: true,
   runtimeIntegrated: "callable runtime relations; integrated chain keeps cooling-generator auxiliaries separate from thermal stage balances",
   notebookTraceable: "cooling generator/stage totals are notebook-visible; detailed helpers expose compact trace objects",
-  explicitInputBoundary: true
+  explicitInputBoundary: true,
+  explicitBoundaryReason:
+    "Heat-rejection and cooling-generator relations are implemented as source-backed helpers, but production still requires explicit generator/rejection product data and operating-condition inputs."
 });
 
 const aggregateRelations = implementedRange(relationRange(183, 186), {
@@ -261,19 +341,24 @@ const aggregateRelations = implementedRange(relationRange(183, 186), {
   validationFixture: REFERENCE_FIXTURE,
   runtimeIntegrated: true,
   notebookTraceable: true,
-  explicitInputBoundary: true
+  explicitInputBoundary: false,
+  implementationClassification: CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.PROCEDURALLY_IMPLEMENTED,
+  inputSourceClassification: "runtime_stage_aggregation_over_allocated_system_chains"
 });
 
 const dhwUsefulRelations = implementedRange(relationRange(188, 197), {
-  status: CHAPTER_3_MATRIX_STATUS.IMPLEMENTED,
+  status: CHAPTER_3_MATRIX_STATUS.PRODUCTION_INTEGRATED,
   source: "MC001-2022 Chapter 3.3.5-3.3.6 and Tabel 3.3.1",
   implementation: DHW_USEFUL,
   tests: [DHW_USEFUL_TEST, "src/physics-engine/tests/mc001DhwDemandTable3_3_1.test.mjs"],
   validationFixture: "FIXTURE_010_DHW_USEFUL_DEMAND_RECONCILIATION",
   tableImplemented: true,
-  runtimeIntegrated: "explicit DHW useful input boundary integrated in Chapter 3 runtime fixture",
-  notebookTraceable: "DHW useful boundary is visible in Chapter 3 notebook section",
-  explicitInputBoundary: true
+  runtimeIntegrated:
+    "DHW useful demand can be calculated from Building DNA/usefulDemandSource through MC001 3.188-3.197; legacy monthlyUsefulDemandKWh remains an expert explicit fallback.",
+  notebookTraceable: "DHW useful-demand source classification is visible in Chapter 3 notebook section",
+  explicitInputBoundary: false,
+  implementationClassification: CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+  inputSourceClassification: "building_dna_residential_or_table_3_3_1_useful_demand_source"
 });
 
 const dhwDistributionRelations = implementedRange(relationRange(200, 224), {
@@ -283,7 +368,9 @@ const dhwDistributionRelations = implementedRange(relationRange(200, 224), {
   validationFixture: "independent fixed constants in dhwDistributionLosses.test.mjs",
   runtimeIntegrated: "DHW explicit stage chain integrated in 12-month reference fixture; detailed pipe/pump helpers callable",
   notebookTraceable: "DHW monthly stage balances are visible in Chapter 3 notebook section",
-  explicitInputBoundary: true
+  explicitInputBoundary: true,
+  explicitBoundaryReason:
+    "DHW distribution pipe/pump helpers are implemented, but production stage losses and auxiliary values remain explicit unless detailed pipe, pump and operating-time inputs are supplied."
 });
 
 const dhwStorageRelations = implementedRange(relationRange(225, 228), {
@@ -294,7 +381,9 @@ const dhwStorageRelations = implementedRange(relationRange(225, 228), {
   tableImplemented: "storage product data remains an explicit-input boundary",
   runtimeIntegrated: "DHW storage stage integrated by explicit stage balance; relation 3.228 callable for storage-product loss",
   notebookTraceable: "DHW storage/generation stage balances are visible in Chapter 3 notebook section",
-  explicitInputBoundary: true
+  explicitInputBoundary: true,
+  explicitBoundaryReason:
+    "DHW storage losses require storage product/geometry/ambient inputs; production preserves existing explicit storage-stage inputs unless those detailed values are supplied."
 });
 
 const lightingImplemented = [
@@ -310,7 +399,10 @@ const lightingImplemented = [
     numericalFixtureCovered: true,
     runtimeIntegrated: true,
     notebookTraceable: true,
-    explicitInputBoundary: true
+    explicitInputBoundary: true,
+    implementationClassification: CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
+    explicitBoundaryReason:
+      "MC001 delegates detailed lighting calculation to SR EN 15193-1; current runtime only aggregates explicit LENI/monthly lighting inputs."
   })
 ];
 
@@ -467,5 +559,68 @@ export function chapter3MatrixSummary() {
     uncoveredRelations: [],
     blockerMatrixIds: [...externalBlockers, ...unavailable].map(entry => entry.matrixId),
     blockerDetails: [...externalBlockers, ...unavailable].map(entry => entry.blocker)
+    ,
+    p8bClassificationCounts: Object.values(
+      CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION
+    ).reduce((counts, classification) => {
+      counts[classification] = chapter3ImplementationMatrix.filter(
+        entry => entry.implementationClassification === classification
+      ).length;
+      return counts;
+    }, {}),
+    numericallyImplementedRelations: chapter3ImplementationMatrix.filter(
+      entry =>
+        entry.implementationClassification ===
+        CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+    ).length,
+    procedurallyImplementedRelations: chapter3ImplementationMatrix.filter(
+      entry =>
+        entry.implementationClassification ===
+        CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.PROCEDURALLY_IMPLEMENTED
+    ).length,
+    explicitInputBoundaryRelations: chapter3ImplementationMatrix.filter(
+      entry =>
+        entry.implementationClassification ===
+        CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY
+    ).length,
+    externalStandardBlockedRelations: chapter3ImplementationMatrix.filter(
+      entry =>
+        entry.implementationClassification ===
+        CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXTERNAL_STANDARD_BLOCKED
+    ).length,
+    notApplicableRelations: chapter3ImplementationMatrix.filter(
+      entry =>
+        entry.implementationClassification ===
+        CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NOT_APPLICABLE
+    ).length,
+    numericalImplementationPercentage:
+      chapter3ImplementationMatrix.length === 0
+        ? 0
+        : Number(
+            (
+              (chapter3ImplementationMatrix.filter(
+                entry =>
+                  entry.implementationClassification ===
+                  CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+              ).length /
+                chapter3ImplementationMatrix.length) *
+              100
+            ).toFixed(1)
+          ),
+    productionCompleteSupportedScopePercentage:
+      chapter3ImplementationMatrix.length === 0
+        ? 0
+        : Number(
+            (
+              (chapter3ImplementationMatrix.filter(entry =>
+                [
+                  CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+                  CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.PROCEDURALLY_IMPLEMENTED
+                ].includes(entry.implementationClassification)
+              ).length /
+                chapter3ImplementationMatrix.length) *
+              100
+            ).toFixed(1)
+          )
   };
 }

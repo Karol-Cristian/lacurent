@@ -10,7 +10,7 @@ const JSON_PATH = "validation-reference/chapter3-coverage-matrix.json";
 const MD_PATH = "validation-reference/chapter3-coverage-matrix.md";
 
 const productionTopology = {
-  schema: "mc001_chapter3_production_topology_p8_v1",
+  schema: "mc001_chapter3_production_topology_p8b_v1",
   canonicalBoundary: "Chapter 2 monthly useful demand -> Chapter 3 explicit service-system topology",
   supportedServiceChains: [
     "heating",
@@ -33,12 +33,13 @@ const productionTopology = {
   unsupportedWithoutExplicitInputs: [
     "automatic sizing/allocation between multiple systems",
     "implicit typical efficiencies",
-    "complete SR EN 15193-1 lighting engine"
+    "complete SR EN 15193-1 lighting engine",
+    "subsystem losses, auxiliary/recovery factors and product coefficients not deterministically defined by the owned MC001 source"
   ]
 };
 
 const coverage = {
-  schema: "mc001_chapter3_coverage_matrix_p8_v1",
+  schema: "mc001_chapter3_coverage_matrix_p8b_v1",
   source: "src/physics-engine/tests/fixtures/mc001Chapter3ImplementationMatrixFixture.mjs",
   generation: {
     tool: "tools/generate-chapter3-coverage-matrix.mjs",
@@ -48,6 +49,16 @@ const coverage = {
   productionTopology,
   dependencyGraph: chapter3DependencyGraph,
   lightingExternalImplementationPlan: chapter3LightingExternalImplementationPlan,
+  explicitBoundaryRegister: chapter3ImplementationMatrix
+    .filter(entry => entry.implementationClassification === "EXPLICIT_INPUT_BOUNDARY")
+    .map(entry => ({
+      matrixId: entry.matrixId,
+      relation: entry.relation,
+      source: entry.source,
+      runtimeImplementation: entry.implementedFunction,
+      reason: entry.explicitBoundaryReason ??
+        "The current production path requires explicit technical input for this relation."
+    })),
   entries: chapter3ImplementationMatrix
 };
 
@@ -74,16 +85,27 @@ function mdTable(rows) {
 const counts = statusCounts(chapter3ImplementationMatrix);
 const summary = chapter3MatrixSummary();
 const implementedRelations = summary.totalChapter3RelationsIdentified - summary.blockerEntryCount;
+const classificationRows = Object.entries(summary.p8bClassificationCounts)
+  .sort(([a], [b]) => a.localeCompare(b));
+const convertedBoundaryRows = chapter3ImplementationMatrix
+  .filter(entry => entry.implementationClassification === "NUMERICALLY_IMPLEMENTED")
+  .filter(entry => ["3.188", "3.189", "3.190", "3.191", "3.192", "3.193", "3.194", "3.195", "3.196", "3.197"].includes(entry.relation))
+  .map(entry => `- ${entry.relation}: DHW useful-demand source now resolves through Building DNA \`usefulDemandSource\` and MC001 helper functions.`);
 const markdown = [
   "# MC001 Chapter 3 Coverage Matrix",
   "",
-  "Generated deterministically from the Chapter 3 source-to-code fixture.",
+  "Generated deterministically from the Chapter 3 source-to-code fixture. P8B separates numerically calculated relations from explicit technical-input boundaries.",
   "",
   mdTable([
     ["Schema", coverage.schema],
     ["Total tracked relations", summary.totalChapter3RelationsIdentified],
-    ["Implemented or explicit-boundary relations", implementedRelations],
-    ["Complete available-source percentage", percentage(implementedRelations, summary.totalChapter3RelationsIdentified)],
+    ["Numerically implemented relations", summary.numericallyImplementedRelations],
+    ["Procedurally implemented relations", summary.procedurallyImplementedRelations],
+    ["Explicit-input boundary relations", summary.explicitInputBoundaryRelations],
+    ["External-standard blocked relations", summary.externalStandardBlockedRelations],
+    ["Not applicable relations", summary.notApplicableRelations],
+    ["Numerical implementation percentage", `${summary.numericalImplementationPercentage.toFixed(1)}%`],
+    ["Production complete supported-scope percentage", `${summary.productionCompleteSupportedScopePercentage.toFixed(1)}%`],
     ["Externally blocked relations", summary.genuinelyExternallyBlockedRelations],
     ["Unavailable/unreadable relations", summary.genuinelyUnavailableUnreadableRelations],
     ["Runtime-integrated entries", summary.runtimeIntegratedEntryCount],
@@ -95,7 +117,19 @@ const markdown = [
   "",
   mdTable(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))),
   "",
-  "## P8 Production Topology",
+  "## P8B Primary Classification Counts",
+  "",
+  mdTable(classificationRows),
+  "",
+  "## Explicit Boundaries Converted in P8B",
+  "",
+  convertedBoundaryRows.join("\n"),
+  "",
+  "## Remaining Explicit Boundary Policy",
+  "",
+  "An explicit boundary remains only where MC001 requires project/manufacturer technical data, delegates the detailed method to an unavailable standard, or the current production product does not yet expose the complete detailed component contract.",
+  "",
+  "## P8B Production Topology",
   "",
   "- Single active systems use an implicit allocation fraction of 1; an explicit single-system allocation must also be 1.",
   "- Multiple active heating, cooling or DHW systems require explicit allocation fractions summing to 1.",

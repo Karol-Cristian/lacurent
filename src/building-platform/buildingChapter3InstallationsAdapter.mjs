@@ -1,9 +1,35 @@
 import { MONTH_IDS } from "../climate-platform/index.mjs";
+import {
+  MC001_DHW_DEFAULT_COLD_WATER_TEMPERATURE_C,
+  MC001_DHW_RECOMMENDED_DRAW_OFF_TEMPERATURE_C,
+  MC001_DHW_RECOMMENDED_NETWORK_TEMPERATURE_C,
+  MC001_DHW_RESIDENTIAL_DWELLING_TYPES,
+  MC001_DHW_RESIDENTIAL_REFERENCE_COLD_WATER_TEMPERATURE_C,
+  MC001_DHW_WATER_DENSITY_KG_PER_M3,
+  calculateDhwDailyVolumeFromTable3_3_1,
+  calculateDhwDailyVolumeNonResidential,
+  calculateDhwSpecificDemandTemperatureCorrection,
+  calculateDhwUsefulEnergyFromVolume,
+  calculateDhwVolumeWithLossWaste,
+  calculateResidentialDailyDhwVolume,
+  calculateResidentialEquivalentConsumers,
+  calculateResidentialSpecificDhwVolume
+} from "../physics-engine/dhwUsefulDemand.mjs";
 import { calculateMc001Chapter3IntegratedRuntime } from "../physics-engine/mc001Chapter3IntegratedRuntime.mjs";
 
 export const TECHNICAL_SYSTEMS_SCHEMA = "technical_systems_v1";
 export const CHAPTER3_INSTALLATIONS_ADAPTER_VERSION =
-  "building_chapter_3_installations_adapter_p8_v1";
+  "building_chapter_3_installations_adapter_p8b_v1";
+
+export const CHAPTER3_INPUT_CLASSIFICATION = Object.freeze({
+  NUMERICALLY_IMPLEMENTED: "NUMERICALLY_IMPLEMENTED",
+  PROCEDURALLY_IMPLEMENTED: "PROCEDURALLY_IMPLEMENTED",
+  EXPLICIT_INPUT_BOUNDARY: "EXPLICIT_INPUT_BOUNDARY",
+  EXTERNAL_STANDARD_BLOCKED: "EXTERNAL_STANDARD_BLOCKED",
+  NOT_APPLICABLE: "NOT_APPLICABLE"
+});
+
+const DAYS_BY_MONTH = Object.freeze([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]);
 
 export const CHAPTER3_INSTALLATION_STAGE_IDS = Object.freeze([
   "emission",
@@ -110,11 +136,20 @@ export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
     mc001RelationGroup: "MC001 Chapter 3 DHW system-energy chain",
     runtimeModule: "src/physics-engine/mc001Chapter3IntegratedRuntime.mjs",
     requiredInputFields: Object.freeze([
-      "technicalSystems.domesticHotWater.monthlyUsefulDemandKWh",
+      "technicalSystems.domesticHotWater.usefulDemandSource or technicalSystems.domesticHotWater.monthlyUsefulDemandKWh",
       "technicalSystems.domesticHotWater.systems[].stages[].lossKWhPerMonth",
       "technicalSystems.domesticHotWater.systems[].stages[].auxiliaryKWhPerMonth"
     ]),
-    optionalInputFields: Object.freeze(["generatorType", "energyCarrier", "circulationEnabled", "systems[].allocationFraction"]),
+    optionalInputFields: Object.freeze([
+      "generatorType",
+      "energyCarrier",
+      "circulationEnabled",
+      "systems[].allocationFraction",
+      "usefulDemandSource.mode = residential_normative | table_3_3_1 | explicit_monthly",
+      "usefulDemandSource.dwellingType",
+      "usefulDemandSource.tableEntryId",
+      "usefulDemandSource.unitCount"
+    ]),
     units: Object.freeze(["kWh/month", "fraction"]),
     outputs: Object.freeze(["monthly.dhw.finalStageInputKWh", "annual.dhwInputKWh"]),
     notebookSection: "chapter3.month.*.dhw",
@@ -201,6 +236,19 @@ function diagnostic(code, path, message) {
   return { code, path, message, severity: "blocking" };
 }
 
+function sourceDescriptor({ classification, origin, reference, formulaIds = [], details = {} }) {
+  return {
+    classification,
+    origin,
+    reference,
+    formulaIds,
+    productionEligible:
+      classification === CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED ||
+      classification === CHAPTER3_INPUT_CLASSIFICATION.PROCEDURALLY_IMPLEMENTED,
+    ...details
+  };
+}
+
 function monthlyScalar(value, monthIndex, path, diagnostics) {
   if (Array.isArray(value)) {
     const monthly = value[monthIndex];
@@ -213,6 +261,20 @@ function monthlyScalar(value, monthIndex, path, diagnostics) {
   if (finiteNonNegative(value)) return value;
   diagnostics.push(diagnostic("missing_installation_value", path));
   return null;
+}
+
+function monthlyScalarWithSource(value, monthIndex, path, diagnostics, source) {
+  const amount = monthlyScalar(value, monthIndex, path, diagnostics);
+  return {
+    value: amount,
+    source: sourceDescriptor({
+      classification: CHAPTER3_INPUT_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
+      origin: "expert_explicit_monthly_input",
+      reference: path,
+      formulaIds: [],
+      details: source ? { source } : {}
+    })
+  };
 }
 
 function optionalMonthlyScalar(value, monthIndex, fallback = 0) {
@@ -295,12 +357,16 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
       diagnostics.push(diagnostic("missing_installation_stage", `${service}.stages.${stageId}`));
       continue;
     }
-    const lossKWh = monthlyScalar(stage.lossKWhPerMonth, monthIndex, `${service}.stages.${stageId}.lossKWhPerMonth`, diagnostics);
-    const auxiliaryKWh = monthlyScalar(stage.auxiliaryKWhPerMonth, monthIndex, `${service}.stages.${stageId}.auxiliaryKWhPerMonth`, diagnostics);
+    const lossPath = `${service}.stages.${stageId}.lossKWhPerMonth`;
+    const auxiliaryPath = `${service}.stages.${stageId}.auxiliaryKWhPerMonth`;
+    const loss = monthlyScalarWithSource(stage.lossKWhPerMonth, monthIndex, lossPath, diagnostics, stage.lossSource);
+    const auxiliary = monthlyScalarWithSource(stage.auxiliaryKWhPerMonth, monthIndex, auxiliaryPath, diagnostics, stage.auxiliarySource);
     stages.push({
       stageId,
-      lossKWh,
-      auxiliaryKWh,
+      lossKWh: loss.value,
+      auxiliaryKWh: auxiliary.value,
+      lossSource: loss.source,
+      auxiliarySource: auxiliary.source,
       auxiliaryRecoveredFraction: fraction(
         stage.auxiliaryRecoveredFraction,
         `${service}.stages.${stageId}.auxiliaryRecoveredFraction`,
@@ -366,6 +432,194 @@ function monthlyUsefulDemand(chapter2Result) {
   }));
 }
 
+function buildingUsefulFloorAreaM2(buildingDna) {
+  const candidates = [
+    buildingDna?.geometry?.usefulFloorAreaM2?.amount,
+    buildingDna?.buildingSpecificParameters?.usefulFloorAreaM2?.value,
+    buildingDna?.buildingSpecificParameters?.usefulFloorAreaM2
+  ];
+  return candidates.find(finitePositive);
+}
+
+function residentialDhwDwellingType(source = {}, buildingDna = {}) {
+  if (source.dwellingType) return source.dwellingType;
+  if (buildingDna.buildingType === "apartment") {
+    return MC001_DHW_RESIDENTIAL_DWELLING_TYPES.APARTMENT;
+  }
+  return MC001_DHW_RESIDENTIAL_DWELLING_TYPES.SINGLE_FAMILY_OR_TERRACED;
+}
+
+function dhwTemperatureInputs(source = {}) {
+  return {
+    thetaWDrawC:
+      source.thetaWDrawC ?? MC001_DHW_RECOMMENDED_DRAW_OFF_TEMPERATURE_C,
+    thetaWColdC:
+      source.thetaWColdC ?? MC001_DHW_DEFAULT_COLD_WATER_TEMPERATURE_C,
+    specificHeatKWhPerKgK: source.specificHeatKWhPerKgK ?? 4.186 / 3600,
+    waterDensityKgPerM3:
+      source.waterDensityKgPerM3 ?? MC001_DHW_WATER_DENSITY_KG_PER_M3
+  };
+}
+
+function applyDhwLossWasteIfAvailable(baseDailyVolumeLiters, source) {
+  if (finitePositive(source?.penaltyFactor1) && finitePositive(source?.penaltyFactor2)) {
+    return calculateDhwVolumeWithLossWaste({
+      baseDailyVolumeLiters,
+      penaltyFactor1: source.penaltyFactor1,
+      penaltyFactor2: source.penaltyFactor2
+    });
+  }
+  return null;
+}
+
+function calculatedDhwUsefulDemandSourceForMonth(section, buildingDna, monthIndex, diagnostics) {
+  const source = section.usefulDemandSource;
+  if (!isPlainObject(source) || source.mode === "explicit_monthly") return null;
+
+  const days = DAYS_BY_MONTH[monthIndex];
+  const temperature = dhwTemperatureInputs(source);
+  let dailyVolumeLiters = null;
+  let chain = {};
+  let formulaIds = [];
+
+  try {
+    if (source.mode === "residential_normative") {
+      const livingAreaM2 = source.livingAreaM2 ?? buildingUsefulFloorAreaM2(buildingDna);
+      if (!finitePositive(livingAreaM2)) {
+        diagnostics.push(diagnostic(
+          "missing_dhw_residential_living_area",
+          "technicalSystems.domesticHotWater.usefulDemandSource.livingAreaM2",
+          "Residential DHW useful-demand derivation requires useful floor area from Building DNA or an explicit source override."
+        ));
+        return null;
+      }
+      const dwellingType = residentialDhwDwellingType(source, buildingDna);
+      const equivalentConsumers = calculateResidentialEquivalentConsumers({
+        dwellingType,
+        livingAreaM2
+      });
+      const normativeSpecificVolume = calculateResidentialSpecificDhwVolume({
+        livingAreaM2,
+        equivalentConsumers: equivalentConsumers.valueEquivalentConsumers,
+        ...(source.xCoefficient === undefined ? {} : { xCoefficient: source.xCoefficient }),
+        ...(source.yCoefficient === undefined ? {} : { yCoefficient: source.yCoefficient })
+      });
+      const correctedSpecificVolume = calculateDhwSpecificDemandTemperatureCorrection({
+        normativeSpecificDemandLPerUnitDay: normativeSpecificVolume.valueLitersPerPersonDay,
+        thetaWReferenceC:
+          source.thetaWReferenceC ?? MC001_DHW_RECOMMENDED_NETWORK_TEMPERATURE_C,
+        thetaWColdReferenceC:
+          source.thetaWColdReferenceC ?? MC001_DHW_RESIDENTIAL_REFERENCE_COLD_WATER_TEMPERATURE_C,
+        thetaWDrawC: temperature.thetaWDrawC,
+        thetaWColdC: temperature.thetaWColdC
+      });
+      const dailyVolume = calculateResidentialDailyDhwVolume({
+        specificDailyDemandLPerPersonDay: correctedSpecificVolume.valueLitersPerUnitDay,
+        equivalentConsumers: equivalentConsumers.valueEquivalentConsumers
+      });
+      dailyVolumeLiters = dailyVolume.valueLitersPerDay;
+      chain = {
+        equivalentConsumers,
+        normativeSpecificVolume,
+        correctedSpecificVolume,
+        dailyVolume
+      };
+      formulaIds = [
+        equivalentConsumers.formulaId,
+        normativeSpecificVolume.formulaId,
+        correctedSpecificVolume.formulaId,
+        dailyVolume.formulaId
+      ];
+    } else if (source.mode === "table_3_3_1") {
+      const tableDailyVolume = calculateDhwDailyVolumeFromTable3_3_1({
+        tableEntryId: source.tableEntryId,
+        unitCount: source.unitCount
+      });
+      if (tableDailyVolume.status !== "calculated") {
+        diagnostics.push(diagnostic(
+          "invalid_dhw_table_3_3_1_entry",
+          "technicalSystems.domesticHotWater.usefulDemandSource.tableEntryId",
+          `Unknown MC001 Tabel 3.3.1 DHW entry: ${source.tableEntryId}`
+        ));
+        return null;
+      }
+      const correctedSpecificVolume = calculateDhwSpecificDemandTemperatureCorrection({
+        normativeSpecificDemandLPerUnitDay:
+          tableDailyVolume.tableEntry.specificDhwDemandLPerUnitDayAt60C,
+        thetaWReferenceC:
+          source.thetaWReferenceC ?? MC001_DHW_RECOMMENDED_NETWORK_TEMPERATURE_C,
+        thetaWColdReferenceC:
+          source.thetaWColdReferenceC ?? MC001_DHW_DEFAULT_COLD_WATER_TEMPERATURE_C,
+        thetaWDrawC: temperature.thetaWDrawC,
+        thetaWColdC: temperature.thetaWColdC
+      });
+      const correctedDailyVolume = calculateDhwDailyVolumeNonResidential({
+        specificDailyDemandLPerUnitDay: correctedSpecificVolume.valueLitersPerUnitDay,
+        unitCount: source.unitCount
+      });
+      dailyVolumeLiters = correctedDailyVolume.valueLitersPerDay;
+      chain = { tableDailyVolume, correctedSpecificVolume, correctedDailyVolume };
+      formulaIds = [
+        tableDailyVolume.formulaId,
+        correctedSpecificVolume.formulaId,
+        correctedDailyVolume.formulaId
+      ];
+    } else {
+      diagnostics.push(diagnostic(
+        "unsupported_dhw_useful_demand_source_mode",
+        "technicalSystems.domesticHotWater.usefulDemandSource.mode",
+        `Unsupported DHW useful-demand source mode: ${source.mode}`
+      ));
+      return null;
+    }
+
+    const lossWaste = applyDhwLossWasteIfAvailable(dailyVolumeLiters, source);
+    const volumeLiters = (lossWaste?.totalDailyVolumeLiters ?? dailyVolumeLiters) * days;
+    const usefulEnergy = calculateDhwUsefulEnergyFromVolume({
+      volumeLiters,
+      specificHeatKWhPerKgK: temperature.specificHeatKWhPerKgK,
+      waterDensityKgPerM3: temperature.waterDensityKgPerM3,
+      thetaWDrawC: temperature.thetaWDrawC,
+      thetaWColdC: temperature.thetaWColdC
+    });
+    const allFormulaIds = [
+      ...formulaIds,
+      ...(lossWaste ? [lossWaste.formulaId] : []),
+      usefulEnergy.formulaId
+    ];
+    return {
+      valueKWh: usefulEnergy.valueKWh,
+      source: sourceDescriptor({
+        classification: CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+        origin: `mc001_${source.mode}`,
+        reference: "technicalSystems.domesticHotWater.usefulDemandSource",
+        formulaIds: allFormulaIds,
+        details: {
+          month: MONTH_IDS[monthIndex],
+          days,
+          mode: source.mode,
+          dailyVolumeLiters,
+          volumeLiters,
+          trace: usefulEnergy.trace,
+          executionTrace: usefulEnergy.executionTrace,
+          calculationChain: {
+            ...chain,
+            ...(lossWaste ? { lossWaste } : {}),
+            usefulEnergy
+          }
+        }
+      })
+    };
+  } catch (error) {
+    diagnostics.push(diagnostic(
+      "invalid_dhw_useful_demand_source",
+      "technicalSystems.domesticHotWater.usefulDemandSource",
+      error.message
+    ));
+    return null;
+  }
+}
+
 function ventilationForMonth(section, monthIndex, diagnostics) {
   const system = firstActiveSystem(section, "technicalSystems.ventilationAhu", diagnostics);
   if (!system) return null;
@@ -392,7 +646,7 @@ function ventilationForMonth(section, monthIndex, diagnostics) {
   };
 }
 
-function dhwForMonth(section, monthIndex, diagnostics) {
+function dhwForMonth(section, buildingDna, monthIndex, diagnostics) {
   const systems = serviceSystemsForMonth(
     section,
     "dhw",
@@ -402,13 +656,23 @@ function dhwForMonth(section, monthIndex, diagnostics) {
     diagnostics
   );
   if (!systems) return null;
+  const calculated = calculatedDhwUsefulDemandSourceForMonth(
+    section,
+    buildingDna,
+    monthIndex,
+    diagnostics
+  );
+  const explicit = calculated
+    ? null
+    : monthlyScalarWithSource(
+        section.monthlyUsefulDemandKWh,
+        monthIndex,
+        "technicalSystems.domesticHotWater.monthlyUsefulDemandKWh",
+        diagnostics
+      );
   return {
-    usefulDemandKWh: monthlyScalar(
-      section.monthlyUsefulDemandKWh,
-      monthIndex,
-      "technicalSystems.domesticHotWater.monthlyUsefulDemandKWh",
-      diagnostics
-    ),
+    usefulDemandKWh: calculated?.valueKWh ?? explicit?.value ?? null,
+    usefulDemandSource: calculated?.source ?? explicit?.source,
     systems,
     ...(systems.length === 1 ? { stages: systems[0].stages } : {})
   };
@@ -582,7 +846,7 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
             : {})
         }
       : {}),
-    ...(dhwEnabled ? { dhw: dhwForMonth(technicalSystems.domesticHotWater, index, diagnostics) } : {}),
+    ...(dhwEnabled ? { dhw: dhwForMonth(technicalSystems.domesticHotWater, buildingDna, index, diagnostics) } : {}),
     ...(ventilationAhuEnabled ? { ventilation: ventilationForMonth(technicalSystems.ventilationAhu, index, diagnostics) } : {}),
     ...(pcmEnabled ? { coolingStoragePcm: pcmForMonth(technicalSystems.coolingStoragePcm, index, diagnostics) } : {})
   }));
