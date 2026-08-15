@@ -259,6 +259,17 @@ function monthlyRows(calculation, buildingDna) {
       ventilationAirHeatCapacityJPerM3K: quantityAmount(dnaMonth?.ventilation?.heating?.airHeatCapacity),
       solarOrientation: dnaMonth?.heatGains?.solarOrientation ?? null,
       solarGainsSource: dnaMonth?.heatGains?.solarGainsSource ?? null,
+      internalGainsSource: dnaMonth?.heatGains?.internalGainsSource ?? null,
+      internalGainsCategoryId: dnaMonth?.heatGains?.internalGainsCategoryId ?? null,
+      internalGainsCategoryRo: dnaMonth?.heatGains?.internalGainsCategoryRo ?? null,
+      internalGainsConstantWPerM2: dnaMonth?.heatGains?.internalGainsConstantWPerM2 ?? null,
+      internalGainsFormulaCode: dnaMonth?.heatGains?.internalGainsFormulaCode ?? null,
+      internalGainsSourceTable: dnaMonth?.heatGains?.internalGainsSourceTable ?? null,
+      internalGainsSourceSection: dnaMonth?.heatGains?.internalGainsSourceSection ?? null,
+      internalGainsSourcePage: dnaMonth?.heatGains?.internalGainsSourcePage ?? null,
+      internalGainsProductionEligible: dnaMonth?.heatGains?.internalGainsProductionEligible ?? null,
+      internalGainsBlockerCode: dnaMonth?.heatGains?.internalGainsBlockerCode ?? null,
+      internalGainsExecutionTrace: dnaMonth?.heatGains?.internalGainsExecutionTrace ?? null,
       monthlyProfileOrigin: dnaMonth?.provenance?.origin ?? null,
       monthlyProfileReference: dnaMonth?.provenance?.reference ?? null,
       heatingTransmissionHeatFlowW: monthResult.transmission?.heating?.heatFlow?.amount ?? null,
@@ -278,6 +289,11 @@ function monthlyRows(calculation, buildingDna) {
       qHgnKwh: monthResult.heatGains?.qHgn ?? null,
       qCgnKwh: cooling?.qCgn ?? monthResult.heatGains?.qHgn ?? null,
       heatGainsFormulaCode: monthResult.heatGains?.formulaCode ?? heating?.heatGainsFormulaCode ?? cooling?.heatGainsFormulaCode ?? null,
+      heatGainsExecutionTrace:
+        monthResult.heatGains?.executionTrace ??
+        heating?.heatGainsExecutionTrace ??
+        cooling?.heatGainsExecutionTrace ??
+        null,
       gammaH: heating?.gammaH ?? null,
       tauH: heating?.tauH ?? null,
       aH: heating?.aH ?? null,
@@ -343,6 +359,8 @@ function calculationFingerprint(buildingDna, calculation, monthly) {
         coolingOutdoorTemperatureC: row.coolingOutdoorTemperatureC,
         ventilationAirFlowRateM3PerS: row.ventilationAirFlowRateM3PerS,
         internalGainsKwh: row.internalGainsKwh,
+        ...(row.internalGainsSource === null ? {} : { internalGainsSource: row.internalGainsSource }),
+        ...(row.internalGainsCategoryId === null ? {} : { internalGainsCategoryId: row.internalGainsCategoryId }),
         solarGainsKwh: row.solarGainsKwh,
         solarOrientation: row.solarOrientation
       })),
@@ -478,7 +496,8 @@ function formulaTrace({
   notebookLines = [],
   localVariables = [],
   numericVerification = null,
-  dependencies = []
+  dependencies = [],
+  executionTrace = null
 }) {
   return {
     traceNodeId: `${formulaId ?? formulaName}.${resultSymbol}`.replace(/\s+/g, "_"),
@@ -498,7 +517,8 @@ function formulaTrace({
     notebookLines,
     localVariables,
     numericVerification,
-    dependencies
+    dependencies,
+    executionTrace
   };
 }
 
@@ -886,6 +906,32 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
     const coolingTraceExpression = row.coolingExecutionTrace
       ? traceExpressionText(row.coolingExecutionTrace.expression, row.coolingExecutionTrace.inputs)
       : null;
+    const heatGainsTraceExpression = row.heatGainsExecutionTrace
+      ? traceExpressionText(row.heatGainsExecutionTrace.expression, row.heatGainsExecutionTrace.inputs)
+      : null;
+    monthFormulaViews.push(formulaTrace({
+      formulaId: row.internalGainsFormulaCode ?? "MC001_RELATION_2_35_INTERNAL_GAINS_INPUT_CONTRACT",
+      formulaName: `Aporturi interne lunare - ${row.month}`,
+      resultSymbol: "Qint",
+      resultValue: row.internalGainsKwh,
+      resultUnit: "kWh",
+      origin: row.internalGainsSource,
+      section: "calcul_lunar_aporturi",
+      inputVariables: [
+        { symbol: "qint", value: row.internalGainsConstantWPerM2, unit: "W/m2", meaning: row.internalGainsCategoryRo ?? "aport intern specific" },
+        { symbol: "Qint", value: row.internalGainsKwh, unit: "kWh", meaning: "aporturi interne" }
+      ],
+      sourceReference: row.internalGainsFormulaCode,
+      symbolicFormula: row.internalGainsExecutionTrace
+        ? `Ramura executata: ${row.internalGainsExecutionTrace.branchId}`
+        : "Execution trace unavailable.",
+      substitutedFormula: row.internalGainsExecutionTrace
+        ? `Qint = ${traceExpressionText(row.internalGainsExecutionTrace.expression, row.internalGainsExecutionTrace.inputs)}`
+        : "Execution trace unavailable.",
+      resultLine: `Qint = ${formatFormulaValue(row.internalGainsKwh, "kWh")}`,
+      dependencies: [`${row.month}.internalGains`],
+      executionTrace: row.internalGainsExecutionTrace ?? null
+    }));
     monthFormulaViews.push(formulaTrace({
       formulaId: "MC001_MONTHLY_TRANSMISSION_ENERGY_FROM_ENGINE_OUTPUT",
       formulaName: `Transfer prin transmisie pentru incalzire - ${row.month}`,
@@ -935,10 +981,15 @@ function formulaViews(assemblies, envelope, monthly, calculation) {
         { symbol: "Qsol", value: row.solarGainsKwh, unit: "kWh", meaning: "aporturi solare" }
       ],
       sourceReference: row.heatGainsFormulaCode,
-      symbolicFormula: "QHgn = Qint + Qsol",
-      substitutedFormula: `QHgn = ${formatFormulaTerm(row.internalGainsKwh, "kWh")} + ${formatFormulaTerm(row.solarGainsKwh, "kWh")}`,
+      symbolicFormula: row.heatGainsExecutionTrace
+        ? `Ramura executata: ${row.heatGainsExecutionTrace.branchId}`
+        : "Execution trace unavailable.",
+      substitutedFormula: row.heatGainsExecutionTrace
+        ? `QHgn = ${heatGainsTraceExpression}`
+        : "Execution trace unavailable.",
       resultLine: `QHgn = ${formatFormulaValue(row.qHgnKwh, "kWh")}`,
-      dependencies: [`${row.month}.Qint`, `${row.month}.Qsol`]
+      dependencies: [`${row.month}.Qint`, `${row.month}.Qsol`],
+      executionTrace: row.heatGainsExecutionTrace ?? null
     }));
     monthFormulaViews.push(formulaTrace({
       formulaId: "MC001_MONTHLY_TOTAL_HEATING_TRANSFER_FROM_ENGINE_OUTPUT",
@@ -1586,19 +1637,16 @@ function compactMonthlySections(monthly) {
       }),
       compactLine({
         lineId: `${row.month}.qhgn`,
-        text: expressionLine(
-          `QHgn_${idLabel}`,
-          `${formatNotebookNumber(row.internalGainsKwh)} + ${formatNotebookNumber(row.solarGainsKwh)}`,
-          row.qHgnKwh,
-          "kWh"
-        ),
+        traceResultSymbol: `QHgn_${idLabel}`,
+        text: executionTraceUnavailableLine(`QHgn_${idLabel}`),
         resultValue: row.qHgnKwh,
         resultUnit: "kWh",
-        computedValue: Number(row.internalGainsKwh) + Number(row.solarGainsKwh),
+        computedValue: traceComputedValue(row.heatGainsExecutionTrace),
         variables: [
           { symbol: `QHgn_${idLabel}`, meaning: `aporturi totale incalzire ${label}` }
         ],
-        reference: row.heatGainsFormulaCode
+        reference: row.heatGainsFormulaCode,
+        executionTrace: row.heatGainsExecutionTrace
       }),
       compactLine({
         lineId: `${row.month}.gammah`,

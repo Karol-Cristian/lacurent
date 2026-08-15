@@ -250,7 +250,14 @@ function hasForbiddenDerivedInput(value, path = []) {
   return Object.entries(value).some(([key, child]) => {
     const nextPath = [...path, key];
     const allowedHeatGainsResultKey = path.includes("monthlyHeatGainsResult") &&
-      ["caseResults", "summary", "formulaCode", "formulaReferences", "annualQHgn"].includes(key);
+      [
+        "caseResults",
+        "summary",
+        "formulaCode",
+        "formulaReferences",
+        "annualQHgn",
+        "executionTrace"
+      ].includes(key);
     return (
       (!allowedHeatGainsResultKey && FORBIDDEN_INPUT_KEYS.has(key)) ||
       hasForbiddenDerivedInput(child, nextPath)
@@ -365,7 +372,10 @@ function extractQCgn(inputCase) {
         internalGains: heatGainsCase.internalGains,
         solarGains: heatGainsCase.solarGains,
         heatGainsFormulaCode: heatGainsCase.formulaCode,
-        heatGainsScope: heatGainsCase.scope
+        heatGainsScope: heatGainsCase.scope,
+        ...(heatGainsCase.executionTrace === undefined ? {} : {
+          heatGainsExecutionTrace: heatGainsCase.executionTrace
+        })
       }
     };
   }
@@ -406,7 +416,10 @@ function extractQCgn(inputCase) {
       ...(finiteNumber(heatGainsCase.internalGains) === null ? {} : { internalGains: heatGainsCase.internalGains }),
       ...(finiteNumber(heatGainsCase.solarGains) === null ? {} : { solarGains: heatGainsCase.solarGains }),
       heatGainsFormulaCode: heatGainsCase.formulaCode,
-      heatGainsScope: heatGainsCase.scope
+      heatGainsScope: heatGainsCase.scope,
+      ...(heatGainsCase.executionTrace === undefined ? {} : {
+        heatGainsExecutionTrace: heatGainsCase.executionTrace
+      })
     }
   };
 }
@@ -820,6 +833,9 @@ function validateCase(inputCase) {
         ...(qCgnSource.value.solarGains === undefined ? {} : { solarGains: qCgnSource.value.solarGains }),
         ...(qCgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qCgnSource.value.heatGainsFormulaCode }),
         ...(qCgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qCgnSource.value.heatGainsScope }),
+        ...(qCgnSource.value.heatGainsExecutionTrace === undefined ? {} : {
+          heatGainsExecutionTrace: qCgnSource.value.heatGainsExecutionTrace
+        }),
         gammaC: null,
         etaChtOrigin: "not_required_for_qCht_zero_zero_cooling_demand",
         aCredOrigin: "not_required_for_qCht_zero_zero_cooling_demand",
@@ -856,6 +872,9 @@ function validateCase(inputCase) {
     ...(qCgnSource.value.solarGains === undefined ? {} : { solarGains: qCgnSource.value.solarGains }),
     ...(qCgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qCgnSource.value.heatGainsFormulaCode }),
     ...(qCgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qCgnSource.value.heatGainsScope }),
+    ...(qCgnSource.value.heatGainsExecutionTrace === undefined ? {} : {
+      heatGainsExecutionTrace: qCgnSource.value.heatGainsExecutionTrace
+    }),
     gammaC,
     sourceReference: inputCase.source.reference
   };

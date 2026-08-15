@@ -239,7 +239,14 @@ function hasForbiddenDerivedInput(value, path = []) {
     const isAllowedC5ResultKey = key === "result" &&
       path[path.length - 1] === "explicitTotalHeatTransferResult";
     const isAllowedMonthlyHeatGainsResultKey = path.includes("monthlyHeatGainsResult") &&
-      ["caseResults", "summary", "formulaCode", "formulaReferences", "annualQHgn"].includes(key);
+      [
+        "caseResults",
+        "summary",
+        "formulaCode",
+        "formulaReferences",
+        "annualQHgn",
+        "executionTrace"
+      ].includes(key);
     const isAllowedHeatingIntermittencyInputKey =
       path.includes("heatingIntermittencyCorrection") && key === "tauH";
     return (
@@ -762,7 +769,10 @@ function extractQHgn(inputCase) {
         internalGains: heatGainsCase.internalGains,
         solarGains: heatGainsCase.solarGains,
         heatGainsFormulaCode: heatGainsCase.formulaCode,
-        heatGainsScope: heatGainsCase.scope
+        heatGainsScope: heatGainsCase.scope,
+        ...(heatGainsCase.executionTrace === undefined ? {} : {
+          heatGainsExecutionTrace: heatGainsCase.executionTrace
+        })
       }
     };
   }
@@ -812,7 +822,10 @@ function extractQHgn(inputCase) {
         adjacentUnconditionedGainsFormulaCode: heatGainsCase.adjacentUnconditionedGainsFormulaCode
       }),
       heatGainsFormulaCode: heatGainsCase.formulaCode,
-      heatGainsScope: heatGainsCase.scope
+      heatGainsScope: heatGainsCase.scope,
+      ...(heatGainsCase.executionTrace === undefined ? {} : {
+        heatGainsExecutionTrace: heatGainsCase.executionTrace
+      })
     }
   };
 }
@@ -914,6 +927,9 @@ function validateCase(inputCase) {
         ...(qHgnSource.value.solarGains === undefined ? {} : { solarGains: qHgnSource.value.solarGains }),
         ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
         ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
+        ...(qHgnSource.value.heatGainsExecutionTrace === undefined ? {} : {
+          heatGainsExecutionTrace: qHgnSource.value.heatGainsExecutionTrace
+        }),
         gammaHOrigin: "not_required_for_zero_heat_transfer_branch",
         etaHgnOrigin: "not_required_for_zero_heat_transfer_branch",
         qHndBranch: "zero_heat_transfer_zero_demand",
@@ -961,6 +977,9 @@ function validateCase(inputCase) {
         }),
         ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
         ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
+        ...(qHgnSource.value.heatGainsExecutionTrace === undefined ? {} : {
+          heatGainsExecutionTrace: qHgnSource.value.heatGainsExecutionTrace
+        }),
         gammaH,
         etaHgnOrigin: "not_required_for_resolved_zero_qhnd_branch",
         qHndBranch: "gammaH_less_or_equal_zero_positive_gains_zero_demand",
@@ -1006,6 +1025,9 @@ function validateCase(inputCase) {
         }),
         ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
         ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
+        ...(qHgnSource.value.heatGainsExecutionTrace === undefined ? {} : {
+          heatGainsExecutionTrace: qHgnSource.value.heatGainsExecutionTrace
+        }),
         gammaH,
         etaHgnOrigin: "not_required_for_gammaH_greater_than_two_zero_qhnd_branch",
         qHndBranch: "gammaH_greater_than_two_zero_demand",
@@ -1118,6 +1140,9 @@ function validateCase(inputCase) {
       }),
       ...(qHgnSource.value.heatGainsFormulaCode === undefined ? {} : { heatGainsFormulaCode: qHgnSource.value.heatGainsFormulaCode }),
       ...(qHgnSource.value.heatGainsScope === undefined ? {} : { heatGainsScope: qHgnSource.value.heatGainsScope }),
+      ...(qHgnSource.value.heatGainsExecutionTrace === undefined ? {} : {
+        heatGainsExecutionTrace: qHgnSource.value.heatGainsExecutionTrace
+      }),
       gammaH,
       etaHgn,
       etaHgnOrigin,

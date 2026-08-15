@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { calculateMc001MonthlyHeatGainsExplicit } from "../mc001MonthlyHeatGainsCalculation.mjs";
 import { calculateMc001MonthlySolarGainsExplicit } from "../mc001SolarGainsCalculation.mjs";
+import { validateMc001ExecutionTrace } from "../mc001ExecutionTrace.mjs";
 
 function test(name, fn) {
   return Promise.resolve()
@@ -93,6 +94,7 @@ await test("single January case sums explicit internal and solar gains", () => {
   assert.equal(result.caseResults[0].internalGains, 120);
   assert.equal(result.caseResults[0].solarGains, 180);
   assert.equal(result.caseResults[0].qHgn, 300);
+  assert.equal(validateMc001ExecutionTrace(result.caseResults[0].executionTrace).ok, true);
   assert.equal(result.caseResults[0].formulaCode, "MC001_EXPLICIT_MONTHLY_HEAT_GAINS_SUM");
   assert.equal(result.summary.annualQHgn, 300);
   assert.equal(result.summary.caseCount, 1);
@@ -172,6 +174,9 @@ await test("adjacent unconditioned zone gains apply relations 2.34 and 2.37 with
   assert.equal(zone.gainReductionFactorOrigin, "explicit_input");
   assert.equal(zone.internalGainContribution, 12);
   assert.equal(zone.solarGainContribution, 24);
+  assert.equal(validateMc001ExecutionTrace(caseResult.executionTrace).ok, true);
+  assert.equal(validateMc001ExecutionTrace(zone.internalGainContributionExecutionTrace).ok, true);
+  assert.equal(validateMc001ExecutionTrace(zone.solarGainContributionExecutionTrace).ok, true);
 });
 
 await test("adjacent unconditioned zone relation 2.51 calculates single-zone gain reduction from explicit inputs", () => {
@@ -210,6 +215,7 @@ await test("adjacent unconditioned zone relation 2.51 calculates single-zone gai
     zone.gainReductionFormulaCode,
     "MC001_RELATION_2_51_SINGLE_ADJACENT_ZONE_GAIN_REDUCTION"
   );
+  assert.equal(validateMc001ExecutionTrace(zone.gainReductionExecutionTrace).ok, true);
   assert.equal(
     zone.distributionFormulaCode,
     "MC001_FIGURE_2_8_SINGLE_ADJACENT_DISTRIBUTION_FACTOR"
@@ -260,6 +266,7 @@ await test("adjacent unconditioned zone relation 2.52 calculates multiple-zone g
     zone.gainReductionFormulaCode,
     "MC001_RELATION_2_52_MULTIPLE_ADJACENT_ZONES_GAIN_REDUCTION"
   );
+  assert.equal(validateMc001ExecutionTrace(zone.gainReductionExecutionTrace).ok, true);
   assert.equal(zone.distributionFactor, 0.4);
   assertApprox(caseResult.adjacentInternalGains, 16.3584);
   assertApprox(caseResult.adjacentSolarGains, 32.7168);
@@ -305,6 +312,7 @@ await test("adjacent internal unconditioned zone relation 2.53 uses explicit ins
     zone.gainReductionFormulaCode,
     "MC001_RELATION_2_53_INTERNAL_UNCONDITIONED_ZONE_GAIN_REDUCTION"
   );
+  assert.equal(validateMc001ExecutionTrace(zone.gainReductionExecutionTrace).ok, true);
   assert.equal(caseResult.adjacentInternalGains, 30);
   assert.equal(caseResult.adjacentSolarGains, 45);
   assert.equal(caseResult.qHgn, 75);
@@ -420,6 +428,26 @@ await test("rejects invalid adjacent unconditioned zone inputs deterministically
       })
     ])),
     "monthly_heat_gains_invalid_gain_reduction_zero_gain_denominator"
+  );
+});
+
+await test("rejects client-supplied heat-gain execution traces as derived runtime state", () => {
+  assertBlocked(
+    calculateMc001MonthlyHeatGainsExplicit(input([
+      sampleCase({
+        executionTrace: {
+          status: "calculated",
+          formulaId: "fake",
+          branchId: "fake",
+          inputs: {},
+          expression: { op: "value", value: 1 },
+          rawResult: 1,
+          finalResult: 1,
+          unit: "kWh"
+        }
+      })
+    ])),
+    "monthly_heat_gains_client_supplied_derived_result"
   );
 });
 

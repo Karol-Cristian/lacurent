@@ -26,6 +26,8 @@ function physicsValue(quantity, fallbackReference) {
 
 const SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED =
   "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED";
+const INTERNAL_GAINS_TABLE_2_15_CATEGORY_AND_AREA_REQUIRED =
+  "INTERNAL_GAINS_TABLE_2_15_CATEGORY_AND_AREA_REQUIRED";
 
 function chapter2ClimateInputBlockers(buildingDna) {
   if (buildingDna?.calculationStatus !== "source_backed_climate_provider") {
@@ -57,6 +59,42 @@ function chapter2ClimateInputBlockers(buildingDna) {
     ],
     months: blockedSolarMonths,
     prohibitedSubstitute: "Do not silently substitute provider solar gains with zero or omit Qsky."
+  }];
+}
+
+function chapter2InternalGainInputBlockers(buildingDna) {
+  const blockedInternalGainMonths = (buildingDna?.monthlyProfiles ?? [])
+    .filter(profile =>
+      profile?.heatGains?.internalGainsSource ===
+        "internal_gains_table_2_15_category_or_area_missing" ||
+      profile?.heatGains?.internalGainsProductionEligible === false
+    )
+    .map(profile => profile.month);
+  if (blockedInternalGainMonths.length === 0) {
+    return [];
+  }
+  return [{
+    code: INTERNAL_GAINS_TABLE_2_15_CATEGORY_AND_AREA_REQUIRED,
+    severity: "blocking",
+    reason:
+      "MC001 relation 2.35 can calculate monthly internal gains from Table 2.15 only when the building use category and useful floor area are explicit.",
+    availableInputs: [],
+    missingInputs: [
+      "internalGainsTable2_15Category",
+      "usefulFloorAreaM2"
+    ],
+    contextDiagnostics: [
+      "TABLE_2_15_INTERNAL_GAINS_REQUIRES_BUILDING_USE_CATEGORY_AND_AUSE"
+    ],
+    productionEligible: false,
+    affectedCalculations: [
+      "chapter2_internal_gains",
+      "chapter2_heating_useful_demand",
+      "chapter2_cooling_useful_demand"
+    ],
+    months: blockedInternalGainMonths,
+    prohibitedSubstitute:
+      "Do not silently substitute unavailable internal gains with zero."
   }];
 }
 
@@ -240,7 +278,15 @@ export function buildChapter2UsefulDemandPhysicsInput(buildingDna, envelopeTrans
       },
       heatGains: {
         internalGains: profile.heatGains.internalGains.amount,
-        solarGains: profile.heatGains.solarGains.amount
+        solarGains: profile.heatGains.solarGains.amount,
+        ...(Array.isArray(profile.heatGains.adjacentUnconditionedZones) &&
+          profile.heatGains.adjacentUnconditionedZones.length > 0
+          ? {
+              adjacentUnconditionedZones: deepClone(
+                profile.heatGains.adjacentUnconditionedZones
+              )
+            }
+          : {})
       },
       heating: {
         utilizationDependencies: deepClone(profile.heating.utilizationDependencies)
@@ -276,10 +322,13 @@ export function calculateChapter2ForBuildingDna(buildingDna) {
       envelopeTransmissionResult
     };
   }
-  const climateInputBlockers = chapter2ClimateInputBlockers(buildingDna);
-  if (climateInputBlockers.length > 0) {
+  const inputBlockers = [
+    ...chapter2ClimateInputBlockers(buildingDna),
+    ...chapter2InternalGainInputBlockers(buildingDna)
+  ];
+  if (inputBlockers.length > 0) {
     const diagnostics = {
-      blockers: climateInputBlockers,
+      blockers: inputBlockers,
       warnings: [],
       methodologyLimits: [
         "chapter_2_useful_demand_requires_complete_heat_gain_inputs",

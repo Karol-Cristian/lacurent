@@ -290,6 +290,45 @@
       ]
     },
     {
+      "fieldId": "building.identity.use_category",
+      "path": "building.useCategory / building.internalGainsCategoryId",
+      "purpose": "Canonical building-use category used to resolve MC001 Tabel 2.15 internal-gain intensity when the category is source-backed.",
+      "category": "primitive_user_input",
+      "owner": "Building DNA Resolver",
+      "sourceOfTruth": "buildingDna.building.useCategory or buildingDna.building.internalGainsCategoryId",
+      "producer": "UI building-use selector or expert category override",
+      "consumer": "monthlyProfilesFromProviderClimate, Table 2.15 internal-gains derivation, report",
+      "dataType": "enum:residential_collective|residential_single_family|administrative|schools|hospitals|expert category override",
+      "editable": true,
+      "derived": false,
+      "persisted": true,
+      "runtimeOnly": false,
+      "providerGenerated": false,
+      "reportOnly": false,
+      "notebookOnly": false,
+      "deprecated": false,
+      "legacy": false,
+      "productionUsage": "drives_source_backed_internal_gains_when_useful_area_and_monthly_duration_are_available",
+      "uiLocation": "Geometrie / Utilizare cladire or expert settings",
+      "notebookLocation": "Aporturi interne lunare",
+      "reportLocation": "Caiet de calcule ingineresti",
+      "dependencies": [
+        "building.identity.type"
+      ],
+      "uiRecommendation": "remain_editable",
+      "genericity": "generic_for_supported_MC001_Table_2_15_categories",
+      "removalAssessment": "retain_as_canonical_use_input",
+      "implementationRefs": [
+        "src/building-platform/buildingDnaResolver.mjs",
+        "src/building-platform/buildingChapter2Adapter.mjs",
+        "src/building-platform/buildingTechnicalReport.mjs"
+      ],
+      "tests": [
+        "src/building-platform/tests/buildingDnaResolver.test.mjs",
+        "src/building-platform/tests/buildingTechnicalReport.test.mjs"
+      ]
+    },
+    {
       "fieldId": "building.identity.construction_period",
       "path": "building.constructionPeriod / form.construction_year",
       "purpose": "Normalizes a construction year into the resolver typology period.",
@@ -1637,6 +1676,49 @@
       ]
     },
     {
+      "fieldId": "derived.internal_gains_table_2_15",
+      "path": "monthlyProfiles[*].heatGains.internalGains / monthlyProfiles[*].heatGains.internalGainsExecutionTrace",
+      "purpose": "Monthly internal heat gains derived from MC001 Tabel 2.15 category intensity, useful floor area and calendar hours.",
+      "category": "derived_engineering_value",
+      "owner": "Building DNA Resolver with Physics Engine source-formula helper",
+      "sourceOfTruth": "buildingDna.monthlyProfiles[*].heatGains.internalGains",
+      "producer": "monthlyInternalGainsFromTable2_15",
+      "consumer": "buildChapter2UsefulDemandPhysicsInput, monthly heat-gains runtime, technical report",
+      "dataType": "kWh monthly quantity with provenance and execution trace",
+      "editable": false,
+      "derived": true,
+      "persisted": true,
+      "runtimeOnly": false,
+      "providerGenerated": false,
+      "reportOnly": false,
+      "notebookOnly": false,
+      "deprecated": false,
+      "legacy": false,
+      "productionUsage": "source_backed_internal_gains_for_supported_Table_2_15_categories",
+      "uiLocation": null,
+      "notebookLocation": "Aporturi interne lunare",
+      "reportLocation": "Caiet de calcule ingineresti",
+      "dependencies": [
+        "building.identity.use_category",
+        "geometry.useful_floor_area",
+        "derived.monthly_profiles"
+      ],
+      "uiRecommendation": "read_only",
+      "genericity": "generic_mc001_concept",
+      "removalAssessment": "retain",
+      "implementationRefs": [
+        "src/physics-engine/mc001InternalGainsCalculation.mjs",
+        "src/building-platform/buildingDnaResolver.mjs",
+        "src/building-platform/buildingChapter2Adapter.mjs",
+        "src/building-platform/buildingTechnicalReport.mjs"
+      ],
+      "tests": [
+        "src/physics-engine/tests/mc001InternalGainsCalculation.test.mjs",
+        "src/building-platform/tests/buildingDnaResolver.test.mjs",
+        "src/building-platform/tests/buildingTechnicalReport.test.mjs"
+      ]
+    },
+    {
       "fieldId": "derived.envelope_elements",
       "path": "envelopeElements[*]",
       "purpose": "Canonical envelope element inventory with role, boundary and area.",
@@ -2159,47 +2241,6 @@
       "tests": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "tests/building-platform-wizard-ui.mjs"
-      ]
-    },
-    {
-      "fieldId": "runtime.chapter2_execution_trace",
-      "path": "calculation.chapter2Result.result.{heatingResult,coolingResult}.caseResults[*].executionTrace",
-      "purpose": "Authoritative executed formula, branch, inputs and result trace for displayed Chapter 2 demand calculations.",
-      "category": "physics_runtime_state",
-      "owner": "Physics Engine",
-      "sourceOfTruth": "heating/cooling monthly demand runtime case result",
-      "producer": "Physics Engine",
-      "consumer": "Technical Report Builder, engineering notebook, trace validation tests",
-      "dataType": "mc001_execution_trace_v1",
-      "editable": false,
-      "derived": false,
-      "persisted": false,
-      "runtimeOnly": true,
-      "providerGenerated": false,
-      "reportOnly": false,
-      "notebookOnly": false,
-      "deprecated": false,
-      "legacy": false,
-      "productionUsage": "authoritative_executed_formula_and_branch_trace_for_report",
-      "uiLocation": null,
-      "notebookLocation": "Chapter 2 monthly calculation notebook",
-      "reportLocation": "Caiet de calcule ingineresti",
-      "dependencies": [
-        "runtime.chapter2_monthly_useful_demand"
-      ],
-      "uiRecommendation": "read_only",
-      "genericity": "generic_mc001_concept",
-      "removalAssessment": "retain",
-      "implementationRefs": [
-        "src/physics-engine/mc001ExecutionTrace.mjs",
-        "src/physics-engine/mc001RestrictedHeatingQhndCalculation.mjs",
-        "src/physics-engine/mc001CoolingUsefulDemandCalculation.mjs",
-        "src/building-platform/buildingTechnicalReport.mjs"
-      ],
-      "tests": [
-        "src/physics-engine/tests/mc001RestrictedHeatingQhndCalculation.test.mjs",
-        "src/physics-engine/tests/mc001CoolingUsefulDemandCalculation.test.mjs",
-        "src/building-platform/tests/buildingTechnicalReport.test.mjs"
       ]
     },
     {

@@ -5,6 +5,7 @@ import {
   calculateMc001EnvelopeTransmissionCoefficientExplicit
 } from "../mc001EnvelopePhysicsCalculation.mjs";
 import { calculateMc001Chapter2UsefulDemandExplicit } from "../mc001Chapter2UsefulDemandCalculation.mjs";
+import { validateMc001ExecutionTrace } from "../mc001ExecutionTrace.mjs";
 
 const EPSILON = 1e-9;
 const SOURCE = { sourceType: "explicit_user_input", reference: "chapter_2_golden_input" };
@@ -530,6 +531,57 @@ await test("Chapter 2 golden building calculates 12 explicit monthly QHnd and QC
   ]) {
     assert.equal(result.diagnostics.methodologyLimits.includes(limit), true, `missing ${limit}`);
   }
+});
+
+await test("Chapter 2 orchestrator propagates adjacent-zone gain contracts into demand traces", () => {
+  const assemblies = calculateMc001EnvelopeAssemblyUValueExplicit(assemblyInput());
+  const envelope = envelopeTransmissionResult(assemblies);
+  const cases = monthlyCases(envelope.result.amount);
+  cases[0] = {
+    ...cases[0],
+    heatGains: {
+      ...cases[0].heatGains,
+      adjacentUnconditionedZones: [
+        {
+          zoneId: "sunspace-a",
+          internalGains: 50,
+          solarGains: 100,
+          bztu: 0.4,
+          distributionFactor: 0.5,
+          gainReductionFactor: 0.8
+        }
+      ]
+    }
+  };
+  const result = calculateMc001Chapter2UsefulDemandExplicit({
+    mode: "chapter_2_useful_demand_explicit_v1",
+    envelopeTransmissionResult: envelope,
+    monthlyCases: cases
+  });
+
+  assert.equal(result.status, "ready");
+  const januaryMonthly = result.result.monthlyResults.find(item => item.month === "january");
+  assert.equal(januaryMonthly.heatGains.directInternalGains, 120);
+  assert.equal(januaryMonthly.heatGains.directSolarGains, 180);
+  assert.equal(januaryMonthly.heatGains.adjacentInternalGains, 12);
+  assert.equal(januaryMonthly.heatGains.adjacentSolarGains, 24);
+  assert.equal(januaryMonthly.heatGains.internalGains, 132);
+  assert.equal(januaryMonthly.heatGains.solarGains, 204);
+  assert.equal(januaryMonthly.heatGains.qHgn, 336);
+  assert.equal(validateMc001ExecutionTrace(januaryMonthly.heatGains.executionTrace).ok, true);
+  assert.equal(
+    validateMc001ExecutionTrace(
+      januaryMonthly.heatGains.adjacentUnconditionedZoneResults[0]
+        .internalGainContributionExecutionTrace
+    ).ok,
+    true
+  );
+  const heating = result.result.heatingResult.caseResults.find(item => item.month === "january");
+  const cooling = result.result.coolingResult.caseResults.find(item => item.month === "january");
+  assert.equal(heating.heatGainsExecutionTrace.branchId, "monthly_total_internal_plus_solar_gains");
+  assert.equal(cooling.heatGainsExecutionTrace.branchId, "monthly_total_internal_plus_solar_gains");
+  assert.equal(validateMc001ExecutionTrace(heating.heatGainsExecutionTrace).ok, true);
+  assert.equal(validateMc001ExecutionTrace(cooling.heatGainsExecutionTrace).ok, true);
 });
 
 await test("Chapter 2 orchestrator blocks incomplete or ambiguous monthly input", () => {
