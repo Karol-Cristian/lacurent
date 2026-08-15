@@ -23,6 +23,7 @@ function blocked(code, stages = [], causeBlockers = []) {
     ...causeBlockers
       .filter(item => item?.code && item.code !== code)
       .map(item => ({
+        ...item,
         code: item.code,
         severity: item.severity ?? "blocking"
       }))

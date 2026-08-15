@@ -3004,14 +3004,18 @@
         "reportPath": "monthly[*].solarGainsKwh plus climate appendix Hsol rows",
         "status": "hsol_connected_qsol_qsky_bounded",
         "diagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
+        "contextDiagnostics": [
+          "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"
+        ],
         "availableInputs": [
           "Hsol_vertical_horizontal_A9_6"
         ],
         "missingInputs": [
-          "Qsol",
           "Qsky",
+          "Qsol",
           "solarElementInputs"
-        ]
+        ],
+        "supersedesDiagnostic": "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
       },
       {
         "field": "ventilationRate",
@@ -3221,8 +3225,8 @@
           "Hsol_vertical_horizontal_A9_6"
         ],
         "missingInputs": [
-          "Qsol",
           "Qsky",
+          "Qsol",
           "solarElementInputs"
         ],
         "note": "The remaining blocker is not Hsol. It is automatic Qsol/Qsky completion for the selected project solar elements."
@@ -3533,8 +3537,8 @@
         "Hsol_vertical_horizontal_A9_6"
       ],
       "missingInputs": [
-        "Qsol",
         "Qsky",
+        "Qsol",
         "solarElementInputs"
       ],
       "recommendedMilestone": "P7D"

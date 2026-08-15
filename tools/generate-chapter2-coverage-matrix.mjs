@@ -877,7 +877,7 @@ function postP7BClimateFieldMapping(fields) {
       status: "hsol_connected_qsol_qsky_bounded",
       diagnostic: "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
       availableInputs: ["Hsol_vertical_horizontal_A9_6"],
-      missingInputs: ["Qsol", "Qsky", "solarElementInputs"]
+      missingInputs: ["Qsky", "Qsol", "solarElementInputs"]
     };
   });
   if (!mapped.some((field) => field.field === "monthlyHsolVerticalHorizontal")) {
@@ -1136,7 +1136,7 @@ function main() {
         "P7B transforms Annex A.9.6 source rows into production Hsol for tabulated vertical/horizontal planes. Automatic source-backed Qsol still requires Qsky-compatible inputs and complete transparent/opaque solar element inputs.",
       diagnosticCode: "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
       availableInputs: ["Hsol_vertical_horizontal_A9_6"],
-      missingInputs: ["Qsol", "Qsky", "solarElementInputs"],
+      missingInputs: ["Qsky", "Qsol", "solarElementInputs"],
       recommendedMilestone: "P7D"
     },
     {
@@ -1262,7 +1262,7 @@ function main() {
           productionPath: "Chapter 2 solar gains only when explicit/preprocessed Qsol or Hsol+Qsky+complete solar element inputs exist",
           diagnosticCode: "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
           availableInputs: ["Hsol_vertical_horizontal_A9_6"],
-          missingInputs: ["Qsol", "Qsky", "solarElementInputs"],
+          missingInputs: ["Qsky", "Qsol", "solarElementInputs"],
           note: "The remaining blocker is not Hsol. It is automatic Qsol/Qsky completion for the selected project solar elements."
         }
       ],

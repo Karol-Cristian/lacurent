@@ -33,7 +33,7 @@ The implementation does not infer non-tabulated tilted surfaces and does not fab
 - complete transparent/opaque solar element inputs: area, orientation, shading, glazing factor, frame factor, absorptance, exterior surface resistance and corrected U-value as applicable;
 - SR EN ISO 52010-1 only for non-tabulated tilted-surface `Hsol` or other delegated climate-preprocessing branches not reproduced by MC001.
 
-When those inputs are absent, production returns `CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE` with `availableInputs: ["Hsol_vertical_horizontal_A9_6"]` and `missingInputs: ["Qsol", "Qsky", "solarElementInputs"]`.
+When those inputs are absent, production returns `SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED` with `availableInputs: ["Hsol_vertical_horizontal_A9_6"]`, `missingInputs: ["Qsky", "Qsol", "solarElementInputs"]`, `productionEligible: false`, and context diagnostic `A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL`.
 
 ## Locality Coverage
 

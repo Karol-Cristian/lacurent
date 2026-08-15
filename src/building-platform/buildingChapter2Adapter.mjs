@@ -24,8 +24,8 @@ function physicsValue(quantity, fallbackReference) {
   };
 }
 
-const CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE =
-  "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE";
+const SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED =
+  "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED";
 
 function chapter2ClimateInputBlockers(buildingDna) {
   if (buildingDna?.calculationStatus !== "source_backed_climate_provider") {
@@ -40,12 +40,16 @@ function chapter2ClimateInputBlockers(buildingDna) {
     return [];
   }
   return [{
-    code: CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE,
+    code: SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED,
     severity: "blocking",
     reason:
       "MC001/1-2006 Annex A9.6 now provides source-backed Hsol for the tabulated vertical/horizontal planes, but automatic Chapter 2 Qsol still requires Qsky-compatible inputs and complete solar element inputs.",
     availableInputs: ["Hsol_vertical_horizontal_A9_6"],
-    missingInputs: ["Qsol", "Qsky", "solarElementInputs"],
+    missingInputs: ["Qsky", "Qsol", "solarElementInputs"],
+    contextDiagnostics: [
+      "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"
+    ],
+    productionEligible: false,
     affectedCalculations: [
       "chapter2_solar_gains",
       "chapter2_heating_useful_demand",
