@@ -65,6 +65,19 @@ function systemLines(monthId, serviceKey, system) {
   ];
 }
 
+function sourceLabel(source) {
+  if (!source) return "sursa nedeclarata";
+  if (source.classification === "NUMERICALLY_IMPLEMENTED") return "calculat normativ";
+  if (source.classification === "PROCEDURALLY_IMPLEMENTED") return "procedural normativ";
+  if (source.classification === "EXPLICIT_INPUT_BOUNDARY") return "input tehnic explicit";
+  if (source.classification === "EXTERNAL_STANDARD_BLOCKED") return "standard extern";
+  return source.classification ?? "sursa nedeclarata";
+}
+
+function sourceReference(source, fallback) {
+  return source?.formulaIds?.[source.formulaIds.length - 1] ?? fallback;
+}
+
 function monthlyServiceLines(month, serviceKey) {
   const service = month[serviceKey];
   if (!service) return [];
@@ -74,10 +87,10 @@ function monthlyServiceLines(month, serviceKey) {
   const lines = [
     line(
       `${month.month}.${serviceKey}.useful`,
-      `Q_${serviceKey},util,${month.month} := ${value(service.usefulDemandKWh, "kWh")} -- rezultat util furnizat explicit de lantul anterior`,
+      `Q_${serviceKey},util,${month.month} := ${value(service.usefulDemandKWh, "kWh")} -- ${sourceLabel(service.usefulDemandSource)}`,
       service.usefulDemandKWh,
       "kWh",
-      "MC001_CHAPTER_3_EXPLICIT_INPUT_BOUNDARY"
+      sourceReference(service.usefulDemandSource, "MC001_CHAPTER_3_INPUT_BOUNDARY")
     ),
     ...parallelSystemLines,
     ...service.stageResults.map(stage => stageLine(month.month, serviceKey, stage)),

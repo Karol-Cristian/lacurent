@@ -2113,6 +2113,16 @@ function traceabilityRows(buildingDna, calculation, formulas) {
 function installationRows(calculation) {
   const result = calculation.chapter3Result;
   if (!result) return [];
+  const dhwUsefulSources = (result.monthly ?? [])
+    .map(month => month.dhw?.usefulDemandSource?.classification)
+    .filter(Boolean);
+  const dhwUsefulStatus =
+    dhwUsefulSources.length > 0 &&
+    dhwUsefulSources.every(item => item === "NUMERICALLY_IMPLEMENTED")
+      ? "calculat normativ"
+      : result.services?.dhw?.enabled
+        ? "input tehnic explicit"
+        : "inactiv";
   const rows = [
     {
       service: "Incalzire",
@@ -2132,7 +2142,7 @@ function installationRows(calculation) {
       service: "Apa calda de consum",
       value: result.annual?.dhwInputKWh ?? 0,
       unit: "kWh/an",
-      status: result.services?.dhw?.enabled ? "calculat" : "inactiv",
+      status: dhwUsefulStatus,
       outputKey: "chapter3Result.annual.dhwInputKWh"
     },
     {
@@ -2187,6 +2197,8 @@ function installationSystemTopologyRows(calculation) {
           allocationFraction: system.allocationFraction,
           generatorType: system.metadata?.generatorType ?? null,
           energyCarrier: system.metadata?.energyCarrier ?? null,
+          usefulDemandSourceClassification:
+            system.usefulDemandSource?.classification ?? null,
           annualInputKWh: 0
         };
         current.annualInputKWh += system.finalStageInputKWh ?? 0;

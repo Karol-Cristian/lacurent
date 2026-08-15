@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  CHAPTER3_INPUT_CLASSIFICATION,
   CHAPTER3_DHW_STAGE_IDS,
   CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER,
   CHAPTER3_INSTALLATION_STAGE_IDS,
@@ -11,6 +12,7 @@ import {
   createBuildingDnaFromAssistedAnswers,
   createInMemoryVersionedBuildingBackend
 } from "../index.mjs";
+import { validateMc001ExecutionTrace } from "../../physics-engine/mc001ExecutionTrace.mjs";
 import { createP1SeedMonthlyProfiles } from "./fixtures/p1SeedMonthlyProfiles.mjs";
 
 const EPSILON = 1e-9;
@@ -249,7 +251,7 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
     buildingDna: pipeline.buildingDna,
     calculation: pipeline.calculation
   });
-  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8_v1");
+  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8b_v1");
   assert.ok(metadata.chapter3RuntimeVersion);
 
   const backend = createInMemoryVersionedBuildingBackend();
@@ -275,6 +277,130 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
     reopened.analysisVersion.complete_engine_output.chapter3Result.annual,
     saved.analysisVersion.complete_engine_output.chapter3Result.annual
   );
+});
+
+await test("DHW useful demand can be calculated normatively from residential Building DNA inputs", () => {
+  const calculatedDhw = technicalSystems();
+  calculatedDhw.domesticHotWater.monthlyUsefulDemandKWh = undefined;
+  calculatedDhw.domesticHotWater.usefulDemandSource = {
+    mode: "residential_normative",
+    dwellingType: "single_family_or_terraced",
+    source: {
+      origin: "building_dna_derived",
+      reference: "buildingDna.geometry.usefulFloorAreaM2"
+    }
+  };
+  calculatedDhw.cooling.enabled = false;
+  calculatedDhw.cooling.systems = [];
+  calculatedDhw.ventilationAhu.enabled = false;
+  calculatedDhw.ventilationAhu.systems = [];
+  calculatedDhw.coolingStoragePcm.enabled = false;
+  calculatedDhw.lighting.enabled = false;
+  calculatedDhw.lighting.explicitMonthlyEnergyKWh = [];
+  calculatedDhw.lighting.leniSubspaces = [];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: calculatedDhw })
+  );
+
+  assert.equal(pipeline.status, "ready");
+  assert.equal(pipeline.calculation.chapter3Result.status, "calculated");
+  const januaryDhw = pipeline.calculation.chapter3Result.monthly[0].dhw;
+  const februaryDhw = pipeline.calculation.chapter3Result.monthly[1].dhw;
+  assert.equal(
+    januaryDhw.usefulDemandSource.classification,
+    CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+  );
+  assert.equal(
+    pipeline.calculation.chapter3Input.months[0].dhw.usefulDemandSource.classification,
+    CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+  );
+  assert.ok(januaryDhw.usefulDemandSource.formulaIds.includes("MC001_3_188_DHW_USEFUL_ENERGY"));
+  assert.equal(
+    validateMc001ExecutionTrace(januaryDhw.usefulDemandSource.executionTrace).ok,
+    true
+  );
+
+  const equivalentConsumers = 1.75 + 0.3 * (0.025 * 120 - 1.75);
+  const specificNormative = Math.min(40.71, 3.26 * 120 / equivalentConsumers);
+  const correctedSpecific = specificNormative * ((60 - 13.5) / (45 - 10));
+  const dailyVolume = correctedSpecific * equivalentConsumers;
+  const januaryExpectedUseful =
+    dailyVolume * 31 * (4.186 / 3600) * 1000 * (45 - 10) / 1000;
+  const februaryExpectedUseful =
+    dailyVolume * 28 * (4.186 / 3600) * 1000 * (45 - 10) / 1000;
+
+  close(januaryDhw.usefulDemandKWh, januaryExpectedUseful, 1e-9);
+  close(februaryDhw.usefulDemandKWh, februaryExpectedUseful, 1e-9);
+  close(
+    januaryDhw.finalStageInputKWh,
+    januaryExpectedUseful + 6,
+    1e-9
+  );
+  assert.equal(
+    pipeline.calculation.chapter3Result.formulaReferences.includes("MC001_3_188_DHW_USEFUL_ENERGY"),
+    true
+  );
+
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  const dhwRow = workspace.installations.rows.find(
+    row => row.service === "Apa calda de consum"
+  );
+  assert.equal(dhwRow.status, "calculat normativ");
+  assert.ok(
+    workspace.engineeringNotebook.sections
+      .find(section => section.sectionId === "chapter3.month.january")
+      .lines.some(line => line.lineId === "january.dhw.useful" && line.text.includes("calculat normativ"))
+  );
+});
+
+await test("DHW useful demand preserves explicit boundary provenance for old saved projects", () => {
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(assistedAnswers());
+  const januaryDhw = pipeline.calculation.chapter3Result.monthly[0].dhw;
+  assert.equal(
+    januaryDhw.usefulDemandSource.classification,
+    CHAPTER3_INPUT_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY
+  );
+  assert.equal(januaryDhw.usefulDemandSource.productionEligible, false);
+  assert.equal(januaryDhw.usefulDemandKWh, 50);
+});
+
+await test("DHW useful demand can be calculated from MC001 Tabel 3.3.1 source rows", () => {
+  const systems = technicalSystems();
+  systems.domesticHotWater.monthlyUsefulDemandKWh = undefined;
+  systems.domesticHotWater.usefulDemandSource = {
+    mode: "table_3_3_1",
+    tableEntryId: "birouri_functionar_schimb",
+    unitCount: 12
+  };
+  systems.heating.enabled = false;
+  systems.heating.systems = [];
+  systems.cooling.enabled = false;
+  systems.cooling.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+
+  assert.equal(pipeline.status, "ready");
+  const januaryDhw = pipeline.calculation.chapter3Result.monthly[0].dhw;
+  assert.equal(
+    januaryDhw.usefulDemandSource.classification,
+    CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+  );
+  assert.ok(januaryDhw.usefulDemandSource.formulaIds.includes("MC001_3_190_DHW_DAILY_VOLUME_NON_RESIDENTIAL"));
+  assert.ok(januaryDhw.usefulDemandSource.formulaIds.includes("MC001_3_191_DHW_VOLUME_TEMPERATURE_CORRECTION"));
+
+  const correctedDailyVolume = 5 * (60 - 10) / (45 - 10) * 12;
+  const januaryExpectedUseful =
+    correctedDailyVolume * 31 * (4.186 / 3600) * 1000 * (45 - 10) / 1000;
+  close(januaryDhw.usefulDemandKWh, januaryExpectedUseful, 1e-9);
 });
 
 await test("Chapter 2-only buildings remain openable without Chapter 3 output", () => {
