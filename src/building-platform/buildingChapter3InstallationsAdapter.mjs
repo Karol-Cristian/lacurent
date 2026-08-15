@@ -15,11 +15,42 @@ import {
   calculateResidentialEquivalentConsumers,
   calculateResidentialSpecificDhwVolume
 } from "../physics-engine/dhwUsefulDemand.mjs";
+import {
+  calculateDhwAuxiliaryDistributionEnergy,
+  calculateDhwAverageTemperatureFromProfile,
+  calculateDhwAverageTemperatureSimplified,
+  calculateDhwBuriedPipeLinearTransmittance,
+  calculateDhwDistributionLossWithRecirculation,
+  calculateDhwDistributionRecoveryFactor,
+  calculateDhwExponentialCoefficient,
+  calculateDhwHeatTracingAuxiliaryEnergy,
+  calculateDhwHeatTracingProtectedPipeLoss,
+  calculateDhwInsulatedPipeLinearTransmittance,
+  calculateDhwMeanDistributionTemperature,
+  calculateDhwPressureDrop,
+  calculateDhwPumpDesignPower,
+  calculateDhwPumpEfficiencyFactor,
+  calculateDhwPumpEnergyUseFactor,
+  calculateDhwRecirculationLossWithoutDrawOff,
+  calculateDhwRecirculationPumpEnergy,
+  calculateDhwRecoverableAuxiliaryDistributionEnergy,
+  calculateDhwRecoverableDistributionLoss,
+  calculateDhwRecoveredAuxiliaryDistributionEnergy,
+  calculateDhwRecoveredDistributionHeat,
+  calculateDhwReferencePumpPower,
+  calculateDhwSpecificLinearHeatLoss,
+  calculateDhwStorageStandingLossSingleVolume,
+  calculateDhwStubLossWithoutRecirculation,
+  calculateDhwTemperatureAfterNonUseInterval,
+  calculateDhwTotalDistributionLoss,
+  calculateDhwUninsulatedPipeApproxLinearTransmittance,
+  calculateDhwUninsulatedPipeLinearTransmittance
+} from "../physics-engine/dhwDistributionLosses.mjs";
 import { calculateMc001Chapter3IntegratedRuntime } from "../physics-engine/mc001Chapter3IntegratedRuntime.mjs";
 
 export const TECHNICAL_SYSTEMS_SCHEMA = "technical_systems_v1";
 export const CHAPTER3_INSTALLATIONS_ADAPTER_VERSION =
-  "building_chapter_3_installations_adapter_p8b_v1";
+  "building_chapter_3_installations_adapter_p8c_v1";
 
 export const CHAPTER3_INPUT_CLASSIFICATION = Object.freeze({
   NUMERICALLY_IMPLEMENTED: "NUMERICALLY_IMPLEMENTED",
@@ -137,8 +168,8 @@ export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
     runtimeModule: "src/physics-engine/mc001Chapter3IntegratedRuntime.mjs",
     requiredInputFields: Object.freeze([
       "technicalSystems.domesticHotWater.usefulDemandSource or technicalSystems.domesticHotWater.monthlyUsefulDemandKWh",
-      "technicalSystems.domesticHotWater.systems[].stages[].lossKWhPerMonth",
-      "technicalSystems.domesticHotWater.systems[].stages[].auxiliaryKWhPerMonth"
+      "technicalSystems.domesticHotWater.systems[].stages[].lossCalculation or lossKWhPerMonth",
+      "technicalSystems.domesticHotWater.systems[].stages[].auxiliaryCalculation or auxiliaryKWhPerMonth"
     ]),
     optionalInputFields: Object.freeze([
       "generatorType",
@@ -148,9 +179,13 @@ export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
       "usefulDemandSource.mode = residential_normative | table_3_3_1 | explicit_monthly",
       "usefulDemandSource.dwellingType",
       "usefulDemandSource.tableEntryId",
-      "usefulDemandSource.unitCount"
+      "usefulDemandSource.unitCount",
+      "systems[].stages[].lossCalculation.mode = dhw_distribution_loss_components | dhw_storage_standing_loss_single_volume",
+      "systems[].stages[].auxiliaryCalculation.mode = dhw_recirculation_pump_auxiliary | dhw_heat_tracing_auxiliary",
+      "systems[].stages[].lossKWhPerMonth legacy/expert explicit fallback",
+      "systems[].stages[].auxiliaryKWhPerMonth legacy/expert explicit fallback"
     ]),
-    units: Object.freeze(["kWh/month", "fraction"]),
+    units: Object.freeze(["kWh/month", "fraction", "m", "W/(m*K)", "degC", "h/month", "kPa", "m3/h", "kW"]),
     outputs: Object.freeze(["monthly.dhw.finalStageInputKWh", "annual.dhwInputKWh"]),
     notebookSection: "chapter3.month.*.dhw",
     reportSection: "instalatii_capitolul_3.dhw",
@@ -277,6 +312,379 @@ function monthlyScalarWithSource(value, monthIndex, path, diagnostics, source) {
   };
 }
 
+function monthlyComponent(value, monthIndex) {
+  if (Array.isArray(value)) return value[monthIndex];
+  return value;
+}
+
+function monthlyField(record, field, monthIndex) {
+  const value = record?.[field];
+  return Array.isArray(value) ? value[monthIndex] : value;
+}
+
+function traceFormulaIds(results) {
+  return results
+    .filter(Boolean)
+    .map(result => result.formulaId)
+    .filter(Boolean);
+}
+
+function calculatedStageSource({ origin, reference, results, details = {} }) {
+  return sourceDescriptor({
+    classification: CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+    origin,
+    reference,
+    formulaIds: traceFormulaIds(results),
+    details: {
+      calculationChain: results.filter(Boolean),
+      executionTrace: results.filter(Boolean).at(-1)?.executionTrace ?? null,
+      ...details
+    }
+  });
+}
+
+function calculateDhwPipeMeanTemperature(input) {
+  if (!isPlainObject(input)) return null;
+  return calculateDhwMeanDistributionTemperature(input);
+}
+
+function calculateDhwPipeLinearTransmittance(input) {
+  if (!isPlainObject(input)) return null;
+  switch (input.mode) {
+    case "insulated_pipe":
+      return calculateDhwInsulatedPipeLinearTransmittance(input);
+    case "buried_pipe":
+      return calculateDhwBuriedPipeLinearTransmittance(input);
+    case "uninsulated_pipe":
+      return calculateDhwUninsulatedPipeLinearTransmittance(input);
+    case "uninsulated_pipe_approx":
+      return calculateDhwUninsulatedPipeApproxLinearTransmittance(input);
+    default:
+      return null;
+  }
+}
+
+function calculateDhwPipeTemperatureProfile(input) {
+  if (!isPlainObject(input)) return [];
+  if (input.mode === "profile") {
+    const specificLoss = input.specificLinearHeatLossInput
+      ? calculateDhwSpecificLinearHeatLoss(input.specificLinearHeatLossInput)
+      : null;
+    const coefficient = input.exponentialCoefficientInput
+      ? calculateDhwExponentialCoefficient({
+          ...input.exponentialCoefficientInput,
+          ...(specificLoss ? { specificLinearHeatLossWPerM: specificLoss.valueWPerM } : {})
+        })
+      : null;
+    const temperatureAfterNonUse = input.temperatureAfterNonUseInput
+      ? calculateDhwTemperatureAfterNonUseInterval({
+          ...input.temperatureAfterNonUseInput,
+          ...(coefficient ? { exponentialCoefficient: coefficient.value } : {})
+        })
+      : null;
+    const average = input.averageTemperatureInput
+      ? calculateDhwAverageTemperatureFromProfile({
+          ...input.averageTemperatureInput,
+          ...(temperatureAfterNonUse
+            ? { temperatureAfterNonUseIntervalC: temperatureAfterNonUse.valueC }
+            : {})
+        })
+      : null;
+    return [specificLoss, coefficient, temperatureAfterNonUse, average].filter(Boolean);
+  }
+  if (input.mode === "simplified") {
+    return [calculateDhwAverageTemperatureSimplified(input)];
+  }
+  return [];
+}
+
+function prepareDhwPipeSegments(segments = []) {
+  const results = [];
+  const prepared = segments.map(segment => {
+    const meanTemperature = calculateDhwPipeMeanTemperature(segment.meanTemperatureInput);
+    const linearTransmittance = calculateDhwPipeLinearTransmittance(segment.linearTransmittanceInput);
+    const profileResults = calculateDhwPipeTemperatureProfile(segment.temperatureProfileInput);
+    results.push(meanTemperature, linearTransmittance, ...profileResults);
+    const averageFromProfile = profileResults.find(result => result.valueC !== undefined);
+    return {
+      ...segment,
+      ...(meanTemperature ? { thetaWMeanC: meanTemperature.valueC } : {}),
+      ...(averageFromProfile ? { thetaWMeanC: averageFromProfile.valueC } : {}),
+      ...(linearTransmittance
+        ? { linearTransmittanceWPerMK: linearTransmittance.valueWPerMK }
+        : {})
+    };
+  });
+  return { prepared, results: results.filter(Boolean) };
+}
+
+function calculateDhwDistributionLossContract(input, monthIndex, path) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "dhw_distribution_loss_components") return null;
+
+  const results = [];
+  let distributionLoss = null;
+  let stubLoss = null;
+  let recirculationNoDrawLoss = null;
+  let recoverableLoss = null;
+  let recoveryFactor = null;
+  let recoveredHeat = null;
+
+  if (
+    !Array.isArray(contract.distributionPipeSegments) &&
+    !Array.isArray(contract.stubPipeSegments) &&
+    !Array.isArray(contract.recirculationNoDrawPipeSegments)
+  ) {
+    throw new Error(
+      "dhw_distribution_loss_components requires distributionPipeSegments, stubPipeSegments or recirculationNoDrawPipeSegments"
+    );
+  }
+
+  if (Array.isArray(contract.distributionPipeSegments)) {
+    const prepared = prepareDhwPipeSegments(contract.distributionPipeSegments);
+    results.push(...prepared.results);
+    distributionLoss = calculateDhwDistributionLossWithRecirculation({
+      pipeSegments: prepared.prepared,
+      operationTimeHours: monthlyField(contract, "operationTimeHours", monthIndex)
+    });
+    results.push(distributionLoss);
+  }
+  if (Array.isArray(contract.stubPipeSegments)) {
+    stubLoss = calculateDhwStubLossWithoutRecirculation({
+      pipeSegments: contract.stubPipeSegments,
+      waterDensityKgPerM3: contract.waterDensityKgPerM3 ?? MC001_DHW_WATER_DENSITY_KG_PER_M3,
+      specificHeatKWhPerKgK: contract.specificHeatKWhPerKgK ?? 4.186 / 3600,
+      thetaWDistributionC: contract.thetaWDistributionC,
+      calculationIntervalHours: monthlyField(contract, "calculationIntervalHours", monthIndex)
+    });
+    results.push(stubLoss);
+  }
+  if (Array.isArray(contract.recirculationNoDrawPipeSegments)) {
+    const prepared = prepareDhwPipeSegments(contract.recirculationNoDrawPipeSegments);
+    results.push(...prepared.results);
+    recirculationNoDrawLoss = calculateDhwRecirculationLossWithoutDrawOff({
+      pipeSegments: prepared.prepared,
+      operationTimeHours: monthlyField(contract, "operationTimeHours", monthIndex)
+    });
+    results.push(recirculationNoDrawLoss);
+  }
+
+  const total = calculateDhwTotalDistributionLoss({
+    distributionLossKWh: distributionLoss?.valueKWh ?? 0,
+    recirculationNoDrawLossKWh: recirculationNoDrawLoss?.valueKWh ?? 0,
+    stubLossKWh: stubLoss?.valueKWh ?? 0
+  });
+  results.push(total);
+
+  if (Array.isArray(contract.recoverablePipeSegments) && total.valueKWh > 0) {
+    const prepared = prepareDhwPipeSegments(contract.recoverablePipeSegments);
+    results.push(...prepared.results);
+    recoverableLoss = calculateDhwRecoverableDistributionLoss({
+      pipeSegments: prepared.prepared,
+      operationTimeHours: monthlyField(contract, "operationTimeHours", monthIndex)
+    });
+    recoveryFactor = calculateDhwDistributionRecoveryFactor({
+      recoverableDistributionLossKWh: recoverableLoss.valueKWh,
+      totalDistributionLossKWh: total.valueKWh
+    });
+    recoveredHeat = calculateDhwRecoveredDistributionHeat({
+      recoveryFactor: recoveryFactor.value,
+      totalDistributionLossKWh: total.valueKWh
+    });
+    results.push(recoverableLoss, recoveryFactor, recoveredHeat);
+  }
+
+  return {
+    value: total.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_dhw_distribution_component_contract",
+      reference: `${path}.lossCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        recoveredHeatKWh: recoveredHeat?.valueKWh ?? null,
+        recoveryFactor: recoveryFactor?.value ?? null
+      }
+    }),
+    derivedFractions: {
+      ...(recoveryFactor ? { lossRecoveredFraction: recoveryFactor.value } : {}),
+      ...(recoveryFactor ? { lossRecoverableFractionToHeating: recoveryFactor.value } : {})
+    }
+  };
+}
+
+function calculateDhwStorageLossContract(input, monthIndex, path) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "dhw_storage_standing_loss_single_volume") return null;
+  const result = calculateDhwStorageStandingLossSingleVolume({
+    ...contract,
+    calculationHours: monthlyField(contract, "calculationHours", monthIndex)
+  });
+  return {
+    value: result.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_dhw_storage_component_contract",
+      reference: `${path}.lossCalculation`,
+      results: [result],
+      details: { mode: contract.mode }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function calculateDhwHeatTracingAuxiliaryContract(input, monthIndex, path) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "dhw_heat_tracing_auxiliary") return null;
+  const prepared = prepareDhwPipeSegments(contract.protectedPipeSegments ?? []);
+  const protectedLoss = calculateDhwHeatTracingProtectedPipeLoss({
+    pipeSegments: prepared.prepared,
+    operationTimeHours: monthlyField(contract, "operationTimeHours", monthIndex)
+  });
+  const auxiliary = calculateDhwHeatTracingAuxiliaryEnergy({
+    protectedPipeDistributionLossKWh: protectedLoss.valueKWh
+  });
+  const recoverable = finiteNumber(contract.recoverableFraction)
+    ? calculateDhwRecoverableAuxiliaryDistributionEnergy({
+        recoverableFraction: contract.recoverableFraction,
+        distributionAuxiliaryEnergyKWh: auxiliary.valueKWh
+      })
+    : null;
+  const recovered = finiteNumber(contract.recoverableFraction)
+    ? calculateDhwRecoveredAuxiliaryDistributionEnergy({
+        recoverableFraction: contract.recoverableFraction,
+        distributionAuxiliaryEnergyKWh: auxiliary.valueKWh
+      })
+    : null;
+  const results = [...prepared.results, protectedLoss, auxiliary, recoverable, recovered].filter(Boolean);
+  return {
+    value: auxiliary.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_dhw_heat_tracing_component_contract",
+      reference: `${path}.auxiliaryCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        recoverableAuxiliaryKWh: recoverable?.valueKWh ?? null,
+        recoveredAuxiliaryKWh: recovered?.valueKWh ?? null
+      }
+    }),
+    derivedFractions: {
+      ...(finiteNumber(contract.recoverableFraction)
+        ? { auxiliaryRecoverableFractionToHeating: contract.recoverableFraction }
+        : {})
+    }
+  };
+}
+
+function calculateDhwPumpAuxiliaryContract(input, monthIndex, path) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "dhw_recirculation_pump_auxiliary") return null;
+  const pressureDrop = contract.pressureDropInput
+    ? calculateDhwPressureDrop(contract.pressureDropInput)
+    : null;
+  const designPower = calculateDhwPumpDesignPower({
+    pressureDropKPa: pressureDrop?.valueKPa ?? contract.pressureDropKPa,
+    designFlowRateM3PerH: contract.designFlowRateM3PerH
+  });
+  const referencePower = calculateDhwReferencePumpPower({
+    pumpDesignPowerKW: designPower.valueKW
+  });
+  const efficiencyFactor = calculateDhwPumpEfficiencyFactor({
+    referencePumpPowerKW: referencePower.valueKW,
+    pumpDesignPowerKW: designPower.valueKW
+  });
+  const energyUseFactor = calculateDhwPumpEnergyUseFactor({
+    pumpEfficiencyFactor: efficiencyFactor.value,
+    controlConstantCp1: contract.controlConstantCp1,
+    controlConstantCp2: contract.controlConstantCp2,
+    operationLoadFactor: contract.operationLoadFactor,
+    energyEfficiencyIndex: contract.energyEfficiencyIndex
+  });
+  const pumpEnergy = calculateDhwRecirculationPumpEnergy({
+    pumpDesignPowerKW: designPower.valueKW,
+    operationLoadFactor: contract.operationLoadFactor,
+    annualOperationTimeHours: monthlyField(contract, "operationTimeHours", monthIndex),
+    correctionFactor: contract.correctionFactor
+  });
+  const auxiliary = calculateDhwAuxiliaryDistributionEnergy({
+    recirculationPumpEnergyKWh: pumpEnergy.valueKWh,
+    pumpEnergyUseFactor: energyUseFactor.value
+  });
+  const recoverable = finiteNumber(contract.recoverableFraction)
+    ? calculateDhwRecoverableAuxiliaryDistributionEnergy({
+        recoverableFraction: contract.recoverableFraction,
+        distributionAuxiliaryEnergyKWh: auxiliary.valueKWh
+      })
+    : null;
+  const recovered = finiteNumber(contract.recoverableFraction)
+    ? calculateDhwRecoveredAuxiliaryDistributionEnergy({
+        recoverableFraction: contract.recoverableFraction,
+        distributionAuxiliaryEnergyKWh: auxiliary.valueKWh
+      })
+    : null;
+  const results = [
+    pressureDrop,
+    designPower,
+    referencePower,
+    efficiencyFactor,
+    energyUseFactor,
+    pumpEnergy,
+    auxiliary,
+    recoverable,
+    recovered
+  ].filter(Boolean);
+  return {
+    value: auxiliary.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_dhw_pump_component_contract",
+      reference: `${path}.auxiliaryCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        recoverableAuxiliaryKWh: recoverable?.valueKWh ?? null,
+        recoveredAuxiliaryKWh: recovered?.valueKWh ?? null
+      }
+    }),
+    derivedFractions: {
+      ...(finiteNumber(contract.recoverableFraction)
+        ? { auxiliaryRecoverableFractionToHeating: contract.recoverableFraction }
+        : {})
+    }
+  };
+}
+
+function calculatedStageLoss(stage, service, stageId, monthIndex, path, diagnostics) {
+  try {
+    if (service === "dhw" && stageId === "distribution") {
+      return calculateDhwDistributionLossContract(stage.lossCalculation, monthIndex, path);
+    }
+    if (service === "dhw" && stageId === "storage") {
+      return calculateDhwStorageLossContract(stage.lossCalculation, monthIndex, path);
+    }
+  } catch (error) {
+    diagnostics.push(diagnostic("invalid_chapter3_stage_loss_component_contract", path, error.message));
+  }
+  return null;
+}
+
+function calculatedStageAuxiliary(stage, service, stageId, monthIndex, path, diagnostics) {
+  try {
+    if (service === "dhw" && stageId === "distribution") {
+      return (
+        calculateDhwPumpAuxiliaryContract(stage.auxiliaryCalculation, monthIndex, path) ??
+        calculateDhwHeatTracingAuxiliaryContract(stage.auxiliaryCalculation, monthIndex, path)
+      );
+    }
+  } catch (error) {
+    diagnostics.push(diagnostic("invalid_chapter3_stage_auxiliary_component_contract", path, error.message));
+  }
+  return null;
+}
+
 function optionalMonthlyScalar(value, monthIndex, fallback = 0) {
   if (Array.isArray(value)) {
     const monthly = value[monthIndex];
@@ -359,8 +767,28 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
     }
     const lossPath = `${service}.stages.${stageId}.lossKWhPerMonth`;
     const auxiliaryPath = `${service}.stages.${stageId}.auxiliaryKWhPerMonth`;
-    const loss = monthlyScalarWithSource(stage.lossKWhPerMonth, monthIndex, lossPath, diagnostics, stage.lossSource);
-    const auxiliary = monthlyScalarWithSource(stage.auxiliaryKWhPerMonth, monthIndex, auxiliaryPath, diagnostics, stage.auxiliarySource);
+    const calculatedLoss = calculatedStageLoss(
+      stage,
+      service,
+      stageId,
+      monthIndex,
+      `${service}.stages.${stageId}`,
+      diagnostics
+    );
+    const calculatedAuxiliary = calculatedStageAuxiliary(
+      stage,
+      service,
+      stageId,
+      monthIndex,
+      `${service}.stages.${stageId}`,
+      diagnostics
+    );
+    const loss =
+      calculatedLoss ??
+      monthlyScalarWithSource(stage.lossKWhPerMonth, monthIndex, lossPath, diagnostics, stage.lossSource);
+    const auxiliary =
+      calculatedAuxiliary ??
+      monthlyScalarWithSource(stage.auxiliaryKWhPerMonth, monthIndex, auxiliaryPath, diagnostics, stage.auxiliarySource);
     stages.push({
       stageId,
       lossKWh: loss.value,
@@ -377,19 +805,19 @@ function serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostic
         stage.lossRecoveredFraction,
         `${service}.stages.${stageId}.lossRecoveredFraction`,
         diagnostics,
-        0
+        loss.derivedFractions?.lossRecoveredFraction ?? 0
       ),
       auxiliaryRecoverableFractionToHeating: fraction(
         stage.auxiliaryRecoverableFractionToHeating,
         `${service}.stages.${stageId}.auxiliaryRecoverableFractionToHeating`,
         diagnostics,
-        0
+        auxiliary.derivedFractions?.auxiliaryRecoverableFractionToHeating ?? 0
       ),
       lossRecoverableFractionToHeating: fraction(
         stage.lossRecoverableFractionToHeating,
         `${service}.stages.${stageId}.lossRecoverableFractionToHeating`,
         diagnostics,
-        0
+        loss.derivedFractions?.lossRecoverableFractionToHeating ?? 0
       )
     });
   }

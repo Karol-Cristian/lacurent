@@ -10,7 +10,7 @@ const JSON_PATH = "validation-reference/chapter3-coverage-matrix.json";
 const MD_PATH = "validation-reference/chapter3-coverage-matrix.md";
 
 const productionTopology = {
-  schema: "mc001_chapter3_production_topology_p8b_v1",
+  schema: "mc001_chapter3_production_topology_p8c_v1",
   canonicalBoundary: "Chapter 2 monthly useful demand -> Chapter 3 explicit service-system topology",
   supportedServiceChains: [
     "heating",
@@ -39,7 +39,7 @@ const productionTopology = {
 };
 
 const coverage = {
-  schema: "mc001_chapter3_coverage_matrix_p8b_v1",
+  schema: "mc001_chapter3_coverage_matrix_p8c_v1",
   source: "src/physics-engine/tests/fixtures/mc001Chapter3ImplementationMatrixFixture.mjs",
   generation: {
     tool: "tools/generate-chapter3-coverage-matrix.mjs",
@@ -89,12 +89,25 @@ const classificationRows = Object.entries(summary.p8bClassificationCounts)
   .sort(([a], [b]) => a.localeCompare(b));
 const convertedBoundaryRows = chapter3ImplementationMatrix
   .filter(entry => entry.implementationClassification === "NUMERICALLY_IMPLEMENTED")
-  .filter(entry => ["3.188", "3.189", "3.190", "3.191", "3.192", "3.193", "3.194", "3.195", "3.196", "3.197"].includes(entry.relation))
-  .map(entry => `- ${entry.relation}: DHW useful-demand source now resolves through Building DNA \`usefulDemandSource\` and MC001 helper functions.`);
+  .filter(entry =>
+    [
+      ...Array.from({ length: 10 }, (_, index) => `3.${188 + index}`),
+      ...Array.from({ length: 29 }, (_, index) => `3.${200 + index}`)
+    ].includes(entry.relation)
+  )
+  .map(entry => {
+    if (entry.inputSourceClassification?.includes("dhw_distribution")) {
+      return `- ${entry.relation}: DHW distribution component contract resolves pipe, pump, heat-tracing and recovery calculations.`;
+    }
+    if (entry.inputSourceClassification?.includes("dhw_storage")) {
+      return `- ${entry.relation}: DHW storage component contract resolves storage standing-loss and heat-tracing calculations.`;
+    }
+    return `- ${entry.relation}: DHW useful-demand source now resolves through Building DNA \`usefulDemandSource\` and MC001 helper functions.`;
+  });
 const markdown = [
   "# MC001 Chapter 3 Coverage Matrix",
   "",
-  "Generated deterministically from the Chapter 3 source-to-code fixture. P8B separates numerically calculated relations from explicit technical-input boundaries.",
+  "Generated deterministically from the Chapter 3 source-to-code fixture. P8C expands component contracts while preserving separate numerical/procedural/explicit-boundary accounting.",
   "",
   mdTable([
     ["Schema", coverage.schema],
@@ -117,11 +130,11 @@ const markdown = [
   "",
   mdTable(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))),
   "",
-  "## P8B Primary Classification Counts",
+  "## P8C Primary Classification Counts",
   "",
   mdTable(classificationRows),
   "",
-  "## Explicit Boundaries Converted in P8B",
+  "## Explicit Boundaries Converted Through P8C",
   "",
   convertedBoundaryRows.join("\n"),
   "",
@@ -129,7 +142,7 @@ const markdown = [
   "",
   "An explicit boundary remains only where MC001 requires project/manufacturer technical data, delegates the detailed method to an unavailable standard, or the current production product does not yet expose the complete detailed component contract.",
   "",
-  "## P8B Production Topology",
+  "## P8C Production Topology",
   "",
   "- Single active systems use an implicit allocation fraction of 1; an explicit single-system allocation must also be 1.",
   "- Multiple active heating, cooling or DHW systems require explicit allocation fractions summing to 1.",

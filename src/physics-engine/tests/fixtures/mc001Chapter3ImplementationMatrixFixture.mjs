@@ -26,6 +26,7 @@ const HEATING_TEST = "src/physics-engine/tests/mc001Chapter3HeatingSystems.test.
 const INTEGRATED_TEST = "src/physics-engine/tests/mc001Chapter3IntegratedRuntime.test.mjs";
 const DHW_USEFUL_TEST = "src/physics-engine/tests/dhwUsefulDemand.test.mjs";
 const DHW_DISTRIBUTION_TEST = "src/physics-engine/tests/dhwDistributionLosses.test.mjs";
+const BUILDING_PLATFORM_TEST = "src/building-platform/tests/buildingChapter3InstallationsProduct.test.mjs";
 const REFERENCE_FIXTURE = "MC001_CHAPTER_3_REFERENCE_12_MONTH_EXPLICIT_SYSTEMS_V1";
 
 function relationRange(first, last) {
@@ -362,28 +363,36 @@ const dhwUsefulRelations = implementedRange(relationRange(188, 197), {
 });
 
 const dhwDistributionRelations = implementedRange(relationRange(200, 224), {
+  status: CHAPTER_3_MATRIX_STATUS.PRODUCTION_INTEGRATED,
   source: "MC001-2022 Chapter 3.3.7",
   implementation: DHW_DISTRIBUTION,
-  tests: [DHW_DISTRIBUTION_TEST],
-  validationFixture: "independent fixed constants in dhwDistributionLosses.test.mjs",
-  runtimeIntegrated: "DHW explicit stage chain integrated in 12-month reference fixture; detailed pipe/pump helpers callable",
-  notebookTraceable: "DHW monthly stage balances are visible in Chapter 3 notebook section",
-  explicitInputBoundary: true,
-  explicitBoundaryReason:
-    "DHW distribution pipe/pump helpers are implemented, but production stage losses and auxiliary values remain explicit unless detailed pipe, pump and operating-time inputs are supplied."
+  tests: [DHW_DISTRIBUTION_TEST, BUILDING_PLATFORM_TEST],
+  validationFixture:
+    "independent fixed constants in dhwDistributionLosses.test.mjs and DHW component-contract product fixture",
+  runtimeIntegrated:
+    "DHW distribution loss, heat tracing, pump auxiliary and recoverable/recovered component contracts resolve through Building DNA stage lossCalculation/auxiliaryCalculation before the integrated service chain.",
+  notebookTraceable:
+    "DHW monthly stage balances expose calculated-vs-explicit source classification in Chapter 3 notebook lines",
+  explicitInputBoundary: false,
+  implementationClassification: CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+  inputSourceClassification: "dhw_distribution_component_contract_pipe_pump_schedule_inputs"
 });
 
 const dhwStorageRelations = implementedRange(relationRange(225, 228), {
+  status: CHAPTER_3_MATRIX_STATUS.PRODUCTION_INTEGRATED,
   source: "MC001-2022 Chapter 3.3.7.4-3.3.8, pages 264-266",
   implementation: DHW_DISTRIBUTION,
-  tests: [DHW_DISTRIBUTION_TEST],
-  validationFixture: "independent fixed constants in dhwDistributionLosses.test.mjs",
-  tableImplemented: "storage product data remains an explicit-input boundary",
-  runtimeIntegrated: "DHW storage stage integrated by explicit stage balance; relation 3.228 callable for storage-product loss",
-  notebookTraceable: "DHW storage/generation stage balances are visible in Chapter 3 notebook section",
-  explicitInputBoundary: true,
-  explicitBoundaryReason:
-    "DHW storage losses require storage product/geometry/ambient inputs; production preserves existing explicit storage-stage inputs unless those detailed values are supplied."
+  tests: [DHW_DISTRIBUTION_TEST, BUILDING_PLATFORM_TEST],
+  validationFixture:
+    "independent fixed constants in dhwDistributionLosses.test.mjs and DHW component-contract product fixture",
+  tableImplemented: "storage product data is accepted as product/component contract input and does not require explicit final loss",
+  runtimeIntegrated:
+    "DHW heat-tracing protected pipe loss, auxiliary recovery and single-volume storage standing loss resolve through Building DNA stage component contracts.",
+  notebookTraceable:
+    "DHW storage stage balances expose calculated-vs-explicit source classification in Chapter 3 notebook lines",
+  explicitInputBoundary: false,
+  implementationClassification: CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
+  inputSourceClassification: "dhw_storage_component_contract_product_geometry_temperature_schedule_inputs"
 });
 
 const lightingImplemented = [
@@ -547,7 +556,11 @@ export function chapter3MatrixSummary() {
     implementedEquations: chapter3ImplementationMatrix.filter(entry => entry.formulaImplemented === true).length,
     implementedTablesLookups: chapter3ImplementationMatrix.filter(entry => entry.tableImplemented === true).length,
     implementedBranches: chapter3ImplementationMatrix.filter(entry => entry.branchesImplemented === true).length,
-    explicitInputBoundaries: chapter3ImplementationMatrix.filter(entry => entry.explicitInputBoundary === true).length,
+    explicitInputBoundaries: chapter3ImplementationMatrix.filter(
+      entry =>
+        entry.implementationClassification ===
+        CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY
+    ).length,
     runtimeIntegratedEntryCount: chapter3ImplementationMatrix.filter(entry => entry.runtimeIntegrated === true).length,
     runtimeIntegratedRelations: chapter3ImplementationMatrix.filter(entry => entry.runtimeIntegrated === true).length,
     fixtureCoveredRelations: chapter3ImplementationMatrix.filter(entry => entry.numericalFixtureCovered === true).length,
