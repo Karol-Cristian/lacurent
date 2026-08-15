@@ -60,11 +60,23 @@
       "field": "solarGains",
       "uiSource": "explicit monthly profile or future certified preprocessing/import",
       "buildingDnaPath": "monthlyProfiles[*].heatGains.solarGains.amount and solarGainsSource",
-      "providerPath": "climateProvider.datasets.monthlySolarIrradiation supplies source rows, not Qsol",
+      "providerPath": "climateProvider.datasets.monthlySolarIrradiation and monthlyHsolVerticalHorizontal supply source-backed A.9.6 rows and Hsol, not complete Qsol",
       "runtimeInputPath": "chapter2Input.monthlyCases[*].heatGains.solarGains only when source is explicit or preprocessed",
       "reportPath": "monthly[*].solarGainsKwh",
-      "status": "unavailable_for_source_backed_provider_profiles",
-      "diagnostic": "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
+      "status": "hsol_connected_qsol_qsky_bounded",
+      "diagnostic": "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
+      "contextDiagnostics": [
+        "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"
+      ],
+      "availableInputs": [
+        "Hsol_vertical_horizontal_A9_6"
+      ],
+      "missingInputs": [
+        "Qsky",
+        "Qsol",
+        "solarElementInputs"
+      ],
+      "supersedesDiagnostic": "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
     },
     {
       "field": "ventilationRate",

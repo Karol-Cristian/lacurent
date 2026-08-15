@@ -1490,13 +1490,44 @@ export function buildWizardEngineeringPreview(assistedAnswers) {
   };
 }
 
+function renderBlockedEngineeringModelReview(preview) {
+  const blockers = preview.diagnostics?.blockers ?? [];
+  const solarBlocker = blockers.find(item => item.code === "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED");
+  if (solarBlocker) {
+    const contextDiagnostics = solarBlocker.contextDiagnostics ?? [];
+    const technicalCodes = [
+      solarBlocker.code,
+      ...contextDiagnostics
+    ].filter(Boolean);
+    return `
+      <section class="form-message error" data-solar-qsol-qsky-blocker>
+        <p><strong>Calculul energetic nu poate fi finalizat inca.</strong></p>
+        <p>Datele lunare de radiatie solara Hsol pentru localitatea selectata au fost incarcate din sursa normativa disponibila.</p>
+        <p>Pentru calculul complet al aporturilor solare din MC001 Capitolul 2 mai sunt necesare datele si relatiile pentru Qsky, Qsol si elementele solare.</p>
+        <p>Nu a fost generat un rezultat normativ incomplet.</p>
+        <details class="technical-diagnostic-details">
+          <summary>Detalii tehnice</summary>
+          <p>Diagnostic activ: ${safeText(solarBlocker.code)}</p>
+          <p>Diagnostic context: ${safeText(contextDiagnostics.join(", ") || "n/a")}</p>
+          <p>Date disponibile: ${safeText((solarBlocker.availableInputs ?? []).join(", ") || "n/a")}</p>
+          <p>Date lipsa: ${safeText((solarBlocker.missingInputs ?? []).join(", ") || "n/a")}</p>
+          <p>Calcule afectate: ${safeText((solarBlocker.affectedCalculations ?? []).join(", ") || "n/a")}</p>
+          <p>Eligibil productie: ${safeText(String(solarBlocker.productionEligible === true))}</p>
+          <p>Coduri: ${safeText(technicalCodes.join(", "))}</p>
+        </details>
+      </section>
+    `;
+  }
+  const codes = blockers
+    .map(item => item.code)
+    .filter(Boolean);
+  const message = codes.length > 0 ? codes.join(", ") : "model_incomplet";
+  return `<p class="form-message error">Modelul tehnic nu este gata: ${safeText(message)}</p>`;
+}
+
 export function renderEngineeringModelReview(preview, options = {}) {
   if (preview.status !== "ready") {
-    const codes = (preview.diagnostics?.blockers ?? [])
-      .map(item => item.code)
-      .filter(Boolean);
-    const message = codes.length > 0 ? codes.join(", ") : "model_incomplet";
-    return `<p class="form-message error">Modelul tehnic nu este gata: ${safeText(message)}</p>`;
+    return renderBlockedEngineeringModelReview(preview);
   }
   const dna = preview.buildingDna;
   const workspace = preview.technicalWorkspace;

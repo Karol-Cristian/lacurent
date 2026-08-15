@@ -47,6 +47,16 @@ function close(actual, expected, tolerance = 1e-9) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 }
 
+const SOLAR_QSOL_QSKY_BLOCKER = "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED";
+const SOLAR_HSOL_CONTEXT_DIAGNOSTIC = "A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL";
+const OLD_SOLAR_PREPROCESSING_DIAGNOSTIC = [
+  "CHAPTER",
+  "2",
+  "SOLAR",
+  "PREPROCESSING",
+  "UNAVAILABLE"
+].join("_");
+
 function formData(entries) {
   return {
     get(name) {
@@ -289,8 +299,12 @@ await test("production wizard resolves locality climate through the Climate Prov
   const preview = buildWizardEngineeringPreview(answers);
   assert.equal(preview.status, "blocked");
   assert.equal(
-    preview.diagnostics.blockers.some(item => item.code === "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"),
+    preview.diagnostics.blockers.some(item => item.code === SOLAR_QSOL_QSKY_BLOCKER),
     true
+  );
+  assert.equal(
+    preview.diagnostics.blockers.some(item => item.code === OLD_SOLAR_PREPROCESSING_DIAGNOSTIC),
+    false
   );
   assert.equal(preview.technicalWorkspace.status, "blocked");
   const dnaResult = createBuildingDnaFromAssistedAnswers(answers);
@@ -312,11 +326,20 @@ await test("production wizard resolves locality climate through the Climate Prov
   assert.equal(calculation.stage, "chapter_2_climate_inputs");
   assert.equal(
     calculation.diagnostics.blockers[0].code,
-    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
+    SOLAR_QSOL_QSKY_BLOCKER
+  );
+  assert.deepEqual(
+    calculation.diagnostics.blockers[0].contextDiagnostics,
+    [SOLAR_HSOL_CONTEXT_DIAGNOSTIC]
   );
 
   const html = renderEngineeringModelReview(preview, { openReport: true });
-  assert.equal(html.includes("CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"), true);
+  assert.equal(html.includes("Calculul energetic nu poate fi finalizat inca."), true);
+  assert.equal(html.includes("Datele lunare de radiatie solara Hsol"), true);
+  assert.equal(html.includes("Nu a fost generat un rezultat normativ incomplet."), true);
+  assert.equal(html.includes(SOLAR_QSOL_QSKY_BLOCKER), true);
+  assert.equal(html.includes(SOLAR_HSOL_CONTEXT_DIAGNOSTIC), true);
+  assert.equal(html.includes(OLD_SOLAR_PREPROCESSING_DIAGNOSTIC), false);
 });
 
 await test("locality-driven climate reaches Building DNA and blocks Chapter 2 before fake solar zero", () => {
@@ -336,8 +359,12 @@ await test("locality-driven climate reaches Building DNA and blocks Chapter 2 be
     const preview = buildWizardEngineeringPreview(answers);
     assert.equal(preview.status, "blocked");
     assert.equal(
-      preview.diagnostics.blockers.some(item => item.code === "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"),
+      preview.diagnostics.blockers.some(item => item.code === SOLAR_QSOL_QSKY_BLOCKER),
       true
+    );
+    assert.equal(
+      preview.diagnostics.blockers.some(item => item.code === OLD_SOLAR_PREPROCESSING_DIAGNOSTIC),
+      false
     );
     assert.equal(answers.climateProfileId, undefined);
     const dnaResult = createBuildingDnaFromAssistedAnswers(answers);
@@ -373,13 +400,59 @@ await test("locality-driven climate reaches Building DNA and blocks Chapter 2 be
     cluj.buildingDna.monthlyProfiles[0].transmission.heating.outdoorTemperature.amount
   );
   assert.equal(
+    bucuresti.buildingDna.productionClimateProfile.monthlyRecords[0].hsol.hsolKwhPerM2ByOrientation.south,
+    57.0648
+  );
+  assert.equal(
+    bucuresti.buildingDna.productionClimateProfile.monthlyRecords[6].hsol.hsolKwhPerM2ByOrientation.horizontal,
+    149.3952
+  );
+  assert.equal(
+    cluj.buildingDna.productionClimateProfile.monthlyRecords[0].hsol.hsolKwhPerM2ByOrientation.south,
+    52.9728
+  );
+  assert.equal(
+    cluj.buildingDna.productionClimateProfile.monthlyRecords[6].hsol.hsolKwhPerM2ByOrientation.horizontal,
+    172.608
+  );
+  assert.notEqual(
+    bucuresti.buildingDna.productionClimateProfile.monthlyRecords[0].hsol.hsolKwhPerM2ByOrientation.south,
+    cluj.buildingDna.productionClimateProfile.monthlyRecords[0].hsol.hsolKwhPerM2ByOrientation.south
+  );
+  assert.equal(
+    bucuresti.buildingDna.monthlyProfiles[0].heatGains.solarGainsSource,
+    "provider_climate_profile_without_qsol_preprocessing"
+  );
+  assert.equal(bucuresti.buildingDna.monthlyProfiles[0].heatGains.solarGains.amount, 0);
+  assert.equal(
     bucuresti.calculation.diagnostics.blockers[0].code,
-    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
+    SOLAR_QSOL_QSKY_BLOCKER
   );
   assert.equal(
     cluj.calculation.diagnostics.blockers[0].code,
-    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
+    SOLAR_QSOL_QSKY_BLOCKER
   );
+  assert.equal(
+    bucuresti.calculation.diagnostics.blockers[0].productionEligible,
+    false
+  );
+  assert.deepEqual(
+    cluj.calculation.diagnostics.blockers[0].missingInputs,
+    ["Qsky", "Qsol", "solarElementInputs"]
+  );
+});
+
+await test("old broad solar preprocessing diagnostic is not runtime reachable", () => {
+  const runtimeFiles = [
+    "src/building-platform/buildingChapter2Adapter.mjs",
+    "src/building-platform/buildingDnaResolver.mjs",
+    "src/building-platform/buildingKnowledgePipeline.mjs",
+    "src/building-platform/buildingTechnicalReport.mjs",
+    "js/building-platform-wizard.mjs"
+  ];
+  for (const file of runtimeFiles) {
+    assert.equal(readFileSync(file, "utf8").includes(OLD_SOLAR_PREPROCESSING_DIAGNOSTIC), false, file);
+  }
 });
 
 await test("wizard maps installation fields into canonical technical systems", () => {

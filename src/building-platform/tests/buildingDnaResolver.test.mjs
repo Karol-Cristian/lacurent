@@ -509,12 +509,21 @@ test("source-backed provider profiles do not enter Chapter 2 with fake zero sola
   assert.equal(calculation.stage, "chapter_2_climate_inputs");
   assert.equal(
     calculation.diagnostics.blockers[0].code,
-    "CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE"
+    "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED"
   );
   assert.deepEqual(
     calculation.diagnostics.blockers[0].missingInputs,
-    ["Qsol", "Qsky", "solarElementInputs"]
+    ["Qsky", "Qsol", "solarElementInputs"]
   );
+  assert.deepEqual(
+    calculation.diagnostics.blockers[0].availableInputs,
+    ["Hsol_vertical_horizontal_A9_6"]
+  );
+  assert.deepEqual(
+    calculation.diagnostics.blockers[0].contextDiagnostics,
+    ["A9_6_VERTICAL_HORIZONTAL_HSOL_AVAILABLE_QSKY_REQUIRED_FOR_QSOL"]
+  );
+  assert.equal(calculation.diagnostics.blockers[0].productionEligible, false);
   assert.equal(calculation.chapter2Input, null);
 });
 

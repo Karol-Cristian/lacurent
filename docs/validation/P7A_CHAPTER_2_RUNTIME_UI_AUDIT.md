@@ -2,6 +2,8 @@
 
 Base commit: `f9187e1e3e3fc8325c12a120d7d38c587caf0798`.
 
+Note: the solar blocker code recorded in this P7A audit is historical. P7B/P7C established source-backed A.9.6 `Hsol`, and the active production blocker is now `SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED`.
+
 ## Defects Found
 
 1. The report rendered a generic cooling balance for all months:
@@ -10,7 +12,7 @@ Base commit: `f9187e1e3e3fc8325c12a120d7d38c587caf0798`.
 
 2. `formatNotebookNumber(null)` rendered as `0,0000` because JavaScript coerces `null` to `0`. Branch-only coefficients that were not required by the runtime could therefore appear as real zero coefficients.
 
-3. Source-backed Climate Provider monthly temperature profiles carried `solarGainsKwh: 0` with provenance `provider_climate_profile_without_qsol_preprocessing`. The Chapter 2 adapter consumed that value as a real solar gain input. This made production locality profiles look complete even though source-backed A.9.6 to `Qsol/Qsky/Hsol` preprocessing is not implemented from an owned normative source.
+3. Source-backed Climate Provider monthly temperature profiles carried `solarGainsKwh: 0` with provenance `provider_climate_profile_without_qsol_preprocessing`. The Chapter 2 adapter consumed that value as a real solar gain input. This made production locality profiles look complete even though source-backed automatic `Qsol/Qsky` completion was not available.
 
 ## Runtime/UI Path
 
@@ -27,4 +29,6 @@ UI locality selection resolves Building DNA location fields and the canonical Cl
 
 ## Remaining Normative Gap
 
-`CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE`: MC001/1-2006 Annex A.9.6 source rows exist, but the owned repository sources do not contain the full normative preprocessing chain to `Qsol`, `Qsky` and `Hsol`. The bounded dependency remains SR EN ISO 52010-1 or an equivalent owned normative source explicitly accepted by MC001.
+Superseded historical blocker: `CHAPTER_2_SOLAR_PREPROCESSING_UNAVAILABLE`.
+
+Active blocker: `SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED`. MC001/1-2006 Annex A.9.6 now supplies source-backed vertical/horizontal `Hsol`; the remaining bounded chain is automatic completion of `Qsol/Qsky` and complete solar element inputs.
