@@ -512,6 +512,76 @@ await test("wizard can map ACM useful demand to the normative residential calcul
   );
 });
 
+await test("wizard maps ACM component contracts to calculated Chapter 3 stage inputs", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    chapter3_dhw_component_mode: "component_contract",
+    chapter3_dhw_pipe_length_m: "12",
+    chapter3_dhw_pipe_equivalent_length_m: "0",
+    chapter3_dhw_recoverable_pipe_length_m: "4",
+    chapter3_dhw_distribution_hours_month: "100",
+    chapter3_dhw_distribution_temp_c: "50",
+    chapter3_dhw_distribution_delta_k: "0",
+    chapter3_dhw_pipe_ambient_c: "20",
+    chapter3_dhw_pipe_inner_d_m: "0.02",
+    chapter3_dhw_pipe_outer_d_m: "0.04",
+    chapter3_dhw_pipe_lambda_w_mk: "0.04",
+    chapter3_dhw_pipe_ha_w_m2k: "8",
+    chapter3_dhw_pump_flow_m3h: "0.8",
+    chapter3_dhw_pump_pressure_kpa: "18",
+    chapter3_dhw_pump_load_factor: "0.5",
+    chapter3_dhw_pump_eei: "0.23",
+    chapter3_dhw_pump_correction_factor: "1.1",
+    chapter3_dhw_pump_cp1: "0.25",
+    chapter3_dhw_pump_cp2: "0.75",
+    chapter3_dhw_storage_h_w_k: "3",
+    chapter3_dhw_storage_setpoint_c: "55",
+    chapter3_dhw_storage_ambient_c: "20",
+    chapter3_dhw_storage_hours_month: "744",
+    chapter3_dhw_storage_accessible_factor: "0.8",
+    chapter3_dhw_storage_distribution_factor: "1.1"
+  };
+  const answers = mapWizardAnswersToAssistedAnswers(formData(values));
+  const dhwStages = answers.technicalSystems.domesticHotWater.systems[0].stages;
+  const distribution = dhwStages.find(stage => stage.stageId === "distribution");
+  const storage = dhwStages.find(stage => stage.stageId === "storage");
+
+  assert.equal(distribution.lossKWhPerMonth, undefined);
+  assert.equal(distribution.auxiliaryKWhPerMonth, undefined);
+  assert.equal(distribution.lossCalculation.mode, "dhw_distribution_loss_components");
+  assert.equal(distribution.auxiliaryCalculation.mode, "dhw_recirculation_pump_auxiliary");
+  assert.equal(storage.lossKWhPerMonth, undefined);
+  assert.equal(storage.lossCalculation.mode, "dhw_storage_standing_loss_single_volume");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  const januaryDhw = preview.calculation.chapter3Result.monthly[0].dhw;
+  const distributionResult = januaryDhw.stageResults.find(stage => stage.stageId === "distribution");
+  const storageResult = januaryDhw.stageResults.find(stage => stage.stageId === "storage");
+  const psi =
+    Math.PI /
+    ((1 / (2 * 0.04)) * Math.log(0.04 / 0.02) + 1 / (8 * 0.04));
+  const expectedDistributionLoss = psi * (50 - 20) * 12 * 100 / 1000;
+  const pumpDesignPower = 18 * 0.8 / 3600;
+  const referencePower =
+    (1.7 * pumpDesignPower + 17 * (1 - Math.exp(-0.3 * pumpDesignPower))) *
+    10 ** -3;
+  const pumpEfficiencyFactor = referencePower / pumpDesignPower;
+  const pumpEnergyUseFactor = pumpEfficiencyFactor * (0.25 + 0.75 * 0.5 ** -1) * 0.23 / 0.25;
+  const expectedAuxiliary = pumpDesignPower * 0.5 * 100 * 1.1 * pumpEnergyUseFactor;
+  const expectedStorageLoss = 0.8 * 1.1 * (3 / 1000) * (55 - 20) * 744;
+
+  close(distributionResult.lossKWh, expectedDistributionLoss);
+  close(distributionResult.auxiliaryKWh, expectedAuxiliary);
+  close(storageResult.lossKWh, expectedStorageLoss);
+  assert.equal(distributionResult.lossSource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(distributionResult.auxiliarySource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(storageResult.lossSource.classification, "NUMERICALLY_IMPLEMENTED");
+
+  const html = renderEngineeringModelReview(preview);
+  assert.equal(html.includes("calculat normativ"), true);
+});
+
 await test("demo installation configurations have fixed 12-month Chapter 3 expected outputs", () => {
   const cases = [
     {

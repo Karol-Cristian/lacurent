@@ -54,6 +54,35 @@ function makeResult({
   inputs,
   assumptions = []
 }) {
+  const executionTrace = {
+    schema: "mc001_execution_trace_v1",
+    chapter: "3",
+    formulaId,
+    branchId: "direct_normative_relation",
+    inputs: Object.fromEntries(
+      Object.entries(inputs ?? {}).map(([key, inputValue]) => [
+        key,
+        {
+          value:
+            typeof inputValue === "number" && Number.isFinite(inputValue)
+              ? inputValue
+              : inputValue,
+          unit: null
+        }
+      ])
+    ),
+    formulaText,
+    rawResult: value,
+    finalResult: value,
+    unit,
+    clampApplied: false,
+    status: "direct_result",
+    provenance: {
+      source: "MC001-2022 Chapter 3.3",
+      assumptions,
+      warnings: []
+    }
+  };
   return {
     status: STATUS_CALCULATED,
     value,
@@ -61,6 +90,7 @@ function makeResult({
     unit,
     formulaId,
     inputs,
+    executionTrace,
     trace: {
       formulaId,
       formulaText,

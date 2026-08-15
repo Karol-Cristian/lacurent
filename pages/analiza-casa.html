@@ -302,10 +302,35 @@
 <div><label>Sursa cerere utila ACM</label><select name="chapter3_dhw_useful_mode"><option value="explicit_monthly">Input tehnic explicit</option><option value="residential_normative">Calcul rezidential MC001</option></select></div>
 <div><label>Tip locuinta ACM</label><select name="chapter3_dhw_dwelling_type"><option value="single_family_or_terraced">Casa individuala / insiruita</option><option value="apartment">Apartament</option></select></div>
 <div><label>Cerere utila ACM [kWh/luna]</label><input name="chapter3_dhw_useful_kwh_month" type="number" step="0.01"></div>
+<div><label>Sursa pierderi ACM</label><select name="chapter3_dhw_component_mode"><option value="explicit_monthly">Input tehnic explicit</option><option value="component_contract">Contract componente MC001</option></select></div>
+<div><label>Lungime teava ACM [m]</label><input name="chapter3_dhw_pipe_length_m" type="number" step="0.01"></div>
+<div><label>Lungime echivalenta teava ACM [m]</label><input name="chapter3_dhw_pipe_equivalent_length_m" type="number" step="0.01"></div>
+<div><label>Lungime recuperabila teava ACM [m]</label><input name="chapter3_dhw_recoverable_pipe_length_m" type="number" step="0.01"></div>
+<div><label>Ore functionare distributie ACM [h/luna]</label><input name="chapter3_dhw_distribution_hours_month" type="number" step="0.01"></div>
+<div><label>Temperatura distributie ACM [degC]</label><input name="chapter3_dhw_distribution_temp_c" type="number" step="0.1"></div>
+<div><label>Delta temperatura bucla ACM [K]</label><input name="chapter3_dhw_distribution_delta_k" type="number" step="0.1"></div>
+<div><label>Temperatura ambianta teava ACM [degC]</label><input name="chapter3_dhw_pipe_ambient_c" type="number" step="0.1"></div>
+<div><label>Diametru interior teava ACM [m]</label><input name="chapter3_dhw_pipe_inner_d_m" type="number" step="0.001"></div>
+<div><label>Diametru exterior izolatie ACM [m]</label><input name="chapter3_dhw_pipe_outer_d_m" type="number" step="0.001"></div>
+<div><label>Conductivitate izolatie ACM [W/mK]</label><input name="chapter3_dhw_pipe_lambda_w_mk" type="number" step="0.001"></div>
+<div><label>Coeficient exterior teava ACM [W/m2K]</label><input name="chapter3_dhw_pipe_ha_w_m2k" type="number" step="0.1"></div>
 <div><label>Pierdere distributie [kWh/luna]</label><input name="chapter3_dhw_distribution_loss_kwh_month" type="number" step="0.01"></div>
 <div><label>Auxiliar distributie [kWh/luna]</label><input name="chapter3_dhw_distribution_aux_kwh_month" type="number" step="0.01"></div>
+<div><label>Debit pompa recirculare ACM [m3/h]</label><input name="chapter3_dhw_pump_flow_m3h" type="number" step="0.01"></div>
+<div><label>Cadere presiune pompa ACM [kPa]</label><input name="chapter3_dhw_pump_pressure_kpa" type="number" step="0.01"></div>
+<div><label>Factor incarcare pompa ACM [-]</label><input name="chapter3_dhw_pump_load_factor" type="number" step="0.01"></div>
+<div><label>EEI pompa ACM [-]</label><input name="chapter3_dhw_pump_eei" type="number" step="0.01"></div>
+<div><label>Factor corectie pompa ACM [-]</label><input name="chapter3_dhw_pump_correction_factor" type="number" step="0.01"></div>
+<div><label>Constanta control pompa cp1 [-]</label><input name="chapter3_dhw_pump_cp1" type="number" step="0.01"></div>
+<div><label>Constanta control pompa cp2 [-]</label><input name="chapter3_dhw_pump_cp2" type="number" step="0.01"></div>
 <div><label>Pierdere stocare [kWh/luna]</label><input name="chapter3_dhw_storage_loss_kwh_month" type="number" step="0.01"></div>
 <div><label>Auxiliar stocare [kWh/luna]</label><input name="chapter3_dhw_storage_aux_kwh_month" type="number" step="0.01"></div>
+<div><label>Coeficient pierdere boiler ACM [W/K]</label><input name="chapter3_dhw_storage_h_w_k" type="number" step="0.01"></div>
+<div><label>Temperatura stocare ACM [degC]</label><input name="chapter3_dhw_storage_setpoint_c" type="number" step="0.1"></div>
+<div><label>Temperatura ambient stocare [degC]</label><input name="chapter3_dhw_storage_ambient_c" type="number" step="0.1"></div>
+<div><label>Ore stocare ACM [h/luna]</label><input name="chapter3_dhw_storage_hours_month" type="number" step="0.01"></div>
+<div><label>Factor volum accesibil stocare [-]</label><input name="chapter3_dhw_storage_accessible_factor" type="number" step="0.01"></div>
+<div><label>Factor distributie stocare [-]</label><input name="chapter3_dhw_storage_distribution_factor" type="number" step="0.01"></div>
 <div><label>Pierdere generare [kWh/luna]</label><input name="chapter3_dhw_generation_loss_kwh_month" type="number" step="0.01"></div>
 <div><label>Auxiliar generare [kWh/luna]</label><input name="chapter3_dhw_generation_aux_kwh_month" type="number" step="0.01"></div>
 </div>

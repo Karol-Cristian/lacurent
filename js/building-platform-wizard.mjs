@@ -147,6 +147,7 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     chapter3_control_aux_kwh_month: "0.05",
     chapter3_dhw_enabled: "yes",
     chapter3_dhw_energy_carrier: "natural_gas",
+    chapter3_dhw_component_mode: "explicit_monthly",
     chapter3_dhw_useful_kwh_month: "95",
     chapter3_dhw_distribution_loss_kwh_month: "2.0",
     chapter3_dhw_distribution_aux_kwh_month: "0.1",
@@ -460,6 +461,10 @@ function stageValue(section, stageId, field) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
+function stageObject(section, stageId) {
+  return firstSystem(section)?.stages?.find(item => item.stageId === stageId) ?? null;
+}
+
 function systemValue(section, field, fallback = "") {
   return firstSystem(section)?.[field] ?? fallback;
 }
@@ -508,6 +513,56 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
   values.chapter3_dhw_useful_kwh_month = Array.isArray(dhw.monthlyUsefulDemandKWh)
     ? dhw.monthlyUsefulDemandKWh[0] ?? ""
     : dhw.monthlyUsefulDemandKWh ?? "";
+  const dhwDistribution = stageObject(dhw, "distribution");
+  const dhwStorage = stageObject(dhw, "storage");
+  const dhwDistributionLossContract = dhwDistribution?.lossCalculation;
+  const dhwDistributionAuxiliaryContract = dhwDistribution?.auxiliaryCalculation;
+  const dhwStorageLossContract = dhwStorage?.lossCalculation;
+  const dhwPipeSegment = dhwDistributionLossContract?.distributionPipeSegments?.[0];
+  const dhwRecoverablePipeSegment = dhwDistributionLossContract?.recoverablePipeSegments?.[0];
+  values.chapter3_dhw_component_mode =
+    dhwDistributionLossContract?.mode || dhwDistributionAuxiliaryContract?.mode || dhwStorageLossContract?.mode
+      ? "component_contract"
+      : "explicit_monthly";
+  values.chapter3_dhw_pipe_length_m = dhwPipeSegment?.lengthM ?? "";
+  values.chapter3_dhw_pipe_equivalent_length_m = dhwPipeSegment?.equivalentLengthM ?? "";
+  values.chapter3_dhw_recoverable_pipe_length_m = dhwRecoverablePipeSegment?.lengthM ?? "";
+  values.chapter3_dhw_distribution_hours_month = Array.isArray(dhwDistributionLossContract?.operationTimeHours)
+    ? dhwDistributionLossContract.operationTimeHours[0] ?? ""
+    : dhwDistributionLossContract?.operationTimeHours ?? "";
+  values.chapter3_dhw_distribution_temp_c =
+    dhwPipeSegment?.meanTemperatureInput?.thetaWDistributionC ??
+    dhwPipeSegment?.thetaWMeanC ??
+    "";
+  values.chapter3_dhw_distribution_delta_k =
+    dhwPipeSegment?.meanTemperatureInput?.deltaThetaWLoopK ?? "";
+  values.chapter3_dhw_pipe_ambient_c = dhwPipeSegment?.thetaWAmbientC ?? "";
+  values.chapter3_dhw_pipe_inner_d_m =
+    dhwPipeSegment?.linearTransmittanceInput?.innerDiameterM ?? "";
+  values.chapter3_dhw_pipe_outer_d_m =
+    dhwPipeSegment?.linearTransmittanceInput?.outerDiameterM ?? "";
+  values.chapter3_dhw_pipe_lambda_w_mk =
+    dhwPipeSegment?.linearTransmittanceInput?.insulationThermalConductivityWPerMK ?? "";
+  values.chapter3_dhw_pipe_ha_w_m2k =
+    dhwPipeSegment?.linearTransmittanceInput?.externalHeatTransferCoefficientWPerM2K ?? "";
+  values.chapter3_dhw_pump_flow_m3h = dhwDistributionAuxiliaryContract?.designFlowRateM3PerH ?? "";
+  values.chapter3_dhw_pump_pressure_kpa =
+    dhwDistributionAuxiliaryContract?.pressureDropKPa ??
+    dhwDistributionAuxiliaryContract?.pressureDropInput?.additionalPressureDropKPa ??
+    "";
+  values.chapter3_dhw_pump_load_factor = dhwDistributionAuxiliaryContract?.operationLoadFactor ?? "";
+  values.chapter3_dhw_pump_eei = dhwDistributionAuxiliaryContract?.energyEfficiencyIndex ?? "";
+  values.chapter3_dhw_pump_correction_factor = dhwDistributionAuxiliaryContract?.correctionFactor ?? "";
+  values.chapter3_dhw_pump_cp1 = dhwDistributionAuxiliaryContract?.controlConstantCp1 ?? "";
+  values.chapter3_dhw_pump_cp2 = dhwDistributionAuxiliaryContract?.controlConstantCp2 ?? "";
+  values.chapter3_dhw_storage_h_w_k = dhwStorageLossContract?.storageHeatTransferCoefficientWPerK ?? "";
+  values.chapter3_dhw_storage_setpoint_c = dhwStorageLossContract?.storageSetpointTemperatureC ?? "";
+  values.chapter3_dhw_storage_ambient_c = dhwStorageLossContract?.storageAmbientTemperatureC ?? "";
+  values.chapter3_dhw_storage_hours_month = Array.isArray(dhwStorageLossContract?.calculationHours)
+    ? dhwStorageLossContract.calculationHours[0] ?? ""
+    : dhwStorageLossContract?.calculationHours ?? "";
+  values.chapter3_dhw_storage_accessible_factor = dhwStorageLossContract?.accessibleStorageVolumeFactor ?? "";
+  values.chapter3_dhw_storage_distribution_factor = dhwStorageLossContract?.distributionStorageLossFactor ?? "";
 
   const pcm = technicalSystems?.coolingStoragePcm ?? {};
   const pcmTemplate = Array.isArray(pcm.monthly) ? pcm.monthly[0] : pcm.monthlyTemplate;
@@ -1203,6 +1258,143 @@ function stageInput(formData, prefix, stageId) {
   };
 }
 
+function dhwComponentMode(formData) {
+  return formValue(formData, "chapter3_dhw_component_mode") === "component_contract"
+    ? "component_contract"
+    : "explicit_monthly";
+}
+
+function dhwPipeComponentFromForm(
+  formData,
+  {
+    lengthField = "chapter3_dhw_pipe_length_m",
+    equivalentLengthField = "chapter3_dhw_pipe_equivalent_length_m"
+  } = {}
+) {
+  return {
+    lengthM: nonNegativeNumber(formData, lengthField),
+    equivalentLengthM: nonNegativeNumber(formData, equivalentLengthField),
+    thetaWAmbientC: numberValue(formData, "chapter3_dhw_pipe_ambient_c"),
+    meanTemperatureInput: {
+      mode: "mean_distribution_temperature",
+      thetaWDistributionC: numberValue(formData, "chapter3_dhw_distribution_temp_c"),
+      deltaThetaWLoopK: nonNegativeNumber(formData, "chapter3_dhw_distribution_delta_k"),
+      source: {
+        origin: "expert_override",
+        reference: "chapter3_dhw_distribution_temp_c"
+      }
+    },
+    linearTransmittanceInput: {
+      mode: "insulated_pipe",
+      innerDiameterM: positiveNumber(formData, "chapter3_dhw_pipe_inner_d_m"),
+      outerDiameterM: positiveNumber(formData, "chapter3_dhw_pipe_outer_d_m"),
+      insulationThermalConductivityWPerMK: positiveNumber(formData, "chapter3_dhw_pipe_lambda_w_mk"),
+      externalHeatTransferCoefficientWPerM2K: positiveNumber(formData, "chapter3_dhw_pipe_ha_w_m2k"),
+      source: {
+        origin: "product_data",
+        reference: "chapter3_dhw_pipe_geometry_and_insulation"
+      }
+    },
+    source: {
+      origin: "product_data",
+      reference: "chapter3_dhw_pipe_component_contract"
+    }
+  };
+}
+
+function applyDhwComponentContracts(formData, system) {
+  if (dhwComponentMode(formData) !== "component_contract") return system;
+
+  const distributionHours = nonNegativeNumber(formData, "chapter3_dhw_distribution_hours_month");
+  const distributionPipe = dhwPipeComponentFromForm(formData);
+  const recoverablePipeLength = nonNegativeNumber(formData, "chapter3_dhw_recoverable_pipe_length_m");
+  const recoverablePipe = recoverablePipeLength === undefined
+    ? null
+    : dhwPipeComponentFromForm(formData, {
+        lengthField: "chapter3_dhw_recoverable_pipe_length_m"
+      });
+  const stages = system.stages.map(stage => {
+    if (stage.stageId === "distribution") {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        auxiliaryKWhPerMonth: undefined,
+        lossCalculation: {
+          mode: "dhw_distribution_loss_components",
+          operationTimeHours: distributionHours,
+          distributionPipeSegments: [distributionPipe],
+          ...(recoverablePipe ? { recoverablePipeSegments: [recoverablePipe] } : {}),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_dhw_distribution_component_contract"
+          }
+        },
+        auxiliaryCalculation: {
+          mode: "dhw_recirculation_pump_auxiliary",
+          pressureDropKPa: nonNegativeNumber(formData, "chapter3_dhw_pump_pressure_kpa"),
+          designFlowRateM3PerH: nonNegativeNumber(formData, "chapter3_dhw_pump_flow_m3h"),
+          operationLoadFactor: nonNegativeNumber(formData, "chapter3_dhw_pump_load_factor"),
+          operationTimeHours: distributionHours,
+          correctionFactor: nonNegativeNumber(formData, "chapter3_dhw_pump_correction_factor"),
+          controlConstantCp1: numberValue(formData, "chapter3_dhw_pump_cp1"),
+          controlConstantCp2: numberValue(formData, "chapter3_dhw_pump_cp2"),
+          energyEfficiencyIndex: nonNegativeNumber(formData, "chapter3_dhw_pump_eei"),
+          recoverableFraction: stage.auxiliaryRecoverableFractionToHeating,
+          source: {
+            origin: "product_data",
+            reference: "chapter3_dhw_pump_component_contract"
+          }
+        }
+      };
+    }
+    if (stage.stageId === "storage") {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        lossCalculation: {
+          mode: "dhw_storage_standing_loss_single_volume",
+          accessibleStorageVolumeFactor: fractionValue(
+            formData,
+            "chapter3_dhw_storage_accessible_factor",
+            undefined
+          ),
+          distributionStorageLossFactor: positiveNumber(
+            formData,
+            "chapter3_dhw_storage_distribution_factor"
+          ),
+          storageHeatTransferCoefficientWPerK: nonNegativeNumber(
+            formData,
+            "chapter3_dhw_storage_h_w_k"
+          ),
+          storageSetpointTemperatureC: numberValue(
+            formData,
+            "chapter3_dhw_storage_setpoint_c"
+          ),
+          storageAmbientTemperatureC: numberValue(
+            formData,
+            "chapter3_dhw_storage_ambient_c"
+          ),
+          calculationHours: nonNegativeNumber(formData, "chapter3_dhw_storage_hours_month"),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_dhw_storage_component_contract"
+          }
+        }
+      };
+    }
+    return stage;
+  });
+
+  return {
+    ...system,
+    stages,
+    source: {
+      ...system.source,
+      componentContractMode: "dhw_component_contract_p8c"
+    }
+  };
+}
+
 function serviceSystem(formData, prefix, stageIds, metadata = {}) {
   return {
     systemId: metadata.systemId,
@@ -1292,7 +1484,10 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
             }
           }),
       systems: yesValue(formData, "chapter3_dhw_enabled")
-        ? [serviceSystem(formData, "chapter3_dhw", CHAPTER3_DHW_STAGE_IDS, { systemId: "dhw-main" })]
+        ? [applyDhwComponentContracts(
+            formData,
+            serviceSystem(formData, "chapter3_dhw", CHAPTER3_DHW_STAGE_IDS, { systemId: "dhw-main" })
+          )]
         : []
     },
     coolingStoragePcm: {

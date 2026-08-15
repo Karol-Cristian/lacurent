@@ -2199,9 +2199,26 @@ function installationSystemTopologyRows(calculation) {
           energyCarrier: system.metadata?.energyCarrier ?? null,
           usefulDemandSourceClassification:
             system.usefulDemandSource?.classification ?? null,
+          calculatedStageSourceCount: 0,
+          explicitStageSourceCount: 0,
           annualInputKWh: 0
         };
         current.annualInputKWh += system.finalStageInputKWh ?? 0;
+        for (const stage of system.stageResults ?? []) {
+          for (const source of [stage.lossSource, stage.auxiliarySource]) {
+            if (source?.classification === "NUMERICALLY_IMPLEMENTED") {
+              current.calculatedStageSourceCount += 1;
+            } else if (source?.classification === "EXPLICIT_INPUT_BOUNDARY") {
+              current.explicitStageSourceCount += 1;
+            }
+          }
+        }
+        current.componentContractStatus =
+          current.calculatedStageSourceCount > 0
+            ? "calculat normativ"
+            : current.explicitStageSourceCount > 0
+              ? "input tehnic explicit"
+              : "fara componente active";
         totals.set(key, current);
       }
     }

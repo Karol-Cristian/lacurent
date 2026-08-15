@@ -36,7 +36,7 @@ function stageLine(monthId, service, stage) {
   return line(
     `${monthId}.${service}.${stage.stageId}.input`,
     `Q_${service}_${stage.stageId},in,${monthId} := ${number(inputs.subsystemOutputKWh)} + ${number(inputs.subsystemLossKWh)} - ${number(recoveredAux)} - ${number(recoveredLoss)}\n` +
-      `                              = ${value(stage.inputEnergy.valueKWh, "kWh")}`,
+      `                              = ${value(stage.inputEnergy.valueKWh, "kWh")} -- pierdere ${sourceLabel(stage.lossSource)}; auxiliar ${sourceLabel(stage.auxiliarySource)}`,
     stage.inputEnergy.valueKWh,
     "kWh",
     stage.inputEnergy.formulaId

@@ -88,10 +88,10 @@ Every production concept exists once, has exactly one owner and is extended thro
 | derived.thermal_bridges | derived_engineering_value | Building DNA Resolver | buildingDna.thermalBridges | calculated | affects_Hd_Htr |
 | renovation.wall_insulation | primitive_user_input | User through Renovation Interventions and Typology Engine | buildingDna.renovationInterventions and assemblies[exterior_wall].layers | remain_editable | affects_R_U_Hd_Htr_QHnd |
 | renovation.window_replacement | primitive_user_input | User through Renovation Interventions | buildingDna.renovationInterventions | remain_editable | traceability; assembly effect is via window_type |
-| technical_systems.heating | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.heating | remain_editable | drives_Chapter3_heating_system_energy; multiple systems require explicit allocationFraction |
-| technical_systems.cooling | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.cooling | remain_editable | drives_Chapter3_cooling_system_energy; multiple systems require explicit allocationFraction |
+| technical_systems.heating | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.heating | remain_editable | drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1 |
+| technical_systems.cooling | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.cooling | remain_editable | drives_Chapter3_cooling_system_energy; multiple active systems require explicit allocationFraction values summing to 1 |
 | technical_systems.ventilation_ahu | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.ventilationAhu | remain_editable | drives_Chapter3_AHU_auxiliary_energy |
-| technical_systems.dhw | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.domesticHotWater | remain_editable | drives_Chapter3_DHW_system_energy; multiple systems require explicit allocationFraction |
+| technical_systems.dhw | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.domesticHotWater | remain_editable | drives_Chapter3_DHW_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8C component contracts calculate relations 3.200-3.228 when complete product/project inputs are supplied |
 | technical_systems.pcm_storage | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.coolingStoragePcm | remain_editable | drives_PCM_relations_3_111_3_113_and_storage_chain |
 | technical_systems.lighting_boundary | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.lighting | remain_editable | explicit_input_boundary_only_SR_EN_15193_1_pending |
 | runtime.assembly_u_values | physics_runtime_state | Physics Engine | calculateMc001EnvelopeAssemblyUValueExplicit output | read_only | intermediate_traceable_engine_result |
@@ -123,7 +123,6 @@ Every production concept exists once, has exactly one owner and is extended thro
 | chapter2_physics | chapter3_adapter | Chapter 3 Adapter | none |
 | building_dna | chapter3_adapter | Chapter 3 Adapter | none |
 | chapter3_adapter | chapter3_physics | Physics Engine | none |
-| technical_systems.parallel_service_allocation | chapter3_adapter | Chapter 3 Adapter | explicit allocationFraction values must sum to 1; no inferred split |
 | chapter2_physics | engineering_runtime | Physics Engine | none |
 | chapter3_physics | engineering_runtime | Physics Engine | optional_when_systems_active |
 | engineering_runtime | technical_report | Technical Report Builder | none |

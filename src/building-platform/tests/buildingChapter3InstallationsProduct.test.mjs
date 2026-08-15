@@ -251,7 +251,7 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
     buildingDna: pipeline.buildingDna,
     calculation: pipeline.calculation
   });
-  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8b_v1");
+  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8c_v1");
   assert.ok(metadata.chapter3RuntimeVersion);
 
   const backend = createInMemoryVersionedBuildingBackend();
@@ -403,6 +403,174 @@ await test("DHW useful demand can be calculated from MC001 Tabel 3.3.1 source ro
   close(januaryDhw.usefulDemandKWh, januaryExpectedUseful, 1e-9);
 });
 
+await test("DHW distribution and storage component contracts calculate stage losses and auxiliaries", () => {
+  const systems = technicalSystems();
+  systems.heating.enabled = false;
+  systems.heating.systems = [];
+  systems.cooling.enabled = false;
+  systems.cooling.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.domesticHotWater.monthlyUsefulDemandKWh = 50;
+  systems.domesticHotWater.systems = [
+    {
+      systemId: "dhw-component-contract",
+      enabled: true,
+      servedScope: "whole_building",
+      energyCarrier: "natural_gas",
+      generatorType: "explicit_other",
+      stages: [
+        {
+          stageId: "distribution",
+          lossCalculation: {
+            mode: "dhw_distribution_loss_components",
+            operationTimeHours: 100,
+            distributionPipeSegments: [
+              {
+                linearTransmittanceInput: {
+                  mode: "insulated_pipe",
+                  innerDiameterM: 0.02,
+                  outerDiameterM: 0.04,
+                  insulationThermalConductivityWPerMK: 0.04,
+                  externalHeatTransferCoefficientWPerM2K: 8
+                },
+                meanTemperatureInput: {
+                  thetaWDistributionC: 55,
+                  deltaThetaWLoopK: 10
+                },
+                thetaWAmbientC: 20,
+                lengthM: 10,
+                equivalentLengthM: 2
+              }
+            ],
+            recoverablePipeSegments: [
+              {
+                linearTransmittanceInput: {
+                  mode: "insulated_pipe",
+                  innerDiameterM: 0.02,
+                  outerDiameterM: 0.04,
+                  insulationThermalConductivityWPerMK: 0.04,
+                  externalHeatTransferCoefficientWPerM2K: 8
+                },
+                meanTemperatureInput: {
+                  thetaWDistributionC: 55,
+                  deltaThetaWLoopK: 10
+                },
+                thetaWAmbientC: 20,
+                lengthM: 4,
+                equivalentLengthM: 0
+              }
+            ]
+          },
+          auxiliaryCalculation: {
+            mode: "dhw_recirculation_pump_auxiliary",
+            pressureDropInput: {
+              componentResistanceFactor: 0.2,
+              maxLinearPressureDropKPaPerM: 0.03,
+              maxCircuitLengthM: 40,
+              additionalPressureDropKPa: 4
+            },
+            designFlowRateM3PerH: 0.8,
+            operationLoadFactor: 0.5,
+            operationTimeHours: 100,
+            correctionFactor: 1.1,
+            controlConstantCp1: 0.25,
+            controlConstantCp2: 0.75,
+            energyEfficiencyIndex: 0.23,
+            recoverableFraction: 0.4
+          },
+          auxiliaryRecoveredFraction: 0
+        },
+        {
+          stageId: "storage",
+          lossCalculation: {
+            mode: "dhw_storage_standing_loss_single_volume",
+            accessibleStorageVolumeFactor: 0.8,
+            distributionStorageLossFactor: 1.1,
+            storageHeatTransferCoefficientWPerK: 3,
+            storageSetpointTemperatureC: 55,
+            storageAmbientTemperatureC: 20,
+            calculationHours: 744
+          },
+          auxiliaryKWhPerMonth: 0
+        },
+        {
+          stageId: "generation",
+          lossKWhPerMonth: 3,
+          auxiliaryKWhPerMonth: 0.2,
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        }
+      ]
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+  assert.equal(pipeline.status, "ready");
+  const januaryDhw = pipeline.calculation.chapter3Result.monthly[0].dhw;
+  const distribution = januaryDhw.stageResults.find(stageResult => stageResult.stageId === "distribution");
+  const storage = januaryDhw.stageResults.find(stageResult => stageResult.stageId === "storage");
+
+  const psi =
+    Math.PI /
+    ((1 / (2 * 0.04)) * Math.log(0.04 / 0.02) + 1 / (8 * 0.04));
+  const distributionLossExpected = psi * (50 - 20) * (10 + 2) * 100 / 1000;
+  const recoverableLossExpected = psi * (50 - 20) * 4 * 100 / 1000;
+  const recoveryFactorExpected = recoverableLossExpected / distributionLossExpected;
+  const pressureDropExpected = (1 + 0.2) * 0.03 * 40 + 4;
+  const designPowerExpected = pressureDropExpected * 0.8 / 3600;
+  const referencePowerExpected =
+    (1.7 * designPowerExpected +
+      17 * (1 - Math.exp(-0.3 * designPowerExpected))) *
+    10 ** -3;
+  const efficiencyFactorExpected = referencePowerExpected / designPowerExpected;
+  const pumpEnergyUseFactorExpected =
+    efficiencyFactorExpected * (0.25 + 0.75 * 0.5 ** -1) * 0.23 / 0.25;
+  const pumpEnergyExpected = designPowerExpected * 0.5 * 100 * 1.1;
+  const auxiliaryExpected = pumpEnergyExpected * pumpEnergyUseFactorExpected;
+  const storageLossExpected = 0.8 * 1.1 * (3 / 1000) * (55 - 20) * 744;
+
+  close(distribution.lossKWh, distributionLossExpected, 1e-9);
+  close(distribution.auxiliaryKWh, auxiliaryExpected, 1e-12);
+  close(distribution.inputEnergy.recoveredLossKWh, recoverableLossExpected, 1e-9);
+  close(distribution.recoverableEnergy.valueKWh, recoverableLossExpected + auxiliaryExpected * 0.4, 1e-9);
+  close(storage.lossKWh, storageLossExpected, 1e-9);
+  close(
+    januaryDhw.finalStageInputKWh,
+    50 + distributionLossExpected - recoverableLossExpected + storageLossExpected + 3,
+    1e-9
+  );
+  assert.equal(
+    distribution.lossSource.classification,
+    CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
+  );
+  assert.ok(
+    distribution.lossSource.formulaIds.includes("MC001_3_201_DHW_LINEAR_TRANSMITTANCE_INSULATED_PIPE")
+  );
+  assert.ok(
+    distribution.lossSource.formulaIds.includes("MC001_3_213_DHW_TOTAL_DISTRIBUTION_LOSS")
+  );
+  assert.ok(
+    distribution.auxiliarySource.formulaIds.includes("MC001_3_223_DHW_REFERENCE_PUMP_POWER")
+  );
+  assert.equal(
+    storage.lossSource.formulaIds.includes("MC001_3_228_DHW_STORAGE_STANDING_LOSS_SINGLE_VOLUME"),
+    true
+  );
+
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  assert.ok(JSON.stringify(workspace.report).includes("calculat normativ"));
+  assert.ok(JSON.stringify(workspace.engineeringNotebook).includes("calculat normativ"));
+});
+
 await test("Chapter 2-only buildings remain openable without Chapter 3 output", () => {
   const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
     assistedAnswers({ technicalSystems: undefined })
@@ -437,6 +605,50 @@ await test("invalid Chapter 3 system data is rejected instead of filled with hid
   assert.equal(calculation.status, "blocked");
   assert.equal(calculation.stage, "chapter_3_installations");
   assert.ok(calculation.diagnostics.some(item => item.code === "missing_installation_stage"));
+});
+
+await test("empty DHW component contracts are rejected instead of becoming zero losses", () => {
+  const systems = technicalSystems({
+    domesticHotWater: {
+      enabled: true,
+      monthlyUsefulDemandKWh: 50,
+      usefulDemandSource: {
+        mode: "explicit_monthly",
+        source: {
+          origin: "expert_explicit_monthly_input",
+          reference: "test.dhw.useful"
+        }
+      },
+      systems: [
+        {
+          systemId: "dhw-empty-contract",
+          enabled: true,
+          energyCarrier: "natural_gas",
+          stages: CHAPTER3_DHW_STAGE_IDS.map(stageId => ({
+            stageId,
+            ...(stageId === "distribution"
+              ? {
+                  lossCalculation: {
+                    mode: "dhw_distribution_loss_components"
+                  },
+                  auxiliaryKWhPerMonth: 0
+                }
+              : {
+                  lossKWhPerMonth: 0,
+                  auxiliaryKWhPerMonth: 0
+                })
+          }))
+        }
+      ]
+    }
+  });
+  const calculation = calculateChapter2ForBuildingDna(
+    createBuildingDnaFromAssistedAnswers(assistedAnswers({ technicalSystems: systems })).buildingDna
+  );
+  assert.equal(calculation.status, "blocked");
+  assert.ok(
+    calculation.diagnostics.some(item => item.code === "invalid_chapter3_stage_loss_component_contract")
+  );
 });
 
 await test("installation input changes alter deterministic analysis fingerprints and results", () => {
