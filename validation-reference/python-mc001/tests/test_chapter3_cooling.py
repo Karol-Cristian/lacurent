@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from mc001_reference.chapter3_cooling import (
+    cooling_compression_delivered_electric_input_kwh,
     cooling_compression_eer,
     cooling_compression_electric_input_kwh,
     cooling_control_auxiliary_kwh,
@@ -76,6 +77,10 @@ class Chapter3CoolingReferenceTests(unittest.TestCase):
             heat_rejection_distribution_aux,
             control_aux,
         )
+        delivered_electric = cooling_compression_delivered_electric_input_kwh(
+            compression,
+            generator_aux,
+        )
         effective_eer = cooling_compression_eer(generator_input, compression, generator_aux)
 
         self.assertAlmostEqual(distribution_loss, 0.05 * 125, places=12)
@@ -95,7 +100,66 @@ class Chapter3CoolingReferenceTests(unittest.TestCase):
         self.assertAlmostEqual(heat_rejection_distribution_aux, heat_rejected * 0.003, places=12)
         self.assertAlmostEqual(control_aux, 240 * 0.02, places=12)
         self.assertAlmostEqual(generator_aux, heat_rejection_aux + heat_rejection_distribution_aux + control_aux, places=12)
+        self.assertAlmostEqual(delivered_electric, compression + generator_aux, places=12)
         self.assertAlmostEqual(effective_eer, generator_input / (compression + generator_aux), places=12)
+
+    def test_compression_delivered_electric_input_decreases_with_eer(self):
+        generator_required = 166.25
+        operation_hours = 240
+        nominal_power = 20
+        specific_electric_demand = 0.018
+        part_load_electric_factor = 0.8
+        distribution_specific_electric_demand = 0.003
+        control_aux = cooling_control_auxiliary_kwh(operation_hours, [0.02])
+        delivered_by_eer = []
+
+        for eer in [2, 3, 4, 5]:
+            load = cooling_part_load_factor(generator_required, operation_hours, nominal_power)
+            part_load = cooling_part_load_bin(load)
+            generator_input = cooling_generator_input_by_capacity_limit(
+                generator_required,
+                operation_hours,
+                nominal_power,
+            )
+            compression = cooling_compression_electric_input_kwh(
+                generator_input,
+                part_load,
+                eer,
+                1,
+            )
+            heat_rejected = cooling_heat_rejected_compression_kwh(
+                generator_input,
+                eer,
+                part_load,
+                1,
+            )
+            heat_rejection_aux = cooling_heat_rejection_auxiliary_kwh(
+                heat_rejected,
+                specific_electric_demand,
+                part_load_electric_factor,
+                1,
+            )
+            heat_rejection_distribution_aux = cooling_heat_rejection_distribution_auxiliary_kwh(
+                heat_rejected,
+                distribution_specific_electric_demand,
+            )
+            generator_aux = cooling_generator_auxiliary_total_kwh(
+                heat_rejection_aux,
+                heat_rejection_distribution_aux,
+                control_aux,
+            )
+            delivered_by_eer.append(
+                cooling_compression_delivered_electric_input_kwh(
+                    compression,
+                    generator_aux,
+                )
+            )
+
+        self.assertEqual(len(delivered_by_eer), 4)
+        self.assertTrue(all(
+            later < earlier
+            for earlier, later in zip(delivered_by_eer, delivered_by_eer[1:])
+        ), delivered_by_eer)
 
 
 if __name__ == "__main__":

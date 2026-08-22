@@ -98,3 +98,7 @@ def cooling_generator_auxiliary_total_kwh(heat_rejection_aux_kwh: float, heat_re
 
 def cooling_compression_eer(generator_input_kwh: float, compression_electric_kwh: float, auxiliary_electric_kwh: float) -> float:
     return generator_input_kwh / (compression_electric_kwh + auxiliary_electric_kwh)
+
+
+def cooling_compression_delivered_electric_input_kwh(compression_electric_kwh: float, auxiliary_electric_kwh: float) -> float:
+    return compression_electric_kwh + auxiliary_electric_kwh

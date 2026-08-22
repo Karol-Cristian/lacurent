@@ -776,6 +776,232 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
         controllerPowerKW: 0.02,
         operationFactor: 0.5,
         calculationHours: 120
+      },
+      thermalRelationCalculations: {
+        heatingCoil: {
+          mode: "ahu_heating_coil_required_energy",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          supplyAirFlowM3PerH: 3000,
+          requiredSupplyTemperatureC: 18,
+          humidificationTemperatureRiseK: 2,
+          outdoorTemperatureC: -4,
+          calculationHours: 1
+        },
+        heatRecovery: {
+          mode: "ahu_heat_recovery_energy",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          moistureLatentHeatKJPerKg: 2500,
+          supplyAirFlowM3PerH: 3000,
+          outdoorAirFraction: 0.4,
+          supplyTemperatureAfterRecoveryC: 12,
+          outdoorPreheatTemperatureC: -5,
+          supplyHumidityAfterRecoveryKgPerKg: 0.006,
+          outdoorPreheatHumidityKgPerKg: 0.004,
+          calculationHours: 1
+        },
+        recirculationHeating: {
+          mode: "ahu_recirculation_air_heating_energy",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          extractAirFlowM3PerH: 2800,
+          outdoorAirFraction: 0.4,
+          extractTemperatureIntoRecoveryC: 20,
+          outdoorTemperatureC: -5,
+          calculationHours: 2
+        },
+        coolingCoil: {
+          mode: "ahu_cooling_coil_required_energy",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          moistureLatentHeatKJPerKg: 2500,
+          supplyAirFlowM3PerH: 3000,
+          recirculatedSupplyTemperatureC: 26,
+          requiredCoolingSupplyTemperatureC: 16,
+          recirculatedHumidityKgPerKg: 0.011,
+          requiredCoolingHumidityKgPerKg: 0.008,
+          calculationHours: 1
+        },
+        dehumidification: {
+          mode: "ahu_dehumidification_cooling_energy",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          moistureLatentHeatKJPerKg: 2500,
+          supplyAirFlowM3PerH: 3000,
+          recirculatedSupplyTemperatureC: 26,
+          ahuRequiredSupplyTemperatureC: 20,
+          requiredCoolingSupplyTemperatureC: 16,
+          recirculatedHumidityKgPerKg: 0.011,
+          dehumidificationHumidityReductionKgPerKg: 0.001,
+          requiredCoolingHumidityKgPerKg: 0.008,
+          calculationHours: 1
+        },
+        humidification: {
+          mode: "ahu_humidification_generator_input_energy",
+          airDensityKgPerM3: 1.2,
+          moistureLatentHeatKJPerKg: 2500,
+          supplyAirFlowM3PerH: 3000,
+          targetHumidityKgPerKg: 0.007,
+          sourceHumidityKgPerKg: 0.004,
+          calculationHours: 1
+        },
+        humidificationAuxiliary: {
+          mode: "ahu_non_steam_humidification_auxiliary_zero"
+        },
+        generationLoss: {
+          mode: "ahu_generation_loss_conditioned",
+          supplyAuKWPerK: 0.02,
+          supplyTemperatureC: 28,
+          extractAuKWPerK: 0.015,
+          extractTemperatureC: 22,
+          zoneTemperatureC: 20,
+          supplyLeakageM3PerH: 50,
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          calculationHours: 10
+        },
+        recoverableGenerationLoss: {
+          mode: "ahu_recoverable_generation_loss",
+          ahuLocation: "conditioned"
+        },
+        fanTemperatureRise: {
+          mode: "fan_temperature_rise",
+          fanPressureDropPa: 200,
+          fanReadinessFactor: 1,
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKWhPerKgK: 1.006,
+          fanEfficiency: 0.5
+        },
+        extractAirTemperatureForRecovery: {
+          mode: "extract_air_temperature_for_recovery",
+          extractFanPosition: "upstream_of_recovery",
+          extractAirTemperatureAfterDistributionC: 21,
+          extractFanTemperatureRiseK: 0.5
+        },
+        fanEfficiency: {
+          mode: "fan_efficiency_from_nominal_and_airflow_factor",
+          nominalFanEfficiency: 0.6,
+          airflowFunctionFactor: 0.9
+        },
+        quadraticPressureDrop: {
+          mode: "quadratic_pressure_drop",
+          formulaId: "MC001_3_57_TO_3_60_QUADRATIC_PRESSURE_DROP",
+          designPressureDropPa: 200,
+          currentFlowM3PerH: 150,
+          nominalFlowM3PerH: 300
+        },
+        multiZoneConstantPressureDrop: {
+          mode: "multizone_constant_pressure_drop",
+          designPressureDropPa: 200,
+          currentFlowM3PerH: 150,
+          nominalFlowM3PerH: 300,
+          controlFactor: 0.2
+        },
+        multiZoneMinimumPressureDrop: {
+          mode: "multizone_minimum_pressure_drop",
+          designPressureDropPa: 200,
+          currentFlowM3PerH: 150,
+          nominalFlowM3PerH: 300,
+          controlFactor: 0.2,
+          maximumFlowFactor: 0.7
+        },
+        groundPreheatPrecool: {
+          mode: "ground_preheat_precool_energy",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          supplyAirFlowM3PerH: 3000,
+          outdoorAirFraction: 0.4,
+          preheatedOutdoorTemperatureC: 4,
+          outdoorTemperatureC: -4,
+          calculationHours: 2
+        },
+        fanEnergyAssignedToHeatRecovery: {
+          mode: "fan_energy_assigned_to_heat_recovery_pressure",
+          fanElectricEnergyKWh: 12,
+          heatRecoveryDesignPressureDropPa: 60,
+          supplyDesignPressureDropPa: 220,
+          extractDesignPressureDropPa: 180
+        },
+        steamHumidificationPumpAuxiliary: {
+          mode: "steam_humidification_pump_auxiliary_zero"
+        },
+        humidificationPumpAuxiliary: {
+          mode: "humidification_pump_auxiliary_energy",
+          designHumidificationAirFlowM3PerH: 2000,
+          designSpecificPumpEnergyKWhPerM3: 0.00002,
+          partLoadFactor: 0.5,
+          calculationHours: 120
+        },
+        ductLeakageFactor: {
+          mode: "duct_leakage_factor",
+          leakageAirFlowM3PerH: 15,
+          requiredAirFlowM3PerH: 300
+        },
+        ductLeakageAirFlow: {
+          mode: "duct_leakage_air_flow",
+          ductAreaM2: 20,
+          leakageCoefficient: 0.00001,
+          pressureDifferencePa: 100,
+          exponent: 0.65
+        },
+        ahuLeakageFactor: {
+          mode: "ahu_leakage_factor",
+          ahuLeakageAirFlowM3PerH: 10,
+          distributionAirFlowM3PerH: 300,
+          ahuPressurePa: 250,
+          testPressurePa: 400
+        },
+        requiredSupplyDistributionAirFlow: {
+          mode: "required_supply_distribution_air_flow",
+          zoneRequiredAirFlowsM3PerH: [
+            { leakageFactor: 1.05, requiredAirFlowM3PerH: 100 },
+            { leakageFactor: 1.1, requiredAirFlowM3PerH: 200 }
+          ]
+        },
+        requiredExtractDistributionAirFlow: {
+          mode: "required_extract_distribution_air_flow",
+          zoneRequiredAirFlowsM3PerH: [
+            { leakageFactor: 1.05, requiredAirFlowM3PerH: 100 },
+            { leakageFactor: 1.1, requiredAirFlowM3PerH: 200 }
+          ]
+        },
+        supplyAirFlowZoneAllocation: {
+          mode: "supply_air_flow_zone_allocation",
+          supplyDistributionAirFlowM3PerH: 325,
+          zoneRequiredAirFlowM3PerH: 100,
+          totalRequiredAirFlowM3PerH: 300
+        },
+        extractAirFlowZoneAllocation: {
+          mode: "extract_air_flow_zone_allocation",
+          extractDistributionAirFlowM3PerH: -325,
+          zoneRequiredAirFlowM3PerH: 100,
+          totalRequiredAirFlowM3PerH: 300
+        },
+        ductLeakageFlowFromFactor: {
+          mode: "duct_leakage_flow_from_factor",
+          formulaId: "MC001_3_85_TO_3_87_DUCT_LEAKAGE_FLOW_FROM_FACTOR",
+          leakageFactor: 1.05,
+          zoneAirFlowM3PerH: 108.33333333333333
+        },
+        maximumZoneFlowFactor: {
+          mode: "maximum_zone_flow_factor",
+          zoneFlows: [
+            { currentAirFlowM3PerH: 100, designMaximumAirFlowM3PerH: 200 },
+            { currentAirFlowM3PerH: 150, designMaximumAirFlowM3PerH: 250 }
+          ]
+        },
+        partLoadAhuAirFlow: {
+          mode: "part_load_ahu_air_flow",
+          formulaId: "MC001_3_89_3_90_PART_LOAD_AHU_AIR_FLOW",
+          partLoadFactor: 0.6,
+          nominalAirFlowM3PerH: 500
+        },
+        maximumFlowFactorFromPartLoad: {
+          mode: "maximum_flow_factor_from_part_load",
+          partLoadFactor: 0.6,
+          deltaFlowFactor: 0.15
+        }
       }
     }
   ];
@@ -789,9 +1015,66 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
     (300 * 220 / 0.55 + 280 * 180 / 0.55) * 120 / (3.6 * 10 ** 6);
   const heatRecoveryExpected = 0.1 * 120 * 0.5;
   const controlExpected = 0.02 * 0.5 * 120;
+  const ahuRelations = januaryVentilation.ahuThermalRelations.relations;
+  const heatingCoilExpected = 1.2 * 1.006 * 3000 * 24 / 3600;
+  const heatRecoveryThermalExpected =
+    ((1.2 * 1.006 * 3000 * 0.4 * 17) + (1.2 * 2500 * 3000 * 0.4 * 0.002)) / 3600;
+  const recirculationExpected = 1.2 * 1.006 * 2800 * 0.6 * 25 * 2 / 3600;
+  const coolingCoilExpected =
+    ((1.2 * 1.006 * 3000 * 10) + (1.2 * 2500 * 3000 * 0.003)) / 3600;
+  const dehumidificationExpected =
+    ((1.2 * 1.006 * 3000 * 4) + (1.2 * 2500 * 3000 * 0.002)) / 3600;
+  const humidificationExpected = 3000 * 1.2 * 2500 * 0.003 / 3600;
+  const generationLossExpected =
+    ((0.02 * 8 + 0.015 * 2) + (50 * 1.2 * 1.006 * 8 / 3600)) * 10;
+  const fanTemperatureRiseExpected = 200 / (1.2 * 1.006 * 0.5 * 3.6 * 10 ** 6);
+  const quadraticPressureDropExpected = 200 * (150 / 300) ** 2;
+  const multiZoneConstantPressureExpected = 200 * ((1 - 0.2) * (150 / 300) ** 2 + 0.2);
+  const multiZoneMinimumPressureExpected = 200 * ((1 - 0.2) * (150 / 300) ** 2 + 0.2 * 0.7 ** 2);
+  const groundPreheatPrecoolExpected = 1.2 * 1.006 * 3000 * 0.4 * 8 * 2 / 3600;
+  const fanEnergyAssignedExpected = 12 * 60 / (220 + 180);
+  const humidificationPumpExpected = 2000 * 0.00002 * 0.5 * 120;
+  const ductLeakageFactorExpected = 1 + 15 / 300;
+  const ductLeakageAirFlowExpected = 20 * 0.00001 * 100 ** 0.65 * 3600;
+  const ahuLeakageFactorExpected = 1 + (10 / 300) * (250 / 400) ** 0.65;
+  const requiredDistributionAirFlowExpected = 1.05 * 100 + 1.1 * 200;
+  const zoneAllocationExpected = 325 * 100 / 300;
+  const ductLeakageFlowFromFactorExpected = (1.05 - 1) * zoneAllocationExpected;
+  const maximumZoneFlowFactorExpected = 150 / 250;
+  const partLoadAhuAirFlowExpected = 0.6 * 500;
 
   close(januaryVentilation.fanElectricEnergy.valueKWh, fanExpected, 1e-12);
   close(januaryVentilation.valueKWh, fanExpected + heatRecoveryExpected + controlExpected, 1e-12);
+  close(ahuRelations.heatingCoilRequiredEnergy.valueKWh, heatingCoilExpected, 1e-12);
+  close(ahuRelations.heatRecoveryEnergy.valueKWh, heatRecoveryThermalExpected, 1e-12);
+  close(ahuRelations.recirculationAirHeatingEnergy.valueKWh, recirculationExpected, 1e-12);
+  close(ahuRelations.coolingCoilRequiredEnergy.valueKWh, coolingCoilExpected, 1e-12);
+  close(ahuRelations.dehumidificationCoolingEnergy.valueKWh, dehumidificationExpected, 1e-12);
+  close(ahuRelations.humidificationGeneratorInputEnergy.valueKWh, humidificationExpected, 1e-12);
+  close(ahuRelations.humidificationAuxiliaryEnergy.valueKWh, 0, 1e-12);
+  close(ahuRelations.generationLoss.valueKWh, generationLossExpected, 1e-12);
+  close(ahuRelations.recoverableGenerationLoss.valueKWh, generationLossExpected, 1e-12);
+  close(ahuRelations.fanTemperatureRise.value, fanTemperatureRiseExpected, 1e-12);
+  close(ahuRelations.extractAirTemperatureForRecovery.valueC, 21.5, 1e-12);
+  close(ahuRelations.fanEfficiency.value, 0.54, 1e-12);
+  close(ahuRelations.quadraticPressureDrop.value, quadraticPressureDropExpected, 1e-12);
+  close(ahuRelations.multiZoneConstantPressureDrop.value, multiZoneConstantPressureExpected, 1e-12);
+  close(ahuRelations.multiZoneMinimumPressureDrop.value, multiZoneMinimumPressureExpected, 1e-12);
+  close(ahuRelations.groundPreheatPrecoolEnergy.valueKWh, groundPreheatPrecoolExpected, 1e-12);
+  close(ahuRelations.fanEnergyAssignedToHeatRecovery.valueKWh, fanEnergyAssignedExpected, 1e-12);
+  close(ahuRelations.steamHumidificationPumpAuxiliaryEnergy.valueKWh, 0, 1e-12);
+  close(ahuRelations.humidificationPumpAuxiliaryEnergy.valueKWh, humidificationPumpExpected, 1e-12);
+  close(ahuRelations.ductLeakageFactor.value, ductLeakageFactorExpected, 1e-12);
+  close(ahuRelations.ductLeakageAirFlow.value, ductLeakageAirFlowExpected, 1e-12);
+  close(ahuRelations.ahuLeakageFactor.value, ahuLeakageFactorExpected, 1e-12);
+  close(ahuRelations.requiredSupplyDistributionAirFlow.value, requiredDistributionAirFlowExpected, 1e-12);
+  close(ahuRelations.requiredExtractDistributionAirFlow.value, -requiredDistributionAirFlowExpected, 1e-12);
+  close(ahuRelations.supplyAirFlowZoneAllocation.value, zoneAllocationExpected, 1e-12);
+  close(ahuRelations.extractAirFlowZoneAllocation.value, zoneAllocationExpected, 1e-12);
+  close(ahuRelations.ductLeakageFlowFromFactor.value, ductLeakageFlowFromFactorExpected, 1e-12);
+  close(ahuRelations.maximumZoneFlowFactor.value, maximumZoneFlowFactorExpected, 1e-12);
+  close(ahuRelations.partLoadAhuAirFlow.value, partLoadAhuAirFlowExpected, 1e-12);
+  close(ahuRelations.maximumFlowFactorFromPartLoad.value, 0.75, 1e-12);
   assert.equal(
     januaryVentilation.sources.heatRecoveryAuxiliary.classification,
     CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
@@ -804,6 +1087,48 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
   assert.ok(
     januaryVentilation.sources.controlAuxiliary.formulaIds.includes(
       "MC001_3_75_VENTILATION_CONTROL_AUXILIARY_ENERGY"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_40_AHU_HEATING_COIL_REQUIRED_ENERGY"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_49_3_50_AHU_RECOVERABLE_GENERATION_LOSSES"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_52_FAN_TEMPERATURE_RISE"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_82_REQUIRED_EXTRACT_DISTRIBUTION_AIR_FLOW"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_83_SUPPLY_AIR_FLOW_ZONE_ALLOCATION"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_91_MAXIMUM_FLOW_FACTOR_FROM_PART_LOAD"
+    )
+  );
+  assert.ok(
+    pipeline.calculation.chapter3Result.formulaReferences.includes(
+      "MC001_3_43_AHU_COOLING_COIL_REQUIRED_ENERGY"
+    )
+  );
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  assert.ok(JSON.stringify(workspace.report).includes("MC001_3_45_AHU_HUMIDIFICATION_GENERATOR_INPUT_ENERGY"));
+  assert.ok(
+    workspace.installations.ahuThermalRelations.some(row =>
+      row.formulaIds.includes("MC001_3_43_AHU_COOLING_COIL_REQUIRED_ENERGY")
     )
   );
 });
@@ -933,17 +1258,16 @@ await test("cooling component contracts calculate distribution, storage and heat
   const controlAuxExpected = 0.02 * 240;
   const generatorAuxExpected =
     heatRejectionAuxExpected + heatRejectionDistributionAuxExpected + controlAuxExpected;
+  const compressionElectricExpected = generationRequired / (partLoadBin * 3 * 1);
+  const deliveredElectricExpected = compressionElectricExpected + generatorAuxExpected;
 
   close(distribution.lossKWh, distributionLossExpected, 1e-9);
   close(distribution.auxiliaryKWh, distributionAuxExpected, 1e-9);
   close(storage.lossKWh, storageLossExpected, 1e-9);
   close(storage.auxiliaryKWh, storageAuxExpected, 1e-9);
   close(generation.auxiliaryKWh, generatorAuxExpected, 1e-9);
-  close(
-    januaryCooling.finalStageInputKWh,
-    generationRequired - generatorAuxExpected * 0.1,
-    1e-9
-  );
+  close(generation.inputEnergy.valueKWh, deliveredElectricExpected, 1e-9);
+  close(januaryCooling.finalStageInputKWh, deliveredElectricExpected, 1e-9);
   assert.equal(distribution.lossSource.classification, CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED);
   assert.ok(distribution.lossSource.formulaIds.includes("MC001_3_146_COOLING_DISTRIBUTION_LOSS"));
   assert.ok(distribution.auxiliarySource.formulaIds.includes("MC001_3_147_COOLING_DISTRIBUTION_AUXILIARY_ENERGY"));
@@ -956,8 +1280,17 @@ await test("cooling component contracts calculate distribution, storage and heat
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_164_HEAT_REJECTED_COMPRESSION_GENERATOR"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_176_HEAT_REJECTION_AUXILIARY_ENERGY"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL"));
+  assert.equal(
+    generation.inputEnergy.formulaId,
+    "MC001_3_181_COOLING_COMPRESSION_DELIVERED_ELECTRIC_INPUT"
+  );
   assert.ok(
     pipeline.calculation.chapter3Result.formulaReferences.includes("MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL")
+  );
+  assert.ok(
+    pipeline.calculation.chapter3Result.formulaReferences.includes(
+      "MC001_3_181_COOLING_COMPRESSION_DELIVERED_ELECTRIC_INPUT"
+    )
   );
 
   const changedSystems = structuredClone(systems);
@@ -970,9 +1303,9 @@ await test("cooling component contracts calculate distribution, storage and heat
       .find(stageResult => stageResult.stageId === "generation").auxiliaryKWh,
     generation.auxiliaryKWh
   );
-  assert.notEqual(
-    changed.calculation.chapter3Result.annual.coolingInputKWh,
-    pipeline.calculation.chapter3Result.annual.coolingInputKWh
+  assert.ok(
+    changed.calculation.chapter3Result.annual.coolingInputKWh <
+      pipeline.calculation.chapter3Result.annual.coolingInputKWh
   );
   assert.notEqual(
     changed.calculation.chapter3Result.annual.coolingAuxiliaryKWh,
@@ -982,6 +1315,133 @@ await test("cooling component contracts calculate distribution, storage and heat
   const workspace = buildBuildingTechnicalWorkspace(pipeline);
   assert.ok(JSON.stringify(workspace.engineeringNotebook).includes("MC001_3_181_COOLING_COMPRESSION_EER"));
   assert.ok(JSON.stringify(workspace.report).includes("calculat normativ"));
+});
+
+await test("cooling delivered energy decreases monotonically as EER increases", () => {
+  const annualByEer = [];
+  for (const nominalEer of [2, 3, 4, 5]) {
+    const systems = technicalSystems();
+    systems.heating.enabled = false;
+    systems.heating.systems = [];
+    systems.ventilationAhu.enabled = false;
+    systems.ventilationAhu.systems = [];
+    systems.domesticHotWater.enabled = false;
+    systems.domesticHotWater.systems = [];
+    systems.coolingStoragePcm.enabled = false;
+    systems.lighting.enabled = false;
+    systems.lighting.explicitMonthlyEnergyKWh = [];
+    systems.lighting.leniSubspaces = [];
+    systems.cooling.systems = [
+      {
+        systemId: `cooling-eer-${nominalEer}`,
+        enabled: true,
+        generatorType: "chiller",
+        energyCarrier: "electricity",
+        stages: [
+          stage("emission", 1, 0),
+          {
+            stageId: "distribution",
+            lossCalculation: {
+              mode: "cooling_distribution_factor",
+              coolingLossFactor: 0.05,
+              ahuCoolingOutputRequiredKWh: 2
+            },
+            auxiliaryCalculation: {
+              mode: "cooling_distribution_factor",
+              auxiliaryFactor: 0.02,
+              ahuCoolingOutputRequiredKWh: 2
+            },
+            auxiliaryRecoveredFraction: 0,
+            lossRecoveredFraction: 0,
+            auxiliaryRecoverableFractionToHeating: 0,
+            lossRecoverableFractionToHeating: 0
+          },
+          {
+            stageId: "storage",
+            lossCalculation: {
+              mode: "cooling_storage_thermal_losses",
+              outputSideHeatLossCoefficientKWPerK: 0.01,
+              standbyHeatLossCoefficientKWPerK: 0.01,
+              inputSideHeatLossCoefficientKWPerK: 0.01,
+              ambientTemperatureC: 30,
+              storageTemperatureC: 10,
+              calculationHours: 100,
+              recoverableStorageFraction: 0.25
+            },
+            auxiliaryCalculation: {
+              mode: "cooling_storage_pump_auxiliary",
+              pumpVolumeFlowM3PerH: 2,
+              pumpElectricPowerKW: 0.1,
+              supplyTemperatureC: 6,
+              returnTemperatureC: 11,
+              mediumSpecificHeatKWhPerKgK: 0.00116,
+              mediumDensityKgPerM3: 1000,
+              recoverableAuxiliaryFraction: 0.2
+            },
+            auxiliaryRecoveredFraction: 0,
+            lossRecoveredFraction: 0,
+            auxiliaryRecoverableFractionToHeating: 0,
+            lossRecoverableFractionToHeating: 0
+          },
+          {
+            stageId: "generation",
+            lossKWhPerMonth: 0,
+            auxiliaryCalculation: {
+              mode: "cooling_compression_heat_rejection_auxiliary",
+              operationHours: 240,
+              nominalCoolingPowerKW: 20,
+              nominalEer,
+              eerCorrectionInput: {
+                absoluteZeroOffsetK: 273.15,
+                generatorRequiredOutletTemperatureC: 7,
+                heatRejectionReferenceInletTemperatureC: 35,
+                nominalGeneratorOutletTemperatureC: 7,
+                nominalHeatRejectionInletTemperatureC: 35,
+                evaporatorTemperatureDifferenceK: 5,
+                condenserTemperatureDifferenceK: 5
+              },
+              heatRejectionAuxiliaryMode: "specific_electric_demand",
+              heatRejectionSpecificDemandKey: "wet_closed_axial_no_extra_silencer",
+              heatRejectionElectricPartLoadControlKey: "variable_water_temperature",
+              heatRejectionElectricPartLoadTypeKey: "wet_or_hybrid_wet",
+              freeCoolingElectricFactor: 1,
+              heatRejectionDistributionAuxiliaryMode: "specific_electric_demand",
+              heatRejectionDistributionSpecificElectricDemandKWPerKW: 0.003,
+              controlPowersKW: [0.02]
+            },
+            auxiliaryRecoveredFraction: 0.1,
+            lossRecoveredFraction: 0,
+            auxiliaryRecoverableFractionToHeating: 0,
+            lossRecoverableFractionToHeating: 0
+          }
+        ]
+      }
+    ];
+    const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+      assistedAnswers({ technicalSystems: systems })
+    );
+    assert.equal(pipeline.status, "ready");
+    const januaryGeneration = pipeline.calculation.chapter3Result.monthly[0].cooling.stageResults
+      .find(stageResult => stageResult.stageId === "generation");
+    annualByEer.push({
+      nominalEer,
+      annualCoolingInputKWh: pipeline.calculation.chapter3Result.annual.coolingInputKWh,
+      januaryDeliveredElectricKWh: januaryGeneration.inputEnergy.valueKWh,
+      januaryAuxiliaryKWh: januaryGeneration.auxiliaryKWh
+    });
+  }
+
+  for (let index = 1; index < annualByEer.length; index += 1) {
+    assert.ok(
+      annualByEer[index].annualCoolingInputKWh < annualByEer[index - 1].annualCoolingInputKWh,
+      JSON.stringify(annualByEer)
+    );
+    assert.ok(
+      annualByEer[index].januaryDeliveredElectricKWh <
+        annualByEer[index - 1].januaryDeliveredElectricKWh,
+      JSON.stringify(annualByEer)
+    );
+  }
 });
 
 await test("Chapter 2-only buildings remain openable without Chapter 3 output", () => {

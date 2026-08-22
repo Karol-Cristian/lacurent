@@ -1,22 +1,22 @@
 # MC001 Chapter 3 Coverage Matrix
 
-Generated deterministically from the Chapter 3 source-to-code fixture. P8E expands cooling distribution, storage and heat-rejection component contracts while preserving separate numerical/procedural/explicit-boundary accounting.
+Generated deterministically from the Chapter 3 source-to-code fixture. P8F fixes cooling compression delivered-energy propagation and expands AHU thermal-relation component contracts while preserving separate numerical/procedural/explicit-boundary accounting.
 
 | Field | Value |
 | --- | --- |
-| Schema | mc001_chapter3_coverage_matrix_p8e_v1 |
+| Schema | mc001_chapter3_coverage_matrix_p8f_v1 |
 | Total tracked relations | 217 |
-| Numerically implemented relations | 108 |
+| Numerically implemented relations | 152 |
 | Procedurally implemented relations | 4 |
-| Explicit-input boundary relations | 104 |
+| Explicit-input boundary relations | 60 |
 | External-standard blocked relations | 1 |
 | Not applicable relations | 0 |
-| Numerical implementation percentage | 49.8% |
-| Production complete supported-scope percentage | 51.6% |
+| Numerical implementation percentage | 70.0% |
+| Production complete supported-scope percentage | 71.9% |
 | Externally blocked relations | 1 |
 | Unavailable/unreadable relations | 0 |
-| Runtime-integrated entries | 72 |
-| Notebook-visible entries | 72 |
+| Runtime-integrated entries | 116 |
+| Notebook-visible entries | 116 |
 | Implemented tables/lookups | 37 |
 
 ## Status Counts
@@ -29,17 +29,17 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8E expan
 | production-integrated | 71 |
 | unit-tested | 142 |
 
-## P8E Primary Classification Counts
+## P8F Primary Classification Counts
 
 | Field | Value |
 | --- | --- |
-| EXPLICIT_INPUT_BOUNDARY | 104 |
+| EXPLICIT_INPUT_BOUNDARY | 60 |
 | EXTERNAL_STANDARD_BLOCKED | 1 |
 | NOT_APPLICABLE | 0 |
-| NUMERICALLY_IMPLEMENTED | 108 |
+| NUMERICALLY_IMPLEMENTED | 152 |
 | PROCEDURALLY_IMPLEMENTED | 4 |
 
-## Explicit Boundaries Converted Through P8E
+## Explicit Boundaries Converted Through P8F
 
 - 3.1: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
 - 3.2: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
@@ -69,12 +69,58 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8E expan
 - 3.35: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
 - 3.36: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
 - 3.37: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
-- 3.69: Ventilation/AHU component contract resolves heat-recovery, preheat or control auxiliary energy from product/operation inputs.
-- 3.70: Ventilation/AHU component contract resolves heat-recovery, preheat or control auxiliary energy from product/operation inputs.
-- 3.71: Ventilation/AHU component contract resolves heat-recovery, preheat or control auxiliary energy from product/operation inputs.
-- 3.73: Ventilation/AHU component contract resolves heat-recovery, preheat or control auxiliary energy from product/operation inputs.
-- 3.74: Ventilation/AHU component contract resolves heat-recovery, preheat or control auxiliary energy from product/operation inputs.
-- 3.75: Ventilation/AHU component contract resolves heat-recovery, preheat or control auxiliary energy from product/operation inputs.
+- 3.40: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.41: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.42: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.43: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.44: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.45: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.46: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.47: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.48: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.49: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.50: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.51: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.52: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.53: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.54: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.55: DHW useful-demand source now resolves through Building DNA `usefulDemandSource` and MC001 helper functions.
+- 3.56: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.57: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.58: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.59: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.60: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.61: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.62: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.63: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.64: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.65: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.66: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.67: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.68: DHW useful-demand source now resolves through Building DNA `usefulDemandSource` and MC001 helper functions.
+- 3.69: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.70: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.71: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.72: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.73: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.74: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.75: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.76: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.77: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.78: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.79: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.80: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.81: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.82: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.83: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.84: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.85: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.86: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.87: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.88: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.89: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.90: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
+- 3.91: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
 - 3.99: Cooling storage component contract resolves thermal-loss, pump auxiliary or recoverable-loss calculations from product, geometry, temperature and schedule inputs.
 - 3.100: Cooling storage component contract resolves thermal-loss, pump auxiliary or recoverable-loss calculations from product, geometry, temperature and schedule inputs.
 - 3.101: Cooling storage component contract resolves thermal-loss, pump auxiliary or recoverable-loss calculations from product, geometry, temperature and schedule inputs.
@@ -147,14 +193,14 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8E expan
 
 An explicit boundary remains only where MC001 requires project/manufacturer technical data, delegates the detailed method to an unavailable standard, or the current production product does not yet expose the complete detailed component contract.
 
-## P8E Production Topology
+## P8F Production Topology
 
 - Single active systems use an implicit allocation fraction of 1; an explicit single-system allocation must also be 1.
 - Multiple active heating, cooling or DHW systems require explicit allocation fractions summing to 1.
 - The runtime aggregates parallel service chains after each allocated chain has executed the Chapter 3 stage balance.
 - Energy carriers are aggregated from the resolved system metadata, not from a single service-level default.
 - Heating component contracts now calculate emission temperature-increase losses, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves where required project/product data are supplied.
-- Ventilation/AHU component contracts now calculate heat-recovery, preheat and control auxiliary branches where required product/operation inputs are supplied.
+- Ventilation/AHU component contracts now calculate heat-recovery, preheat, control auxiliary, coil, humidification and generation-loss branches where required product/project/operation inputs are supplied.
 - Cooling component contracts now calculate distribution losses/auxiliaries, no-storage branches, storage thermal losses, storage pump auxiliaries and compression heat-rejection auxiliaries where required project/product data are supplied.
 
 ## Remaining External Dependency

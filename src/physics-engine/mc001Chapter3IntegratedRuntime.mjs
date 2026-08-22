@@ -130,6 +130,24 @@ function stageBalance({
   });
 }
 
+function stageInputOverride({ service, stage, monthId, inputEnergyOverride }) {
+  if (!inputEnergyOverride) return null;
+  const result = inputEnergyOverride.result ?? inputEnergyOverride;
+  assertFiniteNonNegativeNumber(
+    result.valueKWh,
+    `${service}.${monthId}.${stage}.inputEnergyOverride.valueKWh`
+  );
+  return {
+    ...result,
+    value: result.value ?? result.valueKWh,
+    valueKWh: result.valueKWh,
+    unit: result.unit ?? "kWh",
+    formulaId: result.formulaId ?? "MC001_3_STAGE_INPUT_ENERGY_OVERRIDE",
+    status: result.status ?? "calculated",
+    source: inputEnergyOverride.source ?? result.source ?? null
+  };
+}
+
 function recoverableStage({
   service,
   stage,
@@ -177,15 +195,22 @@ function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
       `${service}.${monthId}.${stageId}.lossRecoverableFractionToHeating`
     );
 
-    const input = stageBalance({
-      service,
-      stage: stageId,
-      outputKWh,
-      lossKWh: stage.lossKWh,
-      auxiliaryKWh: stage.auxiliaryKWh,
-      auxiliaryRecoveredFraction: stage.auxiliaryRecoveredFraction,
-      lossRecoveredFraction: stage.lossRecoveredFraction
-    });
+    const input =
+      stageInputOverride({
+        service,
+        stage: stageId,
+        monthId,
+        inputEnergyOverride: stage.inputEnergyOverride
+      }) ??
+      stageBalance({
+        service,
+        stage: stageId,
+        outputKWh,
+        lossKWh: stage.lossKWh,
+        auxiliaryKWh: stage.auxiliaryKWh,
+        auxiliaryRecoveredFraction: stage.auxiliaryRecoveredFraction,
+        lossRecoveredFraction: stage.lossRecoveredFraction
+      });
     const recoverable = recoverableStage({
       service,
       stage: stageId,
@@ -202,6 +227,7 @@ function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
       auxiliaryKWh: stage.auxiliaryKWh,
       lossSource: stage.lossSource ?? null,
       auxiliarySource: stage.auxiliarySource ?? null,
+      inputEnergySource: input.source ?? stage.inputEnergyOverride?.source ?? null,
       inputEnergy: input,
       recoverableEnergy: recoverable
     });
@@ -414,6 +440,7 @@ function calculateVentilationMonth(month) {
     fanElectricEnergy: fan,
     auxiliaryEnergy: auxiliary,
     valueKWh: auxiliary.valueKWh,
+    ahuThermalRelations: month.ventilation.ahuThermalRelations ?? null,
     sources: {
       heatRecoveryAuxiliary: month.ventilation.heatRecoveryAuxiliarySource ?? null,
       preheatAuxiliary: month.ventilation.preheatAuxiliarySource ?? null,
@@ -641,7 +668,9 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
             .flatMap(system => system.stageResults ?? [])
             .flatMap(stage => [
               ...(stage.lossSource?.formulaIds ?? []),
-              ...(stage.auxiliarySource?.formulaIds ?? [])
+              ...(stage.auxiliarySource?.formulaIds ?? []),
+              ...(stage.inputEnergySource?.formulaIds ?? []),
+              ...(stage.inputEnergy?.formulaId ? [stage.inputEnergy.formulaId] : [])
             ])
         )
       )
@@ -650,8 +679,10 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
   const ventilationFormulaReferences = [
     ...new Set(
       monthly.flatMap(month =>
-        Object.values(month.ventilation?.sources ?? {})
-          .flatMap(source => source?.formulaIds ?? [])
+        [
+          ...Object.values(month.ventilation?.sources ?? {}),
+          month.ventilation?.ahuThermalRelations?.source
+        ].flatMap(source => source?.formulaIds ?? [])
       )
     )
   ];
