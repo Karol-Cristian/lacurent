@@ -570,6 +570,88 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
     heatingGenerationAux?.recoveredAuxiliaryFraction ?? "";
   values.chapter3_heating_generator_boiler_room_recovery_factor =
     heatingGenerationAux?.boilerRoomRecoveryFactor ?? "";
+  const cooling = technicalSystems?.cooling ?? {};
+  const coolingDistribution = stageObject(cooling, "distribution");
+  const coolingStorage = stageObject(cooling, "storage");
+  const coolingGeneration = stageObject(cooling, "generation");
+  const coolingDistributionLoss = coolingDistribution?.lossCalculation;
+  const coolingDistributionAux = coolingDistribution?.auxiliaryCalculation;
+  const coolingStorageLoss = coolingStorage?.lossCalculation;
+  const coolingStorageAux = coolingStorage?.auxiliaryCalculation;
+  const coolingGenerationAux = coolingGeneration?.auxiliaryCalculation;
+  values.chapter3_cooling_component_mode =
+    coolingDistributionLoss?.mode ||
+    coolingDistributionAux?.mode ||
+    coolingStorageLoss?.mode ||
+    coolingStorageAux?.mode ||
+    coolingGenerationAux?.mode
+      ? "component_contract"
+      : "explicit_monthly";
+  values.chapter3_cooling_distribution_loss_factor =
+    coolingDistributionLoss?.coolingLossFactor ?? "";
+  values.chapter3_cooling_distribution_aux_factor =
+    coolingDistributionAux?.auxiliaryFactor ?? "";
+  values.chapter3_cooling_ahu_output_kwh =
+    coolingDistributionLoss?.ahuCoolingOutputRequiredKWh ??
+    coolingDistributionAux?.ahuCoolingOutputRequiredKWh ??
+    "";
+  values.chapter3_cooling_storage_mode =
+    coolingStorageLoss?.mode === "no_cooling_storage" ? "no_storage" : (
+      coolingStorageLoss?.mode === "cooling_storage_thermal_losses" ||
+      coolingStorageAux?.mode === "cooling_storage_pump_auxiliary"
+        ? "thermal_storage"
+        : "explicit_monthly"
+    );
+  values.chapter3_cooling_storage_loss_h_kw_k =
+    coolingStorageLoss?.outputSideHeatLossCoefficientKWPerK ??
+    coolingStorageLoss?.heatLossCoefficientKWPerK ??
+    "";
+  values.chapter3_cooling_storage_ambient_c =
+    coolingStorageLoss?.ambientTemperatureC ?? "";
+  values.chapter3_cooling_storage_temp_c =
+    coolingStorageLoss?.storageTemperatureC ?? "";
+  values.chapter3_cooling_storage_hours_month =
+    coolingStorageLoss?.calculationHours ?? "";
+  values.chapter3_cooling_storage_pump_flow_m3h =
+    coolingStorageAux?.pumpVolumeFlowM3PerH ?? "";
+  values.chapter3_cooling_storage_pump_power_kw =
+    coolingStorageAux?.pumpElectricPowerKW ?? "";
+  values.chapter3_cooling_storage_supply_c =
+    coolingStorageAux?.supplyTemperatureC ?? "";
+  values.chapter3_cooling_storage_return_c =
+    coolingStorageAux?.returnTemperatureC ?? "";
+  values.chapter3_cooling_storage_medium_cp_kwh_kgk =
+    coolingStorageAux?.mediumSpecificHeatKWhPerKgK ?? "";
+  values.chapter3_cooling_storage_medium_density_kg_m3 =
+    coolingStorageAux?.mediumDensityKgPerM3 ?? "";
+  values.chapter3_cooling_generation_mode =
+    coolingGenerationAux?.mode ?? "explicit_monthly";
+  values.chapter3_cooling_operation_hours_month =
+    coolingGenerationAux?.operationHours ?? "";
+  values.chapter3_cooling_generator_nominal_kw =
+    coolingGenerationAux?.nominalCoolingPowerKW ?? "";
+  values.chapter3_cooling_generator_nominal_eer =
+    coolingGenerationAux?.nominalEer ?? "";
+  values.chapter3_cooling_eer_correction_factor =
+    coolingGenerationAux?.eerCorrectionFactor ?? "";
+  values.chapter3_cooling_heat_rejection_aux_mode =
+    coolingGenerationAux?.heatRejectionAuxiliaryMode ?? "air_cooled_zero";
+  values.chapter3_cooling_heat_rejection_specific_key =
+    coolingGenerationAux?.heatRejectionSpecificDemandKey ?? "";
+  values.chapter3_cooling_heat_rejection_pl_control_key =
+    coolingGenerationAux?.heatRejectionElectricPartLoadControlKey ?? "";
+  values.chapter3_cooling_heat_rejection_pl_type_key =
+    coolingGenerationAux?.heatRejectionElectricPartLoadTypeKey ?? "";
+  values.chapter3_cooling_free_cooling_electric_factor =
+    coolingGenerationAux?.freeCoolingElectricFactor ?? "";
+  values.chapter3_cooling_heat_rejection_distribution_mode =
+    coolingGenerationAux?.heatRejectionDistributionAuxiliaryMode ?? "air_cooled_zero";
+  values.chapter3_cooling_heat_rejection_distribution_specific_kw_kw =
+    coolingGenerationAux?.heatRejectionDistributionSpecificElectricDemandKWPerKW ?? "";
+  values.chapter3_cooling_control_power_kw =
+    coolingGenerationAux?.controlPowersKW?.[0] ??
+    coolingGenerationAux?.controlPowerKW ??
+    "";
   const ventilation = technicalSystems?.ventilationAhu ?? {};
   values.chapter3_ventilation_ahu_enabled = ventilation.enabled ? "yes" : "no";
   values.chapter3_supply_airflow_m3h = fanValue(ventilation, "supplyAirFlowM3PerH");
@@ -1757,6 +1839,192 @@ function applyDhwComponentContracts(formData, system) {
   };
 }
 
+function coolingComponentMode(formData) {
+  return formValue(formData, "chapter3_cooling_component_mode") || "explicit_monthly";
+}
+
+function coolingStorageMode(formData) {
+  return formValue(formData, "chapter3_cooling_storage_mode") || "explicit_monthly";
+}
+
+function coolingGenerationMode(formData) {
+  return formValue(formData, "chapter3_cooling_generation_mode") || "explicit_monthly";
+}
+
+function applyCoolingComponentContracts(formData, system) {
+  if (coolingComponentMode(formData) !== "component_contract") return system;
+
+  const storageMode = coolingStorageMode(formData);
+  const generationMode = coolingGenerationMode(formData);
+  const storageLossCoefficient = nonNegativeNumber(
+    formData,
+    "chapter3_cooling_storage_loss_h_kw_k"
+  );
+  const stages = system.stages.map(stage => {
+    if (stage.stageId === "distribution") {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        auxiliaryKWhPerMonth: undefined,
+        lossCalculation: {
+          mode: "cooling_distribution_factor",
+          coolingLossFactor: nonNegativeNumber(
+            formData,
+            "chapter3_cooling_distribution_loss_factor"
+          ),
+          ahuCoolingOutputRequiredKWh:
+            nonNegativeNumber(formData, "chapter3_cooling_ahu_output_kwh") ?? 0,
+          source: {
+            origin: "project_geometry_and_operation_input",
+            reference: "chapter3_cooling_distribution_component_contract"
+          }
+        },
+        auxiliaryCalculation: {
+          mode: "cooling_distribution_factor",
+          auxiliaryFactor: nonNegativeNumber(
+            formData,
+            "chapter3_cooling_distribution_aux_factor"
+          ),
+          ahuCoolingOutputRequiredKWh:
+            nonNegativeNumber(formData, "chapter3_cooling_ahu_output_kwh") ?? 0,
+          source: {
+            origin: "product_data",
+            reference: "chapter3_cooling_distribution_auxiliary_component_contract"
+          }
+        }
+      };
+    }
+    if (stage.stageId === "storage" && storageMode === "no_storage") {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        auxiliaryKWhPerMonth: undefined,
+        lossCalculation: {
+          mode: "no_cooling_storage",
+          source: {
+            origin: "user_explicit_system_topology",
+            reference: "chapter3_cooling_storage_mode"
+          }
+        },
+        auxiliaryCalculation: {
+          mode: "no_cooling_storage",
+          source: {
+            origin: "user_explicit_system_topology",
+            reference: "chapter3_cooling_storage_mode"
+          }
+        }
+      };
+    }
+    if (stage.stageId === "storage" && storageMode === "thermal_storage") {
+      return {
+        ...stage,
+        lossKWhPerMonth: undefined,
+        auxiliaryKWhPerMonth: undefined,
+        lossCalculation: {
+          mode: "cooling_storage_thermal_losses",
+          outputSideHeatLossCoefficientKWPerK: storageLossCoefficient,
+          standbyHeatLossCoefficientKWPerK: storageLossCoefficient,
+          inputSideHeatLossCoefficientKWPerK: storageLossCoefficient,
+          ambientTemperatureC: numberValue(formData, "chapter3_cooling_storage_ambient_c"),
+          storageTemperatureC: numberValue(formData, "chapter3_cooling_storage_temp_c"),
+          calculationHours: nonNegativeNumber(
+            formData,
+            "chapter3_cooling_storage_hours_month"
+          ),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_cooling_storage_thermal_component_contract"
+          }
+        },
+        auxiliaryCalculation: {
+          mode: "cooling_storage_pump_auxiliary",
+          pumpVolumeFlowM3PerH: positiveNumber(
+            formData,
+            "chapter3_cooling_storage_pump_flow_m3h"
+          ),
+          pumpElectricPowerKW: nonNegativeNumber(
+            formData,
+            "chapter3_cooling_storage_pump_power_kw"
+          ),
+          supplyTemperatureC: numberValue(formData, "chapter3_cooling_storage_supply_c"),
+          returnTemperatureC: numberValue(formData, "chapter3_cooling_storage_return_c"),
+          mediumSpecificHeatKWhPerKgK: positiveNumber(
+            formData,
+            "chapter3_cooling_storage_medium_cp_kwh_kgk"
+          ),
+          mediumDensityKgPerM3: positiveNumber(
+            formData,
+            "chapter3_cooling_storage_medium_density_kg_m3"
+          ),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_cooling_storage_pump_component_contract"
+          }
+        }
+      };
+    }
+    if (stage.stageId === "generation" && generationMode === "compression_heat_rejection") {
+      return {
+        ...stage,
+        auxiliaryKWhPerMonth: undefined,
+        auxiliaryCalculation: {
+          mode: "cooling_compression_heat_rejection_auxiliary",
+          operationHours: positiveNumber(formData, "chapter3_cooling_operation_hours_month"),
+          nominalCoolingPowerKW: positiveNumber(
+            formData,
+            "chapter3_cooling_generator_nominal_kw"
+          ),
+          nominalEer: positiveNumber(formData, "chapter3_cooling_generator_nominal_eer"),
+          eerCorrectionFactor: positiveNumber(
+            formData,
+            "chapter3_cooling_eer_correction_factor"
+          ),
+          heatRejectionAuxiliaryMode:
+            formValue(formData, "chapter3_cooling_heat_rejection_aux_mode") ||
+            "air_cooled_zero",
+          heatRejectionSpecificDemandKey:
+            formValue(formData, "chapter3_cooling_heat_rejection_specific_key") ||
+            undefined,
+          heatRejectionElectricPartLoadControlKey:
+            formValue(formData, "chapter3_cooling_heat_rejection_pl_control_key") ||
+            undefined,
+          heatRejectionElectricPartLoadTypeKey:
+            formValue(formData, "chapter3_cooling_heat_rejection_pl_type_key") ||
+            undefined,
+          freeCoolingElectricFactor: positiveNumber(
+            formData,
+            "chapter3_cooling_free_cooling_electric_factor"
+          ),
+          heatRejectionDistributionAuxiliaryMode:
+            formValue(formData, "chapter3_cooling_heat_rejection_distribution_mode") ||
+            "air_cooled_zero",
+          heatRejectionDistributionSpecificElectricDemandKWPerKW: nonNegativeNumber(
+            formData,
+            "chapter3_cooling_heat_rejection_distribution_specific_kw_kw"
+          ),
+          controlPowersKW: [
+            nonNegativeNumber(formData, "chapter3_cooling_control_power_kw")
+          ].filter(value => value !== undefined),
+          source: {
+            origin: "product_data",
+            reference: "chapter3_cooling_compression_heat_rejection_component_contract"
+          }
+        }
+      };
+    }
+    return stage;
+  });
+
+  return {
+    ...system,
+    stages,
+    source: {
+      ...system.source,
+      componentContractMode: "cooling_component_contract_p8e"
+    }
+  };
+}
+
 function serviceSystem(formData, prefix, stageIds, metadata = {}) {
   return {
     systemId: metadata.systemId,
@@ -1798,7 +2066,14 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
     cooling: {
       enabled: yesValue(formData, "chapter3_cooling_enabled"),
       systems: yesValue(formData, "chapter3_cooling_enabled")
-        ? [serviceSystem(formData, "chapter3_cooling", CHAPTER3_INSTALLATION_STAGE_IDS, { systemId: "cooling-main" })]
+        ? [
+            applyCoolingComponentContracts(
+              formData,
+              serviceSystem(formData, "chapter3_cooling", CHAPTER3_INSTALLATION_STAGE_IDS, {
+                systemId: "cooling-main"
+              })
+            )
+          ]
         : []
     },
     ventilationAhu: {

@@ -251,7 +251,7 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
     buildingDna: pipeline.buildingDna,
     calculation: pipeline.calculation
   });
-  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8d_v1");
+  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8e_v1");
   assert.ok(metadata.chapter3RuntimeVersion);
 
   const backend = createInMemoryVersionedBuildingBackend();
@@ -808,6 +808,182 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
   );
 });
 
+await test("cooling component contracts calculate distribution, storage and heat-rejection auxiliaries", () => {
+  const systems = technicalSystems();
+  systems.heating.enabled = false;
+  systems.heating.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.domesticHotWater.enabled = false;
+  systems.domesticHotWater.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.cooling.systems = [
+    {
+      systemId: "cooling-component-contract",
+      enabled: true,
+      generatorType: "chiller",
+      energyCarrier: "electricity",
+      stages: [
+        stage("emission", 1, 0),
+        {
+          stageId: "distribution",
+          lossCalculation: {
+            mode: "cooling_distribution_factor",
+            coolingLossFactor: 0.05,
+            ahuCoolingOutputRequiredKWh: 2
+          },
+          auxiliaryCalculation: {
+            mode: "cooling_distribution_factor",
+            auxiliaryFactor: 0.02,
+            ahuCoolingOutputRequiredKWh: 2
+          },
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        },
+        {
+          stageId: "storage",
+          lossCalculation: {
+            mode: "cooling_storage_thermal_losses",
+            outputSideHeatLossCoefficientKWPerK: 0.01,
+            standbyHeatLossCoefficientKWPerK: 0.01,
+            inputSideHeatLossCoefficientKWPerK: 0.01,
+            ambientTemperatureC: 30,
+            storageTemperatureC: 10,
+            calculationHours: 100,
+            recoverableStorageFraction: 0.25
+          },
+          auxiliaryCalculation: {
+            mode: "cooling_storage_pump_auxiliary",
+            pumpVolumeFlowM3PerH: 2,
+            pumpElectricPowerKW: 0.1,
+            supplyTemperatureC: 6,
+            returnTemperatureC: 11,
+            mediumSpecificHeatKWhPerKgK: 0.00116,
+            mediumDensityKgPerM3: 1000,
+            recoverableAuxiliaryFraction: 0.2
+          },
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        },
+        {
+          stageId: "generation",
+          lossKWhPerMonth: 0,
+          auxiliaryCalculation: {
+            mode: "cooling_compression_heat_rejection_auxiliary",
+            operationHours: 240,
+            nominalCoolingPowerKW: 20,
+            nominalEer: 3,
+            eerCorrectionInput: {
+              absoluteZeroOffsetK: 273.15,
+              generatorRequiredOutletTemperatureC: 7,
+              heatRejectionReferenceInletTemperatureC: 35,
+              nominalGeneratorOutletTemperatureC: 7,
+              nominalHeatRejectionInletTemperatureC: 35,
+              evaporatorTemperatureDifferenceK: 5,
+              condenserTemperatureDifferenceK: 5
+            },
+            heatRejectionAuxiliaryMode: "specific_electric_demand",
+            heatRejectionSpecificDemandKey: "wet_closed_axial_no_extra_silencer",
+            heatRejectionElectricPartLoadControlKey: "variable_water_temperature",
+            heatRejectionElectricPartLoadTypeKey: "wet_or_hybrid_wet",
+            freeCoolingElectricFactor: 1,
+            heatRejectionDistributionAuxiliaryMode: "specific_electric_demand",
+            heatRejectionDistributionSpecificElectricDemandKWPerKW: 0.003,
+            controlPowersKW: [0.02]
+          },
+          auxiliaryRecoveredFraction: 0.1,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        }
+      ]
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+  assert.equal(pipeline.status, "ready");
+  const januaryCooling = pipeline.calculation.chapter3Result.monthly[0].cooling;
+  const emission = januaryCooling.stageResults.find(stageResult => stageResult.stageId === "emission");
+  const distribution = januaryCooling.stageResults.find(stageResult => stageResult.stageId === "distribution");
+  const storage = januaryCooling.stageResults.find(stageResult => stageResult.stageId === "storage");
+  const generation = januaryCooling.stageResults.find(stageResult => stageResult.stageId === "generation");
+  const qCnd = januaryCooling.usefulDemandKWh;
+  const distributionBase = qCnd + emission.lossKWh + 2;
+  const distributionLossExpected = 0.05 * distributionBase;
+  const distributionAuxExpected = 0.02 * distributionBase;
+  const distributionInputExpected =
+    qCnd + emission.lossKWh + distributionLossExpected;
+  const storageLossExpected = 3 * 0.01 * (30 - 10) * 100;
+  const storageAuxExpected =
+    distributionInputExpected / (0.00116 * 1000 * 2 * Math.abs(6 - 11)) * 0.1;
+  const generationRequired = distributionInputExpected + storageLossExpected;
+  const partLoadBin = 1;
+  const heatRejectedExpected = generationRequired * (1 + 1 / (3 * partLoadBin * 1));
+  const heatRejectionAuxExpected = heatRejectedExpected * 0.018 * 0.8 * 1;
+  const heatRejectionDistributionAuxExpected = heatRejectedExpected * 0.003;
+  const controlAuxExpected = 0.02 * 240;
+  const generatorAuxExpected =
+    heatRejectionAuxExpected + heatRejectionDistributionAuxExpected + controlAuxExpected;
+
+  close(distribution.lossKWh, distributionLossExpected, 1e-9);
+  close(distribution.auxiliaryKWh, distributionAuxExpected, 1e-9);
+  close(storage.lossKWh, storageLossExpected, 1e-9);
+  close(storage.auxiliaryKWh, storageAuxExpected, 1e-9);
+  close(generation.auxiliaryKWh, generatorAuxExpected, 1e-9);
+  close(
+    januaryCooling.finalStageInputKWh,
+    generationRequired - generatorAuxExpected * 0.1,
+    1e-9
+  );
+  assert.equal(distribution.lossSource.classification, CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED);
+  assert.ok(distribution.lossSource.formulaIds.includes("MC001_3_146_COOLING_DISTRIBUTION_LOSS"));
+  assert.ok(distribution.auxiliarySource.formulaIds.includes("MC001_3_147_COOLING_DISTRIBUTION_AUXILIARY_ENERGY"));
+  assert.ok(storage.lossSource.formulaIds.includes("MC001_3_99_COOLING_STORAGE_OUTPUT_SIDE_THERMAL_LOSS"));
+  assert.ok(storage.lossSource.formulaIds.includes("MC001_3_121_COOLING_STORAGE_RECOVERABLE_THERMAL_LOSS"));
+  assert.ok(storage.auxiliarySource.formulaIds.includes("MC001_3_115_COOLING_STORAGE_OUTPUT_PUMP_OPERATION_TIME"));
+  assert.ok(storage.auxiliarySource.formulaIds.includes("MC001_3_119_COOLING_STORAGE_AUXILIARY_TOTAL"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_149_COOLING_PART_LOAD_FACTOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_155_COOLING_EER_TEMPERATURE_CORRECTION"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_164_HEAT_REJECTED_COMPRESSION_GENERATOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_176_HEAT_REJECTION_AUXILIARY_ENERGY"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL"));
+  assert.ok(
+    pipeline.calculation.chapter3Result.formulaReferences.includes("MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL")
+  );
+
+  const changedSystems = structuredClone(systems);
+  changedSystems.cooling.systems[0].stages[3].auxiliaryCalculation.nominalEer = 4;
+  const changed = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: changedSystems })
+  );
+  assert.notEqual(
+    changed.calculation.chapter3Result.monthly[0].cooling.stageResults
+      .find(stageResult => stageResult.stageId === "generation").auxiliaryKWh,
+    generation.auxiliaryKWh
+  );
+  assert.notEqual(
+    changed.calculation.chapter3Result.annual.coolingInputKWh,
+    pipeline.calculation.chapter3Result.annual.coolingInputKWh
+  );
+  assert.notEqual(
+    changed.calculation.chapter3Result.annual.coolingAuxiliaryKWh,
+    pipeline.calculation.chapter3Result.annual.coolingAuxiliaryKWh
+  );
+
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  assert.ok(JSON.stringify(workspace.engineeringNotebook).includes("MC001_3_181_COOLING_COMPRESSION_EER"));
+  assert.ok(JSON.stringify(workspace.report).includes("calculat normativ"));
+});
+
 await test("Chapter 2-only buildings remain openable without Chapter 3 output", () => {
   const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
     assistedAnswers({ technicalSystems: undefined })
@@ -842,6 +1018,53 @@ await test("invalid Chapter 3 system data is rejected instead of filled with hid
   assert.equal(calculation.status, "blocked");
   assert.equal(calculation.stage, "chapter_3_installations");
   assert.ok(calculation.diagnostics.some(item => item.code === "missing_installation_stage"));
+});
+
+await test("incomplete cooling component contracts block instead of falling back to hidden zeros", () => {
+  const systems = technicalSystems();
+  systems.heating.enabled = false;
+  systems.heating.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.domesticHotWater.enabled = false;
+  systems.domesticHotWater.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.cooling.systems = [
+    {
+      systemId: "cooling-invalid-component",
+      enabled: true,
+      generatorType: "chiller",
+      energyCarrier: "electricity",
+      stages: [
+        stage("emission", 0, 0),
+        {
+          stageId: "distribution",
+          lossCalculation: {
+            mode: "cooling_distribution_factor"
+          },
+          auxiliaryKWhPerMonth: 0,
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        },
+        stage("storage", 0, 0),
+        stage("generation", 0, 0)
+      ]
+    }
+  ];
+
+  const calculation = calculateChapter2ForBuildingDna(
+    createBuildingDnaFromAssistedAnswers(assistedAnswers({ technicalSystems: systems })).buildingDna
+  );
+  assert.equal(calculation.status, "blocked");
+  assert.equal(calculation.stage, "chapter_3_installations");
+  assert.ok(
+    calculation.diagnostics.some(item => item.code === "invalid_chapter3_stage_loss_component_contract")
+  );
 });
 
 await test("empty DHW component contracts are rejected instead of becoming zero losses", () => {

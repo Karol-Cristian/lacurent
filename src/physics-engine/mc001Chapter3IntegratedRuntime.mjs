@@ -633,6 +633,28 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       monthly.flatMap(month => month.dhw?.usefulDemandSource?.formulaIds ?? [])
     )
   ];
+  const stageFormulaReferences = [
+    ...new Set(
+      monthly.flatMap(month =>
+        ["heating", "cooling", "dhw"].flatMap(service =>
+          (month[service]?.systemResults ?? [])
+            .flatMap(system => system.stageResults ?? [])
+            .flatMap(stage => [
+              ...(stage.lossSource?.formulaIds ?? []),
+              ...(stage.auxiliarySource?.formulaIds ?? [])
+            ])
+        )
+      )
+    )
+  ];
+  const ventilationFormulaReferences = [
+    ...new Set(
+      monthly.flatMap(month =>
+        Object.values(month.ventilation?.sources ?? {})
+          .flatMap(source => source?.formulaIds ?? [])
+      )
+    )
+  ];
 
   return {
     status: "calculated",
@@ -661,6 +683,8 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
             "MC001_3_113_COOLING_STORAGE_PCM_SOLID_MASS_DECREASE_VARIATION"
           ]
         : []),
+      ...stageFormulaReferences,
+      ...ventilationFormulaReferences,
       ...dhwUsefulFormulaReferences,
       ...(lightingResult ? ["MC001_3_4_34_LIGHTING_LENI_WEIGHTED_BUILDING"] : [])
     ]
