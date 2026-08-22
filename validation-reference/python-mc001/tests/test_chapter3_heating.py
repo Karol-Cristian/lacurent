@@ -11,10 +11,13 @@ from mc001_reference.chapter3_heating import (
     generator_auxiliary_recoverable_loss_kwh,
     generator_auxiliary_recovered_loss_kwh,
     generation_loss_total_kwh,
+    generator_auxiliary_power_from_coefficients_kw,
     generator_envelope_recoverable_loss_kwh,
     generator_loss_energy_kwh,
     generator_loss_power_high_load_kw,
     generator_loss_power_low_load_kw,
+    generator_standby_loss_fraction_from_coefficients_percent,
+    generator_standby_loss_fraction_sum_percent,
     generator_standby_loss_power_kw,
     heating_generation_auxiliary_total_kwh,
     heating_generator_fuel_input_energy_kwh,
@@ -152,6 +155,21 @@ class Chapter3HeatingReferenceTests(unittest.TestCase):
         self.assertGreater(beta, beta_pint)
         self.assertAlmostEqual(loss_power, expected_loss_power, places=12)
         self.assertAlmostEqual(aux_power, expected_aux_power, places=12)
+
+    def test_generator_c5_c8_product_coefficient_reference_chain(self):
+        standby_fraction = generator_standby_loss_fraction_from_coefficients_percent(500, 0, 20)
+        standby_sum = generator_standby_loss_fraction_sum_percent(1.5, 0.5)
+        standby_power = generator_standby_loss_power_kw(standby_fraction, 0, 20)
+        standby_loss = generator_loss_energy_kwh(standby_power, 120)
+        auxiliary_power = generator_auxiliary_power_from_coefficients_kw(1, 2, 20)
+        auxiliary_energy = generator_auxiliary_energy_kwh(auxiliary_power, 120)
+
+        self.assertAlmostEqual(standby_fraction, 500 * 20**0 / 100, places=12)
+        self.assertAlmostEqual(standby_sum, 2.0, places=12)
+        self.assertAlmostEqual(standby_power, (standby_fraction / 100) * 20, places=12)
+        self.assertAlmostEqual(standby_loss, standby_power * 120, places=12)
+        self.assertAlmostEqual(auxiliary_power, ((1 + 2) / 100) * 20, places=12)
+        self.assertAlmostEqual(auxiliary_energy, auxiliary_power * 120, places=12)
 
     def test_subsystem_balance_uses_recovery_signs(self):
         self.assertAlmostEqual(

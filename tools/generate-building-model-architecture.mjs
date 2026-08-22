@@ -1120,7 +1120,7 @@ const fields = [
   field({
     fieldId: "technical_systems.heating",
     path: "technicalSystems.heating.systems[].stages[] / chapter3_heating_*",
-    purpose: "Chapter 3 heating system topology with legacy explicit stage values plus P8D component contracts for emission, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves. Systems may reference a P8G shared physical generator by stable generatorRef.",
+    purpose: "Chapter 3 heating system topology with legacy explicit stage values plus P8D component contracts for emission, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves, plus P8H C5-C8 generator coefficient contracts. Systems may reference a P8G shared physical generator by stable generatorRef.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.heating",
@@ -1128,7 +1128,7 @@ const fields = [
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
     dataType: "system stage array, component lossCalculation/auxiliaryCalculation contracts, kWh/month legacy explicit values, fractions, optional allocationFraction and optional generatorRef",
     editable: true,
-    productionUsage: "drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8D component contracts calculate relations 3.1-3.14 where exposed, 3.17, 3.23-3.27, 3.29-3.32 and 3.34-3.37 when complete project/product inputs are supplied; generatorRef delegates service generation to one shared physical generator without duplicate carrier accounting",
+    productionUsage: "drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8D/P8H component contracts calculate relations 3.1-3.18 where exposed, 3.23-3.27, 3.29-3.32 and 3.34-3.37 when complete project/product inputs are supplied; generatorRef delegates service generation to one shared physical generator without duplicate carrier accounting",
     uiLocation: "Instalatii tehnice / Incalzire",
     notebookLocation: "Chapter 3 heating sections",
     reportLocation: "Instalatii / Incalzire",
@@ -1140,15 +1140,15 @@ const fields = [
   field({
     fieldId: "technical_systems.cooling",
     path: "technicalSystems.cooling.systems[].stages[] / chapter3_cooling_*",
-    purpose: "Explicit Chapter 3 cooling system stages, losses, auxiliaries, recovered fractions and optional allocationFraction for multiple active systems.",
+    purpose: "Chapter 3 cooling system stages with legacy explicit compatibility values plus P8E/P8H component contracts for distribution, storage, generator topology, heat rejection, recovery and auxiliaries.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.cooling",
     producer: "buildTechnicalSystemsFromForm",
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
-    dataType: "system stage array, kWh/month, fractions and optional allocationFraction",
+    dataType: "system stage array, component lossCalculation/auxiliaryCalculation contracts, kWh/month legacy explicit values, fractions and optional allocationFraction",
     editable: true,
-    productionUsage: "drives_Chapter3_cooling_system_energy; multiple active systems require explicit allocationFraction values summing to 1",
+    productionUsage: "drives_Chapter3_cooling_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8E/P8H component contracts calculate supported relations 3.136-3.139, 3.141, 3.144-3.147, 3.149-3.152, 3.154-3.164, 3.166-3.169, 3.171-3.173 and 3.175-3.181 when required project/product inputs are supplied",
     uiLocation: "Instalatii tehnice / Racire",
     notebookLocation: "Chapter 3 cooling sections",
     reportLocation: "Instalatii / Racire",
@@ -1160,15 +1160,15 @@ const fields = [
   field({
     fieldId: "technical_systems.ventilation_ahu",
     path: "technicalSystems.ventilationAhu.systems[] / chapter3_*airflow*",
-    purpose: "AHU fan inputs plus P8D component contracts for heat-recovery, preheat and control auxiliary energy; legacy monthly auxiliary values remain explicit compatibility inputs.",
+    purpose: "AHU fan inputs plus P8D/P8H component contracts for heat-recovery, preheat, control auxiliary energy and distribution thermal/recoverable losses; legacy monthly auxiliary values remain explicit compatibility inputs.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.ventilationAhu",
     producer: "buildTechnicalSystemsFromForm",
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
-    dataType: "airflow, pressure, efficiency, monthly legacy auxiliaries and heatRecoveryAuxiliaryCalculation/preheatAuxiliaryCalculation/controlAuxiliaryCalculation component contracts",
+    dataType: "airflow, pressure, efficiency, thermalRelationCalculations, monthly legacy auxiliaries and heatRecoveryAuxiliaryCalculation/preheatAuxiliaryCalculation/controlAuxiliaryCalculation component contracts",
     editable: true,
-    productionUsage: "drives_Chapter3_AHU_auxiliary_energy; P8D component contracts calculate relations 3.69-3.71 and 3.73-3.75 where product/operation inputs are supplied",
+    productionUsage: "drives_Chapter3_AHU_auxiliary_energy; P8D/P8H component contracts calculate relations 3.69-3.71, 3.73-3.75, 3.92 and 3.93 where product/operation inputs are supplied",
     uiLocation: "Instalatii tehnice / Ventilatie si AHU",
     notebookLocation: "Chapter 3 ventilation sections",
     reportLocation: "Instalatii / Ventilatie si AHU",
@@ -1223,15 +1223,15 @@ const fields = [
   field({
     fieldId: "technical_systems.pcm_storage",
     path: "technicalSystems.coolingStoragePcm.monthly[] / chapter3_pcm_*",
-    purpose: "Explicit PCM storage monthly state and energy-limit inputs.",
+    purpose: "Cooling storage and PCM monthly state inputs used by P8H runtime calculations for MC001 relations 3.94-3.123.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.coolingStoragePcm",
     producer: "buildTechnicalSystemsFromForm",
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
-    dataType: "monthly PCM scalar set",
+    dataType: "monthly cooling-storage/PCM scalar set with energy, mass, temperature, volume, density, pipe geometry and state-transition inputs",
     editable: true,
-    productionUsage: "drives_PCM_relations_3_111_3_113_and_storage_chain",
+    productionUsage: "drives_cooling_storage_PCM_relations_3_94_3_123_and_storage_state_chain",
     uiLocation: "Instalatii tehnice / Stocare PCM",
     notebookLocation: "Chapter 3 PCM sections",
     reportLocation: "Instalatii / Stocare PCM",
@@ -1975,6 +1975,13 @@ P8G Chapter 3 shared generation extension:
 - The Physics Engine calculates physical generator output, losses, auxiliaries and carrier consumption once.
 - Service reporting allocations reference the physical result; allocation totals must reconcile to the physical totals within tolerance.
 - Legacy projects with separate service generators remain valid as separate explicit components until a user or migration can prove they are the same physical generator.
+
+P8H Chapter 3 numerical closure extension:
+
+- Heating generator C5-C8 product coefficients are product-data inputs consumed by runtime calculations for standby-loss and auxiliary-power relations.
+- Cooling storage and PCM state contracts now cover the source-backed runtime chain for MC001 relations 3.94-3.123; final storage state quantities are calculated, not silently defaulted.
+- AHU distribution thermal-loss and zone-recoverable relations 3.92-3.93 are runtime traceable through ventilation/AHU thermal relation contracts.
+- Cooling generator, distribution and heat-rejection component contracts expose topology/product inputs for the supported numerical relations while absorption and incomplete multi-carrier branches remain explicitly bounded.
 
 ## Required Future Maintenance
 

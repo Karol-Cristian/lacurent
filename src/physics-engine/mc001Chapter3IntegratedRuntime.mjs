@@ -17,12 +17,28 @@ import {
 import {
   calculateChapter3CoolingAuxiliaryEnergyTotal,
   calculateChapter3HeatingAuxiliaryEnergyTotal,
+  calculateCoolingStorageGeneratorDeltaEnergy,
+  calculateCoolingStorageIceMassVariation,
+  calculateCoolingStorageIceThickness,
+  calculateCoolingStorageInitialIceThickness,
+  calculateCoolingStorageLatentEnergy,
+  calculateCoolingStorageOutputEnergy,
   calculateCoolingStoragePcmInputEnergyLimitForSolidSensibleStorage,
+  calculateCoolingStoragePcmLiquidTemperature,
   calculateCoolingStoragePcmSensibleSolidStorageEnergy,
   calculateCoolingStoragePcmSolidMassDecreaseVariation,
+  calculateCoolingStoragePcmSolidMassVariation,
+  calculateCoolingStoragePcmSolidTemperature,
+  calculateCoolingStorageSensibleLiquidEnergy,
+  calculateCoolingStorageSensibleSolidEnergy,
+  calculateCoolingStorageSolidMassAfterUse,
+  calculateCoolingStorageTransformableEnergyWater,
   calculateFanElectricEnergy,
   calculateLightingLeniFromSubspaces,
-  calculateVentilationAuxiliaryTotal
+  calculateVentilationAuxiliaryTotal,
+  limitCoolingStoragePcmSolidMassToExistingSolid,
+  limitCoolingStoragePcmSolidMassToLiquid,
+  validateCoolingStorageInputEnergy
 } from "./mc001Chapter3SystemEnergy.mjs";
 
 function assertFiniteNumber(value, name) {
@@ -902,8 +918,163 @@ function monthlyOptionalValue(values, index) {
   return values[index] ?? null;
 }
 
+function hasFiniteFields(record, fields) {
+  return fields.every(field => finiteNumber(record?.[field]));
+}
+
 function calculatePcmStorageMonth(input, monthId) {
   if (!input) return null;
+  const storageInput = finiteNumber(input.storageInputKWh)
+    ? validateCoolingStorageInputEnergy({
+        storageInputKWh: input.storageInputKWh
+      })
+    : null;
+  const sensibleLiquid = hasFiniteFields(input, [
+    "liquidMassKg",
+    "liquidSpecificHeatKWhPerKgK",
+    "generatorRequiredOutletTemperatureC",
+    "storageTemperatureC"
+  ])
+    ? calculateCoolingStorageSensibleLiquidEnergy(input)
+    : null;
+  const latent = hasFiniteFields(input, ["latentHeatKWhPerKg", "solidMassKg"])
+    ? calculateCoolingStorageLatentEnergy({
+        latentHeatKWhPerKg: input.latentHeatKWhPerKg,
+        solidMassKg: input.solidMassKg
+      })
+    : null;
+  const sensibleSolid = hasFiniteFields(input, [
+    "solidMassKg",
+    "solidSpecificHeatKWhPerKgK",
+    "transitionTemperatureC",
+    "generatorOutletFlowTemperatureC"
+  ])
+    ? calculateCoolingStorageSensibleSolidEnergy(input)
+    : null;
+  const outputEnergy = hasFiniteFields(input, [
+    "distributionInputRequiredKWh",
+    "storageGeneratorOutputKWh"
+  ]) && (sensibleLiquid || latent || sensibleSolid)
+    ? calculateCoolingStorageOutputEnergy({
+        sensibleLiquidEnergyKWh: input.sensibleLiquidEnergyKWh ?? sensibleLiquid?.valueKWh ?? 0,
+        latentEnergyKWh: input.latentEnergyKWh ?? latent?.valueKWh ?? 0,
+        sensibleSolidEnergyKWh: input.sensibleSolidEnergyKWh ?? sensibleSolid?.valueKWh ?? 0,
+        distributionInputRequiredKWh: input.distributionInputRequiredKWh,
+        storageGeneratorOutputKWh: input.storageGeneratorOutputKWh
+      })
+    : null;
+  const transformableWater = hasFiniteFields(input, [
+    "storageInputKWh",
+    "storageInputLossKWh",
+    "storageStandbyLossKWh",
+    "storageOutputSideLossKWh"
+  ])
+    ? calculateCoolingStorageTransformableEnergyWater({
+        storageInputKWh: input.storageInputKWh,
+        storageInputLossKWh: input.storageInputLossKWh,
+        storageStandbyLossKWh: input.storageStandbyLossKWh,
+        storageOutputSideLossKWh: input.storageOutputSideLossKWh
+      })
+    : null;
+  const initialIceThickness = hasFiniteFields(input, [
+    "solidMassKg",
+    "solidDensityKgPerM3",
+    "storagePipeLengthM",
+    "storagePipeDiameterM"
+  ])
+    ? calculateCoolingStorageInitialIceThickness(input)
+    : null;
+  const transformableEnergyKWh =
+    input.transformableEnergyKWh ?? transformableWater?.valueKWh ?? null;
+  const iceMassVariation = finiteNumber(transformableEnergyKWh) &&
+    hasFiniteFields(input, [
+      "latentHeatKWhPerKg",
+      "solidSpecificHeatKWhPerKgK",
+      "transitionTemperatureC",
+      "generatorOutletFlowTemperatureC"
+    ])
+    ? calculateCoolingStorageIceMassVariation({
+        transformableEnergyKWh,
+        latentHeatKWhPerKg: input.latentHeatKWhPerKg,
+        solidSpecificHeatKWhPerKgK: input.solidSpecificHeatKWhPerKgK,
+        transitionTemperatureC: input.transitionTemperatureC,
+        generatorOutletFlowTemperatureC: input.generatorOutletFlowTemperatureC
+      })
+    : null;
+  const iceThickness = hasFiniteFields(input, [
+    "maximumIceThicknessM",
+    "storagePipeDiameterM",
+    "solidMassKg",
+    "solidDensityKgPerM3",
+    "storagePipeLengthM"
+  ]) && finiteNumber(input.deltaSolidMassKg ?? iceMassVariation?.valueKg)
+    ? calculateCoolingStorageIceThickness({
+        maximumIceThicknessM: input.maximumIceThicknessM,
+        storagePipeDiameterM: input.storagePipeDiameterM,
+        solidMassKg: input.solidMassKg,
+        deltaSolidMassKg: input.deltaSolidMassKg ?? iceMassVariation.valueKg,
+        solidDensityKgPerM3: input.solidDensityKgPerM3,
+        storagePipeLengthM: input.storagePipeLengthM
+      })
+    : null;
+  const solidMassAfterUse = hasFiniteFields(input, ["initialSolidMassKg"]) &&
+    finiteNumber(input.deltaSolidMassKg ?? iceMassVariation?.valueKg)
+    ? calculateCoolingStorageSolidMassAfterUse({
+        initialSolidMassKg: input.initialSolidMassKg,
+        deltaSolidMassKg: input.deltaSolidMassKg ?? iceMassVariation.valueKg
+      })
+    : null;
+  const pcmSolidMassVariation = finiteNumber(transformableEnergyKWh) &&
+    hasFiniteFields(input, [
+      "solidSpecificHeatKWhPerKgK",
+      "transitionTemperatureC"
+    ]) &&
+    (finiteNumber(input.latentHeatKWhPerKg) || finiteNumber(input.liquidSpecificHeatKWhPerKgK))
+    ? calculateCoolingStoragePcmSolidMassVariation({
+        transformableEnergyKWh,
+        latentHeatKWhPerKg: input.latentHeatKWhPerKg,
+        liquidSpecificHeatKWhPerKgK: input.liquidSpecificHeatKWhPerKgK,
+        solidSpecificHeatKWhPerKgK: input.solidSpecificHeatKWhPerKgK,
+        transitionTemperatureC: input.transitionTemperatureC
+      })
+    : null;
+  const pcmLimitedToLiquid = pcmSolidMassVariation && finiteNumber(input.initialLiquidMassKg)
+    ? limitCoolingStoragePcmSolidMassToLiquid({
+        deltaSolidMassKg: pcmSolidMassVariation.valueKg,
+        initialLiquidMassKg: input.initialLiquidMassKg
+      })
+    : null;
+  const pcmLimitedToExistingSolid = pcmSolidMassVariation && finiteNumber(input.initialSolidMassKg)
+    ? limitCoolingStoragePcmSolidMassToExistingSolid({
+        deltaSolidMassKg: pcmSolidMassVariation.valueKg,
+        initialSolidMassKg: input.initialSolidMassKg
+      })
+    : null;
+  const pcmDeltaSolidMassKg =
+    input.pcmDeltaSolidMassKg ??
+    pcmLimitedToLiquid?.valueKg ??
+    pcmLimitedToExistingSolid?.valueKg ??
+    pcmSolidMassVariation?.valueKg ??
+    null;
+  const pcmSolidTemperature = finiteNumber(pcmDeltaSolidMassKg) &&
+    finiteNumber(transformableEnergyKWh) &&
+    hasFiniteFields(input, [
+      "initialSolidTemperatureC",
+      "solidSpecificHeatKWhPerKgK",
+      "transitionTemperatureC",
+      "solidMassKg",
+      "generatorOutletFlowTemperatureC"
+    ])
+    ? calculateCoolingStoragePcmSolidTemperature({
+        initialSolidTemperatureC: input.initialSolidTemperatureC,
+        transformableEnergyKWh,
+        solidSpecificHeatKWhPerKgK: input.solidSpecificHeatKWhPerKgK,
+        deltaSolidMassKg: pcmDeltaSolidMassKg,
+        transitionTemperatureC: input.transitionTemperatureC,
+        solidMassKg: input.solidMassKg,
+        generatorOutletFlowTemperatureC: input.generatorOutletFlowTemperatureC
+      })
+    : null;
   const sensibleStorage = calculateCoolingStoragePcmSensibleSolidStorageEnergy({
     transformableEnergyKWh: input.sensibleStorageTransformableEnergyKWh,
     solidMassKg: input.solidMassKg,
@@ -923,16 +1094,79 @@ function calculatePcmStorageMonth(input, monthId) {
     transitionTemperatureC: input.transitionTemperatureC,
     initialSolidMassKg: input.initialSolidMassKg
   });
+  const pcmLiquidTemperature = finiteNumber(pcmDeltaSolidMassKg) &&
+    finiteNumber(transformableEnergyKWh) &&
+    hasFiniteFields(input, [
+      "initialLiquidTemperatureC",
+      "solidSpecificHeatKWhPerKgK",
+      "transitionTemperatureC",
+      "liquidSpecificHeatKWhPerKgK",
+      "initialLiquidMassKg"
+    ])
+    ? calculateCoolingStoragePcmLiquidTemperature({
+        initialLiquidTemperatureC: input.initialLiquidTemperatureC,
+        transformableEnergyKWh,
+        solidSpecificHeatKWhPerKgK: input.solidSpecificHeatKWhPerKgK,
+        deltaSolidMassKg: pcmDeltaSolidMassKg,
+        transitionTemperatureC: input.transitionTemperatureC,
+        liquidSpecificHeatKWhPerKgK: input.liquidSpecificHeatKWhPerKgK,
+        initialLiquidMassKg: input.initialLiquidMassKg
+      })
+    : null;
+  const generatorDelta = hasFiniteFields(input, [
+    "storageGeneratorEnergyKWh",
+    "inputSideLossKWh",
+    "standbyLossKWh",
+    "outputSideLossKWh"
+  ]) && finiteNumber(input.storageOutputKWh ?? outputEnergy?.valueKWh)
+    ? calculateCoolingStorageGeneratorDeltaEnergy({
+        storageGeneratorEnergyKWh: input.storageGeneratorEnergyKWh,
+        storageOutputKWh: input.storageOutputKWh ?? outputEnergy.valueKWh,
+        inputSideLossKWh: input.inputSideLossKWh,
+        standbyLossKWh: input.standbyLossKWh,
+        outputSideLossKWh: input.outputSideLossKWh
+      })
+    : null;
+  const calculations = Object.fromEntries(
+    Object.entries({
+      storageInput,
+      sensibleLiquid,
+      latent,
+      sensibleSolid,
+      outputEnergy,
+      transformableWater,
+      initialIceThickness,
+      iceMassVariation,
+      iceThickness,
+      solidMassAfterUse,
+      pcmSolidMassVariation,
+      pcmLimitedToLiquid,
+      pcmLimitedToExistingSolid,
+      pcmSolidTemperature,
+      sensibleStorage,
+      inputLimit,
+      solidMassDecrease,
+      pcmLiquidTemperature,
+      generatorDelta
+    }).filter(([, result]) => result)
+  );
 
   return {
     month: monthId,
     sensibleStorage,
     inputLimit,
     solidMassDecrease,
+    calculations,
     totals: {
       sensibleSolidStorageEnergyKWh: sensibleStorage.valueKWh,
       inputEnergyLimitKWh: inputLimit.valueKWh,
-      solidMassDecreaseKg: solidMassDecrease.valueKg
+      solidMassDecreaseKg: solidMassDecrease.valueKg,
+      storageInputKWh: storageInput?.valueKWh ?? null,
+      storageOutputKWh: outputEnergy?.valueKWh ?? null,
+      generatorDeltaEnergyKWh: generatorDelta?.valueKWh ?? null,
+      pcmSolidMassVariationKg: pcmSolidMassVariation?.valueKg ?? null,
+      pcmSolidTemperatureC: pcmSolidTemperature?.valueC ?? null,
+      pcmLiquidTemperatureC: pcmLiquidTemperature?.valueC ?? null
     }
   };
 }
@@ -1150,6 +1384,15 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       )
     )
   ];
+  const coolingStorageFormulaReferences = [
+    ...new Set(
+      monthly.flatMap(month =>
+        Object.values(month.coolingStoragePcm?.calculations ?? {})
+          .map(result => result?.formulaId)
+          .filter(Boolean)
+      )
+    )
+  ];
 
   return {
     status: "calculated",
@@ -1172,13 +1415,7 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       "MC001_3_B_SUBSYSTEM_RECOVERABLE_ENERGY",
       "MC001_3_185_TOTAL_HEATING_AUXILIARY_ENERGY",
       "MC001_3_186_TOTAL_COOLING_AUXILIARY_ENERGY",
-      ...(monthly.some(month => month.coolingStoragePcm)
-        ? [
-            "MC001_3_111_COOLING_STORAGE_PCM_SENSIBLE_SOLID_STORAGE_ENERGY",
-            "MC001_3_112_COOLING_STORAGE_PCM_INPUT_ENERGY_LIMIT",
-            "MC001_3_113_COOLING_STORAGE_PCM_SOLID_MASS_DECREASE_VARIATION"
-          ]
-        : []),
+      ...coolingStorageFormulaReferences,
       ...stageFormulaReferences,
       ...sharedGeneratorFormulaReferences,
       ...ventilationFormulaReferences,

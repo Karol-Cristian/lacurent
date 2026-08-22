@@ -175,6 +175,21 @@ def generator_standby_loss_power_kw(
     )
 
 
+def generator_standby_loss_fraction_from_coefficients_percent(
+    coefficient_c5: float,
+    coefficient_c6: float,
+    nominal_power_kw: float,
+) -> float:
+    return coefficient_c5 * nominal_power_kw**coefficient_c6 / 100
+
+
+def generator_standby_loss_fraction_sum_percent(
+    envelope_loss_fraction_percent: float,
+    chimney_off_loss_fraction_percent: float,
+) -> float:
+    return envelope_loss_fraction_percent + chimney_off_loss_fraction_percent
+
+
 def generator_envelope_recoverable_loss_kwh(
     corrected_standby_loss_power_kw: float,
     boiler_room_recovery_factor: float,
@@ -222,6 +237,14 @@ def generator_auxiliary_energy_kwh(
     operation_hours: float,
 ) -> float:
     return auxiliary_power_kw * operation_hours
+
+
+def generator_auxiliary_power_from_coefficients_kw(
+    coefficient_c7: float,
+    coefficient_c8: float,
+    nominal_power_kw: float,
+) -> float:
+    return ((coefficient_c7 + coefficient_c8) / 100) * nominal_power_kw
 
 
 def generator_auxiliary_recoverable_fraction(recovered_auxiliary_fraction: float) -> float:

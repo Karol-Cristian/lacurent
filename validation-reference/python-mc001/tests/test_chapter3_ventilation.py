@@ -5,6 +5,7 @@ import unittest
 from mc001_reference.chapter3_ventilation import (
     ahu_cooling_coil_required_energy_kwh,
     ahu_dehumidification_cooling_energy_kwh,
+    ahu_distribution_thermal_loss_kwh,
     ahu_generation_loss_conditioned_kwh,
     ahu_heat_recovery_energy_kwh,
     ahu_heating_coil_required_energy_kwh,
@@ -12,6 +13,7 @@ from mc001_reference.chapter3_ventilation import (
     ahu_humidification_generator_input_energy_kwh,
     ahu_non_steam_humidification_auxiliary_energy_kwh,
     ahu_recirculation_air_heating_energy_kwh,
+    ahu_recoverable_distribution_loss_to_zone_kwh,
     ahu_recoverable_generation_loss_kwh,
     balanced_residential_fan_temperature_rise_k,
     duct_leakage_air_flow_m3_h,
@@ -170,6 +172,46 @@ class Chapter3VentilationReferenceTests(unittest.TestCase):
             places=12,
         )
         self.assertEqual(ahu_recoverable_generation_loss_kwh(generation_loss, "unconditioned"), 0)
+
+    def test_ahu_distribution_loss_and_zone_recovery_reference_case(self):
+        distribution_loss = ahu_distribution_thermal_loss_kwh(
+            1.2,
+            1.006,
+            1200,
+            3,
+            [1.2, 0.8],
+            900,
+            1.5,
+            [(50, 19), (30, 20)],
+            40,
+            16,
+            24,
+            10,
+        )
+        recoverable = ahu_recoverable_distribution_loss_to_zone_kwh(
+            1.2,
+            1.006,
+            500,
+            2.2,
+            25,
+            16,
+            20,
+            10,
+        )
+
+        airflow_temperature_sum = 1200 * (3 + 1.2 + 0.8) + 900 * 1.5
+        airflow_temperature_sum += 50 * (16 - 19) + 30 * (16 - 20) + 40 * (16 - 24)
+        zone_sum = 500 * 2.2 + 25 * (16 - 20)
+        self.assertAlmostEqual(
+            distribution_loss,
+            1.2 * 1.006 * airflow_temperature_sum * 10 / 3600,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            recoverable,
+            1.2 * 1.006 * zone_sum * 10 / 3600,
+            places=12,
+        )
 
     def test_ahu_fan_pressure_leakage_and_airflow_relations_reference_case(self):
         self.assertEqual(balanced_residential_fan_temperature_rise_k(), 0)
