@@ -47,12 +47,37 @@ import {
   calculateIntermediateLoadFactor
 } from "../physics-engine/mc001Chapter3HeatingSystems.mjs";
 import {
+  calculateCoolingCompressionEer,
+  calculateCoolingCompressionElectricInput,
+  calculateCoolingControlAuxiliaryEnergy,
+  calculateCoolingCoveredPartLoadFactor,
+  calculateCoolingDistributionAuxiliaryEnergy,
+  calculateCoolingDistributionLoss,
+  calculateCoolingEerTemperatureCorrectionFactor,
+  calculateCoolingGeneratorAuxiliaryTotal,
+  calculateCoolingGeneratorInputByCapacityLimit,
+  calculateCoolingHeatRejectedByCompression,
+  calculateCoolingHeatRejectionAuxiliaryAirCooledZero,
+  calculateCoolingHeatRejectionAuxiliaryEnergy,
+  calculateCoolingHeatRejectionDistributionAuxiliaryAirCooledZero,
+  calculateCoolingHeatRejectionDistributionAuxiliaryEnergy,
+  calculateCoolingPartLoadFactor,
+  calculateCoolingStorageAuxiliaryEnergy,
+  calculateCoolingStorageAuxiliaryTotal,
+  calculateCoolingStoragePumpOperationTime,
+  calculateCoolingStorageRecoverableAuxiliaryLoss,
+  calculateCoolingStorageRecoverableLossTotal,
+  calculateCoolingStorageRecoverableThermalLoss,
+  calculateCoolingStorageThermalLoss,
   calculateNoPreheaterEnergy,
   calculateOtherHeatRecoveryAuxiliaryEnergy,
   calculatePreheaterEnergy,
   calculatePumpHeatRecoveryAuxiliaryEnergy,
   calculateRotaryHeatRecoveryAuxiliaryEnergy,
-  calculateVentilationControlAuxiliaryEnergy
+  calculateVentilationControlAuxiliaryEnergy,
+  lookupCoolingHeatRejectionElectricPartLoadFactorTable323,
+  lookupCoolingHeatRejectionSpecificElectricDemandTable322,
+  selectCoolingPartLoadBin
 } from "../physics-engine/mc001Chapter3SystemEnergy.mjs";
 import {
   calculateDhwAuxiliaryDistributionEnergy,
@@ -89,7 +114,7 @@ import { calculateMc001Chapter3IntegratedRuntime } from "../physics-engine/mc001
 
 export const TECHNICAL_SYSTEMS_SCHEMA = "technical_systems_v1";
 export const CHAPTER3_INSTALLATIONS_ADAPTER_VERSION =
-  "building_chapter_3_installations_adapter_p8d_v1";
+  "building_chapter_3_installations_adapter_p8e_v1";
 
 export const CHAPTER3_INPUT_CLASSIFICATION = Object.freeze({
   NUMERICALLY_IMPLEMENTED: "NUMERICALLY_IMPLEMENTED",
@@ -154,16 +179,19 @@ export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
       "technicalSystems.cooling.systems[].stages[].lossKWhPerMonth",
       "technicalSystems.cooling.systems[].stages[].auxiliaryKWhPerMonth",
       "technicalSystems.cooling.systems[].stages[].auxiliaryRecoveredFraction",
-      "technicalSystems.cooling.systems[].stages[].lossRecoveredFraction"
+      "technicalSystems.cooling.systems[].stages[].lossRecoveredFraction",
+      "technicalSystems.cooling.systems[].stages[].lossCalculation or auxiliaryCalculation for source-backed component contracts"
     ]),
     optionalInputFields: Object.freeze([
       "generatorType",
       "energyCarrier",
       "servedScope",
       "nominalCapacityKW",
-      "systems[].allocationFraction"
+      "systems[].allocationFraction",
+      "stages[].lossCalculation.mode = cooling_distribution_factor | cooling_storage_thermal_losses | no_cooling_storage",
+      "stages[].auxiliaryCalculation.mode = cooling_distribution_factor | cooling_storage_pump_auxiliary | cooling_compression_generator_auxiliary"
     ]),
-    units: Object.freeze(["kWh/month", "fraction", "kW"]),
+    units: Object.freeze(["kWh/month", "fraction", "kW", "h/month", "degC", "kW/K", "kWh/(kg*K)", "m3/h"]),
     enumValues: Object.freeze({
       generatorType: Object.freeze(["split_system", "chiller", "heat_pump_reversible", "district_cooling", "explicit_other"]),
       energyCarrier: Object.freeze(["electricity", "district_cooling", "explicit_other"])
@@ -396,31 +424,41 @@ function calculatedComponentSource({ origin, reference, results, details = {} })
   });
 }
 
-function noHeatingStorageBranch(path) {
-  const result = {
+function directBranchResult({ formulaId, branchId, unit, formulaText, provenance }) {
+  return {
     status: "calculated",
     value: 0,
-    valueKWh: 0,
-    unit: "kWh",
-    formulaId: "MC001_3_HEATING_STORAGE_NO_STORAGE_BRANCH",
+    valueKWh: unit === "kWh" ? 0 : undefined,
+    unit,
+    formulaId,
     executionTrace: {
       schema: "mc001_execution_trace_v1",
       chapter: "3",
-      formulaId: "MC001_3_HEATING_STORAGE_NO_STORAGE_BRANCH",
-      branchId: "no_heating_storage_zero_loss",
+      formulaId,
+      branchId,
       inputs: {},
-      formulaText: "QH,sto,ls = 0 when no heating storage component exists",
+      formulaText,
       rawResult: 0,
       finalResult: 0,
-      unit: "kWh",
+      unit,
       clampApplied: false,
       status: "branch_result",
-      provenance: {
-        source: "MC001-2022 Chapter 3 heating service topology",
-        assumptions: ["heating_storage_absent_is_explicit_in_building_dna"]
-      }
+      provenance
     }
   };
+}
+
+function noHeatingStorageBranch(path) {
+  const result = directBranchResult({
+    formulaId: "MC001_3_HEATING_STORAGE_NO_STORAGE_BRANCH",
+    branchId: "no_heating_storage_zero_loss",
+    unit: "kWh",
+    formulaText: "QH,sto,ls = 0 when no heating storage component exists",
+    provenance: {
+      source: "MC001-2022 Chapter 3 heating service topology",
+      assumptions: ["heating_storage_absent_is_explicit_in_building_dna"]
+    }
+  });
   return {
     value: 0,
     source: calculatedStageSource({
@@ -428,6 +466,29 @@ function noHeatingStorageBranch(path) {
       reference: `${path}.lossCalculation`,
       results: [result],
       details: { mode: "no_heating_storage" }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function noCoolingStorageBranch(path, sourcePath = "lossCalculation") {
+  const result = directBranchResult({
+    formulaId: "MC001_3_COOLING_STORAGE_NO_STORAGE_BRANCH",
+    branchId: "no_cooling_storage_zero_loss",
+    unit: "kWh",
+    formulaText: "QC,sto,ls = 0 when no cooling storage component exists",
+    provenance: {
+      source: "MC001-2022 Chapter 3 cooling service topology",
+      assumptions: ["cooling_storage_absent_is_explicit_in_building_dna"]
+    }
+  });
+  return {
+    value: 0,
+    source: calculatedStageSource({
+      origin: "mc001_cooling_no_storage_branch",
+      reference: `${path}.${sourcePath}`,
+      results: [result],
+      details: { mode: "no_cooling_storage" }
     }),
     derivedFractions: {}
   };
@@ -1066,7 +1127,566 @@ function calculateDhwPumpAuxiliaryContract(input, monthIndex, path) {
   };
 }
 
-function calculatedStageLoss(stage, service, stageId, monthIndex, path, diagnostics, stageOutputKWh) {
+function stageContextValue(stageContext, field, fallback = null) {
+  const value = stageContext?.[field];
+  return finiteNumber(value) ? value : fallback;
+}
+
+function previousStage(stageContext, stageId) {
+  return stageContext?.previousStages instanceof Map
+    ? stageContext.previousStages.get(stageId)
+    : null;
+}
+
+function previousStageValue(stageContext, stageId, field, fallback = 0) {
+  const value = previousStage(stageContext, stageId)?.[field];
+  return finiteNumber(value) ? value : fallback;
+}
+
+function contextMonthlyField(contract, field, monthIndex, fallback = null) {
+  const value = monthlyField(contract, field, monthIndex);
+  return value === undefined || value === null ? fallback : value;
+}
+
+function calculateCoolingDistributionLossContract(input, monthIndex, path, stageContext = {}) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "cooling_distribution_factor") return null;
+
+  const result = calculateCoolingDistributionLoss({
+    coolingLossFactor: contextMonthlyField(contract, "coolingLossFactor", monthIndex),
+    usefulCoolingDemandKWh: contextMonthlyField(
+      contract,
+      "usefulCoolingDemandKWh",
+      monthIndex,
+      stageContextValue(stageContext, "allocatedUsefulDemandKWh")
+    ),
+    emissionLossKWh: contextMonthlyField(
+      contract,
+      "emissionLossKWh",
+      monthIndex,
+      previousStageValue(stageContext, "emission", "lossKWh")
+    ),
+    ahuCoolingOutputRequiredKWh: contextMonthlyField(
+      contract,
+      "ahuCoolingOutputRequiredKWh",
+      monthIndex,
+      0
+    )
+  });
+
+  return {
+    value: result.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_cooling_distribution_factor_component_contract",
+      reference: `${path}.lossCalculation`,
+      results: [result],
+      details: {
+        mode: contract.mode,
+        baseKWh: result.baseKWh ?? result.extra?.baseKWh ?? null
+      }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function calculateCoolingDistributionAuxiliaryContract(input, monthIndex, path, stageContext = {}) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "cooling_distribution_factor") return null;
+
+  const result = calculateCoolingDistributionAuxiliaryEnergy({
+    auxiliaryFactor: contextMonthlyField(contract, "auxiliaryFactor", monthIndex),
+    usefulCoolingDemandKWh: contextMonthlyField(
+      contract,
+      "usefulCoolingDemandKWh",
+      monthIndex,
+      stageContextValue(stageContext, "allocatedUsefulDemandKWh")
+    ),
+    emissionLossKWh: contextMonthlyField(
+      contract,
+      "emissionLossKWh",
+      monthIndex,
+      previousStageValue(stageContext, "emission", "lossKWh")
+    ),
+    ahuCoolingOutputRequiredKWh: contextMonthlyField(
+      contract,
+      "ahuCoolingOutputRequiredKWh",
+      monthIndex,
+      0
+    )
+  });
+
+  return {
+    value: result.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_cooling_distribution_auxiliary_factor_component_contract",
+      reference: `${path}.auxiliaryCalculation`,
+      results: [result],
+      details: {
+        mode: contract.mode,
+        baseKWh: result.baseKWh ?? result.extra?.baseKWh ?? null
+      }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function coolingStorageThermalResult(contract, prefix, formulaId, branch, monthIndex) {
+  const heatLossCoefficientKWPerK = contextMonthlyField(
+    contract,
+    `${prefix}HeatLossCoefficientKWPerK`,
+    monthIndex,
+    contract.heatLossCoefficientKWPerK
+  );
+  if (!finiteNumber(heatLossCoefficientKWPerK)) return null;
+  return calculateCoolingStorageThermalLoss({
+    heatLossCoefficientKWPerK,
+    ambientTemperatureC: contextMonthlyField(
+      contract,
+      `${prefix}AmbientTemperatureC`,
+      monthIndex,
+      contextMonthlyField(contract, "ambientTemperatureC", monthIndex)
+    ),
+    storageTemperatureC: contextMonthlyField(
+      contract,
+      `${prefix}StorageTemperatureC`,
+      monthIndex,
+      contextMonthlyField(contract, "storageTemperatureC", monthIndex)
+    ),
+    calculationHours: contextMonthlyField(
+      contract,
+      `${prefix}CalculationHours`,
+      monthIndex,
+      contextMonthlyField(contract, "calculationHours", monthIndex)
+    ),
+    formulaId,
+    branch
+  });
+}
+
+function calculateCoolingStorageLossContract(input, monthIndex, path) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode === "no_cooling_storage") {
+    return noCoolingStorageBranch(path);
+  }
+  if (contract.mode !== "cooling_storage_thermal_losses") return null;
+
+  const outputLoss = coolingStorageThermalResult(
+    contract,
+    "outputSide",
+    "MC001_3_99_COOLING_STORAGE_OUTPUT_SIDE_THERMAL_LOSS",
+    "output_side",
+    monthIndex
+  );
+  const standbyLoss = coolingStorageThermalResult(
+    contract,
+    "standby",
+    "MC001_3_100_COOLING_STORAGE_STANDBY_THERMAL_LOSS",
+    "standby",
+    monthIndex
+  );
+  const inputLoss = coolingStorageThermalResult(
+    contract,
+    "inputSide",
+    "MC001_3_101_COOLING_STORAGE_INPUT_SIDE_THERMAL_LOSS",
+    "input_side",
+    monthIndex
+  );
+  if (!outputLoss && !standbyLoss && !inputLoss) {
+    throw new Error("cooling_storage_thermal_losses requires at least one thermal-loss coefficient");
+  }
+  const outputSideLossKWh = outputLoss?.valueKWh ?? 0;
+  const standbyLossKWh = standbyLoss?.valueKWh ?? 0;
+  const inputSideLossKWh = inputLoss?.valueKWh ?? 0;
+  const totalLossKWh = outputSideLossKWh + standbyLossKWh + inputSideLossKWh;
+  if (totalLossKWh < 0) {
+    throw new Error("cooling storage thermal-loss total must be non-negative for the Chapter 3 stage balance");
+  }
+  const recoverableThermal = finiteNumber(contract.recoverableStorageFraction)
+    ? calculateCoolingStorageRecoverableThermalLoss({
+        outputSideLossKWh,
+        standbyLossKWh,
+        inputSideLossKWh,
+        recoverableStorageFraction: contract.recoverableStorageFraction
+      })
+    : null;
+  const results = [outputLoss, standbyLoss, inputLoss, recoverableThermal].filter(Boolean);
+  return {
+    value: totalLossKWh,
+    source: calculatedStageSource({
+      origin: "mc001_cooling_storage_thermal_component_contract",
+      reference: `${path}.lossCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        outputSideLossKWh,
+        standbyLossKWh,
+        inputSideLossKWh,
+        recoverableThermalLossKWh: recoverableThermal?.valueKWh ?? null
+      }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function coolingStoragePumpSide(contract, side, formulaIds, monthIndex, fallbackEnergyKWh = null) {
+  const storageEnergyKWh = contextMonthlyField(
+    contract,
+    `${side}StorageEnergyKWh`,
+    monthIndex,
+    fallbackEnergyKWh
+  );
+  if (!finiteNumber(storageEnergyKWh)) return null;
+  const operation = calculateCoolingStoragePumpOperationTime({
+    storageEnergyKWh,
+    mediumSpecificHeatKWhPerKgK: contextMonthlyField(
+      contract,
+      `${side}MediumSpecificHeatKWhPerKgK`,
+      monthIndex,
+      contract.mediumSpecificHeatKWhPerKgK
+    ),
+    mediumDensityKgPerM3: contextMonthlyField(
+      contract,
+      `${side}MediumDensityKgPerM3`,
+      monthIndex,
+      contract.mediumDensityKgPerM3
+    ),
+    pumpVolumeFlowM3PerH: contextMonthlyField(
+      contract,
+      `${side}PumpVolumeFlowM3PerH`,
+      monthIndex,
+      contract.pumpVolumeFlowM3PerH
+    ),
+    supplyTemperatureC: contextMonthlyField(
+      contract,
+      `${side}SupplyTemperatureC`,
+      monthIndex,
+      contract.supplyTemperatureC
+    ),
+    returnTemperatureC: contextMonthlyField(
+      contract,
+      `${side}ReturnTemperatureC`,
+      monthIndex,
+      contract.returnTemperatureC
+    ),
+    formulaId: formulaIds.operation
+  });
+  const auxiliary = calculateCoolingStorageAuxiliaryEnergy({
+    pumpOperationHours: operation.valueH,
+    pumpElectricPowerKW: contextMonthlyField(
+      contract,
+      `${side}PumpElectricPowerKW`,
+      monthIndex,
+      contract.pumpElectricPowerKW
+    ),
+    formulaId: formulaIds.auxiliary
+  });
+  return { operation, auxiliary };
+}
+
+function calculateCoolingStorageAuxiliaryContract(input, monthIndex, path, stageContext = {}) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode === "no_cooling_storage") {
+    return noCoolingStorageBranch(path, "auxiliaryCalculation");
+  }
+  if (contract.mode !== "cooling_storage_pump_auxiliary") return null;
+
+  const output = coolingStoragePumpSide(
+    contract,
+    "outputSide",
+    {
+      operation: "MC001_3_115_COOLING_STORAGE_OUTPUT_PUMP_OPERATION_TIME",
+      auxiliary: "MC001_3_116_COOLING_STORAGE_OUTPUT_AUXILIARY_ENERGY"
+    },
+    monthIndex,
+    stageContextValue(stageContext, "stageOutputKWh")
+  );
+  const inputSide = coolingStoragePumpSide(
+    contract,
+    "inputSide",
+    {
+      operation: "MC001_3_117_COOLING_STORAGE_INPUT_PUMP_OPERATION_TIME",
+      auxiliary: "MC001_3_118_COOLING_STORAGE_INPUT_AUXILIARY_ENERGY"
+    },
+    monthIndex,
+    0
+  );
+  if (!output && !inputSide) {
+    throw new Error("cooling_storage_pump_auxiliary requires outputSideStorageEnergyKWh or inputSideStorageEnergyKWh");
+  }
+  const outputSideAuxiliaryKWh = output?.auxiliary.valueKWh ?? 0;
+  const inputSideAuxiliaryKWh = inputSide?.auxiliary.valueKWh ?? 0;
+  const total = calculateCoolingStorageAuxiliaryTotal({
+    outputSideAuxiliaryKWh,
+    inputSideAuxiliaryKWh
+  });
+  const recoverableAux = finiteNumber(contract.recoverableAuxiliaryFraction)
+    ? calculateCoolingStorageRecoverableAuxiliaryLoss({
+        auxiliaryEnergyKWh: total.valueKWh,
+        recoverableAuxiliaryFraction: contract.recoverableAuxiliaryFraction
+      })
+    : null;
+  const recoverableTotal =
+    recoverableAux && finiteNumber(contract.thermalRecoverableLossKWh)
+      ? calculateCoolingStorageRecoverableLossTotal({
+          auxiliaryRecoverableLossKWh: recoverableAux.valueKWh,
+          thermalRecoverableLossKWh: contract.thermalRecoverableLossKWh
+        })
+      : null;
+  const results = [
+    output?.operation,
+    output?.auxiliary,
+    inputSide?.operation,
+    inputSide?.auxiliary,
+    total,
+    recoverableAux,
+    recoverableTotal
+  ].filter(Boolean);
+  return {
+    value: total.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_cooling_storage_pump_component_contract",
+      reference: `${path}.auxiliaryCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        outputSideAuxiliaryKWh,
+        inputSideAuxiliaryKWh,
+        recoverableAuxiliaryLossKWh: recoverableAux?.valueKWh ?? null,
+        recoverableLossTotalKWh: recoverableTotal?.valueKWh ?? null
+      }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function explicitResult({ formulaId, value, valueKey = "value", unit, formulaText, inputs }) {
+  return {
+    status: "calculated",
+    value,
+    [valueKey]: value,
+    unit,
+    formulaId,
+    executionTrace: {
+      schema: "mc001_execution_trace_v1",
+      chapter: "3",
+      formulaId,
+      branchId: "explicit_component_input",
+      inputs,
+      formulaText,
+      rawResult: value,
+      finalResult: value,
+      unit,
+      clampApplied: false,
+      status: "direct_result",
+      provenance: {
+        source: "Chapter 3 component/product data supplied through Building DNA",
+        classification: "PRODUCT_DATA"
+      }
+    }
+  };
+}
+
+function coolingEerCorrection(contract, monthIndex) {
+  if (isPlainObject(contract.eerCorrectionInput)) {
+    return calculateCoolingEerTemperatureCorrectionFactor(contract.eerCorrectionInput);
+  }
+  const value = contextMonthlyField(contract, "eerCorrectionFactor", monthIndex);
+  if (!finitePositive(value)) {
+    throw new Error("cooling_compression_heat_rejection_auxiliary requires eerCorrectionFactor or eerCorrectionInput");
+  }
+  return explicitResult({
+    formulaId: "MC001_3_155_COOLING_EER_TEMPERATURE_CORRECTION_PRODUCT_INPUT",
+    value,
+    unit: "-",
+    formulaText: "fEER,corr supplied as product/engineering input",
+    inputs: { eerCorrectionFactor: value }
+  });
+}
+
+function coolingHeatRejectionAuxiliary(contract, heatRejectedKWh) {
+  if (contract.heatRejectionAuxiliaryMode === "air_cooled_zero") {
+    return {
+      lookupResults: [],
+      result: calculateCoolingHeatRejectionAuxiliaryAirCooledZero()
+    };
+  }
+  if (contract.heatRejectionAuxiliaryMode !== "specific_electric_demand") {
+    throw new Error("cooling generator auxiliary requires heatRejectionAuxiliaryMode");
+  }
+  const specific = contract.heatRejectionSpecificDemandKey
+    ? lookupCoolingHeatRejectionSpecificElectricDemandTable322({
+        systemKey: contract.heatRejectionSpecificDemandKey
+      })
+    : explicitResult({
+        formulaId: "MC001_TABLE_3_22_HEAT_REJECTION_SPECIFIC_ELECTRIC_DEMAND_PRODUCT_INPUT",
+        value: contract.heatRejectionSpecificElectricDemandKWPerKW,
+        valueKey: "valueKWPerKW",
+        unit: "kW/kW",
+        formulaText: "phr,el supplied as product/engineering input",
+        inputs: {
+          heatRejectionSpecificElectricDemandKWPerKW:
+            contract.heatRejectionSpecificElectricDemandKWPerKW
+        }
+      });
+  const partLoad = contract.heatRejectionElectricPartLoadControlKey &&
+    contract.heatRejectionElectricPartLoadTypeKey
+    ? lookupCoolingHeatRejectionElectricPartLoadFactorTable323({
+        controlKey: contract.heatRejectionElectricPartLoadControlKey,
+        rejectionTypeKey: contract.heatRejectionElectricPartLoadTypeKey
+      })
+    : explicitResult({
+        formulaId: "MC001_TABLE_3_23_HEAT_REJECTION_ELECTRIC_PART_LOAD_FACTOR_PRODUCT_INPUT",
+        value: contract.heatRejectionElectricPartLoadFactor,
+        unit: "-",
+        formulaText: "fhr,PL,el supplied as product/engineering input",
+        inputs: {
+          heatRejectionElectricPartLoadFactor: contract.heatRejectionElectricPartLoadFactor
+        }
+      });
+  const freeCoolingElectricFactor = contract.freeCoolingElectricFactor;
+  if (!finitePositive(freeCoolingElectricFactor)) {
+    throw new Error("cooling heat-rejection auxiliary requires freeCoolingElectricFactor");
+  }
+  const result = calculateCoolingHeatRejectionAuxiliaryEnergy({
+    heatRejectedKWh,
+    specificElectricDemandKWPerKW: specific.valueKWPerKW ?? specific.value,
+    electricPartLoadFactor: partLoad.value,
+    freeCoolingElectricFactor
+  });
+  return { lookupResults: [specific, partLoad], result };
+}
+
+function coolingHeatRejectionDistributionAuxiliary(contract, heatRejectedKWh) {
+  if (contract.heatRejectionDistributionAuxiliaryMode === "air_cooled_zero") {
+    return calculateCoolingHeatRejectionDistributionAuxiliaryAirCooledZero();
+  }
+  if (contract.heatRejectionDistributionAuxiliaryMode !== "specific_electric_demand") {
+    throw new Error("cooling generator auxiliary requires heatRejectionDistributionAuxiliaryMode");
+  }
+  return calculateCoolingHeatRejectionDistributionAuxiliaryEnergy({
+    heatRejectedKWh,
+    distributionSpecificElectricDemandKWPerKW:
+      contract.heatRejectionDistributionSpecificElectricDemandKWPerKW
+  });
+}
+
+function coolingControlAuxiliary(contract, monthIndex) {
+  const controlPowersKW = Array.isArray(contract.controlPowersKW)
+    ? contract.controlPowersKW
+    : (finiteNumber(contract.controlPowerKW) ? [contract.controlPowerKW] : null);
+  if (!controlPowersKW) {
+    throw new Error("cooling generator auxiliary requires controlPowersKW or controlPowerKW");
+  }
+  return calculateCoolingControlAuxiliaryEnergy({
+    operationHours: contextMonthlyField(contract, "operationHours", monthIndex),
+    controlPowersKW
+  });
+}
+
+function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, stageContext = {}) {
+  const contract = monthlyComponent(input, monthIndex);
+  if (!isPlainObject(contract)) return null;
+  if (contract.mode !== "cooling_compression_heat_rejection_auxiliary") return null;
+
+  const generatorInputRequiredKWh = contextMonthlyField(
+    contract,
+    "generatorInputRequiredKWh",
+    monthIndex,
+    stageContextValue(stageContext, "stageOutputKWh")
+  );
+  const operationHours = contextMonthlyField(contract, "operationHours", monthIndex);
+  const nominalCoolingPowerKW = contextMonthlyField(contract, "nominalCoolingPowerKW", monthIndex);
+  const nominalEer = contextMonthlyField(contract, "nominalEer", monthIndex);
+  const load = calculateCoolingPartLoadFactor({
+    generatorInputRequiredKWh,
+    operationHours,
+    nominalCoolingPowerKW
+  });
+  const partLoadBin = selectCoolingPartLoadBin({ partLoadFactor: load.value });
+  const available = calculateCoolingGeneratorInputByCapacityLimit({
+    generatorInputRequiredKWh,
+    operationHours,
+    nominalCoolingPowerKW
+  });
+  if (available.valueKWh + 1e-9 < generatorInputRequiredKWh) {
+    throw new Error("cooling generator capacity is insufficient for the requested monthly load");
+  }
+  const covered = calculateCoolingCoveredPartLoadFactor({
+    generatorInputKWh: available.valueKWh,
+    generatorInputRequiredKWh
+  });
+  const eerCorrection = coolingEerCorrection(contract, monthIndex);
+  const compressionElectric = calculateCoolingCompressionElectricInput({
+    generatorCoolingInputKWh: available.valueKWh,
+    partLoadValue: partLoadBin.value,
+    nominalEer,
+    eerCorrectionFactor: eerCorrection.value
+  });
+  const heatRejected = calculateCoolingHeatRejectedByCompression({
+    generatorCoolingInputKWh: available.valueKWh,
+    nominalEer,
+    partLoadFactor: partLoadBin.value,
+    eerCorrectionFactor: eerCorrection.value
+  });
+  const heatRejectionAuxiliary = coolingHeatRejectionAuxiliary(
+    contract,
+    heatRejected.valueKWh
+  );
+  const heatRejectionDistributionAuxiliary =
+    coolingHeatRejectionDistributionAuxiliary(contract, heatRejected.valueKWh);
+  const controlAuxiliary = coolingControlAuxiliary(contract, monthIndex);
+  const total = calculateCoolingGeneratorAuxiliaryTotal({
+    heatRejectionAuxiliaryKWh: heatRejectionAuxiliary.result.valueKWh,
+    heatRejectionDistributionAuxiliaryKWh: heatRejectionDistributionAuxiliary.valueKWh,
+    controlAuxiliaryKWh: controlAuxiliary.valueKWh
+  });
+  const effectiveEer = calculateCoolingCompressionEer({
+    generatorCoolingInputKWh: available.valueKWh,
+    compressionElectricInputKWh: compressionElectric.valueKWh,
+    auxiliaryElectricInputKWh: total.valueKWh
+  });
+  const results = [
+    load,
+    partLoadBin,
+    available,
+    covered,
+    eerCorrection,
+    compressionElectric,
+    heatRejected,
+    ...heatRejectionAuxiliary.lookupResults,
+    heatRejectionAuxiliary.result,
+    heatRejectionDistributionAuxiliary,
+    controlAuxiliary,
+    total,
+    effectiveEer
+  ].filter(Boolean);
+  return {
+    value: total.valueKWh,
+    source: calculatedStageSource({
+      origin: "mc001_cooling_compression_heat_rejection_auxiliary_contract",
+      reference: `${path}.auxiliaryCalculation`,
+      results,
+      details: {
+        mode: contract.mode,
+        generatorInputRequiredKWh,
+        generatorCoolingInputKWh: available.valueKWh,
+        compressionElectricInputKWh: compressionElectric.valueKWh,
+        heatRejectedKWh: heatRejected.valueKWh,
+        heatRejectionAuxiliaryKWh: heatRejectionAuxiliary.result.valueKWh,
+        heatRejectionDistributionAuxiliaryKWh: heatRejectionDistributionAuxiliary.valueKWh,
+        controlAuxiliaryKWh: controlAuxiliary.valueKWh,
+        effectiveEer: effectiveEer.value
+      }
+    }),
+    derivedFractions: {}
+  };
+}
+
+function calculatedStageLoss(stage, service, stageId, monthIndex, path, diagnostics, stageOutputKWh, stageContext = {}) {
   try {
     if (service === "heating" && stageId === "emission") {
       return calculateHeatingEmissionLossContract(
@@ -1096,13 +1716,24 @@ function calculatedStageLoss(stage, service, stageId, monthIndex, path, diagnost
     if (service === "dhw" && stageId === "storage") {
       return calculateDhwStorageLossContract(stage.lossCalculation, monthIndex, path);
     }
+    if (service === "cooling" && stageId === "distribution") {
+      return calculateCoolingDistributionLossContract(
+        stage.lossCalculation,
+        monthIndex,
+        path,
+        stageContext
+      );
+    }
+    if (service === "cooling" && stageId === "storage") {
+      return calculateCoolingStorageLossContract(stage.lossCalculation, monthIndex, path);
+    }
   } catch (error) {
     diagnostics.push(diagnostic("invalid_chapter3_stage_loss_component_contract", path, error.message));
   }
   return null;
 }
 
-function calculatedStageAuxiliary(stage, service, stageId, monthIndex, path, diagnostics, stageOutputKWh) {
+function calculatedStageAuxiliary(stage, service, stageId, monthIndex, path, diagnostics, stageOutputKWh, stageContext = {}) {
   try {
     if (service === "heating" && stageId === "distribution") {
       return calculateHeatingHydronicPumpAuxiliaryContract(
@@ -1123,6 +1754,36 @@ function calculatedStageAuxiliary(stage, service, stageId, monthIndex, path, dia
       return (
         calculateDhwPumpAuxiliaryContract(stage.auxiliaryCalculation, monthIndex, path) ??
         calculateDhwHeatTracingAuxiliaryContract(stage.auxiliaryCalculation, monthIndex, path)
+      );
+    }
+    if (service === "cooling" && stageId === "distribution") {
+      return calculateCoolingDistributionAuxiliaryContract(
+        stage.auxiliaryCalculation,
+        monthIndex,
+        path,
+        stageContext
+      );
+    }
+    if (service === "cooling" && stageId === "storage") {
+      return calculateCoolingStorageAuxiliaryContract(
+        stage.auxiliaryCalculation,
+        monthIndex,
+        path,
+        {
+          ...stageContext,
+          stageOutputKWh
+        }
+      );
+    }
+    if (service === "cooling" && stageId === "generation") {
+      return calculateCoolingGeneratorAuxiliaryContract(
+        stage.auxiliaryCalculation,
+        monthIndex,
+        path,
+        {
+          ...stageContext,
+          stageOutputKWh
+        }
       );
     }
   } catch (error) {
@@ -1321,10 +1982,13 @@ function serviceStagesForMonth(
 ) {
   const stages = [];
   const stageMap = new Map((system?.stages ?? []).map(stage => [stage.stageId, stage]));
-  let stageOutputKWh =
+  const previousStages = new Map();
+  const allocatedUsefulDemandKWh =
     finiteNonNegative(usefulDemandKWh) && finiteNumber(allocationFraction)
       ? usefulDemandKWh * allocationFraction
       : null;
+  let stageOutputKWh =
+    allocatedUsefulDemandKWh;
   for (const stageId of stageIds) {
     const stage = stageMap.get(stageId);
     if (!stage) {
@@ -1340,7 +2004,12 @@ function serviceStagesForMonth(
       monthIndex,
       `${service}.stages.${stageId}`,
       diagnostics,
-      stageOutputKWh
+      stageOutputKWh,
+      {
+        allocatedUsefulDemandKWh,
+        stageOutputKWh,
+        previousStages
+      }
     );
     const calculatedAuxiliary = calculatedStageAuxiliary(
       stage,
@@ -1349,7 +2018,12 @@ function serviceStagesForMonth(
       monthIndex,
       `${service}.stages.${stageId}`,
       diagnostics,
-      stageOutputKWh
+      stageOutputKWh,
+      {
+        allocatedUsefulDemandKWh,
+        stageOutputKWh,
+        previousStages
+      }
     );
     const loss =
       calculatedLoss ??
@@ -1389,6 +2063,7 @@ function serviceStagesForMonth(
       )
     };
     stages.push(resolvedStage);
+    previousStages.set(stageId, resolvedStage);
     if (
       finiteNonNegative(stageOutputKWh) &&
       finiteNonNegative(resolvedStage.lossKWh) &&

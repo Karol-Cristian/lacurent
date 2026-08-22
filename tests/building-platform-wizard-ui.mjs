@@ -686,6 +686,71 @@ await test("wizard maps ventilation auxiliary component contracts to calculated 
   assert.equal(januaryVentilation.sources.controlAuxiliary.classification, "NUMERICALLY_IMPLEMENTED");
 });
 
+await test("wizard maps cooling component contracts to calculated Chapter 3 stage inputs", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    chapter3_cooling_component_mode: "component_contract",
+    chapter3_cooling_distribution_loss_factor: "0.05",
+    chapter3_cooling_distribution_aux_factor: "0.02",
+    chapter3_cooling_ahu_output_kwh: "2",
+    chapter3_cooling_storage_mode: "thermal_storage",
+    chapter3_cooling_storage_loss_h_kw_k: "0.01",
+    chapter3_cooling_storage_ambient_c: "30",
+    chapter3_cooling_storage_temp_c: "10",
+    chapter3_cooling_storage_hours_month: "100",
+    chapter3_cooling_storage_pump_flow_m3h: "2",
+    chapter3_cooling_storage_pump_power_kw: "0.1",
+    chapter3_cooling_storage_supply_c: "6",
+    chapter3_cooling_storage_return_c: "11",
+    chapter3_cooling_storage_medium_cp_kwh_kgk: "0.00116",
+    chapter3_cooling_storage_medium_density_kg_m3: "1000",
+    chapter3_cooling_generation_mode: "compression_heat_rejection",
+    chapter3_cooling_operation_hours_month: "240",
+    chapter3_cooling_generator_nominal_kw: "20",
+    chapter3_cooling_generator_nominal_eer: "3",
+    chapter3_cooling_eer_correction_factor: "1",
+    chapter3_cooling_heat_rejection_aux_mode: "specific_electric_demand",
+    chapter3_cooling_heat_rejection_specific_key: "wet_closed_axial_no_extra_silencer",
+    chapter3_cooling_heat_rejection_pl_control_key: "variable_water_temperature",
+    chapter3_cooling_heat_rejection_pl_type_key: "wet_or_hybrid_wet",
+    chapter3_cooling_free_cooling_electric_factor: "1",
+    chapter3_cooling_heat_rejection_distribution_mode: "specific_electric_demand",
+    chapter3_cooling_heat_rejection_distribution_specific_kw_kw: "0.003",
+    chapter3_cooling_control_power_kw: "0.02",
+    chapter3_cooling_generation_aux_recovered_fraction: "0.1"
+  };
+  const answers = mapWizardAnswersToAssistedAnswers(formData(values));
+  const coolingSystem = answers.technicalSystems.cooling.systems[0];
+  const distribution = coolingSystem.stages.find(stage => stage.stageId === "distribution");
+  const storage = coolingSystem.stages.find(stage => stage.stageId === "storage");
+  const generation = coolingSystem.stages.find(stage => stage.stageId === "generation");
+
+  assert.equal(distribution.lossKWhPerMonth, undefined);
+  assert.equal(distribution.lossCalculation.mode, "cooling_distribution_factor");
+  assert.equal(distribution.auxiliaryCalculation.mode, "cooling_distribution_factor");
+  assert.equal(storage.lossKWhPerMonth, undefined);
+  assert.equal(storage.lossCalculation.mode, "cooling_storage_thermal_losses");
+  assert.equal(storage.auxiliaryCalculation.mode, "cooling_storage_pump_auxiliary");
+  assert.equal(generation.auxiliaryKWhPerMonth, undefined);
+  assert.equal(generation.auxiliaryCalculation.mode, "cooling_compression_heat_rejection_auxiliary");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  const januaryCooling = preview.calculation.chapter3Result.monthly[0].cooling;
+  const januaryDistribution = januaryCooling.stageResults.find(stage => stage.stageId === "distribution");
+  const januaryStorage = januaryCooling.stageResults.find(stage => stage.stageId === "storage");
+  const januaryGeneration = januaryCooling.stageResults.find(stage => stage.stageId === "generation");
+  assert.equal(januaryDistribution.lossSource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(januaryDistribution.auxiliarySource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(januaryStorage.lossSource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(januaryStorage.auxiliarySource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(januaryGeneration.auxiliarySource.classification, "NUMERICALLY_IMPLEMENTED");
+  assert.equal(
+    januaryGeneration.auxiliarySource.formulaIds.includes("MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL"),
+    true
+  );
+});
+
 await test("demo installation configurations have fixed 12-month Chapter 3 expected outputs", () => {
   const cases = [
     {
