@@ -48,6 +48,7 @@ import {
 } from "../physics-engine/mc001Chapter3HeatingSystems.mjs";
 import {
   calculateCoolingCompressionEer,
+  calculateCoolingCompressionDeliveredElectricInput,
   calculateCoolingCompressionElectricInput,
   calculateCoolingControlAuxiliaryEnergy,
   calculateCoolingCoveredPartLoadFactor,
@@ -69,11 +70,43 @@ import {
   calculateCoolingStorageRecoverableLossTotal,
   calculateCoolingStorageRecoverableThermalLoss,
   calculateCoolingStorageThermalLoss,
+  calculateAhuLeakageFactor,
+  allocateExtractAirFlowToZone,
+  allocateSupplyAirFlowToZone,
+  calculateAhuCoolingCoilRequiredEnergy,
+  calculateAhuDehumidificationCoolingEnergy,
+  calculateAhuGenerationLossConditioned,
+  calculateAhuGenerationLossUnconditioned,
+  calculateAhuHeatRecoveryEnergy,
+  calculateAhuHeatingCoilRequiredEnergy,
+  calculateAhuHumidificationGeneratorInputEnergy,
+  calculateAhuNonSteamHumidificationAuxiliaryEnergy,
+  calculateAhuRecirculationAirHeatingEnergy,
+  calculateAhuRecoverableGenerationLoss,
+  calculateBalancedResidentialFanTemperatureRise,
+  calculateDuctLeakageAirFlow,
+  calculateDuctLeakageFactor,
+  calculateDuctLeakageFlowFromFactor,
+  calculateExtractAirTemperatureForRecovery,
+  calculateFanEfficiencyFromNominalAndAirflowFactor,
+  calculateFanEnergyAssignedToHeatRecoveryPressure,
+  calculateFanTemperatureRise,
+  calculateGroundPreheatPrecoolEnergy,
+  calculateHumidificationPumpAuxiliaryEnergy,
+  calculateMaximumFlowFactorFromPartLoad,
+  calculateMaximumZoneFlowFactor,
+  calculateMultiZoneConstantPressureDrop,
+  calculateMultiZoneMinimumPressureDrop,
   calculateNoPreheaterEnergy,
   calculateOtherHeatRecoveryAuxiliaryEnergy,
+  calculatePartLoadAhuAirFlow,
   calculatePreheaterEnergy,
   calculatePumpHeatRecoveryAuxiliaryEnergy,
+  calculateQuadraticPressureDrop,
+  calculateRequiredExtractDistributionAirFlow,
+  calculateRequiredSupplyDistributionAirFlow,
   calculateRotaryHeatRecoveryAuxiliaryEnergy,
+  calculateSteamHumidificationPumpAuxiliaryEnergy,
   calculateVentilationControlAuxiliaryEnergy,
   lookupCoolingHeatRejectionElectricPartLoadFactorTable323,
   lookupCoolingHeatRejectionSpecificElectricDemandTable322,
@@ -1644,6 +1677,10 @@ function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, sta
     heatRejectionDistributionAuxiliaryKWh: heatRejectionDistributionAuxiliary.valueKWh,
     controlAuxiliaryKWh: controlAuxiliary.valueKWh
   });
+  const deliveredElectric = calculateCoolingCompressionDeliveredElectricInput({
+    compressionElectricInputKWh: compressionElectric.valueKWh,
+    auxiliaryElectricInputKWh: total.valueKWh
+  });
   const effectiveEer = calculateCoolingCompressionEer({
     generatorCoolingInputKWh: available.valueKWh,
     compressionElectricInputKWh: compressionElectric.valueKWh,
@@ -1662,6 +1699,7 @@ function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, sta
     heatRejectionDistributionAuxiliary,
     controlAuxiliary,
     total,
+    deliveredElectric,
     effectiveEer
   ].filter(Boolean);
   return {
@@ -1679,10 +1717,26 @@ function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, sta
         heatRejectionAuxiliaryKWh: heatRejectionAuxiliary.result.valueKWh,
         heatRejectionDistributionAuxiliaryKWh: heatRejectionDistributionAuxiliary.valueKWh,
         controlAuxiliaryKWh: controlAuxiliary.valueKWh,
+        deliveredElectricInputKWh: deliveredElectric.valueKWh,
         effectiveEer: effectiveEer.value
       }
     }),
-    derivedFractions: {}
+    derivedFractions: {},
+    stageInputOverride: {
+      valueKWh: deliveredElectric.valueKWh,
+      result: deliveredElectric,
+      source: calculatedStageSource({
+        origin: "mc001_cooling_compression_delivered_electric_contract",
+        reference: `${path}.auxiliaryCalculation.deliveredElectricInput`,
+        results: [compressionElectric, total, deliveredElectric],
+        details: {
+          mode: contract.mode,
+          compressionElectricInputKWh: compressionElectric.valueKWh,
+          auxiliaryElectricInputKWh: total.valueKWh,
+          deliveredElectricInputKWh: deliveredElectric.valueKWh
+        }
+      })
+    }
   };
 }
 
@@ -1901,6 +1955,402 @@ function calculatedVentilationControlAuxiliary(system, monthIndex, path) {
   };
 }
 
+function calculatedVentilationAhuThermalRelations(system, monthIndex, path) {
+  const contracts = system.thermalRelationCalculations ?? system.ahuThermalRelationCalculations;
+  if (!isPlainObject(contracts)) return null;
+  const fan = system.fanElectricEnergyInput ?? {};
+  const results = [];
+  const relations = {};
+
+  const addRelation = (key, result, reference) => {
+    if (!result) return;
+    relations[key] = {
+      status: result.status,
+      value: result.value,
+      valueKWh: result.valueKWh ?? null,
+      valueC: result.valueC ?? null,
+      unit: result.unit,
+      formulaId: result.formulaId,
+      executionTrace: result.executionTrace,
+      source: calculatedComponentSource({
+        origin: `mc001_ventilation_ahu_${key}_contract`,
+        reference,
+        results: [result],
+        details: { relation: key }
+      })
+    };
+    results.push(result);
+  };
+
+  const withHours = (contract) => ({
+    ...contract,
+    calculationHours: monthlyFieldWithFallback(
+      contract,
+      "calculationHours",
+      monthIndex,
+      fan.calculationHours
+    )
+  });
+
+  const fanTemperatureRise = monthlyComponent(contracts.fanTemperatureRise, monthIndex);
+  if (isPlainObject(fanTemperatureRise)) {
+    if (fanTemperatureRise.mode === "balanced_residential_fan_temperature_rise") {
+      addRelation(
+        "fanTemperatureRise",
+        calculateBalancedResidentialFanTemperatureRise(),
+        `${path}.thermalRelationCalculations.fanTemperatureRise`
+      );
+    } else if (fanTemperatureRise.mode === "fan_temperature_rise") {
+      addRelation(
+        "fanTemperatureRise",
+        calculateFanTemperatureRise(fanTemperatureRise),
+        `${path}.thermalRelationCalculations.fanTemperatureRise`
+      );
+    }
+  }
+
+  const extractTemperature = monthlyComponent(contracts.extractAirTemperatureForRecovery, monthIndex);
+  if (isPlainObject(extractTemperature) && extractTemperature.mode === "extract_air_temperature_for_recovery") {
+    addRelation(
+      "extractAirTemperatureForRecovery",
+      calculateExtractAirTemperatureForRecovery(extractTemperature),
+      `${path}.thermalRelationCalculations.extractAirTemperatureForRecovery`
+    );
+  }
+
+  const heatingCoil = monthlyComponent(contracts.heatingCoil, monthIndex);
+  if (isPlainObject(heatingCoil) && heatingCoil.mode === "ahu_heating_coil_required_energy") {
+    addRelation(
+      "heatingCoilRequiredEnergy",
+      calculateAhuHeatingCoilRequiredEnergy(withHours(heatingCoil)),
+      `${path}.thermalRelationCalculations.heatingCoil`
+    );
+  }
+
+  const heatRecovery = monthlyComponent(contracts.heatRecovery, monthIndex);
+  if (isPlainObject(heatRecovery) && heatRecovery.mode === "ahu_heat_recovery_energy") {
+    addRelation(
+      "heatRecoveryEnergy",
+      calculateAhuHeatRecoveryEnergy(withHours(heatRecovery)),
+      `${path}.thermalRelationCalculations.heatRecovery`
+    );
+  }
+
+  const recirculation = monthlyComponent(contracts.recirculationHeating, monthIndex);
+  if (isPlainObject(recirculation) && recirculation.mode === "ahu_recirculation_air_heating_energy") {
+    addRelation(
+      "recirculationAirHeatingEnergy",
+      calculateAhuRecirculationAirHeatingEnergy(withHours(recirculation)),
+      `${path}.thermalRelationCalculations.recirculationHeating`
+    );
+  }
+
+  const coolingCoil = monthlyComponent(contracts.coolingCoil, monthIndex);
+  if (isPlainObject(coolingCoil) && coolingCoil.mode === "ahu_cooling_coil_required_energy") {
+    addRelation(
+      "coolingCoilRequiredEnergy",
+      calculateAhuCoolingCoilRequiredEnergy(withHours(coolingCoil)),
+      `${path}.thermalRelationCalculations.coolingCoil`
+    );
+  }
+
+  const dehumidification = monthlyComponent(contracts.dehumidification, monthIndex);
+  if (isPlainObject(dehumidification) && dehumidification.mode === "ahu_dehumidification_cooling_energy") {
+    addRelation(
+      "dehumidificationCoolingEnergy",
+      calculateAhuDehumidificationCoolingEnergy(withHours(dehumidification)),
+      `${path}.thermalRelationCalculations.dehumidification`
+    );
+  }
+
+  const humidification = monthlyComponent(contracts.humidification, monthIndex);
+  if (isPlainObject(humidification) && humidification.mode === "ahu_humidification_generator_input_energy") {
+    addRelation(
+      "humidificationGeneratorInputEnergy",
+      calculateAhuHumidificationGeneratorInputEnergy(withHours(humidification)),
+      `${path}.thermalRelationCalculations.humidification`
+    );
+  }
+
+  const humidificationAuxiliary = monthlyComponent(contracts.humidificationAuxiliary, monthIndex);
+  if (
+    isPlainObject(humidificationAuxiliary) &&
+    humidificationAuxiliary.mode === "ahu_non_steam_humidification_auxiliary_zero"
+  ) {
+    addRelation(
+      "humidificationAuxiliaryEnergy",
+      calculateAhuNonSteamHumidificationAuxiliaryEnergy(),
+      `${path}.thermalRelationCalculations.humidificationAuxiliary`
+    );
+  }
+
+  const generationLoss = monthlyComponent(contracts.generationLoss, monthIndex);
+  let generationLossResult = null;
+  if (isPlainObject(generationLoss) && generationLoss.mode === "ahu_generation_loss_conditioned") {
+    generationLossResult = calculateAhuGenerationLossConditioned(withHours(generationLoss));
+    addRelation(
+      "generationLoss",
+      generationLossResult,
+      `${path}.thermalRelationCalculations.generationLoss`
+    );
+  } else if (isPlainObject(generationLoss) && generationLoss.mode === "ahu_generation_loss_unconditioned") {
+    generationLossResult = calculateAhuGenerationLossUnconditioned(withHours(generationLoss));
+    addRelation(
+      "generationLoss",
+      generationLossResult,
+      `${path}.thermalRelationCalculations.generationLoss`
+    );
+  }
+
+  const recoverableGenerationLoss = monthlyComponent(contracts.recoverableGenerationLoss, monthIndex);
+  if (
+    isPlainObject(recoverableGenerationLoss) &&
+    recoverableGenerationLoss.mode === "ahu_recoverable_generation_loss"
+  ) {
+    addRelation(
+      "recoverableGenerationLoss",
+      calculateAhuRecoverableGenerationLoss({
+        ahuGenerationLossKWh:
+          monthlyField(
+            recoverableGenerationLoss,
+            "ahuGenerationLossKWh",
+            monthIndex
+          ) ?? generationLossResult?.valueKWh,
+        ahuLocation: recoverableGenerationLoss.ahuLocation
+      }),
+      `${path}.thermalRelationCalculations.recoverableGenerationLoss`
+    );
+  }
+
+  const fanEfficiency = monthlyComponent(contracts.fanEfficiency, monthIndex);
+  if (isPlainObject(fanEfficiency) && fanEfficiency.mode === "fan_efficiency_from_nominal_and_airflow_factor") {
+    addRelation(
+      "fanEfficiency",
+      calculateFanEfficiencyFromNominalAndAirflowFactor(fanEfficiency),
+      `${path}.thermalRelationCalculations.fanEfficiency`
+    );
+  }
+
+  const quadraticPressureDrop = monthlyComponent(contracts.quadraticPressureDrop, monthIndex);
+  if (isPlainObject(quadraticPressureDrop) && quadraticPressureDrop.mode === "quadratic_pressure_drop") {
+    addRelation(
+      "quadraticPressureDrop",
+      calculateQuadraticPressureDrop(quadraticPressureDrop),
+      `${path}.thermalRelationCalculations.quadraticPressureDrop`
+    );
+  }
+
+  const multiZoneConstantPressureDrop = monthlyComponent(contracts.multiZoneConstantPressureDrop, monthIndex);
+  if (
+    isPlainObject(multiZoneConstantPressureDrop) &&
+    multiZoneConstantPressureDrop.mode === "multizone_constant_pressure_drop"
+  ) {
+    addRelation(
+      "multiZoneConstantPressureDrop",
+      calculateMultiZoneConstantPressureDrop(multiZoneConstantPressureDrop),
+      `${path}.thermalRelationCalculations.multiZoneConstantPressureDrop`
+    );
+  }
+
+  const multiZoneMinimumPressureDrop = monthlyComponent(contracts.multiZoneMinimumPressureDrop, monthIndex);
+  if (
+    isPlainObject(multiZoneMinimumPressureDrop) &&
+    multiZoneMinimumPressureDrop.mode === "multizone_minimum_pressure_drop"
+  ) {
+    addRelation(
+      "multiZoneMinimumPressureDrop",
+      calculateMultiZoneMinimumPressureDrop(multiZoneMinimumPressureDrop),
+      `${path}.thermalRelationCalculations.multiZoneMinimumPressureDrop`
+    );
+  }
+
+  const groundPreheatPrecool = monthlyComponent(contracts.groundPreheatPrecool, monthIndex);
+  if (isPlainObject(groundPreheatPrecool) && groundPreheatPrecool.mode === "ground_preheat_precool_energy") {
+    addRelation(
+      "groundPreheatPrecoolEnergy",
+      calculateGroundPreheatPrecoolEnergy(withHours(groundPreheatPrecool)),
+      `${path}.thermalRelationCalculations.groundPreheatPrecool`
+    );
+  }
+
+  const fanEnergyAssignedToHeatRecovery = monthlyComponent(contracts.fanEnergyAssignedToHeatRecovery, monthIndex);
+  if (
+    isPlainObject(fanEnergyAssignedToHeatRecovery) &&
+    fanEnergyAssignedToHeatRecovery.mode === "fan_energy_assigned_to_heat_recovery_pressure"
+  ) {
+    addRelation(
+      "fanEnergyAssignedToHeatRecovery",
+      calculateFanEnergyAssignedToHeatRecoveryPressure(fanEnergyAssignedToHeatRecovery),
+      `${path}.thermalRelationCalculations.fanEnergyAssignedToHeatRecovery`
+    );
+  }
+
+  const steamHumidificationPumpAuxiliary = monthlyComponent(
+    contracts.steamHumidificationPumpAuxiliary,
+    monthIndex
+  );
+  if (
+    isPlainObject(steamHumidificationPumpAuxiliary) &&
+    steamHumidificationPumpAuxiliary.mode === "steam_humidification_pump_auxiliary_zero"
+  ) {
+    addRelation(
+      "steamHumidificationPumpAuxiliaryEnergy",
+      calculateSteamHumidificationPumpAuxiliaryEnergy(),
+      `${path}.thermalRelationCalculations.steamHumidificationPumpAuxiliary`
+    );
+  }
+
+  const humidificationPumpAuxiliary = monthlyComponent(contracts.humidificationPumpAuxiliary, monthIndex);
+  if (
+    isPlainObject(humidificationPumpAuxiliary) &&
+    humidificationPumpAuxiliary.mode === "humidification_pump_auxiliary_energy"
+  ) {
+    addRelation(
+      "humidificationPumpAuxiliaryEnergy",
+      calculateHumidificationPumpAuxiliaryEnergy(withHours(humidificationPumpAuxiliary)),
+      `${path}.thermalRelationCalculations.humidificationPumpAuxiliary`
+    );
+  }
+
+  const ductLeakageFactor = monthlyComponent(contracts.ductLeakageFactor, monthIndex);
+  if (isPlainObject(ductLeakageFactor) && ductLeakageFactor.mode === "duct_leakage_factor") {
+    addRelation(
+      "ductLeakageFactor",
+      calculateDuctLeakageFactor(ductLeakageFactor),
+      `${path}.thermalRelationCalculations.ductLeakageFactor`
+    );
+  }
+
+  const ductLeakageAirFlow = monthlyComponent(contracts.ductLeakageAirFlow, monthIndex);
+  if (isPlainObject(ductLeakageAirFlow) && ductLeakageAirFlow.mode === "duct_leakage_air_flow") {
+    addRelation(
+      "ductLeakageAirFlow",
+      calculateDuctLeakageAirFlow(ductLeakageAirFlow),
+      `${path}.thermalRelationCalculations.ductLeakageAirFlow`
+    );
+  }
+
+  const ahuLeakageFactor = monthlyComponent(contracts.ahuLeakageFactor, monthIndex);
+  if (isPlainObject(ahuLeakageFactor) && ahuLeakageFactor.mode === "ahu_leakage_factor") {
+    addRelation(
+      "ahuLeakageFactor",
+      calculateAhuLeakageFactor(ahuLeakageFactor),
+      `${path}.thermalRelationCalculations.ahuLeakageFactor`
+    );
+  }
+
+  const requiredSupplyDistributionAirFlow = monthlyComponent(
+    contracts.requiredSupplyDistributionAirFlow,
+    monthIndex
+  );
+  if (
+    isPlainObject(requiredSupplyDistributionAirFlow) &&
+    requiredSupplyDistributionAirFlow.mode === "required_supply_distribution_air_flow"
+  ) {
+    addRelation(
+      "requiredSupplyDistributionAirFlow",
+      calculateRequiredSupplyDistributionAirFlow(requiredSupplyDistributionAirFlow),
+      `${path}.thermalRelationCalculations.requiredSupplyDistributionAirFlow`
+    );
+  }
+
+  const requiredExtractDistributionAirFlow = monthlyComponent(
+    contracts.requiredExtractDistributionAirFlow,
+    monthIndex
+  );
+  if (
+    isPlainObject(requiredExtractDistributionAirFlow) &&
+    requiredExtractDistributionAirFlow.mode === "required_extract_distribution_air_flow"
+  ) {
+    addRelation(
+      "requiredExtractDistributionAirFlow",
+      calculateRequiredExtractDistributionAirFlow(requiredExtractDistributionAirFlow),
+      `${path}.thermalRelationCalculations.requiredExtractDistributionAirFlow`
+    );
+  }
+
+  const supplyAirFlowZoneAllocation = monthlyComponent(contracts.supplyAirFlowZoneAllocation, monthIndex);
+  if (
+    isPlainObject(supplyAirFlowZoneAllocation) &&
+    supplyAirFlowZoneAllocation.mode === "supply_air_flow_zone_allocation"
+  ) {
+    addRelation(
+      "supplyAirFlowZoneAllocation",
+      allocateSupplyAirFlowToZone(supplyAirFlowZoneAllocation),
+      `${path}.thermalRelationCalculations.supplyAirFlowZoneAllocation`
+    );
+  }
+
+  const extractAirFlowZoneAllocation = monthlyComponent(contracts.extractAirFlowZoneAllocation, monthIndex);
+  if (
+    isPlainObject(extractAirFlowZoneAllocation) &&
+    extractAirFlowZoneAllocation.mode === "extract_air_flow_zone_allocation"
+  ) {
+    addRelation(
+      "extractAirFlowZoneAllocation",
+      allocateExtractAirFlowToZone(extractAirFlowZoneAllocation),
+      `${path}.thermalRelationCalculations.extractAirFlowZoneAllocation`
+    );
+  }
+
+  const ductLeakageFlowFromFactor = monthlyComponent(contracts.ductLeakageFlowFromFactor, monthIndex);
+  if (
+    isPlainObject(ductLeakageFlowFromFactor) &&
+    ductLeakageFlowFromFactor.mode === "duct_leakage_flow_from_factor"
+  ) {
+    addRelation(
+      "ductLeakageFlowFromFactor",
+      calculateDuctLeakageFlowFromFactor(ductLeakageFlowFromFactor),
+      `${path}.thermalRelationCalculations.ductLeakageFlowFromFactor`
+    );
+  }
+
+  const maximumZoneFlowFactor = monthlyComponent(contracts.maximumZoneFlowFactor, monthIndex);
+  if (isPlainObject(maximumZoneFlowFactor) && maximumZoneFlowFactor.mode === "maximum_zone_flow_factor") {
+    addRelation(
+      "maximumZoneFlowFactor",
+      calculateMaximumZoneFlowFactor(maximumZoneFlowFactor),
+      `${path}.thermalRelationCalculations.maximumZoneFlowFactor`
+    );
+  }
+
+  const partLoadAhuAirFlow = monthlyComponent(contracts.partLoadAhuAirFlow, monthIndex);
+  if (isPlainObject(partLoadAhuAirFlow) && partLoadAhuAirFlow.mode === "part_load_ahu_air_flow") {
+    addRelation(
+      "partLoadAhuAirFlow",
+      calculatePartLoadAhuAirFlow(partLoadAhuAirFlow),
+      `${path}.thermalRelationCalculations.partLoadAhuAirFlow`
+    );
+  }
+
+  const maximumFlowFactorFromPartLoad = monthlyComponent(contracts.maximumFlowFactorFromPartLoad, monthIndex);
+  if (
+    isPlainObject(maximumFlowFactorFromPartLoad) &&
+    maximumFlowFactorFromPartLoad.mode === "maximum_flow_factor_from_part_load"
+  ) {
+    addRelation(
+      "maximumFlowFactorFromPartLoad",
+      calculateMaximumFlowFactorFromPartLoad(maximumFlowFactorFromPartLoad),
+      `${path}.thermalRelationCalculations.maximumFlowFactorFromPartLoad`
+    );
+  }
+
+  if (results.length === 0) return null;
+  return {
+    relations,
+    source: calculatedComponentSource({
+      origin: "mc001_ventilation_ahu_thermal_relation_contract",
+      reference: `${path}.thermalRelationCalculations`,
+      results,
+      details: {
+        relationCount: results.length,
+        energyAccounting:
+          "thermal AHU relation results are traceable Chapter 3 quantities; they are not added to annual auxiliary electricity totals"
+      }
+    })
+  };
+}
+
 function optionalMonthlyScalar(value, monthIndex, fallback = 0) {
   if (Array.isArray(value)) {
     const monthly = value[monthIndex];
@@ -2037,6 +2487,9 @@ function serviceStagesForMonth(
       auxiliaryKWh: auxiliary.value,
       lossSource: loss.source,
       auxiliarySource: auxiliary.source,
+      ...(auxiliary.stageInputOverride
+        ? { inputEnergyOverride: auxiliary.stageInputOverride }
+        : {}),
       auxiliaryRecoveredFraction: fraction(
         stage.auxiliaryRecoveredFraction,
         `${service}.stages.${stageId}.auxiliaryRecoveredFraction`,
@@ -2064,7 +2517,9 @@ function serviceStagesForMonth(
     };
     stages.push(resolvedStage);
     previousStages.set(stageId, resolvedStage);
-    if (
+    if (resolvedStage.inputEnergyOverride) {
+      stageOutputKWh = resolvedStage.inputEnergyOverride.valueKWh;
+    } else if (
       finiteNonNegative(stageOutputKWh) &&
       finiteNonNegative(resolvedStage.lossKWh) &&
       finiteNonNegative(resolvedStage.auxiliaryKWh) &&
@@ -2343,6 +2798,7 @@ function ventilationForMonth(section, monthIndex, diagnostics) {
   let heatRecoveryAuxiliary = null;
   let preheatAuxiliary = null;
   let controlAuxiliary = null;
+  let thermalRelations = null;
   try {
     heatRecoveryAuxiliary = calculatedVentilationHeatRecoveryAuxiliary(
       system,
@@ -2355,6 +2811,11 @@ function ventilationForMonth(section, monthIndex, diagnostics) {
       "technicalSystems.ventilationAhu.systems[0]"
     );
     controlAuxiliary = calculatedVentilationControlAuxiliary(
+      system,
+      monthIndex,
+      "technicalSystems.ventilationAhu.systems[0]"
+    );
+    thermalRelations = calculatedVentilationAhuThermalRelations(
       system,
       monthIndex,
       "technicalSystems.ventilationAhu.systems[0]"
@@ -2379,7 +2840,8 @@ function ventilationForMonth(section, monthIndex, diagnostics) {
       optionalMonthlyScalar(system.controlAuxiliaryKWhPerMonth, monthIndex, 0),
     heatRecoveryAuxiliarySource: heatRecoveryAuxiliary?.source ?? null,
     preheatAuxiliarySource: preheatAuxiliary?.source ?? null,
-    controlAuxiliarySource: controlAuxiliary?.source ?? null
+    controlAuxiliarySource: controlAuxiliary?.source ?? null,
+    ahuThermalRelations: thermalRelations
   };
 }
 

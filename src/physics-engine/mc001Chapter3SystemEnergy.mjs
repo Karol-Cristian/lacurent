@@ -3329,6 +3329,26 @@ export function calculateCoolingCompressionEer(input) {
   });
 }
 
+export function calculateCoolingCompressionDeliveredElectricInput(input) {
+  const { compressionElectricInputKWh, auxiliaryElectricInputKWh } = input ?? {};
+
+  assertFiniteNonNegativeNumber(compressionElectricInputKWh, "compressionElectricInputKWh");
+  assertFiniteNonNegativeNumber(auxiliaryElectricInputKWh, "auxiliaryElectricInputKWh");
+  const valueKWh = compressionElectricInputKWh + auxiliaryElectricInputKWh;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_181_COOLING_COMPRESSION_DELIVERED_ELECTRIC_INPUT",
+    formulaText: "EC,gen,el,delivered = EC,gen,el,in + Waux,el,in",
+    inputs: { compressionElectricInputKWh, auxiliaryElectricInputKWh },
+    assumptions: [
+      "This is the delivered electric energy represented by the denominator of MC001 relation 3.181."
+    ]
+  });
+}
+
 export function calculateCoolingAbsorptionPerformanceRatio(input) {
   const { generatorCoolingInputKWh, absorptionHeatInputKWh } = input ?? {};
 

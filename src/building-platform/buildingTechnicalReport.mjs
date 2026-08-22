@@ -2185,6 +2185,33 @@ function installationMonthlyRows(calculation) {
   }));
 }
 
+function installationAhuThermalRows(calculation) {
+  const rows = new Map();
+  for (const month of calculation.chapter3Result?.monthly ?? []) {
+    const relations = month.ventilation?.ahuThermalRelations?.relations ?? {};
+    for (const [relationKey, relation] of Object.entries(relations)) {
+      const current = rows.get(relationKey) ?? {
+        label: `AHU ${relationKey}`,
+        value: 0,
+        unit: relation.unit ?? "kWh/an",
+        status: "calculat normativ",
+        formulaIds: new Set(),
+        outputKey: `chapter3Result.monthly[].ventilation.ahuThermalRelations.relations.${relationKey}`
+      };
+      current.value += relation.valueKWh ?? relation.value ?? 0;
+      if (relation.formulaId) current.formulaIds.add(relation.formulaId);
+      for (const formulaId of relation.source?.formulaIds ?? []) {
+        current.formulaIds.add(formulaId);
+      }
+      rows.set(relationKey, current);
+    }
+  }
+  return [...rows.values()].map(row => ({
+    ...row,
+    formulaIds: [...row.formulaIds]
+  }));
+}
+
 function installationSystemTopologyRows(calculation) {
   const totals = new Map();
   for (const month of calculation.chapter3Result?.monthly ?? []) {
@@ -2551,6 +2578,7 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
   const chapter3Rows = calculation.chapter3Result ? [
     ...installationRows(calculation),
     ...installationMonthlyRows(calculation),
+    ...installationAhuThermalRows(calculation),
     {
       label: "Limitare iluminat",
       value:
@@ -2639,6 +2667,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     status: "ready",
     annual: calculation.chapter3Result.annual ?? {},
     monthly: installationMonthlyRows(calculation),
+    ahuThermalRelations: installationAhuThermalRows(calculation),
     systemTopology: installationSystemTopologyRows(calculation),
     services: calculation.chapter3Result.services ?? {},
     energyByService: calculation.chapter3Result.energyByService ?? {},

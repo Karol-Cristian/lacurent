@@ -86,6 +86,7 @@ function relationEntry(relation, options) {
       (options.explicitInputBoundary
         ? "expert_or_project_specific_technical_input"
         : "runtime_or_normative_calculation_input"),
+    explicitBoundaryReasonCode: options.explicitBoundaryReasonCode ?? null,
     explicitBoundaryReason: options.explicitBoundaryReason ?? null,
     blocker: options.blocker ?? null
   });
@@ -139,6 +140,11 @@ function implementedRange(relations, options) {
       ),
       explicitBoundaryReason: optionForRelation(
         options.explicitBoundaryReason,
+        relation,
+        null
+      ),
+      explicitBoundaryReasonCode: optionForRelation(
+        options.explicitBoundaryReasonCode,
         relation,
         null
       ),
@@ -280,25 +286,141 @@ const heatingRelations = implementedRange(relationRange(1, 39), {
   explicitBoundaryReason: relation =>
     p8dHeatingNumericalRelations.has(relation)
       ? null
-      : "The relation still requires an unexposed heating component/product contract or remains a total/alternative branch not yet owned by the production heating component model."
+      : ({
+        "3.15": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C5_C6_REQUIRED for standby loss fraction calculation.",
+        "3.16": "PROJECT_ENVELOPE_AND_CHIMNEY_OFF_LOSS_FRACTIONS_REQUIRED before the standby fraction sum can replace explicit technical input.",
+        "3.18": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C7_C8_REQUIRED for generator auxiliary power.",
+        "3.19": "GENERATOR_FUEL_INPUT_OR_SHARED_GENERATOR_ACCOUNTING_REQUIRED before utilization factor can be claimed in production.",
+        "3.20": "RENEWABLE_GENERATOR_HEAT_AND_RECOVERED_AUXILIARY_INPUTS_REQUIRED before fuel input can be calculated without inventing renewable/recovery terms.",
+        "3.21": "OTHER_SERVICE_GENERATOR_AUXILIARY_ALLOCATIONS_REQUIRED for a physical shared generator serving heating plus other services.",
+        "3.22": "OTHER_SERVICE_GENERATION_LOSSES_AND_DHW_LOSS_BOUNDARY_REQUIRED for central generator loss total.",
+        "3.28": "OTHER_SERVICE_RECOVERABLE_GENERATION_LOSSES_REQUIRED for central recoverable loss aggregation.",
+        "3.33": "OTHER_SERVICE_RECOVERED_AUXILIARY_LOSSES_REQUIRED for total generation auxiliary recovered loss.",
+        "3.38": "CROSS_SERVICE_OPERATION_HOURS_AND_LOAD_FACTORS_REQUIRED for central generator operation time.",
+        "3.39": "CENTRAL_GENERATOR_SERVICE_INPUTS_AND_CONTROL_LOSS_FACTOR_REQUIRED before central generator output can be calculated."
+      })[relation],
+  explicitBoundaryReasonCode: relation =>
+    p8dHeatingNumericalRelations.has(relation)
+      ? null
+      : ({
+        "3.15": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C5_C6_REQUIRED",
+        "3.16": "PROJECT_ENVELOPE_AND_CHIMNEY_OFF_LOSS_FRACTIONS_REQUIRED",
+        "3.18": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C7_C8_REQUIRED",
+        "3.19": "GENERATOR_FUEL_INPUT_OR_SHARED_GENERATOR_ACCOUNTING_REQUIRED",
+        "3.20": "RENEWABLE_GENERATOR_HEAT_AND_RECOVERED_AUXILIARY_INPUTS_REQUIRED",
+        "3.21": "OTHER_SERVICE_GENERATOR_AUXILIARY_ALLOCATIONS_REQUIRED",
+        "3.22": "OTHER_SERVICE_GENERATION_LOSSES_AND_DHW_LOSS_BOUNDARY_REQUIRED",
+        "3.28": "OTHER_SERVICE_RECOVERABLE_GENERATION_LOSSES_REQUIRED",
+        "3.33": "OTHER_SERVICE_RECOVERED_AUXILIARY_LOSSES_REQUIRED",
+        "3.38": "CROSS_SERVICE_OPERATION_HOURS_AND_LOAD_FACTORS_REQUIRED",
+        "3.39": "CENTRAL_GENERATOR_SERVICE_INPUTS_AND_CONTROL_LOSS_FACTOR_REQUIRED"
+      })[relation]
 });
 
-const p8dVentilationNumericalRelations = new Set([
+const p8fVentilationNumericalRelations = new Set([
+  "3.40",
+  "3.41",
+  "3.42",
+  "3.43",
+  "3.44",
+  "3.45",
+  "3.46",
+  "3.47",
+  "3.48",
+  "3.49",
+  "3.50",
+  "3.51",
+  "3.52",
+  "3.53",
+  "3.54",
+  "3.56",
+  "3.57",
+  "3.58",
+  "3.59",
+  "3.60",
+  "3.61",
+  "3.62",
+  "3.63",
+  "3.64",
+  "3.65",
+  "3.66",
+  "3.67",
   "3.69",
   "3.70",
   "3.71",
+  "3.72",
   "3.73",
   "3.74",
-  "3.75"
+  "3.75",
+  "3.76",
+  "3.77",
+  "3.78",
+  "3.79",
+  "3.80",
+  "3.81",
+  "3.82",
+  "3.83",
+  "3.84",
+  "3.85",
+  "3.86",
+  "3.87",
+  "3.88",
+  "3.89",
+  "3.90",
+  "3.91"
 ]);
 
-const p8dVentilationImplementedFunctions = {
+const p8fVentilationImplementedFunctions = {
+  "3.40": "calculateAhuHeatingCoilRequiredEnergy",
+  "3.41": "calculateAhuHeatRecoveryEnergy",
+  "3.42": "calculateAhuRecirculationAirHeatingEnergy",
+  "3.43": "calculateAhuCoolingCoilRequiredEnergy",
+  "3.44": "calculateAhuDehumidificationCoolingEnergy",
+  "3.45": "calculateAhuHumidificationGeneratorInputEnergy",
+  "3.46": "calculateAhuNonSteamHumidificationAuxiliaryEnergy",
+  "3.47": "calculateAhuGenerationLossConditioned",
+  "3.48": "calculateAhuGenerationLossUnconditioned",
+  "3.49": "calculateAhuRecoverableGenerationLoss",
+  "3.50": "calculateAhuRecoverableGenerationLoss",
+  "3.51": "calculateBalancedResidentialFanTemperatureRise",
+  "3.52": "calculateFanTemperatureRise",
+  "3.53": "calculateExtractAirTemperatureForRecovery",
+  "3.54": "calculateExtractAirTemperatureForRecovery",
+  "3.56": "calculateFanEfficiencyFromNominalAndAirflowFactor",
+  "3.57": "calculateQuadraticPressureDrop",
+  "3.58": "calculateQuadraticPressureDrop",
+  "3.59": "calculateQuadraticPressureDrop",
+  "3.60": "calculateQuadraticPressureDrop",
+  "3.61": "calculateQuadraticPressureDrop",
+  "3.62": "calculateQuadraticPressureDrop",
+  "3.63": "calculateMultiZoneConstantPressureDrop",
+  "3.64": "calculateMultiZoneConstantPressureDrop",
+  "3.65": "calculateMultiZoneMinimumPressureDrop",
+  "3.66": "calculateMultiZoneMinimumPressureDrop",
+  "3.67": "calculateGroundPreheatPrecoolEnergy",
   "3.69": "calculateRotaryHeatRecoveryAuxiliaryEnergy",
   "3.70": "calculatePumpHeatRecoveryAuxiliaryEnergy",
   "3.71": "calculateOtherHeatRecoveryAuxiliaryEnergy",
+  "3.72": "calculateFanEnergyAssignedToHeatRecoveryPressure",
   "3.73": "calculatePreheaterEnergy",
   "3.74": "calculateNoPreheaterEnergy",
-  "3.75": "calculateVentilationControlAuxiliaryEnergy"
+  "3.75": "calculateVentilationControlAuxiliaryEnergy",
+  "3.76": "calculateSteamHumidificationPumpAuxiliaryEnergy",
+  "3.77": "calculateHumidificationPumpAuxiliaryEnergy",
+  "3.78": "calculateDuctLeakageFactor",
+  "3.79": "calculateDuctLeakageAirFlow",
+  "3.80": "calculateAhuLeakageFactor",
+  "3.81": "calculateRequiredSupplyDistributionAirFlow",
+  "3.82": "calculateRequiredExtractDistributionAirFlow",
+  "3.83": "allocateSupplyAirFlowToZone",
+  "3.84": "allocateExtractAirFlowToZone",
+  "3.85": "calculateDuctLeakageFlowFromFactor",
+  "3.86": "calculateDuctLeakageFlowFromFactor",
+  "3.87": "calculateDuctLeakageFlowFromFactor",
+  "3.88": "calculateMaximumZoneFlowFactor",
+  "3.89": "calculatePartLoadAhuAirFlow",
+  "3.90": "calculatePartLoadAhuAirFlow",
+  "3.91": "calculateMaximumFlowFactorFromPartLoad"
 };
 
 const p8eCoolingStorageNumericalRelations = new Set([
@@ -341,52 +463,56 @@ const p8eCoolingRejectionNumericalRelations = new Set([
 const ahuRelations = implementedRange(relationRange(40, 93), {
   source: "MC001-2022 Chapter 3.2.2-3.2.3, pages 155-163",
   implementation: SYSTEM_ENERGY,
-  implementedFunction: relation => p8dVentilationImplementedFunctions[relation] ?? SYSTEM_ENERGY,
+  implementedFunction: relation => p8fVentilationImplementedFunctions[relation] ?? SYSTEM_ENERGY,
   tests: relation =>
-    p8dVentilationNumericalRelations.has(relation)
+    p8fVentilationNumericalRelations.has(relation)
       ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_VENTILATION_TEST]
       : [SYSTEM_ENERGY_TEST],
   validationFixture: relation =>
-    p8dVentilationNumericalRelations.has(relation)
-      ? "P8D ventilation component-contract fixture plus independent Python reference constants"
+    p8fVentilationNumericalRelations.has(relation)
+      ? "P8F ventilation/AHU component-contract fixture plus independent Python reference constants"
       : "independent fixed constants in mc001Chapter3SystemEnergy.test.mjs and integrated reference fixture fan-energy path",
   tableImplemented: "explicit-input boundary for leakage class values and fan-function curves",
   runtimeIntegrated: relation =>
-    p8dVentilationNumericalRelations.has(relation)
+    p8fVentilationNumericalRelations.has(relation)
       ? true
       : "fan electric energy and ventilation auxiliary total integrated in the 12-month reference fixture",
   productionRuntimePath: relation =>
-    p8dVentilationNumericalRelations.has(relation)
-      ? "Building DNA technicalSystems.ventilationAhu.systems[].*AuxiliaryCalculation -> buildingChapter3InstallationsAdapter.ventilationForMonth -> MC001 AHU helper"
+    p8fVentilationNumericalRelations.has(relation)
+      ? "Building DNA technicalSystems.ventilationAhu.systems[].thermalRelationCalculations/*AuxiliaryCalculation -> buildingChapter3InstallationsAdapter.ventilationForMonth -> MC001 AHU helper"
       : "fan electric energy and ventilation auxiliary total integrated in the 12-month reference fixture",
   notebookTraceable: relation =>
-    p8dVentilationNumericalRelations.has(relation)
+    p8fVentilationNumericalRelations.has(relation)
       ? true
       : "ventilation monthly auxiliary is visible in the Chapter 3 notebook section",
   notebookPath: relation =>
-    p8dVentilationNumericalRelations.has(relation)
+    p8fVentilationNumericalRelations.has(relation)
       ? "Chapter 3 runtime ventilation.sources carries source formula IDs for report/notebook consumers"
       : "ventilation monthly auxiliary is visible in the Chapter 3 notebook section",
   explicitInputBoundary: relation =>
-    !["3.55", "3.68"].includes(relation) && !p8dVentilationNumericalRelations.has(relation),
+    !["3.55", "3.68"].includes(relation) && !p8fVentilationNumericalRelations.has(relation),
   implementationClassification: relation =>
-    p8dVentilationNumericalRelations.has(relation)
+    p8fVentilationNumericalRelations.has(relation)
       ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
       : ({
     "3.55": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED,
     "3.68": CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
   })[relation],
   inputSourceClassification: relation =>
-    p8dVentilationNumericalRelations.has(relation)
-      ? "ventilation_ahu_component_contract_product_and_operation_inputs"
+    p8fVentilationNumericalRelations.has(relation)
+      ? "ventilation_ahu_component_contract_product_schedule_and_operation_inputs"
       : ({
     "3.55": "fan_airflow_pressure_efficiency_hours_from_building_dna",
     "3.68": "fan_energy_calculated_plus_heat_recovery_preheat_control_auxiliary_inputs"
   })[relation],
   explicitBoundaryReason: relation =>
-    ["3.55", "3.68"].includes(relation) || p8dVentilationNumericalRelations.has(relation)
+    ["3.55", "3.68"].includes(relation) || p8fVentilationNumericalRelations.has(relation)
       ? null
-      : "Detailed AHU coil, leakage, humidification, control or recovery inputs are project/system-specific and are not yet exposed as a complete production chain; current production path integrates fan energy and auxiliary aggregation only."
+      : "AHU_BRANCH_CONTRACT_FOR_RELATIONS_3_92_3_93_REQUIRED; owned helpers cover 3.40-3.91, while these remaining AHU slots still need the exact source-backed branch and schedule/component contract before the result can replace explicit input.",
+  explicitBoundaryReasonCode: relation =>
+    ["3.55", "3.68"].includes(relation) || p8fVentilationNumericalRelations.has(relation)
+      ? null
+      : "AHU_BRANCH_CONTRACT_FOR_RELATIONS_3_92_3_93_REQUIRED"
 });
 
 const coolingStorageImplemented = implementedRange(
@@ -515,7 +641,46 @@ const coolingStorageImplemented = implementedRange(
       p8eCoolingStorageNumericalRelations.has(relation) ||
       ["3.111", "3.112", "3.113"].includes(relation)
         ? null
-        : "Detailed cooling-storage relation remains callable, but its result still requires a more specialized storage component contract, PCM state model or project-specific storage state input."
+        : ({
+          "3.94": "COOLING_STORAGE_INPUT_BOUNDARY_STATE_MODEL_REQUIRED for monthly storage input boundary.",
+          "3.95": "COOLING_STORAGE_LIQUID_STATE_INPUTS_REQUIRED for sensible-liquid energy.",
+          "3.96": "COOLING_STORAGE_PHASE_CHANGE_STATE_INPUTS_REQUIRED for latent storage energy.",
+          "3.97": "COOLING_STORAGE_SOLID_STATE_INPUTS_REQUIRED for sensible-solid energy.",
+          "3.98": "COOLING_STORAGE_OUTPUT_STATE_MODEL_REQUIRED for storage output energy.",
+          "3.102": "ICE_STORAGE_TRANSFORMABLE_STATE_INPUTS_REQUIRED for transformable water/ice energy.",
+          "3.103": "ICE_STORAGE_INITIAL_GEOMETRY_REQUIRED for initial ice thickness.",
+          "3.104": "ICE_STORAGE_MASS_VARIATION_STATE_REQUIRED for ice mass variation.",
+          "3.105": "ICE_STORAGE_THICKNESS_STATE_REQUIRED for ice thickness update.",
+          "3.106": "PCM_STORAGE_SOLID_MASS_STATE_REQUIRED for solid mass after use.",
+          "3.107": "PCM_STORAGE_SOLID_MASS_VARIATION_STATE_REQUIRED for PCM solid mass variation.",
+          "3.108": "PCM_STORAGE_LIQUID_MASS_LIMIT_REQUIRED for solid mass liquid-limit branch.",
+          "3.109": "PCM_STORAGE_EXISTING_SOLID_MASS_LIMIT_REQUIRED for solid mass existing-solid branch.",
+          "3.110": "PCM_STORAGE_SOLID_TEMPERATURE_STATE_REQUIRED for solid temperature update.",
+          "3.114": "PCM_STORAGE_LIQUID_TEMPERATURE_STATE_REQUIRED for liquid temperature update.",
+          "3.123": "COOLING_STORAGE_GENERATOR_DELTA_ENERGY_STATE_REQUIRED for generator delta energy."
+        })[relation],
+    explicitBoundaryReasonCode: relation =>
+      p8eCoolingStorageNumericalRelations.has(relation) ||
+      ["3.111", "3.112", "3.113"].includes(relation)
+        ? null
+        : ({
+          "3.94": "COOLING_STORAGE_INPUT_BOUNDARY_STATE_MODEL_REQUIRED",
+          "3.95": "COOLING_STORAGE_LIQUID_STATE_INPUTS_REQUIRED",
+          "3.96": "COOLING_STORAGE_PHASE_CHANGE_STATE_INPUTS_REQUIRED",
+          "3.97": "COOLING_STORAGE_SOLID_STATE_INPUTS_REQUIRED",
+          "3.98": "COOLING_STORAGE_OUTPUT_STATE_MODEL_REQUIRED",
+          "3.102": "ICE_STORAGE_TRANSFORMABLE_STATE_INPUTS_REQUIRED",
+          "3.103": "ICE_STORAGE_INITIAL_GEOMETRY_REQUIRED",
+          "3.104": "ICE_STORAGE_MASS_VARIATION_STATE_REQUIRED",
+          "3.105": "ICE_STORAGE_THICKNESS_STATE_REQUIRED",
+          "3.106": "PCM_STORAGE_SOLID_MASS_STATE_REQUIRED",
+          "3.107": "PCM_STORAGE_SOLID_MASS_VARIATION_STATE_REQUIRED",
+          "3.108": "PCM_STORAGE_LIQUID_MASS_LIMIT_REQUIRED",
+          "3.109": "PCM_STORAGE_EXISTING_SOLID_MASS_LIMIT_REQUIRED",
+          "3.110": "PCM_STORAGE_SOLID_TEMPERATURE_STATE_REQUIRED",
+          "3.114": "PCM_STORAGE_LIQUID_TEMPERATURE_STATE_REQUIRED",
+          "3.123": "COOLING_STORAGE_GENERATOR_DELTA_ENERGY_STATE_REQUIRED"
+        })[relation]
   }
 );
 
@@ -555,7 +720,37 @@ const coolingDistributionRelations = implementedRange(relationRange(136, 155), {
   explicitBoundaryReason: relation =>
     p8eCoolingDistributionNumericalRelations.has(relation)
       ? null
-      : "This cooling relation remains a callable helper or alternative branch; production still needs the specific generator/distribution topology, outlet-temperature selection or capacity-limited unmet-load handling contract before the result can replace an explicit technical boundary."
+      : ({
+        "3.136": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.137": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.138": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.139": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.140": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.141": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.142": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.143": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.144": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.145": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
+        "3.148": "COOLING_GENERATOR_INPUT_TOPOLOGY_REQUIRED for complete generator input chain.",
+        "3.153": "COOLING_CAPACITY_LIMIT_UNMET_LOAD_CONTRACT_REQUIRED for capacity-limited branch handling."
+      })[relation],
+  explicitBoundaryReasonCode: relation =>
+    p8eCoolingDistributionNumericalRelations.has(relation)
+      ? null
+      : ({
+        "3.136": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.137": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.138": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.139": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.140": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.141": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.142": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.143": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.144": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.145": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
+        "3.148": "COOLING_GENERATOR_INPUT_TOPOLOGY_REQUIRED",
+        "3.153": "COOLING_CAPACITY_LIMIT_UNMET_LOAD_CONTRACT_REQUIRED"
+      })[relation]
 });
 
 const coolingRejectionRelations = implementedRange(relationRange(156, 182), {
@@ -594,7 +789,49 @@ const coolingRejectionRelations = implementedRange(relationRange(156, 182), {
   explicitBoundaryReason: relation =>
     p8eCoolingRejectionNumericalRelations.has(relation)
       ? null
-      : "This heat-rejection branch remains callable but still needs the exact heat-rejection topology, water/wet-bulb operating condition, absorption-generator branch or recovery-demand contract before production can calculate the result."
+      : ({
+        "3.156": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",
+        "3.157": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",
+        "3.158": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",
+        "3.159": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.160": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.161": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.162": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.163": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.165": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.166": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.167": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.168": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.169": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.170": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.171": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.172": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.174": "ABSORPTION_GENERATOR_PRODUCT_BRANCH_REQUIRED",
+        "3.182": "ABSORPTION_GENERATOR_EFFECTIVE_EER_BRANCH_REQUIRED"
+      })[relation],
+  explicitBoundaryReasonCode: relation =>
+    p8eCoolingRejectionNumericalRelations.has(relation)
+      ? null
+      : ({
+        "3.156": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",
+        "3.157": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",
+        "3.158": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",
+        "3.159": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.160": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.161": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.162": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.163": "HEAT_REJECTION_WATER_OR_WET_BULB_OPERATING_CONDITION_REQUIRED",
+        "3.165": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.166": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.167": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.168": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.169": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.170": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.171": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.172": "HEAT_REJECTION_RECOVERY_DEMAND_CONTRACT_REQUIRED",
+        "3.174": "ABSORPTION_GENERATOR_PRODUCT_BRANCH_REQUIRED",
+        "3.182": "ABSORPTION_GENERATOR_EFFECTIVE_EER_BRANCH_REQUIRED"
+      })[relation]
 });
 
 const aggregateRelations = implementedRange(relationRange(183, 186), {
@@ -673,6 +910,7 @@ const lightingImplemented = [
     notebookTraceable: true,
     explicitInputBoundary: true,
     implementationClassification: CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
+    explicitBoundaryReasonCode: "SR_EN_15193_1_LIGHTING_ENGINE_REQUIRED",
     explicitBoundaryReason:
       "MC001 delegates detailed lighting calculation to SR EN 15193-1; current runtime only aggregates explicit LENI/monthly lighting inputs."
   })

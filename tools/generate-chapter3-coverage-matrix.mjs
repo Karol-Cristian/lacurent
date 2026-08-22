@@ -10,7 +10,7 @@ const JSON_PATH = "validation-reference/chapter3-coverage-matrix.json";
 const MD_PATH = "validation-reference/chapter3-coverage-matrix.md";
 
 const productionTopology = {
-  schema: "mc001_chapter3_production_topology_p8e_v1",
+  schema: "mc001_chapter3_production_topology_p8f_v1",
   canonicalBoundary: "Chapter 2 monthly useful demand -> Chapter 3 service-system topology with component contracts where numerically implemented",
   supportedServiceChains: [
     "heating",
@@ -39,7 +39,7 @@ const productionTopology = {
 };
 
 const coverage = {
-  schema: "mc001_chapter3_coverage_matrix_p8e_v1",
+  schema: "mc001_chapter3_coverage_matrix_p8f_v1",
   source: "src/physics-engine/tests/fixtures/mc001Chapter3ImplementationMatrixFixture.mjs",
   generation: {
     tool: "tools/generate-chapter3-coverage-matrix.mjs",
@@ -56,6 +56,7 @@ const coverage = {
       relation: entry.relation,
       source: entry.source,
       runtimeImplementation: entry.implementedFunction,
+      reasonCode: entry.explicitBoundaryReasonCode ?? null,
       reason: entry.explicitBoundaryReason ??
         "The current production path requires explicit technical input for this relation."
     })),
@@ -119,12 +120,25 @@ const convertedBoundaryRows = chapter3ImplementationMatrix
       "3.35",
       "3.36",
       "3.37",
+      ...Array.from({ length: 15 }, (_, index) => `3.${40 + index}`),
+      "3.55",
+      ...Array.from({ length: 12 }, (_, index) => `3.${56 + index}`),
+      "3.68",
       "3.69",
       "3.70",
       "3.71",
+      "3.72",
       "3.73",
       "3.74",
       "3.75",
+      "3.76",
+      "3.77",
+      "3.78",
+      "3.79",
+      "3.80",
+      "3.81",
+      "3.82",
+      ...Array.from({ length: 9 }, (_, index) => `3.${83 + index}`),
       "3.99",
       "3.100",
       "3.101",
@@ -162,7 +176,7 @@ const convertedBoundaryRows = chapter3ImplementationMatrix
       return `- ${entry.relation}: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.`;
     }
     if (entry.inputSourceClassification?.includes("ventilation_ahu_component_contract")) {
-      return `- ${entry.relation}: Ventilation/AHU component contract resolves heat-recovery, preheat or control auxiliary energy from product/operation inputs.`;
+      return `- ${entry.relation}: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.`;
     }
     if (entry.inputSourceClassification?.includes("cooling_storage_component_contract")) {
       return `- ${entry.relation}: Cooling storage component contract resolves thermal-loss, pump auxiliary or recoverable-loss calculations from product, geometry, temperature and schedule inputs.`;
@@ -184,7 +198,7 @@ const convertedBoundaryRows = chapter3ImplementationMatrix
 const markdown = [
   "# MC001 Chapter 3 Coverage Matrix",
   "",
-  "Generated deterministically from the Chapter 3 source-to-code fixture. P8E expands cooling distribution, storage and heat-rejection component contracts while preserving separate numerical/procedural/explicit-boundary accounting.",
+  "Generated deterministically from the Chapter 3 source-to-code fixture. P8F fixes cooling compression delivered-energy propagation and expands AHU thermal-relation component contracts while preserving separate numerical/procedural/explicit-boundary accounting.",
   "",
   mdTable([
     ["Schema", coverage.schema],
@@ -207,11 +221,11 @@ const markdown = [
   "",
   mdTable(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))),
   "",
-  "## P8E Primary Classification Counts",
+  "## P8F Primary Classification Counts",
   "",
   mdTable(classificationRows),
   "",
-  "## Explicit Boundaries Converted Through P8E",
+  "## Explicit Boundaries Converted Through P8F",
   "",
   convertedBoundaryRows.join("\n"),
   "",
@@ -219,14 +233,14 @@ const markdown = [
   "",
   "An explicit boundary remains only where MC001 requires project/manufacturer technical data, delegates the detailed method to an unavailable standard, or the current production product does not yet expose the complete detailed component contract.",
   "",
-  "## P8E Production Topology",
+  "## P8F Production Topology",
   "",
   "- Single active systems use an implicit allocation fraction of 1; an explicit single-system allocation must also be 1.",
   "- Multiple active heating, cooling or DHW systems require explicit allocation fractions summing to 1.",
   "- The runtime aggregates parallel service chains after each allocated chain has executed the Chapter 3 stage balance.",
   "- Energy carriers are aggregated from the resolved system metadata, not from a single service-level default.",
   "- Heating component contracts now calculate emission temperature-increase losses, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves where required project/product data are supplied.",
-  "- Ventilation/AHU component contracts now calculate heat-recovery, preheat and control auxiliary branches where required product/operation inputs are supplied.",
+  "- Ventilation/AHU component contracts now calculate heat-recovery, preheat, control auxiliary, coil, humidification and generation-loss branches where required product/project/operation inputs are supplied.",
   "- Cooling component contracts now calculate distribution losses/auxiliaries, no-storage branches, storage thermal losses, storage pump auxiliaries and compression heat-rejection auxiliaries where required project/product data are supplied.",
   "",
   "## Remaining External Dependency",
