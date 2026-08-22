@@ -205,6 +205,7 @@ function assistedAnswers(overrides = {}) {
 await test("Chapter 3 product mapping ledger covers every exposed installation group", () => {
   const groups = CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER.map(entry => entry.groupId);
   assert.deepEqual(groups, [
+    "shared_generation",
     "heating",
     "cooling",
     "ventilation_ahu",
@@ -251,7 +252,7 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
     buildingDna: pipeline.buildingDna,
     calculation: pipeline.calculation
   });
-  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8e_v1");
+  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8g_v1");
   assert.ok(metadata.chapter3RuntimeVersion);
 
   const backend = createInMemoryVersionedBuildingBackend();
@@ -1668,6 +1669,113 @@ await test("Building DNA Chapter 3 adapter supports multiple explicit heating sy
     workspace.engineeringNotebook.sections
       .find(section => section.sectionId === "chapter3.month.january")
       .lines.some(line => line.lineId.includes("heating-boiler.allocation"))
+  );
+});
+
+await test("Building DNA Chapter 3 adapter resolves one shared physical generator for heating and ACM", () => {
+  const systems = technicalSystems();
+  systems.cooling.enabled = false;
+  systems.cooling.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.sharedComponents = {
+    generators: [
+      {
+        componentId: "shared-boiler-1",
+        enabled: true,
+        generatorType: "condensing_boiler",
+        energyCarrier: "natural_gas",
+        auxiliaryCarrier: "electricity",
+        controlLossFactor: 1.05,
+        operationHours: 100,
+        lossPowerKW: 0.2,
+        auxiliaryPowerKW: 0.05,
+        recoveredAuxiliaryFraction: 0.2,
+        auxiliaryRecoverableFractionToHeating: 0.5,
+        lossRecoverableFractionToHeating: 0.3,
+        boilerRoomRecoveryFactor: 0.1,
+        renewableGeneratorHeatKWh: 0,
+        dhwStorageOrDistributionLossKWh: 0,
+        serviceAllocationFractions: {
+          heating: 0.7,
+          dhw: 0.3
+        },
+        source: {
+          origin: "product_data",
+          reference: "P8G.shared_generator_fixture"
+        }
+      }
+    ]
+  };
+  systems.heating.systems[0].generatorRef = "shared-boiler-1";
+  systems.domesticHotWater.systems[0].generatorRef = "shared-boiler-1";
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+
+  assert.equal(pipeline.status, "ready");
+  assert.equal(pipeline.calculation.chapter3Input.sharedComponents.generators.length, 1);
+  assert.equal(
+    pipeline.calculation.chapter3Input.months[0].heatingSystems[0].metadata.generatorRef,
+    "shared-boiler-1"
+  );
+  assert.equal(
+    pipeline.calculation.chapter3Input.months[0].dhw.systems[0].metadata.generatorRef,
+    "shared-boiler-1"
+  );
+  const januaryHeatingGeneration =
+    pipeline.calculation.chapter3Input.months[0].heatingSystems[0].stages.find(
+      item => item.stageId === "generation"
+    );
+  assert.equal(januaryHeatingGeneration.lossKWh, 0);
+  assert.equal(
+    januaryHeatingGeneration.lossSource.classification,
+    CHAPTER3_INPUT_CLASSIFICATION.PROCEDURALLY_IMPLEMENTED
+  );
+  const januaryShared = pipeline.calculation.chapter3Result.monthly[0].sharedGenerators[0];
+  assert.equal(januaryShared.componentId, "shared-boiler-1");
+  assert.deepEqual(januaryShared.connectedServices, ["heating", "dhw"]);
+  close(
+    januaryShared.invariants.serviceFuelAllocationKWh,
+    januaryShared.physicalTotals.fuelInputKWh
+  );
+  close(
+    januaryShared.invariants.serviceAuxiliaryAllocationKWh,
+    januaryShared.physicalTotals.auxiliaryKWh
+  );
+  close(
+    pipeline.calculation.chapter3Result.annual.heatingInputKWh +
+      pipeline.calculation.chapter3Result.annual.dhwInputKWh,
+    pipeline.calculation.chapter3Result.energyByCarrier.natural_gas +
+      pipeline.calculation.chapter3Result.energyByCarrier.electricity
+  );
+
+  const workspace = buildBuildingTechnicalWorkspace(pipeline);
+  assert.equal(workspace.installations.sharedGenerators.length, 1);
+  assert.equal(workspace.installations.sharedGenerators[0].componentId, "shared-boiler-1");
+});
+
+await test("Building DNA Chapter 3 adapter blocks broken shared generator references", () => {
+  const systems = technicalSystems();
+  systems.heating.systems[0].generatorRef = "missing-generator";
+  const dnaResult = createBuildingDnaFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+  const calculation = dnaResult.status === "ready"
+    ? calculateChapter2ForBuildingDna(dnaResult.buildingDna)
+    : dnaResult;
+  const diagnostics = [
+    ...(Array.isArray(calculation.diagnostics) ? calculation.diagnostics : []),
+    ...(calculation.diagnostics?.blockers ?? [])
+  ];
+  assert.equal(calculation.status, "blocked");
+  assert.ok(
+    diagnostics.some(item => item.code === "missing_shared_generator_reference")
   );
 });
 

@@ -10,8 +10,8 @@ const JSON_PATH = "validation-reference/chapter3-coverage-matrix.json";
 const MD_PATH = "validation-reference/chapter3-coverage-matrix.md";
 
 const productionTopology = {
-  schema: "mc001_chapter3_production_topology_p8f_v1",
-  canonicalBoundary: "Chapter 2 monthly useful demand -> Chapter 3 service-system topology with component contracts where numerically implemented",
+  schema: "mc001_chapter3_production_topology_p8g_v1",
+  canonicalBoundary: "Chapter 2 monthly useful demand -> Chapter 3 service-system topology -> optional shared physical components -> carrier accounting",
   supportedServiceChains: [
     "heating",
     "cooling",
@@ -24,6 +24,8 @@ const productionTopology = {
     singleSystem: "implicit allocationFraction = 1 for one active service system; explicit single-system allocation must be 1",
     parallelSystems:
       "multiple active heating/cooling/DHW systems are supported only with explicit allocationFraction values that sum to 1",
+    sharedGenerators:
+      "one physical generator may serve heating and DHW through stable generatorRef values; physical output, losses, auxiliaries and carrier input are calculated once and then service-reported through explicit allocation fractions",
     stageOrder: {
       heating: ["emission", "distribution", "storage", "generation"],
       cooling: ["emission", "distribution", "storage", "generation"],
@@ -39,7 +41,7 @@ const productionTopology = {
 };
 
 const coverage = {
-  schema: "mc001_chapter3_coverage_matrix_p8f_v1",
+  schema: "mc001_chapter3_coverage_matrix_p8g_v1",
   source: "src/physics-engine/tests/fixtures/mc001Chapter3ImplementationMatrixFixture.mjs",
   generation: {
     tool: "tools/generate-chapter3-coverage-matrix.mjs",
@@ -107,19 +109,26 @@ const convertedBoundaryRows = chapter3ImplementationMatrix
       "3.13",
       "3.14",
       "3.17",
+      "3.19",
+      "3.20",
+      "3.21",
+      "3.22",
       "3.23",
       "3.24",
       "3.25",
       "3.26",
       "3.27",
+      "3.28",
       "3.29",
       "3.30",
       "3.31",
       "3.32",
+      "3.33",
       "3.34",
       "3.35",
       "3.36",
       "3.37",
+      "3.39",
       ...Array.from({ length: 15 }, (_, index) => `3.${40 + index}`),
       "3.55",
       ...Array.from({ length: 12 }, (_, index) => `3.${56 + index}`),
@@ -172,6 +181,9 @@ const convertedBoundaryRows = chapter3ImplementationMatrix
     ].includes(entry.relation)
   )
   .map(entry => {
+    if (entry.inputSourceClassification?.includes("shared_generator_component_contract")) {
+      return `- ${entry.relation}: Shared generator component contract resolves central output, physical losses, auxiliaries, recoverable/recovered quantities, fuel input and service allocation from product/schedule/allocation inputs.`;
+    }
     if (entry.inputSourceClassification?.includes("heating_component_contract")) {
       return `- ${entry.relation}: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.`;
     }
@@ -198,7 +210,7 @@ const convertedBoundaryRows = chapter3ImplementationMatrix
 const markdown = [
   "# MC001 Chapter 3 Coverage Matrix",
   "",
-  "Generated deterministically from the Chapter 3 source-to-code fixture. P8F fixes cooling compression delivered-energy propagation and expands AHU thermal-relation component contracts while preserving separate numerical/procedural/explicit-boundary accounting.",
+  "Generated deterministically from the Chapter 3 source-to-code fixture. P8G adds canonical shared-generator topology, service references, cross-service allocation, no-double-counting carrier accounting and independent Python validation while preserving separate numerical/procedural/explicit-boundary accounting.",
   "",
   mdTable([
     ["Schema", coverage.schema],
@@ -221,11 +233,11 @@ const markdown = [
   "",
   mdTable(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))),
   "",
-  "## P8F Primary Classification Counts",
+  "## P8G Primary Classification Counts",
   "",
   mdTable(classificationRows),
   "",
-  "## Explicit Boundaries Converted Through P8F",
+  "## Explicit Boundaries Converted Through P8G",
   "",
   convertedBoundaryRows.join("\n"),
   "",
@@ -233,10 +245,12 @@ const markdown = [
   "",
   "An explicit boundary remains only where MC001 requires project/manufacturer technical data, delegates the detailed method to an unavailable standard, or the current production product does not yet expose the complete detailed component contract.",
   "",
-  "## P8F Production Topology",
+  "## P8G Production Topology",
   "",
   "- Single active systems use an implicit allocation fraction of 1; an explicit single-system allocation must also be 1.",
   "- Multiple active heating, cooling or DHW systems require explicit allocation fractions summing to 1.",
+  "- Heating and DHW may reference one canonical physical generator through stable `generatorRef` values; the runtime calculates physical output, losses, auxiliaries and carrier energy once.",
+  "- Shared-generator service reporting uses explicit service allocation fractions unless a source-backed normative allocation rule is implemented.",
   "- The runtime aggregates parallel service chains after each allocated chain has executed the Chapter 3 stage balance.",
   "- Energy carriers are aggregated from the resolved system metadata, not from a single service-level default.",
   "- Heating component contracts now calculate emission temperature-increase losses, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves where required project/product data are supplied.",

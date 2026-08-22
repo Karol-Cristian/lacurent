@@ -1,6 +1,18 @@
 import {
   calculateChapter3SubsystemInputEnergyBalance,
-  calculateChapter3SubsystemRecoverableEnergy
+  calculateChapter3SubsystemRecoverableEnergy,
+  calculateCentralGeneratorOutputEnergy,
+  calculateGenerationLossTotal,
+  calculateHeatingGenerationAuxiliaryTotal,
+  calculateHeatingGeneratorAuxiliaryEnergy,
+  calculateHeatingGeneratorAuxiliaryRecoverableLoss,
+  calculateHeatingGeneratorAuxiliaryRecoveredLoss,
+  calculateHeatingGeneratorFuelInputEnergy,
+  calculateHeatingGeneratorLossEnergy,
+  calculateHeatingGeneratorOperationTime,
+  calculateHeatingGeneratorUtilizationFactor,
+  calculateRecoverableGenerationLossTotal,
+  calculateTotalGenerationAuxiliaryRecoveredLoss
 } from "./mc001Chapter3HeatingSystems.mjs";
 import {
   calculateChapter3CoolingAuxiliaryEnergyTotal,
@@ -41,6 +53,21 @@ function assertFraction(value, name) {
 
 function sum(values) {
   return values.reduce((total, value) => total + Number(value ?? 0), 0);
+}
+
+function monthValue(value, index, name) {
+  const selected = Array.isArray(value) ? value[index] : value;
+  assertFiniteNonNegativeNumber(selected, name);
+  return selected;
+}
+
+function optionalMonthValue(value, index) {
+  if (Array.isArray(value)) return value[index] ?? null;
+  return value ?? null;
+}
+
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function directExecutionTrace({
@@ -107,6 +134,398 @@ function aggregateCalculatedResults(results, valueKey, unit, formulaId, branchId
       unit,
       assumptions: ["Multiple systems require explicit allocation fractions; no hidden default split is inferred."],
       warnings: []
+    }
+  };
+}
+
+function serviceGeneratorLoads(serviceResult, service) {
+  return (serviceResult?.systemResults ?? [])
+    .filter(system => system.metadata?.generatorRef)
+    .map(system => {
+      const generationStage =
+        (system.stageResults ?? []).find(stage => stage.stageId === "generation") ??
+        (system.stageResults ?? []).at(-1);
+      return {
+        service,
+        systemId: system.systemId,
+        generatorRef: system.metadata.generatorRef,
+        loadKWh: generationStage?.outputKWh ?? system.finalStageInputKWh ?? 0,
+        stageId: generationStage?.stageId ?? null
+      };
+    });
+}
+
+function sharedGeneratorsList(sharedComponents = {}) {
+  return Array.isArray(sharedComponents.generators)
+    ? sharedComponents.generators.filter(generator => generator?.enabled !== false)
+    : [];
+}
+
+function sharedGeneratorOperationHours(generator, monthIndex) {
+  const explicitHours = optionalMonthValue(generator.operationHours, monthIndex);
+  if (finiteNumber(explicitHours)) {
+    assertFiniteNonNegativeNumber(explicitHours, `${generator.componentId}.operationHours`);
+    return {
+      value: explicitHours,
+      source: {
+        mode: "operation_schedule_input",
+        classification: "OPERATION_SCHEDULE"
+      },
+      result: null
+    };
+  }
+  if (generator.operationTimeCalculation) {
+    const input = Object.fromEntries(
+      Object.entries(generator.operationTimeCalculation).map(([key, value]) => [
+        key,
+        monthValue(value, monthIndex, `${generator.componentId}.operationTimeCalculation.${key}`)
+      ])
+    );
+    const result = calculateHeatingGeneratorOperationTime(input);
+    return {
+      value: result.valueHours,
+      source: {
+        mode: "mc001_central_generator_operation_time",
+        classification: "NUMERICALLY_IMPLEMENTED"
+      },
+      result
+    };
+  }
+  throw new Error(`${generator.componentId}.operationHours or operationTimeCalculation is required`);
+}
+
+function normalizeSharedServiceFractions(generator, connectedLoads) {
+  const services = [...new Set(connectedLoads.map(load => load.service))];
+  if (services.length === 1) return { [services[0]]: 1 };
+  const allocation = generator.serviceAllocationFractions;
+  if (!allocation || typeof allocation !== "object" || Array.isArray(allocation)) {
+    throw new Error(`${generator.componentId}.serviceAllocationFractions is required for a shared generator`);
+  }
+  let total = 0;
+  const fractions = {};
+  for (const service of services) {
+    const fraction = allocation[service];
+    assertFraction(fraction, `${generator.componentId}.serviceAllocationFractions.${service}`);
+    fractions[service] = fraction;
+    total += fraction;
+  }
+  if (Math.abs(total - 1) > 1e-9) {
+    throw new Error(`${generator.componentId}.serviceAllocationFractions must sum to 1 for connected services`);
+  }
+  return fractions;
+}
+
+function allocatedValuesByService(totalValue, fractions) {
+  return Object.fromEntries(
+    Object.entries(fractions).map(([service, fraction]) => [service, totalValue * fraction])
+  );
+}
+
+function calculateSharedGeneratorMonth({
+  generator,
+  monthId,
+  monthIndex,
+  connectedLoads
+}) {
+  const componentId = generator.componentId;
+  if (!componentId) throw new Error("shared generator componentId is required");
+  if (connectedLoads.length === 0) {
+    return null;
+  }
+  const operation = sharedGeneratorOperationHours(generator, monthIndex);
+  const controlLossFactor = monthValue(
+    generator.controlLossFactor,
+    monthIndex,
+    `${componentId}.controlLossFactor`
+  );
+  const lossPowerKW = monthValue(
+    generator.lossPowerKW,
+    monthIndex,
+    `${componentId}.lossPowerKW`
+  );
+  const auxiliaryPowerKW = monthValue(
+    generator.auxiliaryPowerKW,
+    monthIndex,
+    `${componentId}.auxiliaryPowerKW`
+  );
+  const recoveredAuxiliaryFraction = monthValue(
+    generator.recoveredAuxiliaryFraction,
+    monthIndex,
+    `${componentId}.recoveredAuxiliaryFraction`
+  );
+  const auxiliaryRecoverableFraction = monthValue(
+    generator.auxiliaryRecoverableFractionToHeating,
+    monthIndex,
+    `${componentId}.auxiliaryRecoverableFractionToHeating`
+  );
+  const lossRecoverableFraction = monthValue(
+    generator.lossRecoverableFractionToHeating,
+    monthIndex,
+    `${componentId}.lossRecoverableFractionToHeating`
+  );
+  const renewableGeneratorHeatKWh = monthValue(
+    generator.renewableGeneratorHeatKWh,
+    monthIndex,
+    `${componentId}.renewableGeneratorHeatKWh`
+  );
+  const dhwStorageOrDistributionLossKWh = monthValue(
+    generator.dhwStorageOrDistributionLossKWh,
+    monthIndex,
+    `${componentId}.dhwStorageOrDistributionLossKWh`
+  );
+
+  const output = calculateCentralGeneratorOutputEnergy({
+    controlLossFactor,
+    heatingDistributionInputKWh: connectedLoads
+      .filter(load => load.service === "heating")
+      .map(load => load.loadKWh),
+    otherServiceDistributionInputKWh: connectedLoads
+      .filter(load => load.service !== "heating")
+      .map(load => load.loadKWh)
+  });
+  const loss = calculateHeatingGeneratorLossEnergy({
+    generatorLossPowerKW: lossPowerKW,
+    operationHours: operation.value
+  });
+  const auxiliary = calculateHeatingGeneratorAuxiliaryEnergy({
+    auxiliaryPowerKW,
+    operationHours: operation.value
+  });
+  const recoveredAuxiliary = calculateHeatingGeneratorAuxiliaryRecoveredLoss({
+    generationAuxiliaryEnergyKWh: auxiliary.valueKWh,
+    recoveredAuxiliaryFraction
+  });
+  const recoverableAuxiliary = calculateHeatingGeneratorAuxiliaryRecoverableLoss({
+    generationAuxiliaryEnergyKWh: auxiliary.valueKWh,
+    boilerRoomRecoveryFactor: monthValue(
+      generator.boilerRoomRecoveryFactor,
+      monthIndex,
+      `${componentId}.boilerRoomRecoveryFactor`
+    ),
+    auxiliaryRecoverableFraction
+  });
+  const fractions = normalizeSharedServiceFractions(generator, connectedLoads);
+  const allocatedLosses = allocatedValuesByService(loss.valueKWh, fractions);
+  const allocatedAuxiliaries = allocatedValuesByService(auxiliary.valueKWh, fractions);
+  const allocatedRecoverableLosses = allocatedValuesByService(
+    loss.valueKWh * lossRecoverableFraction,
+    fractions
+  );
+  const allocatedRecoveredAuxiliaries = allocatedValuesByService(
+    recoveredAuxiliary.valueKWh,
+    fractions
+  );
+  const auxiliaryTotal = calculateHeatingGenerationAuxiliaryTotal({
+    heatingAuxiliaryKWh:
+      allocatedAuxiliaries.heating === undefined ? [] : [allocatedAuxiliaries.heating],
+    otherServiceAuxiliaryKWh: Object.entries(allocatedAuxiliaries)
+      .filter(([service]) => service !== "heating")
+      .map(([, value]) => value)
+  });
+  const lossTotal = calculateGenerationLossTotal({
+    heatingGenerationLossKWh: allocatedLosses.heating ?? 0,
+    otherServiceGenerationLossesKWh: Object.entries(allocatedLosses)
+      .filter(([service]) => service !== "heating")
+      .map(([, value]) => value),
+    dhwStorageOrDistributionLossKWh
+  });
+  const recoverableTotal = calculateRecoverableGenerationLossTotal({
+    heatingGenerationRecoverableLossKWh: allocatedRecoverableLosses.heating ?? 0,
+    otherServiceRecoverableLossesKWh: Object.entries(allocatedRecoverableLosses)
+      .filter(([service]) => service !== "heating")
+      .map(([, value]) => value),
+    heatingAuxiliaryRecoverableLossKWh: recoverableAuxiliary.valueKWh
+  });
+  const recoveredAuxiliaryTotal = calculateTotalGenerationAuxiliaryRecoveredLoss({
+    heatingAuxiliaryRecoveredLossKWh: allocatedRecoveredAuxiliaries.heating ?? 0,
+    otherRecoveredAuxiliaryLossesKWh: Object.entries(allocatedRecoveredAuxiliaries)
+      .filter(([service]) => service !== "heating")
+      .map(([, value]) => value)
+  });
+  const fuelInput = calculateHeatingGeneratorFuelInputEnergy({
+    generatorOutputKWh: output.valueKWh,
+    recoveredAuxiliaryLossKWh: recoveredAuxiliaryTotal.valueKWh,
+    generatorLossKWh: lossTotal.valueKWh,
+    renewableGeneratorHeatKWh
+  });
+  const utilization =
+    fuelInput.valueKWh > 0
+      ? calculateHeatingGeneratorUtilizationFactor({
+          generatorOutputKWh: output.valueKWh,
+          fuelInputKWh: fuelInput.valueKWh
+        })
+      : null;
+  const allocatedFuel = allocatedValuesByService(fuelInput.valueKWh, fractions);
+  const allocatedRecoverable = allocatedValuesByService(recoverableTotal.valueKWh, fractions);
+  const connectedServices = [...new Set(connectedLoads.map(load => load.service))];
+  const energyCarrier = generator.energyCarrier ?? null;
+  const auxiliaryCarrier = generator.auxiliaryCarrier ?? energyCarrier;
+  const carrierEnergy = {};
+  if (energyCarrier) carrierEnergy[energyCarrier] = fuelInput.valueKWh;
+  if (auxiliaryCarrier) {
+    carrierEnergy[auxiliaryCarrier] =
+      (carrierEnergy[auxiliaryCarrier] ?? 0) + auxiliaryTotal.valueKWh;
+  }
+  const serviceAllocations = Object.fromEntries(
+    connectedServices.map(service => [
+      service,
+      {
+        service,
+        allocationFraction: fractions[service],
+        serviceLoadKWh: sum(connectedLoads.filter(load => load.service === service).map(load => load.loadKWh)),
+        allocatedFuelInputKWh: allocatedFuel[service] ?? 0,
+        allocatedLossKWh: allocatedLosses[service] ?? 0,
+        allocatedAuxiliaryKWh: allocatedAuxiliaries[service] ?? 0,
+        allocatedRecoveredAuxiliaryKWh: allocatedRecoveredAuxiliaries[service] ?? 0,
+        allocatedRecoverableKWh: allocatedRecoverable[service] ?? 0,
+        allocationSource: generator.serviceAllocationSource ?? {
+          origin: connectedServices.length === 1 ? "implicit_single_service_reference" : "explicit_engineering_input",
+          reference: `${componentId}.serviceAllocationFractions`
+        }
+      }
+    ])
+  );
+
+  return {
+    componentId,
+    month: monthId,
+    generatorType: generator.generatorType ?? null,
+    energyCarrier,
+    auxiliaryCarrier,
+    connectedServices,
+    connectedLoads,
+    serviceAllocationRule:
+      connectedServices.length === 1 ? "implicit_single_service_reference" : "explicit_service_fraction",
+    serviceAllocations,
+    operationHours: operation.value,
+    operationTime: operation.result,
+    centralOutputEnergy: output,
+    generationLoss: loss,
+    generationLossTotal: lossTotal,
+    auxiliaryEnergy: auxiliary,
+    auxiliaryTotal,
+    recoveredAuxiliary,
+    recoveredAuxiliaryTotal,
+    recoverableAuxiliary,
+    recoverableGenerationLossTotal: recoverableTotal,
+    fuelInput,
+    utilizationFactor: utilization,
+    renewableGeneratorHeatKWh,
+    dhwStorageOrDistributionLossKWh,
+    carrierEnergy,
+    physicalTotals: {
+      outputKWh: output.valueKWh,
+      fuelInputKWh: fuelInput.valueKWh,
+      generationLossKWh: lossTotal.valueKWh,
+      auxiliaryKWh: auxiliaryTotal.valueKWh,
+      recoveredAuxiliaryKWh: recoveredAuxiliaryTotal.valueKWh,
+      recoverableKWh: recoverableTotal.valueKWh
+    },
+    invariants: {
+      serviceFuelAllocationKWh: sum(Object.values(serviceAllocations).map(item => item.allocatedFuelInputKWh)),
+      serviceLossAllocationKWh: sum(Object.values(serviceAllocations).map(item => item.allocatedLossKWh)),
+      serviceAuxiliaryAllocationKWh: sum(Object.values(serviceAllocations).map(item => item.allocatedAuxiliaryKWh))
+    },
+    source: {
+      classification: "NUMERICALLY_IMPLEMENTED",
+      origin: "mc001_shared_generator_component_contract",
+      reference: `sharedComponents.generators.${componentId}`,
+      formulaIds: [
+        output.formulaId,
+        loss.formulaId,
+        auxiliary.formulaId,
+        auxiliaryTotal.formulaId,
+        lossTotal.formulaId,
+        recoveredAuxiliary.formulaId,
+        recoveredAuxiliaryTotal.formulaId,
+        recoverableAuxiliary.formulaId,
+        recoverableTotal.formulaId,
+        fuelInput.formulaId,
+        ...(operation.result ? [operation.result.formulaId] : []),
+        ...(utilization ? [utilization.formulaId] : [])
+      ],
+      details: {
+        productDataFields: [
+          "lossPowerKW",
+          "auxiliaryPowerKW",
+          "recoveredAuxiliaryFraction",
+          "auxiliaryRecoverableFractionToHeating",
+          "lossRecoverableFractionToHeating"
+        ],
+        scheduleFields: operation.result ? [] : ["operationHours"],
+        serviceAllocation: connectedServices.length === 1
+          ? "implicit_single_service_reference"
+          : "explicit engineering allocation fractions supplied in Building DNA"
+      }
+    }
+  };
+}
+
+function calculateSharedGeneratorsForMonth({
+  sharedComponents,
+  monthId,
+  monthIndex,
+  heating,
+  cooling,
+  dhw
+}) {
+  const loads = [
+    ...serviceGeneratorLoads(heating, "heating"),
+    ...serviceGeneratorLoads(cooling, "cooling"),
+    ...serviceGeneratorLoads(dhw, "dhw")
+  ];
+  return sharedGeneratorsList(sharedComponents)
+    .map(generator =>
+      calculateSharedGeneratorMonth({
+        generator,
+        monthId,
+        monthIndex,
+        connectedLoads: loads.filter(load => load.generatorRef === generator.componentId)
+      })
+    )
+    .filter(Boolean);
+}
+
+function sharedServiceAllocationKWh(sharedGenerators, service) {
+  return sum(
+    sharedGenerators.map(generator => {
+      const allocation = generator.serviceAllocations?.[service];
+      if (!allocation) return 0;
+      return allocation.allocatedFuelInputKWh + allocation.allocatedAuxiliaryKWh;
+    })
+  );
+}
+
+function serviceInputTotalWithShared(serviceResult, sharedGenerators, service) {
+  if (!serviceResult) return 0;
+  const nonShared = sum(
+    (serviceResult.systemResults ?? [])
+      .filter(system => !system.metadata?.generatorRef)
+      .map(system => system.finalStageInputKWh)
+  );
+  const shared = sharedServiceAllocationKWh(sharedGenerators, service);
+  return nonShared + shared;
+}
+
+function attachSharedAllocations(serviceResult, sharedGenerators, service) {
+  if (!serviceResult) return null;
+  const allocations = sharedGenerators
+    .map(generator => generator.serviceAllocations?.[service]
+      ? {
+          componentId: generator.componentId,
+          ...generator.serviceAllocations[service]
+        }
+      : null)
+    .filter(Boolean);
+  if (allocations.length === 0) return serviceResult;
+  const finalStageInputKWh = serviceInputTotalWithShared(serviceResult, sharedGenerators, service);
+  return {
+    ...serviceResult,
+    finalStageInputKWh,
+    sharedGeneratorAllocations: allocations,
+    topology: {
+      ...(serviceResult.topology ?? {}),
+      sharedGeneratorPolicy: "physical_component_reference_with_service_allocation"
     }
   };
 }
@@ -519,7 +938,14 @@ function calculatePcmStorageMonth(input, monthId) {
 }
 
 export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
-  const { months, lighting, coolingStoragePcm, services = {}, systemMetadata = {} } = input;
+  const {
+    months,
+    lighting,
+    coolingStoragePcm,
+    sharedComponents = {},
+    services = {},
+    systemMetadata = {}
+  } = input;
   assertArray(months, "months");
 
   const heatingEnabled = services.heatingEnabled !== false;
@@ -575,19 +1001,31 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
           monthId
         )
       : null;
+    const sharedGenerators = calculateSharedGeneratorsForMonth({
+      sharedComponents,
+      monthId,
+      monthIndex: index,
+      heating,
+      cooling,
+      dhw
+    });
+    const heatingWithShared = attachSharedAllocations(heating, sharedGenerators, "heating");
+    const coolingWithShared = attachSharedAllocations(cooling, sharedGenerators, "cooling");
+    const dhwWithShared = attachSharedAllocations(dhw, sharedGenerators, "dhw");
 
     return {
       month: monthId,
-      heating,
-      cooling,
-      dhw,
+      heating: heatingWithShared,
+      cooling: coolingWithShared,
+      dhw: dhwWithShared,
       ventilation,
+      sharedGenerators,
       coolingStoragePcm: pcmStorage,
       lightingEnergyKWh,
       totals: {
-        heatingInputKWh: heating?.finalStageInputKWh ?? 0,
-        coolingInputKWh: cooling?.finalStageInputKWh ?? 0,
-        dhwInputKWh: dhw?.finalStageInputKWh ?? 0,
+        heatingInputKWh: heatingWithShared?.finalStageInputKWh ?? 0,
+        coolingInputKWh: coolingWithShared?.finalStageInputKWh ?? 0,
+        dhwInputKWh: dhwWithShared?.finalStageInputKWh ?? 0,
         ventilationAuxiliaryKWh: ventilation?.valueKWh ?? 0,
         pcmSensibleSolidStorageEnergyKWh: pcmStorage?.totals.sensibleSolidStorageEnergyKWh ?? 0,
         pcmInputEnergyLimitKWh: pcmStorage?.totals.inputEnergyLimitKWh ?? 0,
@@ -607,7 +1045,16 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     pcmSolidMassDecreaseKg: sum(monthly.map(month => month.totals.pcmSolidMassDecreaseKg)),
     lightingEnergyKWh: sum(monthly.map(month => month.totals.lightingEnergyKWh)),
     heatingAuxiliaryKWh: sum(monthly.map(month => month.heating?.auxiliaryTotalKWh ?? 0)),
-    coolingAuxiliaryKWh: sum(monthly.map(month => month.cooling?.auxiliaryTotalKWh ?? 0))
+    coolingAuxiliaryKWh: sum(monthly.map(month => month.cooling?.auxiliaryTotalKWh ?? 0)),
+    sharedGeneratorFuelInputKWh: sum(monthly.flatMap(month =>
+      (month.sharedGenerators ?? []).map(generator => generator.physicalTotals.fuelInputKWh)
+    )),
+    sharedGeneratorAuxiliaryKWh: sum(monthly.flatMap(month =>
+      (month.sharedGenerators ?? []).map(generator => generator.physicalTotals.auxiliaryKWh)
+    )),
+    sharedGeneratorLossKWh: sum(monthly.flatMap(month =>
+      (month.sharedGenerators ?? []).map(generator => generator.physicalTotals.generationLossKWh)
+    ))
   };
 
   const heatingAuxiliary = calculateChapter3HeatingAuxiliaryEnergyTotal({
@@ -641,9 +1088,19 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
   for (const service of ["heating", "cooling", "dhw"]) {
     for (const month of monthly) {
       for (const system of month[service]?.systemResults ?? []) {
+        if (system.metadata?.generatorRef) continue;
         const carrier = system.metadata?.energyCarrier ?? systemMetadata?.[service]?.energyCarrier;
         if (carrier && system.finalStageInputKWh > 0) {
           energyByCarrier[carrier] = (energyByCarrier[carrier] ?? 0) + system.finalStageInputKWh;
+        }
+      }
+    }
+  }
+  for (const month of monthly) {
+    for (const generator of month.sharedGenerators ?? []) {
+      for (const [carrier, value] of Object.entries(generator.carrierEnergy ?? {})) {
+        if (carrier && value > 0) {
+          energyByCarrier[carrier] = (energyByCarrier[carrier] ?? 0) + value;
         }
       }
     }
@@ -676,6 +1133,13 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       )
     )
   ];
+  const sharedGeneratorFormulaReferences = [
+    ...new Set(
+      monthly.flatMap(month =>
+        (month.sharedGenerators ?? []).flatMap(generator => generator.source?.formulaIds ?? [])
+      )
+    )
+  ];
   const ventilationFormulaReferences = [
     ...new Set(
       monthly.flatMap(month =>
@@ -692,6 +1156,7 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     calculationScope: "MC001_CHAPTER_3_EXPLICIT_RUNTIME_CHAIN",
     services: servicesSummary,
     systemMetadata,
+    sharedComponents,
     monthCount: monthly.length,
     monthly,
     annual,
@@ -715,6 +1180,7 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
           ]
         : []),
       ...stageFormulaReferences,
+      ...sharedGeneratorFormulaReferences,
       ...ventilationFormulaReferences,
       ...dhwUsefulFormulaReferences,
       ...(lightingResult ? ["MC001_3_4_34_LIGHTING_LENI_WEIGHTED_BUILDING"] : [])

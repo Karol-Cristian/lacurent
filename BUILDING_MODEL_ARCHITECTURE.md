@@ -22,7 +22,7 @@ Every production concept exists once, has exactly one owner and is extended thro
 | location_and_climate | Location and climate | Romanian Climate Provider | source-backed climate registries and explicit manual zone override | provider-resolved at Building DNA creation; persisted inside Building DNA |
 | geometry | Thermal building geometry | Building DNA Resolver | explicit user geometry plus documented resolver-derived seeds | editable primitive inputs normalized into Building DNA |
 | envelope_and_materials | Envelope, assemblies and material catalogue | Building Platform Catalogue plus Building DNA Resolver | catalogue selections resolved into Building DNA assemblies and explicit envelope elements | catalogue-resolved inputs; physics engine calculates R, U and H coefficients |
-| technical_systems | Chapter 3 technical systems | Technical Systems schema and Chapter 3 adapter | buildingDna.technicalSystems | explicit user engineering input; persisted with Building DNA; heating/cooling/DHW may contain multiple systems only with explicit allocation fractions |
+| technical_systems | Chapter 3 technical systems | Technical Systems schema and Chapter 3 adapter | buildingDna.technicalSystems | explicit user engineering input; persisted with Building DNA; heating/cooling/DHW may contain multiple systems only with explicit allocation fractions; shared physical generators live once under technicalSystems.sharedComponents.generators[] and services reference them by stable ID |
 | physics_engine | MC001 physics engine | Physics Engine | explicit adapter input | runtime calculation only; persisted as immutable analysis version output |
 | technical_workspace_report | Engineering notebook and technical report | Technical Report Builder | Building DNA plus persisted engine output | generated model persisted as report version; presentation regenerated from structure |
 | legacy_compatibility | Legacy saved-house compatibility | Legacy migration boundary | legacy houses/analyses/analysis_answers/report_snapshots until migrated | read and migration boundary only |
@@ -31,7 +31,7 @@ Every production concept exists once, has exactly one owner and is extended thro
 
 | Category | Field count |
 | --- | --- |
-| primitive_user_input | 39 |
+| primitive_user_input | 40 |
 | provider_resolved | 8 |
 | derived_engineering_value | 5 |
 | physics_runtime_state | 4 |
@@ -88,10 +88,11 @@ Every production concept exists once, has exactly one owner and is extended thro
 | derived.thermal_bridges | derived_engineering_value | Building DNA Resolver | buildingDna.thermalBridges | calculated | affects_Hd_Htr |
 | renovation.wall_insulation | primitive_user_input | User through Renovation Interventions and Typology Engine | buildingDna.renovationInterventions and assemblies[exterior_wall].layers | remain_editable | affects_R_U_Hd_Htr_QHnd |
 | renovation.window_replacement | primitive_user_input | User through Renovation Interventions | buildingDna.renovationInterventions | remain_editable | traceability; assembly effect is via window_type |
-| technical_systems.heating | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.heating | remain_editable | drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8D component contracts calculate relations 3.1-3.14 where exposed, 3.17, 3.23-3.27, 3.29-3.32 and 3.34-3.37 when complete project/product inputs are supplied |
+| technical_systems.heating | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.heating | remain_editable | drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8D component contracts calculate relations 3.1-3.14 where exposed, 3.17, 3.23-3.27, 3.29-3.32 and 3.34-3.37 when complete project/product inputs are supplied; generatorRef delegates service generation to one shared physical generator without duplicate carrier accounting |
 | technical_systems.cooling | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.cooling | remain_editable | drives_Chapter3_cooling_system_energy; multiple active systems require explicit allocationFraction values summing to 1 |
 | technical_systems.ventilation_ahu | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.ventilationAhu | remain_editable | drives_Chapter3_AHU_auxiliary_energy; P8D component contracts calculate relations 3.69-3.71 and 3.73-3.75 where product/operation inputs are supplied |
-| technical_systems.dhw | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.domesticHotWater | remain_editable | drives_Chapter3_DHW_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8C component contracts calculate relations 3.200-3.228 when complete product/project inputs are supplied |
+| technical_systems.dhw | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.domesticHotWater | remain_editable | drives_Chapter3_DHW_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8C component contracts calculate relations 3.200-3.228 when complete product/project inputs are supplied; generatorRef delegates service generation to one shared physical generator without duplicate carrier accounting |
+| technical_systems.shared_generators | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.sharedComponents.generators[] | remain_editable | drives_P8G_shared_generator_relations_3.19_3.20_3.21_3.22_3.28_3.33_3.39; physical generator load, losses, auxiliaries and carrier energy are calculated once and allocated to services for reporting |
 | technical_systems.pcm_storage | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.coolingStoragePcm | remain_editable | drives_PCM_relations_3_111_3_113_and_storage_chain |
 | technical_systems.lighting_boundary | primitive_user_input | User through Technical Systems schema | buildingDna.technicalSystems.lighting | remain_editable | explicit_input_boundary_only_SR_EN_15193_1_pending |
 | runtime.assembly_u_values | physics_runtime_state | Physics Engine | calculateMc001EnvelopeAssemblyUValueExplicit output | read_only | intermediate_traceable_engine_result |
@@ -147,7 +148,7 @@ Obsolete or bounded paths:
 | Geometrie | keep explicit area/volume fields editable and show direct/runtime impact | building_length_m removed in P6B, building_width_m removed in P6B, thermal_mass_class removed in P6B |
 | Anvelopa | keep active fields; make bridge inventory explicit in a future milestone | wall_thickness removed in P6B until assembly selection consumes it |
 | Renovari | keep intervention toggles; remove or wire detail fields | wall_insulation_year removed in P6B, roof_insulation_thickness_cm removed in P6B, floor_insulation_thickness_cm removed in P6B, window_age_years removed in P6B, door_replaced removed in P6B |
-| Instalatii tehnice | keep editable with validation; continue showing explicit SR EN 15193-1 lighting boundary | - |
+| Instalatii tehnice | keep editable with validation; shared physical generator product data is entered once and referenced by heating/DHW services; continue showing explicit SR EN 15193-1 lighting boundary | - |
 | Results/report | read-only calculated outputs only | - |
 
 ## Generic Building Audit
@@ -215,6 +216,7 @@ Explicit future boundaries:
 - Building DNA is the only persisted engineering input model.
 - Adapters map Building DNA to physics input without duplicating formulas.
 - Reports render persisted Building DNA and engine outputs without recalculation.
+- Shared physical Chapter 3 components have one canonical Building DNA identity; service-level rows reference or allocate that physical result and must not duplicate carrier energy.
 - Legacy fields remain explicitly classified until removed.
 
 ## Target Architecture
@@ -226,6 +228,14 @@ Explicit future boundaries:
 5. Engineering Runtime
 6. Reports
 7. UI
+
+P8G Chapter 3 shared generation extension:
+
+- `buildingDna.technicalSystems.sharedComponents.generators[]` owns physical shared/central generators.
+- Service systems use stable `generatorRef` values to connect heating, DHW or future supported services to the physical generator.
+- The Physics Engine calculates physical generator output, losses, auxiliaries and carrier consumption once.
+- Service reporting allocations reference the physical result; allocation totals must reconcile to the physical totals within tolerance.
+- Legacy projects with separate service generators remain valid as separate explicit components until a user or migration can prove they are the same physical generator.
 
 ## Required Future Maintenance
 

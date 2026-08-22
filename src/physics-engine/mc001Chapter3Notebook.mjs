@@ -107,6 +107,34 @@ function monthlyServiceLines(month, serviceKey) {
   return lines;
 }
 
+function sharedGeneratorLines(month) {
+  return (month.sharedGenerators ?? []).flatMap(generator => [
+    line(
+      `${month.month}.shared_generator.${generator.componentId}.output`,
+      `Q_gen,out,${generator.componentId},${month.month} := ${value(generator.physicalTotals.outputKWh, "kWh")} -- servicii ${generator.connectedServices.join(" + ")}`,
+      generator.physicalTotals.outputKWh,
+      "kWh",
+      generator.centralOutputEnergy.formulaId
+    ),
+    line(
+      `${month.month}.shared_generator.${generator.componentId}.fuel`,
+      `E_gen,in,${generator.componentId},${month.month} := ${value(generator.physicalTotals.fuelInputKWh, "kWh")} -- pierderi ${value(generator.physicalTotals.generationLossKWh, "kWh")}; auxiliari ${value(generator.physicalTotals.auxiliaryKWh, "kWh")}`,
+      generator.physicalTotals.fuelInputKWh,
+      "kWh",
+      generator.fuelInput.formulaId
+    ),
+    ...Object.values(generator.serviceAllocations ?? {}).map(allocation =>
+      line(
+        `${month.month}.shared_generator.${generator.componentId}.${allocation.service}.allocation`,
+        `Alocare ${allocation.service},${generator.componentId},${month.month} := f=${number(allocation.allocationFraction, 4)}; E=${value(allocation.allocatedFuelInputKWh, "kWh")}; Waux=${value(allocation.allocatedAuxiliaryKWh, "kWh")}`,
+        allocation.allocatedFuelInputKWh + allocation.allocatedAuxiliaryKWh,
+        "kWh",
+        "MC001_3_SHARED_GENERATOR_SERVICE_ALLOCATION_INPUT"
+      )
+    )
+  ]);
+}
+
 export function buildChapter3NotebookSections(chapter3Result) {
   if (!chapter3Result || chapter3Result.status !== "calculated") {
     return [];
@@ -180,6 +208,7 @@ export function buildChapter3NotebookSections(chapter3Result) {
       ...monthlyServiceLines(month, "heating"),
       ...monthlyServiceLines(month, "cooling"),
       ...monthlyServiceLines(month, "dhw"),
+      ...sharedGeneratorLines(month),
       ...(month.ventilation
         ? [
             line(

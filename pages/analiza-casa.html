@@ -238,6 +238,28 @@
 </div>
 
 <div class="dashboard-band compact-technical-note">
+<h3>Generator comun incalzire + ACM</h3>
+<div class="form-grid">
+<div><label>Incalzire si ACM folosesc acelasi generator</label><select name="chapter3_shared_generator_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Tip generator comun</label><select name="chapter3_shared_generator_type"><option value="condensing_boiler">Cazan in condensare</option><option value="electric_resistance">Rezistenta electrica</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="explicit_other">Alt sistem explicit</option></select></div>
+<div><label>Purtator principal</label><select name="chapter3_shared_generator_energy_carrier"><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
+<div><label>Purtator auxiliari</label><select name="chapter3_shared_generator_auxiliary_carrier"><option value="electricity">Electricitate</option><option value="natural_gas">Gaz natural</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
+<div><label>Factor pierderi control [-]</label><input name="chapter3_shared_generator_control_loss_factor" type="number" min="0" step="0.001"></div>
+<div><label>Ore functionare generator [h/luna]</label><input name="chapter3_shared_generator_operation_hours_month" type="number" min="0" step="0.1"></div>
+<div><label>Putere pierdere generator [kW]</label><input name="chapter3_shared_generator_loss_power_kw" type="number" min="0" step="0.001"></div>
+<div><label>Putere auxiliari generator [kW]</label><input name="chapter3_shared_generator_auxiliary_power_kw" type="number" min="0" step="0.001"></div>
+<div><label>Fractie auxiliari recuperata [-]</label><input name="chapter3_shared_generator_aux_recovered_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Fractie auxiliari recuperabila [-]</label><input name="chapter3_shared_generator_aux_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Fractie pierderi recuperabila [-]</label><input name="chapter3_shared_generator_loss_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Factor recuperare camera generator [-]</label><input name="chapter3_shared_generator_boiler_room_recovery_factor" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Caldura regenerabila generator [kWh/luna]</label><input name="chapter3_shared_generator_renewable_heat_kwh_month" type="number" min="0" step="0.01"></div>
+<div><label>Pierdere ACM stocare/distributie inclusa [kWh/luna]</label><input name="chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month" type="number" min="0" step="0.01"></div>
+<div><label>Alocare raportare incalzire [-]</label><input name="chapter3_shared_generator_heating_allocation_fraction" type="number" min="0" max="1" step="0.01"></div>
+<div><label>Alocare raportare ACM [-]</label><input name="chapter3_shared_generator_dhw_allocation_fraction" type="number" min="0" max="1" step="0.01"></div>
+</div>
+</div>
+
+<div class="dashboard-band compact-technical-note">
 <h3>Incalzire</h3>
 <div class="form-grid">
 <div><label>Sistem incalzire activ</label><select name="chapter3_heating_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>

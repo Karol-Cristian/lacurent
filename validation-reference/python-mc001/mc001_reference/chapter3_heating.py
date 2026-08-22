@@ -247,6 +247,109 @@ def generator_auxiliary_recoverable_loss_kwh(
     )
 
 
+def central_generator_output_energy_kwh(
+    control_loss_factor: float,
+    heating_distribution_input_kwh: list[float],
+    other_service_distribution_input_kwh: list[float],
+) -> float:
+    return (
+        control_loss_factor * sum(heating_distribution_input_kwh)
+        + sum(other_service_distribution_input_kwh)
+    )
+
+
+def heating_generation_auxiliary_total_kwh(
+    heating_auxiliary_kwh: list[float],
+    other_service_auxiliary_kwh: list[float],
+) -> float:
+    return sum(heating_auxiliary_kwh) + sum(other_service_auxiliary_kwh)
+
+
+def generation_loss_total_kwh(
+    heating_generation_loss_kwh: float,
+    other_service_generation_losses_kwh: list[float],
+    dhw_storage_or_distribution_loss_kwh: float,
+) -> float:
+    return (
+        heating_generation_loss_kwh
+        + sum(other_service_generation_losses_kwh)
+        + dhw_storage_or_distribution_loss_kwh
+    )
+
+
+def recoverable_generation_loss_total_kwh(
+    heating_generation_recoverable_loss_kwh: float,
+    other_service_recoverable_losses_kwh: list[float],
+    heating_auxiliary_recoverable_loss_kwh: float,
+) -> float:
+    return (
+        heating_generation_recoverable_loss_kwh
+        + sum(other_service_recoverable_losses_kwh)
+        + heating_auxiliary_recoverable_loss_kwh
+    )
+
+
+def total_generation_auxiliary_recovered_loss_kwh(
+    heating_auxiliary_recovered_loss_kwh: float,
+    other_recovered_auxiliary_losses_kwh: list[float],
+) -> float:
+    return heating_auxiliary_recovered_loss_kwh + sum(other_recovered_auxiliary_losses_kwh)
+
+
+def heating_generator_fuel_input_energy_kwh(
+    generator_output_kwh: float,
+    recovered_auxiliary_loss_kwh: float,
+    generator_loss_kwh: float,
+    renewable_generator_heat_kwh: float,
+) -> float:
+    return (
+        generator_output_kwh
+        - recovered_auxiliary_loss_kwh
+        + generator_loss_kwh
+        - renewable_generator_heat_kwh
+    )
+
+
+def shared_generator_reference_case() -> dict[str, float]:
+    heating_load = 103.0
+    dhw_load = 53.0
+    output = central_generator_output_energy_kwh(1.05, [heating_load], [dhw_load])
+    loss = generator_loss_energy_kwh(0.2, 100)
+    auxiliary = generator_auxiliary_energy_kwh(0.05, 100)
+    fractions = {"heating": 0.65, "dhw": 0.35}
+    recovered_auxiliary = generator_auxiliary_recovered_loss_kwh(auxiliary, 0.2)
+    recoverable_auxiliary = generator_auxiliary_recoverable_loss_kwh(auxiliary, 0.1, 0.5)
+    loss_total = generation_loss_total_kwh(
+        loss * fractions["heating"],
+        [loss * fractions["dhw"]],
+        0,
+    )
+    auxiliary_total = heating_generation_auxiliary_total_kwh(
+        [auxiliary * fractions["heating"]],
+        [auxiliary * fractions["dhw"]],
+    )
+    recovered_total = total_generation_auxiliary_recovered_loss_kwh(
+        recovered_auxiliary * fractions["heating"],
+        [recovered_auxiliary * fractions["dhw"]],
+    )
+    recoverable_total = recoverable_generation_loss_total_kwh(
+        loss * 0.3 * fractions["heating"],
+        [loss * 0.3 * fractions["dhw"]],
+        recoverable_auxiliary,
+    )
+    fuel_input = heating_generator_fuel_input_energy_kwh(output, recovered_total, loss_total, 0)
+    return {
+        "output_kwh": output,
+        "loss_kwh": loss_total,
+        "auxiliary_kwh": auxiliary_total,
+        "recovered_auxiliary_kwh": recovered_total,
+        "recoverable_kwh": recoverable_total,
+        "fuel_input_kwh": fuel_input,
+        "heating_allocated_kwh": fuel_input * fractions["heating"] + auxiliary_total * fractions["heating"],
+        "dhw_allocated_kwh": fuel_input * fractions["dhw"] + auxiliary_total * fractions["dhw"],
+    }
+
+
 def subsystem_input_energy_kwh(
     subsystem_output_kwh: float,
     subsystem_loss_kwh: float,

@@ -21,7 +21,7 @@ const matrix = JSON.parse(
 );
 
 test("Chapter 3 coverage matrix is synchronized with the source-to-code fixture", () => {
-  assert.equal(matrix.schema, "mc001_chapter3_coverage_matrix_p8f_v1");
+  assert.equal(matrix.schema, "mc001_chapter3_coverage_matrix_p8g_v1");
   assert.deepEqual(matrix.summary, chapter3MatrixSummary());
   assert.equal(matrix.entries.length, chapter3ImplementationMatrix.length);
   assert.deepEqual(
@@ -30,14 +30,19 @@ test("Chapter 3 coverage matrix is synchronized with the source-to-code fixture"
   );
 });
 
-test("Chapter 3 coverage matrix records the P8F production topology contract", () => {
+test("Chapter 3 coverage matrix records the P8G production topology contract", () => {
   assert.equal(
     matrix.productionTopology.schema,
-    "mc001_chapter3_production_topology_p8f_v1"
+    "mc001_chapter3_production_topology_p8g_v1"
   );
   assert.equal(
     matrix.productionTopology.supportedTopology.parallelSystems,
     "multiple active heating/cooling/DHW systems are supported only with explicit allocationFraction values that sum to 1"
+  );
+  assert.ok(
+    matrix.productionTopology.supportedTopology.sharedGenerators.includes(
+      "one physical generator may serve heating and DHW"
+    )
   );
   assert.ok(
     matrix.productionTopology.unsupportedWithoutExplicitInputs.includes(
@@ -46,7 +51,7 @@ test("Chapter 3 coverage matrix records the P8F production topology contract", (
   );
 });
 
-test("Chapter 3 coverage matrix has one P8F primary classification per slot", () => {
+test("Chapter 3 coverage matrix has one P8G primary classification per slot", () => {
   const allowed = new Set(Object.values(CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION));
   for (const entry of matrix.entries) {
     assert.equal(allowed.has(entry.implementationClassification), true, entry.matrixId);
@@ -65,14 +70,14 @@ test("Chapter 3 coverage matrix has one P8F primary classification per slot", ()
       entry.matrixId
     );
   }
-  assert.equal(matrix.summary.p8bClassificationCounts.NUMERICALLY_IMPLEMENTED, 152);
+  assert.equal(matrix.summary.p8bClassificationCounts.NUMERICALLY_IMPLEMENTED, 159);
   assert.equal(matrix.summary.p8bClassificationCounts.PROCEDURALLY_IMPLEMENTED, 4);
-  assert.equal(matrix.summary.p8bClassificationCounts.EXPLICIT_INPUT_BOUNDARY, 60);
+  assert.equal(matrix.summary.p8bClassificationCounts.EXPLICIT_INPUT_BOUNDARY, 53);
   assert.equal(matrix.summary.p8bClassificationCounts.EXTERNAL_STANDARD_BLOCKED, 1);
-  assert.equal(matrix.summary.numericalImplementationPercentage, 70.0);
+  assert.equal(matrix.summary.numericalImplementationPercentage, 73.3);
 });
 
-test("Chapter 3 P8F registers every remaining explicit boundary with a reason", () => {
+test("Chapter 3 P8G registers every remaining explicit boundary with a reason", () => {
   assert.equal(
     matrix.explicitBoundaryRegister.length,
     matrix.summary.explicitInputBoundaryRelations
@@ -99,19 +104,26 @@ test("Chapter 3 P8F registers every remaining explicit boundary with a reason", 
     "3.13",
     "3.14",
     "3.17",
+    "3.19",
+    "3.20",
+    "3.21",
+    "3.22",
     "3.23",
     "3.24",
     "3.25",
     "3.26",
     "3.27",
+    "3.28",
     "3.29",
     "3.30",
     "3.31",
     "3.32",
+    "3.33",
     "3.34",
     "3.35",
     "3.36",
     "3.37",
+    "3.39",
     ...Array.from({ length: 15 }, (_, index) => `3.${40 + index}`),
     "3.55",
     ...Array.from({ length: 12 }, (_, index) => `3.${56 + index}`),
