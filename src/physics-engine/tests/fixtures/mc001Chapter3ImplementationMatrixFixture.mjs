@@ -242,49 +242,83 @@ const p8dHeatingImplementedFunctions = {
   "3.37": "calculateHeatingGeneratorAuxiliaryEnergy"
 };
 
+const p8gSharedGeneratorNumericalRelations = new Set([
+  "3.19",
+  "3.20",
+  "3.21",
+  "3.22",
+  "3.28",
+  "3.33",
+  "3.39"
+]);
+
+const p8gHeatingNumericalRelations = new Set([
+  ...p8dHeatingNumericalRelations,
+  ...p8gSharedGeneratorNumericalRelations
+]);
+
+const p8gHeatingImplementedFunctions = {
+  ...p8dHeatingImplementedFunctions,
+  "3.19": "calculateHeatingGeneratorUtilizationFactor",
+  "3.20": "calculateHeatingGeneratorFuelInputEnergy",
+  "3.21": "calculateHeatingGenerationAuxiliaryTotal",
+  "3.22": "calculateGenerationLossTotal",
+  "3.28": "calculateRecoverableGenerationLossTotal",
+  "3.33": "calculateTotalGenerationAuxiliaryRecoveredLoss",
+  "3.39": "calculateCentralGeneratorOutputEnergy"
+};
+
 const heatingRelations = implementedRange(relationRange(1, 39), {
   status: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gHeatingNumericalRelations.has(relation)
       ? CHAPTER_3_MATRIX_STATUS.PRODUCTION_INTEGRATED
       : CHAPTER_3_MATRIX_STATUS.UNIT_TESTED,
   source: "MC001-2022 Chapter 3.1, pages 136-152",
   implementation: HEATING_SYSTEMS,
-  implementedFunction: relation => p8dHeatingImplementedFunctions[relation] ?? HEATING_SYSTEMS,
+  implementedFunction: relation => p8gHeatingImplementedFunctions[relation] ?? HEATING_SYSTEMS,
   tests: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gHeatingNumericalRelations.has(relation)
       ? [HEATING_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_HEATING_TEST]
       : [HEATING_TEST],
   validationFixture: relation =>
-    p8dHeatingNumericalRelations.has(relation)
-      ? "P8D heating component-contract fixture plus independent Python reference constants"
+    p8gSharedGeneratorNumericalRelations.has(relation)
+      ? "P8G shared-generator component-contract fixture plus independent Python reference constants"
+      : p8dHeatingNumericalRelations.has(relation)
+        ? "P8D heating component-contract fixture plus independent Python reference constants"
       : "independent fixed constants in mc001Chapter3HeatingSystems.test.mjs",
   runtimeIntegrated: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gHeatingNumericalRelations.has(relation)
       ? true
       : "callable helper or explicit boundary; production requires a more detailed component/product contract before the result can be calculated",
   productionRuntimePath: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gSharedGeneratorNumericalRelations.has(relation)
+      ? "Building DNA technicalSystems.sharedComponents.generators[] plus service generatorRef -> buildingChapter3InstallationsAdapter -> integrated shared-generator runtime -> physical carrier/accounting allocation"
+      : p8dHeatingNumericalRelations.has(relation)
       ? "Building DNA technicalSystems.heating.systems[].stages[].lossCalculation/auxiliaryCalculation -> buildingChapter3InstallationsAdapter -> MC001 heating helper -> integrated service-chain stage balance"
       : "callable helper or explicit boundary; production requires a more detailed component/product contract before the result can be calculated",
   notebookTraceable: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gHeatingNumericalRelations.has(relation)
       ? true
       : "stage balance visible only when final explicit technical value is supplied",
   notebookPath: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gSharedGeneratorNumericalRelations.has(relation)
+      ? "src/physics-engine/mc001Chapter3Notebook.mjs shared generator physical and allocation lines"
+      : p8dHeatingNumericalRelations.has(relation)
       ? "src/physics-engine/mc001Chapter3Notebook.mjs heating stage lines with source formula IDs"
       : "stage balance visible only when final explicit technical value is supplied",
-  explicitInputBoundary: relation => !p8dHeatingNumericalRelations.has(relation),
+  explicitInputBoundary: relation => !p8gHeatingNumericalRelations.has(relation),
   implementationClassification: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gHeatingNumericalRelations.has(relation)
       ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
       : CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
   inputSourceClassification: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gSharedGeneratorNumericalRelations.has(relation)
+      ? "shared_generator_component_contract_product_schedule_and_service_allocation_inputs"
+      : p8dHeatingNumericalRelations.has(relation)
       ? "heating_component_contract_project_and_product_data"
       : "heating_legacy_explicit_or_unexposed_component_contract_input",
   explicitBoundaryReason: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gHeatingNumericalRelations.has(relation)
       ? null
       : ({
         "3.15": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C5_C6_REQUIRED for standby loss fraction calculation.",
@@ -300,7 +334,7 @@ const heatingRelations = implementedRange(relationRange(1, 39), {
         "3.39": "CENTRAL_GENERATOR_SERVICE_INPUTS_AND_CONTROL_LOSS_FACTOR_REQUIRED before central generator output can be calculated."
       })[relation],
   explicitBoundaryReasonCode: relation =>
-    p8dHeatingNumericalRelations.has(relation)
+    p8gHeatingNumericalRelations.has(relation)
       ? null
       : ({
         "3.15": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C5_C6_REQUIRED",

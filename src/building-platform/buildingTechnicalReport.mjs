@@ -2222,6 +2222,7 @@ function installationSystemTopologyRows(calculation) {
           service,
           systemId: system.systemId,
           allocationFraction: system.allocationFraction,
+          generatorRef: system.metadata?.generatorRef ?? null,
           generatorType: system.metadata?.generatorType ?? null,
           energyCarrier: system.metadata?.energyCarrier ?? null,
           usefulDemandSourceClassification:
@@ -2234,6 +2235,8 @@ function installationSystemTopologyRows(calculation) {
         for (const stage of system.stageResults ?? []) {
           for (const source of [stage.lossSource, stage.auxiliarySource]) {
             if (source?.classification === "NUMERICALLY_IMPLEMENTED") {
+              current.calculatedStageSourceCount += 1;
+            } else if (source?.classification === "PROCEDURALLY_IMPLEMENTED") {
               current.calculatedStageSourceCount += 1;
             } else if (source?.classification === "EXPLICIT_INPUT_BOUNDARY") {
               current.explicitStageSourceCount += 1;
@@ -2251,6 +2254,48 @@ function installationSystemTopologyRows(calculation) {
     }
   }
   return [...totals.values()];
+}
+
+function installationSharedGeneratorRows(calculation) {
+  const totals = new Map();
+  for (const month of calculation.chapter3Result?.monthly ?? []) {
+    for (const generator of month.sharedGenerators ?? []) {
+      const current = totals.get(generator.componentId) ?? {
+        componentId: generator.componentId,
+        generatorType: generator.generatorType,
+        energyCarrier: generator.energyCarrier,
+        auxiliaryCarrier: generator.auxiliaryCarrier,
+        connectedServices: new Set(),
+        annualOutputKWh: 0,
+        annualFuelInputKWh: 0,
+        annualLossKWh: 0,
+        annualAuxiliaryKWh: 0,
+        annualRecoveredAuxiliaryKWh: 0,
+        annualRecoverableKWh: 0,
+        formulaIds: new Set(),
+        allocationRule: generator.serviceAllocationRule
+      };
+      for (const service of generator.connectedServices ?? []) {
+        current.connectedServices.add(service);
+      }
+      current.annualOutputKWh += generator.physicalTotals?.outputKWh ?? 0;
+      current.annualFuelInputKWh += generator.physicalTotals?.fuelInputKWh ?? 0;
+      current.annualLossKWh += generator.physicalTotals?.generationLossKWh ?? 0;
+      current.annualAuxiliaryKWh += generator.physicalTotals?.auxiliaryKWh ?? 0;
+      current.annualRecoveredAuxiliaryKWh += generator.physicalTotals?.recoveredAuxiliaryKWh ?? 0;
+      current.annualRecoverableKWh += generator.physicalTotals?.recoverableKWh ?? 0;
+      for (const formulaId of generator.source?.formulaIds ?? []) {
+        current.formulaIds.add(formulaId);
+      }
+      totals.set(generator.componentId, current);
+    }
+  }
+  return [...totals.values()].map(row => ({
+    ...row,
+    connectedServices: [...row.connectedServices],
+    formulaIds: [...row.formulaIds],
+    status: "calculat normativ"
+  }));
 }
 
 function summarizeClimateProfileFieldValue(field) {
@@ -2579,6 +2624,15 @@ function reportChapters({ buildingDna, monthly, formulas, traceability, calculat
     ...installationRows(calculation),
     ...installationMonthlyRows(calculation),
     ...installationAhuThermalRows(calculation),
+    ...installationSharedGeneratorRows(calculation).map(row => ({
+      label: `Generator comun ${row.componentId}`,
+      value:
+        `${row.connectedServices.join(" + ")}; iesire ${formatNotebookValue(row.annualOutputKWh, "kWh/an")}; ` +
+        `carrier ${formatNotebookValue(row.annualFuelInputKWh, "kWh/an")} ${row.energyCarrier ?? ""}; ` +
+        `aux ${formatNotebookValue(row.annualAuxiliaryKWh, "kWh/an")} ${row.auxiliaryCarrier ?? ""}`,
+      status: row.status,
+      formulaIds: row.formulaIds
+    })),
     {
       label: "Limitare iluminat",
       value:
@@ -2669,6 +2723,7 @@ export function buildBuildingTechnicalWorkspace(pipelineResult = {}) {
     monthly: installationMonthlyRows(calculation),
     ahuThermalRelations: installationAhuThermalRows(calculation),
     systemTopology: installationSystemTopologyRows(calculation),
+    sharedGenerators: installationSharedGeneratorRows(calculation),
     services: calculation.chapter3Result.services ?? {},
     energyByService: calculation.chapter3Result.energyByService ?? {},
     energyByCarrier: calculation.chapter3Result.energyByCarrier ?? {},

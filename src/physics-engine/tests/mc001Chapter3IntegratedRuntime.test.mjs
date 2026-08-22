@@ -346,6 +346,109 @@ test("aggregates explicit parallel Chapter 3 heating systems without hidden allo
   });
 });
 
+test("calculates one physical shared generator for heating and DHW without double counting", () => {
+  const result = calculateMc001Chapter3IntegratedRuntime({
+    services: {
+      heatingEnabled: true,
+      coolingEnabled: false,
+      dhwEnabled: true,
+      ventilationAhuEnabled: false,
+      coolingStoragePcmEnabled: false,
+      lightingEnabled: false
+    },
+    sharedComponents: {
+      generators: [
+        {
+          componentId: "shared-boiler-1",
+          enabled: true,
+          generatorType: "condensing_boiler",
+          energyCarrier: "natural_gas",
+          auxiliaryCarrier: "electricity",
+          controlLossFactor: 1.05,
+          operationHours: 100,
+          lossPowerKW: 0.2,
+          auxiliaryPowerKW: 0.05,
+          recoveredAuxiliaryFraction: 0.2,
+          auxiliaryRecoverableFractionToHeating: 0.5,
+          lossRecoverableFractionToHeating: 0.3,
+          boilerRoomRecoveryFactor: 0.1,
+          renewableGeneratorHeatKWh: 0,
+          dhwStorageOrDistributionLossKWh: 0,
+          serviceAllocationFractions: {
+            heating: 0.65,
+            dhw: 0.35
+          }
+        }
+      ]
+    },
+    months: [
+      {
+        month: "january",
+        chapter2Useful: { qHndKWh: 100, qCndKWh: 0 },
+        heatingSystems: [
+          {
+            systemId: "heating-loop",
+            allocationFraction: 1,
+            metadata: {
+              generatorRef: "shared-boiler-1",
+              energyCarrier: "natural_gas"
+            },
+            stages: [
+              { stageId: "emission", lossKWh: 1, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "distribution", lossKWh: 2, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "storage", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "generation", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 }
+            ]
+          }
+        ],
+        dhw: {
+          usefulDemandKWh: 50,
+          systems: [
+            {
+              systemId: "dhw-loop",
+              allocationFraction: 1,
+              metadata: {
+                generatorRef: "shared-boiler-1",
+                energyCarrier: "natural_gas"
+              },
+              stages: [
+                { stageId: "distribution", lossKWh: 2, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+                { stageId: "storage", lossKWh: 1, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+                { stageId: "generation", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  });
+
+  const shared = result.monthly[0].sharedGenerators[0];
+  assert.equal(shared.componentId, "shared-boiler-1");
+  assert.deepEqual(shared.connectedServices, ["heating", "dhw"]);
+  assertCloseTo(shared.centralOutputEnergy.valueKWh, 161.15);
+  assertCloseTo(shared.generationLoss.valueKWh, 20);
+  assertCloseTo(shared.auxiliaryEnergy.valueKWh, 5);
+  assertCloseTo(shared.recoveredAuxiliaryTotal.valueKWh, 1);
+  assertCloseTo(shared.recoverableGenerationLossTotal.valueKWh, 8.25);
+  assertCloseTo(shared.fuelInput.valueKWh, 180.15);
+  assertCloseTo(result.energyByCarrier.natural_gas, 180.15);
+  assertCloseTo(result.energyByCarrier.electricity, 5);
+  assertCloseTo(result.monthly[0].heating.finalStageInputKWh, 120.3475);
+  assertCloseTo(result.monthly[0].dhw.finalStageInputKWh, 64.8025);
+  assertCloseTo(shared.invariants.serviceFuelAllocationKWh, shared.physicalTotals.fuelInputKWh);
+  assertCloseTo(shared.invariants.serviceLossAllocationKWh, shared.physicalTotals.generationLossKWh);
+  assertCloseTo(shared.invariants.serviceAuxiliaryAllocationKWh, shared.physicalTotals.auxiliaryKWh);
+  assertCloseTo(
+    result.energyByService.heating + result.energyByService.domesticHotWater,
+    result.energyByCarrier.natural_gas + result.energyByCarrier.electricity
+  );
+  assert.deepEqual(validateMc001ExecutionTrace(shared.centralOutputEnergy.executionTrace), {
+    ok: true,
+    evaluatedExpression: null
+  });
+});
+
 test("rejects multiple Chapter 3 systems when explicit allocation fractions do not sum to one", () => {
   assert.throws(
     () =>

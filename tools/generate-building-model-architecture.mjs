@@ -185,10 +185,11 @@ const domains = Object.freeze([
     concept: "Chapter 3 technical systems",
     owner: "Technical Systems schema and Chapter 3 adapter",
     sourceOfTruth: "buildingDna.technicalSystems",
-    lifecycle: "explicit user engineering input; persisted with Building DNA; heating/cooling/DHW may contain multiple systems only with explicit allocation fractions",
+    lifecycle: "explicit user engineering input; persisted with Building DNA; heating/cooling/DHW may contain multiple systems only with explicit allocation fractions; shared physical generators live once under technicalSystems.sharedComponents.generators[] and services reference them by stable ID",
     responsibilities: [
-      "heating, cooling, ventilation/AHU, DHW, PCM storage and explicit LENI boundary",
+      "heating, cooling, ventilation/AHU, DHW, PCM storage, shared physical generators and explicit LENI boundary",
       "no hidden system assumptions",
+      "one physical shared generator identity with service references and no duplicate carrier accounting",
       "map to Chapter 3 integrated runtime"
     ],
     implementationRefs: [refs.chapter3Adapter, refs.chapter3ProductTest, refs.wizard]
@@ -1119,15 +1120,15 @@ const fields = [
   field({
     fieldId: "technical_systems.heating",
     path: "technicalSystems.heating.systems[].stages[] / chapter3_heating_*",
-    purpose: "Chapter 3 heating system topology with legacy explicit stage values plus P8D component contracts for emission, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves.",
+    purpose: "Chapter 3 heating system topology with legacy explicit stage values plus P8D component contracts for emission, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves. Systems may reference a P8G shared physical generator by stable generatorRef.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.heating",
     producer: "buildTechnicalSystemsFromForm",
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
-    dataType: "system stage array, component lossCalculation/auxiliaryCalculation contracts, kWh/month legacy explicit values, fractions and optional allocationFraction",
+    dataType: "system stage array, component lossCalculation/auxiliaryCalculation contracts, kWh/month legacy explicit values, fractions, optional allocationFraction and optional generatorRef",
     editable: true,
-    productionUsage: "drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8D component contracts calculate relations 3.1-3.14 where exposed, 3.17, 3.23-3.27, 3.29-3.32 and 3.34-3.37 when complete project/product inputs are supplied",
+    productionUsage: "drives_Chapter3_heating_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8D component contracts calculate relations 3.1-3.14 where exposed, 3.17, 3.23-3.27, 3.29-3.32 and 3.34-3.37 when complete project/product inputs are supplied; generatorRef delegates service generation to one shared physical generator without duplicate carrier accounting",
     uiLocation: "Instalatii tehnice / Incalzire",
     notebookLocation: "Chapter 3 heating sections",
     reportLocation: "Instalatii / Incalzire",
@@ -1178,21 +1179,46 @@ const fields = [
   field({
     fieldId: "technical_systems.dhw",
     path: "technicalSystems.domesticHotWater / chapter3_dhw_*",
-    purpose: "DHW useful demand, legacy explicit stage inputs, optional allocationFraction for multiple active DHW systems and P8C component contracts for distribution, pump auxiliary and storage losses.",
+    purpose: "DHW useful demand, legacy explicit stage inputs, optional allocationFraction for multiple active DHW systems and P8C component contracts for distribution, pump auxiliary and storage losses. Systems may reference a P8G shared physical generator by stable generatorRef.",
     category: "primitive_user_input",
     owner: "User through Technical Systems schema",
     sourceOfTruth: "buildingDna.technicalSystems.domesticHotWater",
     producer: "buildTechnicalSystemsFromForm",
     consumer: "buildChapter3RuntimeInputFromBuildingDna",
-    dataType: "kWh/month, stage array, optional allocationFraction, lossCalculation and auxiliaryCalculation component contracts",
+    dataType: "kWh/month, stage array, optional allocationFraction, optional generatorRef, lossCalculation and auxiliaryCalculation component contracts",
     editable: true,
-    productionUsage: "drives_Chapter3_DHW_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8C component contracts calculate relations 3.200-3.228 when complete product/project inputs are supplied",
+    productionUsage: "drives_Chapter3_DHW_system_energy; multiple active systems require explicit allocationFraction values summing to 1; P8C component contracts calculate relations 3.200-3.228 when complete product/project inputs are supplied; generatorRef delegates service generation to one shared physical generator without duplicate carrier accounting",
     uiLocation: "Instalatii tehnice / Apa calda de consum",
     notebookLocation: "Chapter 3 DHW sections",
     reportLocation: "Instalatii / ACM",
     uiRecommendation: "remain_editable",
     implementationRefs: [refs.wizard, refs.chapter3Adapter],
     tests: [refs.chapter3ProductTest]
+  }),
+  field({
+    fieldId: "technical_systems.shared_generators",
+    path: "technicalSystems.sharedComponents.generators[] / service systems generatorRef",
+    purpose: "P8G canonical physical shared or central generator component used by multiple Chapter 3 services without duplicating product data, losses, auxiliaries or carrier energy.",
+    category: "primitive_user_input",
+    owner: "User through Technical Systems schema",
+    sourceOfTruth: "buildingDna.technicalSystems.sharedComponents.generators[]",
+    producer: "buildTechnicalSystemsFromForm",
+    consumer: "buildChapter3RuntimeInputFromBuildingDna",
+    dataType: "stable componentId, connectedServices, serviceAllocationFractions, product/schedule fields, energyCarrier, auxiliaryCarrier and normative/provenance metadata",
+    editable: true,
+    productionUsage: "drives_P8G_shared_generator_relations_3.19_3.20_3.21_3.22_3.28_3.33_3.39; physical generator load, losses, auxiliaries and carrier energy are calculated once and allocated to services for reporting",
+    uiLocation: "Instalatii tehnice / Generator comun incalzire + ACM",
+    notebookLocation: "Chapter 3 shared generator sections",
+    reportLocation: "Instalatii / Generatoare partajate",
+    dependencies: ["technical_systems.heating", "technical_systems.dhw"],
+    uiRecommendation: "remain_editable",
+    implementationRefs: [refs.wizard, refs.chapter3Adapter, "src/physics-engine/mc001Chapter3IntegratedRuntime.mjs"],
+    tests: [
+      refs.chapter3ProductTest,
+      "src/physics-engine/tests/mc001Chapter3IntegratedRuntime.test.mjs",
+      "tests/building-platform-wizard-ui.mjs",
+      "validation-reference/python-mc001/tests/test_chapter3_heating.py"
+    ]
   }),
   field({
     fieldId: "technical_systems.pcm_storage",
@@ -1312,6 +1338,7 @@ const fields = [
       "technical_systems.cooling",
       "technical_systems.ventilation_ahu",
       "technical_systems.dhw",
+      "technical_systems.shared_generators",
       "technical_systems.pcm_storage",
       "technical_systems.lighting_boundary",
       "runtime.chapter2_monthly_useful_demand"
@@ -1614,8 +1641,8 @@ const uiAudit = Object.freeze([
   },
   {
     section: "Instalatii tehnice",
-    visibleFields: ["chapter3_heating_*", "chapter3_cooling_*", "chapter3_ventilation_ahu_*", "chapter3_dhw_*", "chapter3_pcm_*", "chapter3_lighting_*"],
-    recommendation: "keep editable with validation; continue showing explicit SR EN 15193-1 lighting boundary",
+    visibleFields: ["chapter3_heating_*", "chapter3_cooling_*", "chapter3_ventilation_ahu_*", "chapter3_dhw_*", "chapter3_shared_generator_*", "chapter3_pcm_*", "chapter3_lighting_*"],
+    recommendation: "keep editable with validation; shared physical generator product data is entered once and referenced by heating/DHW services; continue showing explicit SR EN 15193-1 lighting boundary",
     fieldsToHideOrRemove: [],
     architectureReason: "technicalSystems is the canonical Chapter 3 product input model"
   },
@@ -1759,6 +1786,7 @@ const targetArchitecture = Object.freeze({
     "Building DNA is the only persisted engineering input model.",
     "Adapters map Building DNA to physics input without duplicating formulas.",
     "Reports render persisted Building DNA and engine outputs without recalculation.",
+    "Shared physical Chapter 3 components have one canonical Building DNA identity; service-level rows reference or allocate that physical result and must not duplicate carrier energy.",
     "Legacy fields remain explicitly classified until removed."
   ],
   authoritativeOwners: {
@@ -1939,6 +1967,14 @@ ${data.targetArchitecture.rules.map(item => `- ${item}`).join("\n")}
 ## Target Architecture
 
 ${data.targetArchitecture.orderedFlow.map((item, index) => `${index + 1}. ${item}`).join("\n")}
+
+P8G Chapter 3 shared generation extension:
+
+- \`buildingDna.technicalSystems.sharedComponents.generators[]\` owns physical shared/central generators.
+- Service systems use stable \`generatorRef\` values to connect heating, DHW or future supported services to the physical generator.
+- The Physics Engine calculates physical generator output, losses, auxiliaries and carrier consumption once.
+- Service reporting allocations reference the physical result; allocation totals must reconcile to the physical totals within tolerance.
+- Legacy projects with separate service generators remain valid as separate explicit components until a user or migration can prove they are the same physical generator.
 
 ## Required Future Maintenance
 

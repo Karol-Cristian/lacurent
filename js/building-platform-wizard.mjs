@@ -112,6 +112,7 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     floor_insulated: "no",
     windows_replaced: "yes",
     chapter3_installations_enabled: "yes",
+    chapter3_shared_generator_enabled: "no",
     chapter3_heating_enabled: "yes",
     chapter3_heating_generator_type: "condensing_boiler",
     chapter3_heating_energy_carrier: "natural_gas",
@@ -455,6 +456,12 @@ function firstSystem(section) {
   return Array.isArray(section?.systems) ? section.systems[0] : null;
 }
 
+function firstSharedGenerator(technicalSystems = {}) {
+  return Array.isArray(technicalSystems.sharedComponents?.generators)
+    ? technicalSystems.sharedComponents.generators[0] ?? null
+    : null;
+}
+
 function stageValue(section, stageId, field) {
   const stage = firstSystem(section)?.stages?.find(item => item.stageId === stageId);
   const value = stage?.[field];
@@ -477,6 +484,35 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
   const values = {
     chapter3_installations_enabled: technicalSystems && Object.values(technicalSystems).some(value => value?.enabled === true) ? "yes" : "no"
   };
+  const sharedGenerator = firstSharedGenerator(technicalSystems);
+  values.chapter3_shared_generator_enabled = sharedGenerator ? "yes" : "no";
+  values.chapter3_shared_generator_type = sharedGenerator?.generatorType ?? "condensing_boiler";
+  values.chapter3_shared_generator_energy_carrier = sharedGenerator?.energyCarrier ?? "natural_gas";
+  values.chapter3_shared_generator_auxiliary_carrier = sharedGenerator?.auxiliaryCarrier ?? "electricity";
+  values.chapter3_shared_generator_control_loss_factor =
+    sharedGenerator?.controlLossFactor ?? "";
+  values.chapter3_shared_generator_operation_hours_month =
+    sharedGenerator?.operationHours ?? "";
+  values.chapter3_shared_generator_loss_power_kw =
+    sharedGenerator?.lossPowerKW ?? "";
+  values.chapter3_shared_generator_auxiliary_power_kw =
+    sharedGenerator?.auxiliaryPowerKW ?? "";
+  values.chapter3_shared_generator_aux_recovered_fraction =
+    sharedGenerator?.recoveredAuxiliaryFraction ?? "";
+  values.chapter3_shared_generator_aux_recoverable_fraction =
+    sharedGenerator?.auxiliaryRecoverableFractionToHeating ?? "";
+  values.chapter3_shared_generator_loss_recoverable_fraction =
+    sharedGenerator?.lossRecoverableFractionToHeating ?? "";
+  values.chapter3_shared_generator_boiler_room_recovery_factor =
+    sharedGenerator?.boilerRoomRecoveryFactor ?? "";
+  values.chapter3_shared_generator_renewable_heat_kwh_month =
+    sharedGenerator?.renewableGeneratorHeatKWh ?? "";
+  values.chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month =
+    sharedGenerator?.dhwStorageOrDistributionLossKWh ?? "";
+  values.chapter3_shared_generator_heating_allocation_fraction =
+    sharedGenerator?.serviceAllocationFractions?.heating ?? "";
+  values.chapter3_shared_generator_dhw_allocation_fraction =
+    sharedGenerator?.serviceAllocationFractions?.dhw ?? "";
   const sections = [
     ["heating", "chapter3_heating", CHAPTER3_INSTALLATION_STAGE_IDS],
     ["cooling", "chapter3_cooling", CHAPTER3_INSTALLATION_STAGE_IDS],
@@ -1057,10 +1093,19 @@ function renderInstallationsResults(workspace) {
         { label: "Serviciu", value: row => row.service },
         { label: "Sistem", value: row => row.systemId },
         { label: "Alocare", value: row => formatNumber(row.allocationFraction, 4) },
+        { label: "Generator ref.", value: row => row.generatorRef ?? "--" },
         { label: "Generator", value: row => row.generatorType ?? "--" },
         { label: "Purtator", value: row => row.energyCarrier ?? "--" },
         { label: "Total anual", value: row => `${formatNumber(row.annualInputKWh)} kWh/an` }
       ], workspace.installations.systemTopology) : ""}
+      ${(workspace.installations.sharedGenerators ?? []).length ? renderTable([
+        { label: "Generator fizic", value: row => row.componentId },
+        { label: "Servicii", value: row => (row.connectedServices ?? []).join(" + ") },
+        { label: "Iesire", value: row => `${formatNumber(row.annualOutputKWh)} kWh/an` },
+        { label: "Carrier", value: row => `${formatNumber(row.annualFuelInputKWh)} kWh/an ${row.energyCarrier ?? ""}` },
+        { label: "Auxiliari", value: row => `${formatNumber(row.annualAuxiliaryKWh)} kWh/an ${row.auxiliaryCarrier ?? ""}` },
+        { label: "Pierderi", value: row => `${formatNumber(row.annualLossKWh)} kWh/an` }
+      ], workspace.installations.sharedGenerators) : ""}
       ${renderTable([
         { label: "Luna", value: row => row.monthLabel ?? row.month },
         { label: "Incalzire [kWh]", value: row => formatNumber(row.heatingInputKWh) },
@@ -2040,10 +2085,91 @@ function serviceSystem(formData, prefix, stageIds, metadata = {}) {
   };
 }
 
+function sharedHeatingDhwGeneratorFromForm(formData) {
+  if (!yesValue(formData, "chapter3_shared_generator_enabled")) return null;
+  return {
+    componentId: "shared-generator-heating-dhw-main",
+    enabled: true,
+    generatorType:
+      formValue(formData, "chapter3_shared_generator_type") ||
+      formValue(formData, "chapter3_heating_generator_type") ||
+      "condensing_boiler",
+    energyCarrier:
+      formValue(formData, "chapter3_shared_generator_energy_carrier") ||
+      formValue(formData, "chapter3_heating_energy_carrier") ||
+      "natural_gas",
+    auxiliaryCarrier:
+      formValue(formData, "chapter3_shared_generator_auxiliary_carrier") ||
+      "electricity",
+    controlLossFactor: nonNegativeNumber(
+      formData,
+      "chapter3_shared_generator_control_loss_factor"
+    ),
+    operationHours: nonNegativeNumber(
+      formData,
+      "chapter3_shared_generator_operation_hours_month"
+    ),
+    lossPowerKW: nonNegativeNumber(formData, "chapter3_shared_generator_loss_power_kw"),
+    auxiliaryPowerKW: nonNegativeNumber(
+      formData,
+      "chapter3_shared_generator_auxiliary_power_kw"
+    ),
+    recoveredAuxiliaryFraction: fractionValue(
+      formData,
+      "chapter3_shared_generator_aux_recovered_fraction",
+      undefined
+    ),
+    auxiliaryRecoverableFractionToHeating: fractionValue(
+      formData,
+      "chapter3_shared_generator_aux_recoverable_fraction",
+      undefined
+    ),
+    lossRecoverableFractionToHeating: fractionValue(
+      formData,
+      "chapter3_shared_generator_loss_recoverable_fraction",
+      undefined
+    ),
+    boilerRoomRecoveryFactor: fractionValue(
+      formData,
+      "chapter3_shared_generator_boiler_room_recovery_factor",
+      undefined
+    ),
+    renewableGeneratorHeatKWh: nonNegativeNumber(
+      formData,
+      "chapter3_shared_generator_renewable_heat_kwh_month"
+    ),
+    dhwStorageOrDistributionLossKWh: nonNegativeNumber(
+      formData,
+      "chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month"
+    ),
+    serviceAllocationFractions: {
+      heating: fractionValue(
+        formData,
+        "chapter3_shared_generator_heating_allocation_fraction",
+        undefined
+      ),
+      dhw: fractionValue(
+        formData,
+        "chapter3_shared_generator_dhw_allocation_fraction",
+        undefined
+      )
+    },
+    serviceAllocationSource: {
+      origin: "explicit_engineering_input",
+      reference: "chapter3_shared_generator_service_allocation"
+    },
+    source: {
+      origin: "product_data",
+      reference: "chapter3_shared_generator_component_contract"
+    }
+  };
+}
+
 function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
   if (!yesValue(formData, "chapter3_installations_enabled")) {
     return undefined;
   }
+  const sharedGenerator = sharedHeatingDhwGeneratorFromForm(formData);
   const systems = {
     schema: TECHNICAL_SYSTEMS_SCHEMA,
     source: {
@@ -2171,6 +2297,21 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
       boundaryStatus: "explicit_input_boundary_sr_en_15193_1"
     }
   };
+  if (sharedGenerator) {
+    systems.sharedComponents = {
+      generators: [sharedGenerator]
+    };
+    if (systems.heating.systems[0]) {
+      systems.heating.systems[0].generatorRef = sharedGenerator.componentId;
+      systems.heating.systems[0].generatorType = sharedGenerator.generatorType;
+      systems.heating.systems[0].energyCarrier = sharedGenerator.energyCarrier;
+    }
+    if (systems.domesticHotWater.systems[0]) {
+      systems.domesticHotWater.systems[0].generatorRef = sharedGenerator.componentId;
+      systems.domesticHotWater.systems[0].generatorType = sharedGenerator.generatorType;
+      systems.domesticHotWater.systems[0].energyCarrier = sharedGenerator.energyCarrier;
+    }
+  }
   return systems;
 }
 

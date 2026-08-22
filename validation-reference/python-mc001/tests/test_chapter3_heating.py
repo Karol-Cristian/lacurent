@@ -10,11 +10,14 @@ from mc001_reference.chapter3_heating import (
     generator_auxiliary_recoverable_fraction,
     generator_auxiliary_recoverable_loss_kwh,
     generator_auxiliary_recovered_loss_kwh,
+    generation_loss_total_kwh,
     generator_envelope_recoverable_loss_kwh,
     generator_loss_energy_kwh,
     generator_loss_power_high_load_kw,
     generator_loss_power_low_load_kw,
     generator_standby_loss_power_kw,
+    heating_generation_auxiliary_total_kwh,
+    heating_generator_fuel_input_energy_kwh,
     heating_distribution_auxiliary_energy_kwh,
     heating_distribution_auxiliary_recoverable_kwh,
     heating_distribution_auxiliary_recovered_kwh,
@@ -28,7 +31,11 @@ from mc001_reference.chapter3_heating import (
     hydronic_pump_energy_use_factor,
     hydronic_reference_pump_power_kw,
     intermediate_load_factor,
+    recoverable_generation_loss_total_kwh,
+    shared_generator_reference_case,
     subsystem_input_energy_kwh,
+    total_generation_auxiliary_recovered_loss_kwh,
+    central_generator_output_energy_kwh,
 )
 
 
@@ -150,6 +157,48 @@ class Chapter3HeatingReferenceTests(unittest.TestCase):
         self.assertAlmostEqual(
             subsystem_input_energy_kwh(1000, 50, 12, 0.25, 0.1),
             1000 + 50 - 12 * 0.25 - 50 * 0.1,
+            places=12,
+        )
+
+    def test_shared_heating_dhw_generator_reference_case(self):
+        self.assertAlmostEqual(
+            central_generator_output_energy_kwh(1.05, [103], [53]),
+            161.15,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            heating_generation_auxiliary_total_kwh([3.25], [1.75]),
+            5,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            generation_loss_total_kwh(13, [7], 0),
+            20,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            total_generation_auxiliary_recovered_loss_kwh(0.65, [0.35]),
+            1,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            recoverable_generation_loss_total_kwh(3.9, [2.1], 2.25),
+            8.25,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            heating_generator_fuel_input_energy_kwh(161.15, 1, 20, 0),
+            180.15,
+            places=12,
+        )
+        reference = shared_generator_reference_case()
+        self.assertAlmostEqual(reference["output_kwh"], 161.15, places=12)
+        self.assertAlmostEqual(reference["fuel_input_kwh"], 180.15, places=12)
+        self.assertAlmostEqual(reference["heating_allocated_kwh"], 120.3475, places=12)
+        self.assertAlmostEqual(reference["dhw_allocated_kwh"], 64.8025, places=12)
+        self.assertAlmostEqual(
+            reference["heating_allocated_kwh"] + reference["dhw_allocated_kwh"],
+            reference["fuel_input_kwh"] + reference["auxiliary_kwh"],
             places=12,
         )
 

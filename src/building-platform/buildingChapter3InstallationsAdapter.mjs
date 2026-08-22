@@ -147,7 +147,7 @@ import { calculateMc001Chapter3IntegratedRuntime } from "../physics-engine/mc001
 
 export const TECHNICAL_SYSTEMS_SCHEMA = "technical_systems_v1";
 export const CHAPTER3_INSTALLATIONS_ADAPTER_VERSION =
-  "building_chapter_3_installations_adapter_p8e_v1";
+  "building_chapter_3_installations_adapter_p8g_v1";
 
 export const CHAPTER3_INPUT_CLASSIFICATION = Object.freeze({
   NUMERICALLY_IMPLEMENTED: "NUMERICALLY_IMPLEMENTED",
@@ -173,6 +173,45 @@ export const CHAPTER3_DHW_STAGE_IDS = Object.freeze([
 ]);
 
 export const CHAPTER3_INSTALLATIONS_PRODUCT_MAPPING_LEDGER = Object.freeze([
+  {
+    groupId: "shared_generation",
+    mc001RelationGroup: "MC001 Chapter 3 central/shared generator topology",
+    runtimeModule: "src/physics-engine/mc001Chapter3IntegratedRuntime.mjs",
+    requiredInputFields: Object.freeze([
+      "technicalSystems.sharedComponents.generators[].componentId",
+      "technicalSystems.sharedComponents.generators[].controlLossFactor",
+      "technicalSystems.sharedComponents.generators[].lossPowerKW",
+      "technicalSystems.sharedComponents.generators[].auxiliaryPowerKW",
+      "technicalSystems.sharedComponents.generators[].operationHours or operationTimeCalculation",
+      "technicalSystems.sharedComponents.generators[].serviceAllocationFractions when more than one service is connected",
+      "technicalSystems.heating.systems[].generatorRef / technicalSystems.domesticHotWater.systems[].generatorRef"
+    ]),
+    optionalInputFields: Object.freeze([
+      "generators[].energyCarrier",
+      "generators[].auxiliaryCarrier",
+      "generators[].renewableGeneratorHeatKWh",
+      "generators[].dhwStorageOrDistributionLossKWh",
+      "generators[].boilerRoomRecoveryFactor",
+      "generators[].recoveredAuxiliaryFraction",
+      "generators[].lossRecoverableFractionToHeating",
+      "generators[].auxiliaryRecoverableFractionToHeating"
+    ]),
+    units: Object.freeze(["kWh/month", "kW", "h/month", "fraction"]),
+    enumValues: Object.freeze({
+      serviceReference: Object.freeze(["heating", "dhw", "cooling"]),
+      energyCarrier: Object.freeze(["natural_gas", "electricity", "district_heat", "biomass", "explicit_other"])
+    }),
+    outputs: Object.freeze([
+      "monthly.sharedGenerators[]",
+      "monthly.*.sharedGeneratorAllocations[]",
+      "energyByCarrier"
+    ]),
+    notebookSection: "chapter3.month.*.sharedGenerators",
+    reportSection: "instalatii_capitolul_3.shared_generation",
+    uiSection: "installations.shared_generation",
+    persistencePath: "buildingDna.technicalSystems.sharedComponents.generators",
+    testFixture: "buildingChapter3InstallationsProduct.test.mjs"
+  },
   {
     groupId: "heating",
     mc001RelationGroup: "MC001 Chapter 3 system-energy chain, heating stages",
@@ -525,6 +564,52 @@ function noCoolingStorageBranch(path, sourcePath = "lossCalculation") {
     }),
     derivedFractions: {}
   };
+}
+
+function sharedGeneratorReferenceStageSource({ service, stageId, generatorRef, path }) {
+  return sourceDescriptor({
+    classification: CHAPTER3_INPUT_CLASSIFICATION.PROCEDURALLY_IMPLEMENTED,
+    origin: "mc001_shared_generator_service_reference",
+    reference: path,
+    formulaIds: [
+      "MC001_3_21_HEATING_GENERATION_AUXILIARY_TOTAL",
+      "MC001_3_22_GENERATION_LOSS_TOTAL",
+      "MC001_3_28_RECOVERABLE_GENERATION_LOSS_TOTAL",
+      "MC001_3_33_TOTAL_GENERATION_AUXILIARY_RECOVERED_LOSS",
+      "MC001_3_39_CENTRAL_GENERATOR_OUTPUT_ENERGY"
+    ],
+    details: {
+      service,
+      stageId,
+      generatorRef,
+      boundary:
+        "The service generation stage is delegated to the referenced physical shared generator; local generation losses/auxiliaries are not evaluated as independent duplicated service values."
+    }
+  });
+}
+
+function applySharedGeneratorReferenceToStages(stages, { service, generatorRef }) {
+  if (!generatorRef) return stages;
+  return stages.map(stage => {
+    if (stage.stageId !== "generation") return stage;
+    const source = sharedGeneratorReferenceStageSource({
+      service,
+      stageId: stage.stageId,
+      generatorRef,
+      path: `${service}.stages.${stage.stageId}.generatorRef`
+    });
+    return {
+      ...stage,
+      lossKWh: 0,
+      auxiliaryKWh: 0,
+      lossSource: source,
+      auxiliarySource: source,
+      auxiliaryRecoveredFraction: 0,
+      lossRecoveredFraction: 0,
+      auxiliaryRecoverableFractionToHeating: 0,
+      lossRecoverableFractionToHeating: 0
+    };
+  });
 }
 
 function calculateHeatingEmissionLossContract(input, monthIndex, path, stageOutputKWh) {
@@ -2554,25 +2639,30 @@ function serviceSystemsForMonth(
   const systems = activeSystems(section, path, diagnostics, { allowMultiple: true });
   if (!systems) return null;
   const multiple = systems.length > 1;
-  return systems.map((system, index) => ({
-    systemId: system.systemId ?? `${service}-system-${index + 1}`,
-    allocationFraction: multiple ? system.allocationFraction : 1,
-    stages: serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostics, {
+  return systems.map((system, index) => {
+    const generatorRef = system.generatorRef ?? null;
+    const stages = serviceStagesForMonth(system, service, stageIds, monthIndex, diagnostics, {
       usefulDemandKWh,
       allocationFraction: multiple ? system.allocationFraction : 1
-    }),
-    metadata: {
+    });
+    return {
       systemId: system.systemId ?? `${service}-system-${index + 1}`,
-      generatorType: system.generatorType ?? null,
-      energyCarrier: system.energyCarrier ?? null,
-      servedScope: system.servedScope ?? "whole_building",
-      nominalCapacityKW: system.nominalCapacityKW ?? null
-    },
-    source: system.source ?? {
-      origin: multiple ? "explicit_parallel_system_allocation" : "explicit_engineering_input",
-      reference: `${path}.systems[${index}]`
-    }
-  }));
+      allocationFraction: multiple ? system.allocationFraction : 1,
+      stages: applySharedGeneratorReferenceToStages(stages, { service, generatorRef }),
+      metadata: {
+        systemId: system.systemId ?? `${service}-system-${index + 1}`,
+        generatorRef,
+        generatorType: system.generatorType ?? null,
+        energyCarrier: system.energyCarrier ?? null,
+        servedScope: system.servedScope ?? "whole_building",
+        nominalCapacityKW: system.nominalCapacityKW ?? null
+      },
+      source: system.source ?? {
+        origin: multiple ? "explicit_parallel_system_allocation" : "explicit_engineering_input",
+        reference: `${path}.systems[${index}]`
+      }
+    };
+  });
 }
 
 function monthlyUsefulDemand(chapter2Result) {
@@ -2942,6 +3032,141 @@ export function hasActiveChapter3TechnicalSystems(buildingDna = {}) {
   ].some(enabled);
 }
 
+function sharedGeneratorComponents(technicalSystems = {}) {
+  const generators = technicalSystems.sharedComponents?.generators;
+  return Array.isArray(generators)
+    ? generators.filter(generator => generator?.enabled !== false)
+    : [];
+}
+
+function serviceSystemsWithGeneratorRefs(technicalSystems = {}) {
+  return [
+    ["heating", technicalSystems.heating],
+    ["cooling", technicalSystems.cooling],
+    ["dhw", technicalSystems.domesticHotWater]
+  ].flatMap(([service, section]) =>
+    (Array.isArray(section?.systems) ? section.systems : [])
+      .filter(system => system?.enabled !== false && system?.generatorRef)
+      .map(system => ({
+        service,
+        systemId: system.systemId ?? null,
+        generatorRef: system.generatorRef
+      }))
+  );
+}
+
+function finiteMonthlyOrScalar(value, { fraction = false } = {}) {
+  const valid = item =>
+    finiteNonNegative(item) && (!fraction || item <= 1);
+  if (Array.isArray(value)) return value.length === 12 && value.every(valid);
+  return valid(value);
+}
+
+function validateSharedGeneratorTopology(technicalSystems = {}) {
+  const diagnostics = [];
+  const generators = sharedGeneratorComponents(technicalSystems);
+  const ids = new Set();
+  for (const [index, generator] of generators.entries()) {
+    const path = `technicalSystems.sharedComponents.generators[${index}]`;
+    if (typeof generator.componentId !== "string" || generator.componentId.trim() === "") {
+      diagnostics.push(diagnostic(
+        "missing_shared_generator_component_id",
+        `${path}.componentId`,
+        "Shared physical generators require a stable componentId."
+      ));
+      continue;
+    }
+    if (ids.has(generator.componentId)) {
+      diagnostics.push(diagnostic(
+        "duplicate_shared_generator_component_id",
+        `${path}.componentId`,
+        "Shared physical generator componentId values must be unique."
+      ));
+    }
+    ids.add(generator.componentId);
+    for (const field of [
+      "controlLossFactor",
+      "lossPowerKW",
+      "auxiliaryPowerKW",
+      "operationHours",
+      "renewableGeneratorHeatKWh",
+      "dhwStorageOrDistributionLossKWh"
+    ]) {
+      if (field === "operationHours" && isPlainObject(generator.operationTimeCalculation)) continue;
+      if (!finiteMonthlyOrScalar(generator[field])) {
+        diagnostics.push(diagnostic(
+          "invalid_shared_generator_component_input",
+          `${path}.${field}`,
+          `Shared generator ${generator.componentId} requires finite non-negative ${field}.`
+        ));
+      }
+    }
+    for (const field of [
+      "recoveredAuxiliaryFraction",
+      "auxiliaryRecoverableFractionToHeating",
+      "lossRecoverableFractionToHeating",
+      "boilerRoomRecoveryFactor"
+    ]) {
+      if (!finiteMonthlyOrScalar(generator[field], { fraction: true })) {
+        diagnostics.push(diagnostic(
+          "invalid_shared_generator_fraction_input",
+          `${path}.${field}`,
+          `Shared generator ${generator.componentId} requires ${field} as a fraction between 0 and 1.`
+        ));
+      }
+    }
+  }
+
+  const refs = serviceSystemsWithGeneratorRefs(technicalSystems);
+  for (const ref of refs) {
+    if (!ids.has(ref.generatorRef)) {
+      diagnostics.push(diagnostic(
+        "missing_shared_generator_reference",
+        `technicalSystems.${ref.service}.systems[].generatorRef`,
+        `Service system ${ref.systemId ?? "(unknown)"} references missing shared generator ${ref.generatorRef}.`
+      ));
+    }
+  }
+
+  for (const generator of generators) {
+    const connectedServices = [
+      ...new Set(refs
+        .filter(ref => ref.generatorRef === generator.componentId)
+        .map(ref => ref.service))
+    ];
+    if (connectedServices.length <= 1) continue;
+    if (!isPlainObject(generator.serviceAllocationFractions)) {
+      diagnostics.push(diagnostic(
+        "missing_shared_generator_service_allocation_fractions",
+        `technicalSystems.sharedComponents.generators.${generator.componentId}.serviceAllocationFractions`,
+        "A physical generator serving multiple services requires explicit serviceAllocationFractions unless a source-backed normative allocation rule is implemented."
+      ));
+      continue;
+    }
+    let total = 0;
+    for (const service of connectedServices) {
+      const allocation = generator.serviceAllocationFractions[service];
+      if (!finiteNumber(allocation) || allocation < 0 || allocation > 1) {
+        diagnostics.push(diagnostic(
+          "invalid_shared_generator_service_allocation_fraction",
+          `technicalSystems.sharedComponents.generators.${generator.componentId}.serviceAllocationFractions.${service}`,
+          "Shared generator service allocation fractions must be finite values between 0 and 1."
+        ));
+      } else {
+        total += allocation;
+      }
+    }
+    if (Math.abs(total - 1) > 1e-9) {
+      diagnostics.push(diagnostic(
+        "invalid_shared_generator_service_allocation_sum",
+        `technicalSystems.sharedComponents.generators.${generator.componentId}.serviceAllocationFractions`,
+        "Shared generator service allocation fractions for connected services must sum to 1."
+      ));
+    }
+  }
+  return diagnostics;
+}
+
 export function validateTechnicalSystems(technicalSystems = {}) {
   if (technicalSystems === undefined || technicalSystems === null) return { ok: true, diagnostics: [] };
   if (!isPlainObject(technicalSystems)) {
@@ -2959,7 +3184,8 @@ export function validateTechnicalSystems(technicalSystems = {}) {
       diagnostics: [diagnostic("unsupported_technical_systems_schema", "technicalSystems.schema")]
     };
   }
-  return { ok: true, diagnostics: [] };
+  const diagnostics = validateSharedGeneratorTopology(technicalSystems);
+  return { ok: diagnostics.length === 0, diagnostics };
 }
 
 export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapter2Result = {}) {
@@ -2986,6 +3212,9 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
   const ventilationAhuEnabled = enabled(technicalSystems.ventilationAhu);
   const pcmEnabled = enabled(technicalSystems.coolingStoragePcm);
   const lighting = lightingInput(technicalSystems.lighting, buildingDna, diagnostics);
+  const sharedComponents = {
+    generators: sharedGeneratorComponents(technicalSystems).map(generator => deepClone(generator))
+  };
   const heatingSystems = heatingEnabled
     ? activeSystems(technicalSystems.heating, "technicalSystems.heating", diagnostics, { allowMultiple: true })
     : null;
@@ -3080,10 +3309,12 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
           systemId: heatingSystems[0].systemId ?? "heating-system-1",
           generatorType: heatingSystems[0].generatorType ?? null,
           energyCarrier: heatingSystems[0].energyCarrier ?? null,
+          generatorRef: heatingSystems[0].generatorRef ?? null,
           servedScope: heatingSystems[0].servedScope ?? "whole_building"
         } : null,
         heatingSystems: (heatingSystems ?? []).map((system, index) => ({
           systemId: system.systemId ?? `heating-system-${index + 1}`,
+          generatorRef: system.generatorRef ?? null,
           generatorType: system.generatorType ?? null,
           energyCarrier: system.energyCarrier ?? null,
           servedScope: system.servedScope ?? "whole_building",
@@ -3093,10 +3324,12 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
           systemId: coolingSystems[0].systemId ?? "cooling-system-1",
           generatorType: coolingSystems[0].generatorType ?? null,
           energyCarrier: coolingSystems[0].energyCarrier ?? null,
+          generatorRef: coolingSystems[0].generatorRef ?? null,
           servedScope: coolingSystems[0].servedScope ?? "whole_building"
         } : null,
         coolingSystems: (coolingSystems ?? []).map((system, index) => ({
           systemId: system.systemId ?? `cooling-system-${index + 1}`,
+          generatorRef: system.generatorRef ?? null,
           generatorType: system.generatorType ?? null,
           energyCarrier: system.energyCarrier ?? null,
           servedScope: system.servedScope ?? "whole_building",
@@ -3104,11 +3337,15 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
         })),
         dhw: dhwSystems?.[0]
           ? {
-              energyCarrier: dhwSystems[0].energyCarrier ?? null
+              systemId: dhwSystems[0].systemId ?? "dhw-system-1",
+              generatorType: dhwSystems[0].generatorType ?? null,
+              energyCarrier: dhwSystems[0].energyCarrier ?? null,
+              generatorRef: dhwSystems[0].generatorRef ?? null
             }
           : null,
         dhwSystems: (dhwSystems ?? []).map((system, index) => ({
           systemId: system.systemId ?? `dhw-system-${index + 1}`,
+          generatorRef: system.generatorRef ?? null,
           generatorType: system.generatorType ?? null,
           energyCarrier: system.energyCarrier ?? null,
           servedScope: system.servedScope ?? "whole_building",
@@ -3119,6 +3356,7 @@ export function buildChapter3RuntimeInputFromBuildingDna(buildingDna = {}, chapt
             ? null
             : "explicit LENI/monthly lighting-energy boundary; full SR EN 15193-1 lighting engine pending source"
       },
+      ...(sharedComponents.generators.length > 0 ? { sharedComponents } : {}),
       months,
       ...(lighting === null ? {} : { lighting })
     },

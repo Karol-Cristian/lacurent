@@ -481,6 +481,53 @@ await test("wizard maps installation fields into canonical technical systems", (
   assert.equal(html.includes("Calculul detaliat normativ al iluminatului conform SR EN 15193-1"), true);
 });
 
+await test("wizard maps shared heating and ACM generator into one canonical component", () => {
+  const answers = mapWizardAnswersToAssistedAnswers(formData({
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    chapter3_cooling_enabled: "no",
+    chapter3_ventilation_ahu_enabled: "no",
+    chapter3_pcm_enabled: "no",
+    chapter3_lighting_enabled: "no",
+    chapter3_shared_generator_enabled: "yes",
+    chapter3_shared_generator_type: "condensing_boiler",
+    chapter3_shared_generator_energy_carrier: "natural_gas",
+    chapter3_shared_generator_auxiliary_carrier: "electricity",
+    chapter3_shared_generator_control_loss_factor: "1.05",
+    chapter3_shared_generator_operation_hours_month: "100",
+    chapter3_shared_generator_loss_power_kw: "0.2",
+    chapter3_shared_generator_auxiliary_power_kw: "0.05",
+    chapter3_shared_generator_aux_recovered_fraction: "0.2",
+    chapter3_shared_generator_aux_recoverable_fraction: "0.5",
+    chapter3_shared_generator_loss_recoverable_fraction: "0.3",
+    chapter3_shared_generator_boiler_room_recovery_factor: "0.1",
+    chapter3_shared_generator_renewable_heat_kwh_month: "0",
+    chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month: "0",
+    chapter3_shared_generator_heating_allocation_fraction: "0.7",
+    chapter3_shared_generator_dhw_allocation_fraction: "0.3"
+  }));
+
+  const generator = answers.technicalSystems.sharedComponents.generators[0];
+  assert.equal(generator.componentId, "shared-generator-heating-dhw-main");
+  assert.equal(answers.technicalSystems.heating.systems[0].generatorRef, generator.componentId);
+  assert.equal(
+    answers.technicalSystems.domesticHotWater.systems[0].generatorRef,
+    generator.componentId
+  );
+  assert.equal(generator.energyCarrier, "natural_gas");
+  assert.equal(generator.auxiliaryCarrier, "electricity");
+  assert.deepEqual(generator.serviceAllocationFractions, { heating: 0.7, dhw: 0.3 });
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.technicalWorkspace.installations.sharedGenerators.length, 1);
+  assert.equal(
+    preview.technicalWorkspace.installations.sharedGenerators[0].componentId,
+    generator.componentId
+  );
+  const html = renderEngineeringModelReview(preview);
+  assert.equal(html.includes("shared-generator-heating-dhw-main"), true);
+});
+
 await test("wizard can map ACM useful demand to the normative residential calculation source", () => {
   const answers = mapWizardAnswersToAssistedAnswers(formData({
     ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
