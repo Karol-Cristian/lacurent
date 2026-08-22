@@ -446,3 +446,51 @@ def maximum_flow_factor_from_part_load(
     delta_flow_factor: float,
 ) -> float:
     return part_load_factor + delta_flow_factor
+
+
+def ahu_distribution_thermal_loss_kwh(
+    air_density_kg_m3: float,
+    air_specific_heat_kj_kgk: float,
+    supply_distribution_air_flow_m3_h: float,
+    supply_duct_unconditioned_delta_k: float,
+    supply_duct_conditioned_deltas_k: list[float],
+    extract_distribution_air_flow_m3_h: float,
+    extract_duct_delta_k: float,
+    supply_leakage_zone_terms: list[tuple[float, float]],
+    unconditioned_leakage_air_flow_m3_h: float,
+    supply_distribution_inlet_c: float,
+    unconditioned_surrounding_c: float,
+    calculation_hours: float,
+) -> float:
+    conditioned_delta = sum(supply_duct_conditioned_deltas_k)
+    leakage_zone_sum = sum(
+        leakage_flow * (supply_distribution_inlet_c - zone_temperature_c)
+        for leakage_flow, zone_temperature_c in supply_leakage_zone_terms
+    )
+    unconditioned_leakage = unconditioned_leakage_air_flow_m3_h * (
+        supply_distribution_inlet_c - unconditioned_surrounding_c
+    )
+    airflow_temperature_sum = (
+        supply_distribution_air_flow_m3_h * (supply_duct_unconditioned_delta_k + conditioned_delta)
+        + extract_distribution_air_flow_m3_h * extract_duct_delta_k
+        + leakage_zone_sum
+        + unconditioned_leakage
+    )
+    return air_density_kg_m3 * air_specific_heat_kj_kgk * airflow_temperature_sum * calculation_hours / 3600
+
+
+def ahu_recoverable_distribution_loss_to_zone_kwh(
+    air_density_kg_m3: float,
+    air_specific_heat_kj_kgk: float,
+    zone_supply_air_flow_m3_h: float,
+    conditioned_supply_duct_delta_k: float,
+    zone_supply_leakage_air_flow_m3_h: float,
+    supply_distribution_inlet_c: float,
+    zone_indoor_temperature_c: float,
+    calculation_hours: float,
+) -> float:
+    airflow_temperature_sum = (
+        zone_supply_air_flow_m3_h * conditioned_supply_duct_delta_k
+        + zone_supply_leakage_air_flow_m3_h * (supply_distribution_inlet_c - zone_indoor_temperature_c)
+    )
+    return air_density_kg_m3 * air_specific_heat_kj_kgk * airflow_temperature_sum * calculation_hours / 3600

@@ -1614,6 +1614,158 @@ export function calculateMaximumFlowFactorFromPartLoad(input) {
   });
 }
 
+export function calculateAhuDistributionThermalLoss(input) {
+  const {
+    airDensityKgPerM3,
+    airSpecificHeatKJPerKgK,
+    supplyDistributionAirFlowM3PerH,
+    supplyDuctUnconditionedTemperatureDifferenceK = 0,
+    supplyDuctConditionedTemperatureDifferencesK = [],
+    extractDistributionAirFlowM3PerH,
+    extractDuctTemperatureDifferenceK = 0,
+    supplyLeakageZoneTerms = [],
+    unconditionedLeakageAirFlowM3PerH = 0,
+    supplyDistributionInletTemperatureC,
+    unconditionedSurroundingTemperatureC,
+    calculationHours
+  } = input ?? {};
+
+  assertFinitePositiveNumber(airDensityKgPerM3, "airDensityKgPerM3");
+  assertFinitePositiveNumber(airSpecificHeatKJPerKgK, "airSpecificHeatKJPerKgK");
+  assertFiniteNumber(supplyDistributionAirFlowM3PerH, "supplyDistributionAirFlowM3PerH");
+  assertFiniteNumber(
+    supplyDuctUnconditionedTemperatureDifferenceK,
+    "supplyDuctUnconditionedTemperatureDifferenceK"
+  );
+  if (!Array.isArray(supplyDuctConditionedTemperatureDifferencesK)) {
+    throw new Error("supplyDuctConditionedTemperatureDifferencesK must be an array");
+  }
+  const conditionedSupplyDeltaK = supplyDuctConditionedTemperatureDifferencesK.reduce(
+    (total, value, index) => {
+      assertFiniteNumber(value, `supplyDuctConditionedTemperatureDifferencesK[${index}]`);
+      return total + value;
+    },
+    0
+  );
+  assertFiniteNumber(extractDistributionAirFlowM3PerH, "extractDistributionAirFlowM3PerH");
+  assertFiniteNumber(extractDuctTemperatureDifferenceK, "extractDuctTemperatureDifferenceK");
+  if (!Array.isArray(supplyLeakageZoneTerms)) {
+    throw new Error("supplyLeakageZoneTerms must be an array");
+  }
+  assertFiniteNumber(unconditionedLeakageAirFlowM3PerH, "unconditionedLeakageAirFlowM3PerH");
+  assertFiniteNumber(supplyDistributionInletTemperatureC, "supplyDistributionInletTemperatureC");
+  assertFiniteNumber(unconditionedSurroundingTemperatureC, "unconditionedSurroundingTemperatureC");
+  assertFiniteNonNegativeNumber(calculationHours, "calculationHours");
+
+  const leakageZoneDeltaFlowK = supplyLeakageZoneTerms.reduce((total, item, index) => {
+    assertFiniteNumber(item.leakageAirFlowM3PerH, `supplyLeakageZoneTerms[${index}].leakageAirFlowM3PerH`);
+    assertFiniteNumber(item.zoneIndoorTemperatureC, `supplyLeakageZoneTerms[${index}].zoneIndoorTemperatureC`);
+    return total +
+      item.leakageAirFlowM3PerH *
+        (supplyDistributionInletTemperatureC - item.zoneIndoorTemperatureC);
+  }, 0);
+  const unconditionedLeakageDeltaFlowK =
+    unconditionedLeakageAirFlowM3PerH *
+    (supplyDistributionInletTemperatureC - unconditionedSurroundingTemperatureC);
+  const airflowTemperatureSum =
+    supplyDistributionAirFlowM3PerH *
+      (supplyDuctUnconditionedTemperatureDifferenceK + conditionedSupplyDeltaK) +
+    extractDistributionAirFlowM3PerH * extractDuctTemperatureDifferenceK +
+    leakageZoneDeltaFlowK +
+    unconditionedLeakageDeltaFlowK;
+  const valueKWh =
+    airDensityKgPerM3 *
+    airSpecificHeatKJPerKgK *
+    airflowTemperatureSum *
+    calculationHours /
+    3600;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_92_AHU_DISTRIBUTION_THERMAL_LOSS",
+    formulaText:
+      "QV,ls,dis = rhoa*ca*(qSUP,dis,in*(DeltaThetaSUP,du,nc+sum DeltaThetaSUP,du,zt) + qETA,dis,out*DeltaThetaETA,du + sum qSUP,lea,du,zv*(thetaSUP,dis,in-thetaIDA,zv) + qlea,dis,nc*(thetaSUP,dis,in-thetaSur,nc))*tci/3600",
+    inputs: {
+      airDensityKgPerM3,
+      airSpecificHeatKJPerKgK,
+      supplyDistributionAirFlowM3PerH,
+      supplyDuctUnconditionedTemperatureDifferenceK,
+      supplyDuctConditionedTemperatureDifferencesK,
+      extractDistributionAirFlowM3PerH,
+      extractDuctTemperatureDifferenceK,
+      supplyLeakageZoneTerms,
+      unconditionedLeakageAirFlowM3PerH,
+      supplyDistributionInletTemperatureC,
+      unconditionedSurroundingTemperatureC,
+      calculationHours
+    },
+    extra: {
+      conditionedSupplyDeltaK,
+      leakageZoneDeltaFlowK,
+      unconditionedLeakageDeltaFlowK,
+      airflowTemperatureSum
+    }
+  });
+}
+
+export function calculateAhuRecoverableDistributionLossToZone(input) {
+  const {
+    airDensityKgPerM3,
+    airSpecificHeatKJPerKgK,
+    zoneSupplyAirFlowM3PerH,
+    conditionedSupplyDuctTemperatureDifferenceK,
+    zoneSupplyLeakageAirFlowM3PerH = 0,
+    supplyDistributionInletTemperatureC,
+    zoneIndoorTemperatureC,
+    calculationHours
+  } = input ?? {};
+
+  assertFinitePositiveNumber(airDensityKgPerM3, "airDensityKgPerM3");
+  assertFinitePositiveNumber(airSpecificHeatKJPerKgK, "airSpecificHeatKJPerKgK");
+  assertFiniteNumber(zoneSupplyAirFlowM3PerH, "zoneSupplyAirFlowM3PerH");
+  assertFiniteNumber(
+    conditionedSupplyDuctTemperatureDifferenceK,
+    "conditionedSupplyDuctTemperatureDifferenceK"
+  );
+  assertFiniteNumber(zoneSupplyLeakageAirFlowM3PerH, "zoneSupplyLeakageAirFlowM3PerH");
+  assertFiniteNumber(supplyDistributionInletTemperatureC, "supplyDistributionInletTemperatureC");
+  assertFiniteNumber(zoneIndoorTemperatureC, "zoneIndoorTemperatureC");
+  assertFiniteNonNegativeNumber(calculationHours, "calculationHours");
+
+  const airflowTemperatureSum =
+    zoneSupplyAirFlowM3PerH * conditionedSupplyDuctTemperatureDifferenceK +
+    zoneSupplyLeakageAirFlowM3PerH *
+      (supplyDistributionInletTemperatureC - zoneIndoorTemperatureC);
+  const valueKWh =
+    airDensityKgPerM3 *
+    airSpecificHeatKJPerKgK *
+    airflowTemperatureSum *
+    calculationHours /
+    3600;
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_93_AHU_DISTRIBUTION_RECOVERABLE_LOSS_TO_ZONE",
+    formulaText:
+      "QV,ls,dis,rbl,zt = (qSUP,zt*rhoa*ca*DeltaThetaSUP,du,cnd + qSUP,lea,du,zt*rhoa*ca*(thetaSUP,dis,in-thetaIDA,zt))*tci/3600",
+    inputs: {
+      airDensityKgPerM3,
+      airSpecificHeatKJPerKgK,
+      zoneSupplyAirFlowM3PerH,
+      conditionedSupplyDuctTemperatureDifferenceK,
+      zoneSupplyLeakageAirFlowM3PerH,
+      supplyDistributionInletTemperatureC,
+      zoneIndoorTemperatureC,
+      calculationHours
+    },
+    extra: { airflowTemperatureSum }
+  });
+}
+
 export function calculateCoolingDistributionLoss(input) {
   const { coolingLossFactor, usefulCoolingDemandKWh, emissionLossKWh, ahuCoolingOutputRequiredKWh } =
     input ?? {};
@@ -3045,24 +3197,34 @@ export function calculateCoolingDryHeatRejectionWaterTemperature(input) {
 
 export function calculateCoolingRecoverableHeatByCompression(input) {
   const result = calculateCoolingHeatRejectedByCompression(input);
+  const formulaId = "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR";
   return {
     ...result,
-    formulaId: "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR",
+    formulaId,
     trace: {
       ...result.trace,
-      formulaId: "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR"
+      formulaId
+    },
+    executionTrace: {
+      ...result.executionTrace,
+      formulaId
     }
   };
 }
 
 export function calculateCoolingRecoverableHeatByAbsorption(input) {
   const result = calculateCoolingHeatRejectedByAbsorption(input);
+  const formulaId = "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR";
   return {
     ...result,
-    formulaId: "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR",
+    formulaId,
     trace: {
       ...result.trace,
-      formulaId: "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR"
+      formulaId
+    },
+    executionTrace: {
+      ...result.executionTrace,
+      formulaId
     }
   };
 }

@@ -107,6 +107,60 @@ function monthlyServiceLines(month, serviceKey) {
   return lines;
 }
 
+function resultScalar(result) {
+  const candidates = [
+    ["valueKWh", "kWh"],
+    ["valueKg", "kg"],
+    ["valueM", "m"],
+    ["valueC", "degC"],
+    ["value", result?.unit ?? ""]
+  ];
+  for (const [field, unit] of candidates) {
+    if (isFiniteAmount(result?.[field])) {
+      return { value: result[field], unit };
+    }
+  }
+  return { value: null, unit: result?.unit ?? "" };
+}
+
+const PCM_CALCULATION_SYMBOLS = Object.freeze({
+  storageInput: "QC,sto,in",
+  sensibleLiquid: "ΔQC,sto,sensliq",
+  latent: "ΔQC,sto,lat",
+  sensibleSolid: "ΔQC,sto,senssld",
+  outputEnergy: "QC,sto,out",
+  transformableWater: "ΔQC,sto,w",
+  initialIceThickness: "dice,0",
+  iceMassVariation: "ΔmC,sto,ice",
+  iceThickness: "dice",
+  solidMassAfterUse: "mC,sto,sld",
+  pcmSolidMassVariation: "ΔmC,sto,pcm",
+  pcmLimitedToLiquid: "ΔmC,sto,pcm,liq",
+  pcmLimitedToExistingSolid: "ΔmC,sto,pcm,sld",
+  pcmSolidTemperature: "thetaC,sto,sld",
+  sensibleStorage: "ΔQC,sto,senssld",
+  inputLimit: "ΔQC,sto,limit",
+  solidMassDecrease: "ΔmC,sto,sld",
+  pcmLiquidTemperature: "thetaC,sto,liq",
+  generatorDelta: "ΔQC,sto,gen"
+});
+
+function pcmCalculationLines(month) {
+  const calculations = month.coolingStoragePcm?.calculations ?? null;
+  if (!calculations) return [];
+  return Object.entries(calculations).map(([key, result]) => {
+    const scalar = resultScalar(result);
+    const symbol = PCM_CALCULATION_SYMBOLS[key] ?? key;
+    return line(
+      `${month.month}.pcm.${key}`,
+      `${symbol},${month.month} := ${value(scalar.value, scalar.unit)} -- ${result.formulaId}`,
+      scalar.value,
+      scalar.unit,
+      result.formulaId
+    );
+  });
+}
+
 function sharedGeneratorLines(month) {
   return (month.sharedGenerators ?? []).flatMap(generator => [
     line(
@@ -221,29 +275,7 @@ export function buildChapter3NotebookSections(chapter3Result) {
           ]
         : []),
       ...(month.coolingStoragePcm
-        ? [
-            line(
-              `${month.month}.pcm.sensible`,
-              `ΔQC,sto,senssld,${month.month} := ${value(month.coolingStoragePcm.sensibleStorage.valueKWh, "kWh")}`,
-              month.coolingStoragePcm.sensibleStorage.valueKWh,
-              "kWh",
-              month.coolingStoragePcm.sensibleStorage.formulaId
-            ),
-            line(
-              `${month.month}.pcm.limit`,
-              `ΔQC,sto,limit,${month.month} := ${value(month.coolingStoragePcm.inputLimit.valueKWh, "kWh")}`,
-              month.coolingStoragePcm.inputLimit.valueKWh,
-              "kWh",
-              month.coolingStoragePcm.inputLimit.formulaId
-            ),
-            line(
-              `${month.month}.pcm.mass_decrease`,
-              `ΔmC,sto,sld,${month.month} := ${value(month.coolingStoragePcm.solidMassDecrease.valueKg, "kg")}`,
-              month.coolingStoragePcm.solidMassDecrease.valueKg,
-              "kg",
-              month.coolingStoragePcm.solidMassDecrease.formulaId
-            )
-          ]
+        ? pcmCalculationLines(month)
         : []),
       line(
         `${month.month}.lighting`,

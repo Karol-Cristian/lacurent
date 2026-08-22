@@ -147,7 +147,31 @@ function technicalSystems(overrides = {}) {
         generatorOutletFlowDeltaK: 12.755102040816327,
         massDecreaseTransformableEnergyKWh: -0.5,
         latentHeatKWhPerKg: 0.0271,
-        initialSolidMassKg: 20
+        initialSolidMassKg: 20,
+        storageInputKWh: 10,
+        storageInputLossKWh: 0.2,
+        storageStandbyLossKWh: 0.3,
+        storageOutputSideLossKWh: 0.1,
+        liquidMassKg: 80,
+        liquidSpecificHeatKWhPerKgK: 0.00116,
+        mediumDensityKgPerM3: 1000,
+        mediumVolumeM3: 0.05,
+        mediumSpecificHeatKWhPerKgK: 0.00116,
+        generatorRequiredOutletTemperatureC: 18,
+        storageTemperatureC: 12,
+        distributionInputRequiredKWh: 8,
+        storageGeneratorOutputKWh: 3,
+        solidDensityKgPerM3: 917,
+        storagePipeLengthM: 50,
+        storagePipeDiameterM: 0.03,
+        maximumIceThicknessM: 0.04,
+        initialLiquidMassKg: 30,
+        initialSolidTemperatureC: 8,
+        initialLiquidTemperatureC: 18,
+        storageGeneratorEnergyKWh: 7,
+        inputSideLossKWh: 0.2,
+        standbyLossKWh: 0.3,
+        outputSideLossKWh: 0.1
       }
     },
     lighting: {
@@ -241,18 +265,29 @@ await test("Chapter 3 installations flow reaches Building DNA, runtime, report a
   close(pipeline.calculation.chapter3Result.annual.lightingEnergyKWh, 120);
   assert.ok(pipeline.calculation.chapter3Result.annual.ventilationAuxiliaryKWh > 0);
   assert.ok(pipeline.calculation.chapter3Result.formulaReferences.includes("MC001_3_111_COOLING_STORAGE_PCM_SENSIBLE_SOLID_STORAGE_ENERGY"));
+  assert.ok(pipeline.calculation.chapter3Result.formulaReferences.includes("MC001_3_94_COOLING_STORAGE_INPUT_EXPLICIT_BOUNDARY"));
+  assert.ok(pipeline.calculation.chapter3Result.formulaReferences.includes("MC001_3_98_COOLING_STORAGE_OUTPUT_ENERGY"));
+  assert.ok(pipeline.calculation.chapter3Result.formulaReferences.includes("MC001_3_123_COOLING_STORAGE_GENERATOR_DELTA_ENERGY"));
+  const januaryPcm = pipeline.calculation.chapter3Result.monthly[0].coolingStoragePcm;
+  close(januaryPcm.calculations.storageInput.valueKWh, 10);
+  assert.equal(januaryPcm.calculations.generatorDelta.formulaId, "MC001_3_123_COOLING_STORAGE_GENERATOR_DELTA_ENERGY");
 
   const workspace = buildBuildingTechnicalWorkspace(pipeline);
   assert.equal(workspace.installations.status, "ready");
   assert.equal(workspace.installations.monthly.length, 12);
   assert.ok(workspace.report.chapters.some(chapter => chapter.chapterId === "instalatii_capitolul_3"));
   assert.ok(workspace.engineeringNotebook.sections.some(section => section.sectionId === "chapter3.annual"));
+  const notebookText = workspace.engineeringNotebook.sections
+    .flatMap(section => section.lines.map(line => line.text))
+    .join("\n");
+  assert.equal(notebookText.includes("MC001_3_94_COOLING_STORAGE_INPUT_EXPLICIT_BOUNDARY"), true);
+  assert.equal(notebookText.includes("MC001_3_123_COOLING_STORAGE_GENERATOR_DELTA_ENERGY"), true);
 
   const metadata = buildBuildingPlatformVersionMetadata({
     buildingDna: pipeline.buildingDna,
     calculation: pipeline.calculation
   });
-  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8g_v1");
+  assert.equal(metadata.chapter3AdapterVersion, "building_chapter_3_installations_adapter_p8h_v1");
   assert.ok(metadata.chapter3RuntimeVersion);
 
   const backend = createInMemoryVersionedBuildingBackend();
@@ -729,6 +764,7 @@ await test("heating component contracts calculate emission, pump and generator s
   assert.ok(distribution.auxiliarySource.formulaIds.includes("MC001_3_11_HEATING_DISTRIBUTION_SETBACK_PUMP_ENERGY"));
   assert.ok(distribution.auxiliarySource.formulaIds.includes("MC001_3_12_HEATING_DISTRIBUTION_BOOST_PUMP_ENERGY"));
   assert.ok(generation.lossSource.formulaIds.includes("MC001_3_17_HEATING_GENERATOR_STANDBY_LOSS_POWER"));
+  assert.ok(generation.lossSource.formulaIds.includes("MC001_3_16_HEATING_GENERATOR_STANDBY_LOSS_FRACTION_SUM"));
   assert.ok(generation.lossSource.formulaIds.includes("MC001_3_27_HEATING_GENERATOR_LOSS_ENERGY"));
   assert.ok(generation.lossSource.formulaIds.includes("MC001_3_29_HEATING_GENERATOR_ENVELOPE_RECOVERABLE_LOSS"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_37_HEATING_GENERATOR_AUXILIARY_ENERGY"));
@@ -736,6 +772,95 @@ await test("heating component contracts calculate emission, pump and generator s
   const workspace = buildBuildingTechnicalWorkspace(pipeline);
   assert.ok(JSON.stringify(workspace.report).includes("calculat normativ"));
   assert.ok(JSON.stringify(workspace.engineeringNotebook).includes("MC001_3_29_HEATING_GENERATOR_ENVELOPE_RECOVERABLE_LOSS"));
+});
+
+await test("heating generator coefficient contracts calculate C5-C8 loss and auxiliary branches", () => {
+  const systems = technicalSystems();
+  systems.cooling.enabled = false;
+  systems.cooling.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.domesticHotWater.enabled = false;
+  systems.domesticHotWater.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.heating.systems = [
+    {
+      systemId: "heating-generator-coefficients",
+      enabled: true,
+      servedScope: "whole_building",
+      generatorType: "condensing_boiler",
+      energyCarrier: "natural_gas",
+      stages: [
+        stage("emission", 0, 0),
+        stage("distribution", 0, 0),
+        {
+          ...stage("storage", 0, 0),
+          lossCalculation: { mode: "no_heating_storage" }
+        },
+        {
+          stageId: "generation",
+          lossCalculation: {
+            mode: "heating_generator_standby_coefficients",
+            coefficientC5: 500,
+            coefficientC6: 0,
+            nominalPowerKW: 20,
+            generatorDeliveredPowerKW: 20,
+            operationHours: 120,
+            envelopeLossFraction: 0.25,
+            boilerRoomRecoveryFactor: 0.2
+          },
+          auxiliaryCalculation: {
+            mode: "heating_generator_auxiliary_coefficients",
+            coefficientC7: 1,
+            coefficientC8: 2,
+            nominalPowerKW: 20,
+            operationHours: 120,
+            recoveredAuxiliaryFraction: 0.25,
+            boilerRoomRecoveryFactor: 0.2
+          }
+        }
+      ]
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+  assert.equal(pipeline.status, "ready");
+  const januaryHeating = pipeline.calculation.chapter3Result.monthly[0].heating;
+  const generation = januaryHeating.stageResults.find(stageResult => stageResult.stageId === "generation");
+  const standbyFractionPercent = 500 * 20 ** 0 / 100;
+  const standbyLossPowerKW = (standbyFractionPercent / 100) * 20;
+  const standbyLossKWh = standbyLossPowerKW * 120;
+  const auxiliaryPowerKW = ((1 + 2) / 100) * 20;
+  const auxiliaryKWh = auxiliaryPowerKW * 120;
+
+  close(generation.lossKWh, standbyLossKWh, 1e-12);
+  close(generation.auxiliaryKWh, auxiliaryKWh, 1e-12);
+  close(generation.inputEnergy.recoveredAuxiliaryKWh, auxiliaryKWh * 0.25, 1e-12);
+  assert.ok(
+    generation.lossSource.formulaIds.includes(
+      "MC001_3_15_HEATING_GENERATOR_STANDBY_LOSS_FRACTION"
+    )
+  );
+  assert.ok(
+    generation.lossSource.formulaIds.includes(
+      "MC001_3_17_HEATING_GENERATOR_STANDBY_LOSS_POWER"
+    )
+  );
+  assert.ok(
+    generation.auxiliarySource.formulaIds.includes(
+      "MC001_3_18_HEATING_GENERATOR_AUXILIARY_POWER"
+    )
+  );
+  assert.ok(
+    pipeline.calculation.chapter3Result.formulaReferences.includes(
+      "MC001_3_18_HEATING_GENERATOR_AUXILIARY_POWER"
+    )
+  );
 });
 
 await test("ventilation auxiliary component contracts calculate heat recovery, preheat and control values", () => {
@@ -1002,6 +1127,35 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
           mode: "maximum_flow_factor_from_part_load",
           partLoadFactor: 0.6,
           deltaFlowFactor: 0.15
+        },
+        distributionThermalLoss: {
+          mode: "ahu_distribution_thermal_loss",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          supplyDistributionAirFlowM3PerH: 1200,
+          supplyDuctUnconditionedTemperatureDifferenceK: 3,
+          supplyDuctConditionedTemperatureDifferencesK: [1.2, 0.8],
+          extractDistributionAirFlowM3PerH: 900,
+          extractDuctTemperatureDifferenceK: 1.5,
+          supplyLeakageZoneTerms: [
+            { leakageAirFlowM3PerH: 50, zoneIndoorTemperatureC: 19 },
+            { leakageAirFlowM3PerH: 30, zoneIndoorTemperatureC: 20 }
+          ],
+          unconditionedLeakageAirFlowM3PerH: 40,
+          supplyDistributionInletTemperatureC: 16,
+          unconditionedSurroundingTemperatureC: 24,
+          calculationHours: 10
+        },
+        recoverableDistributionLoss: {
+          mode: "ahu_distribution_recoverable_loss_to_zone",
+          airDensityKgPerM3: 1.2,
+          airSpecificHeatKJPerKgK: 1.006,
+          zoneSupplyAirFlowM3PerH: 500,
+          conditionedSupplyDuctTemperatureDifferenceK: 2.2,
+          zoneSupplyLeakageAirFlowM3PerH: 25,
+          supplyDistributionInletTemperatureC: 16,
+          zoneIndoorTemperatureC: 20,
+          calculationHours: 10
         }
       }
     }
@@ -1043,6 +1197,10 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
   const ductLeakageFlowFromFactorExpected = (1.05 - 1) * zoneAllocationExpected;
   const maximumZoneFlowFactorExpected = 150 / 250;
   const partLoadAhuAirFlowExpected = 0.6 * 500;
+  const distributionThermalLossExpected =
+    1.2 * 1.006 * (1200 * 5 + 900 * 1.5 + 50 * -3 + 30 * -4 + 40 * -8) * 10 / 3600;
+  const recoverableDistributionLossExpected =
+    1.2 * 1.006 * (500 * 2.2 + 25 * -4) * 10 / 3600;
 
   close(januaryVentilation.fanElectricEnergy.valueKWh, fanExpected, 1e-12);
   close(januaryVentilation.valueKWh, fanExpected + heatRecoveryExpected + controlExpected, 1e-12);
@@ -1076,6 +1234,8 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
   close(ahuRelations.maximumZoneFlowFactor.value, maximumZoneFlowFactorExpected, 1e-12);
   close(ahuRelations.partLoadAhuAirFlow.value, partLoadAhuAirFlowExpected, 1e-12);
   close(ahuRelations.maximumFlowFactorFromPartLoad.value, 0.75, 1e-12);
+  close(ahuRelations.distributionThermalLoss.valueKWh, distributionThermalLossExpected, 1e-12);
+  close(ahuRelations.recoverableDistributionLoss.valueKWh, recoverableDistributionLossExpected, 1e-12);
   assert.equal(
     januaryVentilation.sources.heatRecoveryAuxiliary.classification,
     CHAPTER3_INPUT_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
@@ -1118,6 +1278,16 @@ await test("ventilation auxiliary component contracts calculate heat recovery, p
   assert.ok(
     januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
       "MC001_3_91_MAXIMUM_FLOW_FACTOR_FROM_PART_LOAD"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_92_AHU_DISTRIBUTION_THERMAL_LOSS"
+    )
+  );
+  assert.ok(
+    januaryVentilation.ahuThermalRelations.source.formulaIds.includes(
+      "MC001_3_93_AHU_DISTRIBUTION_RECOVERABLE_LOSS_TO_ZONE"
     )
   );
   assert.ok(
@@ -1216,6 +1386,48 @@ await test("cooling component contracts calculate distribution, storage and heat
               condenserTemperatureDifferenceK: 5
             },
             heatRejectionAuxiliaryMode: "specific_electric_demand",
+            heatRejectionReferenceTableInput: {
+              systemKey: "water_cooled_wet_33_27"
+            },
+            heatRejectionReferenceSelection: {
+              branch: "water",
+              waterReferenceInletTemperatureC: 33,
+              waterNominalInletTemperatureC: 30
+            },
+            heatRejectionTemperatureSelection: {
+              source: "outdoor_air",
+              outdoorTemperatureC: 31
+            },
+            heatRejectionPartLoadPolynomialInput: {
+              systemKey: "air_cooled_control_piston_or_scroll",
+              temperatureC: 25
+            },
+            waterHeatRejectionInletTemperatureInput: {
+              controlMode: "variable_temperature",
+              heatRejectionOutletTemperatureC: 27,
+              nominalHeatRejectionPowerKW: 20,
+              inletTemperatureLowerLimitC: 25
+            },
+            wetHeatRejectionWaterTemperatureInput: {
+              heatRejectionOutletTemperatureC: 27,
+              heatRejectionInletTemperatureC: 31,
+              outdoorWetBulbTemperatureC: 21,
+              evaporationTemperatureRatio: 0.7
+            },
+            dryHeatRejectionWaterTemperatureInput: {
+              heatRejectionOutletTemperatureC: 32,
+              heatRejectionInletTemperatureC: 36,
+              outdoorAirTemperatureC: 30,
+              evaporationTemperatureRatio: 0.5
+            },
+            recoverableHeatMode: "compression",
+            recoverableHeatMaximumTemperatureInput: {},
+            heatRejectedAfterRecoveryInput: {
+              requiredRecoveredHeatKWh: 10
+            },
+            absorptionGeneratorInput: {
+              nominalHeatRatio: 0.7
+            },
             heatRejectionSpecificDemandKey: "wet_closed_axial_no_extra_silencer",
             heatRejectionElectricPartLoadControlKey: "variable_water_temperature",
             heatRejectionElectricPartLoadTypeKey: "wet_or_hybrid_wet",
@@ -1278,9 +1490,21 @@ await test("cooling component contracts calculate distribution, storage and heat
   assert.ok(storage.auxiliarySource.formulaIds.includes("MC001_3_119_COOLING_STORAGE_AUXILIARY_TOTAL"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_149_COOLING_PART_LOAD_FACTOR"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_155_COOLING_EER_TEMPERATURE_CORRECTION"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_158_COOLING_HEAT_REJECTION_WATER_REFERENCE"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_159_HEAT_REJECTION_PART_LOAD_FACTOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_160_HEAT_REJECTION_OUTDOOR_AIR_TEMPERATURE"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_164_HEAT_REJECTED_COMPRESSION_GENERATOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_165_HEAT_REJECTED_ABSORPTION_GENERATOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_166_WATER_HEAT_REJECTION_INLET_TEMPERATURE"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_167_WET_HEAT_REJECTION_WATER_TEMPERATURE"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_168_DRY_HEAT_REJECTION_WATER_TEMPERATURE"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_171_RECOVERABLE_HEAT_MAXIMUM_TEMPERATURE"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_172_HEAT_REJECTED_AFTER_RECOVERY"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_174_COOLING_ABSORPTION_HEAT_INPUT"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_176_HEAT_REJECTION_AUXILIARY_ENERGY"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_180_COOLING_GENERATOR_AUXILIARY_TOTAL"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_182_COOLING_ABSORPTION_PERFORMANCE_RATIO"));
   assert.equal(
     generation.inputEnergy.formulaId,
     "MC001_3_181_COOLING_COMPRESSION_DELIVERED_ELECTRIC_INPUT"

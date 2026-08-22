@@ -7,6 +7,7 @@ import {
   EXTRACT_FAN_POSITION,
   calculateAhuRecoverableGenerationLoss,
   calculateAhuCoolingCoilRequiredEnergy,
+  calculateAhuDistributionThermalLoss,
   calculateAhuGenerationLossConditioned,
   calculateAhuGenerationLossUnconditioned,
   calculateAhuDehumidificationCoolingEnergy,
@@ -16,6 +17,7 @@ import {
   calculateAhuLeakageFactor,
   calculateAhuNonSteamHumidificationAuxiliaryEnergy,
   calculateAhuRecirculationAirHeatingEnergy,
+  calculateAhuRecoverableDistributionLossToZone,
   calculateBalancedResidentialFanTemperatureRise,
   calculateChapter3CoolingAuxiliaryEnergyTotal,
   calculateChapter3CoolingGeneratorInputEnergy,
@@ -566,6 +568,52 @@ test("calculates AHU fan, pressure, auxiliary and leakage relations 3.51 to 3.91
   assertCloseTo(maxFromPartLoad.value, 0.5);
 });
 
+test("calculates AHU distribution thermal-loss relations 3.92 and 3.93", () => {
+  const distributionLoss = calculateAhuDistributionThermalLoss({
+    airDensityKgPerM3: 1.2,
+    airSpecificHeatKJPerKgK: 1.006,
+    supplyDistributionAirFlowM3PerH: 1200,
+    supplyDuctUnconditionedTemperatureDifferenceK: 3,
+    supplyDuctConditionedTemperatureDifferencesK: [1.2, 0.8],
+    extractDistributionAirFlowM3PerH: 900,
+    extractDuctTemperatureDifferenceK: 1.5,
+    supplyLeakageZoneTerms: [
+      { leakageAirFlowM3PerH: 50, zoneIndoorTemperatureC: 19 },
+      { leakageAirFlowM3PerH: 30, zoneIndoorTemperatureC: 20 }
+    ],
+    unconditionedLeakageAirFlowM3PerH: 40,
+    supplyDistributionInletTemperatureC: 16,
+    unconditionedSurroundingTemperatureC: 24,
+    calculationHours: 10
+  });
+  const recoverableToZone = calculateAhuRecoverableDistributionLossToZone({
+    airDensityKgPerM3: 1.2,
+    airSpecificHeatKJPerKgK: 1.006,
+    zoneSupplyAirFlowM3PerH: 500,
+    conditionedSupplyDuctTemperatureDifferenceK: 2.2,
+    zoneSupplyLeakageAirFlowM3PerH: 25,
+    supplyDistributionInletTemperatureC: 16,
+    zoneIndoorTemperatureC: 20,
+    calculationHours: 10
+  });
+
+  assert.equal(distributionLoss.formulaId, "MC001_3_92_AHU_DISTRIBUTION_THERMAL_LOSS");
+  assert.equal(
+    recoverableToZone.formulaId,
+    "MC001_3_93_AHU_DISTRIBUTION_RECOVERABLE_LOSS_TO_ZONE"
+  );
+  assertCloseTo(
+    distributionLoss.valueKWh,
+    1.2 * 1.006 * (1200 * 5 + 900 * 1.5 + 50 * -3 + 30 * -4 + 40 * -8) * 10 / 3600
+  );
+  assertCloseTo(
+    recoverableToZone.valueKWh,
+    1.2 * 1.006 * (500 * 2.2 + 25 * -4) * 10 / 3600
+  );
+  assert.equal(distributionLoss.airflowTemperatureSum, 6760);
+  assert.equal(recoverableToZone.airflowTemperatureSum, 1000);
+});
+
 test("calculates cooling-system branch, distribution, generator and LENI relations", () => {
   const selected = selectCoolingGeneratorOutletTemperature({
     branch: "direct_expansion_air_distribution",
@@ -1107,6 +1155,14 @@ test("calculates MC001 cooling heat-rejection and generator relations 3.156-3.18
   assert.equal(dryWater.formulaId, "MC001_3_168_DRY_HEAT_REJECTION_WATER_TEMPERATURE");
   assert.equal(recoverableCompression.formulaId, "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR");
   assert.equal(recoverableAbsorption.formulaId, "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR");
+  assert.equal(
+    recoverableCompression.executionTrace.formulaId,
+    "MC001_3_169_RECOVERABLE_HEAT_COMPRESSION_GENERATOR"
+  );
+  assert.equal(
+    recoverableAbsorption.executionTrace.formulaId,
+    "MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR"
+  );
   assert.equal(recoverableMaxTemp.formulaId, "MC001_3_171_RECOVERABLE_HEAT_MAXIMUM_TEMPERATURE");
   assert.equal(rejectedAfterRecovery.formulaId, "MC001_3_172_HEAT_REJECTED_AFTER_RECOVERY");
   assert.equal(compressionElectric.formulaId, "MC001_3_173_COOLING_COMPRESSION_ELECTRIC_INPUT");

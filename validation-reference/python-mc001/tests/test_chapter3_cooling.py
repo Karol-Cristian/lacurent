@@ -3,26 +3,58 @@ from __future__ import annotations
 import unittest
 
 from mc001_reference.chapter3_cooling import (
+    cooling_absorption_heat_input_kwh,
+    cooling_absorption_performance_ratio,
     cooling_compression_delivered_electric_input_kwh,
     cooling_compression_eer,
     cooling_compression_electric_input_kwh,
     cooling_control_auxiliary_kwh,
+    cooling_distribution_inlet_outdoor_compensated_c,
     cooling_distribution_auxiliary_kwh,
     cooling_distribution_loss_kwh,
+    cooling_dry_heat_rejection_water_temperature_c,
     cooling_generator_auxiliary_total_kwh,
     cooling_generator_input_by_capacity_limit,
+    cooling_generator_input_required_air_water_kwh,
+    cooling_generator_input_required_direct_expansion_kwh,
+    cooling_generator_outlet_temperature_c,
+    cooling_heat_rejected_after_recovery_kwh,
     cooling_heat_rejected_compression_kwh,
+    cooling_heat_rejection_part_load_factor,
     cooling_heat_rejection_auxiliary_kwh,
     cooling_heat_rejection_distribution_auxiliary_kwh,
+    cooling_heat_rejection_reference_temperature_c,
+    cooling_heat_rejection_temperature_c,
+    cooling_recoverable_heat_compression_kwh,
+    cooling_recoverable_heat_maximum_temperature_c,
+    cooling_recoverable_heat_zero_kwh,
+    cooling_water_heat_rejection_inlet_temperature_c,
+    cooling_wet_heat_rejection_water_temperature_c,
     cooling_part_load_bin,
     cooling_part_load_factor,
     cooling_storage_auxiliary_kwh,
     cooling_storage_auxiliary_total_kwh,
+    cooling_storage_generator_delta_kwh,
+    cooling_storage_ice_mass_variation_kg,
+    cooling_storage_ice_thickness_m,
+    cooling_storage_initial_ice_thickness_m,
+    cooling_storage_input_boundary_kwh,
+    cooling_storage_latent_kwh,
+    cooling_storage_output_kwh,
+    cooling_storage_pcm_limit_to_existing_solid_kg,
+    cooling_storage_pcm_limit_to_liquid_kg,
+    cooling_storage_pcm_liquid_temperature_c,
+    cooling_storage_pcm_solid_mass_variation_kg,
+    cooling_storage_pcm_solid_temperature_c,
     cooling_storage_pump_operation_hours,
     cooling_storage_recoverable_auxiliary_loss_kwh,
     cooling_storage_recoverable_loss_total_kwh,
     cooling_storage_recoverable_thermal_loss_kwh,
+    cooling_storage_sensible_liquid_kwh,
+    cooling_storage_sensible_solid_kwh,
+    cooling_storage_solid_mass_after_use_kg,
     cooling_storage_thermal_loss_kwh,
+    cooling_storage_transformable_water_kwh,
 )
 
 
@@ -160,6 +192,144 @@ class Chapter3CoolingReferenceTests(unittest.TestCase):
             later < earlier
             for earlier, later in zip(delivered_by_eer, delivered_by_eer[1:])
         ), delivered_by_eer)
+
+    def test_pcm_storage_state_reference_chain(self):
+        storage_input = cooling_storage_input_boundary_kwh(10)
+        sensible_liquid = cooling_storage_sensible_liquid_kwh(
+            80,
+            0.00116,
+            1000,
+            0.05,
+            0.00116,
+            18,
+            12,
+        )
+        latent = cooling_storage_latent_kwh(0.0271, 40)
+        sensible_solid = cooling_storage_sensible_solid_kwh(
+            40,
+            0.000392,
+            20,
+            32.755102040816325,
+        )
+        output = cooling_storage_output_kwh(sensible_liquid, latent, sensible_solid, 8, 3)
+        transformable_water = cooling_storage_transformable_water_kwh(storage_input, 0.2, 0.3, 0.1)
+        initial_ice_thickness = cooling_storage_initial_ice_thickness_m(40, 917, 50, 0.03)
+        ice_mass_variation = cooling_storage_ice_mass_variation_kg(
+            transformable_water,
+            0.0271,
+            0.000392,
+            20,
+            32.755102040816325,
+        )
+        ice_thickness = cooling_storage_ice_thickness_m(0.04, 0.03, 40, ice_mass_variation, 917, 50)
+        solid_after_use = cooling_storage_solid_mass_after_use_kg(40, ice_mass_variation)
+        pcm_solid_mass_variation = cooling_storage_pcm_solid_mass_variation_kg(
+            transformable_water,
+            0.0271,
+            0.000392,
+            20,
+        )
+        liquid_limited = cooling_storage_pcm_limit_to_liquid_kg(pcm_solid_mass_variation, 30)
+        solid_limited = cooling_storage_pcm_limit_to_existing_solid_kg(pcm_solid_mass_variation, 20)
+        pcm_solid_temperature = cooling_storage_pcm_solid_temperature_c(
+            8,
+            transformable_water,
+            0.000392,
+            liquid_limited,
+            20,
+            40,
+            32.755102040816325,
+        )
+        pcm_liquid_temperature = cooling_storage_pcm_liquid_temperature_c(
+            18,
+            transformable_water,
+            0.000392,
+            liquid_limited,
+            20,
+            0.00116,
+            30,
+        )
+        generator_delta = cooling_storage_generator_delta_kwh(7, output, 0.2, 0.3, 0.1)
+
+        self.assertAlmostEqual(storage_input, 10, places=12)
+        self.assertAlmostEqual(sensible_liquid, (80 * 0.00116 + 1000 * 0.05 * 0.00116) * 6, places=12)
+        self.assertAlmostEqual(latent, 0.0271 * 40, places=12)
+        self.assertAlmostEqual(
+            sensible_solid,
+            40 * 0.000392 * ((20 - 32.755102040816325) / 2),
+            places=12,
+        )
+        self.assertAlmostEqual(output, sensible_liquid + latent + sensible_solid, places=12)
+        self.assertAlmostEqual(transformable_water, 10.6, places=12)
+        self.assertGreater(initial_ice_thickness, 0)
+        self.assertLess(ice_mass_variation, 0)
+        self.assertEqual(ice_thickness, 0)
+        self.assertEqual(solid_after_use, 0)
+        self.assertGreater(pcm_solid_mass_variation, 0)
+        self.assertEqual(liquid_limited, 30)
+        self.assertEqual(solid_limited, 20)
+        self.assertGreater(pcm_solid_temperature, 32.755102040816325)
+        self.assertGreater(pcm_liquid_temperature, 18)
+        self.assertAlmostEqual(generator_delta, 7 - output - 0.2 - 0.3 - 0.1, places=12)
+
+    def test_cooling_generator_topology_and_heat_rejection_reference_chain(self):
+        outlet = cooling_generator_outlet_temperature_c(
+            "direct_expansion_air_distribution",
+            theta_supply_cooling_required_c=16,
+        )
+        compensated = cooling_distribution_inlet_outdoor_compensated_c(7, 18, -0.3, 30, 22)
+        dx_required = cooling_generator_input_required_direct_expansion_kwh(100, 5, 20)
+        air_water_required = cooling_generator_input_required_air_water_kwh(
+            100,
+            5,
+            20,
+            6.25,
+            2.5,
+            1,
+        )
+        reference = cooling_heat_rejection_reference_temperature_c(
+            "water",
+            water_reference_inlet_c=33,
+        )
+        theta = cooling_heat_rejection_temperature_c("outdoor_air", outdoor_temperature_c=31)
+        rejection_part_load = cooling_heat_rejection_part_load_factor(25, 0.001, -0.02, 1.1)
+        rejected = cooling_heat_rejected_compression_kwh(100, 3, 0.9, 1)
+        water_inlet = cooling_water_heat_rejection_inlet_temperature_c(
+            "variable_temperature",
+            27,
+            130,
+            10,
+            20,
+            33,
+            27,
+            25,
+        )
+        wet = cooling_wet_heat_rejection_water_temperature_c(27, 31, 21, 0.7)
+        dry = cooling_dry_heat_rejection_water_temperature_c(32, 36, 30, 0.5)
+        recoverable_zero = cooling_recoverable_heat_zero_kwh()
+        recoverable = cooling_recoverable_heat_compression_kwh(100, 3, 0.9, 1)
+        maximum_temperature = cooling_recoverable_heat_maximum_temperature_c(water_inlet)
+        rejected_after_recovery = cooling_heat_rejected_after_recovery_kwh(recoverable, 40)
+        absorption_heat = cooling_absorption_heat_input_kwh(100, 0.8, 0.7)
+        absorption_ratio = cooling_absorption_performance_ratio(100, absorption_heat)
+
+        self.assertEqual(outlet, 16)
+        self.assertEqual(compensated, 13)
+        self.assertEqual(dx_required, 125)
+        self.assertAlmostEqual(air_water_required, 133.75, places=12)
+        self.assertEqual(reference, 33)
+        self.assertEqual(theta, 31)
+        self.assertAlmostEqual(rejection_part_load, 0.001 * 25**2 - 0.02 * 25 + 1.1, places=12)
+        self.assertAlmostEqual(rejected, 100 * (1 + 1 / (3 * 0.9)), places=12)
+        self.assertAlmostEqual(water_inlet, 30.9, places=12)
+        self.assertEqual(wet, 20)
+        self.assertEqual(dry, 29)
+        self.assertEqual(recoverable_zero, 0)
+        self.assertAlmostEqual(recoverable, rejected, places=12)
+        self.assertAlmostEqual(maximum_temperature, water_inlet, places=12)
+        self.assertAlmostEqual(rejected_after_recovery, recoverable - 40, places=12)
+        self.assertAlmostEqual(absorption_heat, 100 / (0.8 * 0.7), places=12)
+        self.assertAlmostEqual(absorption_ratio, 0.56, places=12)
 
 
 if __name__ == "__main__":
