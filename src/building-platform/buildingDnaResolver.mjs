@@ -1164,6 +1164,7 @@ function resolveBuildingDna({
   climateProviderResult,
   technicalSystems,
   renewableSystems,
+  projectWorkspace,
   building,
   locationClimate
 }) {
@@ -1317,6 +1318,7 @@ function resolveBuildingDna({
     buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters, source),
     ...(normalizedTechnicalSystems === null ? {} : { technicalSystems: normalizedTechnicalSystems }),
     ...(normalizedRenewableSystems === null ? {} : { renewableSystems: normalizedRenewableSystems }),
+    ...(projectWorkspace === undefined ? {} : { projectWorkspace: deepClone(projectWorkspace) }),
     renovationInterventions: deepClone(renovationInterventions ?? []),
     geometry: deepClone(geometry),
     assemblies: assemblies.value,
@@ -1492,6 +1494,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     climateProviderResult: canonicalClimateProviderResult,
     technicalSystems: answers.technicalSystems,
     renewableSystems: answers.renewableSystems,
+    projectWorkspace: answers.projectWorkspace,
     building: {
       buildingId: answers.buildingId,
       buildingType: answers.buildingType,

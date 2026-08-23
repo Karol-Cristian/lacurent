@@ -4,10 +4,16 @@ import {
   ASSISTED_WIZARD_DEMO_FIXTURE,
   BUILDING_PLATFORM_PRODUCT_JOURNEY,
   BUILDING_PLATFORM_WIZARD_STEPS,
+  P10_CPE_FIELD_MAPPING,
+  P10_SUPPORTED_INTERVENTION_TYPES,
+  P10_WORKSPACE_NAVIGATION,
   analyzeBuildingPlatformProductJourney,
   analysisIdFromSearch,
   applyBuildingDnaToWizardForm,
+  buildCpeDocumentModel,
   buildBuildingPlatformSavePayload,
+  buildProfessionalWorkspaceModel,
+  buildScenarioPreviewFromFormData,
   buildingDnaToWizardValues,
   buildWizardEngineeringPreview,
   constructionPeriodFromYear,
@@ -21,6 +27,7 @@ import {
   projectIdFromSearch,
   renderEngineeringModelReview,
   renderLoadedBuildingPlatformAnalysis,
+  renderProfessionalWorkspace,
   renderProductJourneyStatusPanel,
   saveBuildingPlatformDraft,
   saveBuildingPlatformChapter2Analysis,
@@ -66,6 +73,9 @@ function formData(entries) {
   return {
     get(name) {
       return entries[name];
+    },
+    entries() {
+      return Object.entries(entries);
     }
   };
 }
@@ -1588,6 +1598,199 @@ await test("P9C PV installed with missing production remains distinct from zero"
   assert.equal(html.includes("Productie PV</span>"), false);
 });
 
+await test("P10 professional workspace exposes navigation, building objects, baseline, scenarios and documents", () => {
+  assert.deepEqual(
+    P10_WORKSPACE_NAVIGATION.map(item => item.label),
+    ["Overview", "Building", "Envelope", "Systems", "Baseline", "Scenarios", "Results", "Documents"]
+  );
+  assert.equal(P10_SUPPORTED_INTERVENTION_TYPES.length >= 8, true);
+  assert.equal(P10_CPE_FIELD_MAPPING.some(field => field.fieldId === "calculation_results"), true);
+
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    pv_installed: "yes",
+    pv_annual_production_kwh: "2400",
+    scenario_name: "Pachet A - anvelopa",
+    scenario_wall_insulation: "15cm",
+    scenario_roof_insulated: "yes",
+    scenario_window_type: "triple_glazing",
+    scenario_pv_annual_production_kwh: "3600",
+    auditor_name: "Auditor Test",
+    auditor_authorization: "Grad I 0000",
+    document_identifier: "CPE-TEST-001",
+    client_name: "Beneficiar Test",
+    document_issue_date: "2026-08-23",
+    evidence_exterior_note: "foto exterior in dosar",
+    evidence_generator_note: "foto eticheta generator"
+  };
+  const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(formData(values)));
+  const model = buildProfessionalWorkspaceModel(preview, formData(values));
+
+  assert.equal(model.schema, "professional_auditor_workspace_p10");
+  assert.deepEqual(model.architecture, [
+    "BUILDING MODEL",
+    "BASELINE",
+    "CERTIFICATION / RETROFIT SCENARIOS",
+    "RESULTS",
+    "DOCUMENTS"
+  ]);
+  assert.equal(model.readiness.status, "ready_for_calculation");
+  assert.equal(model.buildingObjects.some(item => item.type === "wall"), true);
+  assert.equal(model.buildingObjects.some(item => item.type === "window"), true);
+  assert.equal(model.buildingObjects.some(item => item.type === "pv"), true);
+  assert.equal(model.baseline.status, "calculated");
+  assert.equal(model.scenarios.scenario.name, "Pachet A - anvelopa");
+  assert.equal(model.scenarios.scenario.storageMode, "delta_from_baseline");
+  assert.ok(model.scenarios.comparison.length > 0);
+  assert.equal(model.documents.cpe.officialFieldMappingVerified, false);
+  assert.equal(
+    model.documents.cpe.fieldMappingStatus,
+    "candidate_mapping_requires_official_source_certification"
+  );
+  assert.equal(model.documents.cpe.officialLayoutVerified, false);
+  assert.equal(model.documents.cpe.legalOutputReady, false);
+  assert.equal(
+    model.documents.cpe.annexes.find(item => item.annexId === "annex_3_photographs").status,
+    "metadata_available"
+  );
+
+  const html = renderProfessionalWorkspace(preview, { formData: formData(values) });
+  assert.equal(html.includes("data-p10-professional-workspace"), true);
+  assert.equal(html.includes("Componente fizice ale cladirii"), true);
+  assert.equal(html.includes("Scenarii retrofit ca delta fata de baseline"), true);
+  assert.equal(html.includes("Centru documente"), true);
+  assert.equal(html.includes("Layout-ul oficial ramane de certificat"), true);
+});
+
+await test("P10 building object cards do not render missing quantities as zero", () => {
+  const preview = {
+    status: "blocked",
+    diagnostics: { blockers: [] },
+    buildingDna: {
+      building: {
+        buildingType: "house",
+        useCategory: "residential_single_family"
+      },
+      geometry: {},
+      buildingSpecificParameters: {},
+      assemblies: [],
+      envelopeElements: []
+    }
+  };
+
+  const html = renderProfessionalWorkspace(preview, { formData: formData({}) });
+
+  assert.equal(html.includes("0.00 m2"), false);
+  assert.equal(html.includes("0.00 m3"), false);
+
+  const blockedWithFormValues = renderProfessionalWorkspace({
+    status: "blocked",
+    diagnostics: { blockers: [] },
+    buildingDna: {}
+  }, {
+    formData: formData({
+      building_type: "house",
+      building_use_category: "residential_single_family",
+      useful_area_m2: "120",
+      floor_height_m: "2.6",
+      window_area_m2: "12",
+      window_orientation: "south",
+      pv_installed: "yes",
+      pv_annual_production_kwh: "3200"
+    })
+  });
+
+  assert.equal(blockedWithFormValues.includes("120.00 m2"), true);
+  assert.equal(blockedWithFormValues.includes("312.00 m3"), true);
+  assert.equal(blockedWithFormValues.includes("3200.00 kWh/an"), true);
+});
+
+await test("P10 scenario deltas calculate from a baseline snapshot without mutating baseline", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    scenario_name: "Pereti performanti",
+    scenario_wall_insulation: "20cm+",
+    scenario_pv_annual_production_kwh: "1500"
+  };
+  const baseline = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(formData(values)));
+  const scenarioRun = buildScenarioPreviewFromFormData(formData(values));
+
+  assert.equal(baseline.status, "ready");
+  assert.equal(scenarioRun.status, "calculated");
+  assert.equal(scenarioRun.scenario.baseBaselineId, "current-building");
+  assert.equal(scenarioRun.scenario.deltas.some(delta => delta.fieldName === "wall_insulation"), true);
+  assert.equal(scenarioRun.scenario.deltas.some(delta => delta.fieldName === "pv_annual_production_kwh"), true);
+  assert.notEqual(baseline.summary.annualQHnd, scenarioRun.preview.summary.annualQHnd);
+  assert.equal(
+    scenarioRun.preview.buildingDna.assemblies.find(item => item.assemblyRole === "exterior_wall").displayName.includes("200 mm"),
+    true
+  );
+});
+
+await test("P10 workspace metadata persists through Building DNA and save payload", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    scenario_name: "Pachet B",
+    scenario_wall_insulation: "20cm+",
+    auditor_name: "Auditor Persistat",
+    auditor_authorization: "Autorizatie 123",
+    document_identifier: "AUD-123",
+    client_name: "Client Persistat",
+    evidence_roof_note: "foto acoperis disponibila"
+  };
+  const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(formData(values)));
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.buildingDna.projectWorkspace.schema, "professional_workspace_v1");
+  assert.equal(preview.buildingDna.projectWorkspace.scenarios[0].name, "Pachet B");
+  assert.equal(preview.buildingDna.projectWorkspace.documents.metadata.auditor.name, "Auditor Persistat");
+  assert.equal(preview.buildingDna.projectWorkspace.evidence.photos.some(item => item.note === "foto acoperis disponibila"), true);
+
+  const payload = buildBuildingPlatformSavePayload(preview, formData(values));
+  assert.equal(payload.ok, true);
+  assert.equal(payload.value.building_dna.projectWorkspace.scenarios[0].storageMode, "delta_from_baseline");
+
+  const form = fakeWizardForm([
+    "scenario_name",
+    "scenario_wall_insulation",
+    "auditor_name",
+    "auditor_authorization",
+    "document_identifier",
+    "client_name",
+    "evidence_roof_note"
+  ]);
+  const applied = applyBuildingDnaToWizardForm(form, preview.buildingDna);
+  assert.equal(applied.applied, true);
+  const byName = Object.fromEntries(form.controls.map(control => [control.name, control]));
+  assert.equal(byName.scenario_name.value, "Pachet B");
+  assert.equal(byName.scenario_wall_insulation.value, "20cm+");
+  assert.equal(byName.auditor_name.value, "Auditor Persistat");
+  assert.equal(byName.evidence_roof_note.value, "foto acoperis disponibila");
+});
+
+await test("P10 CPE document model separates workflow, field mapping, layout and legal readiness", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    scenario_name: "Recomandare A",
+    scenario_roof_insulated: "yes",
+    auditor_name: "Auditor CPE",
+    auditor_authorization: "AI 42",
+    document_identifier: "CPE-42",
+    client_name: "Client CPE",
+    evidence_exterior_note: "foto exterior"
+  };
+  const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(formData(values)));
+  const cpe = buildCpeDocumentModel(preview, formData(values));
+
+  assert.equal(cpe.documentType, "energy_performance_certificate_cpe");
+  assert.equal(cpe.officialFieldMappingVerified, false);
+  assert.equal(cpe.fieldMappingStatus, "candidate_mapping_requires_official_source_certification");
+  assert.equal(cpe.officialLayoutVerified, false);
+  assert.equal(cpe.legalOutputReady, false);
+  assert.equal(cpe.mainCpe.every(field => field.buildingDnaPath), true);
+  assert.equal(cpe.annexes.length, 3);
+  assert.equal(cpe.buildingUnitHandling.includes("building-unit"), true);
+});
+
 await test("P9C production assisted RC path resolves systems and PV but remains truthfully bounded by Qsky/Qsol", () => {
   const values = {
     analysis_input_mode: "assisted",
@@ -1708,7 +1911,7 @@ await test("edited demo values propagate into Building DNA and Chapter 2 results
   assert.notEqual(editedPreview.summary.annualQCnd, originalPreview.summary.annualQCnd);
 });
 
-await test("analysis page exposes the refocused technical workflow", () => {
+await test("analysis page exposes the P10 professional auditor workspace", () => {
   const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
   const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8");
   assert.equal(html.includes("building-platform-wizard.mjs"), true);
@@ -1724,7 +1927,22 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("productJourneyStatus"), true);
   assert.equal(html.includes("data-analysis-mode-target=\"assisted\""), true);
   assert.equal(html.includes("data-analysis-mode-target=\"expert\""), true);
+  assert.equal(html.includes("p10-professional-workspace"), true);
+  assert.equal(html.includes("p10-workspace-nav"), true);
+  for (const navItem of P10_WORKSPACE_NAVIGATION) {
+    assert.equal(html.includes(`data-workspace-section="${navItem.workspaceId}"`), true, navItem.workspaceId);
+    assert.equal(html.includes(`data-step-target="${navItem.targetStep}"`), true, navItem.workspaceId);
+    assert.equal(html.includes(navItem.label), true, navItem.label);
+  }
+  assert.equal(html.includes('class="step" data-section-id="renewable"'), false);
+  assert.equal(html.includes("p10-renewables-panel"), true);
+  assert.equal(html.includes('name="pv_installed"'), true);
+  assert.equal(html.includes("Building model -> baseline -> scenarii retrofit -> rezultate -> documente"), true);
   assert.equal(html.includes("building_use_category"), true);
+  assert.equal(html.includes("scenario_name"), true);
+  assert.equal(html.includes("scenario_wall_insulation"), true);
+  assert.equal(html.includes("auditor_name"), true);
+  assert.equal(html.includes("evidence_exterior_note"), true);
   assert.equal(html.includes("buildingPlatformLoadAnalysisId"), true);
   assert.equal(html.includes("loadBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("Redeschidere avansata dupa ID analiza"), true);
@@ -1769,13 +1987,13 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("incarca demo"), false);
   assert.equal(html.includes("demo-ul"), false);
   for (const expected of [
-    "Modelul termic al cladirii",
+    "Workspace auditor energetic",
     "Cladire si clima",
     "Anvelopa",
     "Utilizare si renovari",
     "Energie regenerabila",
     "Verificare",
-    "Raport",
+    "Documents",
     "Rezultate",
     "Asistat",
     "Expert",
@@ -1792,6 +2010,10 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("Ma intereseaza cand devine disponibil"), false);
   assert.equal(html.includes("scor live"), false);
   assert.equal(css.includes("p3f-engineering-shell"), true);
+  assert.equal(css.includes("p10-workspace-nav"), true);
+  assert.equal(css.includes("p10-object-grid"), true);
+  assert.equal(css.includes("p10-document-grid"), true);
+  assert.equal(css.includes("p10-professional-workspace .p3f-input-pane .step"), true);
   assert.equal(css.includes("product-journey-status-grid"), true);
   assert.equal(css.includes("analysis-mode-assisted"), true);
   assert.equal(css.includes("product-result-summary"), true);
@@ -1832,13 +2054,12 @@ await test("P9B production calculator starts without public demo controls or syn
   assert.equal(html.includes("Deducere din tipul cladirii"), true);
 });
 
-await test("P9B assisted mode materially reduces normal user-editable fields", () => {
+await test("P10 assisted surface separates building facts, scenarios and document metadata from expert engineering", () => {
   const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
   const formHtml = html.slice(
     html.indexOf('<form id="houseForm"'),
     html.indexOf("</form>", html.indexOf('<form id="houseForm"'))
   );
-  const baselineP9NormalFieldCount = 57;
   const normalNames = new Set();
   const expertNames = new Set();
 
@@ -1852,8 +2073,7 @@ await test("P9B assisted mode materially reduces normal user-editable fields", (
     if (contract?.inputLevel === "expert") expertNames.add(nameMatch[1]);
   }
 
-  assert.equal(normalNames.size < baselineP9NormalFieldCount, true);
-  assert.equal(normalNames.size, 47);
+  assert.ok(normalNames.size >= 47, `expected P9B assisted fields plus P10 workspace fields, got ${normalNames.size}`);
   for (const p9cAssistedField of [
     "chapter3_shared_generator_operation_hours_month",
     "chapter3_shared_generator_loss_power_kw",
@@ -1865,6 +2085,29 @@ await test("P9B assisted mode materially reduces normal user-editable fields", (
     "pv_annual_production_kwh"
   ]) {
     assert.equal(normalNames.has(p9cAssistedField), true, p9cAssistedField);
+  }
+  for (const p10WorkspaceField of [
+    "scenario_name",
+    "scenario_wall_insulation",
+    "scenario_roof_insulated",
+    "scenario_floor_insulated",
+    "scenario_window_type",
+    "scenario_heating_generator_type",
+    "scenario_cooling_generator_type",
+    "scenario_pv_annual_production_kwh",
+    "auditor_name",
+    "auditor_authorization",
+    "document_identifier",
+    "client_name",
+    "document_issue_date",
+    "evidence_exterior_note",
+    "evidence_generator_note",
+    "evidence_windows_note",
+    "evidence_roof_note"
+  ]) {
+    assert.equal(normalNames.has(p10WorkspaceField), true, p10WorkspaceField);
+    const contract = getBuildingPlatformFieldContract(p10WorkspaceField);
+    assert.match(contract.buildingDnaPath, /^projectWorkspace\./);
   }
   for (const movedToExpert of [
     "heated_volume_m3",
@@ -2037,8 +2280,6 @@ await test("active production analysis flow removes unsupported product domains"
     "Simuleaza fara salvare",
     "Scor actual",
     "Economii",
-    "recomandari",
-    "Recomandari",
     "clasa energetica",
     "raport-v1.html",
     "algoritmi.html",
@@ -2050,18 +2291,19 @@ await test("active production analysis flow removes unsupported product domains"
     assert.equal(visibleSurface.includes(forbidden), false, forbidden);
   }
   for (const downstreamDomain of [
-    "energie finala",
-    "energie primara",
-    "CO2",
-    "CPE",
-    "certificat energetic",
-    "certificat de performanta"
+    "Economii garantate",
+    "payback",
+    "NPV",
+    "CPE legal gata",
+    "certificat legal complet"
   ]) {
     assert.equal(visibleSurface.includes(downstreamDomain), false, downstreamDomain);
   }
   assert.equal(html.includes("Energie regenerabila"), true);
   assert.equal(html.includes("Productie PV anuala furnizata"), true);
   assert.equal(html.includes("Relatiile MC001 4.160-4.165"), true);
+  assert.equal(html.includes("CPE - certificat de performanta energetica"), true);
+  assert.equal(html.includes("nu declara layout legal complet fara certificare sursa"), true);
 });
 
 await test("canonical production route imports only the current Building Platform flow", () => {

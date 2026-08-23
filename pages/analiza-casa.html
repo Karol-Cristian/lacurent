@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LA CURENT | Modelul termic al cladirii</title>
+<title>LA CURENT | Workspace auditor energetic</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -23,15 +23,15 @@
 <div class="hero-top">
 <div>
 <div class="small-label">MODEL TEHNIC VALIDAT</div>
-<h1>Modelul termic al cladirii</h1>
-<p>Modelarea anvelopei, necesarul util si instalatiile tehnice conform MC001-2022.</p>
+<h1>Workspace auditor energetic</h1>
+<p>Model de cladire, baseline, scenarii retrofit, rezultate si documente peste motoarele validate LaCurent.</p>
 </div>
-<div class="system-state"><span class="green-dot"></span>Chapter 2 + Chapter 3 runtime</div>
+<div class="system-state"><span class="green-dot"></span>Building DNA + runtime validat</div>
 </div>
 </header>
 
 <main class="dashboard">
-<section class="analysis-page p2c-technical-analysis p3f-engineering-workspace" data-workspace-mode="engineering">
+<section class="analysis-page p2c-technical-analysis p3f-engineering-workspace p10-professional-workspace" data-workspace-mode="professional-auditor">
 <div id="existingHomesPanel" class="dashboard-band" hidden>
 <div class="section-heading">
 <span class="small-label">MODELE SALVATE</span>
@@ -88,16 +88,16 @@
 
 <section class="dashboard-band p3f-workspace-intro" id="buildingPlatformIntro">
 <div class="section-heading">
-<span class="small-label">SPATIU DE CALCUL</span>
-<h2>Descrii cladirea si verifici analiza in acelasi ecran.</h2>
+<span class="small-label">SPATIU PROFESIONAL</span>
+<h2>Building model -> baseline -> scenarii retrofit -> rezultate -> documente.</h2>
 </div>
-<p>Fluxul asistat cere doar informatiile principale. Datele de produs, program si componenta raman disponibile in modul Expert si ajung in acelasi Building DNA canonic.</p>
+<p>Auditorul lucreaza cu obiecte fizice ale cladirii. Datele tehnice, sursele si trace-urile MC001 raman disponibile in detalii si in anexa tehnica.</p>
 </section>
 
 <section class="dashboard-band product-journey-panel" id="productJourneyPanel">
 <div class="section-heading">
-<span class="small-label">FLUX ANALIZA</span>
-<h2>Completeaza datele pe intelesul cladirii, nu pe relatii normative.</h2>
+<span class="small-label">MODEL READINESS</span>
+<h2>Completeaza modelul fizic; LaCurent traduce datele catre runtime.</h2>
 </div>
 <div class="analysis-mode-toggle" role="group" aria-label="Nivel detalii formular">
 <button type="button" class="secondary-btn" data-analysis-mode-target="assisted" aria-pressed="true">Asistat</button>
@@ -107,19 +107,29 @@
 <div id="productJourneyStatus" aria-live="polite"></div>
 </section>
 
+<nav class="p10-workspace-nav" aria-label="Navigare workspace auditor">
+<button type="button" data-step-target="4" data-workspace-section="overview">Overview</button>
+<button type="button" data-step-target="0" data-workspace-section="building">Building</button>
+<button type="button" data-step-target="1" data-workspace-section="envelope">Envelope</button>
+<button type="button" data-step-target="3" data-workspace-section="systems">Systems</button>
+<button type="button" data-step-target="6" data-workspace-section="baseline">Baseline</button>
+<button type="button" data-step-target="2" data-workspace-section="scenarios">Scenarios</button>
+<button type="button" data-step-target="6" data-workspace-section="results">Results</button>
+<button type="button" data-step-target="5" data-workspace-section="documents">Documents</button>
+</nav>
+
 <div class="progress-wrap p2c-progress-wrap p3f-simplified-flow-panel" aria-label="Navigare mod simplificat">
 <nav class="technical-flow-nav" aria-label="Sectiuni model termic">
 <button type="button" data-step-target="0">Cladire</button>
 <button type="button" data-step-target="1">Anvelopa</button>
 <button type="button" data-step-target="2">Utilizare</button>
 <button type="button" data-step-target="3">Instalatii</button>
-<button type="button" data-step-target="4">Energie regenerabila</button>
-<button type="button" data-step-target="5">Verificare</button>
-<button type="button" data-step-target="6">Raport</button>
-<button type="button" data-step-target="7">Rezultate</button>
+<button type="button" data-step-target="4">Verificare</button>
+<button type="button" data-step-target="5">Raport</button>
+<button type="button" data-step-target="6">Rezultate</button>
 </nav>
 <div class="progress"><div id="progressBar"></div></div>
-<span id="stepText">Pas 1 din 8</span>
+<span id="stepText">Pas 1 din 7</span>
 </div>
 
 <div class="p3f-engineering-shell">
@@ -211,6 +221,20 @@
 <div><label>Izolatie pod/acoperis</label><select name="roof_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
 <div><label>Izolatie planseu inferior</label><select name="floor_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
 <div><label>Ferestre inlocuite</label><select name="windows_replaced"><option value="unknown">Deducere din tipul ferestrei</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
+</div>
+<div class="dashboard-band compact-technical-note p10-scenario-editor">
+<h3>Scenariu retrofit</h3>
+<p class="section-description">Scenariul este salvat ca delta peste baseline. Nu reconstruieste manual intreaga cladire.</p>
+<div class="form-grid">
+<div><label>Nume scenariu</label><input name="scenario_name" placeholder="Ex: Pachet A - anvelopa"></div>
+<div><label>Pereti exteriori propus</label><select name="scenario_wall_insulation"><option value="no_change">Fara schimbare</option><option value="5cm">EPS / vata 5 cm</option><option value="10cm">EPS / vata 10 cm</option><option value="15cm">EPS / vata 15 cm</option><option value="20cm+">20 cm sau mai mult</option></select></div>
+<div><label>Acoperis / pod propus</label><select name="scenario_roof_insulated"><option value="no_change">Fara schimbare</option><option value="yes">Izolat</option><option value="partial">Partial</option><option value="no">Neizolat</option></select></div>
+<div><label>Planseu inferior propus</label><select name="scenario_floor_insulated"><option value="no_change">Fara schimbare</option><option value="yes">Izolat</option><option value="partial">Partial</option><option value="no">Neizolat</option></select></div>
+<div><label>Ferestre propuse</label><select name="scenario_window_type"><option value="no_change">Fara schimbare</option><option value="old_double_glazing">Termopan vechi</option><option value="modern_double_glazing">PVC / termopan modern</option><option value="triple_glazing">Tripan</option></select></div>
+<div><label>Generator incalzire propus</label><select name="scenario_heating_generator_type"><option value="no_change">Fara schimbare</option><option value="condensing_boiler">Cazan in condensare</option><option value="direct_electric">Electric direct</option><option value="heat_pump">Pompa de caldura</option><option value="district_heat">Termoficare</option></select></div>
+<div><label>Generator racire propus</label><select name="scenario_cooling_generator_type"><option value="no_change">Fara schimbare</option><option value="split_system">Split / multisplit</option><option value="chiller">Chiller</option><option value="absorption_chiller">Absorbtie</option></select></div>
+<div><label>Productie PV propusa [kWh/an]</label><input name="scenario_pv_annual_production_kwh" type="number" min="0" step="0.01" placeholder="Optional"></div>
+</div>
 </div>
 </div>
 
@@ -447,13 +471,10 @@
 <div><label>LENI explicit [kWh/(m2*an)]</label><input name="chapter3_lighting_leni_kwh_m2_year" type="number" step="0.01"></div>
 </div>
 </div>
-</div>
-
-<div class="step" data-section-id="renewable">
-<h2>Energie regenerabila</h2>
+<div class="dashboard-band compact-technical-note p10-renewables-panel" data-section-id="renewable">
+<h3>Energie regenerabila</h3>
 <p class="section-description">Configureaza doar productia regenerabila acceptata de fluxul curent. LaCurent nu estimeaza productia PV din kWp, orientare sau inclinare pana cand metoda lunara MC001 4.5 este implementabila din surse detinute.</p>
-<div class="dashboard-band compact-technical-note">
-<h3>Fotovoltaic</h3>
+<h4>Fotovoltaic</h4>
 <div class="form-grid">
 <div><label>Exista sistem fotovoltaic</label><select name="pv_installed"><option value="">Nu configurez acum</option><option value="no">Nu</option><option value="yes">Da</option></select></div>
 <div><label>Productie PV anuala furnizata [kWh/an]</label><input name="pv_annual_production_kwh" type="number" min="0" step="0.01"><small class="field-impact-note">Valoare din invertor, proiectant sau fisa sistemului. Nu este estimata automat.</small></div>
@@ -473,17 +494,37 @@
 </div>
 
 <div class="step" data-section-id="report">
-<h2>Raport</h2>
-<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motoarelor Chapter 2, Chapter 3 si contractele regenerabile configurate. Este structurat pentru citire tehnica si print.</p>
+<h2>Documents</h2>
+<p class="section-description">Documentele consuma Building DNA, rezultatele runtime si metadata de proiect. Rendererul nu executa fizica si nu declara layout legal complet fara certificare sursa.</p>
 <div class="dashboard-band compact-technical-note">
-<h3>Capitole raport</h3>
+<h3>Document Center</h3>
 <div class="value-card-grid">
-<article>Geometrie, anvelopa si materiale</article>
-<article>Rezistente termice, coeficienti U si Htr</article>
-<article>QHnd/QCnd lunar si anual</article>
-<article>Instalatii Chapter 3, pierderi si auxiliari</article>
-<article>Productie PV furnizata explicit si limite Chapter 4</article>
-<article>Formule, dependinte si surse normative</article>
+<article>CPE - certificat de performanta energetica</article>
+<article>Raport de audit energetic</article>
+<article>Anexa tehnica de calcul</article>
+<article>Anexa 1 - recomandari</article>
+<article>Anexa 2 - date tehnice certificat</article>
+<article>Anexa 3 - fotografii</article>
+</div>
+</div>
+<div class="dashboard-band compact-technical-note p10-document-metadata">
+<h3>Date document si auditor</h3>
+<div class="form-grid">
+<div><label>Nume auditor</label><input name="auditor_name" placeholder="Nume auditor"></div>
+<div><label>Autorizatie auditor</label><input name="auditor_authorization" placeholder="Numar / registru"></div>
+<div><label>Identificator document</label><input name="document_identifier" placeholder="Ex: CPE-2026-001"></div>
+<div><label>Beneficiar / client</label><input name="client_name" placeholder="Nume beneficiar"></div>
+<div><label>Data emiterii</label><input name="document_issue_date" type="date"></div>
+</div>
+</div>
+<div class="dashboard-band compact-technical-note p10-evidence-metadata">
+<h3>Dovezi foto pentru Anexa 3</h3>
+<p class="section-description">P10 salveaza metadata si asocierea; incarcarea fisierelor foto ramane dependenta de backend-ul de atasamente.</p>
+<div class="form-grid">
+<div><label>Exterior cladire</label><input name="evidence_exterior_note" placeholder="Ex: foto fatada principala disponibila"></div>
+<div><label>Generator termic</label><input name="evidence_generator_note" placeholder="Ex: eticheta centrala fotografiata"></div>
+<div><label>Ferestre</label><input name="evidence_windows_note" placeholder="Ex: tip tamplarie verificat"></div>
+<div><label>Acoperis</label><input name="evidence_roof_note" placeholder="Ex: acces pod, strat izolatie"></div>
 </div>
 </div>
 </div>
