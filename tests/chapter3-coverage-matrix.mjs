@@ -21,7 +21,7 @@ const matrix = JSON.parse(
 );
 
 test("Chapter 3 coverage matrix is synchronized with the source-to-code fixture", () => {
-  assert.equal(matrix.schema, "mc001_chapter3_coverage_matrix_p8h_v1");
+  assert.equal(matrix.schema, "mc001_chapter3_coverage_matrix_p8i_v1");
   assert.deepEqual(matrix.summary, chapter3MatrixSummary());
   assert.equal(matrix.entries.length, chapter3ImplementationMatrix.length);
   assert.deepEqual(
@@ -30,10 +30,10 @@ test("Chapter 3 coverage matrix is synchronized with the source-to-code fixture"
   );
 });
 
-test("Chapter 3 coverage matrix records the P8H production topology contract", () => {
+test("Chapter 3 coverage matrix records the P8I production topology contract", () => {
   assert.equal(
     matrix.productionTopology.schema,
-    "mc001_chapter3_production_topology_p8h_v1"
+    "mc001_chapter3_production_topology_p8i_v1"
   );
   assert.equal(
     matrix.productionTopology.supportedTopology.parallelSystems,
@@ -51,7 +51,7 @@ test("Chapter 3 coverage matrix records the P8H production topology contract", (
   );
 });
 
-test("Chapter 3 coverage matrix has one P8H primary classification per slot", () => {
+test("Chapter 3 coverage matrix has one P8I primary classification per slot", () => {
   const allowed = new Set(Object.values(CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION));
   for (const entry of matrix.entries) {
     assert.equal(allowed.has(entry.implementationClassification), true, entry.matrixId);
@@ -70,14 +70,14 @@ test("Chapter 3 coverage matrix has one P8H primary classification per slot", ()
       entry.matrixId
     );
   }
-  assert.equal(matrix.summary.p8bClassificationCounts.NUMERICALLY_IMPLEMENTED, 201);
+  assert.equal(matrix.summary.p8bClassificationCounts.NUMERICALLY_IMPLEMENTED, 211);
   assert.equal(matrix.summary.p8bClassificationCounts.PROCEDURALLY_IMPLEMENTED, 4);
-  assert.equal(matrix.summary.p8bClassificationCounts.EXPLICIT_INPUT_BOUNDARY, 11);
+  assert.equal(matrix.summary.p8bClassificationCounts.EXPLICIT_INPUT_BOUNDARY, 1);
   assert.equal(matrix.summary.p8bClassificationCounts.EXTERNAL_STANDARD_BLOCKED, 1);
-  assert.equal(matrix.summary.numericalImplementationPercentage, 92.6);
+  assert.equal(matrix.summary.numericalImplementationPercentage, 97.2);
 });
 
-test("Chapter 3 P8H registers every remaining explicit boundary with a reason", () => {
+test("Chapter 3 P8I registers every remaining explicit boundary with a reason", () => {
   assert.equal(
     matrix.explicitBoundaryRegister.length,
     matrix.summary.explicitInputBoundaryRelations
@@ -126,6 +126,7 @@ test("Chapter 3 P8H registers every remaining explicit boundary with a reason", 
     "3.35",
     "3.36",
     "3.37",
+    "3.38",
     "3.39",
     ...Array.from({ length: 15 }, (_, index) => `3.${40 + index}`),
     "3.55",
@@ -182,15 +183,20 @@ test("Chapter 3 P8H registers every remaining explicit boundary with a reason", 
     "3.137",
     "3.138",
     "3.139",
+    "3.140",
     "3.141",
+    "3.142",
+    "3.143",
     "3.144",
     "3.145",
     "3.146",
     "3.147",
+    "3.148",
     "3.149",
     "3.150",
     "3.151",
     "3.152",
+    "3.153",
     "3.154",
     "3.155",
     "3.156",
@@ -202,13 +208,16 @@ test("Chapter 3 P8H registers every remaining explicit boundary with a reason", 
     "3.162",
     "3.163",
     "3.164",
+    "3.165",
     "3.166",
     "3.167",
     "3.168",
     "3.169",
+    "3.170",
     "3.171",
     "3.172",
     "3.173",
+    "3.174",
     "3.175",
     "3.176",
     "3.177",
@@ -216,6 +225,7 @@ test("Chapter 3 P8H registers every remaining explicit boundary with a reason", 
     "3.179",
     "3.180",
     "3.181",
+    "3.182",
     ...Array.from({ length: 10 }, (_, index) => `3.${188 + index}`),
     ...Array.from({ length: 29 }, (_, index) => `3.${200 + index}`)
   ]) {

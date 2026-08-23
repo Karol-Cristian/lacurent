@@ -1932,6 +1932,21 @@ export function calculateCoolingDistributionInletOutdoorCompensatedTemperature(i
   });
 }
 
+export function calculateCoolingDistributionInletConstantSetpoint(input = {}) {
+  const { setpointC = 6 } = input;
+
+  assertFiniteNumber(setpointC, "setpointC");
+
+  return makeResult({
+    value: setpointC,
+    valueKey: "valueC",
+    unit: "degC",
+    formulaId: "MC001_3_140_COOLING_DISTRIBUTION_INLET_CONSTANT_SETPOINT",
+    formulaText: "thetaC,dis,in,flw,req = thetaC,dis,flw,set",
+    inputs: { setpointC }
+  });
+}
+
 export function calculateCoolingExtractedEnergyLimitedByGenerator(input) {
   const { requiredEnergyKWh, generatorInputRequiredKWh, generatorInputAvailableKWh, formulaId } =
     input ?? {};
@@ -1951,6 +1966,29 @@ export function calculateCoolingExtractedEnergyLimitedByGenerator(input) {
     formulaId: formulaId ?? "MC001_3_142_3_143_COOLING_EXTRACTED_LIMITED_BY_GENERATOR",
     formulaText: "QC = min(QC,req, QC,req / QC,gen,in,req * QC,gen,in)",
     inputs: { requiredEnergyKWh, generatorInputRequiredKWh, generatorInputAvailableKWh }
+  });
+}
+
+export function calculateCoolingUnmetLoadFromLimitedExtraction(input) {
+  const { requiredEnergyKWh, suppliedEnergyKWh } = input ?? {};
+
+  assertFiniteNonNegativeNumber(requiredEnergyKWh, "requiredEnergyKWh");
+  assertFiniteNonNegativeNumber(suppliedEnergyKWh, "suppliedEnergyKWh");
+  if (suppliedEnergyKWh - requiredEnergyKWh > 1e-9) {
+    throw new Error("suppliedEnergyKWh cannot exceed requiredEnergyKWh");
+  }
+  const valueKWh = Math.max(requiredEnergyKWh - suppliedEnergyKWh, 0);
+
+  return makeResult({
+    value: valueKWh,
+    valueKey: "valueKWh",
+    unit: "kWh",
+    formulaId: "MC001_3_153_COOLING_UNMET_LOAD_CAPACITY_ACCOUNTING",
+    formulaText: "QC,unmet = QC,req - QC,supplied when QC,gen,in is capacity-limited",
+    inputs: { requiredEnergyKWh, suppliedEnergyKWh },
+    assumptions: [
+      "Derived reporting/accounting value exposing the unmet part after MC001 relations 3.142/3.143 and 3.153 are evaluated."
+    ]
   });
 }
 
@@ -1993,6 +2031,63 @@ export function selectCoolingPartLoadBin(input) {
     formulaId,
     formulaText: partLoadFactor < 0.05 ? "fC,PL,k = 1 when fC,PL < 0.05" : "fC,PL,k selected from MC001 0.1 part-load bins",
     inputs: { partLoadFactor }
+  });
+}
+
+export function calculateCoolingGeneratorPartLoadValue(input) {
+  const {
+    coolingPartLoadBinFactor,
+    heatRejectionPartLoadFactor = 1,
+    freeCoolingFactor = 1,
+    multipleGeneratorFactor = 1
+  } = input ?? {};
+
+  assertFinitePositiveNumber(coolingPartLoadBinFactor, "coolingPartLoadBinFactor");
+  assertFinitePositiveNumber(heatRejectionPartLoadFactor, "heatRejectionPartLoadFactor");
+  assertFinitePositiveNumber(freeCoolingFactor, "freeCoolingFactor");
+  assertFinitePositiveNumber(multipleGeneratorFactor, "multipleGeneratorFactor");
+  const value = coolingPartLoadBinFactor *
+    heatRejectionPartLoadFactor *
+    freeCoolingFactor *
+    multipleGeneratorFactor;
+
+  return makeResult({
+    value,
+    valueKey: "value",
+    unit: "-",
+    formulaId: "MC001_3_148_COOLING_GENERATOR_PART_LOAD_VALUE",
+    formulaText: "PLV = fC,PL,k * fhr,PL * fhr,fc * fC,mult",
+    inputs: {
+      coolingPartLoadBinFactor,
+      heatRejectionPartLoadFactor,
+      freeCoolingFactor,
+      multipleGeneratorFactor
+    }
+  });
+}
+
+export function selectCoolingAbsorptionPartLoadValue(input = {}) {
+  const { partLoadValue } = input;
+
+  if (partLoadValue !== undefined && partLoadValue !== null) {
+    assertFinitePositiveNumber(partLoadValue, "partLoadValue");
+    return makeResult({
+      value: partLoadValue,
+      valueKey: "value",
+      unit: "-",
+      formulaId: "MC001_3_148_COOLING_ABSORPTION_PART_LOAD_PRODUCT_INPUT",
+      formulaText: "PLV supplied as absorption generator product/project input",
+      inputs: { partLoadValue }
+    });
+  }
+
+  return makeResult({
+    value: 0.95,
+    valueKey: "value",
+    unit: "-",
+    formulaId: "MC001_3_148_COOLING_ABSORPTION_PART_LOAD_DEFAULT",
+    formulaText: "PLV = 0.95 for absorption cooling systems in absence of other data",
+    inputs: {}
   });
 }
 

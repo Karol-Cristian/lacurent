@@ -1376,6 +1376,7 @@ await test("cooling component contracts calculate distribution, storage and heat
             operationHours: 240,
             nominalCoolingPowerKW: 20,
             nominalEer: 3,
+            distributionInletConstantSetpointC: 6,
             eerCorrectionInput: {
               absoluteZeroOffsetK: 273.15,
               generatorRequiredOutletTemperatureC: 7,
@@ -1465,13 +1466,15 @@ await test("cooling component contracts calculate distribution, storage and heat
     distributionInputExpected / (0.00116 * 1000 * 2 * Math.abs(6 - 11)) * 0.1;
   const generationRequired = distributionInputExpected + storageLossExpected;
   const partLoadBin = 1;
-  const heatRejectedExpected = generationRequired * (1 + 1 / (3 * partLoadBin * 1));
+  const heatRejectionPartLoadFactor = 0.00083 * 25 ** 2 - 0.07753 * 25 + 2.64;
+  const partLoadValue = partLoadBin * heatRejectionPartLoadFactor * 1 * 1;
+  const heatRejectedExpected = generationRequired * (1 + 1 / (3 * partLoadValue * 1));
   const heatRejectionAuxExpected = heatRejectedExpected * 0.018 * 0.8 * 1;
   const heatRejectionDistributionAuxExpected = heatRejectedExpected * 0.003;
   const controlAuxExpected = 0.02 * 240;
   const generatorAuxExpected =
     heatRejectionAuxExpected + heatRejectionDistributionAuxExpected + controlAuxExpected;
-  const compressionElectricExpected = generationRequired / (partLoadBin * 3 * 1);
+  const compressionElectricExpected = generationRequired / (partLoadValue * 3 * 1);
   const deliveredElectricExpected = compressionElectricExpected + generatorAuxExpected;
 
   close(distribution.lossKWh, distributionLossExpected, 1e-9);
@@ -1489,8 +1492,11 @@ await test("cooling component contracts calculate distribution, storage and heat
   assert.ok(storage.auxiliarySource.formulaIds.includes("MC001_3_115_COOLING_STORAGE_OUTPUT_PUMP_OPERATION_TIME"));
   assert.ok(storage.auxiliarySource.formulaIds.includes("MC001_3_119_COOLING_STORAGE_AUXILIARY_TOTAL"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_149_COOLING_PART_LOAD_FACTOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_140_COOLING_DISTRIBUTION_INLET_CONSTANT_SETPOINT"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_148_COOLING_GENERATOR_PART_LOAD_VALUE"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_155_COOLING_EER_TEMPERATURE_CORRECTION"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_158_COOLING_HEAT_REJECTION_WATER_REFERENCE"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_TABLE_3_20_HEAT_REJECTION_PART_LOAD_COEFFICIENTS"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_159_HEAT_REJECTION_PART_LOAD_FACTOR"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_160_HEAT_REJECTION_OUTDOOR_AIR_TEMPERATURE"));
   assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_164_HEAT_REJECTED_COMPRESSION_GENERATOR"));
@@ -1667,6 +1673,174 @@ await test("cooling delivered energy decreases monotonically as EER increases", 
       JSON.stringify(annualByEer)
     );
   }
+});
+
+await test("cooling capacity-limited component contract reports supplied and unmet cooling explicitly", () => {
+  const systems = technicalSystems();
+  systems.heating.enabled = false;
+  systems.heating.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.domesticHotWater.enabled = false;
+  systems.domesticHotWater.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.cooling.systems = [
+    {
+      systemId: "cooling-capacity-limited",
+      enabled: true,
+      generatorType: "chiller",
+      energyCarrier: "electricity",
+      stages: [
+        stage("emission", 0, 0),
+        stage("distribution", 0, 0),
+        stage("storage", 0, 0),
+        {
+          stageId: "generation",
+          lossKWhPerMonth: 0,
+          auxiliaryCalculation: {
+            mode: "cooling_compression_heat_rejection_auxiliary",
+            generatorInputRequiredKWh: 10,
+            requiredExtractedEnergyKWh: 10,
+            operationHours: 1,
+            nominalCoolingPowerKW: 1,
+            nominalEer: 3,
+            eerCorrectionFactor: 1,
+            heatRejectionAuxiliaryMode: "air_cooled_zero",
+            heatRejectionDistributionAuxiliaryMode: "air_cooled_zero",
+            controlPowersKW: [0],
+            allowCapacityLimitedGeneratorInput: true,
+            unmetLoadPolicy: "report_unmet_load"
+          },
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        }
+      ]
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+  assert.equal(pipeline.status, "ready");
+  const calculation = pipeline.calculation;
+
+  assert.equal(calculation.status, "ready", JSON.stringify(calculation.diagnostics));
+  const monthWithUnmet = calculation.chapter3Result.monthly.find(
+    month => (month.cooling?.unmetLoadKWh ?? 0) > 0
+  );
+  assert.ok(monthWithUnmet, "expected at least one cooling month to be capacity-limited");
+  const generation = monthWithUnmet.cooling.stageResults.find(
+    stageResult => stageResult.stageId === "generation"
+  );
+  const details = generation.auxiliarySource;
+  close(
+    details.suppliedCoolingKWh + details.unmetCoolingKWh,
+    details.requiredExtractedEnergyKWh
+  );
+  assert.ok(details.suppliedCoolingKWh > 0);
+  assert.ok(details.unmetCoolingKWh > 0);
+  assert.ok(calculation.chapter3Result.annual.coolingUnmetLoadKWh > 0);
+  assert.ok(
+    generation.auxiliarySource.formulaIds.includes(
+      "MC001_3_142_3_143_COOLING_EXTRACTED_LIMITED_BY_GENERATOR"
+    )
+  );
+  assert.ok(
+    generation.auxiliarySource.formulaIds.includes(
+      "MC001_3_153_COOLING_GENERATOR_INPUT_CAPACITY_LIMIT"
+    )
+  );
+  assert.ok(
+    generation.auxiliarySource.formulaIds.includes(
+      "MC001_3_153_COOLING_UNMET_LOAD_CAPACITY_ACCOUNTING"
+    )
+  );
+});
+
+await test("absorption cooling component contract separates thermal and electric carrier energy", () => {
+  const systems = technicalSystems();
+  systems.heating.enabled = false;
+  systems.heating.systems = [];
+  systems.ventilationAhu.enabled = false;
+  systems.ventilationAhu.systems = [];
+  systems.domesticHotWater.enabled = false;
+  systems.domesticHotWater.systems = [];
+  systems.coolingStoragePcm.enabled = false;
+  systems.lighting.enabled = false;
+  systems.lighting.explicitMonthlyEnergyKWh = [];
+  systems.lighting.leniSubspaces = [];
+  systems.cooling.systems = [
+    {
+      systemId: "cooling-absorption",
+      enabled: true,
+      generatorType: "absorption_chiller",
+      energyCarrier: "natural_gas",
+      stages: [
+        stage("emission", 0, 0),
+        stage("distribution", 0, 0),
+        stage("storage", 0, 0),
+        {
+          stageId: "generation",
+          lossKWhPerMonth: 0,
+          auxiliaryCalculation: {
+            mode: "cooling_absorption_heat_rejection_auxiliary",
+            generatorInputRequirementMode: "direct_expansion",
+            operationHours: 240,
+            nominalCoolingPowerKW: 20,
+            nominalHeatRatio: 0.7,
+            absorptionHeatCarrier: "natural_gas",
+            auxiliaryCarrier: "electricity",
+            heatRejectionAuxiliaryMode: "specific_electric_demand",
+            heatRejectionSpecificElectricDemandKWPerKW: 0.01,
+            heatRejectionElectricPartLoadFactor: 1,
+            freeCoolingElectricFactor: 1,
+            heatRejectionDistributionAuxiliaryMode: "specific_electric_demand",
+            heatRejectionDistributionSpecificElectricDemandKWPerKW: 0.002,
+            controlPowersKW: [0.01],
+            recoverableHeatMode: "absorption"
+          },
+          auxiliaryRecoveredFraction: 0,
+          lossRecoveredFraction: 0,
+          auxiliaryRecoverableFractionToHeating: 0,
+          lossRecoverableFractionToHeating: 0
+        }
+      ]
+    }
+  ];
+
+  const pipeline = buildBuildingKnowledgePlatformFromAssistedAnswers(
+    assistedAnswers({ technicalSystems: systems })
+  );
+
+  assert.equal(pipeline.status, "ready");
+  const monthWithCooling = pipeline.calculation.chapter3Result.monthly.find(
+    month => (month.cooling?.usefulDemandKWh ?? 0) > 0
+  );
+  assert.ok(monthWithCooling, "expected at least one cooling month");
+  const generation = monthWithCooling.cooling.stageResults.find(
+    stageResult => stageResult.stageId === "generation"
+  );
+  const details = generation.inputEnergySource;
+  const generatorInput = generation.auxiliarySource.generatorCoolingInputKWh;
+  const absorptionHeatExpected = generatorInput / (0.95 * 0.7);
+  const heatRejectedExpected = generatorInput * (1 + 1 / (0.95 * 0.7));
+  const auxiliaryExpected = heatRejectedExpected * 0.01 + heatRejectedExpected * 0.002 + 240 * 0.01;
+
+  close(details.carrierEnergy.natural_gas, absorptionHeatExpected, 1e-9);
+  close(details.carrierEnergy.electricity, auxiliaryExpected, 1e-9);
+  close(generation.inputEnergy.valueKWh, absorptionHeatExpected + auxiliaryExpected, 1e-9);
+  assert.ok(pipeline.calculation.chapter3Result.energyByCarrier.natural_gas > 0);
+  assert.ok(pipeline.calculation.chapter3Result.energyByCarrier.electricity > 0);
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_148_COOLING_ABSORPTION_PART_LOAD_DEFAULT"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_165_HEAT_REJECTED_ABSORPTION_GENERATOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_170_RECOVERABLE_HEAT_ABSORPTION_GENERATOR"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_174_COOLING_ABSORPTION_HEAT_INPUT"));
+  assert.ok(generation.auxiliarySource.formulaIds.includes("MC001_3_182_COOLING_ABSORPTION_PERFORMANCE_RATIO"));
 });
 
 await test("Chapter 2-only buildings remain openable without Chapter 3 output", () => {

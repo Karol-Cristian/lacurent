@@ -197,6 +197,10 @@ def cooling_distribution_inlet_outdoor_compensated_c(
     return min(setpoint_max_c, max(setpoint_min_c, raw))
 
 
+def cooling_distribution_inlet_constant_setpoint_c(setpoint_c: float = 6) -> float:
+    return setpoint_c
+
+
 def cooling_generator_input_required_direct_expansion_kwh(
     useful_kwh: float,
     emission_loss_kwh: float,
@@ -270,12 +274,49 @@ def cooling_part_load_bin(part_load_factor: float) -> float:
     return min(1, math.ceil(part_load_factor * 10) / 10)
 
 
+def cooling_generator_part_load_value(
+    cooling_part_load_bin_factor: float,
+    heat_rejection_part_load_factor: float,
+    free_cooling_factor: float,
+    multiple_generator_factor: float,
+) -> float:
+    return (
+        cooling_part_load_bin_factor
+        * heat_rejection_part_load_factor
+        * free_cooling_factor
+        * multiple_generator_factor
+    )
+
+
+def cooling_absorption_part_load_value(part_load_value: float | None = None) -> float:
+    return 0.95 if part_load_value is None else part_load_value
+
+
 def cooling_generator_input_by_capacity_limit(generator_input_required_kwh: float, operation_hours: float, nominal_power_kw: float) -> float:
     return min(generator_input_required_kwh, operation_hours * nominal_power_kw)
 
 
 def cooling_covered_part_load_factor(generator_input_kwh: float, generator_input_required_kwh: float) -> float:
     return min(1, generator_input_kwh / generator_input_required_kwh)
+
+
+def cooling_extracted_energy_limited_by_generator(
+    required_energy_kwh: float,
+    generator_input_required_kwh: float,
+    generator_input_available_kwh: float,
+) -> float:
+    if generator_input_required_kwh == 0:
+        return 0
+    return min(
+        required_energy_kwh,
+        required_energy_kwh / generator_input_required_kwh * generator_input_available_kwh,
+    )
+
+
+def cooling_unmet_load_kwh(required_energy_kwh: float, supplied_energy_kwh: float) -> float:
+    if supplied_energy_kwh > required_energy_kwh:
+        raise ValueError("supplied cooling cannot exceed required cooling")
+    return max(required_energy_kwh - supplied_energy_kwh, 0)
 
 
 def cooling_compression_electric_input_kwh(generator_input_kwh: float, part_load_value: float, nominal_eer: float, eer_correction_factor: float) -> float:
@@ -396,6 +437,22 @@ def cooling_absorption_heat_input_kwh(generator_input_kwh: float, part_load_valu
 
 def cooling_absorption_performance_ratio(generator_input_kwh: float, absorption_heat_input_kwh: float) -> float:
     return generator_input_kwh / absorption_heat_input_kwh
+
+
+def cooling_absorption_multi_carrier_input(
+    absorption_heat_input_kwh: float,
+    auxiliary_electric_input_kwh: float,
+    absorption_heat_carrier: str = "thermal",
+    auxiliary_carrier: str = "electricity",
+) -> dict[str, object]:
+    carriers: dict[str, float] = {
+        absorption_heat_carrier: absorption_heat_input_kwh,
+        auxiliary_carrier: auxiliary_electric_input_kwh,
+    }
+    return {
+        "carrier_energy": carriers,
+        "total_delivered_input_kwh": sum(carriers.values()),
+    }
 
 
 def cooling_heat_rejection_auxiliary_kwh(

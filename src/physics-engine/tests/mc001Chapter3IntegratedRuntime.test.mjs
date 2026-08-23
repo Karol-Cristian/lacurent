@@ -365,7 +365,16 @@ test("calculates one physical shared generator for heating and DHW without doubl
           energyCarrier: "natural_gas",
           auxiliaryCarrier: "electricity",
           controlLossFactor: 1.05,
-          operationHours: 100,
+          operationTimeCalculation: {
+            heatingUseHours: 200,
+            heatingLoadFactor: 0.6,
+            coolingUseHours: 10,
+            coolingLoadFactor: 0.5,
+            ventilationUseHours: 20,
+            ventilationLoadFactor: 0.25,
+            dhwUseHours: 20,
+            dhwLoadFactor: 0.5
+          },
           lossPowerKW: 0.2,
           auxiliaryPowerKW: 0.05,
           recoveredAuxiliaryFraction: 0.2,
@@ -447,6 +456,124 @@ test("calculates one physical shared generator for heating and DHW without doubl
     ok: true,
     evaluatedExpression: null
   });
+  assert.equal(shared.operationTime.formulaId, "MC001_3_38_HEATING_GENERATOR_OPERATION_TIME");
+  assertCloseTo(shared.operationTime.valueHours, 100);
+  assert.deepEqual(validateMc001ExecutionTrace(shared.operationTime.executionTrace), {
+    ok: true,
+    evaluatedExpression: null
+  });
+});
+
+test("propagates capacity-limited cooling supplied and unmet load without treating unmet demand as satisfied", () => {
+  const result = calculateMc001Chapter3IntegratedRuntime({
+    services: {
+      heatingEnabled: false,
+      coolingEnabled: true,
+      dhwEnabled: false,
+      ventilationAhuEnabled: false,
+      coolingStoragePcmEnabled: false,
+      lightingEnabled: false
+    },
+    months: [
+      {
+        month: "july",
+        chapter2Useful: { qHndKWh: 0, qCndKWh: 100 },
+        coolingSystems: [
+          {
+            systemId: "capacity-limited-chiller",
+            allocationFraction: 1,
+            metadata: { energyCarrier: "electricity" },
+            stages: [
+              { stageId: "emission", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "distribution", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "storage", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              {
+                stageId: "generation",
+                lossKWh: 0,
+                auxiliaryKWh: 0,
+                auxiliaryRecoveredFraction: 0,
+                lossRecoveredFraction: 0,
+                auxiliaryRecoverableFractionToHeating: 0,
+                lossRecoverableFractionToHeating: 0,
+                inputEnergyOverride: {
+                  valueKWh: 30,
+                  result: { valueKWh: 30, value: 30, unit: "kWh", formulaId: "test_capacity_input" },
+                  source: {
+                    details: {
+                      suppliedCoolingKWh: 75,
+                      unmetCoolingKWh: 25,
+                      carrierEnergy: { electricity: 30 }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assertCloseTo(result.monthly[0].cooling.suppliedUsefulDemandKWh, 75);
+  assertCloseTo(result.monthly[0].cooling.unmetLoadKWh, 25);
+  assertCloseTo(result.annual.coolingSuppliedUsefulKWh, 75);
+  assertCloseTo(result.annual.coolingUnmetLoadKWh, 25);
+  assertCloseTo(result.energyByCarrier.electricity, 30);
+});
+
+test("aggregates absorption cooling carrier energy from physical carriers instead of duplicating the scalar stage input", () => {
+  const result = calculateMc001Chapter3IntegratedRuntime({
+    services: {
+      heatingEnabled: false,
+      coolingEnabled: true,
+      dhwEnabled: false,
+      ventilationAhuEnabled: false,
+      coolingStoragePcmEnabled: false,
+      lightingEnabled: false
+    },
+    months: [
+      {
+        month: "august",
+        chapter2Useful: { qHndKWh: 0, qCndKWh: 100 },
+        coolingSystems: [
+          {
+            systemId: "absorption-chiller",
+            allocationFraction: 1,
+            metadata: { energyCarrier: "electricity" },
+            stages: [
+              { stageId: "emission", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "distribution", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              { stageId: "storage", lossKWh: 0, auxiliaryKWh: 0, auxiliaryRecoveredFraction: 0, lossRecoveredFraction: 0, auxiliaryRecoverableFractionToHeating: 0, lossRecoverableFractionToHeating: 0 },
+              {
+                stageId: "generation",
+                lossKWh: 0,
+                auxiliaryKWh: 0,
+                auxiliaryRecoveredFraction: 0,
+                lossRecoveredFraction: 0,
+                auxiliaryRecoverableFractionToHeating: 0,
+                lossRecoverableFractionToHeating: 0,
+                inputEnergyOverride: {
+                  valueKWh: 125,
+                  result: { valueKWh: 125, value: 125, unit: "kWh", formulaId: "test_absorption_input" },
+                  source: {
+                    details: {
+                      carrierEnergy: { thermal: 120, electricity: 5 },
+                      suppliedCoolingKWh: 100,
+                      unmetCoolingKWh: 0
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assertCloseTo(result.monthly[0].cooling.finalStageInputKWh, 125);
+  assertCloseTo(result.energyByCarrier.thermal, 120);
+  assertCloseTo(result.energyByCarrier.electricity, 5);
 });
 
 test("rejects multiple Chapter 3 systems when explicit allocation fractions do not sum to one", () => {
