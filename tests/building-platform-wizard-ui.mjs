@@ -173,8 +173,8 @@ function fakeRootForStale(form) {
 }
 
 await test("wizard exposes the product journey without normative relation navigation", () => {
-  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 7);
-  assert.equal(BUILDING_PLATFORM_PRODUCT_JOURNEY.length, 7);
+  assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 8);
+  assert.equal(BUILDING_PLATFORM_PRODUCT_JOURNEY.length, 8);
   const serialized = JSON.stringify(BUILDING_PLATFORM_WIZARD_STEPS);
   for (const forbidden of ["lambda", "Htr", "gamma", "tau", "eta", "U-value", "coeficient"]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
@@ -186,6 +186,7 @@ await test("wizard exposes the product journey without normative relation naviga
     "Instalatii",
     "Energie regenerabila",
     "Verificare",
+    "Raport",
     "Rezultate"
   ]) {
     assert.equal(serialized.includes(expected), true, expected);
@@ -568,6 +569,56 @@ await test("wizard maps shared heating and ACM generator into one canonical comp
   );
   const html = renderEngineeringModelReview(preview);
   assert.equal(html.includes("shared-generator-heating-dhw-main"), true);
+});
+
+await test("P9C assisted shared heating and ACM generator resolves the common no-recovery path without Expert fields", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    analysis_input_mode: "assisted",
+    chapter3_cooling_enabled: "no",
+    chapter3_ventilation_ahu_enabled: "no",
+    chapter3_pcm_enabled: "no",
+    chapter3_lighting_enabled: "no",
+    chapter3_shared_generator_enabled: "yes",
+    chapter3_shared_generator_type: "condensing_boiler",
+    chapter3_shared_generator_energy_carrier: "natural_gas",
+    chapter3_shared_generator_auxiliary_carrier: "electricity",
+    chapter3_shared_generator_control_loss_factor: "1.05",
+    chapter3_shared_generator_operation_hours_month: "100",
+    chapter3_shared_generator_loss_power_kw: "0.2",
+    chapter3_shared_generator_auxiliary_power_kw: "0.05",
+    chapter3_shared_generator_recovery_mode: "no_recovery",
+    chapter3_shared_generator_renewable_heat_mode: "none",
+    chapter3_shared_generator_dhw_loss_mode: "none",
+    chapter3_shared_generator_aux_recovered_fraction: "",
+    chapter3_shared_generator_aux_recoverable_fraction: "",
+    chapter3_shared_generator_loss_recoverable_fraction: "",
+    chapter3_shared_generator_boiler_room_recovery_factor: "",
+    chapter3_shared_generator_renewable_heat_kwh_month: "",
+    chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month: "",
+    chapter3_shared_generator_heating_allocation_fraction: "0.7",
+    chapter3_shared_generator_dhw_allocation_fraction: "0.3"
+  };
+  const journey = analyzeBuildingPlatformProductJourney(formData(values));
+  assert.equal(journey.find(section => section.sectionId === "systems").state, "complete");
+
+  const answers = mapWizardAnswersToAssistedAnswers(formData(values));
+  const generator = answers.technicalSystems.sharedComponents.generators[0];
+  assert.equal(generator.recoveredAuxiliaryFraction, 0);
+  assert.equal(generator.auxiliaryRecoverableFractionToHeating, 0);
+  assert.equal(generator.lossRecoverableFractionToHeating, 0);
+  assert.equal(generator.boilerRoomRecoveryFactor, 0);
+  assert.equal(generator.renewableGeneratorHeatKWh, 0);
+  assert.equal(generator.dhwStorageOrDistributionLossKWh, 0);
+  assert.deepEqual(generator.assistedSelections, {
+    recoveryMode: "no_recovery",
+    renewableHeatMode: "none",
+    dhwLossMode: "none"
+  });
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.technicalWorkspace.installations.sharedGenerators.length, 1);
 });
 
 await test("wizard can map ACM useful demand to the normative residential calculation source", () => {
@@ -1487,6 +1538,125 @@ await test("P9B normal cooling performance inputs map to generation runtime with
   assert.equal(generation.auxiliaryCalculation.nominalEer, 3.2);
 });
 
+await test("P9C PV workflow maps explicit production into Building DNA and report without a fabricated generation model", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    pv_installed: "yes",
+    pv_annual_production_kwh: "4200"
+  };
+  const journey = analyzeBuildingPlatformProductJourney(formData(values));
+  assert.equal(journey.find(section => section.sectionId === "renewable").state, "complete");
+
+  const answers = mapWizardAnswersToAssistedAnswers(formData(values));
+  assert.equal(answers.renewableSystems.photovoltaic.installed, true);
+  assert.equal(answers.renewableSystems.photovoltaic.annualProductionKWh, 4200);
+  assert.equal(answers.renewableSystems.photovoltaic.source.origin, "product_data");
+
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.buildingDna.renewableSystems.photovoltaic.annualProductionKWh, 4200);
+  assert.equal(preview.renewableSummary.photovoltaic.annualProductionKWh, 4200);
+  const html = renderEngineeringModelReview(preview);
+  assert.equal(html.includes("Energie regenerabila - PV"), true);
+  assert.equal(html.includes("4.160-4.165"), true);
+  assert.equal(html.includes("4200.00 kWh/an"), true);
+
+  const payload = buildBuildingPlatformSavePayload(preview, formData(values));
+  assert.equal(payload.ok, true);
+  assert.equal(payload.value.building_dna.renewableSystems.photovoltaic.annualProductionKWh, 4200);
+});
+
+await test("P9C PV installed with missing production remains distinct from zero", () => {
+  const values = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    pv_installed: "yes",
+    pv_annual_production_kwh: ""
+  };
+  const journey = analyzeBuildingPlatformProductJourney(formData(values));
+  const renewable = journey.find(section => section.sectionId === "renewable");
+  assert.equal(renewable.state, "needs_information");
+  assert.deepEqual(renewable.missingFields, ["pv_annual_production_kwh"]);
+
+  const preview = buildWizardEngineeringPreview(
+    mapWizardAnswersToAssistedAnswers(formData(values))
+  );
+  assert.equal(preview.status, "ready");
+  assert.equal(preview.renewableSummary.photovoltaic.status, "missing_required_input");
+  assert.equal(preview.renewableSummary.photovoltaic.annualProductionKWh, null);
+  const html = renderEngineeringModelReview(preview);
+  assert.equal(html.includes("PV este activat, dar lipseste productia anuala"), true);
+  assert.equal(html.includes("Productie PV</span>"), false);
+});
+
+await test("P9C production assisted RC path resolves systems and PV but remains truthfully bounded by Qsky/Qsol", () => {
+  const values = {
+    analysis_input_mode: "assisted",
+    display_name: "RC P9C casa asistata",
+    locality_id: "ro_bucuresti",
+    building_type: "house",
+    building_use_category: "residential_single_family",
+    construction_year: "1998",
+    useful_area_m2: "120",
+    number_of_floors: "1",
+    floor_height_m: "2.6",
+    wall_material: "brick",
+    roof_type: "unheated_attic",
+    floor_type: "on_ground",
+    window_type: "modern_double_glazing",
+    window_area_m2: "8",
+    window_orientation: "south",
+    ventilation_type: "natural",
+    ventilation_ach: "0.5",
+    wall_insulation: "10cm",
+    roof_insulated: "yes",
+    floor_insulated: "partial",
+    chapter3_installations_enabled: "yes",
+    chapter3_heating_enabled: "yes",
+    chapter3_dhw_enabled: "yes",
+    chapter3_cooling_enabled: "yes",
+    chapter3_cooling_generator_type: "split_system",
+    chapter3_cooling_energy_carrier: "electricity",
+    chapter3_cooling_storage_mode: "no_storage",
+    chapter3_cooling_generator_nominal_eer: "3.5",
+    chapter3_cooling_generator_nominal_kw: "4",
+    chapter3_ventilation_ahu_enabled: "no",
+    chapter3_shared_generator_enabled: "yes",
+    chapter3_shared_generator_type: "condensing_boiler",
+    chapter3_shared_generator_energy_carrier: "natural_gas",
+    chapter3_shared_generator_auxiliary_carrier: "electricity",
+    chapter3_shared_generator_control_loss_factor: "1.05",
+    chapter3_shared_generator_operation_hours_month: "120",
+    chapter3_shared_generator_loss_power_kw: "0.12",
+    chapter3_shared_generator_auxiliary_power_kw: "0.04",
+    chapter3_shared_generator_recovery_mode: "no_recovery",
+    chapter3_shared_generator_renewable_heat_mode: "none",
+    chapter3_shared_generator_dhw_loss_mode: "none",
+    chapter3_shared_generator_heating_allocation_fraction: "0.75",
+    chapter3_shared_generator_dhw_allocation_fraction: "0.25",
+    chapter3_heating_generator_type: "condensing_boiler",
+    chapter3_heating_energy_carrier: "natural_gas",
+    chapter3_dhw_energy_carrier: "natural_gas",
+    pv_installed: "yes",
+    pv_annual_production_kwh: "4200"
+  };
+  const journey = analyzeBuildingPlatformProductJourney(formData(values));
+  assert.deepEqual(
+    journey.filter(section => section.state === "needs_information").map(section => section.sectionId),
+    []
+  );
+
+  const preview = buildWizardEngineeringPreview(
+    mapWizardAnswersToAssistedAnswers(formData(values))
+  );
+  assert.equal(preview.status, "blocked");
+  assert.equal(preview.diagnostics.blockers.some(item => item.code === SOLAR_QSOL_QSKY_BLOCKER), true);
+  assert.equal(preview.diagnostics.blockers.some(item => item.code === "invalid_shared_generator_component_input"), false);
+  assert.equal(preview.renewableSummary.photovoltaic.annualProductionKWh, 4200);
+  const html = renderEngineeringModelReview(preview);
+  assert.equal(html.includes("Calculul energetic nu poate fi finalizat inca"), true);
+  assert.equal(html.includes("Energie regenerabila - PV"), true);
+});
+
 await test("building use category maps to source-backed internal gains", () => {
   const baseValues = {
     ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
@@ -1603,6 +1773,7 @@ await test("analysis page exposes the refocused technical workflow", () => {
     "Cladire si clima",
     "Anvelopa",
     "Utilizare si renovari",
+    "Energie regenerabila",
     "Verificare",
     "Raport",
     "Rezultate",
@@ -1682,7 +1853,19 @@ await test("P9B assisted mode materially reduces normal user-editable fields", (
   }
 
   assert.equal(normalNames.size < baselineP9NormalFieldCount, true);
-  assert.equal(normalNames.size, 35);
+  assert.equal(normalNames.size, 47);
+  for (const p9cAssistedField of [
+    "chapter3_shared_generator_operation_hours_month",
+    "chapter3_shared_generator_loss_power_kw",
+    "chapter3_shared_generator_auxiliary_power_kw",
+    "chapter3_shared_generator_recovery_mode",
+    "chapter3_shared_generator_renewable_heat_mode",
+    "chapter3_shared_generator_dhw_loss_mode",
+    "pv_installed",
+    "pv_annual_production_kwh"
+  ]) {
+    assert.equal(normalNames.has(p9cAssistedField), true, p9cAssistedField);
+  }
   for (const movedToExpert of [
     "heated_volume_m3",
     "main_orientation",
@@ -1850,7 +2033,6 @@ await test("active production analysis flow removes unsupported product domains"
     "Tip sistem principal",
     "Centrala",
     "Boiler electric",
-    "Panouri fotovoltaice",
     "Baterie",
     "Simuleaza fara salvare",
     "Scor actual",
@@ -1877,6 +2059,9 @@ await test("active production analysis flow removes unsupported product domains"
   ]) {
     assert.equal(visibleSurface.includes(downstreamDomain), false, downstreamDomain);
   }
+  assert.equal(html.includes("Energie regenerabila"), true);
+  assert.equal(html.includes("Productie PV anuala furnizata"), true);
+  assert.equal(html.includes("Relatiile MC001 4.160-4.165"), true);
 });
 
 await test("canonical production route imports only the current Building Platform flow", () => {

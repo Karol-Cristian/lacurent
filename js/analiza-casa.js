@@ -166,9 +166,59 @@ document.addEventListener("DOMContentLoaded", async () => {
     return houseForm.elements[name]?.value;
   }
 
+  function escapedName(name) {
+    return window.CSS?.escape ? window.CSS.escape(name) : String(name).replace(/["\\]/g, "\\$&");
+  }
+
+  function setControlGroupVisible(name, visible) {
+    houseForm.querySelectorAll(`[name="${escapedName(name)}"]`).forEach(control => {
+      const container = control.closest(".form-grid > div") || control.closest("td") || control.closest("div");
+      if (container) container.hidden = !visible;
+      if (control.type !== "hidden") control.disabled = !visible;
+    });
+  }
+
+  function updateConditionalFieldVisibility() {
+    const sharedGeneratorActive = selected("chapter3_shared_generator_enabled") === "yes";
+    const sharedGeneratorFields = [
+      "chapter3_shared_generator_type",
+      "chapter3_shared_generator_energy_carrier",
+      "chapter3_shared_generator_auxiliary_carrier",
+      "chapter3_shared_generator_control_loss_factor",
+      "chapter3_shared_generator_operation_hours_month",
+      "chapter3_shared_generator_loss_power_kw",
+      "chapter3_shared_generator_auxiliary_power_kw",
+      "chapter3_shared_generator_recovery_mode",
+      "chapter3_shared_generator_renewable_heat_mode",
+      "chapter3_shared_generator_dhw_loss_mode",
+      "chapter3_shared_generator_heating_allocation_fraction",
+      "chapter3_shared_generator_dhw_allocation_fraction"
+    ];
+    sharedGeneratorFields.forEach(name => setControlGroupVisible(name, sharedGeneratorActive));
+    const recoveryExplicit = sharedGeneratorActive && selected("chapter3_shared_generator_recovery_mode") === "explicit_fractions";
+    [
+      "chapter3_shared_generator_aux_recovered_fraction",
+      "chapter3_shared_generator_aux_recoverable_fraction",
+      "chapter3_shared_generator_loss_recoverable_fraction",
+      "chapter3_shared_generator_boiler_room_recovery_factor"
+    ].forEach(name => setControlGroupVisible(name, recoveryExplicit));
+    setControlGroupVisible(
+      "chapter3_shared_generator_renewable_heat_kwh_month",
+      sharedGeneratorActive && selected("chapter3_shared_generator_renewable_heat_mode") === "explicit_monthly"
+    );
+    setControlGroupVisible(
+      "chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month",
+      sharedGeneratorActive && selected("chapter3_shared_generator_dhw_loss_mode") === "explicit_monthly"
+    );
+
+    const pvActive = selected("pv_installed") === "yes";
+    setControlGroupVisible("pv_annual_production_kwh", pvActive);
+  }
+
   function updateDerivedUiState() {
     houseForm.dataset.roofBoundary = selected("roof_type") || "unknown";
     houseForm.dataset.floorBoundary = selected("floor_type") || "unknown";
+    updateConditionalFieldVisibility();
   }
 
   function validateCurrentStep() {
@@ -258,5 +308,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   updateDerivedUiState();
   await loadEditProfile();
+  updateDerivedUiState();
   showStep();
 });

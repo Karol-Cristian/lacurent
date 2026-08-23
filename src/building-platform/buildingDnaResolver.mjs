@@ -300,6 +300,14 @@ function normalizeTechnicalSystems(technicalSystems) {
   };
 }
 
+function normalizeRenewableSystems(renewableSystems) {
+  if (renewableSystems === undefined || renewableSystems === null) return null;
+  return {
+    ...deepClone(renewableSystems),
+    schema: renewableSystems.schema ?? "renewable_systems_p9c_v1"
+  };
+}
+
 function resolveLocationClimate(location = {}, climate = {}) {
   return resolveRomanianLocationClimate({
     country: location.country ?? climate.country ?? "RO",
@@ -1155,6 +1163,7 @@ function resolveBuildingDna({
   monthlyProfiles,
   climateProviderResult,
   technicalSystems,
+  renewableSystems,
   building,
   locationClimate
 }) {
@@ -1189,6 +1198,7 @@ function resolveBuildingDna({
     ...(boundaryContext ?? {})
   };
   const normalizedTechnicalSystems = normalizeTechnicalSystems(technicalSystems);
+  const normalizedRenewableSystems = normalizeRenewableSystems(renewableSystems);
   const canonicalClimateProviderResult = resolveCanonicalClimateProviderResult(
     locationClimate,
     climateProviderResult,
@@ -1306,6 +1316,7 @@ function resolveBuildingDna({
     typologyProposal: typologyProposal ?? null,
     buildingSpecificParameters: normalizeBuildingSpecificParameters(buildingSpecificParameters, source),
     ...(normalizedTechnicalSystems === null ? {} : { technicalSystems: normalizedTechnicalSystems }),
+    ...(normalizedRenewableSystems === null ? {} : { renewableSystems: normalizedRenewableSystems }),
     renovationInterventions: deepClone(renovationInterventions ?? []),
     geometry: deepClone(geometry),
     assemblies: assemblies.value,
@@ -1480,6 +1491,7 @@ export function createBuildingDnaFromAssistedAnswers(answers = {}) {
     monthlyProfiles: resolvedMonthlyProfiles,
     climateProviderResult: canonicalClimateProviderResult,
     technicalSystems: answers.technicalSystems,
+    renewableSystems: answers.renewableSystems,
     building: {
       buildingId: answers.buildingId,
       buildingType: answers.buildingType,
@@ -1555,6 +1567,7 @@ export function createBuildingDnaFromAdvancedModel(input = {}) {
     monthlyProfiles: resolvedMonthlyProfiles,
     climateProviderResult: canonicalClimateProviderResult,
     technicalSystems: input.technicalSystems,
+    renewableSystems: input.renewableSystems,
     building: input.building,
     locationClimate
   });
