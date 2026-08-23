@@ -53,21 +53,21 @@ export const BUILDING_PLATFORM_PRODUCT_JOURNEY = Object.freeze([
   {
     sectionId: "building",
     title: "Cladire si clima",
-    normalFields: ["display_name", "locality_id", "building_type", "construction_year", "useful_area_m2"],
+    normalFields: ["display_name", "locality_id", "building_type", "construction_year", "useful_area_m2", "floor_height_m"],
     requiredFields: ["locality_id", "building_type", "construction_year", "useful_area_m2"],
     runtimeDomains: ["Building DNA", "Climate Provider", "MC001 Capitolul 2"]
   },
   {
     sectionId: "envelope",
     title: "Anvelopa",
-    normalFields: ["structural_system", "wall_material", "roof_type", "floor_type", "window_type", "window_area_m2"],
-    requiredFields: ["structural_system", "wall_material", "roof_type", "floor_type", "window_type", "window_area_m2"],
+    normalFields: ["wall_material", "roof_type", "floor_type", "window_type", "window_area_m2", "window_orientation", "ventilation_type", "ventilation_ach"],
+    requiredFields: ["wall_material", "roof_type", "floor_type", "window_type", "window_area_m2"],
     runtimeDomains: ["Building DNA", "MC001 Capitolul 2"]
   },
   {
     sectionId: "usage",
     title: "Utilizare",
-    normalFields: ["building_use_category", "ventilation_type", "ventilation_ach"],
+    normalFields: ["building_use_category", "wall_insulation", "roof_insulated", "floor_insulated"],
     requiredFields: ["building_use_category"],
     runtimeDomains: ["Tabel 2.15", "aporturi interne", "ventilatie"]
   },
@@ -80,7 +80,17 @@ export const BUILDING_PLATFORM_PRODUCT_JOURNEY = Object.freeze([
       "chapter3_cooling_enabled",
       "chapter3_dhw_enabled",
       "chapter3_ventilation_ahu_enabled",
-      "chapter3_shared_generator_enabled"
+      "chapter3_shared_generator_enabled",
+      "chapter3_shared_generator_type",
+      "chapter3_shared_generator_energy_carrier",
+      "chapter3_heating_generator_type",
+      "chapter3_heating_energy_carrier",
+      "chapter3_cooling_generator_type",
+      "chapter3_cooling_energy_carrier",
+      "chapter3_cooling_storage_mode",
+      "chapter3_cooling_generator_nominal_kw",
+      "chapter3_cooling_generator_nominal_eer",
+      "chapter3_dhw_energy_carrier"
     ],
     requiredFields: ["chapter3_installations_enabled"],
     runtimeDomains: ["MC001 Capitolul 3"]
@@ -88,9 +98,9 @@ export const BUILDING_PLATFORM_PRODUCT_JOURNEY = Object.freeze([
   {
     sectionId: "renewable",
     title: "Energie regenerabila",
-    normalFields: ["chapter3_shared_generator_renewable_heat_kwh_month", "chapter3_pcm_enabled", "chapter3_lighting_enabled"],
+    normalFields: [],
     requiredFields: [],
-    runtimeDomains: ["Capitolul 3", "Capitolul 4 cand este configurat in modelul canonic"]
+    runtimeDomains: ["Capitolul 3/4 numai cand exista componente configurate explicit"]
   },
   {
     sectionId: "review",
@@ -118,23 +128,17 @@ const ASSISTED_FIELD_NAMES = new Set([
   "useful_area_m2",
   "number_of_floors",
   "floor_height_m",
-  "heated_volume_m3",
-  "main_orientation",
-  "structural_system",
   "wall_material",
   "roof_type",
   "floor_type",
   "window_type",
   "window_area_m2",
   "window_orientation",
-  "door_area_m2",
   "ventilation_type",
   "ventilation_ach",
   "wall_insulation",
-  "wall_insulation_material",
   "roof_insulated",
   "floor_insulated",
-  "windows_replaced",
   "chapter3_installations_enabled",
   "chapter3_shared_generator_enabled",
   "chapter3_shared_generator_type",
@@ -145,13 +149,36 @@ const ASSISTED_FIELD_NAMES = new Set([
   "chapter3_cooling_enabled",
   "chapter3_cooling_generator_type",
   "chapter3_cooling_energy_carrier",
+  "chapter3_cooling_storage_mode",
   "chapter3_cooling_generator_nominal_eer",
   "chapter3_cooling_generator_nominal_kw",
   "chapter3_dhw_enabled",
   "chapter3_dhw_energy_carrier",
+  "chapter3_ventilation_ahu_enabled"
+]);
+
+const EXPERT_FIELD_NAMES = new Set([
+  "county",
+  "city",
+  "climate_zone",
+  "wind_zone",
+  "climate_assignment_origin",
+  "climate_manual_override",
+  "climate_override_reason",
+  "heated_volume_m3",
+  "main_orientation",
+  "exterior_wall_area_m2",
+  "roof_area_m2",
+  "ground_floor_area_m2",
+  "attic_ceiling_area_m2",
+  "adjacent_wall_area_m2",
+  "structural_system",
+  "door_area_m2",
+  "thermal_bridge_mode",
+  "wall_insulation_material",
+  "windows_replaced",
   "chapter3_dhw_useful_mode",
   "chapter3_dhw_dwelling_type",
-  "chapter3_ventilation_ahu_enabled",
   "chapter3_pcm_enabled",
   "chapter3_lighting_enabled"
 ]);
@@ -310,6 +337,7 @@ export const ASSISTED_WIZARD_DEMO_FIXTURE = Object.freeze({
     chapter3_control_aux_kwh_month: "0.05",
     chapter3_dhw_enabled: "yes",
     chapter3_dhw_energy_carrier: "natural_gas",
+    chapter3_dhw_useful_mode: "explicit_monthly",
     chapter3_dhw_component_mode: "explicit_monthly",
     chapter3_dhw_useful_kwh_month: "95",
     chapter3_dhw_distribution_loss_kwh_month: "2.0",
@@ -425,6 +453,7 @@ function inputLevelForFieldName(name) {
     name === "analysis_purpose" ||
     name === "real_consumption_mode"
   ) return "internal";
+  if (EXPERT_FIELD_NAMES.has(name)) return "expert";
   if (ASSISTED_FIELD_NAMES.has(name)) return "assisted";
   if (TECHNICAL_FIELD_PREFIXES.some(prefix => name.startsWith(prefix))) return "expert";
   if (name.startsWith("chapter3_")) return "expert";
@@ -803,10 +832,6 @@ export function clearAssistedWizardDemoFixture(form) {
   clearFieldProvenance(form);
   form.dataset.demoMode = "";
   form.dataset.demoFixtureId = "";
-  const hiddenDemoMode = form.querySelector?.('[name="building_platform_demo_mode"]');
-  const hiddenFixtureId = form.querySelector?.('[name="building_platform_demo_fixture_id"]');
-  if (hiddenDemoMode) hiddenDemoMode.value = "";
-  if (hiddenFixtureId) hiddenFixtureId.value = "";
   dispatchFormRefresh(form);
   return { cleared: true };
 }
@@ -1331,10 +1356,6 @@ export function applyBuildingDnaToWizardForm(form, buildingDna, provenance = {})
   });
   form.dataset.demoMode = "";
   form.dataset.demoFixtureId = "";
-  const hiddenDemoMode = form.querySelector?.('[name="building_platform_demo_mode"]');
-  const hiddenFixtureId = form.querySelector?.('[name="building_platform_demo_fixture_id"]');
-  if (hiddenDemoMode) hiddenDemoMode.value = "";
-  if (hiddenFixtureId) hiddenFixtureId.value = "";
   dispatchFormRefresh(form);
   return {
     applied: true,
@@ -1897,6 +1918,33 @@ function yesValue(formData, name) {
   return formValue(formData, name) === "yes";
 }
 
+function derivedHeatedVolumeM3({ explicitHeatedVolumeM3, usefulFloorAreaM2, averageRoomHeightM }) {
+  if (explicitHeatedVolumeM3 !== undefined) return explicitHeatedVolumeM3;
+  if (usefulFloorAreaM2 === undefined || averageRoomHeightM === undefined) return undefined;
+  return Number((usefulFloorAreaM2 * averageRoomHeightM).toFixed(3));
+}
+
+function isResidentialUseCategory(category) {
+  return category === "residential_single_family" || category === "residential_collective";
+}
+
+function dhwUsefulModeFromForm(formData) {
+  const explicitMode = formValue(formData, "chapter3_dhw_useful_mode");
+  if (explicitMode) return explicitMode;
+  return isResidentialUseCategory(formValue(formData, "building_use_category"))
+    ? "residential_normative"
+    : "";
+}
+
+function dhwDwellingTypeFromForm(formData) {
+  const explicitType = formValue(formData, "chapter3_dhw_dwelling_type");
+  if (explicitType) return explicitType;
+  const buildingType = formValue(formData, "building_type");
+  if (buildingType === "house") return "single_family_or_terraced";
+  if (buildingType === "apartment") return "apartment";
+  return undefined;
+}
+
 function stageInput(formData, prefix, stageId) {
   return {
     stageId,
@@ -2315,21 +2363,38 @@ function coolingStorageMode(formData) {
   return formValue(formData, "chapter3_cooling_storage_mode") || "explicit_monthly";
 }
 
+function hasCoolingDistributionContractInputs(formData) {
+  return nonNegativeNumber(formData, "chapter3_cooling_distribution_loss_factor") !== undefined ||
+    nonNegativeNumber(formData, "chapter3_cooling_distribution_aux_factor") !== undefined ||
+    nonNegativeNumber(formData, "chapter3_cooling_ahu_output_kwh") !== undefined;
+}
+
+function hasCoolingGenerationContractInputs(formData) {
+  return positiveNumber(formData, "chapter3_cooling_generator_nominal_kw") !== undefined ||
+    positiveNumber(formData, "chapter3_cooling_generator_nominal_eer") !== undefined;
+}
+
 function coolingGenerationMode(formData) {
-  return formValue(formData, "chapter3_cooling_generation_mode") || "explicit_monthly";
+  return formValue(formData, "chapter3_cooling_generation_mode") ||
+    (hasCoolingGenerationContractInputs(formData) ? "compression_heat_rejection" : "explicit_monthly");
 }
 
 function applyCoolingComponentContracts(formData, system) {
-  if (coolingComponentMode(formData) !== "component_contract") return system;
-
+  const componentMode = coolingComponentMode(formData);
   const storageMode = coolingStorageMode(formData);
   const generationMode = coolingGenerationMode(formData);
+  const useDistributionContract =
+    componentMode === "component_contract" || hasCoolingDistributionContractInputs(formData);
+  const useStorageContract = storageMode !== "explicit_monthly";
+  const useGenerationContract = generationMode !== "explicit_monthly";
+  if (!useDistributionContract && !useStorageContract && !useGenerationContract) return system;
+
   const storageLossCoefficient = nonNegativeNumber(
     formData,
     "chapter3_cooling_storage_loss_h_kw_k"
   );
   const stages = system.stages.map(stage => {
-    if (stage.stageId === "distribution") {
+    if (stage.stageId === "distribution" && useDistributionContract) {
       return {
         ...stage,
         lossKWhPerMonth: undefined,
@@ -2593,6 +2658,8 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
     return undefined;
   }
   const sharedGenerator = sharedHeatingDhwGeneratorFromForm(formData);
+  const dhwUsefulMode = dhwUsefulModeFromForm(formData);
+  const dhwDwellingType = dhwDwellingTypeFromForm(formData);
   const systems = {
     schema: TECHNICAL_SYSTEMS_SCHEMA,
     source: {
@@ -2654,16 +2721,18 @@ function buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2) {
     },
     domesticHotWater: {
       enabled: yesValue(formData, "chapter3_dhw_enabled"),
-      ...(formValue(formData, "chapter3_dhw_useful_mode") === "residential_normative"
+      ...(dhwUsefulMode === "residential_normative"
         ? {
             usefulDemandSource: {
               mode: "residential_normative",
-              dwellingType:
-                formValue(formData, "chapter3_dhw_dwelling_type") ||
-                "single_family_or_terraced",
+              ...(dhwDwellingType === undefined ? {} : { dwellingType: dhwDwellingType }),
               source: {
-                origin: "building_dna_derived",
-                reference: "buildingSpecificParameters.usefulFloorAreaM2"
+                origin: formValue(formData, "chapter3_dhw_useful_mode")
+                  ? "expert_override"
+                  : "building_use_derived",
+                reference: formValue(formData, "chapter3_dhw_useful_mode")
+                  ? "chapter3_dhw_useful_mode"
+                  : "building_use_category_and_building_type"
               }
             }
           }
@@ -2782,7 +2851,12 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const averageRoomHeightM = positiveNumber(formData, "floor_height_m");
   const numberOfFloors = positiveNumber(formData, "number_of_floors");
   const ventilationAch = positiveNumber(formData, "ventilation_ach");
-  const heatedVolumeM3 = positiveNumber(formData, "heated_volume_m3");
+  const explicitHeatedVolumeM3 = positiveNumber(formData, "heated_volume_m3");
+  const heatedVolumeM3 = derivedHeatedVolumeM3({
+    explicitHeatedVolumeM3,
+    usefulFloorAreaM2,
+    averageRoomHeightM
+  });
   const exteriorWallAreaM2 = positiveNumber(formData, "exterior_wall_area_m2");
   const roofAreaM2 = positiveNumber(formData, "roof_area_m2");
   const groundFloorAreaM2 = positiveNumber(formData, "ground_floor_area_m2");
@@ -2954,8 +3028,12 @@ const DIAGNOSTIC_MESSAGES_RO = Object.freeze({
     "Completeaza anul constructiei pentru a determina perioada constructiva.",
   building_typology_invalid_structural_system:
     "Alege sistemul structural sau materialul peretilor exteriori pentru modelul de anvelopa.",
+  building_dna_not_ready:
+    "Modelul cladirii nu este inca pregatit pentru calcul: completeaza datele marcate ca lipsa sau revizuieste sectiunile blocate.",
   building_dna_missing_climate_profile:
     "Selecteaza o localitate cu date climatice disponibile sau un profil climatic certificat.",
+  invalid_shared_generator_component_input:
+    "Generatorul comun pentru incalzire si ACM este configurat, dar calculul necesita date tehnice de produs sau program de functionare in modul Expert.",
   missing_installation_value:
     "Lipseste o intrare tehnica necesara pentru instalatiile configurate.",
   missing_monthly_installation_value:
@@ -3741,69 +3819,11 @@ export async function loadBuildingPlatformV1Project(root = document, options = {
   };
 }
 
-function setDemoUiState(root, enabled) {
-  const banner = root.getElementById?.("demoModeBanner");
-  const resetButton = root.getElementById?.("resetDemoModeBtn");
-  if (banner) banner.hidden = !enabled;
-  if (resetButton) resetButton.disabled = !enabled;
-  root.body?.classList?.toggle("demo-mode-active", enabled);
-}
-
-function replaceDemoSearchParam(enabled) {
+function removeDemoSearchParam() {
   if (typeof window === "undefined" || !window.history?.replaceState) return;
   const url = new URL(window.location.href);
-  if (enabled) {
-    url.searchParams.set("demo", "1");
-    url.searchParams.set("new", "1");
-  } else {
-    url.searchParams.delete("demo");
-  }
+  url.searchParams.delete("demo");
   window.history.replaceState({}, "", url);
-}
-
-function attachDemoControls(root, form) {
-  const loadButton = root.getElementById?.("loadDemoModeBtn");
-  const blankButton = root.getElementById?.("startBlankProjectBtn");
-  const resetButton = root.getElementById?.("resetDemoModeBtn");
-  const exitButton = root.getElementById?.("exitDemoModeBtn");
-
-  function loadDemo({ updateUrl = true, scrollToReport = false } = {}) {
-    const result = applyAssistedWizardDemoFixture(form);
-    setDemoUiState(root, true);
-    if (updateUrl) replaceDemoSearchParam(true);
-    generateBuildingPlatformTechnicalReport(root, {
-      openReport: true,
-      scrollToReport
-    });
-    return result;
-  }
-
-  function startBlank({ updateUrl = true } = {}) {
-    const result = clearAssistedWizardDemoFixture(form);
-    setDemoUiState(root, false);
-    if (updateUrl) replaceDemoSearchParam(false);
-    const previewTarget = root.getElementById?.("buildingModelReview");
-    if (previewTarget) {
-      previewTarget.innerHTML = `
-        <div class="section-heading">
-          <span class="small-label">REVIZUIRE MODEL</span>
-          <h2>Building DNA, rezultate Chapter 2 si raportul tehnic vor aparea aici.</h2>
-        </div>
-        <p>Apasa previzualizare dupa ce completezi datele principale. Vei vedea ansamblurile, materialele, straturile, U-values, Htr, QHnd, QCnd, formulele si trasabilitatea citite din Building DNA si motorul Chapter 2.</p>
-      `;
-    }
-    return result;
-  }
-
-  loadButton?.addEventListener("click", () => loadDemo({ scrollToReport: true }));
-  resetButton?.addEventListener("click", () => loadDemo({ scrollToReport: true }));
-  blankButton?.addEventListener("click", () => startBlank());
-  exitButton?.addEventListener("click", () => startBlank());
-
-  return {
-    loadDemo,
-    startBlank
-  };
 }
 
 export function attachBuildingPlatformWizard(root = document) {
@@ -3850,10 +3870,9 @@ export function attachBuildingPlatformWizard(root = document) {
   });
   updateResolvedClimateProfilePanel(form);
   attachProductJourneyControls(root, form);
-  const demoControls = attachDemoControls(root, form);
   previewButton.addEventListener("click", () => {
     generateBuildingPlatformTechnicalReport(root, {
-      openReport: form.dataset.demoMode === "1",
+      openReport: false,
       scrollToReport: true
     });
   });
@@ -3908,7 +3927,7 @@ export function attachBuildingPlatformWizard(root = document) {
   if (typeof window !== "undefined") {
     const requestedAnalysisId = analysisIdFromSearch(window.location.search);
     const requestedProjectId = projectIdFromSearch(window.location.search);
-    if (requestedProjectId !== null && !demoModeFromSearch(window.location.search)) {
+    if (requestedProjectId !== null) {
       if (globalThis.window?.LaCurentAuth?.token?.()) {
         queueMicrotask(() => {
           loadBuildingPlatformV1Project(root, { projectId: requestedProjectId });
@@ -3916,7 +3935,7 @@ export function attachBuildingPlatformWizard(root = document) {
       } else {
         setSaveStatus(root, "Autentifica-te pentru a redeschide proiectul salvat din Proiectele mele.", "blocked");
       }
-    } else if (requestedAnalysisId !== null && !demoModeFromSearch(window.location.search)) {
+    } else if (requestedAnalysisId !== null) {
       if (loadInput) loadInput.value = String(requestedAnalysisId);
       if (globalThis.window?.LaCurentAuth?.token?.()) {
         queueMicrotask(() => {
@@ -3933,9 +3952,7 @@ export function attachBuildingPlatformWizard(root = document) {
     });
   }
   if (typeof window !== "undefined" && demoModeFromSearch(window.location.search)) {
-    demoControls.loadDemo({ updateUrl: false, scrollToReport: false });
-  } else {
-    setDemoUiState(root, false);
+    removeDemoSearchParam();
   }
   return { attached: true };
 }

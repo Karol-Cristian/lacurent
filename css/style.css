@@ -4707,39 +4707,9 @@ margin:8px 0 0;
 color:#64748b;
 }
 
-.demo-mode-controls{
-display:grid;
-gap:12px;
-}
-
 .demo-action-row{
 justify-content:flex-start;
 gap:10px;
-}
-
-.demo-mode-banner{
-display:flex;
-align-items:center;
-justify-content:space-between;
-gap:14px;
-border-color:#94a3b8;
-background:#f8fafc;
-}
-
-.demo-mode-banner[hidden]{
-display:none;
-}
-
-.demo-mode-banner strong{
-display:block;
-color:#0f172a;
-font-size:16px;
-line-height:1.35;
-}
-
-.demo-mode-banner p{
-margin:4px 0 0;
-color:#475569;
 }
 
 .p2c-technical-analysis .section-description{
@@ -4800,9 +4770,7 @@ gap:16px;
 align-items:start;
 }
 
-.p2c-technical-analysis > #buildingPlatformIntro,
-.p2c-technical-analysis > #demoModeControls,
-.p2c-technical-analysis > #demoModeBanner{
+.p2c-technical-analysis > #buildingPlatformIntro{
 grid-column:1 / -1;
 }
 
@@ -5945,11 +5913,6 @@ font-size:11px;
 min-height:32px;
 }
 
-.demo-mode-banner{
-align-items:flex-start;
-flex-direction:column;
-}
-
 .demo-action-row{
 align-items:stretch;
 flex-direction:column;
@@ -6293,9 +6256,7 @@ max-width:none;
 padding:0;
 }
 
-.p3f-engineering-workspace .p3f-workspace-intro,
-.p3f-engineering-workspace .demo-mode-controls,
-.p3f-engineering-workspace .demo-mode-banner{
+.p3f-engineering-workspace .p3f-workspace-intro{
 margin-bottom:12px;
 }
 
@@ -6925,6 +6886,22 @@ grid-template-columns:repeat(2,minmax(0,1fr));
 grid-template-columns:1fr;
 }
 
+.p3f-engineering-workspace .form-grid{
+grid-template-columns:minmax(0,1fr)!important;
+max-width:100%;
+overflow:hidden;
+}
+
+.p3f-engineering-workspace .form-grid > div,
+.p3f-engineering-workspace .form-grid input,
+.p3f-engineering-workspace .form-grid select,
+.p3f-engineering-workspace .form-grid textarea{
+min-width:0!important;
+max-width:100%;
+width:100%;
+box-sizing:border-box;
+}
+
 .p3f-report-pane{
 border-left:0;
 border-right:0;
@@ -6960,8 +6937,6 @@ background:#fff!important;
 header,
 footer,
 .p3f-workspace-intro,
-.demo-mode-controls,
-.demo-mode-banner,
 .product-journey-panel,
 .p3f-input-pane,
 .p3f-simplified-flow-panel,

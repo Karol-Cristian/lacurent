@@ -583,8 +583,8 @@ await test("wizard can map ACM useful demand to the normative residential calcul
     mode: "residential_normative",
     dwellingType: "apartment",
     source: {
-      origin: "building_dna_derived",
-      reference: "buildingSpecificParameters.usefulFloorAreaM2"
+      origin: "expert_override",
+      reference: "chapter3_dhw_useful_mode"
     }
   });
 
@@ -1242,7 +1242,7 @@ await test("My Projects rows open the canonical calculator without exposing unsu
   }
 });
 
-await test("demo query and fixture preload a complete editable technical dataset", () => {
+await test("demo fixture remains test-only and is not exposed by production HTML", () => {
   assert.equal(demoModeFromSearch("?demo=1"), true);
   assert.equal(demoModeFromSearch("?new=1"), false);
 
@@ -1285,8 +1285,14 @@ await test("demo query and fixture preload a complete editable technical dataset
   ]) {
     assert.notEqual(fixture.values[field], undefined, field);
     assert.notEqual(fixture.values[field], "", field);
-    assert.equal(pageHtml.includes(`name="${field}"`), true, field);
+    if (!field.startsWith("building_platform_demo_")) {
+      assert.equal(pageHtml.includes(`name="${field}"`), true, field);
+    }
   }
+
+  assert.equal(pageHtml.includes("building_platform_demo_mode"), false);
+  assert.equal(pageHtml.includes("building_platform_demo_fixture_id"), false);
+  assert.equal(pageHtml.includes("loadDemoModeBtn"), false);
 
   for (const field of [
     "construction_year",
@@ -1405,6 +1411,82 @@ await test("normal wizard mode does not receive demo defaults or demo provenance
   assert.equal(preview.diagnostics.blockers.some(item => item.code === "building_typology_invalid_building_type"), true);
 });
 
+await test("P9B derives heated volume from assisted geometry without treating missing as zero", () => {
+  const derived = mapWizardAnswersToAssistedAnswers(formData({
+    useful_area_m2: "120",
+    floor_height_m: "2.6"
+  }));
+  assert.equal(derived.buildingSpecificParameters.heatedVolumeM3, 312);
+
+  const explicitExpertOverride = mapWizardAnswersToAssistedAnswers(formData({
+    useful_area_m2: "120",
+    floor_height_m: "2.6",
+    heated_volume_m3: "300"
+  }));
+  assert.equal(explicitExpertOverride.buildingSpecificParameters.heatedVolumeM3, 300);
+
+  const missing = mapWizardAnswersToAssistedAnswers(formData({
+    useful_area_m2: "120",
+    floor_height_m: ""
+  }));
+  assert.equal(missing.buildingSpecificParameters.heatedVolumeM3, undefined);
+});
+
+await test("P9B derives residential DHW useful-demand contract from building use", () => {
+  const house = mapWizardAnswersToAssistedAnswers(formData({
+    chapter3_installations_enabled: "yes",
+    chapter3_dhw_enabled: "yes",
+    building_type: "house",
+    building_use_category: "residential_single_family",
+    useful_area_m2: "120"
+  }));
+  assert.equal(house.technicalSystems.domesticHotWater.usefulDemandSource.mode, "residential_normative");
+  assert.equal(house.technicalSystems.domesticHotWater.usefulDemandSource.dwellingType, "single_family_or_terraced");
+  assert.equal(house.technicalSystems.domesticHotWater.usefulDemandSource.source.origin, "building_use_derived");
+
+  const apartment = mapWizardAnswersToAssistedAnswers(formData({
+    chapter3_installations_enabled: "yes",
+    chapter3_dhw_enabled: "yes",
+    building_type: "apartment",
+    building_use_category: "residential_collective",
+    useful_area_m2: "72"
+  }));
+  assert.equal(apartment.technicalSystems.domesticHotWater.usefulDemandSource.mode, "residential_normative");
+  assert.equal(apartment.technicalSystems.domesticHotWater.usefulDemandSource.dwellingType, "apartment");
+
+  const nonResidential = mapWizardAnswersToAssistedAnswers(formData({
+    chapter3_installations_enabled: "yes",
+    chapter3_dhw_enabled: "yes",
+    building_type: "office",
+    building_use_category: "administrative",
+    useful_area_m2: "240"
+  }));
+  assert.equal(nonResidential.technicalSystems.domesticHotWater.usefulDemandSource.mode, "explicit_monthly");
+  assert.equal(nonResidential.technicalSystems.domesticHotWater.monthlyUsefulDemandKWh, undefined);
+});
+
+await test("P9B normal cooling performance inputs map to generation runtime without forcing distribution defaults", () => {
+  const answers = mapWizardAnswersToAssistedAnswers(formData({
+    chapter3_installations_enabled: "yes",
+    chapter3_cooling_enabled: "yes",
+    chapter3_cooling_generator_type: "split_system",
+    chapter3_cooling_energy_carrier: "electricity",
+    chapter3_cooling_storage_mode: "no_storage",
+    chapter3_cooling_generator_nominal_kw: "3.5",
+    chapter3_cooling_generator_nominal_eer: "3.2"
+  }));
+  const system = answers.technicalSystems.cooling.systems[0];
+  const distribution = system.stages.find(stage => stage.stageId === "distribution");
+  const storage = system.stages.find(stage => stage.stageId === "storage");
+  const generation = system.stages.find(stage => stage.stageId === "generation");
+
+  assert.equal(distribution.lossCalculation, undefined);
+  assert.equal(storage.lossCalculation.mode, "no_cooling_storage");
+  assert.equal(generation.auxiliaryCalculation.mode, "cooling_compression_heat_rejection_auxiliary");
+  assert.equal(generation.auxiliaryCalculation.nominalCoolingPowerKW, 3.5);
+  assert.equal(generation.auxiliaryCalculation.nominalEer, 3.2);
+});
+
 await test("building use category maps to source-backed internal gains", () => {
   const baseValues = {
     ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
@@ -1467,7 +1549,7 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("recalculateBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("printTechnicalReportBtn"), true);
   assert.equal(html.includes("p3f-engineering-shell"), true);
-  assert.equal(html.includes("Mod simplificat"), true);
+  assert.equal(html.includes("Mod simplificat"), false);
   assert.equal(html.includes("productJourneyPanel"), true);
   assert.equal(html.includes("productJourneyStatus"), true);
   assert.equal(html.includes("data-analysis-mode-target=\"assisted\""), true);
@@ -1477,7 +1559,13 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("loadBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("Redeschidere avansata dupa ID analiza"), true);
   assert.equal(html.includes("buildingPlatformSaveStatus"), true);
-  assert.equal(html.includes("demoModeBanner"), true);
+  assert.equal(html.includes("demoModeBanner"), false);
+  assert.equal(html.includes("demoModeControls"), false);
+  assert.equal(html.includes("loadDemoModeBtn"), false);
+  assert.equal(html.includes("startBlankProjectBtn"), false);
+  assert.equal(html.includes("resetDemoModeBtn"), false);
+  assert.equal(html.includes("building_platform_demo_mode"), false);
+  assert.equal(html.includes("building_platform_demo_fixture_id"), false);
   assert.equal(html.includes('type="hidden" name="climate_profile_id"'), true);
   assert.equal(html.includes('<select name="climate_profile_id"'), false);
   for (const removedLegacyField of [
@@ -1502,15 +1590,14 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("mc001_2022_climate_zones_p5a_v1"), true);
   assert.equal(html.includes("Temperatura exterioara de calcul iarna"), true);
   assert.equal(html.includes("Status dataset lunar"), true);
-  assert.equal(html.includes("TEST_ONLY_SYNTHETIC_DATASET"), true);
+  assert.equal(html.includes("TEST_ONLY_SYNTHETIC_DATASET"), false);
   assert.equal(html.includes("Calcule eligibile cu zona"), true);
   assert.equal(html.includes("Variabile climatice lipsa"), true);
   assert.equal(html.includes("iradierea A.9.6 furnizeaza Hsol pentru planuri verticale/orizontale, iar Qsol necesita Qsky si inputuri solare complete"), true);
-  assert.equal(html.includes("Profil climatic sintetic pentru demonstra"), true);
-  assert.equal(html.includes("Încarcă exemplu demonstrativ"), true);
-  assert.equal(html.includes("Începe proiect gol"), true);
-  assert.equal(html.includes("Resetează exemplul"), true);
-  assert.equal(html.includes("building_platform_demo_mode"), true);
+  assert.equal(html.includes("Profil climatic sintetic pentru demonstra"), false);
+  assert.equal(html.includes("exemplu demonstrativ"), false);
+  assert.equal(html.includes("incarca demo"), false);
+  assert.equal(html.includes("demo-ul"), false);
   for (const expected of [
     "Modelul termic al cladirii",
     "Cladire si clima",
@@ -1543,6 +1630,75 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(css.includes(".engineering-calculation-notebook"), true);
   assert.equal(css.includes(".calculation-compact-line"), true);
   assert.equal(css.includes(".technical-report-title-block"), true);
+});
+
+await test("P9B production calculator starts without public demo controls or synthetic state", () => {
+  const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
+  const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const myProjectsSource = readFileSync(new URL("../js/my-projects.mjs", import.meta.url), "utf8");
+  const analysisSource = readFileSync(new URL("../js/analiza-casa.js", import.meta.url), "utf8");
+  const publicSurface = `${html}\n${index}\n${myProjectsSource}\n${analysisSource}`;
+
+  for (const forbidden of [
+    "loadDemoModeBtn",
+    "demoModeControls",
+    "demoModeBanner",
+    "building_platform_demo_mode",
+    "building_platform_demo_fixture_id",
+    "analiza-casa.html?demo=1",
+    "openDemoTechnicalReportIfReady",
+    "Incarca exemplu demonstrativ",
+    "Încarcă exemplu demonstrativ",
+    "Porneste un model nou sau demo",
+    "incarca demo-ul"
+  ]) {
+    assert.equal(publicSurface.includes(forbidden), false, forbidden);
+  }
+
+  assert.equal(html.includes("Completeaza datele principale, apoi recalculeaza"), true);
+  assert.equal(html.includes("Sursa cerere utila ACM"), true);
+  assert.equal(html.includes("Automat pentru locuinte, altfel Expert"), true);
+  assert.equal(html.includes("Deducere din tipul cladirii"), true);
+});
+
+await test("P9B assisted mode materially reduces normal user-editable fields", () => {
+  const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
+  const formHtml = html.slice(
+    html.indexOf('<form id="houseForm"'),
+    html.indexOf("</form>", html.indexOf('<form id="houseForm"'))
+  );
+  const baselineP9NormalFieldCount = 57;
+  const normalNames = new Set();
+  const expertNames = new Set();
+
+  for (const match of formHtml.matchAll(/<(input|select|textarea)\b([^>]*)>/g)) {
+    const attrs = match[2];
+    if (/\btype=["']hidden["']/i.test(attrs)) continue;
+    const nameMatch = attrs.match(/\bname=["']([^"']+)["']/i);
+    if (!nameMatch) continue;
+    const contract = getBuildingPlatformFieldContract(nameMatch[1]);
+    if (contract?.inputLevel === "assisted") normalNames.add(nameMatch[1]);
+    if (contract?.inputLevel === "expert") expertNames.add(nameMatch[1]);
+  }
+
+  assert.equal(normalNames.size < baselineP9NormalFieldCount, true);
+  assert.equal(normalNames.size, 35);
+  for (const movedToExpert of [
+    "heated_volume_m3",
+    "main_orientation",
+    "structural_system",
+    "door_area_m2",
+    "wall_insulation_material",
+    "windows_replaced",
+    "chapter3_dhw_useful_mode",
+    "chapter3_dhw_dwelling_type",
+    "chapter3_pcm_enabled",
+    "chapter3_lighting_enabled"
+  ]) {
+    assert.equal(normalNames.has(movedToExpert), false, movedToExpert);
+    assert.equal(expertNames.has(movedToExpert), true, movedToExpert);
+    assert.equal(getBuildingPlatformFieldContract(movedToExpert).visibleInNormalMode, false);
+  }
 });
 
 await test("every visible analysis form control has a UI to runtime contract", () => {
@@ -1737,7 +1893,7 @@ await test("canonical production route imports only the current Building Platfor
   assert.equal(analysisPage.includes("building-platform-wizard.mjs"), true);
   assert.equal(activeSurface.includes("?new=1"), false);
   assert.equal(activeSurface.includes("pages/analiza-casa.html"), true);
-  assert.equal(activeSurface.includes("pages/analiza-casa.html?demo=1"), true);
+  assert.equal(activeSurface.includes("pages/analiza-casa.html?demo=1"), false);
   assert.equal(analysisPage.includes("buildingPlatformLoadAnalysisId"), true);
   assert.equal(analysisIdFromSearch("?analysis_id=42"), 42);
 });
@@ -1781,14 +1937,15 @@ await test("wizard UI module delegates calculations and keeps technical workspac
   assert.equal(source.includes("ASSISTED_WIZARD_DEMO_FIXTURE"), true);
   assert.equal(source.includes("technical-workspace-tabs"), true);
   const analysisSource = readFileSync(new URL("../js/analiza-casa.js", import.meta.url), "utf8");
-  assert.equal(analysisSource.includes("openDemoTechnicalReportIfReady"), true);
+  assert.equal(analysisSource.includes("openDemoTechnicalReportIfReady"), false);
   assert.equal(analysisSource.includes("generateBuildingPlatformTechnicalReport"), true);
   assert.equal(analysisSource.includes("/api/simulate-house"), false);
   assert.equal(analysisSource.includes("/api/save-house"), false);
   assert.equal(analysisSource.includes("/api/monthly-bill"), false);
   const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8");
   assert.equal(css.includes(".technical-workspace"), true);
-  assert.equal(css.includes(".demo-mode-banner"), true);
+  assert.equal(css.includes(".demo-mode-banner"), false);
+  assert.equal(css.includes(".demo-mode-controls"), false);
   assert.equal(css.includes(".technical-status-grid.p2b-annual-summary"), true);
   assert.equal(css.includes(".technical-flow-nav"), true);
   assert.equal(css.includes("@media(min-width:1200px)"), true);

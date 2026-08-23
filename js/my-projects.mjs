@@ -60,7 +60,6 @@ function renderProjects(panel, projects = []) {
       <p>Creeaza primul proiect pentru a salva Building DNA, calculul Chapter 2 si raportul tehnic.</p>
       <div class="hero-buttons">
         <a class="primary-btn" href="pages/analiza-casa.html">Creeaza proiect termic</a>
-        <a class="secondary-btn" href="pages/analiza-casa.html?demo=1">Deschide demo</a>
       </div>
     `;
     return;
@@ -91,7 +90,6 @@ function renderProjects(panel, projects = []) {
     </div>
     <div class="hero-buttons">
       <a class="primary-btn" href="pages/analiza-casa.html">Creeaza proiect nou</a>
-      <a class="secondary-btn" href="pages/analiza-casa.html?demo=1">Demo Building DNA</a>
     </div>
   `;
 }
