@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   ASSISTED_WIZARD_DEMO_FIXTURE,
+  BUILDING_PLATFORM_PRODUCT_JOURNEY,
   BUILDING_PLATFORM_WIZARD_STEPS,
+  analyzeBuildingPlatformProductJourney,
   analysisIdFromSearch,
   applyBuildingDnaToWizardForm,
   buildBuildingPlatformSavePayload,
@@ -10,13 +12,16 @@ import {
   buildWizardEngineeringPreview,
   constructionPeriodFromYear,
   demoModeFromSearch,
+  getBuildingPlatformFieldContract,
   getAssistedWizardDemoFixture,
+  humanizeBuildingPlatformDiagnostic,
   loadBuildingPlatformChapter2Analysis,
   markBuildingPlatformResultsStale,
   mapWizardAnswersToAssistedAnswers,
   projectIdFromSearch,
   renderEngineeringModelReview,
   renderLoadedBuildingPlatformAnalysis,
+  renderProductJourneyStatusPanel,
   saveBuildingPlatformDraft,
   saveBuildingPlatformChapter2Analysis,
   structuralSystemFromWallMaterial
@@ -167,23 +172,57 @@ function fakeRootForStale(form) {
   };
 }
 
-await test("wizard exposes the validated technical sections including installations", () => {
+await test("wizard exposes the product journey without normative relation navigation", () => {
   assert.equal(BUILDING_PLATFORM_WIZARD_STEPS.length, 7);
+  assert.equal(BUILDING_PLATFORM_PRODUCT_JOURNEY.length, 7);
   const serialized = JSON.stringify(BUILDING_PLATFORM_WIZARD_STEPS);
   for (const forbidden of ["lambda", "Htr", "gamma", "tau", "eta", "U-value", "coeficient"]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
   }
   for (const expected of [
-    "Geometrie",
+    "Cladire si clima",
     "Anvelopa",
-    "Renovari",
+    "Utilizare",
     "Instalatii",
-    "Building DNA",
-    "Raport tehnic",
+    "Energie regenerabila",
+    "Verificare",
     "Rezultate"
   ]) {
     assert.equal(serialized.includes(expected), true, expected);
   }
+
+  const usage = BUILDING_PLATFORM_PRODUCT_JOURNEY.find(section => section.sectionId === "usage");
+  assert.deepEqual(usage.requiredFields, ["building_use_category"]);
+  assert.equal(getBuildingPlatformFieldContract("building_use_category").runtimeConsumer, "MC001 Capitolul 2 - Tabel 2.15");
+  assert.equal(getBuildingPlatformFieldContract("chapter3_heating_generation_loss_kwh_month").inputLevel, "expert");
+  assert.equal(getBuildingPlatformFieldContract("chapter3_heating_generator_type").inputLevel, "assisted");
+});
+
+await test("product journey status and diagnostics are human-readable", () => {
+  const blankStates = analyzeBuildingPlatformProductJourney(formData({}));
+  assert.equal(blankStates.find(section => section.sectionId === "building").state, "needs_information");
+  assert.equal(blankStates.find(section => section.sectionId === "usage").missingFields.includes("building_use_category"), true);
+  const demoStates = analyzeBuildingPlatformProductJourney(formData(ASSISTED_WIZARD_DEMO_FIXTURE.values));
+  assert.equal(demoStates.find(section => section.sectionId === "building").state, "complete");
+  assert.equal(demoStates.find(section => section.sectionId === "usage").state, "complete");
+  const statusHtml = renderProductJourneyStatusPanel(blankStates);
+  assert.equal(statusHtml.includes("utilizarea principala"), true);
+  assert.equal(statusHtml.includes("Lipsesc: building_use_category"), false);
+
+  assert.equal(
+    humanizeBuildingPlatformDiagnostic({ code: "building_typology_invalid_building_type" }),
+    "Alege tipul cladirii pentru a rezolva tipologia constructiva."
+  );
+  const html = renderEngineeringModelReview({
+    status: "blocked",
+    diagnostics: {
+      blockers: [{ code: "building_typology_invalid_building_type" }]
+    }
+  });
+  assert.equal(html.includes("Calculul nu poate fi finalizat inca"), true);
+  assert.equal(html.includes("Alege tipul cladirii"), true);
+  assert.equal(html.includes("Detalii tehnice"), true);
+  assert.equal(html.includes("building_typology_invalid_building_type"), true);
 });
 
 await test("wizard maps technical answers to assisted Building DNA input", () => {
@@ -191,6 +230,7 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
     building_platform_demo_mode: "1",
     building_platform_demo_fixture_id: "demo_detached_masonry_1985_eps_pvc_bucharest",
     building_type: "house",
+    building_use_category: "residential_single_family",
     climate_profile_id: "ro_synthetic_bucharest_seasonal_demo_v1",
     county: "Bucuresti",
     climate_zone: "II",
@@ -215,6 +255,8 @@ await test("wizard maps technical answers to assisted Building DNA input", () =>
   }));
 
   assert.equal(answers.buildingType, "detached_house");
+  assert.equal(answers.buildingUseCategory, "residential_single_family");
+  assert.equal(answers.internalGainsCategoryId, "residential_single_family");
   assert.equal(answers.constructionPeriod, "1978_1990");
   assert.equal(answers.structuralSystem, "masonry");
   assert.equal(answers.wallMaterial, "brick");
@@ -1047,6 +1089,7 @@ await test("saved Building DNA maps back into supported wizard fields with load 
   const preview = buildWizardEngineeringPreview(mapWizardAnswersToAssistedAnswers(data));
   const values = buildingDnaToWizardValues(preview.buildingDna);
   assert.equal(values.climate_profile_id, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(values.building_use_category, "residential_single_family");
   assert.equal(values.useful_area_m2, 120);
   assert.equal(values.window_type, "modern_double_glazing");
   assert.equal(values.wall_insulation, "10cm");
@@ -1054,6 +1097,7 @@ await test("saved Building DNA maps back into supported wizard fields with load 
   const form = fakeWizardForm([
     "display_name",
     "building_type",
+    "building_use_category",
     "locality_id",
     "climate_station_id",
     "city",
@@ -1069,6 +1113,7 @@ await test("saved Building DNA maps back into supported wizard fields with load 
   assert.equal(byName.locality_id.value, "ro_bucuresti");
   assert.equal(byName.climate_station_id.value, "mc001_6_2013_bucuresti");
   assert.equal(byName.climate_profile_id.value, "ro_synthetic_bucharest_seasonal_demo_v1");
+  assert.equal(byName.building_use_category.value, "residential_single_family");
   assert.equal(byName.useful_area_m2.value, 120);
   assert.equal(byName.window_type.value, "modern_double_glazing");
   assert.equal(byName.wall_insulation.value, "10cm");
@@ -1215,6 +1260,7 @@ await test("demo query and fixture preload a complete editable technical dataset
     "locality_id",
     "climate_station_id",
     "building_type",
+    "building_use_category",
     "construction_year",
     "useful_area_m2",
     "number_of_floors",
@@ -1265,6 +1311,8 @@ await test("demo query and fixture preload a complete editable technical dataset
   assert.equal(answers.source.confirmationStatus, "unconfirmed_demo");
   assert.equal(answers.source.editable, true);
   assert.equal(answers.buildingType, "detached_house");
+  assert.equal(answers.buildingUseCategory, "residential_single_family");
+  assert.equal(answers.internalGainsCategoryId, "residential_single_family");
   assert.equal(answers.constructionPeriod, "1978_1990");
   assert.equal(answers.structuralSystem, "masonry");
   assert.equal(answers.wallMaterial, "brick");
@@ -1329,9 +1377,11 @@ await test("wizard marks current results stale after an upstream input changes",
 
 await test("normal wizard mode does not receive demo defaults or demo provenance", () => {
   const answers = mapWizardAnswersToAssistedAnswers(formData({
-    building_type: "house",
+    building_type: "",
     construction_year: "",
     wall_material: "",
+    structural_system: "",
+    building_use_category: "",
     wall_insulation: "",
     window_type: "",
     roof_type: "",
@@ -1341,8 +1391,48 @@ await test("normal wizard mode does not receive demo defaults or demo provenance
   assert.equal(answers.source.fixtureId, undefined);
   assert.equal(answers.climateProfileId, undefined);
   assert.equal(answers.monthlyProfiles, undefined);
+  assert.equal(answers.buildingType, undefined);
+  assert.equal(answers.constructionPeriod, undefined);
+  assert.equal(answers.structuralSystem, undefined);
+  assert.equal(answers.buildingUseCategory, undefined);
+  assert.equal(answers.buildingSpecificParameters.atticContext, undefined);
+  assert.equal(answers.buildingSpecificParameters.basementContext, undefined);
+  assert.deepEqual(answers.context, {});
   assert.equal(answers.buildingSpecificParameters.usefulFloorAreaM2, undefined);
   assert.equal(answers.buildingSpecificParameters.windowAreaM2, undefined);
+  const preview = buildWizardEngineeringPreview(answers);
+  assert.equal(preview.status, "blocked");
+  assert.equal(preview.diagnostics.blockers.some(item => item.code === "building_typology_invalid_building_type"), true);
+});
+
+await test("building use category maps to source-backed internal gains", () => {
+  const baseValues = {
+    ...ASSISTED_WIZARD_DEMO_FIXTURE.values,
+    building_platform_demo_mode: "",
+    building_platform_demo_fixture_id: "",
+    climate_profile_id: "",
+    locality_id: "ro_bucuresti",
+    climate_station_id: "mc001_6_2013_bucuresti"
+  };
+  const residential = createBuildingDnaFromAssistedAnswers(
+    mapWizardAnswersToAssistedAnswers(formData({
+      ...baseValues,
+      building_use_category: "residential_single_family"
+    }))
+  ).buildingDna;
+  const administrative = createBuildingDnaFromAssistedAnswers(
+    mapWizardAnswersToAssistedAnswers(formData({
+      ...baseValues,
+      building_use_category: "administrative"
+    }))
+  ).buildingDna;
+
+  const residentialInternalGain = residential.monthlyProfiles[0].heatGains.internalGains.amount;
+  const administrativeInternalGain = administrative.monthlyProfiles[0].heatGains.internalGains.amount;
+  assert.equal(residential.building.useCategory, "residential_single_family");
+  assert.equal(administrative.building.useCategory, "administrative");
+  assert.notEqual(residentialInternalGain, administrativeInternalGain);
+  assert.equal(administrative.monthlyProfiles[0].heatGains.internalGains.provenance.metadata.internalGainsSourceTable, "MC001-2022 Tabel 2.15");
 });
 
 await test("edited demo values propagate into Building DNA and Chapter 2 results", () => {
@@ -1378,6 +1468,11 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("printTechnicalReportBtn"), true);
   assert.equal(html.includes("p3f-engineering-shell"), true);
   assert.equal(html.includes("Mod simplificat"), true);
+  assert.equal(html.includes("productJourneyPanel"), true);
+  assert.equal(html.includes("productJourneyStatus"), true);
+  assert.equal(html.includes("data-analysis-mode-target=\"assisted\""), true);
+  assert.equal(html.includes("data-analysis-mode-target=\"expert\""), true);
+  assert.equal(html.includes("building_use_category"), true);
   assert.equal(html.includes("buildingPlatformLoadAnalysisId"), true);
   assert.equal(html.includes("loadBuildingPlatformAnalysisBtn"), true);
   assert.equal(html.includes("Redeschidere avansata dupa ID analiza"), true);
@@ -1418,12 +1513,14 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("building_platform_demo_mode"), true);
   for (const expected of [
     "Modelul termic al cladirii",
-    "Geometrie",
+    "Cladire si clima",
     "Anvelopa",
-    "Renovari",
-    "Building DNA",
-    "Raport tehnic",
+    "Utilizare si renovari",
+    "Verificare",
+    "Raport",
     "Rezultate",
+    "Asistat",
+    "Expert",
     "Salveaza draft",
     "Salveaza versiunea calculata",
     "Recalculeaza local",
@@ -1437,12 +1534,39 @@ await test("analysis page exposes the refocused technical workflow", () => {
   assert.equal(html.includes("Ma intereseaza cand devine disponibil"), false);
   assert.equal(html.includes("scor live"), false);
   assert.equal(css.includes("p3f-engineering-shell"), true);
+  assert.equal(css.includes("product-journey-status-grid"), true);
+  assert.equal(css.includes("analysis-mode-assisted"), true);
+  assert.equal(css.includes("product-result-summary"), true);
   assert.equal(css.includes("@media print"), true);
   assert.equal(css.includes(".p3f-input-pane"), true);
   assert.equal(css.includes("display:none!important"), true);
   assert.equal(css.includes(".engineering-calculation-notebook"), true);
   assert.equal(css.includes(".calculation-compact-line"), true);
   assert.equal(css.includes(".technical-report-title-block"), true);
+});
+
+await test("every visible analysis form control has a UI to runtime contract", () => {
+  const html = readFileSync(new URL("../pages/analiza-casa.html", import.meta.url), "utf8");
+  const formHtml = html.slice(
+    html.indexOf('<form id="houseForm"'),
+    html.indexOf("</form>", html.indexOf('<form id="houseForm"'))
+  );
+  const names = new Set();
+  for (const match of formHtml.matchAll(/<(input|select|textarea)\b([^>]*)>/g)) {
+    const attrs = match[2];
+    if (/\btype=["']hidden["']/i.test(attrs)) continue;
+    const nameMatch = attrs.match(/\bname=["']([^"']+)["']/i);
+    if (nameMatch) names.add(nameMatch[1]);
+  }
+
+  assert.ok(names.size > 80, `expected substantial form inventory, got ${names.size}`);
+  for (const name of names) {
+    const contract = getBuildingPlatformFieldContract(name);
+    assert.ok(contract, name);
+    assert.notEqual(contract.inputLevel, "internal", name);
+    assert.ok(contract.buildingDnaPath, name);
+    assert.ok(contract.runtimeConsumer, name);
+  }
 });
 
 await test("P3G report is a compact fully expanded print-ready calculation notebook", () => {
