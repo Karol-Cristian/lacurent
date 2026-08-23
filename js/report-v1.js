@@ -895,7 +895,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
       <div class="report-empty-actions">
         ${(empty.actions || []).map(action => `<a class="secondary-btn" href="${escapeHtml(action.href)}">${escapeHtml(action.label)}</a>`).join("")}
-        <a class="secondary-btn muted-action" href="raport-v1.html?demo=1">Vezi raport demo separat</a>
       </div>
     `;
   }

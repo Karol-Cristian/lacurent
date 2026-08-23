@@ -135,7 +135,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (existingHomesPanel) {
         existingHomesPanel.hidden = false;
         existingHomesPanel.querySelector("p").textContent =
-          "Modelul salvat nu poate fi incarcat automat in fluxul tehnic curent. Porneste un model nou sau demo.";
+          "Modelul salvat nu poate fi incarcat automat in fluxul tehnic curent. Porneste un model nou.";
       }
     }
   }
@@ -213,20 +213,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function openDemoTechnicalReportIfReady() {
-    if (houseForm.dataset.demoMode !== "1" || current !== steps.length - 1) return;
-    window.LaCurentBuildingPlatformWizard?.generateBuildingPlatformTechnicalReport?.(document, {
-      openReport: true,
-      scrollToReport: true
-    });
-  }
-
   nextBtn.addEventListener("click", () => {
     if (!validateCurrentStep()) return;
     if (current < steps.length - 1) {
       current++;
       showStep();
-      openDemoTechnicalReportIfReady();
     }
   });
 
@@ -243,7 +234,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!Number.isInteger(target) || target < 0 || target >= steps.length) return;
       current = target;
       showStep();
-      openDemoTechnicalReportIfReady();
     });
   });
 
