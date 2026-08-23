@@ -277,6 +277,19 @@ const convertedBoundaryRows = chapter3ImplementationMatrix
     }
     return `- ${entry.relation}: DHW useful-demand source now resolves through Building DNA \`usefulDemandSource\` and MC001 helper functions.`;
   });
+const remainingNonClosedRows = chapter3ImplementationMatrix
+  .filter(entry => [
+    "EXPLICIT_INPUT_BOUNDARY",
+    "EXTERNAL_STANDARD_BLOCKED",
+    "NOT_APPLICABLE"
+  ].includes(entry.implementationClassification))
+  .map(entry => {
+    const reason = entry.explicitBoundaryReasonCode ??
+      entry.blocker?.externalStandard ??
+      entry.blocker?.missingElement ??
+      "not_applicable";
+    return `- ${entry.relation}: ${entry.implementationClassification} (${reason})`;
+  });
 const markdown = [
   "# MC001 Chapter 3 Coverage Matrix",
   "",
@@ -307,6 +320,12 @@ const markdown = [
   "",
   mdTable(classificationRows),
   "",
+  "## Remaining Non-Closed Slots",
+  "",
+  remainingNonClosedRows.join("\n"),
+  "",
+  "The remaining explicit LENI input boundary and the external SR EN 15193-1 dependency are separate tracked slots: `3.4_EQ_34_LENI` is the MC001 LENI aggregation/input boundary, while `3.4_SR_EN_15193_1_DELEGATED` records the unavailable external lighting engine delegated by MC001.",
+  "",
   "## Explicit Boundaries Converted Through P8I",
   "",
   convertedBoundaryRows.join("\n"),
@@ -335,6 +354,12 @@ const markdown = [
     `  - Missing: ${blocker.missingElement}`,
     `  - Required contract: ${blocker.requiredInputContract}`
   ].join("\n")).join("\n"),
+  "",
+  "## Certification Flags",
+  "",
+  "- `CHAPTER_3_NON_LIGHTING_SUPPORTED_SCOPE_NUMERICALLY_COMPLETE`: true.",
+  "- `CHAPTER_3_SUPPORTED_SCOPE_NUMERICALLY_COMPLETE`: false unless the term is explicitly scoped to exclude the externally delegated lighting/LENI engine.",
+  "- `MC001_CHAPTER_3_FULL_SCOPE_COMPLETE`: false until SR EN 15193-1 is owned and implemented.",
   ""
 ].join("\n");
 

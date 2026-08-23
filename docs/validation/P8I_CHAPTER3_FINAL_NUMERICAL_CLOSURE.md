@@ -20,6 +20,10 @@
 10. `3.182` - absorption generator effective performance ratio.
 11. `3.4_EQ_34_LENI` - LENI lighting boundary delegated to SR EN 15193-1.
 
+P8H also contained one separate external-standard blocked slot:
+
+- `3.4_SR_EN_15193_1_DELEGATED` - SR EN 15193-1 lighting engine delegated by MC001 and not owned by the repository.
+
 ## Implemented Closures
 
 - `3.38` now runs through the shared-generator runtime via `technicalSystems.sharedComponents.generators[].operationTimeCalculation`, using `calculateHeatingGeneratorOperationTime`.
@@ -67,6 +71,8 @@
 ## Remaining Boundary
 
 `3.4_EQ_34_LENI` remains an explicit input boundary because MC001 Chapter 3.4 delegates detailed lighting energy to SR EN 15193-1. The repository does not own that standard's equations/tables. The runtime may aggregate explicit professional LENI/monthly lighting inputs, but it must not infer LENI.
+
+The separate slot `3.4_SR_EN_15193_1_DELEGATED` remains `EXTERNAL_STANDARD_BLOCKED`. It records the unavailable SR EN 15193-1 lighting engine itself and is not the same relation slot as the explicit LENI aggregation/input boundary.
 
 ## Closure Assessment
 
