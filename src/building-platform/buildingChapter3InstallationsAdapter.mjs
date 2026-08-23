@@ -58,6 +58,7 @@ import {
   calculateCoolingAbsorptionHeatInput,
   calculateCoolingAbsorptionPerformanceRatio,
   calculateCoolingDistributionInletOutdoorCompensatedTemperature,
+  calculateCoolingDistributionInletConstantSetpoint,
   calculateCoolingDistributionAuxiliaryEnergy,
   calculateCoolingDistributionLoss,
   calculateCoolingDryHeatRejectionWaterTemperature,
@@ -67,6 +68,7 @@ import {
   calculateCoolingGeneratorInputByCapacityLimit,
   calculateCoolingGeneratorInputRequiredAirWater,
   calculateCoolingGeneratorInputRequiredDirectExpansion,
+  calculateCoolingGeneratorPartLoadValue,
   calculateCoolingHeatRejectedAfterRecovery,
   calculateCoolingHeatRejectedByAbsorption,
   calculateCoolingHeatRejectedByCompression,
@@ -88,8 +90,10 @@ import {
   calculateCoolingStorageRecoverableLossTotal,
   calculateCoolingStorageRecoverableThermalLoss,
   calculateCoolingStorageThermalLoss,
+  calculateCoolingUnmetLoadFromLimitedExtraction,
   calculateCoolingWaterHeatRejectionInletTemperature,
   calculateCoolingWetHeatRejectionWaterTemperature,
+  selectCoolingAbsorptionPartLoadValue,
   calculateAhuLeakageFactor,
   allocateExtractAirFlowToZone,
   allocateSupplyAirFlowToZone,
@@ -1823,6 +1827,10 @@ function coolingGeneratorTemperatureResults(contract, monthIndex) {
     contract.distributionInletOutdoorCompensationInput,
     monthIndex
   );
+  const constantSetpoint = monthlyComponent(
+    contract.distributionInletConstantSetpointC,
+    monthIndex
+  );
   let generatorRequiredOutletTemperatureC = null;
 
   if (isPlainObject(outletInput)) {
@@ -1837,6 +1845,15 @@ function coolingGeneratorTemperatureResults(contract, monthIndex) {
     results.push(compensated);
     if (!finiteNumber(generatorRequiredOutletTemperatureC)) {
       generatorRequiredOutletTemperatureC = compensated.valueC;
+    }
+  }
+  if (constantSetpoint !== undefined && constantSetpoint !== null) {
+    const constant = calculateCoolingDistributionInletConstantSetpoint({
+      setpointC: constantSetpoint
+    });
+    results.push(constant);
+    if (!finiteNumber(generatorRequiredOutletTemperatureC)) {
+      generatorRequiredOutletTemperatureC = constant.valueC;
     }
   }
 
@@ -1976,6 +1993,55 @@ function coolingHeatRejectionReferenceResults(contract, monthIndex) {
     results,
     heatRejectionReferenceInletTemperatureC,
     heatRejectionReferenceOutletTemperatureC
+  };
+}
+
+function coolingHeatRejectionPartLoadResult(contract, monthIndex) {
+  const polynomialInput = monthlyComponent(contract.heatRejectionPartLoadPolynomialInput, monthIndex);
+  if (isPlainObject(polynomialInput)) {
+    const lookup = polynomialInput.systemKey
+      ? lookupCoolingHeatRejectionPolynomialCoefficientsTable320({
+          systemKey: polynomialInput.systemKey
+        })
+      : null;
+    const coefficients = lookup
+      ? { a2: lookup.a2, a1: lookup.a1, a0: lookup.a0 }
+      : polynomialInput;
+    const temperatureSelection = monthlyComponent(contract.heatRejectionTemperatureSelection, monthIndex);
+    const selected = isPlainObject(temperatureSelection)
+      ? selectCoolingHeatRejectionTemperature(temperatureSelection)
+      : null;
+    const value = calculateCoolingHeatRejectionPartLoadFactor({
+      temperatureC: contextMonthlyField(
+        polynomialInput,
+        "temperatureC",
+        monthIndex,
+        selected?.valueC
+      ),
+      a2: coefficients.a2,
+      a1: coefficients.a1,
+      a0: coefficients.a0
+    });
+    return {
+      value: value.value,
+      results: [selected, lookup, value].filter(Boolean)
+    };
+  }
+
+  const explicitValue = contextMonthlyField(contract, "heatRejectionPartLoadFactor", monthIndex, 1);
+  if (!finitePositive(explicitValue)) {
+    throw new Error("cooling generator part-load value requires heatRejectionPartLoadFactor");
+  }
+  const explicit = explicitResult({
+    formulaId: "MC001_3_159_HEAT_REJECTION_PART_LOAD_FACTOR_EXPLICIT_INPUT",
+    value: explicitValue,
+    unit: "-",
+    formulaText: "fhr,PL supplied as product/project input or neutral nominal-condition factor",
+    inputs: { heatRejectionPartLoadFactor: explicitValue }
+  });
+  return {
+    value: explicit.value,
+    results: [explicit]
   };
 }
 
@@ -2149,10 +2215,76 @@ function coolingControlAuxiliary(contract, monthIndex) {
   });
 }
 
+function coolingCapacityAccounting(contract, monthIndex, stageContext, generatorInputRequiredKWh, available) {
+  const capacityLimited = available.valueKWh + 1e-9 < generatorInputRequiredKWh;
+  const requiredExtractedEnergyKWh = contextMonthlyField(
+    contract,
+    "requiredExtractedEnergyKWh",
+    monthIndex,
+    stageContextValue(stageContext, "allocatedUsefulDemandKWh", generatorInputRequiredKWh)
+  );
+  if (generatorInputRequiredKWh === 0 && requiredExtractedEnergyKWh === 0) {
+    const suppliedCooling = directBranchResult({
+      formulaId: "MC001_3_142_3_143_COOLING_EXTRACTED_ZERO_DEMAND",
+      branchId: "zero_cooling_demand_no_generator_extraction",
+      unit: "kWh",
+      formulaText: "QC = 0 when QC,gen,in,req = 0 and requested extracted cooling is 0",
+      provenance: {
+        source: "MC001 Chapter 3 cooling generator zero-demand branch",
+        classification: "NORMATIVE_DERIVED"
+      }
+    });
+    const unmetCooling = directBranchResult({
+      formulaId: "MC001_3_153_COOLING_UNMET_LOAD_ZERO_DEMAND",
+      branchId: "zero_cooling_demand_no_unmet_load",
+      unit: "kWh",
+      formulaText: "QC,unmet = 0 when requested extracted cooling is 0",
+      provenance: {
+        source: "MC001 Chapter 3 cooling generator zero-demand branch",
+        classification: "NORMATIVE_DERIVED"
+      }
+    });
+    return {
+      capacityLimited: false,
+      requiredExtractedEnergyKWh,
+      suppliedCooling,
+      unmetCooling
+    };
+  }
+  const suppliedCooling = calculateCoolingExtractedEnergyLimitedByGenerator({
+    requiredEnergyKWh: requiredExtractedEnergyKWh,
+    generatorInputRequiredKWh,
+    generatorInputAvailableKWh: available.valueKWh,
+    formulaId: contract.capacityLimitedExtractedEnergyFormulaId
+  });
+  const unmetCooling = calculateCoolingUnmetLoadFromLimitedExtraction({
+    requiredEnergyKWh: requiredExtractedEnergyKWh,
+    suppliedEnergyKWh: suppliedCooling.valueKWh
+  });
+
+  if (capacityLimited && contract.allowCapacityLimitedGeneratorInput !== true) {
+    throw new Error("cooling generator capacity is insufficient for the requested monthly load");
+  }
+  if (capacityLimited && contract.unmetLoadPolicy !== "report_unmet_load") {
+    throw new Error(
+      "capacity-limited cooling requires unmetLoadPolicy=report_unmet_load to expose unsatisfied demand"
+    );
+  }
+
+  return {
+    capacityLimited,
+    requiredExtractedEnergyKWh,
+    suppliedCooling,
+    unmetCooling
+  };
+}
+
 function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, stageContext = {}) {
   const contract = monthlyComponent(input, monthIndex);
   if (!isPlainObject(contract)) return null;
-  if (contract.mode !== "cooling_compression_heat_rejection_auxiliary") return null;
+  const isCompression = contract.mode === "cooling_compression_heat_rejection_auxiliary";
+  const isAbsorption = contract.mode === "cooling_absorption_heat_rejection_auxiliary";
+  if (!isCompression && !isAbsorption) return null;
 
   const temperatureResolution = coolingGeneratorTemperatureResults(contract, monthIndex);
   const heatRejectionReference = coolingHeatRejectionReferenceResults(contract, monthIndex);
@@ -2171,67 +2303,99 @@ function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, sta
     );
   const operationHours = contextMonthlyField(contract, "operationHours", monthIndex);
   const nominalCoolingPowerKW = contextMonthlyField(contract, "nominalCoolingPowerKW", monthIndex);
-  const nominalEer = contextMonthlyField(contract, "nominalEer", monthIndex);
   const load = calculateCoolingPartLoadFactor({
     generatorInputRequiredKWh,
     operationHours,
     nominalCoolingPowerKW
   });
   const partLoadBin = selectCoolingPartLoadBin({ partLoadFactor: load.value });
+  const heatRejectionPartLoad = isCompression
+    ? coolingHeatRejectionPartLoadResult(contract, monthIndex)
+    : { value: 1, results: [] };
+  const partLoadValue = isAbsorption
+    ? selectCoolingAbsorptionPartLoadValue({
+        partLoadValue: contextMonthlyField(contract, "partLoadValue", monthIndex)
+      })
+    : calculateCoolingGeneratorPartLoadValue({
+        coolingPartLoadBinFactor: partLoadBin.value,
+        heatRejectionPartLoadFactor: heatRejectionPartLoad.value,
+        freeCoolingFactor: contextMonthlyField(contract, "freeCoolingFactor", monthIndex, 1),
+        multipleGeneratorFactor: contextMonthlyField(contract, "multipleGeneratorFactor", monthIndex, 1)
+      });
   const available = calculateCoolingGeneratorInputByCapacityLimit({
     generatorInputRequiredKWh,
     operationHours,
     nominalCoolingPowerKW
   });
-  if (
-    available.valueKWh + 1e-9 < generatorInputRequiredKWh &&
-    contract.allowCapacityLimitedGeneratorInput !== true
-  ) {
-    throw new Error("cooling generator capacity is insufficient for the requested monthly load");
-  }
-  const covered = calculateCoolingCoveredPartLoadFactor({
-    generatorInputKWh: available.valueKWh,
-    generatorInputRequiredKWh
-  });
-  const limitedExtractedEnergy = contract.calculateCapacityLimitedExtractedEnergy === true
-    ? calculateCoolingExtractedEnergyLimitedByGenerator({
-        requiredEnergyKWh: contextMonthlyField(
-          contract,
-          "requiredExtractedEnergyKWh",
-          monthIndex,
-          stageContextValue(stageContext, "allocatedUsefulDemandKWh", generatorInputRequiredKWh)
-        ),
-        generatorInputRequiredKWh,
-        generatorInputAvailableKWh: available.valueKWh,
-        formulaId: contract.capacityLimitedExtractedEnergyFormulaId
+  const capacity = coolingCapacityAccounting(
+    contract,
+    monthIndex,
+    stageContext,
+    generatorInputRequiredKWh,
+    available
+  );
+  const covered = generatorInputRequiredKWh === 0
+    ? directBranchResult({
+        formulaId: "MC001_3_154_COOLING_COVERED_PART_LOAD_ZERO_DEMAND",
+        branchId: "zero_cooling_demand_no_coverage_ratio",
+        unit: "-",
+        formulaText: "fC,PL,cvd = 0 when QC,gen,in,req = 0 because no cooling demand is requested",
+        provenance: {
+          source: "MC001 Chapter 3 cooling generator zero-demand branch",
+          classification: "NORMATIVE_DERIVED"
+        }
+      })
+    : calculateCoolingCoveredPartLoadFactor({
+        generatorInputKWh: available.valueKWh,
+        generatorInputRequiredKWh
+      });
+  const eerCorrection = isCompression
+    ? coolingEerCorrection(contract, monthIndex, {
+        generatorRequiredOutletTemperatureC:
+          temperatureResolution.generatorRequiredOutletTemperatureC,
+        heatRejectionReferenceInletTemperatureC:
+          heatRejectionReference.heatRejectionReferenceInletTemperatureC
       })
     : null;
-  const eerCorrection = coolingEerCorrection(contract, monthIndex, {
-    generatorRequiredOutletTemperatureC:
-      temperatureResolution.generatorRequiredOutletTemperatureC,
-    heatRejectionReferenceInletTemperatureC:
-      heatRejectionReference.heatRejectionReferenceInletTemperatureC
-  });
-  const compressionElectric = calculateCoolingCompressionElectricInput({
-    generatorCoolingInputKWh: available.valueKWh,
-    partLoadValue: partLoadBin.value,
-    nominalEer,
-    eerCorrectionFactor: eerCorrection.value
-  });
-  const heatRejected = calculateCoolingHeatRejectedByCompression({
-    generatorCoolingInputKWh: available.valueKWh,
-    nominalEer,
-    partLoadFactor: partLoadBin.value,
-    eerCorrectionFactor: eerCorrection.value
-  });
+  const nominalEer = isCompression ? contextMonthlyField(contract, "nominalEer", monthIndex) : null;
+  const nominalHeatRatio = isAbsorption
+    ? contextMonthlyField(contract, "nominalHeatRatio", monthIndex)
+    : null;
+  const compressionElectric = isCompression
+    ? calculateCoolingCompressionElectricInput({
+        generatorCoolingInputKWh: available.valueKWh,
+        partLoadValue: partLoadValue.value,
+        nominalEer,
+        eerCorrectionFactor: eerCorrection.value
+      })
+    : null;
+  const absorptionHeat = isAbsorption
+    ? calculateCoolingAbsorptionHeatInput({
+        generatorCoolingInputKWh: available.valueKWh,
+        partLoadValue: partLoadValue.value,
+        nominalHeatRatio
+      })
+    : null;
+  const heatRejected = isCompression
+    ? calculateCoolingHeatRejectedByCompression({
+        generatorCoolingInputKWh: available.valueKWh,
+        nominalEer,
+        partLoadFactor: partLoadValue.value,
+        eerCorrectionFactor: eerCorrection.value
+      })
+    : calculateCoolingHeatRejectedByAbsorption({
+        generatorCoolingInputKWh: available.valueKWh,
+        nominalHeatRatio,
+        partLoadFactor: partLoadValue.value
+      });
   const heatRejectionOperationalResults = coolingHeatRejectionOperationalResults({
     contract,
     monthIndex,
     heatRejectedKWh: heatRejected.valueKWh,
     generatorInputKWh: available.valueKWh,
-    partLoadValue: partLoadBin.value,
-    nominalEer,
-    eerCorrectionFactor: eerCorrection.value,
+    partLoadValue: partLoadValue.value,
+    nominalEer: nominalEer ?? 1,
+    eerCorrectionFactor: eerCorrection?.value ?? 1,
     operationHours,
     referenceInletTemperatureC:
       heatRejectionReference.heatRejectionReferenceInletTemperatureC,
@@ -2250,26 +2414,68 @@ function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, sta
     heatRejectionDistributionAuxiliaryKWh: heatRejectionDistributionAuxiliary.valueKWh,
     controlAuxiliaryKWh: controlAuxiliary.valueKWh
   });
-  const deliveredElectric = calculateCoolingCompressionDeliveredElectricInput({
-    compressionElectricInputKWh: compressionElectric.valueKWh,
-    auxiliaryElectricInputKWh: total.valueKWh
-  });
-  const effectiveEer = calculateCoolingCompressionEer({
-    generatorCoolingInputKWh: available.valueKWh,
-    compressionElectricInputKWh: compressionElectric.valueKWh,
-    auxiliaryElectricInputKWh: total.valueKWh
-  });
+  const deliveredElectric = isCompression
+    ? calculateCoolingCompressionDeliveredElectricInput({
+        compressionElectricInputKWh: compressionElectric.valueKWh,
+        auxiliaryElectricInputKWh: total.valueKWh
+      })
+    : null;
+  const effectiveEer = isCompression
+    ? (available.valueKWh === 0 && compressionElectric.valueKWh + total.valueKWh === 0
+        ? directBranchResult({
+            formulaId: "MC001_3_181_COOLING_COMPRESSION_EER_ZERO_DEMAND",
+            branchId: "zero_cooling_demand_no_effective_eer",
+            unit: "-",
+            formulaText: "EER is not evaluated when QC,gen,in and delivered electric input are both zero",
+            provenance: {
+              source: "MC001 Chapter 3 cooling generator zero-demand branch",
+              classification: "NORMATIVE_DERIVED"
+            }
+          })
+        : calculateCoolingCompressionEer({
+            generatorCoolingInputKWh: available.valueKWh,
+            compressionElectricInputKWh: compressionElectric.valueKWh,
+            auxiliaryElectricInputKWh: total.valueKWh
+          }))
+    : (available.valueKWh === 0 && absorptionHeat.valueKWh === 0
+        ? directBranchResult({
+            formulaId: "MC001_3_182_COOLING_ABSORPTION_PERFORMANCE_ZERO_DEMAND",
+            branchId: "zero_cooling_demand_no_absorption_ratio",
+            unit: "-",
+            formulaText: "Absorption performance ratio is not evaluated when QC,gen,in and driving heat are both zero",
+            provenance: {
+              source: "MC001 Chapter 3 cooling generator zero-demand branch",
+              classification: "NORMATIVE_DERIVED"
+            }
+          })
+        : calculateCoolingAbsorptionPerformanceRatio({
+            generatorCoolingInputKWh: available.valueKWh,
+            absorptionHeatInputKWh: absorptionHeat.valueKWh
+          }));
+  const carrierEnergy = isAbsorption
+    ? {
+        [contract.absorptionHeatCarrier ?? contract.drivingHeatCarrier ?? "thermal"]: absorptionHeat.valueKWh,
+        [contract.auxiliaryCarrier ?? "electricity"]: total.valueKWh
+      }
+    : {
+        [contract.energyCarrier ?? "electricity"]: deliveredElectric.valueKWh
+      };
+  const deliveredInputKWh = Object.values(carrierEnergy).reduce((sum, value) => sum + value, 0);
   const results = [
     ...temperatureResolution.results,
     generatorInputRequirement,
     ...heatRejectionReference.results,
     load,
     partLoadBin,
+    ...heatRejectionPartLoad.results,
+    partLoadValue,
     available,
     covered,
-    limitedExtractedEnergy,
-    eerCorrection,
+    capacity.suppliedCooling,
+    capacity.unmetCooling,
+    isCompression ? eerCorrection : null,
     compressionElectric,
+    absorptionHeat,
     heatRejected,
     ...heatRejectionOperationalResults,
     ...heatRejectionAuxiliary.lookupResults,
@@ -2283,37 +2489,72 @@ function calculateCoolingGeneratorAuxiliaryContract(input, monthIndex, path, sta
   return {
     value: total.valueKWh,
     source: calculatedStageSource({
-      origin: "mc001_cooling_compression_heat_rejection_auxiliary_contract",
+      origin: isCompression
+        ? "mc001_cooling_compression_heat_rejection_auxiliary_contract"
+        : "mc001_cooling_absorption_heat_rejection_auxiliary_contract",
       reference: `${path}.auxiliaryCalculation`,
       results,
       details: {
         mode: contract.mode,
         generatorInputRequiredKWh,
         generatorCoolingInputKWh: available.valueKWh,
-        capacityLimited: available.valueKWh + 1e-9 < generatorInputRequiredKWh,
+        capacityLimited: capacity.capacityLimited,
         coveredPartLoadFactor: covered.value,
-        compressionElectricInputKWh: compressionElectric.valueKWh,
+        requiredExtractedEnergyKWh: capacity.requiredExtractedEnergyKWh,
+        suppliedCoolingKWh: capacity.suppliedCooling.valueKWh,
+        unmetCoolingKWh: capacity.unmetCooling.valueKWh,
+        partLoadValue: partLoadValue.value,
+        compressionElectricInputKWh: compressionElectric?.valueKWh ?? 0,
+        absorptionHeatInputKWh: absorptionHeat?.valueKWh ?? 0,
         heatRejectedKWh: heatRejected.valueKWh,
         heatRejectionAuxiliaryKWh: heatRejectionAuxiliary.result.valueKWh,
         heatRejectionDistributionAuxiliaryKWh: heatRejectionDistributionAuxiliary.valueKWh,
         controlAuxiliaryKWh: controlAuxiliary.valueKWh,
-        deliveredElectricInputKWh: deliveredElectric.valueKWh,
+        deliveredElectricInputKWh: deliveredElectric?.valueKWh ?? 0,
+        deliveredInputKWh,
+        carrierEnergy,
         effectiveEer: effectiveEer.value
       }
     }),
     derivedFractions: {},
     stageInputOverride: {
-      valueKWh: deliveredElectric.valueKWh,
-      result: deliveredElectric,
+      valueKWh: deliveredInputKWh,
+      result: deliveredElectric ?? {
+        ...absorptionHeat,
+        value: deliveredInputKWh,
+        valueKWh: deliveredInputKWh,
+        formulaId: "MC001_3_174_3_180_COOLING_ABSORPTION_MULTI_CARRIER_INPUT",
+        executionTrace: {
+          ...absorptionHeat.executionTrace,
+          formulaId: "MC001_3_174_3_180_COOLING_ABSORPTION_MULTI_CARRIER_INPUT",
+          formulaText: "Edelivered = QH,C,gen,abs,in + WC,aux,gen",
+          inputs: {
+            absorptionHeatInputKWh: absorptionHeat.valueKWh,
+            auxiliaryElectricInputKWh: total.valueKWh
+          },
+          rawResult: deliveredInputKWh,
+          finalResult: deliveredInputKWh
+        }
+      },
       source: calculatedStageSource({
-        origin: "mc001_cooling_compression_delivered_electric_contract",
-        reference: `${path}.auxiliaryCalculation.deliveredElectricInput`,
-        results: [compressionElectric, total, deliveredElectric],
+        origin: isCompression
+          ? "mc001_cooling_compression_delivered_electric_contract"
+          : "mc001_cooling_absorption_multi_carrier_contract",
+        reference: `${path}.auxiliaryCalculation.deliveredInput`,
+        results: isCompression
+          ? [compressionElectric, total, deliveredElectric]
+          : [absorptionHeat, total, effectiveEer],
         details: {
           mode: contract.mode,
-          compressionElectricInputKWh: compressionElectric.valueKWh,
+          compressionElectricInputKWh: compressionElectric?.valueKWh ?? 0,
+          absorptionHeatInputKWh: absorptionHeat?.valueKWh ?? 0,
           auxiliaryElectricInputKWh: total.valueKWh,
-          deliveredElectricInputKWh: deliveredElectric.valueKWh
+          deliveredElectricInputKWh: deliveredElectric?.valueKWh ?? 0,
+          deliveredInputKWh,
+          carrierEnergy,
+          requiredExtractedEnergyKWh: capacity.requiredExtractedEnergyKWh,
+          suppliedCoolingKWh: capacity.suppliedCooling.valueKWh,
+          unmetCoolingKWh: capacity.unmetCooling.valueKWh
         }
       })
     }

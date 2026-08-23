@@ -268,6 +268,11 @@ const p8hHeatingNumericalRelations = new Set([
   ...p8hHeatingCoefficientNumericalRelations
 ]);
 
+const p8iHeatingNumericalRelations = new Set([
+  ...p8hHeatingNumericalRelations,
+  "3.38"
+]);
+
 const p8gHeatingImplementedFunctions = {
   ...p8dHeatingImplementedFunctions,
   "3.19": "calculateHeatingGeneratorUtilizationFactor",
@@ -286,65 +291,78 @@ const p8hHeatingImplementedFunctions = {
   "3.18": "calculateHeatingGeneratorAuxiliaryPowerFromCoefficients"
 };
 
+const p8iHeatingImplementedFunctions = {
+  ...p8hHeatingImplementedFunctions,
+  "3.38": "calculateHeatingGeneratorOperationTime"
+};
+
 const heatingRelations = implementedRange(relationRange(1, 39), {
   status: relation =>
-    p8hHeatingNumericalRelations.has(relation)
+    p8iHeatingNumericalRelations.has(relation)
       ? CHAPTER_3_MATRIX_STATUS.PRODUCTION_INTEGRATED
       : CHAPTER_3_MATRIX_STATUS.UNIT_TESTED,
   source: "MC001-2022 Chapter 3.1, pages 136-152",
   implementation: HEATING_SYSTEMS,
-  implementedFunction: relation => p8hHeatingImplementedFunctions[relation] ?? HEATING_SYSTEMS,
+  implementedFunction: relation => p8iHeatingImplementedFunctions[relation] ?? HEATING_SYSTEMS,
   tests: relation =>
-    p8hHeatingNumericalRelations.has(relation)
+    p8iHeatingNumericalRelations.has(relation)
       ? [HEATING_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_HEATING_TEST]
       : [HEATING_TEST],
   validationFixture: relation =>
     p8gSharedGeneratorNumericalRelations.has(relation)
       ? "P8G shared-generator component-contract fixture plus independent Python reference constants"
+      : relation === "3.38"
+        ? "P8I shared-generator operationTimeCalculation fixture plus independent fixed operation-hour equation"
       : p8hHeatingCoefficientNumericalRelations.has(relation)
         ? "P8H heating generator C5-C8 product-coefficient fixture plus independent Python reference constants"
       : p8dHeatingNumericalRelations.has(relation)
         ? "P8D heating component-contract fixture plus independent Python reference constants"
       : "independent fixed constants in mc001Chapter3HeatingSystems.test.mjs",
   runtimeIntegrated: relation =>
-    p8hHeatingNumericalRelations.has(relation)
+    p8iHeatingNumericalRelations.has(relation)
       ? true
       : "callable helper or explicit boundary; production requires a more detailed component/product contract before the result can be calculated",
   productionRuntimePath: relation =>
     p8gSharedGeneratorNumericalRelations.has(relation)
       ? "Building DNA technicalSystems.sharedComponents.generators[] plus service generatorRef -> buildingChapter3InstallationsAdapter -> integrated shared-generator runtime -> physical carrier/accounting allocation"
+      : relation === "3.38"
+      ? "Building DNA technicalSystems.sharedComponents.generators[].operationTimeCalculation -> integrated shared-generator runtime -> calculateHeatingGeneratorOperationTime"
       : p8hHeatingCoefficientNumericalRelations.has(relation)
       ? "Building DNA technicalSystems.heating.systems[].stages[generation].lossCalculation/auxiliaryCalculation product coefficients -> buildingChapter3InstallationsAdapter -> MC001 heating generator coefficient helpers -> integrated generation stage balance"
       : p8dHeatingNumericalRelations.has(relation)
       ? "Building DNA technicalSystems.heating.systems[].stages[].lossCalculation/auxiliaryCalculation -> buildingChapter3InstallationsAdapter -> MC001 heating helper -> integrated service-chain stage balance"
       : "callable helper or explicit boundary; production requires a more detailed component/product contract before the result can be calculated",
   notebookTraceable: relation =>
-    p8hHeatingNumericalRelations.has(relation)
+    p8iHeatingNumericalRelations.has(relation)
       ? true
       : "stage balance visible only when final explicit technical value is supplied",
   notebookPath: relation =>
     p8gSharedGeneratorNumericalRelations.has(relation)
       ? "src/physics-engine/mc001Chapter3Notebook.mjs shared generator physical and allocation lines"
+      : relation === "3.38"
+      ? "src/physics-engine/mc001Chapter3Notebook.mjs shared generator operation-time trace"
       : p8hHeatingCoefficientNumericalRelations.has(relation)
       ? "src/physics-engine/mc001Chapter3Notebook.mjs heating generation stage lines with coefficient formula IDs"
       : p8dHeatingNumericalRelations.has(relation)
       ? "src/physics-engine/mc001Chapter3Notebook.mjs heating stage lines with source formula IDs"
       : "stage balance visible only when final explicit technical value is supplied",
-  explicitInputBoundary: relation => !p8hHeatingNumericalRelations.has(relation),
+  explicitInputBoundary: relation => !p8iHeatingNumericalRelations.has(relation),
   implementationClassification: relation =>
-    p8hHeatingNumericalRelations.has(relation)
+    p8iHeatingNumericalRelations.has(relation)
       ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
       : CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
   inputSourceClassification: relation =>
     p8gSharedGeneratorNumericalRelations.has(relation)
       ? "shared_generator_component_contract_product_schedule_and_service_allocation_inputs"
+      : relation === "3.38"
+      ? "shared_generator_cross_service_operation_schedule_and_load_factor_inputs"
       : p8hHeatingCoefficientNumericalRelations.has(relation)
       ? "heating_generator_product_coefficient_contract_c5_c8_and_project_operation_inputs"
       : p8dHeatingNumericalRelations.has(relation)
       ? "heating_component_contract_project_and_product_data"
       : "heating_legacy_explicit_or_unexposed_component_contract_input",
   explicitBoundaryReason: relation =>
-    p8hHeatingNumericalRelations.has(relation)
+    p8iHeatingNumericalRelations.has(relation)
       ? null
       : ({
         "3.15": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C5_C6_REQUIRED for standby loss fraction calculation.",
@@ -360,7 +378,7 @@ const heatingRelations = implementedRange(relationRange(1, 39), {
         "3.39": "CENTRAL_GENERATOR_SERVICE_INPUTS_AND_CONTROL_LOSS_FACTOR_REQUIRED before central generator output can be calculated."
       })[relation],
   explicitBoundaryReasonCode: relation =>
-    p8hHeatingNumericalRelations.has(relation)
+    p8iHeatingNumericalRelations.has(relation)
       ? null
       : ({
         "3.15": "PRODUCT_OR_SR_EN_15316_4_1_COEFFICIENTS_C5_C6_REQUIRED",
@@ -554,6 +572,15 @@ const p8hCoolingDistributionNumericalRelations = new Set([
   ...p8eCoolingDistributionNumericalRelations
 ]);
 
+const p8iCoolingDistributionNumericalRelations = new Set([
+  ...p8hCoolingDistributionNumericalRelations,
+  "3.140",
+  "3.142",
+  "3.143",
+  "3.148",
+  "3.153"
+]);
+
 const p8hCoolingDistributionImplementedFunctions = {
   "3.136": "selectCoolingGeneratorOutletTemperature",
   "3.137": "selectCoolingGeneratorOutletTemperature",
@@ -562,6 +589,15 @@ const p8hCoolingDistributionImplementedFunctions = {
   "3.141": "calculateCoolingDistributionInletOutdoorCompensatedTemperature",
   "3.144": "calculateCoolingGeneratorInputRequiredDirectExpansion",
   "3.145": "calculateCoolingGeneratorInputRequiredAirWater"
+};
+
+const p8iCoolingDistributionImplementedFunctions = {
+  ...p8hCoolingDistributionImplementedFunctions,
+  "3.140": "calculateCoolingDistributionInletConstantSetpoint",
+  "3.142": "calculateCoolingExtractedEnergyLimitedByGenerator",
+  "3.143": "calculateCoolingExtractedEnergyLimitedByGenerator",
+  "3.148": "calculateCoolingGeneratorPartLoadValue/selectCoolingAbsorptionPartLoadValue",
+  "3.153": "calculateCoolingGeneratorInputByCapacityLimit/calculateCoolingUnmetLoadFromLimitedExtraction"
 };
 
 const p8eCoolingRejectionNumericalRelations = new Set([
@@ -594,6 +630,14 @@ const p8hCoolingRejectionNumericalRelations = new Set([
   "3.172"
 ]);
 
+const p8iCoolingRejectionNumericalRelations = new Set([
+  ...p8hCoolingRejectionNumericalRelations,
+  "3.165",
+  "3.170",
+  "3.174",
+  "3.182"
+]);
+
 const p8hCoolingRejectionImplementedFunctions = {
   "3.156": "selectCoolingHeatRejectionReferenceTemperatures",
   "3.157": "selectCoolingHeatRejectionReferenceTemperatures",
@@ -609,6 +653,14 @@ const p8hCoolingRejectionImplementedFunctions = {
   "3.169": "calculateCoolingRecoverableHeatByCompression",
   "3.171": "calculateCoolingRecoverableHeatMaximumTemperature",
   "3.172": "calculateCoolingHeatRejectedAfterRecovery"
+};
+
+const p8iCoolingRejectionImplementedFunctions = {
+  ...p8hCoolingRejectionImplementedFunctions,
+  "3.165": "calculateCoolingHeatRejectedByAbsorption",
+  "3.170": "calculateCoolingRecoverableHeatByAbsorption",
+  "3.174": "calculateCoolingAbsorptionHeatInput",
+  "3.182": "calculateCoolingAbsorptionPerformanceRatio"
 };
 
 const ahuRelations = implementedRange(relationRange(40, 93), {
@@ -828,39 +880,43 @@ const coolingDistributionRelations = implementedRange(relationRange(136, 155), {
   source: "MC001-2022 Chapter 3.2.5, pages 214-219",
   implementation: SYSTEM_ENERGY,
   implementedFunction: relation =>
-    p8hCoolingDistributionImplementedFunctions[relation] ?? SYSTEM_ENERGY,
+    p8iCoolingDistributionImplementedFunctions[relation] ?? SYSTEM_ENERGY,
   tests: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    p8iCoolingDistributionNumericalRelations.has(relation)
       ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_COOLING_TEST]
       : [SYSTEM_ENERGY_TEST],
   validationFixture: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    ["3.140", "3.142", "3.143", "3.148", "3.153"].includes(relation)
+      ? "P8I cooling capacity-limited/component contract fixture plus independent Python reference constants"
+      : p8iCoolingDistributionNumericalRelations.has(relation)
       ? "P8H cooling distribution/generator topology component-contract fixture plus independent Python reference constants"
       : "independent fixed constants in mc001Chapter3SystemEnergy.test.mjs",
   tableImplemented: "part-load bins implemented; manufacturer PLV/EER data remain explicit inputs",
   runtimeIntegrated: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    p8iCoolingDistributionNumericalRelations.has(relation)
       ? true
       : "callable helper or explicit boundary; production requires a complete cooling generator/distribution component contract before this result can be calculated",
   notebookTraceable: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    p8iCoolingDistributionNumericalRelations.has(relation)
       ? true
       : "cooling monthly stage balances are visible only when final explicit technical value is supplied",
   productionRuntimePath: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    p8iCoolingDistributionNumericalRelations.has(relation)
       ? "Building DNA technicalSystems.cooling.systems[].stages[].lossCalculation/auxiliaryCalculation -> buildingChapter3InstallationsAdapter -> MC001 cooling helper -> integrated cooling stage balance"
       : "callable helper or explicit boundary; production requires a more detailed component contract",
-  explicitInputBoundary: relation => !p8hCoolingDistributionNumericalRelations.has(relation),
+  explicitInputBoundary: relation => !p8iCoolingDistributionNumericalRelations.has(relation),
   implementationClassification: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    p8iCoolingDistributionNumericalRelations.has(relation)
       ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
       : CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
   inputSourceClassification: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    ["3.140", "3.142", "3.143", "3.148", "3.153"].includes(relation)
+      ? "cooling_generator_capacity_product_operation_unmet_load_and_part_load_inputs"
+      : p8iCoolingDistributionNumericalRelations.has(relation)
       ? "cooling_component_contract_project_product_and_operation_inputs"
       : "cooling_legacy_explicit_or_unexposed_component_contract_input",
   explicitBoundaryReason: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    p8iCoolingDistributionNumericalRelations.has(relation)
       ? null
       : ({
         "3.136": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED for branch selection.",
@@ -877,7 +933,7 @@ const coolingDistributionRelations = implementedRange(relationRange(136, 155), {
         "3.153": "COOLING_CAPACITY_LIMIT_UNMET_LOAD_CONTRACT_REQUIRED for capacity-limited branch handling."
       })[relation],
   explicitBoundaryReasonCode: relation =>
-    p8hCoolingDistributionNumericalRelations.has(relation)
+    p8iCoolingDistributionNumericalRelations.has(relation)
       ? null
       : ({
         "3.136": "COOLING_GENERATOR_OUTLET_TEMPERATURE_TOPOLOGY_REQUIRED",
@@ -899,39 +955,43 @@ const coolingRejectionRelations = implementedRange(relationRange(156, 182), {
   source: "MC001-2022 Chapter 3.2.5-3.2.6, pages 219-235, Tabel 3.18-Tabel 3.23",
   implementation: SYSTEM_ENERGY,
   implementedFunction: relation =>
-    p8hCoolingRejectionImplementedFunctions[relation] ?? SYSTEM_ENERGY,
+    p8iCoolingRejectionImplementedFunctions[relation] ?? SYSTEM_ENERGY,
   tests: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    p8iCoolingRejectionNumericalRelations.has(relation)
       ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_COOLING_TEST]
       : [SYSTEM_ENERGY_TEST],
   validationFixture: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    ["3.165", "3.170", "3.174", "3.182"].includes(relation)
+      ? "P8I absorption cooling multi-carrier component-contract fixture plus independent Python reference constants"
+      : p8iCoolingRejectionNumericalRelations.has(relation)
       ? "P8H cooling heat-rejection/recovery component-contract fixture plus independent Python reference constants"
       : "independent fixed constants in mc001Chapter3SystemEnergy.test.mjs",
   tableImplemented: true,
   runtimeIntegrated: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    p8iCoolingRejectionNumericalRelations.has(relation)
       ? true
       : "callable helper or explicit boundary; production requires a more detailed heat-rejection component contract",
   notebookTraceable: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    p8iCoolingRejectionNumericalRelations.has(relation)
       ? true
       : "cooling generator/stage totals are notebook-visible only when final explicit technical value is supplied",
   productionRuntimePath: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    p8iCoolingRejectionNumericalRelations.has(relation)
       ? "Building DNA technicalSystems.cooling.systems[].stages[generation].auxiliaryCalculation -> buildingChapter3InstallationsAdapter -> MC001 cooling heat-rejection/recovery helper -> integrated cooling generator auxiliary trace"
       : "callable helper or explicit boundary; production requires a more detailed heat-rejection component contract",
-  explicitInputBoundary: relation => !p8hCoolingRejectionNumericalRelations.has(relation),
+  explicitInputBoundary: relation => !p8iCoolingRejectionNumericalRelations.has(relation),
   implementationClassification: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    p8iCoolingRejectionNumericalRelations.has(relation)
       ? CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.NUMERICALLY_IMPLEMENTED
       : CHAPTER_3_P8B_IMPLEMENTATION_CLASSIFICATION.EXPLICIT_INPUT_BOUNDARY,
   inputSourceClassification: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    ["3.165", "3.170", "3.174", "3.182"].includes(relation)
+      ? "cooling_absorption_product_heat_ratio_part_load_and_multi_carrier_inputs"
+      : p8iCoolingRejectionNumericalRelations.has(relation)
       ? "cooling_heat_rejection_component_contract_product_table_and_operation_inputs"
       : "cooling_heat_rejection_legacy_explicit_or_unexposed_component_contract_input",
   explicitBoundaryReason: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    p8iCoolingRejectionNumericalRelations.has(relation)
       ? null
       : ({
         "3.156": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",
@@ -954,7 +1014,7 @@ const coolingRejectionRelations = implementedRange(relationRange(156, 182), {
         "3.182": "ABSORPTION_GENERATOR_EFFECTIVE_EER_BRANCH_REQUIRED"
       })[relation],
   explicitBoundaryReasonCode: relation =>
-    p8hCoolingRejectionNumericalRelations.has(relation)
+    p8iCoolingRejectionNumericalRelations.has(relation)
       ? null
       : ({
         "3.156": "HEAT_REJECTION_REFERENCE_BRANCH_TOPOLOGY_REQUIRED",

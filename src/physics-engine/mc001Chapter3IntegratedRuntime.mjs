@@ -71,6 +71,31 @@ function sum(values) {
   return values.reduce((total, value) => total + Number(value ?? 0), 0);
 }
 
+function carrierEnergyEntries(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.entries(value).filter(([carrier, amount]) =>
+    carrier && typeof amount === "number" && Number.isFinite(amount) && amount > 0
+  );
+}
+
+function aggregateCarrierEnergy(values) {
+  const result = {};
+  for (const value of values) {
+    for (const [carrier, amount] of carrierEnergyEntries(value)) {
+      result[carrier] = (result[carrier] ?? 0) + amount;
+    }
+  }
+  return result;
+}
+
+function sourceDetails(source) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+  if (source.details && typeof source.details === "object" && !Array.isArray(source.details)) {
+    return source.details;
+  }
+  return source;
+}
+
 function monthValue(value, index, name) {
   const selected = Array.isArray(value) ? value[index] : value;
   assertFiniteNonNegativeNumber(selected, name);
@@ -646,6 +671,15 @@ function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
         auxiliaryRecoveredFraction: stage.auxiliaryRecoveredFraction,
         lossRecoveredFraction: stage.lossRecoveredFraction
       });
+    const inputEnergySource = input.source ?? stage.inputEnergyOverride?.source ?? null;
+    const inputDetails = sourceDetails(inputEnergySource);
+    const carrierEnergy = aggregateCarrierEnergy([inputDetails.carrierEnergy]);
+    const unmetLoadKWh = finiteNumber(inputDetails.unmetCoolingKWh)
+      ? inputDetails.unmetCoolingKWh
+      : 0;
+    const suppliedCoolingKWh = finiteNumber(inputDetails.suppliedCoolingKWh)
+      ? inputDetails.suppliedCoolingKWh
+      : null;
     const recoverable = recoverableStage({
       service,
       stage: stageId,
@@ -662,8 +696,11 @@ function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
       auxiliaryKWh: stage.auxiliaryKWh,
       lossSource: stage.lossSource ?? null,
       auxiliarySource: stage.auxiliarySource ?? null,
-      inputEnergySource: input.source ?? stage.inputEnergyOverride?.source ?? null,
+      inputEnergySource,
       inputEnergy: input,
+      carrierEnergy,
+      suppliedCoolingKWh,
+      unmetLoadKWh,
       recoverableEnergy: recoverable
     });
     outputKWh = input.valueKWh;
@@ -674,6 +711,12 @@ function calculateServiceChain({ service, usefulDemandKWh, stages, monthId }) {
     usefulDemandKWh,
     finalStageInputKWh: outputKWh,
     stageResults,
+    suppliedUsefulDemandKWh: Math.max(
+      usefulDemandKWh - sum(stageResults.map(stage => stage.unmetLoadKWh ?? 0)),
+      0
+    ),
+    unmetLoadKWh: sum(stageResults.map(stage => stage.unmetLoadKWh ?? 0)),
+    carrierEnergy: aggregateCarrierEnergy(stageResults.map(stage => stage.carrierEnergy)),
     lossTotalKWh: sum(stages.map(stage => stage.lossKWh)),
     auxiliaryTotalKWh: sum(stages.map(stage => stage.auxiliaryKWh)),
     recoverableTotalKWh: sum(stageResults.map(stage => stage.recoverableEnergy.valueKWh))
@@ -744,6 +787,9 @@ function aggregateStageResults(systemResults) {
       outputKWh: sum(stageParts.map(stage => stage.outputKWh)),
       lossKWh: sum(stageParts.map(stage => stage.lossKWh)),
       auxiliaryKWh: sum(stageParts.map(stage => stage.auxiliaryKWh)),
+      suppliedCoolingKWh: sum(stageParts.map(stage => stage.suppliedCoolingKWh ?? 0)),
+      unmetLoadKWh: sum(stageParts.map(stage => stage.unmetLoadKWh ?? 0)),
+      carrierEnergy: aggregateCarrierEnergy(stageParts.map(stage => stage.carrierEnergy)),
       inputEnergy: aggregateCalculatedResults(
         inputResults,
         "valueKWh",
@@ -766,6 +812,9 @@ function aggregateStageResults(systemResults) {
         lossSource: stage.lossSource ?? null,
         auxiliarySource: stage.auxiliarySource ?? null,
         inputKWh: stage.inputEnergy.valueKWh,
+        suppliedCoolingKWh: stage.suppliedCoolingKWh ?? null,
+        unmetLoadKWh: stage.unmetLoadKWh ?? 0,
+        carrierEnergy: stage.carrierEnergy ?? {},
         recoverableKWh: stage.recoverableEnergy.valueKWh
       }))
     };
@@ -842,6 +891,9 @@ function calculateServiceTopology({
     finalStageInputKWh: sum(systemResults.map(system => system.finalStageInputKWh)),
     stageResults: aggregateStageResults(systemResults),
     systemResults,
+    suppliedUsefulDemandKWh: sum(systemResults.map(system => system.suppliedUsefulDemandKWh ?? system.usefulDemandKWh)),
+    unmetLoadKWh: sum(systemResults.map(system => system.unmetLoadKWh ?? 0)),
+    carrierEnergy: aggregateCarrierEnergy(systemResults.map(system => system.carrierEnergy)),
     lossTotalKWh: sum(systemResults.map(system => system.lossTotalKWh)),
     auxiliaryTotalKWh: sum(systemResults.map(system => system.auxiliaryTotalKWh)),
     recoverableTotalKWh: sum(systemResults.map(system => system.recoverableTotalKWh)),
@@ -1259,6 +1311,8 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
       totals: {
         heatingInputKWh: heatingWithShared?.finalStageInputKWh ?? 0,
         coolingInputKWh: coolingWithShared?.finalStageInputKWh ?? 0,
+        coolingSuppliedUsefulKWh: coolingWithShared?.suppliedUsefulDemandKWh ?? 0,
+        coolingUnmetLoadKWh: coolingWithShared?.unmetLoadKWh ?? 0,
         dhwInputKWh: dhwWithShared?.finalStageInputKWh ?? 0,
         ventilationAuxiliaryKWh: ventilation?.valueKWh ?? 0,
         pcmSensibleSolidStorageEnergyKWh: pcmStorage?.totals.sensibleSolidStorageEnergyKWh ?? 0,
@@ -1272,6 +1326,8 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
   const annual = {
     heatingInputKWh: sum(monthly.map(month => month.totals.heatingInputKWh)),
     coolingInputKWh: sum(monthly.map(month => month.totals.coolingInputKWh)),
+    coolingSuppliedUsefulKWh: sum(monthly.map(month => month.totals.coolingSuppliedUsefulKWh)),
+    coolingUnmetLoadKWh: sum(monthly.map(month => month.totals.coolingUnmetLoadKWh)),
     dhwInputKWh: sum(monthly.map(month => month.totals.dhwInputKWh)),
     ventilationAuxiliaryKWh: sum(monthly.map(month => month.totals.ventilationAuxiliaryKWh)),
     pcmSensibleSolidStorageEnergyKWh: sum(monthly.map(month => month.totals.pcmSensibleSolidStorageEnergyKWh)),
@@ -1323,6 +1379,13 @@ export function calculateMc001Chapter3IntegratedRuntime(input = {}) {
     for (const month of monthly) {
       for (const system of month[service]?.systemResults ?? []) {
         if (system.metadata?.generatorRef) continue;
+        const carrierEntries = carrierEnergyEntries(system.carrierEnergy);
+        if (carrierEntries.length > 0) {
+          for (const [carrier, value] of carrierEntries) {
+            energyByCarrier[carrier] = (energyByCarrier[carrier] ?? 0) + value;
+          }
+          continue;
+        }
         const carrier = system.metadata?.energyCarrier ?? systemMetadata?.[service]?.energyCarrier;
         if (carrier && system.finalStageInputKWh > 0) {
           energyByCarrier[carrier] = (energyByCarrier[carrier] ?? 0) + system.finalStageInputKWh;

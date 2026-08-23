@@ -4,16 +4,20 @@ import unittest
 
 from mc001_reference.chapter3_cooling import (
     cooling_absorption_heat_input_kwh,
+    cooling_absorption_multi_carrier_input,
+    cooling_absorption_part_load_value,
     cooling_absorption_performance_ratio,
     cooling_compression_delivered_electric_input_kwh,
     cooling_compression_eer,
     cooling_compression_electric_input_kwh,
     cooling_control_auxiliary_kwh,
     cooling_distribution_inlet_outdoor_compensated_c,
+    cooling_distribution_inlet_constant_setpoint_c,
     cooling_distribution_auxiliary_kwh,
     cooling_distribution_loss_kwh,
     cooling_dry_heat_rejection_water_temperature_c,
     cooling_generator_auxiliary_total_kwh,
+    cooling_generator_part_load_value,
     cooling_generator_input_by_capacity_limit,
     cooling_generator_input_required_air_water_kwh,
     cooling_generator_input_required_direct_expansion_kwh,
@@ -32,6 +36,8 @@ from mc001_reference.chapter3_cooling import (
     cooling_wet_heat_rejection_water_temperature_c,
     cooling_part_load_bin,
     cooling_part_load_factor,
+    cooling_extracted_energy_limited_by_generator,
+    cooling_unmet_load_kwh,
     cooling_storage_auxiliary_kwh,
     cooling_storage_auxiliary_total_kwh,
     cooling_storage_generator_delta_kwh,
@@ -278,6 +284,7 @@ class Chapter3CoolingReferenceTests(unittest.TestCase):
             theta_supply_cooling_required_c=16,
         )
         compensated = cooling_distribution_inlet_outdoor_compensated_c(7, 18, -0.3, 30, 22)
+        constant_setpoint = cooling_distribution_inlet_constant_setpoint_c()
         dx_required = cooling_generator_input_required_direct_expansion_kwh(100, 5, 20)
         air_water_required = cooling_generator_input_required_air_water_kwh(
             100,
@@ -315,6 +322,7 @@ class Chapter3CoolingReferenceTests(unittest.TestCase):
 
         self.assertEqual(outlet, 16)
         self.assertEqual(compensated, 13)
+        self.assertEqual(constant_setpoint, 6)
         self.assertEqual(dx_required, 125)
         self.assertAlmostEqual(air_water_required, 133.75, places=12)
         self.assertEqual(reference, 33)
@@ -330,6 +338,78 @@ class Chapter3CoolingReferenceTests(unittest.TestCase):
         self.assertAlmostEqual(rejected_after_recovery, recoverable - 40, places=12)
         self.assertAlmostEqual(absorption_heat, 100 / (0.8 * 0.7), places=12)
         self.assertAlmostEqual(absorption_ratio, 0.56, places=12)
+
+    def test_capacity_limited_cooling_and_absorption_multi_carrier_reference(self):
+        generator_required = 10
+        generator_available = cooling_generator_input_by_capacity_limit(
+            generator_required,
+            operation_hours=1,
+            nominal_power_kw=1,
+        )
+        supplied = cooling_extracted_energy_limited_by_generator(
+            required_energy_kwh=10,
+            generator_input_required_kwh=generator_required,
+            generator_input_available_kwh=generator_available,
+        )
+        unmet = cooling_unmet_load_kwh(10, supplied)
+
+        self.assertEqual(generator_available, 1)
+        self.assertEqual(supplied, 1)
+        self.assertEqual(unmet, 9)
+
+        heat_rejection_part_load = cooling_heat_rejection_part_load_factor(
+            temperature_c=25,
+            a2=0.00083,
+            a1=-0.07753,
+            a0=2.64,
+        )
+        part_load_value = cooling_generator_part_load_value(
+            cooling_part_load_bin_factor=0.3,
+            heat_rejection_part_load_factor=heat_rejection_part_load,
+            free_cooling_factor=1,
+            multiple_generator_factor=1,
+        )
+        self.assertAlmostEqual(
+            part_load_value,
+            0.3 * (0.00083 * 25**2 - 0.07753 * 25 + 2.64),
+            places=12,
+        )
+
+        absorption_part_load = cooling_absorption_part_load_value()
+        absorption_heat = cooling_absorption_heat_input_kwh(
+            generator_input_kwh=100,
+            part_load_value=absorption_part_load,
+            nominal_heat_ratio=0.7,
+        )
+        heat_rejected = 100 * (1 + 1 / (0.95 * 0.7))
+        auxiliary_electric = heat_rejected * 0.01 + heat_rejected * 0.002 + 240 * 0.01
+        carrier_result = cooling_absorption_multi_carrier_input(
+            absorption_heat,
+            auxiliary_electric,
+            absorption_heat_carrier="natural_gas",
+            auxiliary_carrier="electricity",
+        )
+
+        self.assertAlmostEqual(absorption_part_load, 0.95, places=12)
+        self.assertAlmostEqual(absorption_heat, 100 / (0.95 * 0.7), places=12)
+        self.assertAlmostEqual(
+            carrier_result["carrier_energy"]["natural_gas"],
+            absorption_heat,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            carrier_result["carrier_energy"]["electricity"],
+            auxiliary_electric,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            carrier_result["total_delivered_input_kwh"],
+            absorption_heat + auxiliary_electric,
+            places=12,
+        )
+
+        with self.assertRaises(ValueError):
+            cooling_unmet_load_kwh(5, 6)
 
 
 if __name__ == "__main__":

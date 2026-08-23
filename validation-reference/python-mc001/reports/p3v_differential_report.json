@@ -709,7 +709,7 @@
   ],
   "implementation_versions": {
     "dependencies": [],
-    "git_commit": "3ffb0518673bdb6114128305a7710e2057305e88",
+    "git_commit": "0795c73568281088a44dffec278a67a3ac6b7914",
     "node": "v24.15.0",
     "python": "3.14.6"
   },

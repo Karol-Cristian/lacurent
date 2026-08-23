@@ -26,6 +26,7 @@ import {
   calculateChapter3SubsystemInputEnergy,
   calculateCoolingCoveredPartLoadFactor,
   calculateCoolingDistributionAuxiliaryEnergy,
+  calculateCoolingDistributionInletConstantSetpoint,
   calculateCoolingDistributionInletOutdoorCompensatedTemperature,
   calculateCoolingDistributionLoss,
   calculateCoolingEerTemperatureCorrectionFactor,
@@ -40,6 +41,7 @@ import {
   calculateCoolingGeneratorInputByCapacityLimit,
   calculateCoolingGeneratorInputRequiredAirWater,
   calculateCoolingGeneratorInputRequiredDirectExpansion,
+  calculateCoolingGeneratorPartLoadValue,
   calculateCoolingHeatRejectedAfterRecovery,
   calculateCoolingHeatRejectedByAbsorption,
   calculateCoolingHeatRejectedByCompression,
@@ -77,6 +79,7 @@ import {
   calculateCoolingStorageSolidMassAfterUse,
   calculateCoolingStorageThermalLoss,
   calculateCoolingStorageTransformableEnergyWater,
+  calculateCoolingUnmetLoadFromLimitedExtraction,
   calculateCoolingWaterHeatRejectionInletTemperature,
   calculateCoolingWetHeatRejectionWaterTemperature,
   calculateDuctLeakageAirFlow,
@@ -115,6 +118,7 @@ import {
   lookupCoolingHeatRejectionSpecificElectricDemandTable322,
   selectCoolingHeatRejectionReferenceTemperatures,
   selectCoolingHeatRejectionTemperature,
+  selectCoolingAbsorptionPartLoadValue,
   selectCoolingGeneratorOutletTemperature,
   selectCoolingPartLoadBin,
   validateCoolingStorageInputEnergy,
@@ -626,6 +630,7 @@ test("calculates cooling-system branch, distribution, generator and LENI relatio
     outdoorTemperatureC: 30,
     offsetK: 22
   });
+  const constantSetpoint = calculateCoolingDistributionInletConstantSetpoint({ setpointC: 6 });
   const distributionLoss = calculateCoolingDistributionLoss({
     coolingLossFactor: 0.05,
     usefulCoolingDemandKWh: 100,
@@ -681,6 +686,18 @@ test("calculates cooling-system branch, distribution, generator and LENI relatio
     generatorInputKWh: limitedCapacity.valueKWh,
     generatorInputRequiredKWh: 250
   });
+  const unmet = calculateCoolingUnmetLoadFromLimitedExtraction({
+    requiredEnergyKWh: 100,
+    suppliedEnergyKWh: limited.valueKWh
+  });
+  const plv = calculateCoolingGeneratorPartLoadValue({
+    coolingPartLoadBinFactor: 0.8,
+    heatRejectionPartLoadFactor: 0.9,
+    freeCoolingFactor: 0.95,
+    multipleGeneratorFactor: 0.75
+  });
+  const absorptionDefaultPlv = selectCoolingAbsorptionPartLoadValue();
+  const absorptionProductPlv = selectCoolingAbsorptionPartLoadValue({ partLoadValue: 0.82 });
   const eer = calculateCoolingEerTemperatureCorrectionFactor({
     absoluteZeroOffsetK: 273.15,
     generatorRequiredOutletTemperatureC: 7,
@@ -699,6 +716,7 @@ test("calculates cooling-system branch, distribution, generator and LENI relatio
   });
 
   assert.equal(selected.formulaId, "MC001_3_137_COOLING_GENERATOR_OUTLET_TEMPERATURE_DIRECT_EXPANSION_AIR");
+  assert.equal(constantSetpoint.formulaId, "MC001_3_140_COOLING_DISTRIBUTION_INLET_CONSTANT_SETPOINT");
   assert.equal(compensated.formulaId, "MC001_3_141_COOLING_DISTRIBUTION_INLET_OUTDOOR_COMPENSATED");
   assert.equal(distributionLoss.formulaId, "MC001_3_146_COOLING_DISTRIBUTION_LOSS");
   assert.equal(distributionAux.formulaId, "MC001_3_147_COOLING_DISTRIBUTION_AUXILIARY_ENERGY");
@@ -711,9 +729,14 @@ test("calculates cooling-system branch, distribution, generator and LENI relatio
   assert.equal(within.formulaId, "MC001_3_152_COOLING_GENERATOR_INPUT_WITHIN_CAPACITY");
   assert.equal(limitedCapacity.formulaId, "MC001_3_153_COOLING_GENERATOR_INPUT_CAPACITY_LIMIT");
   assert.equal(covered.formulaId, "MC001_3_154_COOLING_COVERED_PART_LOAD_FACTOR");
+  assert.equal(unmet.formulaId, "MC001_3_153_COOLING_UNMET_LOAD_CAPACITY_ACCOUNTING");
+  assert.equal(plv.formulaId, "MC001_3_148_COOLING_GENERATOR_PART_LOAD_VALUE");
+  assert.equal(absorptionDefaultPlv.formulaId, "MC001_3_148_COOLING_ABSORPTION_PART_LOAD_DEFAULT");
+  assert.equal(absorptionProductPlv.formulaId, "MC001_3_148_COOLING_ABSORPTION_PART_LOAD_PRODUCT_INPUT");
   assert.equal(eer.formulaId, "MC001_3_155_COOLING_EER_TEMPERATURE_CORRECTION");
   assert.equal(leni.formulaId, "MC001_3_4_34_LIGHTING_LENI_WEIGHTED_BUILDING");
   assert.equal(selected.valueC, 16);
+  assert.equal(constantSetpoint.valueC, 6);
   assert.equal(compensated.valueC, 13);
   assertCloseTo(distributionLoss.valueKWh, 0.05 * 125);
   assertCloseTo(distributionAux.valueKWh, 0.02 * 125);
@@ -726,6 +749,10 @@ test("calculates cooling-system branch, distribution, generator and LENI relatio
   assertCloseTo(within.valueKWh, 120);
   assertCloseTo(limitedCapacity.valueKWh, 200);
   assertCloseTo(covered.value, 0.8);
+  assertCloseTo(unmet.valueKWh, 25);
+  assertCloseTo(plv.value, 0.8 * 0.9 * 0.95 * 0.75);
+  assertCloseTo(absorptionDefaultPlv.value, 0.95);
+  assertCloseTo(absorptionProductPlv.value, 0.82);
   assertCloseTo(eer.value, 1);
   assertCloseTo(leni.valueKWhPerM2Year, (12 * 100 + 18 * 50) / 150);
 });

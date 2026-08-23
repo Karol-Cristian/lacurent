@@ -1,22 +1,22 @@
 # MC001 Chapter 3 Coverage Matrix
 
-Generated deterministically from the Chapter 3 source-to-code fixture. P8H adds AHU distribution loss/recovery, heating generator C5-C8 coefficient contracts and expanded cooling storage/PCM state calculations while preserving separate numerical/procedural/explicit-boundary accounting.
+Generated deterministically from the Chapter 3 source-to-code fixture. P8I closes the remaining supported cooling capacity, unmet-load, absorption, multi-carrier and relation 3.38 operation-time boundaries while preserving separate numerical/procedural/explicit-boundary accounting.
 
 | Field | Value |
 | --- | --- |
-| Schema | mc001_chapter3_coverage_matrix_p8h_v1 |
+| Schema | mc001_chapter3_coverage_matrix_p8i_v1 |
 | Total tracked relations | 217 |
-| Numerically implemented relations | 201 |
+| Numerically implemented relations | 211 |
 | Procedurally implemented relations | 4 |
-| Explicit-input boundary relations | 11 |
+| Explicit-input boundary relations | 1 |
 | External-standard blocked relations | 1 |
 | Not applicable relations | 0 |
-| Numerical implementation percentage | 92.6% |
-| Production complete supported-scope percentage | 94.5% |
+| Numerical implementation percentage | 97.2% |
+| Production complete supported-scope percentage | 99.1% |
 | Externally blocked relations | 1 |
 | Unavailable/unreadable relations | 0 |
-| Runtime-integrated entries | 165 |
-| Notebook-visible entries | 165 |
+| Runtime-integrated entries | 175 |
+| Notebook-visible entries | 175 |
 | Implemented tables/lookups | 37 |
 
 ## Status Counts
@@ -26,20 +26,20 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8H adds 
 | explicit-input-boundary | 1 |
 | genuinely-externally-blocked | 1 |
 | notebook-visible | 2 |
-| production-integrated | 81 |
-| unit-tested | 132 |
+| production-integrated | 82 |
+| unit-tested | 131 |
 
-## P8H Primary Classification Counts
+## P8I Primary Classification Counts
 
 | Field | Value |
 | --- | --- |
-| EXPLICIT_INPUT_BOUNDARY | 11 |
+| EXPLICIT_INPUT_BOUNDARY | 1 |
 | EXTERNAL_STANDARD_BLOCKED | 1 |
 | NOT_APPLICABLE | 0 |
-| NUMERICALLY_IMPLEMENTED | 201 |
+| NUMERICALLY_IMPLEMENTED | 211 |
 | PROCEDURALLY_IMPLEMENTED | 4 |
 
-## Explicit Boundaries Converted Through P8H
+## Explicit Boundaries Converted Through P8I
 
 - 3.1: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
 - 3.2: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
@@ -78,6 +78,7 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8H adds 
 - 3.35: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
 - 3.36: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
 - 3.37: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
+- 3.38: Shared generator operation-time contract resolves relation 3.38 from service operating hours and load factors.
 - 3.39: Shared generator component contract resolves central output, physical losses, auxiliaries, recoverable/recovered quantities, fuel input and service allocation from product/schedule/allocation inputs.
 - 3.40: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
 - 3.41: Ventilation/AHU component contract resolves coil, recovery, humidification, generation-loss or auxiliary relations from product/project/schedule inputs.
@@ -167,15 +168,20 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8H adds 
 - 3.137: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.138: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.139: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
+- 3.140: Cooling generator capacity/part-load contract resolves constant setpoint, supplied cooling, unmet cooling and PLV from product and operating inputs.
 - 3.141: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
+- 3.142: Cooling generator capacity/part-load contract resolves constant setpoint, supplied cooling, unmet cooling and PLV from product and operating inputs.
+- 3.143: Cooling generator capacity/part-load contract resolves constant setpoint, supplied cooling, unmet cooling and PLV from product and operating inputs.
 - 3.144: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.145: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.146: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.147: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
+- 3.148: Cooling generator capacity/part-load contract resolves constant setpoint, supplied cooling, unmet cooling and PLV from product and operating inputs.
 - 3.149: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.150: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.151: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.152: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
+- 3.153: Cooling generator capacity/part-load contract resolves constant setpoint, supplied cooling, unmet cooling and PLV from product and operating inputs.
 - 3.154: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.155: Cooling component contract resolves distribution factors, part-load/capacity checks and EER correction from project/product inputs.
 - 3.156: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
@@ -187,13 +193,16 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8H adds 
 - 3.162: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.163: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.164: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
+- 3.165: Absorption cooling contract resolves rejected heat, recoverable heat, driving thermal input and effective performance ratio from product data and operation inputs.
 - 3.166: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.167: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.168: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.169: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
+- 3.170: Absorption cooling contract resolves rejected heat, recoverable heat, driving thermal input and effective performance ratio from product data and operation inputs.
 - 3.171: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.172: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.173: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
+- 3.174: Absorption cooling contract resolves rejected heat, recoverable heat, driving thermal input and effective performance ratio from product data and operation inputs.
 - 3.175: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.176: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.177: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
@@ -201,6 +210,7 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8H adds 
 - 3.179: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.180: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
 - 3.181: Cooling heat-rejection component contract resolves compression, rejected heat, auxiliaries and effective EER from product/table/operation inputs.
+- 3.182: Absorption cooling contract resolves rejected heat, recoverable heat, driving thermal input and effective performance ratio from product data and operation inputs.
 - 3.188: DHW useful-demand source now resolves through Building DNA `usefulDemandSource` and MC001 helper functions.
 - 3.189: DHW useful-demand source now resolves through Building DNA `usefulDemandSource` and MC001 helper functions.
 - 3.190: DHW useful-demand source now resolves through Building DNA `usefulDemandSource` and MC001 helper functions.
@@ -245,7 +255,7 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8H adds 
 
 An explicit boundary remains only where MC001 requires project/manufacturer technical data, delegates the detailed method to an unavailable standard, or the current production product does not yet expose the complete detailed component contract.
 
-## P8H Production Topology
+## P8I Production Topology
 
 - Single active systems use an implicit allocation fraction of 1; an explicit single-system allocation must also be 1.
 - Multiple active heating, cooling or DHW systems require explicit allocation fractions summing to 1.
@@ -256,6 +266,7 @@ An explicit boundary remains only where MC001 requires project/manufacturer tech
 - Heating component contracts now calculate emission temperature-increase losses, hydronic pump auxiliaries, no-storage branches and generator loss/auxiliary curves where required project/product data are supplied.
 - Ventilation/AHU component contracts now calculate heat-recovery, preheat, control auxiliary, coil, humidification and generation-loss branches where required product/project/operation inputs are supplied.
 - Cooling component contracts now calculate distribution losses/auxiliaries, no-storage branches, storage thermal losses, storage pump auxiliaries and compression heat-rejection auxiliaries where required project/product data are supplied.
+- P8I cooling generator contracts explicitly report supplied and unmet cooling under capacity limits and separate absorption driving thermal energy from electric auxiliaries for carrier aggregation.
 
 ## Remaining External Dependency
 
