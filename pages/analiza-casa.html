@@ -113,12 +113,13 @@
 <button type="button" data-step-target="1">Anvelopa</button>
 <button type="button" data-step-target="2">Utilizare</button>
 <button type="button" data-step-target="3">Instalatii</button>
-<button type="button" data-step-target="4">Verificare</button>
-<button type="button" data-step-target="5">Raport</button>
-<button type="button" data-step-target="6">Rezultate</button>
+<button type="button" data-step-target="4">Energie regenerabila</button>
+<button type="button" data-step-target="5">Verificare</button>
+<button type="button" data-step-target="6">Raport</button>
+<button type="button" data-step-target="7">Rezultate</button>
 </nav>
 <div class="progress"><div id="progressBar"></div></div>
-<span id="stepText">Pas 1 din 7</span>
+<span id="stepText">Pas 1 din 8</span>
 </div>
 
 <div class="p3f-engineering-shell">
@@ -228,13 +229,16 @@
 <h3>Generator comun incalzire + ACM</h3>
 <div class="form-grid">
 <div><label>Incalzire si ACM folosesc acelasi generator</label><select name="chapter3_shared_generator_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Tip generator comun</label><select name="chapter3_shared_generator_type"><option value="condensing_boiler">Cazan in condensare</option><option value="electric_resistance">Rezistenta electrica</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="explicit_other">Alt sistem explicit</option></select></div>
-<div><label>Purtator principal</label><select name="chapter3_shared_generator_energy_carrier"><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
-<div><label>Purtator auxiliari</label><select name="chapter3_shared_generator_auxiliary_carrier"><option value="electricity">Electricitate</option><option value="natural_gas">Gaz natural</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
-<div><label>Factor pierderi control [-]</label><input name="chapter3_shared_generator_control_loss_factor" type="number" min="0" step="0.001"></div>
-<div><label>Ore functionare generator [h/luna]</label><input name="chapter3_shared_generator_operation_hours_month" type="number" min="0" step="0.1"></div>
-<div><label>Putere pierdere generator [kW]</label><input name="chapter3_shared_generator_loss_power_kw" type="number" min="0" step="0.001"></div>
+<div><label>Tip generator comun</label><select name="chapter3_shared_generator_type"><option value="">Alege generatorul</option><option value="condensing_boiler">Cazan in condensare</option><option value="electric_resistance">Rezistenta electrica</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="explicit_other">Alt sistem explicit</option></select></div>
+<div><label>Purtator principal</label><select name="chapter3_shared_generator_energy_carrier"><option value="">Alege purtatorul</option><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
+<div><label>Purtator auxiliari</label><select name="chapter3_shared_generator_auxiliary_carrier"><option value="">Alege purtatorul</option><option value="electricity">Electricitate</option><option value="natural_gas">Gaz natural</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
+<div><label>Factor produs/control generator [-]</label><input name="chapter3_shared_generator_control_loss_factor" type="number" min="0" step="0.001"><small class="field-impact-note">Valoare din produs/proiect; nu se foloseste o eficienta implicita.</small></div>
+<div><label>Ore functionare generator [h/luna]</label><input name="chapter3_shared_generator_operation_hours_month" type="number" min="0" step="0.1"><small class="field-impact-note">Program de functionare declarat pentru calculul generatorului comun.</small></div>
+<div><label>Pierdere declarata generator [kW]</label><input name="chapter3_shared_generator_loss_power_kw" type="number" min="0" step="0.001"></div>
 <div><label>Putere auxiliari generator [kW]</label><input name="chapter3_shared_generator_auxiliary_power_kw" type="number" min="0" step="0.001"></div>
+<div><label>Recuperare pierderi/auxiliari</label><select name="chapter3_shared_generator_recovery_mode"><option value="">Alege recuperarea</option><option value="no_recovery">Nu exista recuperare folosita in model</option><option value="explicit_fractions">Introduc fractii detaliate in Expert</option></select><small class="field-impact-note">Alegerea fara recuperare seteaza zero ca absenta declarata, nu ca valoare implicita.</small></div>
+<div><label>Aport regenerabil integrat</label><select name="chapter3_shared_generator_renewable_heat_mode"><option value="">Alege aportul</option><option value="none">Nu exista aport regenerabil integrat</option><option value="explicit_monthly">Introduc aport lunar in Expert</option></select></div>
+<div><label>Pierderi ACM incluse in generator</label><select name="chapter3_shared_generator_dhw_loss_mode"><option value="">Alege cazul</option><option value="none">Nu exista pierdere ACM inclusa aici</option><option value="explicit_monthly">Introduc pierderea lunara in Expert</option></select></div>
 <div><label>Fractie auxiliari recuperata [-]</label><input name="chapter3_shared_generator_aux_recovered_fraction" type="number" min="0" max="1" step="0.01"></div>
 <div><label>Fractie auxiliari recuperabila [-]</label><input name="chapter3_shared_generator_aux_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
 <div><label>Fractie pierderi recuperabila [-]</label><input name="chapter3_shared_generator_loss_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
@@ -445,6 +449,19 @@
 </div>
 </div>
 
+<div class="step" data-section-id="renewable">
+<h2>Energie regenerabila</h2>
+<p class="section-description">Configureaza doar productia regenerabila acceptata de fluxul curent. LaCurent nu estimeaza productia PV din kWp, orientare sau inclinare pana cand metoda lunara MC001 4.5 este implementabila din surse detinute.</p>
+<div class="dashboard-band compact-technical-note">
+<h3>Fotovoltaic</h3>
+<div class="form-grid">
+<div><label>Exista sistem fotovoltaic</label><select name="pv_installed"><option value="">Nu configurez acum</option><option value="no">Nu</option><option value="yes">Da</option></select></div>
+<div><label>Productie PV anuala furnizata [kWh/an]</label><input name="pv_annual_production_kwh" type="number" min="0" step="0.01"><small class="field-impact-note">Valoare din invertor, proiectant sau fisa sistemului. Nu este estimata automat.</small></div>
+<div><label>Limita metoda productie</label><p class="field-impact-note">Relatiile MC001 4.160-4.165 pentru productie lunara PV raman neimplementate pana la sursa verificata. Fluxul curent foloseste doar productia furnizata explicit.</p></div>
+</div>
+</div>
+</div>
+
 <div class="step" data-section-id="review">
 <h2>Verificare</h2>
 <p class="section-description">Previzualizeaza modelul canonic: tipologie, geometrie, anvelopa, materiale, interventii, provenienta si ipoteze neconfirmate.</p>
@@ -457,7 +474,7 @@
 
 <div class="step" data-section-id="report">
 <h2>Raport</h2>
-<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motoarelor Chapter 2 si Chapter 3 cand instalatiile sunt configurate. Este structurat pentru citire tehnica si print.</p>
+<p class="section-description">Raportul HTML este generat din Building DNA si din rezultatele motoarelor Chapter 2, Chapter 3 si contractele regenerabile configurate. Este structurat pentru citire tehnica si print.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Capitole raport</h3>
 <div class="value-card-grid">
@@ -465,6 +482,7 @@
 <article>Rezistente termice, coeficienti U si Htr</article>
 <article>QHnd/QCnd lunar si anual</article>
 <article>Instalatii Chapter 3, pierderi si auxiliari</article>
+<article>Productie PV furnizata explicit si limite Chapter 4</article>
 <article>Formule, dependinte si surse normative</article>
 </div>
 </div>
@@ -472,7 +490,7 @@
 
 <div class="step" data-section-id="results">
 <h2>Rezultate</h2>
-<p class="section-description">Afisam QHnd/QCnd validate in Chapter 2 si, cand exista date explicite, rezultatele instalatiilor MC001 Capitolul 3.</p>
+<p class="section-description">Afisam QHnd/QCnd validate in Chapter 2, rezultatele instalatiilor MC001 Capitolul 3 si productia regenerabila configurata explicit.</p>
 <div class="dashboard-band compact-technical-note">
 <h3>Calculeaza modelul curent</h3>
 <p>Butonul de mai jos ruleaza adapterele Building DNA, motorul Chapter 2 validat si runtime-ul Chapter 3 pentru sistemele configurate, apoi deschide raportul tehnic.</p>
@@ -515,7 +533,7 @@
 </section>
 </main>
 
-<footer><small>LA CURENT · Model termic MC001-2022 · Building DNA si raport tehnic Chapter 2/3</small></footer>
+<footer><small>LA CURENT · Model termic MC001-2022 · Building DNA si raport tehnic Chapter 2/3/4</small></footer>
 </div>
 
 <script>

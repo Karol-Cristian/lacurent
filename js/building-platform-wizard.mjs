@@ -43,6 +43,11 @@ export const BUILDING_PLATFORM_WIZARD_STEPS = Object.freeze([
     assistedPrompt: "Verifica ipotezele, datele lipsa si trasabilitatea inainte de calcul."
   },
   {
+    stepId: "report",
+    title: "Raport",
+    assistedPrompt: "Inspecteaza raportul tehnic generat din runtime, fara formule reconstruite in UI."
+  },
+  {
     stepId: "results",
     title: "Rezultate",
     assistedPrompt: "Citeste rezultatele calculate, blocajele justificate si raportul tehnic."
@@ -83,6 +88,16 @@ export const BUILDING_PLATFORM_PRODUCT_JOURNEY = Object.freeze([
       "chapter3_shared_generator_enabled",
       "chapter3_shared_generator_type",
       "chapter3_shared_generator_energy_carrier",
+      "chapter3_shared_generator_auxiliary_carrier",
+      "chapter3_shared_generator_control_loss_factor",
+      "chapter3_shared_generator_operation_hours_month",
+      "chapter3_shared_generator_loss_power_kw",
+      "chapter3_shared_generator_auxiliary_power_kw",
+      "chapter3_shared_generator_recovery_mode",
+      "chapter3_shared_generator_renewable_heat_mode",
+      "chapter3_shared_generator_dhw_loss_mode",
+      "chapter3_shared_generator_heating_allocation_fraction",
+      "chapter3_shared_generator_dhw_allocation_fraction",
       "chapter3_heating_generator_type",
       "chapter3_heating_energy_carrier",
       "chapter3_cooling_generator_type",
@@ -98,9 +113,9 @@ export const BUILDING_PLATFORM_PRODUCT_JOURNEY = Object.freeze([
   {
     sectionId: "renewable",
     title: "Energie regenerabila",
-    normalFields: [],
+    normalFields: ["pv_installed", "pv_annual_production_kwh"],
     requiredFields: [],
-    runtimeDomains: ["Capitolul 3/4 numai cand exista componente configurate explicit"]
+    runtimeDomains: ["Capitolul 4/5 - productie electrica regenerabila furnizata explicit"]
   },
   {
     sectionId: "review",
@@ -108,6 +123,13 @@ export const BUILDING_PLATFORM_PRODUCT_JOURNEY = Object.freeze([
     normalFields: [],
     requiredFields: [],
     runtimeDomains: ["diagnostice", "provenienta", "trasabilitate"]
+  },
+  {
+    sectionId: "report",
+    title: "Raport",
+    normalFields: [],
+    requiredFields: [],
+    runtimeDomains: ["raport", "caiet de calcul"]
   },
   {
     sectionId: "results",
@@ -143,6 +165,16 @@ const ASSISTED_FIELD_NAMES = new Set([
   "chapter3_shared_generator_enabled",
   "chapter3_shared_generator_type",
   "chapter3_shared_generator_energy_carrier",
+  "chapter3_shared_generator_auxiliary_carrier",
+  "chapter3_shared_generator_control_loss_factor",
+  "chapter3_shared_generator_operation_hours_month",
+  "chapter3_shared_generator_loss_power_kw",
+  "chapter3_shared_generator_auxiliary_power_kw",
+  "chapter3_shared_generator_recovery_mode",
+  "chapter3_shared_generator_renewable_heat_mode",
+  "chapter3_shared_generator_dhw_loss_mode",
+  "chapter3_shared_generator_heating_allocation_fraction",
+  "chapter3_shared_generator_dhw_allocation_fraction",
   "chapter3_heating_enabled",
   "chapter3_heating_generator_type",
   "chapter3_heating_energy_carrier",
@@ -154,7 +186,9 @@ const ASSISTED_FIELD_NAMES = new Set([
   "chapter3_cooling_generator_nominal_kw",
   "chapter3_dhw_enabled",
   "chapter3_dhw_energy_carrier",
-  "chapter3_ventilation_ahu_enabled"
+  "chapter3_ventilation_ahu_enabled",
+  "pv_installed",
+  "pv_annual_production_kwh"
 ]);
 
 const EXPERT_FIELD_NAMES = new Set([
@@ -190,6 +224,7 @@ const TECHNICAL_FIELD_PREFIXES = [
   "chapter3_shared_generator_aux_",
   "chapter3_shared_generator_boiler_",
   "chapter3_shared_generator_dhw_storage_",
+  "chapter3_shared_generator_renewable_heat_kwh_",
   "chapter3_shared_generator_heating_allocation_",
   "chapter3_shared_generator_dhw_allocation_",
   "chapter3_heating_emission_",
@@ -219,7 +254,8 @@ const TECHNICAL_FIELD_PREFIXES = [
   "chapter3_dhw_storage_",
   "chapter3_dhw_generation_",
   "chapter3_pcm_",
-  "chapter3_lighting_"
+  "chapter3_lighting_",
+  "pv_"
 ];
 
 const FIELD_LABELS_RO = Object.freeze({
@@ -234,7 +270,25 @@ const FIELD_LABELS_RO = Object.freeze({
   window_type: "tipul ferestrelor",
   window_area_m2: "aria vitrata",
   building_use_category: "utilizarea principala",
-  chapter3_installations_enabled: "starea instalatiilor"
+  chapter3_installations_enabled: "starea instalatiilor",
+  chapter3_shared_generator_auxiliary_carrier: "purtatorul auxiliarilor generatorului comun",
+  chapter3_shared_generator_control_loss_factor: "factorul de control al generatorului comun",
+  chapter3_shared_generator_operation_hours_month: "orele de functionare ale generatorului comun",
+  chapter3_shared_generator_loss_power_kw: "puterea declarata a pierderilor generatorului comun",
+  chapter3_shared_generator_auxiliary_power_kw: "puterea auxiliarilor generatorului comun",
+  chapter3_shared_generator_recovery_mode: "recuperarea pierderilor generatorului comun",
+  chapter3_shared_generator_aux_recovered_fraction: "fractia auxiliari recuperata",
+  chapter3_shared_generator_aux_recoverable_fraction: "fractia auxiliari recuperabila",
+  chapter3_shared_generator_loss_recoverable_fraction: "fractia pierderi recuperabila",
+  chapter3_shared_generator_boiler_room_recovery_factor: "factorul de recuperare al camerei generatorului",
+  chapter3_shared_generator_renewable_heat_mode: "aportul regenerabil integrat in generatorul comun",
+  chapter3_shared_generator_renewable_heat_kwh_month: "aportul regenerabil lunar al generatorului comun",
+  chapter3_shared_generator_dhw_loss_mode: "pierderile ACM incluse in generatorul comun",
+  chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month: "pierderile ACM lunare incluse in generatorul comun",
+  chapter3_shared_generator_heating_allocation_fraction: "alocarea generatorului comun catre incalzire",
+  chapter3_shared_generator_dhw_allocation_fraction: "alocarea generatorului comun catre ACM",
+  pv_installed: "existenta sistemului fotovoltaic",
+  pv_annual_production_kwh: "productia PV anuala furnizata"
 });
 
 const YEAR_PERIODS = [
@@ -388,6 +442,48 @@ function hasMeaningfulFormValue(formData, name) {
   return value !== "" && value !== "unknown";
 }
 
+function yesFormValue(formData, name) {
+  return formDataValue(formData, name).trim() === "yes";
+}
+
+function conditionalRequiredFields(section, formData) {
+  const required = [...section.requiredFields];
+  if (section.sectionId === "systems" && yesFormValue(formData, "chapter3_shared_generator_enabled")) {
+    required.push(
+      "chapter3_shared_generator_type",
+      "chapter3_shared_generator_energy_carrier",
+      "chapter3_shared_generator_auxiliary_carrier",
+      "chapter3_shared_generator_control_loss_factor",
+      "chapter3_shared_generator_operation_hours_month",
+      "chapter3_shared_generator_loss_power_kw",
+      "chapter3_shared_generator_auxiliary_power_kw",
+      "chapter3_shared_generator_recovery_mode",
+      "chapter3_shared_generator_renewable_heat_mode",
+      "chapter3_shared_generator_dhw_loss_mode",
+      "chapter3_shared_generator_heating_allocation_fraction",
+      "chapter3_shared_generator_dhw_allocation_fraction"
+    );
+    if (formDataValue(formData, "chapter3_shared_generator_recovery_mode") === "explicit_fractions") {
+      required.push(
+        "chapter3_shared_generator_aux_recovered_fraction",
+        "chapter3_shared_generator_aux_recoverable_fraction",
+        "chapter3_shared_generator_loss_recoverable_fraction",
+        "chapter3_shared_generator_boiler_room_recovery_factor"
+      );
+    }
+    if (formDataValue(formData, "chapter3_shared_generator_renewable_heat_mode") === "explicit_monthly") {
+      required.push("chapter3_shared_generator_renewable_heat_kwh_month");
+    }
+    if (formDataValue(formData, "chapter3_shared_generator_dhw_loss_mode") === "explicit_monthly") {
+      required.push("chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month");
+    }
+  }
+  if (section.sectionId === "renewable" && yesFormValue(formData, "pv_installed")) {
+    required.push("pv_annual_production_kwh");
+  }
+  return [...new Set(required)];
+}
+
 function sectionForFieldName(name) {
   if ([
     "locality_id",
@@ -436,6 +532,7 @@ function sectionForFieldName(name) {
     "windows_replaced"
   ].includes(name)) return "usage";
   if (
+    name.startsWith("pv_") ||
     name.startsWith("chapter3_pcm_") ||
     name.startsWith("chapter3_lighting_") ||
     name === "chapter3_shared_generator_renewable_heat_kwh_month"
@@ -461,6 +558,7 @@ function inputLevelForFieldName(name) {
 }
 
 function buildingDnaPathForFieldName(name) {
+  if (name.startsWith("pv_")) return "renewableSystems.photovoltaic";
   if (name === "building_use_category") return "building.useCategory / internalGainsCategoryId";
   if (name === "locality_id") return "building.location.localityId / climateProvider.selection";
   if (name.startsWith("climate_") || name === "county" || name === "city") return "building.location / climate";
@@ -480,6 +578,7 @@ function buildingDnaPathForFieldName(name) {
 }
 
 function runtimeConsumerForFieldName(name) {
+  if (name.startsWith("pv_")) return "MC001 Capitolul 4/5 - productie PV furnizata si agregare trasabila";
   if (name === "building_use_category") return "MC001 Capitolul 2 - Tabel 2.15";
   if (name === "locality_id" || name.startsWith("climate_")) return "Climate Provider si MC001 Capitolul 2";
   if (name.startsWith("chapter3_lighting_")) return "MC001 Capitolul 3 - LENI explicit bounded";
@@ -491,6 +590,7 @@ function runtimeConsumerForFieldName(name) {
 function provenanceForFieldName(name) {
   const level = inputLevelForFieldName(name);
   if (level === "internal") return "internal";
+  if (name === "pv_annual_production_kwh") return "PRODUCT_DATA";
   if (name.includes("_nominal_") || name.includes("_power_") || name.includes("_eer") || name.includes("_efficiency") || name.includes("_loss_power")) {
     return "PRODUCT_DATA";
   }
@@ -528,11 +628,12 @@ export function getBuildingPlatformFieldContract(name) {
 
 export function analyzeBuildingPlatformProductJourney(formData) {
   return BUILDING_PLATFORM_PRODUCT_JOURNEY.map(section => {
-    const missingFields = section.requiredFields.filter(name => !hasMeaningfulFormValue(formData, name));
+    const requiredFields = conditionalRequiredFields(section, formData);
+    const missingFields = requiredFields.filter(name => !hasMeaningfulFormValue(formData, name));
     const hasAnyValue = section.normalFields.some(name => hasMeaningfulFormValue(formData, name));
     const state = missingFields.length > 0
       ? "needs_information"
-      : section.requiredFields.length === 0 && !hasAnyValue
+      : requiredFields.length === 0 && !hasAnyValue
         ? "optional"
         : "complete";
     return {
@@ -540,6 +641,7 @@ export function analyzeBuildingPlatformProductJourney(formData) {
       title: section.title,
       state,
       missingFields,
+      requiredFields,
       runtimeDomains: [...section.runtimeDomains]
     };
   });
@@ -929,9 +1031,9 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
   };
   const sharedGenerator = firstSharedGenerator(technicalSystems);
   values.chapter3_shared_generator_enabled = sharedGenerator ? "yes" : "no";
-  values.chapter3_shared_generator_type = sharedGenerator?.generatorType ?? "condensing_boiler";
-  values.chapter3_shared_generator_energy_carrier = sharedGenerator?.energyCarrier ?? "natural_gas";
-  values.chapter3_shared_generator_auxiliary_carrier = sharedGenerator?.auxiliaryCarrier ?? "electricity";
+  values.chapter3_shared_generator_type = sharedGenerator?.generatorType ?? "";
+  values.chapter3_shared_generator_energy_carrier = sharedGenerator?.energyCarrier ?? "";
+  values.chapter3_shared_generator_auxiliary_carrier = sharedGenerator?.auxiliaryCarrier ?? "";
   values.chapter3_shared_generator_control_loss_factor =
     sharedGenerator?.controlLossFactor ?? "";
   values.chapter3_shared_generator_operation_hours_month =
@@ -948,10 +1050,27 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
     sharedGenerator?.lossRecoverableFractionToHeating ?? "";
   values.chapter3_shared_generator_boiler_room_recovery_factor =
     sharedGenerator?.boilerRoomRecoveryFactor ?? "";
+  values.chapter3_shared_generator_recovery_mode =
+    sharedGenerator && [
+      sharedGenerator.recoveredAuxiliaryFraction,
+      sharedGenerator.auxiliaryRecoverableFractionToHeating,
+      sharedGenerator.lossRecoverableFractionToHeating,
+      sharedGenerator.boilerRoomRecoveryFactor
+    ].every(value => Number(value) === 0)
+      ? "no_recovery"
+      : sharedGenerator ? "explicit_fractions" : "";
   values.chapter3_shared_generator_renewable_heat_kwh_month =
     sharedGenerator?.renewableGeneratorHeatKWh ?? "";
+  values.chapter3_shared_generator_renewable_heat_mode =
+    sharedGenerator && Number(sharedGenerator.renewableGeneratorHeatKWh) === 0
+      ? "none"
+      : sharedGenerator ? "explicit_monthly" : "";
   values.chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month =
     sharedGenerator?.dhwStorageOrDistributionLossKWh ?? "";
+  values.chapter3_shared_generator_dhw_loss_mode =
+    sharedGenerator && Number(sharedGenerator.dhwStorageOrDistributionLossKWh) === 0
+      ? "none"
+      : sharedGenerator ? "explicit_monthly" : "";
   values.chapter3_shared_generator_heating_allocation_fraction =
     sharedGenerator?.serviceAllocationFractions?.heating ?? "";
   values.chapter3_shared_generator_dhw_allocation_fraction =
@@ -1248,6 +1367,14 @@ function technicalSystemsToWizardValues(technicalSystems = {}) {
   return values;
 }
 
+function renewableSystemsToWizardValues(renewableSystems = {}) {
+  const photovoltaic = renewableSystems?.photovoltaic ?? {};
+  return {
+    pv_installed: photovoltaic.installed || photovoltaic.enabled ? "yes" : "no",
+    pv_annual_production_kwh: photovoltaic.annualProductionKWh ?? ""
+  };
+}
+
 function inferRoofType(buildingDna) {
   const context = quantityValue(buildingDna?.buildingSpecificParameters?.atticContext);
   if (context === "heated") return "heated_attic";
@@ -1332,6 +1459,7 @@ export function buildingDnaToWizardValues(buildingDna) {
     roof_insulated: hasIntervention(buildingDna, "roof_insulation") ? "yes" : "unknown",
     floor_insulated: hasIntervention(buildingDna, "floor_insulation") ? "yes" : "unknown",
     windows_replaced: hasIntervention(buildingDna, "window_replacement") ? "yes" : "unknown",
+    ...renewableSystemsToWizardValues(buildingDna?.renewableSystems ?? {}),
     ...technicalSystemsToWizardValues(buildingDna?.technicalSystems ?? {})
   };
 }
@@ -2573,22 +2701,59 @@ function serviceSystem(formData, prefix, stageIds, metadata = {}) {
   };
 }
 
+function photovoltaicSystemFromForm(formData) {
+  const installedValue = formValue(formData, "pv_installed");
+  if (!installedValue) return undefined;
+  if (installedValue !== "yes") {
+    return {
+      schema: "renewable_systems_p9c_v1",
+      photovoltaic: {
+        installed: false,
+        enabled: false,
+        status: "component_absent",
+        source: {
+          origin: "user_required",
+          reference: "pv_installed"
+        }
+      }
+    };
+  }
+  const annualProductionKWh = nonNegativeNumber(formData, "pv_annual_production_kwh");
+  return {
+    schema: "renewable_systems_p9c_v1",
+    photovoltaic: {
+      installed: true,
+      enabled: true,
+      productionMode: "explicit_annual_production",
+      annualProductionKWh,
+      monthlyProductionKWh: annualProductionKWh === undefined ? [] : [],
+      energyCarrier: "photovoltaic_electricity",
+      resultStatus: annualProductionKWh === undefined
+        ? "missing_required_input"
+        : "explicit_production_input_ready",
+      source: {
+        origin: "product_data",
+        reference: "pv_annual_production_kwh",
+        formulaId: "MC001_5_29_ONSITE_ELECTRICITY_PRODUCTION_SUM",
+        limitation:
+          "MC001 4.5 monthly PV generation relations 4.160-4.165 remain unimplemented from owned sources; production must be supplied from product/designer/inverter data."
+      }
+    }
+  };
+}
+
 function sharedHeatingDhwGeneratorFromForm(formData) {
   if (!yesValue(formData, "chapter3_shared_generator_enabled")) return null;
+  const recoveryMode = formValue(formData, "chapter3_shared_generator_recovery_mode");
+  const renewableHeatMode = formValue(formData, "chapter3_shared_generator_renewable_heat_mode");
+  const dhwLossMode = formValue(formData, "chapter3_shared_generator_dhw_loss_mode");
+  const noRecovery = recoveryMode === "no_recovery";
   return {
     componentId: "shared-generator-heating-dhw-main",
     enabled: true,
-    generatorType:
-      formValue(formData, "chapter3_shared_generator_type") ||
-      formValue(formData, "chapter3_heating_generator_type") ||
-      "condensing_boiler",
-    energyCarrier:
-      formValue(formData, "chapter3_shared_generator_energy_carrier") ||
-      formValue(formData, "chapter3_heating_energy_carrier") ||
-      "natural_gas",
-    auxiliaryCarrier:
-      formValue(formData, "chapter3_shared_generator_auxiliary_carrier") ||
-      "electricity",
+    generatorType: formValue(formData, "chapter3_shared_generator_type") || undefined,
+    energyCarrier: formValue(formData, "chapter3_shared_generator_energy_carrier") || undefined,
+    auxiliaryCarrier: formValue(formData, "chapter3_shared_generator_auxiliary_carrier") || undefined,
     controlLossFactor: nonNegativeNumber(
       formData,
       "chapter3_shared_generator_control_loss_factor"
@@ -2605,31 +2770,29 @@ function sharedHeatingDhwGeneratorFromForm(formData) {
     recoveredAuxiliaryFraction: fractionValue(
       formData,
       "chapter3_shared_generator_aux_recovered_fraction",
-      undefined
+      noRecovery ? 0 : undefined
     ),
     auxiliaryRecoverableFractionToHeating: fractionValue(
       formData,
       "chapter3_shared_generator_aux_recoverable_fraction",
-      undefined
+      noRecovery ? 0 : undefined
     ),
     lossRecoverableFractionToHeating: fractionValue(
       formData,
       "chapter3_shared_generator_loss_recoverable_fraction",
-      undefined
+      noRecovery ? 0 : undefined
     ),
     boilerRoomRecoveryFactor: fractionValue(
       formData,
       "chapter3_shared_generator_boiler_room_recovery_factor",
-      undefined
+      noRecovery ? 0 : undefined
     ),
-    renewableGeneratorHeatKWh: nonNegativeNumber(
-      formData,
-      "chapter3_shared_generator_renewable_heat_kwh_month"
-    ),
-    dhwStorageOrDistributionLossKWh: nonNegativeNumber(
-      formData,
-      "chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month"
-    ),
+    renewableGeneratorHeatKWh: renewableHeatMode === "none"
+      ? 0
+      : nonNegativeNumber(formData, "chapter3_shared_generator_renewable_heat_kwh_month"),
+    dhwStorageOrDistributionLossKWh: dhwLossMode === "none"
+      ? 0
+      : nonNegativeNumber(formData, "chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month"),
     serviceAllocationFractions: {
       heating: fractionValue(
         formData,
@@ -2643,8 +2806,13 @@ function sharedHeatingDhwGeneratorFromForm(formData) {
       )
     },
     serviceAllocationSource: {
-      origin: "explicit_engineering_input",
+      origin: "user_required_assisted_input",
       reference: "chapter3_shared_generator_service_allocation"
+    },
+    assistedSelections: {
+      recoveryMode,
+      renewableHeatMode,
+      dhwLossMode
     },
     source: {
       origin: "product_data",
@@ -2893,6 +3061,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   };
   const wallInsulationThicknessM = wallInsulationThicknessByOption[wallInsulation];
   const technicalSystems = buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2);
+  const renewableSystems = photovoltaicSystemFromForm(formData);
   const atticContext = roofType && roofType !== "unknown"
     ? roofType === "heated_attic" ? "heated" : "unheated"
     : undefined;
@@ -2950,6 +3119,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
       ...(usefulFloorAreaM2 === undefined ? {} : { usefulFloorAreaM2 })
     },
     ...(technicalSystems === undefined ? {} : { technicalSystems }),
+    ...(renewableSystems === undefined ? {} : { renewableSystems }),
     context: {
       ...(atticContext === undefined ? {} : { attic: atticContext }),
       ...(basementContext === undefined ? {} : { basement: basementContext })
@@ -3010,10 +3180,46 @@ export function buildWizardEngineeringPreview(assistedAnswers) {
     technicalWorkspace,
     versionMetadata,
     dependencyTree: pipeline.review?.dependencyTrees?.annualQHnd ?? null,
+    renewableSummary: buildRenewableSummary(
+      pipeline.buildingDna?.renewableSystems ?? assistedAnswers?.renewableSystems
+    ),
     summary: {
       annualQHnd,
       annualQCnd
     }
+  };
+}
+
+function buildRenewableSummary(renewableSystems = {}) {
+  const photovoltaic = renewableSystems?.photovoltaic;
+  if (!photovoltaic || photovoltaic.installed !== true) {
+    return {
+      photovoltaic: {
+        installed: false,
+        status: "component_absent",
+        annualProductionKWh: 0
+      },
+      blockers: []
+    };
+  }
+  const annualProductionKWh = Number(photovoltaic.annualProductionKWh);
+  const ready = Number.isFinite(annualProductionKWh) && annualProductionKWh >= 0;
+  return {
+    photovoltaic: {
+      installed: true,
+      status: ready ? "explicit_production_input_ready" : "missing_required_input",
+      annualProductionKWh: ready ? annualProductionKWh : null,
+      energyCarrier: photovoltaic.energyCarrier ?? "photovoltaic_electricity",
+      source: photovoltaic.source ?? null,
+      limitation: photovoltaic.source?.limitation ?? null
+    },
+    blockers: ready ? [] : [{
+      code: "PV_ANNUAL_PRODUCTION_INPUT_REQUIRED",
+      relationId: "MC001_5_29_ONSITE_ELECTRICITY_PRODUCTION_SUM",
+      missingField: "pv_annual_production_kwh",
+      expectedUnit: "kWh/an",
+      severity: "blocking"
+    }]
   };
 }
 
@@ -3068,6 +3274,7 @@ function renderTechnicalDiagnosticDetails(blockers) {
 
 function renderProductResultSummary(preview) {
   const chapter3 = preview.technicalWorkspace?.resultSummary?.chapter3Annual ?? {};
+  const photovoltaic = preview.renewableSummary?.photovoltaic;
   const cards = [
     {
       label: "Incalzire utila QHnd",
@@ -3098,6 +3305,13 @@ function renderProductResultSummary(preview) {
       label: "Necesar de racire neacoperit",
       value: chapter3.coolingUnmetLoadKWh,
       note: "Apare explicit cand capacitatea este insuficienta"
+    },
+    {
+      label: "Productie PV",
+      value: photovoltaic?.installed && photovoltaic.status === "explicit_production_input_ready"
+        ? photovoltaic.annualProductionKWh
+        : null,
+      note: "Productie introdusa din produs/invertor, fara model PV inventat"
     }
   ].filter(card => card.value !== undefined && card.value !== null);
   return `
@@ -3118,6 +3332,61 @@ function renderProductResultSummary(preview) {
       ${chapter3.coolingUnmetLoadKWh > 0 ? `
         <p class="form-message error">Necesar de racire neacoperit: ${formatNumber(chapter3.coolingUnmetLoadKWh)} kWh/an. Rezultatul nu presupune capacitate suplimentara inventata.</p>
       ` : ""}
+      ${renderRenewableResultNotice(preview)}
+    </section>
+  `;
+}
+
+function renderRenewableResultNotice(preview) {
+  const photovoltaic = preview.renewableSummary?.photovoltaic;
+  if (!photovoltaic?.installed) return "";
+  if (photovoltaic.status !== "explicit_production_input_ready") {
+    return `
+      <p class="form-message error" data-pv-production-blocker>
+        PV este activat, dar lipseste productia anuala furnizata de produs, proiectant sau invertor. LaCurent nu inventeaza productie PV din capacitate nominala.
+      </p>
+    `;
+  }
+  return `
+    <p class="field-impact-note" data-pv-production-summary>
+      Productia PV afisata este un input de produs/proiect: ${formatNumber(photovoltaic.annualProductionKWh)} kWh/an.
+      Metoda lunara completa MC001 4.5 ramane blocata pana la extragerea relatiilor 4.160-4.165.
+    </p>
+  `;
+}
+
+function renderRenewableResults(preview) {
+  const photovoltaic = preview.renewableSummary?.photovoltaic;
+  if (!photovoltaic?.installed) {
+    return `
+      <section class="technical-workspace-panel" id="p2b-renewables">
+        <h4>Energie regenerabila</h4>
+        <p>Nu este configurat un sistem fotovoltaic pentru modelul curent.</p>
+      </section>
+    `;
+  }
+  const rows = [{
+    component: "PV",
+    status: photovoltaic.status,
+    annualProduction: photovoltaic.annualProductionKWh,
+    unit: "kWh/an",
+    provenance: photovoltaic.source?.origin ?? "PRODUCT_DATA",
+    reference: photovoltaic.source?.reference ?? "pv_annual_production_kwh",
+    formula: photovoltaic.source?.formulaId ?? "MC001_5_29_ONSITE_ELECTRICITY_PRODUCTION_SUM"
+  }];
+  return `
+    <section class="technical-workspace-panel" id="p2b-renewables" data-renewable-results>
+      <h4>Energie regenerabila - PV</h4>
+      <p>Fluxul curent accepta productie PV anuala furnizata explicit. Nu estimeaza productia din kWp, orientare sau inclinare fara relatiile MC001 4.160-4.165.</p>
+      ${renderTable([
+        { label: "Componenta", value: row => row.component },
+        { label: "Stare", value: row => row.status },
+        { label: "Productie anuala", value: row => row.annualProduction === null ? "--" : `${formatNumber(row.annualProduction)} ${row.unit}` },
+        { label: "Provenienta", value: row => row.provenance },
+        { label: "Camp sursa", value: row => row.reference },
+        { label: "Relatie agregare", value: row => row.formula }
+      ], rows)}
+      ${renderRenewableResultNotice(preview)}
     </section>
   `;
 }
@@ -3148,6 +3417,7 @@ function renderBlockedEngineeringModelReview(preview) {
           <p>Coduri: ${safeText(technicalCodes.join(", "))}</p>
         </details>
       </section>
+      ${renderRenewableResults(preview)}
     `;
   }
   const codes = blockers
@@ -3164,6 +3434,7 @@ function renderBlockedEngineeringModelReview(preview) {
       <p>Nu a fost generat un rezultat normativ incomplet.</p>
       ${renderTechnicalDiagnosticDetails(blockers.length > 0 ? blockers : [{ code: codes[0] ?? "model_incomplet" }])}
     </section>
+    ${renderRenewableResults(preview)}
   `;
 }
 
@@ -3256,6 +3527,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
           Raport tehnic generat din modelul curent si rezultatele validate.
         </div>
         <p>${safeText(workspace.report.title)} · ${safeText(workspace.report.source)}</p>
+        ${renderRenewableResults(preview)}
         ${renderTechnicalReportDocument(workspace, { openReport })}
       </section>
       <section id="p2b-traceability" class="technical-workspace-panel">
@@ -3285,6 +3557,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
           Raport tehnic generat din modelul curent si rezultatele validate.
         </div>
         ${renderInstallationsResults(workspace)}
+        ${renderRenewableResults(preview)}
         ${renderTechnicalReportDocument(workspace)}
       </section>
     </section>
