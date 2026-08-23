@@ -39,6 +39,13 @@ Generated deterministically from the Chapter 3 source-to-code fixture. P8I close
 | NUMERICALLY_IMPLEMENTED | 211 |
 | PROCEDURALLY_IMPLEMENTED | 4 |
 
+## Remaining Non-Closed Slots
+
+- 3.4_EQ_34_LENI: EXPLICIT_INPUT_BOUNDARY (SR_EN_15193_1_LIGHTING_ENGINE_REQUIRED)
+- 3.4_SR_EN_15193_1_DELEGATED: EXTERNAL_STANDARD_BLOCKED (SR EN 15193-1)
+
+The remaining explicit LENI input boundary and the external SR EN 15193-1 dependency are separate tracked slots: `3.4_EQ_34_LENI` is the MC001 LENI aggregation/input boundary, while `3.4_SR_EN_15193_1_DELEGATED` records the unavailable external lighting engine delegated by MC001.
+
 ## Explicit Boundaries Converted Through P8I
 
 - 3.1: Heating component contract resolves emission, hydronic pump, generator loss/auxiliary or recovery calculations from project/product inputs.
@@ -273,3 +280,9 @@ An explicit boundary remains only where MC001 requires project/manufacturer tech
 - 3.4_SR_EN_15193_1_DELEGATED: SR EN 15193-1
   - Missing: The referenced SR EN 15193-1 equations 1-13 and 25-33 are not present in the repository source packs.
   - Required contract: Licensed/reviewed SR EN 15193-1 content, or explicit professional subspace LENI/lighting-energy values.
+
+## Certification Flags
+
+- `CHAPTER_3_NON_LIGHTING_SUPPORTED_SCOPE_NUMERICALLY_COMPLETE`: true.
+- `CHAPTER_3_SUPPORTED_SCOPE_NUMERICALLY_COMPLETE`: false unless the term is explicitly scoped to exclude the externally delegated lighting/LENI engine.
+- `MC001_CHAPTER_3_FULL_SCOPE_COMPLETE`: false until SR EN 15193-1 is owned and implemented.
