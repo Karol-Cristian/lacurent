@@ -140,6 +140,119 @@ export const BUILDING_PLATFORM_PRODUCT_JOURNEY = Object.freeze([
   }
 ]);
 
+export const P10_WORKSPACE_NAVIGATION = Object.freeze([
+  { workspaceId: "overview", label: "Overview", targetStep: 4 },
+  { workspaceId: "building", label: "Building", targetStep: 0 },
+  { workspaceId: "envelope", label: "Envelope", targetStep: 1 },
+  { workspaceId: "systems", label: "Systems", targetStep: 3 },
+  { workspaceId: "baseline", label: "Baseline", targetStep: 6 },
+  { workspaceId: "scenarios", label: "Scenarios", targetStep: 2 },
+  { workspaceId: "results", label: "Results", targetStep: 6 },
+  { workspaceId: "documents", label: "Documents", targetStep: 5 }
+]);
+
+export const P10_SUPPORTED_INTERVENTION_TYPES = Object.freeze([
+  {
+    interventionType: "wall_insulation",
+    label: "Izolare pereti exteriori",
+    source: "Existing Building DNA renovation modifier; no new physics."
+  },
+  {
+    interventionType: "roof_insulation",
+    label: "Izolare acoperis / pod",
+    source: "Existing Building DNA renovation modifier; no new physics."
+  },
+  {
+    interventionType: "floor_insulation",
+    label: "Izolare planseu inferior",
+    source: "Existing Building DNA renovation modifier; no new physics."
+  },
+  {
+    interventionType: "window_replacement",
+    label: "Inlocuire / imbunatatire ferestre",
+    source: "Existing Building DNA window assembly selection."
+  },
+  {
+    interventionType: "heating_generator_change",
+    label: "Schimbare generator incalzire",
+    source: "Existing Chapter 3 system/component contract."
+  },
+  {
+    interventionType: "cooling_generator_change",
+    label: "Schimbare generator racire",
+    source: "Existing Chapter 3 cooling system/component contract."
+  },
+  {
+    interventionType: "ventilation_change",
+    label: "Schimbare ventilatie / AHU",
+    source: "Existing Chapter 3 ventilation/AHU contract."
+  },
+  {
+    interventionType: "pv_change",
+    label: "Modificare productie PV furnizata",
+    source: "Existing explicit PV production contract; no invented PV model."
+  }
+]);
+
+export const P10_CPE_FIELD_MAPPING = Object.freeze([
+  {
+    fieldId: "building_identification",
+    label: "Identificare cladire",
+    source: "MC001-2022 CPE identification fields, repository source inventory",
+    buildingDnaPath: "building.buildingId / building.location",
+    availability: "available_when_project_named"
+  },
+  {
+    fieldId: "auditor_identity",
+    label: "Date auditor",
+    source: "MC001-2022 CPE / auditor metadata requirement",
+    buildingDnaPath: "projectWorkspace.documents.auditor",
+    availability: "user_required"
+  },
+  {
+    fieldId: "geometry",
+    label: "Geometrie si arii",
+    source: "Building DNA geometry used by Chapter 2",
+    buildingDnaPath: "geometry / buildingSpecificParameters",
+    availability: "available_from_building_model"
+  },
+  {
+    fieldId: "envelope",
+    label: "Anvelopa si coeficienti U",
+    source: "Building DNA assemblies and technical workspace results",
+    buildingDnaPath: "assemblies / envelopeElements / technicalWorkspace.envelope",
+    availability: "available_when_calculation_ready"
+  },
+  {
+    fieldId: "systems",
+    label: "Instalatii tehnice",
+    source: "Building DNA technicalSystems and Chapter 3 runtime",
+    buildingDnaPath: "technicalSystems / technicalWorkspace.installations",
+    availability: "available_when_systems_configured"
+  },
+  {
+    fieldId: "calculation_results",
+    label: "Rezultate energetice",
+    source: "Validated runtime outputs only",
+    buildingDnaPath: "technicalWorkspace.resultSummary",
+    availability: "blocked_when_runtime_blocked"
+  },
+  {
+    fieldId: "recommendations",
+    label: "Recomandari auditor",
+    source: "Scenario/intervention records entered by auditor",
+    buildingDnaPath: "projectWorkspace.scenarios",
+    availability: "user_required_for_complete_cpe"
+  },
+  {
+    fieldId: "photos",
+    label: "Anexa foto",
+    source: "Project evidence metadata",
+    buildingDnaPath: "projectWorkspace.evidence",
+    availability: "optional_metadata_until_backend_file_storage"
+  }
+]);
+
 const ASSISTED_FIELD_NAMES = new Set([
   "analysis_input_mode",
   "display_name",
@@ -188,7 +301,24 @@ const ASSISTED_FIELD_NAMES = new Set([
   "chapter3_dhw_energy_carrier",
   "chapter3_ventilation_ahu_enabled",
   "pv_installed",
-  "pv_annual_production_kwh"
+  "pv_annual_production_kwh",
+  "scenario_name",
+  "scenario_wall_insulation",
+  "scenario_roof_insulated",
+  "scenario_floor_insulated",
+  "scenario_window_type",
+  "scenario_heating_generator_type",
+  "scenario_cooling_generator_type",
+  "scenario_pv_annual_production_kwh",
+  "auditor_name",
+  "auditor_authorization",
+  "document_identifier",
+  "client_name",
+  "document_issue_date",
+  "evidence_exterior_note",
+  "evidence_generator_note",
+  "evidence_windows_note",
+  "evidence_roof_note"
 ]);
 
 const EXPERT_FIELD_NAMES = new Set([
@@ -288,7 +418,24 @@ const FIELD_LABELS_RO = Object.freeze({
   chapter3_shared_generator_heating_allocation_fraction: "alocarea generatorului comun catre incalzire",
   chapter3_shared_generator_dhw_allocation_fraction: "alocarea generatorului comun catre ACM",
   pv_installed: "existenta sistemului fotovoltaic",
-  pv_annual_production_kwh: "productia PV anuala furnizata"
+  pv_annual_production_kwh: "productia PV anuala furnizata",
+  scenario_name: "numele scenariului",
+  scenario_wall_insulation: "izolarea propusa a peretilor",
+  scenario_roof_insulated: "izolarea propusa a acoperisului",
+  scenario_floor_insulated: "izolarea propusa a planseului inferior",
+  scenario_window_type: "ferestrele propuse",
+  scenario_heating_generator_type: "generatorul de incalzire propus",
+  scenario_cooling_generator_type: "generatorul de racire propus",
+  scenario_pv_annual_production_kwh: "productia PV propusa",
+  auditor_name: "numele auditorului",
+  auditor_authorization: "autorizatia auditorului",
+  document_identifier: "identificatorul documentului",
+  client_name: "beneficiarul",
+  document_issue_date: "data emiterii",
+  evidence_exterior_note: "dovada foto exterior",
+  evidence_generator_note: "dovada foto generator",
+  evidence_windows_note: "dovada foto ferestre",
+  evidence_roof_note: "dovada foto acoperis"
 });
 
 const YEAR_PERIODS = [
@@ -485,6 +632,13 @@ function conditionalRequiredFields(section, formData) {
 }
 
 function sectionForFieldName(name) {
+  if (name.startsWith("scenario_")) return "scenarios";
+  if (
+    name.startsWith("auditor_") ||
+    name.startsWith("document_") ||
+    name === "client_name" ||
+    name.startsWith("evidence_")
+  ) return "documents";
   if ([
     "locality_id",
     "climate_station_id",
@@ -558,6 +712,11 @@ function inputLevelForFieldName(name) {
 }
 
 function buildingDnaPathForFieldName(name) {
+  if (name.startsWith("scenario_")) return "projectWorkspace.scenarios[]";
+  if (name.startsWith("evidence_")) return "projectWorkspace.evidence.photos[]";
+  if (name.startsWith("auditor_") || name.startsWith("document_") || name === "client_name") {
+    return "projectWorkspace.documents.metadata";
+  }
   if (name.startsWith("pv_")) return "renewableSystems.photovoltaic";
   if (name === "building_use_category") return "building.useCategory / internalGainsCategoryId";
   if (name === "locality_id") return "building.location.localityId / climateProvider.selection";
@@ -578,6 +737,11 @@ function buildingDnaPathForFieldName(name) {
 }
 
 function runtimeConsumerForFieldName(name) {
+  if (name.startsWith("scenario_")) return "P10 scenariu retrofit: delta peste Building DNA baseline";
+  if (name.startsWith("evidence_")) return "P10 documente: metadata foto pentru Anexa 3";
+  if (name.startsWith("auditor_") || name.startsWith("document_") || name === "client_name") {
+    return "P10 documente: metadata CPE/audit, fara calcul fizic";
+  }
   if (name.startsWith("pv_")) return "MC001 Capitolul 4/5 - productie PV furnizata si agregare trasabila";
   if (name === "building_use_category") return "MC001 Capitolul 2 - Tabel 2.15";
   if (name === "locality_id" || name.startsWith("climate_")) return "Climate Provider si MC001 Capitolul 2";
@@ -590,6 +754,9 @@ function runtimeConsumerForFieldName(name) {
 function provenanceForFieldName(name) {
   const level = inputLevelForFieldName(name);
   if (level === "internal") return "internal";
+  if (name.startsWith("scenario_")) return "USER_FACT";
+  if (name.startsWith("auditor_") || name.startsWith("document_") || name === "client_name") return "USER_FACT";
+  if (name.startsWith("evidence_")) return "USER_FACT";
   if (name === "pv_annual_production_kwh") return "PRODUCT_DATA";
   if (name.includes("_nominal_") || name.includes("_power_") || name.includes("_eer") || name.includes("_efficiency") || name.includes("_loss_power")) {
     return "PRODUCT_DATA";
@@ -1375,6 +1542,37 @@ function renewableSystemsToWizardValues(renewableSystems = {}) {
   };
 }
 
+function projectWorkspaceToWizardValues(projectWorkspace = {}) {
+  const scenario = Array.isArray(projectWorkspace.scenarios)
+    ? projectWorkspace.scenarios[0] ?? null
+    : null;
+  const deltaValue = (fieldName) =>
+    scenario?.deltas?.find(delta => delta.fieldName === fieldName)?.proposedValue ?? "";
+  const metadata = projectWorkspace.documents?.metadata ?? {};
+  const evidence = new Map(
+    (projectWorkspace.evidence?.photos ?? []).map(item => [item.evidenceId, item.note ?? ""])
+  );
+  return {
+    scenario_name: scenario?.name ?? "",
+    scenario_wall_insulation: deltaValue("wall_insulation"),
+    scenario_roof_insulated: deltaValue("roof_insulated"),
+    scenario_floor_insulated: deltaValue("floor_insulated"),
+    scenario_window_type: deltaValue("window_type"),
+    scenario_heating_generator_type: deltaValue("chapter3_heating_generator_type"),
+    scenario_cooling_generator_type: deltaValue("chapter3_cooling_generator_type"),
+    scenario_pv_annual_production_kwh: deltaValue("pv_annual_production_kwh"),
+    auditor_name: metadata.auditor?.name ?? "",
+    auditor_authorization: metadata.auditor?.authorization ?? "",
+    document_identifier: metadata.project?.documentIdentifier ?? "",
+    client_name: metadata.project?.clientName ?? "",
+    document_issue_date: metadata.project?.issueDate ?? "",
+    evidence_exterior_note: evidence.get("building_exterior") ?? "",
+    evidence_generator_note: evidence.get("heating_generator") ?? "",
+    evidence_windows_note: evidence.get("windows") ?? "",
+    evidence_roof_note: evidence.get("roof") ?? ""
+  };
+}
+
 function inferRoofType(buildingDna) {
   const context = quantityValue(buildingDna?.buildingSpecificParameters?.atticContext);
   if (context === "heated") return "heated_attic";
@@ -1459,6 +1657,7 @@ export function buildingDnaToWizardValues(buildingDna) {
     roof_insulated: hasIntervention(buildingDna, "roof_insulation") ? "yes" : "unknown",
     floor_insulated: hasIntervention(buildingDna, "floor_insulation") ? "yes" : "unknown",
     windows_replaced: hasIntervention(buildingDna, "window_replacement") ? "yes" : "unknown",
+    ...projectWorkspaceToWizardValues(buildingDna?.projectWorkspace ?? {}),
     ...renewableSystemsToWizardValues(buildingDna?.renewableSystems ?? {}),
     ...technicalSystemsToWizardValues(buildingDna?.technicalSystems ?? {})
   };
@@ -1971,9 +2170,9 @@ function renderEngineeringNotebookReport(workspace) {
   return `
     <div class="technical-report-document" data-pdf-like-report>
       <header class="technical-report-title-block">
-        <p class="small-label">Raport tehnic MC001-2022</p>
+        <p class="small-label">Anexa tehnica de calcul MC001-2022</p>
         <h1>${safeText(report.title ?? "Caiet de calcul")}</h1>
-        <p>Rezultatele si calculele de mai jos afiseaza valorile curente furnizate de motorul validat.</p>
+        <p>Valorile, sursele si trace-urile de mai jos sunt citite din motorul validat si Building DNA.</p>
       </header>
       ${renderMainResultsDocument(report)}
       ${renderClimateReportChapter(report)}
@@ -1997,7 +2196,7 @@ function renderSavedTechnicalReportDocument(report) {
   return `
     <div class="technical-report-document" data-pdf-like-report>
       <header class="technical-report-title-block">
-        <p class="small-label">Raport tehnic MC001-2022</p>
+        <p class="small-label">Anexa tehnica de calcul MC001-2022</p>
         <h1>${safeText(report?.title ?? "Caiet de calcul")}</h1>
       </header>
       ${renderMainResultsDocument(report)}
@@ -2044,6 +2243,167 @@ function fractionValue(formData, name, fallback = 0) {
 
 function yesValue(formData, name) {
   return formValue(formData, name) === "yes";
+}
+
+function stringValue(formData, name) {
+  const value = formValue(formData, name);
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function scenarioDeltaFromForm(formData) {
+  const deltas = [];
+  const addDelta = (fieldName, label, proposedValue, interventionType) => {
+    if (proposedValue === undefined || proposedValue === "" || proposedValue === "no_change") return;
+    deltas.push({
+      fieldName,
+      label,
+      interventionType,
+      proposedValue,
+      source: {
+        origin: "USER_FACT",
+        reference: fieldName,
+        category: "USER_FACT"
+      }
+    });
+  };
+  addDelta(
+    "wall_insulation",
+    "Pereti exteriori",
+    stringValue(formData, "scenario_wall_insulation"),
+    "wall_insulation"
+  );
+  addDelta(
+    "roof_insulated",
+    "Acoperis / pod",
+    stringValue(formData, "scenario_roof_insulated"),
+    "roof_insulation"
+  );
+  addDelta(
+    "floor_insulated",
+    "Planseu inferior",
+    stringValue(formData, "scenario_floor_insulated"),
+    "floor_insulation"
+  );
+  addDelta(
+    "window_type",
+    "Ferestre",
+    stringValue(formData, "scenario_window_type"),
+    "window_replacement"
+  );
+  addDelta(
+    "chapter3_heating_generator_type",
+    "Generator incalzire",
+    stringValue(formData, "scenario_heating_generator_type"),
+    "heating_generator_change"
+  );
+  addDelta(
+    "chapter3_cooling_generator_type",
+    "Generator racire",
+    stringValue(formData, "scenario_cooling_generator_type"),
+    "cooling_generator_change"
+  );
+  const proposedPv = nonNegativeNumber(formData, "scenario_pv_annual_production_kwh");
+  if (proposedPv !== undefined) {
+    deltas.push({
+      fieldName: "pv_annual_production_kwh",
+      label: "Productie PV",
+      interventionType: "pv_change",
+      proposedValue: proposedPv,
+      unit: "kWh/an",
+      source: {
+        origin: "PRODUCT_DATA",
+        reference: "scenario_pv_annual_production_kwh",
+        category: "PRODUCT_DATA"
+      }
+    });
+  }
+  return deltas;
+}
+
+function documentMetadataFromForm(formData) {
+  return {
+    auditor: {
+      name: stringValue(formData, "auditor_name") ?? null,
+      authorization: stringValue(formData, "auditor_authorization") ?? null
+    },
+    project: {
+      documentIdentifier: stringValue(formData, "document_identifier") ?? null,
+      clientName: stringValue(formData, "client_name") ?? null,
+      issueDate: stringValue(formData, "document_issue_date") ?? null
+    },
+    source: {
+      origin: "USER_FACT",
+      reference: "p10_document_metadata"
+    }
+  };
+}
+
+function evidenceFromForm(formData) {
+  return [
+    ["building_exterior", "Exterior cladire", "evidence_exterior_note"],
+    ["heating_generator", "Generator termic", "evidence_generator_note"],
+    ["windows", "Ferestre", "evidence_windows_note"],
+    ["roof", "Acoperis", "evidence_roof_note"]
+  ]
+    .map(([evidenceId, label, fieldName]) => ({
+      evidenceId,
+      label,
+      note: stringValue(formData, fieldName) ?? null,
+      fieldName,
+      attachmentStatus: stringValue(formData, fieldName) ? "metadata_recorded" : "missing_optional_photo",
+      source: {
+        origin: "USER_FACT",
+        reference: fieldName
+      }
+    }));
+}
+
+function projectWorkspaceFromForm(formData) {
+  const scenarioDeltas = scenarioDeltaFromForm(formData);
+  const scenarioName = stringValue(formData, "scenario_name") ?? "Scenariu retrofit";
+  return {
+    schema: "professional_workspace_v1",
+    architecture:
+      "BUILDING_MODEL_BASELINE_CERTIFICATION_RETROFIT_SCENARIOS_RESULTS_DOCUMENTS",
+    source: {
+      origin: "USER_FACT",
+      reference: "p10_professional_workspace_form"
+    },
+    baseline: {
+      baselineId: "current-building",
+      label: "Current building",
+      source: "current Building DNA snapshot"
+    },
+    scenarios: scenarioDeltas.length > 0
+      ? [{
+          scenarioId: "scenario-1",
+          name: scenarioName,
+          baseBaselineId: "current-building",
+          storageMode: "delta_from_baseline",
+          deltas: scenarioDeltas,
+          supportedInterventions: scenarioDeltas.map(delta => delta.interventionType)
+        }]
+      : [],
+    documents: {
+      cpe: {
+        status: "source_layout_certification_required",
+        fieldMapping: P10_CPE_FIELD_MAPPING.map(field => ({ ...field })),
+        legalOutputReady: false
+      },
+      auditReport: {
+        status: "workflow_available",
+        consumesScenarios: true
+      },
+      technicalAnnex: {
+        status: "runtime_trace_annex_available",
+        renderer: "existing_technical_report"
+      },
+      metadata: documentMetadataFromForm(formData)
+    },
+    evidence: {
+      photos: evidenceFromForm(formData)
+    }
+  };
 }
 
 function derivedHeatedVolumeM3({ explicitHeatedVolumeM3, usefulFloorAreaM2, averageRoomHeightM }) {
@@ -3062,6 +3422,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
   const wallInsulationThicknessM = wallInsulationThicknessByOption[wallInsulation];
   const technicalSystems = buildTechnicalSystemsFromForm(formData, usefulFloorAreaM2);
   const renewableSystems = photovoltaicSystemFromForm(formData);
+  const projectWorkspace = projectWorkspaceFromForm(formData);
   const atticContext = roofType && roofType !== "unknown"
     ? roofType === "heated_attic" ? "heated" : "unheated"
     : undefined;
@@ -3120,6 +3481,7 @@ export function mapWizardAnswersToAssistedAnswers(formData) {
     },
     ...(technicalSystems === undefined ? {} : { technicalSystems }),
     ...(renewableSystems === undefined ? {} : { renewableSystems }),
+    projectWorkspace,
     context: {
       ...(atticContext === undefined ? {} : { attic: atticContext }),
       ...(basementContext === undefined ? {} : { basement: basementContext })
@@ -3391,9 +3753,588 @@ function renderRenewableResults(preview) {
   `;
 }
 
-function renderBlockedEngineeringModelReview(preview) {
+function cloneFormDataEntries(formData) {
+  if (!formData) return {};
+  if (typeof formData.entries === "function") {
+    return Object.fromEntries([...formData.entries()].map(([key, value]) => [key, String(value ?? "")]));
+  }
+  if (typeof formData.get === "function") {
+    const names = [
+      ...BUILDING_PLATFORM_PRODUCT_JOURNEY.flatMap(section => section.normalFields),
+      ...Object.keys(FIELD_LABELS_RO),
+      "analysis_input_mode",
+      "building_type",
+      "building_use_category",
+      "locality_id",
+      "climate_station_id",
+      "climate_profile_id"
+    ];
+    return Object.fromEntries(
+      [...new Set(names)].map(name => [name, String(formData.get(name) ?? "")])
+    );
+  }
+  return { ...formData };
+}
+
+function objectFormData(entries) {
+  return {
+    get(name) {
+      return entries[name];
+    },
+    entries() {
+      return Object.entries(entries);
+    }
+  };
+}
+
+export function buildScenarioPreviewFromFormData(formData) {
+  const baseEntries = cloneFormDataEntries(formData);
+  const scenario = projectWorkspaceFromForm(formData).scenarios[0] ?? null;
+  if (!scenario) {
+    return {
+      status: "not_configured",
+      scenario: null,
+      preview: null,
+      comparison: []
+    };
+  }
+  const scenarioEntries = { ...baseEntries };
+  for (const delta of scenario.deltas) {
+    scenarioEntries[delta.fieldName] = String(delta.proposedValue ?? "");
+  }
+  const scenarioPreview = buildWizardEngineeringPreview(
+    mapWizardAnswersToAssistedAnswers(objectFormData(scenarioEntries))
+  );
+  return {
+    status: scenarioPreview.status === "ready" ? "calculated" : "blocked",
+    scenario,
+    preview: scenarioPreview,
+    comparison: []
+  };
+}
+
+function metricRow(label, baselineValue, scenarioValue, unit = "kWh/an") {
+  const baselineNumber = Number(baselineValue);
+  const scenarioNumber = Number(scenarioValue);
+  const hasBoth = Number.isFinite(baselineNumber) && Number.isFinite(scenarioNumber);
+  const delta = hasBoth ? scenarioNumber - baselineNumber : null;
+  const percent = hasBoth && baselineNumber !== 0 ? (delta / baselineNumber) * 100 : null;
+  return {
+    label,
+    baselineValue: Number.isFinite(baselineNumber) ? baselineNumber : null,
+    scenarioValue: Number.isFinite(scenarioNumber) ? scenarioNumber : null,
+    unit,
+    delta,
+    percent
+  };
+}
+
+function buildScenarioComparison(preview, formData) {
+  const scenarioRun = buildScenarioPreviewFromFormData(formData);
+  if (!scenarioRun.scenario) return scenarioRun;
+  if (preview.status !== "ready" || scenarioRun.preview?.status !== "ready") {
+    return {
+      ...scenarioRun,
+      comparison: [],
+      blocker: preview.status !== "ready"
+        ? "Baseline-ul este blocat; scenariul ramane delta pregatit, fara economie calculata."
+        : "Scenariul este blocat; compara doar dupa rezolvarea datelor lipsa."
+    };
+  }
+  const baselineChapter3 = preview.technicalWorkspace?.resultSummary?.chapter3Annual ?? {};
+  const scenarioChapter3 = scenarioRun.preview.technicalWorkspace?.resultSummary?.chapter3Annual ?? {};
+  const baselinePv = preview.renewableSummary?.photovoltaic;
+  const scenarioPv = scenarioRun.preview.renewableSummary?.photovoltaic;
+  return {
+    ...scenarioRun,
+    comparison: [
+      metricRow("Necesar incalzire QHnd", preview.summary?.annualQHnd, scenarioRun.preview.summary?.annualQHnd),
+      metricRow("Necesar racire QCnd", preview.summary?.annualQCnd, scenarioRun.preview.summary?.annualQCnd),
+      metricRow("Incalzire livrata", baselineChapter3.heatingInputKWh, scenarioChapter3.heatingInputKWh),
+      metricRow("Racire livrata", baselineChapter3.coolingInputKWh, scenarioChapter3.coolingInputKWh),
+      metricRow("ACM", baselineChapter3.dhwInputKWh, scenarioChapter3.dhwInputKWh),
+      metricRow(
+        "Productie PV",
+        baselinePv?.installed ? baselinePv.annualProductionKWh : null,
+        scenarioPv?.installed ? scenarioPv.annualProductionKWh : null
+      )
+    ]
+  };
+}
+
+function readinessIssuesFromPreview(preview, sectionStates = []) {
+  const fieldIssues = sectionStates.flatMap(section =>
+    (section.missingFields ?? []).map(field => ({
+      issueId: `${section.sectionId}.${field}`,
+      sectionId: section.sectionId,
+      label: fieldLabel(field),
+      message: `Completeaza ${fieldLabel(field)}.`,
+      status: "needs_information",
+      targetField: field
+    }))
+  );
+  const blockers = preview?.diagnostics?.blockers ?? preview?.technicalWorkspace?.diagnostics?.blockers ?? [];
+  const blockerIssues = blockers.map((blocker, index) => ({
+    issueId: blocker.code ?? `runtime_blocker_${index}`,
+    sectionId: "baseline",
+    label: "Calcul blocat",
+    message: humanizeBuildingPlatformDiagnostic(blocker),
+    status: "blocked",
+    technicalCode: blocker.code,
+    targetField: blocker.missingField ?? null
+  }));
+  return [...fieldIssues, ...blockerIssues];
+}
+
+function buildReadinessModel(preview, formData) {
+  const sectionStates = analyzeBuildingPlatformProductJourney(formData ?? objectFormData({}));
+  const issues = readinessIssuesFromPreview(preview, sectionStates);
+  const completeCount = sectionStates.filter(section => section.state === "complete" || section.state === "optional").length;
+  const percentComplete = sectionStates.length === 0
+    ? 0
+    : Number(((completeCount / sectionStates.length) * 100).toFixed(0));
+  const blocked = preview?.status !== "ready";
+  return {
+    status: blocked ? "blocked" : "ready_for_calculation",
+    label: blocked ? "Model incomplet sau calcul blocat" : "Model pregatit pentru baseline",
+    percentComplete,
+    requiredIssueCount: issues.filter(issue => issue.status !== "optional").length,
+    sectionStates,
+    issues
+  };
+}
+
+function qAmount(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  return value?.amount ?? value?.value ?? value;
+}
+
+function formatQuantityFact(value, unit) {
+  const amount = qAmount(value);
+  return amount === undefined ? undefined : `${formatNumber(amount)} ${unit}`;
+}
+
+function objectCard(id, type, title, facts, source = "Building DNA") {
+  return {
+    id,
+    type,
+    title,
+    facts: facts.filter(item => item.value !== undefined && item.value !== null && item.value !== ""),
+    source
+  };
+}
+
+function buildBuildingObjectCards(preview, formData = null) {
+  const dna = preview?.buildingDna ?? {};
+  const geometry = dna.geometry ?? {};
+  const parameters = dna.buildingSpecificParameters ?? {};
+  const fallbackNumber = (name) => numberValue(formData, name);
+  const fallbackText = (name) => stringValue(formData, name);
+  const usefulArea = parameters.usefulFloorAreaM2 ?? geometry.usefulFloorAreaM2 ?? fallbackNumber("useful_area_m2");
+  const heatedVolume =
+    parameters.heatedVolumeM3 ??
+    derivedHeatedVolumeM3({
+      explicitHeatedVolumeM3: fallbackNumber("heated_volume_m3"),
+      usefulFloorAreaM2: fallbackNumber("useful_area_m2"),
+      averageRoomHeightM: fallbackNumber("floor_height_m")
+    });
+  const wallArea = geometry.exteriorWallAreaM2 ?? parameters.exteriorWallAreaM2 ?? fallbackNumber("exterior_wall_area_m2");
+  const roofArea = geometry.roofAreaM2 ?? parameters.roofAreaM2 ?? fallbackNumber("roof_area_m2");
+  const floorArea = geometry.groundFloorAreaM2 ?? parameters.groundFloorAreaM2 ?? fallbackNumber("ground_floor_area_m2");
+  const windowArea = geometry.windowAreaM2 ?? parameters.windowAreaM2 ?? fallbackNumber("window_area_m2");
+  const objects = [
+    objectCard("building", "building", "Cladire", [
+      { label: "Tip", value: dna.building?.buildingType ?? fallbackText("building_type") },
+      { label: "Utilizare", value: dna.building?.useCategory ?? dna.building?.internalGainsCategoryId ?? fallbackText("building_use_category") },
+      { label: "Suprafata utila", value: formatQuantityFact(usefulArea, "m2") },
+      { label: "Volum incalzit", value: formatQuantityFact(heatedVolume, "m3") }
+    ]),
+    objectCard("exterior-walls", "wall", "Pereti exteriori", [
+      { label: "Arie", value: formatQuantityFact(wallArea, "m2") },
+      { label: "Ansamblu", value: (dna.assemblies ?? []).find(item => item.assemblyRole === "exterior_wall")?.displayName ?? fallbackText("wall_material") },
+      { label: "Sursa", value: "DERIVED / Building DNA" }
+    ]),
+    objectCard("roof", "roof", "Acoperis / planseu superior", [
+      { label: "Arie", value: formatQuantityFact(roofArea, "m2") },
+      { label: "Ansamblu", value: (dna.assemblies ?? []).find(item => item.assemblyRole === "roof")?.displayName ?? fallbackText("roof_type") }
+    ]),
+    objectCard("floor", "floor", "Planseu inferior", [
+      { label: "Arie", value: formatQuantityFact(floorArea, "m2") },
+      { label: "Limita", value: (dna.envelopeElements ?? []).find(item => item.assemblyRole === "ground_floor")?.boundaryType ?? fallbackText("floor_type") }
+    ]),
+    objectCard("windows", "window", "Ferestre", [
+      { label: "Arie", value: formatQuantityFact(windowArea, "m2") },
+      { label: "Orientare", value: qAmount(parameters.windowOrientation) ?? fallbackText("window_orientation") },
+      { label: "Ansamblu", value: (dna.assemblies ?? []).find(item => item.assemblyRole === "window")?.displayName ?? fallbackText("window_type") }
+    ])
+  ];
+  const technicalSystems = dna.technicalSystems ?? {};
+  const sharedGenerators = technicalSystems.sharedComponents?.generators ?? [];
+  for (const generator of sharedGenerators) {
+    objects.push(objectCard(generator.componentId, "heating_generator", "Generator comun", [
+      { label: "Servicii", value: "Incalzire + ACM" },
+      { label: "Tip", value: generator.generatorType },
+      { label: "Purtator", value: generator.energyCarrier },
+      { label: "Sursa date", value: generator.source?.origin ?? "PRODUCT_DATA" }
+    ], "technicalSystems.sharedComponents.generators[]"));
+  }
+  const photovoltaic = dna.renewableSystems?.photovoltaic;
+  const pvInstalled = photovoltaic?.installed || photovoltaic?.enabled || formDataValue(formData, "pv_installed") === "yes";
+  if (pvInstalled) {
+    objects.push(objectCard("pv", "pv", "Sistem fotovoltaic", [
+      { label: "Productie", value: formatQuantityFact(photovoltaic?.annualProductionKWh ?? fallbackNumber("pv_annual_production_kwh"), "kWh/an") },
+      { label: "Sursa", value: photovoltaic?.source?.origin ?? "PRODUCT_DATA" }
+    ], "renewableSystems.photovoltaic"));
+  }
+  return objects;
+}
+
+function buildBaselineModel(preview) {
+  const chapter3 = preview?.technicalWorkspace?.resultSummary?.chapter3Annual ?? {};
+  return {
+    baselineId: "current-building",
+    label: "Current building",
+    status: preview?.status === "ready" ? "calculated" : "blocked",
+    calculationFingerprint:
+      preview?.versionMetadata?.fingerprints?.analysisFingerprint ??
+      preview?.technicalWorkspace?.calculationFingerprint?.fingerprintId ??
+      null,
+    metrics: [
+      { label: "Necesar incalzire", value: preview?.summary?.annualQHnd, unit: "kWh/an" },
+      { label: "Necesar racire", value: preview?.summary?.annualQCnd, unit: "kWh/an" },
+      { label: "Incalzire livrata", value: chapter3.heatingInputKWh, unit: "kWh/an" },
+      { label: "Racire livrata", value: chapter3.coolingInputKWh, unit: "kWh/an" },
+      { label: "ACM", value: chapter3.dhwInputKWh, unit: "kWh/an" },
+      { label: "Necesar racire neacoperit", value: chapter3.coolingUnmetLoadKWh, unit: "kWh/an" }
+    ].filter(metric => metric.value !== undefined && metric.value !== null)
+  };
+}
+
+function hasValue(value) {
+  return value !== null && value !== undefined && value !== "";
+}
+
+function fieldStatus(available) {
+  return available ? "complete" : "needs_information";
+}
+
+export function buildCpeDocumentModel(preview, formData = null) {
+  const dna = preview?.buildingDna ?? {};
+  const workspace = dna.projectWorkspace ?? projectWorkspaceFromForm(formData ?? objectFormData({}));
+  const metadata = workspace.documents?.metadata ?? documentMetadataFromForm(formData ?? objectFormData({}));
+  const evidence = workspace.evidence?.photos ?? [];
+  const cpeFields = P10_CPE_FIELD_MAPPING.map(field => {
+    let available = false;
+    if (field.fieldId === "building_identification") {
+      available = hasValue(dna.building?.buildingId) || hasValue(formDataValue(formData, "display_name"));
+    } else if (field.fieldId === "auditor_identity") {
+      available = hasValue(metadata.auditor?.name) && hasValue(metadata.auditor?.authorization);
+    } else if (field.fieldId === "geometry") {
+      available = hasValue(dna.geometry?.usefulFloorAreaM2) || hasValue(dna.buildingSpecificParameters?.usefulFloorAreaM2);
+    } else if (field.fieldId === "envelope") {
+      available = (dna.assemblies ?? []).length > 0;
+    } else if (field.fieldId === "systems") {
+      available = Boolean(dna.technicalSystems);
+    } else if (field.fieldId === "calculation_results") {
+      available = preview?.status === "ready";
+    } else if (field.fieldId === "recommendations") {
+      available = (workspace.scenarios ?? []).length > 0;
+    } else if (field.fieldId === "photos") {
+      available = evidence.some(item => hasValue(item.note));
+    }
+    return {
+      ...field,
+      status: fieldStatus(available)
+    };
+  });
+  const readyCount = cpeFields.filter(field => field.status === "complete").length;
+  return {
+    documentType: "energy_performance_certificate_cpe",
+    status: readyCount === cpeFields.length ? "ready_for_layout_certification" : "needs_information",
+    readinessPercent: Number(((readyCount / cpeFields.length) * 100).toFixed(0)),
+    officialFieldMappingVerified: false,
+    fieldMappingStatus: "candidate_mapping_requires_official_source_certification",
+    officialLayoutVerified: false,
+    legalOutputReady: false,
+    buildingUnitHandling:
+      "building_cpe_model_ready; separate building-unit CPE remains a source-layout certification item",
+    mainCpe: cpeFields,
+    annexes: [
+      {
+        annexId: "annex_1_recommendations",
+        title: "Anexa 1 - Recomandari auditor",
+        status: (workspace.scenarios ?? []).length > 0 ? "available_from_scenarios" : "needs_recommendations"
+      },
+      {
+        annexId: "annex_2_technical_certificate_annex",
+        title: "Anexa 2 - Anexa tehnica certificat",
+        status: preview?.technicalWorkspace?.status === "ready" ? "available_from_runtime_trace" : "blocked_by_runtime"
+      },
+      {
+        annexId: "annex_3_photographs",
+        title: "Anexa 3 - Fotografii",
+        status: evidence.some(item => hasValue(item.note)) ? "metadata_available" : "photos_missing"
+      }
+    ]
+  };
+}
+
+function buildDocumentCenterModel(preview, formData) {
+  const cpe = buildCpeDocumentModel(preview, formData);
+  return {
+    cpe,
+    auditReport: {
+      documentType: "energy_audit_report",
+      status: "workflow_available",
+      sections: [
+        "Current building",
+        "Energy profile",
+        "Identified issues",
+        "Proposed measures",
+        "Retrofit scenarios",
+        "Comparison",
+        "Auditor conclusions"
+      ]
+    },
+    technicalAnnex: {
+      documentType: "technical_calculation_annex",
+      status: preview?.technicalWorkspace?.status === "ready" ? "available" : "blocked_by_runtime",
+      source: "existing runtime technical report and execution traces"
+    }
+  };
+}
+
+export function buildProfessionalWorkspaceModel(preview, formData = null) {
+  const effectiveFormData = formData ?? objectFormData({});
+  const scenario = buildScenarioComparison(preview, effectiveFormData);
+  return {
+    schema: "professional_auditor_workspace_p10",
+    architecture: [
+      "BUILDING MODEL",
+      "BASELINE",
+      "CERTIFICATION / RETROFIT SCENARIOS",
+      "RESULTS",
+      "DOCUMENTS"
+    ],
+    navigation: P10_WORKSPACE_NAVIGATION.map(item => ({ ...item })),
+    readiness: buildReadinessModel(preview, effectiveFormData),
+    buildingObjects: buildBuildingObjectCards(preview, effectiveFormData),
+    baseline: buildBaselineModel(preview),
+    scenarios: scenario,
+    documents: buildDocumentCenterModel(preview, effectiveFormData),
+    supportedInterventions: P10_SUPPORTED_INTERVENTION_TYPES.map(item => ({ ...item }))
+  };
+}
+
+function renderStatusPill(status) {
+  const label = {
+    ready_for_calculation: "Gata pentru calcul",
+    ready: "Gata",
+    calculated: "Calculat",
+    blocked: "Blocat",
+    needs_information: "Necesita date",
+    workflow_available: "Disponibil",
+    available: "Disponibil",
+    source_layout_certification_required: "Necesita certificare layout",
+    not_configured: "Neconfigurat"
+  }[status] ?? status;
+  return `<span class="p10-status-pill" data-state="${safeText(status)}">${safeText(label)}</span>`;
+}
+
+function renderMetricCards(metrics = []) {
+  if (!metrics.length) return `<p class="section-description">Nu exista inca rezultate calculate pentru aceasta sectiune.</p>`;
+  return `
+    <div class="p10-metric-grid">
+      ${metrics.map(metric => `
+        <article class="p10-metric-card">
+          <span>${safeText(metric.label)}</span>
+          <strong>${formatNumber(metric.value)} ${safeText(metric.unit ?? "")}</strong>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderReadiness(model) {
+  const issues = model.readiness.issues ?? [];
+  return `
+    <section class="p10-workspace-panel" id="p10-overview" data-p10-section="overview">
+      <div class="section-heading">
+        <span class="small-label">OVERVIEW</span>
+        <h3>Workspace auditor: cladire, baseline, scenarii si documente</h3>
+      </div>
+      <div class="p10-overview-grid">
+        <article>
+          <span>Model readiness</span>
+          <strong>${formatNumber(model.readiness.percentComplete, 0)}%</strong>
+          <small>${safeText(model.readiness.label)}</small>
+        </article>
+        <article>
+          <span>Elemente lipsa</span>
+          <strong>${formatNumber(model.readiness.requiredIssueCount, 0)}</strong>
+          <small>Legate de sectiuni sau de runtime, fara coduri brute in mesajul principal.</small>
+        </article>
+        <article>
+          <span>Baseline</span>
+          <strong>${safeText(model.baseline.label)}</strong>
+          <small>${safeText(model.baseline.status)}</small>
+        </article>
+        <article>
+          <span>Scenarii</span>
+          <strong>${formatNumber(model.scenarios.scenario ? 1 : 0, 0)}</strong>
+          <small>Delta-uri peste baseline, nu duplicare manuala completa.</small>
+        </article>
+      </div>
+      ${issues.length ? `
+        <div class="p10-readiness-issues" data-p10-readiness-issues>
+          ${issues.slice(0, 8).map(issue => `
+            <article data-state="${safeText(issue.status)}">
+              <strong>${safeText(issue.label)}</strong>
+              <p>${safeText(issue.message)}</p>
+              ${issue.technicalCode ? `<small>Detalii tehnice: ${safeText(issue.technicalCode)}</small>` : ""}
+            </article>
+          `).join("")}
+        </div>
+      ` : `<p class="form-message success">Modelul nu are probleme obligatorii in stratul de prezentare.</p>`}
+    </section>
+  `;
+}
+
+function renderBuildingObjects(model) {
+  return `
+    <section class="p10-workspace-panel" id="p10-building-model" data-p10-section="building">
+      <div class="section-heading">
+        <span class="small-label">BUILDING MODEL</span>
+        <h3>Componente fizice ale cladirii</h3>
+      </div>
+      <div class="p10-object-grid">
+        ${model.buildingObjects.map(object => `
+          <article class="p10-object-card" data-object-type="${safeText(object.type)}">
+            <div>
+              <span>${safeText(object.type)}</span>
+              <h4>${safeText(object.title)}</h4>
+            </div>
+            <dl>
+              ${object.facts.map(fact => `
+                <div><dt>${safeText(fact.label)}</dt><dd>${safeText(fact.value)}</dd></div>
+              `).join("")}
+            </dl>
+            <small>${safeText(object.source)}</small>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderScenarioComparison(model) {
+  const scenario = model.scenarios.scenario;
+  return `
+    <section class="p10-workspace-panel" id="p10-scenarios" data-p10-section="scenarios">
+      <div class="section-heading">
+        <span class="small-label">SCENARIOS</span>
+        <h3>Scenarii retrofit ca delta fata de baseline</h3>
+      </div>
+      ${scenario ? `
+        <div class="p10-scenario-summary">
+          <h4>${safeText(scenario.name)}</h4>
+          <p>Modificari propuse:</p>
+          <ul>
+            ${scenario.deltas.map(delta => `
+              <li>${safeText(delta.label)}: ${safeText(delta.proposedValue)}${delta.unit ? ` ${safeText(delta.unit)}` : ""}</li>
+            `).join("")}
+          </ul>
+        </div>
+        ${model.scenarios.blocker ? `<p class="form-message error">${safeText(model.scenarios.blocker)}</p>` : ""}
+        ${model.scenarios.comparison.length ? renderTable([
+          { label: "Indicator", value: row => row.label },
+          { label: "Current", value: row => row.baselineValue === null ? "--" : `${formatNumber(row.baselineValue)} ${row.unit}` },
+          { label: "Scenario", value: row => row.scenarioValue === null ? "--" : `${formatNumber(row.scenarioValue)} ${row.unit}` },
+          { label: "Diferenta", value: row => row.delta === null ? "--" : `${formatNumber(row.delta)} ${row.unit}` },
+          { label: "%", value: row => row.percent === null ? "--" : `${formatNumber(row.percent)}%` }
+        ], model.scenarios.comparison) : ""}
+      ` : `
+        <p>Nu exista inca scenariu configurat. Adauga o interventie in sectiunea Utilizare si renovari.</p>
+      `}
+      <p class="field-impact-note">Economiile sunt afisate numai cand baseline-ul si scenariul au rezultate valide; lipsa nu devine zero.</p>
+    </section>
+  `;
+}
+
+function renderDocumentCenter(model) {
+  const docs = model.documents;
+  return `
+    <section class="p10-workspace-panel" id="p10-documents" data-p10-section="documents">
+      <div class="section-heading">
+        <span class="small-label">DOCUMENTS</span>
+        <h3>Centru documente</h3>
+      </div>
+      <div class="p10-document-grid">
+        <article>
+          <h4>Certificat de performanta energetica / CPE</h4>
+          ${renderStatusPill(docs.cpe.status)}
+          <strong>${formatNumber(docs.cpe.readinessPercent, 0)}% ready</strong>
+          <p>Workflow si mapping de campuri disponibile. Layout-ul oficial ramane de certificat din sursa oficiala completa.</p>
+        </article>
+        <article>
+          <h4>Raport de audit energetic</h4>
+          ${renderStatusPill(docs.auditReport.status)}
+          <p>Consuma baseline-ul si scenariile retrofit, fara costuri sau CO2 fabricate.</p>
+        </article>
+        <article>
+          <h4>Anexa tehnica de calcul</h4>
+          ${renderStatusPill(docs.technicalAnnex.status)}
+          <p>Raportul tehnic existent devine anexa de trasabilitate cu Building DNA, surse si trace-uri.</p>
+        </article>
+      </div>
+      ${renderTable([
+        { label: "Camp CPE", value: row => row.label },
+        { label: "Sursa", value: row => row.source },
+        { label: "Cale", value: row => row.buildingDnaPath },
+        { label: "Stare", value: row => row.status }
+      ], docs.cpe.mainCpe)}
+      ${renderTable([
+        { label: "Anexa", value: row => row.title },
+        { label: "Stare", value: row => row.status }
+      ], docs.cpe.annexes)}
+    </section>
+  `;
+}
+
+export function renderProfessionalWorkspace(preview, options = {}) {
+  const model = buildProfessionalWorkspaceModel(preview, options.formData ?? null);
+  return `
+    <section class="p10-professional-output" data-p10-professional-workspace>
+      <nav class="p10-output-nav" aria-label="Professional workspace output sections">
+        ${model.navigation.map(item => `<a href="#p10-${safeText(item.workspaceId)}">${safeText(item.label)}</a>`).join("")}
+      </nav>
+      ${renderReadiness(model)}
+      ${renderBuildingObjects(model)}
+      <section class="p10-workspace-panel" id="p10-baseline" data-p10-section="baseline">
+        <div class="section-heading">
+          <span class="small-label">BASELINE</span>
+          <h3>Current building</h3>
+        </div>
+        ${renderStatusPill(model.baseline.status)}
+        ${renderMetricCards(model.baseline.metrics)}
+      </section>
+      ${renderScenarioComparison(model)}
+      <section class="p10-workspace-panel" id="p10-results" data-p10-section="results">
+        <div class="section-heading">
+          <span class="small-label">RESULTS</span>
+          <h3>Rezultate de produs si limite active</h3>
+        </div>
+        ${renderProductResultSummary(preview)}
+      </section>
+      ${renderDocumentCenter(model)}
+    </section>
+  `;
+}
+
+function renderBlockedEngineeringModelReview(preview, options = {}) {
   const blockers = preview.diagnostics?.blockers ?? [];
   const solarBlocker = blockers.find(item => item.code === "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED");
+  const workspaceHtml = renderProfessionalWorkspace(preview, { formData: options.formData ?? null });
   if (solarBlocker) {
     const contextDiagnostics = solarBlocker.contextDiagnostics ?? [];
     const technicalCodes = [
@@ -3401,6 +4342,8 @@ function renderBlockedEngineeringModelReview(preview) {
       ...contextDiagnostics
     ].filter(Boolean);
     return `
+      <div class="recommendation-detail-card" data-building-platform-review>
+      ${workspaceHtml}
       <section class="form-message error" data-solar-qsol-qsky-blocker>
         <p><strong>Calculul energetic nu poate fi finalizat inca.</strong></p>
         <p>Datele lunare de radiatie solara Hsol pentru localitatea selectata au fost incarcate din sursa normativa disponibila.</p>
@@ -3418,12 +4361,15 @@ function renderBlockedEngineeringModelReview(preview) {
         </details>
       </section>
       ${renderRenewableResults(preview)}
+      </div>
     `;
   }
   const codes = blockers
     .map(item => item.code)
     .filter(Boolean);
   return `
+    <div class="recommendation-detail-card" data-building-platform-review>
+    ${workspaceHtml}
     <section class="form-message error" data-human-readable-blockers>
       <p><strong>Calculul nu poate fi finalizat inca.</strong></p>
       <ul>
@@ -3435,12 +4381,13 @@ function renderBlockedEngineeringModelReview(preview) {
       ${renderTechnicalDiagnosticDetails(blockers.length > 0 ? blockers : [{ code: codes[0] ?? "model_incomplet" }])}
     </section>
     ${renderRenewableResults(preview)}
+    </div>
   `;
 }
 
 export function renderEngineeringModelReview(preview, options = {}) {
   if (preview.status !== "ready") {
-    return renderBlockedEngineeringModelReview(preview);
+    return renderBlockedEngineeringModelReview(preview, options);
   }
   const dna = preview.buildingDna;
   const workspace = preview.technicalWorkspace;
@@ -3565,7 +4512,7 @@ export function renderEngineeringModelReview(preview, options = {}) {
   return `
     <div class="recommendation-detail-card" data-building-platform-review>
       <div>
-        ${renderProductResultSummary(preview)}
+        ${renderProfessionalWorkspace(preview, { formData: options.formData ?? null })}
         ${p3fTechnicalWorkspaceHtml}
       </div>
     </div>
@@ -3657,10 +4604,12 @@ export function generateBuildingPlatformTechnicalReport(root = document, options
   if (!form || !previewTarget) {
     return { generated: false, reason: "missing_form_or_preview_target" };
   }
-  const answers = mapWizardAnswersToAssistedAnswers(new FormData(form));
+  const formData = new FormData(form);
+  const answers = mapWizardAnswersToAssistedAnswers(formData);
   const preview = buildWizardEngineeringPreview(answers);
   previewTarget.innerHTML = renderEngineeringModelReview(preview, {
-    openReport: options.openReport === true
+    openReport: options.openReport === true,
+    formData
   });
   if (preview.status === "ready") {
     markBuildingPlatformResultsFresh(root, preview);
@@ -3848,7 +4797,7 @@ export function renderLoadedBuildingPlatformAnalysis(record) {
           </article>
         </div>
         <section class="technical-workspace-panel" id="p2b-report">
-          <h4>Raport tehnic salvat</h4>
+          <h4>Anexa tehnica salvata</h4>
           <div class="technical-report-success" data-technical-report-success>
             Raport tehnic incarcat din analiza persistenta. Recalculeaza pentru a crea o versiune noua.
           </div>
@@ -3876,7 +4825,7 @@ export async function saveBuildingPlatformChapter2Analysis(root = document, opti
   const answers = mapWizardAnswersToAssistedAnswers(formData);
   const preview = buildWizardEngineeringPreview(answers);
   if (previewTarget) {
-    previewTarget.innerHTML = renderEngineeringModelReview(preview, { openReport: true });
+    previewTarget.innerHTML = renderEngineeringModelReview(preview, { openReport: true, formData });
   }
   if (preview.status === "ready") {
     markBuildingPlatformResultsFresh(root, preview);
@@ -3952,7 +4901,7 @@ export async function saveBuildingPlatformDraft(root = document, options = {}) {
   const answers = mapWizardAnswersToAssistedAnswers(formData);
   const preview = buildWizardEngineeringPreview(answers);
   if (previewTarget) {
-    previewTarget.innerHTML = renderEngineeringModelReview(preview, { openReport: false });
+    previewTarget.innerHTML = renderEngineeringModelReview(preview, { openReport: false, formData });
   }
   if (preview.status === "ready") {
     markBuildingPlatformResultsFresh(root, preview);
@@ -4234,12 +5183,18 @@ if (typeof window !== "undefined") {
   window.LaCurentBuildingPlatformWizard = {
     BUILDING_PLATFORM_WIZARD_STEPS,
     BUILDING_PLATFORM_PRODUCT_JOURNEY,
+    P10_WORKSPACE_NAVIGATION,
+    P10_SUPPORTED_INTERVENTION_TYPES,
+    P10_CPE_FIELD_MAPPING,
     ASSISTED_WIZARD_DEMO_FIXTURE,
     analyzeBuildingPlatformProductJourney,
     applyAssistedWizardDemoFixture,
     attachBuildingPlatformWizard,
     applyBuildingDnaToWizardForm,
     buildWizardEngineeringPreview,
+    buildProfessionalWorkspaceModel,
+    buildScenarioPreviewFromFormData,
+    buildCpeDocumentModel,
     buildingDnaToWizardValues,
     clearAssistedWizardDemoFixture,
     constructionPeriodFromYear,
@@ -4254,6 +5209,7 @@ if (typeof window !== "undefined") {
     buildBuildingPlatformSavePayload,
     mapWizardAnswersToAssistedAnswers,
     renderEngineeringModelReview,
+    renderProfessionalWorkspace,
     renderLoadedBuildingPlatformAnalysis,
     loadBuildingPlatformChapter2Analysis,
     loadBuildingPlatformV1Project,
