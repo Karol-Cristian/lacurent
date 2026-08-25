@@ -47,6 +47,21 @@ export {
 } from "./buildingChapter3InstallationsAdapter.mjs";
 
 export {
+  ENGINE_INPUT_SCHEMA_VERSION,
+  ENGINE_OUTPUT_SCHEMA_VERSION,
+  assertNoUiStateInEngineInput,
+  buildPhysicsEngineInputFromBuildingDna,
+  normalizePhysicsEngineOutputContract
+} from "../physics-engine/engineContract.mjs";
+
+export {
+  PHYSICS_ENGINE_MODES,
+  calculateWithPhysicsEngineMode,
+  compareEngineOutputs,
+  normalizePhysicsEngineMode
+} from "../physics-engine/pythonEngineAdapter.mjs";
+
+export {
   resolveBuildingRenovationInterventions
 } from "./buildingRenovationInterventions.mjs";
 
