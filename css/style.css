@@ -4707,7 +4707,7 @@ margin:8px 0 0;
 color:#64748b;
 }
 
-.demo-action-row{
+.action-row{
 justify-content:flex-start;
 gap:10px;
 }
@@ -5913,7 +5913,7 @@ font-size:11px;
 min-height:32px;
 }
 
-.demo-action-row{
+.action-row{
 align-items:stretch;
 flex-direction:column;
 }
