@@ -1,0 +1,10 @@
+[project]
+name = "lacurent-python-engine"
+version = "0.1.0"
+description = "Independent Python physics engine contract and implementation for LaCurent P11"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.lacurent]
+engine_contract_schema = "lacurent_engine_input_v1"
+engine_result_schema = "lacurent_engine_output_v1"
