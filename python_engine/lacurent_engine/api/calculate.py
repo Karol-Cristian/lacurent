@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .schemas import ENGINE_OUTPUT_SCHEMA_VERSION, build_engine_input_from_p3v_fixture, validate_engine_input
+from .simple_contract import SIMPLE_INPUT_SCHEMA_VERSION, SimpleContractError, build_engine_input_from_simple_contract, simple_contract_diagnostic
 from ..chapter2.building_dna import calculate_chapter2_from_building_dna
 from .._p3v_kernel import import_calculator
 from ..chapter2.envelope import normalize_chapter2_reference
@@ -145,6 +146,11 @@ def _blocked_output(engine_input: dict[str, Any] | None, diagnostics: list[dict]
 
 def calculate(engine_input: dict[str, Any]) -> dict[str, Any]:
     start = time.perf_counter()
+    if isinstance(engine_input, dict) and engine_input.get("schemaVersion") == SIMPLE_INPUT_SCHEMA_VERSION:
+        try:
+            engine_input = build_engine_input_from_simple_contract(engine_input)
+        except SimpleContractError as error:
+            return _blocked_output(engine_input, [simple_contract_diagnostic(error)])
     diagnostics = validate_engine_input(engine_input)
     if diagnostics:
         return _blocked_output(engine_input, diagnostics)
@@ -172,7 +178,12 @@ def calculate(engine_input: dict[str, Any]) -> dict[str, Any]:
 def load_engine_input(path: str | Path) -> dict[str, Any] | list[dict[str, Any]]:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if isinstance(data, list):
-        return [build_engine_input_from_p3v_fixture(item) if isinstance(item, dict) and (item.get("schemaVersion") == "p3v.fixture.v1" or "fixture_id" in item) else item for item in data]
+        return [
+            build_engine_input_from_p3v_fixture(item)
+            if isinstance(item, dict) and (item.get("schemaVersion") == "p3v.fixture.v1" or "fixture_id" in item)
+            else item
+            for item in data
+        ]
     if data.get("schemaVersion") == "p3v.fixture.v1" or "fixture_id" in data:
         return build_engine_input_from_p3v_fixture(data)
     return data

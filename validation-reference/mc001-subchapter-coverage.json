@@ -41,12 +41,12 @@
       "implementedEquations": 216,
       "implementedTablesLookups": 37,
       "implementedBranches": 216,
-      "explicitInputBoundaries": 214,
-      "runtimeIntegratedEntryCount": 7,
-      "runtimeIntegratedRelations": 7,
+      "explicitInputBoundaries": 1,
+      "runtimeIntegratedEntryCount": 175,
+      "runtimeIntegratedRelations": 175,
       "fixtureCoveredRelations": 216,
-      "notebookTraceableEntryCount": 7,
-      "notebookVisibleRelations": 7,
+      "notebookTraceableEntryCount": 175,
+      "notebookVisibleRelations": 175,
       "blockerEntryCount": 1,
       "genuinelyExternallyBlockedRelations": 1,
       "genuinelyUnavailableUnreadableRelations": 0,
@@ -65,7 +65,21 @@
           "requiredInputContract": "Licensed/reviewed SR EN 15193-1 content, or explicit professional subspace LENI/lighting-energy values.",
           "whyDeterministicImplementationCannotProceed": "MC001 provides the enclosing LENI aggregation, but delegates the subspace calculation to SR EN 15193-1; reproducing unavailable standard tables would be unsupported."
         }
-      ]
+      ],
+      "p8bClassificationCounts": {
+        "NUMERICALLY_IMPLEMENTED": 211,
+        "PROCEDURALLY_IMPLEMENTED": 4,
+        "EXPLICIT_INPUT_BOUNDARY": 1,
+        "EXTERNAL_STANDARD_BLOCKED": 1,
+        "NOT_APPLICABLE": 0
+      },
+      "numericallyImplementedRelations": 211,
+      "procedurallyImplementedRelations": 4,
+      "explicitInputBoundaryRelations": 1,
+      "externalStandardBlockedRelations": 1,
+      "notApplicableRelations": 0,
+      "numericalImplementationPercentage": 97.2,
+      "productionCompleteSupportedScopePercentage": 99.1
     },
     "climateCoverage": {
       "coverageId": "romanian_climate_zone_coverage_p5a_v1",
@@ -673,7 +687,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_WORKFLOW",
       "identifiedGaps": [],
@@ -713,7 +727,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_WORKFLOW",
       "identifiedGaps": [],
@@ -759,7 +773,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -803,7 +817,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -846,7 +860,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -886,7 +900,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -962,7 +976,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -1037,7 +1051,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -1112,7 +1126,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -1187,7 +1201,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -1262,7 +1276,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -1337,7 +1351,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -1411,7 +1425,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
@@ -1484,7 +1498,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
@@ -1557,7 +1571,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
@@ -1630,7 +1644,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
@@ -1704,7 +1718,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_VALIDATION",
       "identifiedGaps": [],
@@ -1744,7 +1758,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -1802,7 +1816,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -1855,7 +1869,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -1899,7 +1913,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "EXTERNAL_NORMATIVE_DEPENDENCY",
       "identifiedGaps": [],
@@ -1940,7 +1954,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -1993,7 +2007,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -2033,7 +2047,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -2073,7 +2087,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -2113,7 +2127,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_WORKFLOW",
       "identifiedGaps": [],
@@ -2152,7 +2166,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_WORKFLOW",
       "identifiedGaps": [],
@@ -2191,7 +2205,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_WORKFLOW",
       "identifiedGaps": [],
@@ -2231,7 +2245,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -2300,7 +2314,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_LOOKUP",
       "identifiedGaps": [],
@@ -2340,7 +2354,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -2408,7 +2422,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -2490,7 +2504,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -2570,7 +2584,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -2650,7 +2664,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -2731,7 +2745,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -2811,7 +2825,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -2920,7 +2934,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3019,7 +3033,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3119,7 +3133,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -3219,7 +3233,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3259,7 +3273,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3328,7 +3342,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3396,7 +3410,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3461,7 +3475,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3526,7 +3540,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3595,7 +3609,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_INPUT",
       "identifiedGaps": [],
@@ -3664,7 +3678,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "REPRESENTED_AS_OUTPUT",
       "identifiedGaps": [],
@@ -3733,7 +3747,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "DOCUMENTED_NOT_APPLICABLE",
       "identifiedGaps": [
@@ -3800,7 +3814,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3865,7 +3879,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -3930,7 +3944,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -4003,7 +4017,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -4082,7 +4096,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "IMPLEMENTED_CALCULATION",
       "identifiedGaps": [],
@@ -4151,7 +4165,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "DOCUMENTED_NOT_APPLICABLE",
       "identifiedGaps": [],
@@ -4191,7 +4205,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "DOCUMENTED_NOT_APPLICABLE",
       "identifiedGaps": [],
@@ -4231,7 +4245,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "DOCUMENTED_NOT_APPLICABLE",
       "identifiedGaps": [],
@@ -4271,7 +4285,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "DOCUMENTED_NOT_APPLICABLE",
       "identifiedGaps": [],
@@ -4311,7 +4325,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "DOCUMENTED_NOT_APPLICABLE",
       "identifiedGaps": [],
@@ -4351,7 +4365,7 @@
       "testCoverage": [
         "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
         "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-        "tests/building-platform-wizard-ui.mjs"
+        "tests/p12a-product-rebuild.mjs"
       ],
       "currentStatus": "DOCUMENTED_NOT_APPLICABLE",
       "identifiedGaps": [],

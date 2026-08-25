@@ -43,7 +43,7 @@ const commonChapter2Files = Object.freeze([
 const commonChapter2Tests = Object.freeze([
   "src/physics-engine/tests/mc001Chapter2UsefulDemandCalculation.test.mjs",
   "src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs",
-  "tests/building-platform-wizard-ui.mjs"
+  "tests/p12a-product-rebuild.mjs"
 ]);
 
 const commonChapter3Files = Object.freeze([

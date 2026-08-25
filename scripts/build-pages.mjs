@@ -7,15 +7,13 @@ const outputDir = path.join(repoRoot, "dist", "pages");
 
 const staticEntries = Object.freeze([
   "_headers",
-  "admin",
   "components",
   "css",
   "data",
   "images",
   "index.html",
   "js",
-  "pages",
-  "src"
+  "pages"
 ]);
 
 function assertInsideRepo(target) {

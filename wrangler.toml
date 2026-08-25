@@ -4,8 +4,11 @@ main = "workers/save-house.js"
 
 compatibility_date = "2026-05-19"
 
+[build]
+command = "npm run build"
+
 [assets]
-directory = "."
+directory = "dist/pages"
 
 [[d1_databases]]
 binding = "DB"

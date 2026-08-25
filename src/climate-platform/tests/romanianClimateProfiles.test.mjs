@@ -384,9 +384,9 @@ test("P5A certified climate-data import rejects incomplete hidden or unsupported
   );
 });
 
-test("P3C climate inventory classifies production demo test and validation monthly sources", () => {
+test("P3C climate inventory classifies synthetic and validation monthly sources", () => {
   assert.equal(P3C_CLIMATE_MONTHLY_INVENTORY_STATUS, "P3C_CLIMATE_MONTHLY_INVENTORY_V1");
-  assert.equal(P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.length >= 5, true);
+  assert.equal(P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.length >= 4, true);
 
   for (const entry of P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY) {
     assert.equal(typeof entry.inventoryId, "string", entry.inventoryId);
@@ -408,6 +408,14 @@ test("P3C climate inventory classifies production demo test and validation month
   assert.equal(
     P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.some((entry) => entry.inventoryId === "production.synthetic_demo_climate_profile"),
     true
+  );
+  const syntheticProfile = P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.find(
+    (entry) => entry.inventoryId === "production.synthetic_demo_climate_profile"
+  );
+  assert.equal(syntheticProfile.canReachProduction, false);
+  assert.equal(
+    P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY.some((entry) => entry.inventoryId === "ui.demo_prefill_answers"),
+    false
   );
 });
 

@@ -27,7 +27,7 @@ const INTEGRATED_TEST = "src/physics-engine/tests/mc001Chapter3IntegratedRuntime
 const DHW_USEFUL_TEST = "src/physics-engine/tests/dhwUsefulDemand.test.mjs";
 const DHW_DISTRIBUTION_TEST = "src/physics-engine/tests/dhwDistributionLosses.test.mjs";
 const BUILDING_PLATFORM_TEST = "src/building-platform/tests/buildingChapter3InstallationsProduct.test.mjs";
-const WIZARD_UI_TEST = "tests/building-platform-wizard-ui.mjs";
+const P12A_PRODUCT_TEST = "tests/p12a-product-rebuild.mjs";
 const P3V_HEATING_TEST = "validation-reference/python-mc001/tests/test_chapter3_heating.py";
 const P3V_VENTILATION_TEST = "validation-reference/python-mc001/tests/test_chapter3_ventilation.py";
 const P3V_COOLING_TEST = "validation-reference/python-mc001/tests/test_chapter3_cooling.py";
@@ -306,7 +306,7 @@ const heatingRelations = implementedRange(relationRange(1, 39), {
   implementedFunction: relation => p8iHeatingImplementedFunctions[relation] ?? HEATING_SYSTEMS,
   tests: relation =>
     p8iHeatingNumericalRelations.has(relation)
-      ? [HEATING_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_HEATING_TEST]
+      ? [HEATING_TEST, BUILDING_PLATFORM_TEST, P12A_PRODUCT_TEST, P3V_HEATING_TEST]
       : [HEATING_TEST],
   validationFixture: relation =>
     p8gSharedGeneratorNumericalRelations.has(relation)
@@ -669,7 +669,7 @@ const ahuRelations = implementedRange(relationRange(40, 93), {
   implementedFunction: relation => p8hVentilationImplementedFunctions[relation] ?? SYSTEM_ENERGY,
   tests: relation =>
     p8hVentilationNumericalRelations.has(relation)
-      ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_VENTILATION_TEST]
+      ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, P12A_PRODUCT_TEST, P3V_VENTILATION_TEST]
       : [SYSTEM_ENERGY_TEST],
   validationFixture: relation =>
     p8hVentilationNumericalRelations.has(relation)
@@ -793,7 +793,7 @@ const coolingStorageImplemented = implementedRange(
     },
     tests: relation =>
       p8hCoolingStorageNumericalRelations.has(relation)
-        ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_COOLING_TEST]
+        ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, P12A_PRODUCT_TEST, P3V_COOLING_TEST]
         : [SYSTEM_ENERGY_TEST],
     validationFixture: relation =>
       p8hCoolingStorageNumericalRelations.has(relation)
@@ -883,7 +883,7 @@ const coolingDistributionRelations = implementedRange(relationRange(136, 155), {
     p8iCoolingDistributionImplementedFunctions[relation] ?? SYSTEM_ENERGY,
   tests: relation =>
     p8iCoolingDistributionNumericalRelations.has(relation)
-      ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_COOLING_TEST]
+      ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, P12A_PRODUCT_TEST, P3V_COOLING_TEST]
       : [SYSTEM_ENERGY_TEST],
   validationFixture: relation =>
     ["3.140", "3.142", "3.143", "3.148", "3.153"].includes(relation)
@@ -958,7 +958,7 @@ const coolingRejectionRelations = implementedRange(relationRange(156, 182), {
     p8iCoolingRejectionImplementedFunctions[relation] ?? SYSTEM_ENERGY,
   tests: relation =>
     p8iCoolingRejectionNumericalRelations.has(relation)
-      ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, WIZARD_UI_TEST, P3V_COOLING_TEST]
+      ? [SYSTEM_ENERGY_TEST, BUILDING_PLATFORM_TEST, P12A_PRODUCT_TEST, P3V_COOLING_TEST]
       : [SYSTEM_ENERGY_TEST],
   validationFixture: relation =>
     ["3.165", "3.170", "3.174", "3.182"].includes(relation)

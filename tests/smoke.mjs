@@ -1,38 +1,25 @@
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { spawnSync } from "node:child_process";
 
+const STATIC_ROOT = path.resolve("dist/pages");
 const LOCAL_BASE = process.env.SMOKE_LOCAL_BASE || "http://127.0.0.1:4173";
-const API_BASE = process.env.SMOKE_API_BASE || "https://lacurent-dev.lemnarukarol.workers.dev";
-const RUN_API_SMOKE = process.env.RUN_API_SMOKE === "1";
+const PORT = Number(new URL(LOCAL_BASE).port || 4173);
 
-// The home route now exposes the engineering project hub; the former visible
-// "Dashboard" label was replaced during the refocused production flow.
 const pages = [
-  { path: "/index.html", includes: ["LA CURENT", "Proiectele cladirii", "pages/analiza-casa.html"] },
+  { path: "/index.html", includes: ["Workspace profesional", "pages/analiza-casa.html"] },
   { path: "/pages/profil.html", includes: ["Autentificare", "registerForm"] },
-  { path: "/pages/analiza-casa.html", includes: ["Workspace auditor energetic", "Cladire si clima", "Instalatii", "Documents"] },
-  { path: "/pages/raport-energie.html", includes: ["Raport energetic LaCurent", "REZUMAT EXECUTIV"] },
-  { path: "/pages/raport-v1.html", includes: ["Dosar de decizie energetica", "VERDICT PRINCIPAL", "SCENARII ANALIZATE"] },
-  { path: "/pages/algoritmi.html", includes: ["Algoritmi", "BENCHMARK LIVE"] },
-  { path: "/pages/recomandari.html", includes: ["Facturi", "ISTORIC FACTURI"] },
-  { path: "/pages/furnizori.html", includes: ["Lucrari potrivite", "Lead-uri calificate"] },
-  { path: "/pages/energy-data-hub.html", includes: ["Model tehnic energetic", "R_layer = d / lambda", "Physics Engine v0.8"] },
-  { path: "/pages/admin.html", includes: ["Admin", "MODERARE OFERTE"] }
+  { path: "/pages/reset-password.html", includes: ["Seteaza o parola noua", "resetForm"] },
+  { path: "/pages/analiza-casa.html", includes: ["Workspace auditor", "Location", "Systems", "Documents"] }
 ];
 
 const syntaxFiles = [
   "workers/save-house.js",
-  "workers/energy-model.js",
   "js/auth.js",
-  "js/guest-session.js",
-  "js/analiza-casa.js",
-  "js/building-platform-wizard.mjs",
-  "js/admin.js",
-  "js/energy-report.js",
-  "js/report-v1-demo-data.js",
-  "js/report-v1.js",
-  "js/algoritmi.js",
-  "js/furnizori.js",
-  "js/recomandari.js"
+  "js/lacurent-contract.mjs",
+  "js/lacurent-workspace.mjs"
 ];
 
 function pass(message) {
@@ -41,22 +28,6 @@ function pass(message) {
 
 function fail(message) {
   throw new Error(message);
-}
-
-async function post(path, body, token = null) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
-    body: JSON.stringify(body || {})
-  });
-  const json = await response.json().catch(() => ({}));
-  if (!response.ok || !json.success) {
-    fail(`${path} failed: ${json.error || response.status}`);
-  }
-  return json;
 }
 
 async function checkPages() {
@@ -71,6 +42,36 @@ async function checkPages() {
   }
 }
 
+function contentType(filePath) {
+  if (filePath.endsWith(".html")) return "text/html; charset=utf-8";
+  if (filePath.endsWith(".css")) return "text/css; charset=utf-8";
+  if (filePath.endsWith(".js") || filePath.endsWith(".mjs")) return "text/javascript; charset=utf-8";
+  if (filePath.endsWith(".png")) return "image/png";
+  return "application/octet-stream";
+}
+
+function createStaticServer() {
+  return createServer(async (request, response) => {
+    try {
+      const url = new URL(request.url, LOCAL_BASE);
+      const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
+      const filePath = path.resolve(STATIC_ROOT, `.${requestedPath}`);
+      const relative = path.relative(STATIC_ROOT, filePath);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) {
+        response.writeHead(403);
+        response.end("Forbidden");
+        return;
+      }
+      const body = await readFile(filePath);
+      response.writeHead(200, { "content-type": contentType(filePath) });
+      response.end(body);
+    } catch {
+      response.writeHead(404);
+      response.end("Not found");
+    }
+  });
+}
+
 function checkSyntax() {
   for (const file of syntaxFiles) {
     const result = spawnSync("node", ["--check", file], { encoding: "utf8" });
@@ -79,48 +80,22 @@ function checkSyntax() {
   }
 }
 
-async function checkApiRoleIsolation() {
-  const id = Date.now();
-  const email = `smoke-${id}@lacurent.test`;
-  const password = `Smoke-${id}!`;
-
-  const registered = await post("/api/register", {
-    email,
-    password,
-    name: "Smoke Residential",
-    role: "residential"
-  });
-
-  const token = registered.token;
-  const before = await post("/api/me", {}, token);
-  if (before.user.role !== "residential") fail(`expected residential before provider, got ${before.user.role}`);
-
-  await post("/api/provider/register", {
-    company_name: "Smoke Provider SRL",
-    provider_type: "hvac",
-    service_area: "Cluj",
-    certifications: "test"
-  }, token);
-
-  const after = await post("/api/me", {}, token);
-  if (after.user.role !== "residential") {
-    fail(`provider registration changed role to ${after.user.role}`);
-  }
-  if (after.user.account_type !== "provider") {
-    fail(`provider registration did not mark account_type provider, got ${after.user.account_type}`);
-  }
-  pass("provider registration keeps residential role");
-}
-
 async function main() {
+  if (!existsSync(STATIC_ROOT)) {
+    fail("dist/pages is missing; run npm.cmd run build before smoke");
+  }
   console.log(`Smoke base: ${LOCAL_BASE}`);
   checkSyntax();
-  await checkPages();
-  if (RUN_API_SMOKE) {
-    console.log(`API smoke base: ${API_BASE}`);
-    await checkApiRoleIsolation();
-  } else {
-    console.log("SKIP API smoke. Run with RUN_API_SMOKE=1 to test auth/provider flow.");
+  const server = process.env.SMOKE_LOCAL_BASE ? null : createStaticServer();
+  if (server) {
+    await new Promise((resolve) => server.listen(PORT, "127.0.0.1", resolve));
+  }
+  try {
+    await checkPages();
+  } finally {
+    if (server) {
+      await new Promise((resolve) => server.close(resolve));
+    }
   }
 }
 
