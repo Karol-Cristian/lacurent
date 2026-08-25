@@ -4,588 +4,302 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LA CURENT | Workspace auditor energetic</title>
+<title>LA CURENT | Workspace auditor</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="../js/auth.js" defer></script>
-<script src="../js/guest-session.js" defer></script>
-<script src="../js/analiza-casa.js" defer></script>
-<script type="module" src="../js/building-platform-wizard.mjs"></script>
+<script type="module" src="../js/lacurent-workspace.mjs"></script>
 </head>
 
-<body>
-<button id="menuBtn" class="menu-btn">&#9776;</button>
+<body class="lacurent-app">
+<button id="menuBtn" class="menu-btn" type="button" aria-label="Deschide meniul">Menu</button>
 <div id="sidebar"></div>
 
-<div class="app-content">
-<header>
-<div class="hero-top">
-<div>
-<div class="small-label">MODEL TEHNIC VALIDAT</div>
-<h1>Workspace auditor energetic</h1>
-<p>Model de cladire, baseline, scenarii retrofit, rezultate si documente peste motoarele validate LaCurent.</p>
-</div>
-<div class="system-state"><span class="green-dot"></span>Building DNA + runtime validat</div>
-</div>
-</header>
+<main class="workspace-shell" data-lacurent-workspace>
+  <aside class="workspace-rail" aria-label="Navigatie proiect">
+    <div class="rail-brand">
+      <img src="../images/favicon.png" alt="">
+      <div>
+        <strong>LA CURENT</strong>
+        <span>Workspace auditor</span>
+      </div>
+    </div>
+    <nav class="workspace-nav" id="workspaceNav">
+      <button type="button" data-section-target="location" class="active">Location</button>
+      <button type="button" data-section-target="building">Building</button>
+      <button type="button" data-section-target="envelope">Envelope</button>
+      <button type="button" data-section-target="systems">Systems</button>
+      <button type="button" data-section-target="scenarios">Scenarios</button>
+      <button type="button" data-section-target="results">Results</button>
+      <button type="button" data-section-target="documents">Documents</button>
+    </nav>
+    <section class="readiness-card" aria-live="polite">
+      <span class="eyebrow">Model readiness</span>
+      <strong id="readinessPercent">0%</strong>
+      <p id="readinessSummary">Completeaza datele fizice principale.</p>
+    </section>
+  </aside>
 
-<main class="dashboard">
-<section class="analysis-page p2c-technical-analysis p3f-engineering-workspace p10-professional-workspace" data-workspace-mode="professional-auditor">
-<div id="existingHomesPanel" class="dashboard-band" hidden>
-<div class="section-heading">
-<span class="small-label">MODELE SALVATE</span>
-<h2>Modele tehnice existente.</h2>
-</div>
-<p>Modelele vechi pot fi inspectate separat. Pentru fluxul validat curent, porneste un model termic nou.</p>
-<div id="existingHomesList" class="technical-saved-model-list"></div>
-<div class="hero-buttons">
-<a class="primary-btn" href="analiza-casa.html">Model termic nou</a>
-</div>
-</div>
+  <section class="workspace-main">
+    <header class="workspace-hero">
+      <div>
+        <span class="eyebrow">Calcul MC001 prin Python</span>
+        <h1>Model energetic profesional, fara interfata veche.</h1>
+        <p>Descrii cladirea prin obiecte fizice. LaCurent construieste contractul simplu de calcul si trimite analiza catre serviciul Python MC001, fara JS physics in produs.</p>
+      </div>
+      <img src="../images/HW_Prototype.png" alt="Ilustratie arhitecturala LaCurent">
+    </header>
 
-<div id="authRequired" class="auth-panel analysis-auth-required standard-auth-card" hidden>
-<div class="small-label">CONT OPTIONAL</div>
-<h2>Poti genera raportul fara cont.</h2>
-<p>Modelul termic ruleaza local in pagina peste Building DNA si motoarele validate Chapter 2/3 cand instalatiile sunt configurate. Contul ramane optional pentru salvare ulterioara.</p>
-<a class="primary-btn" href="profil.html">Creeaza cont dupa raport</a>
-<div class="auth-tabs">
-<button type="button" class="auth-tab active" data-auth-tab="login">Autentificare</button>
-<button type="button" class="auth-tab" data-auth-tab="register">Cont nou</button>
-</div>
-<form id="analysisLoginForm" class="auth-form active">
-<label>Email</label>
-<input name="email" type="email" autocomplete="email" required>
-<label>Parola</label>
-<input name="password" type="password" autocomplete="current-password" required>
-<button class="primary-btn" type="submit">Autentificare</button>
-<a href="#" id="analysisForgotLink">Am uitat parola</a>
-<p class="form-message" id="analysisLoginMessage"></p>
-</form>
-<form id="analysisRegisterForm" class="auth-form">
-<label>Nume contact</label>
-<input name="name" autocomplete="name" required>
-<label>Email</label>
-<input name="email" type="email" autocomplete="email" required>
-<label>Tip cont</label>
-<select name="role" required>
-<option value="residential">Locuinte</option>
-<option value="auditor">Auditor / consultant</option>
-</select>
-<label>Parola</label>
-<input name="password" type="password" autocomplete="new-password" minlength="8" required>
-<button class="primary-btn" type="submit">Creeaza cont</button>
-<p class="form-message" id="analysisRegisterMessage"></p>
-</form>
-<form id="analysisForgotForm" class="auth-form">
-<label>Email</label>
-<input name="email" type="email" autocomplete="email" required>
-<button class="primary-btn" type="submit">Genereaza link</button>
-<p class="form-message" id="analysisForgotMessage"></p>
-<p class="form-message" id="analysisResetLinkMessage"></p>
-</form>
-</div>
+    <form id="workspaceForm" class="workspace-form" novalidate>
+      <section class="workspace-section active" id="section-location" data-section="location">
+        <div class="section-title">
+          <span class="eyebrow">Location</span>
+          <h2>Unde este cladirea?</h2>
+          <p>Alegerea localitatii identifica sursa climatica. Profilurile lunare normative nu sunt inventate de interfata.</p>
+        </div>
+        <div class="form-grid two">
+          <label>
+            <span>Nume proiect</span>
+            <input name="project.name" placeholder="Ex. Casa Popescu" data-category="USER_FACT" autocomplete="off">
+          </label>
+          <label>
+            <span>Localitate</span>
+            <select name="location.locality" data-category="USER_FACT">
+              <option value="">Alege localitatea</option>
+              <option value="Bucuresti">Bucuresti</option>
+              <option value="Cluj-Napoca">Cluj-Napoca</option>
+              <option value="Iasi">Iasi</option>
+              <option value="Timisoara">Timisoara</option>
+            </select>
+          </label>
+        </div>
+        <div class="info-strip">
+          <strong>Clima</strong>
+          <span id="climateStatus">Selecteaza localitatea. Motorul Python primeste numai date climatice sursa, nu valori de umplutura.</span>
+        </div>
+      </section>
 
-<section class="dashboard-band p3f-workspace-intro" id="buildingPlatformIntro">
-<div class="section-heading">
-<span class="small-label">SPATIU PROFESIONAL</span>
-<h2>Building model -> baseline -> scenarii retrofit -> rezultate -> documente.</h2>
-</div>
-<p>Auditorul lucreaza cu obiecte fizice ale cladirii. Datele tehnice, sursele si trace-urile MC001 raman disponibile in detalii si in anexa tehnica.</p>
-</section>
+      <section class="workspace-section" id="section-building" data-section="building">
+        <div class="section-title">
+          <span class="eyebrow">Building</span>
+          <h2>Ce cladire modelezi?</h2>
+          <p>Tipul se alege vizual, iar geometria principala deriva aria si volumul incalzit.</p>
+        </div>
+        <fieldset class="building-type-grid">
+          <legend>Tip cladire</legend>
+          <label class="building-type-card">
+            <input type="radio" name="building.type" value="single_family_house" data-category="USER_FACT">
+            <strong>Casa individuala</strong>
+            <span>Locuinta unifamiliala cu anvelopa proprie.</span>
+          </label>
+          <label class="building-type-card">
+            <input type="radio" name="building.type" value="apartment_block" data-category="USER_FACT">
+            <strong>Bloc locuinte</strong>
+            <span>Model pentru cladire rezidentiala colectiva.</span>
+          </label>
+          <label class="building-type-card">
+            <input type="radio" name="building.type" value="office" data-category="USER_FACT">
+            <strong>Birouri</strong>
+            <span>Cladire administrativa cu program dedicat.</span>
+          </label>
+        </fieldset>
+        <div class="form-grid four">
+          <label><span>Lungime (m)</span><input name="building.lengthM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
+          <label><span>Latime (m)</span><input name="building.widthM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
+          <label><span>Niveluri</span><input name="building.levels" type="number" step="1" min="1" data-category="USER_FACT"></label>
+          <label><span>Inaltime nivel (m)</span><input name="building.floorHeightM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
+        </div>
+        <div class="object-grid">
+          <article class="object-card">
+            <span>Amprenta</span>
+            <strong id="derivedFootprint">-</strong>
+            <small>Calculata din lungime x latime.</small>
+          </article>
+          <article class="object-card">
+            <span>Volum incalzit</span>
+            <strong id="derivedVolume">-</strong>
+            <small>Calculat din amprenta, niveluri si inaltime.</small>
+          </article>
+        </div>
+      </section>
 
-<section class="dashboard-band product-journey-panel" id="productJourneyPanel">
-<div class="section-heading">
-<span class="small-label">MODEL READINESS</span>
-<h2>Completeaza modelul fizic; LaCurent traduce datele catre runtime.</h2>
-</div>
-<div class="analysis-mode-toggle" role="group" aria-label="Nivel detalii formular">
-<button type="button" class="secondary-btn" data-analysis-mode-target="assisted" aria-pressed="true">Asistat</button>
-<button type="button" class="secondary-btn" data-analysis-mode-target="expert" aria-pressed="false">Expert</button>
-</div>
-<p class="section-description">Modul asistat pastreaza intrebarile principale. Modul expert afiseaza datele de produs, program si componenta consumate de runtime.</p>
-<div id="productJourneyStatus" aria-live="polite"></div>
-</section>
+      <section class="workspace-section" id="section-envelope" data-section="envelope">
+        <div class="section-title">
+          <span class="eyebrow">Envelope</span>
+          <h2>Anvelopa ca obiecte de cladire</h2>
+          <p>Introduci suprafete si proprietati fizice. Valorile U pot veni din calcul separat, produs sau masuratoare profesionala.</p>
+        </div>
+        <div class="component-list">
+          <article class="component-card">
+            <h3>Perete exterior</h3>
+            <div class="form-grid two">
+              <label><span>Arie bruta (m2)</span><input name="envelope.wallAreaM2" type="number" min="0" step="0.1" data-unit="m2" data-category="USER_FACT"></label>
+              <label><span>U perete (W/m2K)</span><input name="envelope.wallUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
+            </div>
+          </article>
+          <article class="component-card">
+            <h3>Acoperis</h3>
+            <div class="form-grid two">
+              <label><span>Arie (m2)</span><input name="envelope.roofAreaM2" type="number" min="0" step="0.1" data-unit="m2" data-category="USER_FACT"></label>
+              <label><span>U acoperis (W/m2K)</span><input name="envelope.roofUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
+            </div>
+          </article>
+          <article class="component-card">
+            <h3>Placa peste sol</h3>
+            <div class="form-grid two">
+              <label><span>Arie (m2)</span><input name="envelope.floorAreaM2" type="number" min="0" step="0.1" data-unit="m2" data-category="USER_FACT"></label>
+              <label><span>U planseu (W/m2K)</span><input name="envelope.floorUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
+            </div>
+          </article>
+          <article class="component-card">
+            <h3>Ferestre</h3>
+            <div class="form-grid two">
+              <label><span>Arie vitrata (m2)</span><input name="envelope.windowAreaM2" type="number" min="0" step="0.1" data-unit="m2" data-category="USER_FACT"></label>
+              <label><span>U fereastra (W/m2K)</span><input name="envelope.windowUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
+            </div>
+          </article>
+        </div>
+      </section>
 
-<nav class="p10-workspace-nav" aria-label="Navigare workspace auditor">
-<button type="button" data-step-target="4" data-workspace-section="overview">Overview</button>
-<button type="button" data-step-target="0" data-workspace-section="building">Building</button>
-<button type="button" data-step-target="1" data-workspace-section="envelope">Envelope</button>
-<button type="button" data-step-target="3" data-workspace-section="systems">Systems</button>
-<button type="button" data-step-target="6" data-workspace-section="baseline">Baseline</button>
-<button type="button" data-step-target="2" data-workspace-section="scenarios">Scenarios</button>
-<button type="button" data-step-target="6" data-workspace-section="results">Results</button>
-<button type="button" data-step-target="5" data-workspace-section="documents">Documents</button>
-</nav>
+      <section class="workspace-section" id="section-systems" data-section="systems">
+        <div class="section-title">
+          <span class="eyebrow">Systems</span>
+          <h2>Sisteme fizice, nu topologie interna</h2>
+          <p>Generatorul comun pentru incalzire si apa calda este exprimat ca fapt de instalatie. Detaliile tehnice raman valori de produs sau proiect.</p>
+        </div>
+        <div class="component-list">
+          <article class="component-card">
+            <h3>Incalzire</h3>
+            <div class="form-grid three">
+              <label class="checkbox-row"><input name="systems.heating.enabled" type="checkbox" data-category="USER_FACT"> <span>Incalzire instalata</span></label>
+              <label><span>Generator</span><select name="systems.heating.generator" data-category="USER_FACT"><option value="">Alege generatorul</option><option value="condensing_boiler">Centrala in condensare</option><option value="heat_pump">Pompa de caldura</option><option value="district_heat">Termoficare</option></select></label>
+              <label><span>Purtator de energie</span><select name="systems.heating.carrier" data-category="USER_FACT"><option value="">Alege purtatorul</option><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Energie termica urbana</option></select></label>
+            </div>
+            <details class="technical-details">
+              <summary>Technical details</summary>
+              <div class="form-grid four">
+                <label><span>Factor pierderi control</span><input name="systems.heating.controlLossFactor" type="number" step="0.01" min="0" data-category="PRODUCT_DATA"></label>
+                <label><span>Ore operare lunar (h)</span><input name="systems.heating.operationHoursPerMonth" type="number" min="0" step="1" data-unit="h" data-category="USER_FACT"></label>
+                <label><span>Pierdere standby (kW)</span><input name="systems.heating.standbyLossPowerKW" type="number" min="0" step="0.01" data-unit="kW" data-category="PRODUCT_DATA"></label>
+                <label><span>Auxiliar (kW)</span><input name="systems.heating.auxiliaryPowerKW" type="number" min="0" step="0.01" data-unit="kW" data-category="PRODUCT_DATA"></label>
+              </div>
+            </details>
+          </article>
+          <article class="component-card">
+            <h3>Apa calda menajera</h3>
+            <div class="form-grid three">
+              <label class="checkbox-row"><input name="systems.domesticHotWater.enabled" type="checkbox" data-category="USER_FACT"> <span>ACM instalata</span></label>
+              <label class="checkbox-row"><input name="systems.heating.sameGeneratorAsDhw" type="checkbox" data-category="USER_FACT"> <span>Acelasi generator ca incalzirea</span></label>
+              <label><span>Cerere utila lunara (kWh)</span><input name="systems.domesticHotWater.monthlyUsefulDemandKWh" type="number" min="0" step="1" data-unit="kWh" data-category="USER_FACT"></label>
+            </div>
+            <details class="technical-details">
+              <summary>Repartizare generator comun</summary>
+              <div class="form-grid two">
+                <label><span>Incalzire</span><input name="systems.sharedGeneratorAllocation.heating" type="number" min="0" max="1" step="0.01" data-category="USER_FACT"></label>
+                <label><span>ACM</span><input name="systems.sharedGeneratorAllocation.dhw" type="number" min="0" max="1" step="0.01" data-category="USER_FACT"></label>
+              </div>
+            </details>
+          </article>
+          <article class="component-card">
+            <h3>Racire</h3>
+            <div class="form-grid four">
+              <label class="checkbox-row"><input name="systems.cooling.enabled" type="checkbox" data-category="USER_FACT"> <span>Racire instalata</span></label>
+              <label><span>EER</span><input name="systems.cooling.eer" type="number" min="0" step="0.1" data-category="PRODUCT_DATA"></label>
+              <label><span>Putere nominala (kW)</span><input name="systems.cooling.nominalCoolingPowerKW" type="number" min="0" step="0.1" data-unit="kW" data-category="PRODUCT_DATA"></label>
+              <label><span>Ore operare lunar (h)</span><input name="systems.cooling.operationHoursPerMonth" type="number" min="0" step="1" data-unit="h" data-category="USER_FACT"></label>
+            </div>
+          </article>
+          <article class="component-card">
+            <h3>Ventilatie</h3>
+            <label class="checkbox-row"><input name="systems.ventilation.enabled" type="checkbox" data-category="USER_FACT"> <span>Ventilatie mecanica instalata</span></label>
+            <p class="muted">Contractele AHU detaliate raman in engine si in fluxurile tehnice, nu ca cerinta primara a produsului simplu.</p>
+          </article>
+          <article class="component-card">
+            <h3>Fotovoltaic</h3>
+            <div class="form-grid three">
+              <label class="checkbox-row"><input name="renewables.photovoltaic.enabled" type="checkbox" data-category="USER_FACT"> <span>PV instalat</span></label>
+              <label><span>Productie anuala declarata (kWh/an)</span><input name="renewables.photovoltaic.annualProductionKWh" type="number" min="0" step="1" data-unit="kWh/an" data-category="PRODUCT_DATA"></label>
+              <label><span>Putere instalata (kWp)</span><input name="renewables.photovoltaic.installedPowerKWp" type="number" min="0" step="0.1" data-unit="kWp" data-category="PRODUCT_DATA"></label>
+            </div>
+          </article>
+        </div>
+      </section>
 
-<div class="progress-wrap p2c-progress-wrap p3f-simplified-flow-panel" aria-label="Navigare mod simplificat">
-<nav class="technical-flow-nav" aria-label="Sectiuni model termic">
-<button type="button" data-step-target="0">Cladire</button>
-<button type="button" data-step-target="1">Anvelopa</button>
-<button type="button" data-step-target="2">Utilizare</button>
-<button type="button" data-step-target="3">Instalatii</button>
-<button type="button" data-step-target="4">Verificare</button>
-<button type="button" data-step-target="5">Raport</button>
-<button type="button" data-step-target="6">Rezultate</button>
-</nav>
-<div class="progress"><div id="progressBar"></div></div>
-<span id="stepText">Pas 1 din 7</span>
-</div>
+      <section class="workspace-section" id="section-scenarios" data-section="scenarios">
+        <div class="section-title">
+          <span class="eyebrow">Scenarios</span>
+          <h2>Interventii ca delta fata de cladirea curenta</h2>
+          <p>Scenariile pastreaza baza neschimbata si aplica numai modificarile declarate.</p>
+        </div>
+        <div class="scenario-builder">
+          <label><span>Nume scenariu</span><input name="scenario.name" value="Izolare pereti" data-category="USER_FACT"></label>
+          <label><span>U perete propus (W/m2K)</span><input name="scenario.wallUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
+          <button class="secondary-btn" id="addScenarioBtn" type="button">Adauga scenariu</button>
+        </div>
+        <div id="scenarioList" class="scenario-list"></div>
+      </section>
 
-<div class="p3f-engineering-shell">
-<form id="houseForm" class="p3f-input-pane">
-<input type="hidden" name="user_type" value="residential">
-<input type="hidden" name="analysis_purpose" value="technical_chapter_2_3_report">
-<input type="hidden" name="real_consumption_mode" value="not_used_in_chapter_2">
-<input type="hidden" name="analysis_input_mode" value="assisted">
-<input type="hidden" name="climate_profile_id" value="">
+      <section class="workspace-section" id="section-results" data-section="results">
+        <div class="section-title">
+          <span class="eyebrow">Results</span>
+          <h2>Rezultate de produs</h2>
+          <p>Rezultatul vine din contractul Python. Lipsa serviciului sau a datelor necesare este afisata ca limitare, nu ca zero.</p>
+        </div>
+        <div class="action-row">
+          <button class="primary-btn" id="calculateBtn" type="button">Calculeaza cu Python</button>
+          <button class="secondary-btn" id="exportInputBtn" type="button">Descarca input JSON</button>
+          <button class="secondary-btn" id="saveProjectBtn" type="button">Salveaza proiect</button>
+        </div>
+        <div id="blockerPanel" class="blocker-panel" hidden></div>
+        <div id="resultsGrid" class="result-grid"></div>
+      </section>
 
-<div class="step active" data-section-id="building">
-<h2>Cladire si clima</h2>
-<p class="section-description">Datele geometrice alimenteaza Building DNA. Nu introduci coeficienti finali precum Htr, U, gamma, tau sau eta.</p>
-<p class="section-description">Selectia localitatii rezolva profilul climatic disponibil prin Climate Provider. Temperaturile lunare MC001/6-2013 si iradierea solara Mc001/1-2006 A.9.6 sunt afisate numai pentru statiile/localitatile sursa acoperite.</p>
-<div class="dashboard-band compact-technical-note">
-<h3>Amplasare si clima</h3>
-<p class="section-description">Zonele climatice I-V si zona eoliana sunt metadate normative trasabile. Selectia de localitate incarca automat statia climatica si toate seturile lunare implementate pentru acea statie.</p>
-<div class="form-grid">
-<div><label>Judet</label><input name="county" placeholder="Ex: Bucuresti"></div>
-<div><label>Localitate MC001/6-2013</label><select name="locality_id"><option value="">Selecteaza localitatea</option></select><input type="hidden" name="climate_station_id" value=""><small class="field-impact-note">Selectia incarca statia climatica si temperaturile lunare disponibile in registry.</small></div>
-<div><label>Localitate libera / certificat</label><input name="city" placeholder="Ex: Bucuresti"><small class="field-impact-note">Folosit numai cand introduci un set climatic certificat separat.</small></div>
-<div><label>Zona climatica MC001</label><select name="climate_zone"><option value="">Selecteaza zona I-V</option></select></div>
-<div><label>Zona eoliana</label><select name="wind_zone"><option value="">Nu se aplica / neselectat</option><option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option></select></div>
-<div><label>Origine atribuire clima</label><select name="climate_assignment_origin"><option value="manual_zone_selection">Selectie explicita</option><option value="manual_override">Suprascriere profesionala</option><option value="not_selected">Neselectat</option></select></div>
-<div><label>Suprascriere manuala</label><select name="climate_manual_override"><option value="">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Motiv suprascriere</label><input name="climate_override_reason" placeholder="Obligatoriu doar pentru suprascriere"></div>
-<div><label>Dataset zone</label><p class="field-impact-note">mc001_2022_climate_zones_p5a_v1</p></div>
-<div><label>Temperatura exterioara de calcul iarna</label><p class="field-impact-note">Se determina din zona I-V, conform MC001-2022 Figura 2.1.</p></div>
-<div><label>Status dataset lunar</label><p class="field-impact-note">Neselectat: DATASET_UNAVAILABLE. Profil certificat: USER_SUPPLIED_CERTIFIED_DATASET.</p></div>
-<div><label>Calcule eligibile cu zona</label><p class="field-impact-note">Lookup-uri de zona si temperatura de proiectare iarna. Temperaturile lunare pot alimenta transferul lunar; iradierea A.9.6 furnizeaza Hsol pentru planuri verticale/orizontale, iar Qsol necesita Qsky si inputuri solare complete.</p></div>
-<div><label>Variabile climatice lipsa</label><p class="field-impact-note">mapare localitate-zona, date de proiectare racire/ventilare, grade-zile sau iradiere pentru statiile neacoperite de A.9.6.</p></div>
-</div>
-<div class="resolved-climate-profile-panel" data-resolved-climate-profile aria-live="polite">
-<h4>Profil climatic rezolvat</h4>
-<dl class="resolved-climate-profile-grid">
-<div><dt>Localitate</dt><dd data-resolved-climate-field="locality">Neselectata</dd></div>
-<div><dt>Statie climatica</dt><dd data-resolved-climate-field="station">Neselectata</dd></div>
-<div><dt>Zona climatica</dt><dd data-resolved-climate-field="climateZone">Nereprodusa in sursa localitatii</dd></div>
-<div><dt>Zona eoliana</dt><dd data-resolved-climate-field="windZone">Nereprodusa in sursa localitatii</dd></div>
-<div><dt>Versiune dataset</dt><dd data-resolved-climate-field="dataset">Neselectat</dd></div>
-<div><dt>Temperaturi lunare</dt><dd data-resolved-climate-field="temperature">Neselectate</dd></div>
-<div><dt>Iradiere solara A.9.6</dt><dd data-resolved-climate-field="solar">Neselectata</dd></div>
-</dl>
-<p class="field-impact-note" data-resolved-climate-field="note">Selecteaza o localitate pentru rezolvarea automata a profilului climatic.</p>
-</div>
-</div>
-<div class="form-grid">
-<div><label>Nume model</label><input name="display_name" placeholder="Ex: Casa zidarie 1985"></div>
-<div><label>Tip cladire</label><select name="building_type"><option value="">Selecteaza tipul</option><option value="house">Casa individuala</option><option value="apartment">Apartament</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>An constructie</label><input name="construction_year" type="number" placeholder="Ex: 1985"></div>
-<div><label>Suprafata incalzita/utila (m2)</label><input name="useful_area_m2" type="number" step="0.1" placeholder="Ex: 120"><small class="field-impact-note">Seed pentru arii cand acestea nu sunt introduse explicit.</small></div>
-<div><label>Numar niveluri incalzite</label><input name="number_of_floors" type="number" step="1" placeholder="Ex: 1"></div>
-<div><label>Inaltime medie nivel (m)</label><input name="floor_height_m" type="number" step="0.1" placeholder="Ex: 2.6"></div>
-<div><label>Volum incalzit (m3)</label><input name="heated_volume_m3" type="number" step="0.1" placeholder="Optional"><small class="field-impact-note">Cu ACH, genereaza debitul de ventilatie lunar.</small></div>
-<div><label>Orientare principala</label><select name="main_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
-<div><label>Arie pereti exteriori (m2)</label><input name="exterior_wall_area_m2" type="number" step="0.1" placeholder="Optional"></div>
-<div><label>Arie acoperis / planseu superior (m2)</label><input name="roof_area_m2" type="number" step="0.1" placeholder="Optional"></div>
-<div><label>Arie planseu inferior (m2)</label><input name="ground_floor_area_m2" type="number" step="0.1" placeholder="Optional"></div>
-<div><label>Arie planseu spre pod (m2)</label><input name="attic_ceiling_area_m2" type="number" step="0.1" placeholder="Optional"></div>
-<div><label>Arie spre spatiu adiacent (m2)</label><input name="adjacent_wall_area_m2" type="number" step="0.1" placeholder="Optional"></div>
-</div>
-</div>
-
-<div class="step" data-section-id="envelope">
-<h2>Anvelopa</h2>
-<p class="section-description">Alege elementele constructive si conditiile la limita. Valorile fizice rezolvate sunt generate de Building DNA si motorul Chapter 2.</p>
-<div class="form-grid">
-<div><label>Sistem structural</label><select name="structural_system"><option value="">Selecteaza sistemul</option><option value="masonry">Zidarie</option><option value="reinforced_concrete_frames">Cadre beton armat</option><option value="reinforced_concrete_walls">Pereti beton armat</option><option value="precast_concrete_panels">Panouri prefabricate</option><option value="timber">Lemn</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Material pereti exteriori</label><select name="wall_material"><option value="">Selecteaza materialul</option><option value="brick">Caramida</option><option value="bca">BCA / AAC</option><option value="concrete">Beton</option><option value="wood">Lemn</option><option value="stone">Piatra</option><option value="mixed">Mixt</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Tip pod/acoperis</label><select name="roof_type"><option value="">Selecteaza limita superioara</option><option value="unheated_attic">Pod neincalzit</option><option value="heated_attic">Mansarda incalzita</option><option value="flat_roof">Acoperis plat</option><option value="pitched_roof_no_attic">Acoperis fara pod</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Limita inferioara</label><select name="floor_type"><option value="">Selecteaza limita inferioara</option><option value="on_ground">Pe sol</option><option value="over_basement">Peste subsol neincalzit</option><option value="over_unheated_space">Peste spatiu neincalzit</option><option value="over_heated_space">Peste spatiu incalzit</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Tip ferestre</label><select name="window_type"><option value="">Selecteaza tipul</option><option value="single_glazing">Geam simplu</option><option value="old_double_glazing">Termopan vechi</option><option value="modern_double_glazing">PVC / termopan modern</option><option value="triple_glazing">Tripan</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Arie vitrata (m2)</label><input name="window_area_m2" type="number" step="0.1" placeholder="Ex: 8"></div>
-<div><label>Orientare principala ferestre</label><select name="window_orientation"><option value="unknown">Nu stiu</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option><option value="mixed">Mixta</option></select></div>
-<div><label>Arie usi exterioare (m2)</label><input name="door_area_m2" type="number" step="0.1" placeholder="Optional"></div>
-<div><label>Ventilatie</label><select name="ventilation_type"><option value="">Selecteaza ventilatia</option><option value="natural">Naturala</option><option value="mechanical_exhaust">Mecanica simpla</option><option value="mechanical_with_heat_recovery">Cu recuperare de caldura</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Schimburi aer estimate (ACH)</label><input name="ventilation_ach" type="number" step="0.1" placeholder="Ex: 0.6"><small class="field-impact-note">Folosit impreuna cu volumul incalzit pentru debitul de ventilatie.</small></div>
-<div><label>Punti termice explicite</label><select name="thermal_bridge_mode"><option value="platform_supported_explicit">Termeni expliciti validati de platforma</option><option value="none">Nu se introduc acum</option></select></div>
-</div>
-</div>
-
-<div class="step" data-section-id="usage">
-<h2>Utilizare si renovari</h2>
-<p class="section-description">Categoria de utilizare alimenteaza aporturile interne. Interventiile modifica ansamblurile in Building DNA, fara arhetipuri rigide.</p>
-<div class="form-grid">
-<div><label>Utilizare principala</label><select name="building_use_category"><option value="">Selecteaza utilizarea</option><option value="residential_single_family">Locuinta individuala</option><option value="residential_collective">Locuinta colectiva / apartament</option><option value="administrative">Birou / administrativ</option><option value="schools">Educatie</option><option value="hospitals">Sanatate</option></select><small class="field-impact-note">Alimenteaza Tabelul 2.15 pentru aporturi interne, cu provenienta building-use derived.</small></div>
-<div><label>Izolatie pereti exteriori</label><select name="wall_insulation"><option value="unknown">Nu stiu</option><option value="Fara">Fara</option><option value="5cm">EPS / vata aproximativ 5 cm</option><option value="10cm">EPS / vata aproximativ 10 cm</option><option value="15cm">EPS / vata aproximativ 15 cm</option><option value="20cm+">20 cm sau mai mult</option></select></div>
-<div><label>Material izolatie pereti</label><select name="wall_insulation_material"><option value="eps">EPS</option><option value="mineral_wool">Vata minerala</option><option value="xps">XPS</option><option value="unknown">Nu stiu</option></select></div>
-<div><label>Izolatie pod/acoperis</label><select name="roof_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
-<div><label>Izolatie planseu inferior</label><select name="floor_insulated"><option value="unknown">Nu stiu</option><option value="no">Nu</option><option value="partial">Partial</option><option value="yes">Da</option></select></div>
-<div><label>Ferestre inlocuite</label><select name="windows_replaced"><option value="unknown">Deducere din tipul ferestrei</option><option value="yes">Da</option><option value="no">Nu</option></select></div>
-</div>
-<div class="dashboard-band compact-technical-note p10-scenario-editor">
-<h3>Scenariu retrofit</h3>
-<p class="section-description">Scenariul este salvat ca delta peste baseline. Nu reconstruieste manual intreaga cladire.</p>
-<div class="form-grid">
-<div><label>Nume scenariu</label><input name="scenario_name" placeholder="Ex: Pachet A - anvelopa"></div>
-<div><label>Pereti exteriori propus</label><select name="scenario_wall_insulation"><option value="no_change">Fara schimbare</option><option value="5cm">EPS / vata 5 cm</option><option value="10cm">EPS / vata 10 cm</option><option value="15cm">EPS / vata 15 cm</option><option value="20cm+">20 cm sau mai mult</option></select></div>
-<div><label>Acoperis / pod propus</label><select name="scenario_roof_insulated"><option value="no_change">Fara schimbare</option><option value="yes">Izolat</option><option value="partial">Partial</option><option value="no">Neizolat</option></select></div>
-<div><label>Planseu inferior propus</label><select name="scenario_floor_insulated"><option value="no_change">Fara schimbare</option><option value="yes">Izolat</option><option value="partial">Partial</option><option value="no">Neizolat</option></select></div>
-<div><label>Ferestre propuse</label><select name="scenario_window_type"><option value="no_change">Fara schimbare</option><option value="old_double_glazing">Termopan vechi</option><option value="modern_double_glazing">PVC / termopan modern</option><option value="triple_glazing">Tripan</option></select></div>
-<div><label>Generator incalzire propus</label><select name="scenario_heating_generator_type"><option value="no_change">Fara schimbare</option><option value="condensing_boiler">Cazan in condensare</option><option value="direct_electric">Electric direct</option><option value="heat_pump">Pompa de caldura</option><option value="district_heat">Termoficare</option></select></div>
-<div><label>Generator racire propus</label><select name="scenario_cooling_generator_type"><option value="no_change">Fara schimbare</option><option value="split_system">Split / multisplit</option><option value="chiller">Chiller</option><option value="absorption_chiller">Absorbtie</option></select></div>
-<div><label>Productie PV propusa [kWh/an]</label><input name="scenario_pv_annual_production_kwh" type="number" min="0" step="0.01" placeholder="Optional"></div>
-</div>
-</div>
-</div>
-
-<div class="step" data-section-id="installations">
-<h2>Instalatii</h2>
-<p class="section-description">Descrie sistemele fizice. Modul asistat afiseaza alegerile principale, iar modul expert arata datele de produs, program si componenta consumate de runtime.</p>
-<div class="dashboard-band compact-technical-note">
-<h3>Activare Capitolul 3</h3>
-<div class="form-grid">
-<div><label>Calculeaza instalatii Chapter 3</label><select name="chapter3_installations_enabled"><option value="no">Nu - doar Chapter 2</option><option value="yes">Da - descrie sistemele cladirii</option></select></div>
-<div><label>Stare iluminat</label><p class="field-impact-note">Limita LENI este input explicit. Motorul complet SR EN 15193-1 ramane in asteptarea sursei normative complete.</p></div>
-</div>
-</div>
-
-<div class="dashboard-band compact-technical-note">
-<h3>Generator comun incalzire + ACM</h3>
-<div class="form-grid">
-<div><label>Incalzire si ACM folosesc acelasi generator</label><select name="chapter3_shared_generator_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Tip generator comun</label><select name="chapter3_shared_generator_type"><option value="">Alege generatorul</option><option value="condensing_boiler">Cazan in condensare</option><option value="electric_resistance">Rezistenta electrica</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="explicit_other">Alt sistem explicit</option></select></div>
-<div><label>Purtator principal</label><select name="chapter3_shared_generator_energy_carrier"><option value="">Alege purtatorul</option><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
-<div><label>Purtator auxiliari</label><select name="chapter3_shared_generator_auxiliary_carrier"><option value="">Alege purtatorul</option><option value="electricity">Electricitate</option><option value="natural_gas">Gaz natural</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
-<div><label>Factor produs/control generator [-]</label><input name="chapter3_shared_generator_control_loss_factor" type="number" min="0" step="0.001"><small class="field-impact-note">Valoare din produs/proiect; nu se foloseste o eficienta implicita.</small></div>
-<div><label>Ore functionare generator [h/luna]</label><input name="chapter3_shared_generator_operation_hours_month" type="number" min="0" step="0.1"><small class="field-impact-note">Program de functionare declarat pentru calculul generatorului comun.</small></div>
-<div><label>Pierdere declarata generator [kW]</label><input name="chapter3_shared_generator_loss_power_kw" type="number" min="0" step="0.001"></div>
-<div><label>Putere auxiliari generator [kW]</label><input name="chapter3_shared_generator_auxiliary_power_kw" type="number" min="0" step="0.001"></div>
-<div><label>Recuperare pierderi/auxiliari</label><select name="chapter3_shared_generator_recovery_mode"><option value="">Alege recuperarea</option><option value="no_recovery">Nu exista recuperare folosita in model</option><option value="explicit_fractions">Introduc fractii detaliate in Expert</option></select><small class="field-impact-note">Alegerea fara recuperare seteaza zero ca absenta declarata, nu ca valoare implicita.</small></div>
-<div><label>Aport regenerabil integrat</label><select name="chapter3_shared_generator_renewable_heat_mode"><option value="">Alege aportul</option><option value="none">Nu exista aport regenerabil integrat</option><option value="explicit_monthly">Introduc aport lunar in Expert</option></select></div>
-<div><label>Pierderi ACM incluse in generator</label><select name="chapter3_shared_generator_dhw_loss_mode"><option value="">Alege cazul</option><option value="none">Nu exista pierdere ACM inclusa aici</option><option value="explicit_monthly">Introduc pierderea lunara in Expert</option></select></div>
-<div><label>Fractie auxiliari recuperata [-]</label><input name="chapter3_shared_generator_aux_recovered_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Fractie auxiliari recuperabila [-]</label><input name="chapter3_shared_generator_aux_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Fractie pierderi recuperabila [-]</label><input name="chapter3_shared_generator_loss_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Factor recuperare camera generator [-]</label><input name="chapter3_shared_generator_boiler_room_recovery_factor" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Caldura regenerabila generator [kWh/luna]</label><input name="chapter3_shared_generator_renewable_heat_kwh_month" type="number" min="0" step="0.01"></div>
-<div><label>Pierdere ACM stocare/distributie inclusa [kWh/luna]</label><input name="chapter3_shared_generator_dhw_storage_distribution_loss_kwh_month" type="number" min="0" step="0.01"></div>
-<div><label>Alocare raportare incalzire [-]</label><input name="chapter3_shared_generator_heating_allocation_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Alocare raportare ACM [-]</label><input name="chapter3_shared_generator_dhw_allocation_fraction" type="number" min="0" max="1" step="0.01"></div>
-</div>
-</div>
-
-<div class="dashboard-band compact-technical-note">
-<h3>Incalzire</h3>
-<div class="form-grid">
-<div><label>Sistem incalzire activ</label><select name="chapter3_heating_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Generator incalzire</label><select name="chapter3_heating_generator_type"><option value="condensing_boiler">Cazan in condensare</option><option value="electric_resistance">Rezistenta electrica</option><option value="heat_pump">Pompa de caldura</option><option value="district_heating">Termoficare</option><option value="explicit_other">Alt sistem explicit</option></select></div>
-<div><label>Purtator energie</label><select name="chapter3_heating_energy_carrier"><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
-</div>
-<div class="technical-table-wrap">
-<table class="technical-table">
-<thead><tr><th>Etapa</th><th>Pierdere [kWh/luna]</th><th>Auxiliar [kWh/luna]</th><th>Aux. recuperat [-]</th><th>Pierdere recuperata [-]</th></tr></thead>
-<tbody>
-<tr><th>Emisie</th><td><input name="chapter3_heating_emission_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_emission_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_emission_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_emission_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-<tr><th>Distributie</th><td><input name="chapter3_heating_distribution_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_distribution_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_distribution_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_distribution_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-<tr><th>Stocare</th><td><input name="chapter3_heating_storage_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_storage_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_storage_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_storage_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-<tr><th>Generare</th><td><input name="chapter3_heating_generation_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_generation_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_heating_generation_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_heating_generation_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-</tbody>
-</table>
-</div>
-<div class="form-grid">
-<div><label>Mod calcul incalzire</label><select name="chapter3_heating_component_mode"><option value="explicit_monthly">Input tehnic explicit</option><option value="component_contract">Contract componente MC001</option></select></div>
-<div><label>Stocare incalzire</label><select name="chapter3_heating_storage_mode"><option value="explicit_monthly">Valoare explicita</option><option value="no_storage">Fara stocare</option></select></div>
-<div><label>Ore functionare incalzire [h/luna]</label><input name="chapter3_heating_operation_hours_month" type="number" step="0.1"></div>
-<div><label>Crestere temperatura emisie [K]</label><input name="chapter3_heating_emission_temp_increase_k" type="number" step="0.1"></div>
-<div><label>Temperatura interioara incalzire [degC]</label><input name="chapter3_heating_indoor_temp_c" type="number" step="0.1"></div>
-<div><label>Temperatura exterioara combinata [degC]</label><input name="chapter3_heating_combined_outdoor_temp_c" type="number" step="0.1"></div>
-<div><label>Factor componente pompa [-]</label><input name="chapter3_heating_pump_component_factor" type="number" step="0.01"></div>
-<div><label>Pierdere liniara presiune [kPa/m]</label><input name="chapter3_heating_pump_linear_pressure_kpa_m" type="number" step="0.001"></div>
-<div><label>Lungime circuit maxim [m]</label><input name="chapter3_heating_pump_circuit_length_m" type="number" step="0.1"></div>
-<div><label>Cadere presiune suplimentara [kPa]</label><input name="chapter3_heating_pump_additional_pressure_kpa" type="number" step="0.1"></div>
-<div><label>Debit pompa incalzire [m3/h]</label><input name="chapter3_heating_pump_flow_m3h" type="number" step="0.01"></div>
-<div><label>Factor incarcare pompa [-]</label><input name="chapter3_heating_pump_load_factor" type="number" step="0.01"></div>
-<div><label>Corectie pompa [-]</label><input name="chapter3_heating_pump_correction_factor" type="number" step="0.01"></div>
-<div><label>Constanta pompa CP1 [-]</label><input name="chapter3_heating_pump_cp1" type="number" step="0.01"></div>
-<div><label>Constanta pompa CP2 [-]</label><input name="chapter3_heating_pump_cp2" type="number" step="0.01"></div>
-<div><label>EEI pompa incalzire [-]</label><input name="chapter3_heating_pump_eei" type="number" step="0.01"></div>
-<div><label>Fractie auxiliari pompa recuperabila [-]</label><input name="chapter3_heating_pump_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Putere pompa regim redus [kW]</label><input name="chapter3_heating_pump_setback_power_kw" type="number" step="0.001"></div>
-<div><label>Ore regim redus pompa [h/luna]</label><input name="chapter3_heating_pump_setback_hours_month" type="number" step="0.1"></div>
-<div><label>Ore regim accelerat pompa [h/luna]</label><input name="chapter3_heating_pump_boost_hours_month" type="number" step="0.1"></div>
-<div><label>Putere nominala generator [kW]</label><input name="chapter3_heating_generator_nominal_kw" type="number" step="0.1"></div>
-<div><label>Putere intermediara generator [kW]</label><input name="chapter3_heating_generator_intermediate_kw" type="number" step="0.1"></div>
-<div><label>Factor sarcina nominala [-]</label><input name="chapter3_heating_generator_nominal_load_factor" type="number" step="0.01"></div>
-<div><label>Pierdere putere nominala generator [kW]</label><input name="chapter3_heating_generator_loss_power_nominal_kw" type="number" step="0.001"></div>
-<div><label>Pierdere putere intermediara generator [kW]</label><input name="chapter3_heating_generator_loss_power_intermediate_kw" type="number" step="0.001"></div>
-<div><label>Fractie pierdere anvelopa generator [%]</label><input name="chapter3_heating_generator_envelope_loss_fraction_percent" type="number" step="0.01"></div>
-<div><label>Fractie pierdere cos oprit [%]</label><input name="chapter3_heating_generator_chimney_off_loss_fraction_percent" type="number" step="0.01"></div>
-<div><label>Putere livrata generator [kW]</label><input name="chapter3_heating_generator_delivered_power_kw" type="number" step="0.1"></div>
-<div><label>Fractie recuperabila pierdere anvelopa [-]</label><input name="chapter3_heating_generator_envelope_recoverable_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Auxiliar generator standby [kW]</label><input name="chapter3_heating_generator_aux_power_standby_kw" type="number" step="0.001"></div>
-<div><label>Auxiliar generator intermediar [kW]</label><input name="chapter3_heating_generator_aux_power_intermediate_kw" type="number" step="0.001"></div>
-<div><label>Auxiliar generator nominal [kW]</label><input name="chapter3_heating_generator_aux_power_nominal_kw" type="number" step="0.001"></div>
-<div><label>Fractie auxiliari generator recuperata [-]</label><input name="chapter3_heating_generator_aux_recovered_product_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Factor recuperare camera cazan [-]</label><input name="chapter3_heating_generator_boiler_room_recovery_factor" type="number" min="0" max="1" step="0.01"></div>
-</div>
-</div>
-
-<div class="dashboard-band compact-technical-note">
-<h3>Racire</h3>
-<div class="form-grid">
-<div><label>Sistem racire activ</label><select name="chapter3_cooling_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Generator racire</label><select name="chapter3_cooling_generator_type"><option value="split_system">Sistem split</option><option value="chiller">Chiller</option><option value="heat_pump_reversible">Pompa de caldura reversibila</option><option value="district_cooling">Racire centralizata</option><option value="explicit_other">Alt sistem explicit</option></select></div>
-<div><label>Purtator energie</label><select name="chapter3_cooling_energy_carrier"><option value="electricity">Electricitate</option><option value="district_cooling">Racire centralizata</option><option value="explicit_other">Alt purtator explicit</option></select></div>
-<div><label>Mod calcul racire</label><select name="chapter3_cooling_component_mode"><option value="explicit_monthly">Valori lunare explicite</option><option value="component_contract">Contract componente MC001</option></select></div>
-<div><label>Factor pierderi distributie [-]</label><input name="chapter3_cooling_distribution_loss_factor" type="number" min="0" step="0.001"></div>
-<div><label>Factor auxiliari distributie [-]</label><input name="chapter3_cooling_distribution_aux_factor" type="number" min="0" step="0.001"></div>
-<div><label>Necesar AHU racire [kWh/luna]</label><input name="chapter3_cooling_ahu_output_kwh" type="number" min="0" step="0.01"></div>
-<div><label>Stocare racire</label><select name="chapter3_cooling_storage_mode"><option value="no_storage">Fara stocare</option><option value="thermal_storage">Stocare cu pierderi calculate</option><option value="explicit_monthly">Valori explicite (Expert)</option></select></div>
-<div><label>H pierdere stocare [kW/K]</label><input name="chapter3_cooling_storage_loss_h_kw_k" type="number" min="0" step="0.0001"></div>
-<div><label>Temperatura ambient stocare [degC]</label><input name="chapter3_cooling_storage_ambient_c" type="number" step="0.1"></div>
-<div><label>Temperatura stocare [degC]</label><input name="chapter3_cooling_storage_temp_c" type="number" step="0.1"></div>
-<div><label>Ore stocare [h/luna]</label><input name="chapter3_cooling_storage_hours_month" type="number" min="0" step="0.1"></div>
-<div><label>Debit pompa stocare [m3/h]</label><input name="chapter3_cooling_storage_pump_flow_m3h" type="number" min="0" step="0.001"></div>
-<div><label>Putere pompa stocare [kW]</label><input name="chapter3_cooling_storage_pump_power_kw" type="number" min="0" step="0.001"></div>
-<div><label>Tur stocare [degC]</label><input name="chapter3_cooling_storage_supply_c" type="number" step="0.1"></div>
-<div><label>Retur stocare [degC]</label><input name="chapter3_cooling_storage_return_c" type="number" step="0.1"></div>
-<div><label>Caldura specifica mediu [kWh/kgK]</label><input name="chapter3_cooling_storage_medium_cp_kwh_kgk" type="number" min="0" step="0.000001"></div>
-<div><label>Densitate mediu [kg/m3]</label><input name="chapter3_cooling_storage_medium_density_kg_m3" type="number" min="0" step="0.1"></div>
-<div><label>Calcul auxiliare generator</label><select name="chapter3_cooling_generation_mode"><option value="explicit_monthly">Input explicit</option><option value="compression_heat_rejection">Compresie + respingere caldura</option></select></div>
-<div><label>Ore generator racire [h/luna]</label><input name="chapter3_cooling_operation_hours_month" type="number" min="0" step="0.1"></div>
-<div><label>Putere nominala racire [kW]</label><input name="chapter3_cooling_generator_nominal_kw" type="number" min="0" step="0.1"></div>
-<div><label>EER nominal produs [-]</label><input name="chapter3_cooling_generator_nominal_eer" type="number" min="0" step="0.01"></div>
-<div><label>Corectie EER [-]</label><input name="chapter3_cooling_eer_correction_factor" type="number" min="0" step="0.01"></div>
-<div><label>Auxiliar respingere caldura</label><select name="chapter3_cooling_heat_rejection_aux_mode"><option value="air_cooled_zero">Racit cu aer - auxiliar zero</option><option value="specific_electric_demand">Cerere specifica tabel/produs</option></select></div>
-<div><label>Cheie Tabel 3.22</label><select name="chapter3_cooling_heat_rejection_specific_key"><option value="">Produs explicit</option><option value="wet_open_axial_no_extra_silencer">Umed deschis axial</option><option value="wet_closed_axial_no_extra_silencer">Umed inchis axial</option><option value="dry_axial_no_extra_silencer">Uscat axial</option><option value="wet_open_radial_extra_silencer">Umed deschis radial</option><option value="wet_closed_radial_extra_silencer">Umed inchis radial</option></select></div>
-<div><label>Control Tabel 3.23</label><select name="chapter3_cooling_heat_rejection_pl_control_key"><option value="">Produs explicit</option><option value="no_control">Fara control</option><option value="constant_water_temperature">Temperatura apa constanta</option><option value="variable_water_temperature">Temperatura apa variabila</option></select></div>
-<div><label>Tip Tabel 3.23</label><select name="chapter3_cooling_heat_rejection_pl_type_key"><option value="">Produs explicit</option><option value="dry_or_hybrid_dry">Uscat/hibrid uscat</option><option value="wet_or_hybrid_wet">Umed/hibrid umed</option></select></div>
-<div><label>Factor free cooling electric [-]</label><input name="chapter3_cooling_free_cooling_electric_factor" type="number" min="0" step="0.01"></div>
-<div><label>Auxiliar distributie respingere</label><select name="chapter3_cooling_heat_rejection_distribution_mode"><option value="air_cooled_zero">Racit cu aer - zero</option><option value="specific_electric_demand">Cerere specifica produs</option></select></div>
-<div><label>Cerere specifica distributie respingere [kW/kW]</label><input name="chapter3_cooling_heat_rejection_distribution_specific_kw_kw" type="number" min="0" step="0.001"></div>
-<div><label>Putere control generator racire [kW]</label><input name="chapter3_cooling_control_power_kw" type="number" min="0" step="0.001"></div>
-</div>
-<div class="technical-table-wrap">
-<table class="technical-table">
-<thead><tr><th>Etapa</th><th>Pierdere [kWh/luna]</th><th>Auxiliar [kWh/luna]</th><th>Aux. recuperat [-]</th><th>Pierdere recuperata [-]</th></tr></thead>
-<tbody>
-<tr><th>Emisie</th><td><input name="chapter3_cooling_emission_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_emission_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_emission_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_emission_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-<tr><th>Distributie</th><td><input name="chapter3_cooling_distribution_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_distribution_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_distribution_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_distribution_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-<tr><th>Stocare</th><td><input name="chapter3_cooling_storage_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_storage_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_storage_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_storage_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-<tr><th>Generare</th><td><input name="chapter3_cooling_generation_loss_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_generation_aux_kwh_month" type="number" step="0.01"></td><td><input name="chapter3_cooling_generation_aux_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td><td><input name="chapter3_cooling_generation_loss_recovered_fraction" type="number" min="0" max="1" step="0.01" value="0"></td></tr>
-</tbody>
-</table>
-</div>
-</div>
-
-<div class="dashboard-band compact-technical-note">
-<h3>Ventilatie si AHU</h3>
-<div class="form-grid">
-<div><label>Ventilatie mecanica / AHU activa</label><select name="chapter3_ventilation_ahu_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Debit introducere [m3/h]</label><input name="chapter3_supply_airflow_m3h" type="number" step="0.1"></div>
-<div><label>Cadere presiune introducere [Pa]</label><input name="chapter3_supply_pressure_pa" type="number" step="0.1"></div>
-<div><label>Randament ventilator introducere [-]</label><input name="chapter3_supply_fan_efficiency" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Debit evacuare [m3/h]</label><input name="chapter3_extract_airflow_m3h" type="number" step="0.1"></div>
-<div><label>Cadere presiune evacuare [Pa]</label><input name="chapter3_extract_pressure_pa" type="number" step="0.1"></div>
-<div><label>Randament ventilator evacuare [-]</label><input name="chapter3_extract_fan_efficiency" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Ore functionare [h/luna]</label><input name="chapter3_fan_hours_month" type="number" step="0.1"></div>
-<div><label>Auxiliar recuperare [kWh/luna]</label><input name="chapter3_heat_recovery_aux_kwh_month" type="number" step="0.01"></div>
-<div><label>Auxiliar preincalzire [kWh/luna]</label><input name="chapter3_preheat_aux_kwh_month" type="number" step="0.01"></div>
-<div><label>Auxiliar control [kWh/luna]</label><input name="chapter3_control_aux_kwh_month" type="number" step="0.01"></div>
-<div><label>Calcul auxiliar recuperare</label><select name="chapter3_ventilation_heat_recovery_mode"><option value="explicit_monthly">Input explicit</option><option value="rotary_heat_recovery_auxiliary">Recuperator rotativ</option><option value="pump_heat_recovery_auxiliary">Pompa recuperare caldura</option><option value="other_heat_recovery_auxiliary_zero">Alt recuperator fara auxiliar</option></select></div>
-<div><label>Putere maxima rotor [kW]</label><input name="chapter3_ventilation_rotary_power_kw" type="number" step="0.001"></div>
-<div><label>Raport rotatie [-]</label><input name="chapter3_ventilation_rotation_ratio" type="number" step="0.01"></div>
-<div><label>Fractie aer exterior [-]</label><input name="chapter3_ventilation_outdoor_air_fraction" type="number" min="0" max="1" step="0.01"></div>
-<div><label>Putere specifica pompa recuperare [kWh/m3]</label><input name="chapter3_ventilation_hr_pump_specific_kwh_m3" type="number" step="0.000001"></div>
-<div><label>Sarcina minima recuperare [-]</label><input name="chapter3_ventilation_hr_min_part_load" type="number" step="0.01"></div>
-<div><label>Caldura recuperata [kWh/luna]</label><input name="chapter3_ventilation_recovered_heat_kwh" type="number" step="0.01"></div>
-<div><label>Putere maxima recuperata [kW]</label><input name="chapter3_ventilation_max_recovered_heat_kw" type="number" step="0.01"></div>
-<div><label>Calcul preincalzire</label><select name="chapter3_ventilation_preheat_mode"><option value="explicit_monthly">Input explicit</option><option value="preheater_energy">Preincalzitor</option><option value="no_preheater">Fara preincalzitor</option></select></div>
-<div><label>Densitate aer [kg/m3]</label><input name="chapter3_ventilation_air_density_kg_m3" type="number" step="0.001"></div>
-<div><label>Caldura specifica aer [kJ/kgK]</label><input name="chapter3_ventilation_air_cp_kj_kgk" type="number" step="0.001"></div>
-<div><label>Temperatura protectie inghet [degC]</label><input name="chapter3_ventilation_frost_protection_c" type="number" step="0.1"></div>
-<div><label>Temperatura exterioara ventilatie [degC]</label><input name="chapter3_ventilation_outdoor_temp_c" type="number" step="0.1"></div>
-<div><label>Calcul auxiliar control</label><select name="chapter3_ventilation_control_mode"><option value="explicit_monthly">Input explicit</option><option value="control_auxiliary_energy">Putere control</option></select></div>
-<div><label>Putere control [kW]</label><input name="chapter3_ventilation_controller_power_kw" type="number" step="0.001"></div>
-<div><label>Factor functionare control [-]</label><input name="chapter3_ventilation_control_operation_factor" type="number" step="0.01"></div>
-</div>
-</div>
-
-<div class="dashboard-band compact-technical-note">
-<h3>Apa calda de consum</h3>
-<div class="form-grid">
-<div><label>ACM activa</label><select name="chapter3_dhw_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Purtator energie ACM</label><select name="chapter3_dhw_energy_carrier"><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="district_heat">Termoficare</option><option value="biomass">Biomasa</option><option value="explicit_other">Alt purtator explicit</option></select></div>
-<div><label>Sursa cerere utila ACM</label><select name="chapter3_dhw_useful_mode"><option value="">Automat pentru locuinte, altfel Expert</option><option value="residential_normative">Calcul rezidential MC001</option><option value="explicit_monthly">Input tehnic explicit</option></select></div>
-<div><label>Tip locuinta ACM</label><select name="chapter3_dhw_dwelling_type"><option value="">Deducere din tipul cladirii</option><option value="single_family_or_terraced">Casa individuala / insiruita</option><option value="apartment">Apartament</option></select></div>
-<div><label>Cerere utila ACM [kWh/luna]</label><input name="chapter3_dhw_useful_kwh_month" type="number" step="0.01"></div>
-<div><label>Sursa pierderi ACM</label><select name="chapter3_dhw_component_mode"><option value="explicit_monthly">Input tehnic explicit</option><option value="component_contract">Contract componente MC001</option></select></div>
-<div><label>Lungime teava ACM [m]</label><input name="chapter3_dhw_pipe_length_m" type="number" step="0.01"></div>
-<div><label>Lungime echivalenta teava ACM [m]</label><input name="chapter3_dhw_pipe_equivalent_length_m" type="number" step="0.01"></div>
-<div><label>Lungime recuperabila teava ACM [m]</label><input name="chapter3_dhw_recoverable_pipe_length_m" type="number" step="0.01"></div>
-<div><label>Ore functionare distributie ACM [h/luna]</label><input name="chapter3_dhw_distribution_hours_month" type="number" step="0.01"></div>
-<div><label>Temperatura distributie ACM [degC]</label><input name="chapter3_dhw_distribution_temp_c" type="number" step="0.1"></div>
-<div><label>Delta temperatura bucla ACM [K]</label><input name="chapter3_dhw_distribution_delta_k" type="number" step="0.1"></div>
-<div><label>Temperatura ambianta teava ACM [degC]</label><input name="chapter3_dhw_pipe_ambient_c" type="number" step="0.1"></div>
-<div><label>Diametru interior teava ACM [m]</label><input name="chapter3_dhw_pipe_inner_d_m" type="number" step="0.001"></div>
-<div><label>Diametru exterior izolatie ACM [m]</label><input name="chapter3_dhw_pipe_outer_d_m" type="number" step="0.001"></div>
-<div><label>Conductivitate izolatie ACM [W/mK]</label><input name="chapter3_dhw_pipe_lambda_w_mk" type="number" step="0.001"></div>
-<div><label>Coeficient exterior teava ACM [W/m2K]</label><input name="chapter3_dhw_pipe_ha_w_m2k" type="number" step="0.1"></div>
-<div><label>Pierdere distributie [kWh/luna]</label><input name="chapter3_dhw_distribution_loss_kwh_month" type="number" step="0.01"></div>
-<div><label>Auxiliar distributie [kWh/luna]</label><input name="chapter3_dhw_distribution_aux_kwh_month" type="number" step="0.01"></div>
-<div><label>Debit pompa recirculare ACM [m3/h]</label><input name="chapter3_dhw_pump_flow_m3h" type="number" step="0.01"></div>
-<div><label>Cadere presiune pompa ACM [kPa]</label><input name="chapter3_dhw_pump_pressure_kpa" type="number" step="0.01"></div>
-<div><label>Factor incarcare pompa ACM [-]</label><input name="chapter3_dhw_pump_load_factor" type="number" step="0.01"></div>
-<div><label>EEI pompa ACM [-]</label><input name="chapter3_dhw_pump_eei" type="number" step="0.01"></div>
-<div><label>Factor corectie pompa ACM [-]</label><input name="chapter3_dhw_pump_correction_factor" type="number" step="0.01"></div>
-<div><label>Constanta control pompa cp1 [-]</label><input name="chapter3_dhw_pump_cp1" type="number" step="0.01"></div>
-<div><label>Constanta control pompa cp2 [-]</label><input name="chapter3_dhw_pump_cp2" type="number" step="0.01"></div>
-<div><label>Pierdere stocare [kWh/luna]</label><input name="chapter3_dhw_storage_loss_kwh_month" type="number" step="0.01"></div>
-<div><label>Auxiliar stocare [kWh/luna]</label><input name="chapter3_dhw_storage_aux_kwh_month" type="number" step="0.01"></div>
-<div><label>Coeficient pierdere boiler ACM [W/K]</label><input name="chapter3_dhw_storage_h_w_k" type="number" step="0.01"></div>
-<div><label>Temperatura stocare ACM [degC]</label><input name="chapter3_dhw_storage_setpoint_c" type="number" step="0.1"></div>
-<div><label>Temperatura ambient stocare [degC]</label><input name="chapter3_dhw_storage_ambient_c" type="number" step="0.1"></div>
-<div><label>Ore stocare ACM [h/luna]</label><input name="chapter3_dhw_storage_hours_month" type="number" step="0.01"></div>
-<div><label>Factor volum accesibil stocare [-]</label><input name="chapter3_dhw_storage_accessible_factor" type="number" step="0.01"></div>
-<div><label>Factor distributie stocare [-]</label><input name="chapter3_dhw_storage_distribution_factor" type="number" step="0.01"></div>
-<div><label>Pierdere generare [kWh/luna]</label><input name="chapter3_dhw_generation_loss_kwh_month" type="number" step="0.01"></div>
-<div><label>Auxiliar generare [kWh/luna]</label><input name="chapter3_dhw_generation_aux_kwh_month" type="number" step="0.01"></div>
-</div>
-</div>
-
-<div class="dashboard-band compact-technical-note">
-<h3>Stocare PCM si iluminat explicit</h3>
-<div class="form-grid">
-<div><label>Stocare PCM activa</label><select name="chapter3_pcm_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Energie transformabila [kWh]</label><input name="chapter3_pcm_transformable_kwh" type="number" step="0.0001"></div>
-<div><label>Masa solida [kg]</label><input name="chapter3_pcm_solid_mass_kg" type="number" step="0.01"></div>
-<div><label>c solid [kWh/(kg*K)]</label><input name="chapter3_pcm_specific_heat_kwh_kgk" type="number" step="0.000001"></div>
-<div><label>Temperatura tur generator [C]</label><input name="chapter3_pcm_generator_outlet_c" type="number" step="0.01"></div>
-<div><label>Temperatura tranzitie [C]</label><input name="chapter3_pcm_transition_c" type="number" step="0.01"></div>
-<div><label>Delta T tur generator [K]</label><input name="chapter3_pcm_generator_delta_k" type="number" step="0.01"></div>
-<div><label>Energie pentru variatia masei [kWh]</label><input name="chapter3_pcm_mass_decrease_transformable_kwh" type="number" step="0.0001"></div>
-<div><label>Caldura latenta [kWh/kg]</label><input name="chapter3_pcm_latent_heat_kwh_kg" type="number" step="0.0001"></div>
-<div><label>Masa solida initiala [kg]</label><input name="chapter3_pcm_initial_solid_mass_kg" type="number" step="0.01"></div>
-<div><label>Iluminat LENI explicit activ</label><select name="chapter3_lighting_enabled"><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Energie iluminat explicita [kWh/luna]</label><input name="chapter3_lighting_monthly_kwh" type="number" step="0.01"></div>
-<div><label>LENI explicit [kWh/(m2*an)]</label><input name="chapter3_lighting_leni_kwh_m2_year" type="number" step="0.01"></div>
-</div>
-</div>
-<div class="dashboard-band compact-technical-note p10-renewables-panel" data-section-id="renewable">
-<h3>Energie regenerabila</h3>
-<p class="section-description">Configureaza doar productia regenerabila acceptata de fluxul curent. LaCurent nu estimeaza productia PV din kWp, orientare sau inclinare pana cand metoda lunara MC001 4.5 este implementabila din surse detinute.</p>
-<h4>Fotovoltaic</h4>
-<div class="form-grid">
-<div><label>Exista sistem fotovoltaic</label><select name="pv_installed"><option value="">Nu configurez acum</option><option value="no">Nu</option><option value="yes">Da</option></select></div>
-<div><label>Productie PV anuala furnizata [kWh/an]</label><input name="pv_annual_production_kwh" type="number" min="0" step="0.01"><small class="field-impact-note">Valoare din invertor, proiectant sau fisa sistemului. Nu este estimata automat.</small></div>
-<div><label>Limita metoda productie</label><p class="field-impact-note">Relatiile MC001 4.160-4.165 pentru productie lunara PV raman neimplementate pana la sursa verificata. Fluxul curent foloseste doar productia furnizata explicit.</p></div>
-</div>
-</div>
-</div>
-
-<div class="step" data-section-id="review">
-<h2>Verificare</h2>
-<p class="section-description">Previzualizeaza modelul canonic: tipologie, geometrie, anvelopa, materiale, interventii, provenienta si ipoteze neconfirmate.</p>
-<div class="dashboard-band compact-technical-note">
-<h3>Spatiu de lucru Building DNA</h3>
-<p>Apasa previzualizare pentru a genera modelul curent. Valorile automate raman marcate cu origine, incredere si confirmari necesare.</p>
-<button class="secondary-btn" id="buildingModelPreviewBtn" type="button">Previzualizeaza Building DNA</button>
-</div>
-</div>
-
-<div class="step" data-section-id="report">
-<h2>Documents</h2>
-<p class="section-description">Documentele consuma Building DNA, rezultatele runtime si metadata de proiect. Rendererul nu executa fizica si nu declara layout legal complet fara certificare sursa.</p>
-<div class="dashboard-band compact-technical-note">
-<h3>Document Center</h3>
-<div class="value-card-grid">
-<article>CPE - certificat de performanta energetica</article>
-<article>Raport de audit energetic</article>
-<article>Anexa tehnica de calcul</article>
-<article>Anexa 1 - recomandari</article>
-<article>Anexa 2 - date tehnice certificat</article>
-<article>Anexa 3 - fotografii</article>
-</div>
-</div>
-<div class="dashboard-band compact-technical-note p10-document-metadata">
-<h3>Date document si auditor</h3>
-<div class="form-grid">
-<div><label>Nume auditor</label><input name="auditor_name" placeholder="Nume auditor"></div>
-<div><label>Autorizatie auditor</label><input name="auditor_authorization" placeholder="Numar / registru"></div>
-<div><label>Identificator document</label><input name="document_identifier" placeholder="Ex: CPE-2026-001"></div>
-<div><label>Beneficiar / client</label><input name="client_name" placeholder="Nume beneficiar"></div>
-<div><label>Data emiterii</label><input name="document_issue_date" type="date"></div>
-</div>
-</div>
-<div class="dashboard-band compact-technical-note p10-evidence-metadata">
-<h3>Dovezi foto pentru Anexa 3</h3>
-<p class="section-description">P10 salveaza metadata si asocierea; incarcarea fisierelor foto ramane dependenta de backend-ul de atasamente.</p>
-<div class="form-grid">
-<div><label>Exterior cladire</label><input name="evidence_exterior_note" placeholder="Ex: foto fatada principala disponibila"></div>
-<div><label>Generator termic</label><input name="evidence_generator_note" placeholder="Ex: eticheta centrala fotografiata"></div>
-<div><label>Ferestre</label><input name="evidence_windows_note" placeholder="Ex: tip tamplarie verificat"></div>
-<div><label>Acoperis</label><input name="evidence_roof_note" placeholder="Ex: acces pod, strat izolatie"></div>
-</div>
-</div>
-</div>
-
-<div class="step" data-section-id="results">
-<h2>Rezultate</h2>
-<p class="section-description">Afisam QHnd/QCnd validate in Chapter 2, rezultatele instalatiilor MC001 Capitolul 3 si productia regenerabila configurata explicit.</p>
-<div class="dashboard-band compact-technical-note">
-<h3>Calculeaza modelul curent</h3>
-<p>Butonul de mai jos ruleaza adapterele Building DNA, motorul Chapter 2 validat si runtime-ul Chapter 3 pentru sistemele configurate, apoi deschide raportul tehnic.</p>
-<div class="action-row">
-<button type="button" class="secondary-btn" id="recalculateBuildingPlatformAnalysisBtn">Recalculeaza local</button>
-<button type="button" class="secondary-btn" id="saveBuildingPlatformDraftBtn">Salveaza draft</button>
-<button type="button" class="primary-btn" id="saveBuildingPlatformAnalysisBtn">Salveaza versiunea calculata</button>
-<button type="button" class="secondary-btn" id="printTechnicalReportBtn">Tipareste / Salveaza PDF</button>
-</div>
-<details class="technical-advanced-load">
-<summary>Redeschidere avansata dupa ID analiza</summary>
-<p>Fluxul normal foloseste Proiectele mele. Acest camp ramane pentru suport tehnic si verificari punctuale.</p>
-<div class="form-grid">
-<div><label>Analysis ID salvat</label><input id="buildingPlatformLoadAnalysisId" type="number" step="1" min="1" placeholder="Ex: 100"></div>
-<div><label>Redeschidere analiza</label><button type="button" class="secondary-btn" id="loadBuildingPlatformAnalysisBtn">Incarca analiza salvata</button></div>
-</div>
-</details>
-<p class="section-description" id="buildingPlatformSaveStatus">Modelul nu a fost salvat inca.</p>
-</div>
-</div>
-
-<div class="wizard-footer p2c-wizard-footer">
-<div class="wizard-buttons">
-<button type="button" id="prevBtn" class="secondary-btn">Inapoi</button>
-<button type="button" id="nextBtn" class="primary-btn">Continua</button>
-<button type="button" id="cancelEditBtn" class="secondary-btn" hidden>Renunta la modificari</button>
-<button type="submit" id="finishBtn" class="primary-btn" style="display:none">Genereaza raportul tehnic</button>
-</div>
-</div>
-</form>
-
-<section class="dashboard-band technical-output-dock p3f-report-pane" id="buildingModelReview">
-<div class="section-heading">
-<span class="small-label">RAPORT TEHNIC</span>
-<h2>Raportul de calcul curent va aparea aici.</h2>
-</div>
-<p>Completeaza datele principale, apoi recalculeaza. Raportul afiseaza valorile curente din Building DNA si motoarele validate Chapter 2/3.</p>
-</section>
-</div>
-</section>
+      <section class="workspace-section" id="section-documents" data-section="documents">
+        <div class="section-title">
+          <span class="eyebrow">Documents</span>
+          <h2>Documente profesionale</h2>
+          <p>Raportul pentru client este separat de anexa tehnica. Renderer-ul nu executa fizica.</p>
+        </div>
+        <div class="document-grid">
+          <article>
+            <h3>Professional Report</h3>
+            <p>Rezumat cladire, rezultate disponibile, scenarii si concluzii.</p>
+            <span id="professionalReportStatus">In asteptare</span>
+          </article>
+          <article>
+            <h3>Technical Annex</h3>
+            <p>Contract de input, diagnostice, provenienta si trace-uri runtime.</p>
+            <span id="technicalAnnexStatus">In asteptare</span>
+          </article>
+          <article>
+            <h3>CPE workflow</h3>
+            <p>Structura pregatita; iesirea legala necesita certificare de layout si campuri oficiale.</p>
+            <span>Nu este iesire legala</span>
+          </article>
+        </div>
+        <details class="technical-details" open>
+          <summary>Technical annex preview</summary>
+          <pre id="technicalAnnexPreview" class="json-preview">{}</pre>
+        </details>
+      </section>
+    </form>
+  </section>
 </main>
-
-<footer><small>LA CURENT · Model termic MC001-2022 · Building DNA si raport tehnic Chapter 2/3/4</small></footer>
-</div>
 
 <script>
 fetch('../components/sidebar.html')
 .then(r=>r.text())
 .then(x=>{
-document.getElementById("sidebar").innerHTML=x;
-const btn=document.getElementById("menuBtn");
-if(btn){
-btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
-}
+  document.getElementById("sidebar").innerHTML=x;
+  const btn=document.getElementById("menuBtn");
+  const sidebar=document.querySelector(".sidebar");
+  const close=document.querySelector("[data-sidebar-close]");
+  if(btn&&sidebar){
+    btn.onclick=()=>sidebar.classList.toggle("open");
+  }
+  if(close&&sidebar){
+    close.onclick=()=>sidebar.classList.remove("open");
+  }
 });
 </script>
 </body>

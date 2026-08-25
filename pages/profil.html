@@ -7,10 +7,7 @@
 <title>LA CURENT | Profil</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="../js/auth.js" defer></script>
-<script src="../js/segment-context.js" defer></script>
-<script src="../js/home-context.js" defer></script>
 </head>
 
 <body>
@@ -23,7 +20,7 @@
 <div>
 <div class="small-label">LA CURENT</div>
 <h1>Profil</h1>
-<p>Contul stabilește ce experiență primești: locuință, afacere, industrie, instituție sau auditor.</p>
+<p>Contul leaga proiectele salvate de auditor, organizatie sau proprietar.</p>
 </div>
 <div class="system-state">
 <span class="green-dot"></span>
@@ -59,7 +56,7 @@ Cont utilizator
 <form class="auth-panel" id="registerForm">
 <div class="small-label">CONT NOU</div>
 <h2>Creează profil</h2>
-<p class="auth-copy">Alegerea segmentului schimbă dashboard-ul, navigația și formularul de analiză.</p>
+<p class="auth-copy">Tipul de cont ajuta la completarea metadatelor de proiect si raport.</p>
 
 <label>Nume contact</label>
 <input name="name" autocomplete="name" required>
@@ -123,11 +120,13 @@ fetch('../components/sidebar.html')
 .then(r=>r.text())
 .then(x=>{
 document.getElementById("sidebar").innerHTML=x;
-window.LaCurentSegments?.apply();
-window.LaCurentHomes?.refresh();
 const btn=document.getElementById("menuBtn");
+const close=document.querySelector("[data-sidebar-close]");
 if(btn){
 btn.onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
+}
+if(close){
+close.onclick=()=>document.querySelector(".sidebar")?.classList.remove("open");
 }
 document.querySelectorAll(".sidebar-item").forEach(item=>{
 item.onclick=()=>{
@@ -214,13 +213,11 @@ const role=user.role || "residential";
 accountTitle.textContent=user.name;
 accountText.textContent=`${user.email} este conectat. Segment: ${roleLabels[role] || role}.`;
 logoutBtn.hidden=false;
-window.LaCurentSegments?.apply(role);
 return;
 }
 accountTitle.textContent="Nu ești autentificat";
 accountText.textContent="Autentifică-te ca analiza să fie legată de profilul tău.";
 logoutBtn.hidden=true;
-window.LaCurentSegments?.apply("residential");
 }
 
 loginForm.addEventListener("submit",async event=>{

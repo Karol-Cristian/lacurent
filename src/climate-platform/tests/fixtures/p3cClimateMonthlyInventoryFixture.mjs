@@ -10,11 +10,10 @@ export const P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY = Object.freeze([
     source: "P2D.synthetic_seasonal_profile.ui_demonstration_only",
     provenance: "synthetic_demo_profile",
     consumers: Object.freeze([
-      "src/building-platform/buildingDnaResolver.mjs",
-      "js/building-platform-wizard.mjs"
+      "src/building-platform/buildingDnaResolver.mjs"
     ]),
-    canReachProduction: true,
-    productionReachCondition: "only_when_profile_id_is_explicit_and_allowSyntheticClimate_is_true",
+    canReachProduction: false,
+    productionReachCondition: "validation_only_after_P12A_product_demo_removal",
     containsFixedMonthlyInputs: true,
     containsFixedMonthlyOutputs: false,
     bypassesClimateCalculations: false
@@ -74,31 +73,11 @@ export const P3C_CLIMATE_MONTHLY_PROFILE_INVENTORY = Object.freeze([
     containsFixedMonthlyOutputs: true,
     bypassesClimateCalculations: true
   }),
-  Object.freeze({
-    inventoryId: "ui.demo_prefill_answers",
-    file: "js/building-platform-wizard.mjs",
-    exportName: "ASSISTED_WIZARD_DEMO_FIXTURE",
-    profileIdentifier: "demo_detached_masonry_1985_eps_pvc_bucharest",
-    classification: "explicit_ui_demo_prefill_answers",
-    source: "P2B demo flow",
-    provenance: "demo_fixture",
-    consumers: Object.freeze([
-      "pages/analiza-casa.html?demo=1",
-      "js/building-platform-wizard.mjs"
-    ]),
-    canReachProduction: true,
-    productionReachCondition: "only_when_demo_query_or_visible_demo_button_is_used",
-    containsFixedMonthlyInputs: false,
-    containsFixedMonthlyOutputs: false,
-    bypassesClimateCalculations: false
-  })
 ]);
 
 export const P3C_ACTIVE_PRODUCTION_CLIMATE_MODULES = Object.freeze([
-  "js/building-platform-wizard.mjs",
-  "src/building-platform/buildingDnaResolver.mjs",
-  "src/building-platform/buildingKnowledgePipeline.mjs",
-  "src/building-platform/buildingChapter2Adapter.mjs",
-  "src/building-platform/buildingTechnicalReport.mjs",
-  "src/climate-platform/romanianClimateProfiles.mjs"
+  "js/lacurent-contract.mjs",
+  "js/lacurent-workspace.mjs",
+  "workers/save-house.js",
+  "python_engine/lacurent_engine/api/simple_contract.py"
 ]);

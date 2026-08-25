@@ -14,12 +14,6 @@ import {
 } from "../../building-platform/index.mjs";
 import { createP1SeedMonthlyProfiles } from "../../building-platform/tests/fixtures/p1SeedMonthlyProfiles.mjs";
 import {
-  ASSISTED_WIZARD_DEMO_FIXTURE,
-  getAssistedWizardDemoFixture,
-  mapWizardAnswersToAssistedAnswers,
-  buildWizardEngineeringPreview
-} from "../../../js/building-platform-wizard.mjs";
-import {
   calculateMc001EnvelopeAssemblyUValueExplicit,
   calculateMc001EnvelopeTransmissionCoefficientExplicit
 } from "../mc001EnvelopePhysicsCalculation.mjs";
@@ -37,7 +31,6 @@ import { calculateMc001HeatingIntermittencyExplicit } from "../mc001HeatingInter
 import { calculateMc001CoolingIntermittencyExplicit } from "../mc001CoolingIntermittencyCalculation.mjs";
 import { calculateMc001LatentDemandExplicit } from "../mc001LatentDemandCalculation.mjs";
 import {
-  P2V_DEMO_FIXTURE_SAFETY_METADATA,
   P2V_INDEPENDENT_REFERENCE_BUILDINGS,
   P2V_REQUIRED_DOMAIN_GROUPS,
   P2V_SYNTHETIC_SEASONAL_PROFILE,
@@ -80,14 +73,6 @@ function q(amount, unit, reference, sourceType = "explicit_user_input") {
 
 function blockerCode(result) {
   return result.diagnostics?.blockers?.[0]?.code ?? null;
-}
-
-function formData(entries) {
-  return {
-    get(name) {
-      return entries[name];
-    }
-  };
 }
 
 function directMaterial(materialId, lambdaWmK) {
@@ -1093,43 +1078,7 @@ await test("technical report reads major values from engine output paths without
   );
 });
 
-await test("demo fixture safety and synthetic climate-profile sanity are enforced", () => {
-  const demo = getAssistedWizardDemoFixture();
-  assert.equal(demo.fixtureId, ASSISTED_WIZARD_DEMO_FIXTURE.fixtureId);
-  assert.equal(demo.provenance.origin, P2V_DEMO_FIXTURE_SAFETY_METADATA.origin);
-  assert.equal(demo.provenance.confirmationStatus, "unconfirmed_demo");
-  assert.equal(demo.provenance.editable, true);
-  assert.equal(P2V_DEMO_FIXTURE_SAFETY_METADATA.notAClimateFile, true);
-  assert.deepEqual(
-    P2V_DEMO_FIXTURE_SAFETY_METADATA.artificialCoolingTriggerMonths,
-    []
-  );
-
-  const demoPreview = buildWizardEngineeringPreview(
-    mapWizardAnswersToAssistedAnswers(formData(demo.values))
-  );
-  assert.equal(demoPreview.status, "ready");
-  assert.equal(demoPreview.buildingDna.source.origin, "demo_fixture");
-  assert.equal(demoPreview.buildingDna.demoFixture.confirmationStatus, "unconfirmed_demo");
-  assert.equal(
-    demoPreview.buildingDna.assumptions.some(item =>
-      item.assumptionId === "demo_fixture_values_are_unconfirmed_and_editable"
-    ),
-    true
-  );
-
-  const normalAnswers = mapWizardAnswersToAssistedAnswers(formData({
-    building_type: "house",
-    construction_year: "",
-    wall_material: "",
-    wall_insulation: "",
-    window_type: "",
-    roof_type: "",
-    floor_type: ""
-  }));
-  assert.equal(normalAnswers.source.origin, undefined);
-  assert.equal(normalAnswers.buildingSpecificParameters.usefulFloorAreaM2, undefined);
-
+await test("synthetic climate-profile fixtures remain validation-only after product demo removal", () => {
   const profile = P2V_SYNTHETIC_SEASONAL_PROFILE;
   assert.equal(profile.status, "synthetic_validation_data");
   assert.equal(profile.monthlyOutdoorTemperaturesC.january < profile.monthlyOutdoorTemperaturesC.july, true);

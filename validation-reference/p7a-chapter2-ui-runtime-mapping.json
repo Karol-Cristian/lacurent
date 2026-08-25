@@ -4,7 +4,7 @@
   "fields": [
     {
       "field": "locality",
-      "uiSource": "pages/analiza-casa.html locality selector via js/building-platform-wizard.mjs",
+      "uiSource": "pages/analiza-casa.html locality selector via js/lacurent-contract.mjs",
       "buildingDnaPath": "building.location.localityId, building.location.localityName",
       "providerPath": "climateProvider.selection.localityId, climateProvider.selection.stationId",
       "runtimeInputPath": "not passed directly; resolves monthly profiles before runtime",
