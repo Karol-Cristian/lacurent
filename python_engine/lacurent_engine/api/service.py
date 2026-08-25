@@ -12,7 +12,7 @@ import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from .calculate import calculate, compact_engine_output
+from .calculate import ENGINE_VERSION, calculate, compact_engine_output
 
 
 class CalculateHandler(BaseHTTPRequestHandler):
@@ -31,7 +31,7 @@ class CalculateHandler(BaseHTTPRequestHandler):
                 body: dict[str, Any] = {
                     "schemaVersion": "lacurent_engine_output_v1",
                     "engine": "python",
-                    "engineVersion": "p11b.0",
+                    "engineVersion": ENGINE_VERSION,
                     "status": "ready" if all(item.get("status") in {"ready", "incomplete"} for item in results) else "blocked",
                     "results": [compact_engine_output(item) if compact else item for item in results],
                 }
@@ -50,7 +50,7 @@ class CalculateHandler(BaseHTTPRequestHandler):
             serialized = json.dumps({
                 "schemaVersion": "lacurent_engine_output_v1",
                 "engine": "python",
-                "engineVersion": "p11b.0",
+                "engineVersion": ENGINE_VERSION,
                 "status": "error",
                 "error": type(error).__name__,
                 "message": str(error),
