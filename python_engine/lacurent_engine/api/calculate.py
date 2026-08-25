@@ -21,6 +21,9 @@ from ..core.diagnostics import diagnostic, UNSUPPORTED_ENGINE_INPUT_DIALECT
 from ..core.trace import blocked_trace
 
 
+ENGINE_VERSION = "p11c.0"
+
+
 def _status_from_diagnostics(diagnostics: list[dict]) -> str:
     return "blocked" if any(item.get("severity") == "blocking" for item in diagnostics) else "ready"
 
@@ -60,7 +63,7 @@ def _calculate_reference_fixture(engine_input: dict[str, Any]) -> dict[str, Any]
     return {
         "schemaVersion": ENGINE_OUTPUT_SCHEMA_VERSION,
         "engine": "python",
-        "engineVersion": "p11.0",
+        "engineVersion": ENGINE_VERSION,
         "status": status,
         "chapter2": normalize_chapter2_reference(reference),
         "chapter3": chapter3_case or {
@@ -101,7 +104,7 @@ def _calculate_building_dna(engine_input: dict[str, Any]) -> dict[str, Any]:
     return {
         "schemaVersion": ENGINE_OUTPUT_SCHEMA_VERSION,
         "engine": "python",
-        "engineVersion": "p11b.0",
+        "engineVersion": ENGINE_VERSION,
         "status": status,
         "chapter2": chapter2,
         "chapter3": chapter3,
@@ -125,7 +128,7 @@ def _blocked_output(engine_input: dict[str, Any] | None, diagnostics: list[dict]
     return {
         "schemaVersion": ENGINE_OUTPUT_SCHEMA_VERSION,
         "engine": "python",
-        "engineVersion": "p11b.0",
+        "engineVersion": ENGINE_VERSION,
         "status": _status_from_diagnostics(diagnostics),
         "chapter2": {"status": "blocked", "annual": {}, "monthly": []},
         "chapter3": {"status": "blocked"},
@@ -226,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
             result = {
                 "schemaVersion": ENGINE_OUTPUT_SCHEMA_VERSION,
                 "engine": "python",
-                "engineVersion": "p11b.0",
+                "engineVersion": ENGINE_VERSION,
                 "status": "ready",
                 "results": [compact_engine_output(item) if args.compact else item for item in batch_results],
             }
