@@ -1,0 +1,99 @@
+"""P11B production-reachable execution-domain manifest.
+
+The manifest is intentionally compact: it identifies the real Building DNA
+branches that the direct Python executor and differential harness exercise
+without becoming another Chapter 3 coverage matrix.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+
+EXECUTION_DOMAIN_MANIFEST: dict[str, Any] = {
+    "schema": "lacurent_python_execution_domain_manifest_v1",
+    "milestone": "P11B",
+    "inputDialect": "building_dna_v1",
+    "chapters": {
+        "chapter2": {
+            "branches": [
+                "climate_monthly_profile",
+                "assembly_direct_u_value",
+                "assembly_layered_resistance",
+                "outside_air_envelope_element",
+                "boundary_correction_factor",
+                "linear_thermal_bridge",
+                "monthly_transmission",
+                "monthly_ventilation",
+                "explicit_internal_gains",
+                "explicit_solar_gains",
+                "solar_gain_preprocessing_blocker",
+                "heating_useful_demand",
+                "cooling_useful_demand",
+                "monthly_annual_aggregation",
+            ],
+            "preservedBlockers": [
+                "SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED",
+            ],
+        },
+        "chapter3": {
+            "branches": [
+                "heating_single_system",
+                "heating_parallel_systems",
+                "cooling_single_system",
+                "cooling_parallel_systems",
+                "cooling_compression_input_override",
+                "cooling_absorption_multi_carrier_input_override",
+                "cooling_capacity_supplied_unmet_from_override",
+                "dhw_system",
+                "ventilation_ahu_auxiliary",
+                "stage_loss_auxiliary_balance",
+                "storage_zero_and_positive_loss",
+                "recoverable_and_recovered_stage_energy",
+                "shared_heating_dhw_generator",
+                "shared_generator_service_allocation",
+                "shared_generator_auxiliary_allocation",
+                "carrier_aggregation_unique_physical_component",
+                "leni_external_standard_blocker",
+            ],
+            "preservedBlockers": [
+                "LENI_SR_EN_15193_1_REQUIRED",
+            ],
+        },
+        "chapter4": {
+            "branches": [
+                "pv_not_installed",
+                "pv_product_annual_production",
+                "pv_installed_power_specific_yield",
+            ],
+        },
+    },
+    "semanticComparisonFields": [
+        "status",
+        "diagnosticCodes",
+        "chapter2.annual.qHndKWh",
+        "chapter2.annual.qCndKWh",
+        "chapter2.monthly[].qHndKWh",
+        "chapter2.monthly[].qCndKWh",
+        "chapter3.annual.heatingInputKWh",
+        "chapter3.annual.coolingInputKWh",
+        "chapter3.annual.coolingSuppliedUsefulKWh",
+        "chapter3.annual.coolingUnmetLoadKWh",
+        "chapter3.annual.dhwInputKWh",
+        "chapter3.annual.ventilationAuxiliaryKWh",
+        "chapter3.annual.sharedGeneratorFuelInputKWh",
+        "chapter3.annual.sharedGeneratorLossKWh",
+        "chapter3.annual.sharedGeneratorAuxiliaryKWh",
+        "energyCarriers.electricity",
+        "energyCarriers.natural_gas",
+        "energyCarriers.district_heat",
+        "chapter4.annualProductionKWh",
+    ],
+    "tolerancePolicy": {
+        "exact": ["status", "diagnosticCodes", "branchIdentifiers"],
+        "tightNumericalAbsolute": 1e-7,
+        "tightNumericalRelative": 1e-9,
+        "aggregatedNumericalAbsolute": 1e-6,
+        "aggregatedNumericalRelative": 1e-9,
+    },
+}

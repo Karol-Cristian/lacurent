@@ -12,6 +12,29 @@ def calculate_photovoltaic(renewables: dict[str, Any]) -> dict[str, Any]:
     pv = renewables.get("photovoltaic") if isinstance(renewables, dict) else None
     if not pv or pv.get("enabled") is False:
         return {"status": "not_applicable", "annualProductionKWh": 0, "monthlyProductionKWh": []}
+    if "annualProductionKWh" in pv and "installedPowerKWp" not in pv:
+        annual = non_negative(pv.get("annualProductionKWh"), "renewables.photovoltaic.annualProductionKWh")
+        return {
+            "status": "calculated",
+            "annualProductionKWh": annual,
+            "monthlyProductionKWh": [],
+            "executionTrace": [
+                trace_record(
+                    chapter="4",
+                    formula_id="CHAPTER_4_SUPPORTED_PV_PRODUCT_ANNUAL_PRODUCTION",
+                    branch_id="annual_product_generation_input",
+                    inputs={"annualProductionKWh": annual},
+                    units={"annualProductionKWh": "kWh/year"},
+                    raw_result=annual,
+                    final_result={"annualProductionKWh": annual},
+                    expression="E_PV,annual supplied as supported product/project PV production input",
+                    provenance={
+                        "classification": "PRODUCT_DATA",
+                        "source": "LaCurent Chapter 4 supported PV annual production contract",
+                    },
+                )
+            ],
+        }
     installed_power_kwp = positive(pv.get("installedPowerKWp"), "renewables.photovoltaic.installedPowerKWp")
     monthly_yield = pv.get("monthlySpecificYieldKWhPerKWp")
     if not isinstance(monthly_yield, list) or len(monthly_yield) != 12:
