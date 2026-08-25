@@ -44,7 +44,7 @@ function monthlyClimate(buildingDna = {}) {
 }
 
 function renewablesContract(buildingDna = {}) {
-  const renewables = buildingDna.renewables ?? {};
+  const renewables = buildingDna.renewables ?? buildingDna.renewableSystems ?? {};
   const workspacePv = buildingDna.projectWorkspace?.renewables?.photovoltaic;
   return {
     ...deepClone(renewables),

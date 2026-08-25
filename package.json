@@ -8,6 +8,7 @@
     "test:python-engine": "python python_engine/tests/run_all.py",
     "test:python-engine:differential": "python python_engine/compare/differential.py --randomized 12",
     "test:p11": "npm.cmd run test:python-engine && node tests/python-engine-adapter.mjs && npm.cmd run test:python-engine:differential",
+    "test:p11b": "npm.cmd run test:p11 && node tests/p11b-python-building-dna-direct.mjs",
     "test:differential": "python validation-reference/python-mc001/compare/compare_results.py --all",
     "test:p3v": "python validation-reference/python-mc001/tests/check_environment.py && npm run test:reference-python && npm run test:differential && python validation-reference/python-mc001/compare/generate_report.py --all",
     "test:mc001": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs",
