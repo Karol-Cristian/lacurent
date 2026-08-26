@@ -238,6 +238,7 @@ def _systems(simple_input: dict[str, Any]) -> dict[str, Any]:
                     {"stageId": "storage", "lossCalculation": {"mode": "no_cooling_storage"}, "auxiliaryCalculation": {"mode": "no_cooling_storage"}},
                     {
                         "stageId": "generation",
+                        "lossCalculation": {"mode": "component_absent"},
                         "auxiliaryCalculation": {
                             "mode": "cooling_compression_heat_rejection_auxiliary",
                             "generatorInputRequirementMode": "air_water",

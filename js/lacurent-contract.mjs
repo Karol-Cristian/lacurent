@@ -105,6 +105,7 @@ export function buildSimpleInputContract(values, options = {}) {
       category: values.use?.category || "residential"
     },
     systems: {
+      technicalContractConfirmed: Boolean(values.systems?.technicalContractConfirmed),
       heating: {
         enabled: Boolean(values.systems?.heating?.enabled),
         generator: values.systems?.heating?.generator || undefined,

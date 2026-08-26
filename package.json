@@ -12,6 +12,7 @@
     "test:p11b": "npm.cmd run test:p11 && node tests/p11b-python-building-dna-direct.mjs",
     "test:p11c": "npm.cmd run test:p11b && node tests/p11c-python-calculator.mjs",
     "test:p12a": "node tests/p12a-product-rebuild.mjs && node tests/p12a-architecture-boundary.mjs",
+    "test:p12b": "npm.cmd run test:python-engine && node tests/p12b-python-runtime.mjs && npm.cmd run test:p12a",
     "test:differential": "python validation-reference/python-mc001/compare/compare_results.py --all",
     "test:p3v": "python validation-reference/python-mc001/tests/check_environment.py && npm run test:reference-python && npm run test:differential && python validation-reference/python-mc001/compare/generate_report.py --all",
     "test:mc001": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs",
