@@ -914,15 +914,21 @@ header,
 }
 
 .climate-map{
-  min-height:360px;
-  padding:10px;
-  background:#edf3f7;
+  min-height:0;
+  padding:18px;
+  background:linear-gradient(180deg,#f4f8fb 0%,#eaf1f6 100%);
+  display:grid;
+  place-items:center;
+  touch-action:manipulation;
 }
 
 .climate-map svg{
   display:block;
-  width:100%;
+  width:min(100%,780px);
   height:auto;
+  max-width:100%;
+  cursor:crosshair;
+  overflow:visible;
 }
 
 .map-bg{
@@ -930,26 +936,67 @@ header,
 }
 
 .climate-zone{
-  stroke:#ffffff;
-  stroke-width:1.1;
+  stroke:rgba(255,255,255,.88);
+  stroke-width:1.25;
   cursor:pointer;
-  transition:opacity .15s ease,stroke-width .15s ease;
+  transition:opacity .15s ease,stroke-width .15s ease,filter .15s ease;
+  vector-effect:non-scaling-stroke;
 }
 
 .climate-zone:hover,
 .climate-zone:focus,
+.climate-zone.hovered,
 .climate-zone.selected{
-  opacity:.95;
+  opacity:1;
   stroke:#102a43;
-  stroke-width:3;
+  stroke-width:2.8;
   outline:none;
+}
+
+.climate-zone.hovered{
+  filter:brightness(1.04) saturate(1.08);
+}
+
+.climate-zone.selected{
+  filter:drop-shadow(0 2px 7px rgba(16,42,67,.28));
+  stroke-dasharray:6 3;
+}
+
+.technical-hit-layer{
+  fill:transparent;
+  opacity:0;
+  pointer-events:none;
+}
+
+.presentation-layer{
+  pointer-events:auto;
 }
 
 .romania-outline{
   fill:none;
   stroke:#263647;
-  stroke-width:1.5;
+  stroke-width:1.7;
   pointer-events:none;
+  vector-effect:non-scaling-stroke;
+}
+
+.zone-label{
+  fill:#102a43;
+  font-size:13px;
+  font-weight:900;
+  text-anchor:middle;
+  dominant-baseline:middle;
+  pointer-events:none;
+  paint-order:stroke;
+  stroke:#fff;
+  stroke-width:3;
+  stroke-linejoin:round;
+}
+
+.zone-label.selected{
+  fill:#000;
+  font-size:15px;
+  text-decoration:underline;
 }
 
 .location-pin circle{

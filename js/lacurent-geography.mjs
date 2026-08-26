@@ -1,7 +1,6 @@
 export const CLIMATE_GEOGRAPHY_BASE = "../assets/geography/climate-zones/";
 
-const MAP_WIDTH = 720;
-const MAP_HEIGHT = 520;
+const MAP_UNIT_SCALE = 86;
 const MAP_PADDING = 26;
 
 const FALLBACK_ZONE_COLORS = Object.freeze({
@@ -55,29 +54,45 @@ export function boundsForFeatureCollections(...collections) {
   return bounds;
 }
 
-function projector(bounds, width = MAP_WIDTH, height = MAP_HEIGHT) {
-  const lonSpan = bounds.maxLon - bounds.minLon;
-  const latSpan = bounds.maxLat - bounds.minLat;
-  const scale = Math.min((width - MAP_PADDING * 2) / lonSpan, (height - MAP_PADDING * 2) / latSpan);
-  const mapWidth = lonSpan * scale;
-  const mapHeight = latSpan * scale;
-  const offsetX = (width - mapWidth) / 2;
-  const offsetY = (height - mapHeight) / 2;
-  return ([lon, lat]) => [
-    offsetX + (lon - bounds.minLon) * scale,
-    offsetY + (bounds.maxLat - lat) * scale
-  ];
+export function createClimateMapProjection(zonesGeojson, boundaryGeojson) {
+  const bounds = boundsForFeatureCollections(zonesGeojson, boundaryGeojson);
+  const midLat = (bounds.minLat + bounds.maxLat) / 2;
+  const lonScale = Math.cos((midLat * Math.PI) / 180);
+  const width = ((bounds.maxLon - bounds.minLon) * lonScale * MAP_UNIT_SCALE) + (MAP_PADDING * 2);
+  const height = ((bounds.maxLat - bounds.minLat) * MAP_UNIT_SCALE) + (MAP_PADDING * 2);
+  return {
+    bounds,
+    height,
+    lonScale,
+    padding: MAP_PADDING,
+    scale: MAP_UNIT_SCALE,
+    viewBox: `0 0 ${width.toFixed(2)} ${height.toFixed(2)}`,
+    width,
+    xMidLatitude: midLat,
+    project([lon, lat]) {
+      return [
+        MAP_PADDING + ((lon - bounds.minLon) * lonScale * MAP_UNIT_SCALE),
+        MAP_PADDING + ((bounds.maxLat - lat) * MAP_UNIT_SCALE)
+      ];
+    },
+    invert([x, y]) {
+      return [
+        bounds.minLon + ((x - MAP_PADDING) / (lonScale * MAP_UNIT_SCALE)),
+        bounds.maxLat - ((y - MAP_PADDING) / MAP_UNIT_SCALE)
+      ];
+    }
+  };
 }
 
-function ringPath(ring, project) {
+function ringPath(ring, projection) {
   return ring.map((point, index) => {
-    const [x, y] = project(point);
+    const [x, y] = projection.project(point);
     return `${index === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
   }).join(" ") + " Z";
 }
 
-function geometryPath(geometry, project) {
-  return geometryRings(geometry).map((ring) => ringPath(ring, project)).join(" ");
+function geometryPath(geometry, projection) {
+  return geometryRings(geometry).map((ring) => ringPath(ring, projection)).join(" ");
 }
 
 function pointInRing(lon, lat, ring) {
@@ -105,6 +120,39 @@ export function findZoneForPoint(zonesGeojson, lon, lat) {
     }
   }
   return null;
+}
+
+function projectionForGeography(geography) {
+  return createClimateMapProjection(geography.zones, geography.boundary);
+}
+
+export function projectGeographicPoint(geography, lon, lat) {
+  const projection = projectionForGeography(geography);
+  const [x, y] = projection.project([lon, lat]);
+  return { x, y, projection };
+}
+
+export function resolveProjectedClimateZone(geography, x, y) {
+  const projection = projectionForGeography(geography);
+  const [lon, lat] = projection.invert([x, y]);
+  const zone = findZoneForPoint(geography.zones, lon, lat);
+  return {
+    lat,
+    lon,
+    zone,
+    designTemperatureC: geography.provenance?.normative_source?.temperature_c?.[zone] ?? null
+  };
+}
+
+export function mapClientPointToClimateZone(mapElement, geography, clientX, clientY) {
+  const svg = mapElement?.matches?.("svg") ? mapElement : mapElement?.querySelector?.("svg");
+  if (!svg) return null;
+  const rect = svg.getBoundingClientRect();
+  if (!rect.width || !rect.height) return null;
+  const viewBox = svg.viewBox.baseVal;
+  const x = viewBox.x + ((clientX - rect.left) / rect.width) * viewBox.width;
+  const y = viewBox.y + ((clientY - rect.top) / rect.height) * viewBox.height;
+  return resolveProjectedClimateZone(geography, x, y);
 }
 
 export function validateGeographyAssets(zonesGeojson, boundaryGeojson, oracle, provenance) {
@@ -193,38 +241,86 @@ function zoneColor(feature) {
   return feature.properties?.fill || FALLBACK_ZONE_COLORS[feature.properties?.zone] || "#d9e2ec";
 }
 
+function zoneLabelPoint(feature, projection) {
+  const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  for (const ring of geometryRings(feature.geometry)) {
+    for (const point of ring) {
+      const [x, y] = projection.project(point);
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    }
+  }
+  return {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2
+  };
+}
+
 export function renderClimateLegend(target, geography, selectedZone) {
   if (!target) return;
   const temperatures = geography.provenance?.normative_source?.temperature_c || {};
   target.innerHTML = ["I", "II", "III", "IV", "V"].map((zone) => `
     <span class="${selectedZone === zone ? "selected" : ""}">
       <i style="background:${FALLBACK_ZONE_COLORS[zone]}"></i>
-      Zona ${zone} ${temperatures[zone] ?? "-"} degC
+      Zona ${zone} ${temperatures[zone] ?? "-"} °C
     </span>
   `).join("");
 }
 
+export function setClimateMapInteractionState(target, { selectedZone = null, hoveredZone = null } = {}) {
+  if (!target) return;
+  target.querySelectorAll("[data-zone]").forEach((item) => {
+    const zone = item.dataset.zone;
+    item.classList.toggle("selected", zone === selectedZone);
+    item.classList.toggle("hovered", zone === hoveredZone && zone !== selectedZone);
+    if (item.matches(".visual-zone")) item.setAttribute("aria-pressed", zone === selectedZone ? "true" : "false");
+  });
+}
+
 export function renderClimateMap(target, geography, selection = {}) {
   if (!target) return;
-  const bounds = boundsForFeatureCollections(geography.zones, geography.boundary);
-  const project = projector(bounds);
+  const projection = projectionForGeography(geography);
   const selectedZone = selection.zone;
-  const boundaryPath = (geography.boundary?.features || []).map((feature) => geometryPath(feature.geometry, project)).join(" ");
-  const zonePaths = (geography.zones?.features || []).map((feature) => {
+  const hoveredZone = selection.hoveredZone;
+  const boundaryPath = (geography.boundary?.features || []).map((feature) => geometryPath(feature.geometry, projection)).join(" ");
+  const technicalPaths = (geography.zones?.features || []).map((feature) => {
     const zone = feature.properties?.zone;
-    return `<path class="climate-zone ${selectedZone === zone ? "selected" : ""}" d="${geometryPath(feature.geometry, project)}" fill="${zoneColor(feature)}" data-zone="${zone}" tabindex="0" role="button" aria-label="Zona climatica ${zone}"></path>`;
+    return `<path class="technical-zone" d="${geometryPath(feature.geometry, projection)}" data-zone="${zone}"></path>`;
+  }).join("");
+  const visualPaths = (geography.zones?.features || []).map((feature) => {
+    const zone = feature.properties?.zone;
+    const classes = ["climate-zone", "visual-zone"];
+    if (selectedZone === zone) classes.push("selected");
+    if (hoveredZone === zone && selectedZone !== zone) classes.push("hovered");
+    return `<path class="${classes.join(" ")}" d="${geometryPath(feature.geometry, projection)}" fill="${zoneColor(feature)}" data-zone="${zone}" tabindex="0" role="button" aria-pressed="${selectedZone === zone ? "true" : "false"}" aria-label="Zona climatica ${zone}"></path>`;
+  }).join("");
+  const labels = (geography.zones?.features || []).map((feature) => {
+    const zone = feature.properties?.zone;
+    const point = zoneLabelPoint(feature, projection);
+    const selected = selectedZone === zone ? " selected" : "";
+    return `<text class="zone-label${selected}" x="${point.x.toFixed(2)}" y="${point.y.toFixed(2)}" data-zone="${zone}">${zone}</text>`;
   }).join("");
   const pin = selection.lon && selection.lat
     ? (() => {
-        const [x, y] = project([selection.lon, selection.lat]);
+        const [x, y] = projection.project([selection.lon, selection.lat]);
         return `<g class="location-pin" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="7"></circle><path d="M0 -18 L5 -3 L0 0 L-5 -3 Z"></path></g>`;
       })()
     : "";
   target.innerHTML = `
-    <svg viewBox="0 0 ${MAP_WIDTH} ${MAP_HEIGHT}" aria-hidden="true">
-      <rect class="map-bg" x="0" y="0" width="${MAP_WIDTH}" height="${MAP_HEIGHT}" rx="8"></rect>
-      ${zonePaths}
+    <svg class="climate-map-svg" viewBox="${projection.viewBox}" preserveAspectRatio="xMidYMid meet" data-projection="canonical-geojson-local-equirectangular" data-viewbox-ratio="${(projection.width / projection.height).toFixed(6)}" aria-label="Zone climatice de iarna">
+      <rect class="map-bg" x="0" y="0" width="${projection.width.toFixed(2)}" height="${projection.height.toFixed(2)}" rx="8"></rect>
+      <g class="technical-hit-layer" aria-hidden="true">
+        ${technicalPaths}
+      </g>
+      <g class="presentation-layer">
+        ${visualPaths}
+      </g>
       <path class="romania-outline" d="${boundaryPath}"></path>
+      <g class="zone-label-layer" aria-hidden="true">
+        ${labels}
+      </g>
       ${pin}
     </svg>
   `;
