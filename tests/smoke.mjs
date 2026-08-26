@@ -12,13 +12,14 @@ const pages = [
   { path: "/index.html", includes: ["Workspace profesional", "pages/analiza-casa.html"] },
   { path: "/pages/profil.html", includes: ["Autentificare", "registerForm"] },
   { path: "/pages/reset-password.html", includes: ["Seteaza o parola noua", "resetForm"] },
-  { path: "/pages/analiza-casa.html", includes: ["Workspace auditor", "Location", "Systems", "Documents"] }
+  { path: "/pages/analiza-casa.html", includes: ["Workspace auditor", "Localizare", "Sisteme", "Documente"] }
 ];
 
 const syntaxFiles = [
   "workers/save-house.js",
   "js/auth.js",
   "js/lacurent-contract.mjs",
+  "js/lacurent-geography.mjs",
   "js/lacurent-workspace.mjs"
 ];
 

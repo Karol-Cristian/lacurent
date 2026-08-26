@@ -1,0 +1,79 @@
+{
+  "schema": "lacurent_climate_zone_oracle_v1",
+  "purpose": "control points for digitized winter-climate-zone geometry",
+  "points": [
+    {
+      "name": "București",
+      "lon": 26.1025,
+      "lat": 44.4268,
+      "expected_zone": "I",
+      "digitized_zone": "I",
+      "pass": true
+    },
+    {
+      "name": "Constanța",
+      "lon": 28.6348,
+      "lat": 44.1598,
+      "expected_zone": "II",
+      "digitized_zone": "II",
+      "pass": true
+    },
+    {
+      "name": "Cluj-Napoca",
+      "lon": 23.6236,
+      "lat": 46.7712,
+      "expected_zone": "III",
+      "digitized_zone": "III",
+      "pass": true
+    },
+    {
+      "name": "Iași",
+      "lon": 27.6014,
+      "lat": 47.1585,
+      "expected_zone": "III",
+      "digitized_zone": "III",
+      "pass": true
+    },
+    {
+      "name": "Brașov",
+      "lon": 25.6012,
+      "lat": 45.6579,
+      "expected_zone": "IV",
+      "digitized_zone": "IV",
+      "pass": true
+    },
+    {
+      "name": "Suceava",
+      "lon": 26.2556,
+      "lat": 47.6514,
+      "expected_zone": "IV",
+      "digitized_zone": "IV",
+      "pass": true
+    },
+    {
+      "name": "Miercurea-Ciuc",
+      "lon": 25.806,
+      "lat": 46.36,
+      "expected_zone": "V",
+      "digitized_zone": "V",
+      "pass": true
+    },
+    {
+      "name": "Sfântu Gheorghe",
+      "lon": 25.793,
+      "lat": 45.866,
+      "expected_zone": "V",
+      "digitized_zone": "V",
+      "pass": true
+    },
+    {
+      "name": "Craiova",
+      "lon": 23.7949,
+      "lat": 44.3302,
+      "expected_zone": "I",
+      "digitized_zone": "I",
+      "pass": true
+    }
+  ],
+  "all_pass": true
+}

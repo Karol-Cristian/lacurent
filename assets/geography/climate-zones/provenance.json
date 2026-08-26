@@ -1,0 +1,23 @@
+{
+  "schema": "lacurent_geographic_layer_v1",
+  "layer": "winter_climate_zones",
+  "crs": "EPSG:4326",
+  "normative_source": {
+    "document": "Mc 001-2022",
+    "figure": "Figura 2.1 / Figura A.1 — Zonarea climatică – iarna de calcul",
+    "publication": "Monitorul Oficial al României, Partea I, nr. 46 bis/17.I.2023",
+    "temperature_c": {
+      "I": -12,
+      "II": -15,
+      "III": -18,
+      "IV": -21,
+      "V": -24
+    }
+  },
+  "geometry_source": {
+    "method": "digitized_from_reference_raster_then_affine_georeferenced_and_clipped_to_romania_boundary",
+    "reference_raster": "user-supplied zoning map consistent with normative zone layout",
+    "country_boundary": "Natural Earth low-resolution Romania boundary used only as geographic clipping shell",
+    "accuracy": "UI / preliminary geographic lookup; requires control-point certification against the high-resolution normative figure before being used as legal/normative GIS authority"
+  }
+}

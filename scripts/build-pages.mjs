@@ -7,6 +7,7 @@ const outputDir = path.join(repoRoot, "dist", "pages");
 
 const staticEntries = Object.freeze([
   "_headers",
+  "assets",
   "components",
   "css",
   "data",
