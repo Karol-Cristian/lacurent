@@ -26,6 +26,7 @@ const productFiles = [
   "css/style.css",
   "js/auth.js",
   "js/lacurent-contract.mjs",
+  "js/lacurent-geography.mjs",
   "js/lacurent-workspace.mjs",
   "workers/save-house.js"
 ];

@@ -1,6 +1,17 @@
 const SIMPLE_SCHEMA_VERSION = "lacurent_simple_input_v1";
 const STORAGE_KEY = "lacurent_workspace_simple_v1";
 
+const BUILDING_VISUAL_TYPES = Object.freeze({
+  "house-single-storey": { type: "single_family_house", levels: 1, label: "Casa parter", silhouette: "single" },
+  "house-p1": { type: "single_family_house", levels: 2, label: "Casa P+1", silhouette: "p1" },
+  "house-mansard": { type: "single_family_house", levels: 2, label: "Casa cu mansarda", silhouette: "mansard" },
+  "house-p2": { type: "single_family_house", levels: 3, label: "Casa P+2", silhouette: "p2" },
+  "house-semi-detached": { type: "single_family_house", label: "Casa cuplata", silhouette: "semi" },
+  "house-terraced": { type: "single_family_house", label: "Casa insiruita", silhouette: "terrace" },
+  "apartment-small": { type: "apartment_block", label: "Bloc mic", silhouette: "small-block" },
+  "apartment-block": { type: "apartment_block", label: "Bloc / apartament", silhouette: "block" }
+});
+
 function readNumber(value) {
   if (value === "" || value === null || value === undefined) return undefined;
   const number = Number(value);
@@ -48,7 +59,10 @@ export function collectFormValues(form) {
 
 export function applyValuesToForm(form, values) {
   form.querySelectorAll("input[name],select[name],textarea[name]").forEach((field) => {
-    const value = readNested(values, field.name);
+    let value = readNested(values, field.name);
+    if (field.name === "building.visualType" && value === undefined && values.building?.type) {
+      value = Object.entries(BUILDING_VISUAL_TYPES).find(([, preset]) => preset.type === values.building.type)?.[0];
+    }
     if (field.type === "checkbox") {
       field.checked = Boolean(value);
       return;
@@ -61,11 +75,23 @@ export function applyValuesToForm(form, values) {
   });
 }
 
+export function resolveBuildingVisualType(building = {}) {
+  const preset = BUILDING_VISUAL_TYPES[building.visualType] || null;
+  return {
+    visualType: building.visualType,
+    type: building.type || preset?.type,
+    levels: readNumber(building.levels) ?? preset?.levels,
+    label: preset?.label,
+    silhouette: preset?.silhouette
+  };
+}
+
 export function deriveGeometry(values) {
   const building = values.building || {};
+  const visual = resolveBuildingVisualType(building);
   const lengthM = readNumber(building.lengthM);
   const widthM = readNumber(building.widthM);
-  const levels = readNumber(building.levels);
+  const levels = visual.levels;
   const floorHeightM = readNumber(building.floorHeightM);
   const footprintM2 = lengthM && widthM ? lengthM * widthM : undefined;
   const usefulAreaM2 = footprintM2 && levels ? footprintM2 * levels : undefined;
@@ -74,6 +100,7 @@ export function deriveGeometry(values) {
 }
 
 export function buildSimpleInputContract(values, options = {}) {
+  const visualBuilding = resolveBuildingVisualType(values.building || {});
   const contract = {
     schemaVersion: SIMPLE_SCHEMA_VERSION,
     project: {
@@ -85,10 +112,11 @@ export function buildSimpleInputContract(values, options = {}) {
       station: values.location?.locality || undefined
     },
     building: {
-      type: values.building?.type || undefined,
+      visualType: visualBuilding.visualType || undefined,
+      type: visualBuilding.type || undefined,
       lengthM: readNumber(values.building?.lengthM),
       widthM: readNumber(values.building?.widthM),
-      levels: readNumber(values.building?.levels),
+      levels: visualBuilding.levels,
       floorHeightM: readNumber(values.building?.floorHeightM)
     },
     envelope: {
@@ -171,10 +199,9 @@ export function readinessIssues(values) {
   const issues = [];
   const required = [
     ["location.locality", "Alege localitatea cladirii."],
-    ["building.type", "Alege tipul cladirii."],
+    ["building.visualType", "Alege tipul vizual al cladirii."],
     ["building.lengthM", "Completeaza lungimea cladirii."],
     ["building.widthM", "Completeaza latimea cladirii."],
-    ["building.levels", "Completeaza numarul de niveluri."],
     ["building.floorHeightM", "Completeaza inaltimea de nivel."],
     ["envelope.wallAreaM2", "Completeaza aria peretilor exteriori."],
     ["envelope.wallUValueWPerM2K", "Completeaza valoarea U pentru perete."],
@@ -186,6 +213,9 @@ export function readinessIssues(values) {
     if (value === "" || value === undefined || value === null) {
       issues.push({ path, message, type: "USER_INPUT_REQUIRED" });
     }
+  }
+  if (resolveBuildingVisualType(values.building || {}).levels === undefined) {
+    issues.push({ path: "building.levels", message: "Completeaza numarul de niveluri incalzite.", type: "USER_INPUT_REQUIRED" });
   }
   if (values.systems?.heating?.enabled && !values.systems?.heating?.generator) {
     issues.push({ path: "systems.heating.generator", message: "Alege generatorul de incalzire.", type: "USER_INPUT_REQUIRED" });
@@ -206,7 +236,9 @@ export function humanDiagnostic(diagnostic) {
   const code = diagnostic?.code || "CALCULATION_BLOCKED";
   const messages = {
     SIMPLE_INPUT_CONTRACT_INCOMPLETE: "Modelul este incomplet pentru calculatorul Python. Completeaza campul indicat sau furnizeaza profilul lunar sursa.",
-    PYTHON_ENGINE_SERVICE_UNCONFIGURED: "Serviciul Python MC001 nu este configurat in acest mediu de productie.",
+    PYTHON_ENGINE_SERVICE_UNCONFIGURED: "Serviciul de calcul nu este disponibil momentan.",
+    PYTHON_ENGINE_SERVICE_UNAVAILABLE: "Serviciul de calcul nu poate fi contactat momentan.",
+    PYTHON_ENGINE_SERVICE_TIMEOUT: "Serviciul de calcul nu a raspuns in timpul acceptat.",
     SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED: "Calculul complet al castigurilor solare necesita Qsky/Qsol si date de element solar; lipsa nu este tratata ca zero.",
     MISSING_ENGINE_INPUT: "Calculatorul are nevoie de o intrare fizica sau de produs care nu a fost furnizata."
   };
@@ -227,4 +259,5 @@ export function loadWorkspaceState() {
 }
 
 export { SIMPLE_SCHEMA_VERSION, STORAGE_KEY };
+export { BUILDING_VISUAL_TYPES };
 

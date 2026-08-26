@@ -63,7 +63,7 @@ function projectValues() {
   return {
     project: { name: "P12A Casa" },
     location: { locality: "Bucuresti" },
-    building: { type: "single_family_house", lengthM: 10, widthM: 8, levels: 1, floorHeightM: 2.7 },
+    building: { visualType: "house-single-storey", lengthM: 10, widthM: 8, floorHeightM: 2.7 },
     envelope: {
       wallAreaM2: 120,
       roofUValueWPerM2K: 0.2,
@@ -95,6 +95,7 @@ const activeProductFiles = [
   "pages/reset-password.html",
   "components/sidebar.html",
   "js/lacurent-contract.mjs",
+  "js/lacurent-geography.mjs",
   "js/lacurent-workspace.mjs",
   "workers/save-house.js",
   "css/style.css"
@@ -118,10 +119,10 @@ for (const file of activeProductFiles) {
 const analysisHtml = read("pages/analiza-casa.html");
 assert.equal(analysisHtml.includes("lacurent-workspace.mjs"), true);
 assert.equal(analysisHtml.includes("Workspace auditor"), true);
-assert.equal(analysisHtml.includes("Location"), true);
-assert.equal(analysisHtml.includes("Envelope"), true);
-assert.equal(analysisHtml.includes("Scenarios"), true);
-assert.equal(analysisHtml.includes("Documents"), true);
+assert.equal(analysisHtml.includes("Localizare"), true);
+assert.equal(analysisHtml.includes("Anvelopa"), true);
+assert.equal(analysisHtml.includes("Scenarii"), true);
+assert.equal(analysisHtml.includes("Documente"), true);
 
 const buildScript = read("scripts/build-pages.mjs");
 assert.equal(buildScript.includes('"src"'), false, "build must not publish the JS physics source tree");
