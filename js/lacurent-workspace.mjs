@@ -14,9 +14,11 @@ import {
 import {
   loadClimateGeography,
   localityOptions,
+  mapClientPointToClimateZone,
   renderClimateLegend,
   renderClimateMap,
-  resolveLocalityClimate
+  resolveLocalityClimate,
+  setClimateMapInteractionState
 } from "./lacurent-geography.mjs";
 
 const form = document.getElementById("workspaceForm");
@@ -30,6 +32,8 @@ const monthlyEnergyChart = document.getElementById("monthlyEnergyChart");
 let state = loadWorkspaceState();
 let geography = null;
 let selectedMapZone = null;
+let selectedMapPoint = null;
+let hoveredMapZone = null;
 
 function apiBase() {
   const explicitBase = window.LA_CURENT_API_BASE || window.LaCurentConfig?.apiBase;
@@ -198,22 +202,25 @@ function updateLocation(values) {
   }
   const resolved = resolveLocalityClimate(values.location?.locality, geography);
   const selectedZone = resolved?.zone || selectedMapZone;
-  renderClimateMap(document.getElementById("climateMap"), geography, resolved || { zone: selectedZone });
+  renderClimateMap(document.getElementById("climateMap"), geography, resolved || selectedMapPoint || { zone: selectedZone });
   renderClimateLegend(document.getElementById("climateLegend"), geography, selectedZone);
   status.textContent = geography.validation.ok
     ? "Harta climatica incarcata."
     : "Harta climatica are probleme de validare.";
   if (!resolved) {
     summary.innerHTML = selectedMapZone
-      ? `<span>Zona selectata pe harta</span><strong>Zona ${escapeHtml(selectedMapZone)}</strong><small>Alege localitatea pentru statia climatica.</small>`
+      ? `<span>Zona selectata pe harta</span><strong>Zona climatica ${escapeHtml(selectedMapZone)}</strong><small>Temperatura exterioara de calcul: ${escapeHtml(selectedMapPoint?.designTemperatureC ?? "-")} °C. Nu a fost selectata o statie climatica. Alege localitatea pentru profilul climatic canonic.</small>`
       : "<span>Selecteaza localitatea</span><strong>Date climatice nealese</strong><small>Harta poate fi folosita fara rezultat inventat.</small>";
-    technical.innerHTML = `<article><strong>Layer clima</strong><span>${escapeHtml(geography.provenance?.normative_source?.figure || "Figura normativa")}</span></article><article><strong>Vant</strong><span>Strat neincarcat; nu se deriva din clima.</span></article>`;
+    const mapCoordinates = selectedMapPoint && Number.isFinite(selectedMapPoint.lat) && Number.isFinite(selectedMapPoint.lon)
+      ? `${selectedMapPoint.lat.toFixed(4)}, ${selectedMapPoint.lon.toFixed(4)}`
+      : "Zona selectata fara coordonate de punct";
+    technical.innerHTML = `<article><strong>Sursa zona</strong><span>${escapeHtml(geography.provenance?.normative_source?.figure || "Figura normativa")}</span></article><article><strong>Selectie harta</strong><span>${escapeHtml(mapCoordinates)}</span></article><article><strong>Vant</strong><span>Strat neincarcat; nu se deriva din clima.</span></article>`;
     return;
   }
   summary.innerHTML = `
     <span>${escapeHtml(resolved.label)}</span>
-    <strong>Zona ${escapeHtml(resolved.zone)} / ${escapeHtml(resolved.designTemperatureC)} degC</strong>
-    <small>Statie climatica: ${escapeHtml(resolved.station)}. Date disponibile pentru fluxul climatic canonic.</small>
+    <strong>Zona ${escapeHtml(resolved.zone)}</strong>
+    <small>Temperatura exterioara de calcul: ${escapeHtml(resolved.designTemperatureC)} °C. Statie climatica: ${escapeHtml(resolved.station)}. Date disponibile pentru fluxul climatic canonic.</small>
   `;
   technical.innerHTML = `
     <article><strong>Sursa zona</strong><span>${escapeHtml(geography.provenance?.normative_source?.figure)}</span></article>
@@ -454,17 +461,33 @@ async function bootGeography() {
   const status = document.getElementById("mapStatus");
   try {
     geography = await loadClimateGeography();
+    selectedMapZone = state.mapSelection?.zone || null;
+    selectedMapPoint = state.mapSelection || null;
     populateLocalities();
     applyValuesToForm(form, state.values || {});
-    renderClimateMap(map, geography, {});
-    renderClimateLegend(document.getElementById("climateLegend"), geography);
+    renderClimateMap(map, geography, selectedMapPoint || {});
+    renderClimateLegend(document.getElementById("climateLegend"), geography, selectedMapZone);
     status.textContent = geography.validation.ok
       ? "Harta climatica incarcata."
       : "Harta climatica are probleme de validare.";
-    map.addEventListener("click", (event) => {
-      const zone = event.target.closest?.("[data-zone]")?.dataset.zone;
-      if (!zone) return;
-      selectedMapZone = zone;
+    map.addEventListener("pointermove", (event) => {
+      const hit = mapClientPointToClimateZone(map, geography, event.clientX, event.clientY);
+      hoveredMapZone = hit?.zone || null;
+      setClimateMapInteractionState(map, { selectedZone: selectedMapZone, hoveredZone: hoveredMapZone });
+    });
+    map.addEventListener("pointerleave", () => {
+      hoveredMapZone = null;
+      setClimateMapInteractionState(map, { selectedZone: selectedMapZone });
+    });
+    map.addEventListener("pointerup", (event) => {
+      const hit = mapClientPointToClimateZone(map, geography, event.clientX, event.clientY);
+      if (!hit?.zone) return;
+      selectedMapZone = hit.zone;
+      selectedMapPoint = hit;
+      state.mapSelection = hit;
+      const locality = field("location.locality");
+      if (locality) locality.value = "";
+      saveWorkspaceState(state);
       updateLocation(collectFormValues(form));
     });
     map.addEventListener("keydown", (event) => {
@@ -473,6 +496,11 @@ async function bootGeography() {
       if (!zone) return;
       event.preventDefault();
       selectedMapZone = zone;
+      selectedMapPoint = { zone, designTemperatureC: geography.provenance?.normative_source?.temperature_c?.[zone] ?? null };
+      state.mapSelection = selectedMapPoint;
+      const locality = field("location.locality");
+      if (locality) locality.value = "";
+      saveWorkspaceState(state);
       updateLocation(collectFormValues(form));
     });
   } catch (error) {
