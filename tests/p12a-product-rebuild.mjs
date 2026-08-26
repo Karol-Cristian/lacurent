@@ -194,6 +194,7 @@ try {
 
 const response = await worker.fetch(new Request("https://lacurent.test/api/python/calculate", {
   method: "POST",
+  headers: { "content-type": "application/json" },
   body: JSON.stringify({ input: engineInput })
 }), {
   ASSETS: {

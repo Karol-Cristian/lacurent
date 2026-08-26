@@ -1,4 +1,6 @@
 const SESSION_DAYS = 30;
+const PYTHON_REQUEST_MAX_BYTES = 1024 * 1024;
+const PYTHON_REQUEST_TIMEOUT_MS = 10000;
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -12,12 +14,74 @@ function json(body, status = 200) {
   });
 }
 
+function diagnosticResponse(code, message, status, extra = {}) {
+  return json({
+    success: false,
+    error: message,
+    diagnostic: {
+      code,
+      severity: "blocking",
+      message,
+      ...extra
+    }
+  }, status);
+}
+
 async function requestBody(request) {
   if (request.method === "GET") return {};
   try {
     return await request.json();
   } catch {
     return {};
+  }
+}
+
+async function requestJsonBody(request, maxBytes = PYTHON_REQUEST_MAX_BYTES) {
+  const contentType = request.headers.get("content-type") || "";
+  if (contentType.toLowerCase().split(";")[0].trim() !== "application/json") {
+    return {
+      ok: false,
+      response: diagnosticResponse(
+        "PYTHON_ENGINE_INVALID_CONTENT_TYPE",
+        "Cererea de calcul trebuie sa fie JSON.",
+        415
+      )
+    };
+  }
+  const contentLength = Number(request.headers.get("content-length") || "0");
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    return {
+      ok: false,
+      response: diagnosticResponse(
+        "PYTHON_ENGINE_REQUEST_TOO_LARGE",
+        "Cererea de calcul depaseste limita acceptata.",
+        413
+      )
+    };
+  }
+  const text = await request.text();
+  const byteLength = new TextEncoder().encode(text).length;
+  if (byteLength > maxBytes) {
+    return {
+      ok: false,
+      response: diagnosticResponse(
+        "PYTHON_ENGINE_REQUEST_TOO_LARGE",
+        "Cererea de calcul depaseste limita acceptata.",
+        413
+      )
+    };
+  }
+  try {
+    return { ok: true, body: JSON.parse(text || "{}") };
+  } catch {
+    return {
+      ok: false,
+      response: diagnosticResponse(
+        "PYTHON_ENGINE_INVALID_JSON",
+        "Corpul cererii de calcul trebuie sa fie JSON valid.",
+        400
+      )
+    };
   }
 }
 
@@ -225,26 +289,81 @@ async function loadProject(request, env) {
 }
 
 async function calculateWithPython(request, env) {
-  const body = await requestBody(request);
+  if (request.method !== "POST") {
+    return diagnosticResponse(
+      "PYTHON_ENGINE_METHOD_NOT_ALLOWED",
+      "Calculul se executa doar prin POST.",
+      405
+    );
+  }
+  const parsed = await requestJsonBody(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const input = body.input || body;
   if (!env.PYTHON_ENGINE_URL) {
-    return json({
-      success: false,
-      error: "Serviciul Python MC001 nu este configurat in acest mediu.",
-      diagnostic: {
-        code: "PYTHON_ENGINE_SERVICE_UNCONFIGURED",
-        severity: "blocking",
-        message: "Produsul nu cade inapoi pe JS physics; configureaza PYTHON_ENGINE_URL pentru calcul."
+    return diagnosticResponse(
+      "PYTHON_ENGINE_SERVICE_UNCONFIGURED",
+      "Serviciul Python MC001 nu este configurat in acest mediu.",
+      503,
+      {
+        remediation: "Configureaza PYTHON_ENGINE_URL. Produsul nu cade inapoi pe JS physics."
       }
-    }, 503);
+    );
   }
-  const upstream = await fetch(`${String(env.PYTHON_ENGINE_URL).replace(/\/$/, "")}/calculate`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input)
-  });
-  const output = await upstream.json();
-  return json({ success: upstream.ok, output }, upstream.ok ? 200 : upstream.status);
+  const requestId = crypto.randomUUID();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PYTHON_REQUEST_TIMEOUT_MS);
+  let upstream;
+  try {
+    upstream = await fetch(`${String(env.PYTHON_ENGINE_URL).replace(/\/$/, "")}/calculate`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-lacurent-request-id": requestId,
+        "x-lacurent-compact-output": "true"
+      },
+      body: JSON.stringify(input),
+      signal: controller.signal
+    });
+  } catch (error) {
+    const timedOut = error?.name === "AbortError";
+    return diagnosticResponse(
+      timedOut ? "PYTHON_ENGINE_SERVICE_TIMEOUT" : "PYTHON_ENGINE_SERVICE_UNAVAILABLE",
+      timedOut
+        ? "Serviciul Python MC001 nu a raspuns in timpul acceptat."
+        : "Serviciul Python MC001 nu poate fi contactat.",
+      timedOut ? 504 : 502,
+      { requestId }
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+  let output;
+  try {
+    output = await upstream.json();
+  } catch {
+    return diagnosticResponse(
+      "PYTHON_ENGINE_INVALID_UPSTREAM_RESPONSE",
+      "Serviciul Python MC001 a returnat un raspuns care nu este JSON valid.",
+      502,
+      { requestId }
+    );
+  }
+  if (upstream.ok && output?.engine !== "python") {
+    return diagnosticResponse(
+      "PYTHON_ENGINE_IDENTITY_MISSING",
+      "Serviciul de calcul nu a identificat explicit motorul Python.",
+      502,
+      { requestId }
+    );
+  }
+  return json({
+    success: upstream.ok,
+    output,
+    engine: output?.engine,
+    engineVersion: output?.engineVersion,
+    requestId
+  }, upstream.ok ? 200 : upstream.status);
 }
 
 async function passwordResetPlaceholder() {

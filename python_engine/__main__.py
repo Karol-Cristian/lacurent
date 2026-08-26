@@ -1,4 +1,4 @@
-"""CLI wrapper for `python -m python_engine calculate input.json`."""
+"""CLI wrapper for `python -m python_engine calculate|serve ...`."""
 
 from __future__ import annotations
 
@@ -8,6 +8,10 @@ from .lacurent_engine.api.calculate import main
 
 
 def _dispatch(argv: list[str]) -> int:
+    if argv and argv[0] == "serve":
+        from .lacurent_engine.api.service import main as serve_main
+
+        return serve_main(argv[1:])
     if argv and argv[0] == "calculate":
         return main(argv[1:])
     return main(argv)
