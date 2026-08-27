@@ -12,13 +12,22 @@ import {
   saveWorkspaceState
 } from "./lacurent-contract.mjs";
 import {
+  clampMapViewBox,
+  fullMapViewBox,
   loadClimateGeography,
-  localityOptions,
+  localityDisplayLabel,
+  localityShortLabel,
+  mapClientPointToProjectedPoint,
   mapClientPointToClimateZone,
+  mapZoomLevel,
+  nearestVisibleLocality,
+  projectGeographicPoint,
   renderClimateLegend,
   renderClimateMap,
   resolveLocalityClimate,
-  setClimateMapInteractionState
+  searchLocalities,
+  setClimateMapInteractionState,
+  zoomMapViewBox
 } from "./lacurent-geography.mjs";
 
 const form = document.getElementById("workspaceForm");
@@ -34,6 +43,14 @@ let geography = null;
 let selectedMapZone = null;
 let selectedMapPoint = null;
 let hoveredMapZone = null;
+let selectedLocality = null;
+let mapViewBox = null;
+let localityResults = [];
+let activeLocalityIndex = -1;
+const mapPointers = new Map();
+let mapPointerSession = null;
+let pinchSession = null;
+let lastMapControlPointerAt = 0;
 
 function apiBase() {
   const explicitBase = window.LA_CURENT_API_BASE || window.LaCurentConfig?.apiBase;
@@ -72,6 +89,108 @@ function escapeHtml(value) {
 
 function field(name) {
   return form.querySelector(`[name="${CSS.escape(name)}"]`);
+}
+
+function setHiddenValue(id, value) {
+  const item = document.getElementById(id);
+  if (item) item.value = value ?? "";
+}
+
+function selectedLocalityFromValues(values) {
+  return resolveLocalityClimate(values.location?.localityId || values.location?.locality, geography);
+}
+
+function setLocalityFields(locality) {
+  const resolved = locality ? resolveLocalityClimate(locality.id || locality.value || locality.name, geography) : null;
+  selectedLocality = resolved;
+  setHiddenValue("localityValue", resolved?.value);
+  setHiddenValue("localityIdValue", resolved?.id || resolved?.value);
+  setHiddenValue("localityNameValue", resolved?.name || resolved?.label);
+  setHiddenValue("localityCountyValue", resolved?.county);
+  setHiddenValue("localityLatValue", resolved?.lat);
+  setHiddenValue("localityLonValue", resolved?.lon);
+  setHiddenValue("localityClimateZoneValue", resolved?.zone);
+  setHiddenValue("localityStationValue", resolved?.stationValue);
+  const search = document.getElementById("localitySearch");
+  if (search) search.value = resolved ? localityShortLabel(resolved) : "";
+  if (resolved) {
+    selectedMapZone = resolved.zone;
+    selectedMapPoint = {
+      designTemperatureC: resolved.designTemperatureC,
+      lat: resolved.lat,
+      localityId: resolved.id || resolved.value,
+      lon: resolved.lon,
+      zone: resolved.zone
+    };
+    const projected = projectGeographicPoint(geography, resolved.lon, resolved.lat);
+    mapViewBox = zoomMapViewBox(geography, fullMapViewBox(geography), 0.32, projected);
+    state.mapSelection = selectedMapPoint;
+    state.selectedLocalityId = resolved.id || resolved.value;
+  } else {
+    state.selectedLocalityId = null;
+  }
+}
+
+function hideLocalityResults() {
+  const results = document.getElementById("localityResults");
+  if (!results) return;
+  results.hidden = true;
+  results.innerHTML = "";
+  activeLocalityIndex = -1;
+  const search = document.getElementById("localitySearch");
+  search?.setAttribute("aria-expanded", "false");
+  search?.removeAttribute("aria-activedescendant");
+}
+
+function renderLocalityResults(query) {
+  const results = document.getElementById("localityResults");
+  const search = document.getElementById("localitySearch");
+  if (!results || !geography?.localities) return;
+  localityResults = searchLocalities(geography.localities, query, { limit: 14 });
+  if (!localityResults.length) {
+    results.hidden = false;
+    results.innerHTML = "<div class=\"locality-no-results\">Nu am gasit localitati pentru cautarea introdusa.</div>";
+    search?.setAttribute("aria-expanded", "true");
+    return;
+  }
+  results.hidden = false;
+  results.innerHTML = localityResults.map((locality, index) => `
+    <button type="button" class="locality-option${index === activeLocalityIndex ? " active" : ""}" role="option" id="locality-option-${index}" data-locality-id="${escapeHtml(locality.id)}" aria-selected="${index === activeLocalityIndex ? "true" : "false"}">
+      <strong>${escapeHtml(locality.name)}</strong>
+      <em>${escapeHtml(locality.countyMnemonic || locality.county)}</em>
+      <span>${escapeHtml(locality.localityType)}${locality.uatName && locality.uatName !== locality.name ? `, UAT ${escapeHtml(locality.uatName)}` : ""} - ${escapeHtml(locality.county)}</span>
+    </button>
+  `).join("");
+  search?.setAttribute("aria-expanded", "true");
+  if (activeLocalityIndex >= 0) search?.setAttribute("aria-activedescendant", `locality-option-${activeLocalityIndex}`);
+}
+
+function selectLocality(locality, { stale = true } = {}) {
+  if (!locality) return;
+  setLocalityFields(locality);
+  hideLocalityResults();
+  const countySelect = document.getElementById("countySelect");
+  const countyLocalitySelect = document.getElementById("countyLocalitySelect");
+  if (countySelect && selectedLocality?.county) countySelect.value = selectedLocality.county;
+  populateCountyLocalities(selectedLocality?.county, selectedLocality?.id || selectedLocality?.value);
+  state.values = collectFormValues(form);
+  saveWorkspaceState(state);
+  refreshAll({ stale });
+}
+
+function selectMapPoint(hit) {
+  selectedMapZone = hit.zone;
+  selectedMapPoint = hit;
+  selectedLocality = null;
+  state.mapSelection = hit;
+  state.selectedLocalityId = null;
+  setLocalityFields(null);
+  setHiddenValue("localityLatValue", hit.lat);
+  setHiddenValue("localityLonValue", hit.lon);
+  setHiddenValue("localityClimateZoneValue", hit.zone);
+  state.values = collectFormValues(form);
+  saveWorkspaceState(state);
+  updateLocation(state.values);
 }
 
 function setActiveSection(section) {
@@ -182,14 +301,25 @@ function updateDocuments(result) {
   `;
 }
 
-function populateLocalities() {
-  const select = document.getElementById("localitySelect");
+function populateCounties() {
+  const select = document.getElementById("countySelect");
+  if (!select || !geography?.localities) return;
   const current = select.value;
-  const options = localityOptions(geography.oracle);
-  select.innerHTML = `<option value="">Alege localitatea</option>` + options.map((item) => (
-    `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`
+  select.innerHTML = `<option value="">Alege judetul</option>` + geography.localities.counties.map((county) => (
+    `<option value="${escapeHtml(county.name)}">${escapeHtml(county.name)} (${escapeHtml(county.mnemonic)})</option>`
   )).join("");
   if (current) select.value = current;
+}
+
+function populateCountyLocalities(countyName, selectedId = "") {
+  const select = document.getElementById("countyLocalitySelect");
+  if (!select) return;
+  const localities = countyName && geography?.localities?.byCounty?.get(countyName) || [];
+  select.disabled = !localities.length;
+  select.innerHTML = `<option value="">Alege localitatea</option>` + localities.map((locality) => (
+    `<option value="${escapeHtml(locality.id)}">${escapeHtml(locality.name)} - ${escapeHtml(locality.localityType)}${locality.uatName !== locality.name ? `, UAT ${escapeHtml(locality.uatName)}` : ""}</option>`
+  )).join("");
+  if (selectedId) select.value = selectedId;
 }
 
 function updateLocation(values) {
@@ -200,12 +330,17 @@ function updateLocation(values) {
     summary.innerHTML = "<span>Harta indisponibila</span><strong>Date geografice neincarcate</strong><small>Calculul nu foloseste valori geografice false.</small>";
     return;
   }
-  const resolved = resolveLocalityClimate(values.location?.locality, geography);
+  const resolved = selectedLocalityFromValues(values);
+  selectedLocality = resolved;
   const selectedZone = resolved?.zone || selectedMapZone;
-  renderClimateMap(document.getElementById("climateMap"), geography, resolved || selectedMapPoint || { zone: selectedZone });
+  renderClimateMap(document.getElementById("climateMap"), geography, {
+    ...(resolved || selectedMapPoint || { zone: selectedZone }),
+    localityId: resolved?.id || resolved?.value || selectedMapPoint?.localityId,
+    viewBox: mapViewBox || fullMapViewBox(geography)
+  });
   renderClimateLegend(document.getElementById("climateLegend"), geography, selectedZone);
   status.textContent = geography.validation.ok
-    ? "Harta climatica incarcata."
+    ? `Harta climatica incarcata. ${geography.localities?.validation?.localityCount || 0} localitati disponibile. Zoom ${mapZoomLevel(geography, mapViewBox || fullMapViewBox(geography)).toFixed(1)}x.`
     : "Harta climatica are probleme de validare.";
   if (!resolved) {
     summary.innerHTML = selectedMapZone
@@ -214,19 +349,24 @@ function updateLocation(values) {
     const mapCoordinates = selectedMapPoint && Number.isFinite(selectedMapPoint.lat) && Number.isFinite(selectedMapPoint.lon)
       ? `${selectedMapPoint.lat.toFixed(4)}, ${selectedMapPoint.lon.toFixed(4)}`
       : "Zona selectata fara coordonate de punct";
-    technical.innerHTML = `<article><strong>Sursa zona</strong><span>${escapeHtml(geography.provenance?.normative_source?.figure || "Figura normativa")}</span></article><article><strong>Selectie harta</strong><span>${escapeHtml(mapCoordinates)}</span></article><article><strong>Vant</strong><span>Strat neincarcat; nu se deriva din clima.</span></article>`;
+    technical.innerHTML = `<article><strong>Sursa zona</strong><span>${escapeHtml(geography.provenance?.normative_source?.figure || "Figura normativa")}</span></article><article><strong>Selectie harta</strong><span>${escapeHtml(mapCoordinates)}</span></article><article><strong>Localitati</strong><span>${escapeHtml(geography.localityProvenance?.sourceLayerDate || "data sursa")} / ${escapeHtml(geography.localities?.validation?.localityCount || 0)} puncte active</span></article><article><strong>Vant</strong><span>Strat neincarcat; nu se deriva din clima.</span></article>`;
     return;
   }
+  const stationText = resolved.station
+    ? `Statie climatica: ${escapeHtml(resolved.station)}. Date disponibile pentru fluxul climatic canonic.`
+    : "Nu exista inca o statie climatica directa pentru aceasta localitate; zona geografica este rezolvata, iar profilul lunar necesita regula Climate Provider.";
   summary.innerHTML = `
     <span>${escapeHtml(resolved.label)}</span>
     <strong>Zona ${escapeHtml(resolved.zone)}</strong>
-    <small>Temperatura exterioara de calcul: ${escapeHtml(resolved.designTemperatureC)} °C. Statie climatica: ${escapeHtml(resolved.station)}. Date disponibile pentru fluxul climatic canonic.</small>
+    <small>Temperatura exterioara de calcul: ${escapeHtml(resolved.designTemperatureC)} °C. ${stationText}</small>
   `;
   technical.innerHTML = `
     <article><strong>Sursa zona</strong><span>${escapeHtml(geography.provenance?.normative_source?.figure)}</span></article>
     <article><strong>Geometrie</strong><span>${escapeHtml(geography.provenance?.geometry_source?.accuracy)}</span></article>
+    <article><strong>Localitate</strong><span>${escapeHtml(localityDisplayLabel(resolved))}</span></article>
     <article><strong>Coordonate selectie</strong><span>${resolved.lat}, ${resolved.lon}</span></article>
-    <article><strong>Relatie furnizor climatic</strong><span>Zona geografica informeaza localizarea; profilurile lunare vin din Climate Provider.</span></article>
+    <article><strong>Identificator</strong><span>${escapeHtml(resolved.id || resolved.value)} / UAT ${escapeHtml(resolved.uatSiruta || "-")}</span></article>
+    <article><strong>Relatie furnizor climatic</strong><span>Zona geografica informeaza localizarea; profilurile lunare vin din Climate Provider. ${resolved.station ? "Statie directa rezolvata." : "Statie directa nerezolvata."}</span></article>
   `;
 }
 
@@ -456,6 +596,187 @@ function refreshAll({ stale = false } = {}) {
   if (stale) markStale();
 }
 
+function pointerDistance(a, b) {
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+
+function pointerMidpoint(a, b) {
+  return {
+    clientX: (a.clientX + b.clientX) / 2,
+    clientY: (a.clientY + b.clientY) / 2
+  };
+}
+
+function selectedMapCenter() {
+  if (selectedLocality?.lon && selectedLocality?.lat) {
+    return projectGeographicPoint(geography, selectedLocality.lon, selectedLocality.lat);
+  }
+  if (selectedMapPoint?.lon && selectedMapPoint?.lat) {
+    return projectGeographicPoint(geography, selectedMapPoint.lon, selectedMapPoint.lat);
+  }
+  const current = mapViewBox || fullMapViewBox(geography);
+  return { x: current.x + (current.width / 2), y: current.y + (current.height / 2) };
+}
+
+function applyMapViewBox(nextViewBox) {
+  mapViewBox = clampMapViewBox(geography, nextViewBox);
+  state.mapViewBox = mapViewBox;
+  saveWorkspaceState(state);
+  updateLocation(collectFormValues(form));
+}
+
+function handleMapControl(action) {
+  try {
+    if (!geography) return;
+    if (action === "zoom-in") {
+      applyMapViewBox(zoomMapViewBox(geography, mapViewBox, 0.72, selectedMapCenter()));
+    }
+    if (action === "zoom-out") {
+      applyMapViewBox(zoomMapViewBox(geography, mapViewBox, 1.28, selectedMapCenter()));
+    }
+    if (action === "reset") {
+      applyMapViewBox(fullMapViewBox(geography));
+    }
+  } catch (error) {
+    const status = document.getElementById("mapStatus");
+    if (status) status.textContent = `Control harta indisponibil: ${error.message}`;
+  }
+}
+
+function mapControlActionFromEvent(event) {
+  const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+  const button = target?.closest?.("[data-map-control]");
+  return button?.dataset.mapControl || null;
+}
+
+function bindMapInteraction(map) {
+  map.addEventListener("wheel", (event) => {
+    if (!geography) return;
+    event.preventDefault();
+    const point = mapClientPointToProjectedPoint(map, event.clientX, event.clientY) || selectedMapCenter();
+    applyMapViewBox(zoomMapViewBox(geography, mapViewBox, event.deltaY < 0 ? 0.78 : 1.24, point));
+  }, { passive: false });
+
+  map.addEventListener("pointerdown", (event) => {
+    if (!geography) return;
+    map.setPointerCapture?.(event.pointerId);
+    mapPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+    const current = mapViewBox || fullMapViewBox(geography);
+    if (mapPointers.size === 2) {
+      const [first, second] = [...mapPointers.values()];
+      const midpoint = pointerMidpoint(first, second);
+      pinchSession = {
+        distance: pointerDistance(first, second),
+        startViewBox: current,
+        center: mapClientPointToProjectedPoint(map, midpoint.clientX, midpoint.clientY) || selectedMapCenter()
+      };
+      mapPointerSession = null;
+      map.classList.add("dragging");
+      return;
+    }
+    const projected = mapClientPointToProjectedPoint(map, event.clientX, event.clientY);
+    const localityHit = projected
+      ? nearestVisibleLocality(geography, current, projected.x, projected.y, (projected.viewBox.width / projected.rect.width) * 14)
+      : null;
+    mapPointerSession = {
+      dragged: false,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startViewBox: current,
+      targetLocalityId: localityHit?.locality?.id || null
+    };
+    map.classList.add("dragging");
+  });
+
+  map.addEventListener("pointermove", (event) => {
+    if (!geography) return;
+    if (mapPointers.has(event.pointerId)) {
+      mapPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+    }
+    if (pinchSession && mapPointers.size >= 2) {
+      const [first, second] = [...mapPointers.values()];
+      const distance = pointerDistance(first, second);
+      if (distance > 4) {
+        applyMapViewBox(zoomMapViewBox(geography, pinchSession.startViewBox, pinchSession.distance / distance, pinchSession.center));
+      }
+      return;
+    }
+    if (mapPointerSession?.pointerId === event.pointerId) {
+      const dxPx = event.clientX - mapPointerSession.startClientX;
+      const dyPx = event.clientY - mapPointerSession.startClientY;
+      if (Math.hypot(dxPx, dyPx) > 5) mapPointerSession.dragged = true;
+      if (mapPointerSession.dragged) {
+        const svg = map.querySelector("svg");
+        const rect = svg?.getBoundingClientRect();
+        if (rect?.width && rect?.height) {
+          applyMapViewBox(clampMapViewBox(geography, {
+            ...mapPointerSession.startViewBox,
+            x: mapPointerSession.startViewBox.x - ((dxPx / rect.width) * mapPointerSession.startViewBox.width),
+            y: mapPointerSession.startViewBox.y - ((dyPx / rect.height) * mapPointerSession.startViewBox.height)
+          }));
+        }
+      }
+      return;
+    }
+    const hit = mapClientPointToClimateZone(map, geography, event.clientX, event.clientY);
+    hoveredMapZone = hit?.zone || null;
+    setClimateMapInteractionState(map, { hoveredZone: hoveredMapZone, selectedZone: selectedMapZone });
+  });
+
+  map.addEventListener("pointerleave", () => {
+    if (mapPointerSession || pinchSession) return;
+    hoveredMapZone = null;
+    setClimateMapInteractionState(map, { selectedZone: selectedMapZone });
+  });
+
+  map.addEventListener("pointerup", (event) => {
+    const session = mapPointerSession;
+    mapPointers.delete(event.pointerId);
+    if (mapPointers.size < 2) pinchSession = null;
+    map.releasePointerCapture?.(event.pointerId);
+    map.classList.remove("dragging");
+    if (!geography || !session || session.pointerId !== event.pointerId) {
+      mapPointerSession = null;
+      return;
+    }
+    mapPointerSession = null;
+    if (session.dragged) return;
+    if (session.targetLocalityId) {
+      selectLocality(geography.localities.byId.get(session.targetLocalityId));
+      return;
+    }
+    const hit = mapClientPointToClimateZone(map, geography, event.clientX, event.clientY);
+    if (hit?.zone) selectMapPoint(hit);
+  });
+
+  map.addEventListener("pointercancel", (event) => {
+    mapPointers.delete(event.pointerId);
+    mapPointerSession = null;
+    pinchSession = null;
+    map.classList.remove("dragging");
+  });
+
+  map.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const localityId = event.target.closest?.(".locality-marker")?.dataset.localityId;
+    if (localityId) {
+      event.preventDefault();
+      selectLocality(geography.localities.byId.get(localityId));
+      return;
+    }
+    const zone = event.target.closest?.("[data-zone]")?.dataset.zone;
+    if (!zone) return;
+    event.preventDefault();
+    selectedMapZone = zone;
+    selectedMapPoint = { designTemperatureC: geography.provenance?.normative_source?.temperature_c?.[zone] ?? null, zone };
+    state.mapSelection = selectedMapPoint;
+    setLocalityFields(null);
+    saveWorkspaceState(state);
+    updateLocation(collectFormValues(form));
+  });
+}
+
 async function bootGeography() {
   const map = document.getElementById("climateMap");
   const status = document.getElementById("mapStatus");
@@ -463,46 +784,20 @@ async function bootGeography() {
     geography = await loadClimateGeography();
     selectedMapZone = state.mapSelection?.zone || null;
     selectedMapPoint = state.mapSelection || null;
-    populateLocalities();
+    mapViewBox = state.mapViewBox ? clampMapViewBox(geography, state.mapViewBox) : fullMapViewBox(geography);
+    populateCounties();
     applyValuesToForm(form, state.values || {});
-    renderClimateMap(map, geography, selectedMapPoint || {});
+    setLocalityFields(resolveLocalityClimate(field("location.localityId")?.value || field("location.locality")?.value, geography));
+    renderClimateMap(map, geography, {
+      ...(selectedLocality || selectedMapPoint || {}),
+      localityId: selectedLocality?.id || selectedLocality?.value,
+      viewBox: mapViewBox
+    });
     renderClimateLegend(document.getElementById("climateLegend"), geography, selectedMapZone);
     status.textContent = geography.validation.ok
-      ? "Harta climatica incarcata."
+      ? `Harta climatica incarcata. ${geography.localities.validation.localityCount} localitati disponibile.`
       : "Harta climatica are probleme de validare.";
-    map.addEventListener("pointermove", (event) => {
-      const hit = mapClientPointToClimateZone(map, geography, event.clientX, event.clientY);
-      hoveredMapZone = hit?.zone || null;
-      setClimateMapInteractionState(map, { selectedZone: selectedMapZone, hoveredZone: hoveredMapZone });
-    });
-    map.addEventListener("pointerleave", () => {
-      hoveredMapZone = null;
-      setClimateMapInteractionState(map, { selectedZone: selectedMapZone });
-    });
-    map.addEventListener("pointerup", (event) => {
-      const hit = mapClientPointToClimateZone(map, geography, event.clientX, event.clientY);
-      if (!hit?.zone) return;
-      selectedMapZone = hit.zone;
-      selectedMapPoint = hit;
-      state.mapSelection = hit;
-      const locality = field("location.locality");
-      if (locality) locality.value = "";
-      saveWorkspaceState(state);
-      updateLocation(collectFormValues(form));
-    });
-    map.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const zone = event.target.closest?.("[data-zone]")?.dataset.zone;
-      if (!zone) return;
-      event.preventDefault();
-      selectedMapZone = zone;
-      selectedMapPoint = { zone, designTemperatureC: geography.provenance?.normative_source?.temperature_c?.[zone] ?? null };
-      state.mapSelection = selectedMapPoint;
-      const locality = field("location.locality");
-      if (locality) locality.value = "";
-      saveWorkspaceState(state);
-      updateLocation(collectFormValues(form));
-    });
+    bindMapInteraction(map);
   } catch (error) {
     status.textContent = "Harta climatica nu s-a putut incarca.";
     map.innerHTML = "<div class=\"map-empty\">Harta climatica este indisponibila. Nu se folosesc valori geografice aproximative.</div>";
@@ -510,6 +805,63 @@ async function bootGeography() {
 }
 
 function bindEvents() {
+  const search = document.getElementById("localitySearch");
+  const results = document.getElementById("localityResults");
+  search?.addEventListener("input", () => {
+    activeLocalityIndex = -1;
+    renderLocalityResults(search.value);
+  });
+  search?.addEventListener("focus", () => {
+    if (search.value.trim().length >= 2) renderLocalityResults(search.value);
+  });
+  search?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      hideLocalityResults();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) return;
+    if (event.key === "Enter" && activeLocalityIndex >= 0) {
+      event.preventDefault();
+      selectLocality(localityResults[activeLocalityIndex]);
+      return;
+    }
+    if (!localityResults.length) renderLocalityResults(search.value);
+    if (!localityResults.length) return;
+    event.preventDefault();
+    if (event.key === "ArrowDown") activeLocalityIndex = Math.min(localityResults.length - 1, activeLocalityIndex + 1);
+    if (event.key === "ArrowUp") activeLocalityIndex = Math.max(0, activeLocalityIndex - 1);
+    renderLocalityResults(search.value);
+  });
+  results?.addEventListener("click", (event) => {
+    const option = event.target.closest("button[data-locality-id]");
+    if (!option) return;
+    selectLocality(geography.localities.byId.get(option.dataset.localityId));
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".locality-selector")) return;
+    hideLocalityResults();
+  });
+  document.getElementById("countySelect")?.addEventListener("change", (event) => {
+    populateCountyLocalities(event.target.value);
+  });
+  document.getElementById("countyLocalitySelect")?.addEventListener("change", (event) => {
+    if (!event.target.value) return;
+    selectLocality(geography.localities.byId.get(event.target.value));
+  });
+  const mapControls = document.querySelector(".map-controls");
+  mapControls?.addEventListener("pointerup", (event) => {
+    const action = mapControlActionFromEvent(event);
+    if (!action) return;
+    event.preventDefault();
+    lastMapControlPointerAt = Date.now();
+    handleMapControl(action);
+  });
+  mapControls?.addEventListener("click", (event) => {
+    const action = mapControlActionFromEvent(event);
+    if (!action) return;
+    if (Date.now() - lastMapControlPointerAt < 250) return;
+    handleMapControl(action);
+  });
   nav.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-section-target]");
     if (!button) return;

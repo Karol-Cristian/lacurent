@@ -109,7 +109,13 @@ export function buildSimpleInputContract(values, options = {}) {
     },
     location: {
       locality: values.location?.locality || undefined,
-      station: values.location?.locality || undefined
+      localityId: values.location?.localityId || undefined,
+      localityName: values.location?.localityName || undefined,
+      county: values.location?.county || undefined,
+      lat: readNumber(values.location?.lat),
+      lon: readNumber(values.location?.lon),
+      climateZone: values.location?.climateZone || undefined,
+      station: values.location?.station || undefined
     },
     building: {
       visualType: visualBuilding.visualType || undefined,
