@@ -140,7 +140,7 @@ assert.match(workspace, /setHiddenValue\("localityClimateZoneValue", hit\.zone\)
 assert.match(css, /touch-action:none/);
 assert.match(css, /pointer-events:none/);
 assert.match(css, /locality-marker/);
-assert.match(css, /width:min\(100%,980px\)/);
+assert.match(css, /width:min\(100%,1120px\)/);
 
 console.log(JSON.stringify({
   status: "PASS",
