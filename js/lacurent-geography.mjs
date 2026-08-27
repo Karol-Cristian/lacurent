@@ -14,13 +14,13 @@ const FALLBACK_ZONE_COLORS = Object.freeze({
 });
 
 const LABEL_COLLISION_WIDTH = 1120;
-const LABEL_MIN_PADDING_PX = 4;
+const LABEL_MIN_PADDING_PX = 8;
 const LABEL_LIMITS = Object.freeze([
   { zoomBelow: 1.55, maxLabels: 8 },
-  { zoomBelow: 2.6, maxLabels: 22 },
-  { zoomBelow: 4.2, maxLabels: 38 },
-  { zoomBelow: 6.2, maxLabels: 56 },
-  { zoomBelow: Infinity, maxLabels: 76 }
+  { zoomBelow: 2.6, maxLabels: 18 },
+  { zoomBelow: 4.2, maxLabels: 28 },
+  { zoomBelow: 6.2, maxLabels: 36 },
+  { zoomBelow: Infinity, maxLabels: 48 }
 ]);
 
 const LOCALITY_LABEL_STYLES = Object.freeze({
@@ -547,13 +547,13 @@ function markerScreenPoint(marker, viewBox, collisionWidth) {
 
 function labelWidthPx(locality, fontSize) {
   const text = localityShortLabel(locality) || locality.name || "";
-  return Math.min(210, Math.max(28, (text.length * fontSize * 0.54) + 12));
+  return Math.min(270, Math.max(42, (text.length * fontSize * 0.78) + 26));
 }
 
 function labelBox(screen, locality, style, position) {
   const width = labelWidthPx(locality, style.fontSize);
-  const height = style.fontSize + 8;
-  const offset = style.radius + 9;
+  const height = style.fontSize + 18;
+  const offset = style.radius + 15;
   const candidates = {
     right: {
       anchor: "start",

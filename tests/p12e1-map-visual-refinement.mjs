@@ -68,14 +68,14 @@ assertNoLabelOverlap(nationalLabels, "national labels must not overlap");
 const regionalMarkers = selectVisibleLocalities(geography, regional, { selectedLocalityId: cluj.id });
 const regionalLabels = declutterLocalityLabels(regionalMarkers, regional, { selectedLocalityId: cluj.id, zoom: 3.1 });
 assert.ok(regionalLabels.size > nationalLabels.size, "regional zoom should progressively admit more labels");
-assert.ok(regionalLabels.size <= 38, "regional labels must remain capped");
+assert.ok(regionalLabels.size <= 28, "regional labels must remain capped");
 assert.ok(regionalLabels.has(cluj.id), "selected city label must stay visible");
 assertNoLabelOverlap(regionalLabels, "regional labels must not overlap");
 
 const localMarkers = selectVisibleLocalities(geography, local, { selectedLocalityId: village.id });
 const localLabels = declutterLocalityLabels(localMarkers, local, { selectedLocalityId: village.id, zoom: 6.2 });
 assert.ok(localLabels.has(village.id), "selected rural locality label must stay visible");
-assert.ok(localLabels.size <= 76, "local labels must remain bounded after decluttering");
+assert.ok(localLabels.size <= 48, "local labels must remain bounded after decluttering");
 assertNoLabelOverlap(localLabels, "local labels must not overlap");
 assert.ok(new Set([...localLabels.values()].map((label) => label.position)).size >= 2 || localLabels.size < 2);
 
