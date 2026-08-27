@@ -6,11 +6,29 @@ const MAP_PADDING = 26;
 const MIN_ZOOM_VIEWBOX_FRACTION = 0.12;
 
 const FALLBACK_ZONE_COLORS = Object.freeze({
-  I: "#f0d36d",
-  II: "#e9ad64",
-  III: "#d97f5f",
-  IV: "#a96b8e",
-  V: "#596c9f"
+  I: "#e7d79b",
+  II: "#d8aa79",
+  III: "#9fbd99",
+  IV: "#90bbcf",
+  V: "#7889b9"
+});
+
+const LABEL_COLLISION_WIDTH = 1120;
+const LABEL_MIN_PADDING_PX = 4;
+const LABEL_LIMITS = Object.freeze([
+  { zoomBelow: 1.55, maxLabels: 8 },
+  { zoomBelow: 2.6, maxLabels: 22 },
+  { zoomBelow: 4.2, maxLabels: 38 },
+  { zoomBelow: 6.2, maxLabels: 56 },
+  { zoomBelow: Infinity, maxLabels: 76 }
+]);
+
+const LOCALITY_LABEL_STYLES = Object.freeze({
+  1: { fontSize: 10.8, radius: 3.8, weight: 900 },
+  2: { fontSize: 9.8, radius: 3.1, weight: 850 },
+  3: { fontSize: 8.7, radius: 2.4, weight: 800 },
+  4: { fontSize: 7.7, radius: 1.9, weight: 760 },
+  5: { fontSize: 6.9, radius: 1.5, weight: 720 }
 });
 
 function finitePair(point) {
@@ -508,6 +526,116 @@ function markerTier(locality) {
   return 5;
 }
 
+function markerStyle(tier, selected = false) {
+  const style = LOCALITY_LABEL_STYLES[tier] || LOCALITY_LABEL_STYLES[5];
+  return selected
+    ? { ...style, fontSize: Math.max(style.fontSize + 1.5, 10.4), radius: Math.max(style.radius + 1.4, 4.5), weight: 900 }
+    : style;
+}
+
+function labelLimitForZoom(zoom) {
+  return LABEL_LIMITS.find((limit) => zoom < limit.zoomBelow)?.maxLabels || 32;
+}
+
+function markerScreenPoint(marker, viewBox, collisionWidth) {
+  const collisionHeight = collisionWidth * (viewBox.height / viewBox.width);
+  return {
+    x: ((marker.x - viewBox.x) / viewBox.width) * collisionWidth,
+    y: ((marker.y - viewBox.y) / viewBox.height) * collisionHeight
+  };
+}
+
+function labelWidthPx(locality, fontSize) {
+  const text = localityShortLabel(locality) || locality.name || "";
+  return Math.min(210, Math.max(28, (text.length * fontSize * 0.54) + 12));
+}
+
+function labelBox(screen, locality, style, position) {
+  const width = labelWidthPx(locality, style.fontSize);
+  const height = style.fontSize + 8;
+  const offset = style.radius + 9;
+  const candidates = {
+    right: {
+      anchor: "start",
+      box: { x1: screen.x + offset, x2: screen.x + offset + width, y1: screen.y - (height * 0.78), y2: screen.y + (height * 0.22) },
+      x: offset,
+      y: -4
+    },
+    left: {
+      anchor: "end",
+      box: { x1: screen.x - offset - width, x2: screen.x - offset, y1: screen.y - (height * 0.78), y2: screen.y + (height * 0.22) },
+      x: -offset,
+      y: -4
+    },
+    above: {
+      anchor: "middle",
+      box: { x1: screen.x - (width / 2), x2: screen.x + (width / 2), y1: screen.y - offset - height, y2: screen.y - offset },
+      x: 0,
+      y: -offset
+    },
+    below: {
+      anchor: "middle",
+      box: { x1: screen.x - (width / 2), x2: screen.x + (width / 2), y1: screen.y + offset, y2: screen.y + offset + height },
+      x: 0,
+      y: offset + (style.fontSize * 0.32)
+    }
+  };
+  return { ...candidates[position], fontSize: style.fontSize, fontWeight: style.weight, position };
+}
+
+function boxesOverlap(a, b, padding = LABEL_MIN_PADDING_PX) {
+  return !(a.x2 + padding < b.x1 || a.x1 - padding > b.x2 || a.y2 + padding < b.y1 || a.y1 - padding > b.y2);
+}
+
+function boxIsWithinCanvas(box, width, height) {
+  const margin = 8;
+  return box.x2 >= -margin && box.x1 <= width + margin && box.y2 >= -margin && box.y1 <= height + margin;
+}
+
+function renderedCollisionWidth(target) {
+  const width = Number(target?.clientWidth);
+  if (!Number.isFinite(width) || width <= 0) return LABEL_COLLISION_WIDTH;
+  return Math.max(280, Math.min(LABEL_COLLISION_WIDTH, width - 32));
+}
+
+export function declutterLocalityLabels(markers, viewBox, options = {}) {
+  const current = viewBox || { x: 0, y: 0, width: 1, height: 1 };
+  const collisionWidth = options.collisionWidth || LABEL_COLLISION_WIDTH;
+  const collisionHeight = collisionWidth * (current.height / current.width);
+  const selectedId = options.selectedLocalityId || null;
+  const zoom = options.zoom || 1;
+  const maxLabels = options.maxLabels || labelLimitForZoom(zoom);
+  const acceptedBoxes = [];
+  const accepted = new Map();
+  const sorted = [...markers].sort((a, b) => {
+    if (a.locality.id === selectedId) return -1;
+    if (b.locality.id === selectedId) return 1;
+    return a.tier - b.tier || b.locality.importance - a.locality.importance || a.locality.name.localeCompare(b.locality.name, "ro");
+  });
+
+  for (const marker of sorted) {
+    const selected = marker.locality.id === selectedId;
+    if (!selected && accepted.size >= maxLabels) continue;
+    const style = markerStyle(marker.tier, selected);
+    const screen = markerScreenPoint(marker, current, collisionWidth);
+    const positions = selected ? ["right", "left", "above", "below"] : marker.tier <= 2 ? ["right", "left", "above", "below"] : ["right", "above", "left", "below"];
+    let chosen = null;
+    for (const position of positions) {
+      const candidate = labelBox(screen, marker.locality, style, position);
+      if (!boxIsWithinCanvas(candidate.box, collisionWidth, collisionHeight) && !selected) continue;
+      if (selected || !acceptedBoxes.some((box) => boxesOverlap(candidate.box, box))) {
+        chosen = candidate;
+        break;
+      }
+    }
+    if (!chosen && selected) chosen = labelBox(screen, marker.locality, style, "right");
+    if (!chosen) continue;
+    acceptedBoxes.push(chosen.box);
+    accepted.set(marker.locality.id, chosen);
+  }
+  return accepted;
+}
+
 export function selectVisibleLocalities(geography, viewBox, options = {}) {
   const localities = geography.localities?.localities || [];
   const projection = projectionForGeography(geography);
@@ -543,18 +671,22 @@ export function nearestVisibleLocality(geography, viewBox, x, y, maxDistanceProj
   return best;
 }
 
-function renderLocalityMarkers(geography, projection, viewBox, selection = {}) {
-  const markers = selectVisibleLocalities(geography, viewBox, { selectedLocalityId: selection.localityId });
-  const zoom = mapZoomLevel(geography, viewBox || fullMapViewBox(geography));
+function renderLocalityMarkers(geography, projection, viewBox, selection = {}, renderedWidth = LABEL_COLLISION_WIDTH) {
+  const current = viewBox || fullMapViewBox(geography);
+  const markers = selectVisibleLocalities(geography, current, { selectedLocalityId: selection.localityId });
+  const zoom = mapZoomLevel(geography, current);
+  const screenScale = Math.max(0.12, Math.min(2.4, current.width / renderedWidth));
+  const labels = declutterLocalityLabels(markers, current, { collisionWidth: renderedWidth, selectedLocalityId: selection.localityId, zoom });
   return markers.map(({ locality, tier, x, y }) => {
     const selected = locality.id === selection.localityId;
-    const showLabel = selected || tier <= 2 || zoom >= 3.4;
+    const label = labels.get(locality.id);
+    const style = markerStyle(tier, selected);
     const classes = ["locality-marker", `tier-${tier}`];
     if (selected) classes.push("selected");
     return `
-      <g class="${classes.join(" ")}" data-locality-id="${escapeHtml(locality.id)}" tabindex="0" role="button" aria-label="${escapeHtml(localityDisplayLabel(locality))}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})">
-        <circle r="${selected ? 4.8 : tier <= 2 ? 3.4 : 2.5}"></circle>
-        ${showLabel ? `<text x="7" y="-5">${escapeHtml(locality.name)}</text>` : ""}
+      <g class="${classes.join(" ")}" data-locality-id="${escapeHtml(locality.id)}" data-label-visible="${label ? "true" : "false"}" tabindex="0" role="button" aria-label="${escapeHtml(localityDisplayLabel(locality))}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${screenScale.toFixed(4)})">
+        <circle r="${style.radius.toFixed(2)}"></circle>
+        ${label ? `<text class="locality-label" x="${label.x.toFixed(1)}" y="${label.y.toFixed(1)}" text-anchor="${label.anchor}" data-label-position="${label.position}" style="font-size:${label.fontSize.toFixed(1)}px;font-weight:${label.fontWeight};">${escapeHtml(locality.name)}</text>` : ""}
       </g>
     `;
   }).join("");
@@ -566,6 +698,7 @@ export function renderClimateMap(target, geography, selection = {}) {
   const selectedZone = selection.zone;
   const hoveredZone = selection.hoveredZone;
   const viewBox = clampMapViewBox(geography, selection.viewBox || fullMapViewBox(geography));
+  const renderedWidth = renderedCollisionWidth(target);
   const boundaryPath = (geography.boundary?.features || []).map((feature) => geometryPath(feature.geometry, projection)).join(" ");
   const technicalPaths = (geography.zones?.features || []).map((feature) => {
     const zone = feature.properties?.zone;
@@ -578,29 +711,40 @@ export function renderClimateMap(target, geography, selection = {}) {
     if (hoveredZone === zone && selectedZone !== zone) classes.push("hovered");
     return `<path class="${classes.join(" ")}" d="${geometryPath(feature.geometry, projection)}" fill="${zoneColor(feature)}" data-zone="${zone}" tabindex="0" role="button" aria-pressed="${selectedZone === zone ? "true" : "false"}" aria-label="Zona climatica ${zone}"></path>`;
   }).join("");
+  const zoom = mapZoomLevel(geography, viewBox);
+  const screenScale = Math.max(0.12, Math.min(2.4, viewBox.width / renderedWidth));
   const labels = (geography.zones?.features || []).map((feature) => {
     const zone = feature.properties?.zone;
     const point = zoneLabelPoint(feature, projection);
     const selected = selectedZone === zone ? " selected" : "";
-    return `<text class="zone-label${selected}" x="${point.x.toFixed(2)}" y="${point.y.toFixed(2)}" data-zone="${zone}">${zone}</text>`;
+    return `<g class="zone-label-anchor${selected}" transform="translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) scale(${screenScale.toFixed(4)})"><text class="zone-label${selected}" data-zone="${zone}">${zone}</text></g>`;
   }).join("");
   const pin = Number.isFinite(selection.lon) && Number.isFinite(selection.lat)
     ? (() => {
         const [x, y] = projection.project([selection.lon, selection.lat]);
-        return `<g class="location-pin" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="7"></circle><path d="M0 -18 L5 -3 L0 0 L-5 -3 Z"></path></g>`;
+        const pinScale = Math.max(0.16, Math.min(2.4, viewBox.width / renderedWidth));
+        return `<g class="location-pin" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${pinScale.toFixed(4)})"><circle r="7"></circle><path d="M0 -18 L5 -3 L0 0 L-5 -3 Z"></path></g>`;
       })()
     : "";
   target.innerHTML = `
-    <svg class="climate-map-svg" viewBox="${viewBoxToString(viewBox)}" preserveAspectRatio="xMidYMid meet" data-projection="canonical-geojson-local-equirectangular" data-viewbox-ratio="${(projection.width / projection.height).toFixed(6)}" data-zoom="${mapZoomLevel(geography, viewBox).toFixed(2)}" aria-label="Zone climatice de iarna">
-      <rect class="map-bg" x="0" y="0" width="${projection.width.toFixed(2)}" height="${projection.height.toFixed(2)}" rx="8"></rect>
+    <svg class="climate-map-svg" viewBox="${viewBoxToString(viewBox)}" preserveAspectRatio="xMidYMid meet" data-projection="canonical-geojson-local-equirectangular" data-viewbox-ratio="${(projection.width / projection.height).toFixed(6)}" data-zoom="${zoom.toFixed(2)}" aria-label="Zone climatice de iarna">
+      <defs>
+        <linearGradient id="climateMapPaper" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#f7fafc"></stop>
+          <stop offset="100%" stop-color="#edf3f6"></stop>
+        </linearGradient>
+      </defs>
+      <rect class="map-bg" x="0" y="0" width="${projection.width.toFixed(2)}" height="${projection.height.toFixed(2)}" rx="10"></rect>
       <g class="technical-hit-layer" aria-hidden="true">
         ${technicalPaths}
       </g>
+      <path class="romania-silhouette" d="${boundaryPath}"></path>
       <g class="presentation-layer">
         ${visualPaths}
       </g>
+      <path class="romania-outline-soft" d="${boundaryPath}"></path>
       <g class="locality-layer" aria-label="Localitati vizibile">
-        ${renderLocalityMarkers(geography, projection, viewBox, selection)}
+        ${renderLocalityMarkers(geography, projection, viewBox, selection, renderedWidth)}
       </g>
       <path class="romania-outline" d="${boundaryPath}"></path>
       <g class="zone-label-layer" aria-hidden="true">
