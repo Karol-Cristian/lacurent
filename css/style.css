@@ -814,7 +814,7 @@ header,
 
 .location-layout{
   display:grid;
-  grid-template-columns:minmax(240px,360px) minmax(0,1fr);
+  grid-template-columns:minmax(250px,340px) minmax(0,1.55fr);
   gap:18px;
   align-items:start;
 }
@@ -837,6 +837,93 @@ header,
   display:grid;
   gap:14px;
   padding:16px;
+}
+
+.locality-selector{
+  position:relative;
+  display:grid;
+  gap:8px;
+}
+
+.locality-selector small,
+.county-browser small{
+  color:var(--muted);
+}
+
+.locality-results{
+  position:absolute;
+  z-index:15;
+  top:78px;
+  left:0;
+  right:0;
+  max-height:318px;
+  overflow:auto;
+  padding:6px;
+  border:1px solid #b9c7d5;
+  border-radius:8px;
+  background:#fff;
+  box-shadow:0 12px 30px rgba(15,23,42,.16);
+}
+
+.locality-results[hidden]{
+  display:none;
+}
+
+.locality-option{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  min-height:42px;
+  padding:8px 10px;
+  border:1px solid transparent;
+  border-radius:6px;
+  background:#fff;
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+}
+
+.locality-option:hover,
+.locality-option:focus,
+.locality-option.active{
+  border-color:#176d73;
+  background:#e8f3f2;
+  outline:none;
+}
+
+.locality-option strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.locality-option span{
+  color:#5d697c;
+  font-size:12px;
+  font-weight:800;
+}
+
+.locality-option em{
+  align-self:center;
+  color:#334155;
+  font-size:12px;
+  font-style:normal;
+  font-weight:900;
+}
+
+.county-browser{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px;
+  background:#f8fafc;
+}
+
+.county-browser summary{
+  cursor:pointer;
+  color:#0f4f55;
+  font-weight:900;
 }
 
 .map-layer-switch{
@@ -908,27 +995,62 @@ header,
   color:#334155;
 }
 
+.map-toolbar div:first-child{
+  display:grid;
+  gap:2px;
+}
+
 .map-toolbar span{
   color:var(--muted);
   font-size:13px;
 }
 
+.map-controls{
+  display:flex;
+  gap:6px;
+  align-items:start;
+}
+
+.map-controls button{
+  min-width:36px;
+  min-height:34px;
+  padding:5px 9px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:#fff;
+  color:#223044;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.map-controls button:hover,
+.map-controls button:focus{
+  border-color:#176d73;
+  background:#e8f3f2;
+}
+
 .climate-map{
-  min-height:0;
-  padding:18px;
+  min-height:480px;
+  padding:18px 20px 20px;
   background:linear-gradient(180deg,#f4f8fb 0%,#eaf1f6 100%);
   display:grid;
   place-items:center;
-  touch-action:manipulation;
+  touch-action:none;
+  user-select:none;
 }
 
 .climate-map svg{
   display:block;
-  width:min(100%,780px);
+  width:min(100%,980px);
   height:auto;
   max-width:100%;
-  cursor:crosshair;
-  overflow:visible;
+  cursor:grab;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+.climate-map.dragging svg{
+  cursor:grabbing;
 }
 
 .map-bg{
@@ -970,6 +1092,55 @@ header,
 
 .presentation-layer{
   pointer-events:auto;
+}
+
+.locality-layer{
+  pointer-events:auto;
+}
+
+.locality-marker{
+  cursor:pointer;
+  vector-effect:non-scaling-stroke;
+}
+
+.locality-marker circle{
+  fill:#172033;
+  stroke:#fff;
+  stroke-width:1.7;
+  vector-effect:non-scaling-stroke;
+}
+
+.locality-marker text{
+  fill:#172033;
+  font-size:9px;
+  font-weight:900;
+  paint-order:stroke;
+  stroke:#fff;
+  stroke-width:2.4px;
+  stroke-linejoin:round;
+  pointer-events:none;
+}
+
+.locality-marker.tier-1 text,
+.locality-marker.tier-2 text{
+  font-size:10px;
+}
+
+.locality-marker:hover circle,
+.locality-marker:focus circle,
+.locality-marker.selected circle{
+  fill:#176d73;
+  stroke:#102a43;
+  stroke-width:2.5;
+}
+
+.locality-marker.selected circle{
+  stroke-dasharray:3 2;
+}
+
+.locality-marker.selected text{
+  fill:#0f4f55;
+  text-decoration:underline;
 }
 
 .romania-outline{
@@ -1550,7 +1721,8 @@ header,
     grid-template-columns:1fr;
   }
   .climate-map{
-    min-height:260px;
+    min-height:390px;
+    padding:14px;
   }
   .system-card.featured{
     grid-column:auto;
@@ -1581,6 +1753,20 @@ header,
   .map-toolbar,
   .system-card-header{
     display:grid;
+  }
+  .map-controls{
+    width:100%;
+  }
+  .map-controls button{
+    flex:1;
+  }
+  .locality-results{
+    position:static;
+    max-height:260px;
+  }
+  .climate-map{
+    min-height:310px;
+    padding:10px;
   }
   .compass-control,
   .map-layer-switch{

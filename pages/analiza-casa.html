@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/auth.js" defer></script>
-<script type="module" src="../js/lacurent-workspace.mjs?v=p12c"></script>
+<script type="module" src="../js/lacurent-workspace.mjs?v=p12e"></script>
 </head>
 
 <body class="lacurent-app">
@@ -61,12 +61,39 @@
               <span>Nume proiect</span>
               <input name="project.name" placeholder="Ex. Casa Popescu" data-category="USER_FACT" autocomplete="off">
             </label>
-            <label>
-              <span>Localitate</span>
-              <select name="location.locality" id="localitySelect" data-category="USER_FACT">
-                <option value="">Alege localitatea</option>
-              </select>
-            </label>
+            <div class="locality-selector">
+              <label for="localitySearch">
+                <span>Cauta localitatea</span>
+                <input id="localitySearch" type="search" placeholder="Ex. Cluj, Floresti, Brasov" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="localityResults" data-category="USER_FACT">
+              </label>
+              <input type="hidden" name="location.locality" id="localityValue" data-category="USER_FACT">
+              <input type="hidden" name="location.localityId" id="localityIdValue" data-category="USER_FACT">
+              <input type="hidden" name="location.localityName" id="localityNameValue" data-category="USER_FACT">
+              <input type="hidden" name="location.county" id="localityCountyValue" data-category="USER_FACT">
+              <input type="hidden" name="location.lat" id="localityLatValue" data-category="USER_FACT">
+              <input type="hidden" name="location.lon" id="localityLonValue" data-category="USER_FACT">
+              <input type="hidden" name="location.climateZone" id="localityClimateZoneValue" data-category="DERIVED">
+              <input type="hidden" name="location.station" id="localityStationValue" data-category="DERIVED">
+              <div id="localityResults" class="locality-results" role="listbox" hidden></div>
+              <small>Cautarea accepta diacritice sau text fara diacritice: Brasov gaseste Brasov/Brașov.</small>
+            </div>
+            <details class="county-browser">
+              <summary>Rasfoire dupa judet</summary>
+              <div class="form-grid two">
+                <label>
+                  <span>Judet</span>
+                  <select id="countySelect" data-category="USER_FACT">
+                    <option value="">Alege judetul</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Localitate din judet</span>
+                  <select id="countyLocalitySelect" data-category="USER_FACT" disabled>
+                    <option value="">Alege localitatea</option>
+                  </select>
+                </label>
+              </div>
+            </details>
             <div class="map-layer-switch" aria-label="Strat geografic">
               <button type="button" class="active" data-map-layer="climate">Clima</button>
               <button type="button" disabled title="Stratul de vant va fi incarcat cand exista date canonice.">Vant in pregatire</button>
@@ -79,8 +106,15 @@
           </div>
           <div class="climate-map-panel">
             <div class="map-toolbar">
-              <strong>Zonarea climatica de iarna</strong>
-              <span id="mapStatus">Se incarca harta...</span>
+              <div>
+                <strong>Zonarea climatica de iarna</strong>
+                <span id="mapStatus">Se incarca harta...</span>
+              </div>
+              <div class="map-controls" aria-label="Control harta">
+                <button type="button" id="mapZoomIn" data-map-control="zoom-in" aria-label="Mareste harta">+</button>
+                <button type="button" id="mapZoomOut" data-map-control="zoom-out" aria-label="Micsoreaza harta">-</button>
+                <button type="button" id="mapReset" data-map-control="reset" aria-label="Reincadreaza Romania">Reset</button>
+              </div>
             </div>
             <div id="climateMap" class="climate-map" role="group" aria-label="Harta interactiva a Romaniei cu zone climatice de iarna"></div>
             <div id="climateLegend" class="climate-legend" aria-label="Legenda zonelor climatice"></div>

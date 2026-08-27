@@ -1,0 +1,15 @@
+{
+  "name": "Localitati Romania punct",
+  "publisher": "geo-spatial.org",
+  "sourceUrl": "https://geo-spatial.org/vechi/file_download/29543",
+  "sourcePage": "https://geo-spatial.org/vechi/download/romania-seturi-vectoriale",
+  "sourceLayerDate": "31.12.2020",
+  "geometryAuthor": "geo-spatial.org (Cristian Balint & Vasile Craciunescu)",
+  "attributeSources": [
+    "INS SIRUTA",
+    "MDLPA/MDRAP",
+    "data.gov.ro"
+  ],
+  "license": "Licenta pentru o Guvernare Deschisa / OGL-ROU-1.0 for referenced government data; geo-spatial.org page footer is CC BY-SA 3.0",
+  "transformation": "Filtered de facto ghost localities, retained minimal UI fields, rounded WGS84 coordinates to 6 decimals, added normalized search key."
+}
