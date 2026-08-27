@@ -1039,15 +1039,16 @@ header,
 .climate-map{
   min-height:620px;
   padding:16px;
-  border:1px solid #c8d6df;
+  border:1px solid #d5e0e6;
   border-radius:8px;
   background:
-    linear-gradient(180deg,rgba(255,255,255,.82),rgba(239,245,248,.92)),
-    #edf3f6;
+    linear-gradient(180deg,rgba(255,255,255,.92),rgba(238,244,247,.96)),
+    #eef5f7;
   display:grid;
   place-items:center;
   touch-action:none;
   user-select:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.82),0 10px 28px rgba(32,54,70,.08);
 }
 
 .climate-map svg{
@@ -1068,18 +1069,25 @@ header,
   fill:url(#climateMapPaper);
 }
 
+.romania-map-shadow{
+  fill:#7d909c;
+  opacity:.16;
+  transform:translate(2px,3px);
+  pointer-events:none;
+}
+
 .romania-silhouette{
-  fill:#dce8ed;
-  opacity:.74;
+  fill:#f3f7f6;
+  opacity:1;
   pointer-events:none;
 }
 
 .climate-zone{
-  stroke:rgba(255,255,255,.82);
-  stroke-width:1.12;
+  stroke:rgba(255,255,255,.64);
+  stroke-width:1.02;
   cursor:pointer;
-  opacity:.94;
-  transition:opacity .15s ease,stroke-width .15s ease,filter .15s ease;
+  opacity:.82;
+  transition:opacity .15s ease,stroke .15s ease,stroke-width .15s ease,filter .15s ease;
   vector-effect:non-scaling-stroke;
 }
 
@@ -1088,18 +1096,30 @@ header,
 .climate-zone.hovered,
 .climate-zone.selected{
   opacity:1;
-  stroke:#102a43;
-  stroke-width:2.8;
+  stroke:#13293d;
+  stroke-width:2.35;
   outline:none;
 }
 
 .climate-zone.hovered{
-  filter:brightness(1.035) saturate(1.045);
+  filter:brightness(1.06) saturate(1.02);
 }
 
 .climate-zone.selected{
-  filter:drop-shadow(0 2px 7px rgba(16,42,67,.20));
-  stroke-dasharray:6 3;
+  filter:brightness(1.04) saturate(1.06);
+  stroke-dasharray:4.6 2.8;
+}
+
+.climate-zone-boundary-layer{
+  pointer-events:none;
+}
+
+.climate-zone-boundary{
+  fill:none;
+  stroke:rgba(28,49,65,.20);
+  stroke-width:.72;
+  vector-effect:non-scaling-stroke;
+  pointer-events:none;
 }
 
 .technical-hit-layer{
@@ -1122,9 +1142,9 @@ header,
 }
 
 .locality-marker circle{
-  fill:#172033;
-  stroke:#fff;
-  stroke-width:1.45;
+  fill:#233348;
+  stroke:rgba(255,255,255,.94);
+  stroke-width:1.35;
   vector-effect:non-scaling-stroke;
 }
 
@@ -1139,17 +1159,17 @@ header,
 }
 
 .locality-marker text.locality-label{
-  fill:#172033;
+  fill:#1d2f42;
   paint-order:stroke;
-  stroke:rgba(255,255,255,.92);
-  stroke-width:2.9px;
+  stroke:rgba(248,251,252,.96);
+  stroke-width:3px;
   stroke-linejoin:round;
   pointer-events:none;
   letter-spacing:0;
 }
 
 .locality-marker.tier-1 text.locality-label{
-  fill:#0f2338;
+  fill:#10263a;
 }
 
 .locality-marker.tier-4 text.locality-label,
@@ -1161,9 +1181,9 @@ header,
 .locality-marker:hover circle,
 .locality-marker:focus circle,
 .locality-marker.selected circle{
-  fill:#176d73;
-  stroke:#102a43;
-  stroke-width:2.5;
+  fill:#0f6972;
+  stroke:#f7fbfc;
+  stroke-width:2.25;
 }
 
 .locality-marker.selected circle{
@@ -1171,60 +1191,37 @@ header,
 }
 
 .locality-marker.selected text.locality-label{
-  fill:#0f4f55;
+  fill:#0e5660;
   text-decoration:underline;
 }
 
 .romania-outline-soft{
   fill:none;
-  stroke:rgba(15,35,56,.18);
-  stroke-width:5.2;
+  stroke:rgba(30,56,72,.16);
+  stroke-width:6.2;
   pointer-events:none;
   vector-effect:non-scaling-stroke;
 }
 
 .romania-outline{
   fill:none;
-  stroke:#263647;
-  stroke-width:1.38;
+  stroke:#203449;
+  stroke-width:1.12;
   pointer-events:none;
   vector-effect:non-scaling-stroke;
 }
 
-.zone-label-anchor{
-  pointer-events:none;
-}
-
-.zone-label{
-  fill:#102a43;
-  font-size:13px;
-  font-weight:900;
-  text-anchor:middle;
-  dominant-baseline:middle;
-  pointer-events:none;
-  paint-order:stroke;
-  stroke:#fff;
-  stroke-width:3;
-  stroke-linejoin:round;
-}
-
-.zone-label.selected{
-  fill:#000;
-  font-size:15px;
-  text-decoration:underline;
-}
-
 .location-pin circle{
-  fill:#102a43;
-  stroke:#fff;
-  stroke-width:3;
+  fill:rgba(15,105,114,.22);
+  stroke:#0f6972;
+  stroke-width:2.6;
   paint-order:stroke;
 }
 
 .location-pin path{
-  fill:#102a43;
-  stroke:#fff;
-  stroke-width:2;
+  fill:#0f6972;
+  stroke:#f7fbfc;
+  stroke-width:2.4;
 }
 
 .map-empty{
@@ -1242,7 +1239,7 @@ header,
   padding:10px 12px;
   border:1px solid var(--line);
   border-radius:8px;
-  background:#fff;
+  background:rgba(255,255,255,.92);
 }
 
 .climate-legend span{
@@ -1261,11 +1258,13 @@ header,
   display:inline-block;
   width:16px;
   height:16px;
-  border:1px solid rgba(0,0,0,.18);
+  border:1px solid rgba(24,42,58,.22);
+  border-radius:3px;
 }
 
 .climate-legend .selected{
   border-color:#102a43;
+  box-shadow:inset 0 0 0 1px rgba(16,42,67,.18);
 }
 
 .technical-grid{
