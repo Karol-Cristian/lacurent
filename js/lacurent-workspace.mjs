@@ -28,7 +28,7 @@ import {
   searchLocalities,
   setClimateMapInteractionState,
   zoomMapViewBox
-} from "./lacurent-geography.mjs";
+} from "./lacurent-geography.mjs?v=p12e2";
 
 const form = document.getElementById("workspaceForm");
 const nav = document.getElementById("workspaceNav");

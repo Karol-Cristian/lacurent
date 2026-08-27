@@ -5,12 +5,12 @@ const MAP_UNIT_SCALE = 86;
 const MAP_PADDING = 26;
 const MIN_ZOOM_VIEWBOX_FRACTION = 0.12;
 
-const FALLBACK_ZONE_COLORS = Object.freeze({
-  I: "#e7d79b",
-  II: "#d8aa79",
-  III: "#9fbd99",
-  IV: "#90bbcf",
-  V: "#7889b9"
+const PRESENTATION_ZONE_COLORS = Object.freeze({
+  I: "#F08A4B",
+  II: "#F3D65C",
+  III: "#86B982",
+  IV: "#7AB2C3",
+  V: "#667CAD"
 });
 
 const LABEL_COLLISION_WIDTH = 1120;
@@ -476,25 +476,9 @@ export async function loadClimateGeography(base = CLIMATE_GEOGRAPHY_BASE, locali
   return { boundary, localities, localityProvenance, oracle, provenance, validation, zones };
 }
 
-function zoneColor(feature) {
-  return feature.properties?.fill || FALLBACK_ZONE_COLORS[feature.properties?.zone] || "#d9e2ec";
-}
-
-function zoneLabelPoint(feature, projection) {
-  const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
-  for (const ring of geometryRings(feature.geometry)) {
-    for (const point of ring) {
-      const [x, y] = projection.project(point);
-      bounds.minX = Math.min(bounds.minX, x);
-      bounds.maxX = Math.max(bounds.maxX, x);
-      bounds.minY = Math.min(bounds.minY, y);
-      bounds.maxY = Math.max(bounds.maxY, y);
-    }
-  }
-  return {
-    x: (bounds.minX + bounds.maxX) / 2,
-    y: (bounds.minY + bounds.maxY) / 2
-  };
+function zoneColor(featureOrZone) {
+  const zone = typeof featureOrZone === "string" ? featureOrZone : featureOrZone?.properties?.zone;
+  return PRESENTATION_ZONE_COLORS[zone] || "#d9e2ec";
 }
 
 export function renderClimateLegend(target, geography, selectedZone) {
@@ -502,7 +486,7 @@ export function renderClimateLegend(target, geography, selectedZone) {
   const temperatures = geography.provenance?.normative_source?.temperature_c || {};
   target.innerHTML = ["I", "II", "III", "IV", "V"].map((zone) => `
     <span class="${selectedZone === zone ? "selected" : ""}">
-      <i style="background:${FALLBACK_ZONE_COLORS[zone]}"></i>
+      <i style="background:${zoneColor(zone)}"></i>
       Zona ${zone} ${temperatures[zone] ?? "-"} °C
     </span>
   `).join("");
@@ -711,14 +695,11 @@ export function renderClimateMap(target, geography, selection = {}) {
     if (hoveredZone === zone && selectedZone !== zone) classes.push("hovered");
     return `<path class="${classes.join(" ")}" d="${geometryPath(feature.geometry, projection)}" fill="${zoneColor(feature)}" data-zone="${zone}" tabindex="0" role="button" aria-pressed="${selectedZone === zone ? "true" : "false"}" aria-label="Zona climatica ${zone}"></path>`;
   }).join("");
-  const zoom = mapZoomLevel(geography, viewBox);
-  const screenScale = Math.max(0.12, Math.min(2.4, viewBox.width / renderedWidth));
-  const labels = (geography.zones?.features || []).map((feature) => {
+  const boundaryPaths = (geography.zones?.features || []).map((feature) => {
     const zone = feature.properties?.zone;
-    const point = zoneLabelPoint(feature, projection);
-    const selected = selectedZone === zone ? " selected" : "";
-    return `<g class="zone-label-anchor${selected}" transform="translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) scale(${screenScale.toFixed(4)})"><text class="zone-label${selected}" data-zone="${zone}">${zone}</text></g>`;
+    return `<path class="climate-zone-boundary" d="${geometryPath(feature.geometry, projection)}" data-zone="${zone}"></path>`;
   }).join("");
+  const zoom = mapZoomLevel(geography, viewBox);
   const pin = Number.isFinite(selection.lon) && Number.isFinite(selection.lat)
     ? (() => {
         const [x, y] = projection.project([selection.lon, selection.lat]);
@@ -735,6 +716,7 @@ export function renderClimateMap(target, geography, selection = {}) {
         </linearGradient>
       </defs>
       <rect class="map-bg" x="0" y="0" width="${projection.width.toFixed(2)}" height="${projection.height.toFixed(2)}" rx="10"></rect>
+      <path class="romania-map-shadow" d="${boundaryPath}"></path>
       <g class="technical-hit-layer" aria-hidden="true">
         ${technicalPaths}
       </g>
@@ -742,14 +724,14 @@ export function renderClimateMap(target, geography, selection = {}) {
       <g class="presentation-layer">
         ${visualPaths}
       </g>
+      <g class="climate-zone-boundary-layer" aria-hidden="true">
+        ${boundaryPaths}
+      </g>
       <path class="romania-outline-soft" d="${boundaryPath}"></path>
       <g class="locality-layer" aria-label="Localitati vizibile">
         ${renderLocalityMarkers(geography, projection, viewBox, selection, renderedWidth)}
       </g>
       <path class="romania-outline" d="${boundaryPath}"></path>
-      <g class="zone-label-layer" aria-hidden="true">
-        ${labels}
-      </g>
       ${pin}
     </svg>
   `;
