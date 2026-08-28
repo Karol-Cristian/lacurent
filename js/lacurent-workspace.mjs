@@ -52,6 +52,17 @@ let mapPointerSession = null;
 let pinchSession = null;
 let lastMapControlPointerAt = 0;
 
+const SECTION_LABELS = Object.freeze({
+  overview: "Prezentare",
+  location: "Localizare",
+  building: "Cladire",
+  envelope: "Anvelopa",
+  systems: "Instalatii",
+  scenarios: "Variante",
+  results: "Rezultate",
+  documents: "Documente"
+});
+
 function apiBase() {
   const explicitBase = window.LA_CURENT_API_BASE || window.LaCurentConfig?.apiBase;
   if (explicitBase) return String(explicitBase).replace(/\/$/, "");
@@ -89,6 +100,10 @@ function escapeHtml(value) {
 
 function field(name) {
   return form.querySelector(`[name="${CSS.escape(name)}"]`);
+}
+
+function getNested(target, path) {
+  return path.split(".").reduce((cursor, part) => cursor?.[part], target);
 }
 
 function setHiddenValue(id, value) {
@@ -191,6 +206,7 @@ function selectMapPoint(hit) {
   state.values = collectFormValues(form);
   saveWorkspaceState(state);
   updateLocation(state.values);
+  updateOverview(state.values);
 }
 
 function setActiveSection(section) {
@@ -200,6 +216,8 @@ function setActiveSection(section) {
   nav.querySelectorAll("button").forEach((button) => {
     button.classList.toggle("active", button.dataset.sectionTarget === section);
   });
+  const currentStep = document.querySelector(".workspace-current-step");
+  if (currentStep) currentStep.textContent = SECTION_LABELS[section] || "Workspace";
 }
 
 function setEnvelopePanel(panel) {
@@ -261,6 +279,56 @@ function updateReadiness(values) {
   issueList.innerHTML = issues.slice(0, 4).map((issue) => `
     <button type="button" data-focus-path="${escapeHtml(issue.path)}">${escapeHtml(issue.message)}</button>
   `).join("");
+}
+
+function updateOverview(values) {
+  const issues = readinessIssues(values);
+  const total = 10;
+  const percent = Math.max(0, Math.round(((total - Math.min(issues.length, total)) / total) * 100));
+  const geometry = deriveGeometry(values);
+  const visual = resolveBuildingVisualType(values.building || {});
+  const locality = selectedLocalityFromValues(values);
+  const selectedZone = locality?.zone || selectedMapZone || values.location?.climateZone;
+  const blocking = (state.lastResult?.diagnostics || []).some((item) => item.severity === "blocking");
+  const calculationLabel = !state.lastResult
+    ? "Necalculat"
+    : blocking
+      ? "Blocat"
+      : state.resultFresh
+        ? "Calculat"
+        : "Necesita recalculare";
+  const setText = (id, text) => {
+    const item = document.getElementById(id);
+    if (item) item.textContent = text;
+  };
+  setText("overviewProjectName", values.project?.name || "Proiect LaCurent");
+  setText("overviewSubtitle", issues.length
+    ? "Continua cu datele fizice lipsa. LaCurent pastreaza calculul si diagnosticele in fundal."
+    : "Modelul principal este pregatit; calculul poate confirma domeniile suportate si limitele normative.");
+  setText("overviewReadiness", `${percent}%`);
+  setText("overviewStatusText", issues.length ? `${issues.length} elemente necesita atentie.` : "Model pregatit pentru calcul.");
+  setText("overviewCalculation", calculationLabel);
+  setText("overviewBuilding", visual.label || "Tip neales");
+  setText("overviewGeometry", [
+    numberText(geometry.usefulAreaM2, "m2 utili"),
+    numberText(geometry.heatedVolumeM3, "m3 incalziti")
+  ].filter((item) => item !== "-").join(" / ") || "Dimensiunile nu sunt complete.");
+  setText("overviewLocation", locality ? localityDisplayLabel(locality) : selectedZone ? `Punct pe harta - zona ${selectedZone}` : "Neselectata");
+  setText("overviewClimate", selectedZone
+    ? `Zona climatica ${selectedZone}${locality?.station ? ` / statie ${locality.station}` : ""}`
+    : "Zona climatica apare dupa localizare sau selectie pe harta.");
+  setText("overviewEnvelope", issues.some((issue) => issue.path.startsWith("envelope.")) ? "Incompleta" : "Definita");
+  setText("overviewSystems", issues.some((issue) => issue.path.startsWith("systems.")) ? "Necesita date" : "Configurate");
+  const issueList = document.getElementById("overviewIssues");
+  if (!issueList) return;
+  issueList.innerHTML = issues.length
+    ? issues.slice(0, 5).map((issue) => `
+      <button type="button" data-focus-path="${escapeHtml(issue.path)}">
+        <strong>${escapeHtml(issue.message)}</strong>
+        <span>${escapeHtml(SECTION_LABELS[issue.path.split(".")[0]] || "Completeaza")}</span>
+      </button>
+    `).join("")
+    : "<article><strong>Modelul este coerent pentru calcul.</strong><span>Rezultatul final poate include in continuare limite normative explicite.</span></article>";
 }
 
 function updateSystemFlow(values) {
@@ -432,8 +500,7 @@ function renderResultCards(result) {
     <article class="result-card"><span>ACM</span><strong>${numberText(chapter3.annual?.dhwInputKWh, "kWh/an")}</strong><small>Apa calda menajera.</small></article>
     <article class="result-card"><span>PV</span><strong>${numberText(chapter4.annualProductionKWh, "kWh/an")}</strong><small>Productie fotovoltaica suportata.</small></article>
     <article class="result-card"><span>Necesar racire neacoperit</span><strong>${numberText(chapter3.annual?.coolingUnmetLoadKWh, "kWh/an")}</strong><small>Raportat explicit.</small></article>
-    <article class="result-card"><span>Purtatori</span><strong>${Object.keys(result?.energyCarriers || {}).length || "-"}</strong><small>Agregare din componente fizice.</small></article>
-    <article class="result-card"><span>Motor calcul</span><strong>${escapeHtml(result?.engine || "necunoscut")}</strong><small>${escapeHtml(result?.engineVersion || "versiune indisponibila")}</small></article>
+    <article class="result-card"><span>Purtatori</span><strong>${Object.keys(result?.energyCarriers || {}).length || "-"}</strong><small>Agregare din componente fizice. Identitatea motorului este in detalii tehnice.</small></article>
   `;
 }
 
@@ -452,8 +519,8 @@ function renderScenarioComparison(result) {
   const currentDelivered = annualDeliveredEnergy(result);
   const scenario = state.scenarios.at(-1);
   body.innerHTML = `
-    <tr><td>Energie livrata</td><td>${numberText(currentDelivered, "kWh/an")}</td><td>-</td><td>${scenario ? "Calculeaza scenariul pentru comparatie" : "Adauga scenariu"}</td></tr>
-    <tr><td>PV</td><td>${numberText(result?.chapter4?.annualProductionKWh, "kWh/an")}</td><td>-</td><td>Necesita rezultat de scenariu</td></tr>
+    <tr><td>Energie livrata</td><td>${numberText(currentDelivered, "kWh/an")}</td><td>-</td><td>${scenario ? "Calculeaza varianta pentru comparatie" : "Adauga varianta"}</td></tr>
+    <tr><td>PV</td><td>${numberText(result?.chapter4?.annualProductionKWh, "kWh/an")}</td><td>-</td><td>Necesita rezultat de varianta</td></tr>
     <tr><td>Necesar racire neacoperit</td><td>${numberText(result?.chapter3?.annual?.coolingUnmetLoadKWh, "kWh/an")}</td><td>-</td><td>Blocarea nu devine zero.</td></tr>
   `;
 }
@@ -472,6 +539,7 @@ function renderResult(result) {
   renderMonthlyChart(result);
   renderScenarioComparison(result);
   updateDocuments(result);
+  updateOverview(collectFormValues(form));
   annexPreview.textContent = JSON.stringify({
     inputContract: buildSimpleInputContract(collectFormValues(form), { projectId: state.projectId }),
     result
@@ -485,6 +553,7 @@ function markStale() {
   if (state.lastResult) {
     updateCalculationState("stale", "Necesita recalculare", "Ai schimbat modelul dupa ultimul calcul.");
     document.getElementById("professionalReportStatus").textContent = "Necesita recalculare";
+    updateOverview(collectFormValues(form));
   }
 }
 
@@ -571,7 +640,7 @@ function updateScenarioList() {
   const list = document.getElementById("scenarioList");
   list.innerHTML = "";
   if (!state.scenarios.length) {
-    list.innerHTML = "<p class=\"muted\">Nu exista scenarii. Adauga o interventie ca delta fata de baza.</p>";
+    list.innerHTML = "<p class=\"muted\">Nu exista variante. Adauga o interventie ca delta fata de baza.</p>";
     return;
   }
   state.scenarios.forEach((scenario) => {
@@ -579,7 +648,7 @@ function updateScenarioList() {
     card.innerHTML = `
       <strong>${escapeHtml(scenario.name)}</strong>
       <span>U perete propus: ${numberText(scenario.changes.wallUValueWPerM2K, "W/m2K")}</span>
-      <small>Scenariul pastreaza restul modelului neschimbat.</small>
+      <small>Varianta pastreaza restul modelului neschimbat.</small>
     `;
     list.append(card);
   });
@@ -592,6 +661,7 @@ function refreshAll({ stale = false } = {}) {
   updateReadiness(values);
   updateSystemFlow(values);
   updateLocation(values);
+  updateOverview(values);
   annexPreview.textContent = JSON.stringify(buildSimpleInputContract(values, { projectId: state.projectId }), null, 2);
   if (stale) markStale();
 }
@@ -867,14 +937,17 @@ function bindEvents() {
     if (!button) return;
     setActiveSection(button.dataset.sectionTarget);
   });
-  document.getElementById("readinessIssues").addEventListener("click", (event) => {
+  const focusIssue = (event) => {
     const button = event.target.closest("button[data-focus-path]");
     if (!button) return;
     const section = button.dataset.focusPath.split(".")[0];
     const sectionMap = { location: "location", building: "building", envelope: "envelope", systems: "systems" };
     setActiveSection(sectionMap[section] || "location");
     field(button.dataset.focusPath)?.focus();
-  });
+  };
+  document.getElementById("readinessIssues")?.addEventListener("click", focusIssue);
+  document.getElementById("overviewIssues")?.addEventListener("click", focusIssue);
+  document.getElementById("continueAnalysisBtn")?.addEventListener("click", () => setActiveSection("location"));
   document.querySelectorAll("[data-envelope-target]").forEach((button) => {
     button.addEventListener("click", () => setEnvelopePanel(button.dataset.envelopeTarget));
   });

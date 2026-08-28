@@ -8,11 +8,11 @@
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/auth.js" defer></script>
-<script type="module" src="../js/lacurent-workspace.mjs?v=p12e2"></script>
+<script type="module" src="../js/lacurent-workspace.mjs?v=p12g"></script>
 </head>
 
 <body class="lacurent-app">
-<main class="workspace-shell visual-product" data-lacurent-workspace>
+<main class="workspace-shell visual-product product-studio" data-lacurent-workspace>
   <aside class="workspace-rail" aria-label="Navigatie analiza">
     <div class="rail-brand">
       <img src="../images/favicon.png" alt="">
@@ -22,13 +22,14 @@
       </div>
     </div>
     <nav class="workspace-nav" id="workspaceNav">
-      <button type="button" data-section-target="location" class="active">Localizare</button>
-      <button type="button" data-section-target="building">Cladire</button>
-      <button type="button" data-section-target="envelope">Anvelopa</button>
-      <button type="button" data-section-target="systems">Sisteme</button>
-      <button type="button" data-section-target="results">Rezultate</button>
-      <button type="button" data-section-target="scenarios">Scenarii</button>
-      <button type="button" data-section-target="documents">Documente</button>
+      <button type="button" data-section-target="overview" class="active"><span class="nav-icon project-icon" aria-hidden="true"></span>Prezentare</button>
+      <button type="button" data-section-target="location"><span class="nav-icon location-icon" aria-hidden="true"></span>Localizare</button>
+      <button type="button" data-section-target="building"><span class="nav-icon building-icon" aria-hidden="true"></span>Cladire</button>
+      <button type="button" data-section-target="envelope"><span class="nav-icon envelope-icon" aria-hidden="true"></span>Anvelopa</button>
+      <button type="button" data-section-target="systems"><span class="nav-icon systems-icon" aria-hidden="true"></span>Instalatii</button>
+      <button type="button" data-section-target="scenarios"><span class="nav-icon scenario-icon" aria-hidden="true"></span>Variante</button>
+      <button type="button" data-section-target="results"><span class="nav-icon results-icon" aria-hidden="true"></span>Rezultate</button>
+      <button type="button" data-section-target="documents"><span class="nav-icon documents-icon" aria-hidden="true"></span>Documente</button>
     </nav>
     <section class="readiness-card" aria-live="polite">
       <span class="eyebrow">Pregatire model</span>
@@ -39,17 +40,73 @@
   </aside>
 
   <section class="workspace-main">
-    <header class="workspace-hero product-hero">
+    <header class="workspace-topbar">
       <div>
         <span class="eyebrow">Workspace auditor</span>
-        <h1>Descrii cladirea. LaCurent pastreaza calculul in fundal.</h1>
-        <p>Modelul este construit din locatie, forma, anvelopa si echipamente reale. Detaliile tehnice, diagnosticele si sursele raman accesibile, fara sa domine fluxul principal.</p>
+        <h1>Analiza energetica a cladirii</h1>
+        <p class="workspace-current-step">Prezentare proiect</p>
       </div>
-      <img src="../images/HW_Prototype.png" alt="Ilustratie arhitecturala LaCurent">
+      <div class="topbar-actions">
+        <button class="secondary-btn" id="exportInputBtn" type="button">Input JSON</button>
+        <button class="secondary-btn" id="saveProjectBtn" type="button">Salveaza</button>
+        <button class="primary-btn" id="calculateBtn" type="button">Calculeaza</button>
+      </div>
     </header>
 
     <form id="workspaceForm" class="workspace-form" novalidate>
-      <section class="workspace-section active" id="section-location" data-section="location">
+      <section class="workspace-section active" id="section-overview" data-section="overview">
+        <div class="overview-layout">
+          <article class="overview-lead">
+            <span class="eyebrow">Prezentare</span>
+            <h2 id="overviewProjectName">Proiect LaCurent</h2>
+            <p id="overviewSubtitle">Configureaza localizarea, cladirea, anvelopa si instalatiile pentru a obtine rezultate verificabile.</p>
+            <button class="primary-btn" id="continueAnalysisBtn" type="button">Continua analiza</button>
+          </article>
+          <div class="overview-stack">
+            <article class="overview-status">
+              <span>Pregatire model</span>
+              <strong id="overviewReadiness">0%</strong>
+              <p id="overviewStatusText">Datele principale lipsesc.</p>
+            </article>
+            <article class="overview-status">
+              <span>Calcul</span>
+              <strong id="overviewCalculation">Necalculat</strong>
+              <p>Rezultatele apar numai dupa raspunsul calculatorului Python.</p>
+            </article>
+          </div>
+        </div>
+        <div class="overview-grid">
+          <article class="overview-card">
+            <span>Cladire</span>
+            <strong id="overviewBuilding">Tip neales</strong>
+            <p id="overviewGeometry">Dimensiunile nu sunt complete.</p>
+          </article>
+          <article class="overview-card">
+            <span>Localizare</span>
+            <strong id="overviewLocation">Neselectata</strong>
+            <p id="overviewClimate">Zona climatica apare dupa localizare sau selectie pe harta.</p>
+          </article>
+          <article class="overview-card">
+            <span>Anvelopa</span>
+            <strong id="overviewEnvelope">Incompleta</strong>
+            <p>Pereti, acoperis, planseu si ferestre sunt definite ca elemente fizice.</p>
+          </article>
+          <article class="overview-card">
+            <span>Instalatii</span>
+            <strong id="overviewSystems">Incomplet</strong>
+            <p>Generatorul comun pentru incalzire si ACM este tratat ca un singur echipament.</p>
+          </article>
+        </div>
+        <section class="next-issues">
+          <div>
+            <span class="eyebrow">Urmatorii pasi</span>
+            <h3>Ce lipseste pentru analiza</h3>
+          </div>
+          <div id="overviewIssues" class="overview-issues"></div>
+        </section>
+      </section>
+
+      <section class="workspace-section" id="section-location" data-section="location">
         <div class="section-title">
           <span class="eyebrow">Localizare</span>
           <h2>Unde este cladirea?</h2>
@@ -290,7 +347,7 @@
 
       <section class="workspace-section" id="section-systems" data-section="systems">
         <div class="section-title">
-          <span class="eyebrow">Sisteme</span>
+          <span class="eyebrow">Instalatii</span>
           <h2>Echipamente care deservesc cladirea</h2>
           <p>Alegi generatorul si serviciile deservite. Topologia tehnica este construita in fundal, fara identificatori tehnici in interfata.</p>
         </div>
@@ -391,11 +448,6 @@
           <strong>Necalculat</strong>
           <span>Completeaza modelul si ruleaza analiza.</span>
         </div>
-        <div class="action-row">
-          <button class="primary-btn" id="calculateBtn" type="button">Calculeaza analiza</button>
-          <button class="secondary-btn" id="exportInputBtn" type="button">Descarca input JSON</button>
-          <button class="secondary-btn" id="saveProjectBtn" type="button">Salveaza proiect</button>
-        </div>
         <div id="blockerPanel" class="blocker-panel" hidden></div>
         <div id="resultsGrid" class="result-grid product-results"></div>
         <div class="charts-grid">
@@ -416,19 +468,19 @@
 
       <section class="workspace-section" id="section-scenarios" data-section="scenarios">
         <div class="section-title">
-          <span class="eyebrow">Scenarii</span>
+          <span class="eyebrow">Variante</span>
           <h2>Ce se schimba fata de cladirea curenta?</h2>
-          <p>Un scenariu este o delta fata de baza, nu o reconstruire manuala a proiectului.</p>
+          <p>O varianta este o modificare fata de cladirea curenta, nu o reconstruire manuala a proiectului.</p>
         </div>
         <div class="scenario-builder">
-          <label><span>Nume scenariu</span><input name="scenario.name" value="Izolare pereti" data-category="USER_FACT"></label>
+          <label><span>Nume varianta</span><input name="scenario.name" value="Izolare pereti" data-category="USER_FACT"></label>
           <label><span>U perete propus (W/m2K)</span><input name="scenario.wallUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
-          <button class="secondary-btn" id="addScenarioBtn" type="button">Adauga scenariu</button>
+          <button class="secondary-btn" id="addScenarioBtn" type="button">Adauga varianta</button>
         </div>
         <div id="scenarioList" class="scenario-list"></div>
         <div class="comparison-table-wrap">
           <table class="comparison-table">
-            <thead><tr><th>Indicator</th><th>Cladire curenta</th><th>Scenariu</th><th>Diferenta</th></tr></thead>
+            <thead><tr><th>Indicator</th><th>Cladire curenta</th><th>Varianta</th><th>Diferenta</th></tr></thead>
             <tbody id="scenarioComparisonBody">
               <tr><td>Energie livrata</td><td>-</td><td>-</td><td>Necesita rezultate calculate</td></tr>
               <tr><td>PV</td><td>-</td><td>-</td><td>Necesita rezultate calculate</td></tr>

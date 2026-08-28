@@ -119,9 +119,10 @@ for (const file of activeProductFiles) {
 const analysisHtml = read("pages/analiza-casa.html");
 assert.equal(analysisHtml.includes("lacurent-workspace.mjs"), true);
 assert.equal(analysisHtml.includes("Workspace auditor"), true);
+assert.equal(analysisHtml.includes("Prezentare"), true);
 assert.equal(analysisHtml.includes("Localizare"), true);
 assert.equal(analysisHtml.includes("Anvelopa"), true);
-assert.equal(analysisHtml.includes("Scenarii"), true);
+assert.equal(analysisHtml.includes("Variante"), true);
 assert.equal(analysisHtml.includes("Documente"), true);
 
 const buildScript = read("scripts/build-pages.mjs");
