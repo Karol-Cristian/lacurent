@@ -18,6 +18,7 @@
     "test:p12e": "npm.cmd run test:p12d && node tests/p12e-location-selector.mjs",
     "test:p12e1": "npm.cmd run test:p12e && node tests/p12e1-map-visual-refinement.mjs",
     "test:p12e2": "npm.cmd run test:p12e1 && node tests/p12e2-map-art-direction.mjs",
+    "test:p12f": "npm.cmd run test:p12e2 && node tests/p12f-cloudflare-python-worker.mjs",
     "test:differential": "python validation-reference/python-mc001/compare/compare_results.py --all",
     "test:p3v": "python validation-reference/python-mc001/tests/check_environment.py && npm run test:reference-python && npm run test:differential && python validation-reference/python-mc001/compare/generate_report.py --all",
     "test:mc001": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs",
