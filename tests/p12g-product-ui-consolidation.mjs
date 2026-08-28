@@ -34,12 +34,12 @@ assert.match(html, /Rezultate/);
 assert.match(html, /Documente/);
 assert.match(html, /id="section-overview"/);
 assert.match(html, /id="overviewIssues"/);
-assert.match(html, /class="workspace-topbar"/);
-assert.match(html, /class="overview-lead"/);
+assert.match(html, /class="workspace-topbar reference-topbar"/);
+assert.match(html, /overview-reference-grid/);
 assert.match(html, /class="equipment-flow"/);
 assert.match(html, /class="assembly-strip"/);
 assert.match(html, /Acelasi generator pentru incalzire si ACM/);
-assert.match(html, /lacurent-workspace\.mjs\?v=p12g/);
+assert.match(html, /lacurent-workspace\.mjs\?v=(p12g|p12h2)/);
 
 assertNotContains(html + index + sidebar + css, [
   "HW_Prototype",
