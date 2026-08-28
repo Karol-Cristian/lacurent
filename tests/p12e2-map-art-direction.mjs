@@ -80,7 +80,7 @@ const workspace = read("js/lacurent-workspace.mjs");
 assert.match(css, /romania-map-shadow/);
 assert.match(css, /climate-zone-boundary/);
 assert.doesNotMatch(css, /\.zone-label/);
-assert.match(html, /lacurent-workspace\.mjs\?v=p12e2/);
+assert.match(html, /lacurent-workspace\.mjs\?v=(p12e2|p12g)/);
 assert.match(workspace, /lacurent-geography\.mjs\?v=p12e2/);
 
 console.log(JSON.stringify({

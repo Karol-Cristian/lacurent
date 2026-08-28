@@ -12,7 +12,7 @@ const pages = [
   { path: "/index.html", includes: ["Workspace profesional", "pages/analiza-casa.html"] },
   { path: "/pages/profil.html", includes: ["Autentificare", "registerForm"] },
   { path: "/pages/reset-password.html", includes: ["Seteaza o parola noua", "resetForm"] },
-  { path: "/pages/analiza-casa.html", includes: ["Workspace auditor", "Localizare", "Sisteme", "Documente"] }
+  { path: "/pages/analiza-casa.html", includes: ["Workspace auditor", "Prezentare", "Instalatii", "Documente"] }
 ];
 
 const syntaxFiles = [

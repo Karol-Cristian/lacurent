@@ -193,7 +193,7 @@ export function createScenario(baseValues, scenarioValues) {
   }
   return {
     scenarioId: `scenario-${Date.now().toString(36)}`,
-    name: scenarioValues.name || "Scenariu",
+    name: scenarioValues.name || "Varianta",
     changes: {
       wallUValueWPerM2K: wallU
     },

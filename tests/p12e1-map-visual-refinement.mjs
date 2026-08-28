@@ -124,7 +124,7 @@ assert.match(css, /min-height:620px/);
 assert.match(css, /width:min\(100%,1120px\)/);
 assert.match(css, /romania-silhouette/);
 assert.match(css, /locality-marker\.tier-5 circle/);
-assert.match(html, /lacurent-workspace\.mjs\?v=p12e2/);
+assert.match(html, /lacurent-workspace\.mjs\?v=(p12e2|p12g)/);
 
 console.log(JSON.stringify({
   status: "PASS",
