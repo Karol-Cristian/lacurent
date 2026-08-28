@@ -300,31 +300,34 @@ async function calculateWithPython(request, env) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.body;
   const input = body.input || body;
-  if (!env.PYTHON_ENGINE_URL) {
-    return diagnosticResponse(
-      "PYTHON_ENGINE_SERVICE_UNCONFIGURED",
-      "Serviciul Python MC001 nu este configurat in acest mediu.",
-      503,
-      {
-        remediation: "Configureaza PYTHON_ENGINE_URL. Produsul nu cade inapoi pe JS physics."
-      }
-    );
-  }
   const requestId = crypto.randomUUID();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), PYTHON_REQUEST_TIMEOUT_MS);
   let upstream;
   try {
-    upstream = await fetch(`${String(env.PYTHON_ENGINE_URL).replace(/\/$/, "")}/calculate`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-lacurent-request-id": requestId,
-        "x-lacurent-compact-output": "true"
-      },
-      body: JSON.stringify(input),
-      signal: controller.signal
-    });
+    if (env.PYTHON_ENGINE && typeof env.PYTHON_ENGINE.fetch === "function") {
+      upstream = await env.PYTHON_ENGINE.fetch(new Request("https://lacurent-python-mc001.internal/calculate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-lacurent-request-id": requestId,
+          "x-lacurent-compact-output": "true"
+        },
+        body: JSON.stringify(input),
+        signal: controller.signal
+      }));
+    } else if (env.PYTHON_ENGINE_URL) {
+      upstream = await fetch(`${String(env.PYTHON_ENGINE_URL).replace(/\/$/, "")}/calculate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-lacurent-request-id": requestId,
+          "x-lacurent-compact-output": "true"
+        },
+        body: JSON.stringify(input),
+        signal: controller.signal
+      });
+    }
   } catch (error) {
     const timedOut = error?.name === "AbortError";
     return diagnosticResponse(
@@ -337,6 +340,16 @@ async function calculateWithPython(request, env) {
     );
   } finally {
     clearTimeout(timeout);
+  }
+  if (!upstream) {
+    return diagnosticResponse(
+      "PYTHON_ENGINE_SERVICE_UNCONFIGURED",
+      "Serviciul Python MC001 nu este configurat in acest mediu.",
+      503,
+      {
+        remediation: "Configureaza Service Binding-ul PYTHON_ENGINE catre Workerul Python MC001. PYTHON_ENGINE_URL ramane doar fallback operational extern, fara JS physics."
+      }
+    );
   }
   let output;
   try {
@@ -365,7 +378,6 @@ async function calculateWithPython(request, env) {
     requestId
   }, upstream.ok ? 200 : upstream.status);
 }
-
 async function passwordResetPlaceholder() {
   return json({
     success: false,
