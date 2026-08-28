@@ -21,7 +21,7 @@ const css = read("css/style.css");
 const workspace = read("js/lacurent-workspace.mjs");
 const contract = read("js/lacurent-contract.mjs");
 
-assert.match(html, /lacurent-workspace\.mjs\?v=p12h2/);
+assert.match(html, /lacurent-workspace\.mjs\?v=p12hr2/);
 assert.match(html, /class="workspace-topbar reference-topbar"/);
 assert.match(html, /id="workspaceStepNumber"/);
 assert.match(html, /id="topbarReadiness"/);
@@ -35,8 +35,8 @@ assert.match(html, /systems-reference-grid/);
 assert.match(html, /scenario-reference-grid/);
 assert.match(html, /results-reference-grid/);
 
-assert.match(css, /P12H: reference-driven professional product composition/);
-assert.match(css, /grid-template-columns:202px minmax\(0,1fr\)/);
+assert.match(css, /P12H-R: reference-driven visual acceptance remediation/);
+assert.match(css, /grid-template-columns:154px minmax\(0,1fr\)/);
 assert.match(css, /\.step-number/);
 assert.match(css, /\.reference-house/);
 assert.match(css, /\.facade-model/);
@@ -51,7 +51,7 @@ assert.match(workspace, /writeLocationHiddenFields/);
 assert.match(workspace, /collectSynchronizedValues/);
 assert.match(workspace, /state\.values = collectSynchronizedValues\(\);\s+saveWorkspaceState\(state\);\s+refreshAll\(\{ stale \}\);\s+state\.values = collectSynchronizedValues\(\);/);
 assert.match(workspace, /let values = collectSynchronizedValues\(\);\s+state\.values = values;\s+updateLocation\(values\);\s+values = collectSynchronizedValues\(\);/);
-assert.match(workspace, /lacurent-geography\.mjs\?v=p12e2/);
+assert.match(workspace, /lacurent-geography\.mjs\?v=p12hr2/);
 
 assertNotContains(html + css + workspace + contract, [
   "HW_Prototype",

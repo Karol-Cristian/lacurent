@@ -2,8 +2,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-pages.mjs",
-    "smoke": "node tests/p12a-product-rebuild.mjs && node tests/p12a-architecture-boundary.mjs && node tests/p12c-visual-product.mjs && node tests/p12d-climate-map.mjs && node tests/p12e-location-selector.mjs && node tests/p12e1-map-visual-refinement.mjs && node tests/p12e2-map-art-direction.mjs && node tests/p12g-product-ui-consolidation.mjs && node tests/p12h-reference-visual-parity.mjs && node tests/smoke.mjs",
-    "smoke:api": "node tests/p12a-product-rebuild.mjs && node tests/p12a-architecture-boundary.mjs && node tests/p12c-visual-product.mjs && node tests/p12d-climate-map.mjs && node tests/p12e-location-selector.mjs && node tests/p12e1-map-visual-refinement.mjs && node tests/p12e2-map-art-direction.mjs && node tests/p12g-product-ui-consolidation.mjs && node tests/p12h-reference-visual-parity.mjs && node tests/smoke.mjs",
+    "smoke": "node tests/p12a-product-rebuild.mjs && node tests/p12a-architecture-boundary.mjs && node tests/p12c-visual-product.mjs && node tests/p12d-climate-map.mjs && node tests/p12e-location-selector.mjs && node tests/p12e1-map-visual-refinement.mjs && node tests/p12e2-map-art-direction.mjs && node tests/p12g-product-ui-consolidation.mjs && node tests/p12h-reference-visual-parity.mjs && node tests/p12h-r-visual-remediation.mjs && node tests/smoke.mjs",
+    "smoke:api": "node tests/p12a-product-rebuild.mjs && node tests/p12a-architecture-boundary.mjs && node tests/p12c-visual-product.mjs && node tests/p12d-climate-map.mjs && node tests/p12e-location-selector.mjs && node tests/p12e1-map-visual-refinement.mjs && node tests/p12e2-map-art-direction.mjs && node tests/p12g-product-ui-consolidation.mjs && node tests/p12h-reference-visual-parity.mjs && node tests/p12h-r-visual-remediation.mjs && node tests/smoke.mjs",
     "test:physics": "node tests/physics-v02.mjs && node tests/physics-demand-v03.mjs && node tests/physics-systems-v04.mjs && node tests/physics-audit-v05-v08.mjs && node tests/physics-energy-class-thresholds.mjs && node tests/physics-energy-classification-model.mjs && node tests/physics-reference-registries.mjs && node src/physics-engine/tests/mc001Chapter2IndependentValidationPack.test.mjs && node src/physics-engine/tests/mc001Chapter3HeatingSystems.test.mjs && node src/physics-engine/tests/mc001Chapter3SystemEnergy.test.mjs && node src/physics-engine/tests/dhwDistributionLosses.test.mjs && node src/physics-engine/tests/mc001Chapter3IntegratedRuntime.test.mjs && node src/physics-engine/tests/mc001Chapter3ImplementationMatrix.test.mjs && node tests/physics-reference-homes.mjs && node tests/physics-critical-chain.mjs && node src/climate-platform/tests/romanianClimateProfiles.test.mjs",
     "test:reference-python": "python validation-reference/python-mc001/tests/run_all.py",
     "test:python-engine": "python python_engine/tests/run_all.py",
@@ -21,6 +21,7 @@
     "test:p12f": "npm.cmd run test:p12e2 && node tests/p12f-cloudflare-python-worker.mjs",
     "test:p12g": "npm.cmd run test:p12f && node tests/p12g-product-ui-consolidation.mjs",
     "test:p12h": "npm.cmd run test:p12g && node tests/p12h-reference-visual-parity.mjs",
+    "test:p12hr": "node tests/p12h-reference-visual-parity.mjs && node tests/p12h-r-visual-remediation.mjs",
     "test:differential": "python validation-reference/python-mc001/compare/compare_results.py --all",
     "test:p3v": "python validation-reference/python-mc001/tests/check_environment.py && npm run test:reference-python && npm run test:differential && python validation-reference/python-mc001/compare/generate_report.py --all",
     "test:mc001": "node src/features/energy/physics/validation/runMc001FormulaValidation.mjs",

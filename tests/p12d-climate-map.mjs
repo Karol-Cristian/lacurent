@@ -47,7 +47,7 @@ renderClimateMap(target, geography, { zone: "III" });
 assert.match(target.innerHTML, /preserveAspectRatio="xMidYMid meet"/);
 assert.match(target.innerHTML, /data-projection="canonical-geojson-local-equirectangular"/);
 assert.match(target.innerHTML, /class="technical-hit-layer"/);
-assert.match(target.innerHTML, /class="presentation-layer"/);
+assert.match(target.innerHTML, /class="presentation-layer(?: [^"]*)?"/);
 assert.match(target.innerHTML, /class="climate-zone visual-zone selected"/);
 
 for (const point of oracle.points) {

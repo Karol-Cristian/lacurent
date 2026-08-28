@@ -995,42 +995,106 @@ small{
   height:auto;
   min-height:inherit;
   cursor:crosshair;
+  filter:drop-shadow(0 18px 28px rgba(27,45,63,.12));
 }
 
 .climate-map.dragging svg{
   cursor:grabbing;
 }
 
-.map-bg{fill:url(#climateMapPaper)}
-.romania-map-shadow{fill:#6d7e8f;opacity:.15}
-.romania-silhouette{fill:#f8fbfd;stroke:#d6e1ea;stroke-width:.8;pointer-events:none}
-.romania-outline-soft{fill:none;stroke:#f8fbfd;stroke-width:4;stroke-linejoin:round;pointer-events:none}
-.romania-outline{fill:none;stroke:#20364c;stroke-width:1.3;stroke-linejoin:round;pointer-events:none}
+.climate-map-svg,
+.climate-map-svg *:focus{
+  outline:none;
+}
+
+.romania-map-shadow{
+  fill:#314055;
+  opacity:.13;
+  transform:translate(5px,7px);
+}
+
+.romania-silhouette{
+  fill:url(#romaniaLand);
+  stroke:#d4dfd8;
+  stroke-width:.9;
+  pointer-events:none;
+}
+
+.cartographic-base-layer{
+  pointer-events:none;
+}
+
+.terrain-detail-layer{
+  pointer-events:none;
+  mix-blend-mode:multiply;
+  opacity:.55;
+}
+
+.romania-land-wash{
+  fill:url(#romaniaLand);
+}
+
+.romania-altitude-wash{
+  fill:url(#romaniaAltitude);
+  mix-blend-mode:multiply;
+}
+
+.terrain-contour,
+.terrain-ridge{
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.terrain-contour{
+  stroke:#738b86;
+  stroke-width:.46;
+  stroke-opacity:.20;
+}
+
+.terrain-contour.contour-1{stroke-opacity:.11}
+.terrain-contour.contour-2{stroke-opacity:.08}
+
+.terrain-ridge{
+  stroke:#ffffff;
+  stroke-width:1.26;
+  stroke-opacity:.26;
+}
+
+.terrain-ridge.ridge-1{
+  stroke:#526b78;
+  stroke-width:.58;
+  stroke-opacity:.16;
+}
+
+.romania-outline-soft{fill:none;stroke:rgba(255,255,255,.78);stroke-width:4.6;stroke-linejoin:round;pointer-events:none}
+.romania-outline{fill:none;stroke:#26384b;stroke-width:1.05;stroke-linejoin:round;pointer-events:none}
 .technical-hit-layer{opacity:0;pointer-events:none}
 .presentation-layer{isolation:isolate}
 .climate-zone{
-  stroke:rgba(255,255,255,.68);
-  stroke-width:.78;
+  stroke:rgba(255,255,255,.48);
+  stroke-width:.54;
   stroke-linejoin:round;
-  opacity:.92;
+  opacity:.36;
   cursor:pointer;
-  transition:opacity .15s ease,filter .15s ease,stroke-width .15s ease;
+  mix-blend-mode:multiply;
+  transition:opacity .15s ease,filter .15s ease,stroke-width .15s ease,stroke .15s ease;
 }
 
 .climate-zone:hover,
 .climate-zone:focus,
 .climate-zone.hovered{
-  opacity:1;
-  filter:brightness(1.05) saturate(1.03);
+  opacity:.58;
+  filter:brightness(1.04) saturate(1.02);
   stroke:#fff;
-  stroke-width:1.05;
+  stroke-width:.78;
 }
 
 .climate-zone.selected{
-  opacity:1;
-  filter:brightness(1.06) saturate(1.08);
-  stroke:var(--ink);
-  stroke-width:1.25;
+  opacity:.68;
+  filter:brightness(1.05) saturate(1.04);
+  stroke:#102033;
+  stroke-width:1.12;
 }
 
 .climate-zone-boundary-layer,
@@ -1040,9 +1104,9 @@ small{
 
 .climate-zone-boundary{
   fill:none;
-  stroke:#33485f;
-  stroke-width:.46;
-  stroke-opacity:.28;
+  stroke:#314151;
+  stroke-width:.34;
+  stroke-opacity:.22;
   stroke-linejoin:round;
 }
 
@@ -1052,7 +1116,7 @@ small{
 }
 
 .locality-marker circle{
-  fill:#233348;
+  fill:#21344a;
   stroke:#fff;
   stroke-width:1.5;
 }
@@ -1099,6 +1163,28 @@ small{
 
 .location-pin{
   pointer-events:none;
+}
+
+.location-pin .pin-halo{
+  fill:#0f6cae;
+  opacity:.18;
+}
+
+.location-pin path{
+  fill:#0b1d33;
+  stroke:#fff;
+  stroke-width:2.4;
+}
+
+.location-pin circle:not(.pin-halo){
+  fill:#0b1d33;
+  stroke:#fff;
+  stroke-width:1.4;
+}
+
+.location-pin .pin-core{
+  fill:#fff;
+  stroke:none;
 }
 
 .map-empty{
@@ -1426,9 +1512,25 @@ small{
   min-height:34px;
 }
 
+.product-studio label.checkbox-row{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:8px;
+  min-width:0;
+}
+
 .checkbox-row input{
   width:auto;
   min-height:0;
+}
+
+.product-studio label.checkbox-row input{
+  width:auto;
+  min-width:16px;
+  min-height:16px;
+  flex:0 0 auto;
+  padding:0;
 }
 
 .equipment-flow{
@@ -1930,17 +2032,18 @@ small{
   }
 }
 
-/* P12H: reference-driven professional product composition. */
+/* P12H-R: reference-driven visual acceptance remediation. */
 .workspace-shell.product-studio{
-  grid-template-columns:202px minmax(0,1fr);
-  background:#f4f7fb;
+  grid-template-columns:154px minmax(0,1fr);
+  background:#f5f8fc;
 }
 
 .product-studio .workspace-rail{
-  padding:18px 14px;
-  gap:14px;
-  background:#fff;
-  box-shadow:4px 0 22px rgba(31,49,71,.04);
+  padding:14px 10px;
+  gap:12px;
+  background:linear-gradient(180deg,#fff 0%,#f9fbfe 100%);
+  border-right:1px solid #e1e9f2;
+  box-shadow:3px 0 18px rgba(31,49,71,.035);
 }
 
 .product-studio .rail-brand{
@@ -1966,9 +2069,9 @@ small{
 
 .product-studio .workspace-nav button{
   min-height:36px;
-  padding:8px 9px;
+  padding:8px;
   border-radius:5px;
-  font-size:13px;
+  font-size:12px;
 }
 
 .product-studio .workspace-nav button.active{
@@ -1988,14 +2091,15 @@ small{
 }
 
 .workspace-main{
-  padding:18px 20px 28px;
+  padding:14px 20px 22px;
+  background:radial-gradient(circle at 66% 5%,rgba(211,224,239,.72),transparent 32%),#f5f8fc;
 }
 
 .reference-topbar{
-  min-height:62px;
-  padding:0 0 14px;
+  min-height:60px;
+  padding:0 0 12px;
   border-bottom:1px solid #e2e8f0;
-  margin-bottom:16px;
+  margin-bottom:14px;
 }
 
 .step-heading{
@@ -2022,7 +2126,7 @@ small{
 .workspace-topbar h1{
   margin:1px 0;
   color:#06264b;
-  font-size:21px;
+  font-size:20px;
 }
 
 .workspace-current-step{
@@ -2211,21 +2315,22 @@ small{
 }
 
 .location-reference-grid{
-  grid-template-columns:minmax(210px,230px) minmax(0,2.4fr) minmax(196px,230px);
+  grid-template-columns:minmax(164px,188px) minmax(0,1fr) minmax(166px,196px);
   grid-template-areas:"side map climate";
-  gap:14px;
+  gap:10px;
+  align-items:stretch;
 }
 
 .location-controls,
 .climate-inspector{
   position:sticky;
-  top:18px;
+  top:14px;
 }
 
 .climate-inspector{
   grid-area:climate;
   align-self:start;
-  padding:14px;
+  padding:12px;
   background:#fff;
   display:grid;
   gap:12px;
@@ -2237,21 +2342,55 @@ small{
 }
 
 .climate-map-panel{
-  padding:10px;
-  border-radius:6px;
-  box-shadow:0 12px 30px rgba(32,48,70,.04);
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  align-self:stretch;
+}
+
+.map-toolbar{
+  margin-bottom:8px;
+  padding:0 2px;
+}
+
+.map-toolbar strong{
+  color:#06264b;
+  font-size:14px;
+}
+
+.map-controls button{
+  min-width:34px;
+  min-height:32px;
+  border-radius:5px;
 }
 
 .climate-map{
-  width:min(100%,1120px);
-  min-height:646px;
-  border-radius:5px;
+  width:100%;
+  min-height:704px;
+  border:0;
+  border-radius:0;
+  background:
+    radial-gradient(circle at 38% 24%,rgba(255,255,255,.92),rgba(243,249,247,.54) 32%,transparent 54%),
+    linear-gradient(180deg,#eef5f8 0%,#f7faf8 54%,#edf4ed 100%);
+  overflow:visible;
+  justify-self:stretch;
+  display:grid;
+  place-items:center;
+}
+
+.climate-legend{
+  margin-top:7px;
+  border:0;
+  background:transparent;
+  padding:0;
 }
 
 .building-reference-grid{
   display:grid;
-  grid-template-columns:220px minmax(360px,1fr) 322px;
-  gap:14px;
+  grid-template-columns:184px minmax(480px,1fr) 276px;
+  gap:12px;
   align-items:stretch;
 }
 
@@ -2269,10 +2408,10 @@ small{
 }
 
 .building-reference-grid .building-type-card{
-  min-height:74px;
+  min-height:68px;
   grid-template-columns:64px minmax(0,1fr);
   align-items:center;
-  padding:9px;
+  padding:8px;
   gap:8px;
 }
 
@@ -2298,51 +2437,88 @@ small{
 .building-visual-stage{
   min-width:0;
   display:grid;
-  grid-template-rows:minmax(440px,1fr) auto;
+  grid-template-rows:minmax(506px,1fr) auto;
   gap:10px;
 }
 
 .building-visual-context{
-  min-height:440px;
-  border:1px solid #dfe7f0;
+  min-height:506px;
+  border:0;
   position:relative;
   overflow:hidden;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  isolation:isolate;
 }
 
 .building-visual-context::before{
   content:"";
   position:absolute;
-  left:14%;
-  right:10%;
-  bottom:54px;
-  height:24px;
+  left:8%;
+  right:6%;
+  bottom:68px;
+  height:34px;
   border-radius:50%;
-  background:rgba(38,58,80,.12);
+  background:rgba(38,58,80,.13);
   transform:skewX(-14deg);
+  z-index:0;
+}
+
+.building-visual-context::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg,transparent 0 54%,rgba(211,226,219,.55) 55%,rgba(236,242,235,.9) 100%),
+    radial-gradient(circle at 28% 28%,rgba(216,229,240,.72),transparent 36%);
+  z-index:0;
 }
 
 .building-silhouette.large{
-  width:284px;
-  height:210px;
-  filter:drop-shadow(24px 22px 0 rgba(45,70,90,.12));
+  width:372px;
+  height:272px;
+  z-index:1;
+  filter:drop-shadow(30px 26px 0 rgba(45,70,90,.12));
 }
 
 .building-silhouette.large::before{
-  left:54px;
-  right:48px;
-  bottom:22px;
-  height:126px;
+  left:70px;
+  right:58px;
+  bottom:30px;
+  height:162px;
   background:
-    linear-gradient(90deg,transparent 18%,#c7d9e7 19% 30%,transparent 31% 58%,#c7d9e7 59% 70%,transparent 71%),
-    linear-gradient(180deg,#ffffff,#eef4f8);
+    linear-gradient(90deg,transparent 13%,#c9dceb 14% 25%,transparent 26% 43%,#c9dceb 44% 55%,transparent 56% 73%,#c9dceb 74% 85%,transparent 86%),
+    linear-gradient(180deg,#ffffff 0%,#f1f6f8 74%,#e2ebf0 100%);
+  border:2px solid #22364d;
+  box-shadow:52px 24px 0 #dce7ef;
 }
 
 .building-silhouette.large::after{
-  left:28px;
-  right:18px;
-  top:20px;
-  height:98px;
-  background:#3e5063;
+  left:34px;
+  right:24px;
+  top:18px;
+  height:128px;
+  background:linear-gradient(180deg,#42556b,#2f4156);
+  clip-path:polygon(0 75%,48% 0,100% 75%,89% 100%,10% 100%);
+  box-shadow:0 11px 0 #acbfcb inset;
+}
+
+.building-visual-context > div{
+  position:absolute;
+  left:26px;
+  bottom:20px;
+  z-index:2;
+  display:grid;
+  gap:3px;
+  text-align:left;
+  color:#526274;
+  font-size:12px;
+}
+
+.building-visual-context > div strong{
+  color:#06264b;
+  font-size:17px;
 }
 
 .building-orientation-strip{
@@ -2395,8 +2571,8 @@ small{
 }
 
 .envelope-reference-grid{
-  grid-template-columns:192px minmax(360px,1fr) minmax(300px,360px);
-  min-height:520px;
+  grid-template-columns:178px minmax(430px,1fr) minmax(286px,340px);
+  min-height:560px;
 }
 
 .envelope-reference-grid .envelope-object-list{
@@ -2407,19 +2583,33 @@ small{
 .envelope-model-stage{
   grid-column:2;
   grid-row:1;
-  min-height:520px;
-  padding:18px;
+  min-height:560px;
+  padding:20px;
   display:grid;
   align-content:center;
   justify-items:center;
   gap:12px;
   border-right:1px solid #e5ebf2;
+  position:relative;
+  overflow:hidden;
+}
+
+.envelope-model-stage::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 50% 26%,rgba(218,229,239,.72),transparent 34%),
+    linear-gradient(180deg,#f8fbfc 0 58%,#e7f0ea 59% 100%);
+  z-index:0;
 }
 
 .facade-model{
-  width:min(94%,420px);
+  width:min(94%,500px);
   aspect-ratio:1 / 1.05;
   position:relative;
+  z-index:1;
+  filter:drop-shadow(24px 24px 0 rgba(45,70,90,.10));
 }
 
 .facade-roof{
@@ -2462,6 +2652,8 @@ small{
 }
 
 .model-caption{
+  position:relative;
+  z-index:1;
   color:#526274;
   font-size:12px;
   font-weight:900;
@@ -2501,13 +2693,13 @@ small{
 }
 
 .systems-reference-grid{
-  grid-template-columns:minmax(0,1.35fr) minmax(250px,.82fr) minmax(250px,.82fr);
+  grid-template-columns:minmax(0,1.45fr) minmax(238px,.72fr) minmax(238px,.72fr);
   gap:12px;
 }
 
 .systems-reference-grid .system-flow-card{
   grid-column:1 / 3;
-  min-height:390px;
+  min-height:430px;
 }
 
 .systems-reference-grid .equipment-panel{
@@ -2515,18 +2707,27 @@ small{
 }
 
 .equipment-flow{
-  min-height:148px;
+  min-height:184px;
   position:relative;
+  display:grid;
+  grid-template-columns:minmax(88px,.8fr) minmax(126px,1fr) minmax(150px,1.1fr);
+  align-items:center;
+  gap:20px;
+  padding:18px;
+  border-radius:8px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.86),rgba(247,251,253,.92)),
+    radial-gradient(circle at 55% 45%,rgba(23,105,194,.08),transparent 40%);
 }
 
 .equipment-flow::before{
   content:"";
   position:absolute;
-  left:12%;
-  right:12%;
+  left:15%;
+  right:18%;
   top:50%;
   height:2px;
-  background:#dc3b31;
+  background:linear-gradient(90deg,#b72c25,#dc3b31,#1769c2);
   z-index:0;
 }
 
@@ -2540,6 +2741,37 @@ small{
   position:relative;
   z-index:1;
   border-radius:6px;
+  box-shadow:0 8px 20px rgba(31,49,70,.06);
+}
+
+.flow-split{
+  display:grid;
+  gap:10px;
+  position:relative;
+  z-index:1;
+}
+
+.flow-source,
+.flow-node{
+  min-height:82px;
+  display:grid;
+  place-items:center;
+  padding:12px;
+  border:1px solid #d4e0ec;
+  background:#fff;
+  color:#17304a;
+  font-weight:900;
+  text-align:center;
+}
+
+.flow-split span{
+  min-height:54px;
+  display:grid;
+  place-items:center;
+  border:1px solid #d4e0ec;
+  background:#fff;
+  color:#17304a;
+  font-weight:900;
 }
 
 .energy-source-node::before,
@@ -2570,8 +2802,8 @@ small{
 
 .scenario-reference-grid{
   display:grid;
-  grid-template-columns:240px minmax(0,1fr) minmax(270px,320px);
-  gap:14px;
+  grid-template-columns:216px minmax(0,1fr) minmax(260px,304px);
+  gap:12px;
 }
 
 .scenario-sidebar,
@@ -2599,7 +2831,7 @@ small{
 }
 
 .scenario-house-card{
-  min-height:430px;
+  min-height:470px;
   border:1px solid #dfe7f0;
   border-radius:6px;
   padding:18px;
@@ -2671,8 +2903,8 @@ small{
 
 .results-reference-grid{
   display:grid;
-  grid-template-columns:260px minmax(0,1fr) 246px;
-  gap:14px;
+  grid-template-columns:226px minmax(0,1fr) 226px;
+  gap:12px;
   align-items:start;
 }
 
@@ -2842,6 +3074,17 @@ small{
   .workspace-main{
     padding:10px;
   }
+  .workspace-section,
+  .workspace-section.active,
+  .section-title,
+  .reference-screen,
+  .system-tabs,
+  .systems-reference-grid,
+  .system-card{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+  }
   .product-studio .workspace-nav{
     grid-template-columns:1fr 1fr;
   }
@@ -2866,6 +3109,25 @@ small{
   }
   .climate-map{
     min-height:430px;
+  }
+  .equipment-flow,
+  .equipment-flow.compact{
+    grid-template-columns:1fr;
+    gap:10px;
+    min-height:auto;
+    padding:12px;
+  }
+  .equipment-flow::before,
+  .equipment-flow.compact::before{
+    display:none;
+  }
+  .flow-source,
+  .flow-node,
+  .flow-split span{
+    min-height:48px;
+  }
+  .flow-split{
+    gap:8px;
   }
   .building-reference-grid .visual-card-grid{
     grid-template-columns:1fr;
