@@ -39,7 +39,7 @@ assert.match(html, /overview-reference-grid/);
 assert.match(html, /class="equipment-flow"/);
 assert.match(html, /class="assembly-strip"/);
 assert.match(html, /Acelasi generator pentru incalzire si ACM/);
-assert.match(html, /lacurent-workspace\.mjs\?v=(p12g|p12h2)/);
+assert.match(html, /lacurent-workspace\.mjs\?v=(p12g|p12h2|p12hr1|p12hr2)/);
 
 assertNotContains(html + index + sidebar + css, [
   "HW_Prototype",
@@ -72,7 +72,7 @@ assertNotContains(html, [
 
 assert.match(workspace, /SECTION_LABELS/);
 assert.match(workspace, /updateOverview/);
-assert.match(workspace, /lacurent-geography\.mjs\?v=p12e2/);
+assert.match(workspace, /lacurent-geography\.mjs\?v=(p12e2|p12hr1|p12hr2)/);
 assert.doesNotMatch(workspace, /src\/physics-engine|calculateMc001|demoOldHouseInput|building-platform-wizard/);
 assert.doesNotMatch(contract, /src\/physics-engine|building-platform-wizard|synthetic_demo|generatorRef/);
 

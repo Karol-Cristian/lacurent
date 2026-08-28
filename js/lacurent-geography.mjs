@@ -492,6 +492,31 @@ export function renderClimateLegend(target, geography, selectedZone) {
   `).join("");
 }
 
+function cartographicContourPaths(projection) {
+  const width = projection.width;
+  const height = projection.height;
+  const horizontal = Array.from({ length: 12 }, (_, index) => {
+    const y = 46 + (index * ((height - 92) / 11));
+    const offset = (index % 4) * 22;
+    const d = [
+      `M ${(20 - offset).toFixed(2)} ${y.toFixed(2)}`,
+      `C ${(width * 0.22).toFixed(2)} ${(y - 34).toFixed(2)} ${(width * 0.34).toFixed(2)} ${(y + 31).toFixed(2)} ${(width * 0.50).toFixed(2)} ${(y - 3).toFixed(2)}`,
+      `S ${(width * 0.82).toFixed(2)} ${(y + 28).toFixed(2)} ${(width + 34).toFixed(2)} ${(y - 16).toFixed(2)}`
+    ].join(" ");
+    return `<path class="terrain-contour contour-${index % 3}" d="${d}"></path>`;
+  });
+  const diagonal = Array.from({ length: 7 }, (_, index) => {
+    const x = 58 + (index * ((width - 116) / 6));
+    const d = [
+      `M ${(x - 74).toFixed(2)} ${(height + 10).toFixed(2)}`,
+      `C ${(x - 14).toFixed(2)} ${(height * 0.74).toFixed(2)} ${(x + 56).toFixed(2)} ${(height * 0.50).toFixed(2)} ${(x + 18).toFixed(2)} ${(height * 0.25).toFixed(2)}`,
+      `S ${(x + 76).toFixed(2)} ${(height * 0.06).toFixed(2)} ${(x + 24).toFixed(2)} -18`
+    ].join(" ");
+    return `<path class="terrain-ridge ridge-${index % 2}" d="${d}"></path>`;
+  });
+  return [...horizontal, ...diagonal].join("");
+}
+
 export function setClimateMapInteractionState(target, { selectedZone = null, hoveredZone = null } = {}) {
   if (!target) return;
   target.querySelectorAll("[data-zone]").forEach((item) => {
@@ -699,30 +724,49 @@ export function renderClimateMap(target, geography, selection = {}) {
     const zone = feature.properties?.zone;
     return `<path class="climate-zone-boundary" d="${geometryPath(feature.geometry, projection)}" data-zone="${zone}"></path>`;
   }).join("");
+  const terrainPaths = cartographicContourPaths(projection);
   const zoom = mapZoomLevel(geography, viewBox);
   const pin = Number.isFinite(selection.lon) && Number.isFinite(selection.lat)
     ? (() => {
         const [x, y] = projection.project([selection.lon, selection.lat]);
         const pinScale = Math.max(0.16, Math.min(2.4, viewBox.width / renderedWidth));
-        return `<g class="location-pin" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${pinScale.toFixed(4)})"><circle r="7"></circle><path d="M0 -18 L5 -3 L0 0 L-5 -3 Z"></path></g>`;
+        return `<g class="location-pin" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${pinScale.toFixed(4)})"><circle class="pin-halo" r="20"></circle><circle r="7"></circle><path d="M0 -20 C8 -20 13 -14 13 -7 C13 3 0 18 0 18 C0 18 -13 3 -13 -7 C-13 -14 -8 -20 0 -20 Z"></path><circle class="pin-core" r="3.4"></circle></g>`;
       })()
     : "";
   target.innerHTML = `
     <svg class="climate-map-svg" viewBox="${viewBoxToString(viewBox)}" preserveAspectRatio="xMidYMid meet" data-projection="canonical-geojson-local-equirectangular" data-viewbox-ratio="${(projection.width / projection.height).toFixed(6)}" data-zoom="${zoom.toFixed(2)}" aria-label="Zone climatice de iarna">
       <defs>
-        <linearGradient id="climateMapPaper" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="#f7fafc"></stop>
-          <stop offset="100%" stop-color="#edf3f6"></stop>
+        <clipPath id="romaniaClip">
+          <path d="${boundaryPath}"></path>
+        </clipPath>
+        <linearGradient id="romaniaLand" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#eef5ee"></stop>
+          <stop offset="48%" stop-color="#dbe9df"></stop>
+          <stop offset="100%" stop-color="#f5edd1"></stop>
         </linearGradient>
+        <radialGradient id="romaniaAltitude" cx="46%" cy="36%" r="68%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity=".66"></stop>
+          <stop offset="42%" stop-color="#cfdfd4" stop-opacity=".44"></stop>
+          <stop offset="100%" stop-color="#b9cbbf" stop-opacity=".08"></stop>
+        </radialGradient>
       </defs>
-      <rect class="map-bg" x="0" y="0" width="${projection.width.toFixed(2)}" height="${projection.height.toFixed(2)}" rx="10"></rect>
       <path class="romania-map-shadow" d="${boundaryPath}"></path>
       <g class="technical-hit-layer" aria-hidden="true">
         ${technicalPaths}
       </g>
       <path class="romania-silhouette" d="${boundaryPath}"></path>
-      <g class="presentation-layer">
+      <g class="cartographic-base-layer" clip-path="url(#romaniaClip)" aria-hidden="true">
+        <path class="romania-land-wash" d="${boundaryPath}"></path>
+        <path class="romania-altitude-wash" d="${boundaryPath}"></path>
+        <g class="terrain-line-layer">
+          ${terrainPaths}
+        </g>
+      </g>
+      <g class="presentation-layer climate-overlay-layer">
         ${visualPaths}
+      </g>
+      <g class="terrain-detail-layer" clip-path="url(#romaniaClip)" aria-hidden="true">
+        ${terrainPaths}
       </g>
       <g class="climate-zone-boundary-layer" aria-hidden="true">
         ${boundaryPaths}

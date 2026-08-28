@@ -28,7 +28,7 @@ import {
   searchLocalities,
   setClimateMapInteractionState,
   zoomMapViewBox
-} from "./lacurent-geography.mjs?v=p12e2";
+} from "./lacurent-geography.mjs?v=p12hr2";
 
 const form = document.getElementById("workspaceForm");
 const nav = document.getElementById("workspaceNav");
@@ -1044,7 +1044,7 @@ function bindEvents() {
     refreshAll({ stale: true });
   });
   document.getElementById("calculateBtn").addEventListener("click", calculate);
-  document.getElementById("exportInputBtn").addEventListener("click", downloadInput);
+  document.getElementById("exportInputBtn")?.addEventListener("click", downloadInput);
   document.getElementById("saveProjectBtn").addEventListener("click", saveProject);
   document.getElementById("addScenarioBtn").addEventListener("click", () => {
     const values = collectFormValues(form);
