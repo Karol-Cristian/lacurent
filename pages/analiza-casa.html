@@ -6,9 +6,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LA CURENT | Analiza energetica</title>
 <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
-<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../css/style.css?v=p12h2">
 <script src="../js/auth.js" defer></script>
-<script type="module" src="../js/lacurent-workspace.mjs?v=p12g"></script>
+<script type="module" src="../js/lacurent-workspace.mjs?v=p12h2"></script>
 </head>
 
 <body class="lacurent-app">
@@ -21,6 +21,7 @@
         <span>Analiza energetica</span>
       </div>
     </div>
+    <span class="rail-group-label">PROJECT</span>
     <nav class="workspace-nav" id="workspaceNav">
       <button type="button" data-section-target="overview" class="active"><span class="nav-icon project-icon" aria-hidden="true"></span>Prezentare</button>
       <button type="button" data-section-target="location"><span class="nav-icon location-icon" aria-hidden="true"></span>Localizare</button>
@@ -40,13 +41,21 @@
   </aside>
 
   <section class="workspace-main">
-    <header class="workspace-topbar">
-      <div>
-        <span class="eyebrow">Workspace auditor</span>
-        <h1>Analiza energetica a cladirii</h1>
-        <p class="workspace-current-step">Prezentare proiect</p>
+    <header class="workspace-topbar reference-topbar">
+      <div class="step-heading">
+        <span class="step-number" id="workspaceStepNumber">0</span>
+        <div>
+          <span class="eyebrow" id="workspaceStepEyebrow">Workspace auditor</span>
+          <h1 id="workspaceStepTitle">Prezentare proiect</h1>
+          <p class="workspace-current-step" id="workspaceStepSubtitle">Modelul energetic este organizat ca un proiect profesional, nu ca un formular tehnic.</p>
+        </div>
       </div>
       <div class="topbar-actions">
+        <div class="topbar-model-chip" aria-live="polite">
+          <span>Model</span>
+          <strong id="topbarReadiness">0% complet</strong>
+        </div>
+        <span class="topbar-user-dot" aria-label="Profil auditor"></span>
         <button class="secondary-btn" id="exportInputBtn" type="button">Input JSON</button>
         <button class="secondary-btn" id="saveProjectBtn" type="button">Salveaza</button>
         <button class="primary-btn" id="calculateBtn" type="button">Calculeaza</button>
@@ -55,27 +64,40 @@
 
     <form id="workspaceForm" class="workspace-form" novalidate>
       <section class="workspace-section active" id="section-overview" data-section="overview">
-        <div class="overview-layout">
-          <article class="overview-lead">
-            <span class="eyebrow">Prezentare</span>
-            <h2 id="overviewProjectName">Proiect LaCurent</h2>
-            <p id="overviewSubtitle">Configureaza localizarea, cladirea, anvelopa si instalatiile pentru a obtine rezultate verificabile.</p>
+        <div class="overview-reference-grid reference-screen">
+          <article class="project-overview-panel reference-panel">
+            <div>
+              <span class="eyebrow">Prezentare</span>
+              <h2 id="overviewProjectName">Proiect LaCurent</h2>
+              <p id="overviewSubtitle">Configureaza localizarea, cladirea, anvelopa si instalatiile pentru o analiza verificabila.</p>
+            </div>
+            <div class="overview-building-visual" aria-hidden="true">
+              <span class="reference-house"></span>
+              <i></i>
+            </div>
             <button class="primary-btn" id="continueAnalysisBtn" type="button">Continua analiza</button>
           </article>
-          <div class="overview-stack">
+          <aside class="overview-control-stack">
             <article class="overview-status">
-              <span>Pregatire model</span>
+              <span>Model</span>
               <strong id="overviewReadiness">0%</strong>
               <p id="overviewStatusText">Datele principale lipsesc.</p>
             </article>
             <article class="overview-status">
               <span>Calcul</span>
               <strong id="overviewCalculation">Necalculat</strong>
-              <p>Rezultatele apar numai dupa raspunsul calculatorului Python.</p>
+              <p>Rezultatele apar numai dupa raspunsul serviciului de calcul.</p>
             </article>
-          </div>
+            <section class="next-issues">
+              <div>
+                <span class="eyebrow">Urmatorii pasi</span>
+                <h3>Ce lipseste pentru analiza</h3>
+              </div>
+              <div id="overviewIssues" class="overview-issues"></div>
+            </section>
+          </aside>
         </div>
-        <div class="overview-grid">
+        <div class="overview-grid reference-summary-strip">
           <article class="overview-card">
             <span>Cladire</span>
             <strong id="overviewBuilding">Tip neales</strong>
@@ -89,21 +111,14 @@
           <article class="overview-card">
             <span>Anvelopa</span>
             <strong id="overviewEnvelope">Incompleta</strong>
-            <p>Pereti, acoperis, planseu si ferestre sunt definite ca elemente fizice.</p>
+            <p>Elemente fizice: pereti, acoperis, planseu, ferestre.</p>
           </article>
           <article class="overview-card">
             <span>Instalatii</span>
             <strong id="overviewSystems">Incomplet</strong>
-            <p>Generatorul comun pentru incalzire si ACM este tratat ca un singur echipament.</p>
+            <p>Generatorul comun ramane un singur echipament fizic.</p>
           </article>
         </div>
-        <section class="next-issues">
-          <div>
-            <span class="eyebrow">Urmatorii pasi</span>
-            <h3>Ce lipseste pentru analiza</h3>
-          </div>
-          <div id="overviewIssues" class="overview-issues"></div>
-        </section>
       </section>
 
       <section class="workspace-section" id="section-location" data-section="location">
@@ -112,7 +127,7 @@
           <h2>Unde este cladirea?</h2>
           <p>Alege localitatea sau inspecteaza harta climatica. Zona de iarna este o informatie geografica; datele lunare raman in furnizorul climatic canonic.</p>
         </div>
-        <div class="location-layout">
+        <div class="location-layout location-reference-grid reference-screen">
           <div class="location-controls">
             <label>
               <span>Nume proiect</span>
@@ -155,11 +170,6 @@
               <button type="button" class="active" data-map-layer="climate">Clima</button>
               <button type="button" disabled title="Stratul de vant va fi incarcat cand exista date canonice.">Vant in pregatire</button>
             </div>
-            <div class="climate-summary" id="climateSummary">
-              <span>Selecteaza localitatea</span>
-              <strong>Date climatice nealese</strong>
-              <small>Nu se afiseaza rezultate inventate.</small>
-            </div>
           </div>
           <div class="climate-map-panel">
             <div class="map-toolbar">
@@ -176,6 +186,15 @@
             <div id="climateMap" class="climate-map" role="group" aria-label="Harta interactiva a Romaniei cu zone climatice de iarna"></div>
             <div id="climateLegend" class="climate-legend" aria-label="Legenda zonelor climatice"></div>
           </div>
+          <aside class="climate-inspector reference-panel">
+            <span class="eyebrow">Locatie selectata</span>
+            <div class="climate-summary" id="climateSummary">
+              <span>Selecteaza localitatea</span>
+              <strong>Date climatice nealese</strong>
+              <small>Nu se afiseaza rezultate inventate.</small>
+            </div>
+            <button class="secondary-btn" type="button" data-section-target="building">Continua la cladire</button>
+          </aside>
         </div>
         <details class="technical-details">
           <summary>Detalii climatice tehnice</summary>
@@ -189,88 +208,96 @@
           <h2>Ce cladire modelezi?</h2>
           <p>Alege forma recognoscibila, apoi introdu dimensiunile masurabile. Aria si volumul sunt derivate automat cand datele sunt suficiente.</p>
         </div>
-        <fieldset class="building-type-grid visual-card-grid">
-          <legend>Tip vizual de cladire</legend>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="house-single-storey" data-category="USER_FACT" data-levels="1">
-            <span class="building-silhouette single" aria-hidden="true"></span>
-            <strong>Casa parter</strong>
-            <small>Locuinta individuala cu un nivel incalzit.</small>
-          </label>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="house-p1" data-category="USER_FACT" data-levels="2">
-            <span class="building-silhouette p1" aria-hidden="true"></span>
-            <strong>Casa P+1</strong>
-            <small>Casa individuala cu parter si etaj.</small>
-          </label>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="house-mansard" data-category="USER_FACT" data-levels="2">
-            <span class="building-silhouette mansard" aria-hidden="true"></span>
-            <strong>Casa cu mansarda</strong>
-            <small>Volum locuibil sub acoperis inclinat.</small>
-          </label>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="house-p2" data-category="USER_FACT" data-levels="3">
-            <span class="building-silhouette p2" aria-hidden="true"></span>
-            <strong>Casa P+2</strong>
-            <small>Trei niveluri incalzite.</small>
-          </label>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="house-semi-detached" data-category="USER_FACT">
-            <span class="building-silhouette semi" aria-hidden="true"></span>
-            <strong>Casa cuplata</strong>
-            <small>Locuinta alipita pe o latura.</small>
-          </label>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="house-terraced" data-category="USER_FACT">
-            <span class="building-silhouette terrace" aria-hidden="true"></span>
-            <strong>Casa insiruita</strong>
-            <small>Locuinta intre cladiri vecine.</small>
-          </label>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="apartment-small" data-category="USER_FACT">
-            <span class="building-silhouette small-block" aria-hidden="true"></span>
-            <strong>Bloc mic</strong>
-            <small>Cladire rezidentiala colectiva joasa.</small>
-          </label>
-          <label class="building-type-card visual-choice">
-            <input type="radio" name="building.visualType" value="apartment-block" data-category="USER_FACT">
-            <span class="building-silhouette block" aria-hidden="true"></span>
-            <strong>Bloc / apartament</strong>
-            <small>Model rezidential colectiv, unde este aplicabil.</small>
-          </label>
-        </fieldset>
-        <div class="building-editor">
-          <div class="building-visual-context" aria-hidden="true">
-            <span id="selectedBuildingSilhouette" class="building-silhouette p1 large"></span>
-            <div>
-              <strong id="selectedBuildingLabel">Selecteaza tipul cladirii</strong>
-              <span id="selectedBuildingNote">Forma vizuala ramane doar model de produs, nu calcul geometric ascuns.</span>
+        <div class="building-reference-grid reference-screen">
+          <fieldset class="building-type-grid visual-card-grid">
+            <legend>Tip vizual de cladire</legend>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="house-single-storey" data-category="USER_FACT" data-levels="1">
+              <span class="building-silhouette single" aria-hidden="true"></span>
+              <strong>Casa parter</strong>
+              <small>Un nivel incalzit.</small>
+            </label>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="house-p1" data-category="USER_FACT" data-levels="2">
+              <span class="building-silhouette p1" aria-hidden="true"></span>
+              <strong>Casa P+1</strong>
+              <small>Parter si etaj.</small>
+            </label>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="house-mansard" data-category="USER_FACT" data-levels="2">
+              <span class="building-silhouette mansard" aria-hidden="true"></span>
+              <strong>Casa cu mansarda</strong>
+              <small>Volum sub acoperis.</small>
+            </label>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="house-p2" data-category="USER_FACT" data-levels="3">
+              <span class="building-silhouette p2" aria-hidden="true"></span>
+              <strong>Casa P+2</strong>
+              <small>Trei niveluri.</small>
+            </label>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="house-semi-detached" data-category="USER_FACT">
+              <span class="building-silhouette semi" aria-hidden="true"></span>
+              <strong>Casa cuplata</strong>
+              <small>Alipita lateral.</small>
+            </label>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="house-terraced" data-category="USER_FACT">
+              <span class="building-silhouette terrace" aria-hidden="true"></span>
+              <strong>Casa insiruita</strong>
+              <small>Parte din front.</small>
+            </label>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="apartment-small" data-category="USER_FACT">
+              <span class="building-silhouette small-block" aria-hidden="true"></span>
+              <strong>Bloc mic</strong>
+              <small>Colectiv jos.</small>
+            </label>
+            <label class="building-type-card visual-choice">
+              <input type="radio" name="building.visualType" value="apartment-block" data-category="USER_FACT">
+              <span class="building-silhouette block" aria-hidden="true"></span>
+              <strong>Bloc / apartament</strong>
+              <small>Colectiv, unde se aplica.</small>
+            </label>
+          </fieldset>
+          <div class="building-visual-stage">
+            <div class="building-visual-context" aria-hidden="true">
+              <span id="selectedBuildingSilhouette" class="building-silhouette p1 large"></span>
+              <div>
+                <strong id="selectedBuildingLabel">Selecteaza tipul cladirii</strong>
+                <span id="selectedBuildingNote">Forma vizuala nu introduce calcule ascunse.</span>
+              </div>
+            </div>
+            <div class="building-orientation-strip" aria-hidden="true">
+              <span>N</span><i></i><strong>Orientare simpla</strong>
             </div>
           </div>
-          <div class="form-grid four">
-            <label><span>Lungime (m)</span><input name="building.lengthM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
-            <label><span>Latime (m)</span><input name="building.widthM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
-            <label><span>Niveluri incalzite</span><input name="building.levels" type="number" step="1" min="1" data-category="USER_FACT"><small id="levelsHint">Poate fi precompletat din tipul vizual.</small></label>
-            <label><span>Inaltime nivel (m)</span><input name="building.floorHeightM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
-          </div>
-        </div>
-        <div class="object-grid">
-          <article class="object-card">
-            <span>Amprenta</span>
-            <strong id="derivedFootprint">-</strong>
-            <small>Calculata din lungime x latime.</small>
-          </article>
-          <article class="object-card">
-            <span>Arie utila incalzita</span>
-            <strong id="derivedUsefulArea">-</strong>
-            <small>Calculata din amprenta si niveluri.</small>
-          </article>
-          <article class="object-card">
-            <span>Volum incalzit</span>
-            <strong id="derivedVolume">-</strong>
-            <small>Calculat din arie si inaltime.</small>
-          </article>
+          <aside class="building-dimensions-panel reference-panel">
+            <h3>Dimensiuni principale</h3>
+            <div class="form-grid two">
+              <label><span>Lungime (m)</span><input name="building.lengthM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
+              <label><span>Latime (m)</span><input name="building.widthM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
+              <label><span>Niveluri incalzite</span><input name="building.levels" type="number" step="1" min="1" data-category="USER_FACT"><small id="levelsHint">Poate fi precompletat din tipul vizual.</small></label>
+              <label><span>Inaltime nivel (m)</span><input name="building.floorHeightM" type="number" step="0.1" min="0" data-unit="m" data-category="USER_FACT"></label>
+            </div>
+            <div class="object-grid building-derived-strip">
+              <article class="object-card">
+                <span>Amprenta</span>
+                <strong id="derivedFootprint">-</strong>
+                <small>Din lungime x latime.</small>
+              </article>
+              <article class="object-card">
+                <span>Arie utila incalzita</span>
+                <strong id="derivedUsefulArea">-</strong>
+                <small>Din amprenta si niveluri.</small>
+              </article>
+              <article class="object-card">
+                <span>Volum incalzit</span>
+                <strong id="derivedVolume">-</strong>
+                <small>Din arie si inaltime.</small>
+              </article>
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -280,13 +307,24 @@
           <h2>Elemente fizice ale cladirii</h2>
           <p>Selectezi obiectul, apoi completezi aria si proprietatea termica folosita de calcul. Editorul de straturi este vizual; valoarea U ramane intrare explicita daca nu exista un calcul de straturi certificat.</p>
         </div>
-        <div class="envelope-workbench">
+        <div class="envelope-workbench envelope-reference-grid reference-screen">
           <div class="envelope-object-list" role="tablist" aria-label="Elemente anvelopa">
             <button type="button" class="active" data-envelope-target="walls">Pereti exteriori</button>
             <button type="button" data-envelope-target="roof">Acoperis</button>
             <button type="button" data-envelope-target="floor">Planseu sol</button>
             <button type="button" data-envelope-target="windows">Ferestre</button>
             <button type="button" data-envelope-target="doors">Usi</button>
+          </div>
+          <div class="envelope-model-stage" aria-hidden="true">
+            <div class="facade-model">
+              <span class="facade-roof"></span>
+              <span class="facade-wall"></span>
+              <span class="facade-window left"></span>
+              <span class="facade-window right"></span>
+              <span class="facade-door"></span>
+              <span class="facade-highlight"></span>
+            </div>
+            <span class="model-caption">Elementul selectat este evidentiat in model</span>
           </div>
           <div class="envelope-panel active" data-envelope-panel="walls">
             <h3>Pereti exteriori</h3>
@@ -351,15 +389,21 @@
           <h2>Echipamente care deservesc cladirea</h2>
           <p>Alegi generatorul si serviciile deservite. Topologia tehnica este construita in fundal, fara identificatori tehnici in interfata.</p>
         </div>
-        <div class="systems-grid">
-          <article class="system-card featured">
+        <div class="system-tabs" aria-label="Categorii instalatii">
+          <span class="active">Incalzire si ACM</span>
+          <span>Racire</span>
+          <span>Ventilatie</span>
+          <span>Regenerabile</span>
+        </div>
+        <div class="systems-grid systems-reference-grid reference-screen">
+          <article class="system-card featured system-flow-card">
             <div class="system-card-header">
               <h3>Incalzire + apa calda</h3>
               <label class="checkbox-row"><input name="systems.heating.enabled" type="checkbox" data-category="USER_FACT"> <span>Incalzire instalata</span></label>
             </div>
             <div class="equipment-flow" aria-label="Flux generator comun">
-              <div class="flow-source" id="heatingCarrierFlow">Purtator</div>
-              <div class="flow-node" id="heatingGeneratorFlow">Generator</div>
+              <div class="flow-source energy-source-node" id="heatingCarrierFlow">Purtator</div>
+              <div class="flow-node generator-node" id="heatingGeneratorFlow">Generator</div>
               <div class="flow-split">
                 <span>Incalzire</span>
                 <span>ACM</span>
@@ -387,7 +431,7 @@
               </div>
             </details>
           </article>
-          <article class="system-card">
+          <article class="system-card equipment-panel">
             <div class="system-card-header">
               <h3>Racire</h3>
               <label class="checkbox-row"><input name="systems.cooling.enabled" type="checkbox" data-category="USER_FACT"> <span>Racire instalata</span></label>
@@ -404,7 +448,7 @@
             </div>
             <p class="muted">Daca puterea este insuficienta, rezultatul trebuie sa arate necesarul de racire neacoperit.</p>
           </article>
-          <article class="system-card">
+          <article class="system-card equipment-panel">
             <div class="system-card-header">
               <h3>Ventilatie</h3>
               <label class="checkbox-row"><input name="systems.ventilation.enabled" type="checkbox" data-category="USER_FACT"> <span>Ventilatie mecanica instalata</span></label>
@@ -416,7 +460,7 @@
             </div>
             <p class="muted">Ventilatia naturala ramane starea de baza cand sistemul mecanic nu este bifat. Coeficientii AHU sunt pastrati in detalii tehnice.</p>
           </article>
-          <article class="system-card">
+          <article class="system-card equipment-panel">
             <div class="system-card-header">
               <h3>Fotovoltaic</h3>
               <label class="checkbox-row"><input name="renewables.photovoltaic.enabled" type="checkbox" data-category="USER_FACT"> <span>PV instalat</span></label>
@@ -434,7 +478,7 @@
         </div>
         <div class="info-strip">
           <strong>Limita produs</strong>
-          <span>Sobele pe lemne si alte echipamente fara mapare sigura in modelul Python sunt pastrate ca goluri de model produs, nu sunt mapate fortat.</span>
+          <span>Sobele pe lemne si alte echipamente fara mapare sigura in modelul de calcul sunt pastrate ca goluri de model produs, nu sunt mapate fortat.</span>
         </div>
       </section>
 
@@ -444,21 +488,38 @@
           <h2>Intelege performanta cladirii</h2>
           <p>Rezultatele reale apar doar dupa raspunsul calculatorului. Cand serviciul nu este disponibil, produsul explica starea fara valori false.</p>
         </div>
-        <div class="calculation-state" id="calculationState">
-          <strong>Necalculat</strong>
-          <span>Completeaza modelul si ruleaza analiza.</span>
-        </div>
-        <div id="blockerPanel" class="blocker-panel" hidden></div>
-        <div id="resultsGrid" class="result-grid product-results"></div>
-        <div class="charts-grid">
-          <article class="chart-card">
-            <h3>Energie anuala pe servicii</h3>
-            <div id="serviceEnergyChart" class="bar-chart empty">Nu exista rezultat calculat.</div>
-          </article>
-          <article class="chart-card">
-            <h3>Profil lunar incalzire / racire</h3>
-            <div id="monthlyEnergyChart" class="monthly-chart empty">Nu exista rezultat calculat.</div>
-          </article>
+        <div class="results-reference-grid reference-screen">
+          <aside class="result-status-panel reference-panel">
+            <span class="eyebrow">Stare rezultat</span>
+            <div class="calculation-state" id="calculationState">
+              <strong>Necalculat</strong>
+              <span>Completeaza modelul si ruleaza analiza.</span>
+            </div>
+            <div id="blockerPanel" class="blocker-panel" hidden></div>
+            <div class="classification-boundary">
+              <strong>Clasificarea oficiala</strong>
+              <span>Nu este afisata pana cand maparea legala este certificata.</span>
+            </div>
+          </aside>
+          <section class="result-energy-center">
+            <div id="resultsGrid" class="result-grid product-results"></div>
+            <div class="charts-grid">
+              <article class="chart-card service-donut-card">
+                <h3>Energie anuala pe servicii</h3>
+                <div id="serviceEnergyChart" class="bar-chart empty">Nu exista rezultat calculat.</div>
+              </article>
+              <article class="chart-card">
+                <h3>Profil lunar incalzire / racire</h3>
+                <div id="monthlyEnergyChart" class="monthly-chart empty">Nu exista rezultat calculat.</div>
+              </article>
+            </div>
+          </section>
+          <aside class="result-actions-panel reference-panel">
+            <h3>Actiuni</h3>
+            <button class="secondary-btn" type="button" data-section-target="documents">Pregateste documente</button>
+            <button class="secondary-btn" type="button" data-section-target="scenarios">Compara variante</button>
+            <p class="muted">Recomandarile si economiile apar numai din scenarii calculate, nu ca valori predefinite.</p>
+          </aside>
         </div>
         <details class="technical-details">
           <summary>Detalii tehnice si diagnostice</summary>
@@ -472,21 +533,44 @@
           <h2>Ce se schimba fata de cladirea curenta?</h2>
           <p>O varianta este o modificare fata de cladirea curenta, nu o reconstruire manuala a proiectului.</p>
         </div>
-        <div class="scenario-builder">
-          <label><span>Nume varianta</span><input name="scenario.name" value="Izolare pereti" data-category="USER_FACT"></label>
-          <label><span>U perete propus (W/m2K)</span><input name="scenario.wallUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
-          <button class="secondary-btn" id="addScenarioBtn" type="button">Adauga varianta</button>
-        </div>
-        <div id="scenarioList" class="scenario-list"></div>
-        <div class="comparison-table-wrap">
-          <table class="comparison-table">
-            <thead><tr><th>Indicator</th><th>Cladire curenta</th><th>Varianta</th><th>Diferenta</th></tr></thead>
-            <tbody id="scenarioComparisonBody">
-              <tr><td>Energie livrata</td><td>-</td><td>-</td><td>Necesita rezultate calculate</td></tr>
-              <tr><td>PV</td><td>-</td><td>-</td><td>Necesita rezultate calculate</td></tr>
-              <tr><td>Necesar racire neacoperit</td><td>-</td><td>-</td><td>Nu este tratat ca zero</td></tr>
-            </tbody>
-          </table>
+        <div class="scenario-reference-grid reference-screen">
+          <aside class="scenario-sidebar reference-panel">
+            <h3>Scenarii</h3>
+            <div id="scenarioList" class="scenario-list"></div>
+            <div class="scenario-builder">
+              <label><span>Nume varianta</span><input name="scenario.name" value="Izolare pereti" data-category="USER_FACT"></label>
+              <label><span>U perete propus (W/m2K)</span><input name="scenario.wallUValueWPerM2K" type="number" min="0" step="0.01" data-unit="W/m2K" data-category="PRODUCT_DATA"></label>
+              <button class="secondary-btn" id="addScenarioBtn" type="button">Adauga varianta</button>
+            </div>
+          </aside>
+          <section class="scenario-visual-comparison">
+            <article class="scenario-house-card baseline">
+              <span>Scenariul de baza</span>
+              <strong>Cladirea curenta</strong>
+              <div class="scenario-house" aria-hidden="true"></div>
+              <small>Snapshotul de baza ramane separat de modificarile propuse.</small>
+            </article>
+            <div class="scenario-arrow" aria-hidden="true">&rarr;</div>
+            <article class="scenario-house-card proposed">
+              <span>Varianta</span>
+              <strong>Delta fata de baza</strong>
+              <div class="scenario-house improved" aria-hidden="true"></div>
+              <small>Doar schimbarile introduse sunt aplicate peste baza.</small>
+            </article>
+          </section>
+          <aside class="scenario-metrics reference-panel">
+            <h3>Comparatie</h3>
+            <div class="comparison-table-wrap">
+              <table class="comparison-table">
+                <thead><tr><th>Indicator</th><th>Curent</th><th>Varianta</th><th>Diferenta</th></tr></thead>
+                <tbody id="scenarioComparisonBody">
+                  <tr><td>Energie livrata</td><td>-</td><td>-</td><td>Necesita rezultate calculate</td></tr>
+                  <tr><td>PV</td><td>-</td><td>-</td><td>Necesita rezultate calculate</td></tr>
+                  <tr><td>Necesar racire neacoperit</td><td>-</td><td>-</td><td>Nu este tratat ca zero</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </aside>
         </div>
       </section>
 

@@ -63,6 +63,49 @@ const SECTION_LABELS = Object.freeze({
   documents: "Documente"
 });
 
+const SECTION_META = Object.freeze({
+  overview: {
+    number: "0",
+    title: "Prezentare proiect",
+    subtitle: "Privire de ansamblu asupra cladirii, modelului si urmatorului pas."
+  },
+  location: {
+    number: "1",
+    title: "Localizare",
+    subtitle: "Alege localitatea sau selecteaza zona pe harta climatica a Romaniei."
+  },
+  building: {
+    number: "2",
+    title: "Cladire",
+    subtitle: "Selecteaza tipologia si defineste dimensiunile fizice principale."
+  },
+  envelope: {
+    number: "3",
+    title: "Anvelopa",
+    subtitle: "Modeleaza elementele fizice care separa interiorul de exterior."
+  },
+  systems: {
+    number: "4",
+    title: "Instalatii",
+    subtitle: "Configureaza echipamentele reale pentru incalzire, ACM, racire si regenerabile."
+  },
+  scenarios: {
+    number: "5",
+    title: "Variante",
+    subtitle: "Compara modificari fata de cladirea curenta fara a reconstrui modelul."
+  },
+  results: {
+    number: "6",
+    title: "Rezultate",
+    subtitle: "Citeste performanta cladirii; detaliile tehnice raman intr-un nivel separat."
+  },
+  documents: {
+    number: "7",
+    title: "Documente",
+    subtitle: "Pregateste iesirile pentru auditor, beneficiar si anexa tehnica."
+  }
+});
+
 function apiBase() {
   const explicitBase = window.LA_CURENT_API_BASE || window.LaCurentConfig?.apiBase;
   if (explicitBase) return String(explicitBase).replace(/\/$/, "");
@@ -81,7 +124,7 @@ function numberText(value, unit = "") {
 
 function humanDiagnosticDetail(diagnostic) {
   const messages = {
-    PYTHON_ENGINE_SERVICE_UNCONFIGURED: "Rezultatele reale vor fi afisate dupa configurarea serviciului Python in productie.",
+    PYTHON_ENGINE_SERVICE_UNCONFIGURED: "Rezultatele reale vor fi afisate dupa configurarea serviciului de calcul in productie.",
     PYTHON_ENGINE_SERVICE_UNAVAILABLE: "Rezultatele reale vor fi afisate cand serviciul de calcul raspunde. Nu se foloseste calcul de rezerva.",
     PYTHON_ENGINE_SERVICE_TIMEOUT: "Calculul poate fi reluat fara a pierde datele introduse.",
     SOLAR_GAIN_QSKY_AND_ELEMENT_INPUTS_REQUIRED: "Domeniul solar ramane incomplet si nu este tratat ca zero.",
@@ -111,13 +154,7 @@ function setHiddenValue(id, value) {
   if (item) item.value = value ?? "";
 }
 
-function selectedLocalityFromValues(values) {
-  return resolveLocalityClimate(values.location?.localityId || values.location?.locality, geography);
-}
-
-function setLocalityFields(locality) {
-  const resolved = locality ? resolveLocalityClimate(locality.id || locality.value || locality.name, geography) : null;
-  selectedLocality = resolved;
+function writeLocationHiddenFields(resolved) {
   setHiddenValue("localityValue", resolved?.value);
   setHiddenValue("localityIdValue", resolved?.id || resolved?.value);
   setHiddenValue("localityNameValue", resolved?.name || resolved?.label);
@@ -126,6 +163,28 @@ function setLocalityFields(locality) {
   setHiddenValue("localityLonValue", resolved?.lon);
   setHiddenValue("localityClimateZoneValue", resolved?.zone);
   setHiddenValue("localityStationValue", resolved?.stationValue);
+}
+
+function collectSynchronizedValues() {
+  if (selectedLocality) {
+    writeLocationHiddenFields(selectedLocality);
+  } else if (selectedMapPoint) {
+    setHiddenValue("localityLatValue", selectedMapPoint.lat);
+    setHiddenValue("localityLonValue", selectedMapPoint.lon);
+    setHiddenValue("localityClimateZoneValue", selectedMapPoint.zone);
+  }
+  return collectFormValues(form);
+}
+
+function selectedLocalityFromValues(values) {
+  return resolveLocalityClimate(values.location?.localityId || values.location?.locality, geography)
+    || (selectedLocality ? resolveLocalityClimate(selectedLocality.id || selectedLocality.value || selectedLocality.name, geography) : null);
+}
+
+function setLocalityFields(locality) {
+  const resolved = locality ? resolveLocalityClimate(locality.id || locality.value || locality.name, geography) : null;
+  selectedLocality = resolved;
+  writeLocationHiddenFields(resolved);
   const search = document.getElementById("localitySearch");
   if (search) search.value = resolved ? localityShortLabel(resolved) : "";
   if (resolved) {
@@ -188,9 +247,11 @@ function selectLocality(locality, { stale = true } = {}) {
   const countyLocalitySelect = document.getElementById("countyLocalitySelect");
   if (countySelect && selectedLocality?.county) countySelect.value = selectedLocality.county;
   populateCountyLocalities(selectedLocality?.county, selectedLocality?.id || selectedLocality?.value);
-  state.values = collectFormValues(form);
+  state.values = collectSynchronizedValues();
   saveWorkspaceState(state);
   refreshAll({ stale });
+  state.values = collectSynchronizedValues();
+  saveWorkspaceState(state);
 }
 
 function selectMapPoint(hit) {
@@ -203,9 +264,11 @@ function selectMapPoint(hit) {
   setHiddenValue("localityLatValue", hit.lat);
   setHiddenValue("localityLonValue", hit.lon);
   setHiddenValue("localityClimateZoneValue", hit.zone);
-  state.values = collectFormValues(form);
+  state.values = collectSynchronizedValues();
   saveWorkspaceState(state);
   updateLocation(state.values);
+  state.values = collectSynchronizedValues();
+  saveWorkspaceState(state);
   updateOverview(state.values);
 }
 
@@ -215,9 +278,17 @@ function setActiveSection(section) {
   });
   nav.querySelectorAll("button").forEach((button) => {
     button.classList.toggle("active", button.dataset.sectionTarget === section);
+    button.toggleAttribute("aria-current", button.dataset.sectionTarget === section);
   });
-  const currentStep = document.querySelector(".workspace-current-step");
-  if (currentStep) currentStep.textContent = SECTION_LABELS[section] || "Workspace";
+  const meta = SECTION_META[section] || SECTION_META.overview;
+  const number = document.getElementById("workspaceStepNumber");
+  const title = document.getElementById("workspaceStepTitle");
+  const subtitle = document.getElementById("workspaceStepSubtitle");
+  const eyebrow = document.getElementById("workspaceStepEyebrow");
+  if (number) number.textContent = meta.number;
+  if (title) title.textContent = meta.title;
+  if (subtitle) subtitle.textContent = meta.subtitle;
+  if (eyebrow) eyebrow.textContent = "PROJECT";
 }
 
 function setEnvelopePanel(panel) {
@@ -272,6 +343,7 @@ function updateReadiness(values) {
   const total = 10;
   const percent = Math.max(0, Math.round(((total - Math.min(issues.length, total)) / total) * 100));
   document.getElementById("readinessPercent").textContent = `${percent}%`;
+  document.getElementById("topbarReadiness").textContent = `${percent}% complet`;
   document.getElementById("readinessSummary").textContent = issues.length
     ? `${issues.length} elemente necesita atentie.`
     : "Modelul fizic principal este pregatit; serviciul de calcul poate returna limite normative.";
@@ -400,6 +472,7 @@ function updateLocation(values) {
   }
   const resolved = selectedLocalityFromValues(values);
   selectedLocality = resolved;
+  if (resolved) writeLocationHiddenFields(resolved);
   const selectedZone = resolved?.zone || selectedMapZone;
   renderClimateMap(document.getElementById("climateMap"), geography, {
     ...(resolved || selectedMapPoint || { zone: selectedZone }),
@@ -655,12 +728,14 @@ function updateScenarioList() {
 }
 
 function refreshAll({ stale = false } = {}) {
-  const values = collectFormValues(form);
+  let values = collectSynchronizedValues();
+  state.values = values;
+  updateLocation(values);
+  values = collectSynchronizedValues();
   state.values = values;
   updateDerived(values);
   updateReadiness(values);
   updateSystemFlow(values);
-  updateLocation(values);
   updateOverview(values);
   annexPreview.textContent = JSON.stringify(buildSimpleInputContract(values, { projectId: state.projectId }), null, 2);
   if (stale) markStale();
@@ -932,7 +1007,7 @@ function bindEvents() {
     if (Date.now() - lastMapControlPointerAt < 250) return;
     handleMapControl(action);
   });
-  nav.addEventListener("click", (event) => {
+  document.querySelector("[data-lacurent-workspace]")?.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-section-target]");
     if (!button) return;
     setActiveSection(button.dataset.sectionTarget);
@@ -985,6 +1060,7 @@ async function boot() {
   if (state.values) applyValuesToForm(form, state.values);
   await bootGeography();
   bindEvents();
+  setActiveSection("overview");
   refreshAll();
   updateScenarioList();
   updateDocuments(state.lastResult);
