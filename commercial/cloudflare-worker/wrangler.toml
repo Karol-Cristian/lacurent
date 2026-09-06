@@ -3,3 +3,8 @@ main = "src/worker.py"
 compatibility_date = "2026-08-29"
 compatibility_flags = ["python_workers"]
 workers_dev = true
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css", "**/*.js", "**/*.json", "**/*.geojson"]
+fallthrough = true
