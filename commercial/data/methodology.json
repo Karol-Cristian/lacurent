@@ -1,0 +1,103 @@
+{
+  "version": "lacurent-commercial-v2.0",
+  "scope": "Commercial v2 residential monthly balance built from the repository's validated MC001 formula/data content where present.",
+  "internal_gains_w_m2": {
+    "residential_individual": 2.4,
+    "residential_collective": 3.1
+  },
+  "cooling_balance_temperature_c": 18.0,
+  "dhw": {
+    "litres_per_person_day_at_60c": 50.0,
+    "kwh_per_litre_10_to_60c": 0.05814
+  },
+  "heating_system_defaults": {
+    "gas_boiler": {
+      "label": "Gas boiler",
+      "efficiency": 0.9,
+      "carrier": "natural_gas"
+    },
+    "condensing_gas_boiler": {
+      "label": "Condensing gas boiler",
+      "efficiency": 0.96,
+      "carrier": "natural_gas"
+    },
+    "electric_resistance": {
+      "label": "Electric resistance heating",
+      "efficiency": 1.0,
+      "carrier": "electricity"
+    },
+    "heat_pump": {
+      "label": "Heat pump",
+      "scop": 3.2,
+      "carrier": "electricity"
+    },
+    "district_heat": {
+      "label": "District heating",
+      "efficiency": 1.0,
+      "carrier": "district_heat"
+    },
+    "custom": {
+      "label": "Configurable system",
+      "efficiency": 0.9,
+      "carrier": "natural_gas"
+    }
+  },
+  "carriers": {
+    "natural_gas": {
+      "label": "Natural gas",
+      "primary_energy_factor": 1.17,
+      "co2_kg_per_kwh_final": 0.202,
+      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+    },
+    "electricity": {
+      "label": "Grid electricity",
+      "primary_energy_factor": 2.5,
+      "co2_kg_per_kwh_final": 0.107,
+      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+    },
+    "district_heat": {
+      "label": "District heat / remote cogeneration",
+      "primary_energy_factor": 0.92,
+      "co2_kg_per_kwh_final": 0.22,
+      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+    },
+    "biomass": {
+      "label": "Biomass - briquettes/pellets",
+      "primary_energy_factor": 1.08,
+      "co2_kg_per_kwh_final": 0.039,
+      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+    }
+  },
+  "energy_class_thresholds": {
+    "residential_individual": {
+      "source": "Existing repository dataset mc001EnergyClassThresholds.mjs, MC001-2022 Table 5.7.",
+      "total_primary_kwh_m2": [91, 129, 257, 390, 522, 652, 783]
+    },
+    "residential_collective": {
+      "source": "Existing repository dataset mc001EnergyClassThresholds.mjs, MC001-2022 Table 5.8.",
+      "total_primary_kwh_m2": [73, 101, 198, 297, 396, 495, 595]
+    }
+  },
+  "reference_building": {
+    "u_values_w_m2k": {
+      "exterior_wall": 0.35,
+      "roof": 0.25,
+      "floor": 0.3,
+      "window": 1.3,
+      "exterior_door": 1.7
+    },
+    "air_changes_per_hour": 0.5,
+    "heat_recovery_efficiency": 0.0,
+    "heating_efficiency": 0.95,
+    "cooling_seer": 3.2,
+    "dhw_efficiency": 0.85
+  },
+  "assumptions": [
+    "Transmission heat transfer uses the validated MC001 direct form Htr = sum(U*A) + sum(psi*L) for the commercial v2 scope.",
+    "Ventilation heat transfer uses the MC001 helper form Hve = 0.34 * airflow_m3h * recovery_factor with airflow derived from ACH * heated volume.",
+    "Monthly heating and cooling use a transparent balance over monthly mean exterior temperatures, envelope/ventilation loss, internal gains and optional explicit solar gains.",
+    "DHW demand uses an explicit commercial-methodology value of 50 L/person/day at 60 C and 0.05814 kWh/L for a 10 C to 60 C water temperature rise.",
+    "Reference-building values are explicit methodology parameters, then calculated through the same engine as the evaluated building.",
+    "This commercial report is not a legally issued Romanian CPE."
+  ]
+}

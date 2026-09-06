@@ -1,0 +1,3738 @@
+{
+  "version": "mc001-6-2013-commercial-romania-locality-v1",
+  "source": "Expanded from the existing LaCurent MC001/6-2013 climate dataset and Romanian locality geography already present in the repository.",
+  "source_document": {
+    "documentId": "mc001_6_2013",
+    "title": "Metodologie de calcul al performantei energetice a cladirilor. Partea a VI-a - Parametrii climatici necesari determinarii performantei energetice a cladirilor noi si existente, dimensionarii instalatiilor de climatizare a cladirilor si dimensionarii higrotermice a elementelor de anvelopa ale cladirilor",
+    "indicativ": "Mc 001/6-2013",
+    "edition": "2013",
+    "authority": "MDRAP / MDLPA",
+    "officialUrl": "https://www.mdlpa.ro/userfiles/reglementari/Domeniul_XXVII/27_11_MC_001_6_2013.pdf",
+    "sha256": "74a67f87ae9da467ed76973e80b1002531d17b6532dcca26ece950ca5792c5b5",
+    "textExtractionChecksum": "71a76a77dfacbb2e0b4e2bebf7923322b9f3ae95d95fd9654156dbd6ef5326ee"
+  },
+  "source_dataset_version": "mc001_6_2013_climate_dataset_p5b2_v1",
+  "station_resolution": "Exact MC001 station when the selected locality is one of the 42 source stations; otherwise nearest MC001/6-2013 station by WGS84 locality point distance.",
+  "months": [
+    {
+      "id": "ian",
+      "label": "Ianuarie",
+      "days": 31
+    },
+    {
+      "id": "feb",
+      "label": "Februarie",
+      "days": 28
+    },
+    {
+      "id": "mar",
+      "label": "Martie",
+      "days": 31
+    },
+    {
+      "id": "apr",
+      "label": "Aprilie",
+      "days": 30
+    },
+    {
+      "id": "mai",
+      "label": "Mai",
+      "days": 31
+    },
+    {
+      "id": "iun",
+      "label": "Iunie",
+      "days": 30
+    },
+    {
+      "id": "iul",
+      "label": "Iulie",
+      "days": 31
+    },
+    {
+      "id": "aug",
+      "label": "August",
+      "days": 31
+    },
+    {
+      "id": "sep",
+      "label": "Septembrie",
+      "days": 30
+    },
+    {
+      "id": "oct",
+      "label": "Octombrie",
+      "days": 31
+    },
+    {
+      "id": "nov",
+      "label": "Noiembrie",
+      "days": 30
+    },
+    {
+      "id": "dec",
+      "label": "Decembrie",
+      "days": 31
+    }
+  ],
+  "localities": [
+    {
+      "id": "mc001_6_2013_alba_iulia",
+      "name": "Alba Iulia",
+      "aliases": [],
+      "locality_id": "ro_alba_iulia",
+      "source_locality_id": "siruta-1026",
+      "source_label": "Alba Iulia",
+      "county": "Alba",
+      "lon": 23.572098,
+      "lat": 46.069175,
+      "winter_design_mean_daily_temperature_c": -13.07,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.5
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0.7
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.1
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.9
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.5
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.6
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 21.2
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.5
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.3
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.1
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.1
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.8
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_alexandria",
+      "name": "Alexandria",
+      "aliases": [],
+      "locality_id": "ro_alexandria",
+      "source_locality_id": "siruta-151807",
+      "source_label": "Alexandria",
+      "county": "Teleorman",
+      "lon": 25.331228,
+      "lat": 43.969356,
+      "winter_design_mean_daily_temperature_c": -16.04,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.4
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.3
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6.1
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.7
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 18
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 22
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 24
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 23.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.6
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.8
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.5
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_arad",
+      "name": "Arad",
+      "aliases": [],
+      "locality_id": "ro_arad",
+      "source_locality_id": "siruta-9271",
+      "source_label": "Arad",
+      "county": "Arad",
+      "lon": 21.311185,
+      "lat": 46.188797,
+      "winter_design_mean_daily_temperature_c": -15.49,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -0.3
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.3
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.2
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.9
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.3
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22.1
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21.5
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.9
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.5
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0.6
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_bacau",
+      "name": "Bacău",
+      "aliases": [
+        "Bac\u0002u"
+      ],
+      "locality_id": "ro_bacau",
+      "source_locality_id": "siruta-20304",
+      "source_label": "Bac\u0002u",
+      "county": "Bacău",
+      "lon": 26.90979,
+      "lat": 46.566269,
+      "winter_design_mean_daily_temperature_c": -16.56,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -0.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.3
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.4
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.8
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 21.6
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.5
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.1
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 9.8
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.4
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_baia_mare",
+      "name": "Baia Mare",
+      "aliases": [],
+      "locality_id": "ro_baia_mare",
+      "source_locality_id": "siruta-106327",
+      "source_label": "Baia Mare",
+      "county": "Maramureș",
+      "lon": 23.581587,
+      "lat": 47.655518,
+      "winter_design_mean_daily_temperature_c": -12.93,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0.3
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4.6
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.8
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.2
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.2
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 20.9
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.1
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.4
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.1
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_bistrita",
+      "name": "Bistrița",
+      "aliases": [
+        "Bistri\ba"
+      ],
+      "locality_id": "ro_bistrita",
+      "source_locality_id": "siruta-32401",
+      "source_label": "Bistri\ba",
+      "county": "Bistrița-Năsăud",
+      "lon": 24.491998,
+      "lat": 47.131731,
+      "winter_design_mean_daily_temperature_c": -15.7,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.7
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -1.2
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 3.3
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 9.8
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 15.3
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 18.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 20
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 19.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 13.9
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 8.9
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 3.4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.7
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_botosani",
+      "name": "Botoșani",
+      "aliases": [
+        "Boto ani"
+      ],
+      "locality_id": "ro_botosani",
+      "source_locality_id": "siruta-35740",
+      "source_label": "Boto ani",
+      "county": "Botoșani",
+      "lon": 26.669974,
+      "lat": 47.739616,
+      "winter_design_mean_daily_temperature_c": -19.36,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.9
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 3.8
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.2
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.2
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.6
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 14.7
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 9.6
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 3.9
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.3
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_braila",
+      "name": "Brăila",
+      "aliases": [
+        "Br\u0002ila"
+      ],
+      "locality_id": "ro_braila",
+      "source_locality_id": "siruta-42691",
+      "source_label": "Br\u0002ila",
+      "county": "Brăila",
+      "lon": 27.973499,
+      "lat": 45.271644,
+      "winter_design_mean_daily_temperature_c": -13.1,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.4
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.3
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.5
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.5
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16.8
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.2
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.5
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_brasov",
+      "name": "Brașov",
+      "aliases": [
+        "Bra ov"
+      ],
+      "locality_id": "ro_brasov",
+      "source_locality_id": "siruta-40205",
+      "source_label": "Bra ov",
+      "county": "Brașov",
+      "lon": 25.599592,
+      "lat": 45.651427,
+      "winter_design_mean_daily_temperature_c": -19.27,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -3.3
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -1.9
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 2.7
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 8.5
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 14.2
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 17.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 19.1
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 18.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 13.2
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 8.4
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 2.7
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -2.8
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_bucuresti",
+      "name": "București",
+      "aliases": [
+        "Bucure ti"
+      ],
+      "locality_id": "ro_bucuresti",
+      "source_locality_id": "siruta-179141",
+      "source_label": "Bucure ti",
+      "county": "București",
+      "lon": 26.102387,
+      "lat": 44.435582,
+      "winter_design_mean_daily_temperature_c": -12.32,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.2
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.6
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.3
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.5
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.4
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.5
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16.8
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.1
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.2
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_buzau",
+      "name": "Buzău",
+      "aliases": [
+        "Buz\u0002u"
+      ],
+      "locality_id": "ro_buzau",
+      "source_locality_id": "siruta-44827",
+      "source_label": "Buz\u0002u",
+      "county": "Buzău",
+      "lon": 26.81985,
+      "lat": 45.150185,
+      "winter_design_mean_daily_temperature_c": -11.36,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -0.8
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.6
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.7
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.9
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.6
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.7
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.9
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.1
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.7
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.5
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_calarasi",
+      "name": "Călărași",
+      "aliases": [
+        "C\u0002l\u0002ra i"
+      ],
+      "locality_id": "ro_calarasi",
+      "source_locality_id": "siruta-92578",
+      "source_label": "C\u0002l\u0002ra i",
+      "county": "Călărași",
+      "lon": 27.335026,
+      "lat": 44.195521,
+      "winter_design_mean_daily_temperature_c": -12.18,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -0.3
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 2
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6.3
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.9
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 18
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 22
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 24.1
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 23.1
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.6
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 12
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 6.4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0.8
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_cluj_napoca",
+      "name": "Cluj-Napoca",
+      "aliases": [
+        "Cluj"
+      ],
+      "locality_id": "ro_cluj_napoca",
+      "source_locality_id": "siruta-54984",
+      "source_label": "Cluj",
+      "county": "Cluj",
+      "lon": 23.603524,
+      "lat": 46.777625,
+      "winter_design_mean_daily_temperature_c": -13.5,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.4
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -0.6
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 3.8
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 9.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 15.1
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 18.2
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 19.8
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 19.1
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 14
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 9.1
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 3.4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.7
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_constanta",
+      "name": "Constanța",
+      "aliases": [
+        "Constan\ba"
+      ],
+      "locality_id": "ro_constanta",
+      "source_locality_id": "siruta-60428",
+      "source_label": "Constan\ba",
+      "county": "Constanța",
+      "lon": 28.626365,
+      "lat": 44.175367,
+      "winter_design_mean_daily_temperature_c": -10.17,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": 1.4
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 2.7
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6.1
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.5
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.2
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.8
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 23.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 18.6
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 13.6
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 8
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 2.8
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_craiova",
+      "name": "Craiova",
+      "aliases": [],
+      "locality_id": "ro_craiova",
+      "source_locality_id": "siruta-69919",
+      "source_label": "Craiova",
+      "county": "Dolj",
+      "lon": 23.801745,
+      "lat": 44.318219,
+      "winter_design_mean_daily_temperature_c": -13.2,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.1
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.7
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.5
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.3
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.2
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.5
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16.9
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.5
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.3
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_deva",
+      "name": "Deva",
+      "aliases": [],
+      "locality_id": "ro_deva",
+      "source_locality_id": "siruta-86696",
+      "source_label": "Deva",
+      "county": "Hunedoara",
+      "lon": 22.903281,
+      "lat": 45.879247,
+      "winter_design_mean_daily_temperature_c": -11.73,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.1
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0.8
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.2
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.8
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.1
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.1
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 20.8
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.2
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.4
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_drobeta_turnu_severin",
+      "name": "Drobeta-Turnu Severin",
+      "aliases": [
+        "Drobeta Tr. Severin"
+      ],
+      "locality_id": "ro_drobeta_turnu_severin",
+      "source_locality_id": "siruta-109782",
+      "source_label": "Drobeta Tr. Severin",
+      "county": "Mehedinți",
+      "lon": 22.658495,
+      "lat": 44.63408,
+      "winter_design_mean_daily_temperature_c": -11.35,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": 0.4
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 2.8
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6.9
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 12.3
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 18.1
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.9
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 24
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 23.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.5
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 12.3
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 6.2
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 1.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_focsani",
+      "name": "Focșani",
+      "aliases": [
+        "Foc ani"
+      ],
+      "locality_id": "ro_focsani",
+      "source_locality_id": "siruta-174753",
+      "source_label": "Foc ani",
+      "county": "Vrancea",
+      "lon": 27.182795,
+      "lat": 45.699623,
+      "winter_design_mean_daily_temperature_c": -13.33,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.5
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.4
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.5
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.7
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.6
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.6
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.6
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16.9
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.3
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.1
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.7
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_galati",
+      "name": "Galați",
+      "aliases": [
+        "Gala\bi"
+      ],
+      "locality_id": "ro_galati",
+      "source_locality_id": "siruta-75105",
+      "source_label": "Gala\bi",
+      "county": "Galați",
+      "lon": 28.03968,
+      "lat": 45.440535,
+      "winter_design_mean_daily_temperature_c": -14.17,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.1
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.2
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.5
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.4
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.7
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.5
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.8
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.8
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.1
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.7
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.7
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_giurgiu",
+      "name": "Giurgiu",
+      "aliases": [],
+      "locality_id": "ro_giurgiu",
+      "source_locality_id": "siruta-100530",
+      "source_label": "Giurgiu",
+      "county": "Giurgiu",
+      "lon": 25.964607,
+      "lat": 43.890201,
+      "winter_design_mean_daily_temperature_c": -15.52,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.5
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6.4
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 12.4
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 18.6
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 22.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 24.5
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 23.8
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.9
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 12
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.7
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_gura_portitei",
+      "name": "Gura Portitei",
+      "aliases": [
+        "GURA PORTI\bEI"
+      ],
+      "locality_id": "ro_gura_portitei",
+      "source_locality_id": null,
+      "source_label": "GURA PORTI\bEI",
+      "county": null,
+      "lon": null,
+      "lat": null,
+      "winter_design_mean_daily_temperature_c": null,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": 0.5
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.6
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.4
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.6
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.8
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 23.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 18.4
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 13.3
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 7.5
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_iasi",
+      "name": "Iași",
+      "aliases": [
+        "Ia i"
+      ],
+      "locality_id": "ro_iasi",
+      "source_locality_id": "siruta-95079",
+      "source_label": "Ia i",
+      "county": "Iași",
+      "lon": 27.582949,
+      "lat": 47.161616,
+      "winter_design_mean_daily_temperature_c": -18.63,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.1
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -0.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4.3
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.8
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.9
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22.3
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21.1
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.6
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.3
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_miercurea_ciuc",
+      "name": "Miercurea Ciuc",
+      "aliases": [],
+      "locality_id": "ro_miercurea_ciuc",
+      "source_locality_id": "siruta-83339",
+      "source_label": "Miercurea Ciuc",
+      "county": "Harghita",
+      "lon": 25.805743,
+      "lat": 46.363045,
+      "winter_design_mean_daily_temperature_c": -24.71,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -6.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -4.4
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 0.3
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 6.7
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 12.4
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 15.7
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 17.4
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 16.3
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 11.4
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 6.3
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 0.3
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -5.5
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_oradea",
+      "name": "Oradea",
+      "aliases": [],
+      "locality_id": "ro_oradea",
+      "source_locality_id": "siruta-26573",
+      "source_label": "Oradea",
+      "county": "Bihor",
+      "lon": 21.934709,
+      "lat": 47.053217,
+      "winter_design_mean_daily_temperature_c": -12.62,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -0.3
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.2
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.2
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.9
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.1
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 21.8
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.8
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.1
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.6
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0.4
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_piatra_neamt",
+      "name": "Piatra-Neamț",
+      "aliases": [
+        "Piatra Neam\b"
+      ],
+      "locality_id": "ro_piatra_neamt",
+      "source_locality_id": "siruta-120735",
+      "source_label": "Piatra Neam\b",
+      "county": "Neamț",
+      "lon": 26.368497,
+      "lat": 46.934004,
+      "winter_design_mean_daily_temperature_c": -16.08,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.8
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -0.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 3.4
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 9.2
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 15.1
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 18.5
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 20.3
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 19.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 14.2
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 9.4
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 3.7
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_pitesti",
+      "name": "Pitești",
+      "aliases": [
+        "Pite ti"
+      ],
+      "locality_id": "ro_pitesti",
+      "source_locality_id": "siruta-13178",
+      "source_label": "Pite ti",
+      "county": "Argeș",
+      "lon": 24.874815,
+      "lat": 44.858248,
+      "winter_design_mean_daily_temperature_c": -13.02,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -0.3
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.5
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.3
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.4
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 21.9
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.7
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.7
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.2
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0.5
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_ploiesti",
+      "name": "Ploiești",
+      "aliases": [
+        "Ploie ti"
+      ],
+      "locality_id": "ro_ploiesti",
+      "source_locality_id": "siruta-130543",
+      "source_label": "Ploie ti",
+      "county": "Prahova",
+      "lon": 26.019646,
+      "lat": 44.942526,
+      "winter_design_mean_daily_temperature_c": -12.23,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0.9
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.1
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.1
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.3
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.9
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22.9
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16.4
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.9
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.5
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_ramnicu_valcea",
+      "name": "Râmnicu Vâlcea",
+      "aliases": [],
+      "locality_id": "ro_ramnicu_valcea",
+      "source_locality_id": "siruta-167482",
+      "source_label": "Râmnicu Vâlcea",
+      "county": "Vâlcea",
+      "lon": 24.369542,
+      "lat": 45.10595,
+      "winter_design_mean_daily_temperature_c": -13.58,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -0.5
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.6
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.8
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.4
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.9
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22.3
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.2
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0.5
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_resita",
+      "name": "Reșița",
+      "aliases": [
+        "Re i\ba"
+      ],
+      "locality_id": "ro_resita",
+      "source_locality_id": "siruta-50807",
+      "source_label": "Re i\ba",
+      "county": "Caraș-Severin",
+      "lon": 21.901267,
+      "lat": 45.294523,
+      "winter_design_mean_daily_temperature_c": -9.75,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": 0.4
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 2.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.7
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.9
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.1
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.2
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 20.9
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.5
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.2
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 6.1
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 1.4
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_satu_mare",
+      "name": "Satu Mare",
+      "aliases": [],
+      "locality_id": "ro_satu_mare",
+      "source_locality_id": "siruta-136492",
+      "source_label": "Satu Mare",
+      "county": "Satu Mare",
+      "lon": 22.874317,
+      "lat": 47.795302,
+      "winter_design_mean_daily_temperature_c": -17.29,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.4
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4.6
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.5
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.7
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 21.3
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.7
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.4
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_sfantu_gheorghe",
+      "name": "Sfântu Gheorghe",
+      "aliases": [],
+      "locality_id": "ro_sfantu_gheorghe",
+      "source_locality_id": "siruta-63401",
+      "source_label": "Sfântu Gheorghe",
+      "county": "Covasna",
+      "lon": 25.78651,
+      "lat": 45.864389,
+      "winter_design_mean_daily_temperature_c": -21.32,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -3.7
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -2.5
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 2.1
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 8.2
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 14.1
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 17.3
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 18.9
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 18
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 12.8
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 7.9
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 2.2
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -3.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_sibiu",
+      "name": "Sibiu",
+      "aliases": [],
+      "locality_id": "ro_sibiu",
+      "source_locality_id": "siruta-143469",
+      "source_label": "Sibiu",
+      "county": "Sibiu",
+      "lon": 24.150576,
+      "lat": 45.792841,
+      "winter_design_mean_daily_temperature_c": -16.02,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.3
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -0.3
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 3.8
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 9.7
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 15.2
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 18.5
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 20.1
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 19.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 14
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 9.2
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 3.6
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.5
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_slatina",
+      "name": "Slatina",
+      "aliases": [],
+      "locality_id": "ro_slatina",
+      "source_locality_id": "siruta-125356",
+      "source_label": "Slatina",
+      "county": "Olt",
+      "lon": 24.359534,
+      "lat": 44.430235,
+      "winter_design_mean_daily_temperature_c": -12.74,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.6
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.7
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.6
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.3
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16.8
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.4
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.5
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_slobozia",
+      "name": "Slobozia",
+      "aliases": [],
+      "locality_id": "ro_slobozia",
+      "source_locality_id": "siruta-92667",
+      "source_label": "Slobozia",
+      "county": "Ialomița",
+      "lon": 27.374435,
+      "lat": 44.562415,
+      "winter_design_mean_daily_temperature_c": -12.69,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.1
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.5
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.3
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.5
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.6
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.9
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 23
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.4
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.7
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.7
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0.1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_suceava",
+      "name": "Suceava",
+      "aliases": [],
+      "locality_id": "ro_suceava",
+      "source_locality_id": "siruta-146272",
+      "source_label": "Suceava",
+      "county": "Suceava",
+      "lon": 26.279497,
+      "lat": 47.674341,
+      "winter_design_mean_daily_temperature_c": -19.65,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.8
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -1.1
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 2.4
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 8.7
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 14.6
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 17.9
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 19.7
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 18.7
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 13.5
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 8.6
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 2.8
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -2.1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_targoviste",
+      "name": "Târgoviște",
+      "aliases": [
+        "Târgovi te"
+      ],
+      "locality_id": "ro_targoviste",
+      "source_locality_id": "siruta-65351",
+      "source_label": "Târgovi te",
+      "county": "Dâmbovița",
+      "lon": 25.457179,
+      "lat": 44.928826,
+      "winter_design_mean_daily_temperature_c": -13.67,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.1
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0.8
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4.8
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.5
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.3
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21.1
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.5
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.4
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.6
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.3
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_targu_jiu",
+      "name": "Târgu Jiu",
+      "aliases": [],
+      "locality_id": "ro_targu_jiu",
+      "source_locality_id": "siruta-77821",
+      "source_label": "Târgu Jiu",
+      "county": "Gorj",
+      "lon": 23.274063,
+      "lat": 45.035746,
+      "winter_design_mean_daily_temperature_c": -15.23,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -1.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.2
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.8
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.4
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.6
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22.4
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.8
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.6
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.9
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -0.1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_targu_mures",
+      "name": "Târgu Mureș",
+      "aliases": [
+        "Târgu Mure"
+      ],
+      "locality_id": "ro_targu_mures",
+      "source_locality_id": "siruta-114328",
+      "source_label": "Târgu Mure",
+      "county": "Mureș",
+      "lon": 24.558206,
+      "lat": 46.540227,
+      "winter_design_mean_daily_temperature_c": -16.11,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.5
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -0.8
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4.1
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.3
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 15.8
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 20.6
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 19.7
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 14.6
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 9.4
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 3.6
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.6
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_timisoara",
+      "name": "Timișoara",
+      "aliases": [
+        "Timi oara"
+      ],
+      "locality_id": "ro_timisoara",
+      "source_locality_id": "siruta-155252",
+      "source_label": "Timi oara",
+      "county": "Timiș",
+      "lon": 21.228153,
+      "lat": 45.756066,
+      "winter_design_mean_daily_temperature_c": -12.61,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": 0
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.8
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 6
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.7
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.4
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.7
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22.5
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 21.8
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 16.2
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.4
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.9
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 1
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_tulcea",
+      "name": "Tulcea",
+      "aliases": [],
+      "locality_id": "ro_tulcea",
+      "source_locality_id": "siruta-159623",
+      "source_label": "Tulcea",
+      "county": "Tulcea",
+      "lon": 28.78494,
+      "lat": 45.179504,
+      "winter_design_mean_daily_temperature_c": -13.44,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": 0
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 1.6
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 5.6
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 11.2
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 17.3
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 21.4
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 23.7
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 22.6
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 17.1
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 11.8
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 6.5
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 1.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_vaslui",
+      "name": "Vaslui",
+      "aliases": [],
+      "locality_id": "ro_vaslui",
+      "source_locality_id": "siruta-161954",
+      "source_label": "Vaslui",
+      "county": "Vaslui",
+      "lon": 27.729006,
+      "lat": 46.640926,
+      "winter_design_mean_daily_temperature_c": -18.73,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -2.2
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": -0.2
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4.1
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.6
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.6
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 20.2
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 22.1
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.8
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15.3
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 4.4
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": -1.2
+        }
+      ]
+    },
+    {
+      "id": "mc001_6_2013_zalau",
+      "name": "Zalău",
+      "aliases": [
+        "Zal\u0002u"
+      ],
+      "locality_id": "ro_zalau",
+      "source_locality_id": "siruta-139713",
+      "source_label": "Zal\u0002u",
+      "county": "Sălaj",
+      "lon": 23.055938,
+      "lat": 47.179014,
+      "winter_design_mean_daily_temperature_c": -11.76,
+      "monthly_temperatures": [
+        {
+          "id": "ian",
+          "label": "Ianuarie",
+          "days": 31,
+          "temperature_c": -0.7
+        },
+        {
+          "id": "feb",
+          "label": "Februarie",
+          "days": 28,
+          "temperature_c": 0.8
+        },
+        {
+          "id": "mar",
+          "label": "Martie",
+          "days": 31,
+          "temperature_c": 4.8
+        },
+        {
+          "id": "apr",
+          "label": "Aprilie",
+          "days": 30,
+          "temperature_c": 10.7
+        },
+        {
+          "id": "mai",
+          "label": "Mai",
+          "days": 31,
+          "temperature_c": 16.1
+        },
+        {
+          "id": "iun",
+          "label": "Iunie",
+          "days": 30,
+          "temperature_c": 19.2
+        },
+        {
+          "id": "iul",
+          "label": "Iulie",
+          "days": 31,
+          "temperature_c": 21
+        },
+        {
+          "id": "aug",
+          "label": "August",
+          "days": 31,
+          "temperature_c": 20.2
+        },
+        {
+          "id": "sep",
+          "label": "Septembrie",
+          "days": 30,
+          "temperature_c": 15
+        },
+        {
+          "id": "oct",
+          "label": "Octombrie",
+          "days": 31,
+          "temperature_c": 10.5
+        },
+        {
+          "id": "nov",
+          "label": "Noiembrie",
+          "days": 30,
+          "temperature_c": 5.2
+        },
+        {
+          "id": "dec",
+          "label": "Decembrie",
+          "days": 31,
+          "temperature_c": 0
+        }
+      ]
+    }
+  ]
+}

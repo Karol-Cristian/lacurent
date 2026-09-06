@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Results - {{ result.input.project_name }}{% endblock %}
+
+{% block content %}
+<section class="results-hero">
+  <div>
+    <p class="eyebrow">Calculation result</p>
+    <h1>{{ result.input.project_name }}</h1>
+    <p class="hero-copy">
+      {{ result.climate.selected_locality.display_name or result.input.locality }} ·
+      {{ result.input.heated_floor_area_m2|fmt("m²", 0) }} ·
+      climate station {{ result.climate.station }}
+    </p>
+  </div>
+  <div class="class-badge" aria-label="Energy performance class">
+    <span>Class</span>
+    <strong>{{ result.energy_class }}</strong>
+    <em>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/year", 1) }}</em>
+  </div>
+</section>
+
+<section class="metric-grid">
+  <article>
+    <span>Primary energy</span>
+    <strong>{{ result.primary_energy.total_kwh|fmt("kWh/year", 0) }}</strong>
+    <em>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/year", 1) }}</em>
+  </article>
+  <article>
+    <span>Final energy</span>
+    <strong>{{ result.total_final_energy_kwh|fmt("kWh/year", 0) }}</strong>
+    <em>across all energy carriers</em>
+  </article>
+  <article>
+    <span>CO₂ emissions</span>
+    <strong>{{ result.co2.total_kg|fmt("kg/year", 0) }}</strong>
+    <em>{{ result.co2.specific_kg_m2|fmt("kg/m²/year", 1) }}</em>
+  </article>
+  <article>
+    <span>Heat-loss coefficient</span>
+    <strong>{{ result.heat_loss_w_k|fmt("W/K", 1) }}</strong>
+    <em>Htr + Hve</em>
+  </article>
+</section>
+
+<section class="results-layout">
+  <div class="panel large">
+    <div class="panel-title">
+      <h2>Final energy by use</h2>
+      <p>Annual values calculated from useful demand and system performance.</p>
+    </div>
+    <div class="bar-list">
+      {% set service_labels = {"heating": "Heating", "cooling": "Cooling", "dhw": "Domestic hot water"} %}
+      {% for key, value in result.final_energy_by_service.items() %}
+        <div class="bar-row">
+          <span>{{ service_labels.get(key, key) }}</span>
+          <div class="bar-track"><i style="width: {{ (100 * value / service_max)|round(1) }}%"></i></div>
+          <strong>{{ value|fmt("kWh/year", 0) }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <aside class="panel">
+    <div class="panel-title">
+      <h2>Reference building comparison</h2>
+      <p>Same geometry, reference parameters, same engine.</p>
+    </div>
+    <div class="comparison">
+      <div>
+        <span>Evaluated building</span>
+        <strong>{{ result.reference.actual_specific_primary_kwh_m2|fmt("kWh/m²/year", 1) }}</strong>
+      </div>
+      <div>
+        <span>Reference building</span>
+        <strong>{{ result.reference.reference_specific_primary_kwh_m2|fmt("kWh/m²/year", 1) }}</strong>
+      </div>
+      <div class="delta {% if result.reference.difference_percent <= 0 %}good{% endif %}">
+        {{ result.reference.difference_percent|fmt("%", 1) }}
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="results-layout">
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Building envelope</h2>
+      <p>Transmission contributions in W/K.</p>
+    </div>
+    <div class="contribution-list">
+      {% for item in envelope_sorted %}
+        <div>
+          <span>{{ item.name }}</span>
+          <strong>{{ item.value|fmt("W/K", 1) }}</strong>
+          <em>{{ item.percent|fmt("%", 1) }}</em>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Energy carriers</h2>
+      <p>Final-energy aggregation by carrier.</p>
+    </div>
+    <div class="bar-list compact-bars">
+      {% set carrier_labels = {"natural_gas": "Natural gas", "electricity": "Electricity", "district_heat": "District heat", "biomass": "Biomass"} %}
+      {% for key, value in result.final_energy_by_carrier.items() %}
+        <div class="bar-row">
+          <span>{{ carrier_labels.get(key, key) }}</span>
+          <div class="bar-track"><i style="width: {{ (100 * value / carrier_max)|round(1) }}%"></i></div>
+          <strong>{{ value|fmt("kWh/year", 0) }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel monthly-panel">
+  <div class="panel-title">
+    <h2>Monthly profile</h2>
+    <p>Useful heating and cooling demand.</p>
+  </div>
+  <div class="monthly-chart" aria-label="Monthly useful demand profile">
+    {% set month_labels = {"ian": "Jan", "feb": "Feb", "mar": "Mar", "apr": "Apr", "mai": "May", "iun": "Jun", "iul": "Jul", "aug": "Aug", "sep": "Sep", "oct": "Oct", "nov": "Nov", "dec": "Dec"} %}
+    {% for row in result.monthly %}
+      {% set value = row.useful_heating_kwh + row.useful_cooling_kwh %}
+      <div>
+        <span style="height: {{ (100 * value / monthly_max)|round(1) }}%"></span>
+        <em>{{ month_labels.get(row.month, row.month) }}</em>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="technical-summary">
+  <details>
+    <summary>Methodology details</summary>
+    <dl>
+      <div><dt>Htr</dt><dd>{{ result.h_tr_w_k|fmt("W/K", 2) }}</dd></div>
+      <div><dt>Hve</dt><dd>{{ result.h_ve_w_k|fmt("W/K", 2) }}</dd></div>
+      <div><dt>Useful heating demand</dt><dd>{{ result.annual_heating_demand_kwh|fmt("kWh/year", 1) }}</dd></div>
+      <div><dt>Useful cooling demand</dt><dd>{{ result.annual_cooling_demand_kwh|fmt("kWh/year", 1) }}</dd></div>
+      <div><dt>Methodology</dt><dd>{{ result.methodology_version }}</dd></div>
+    </dl>
+    <ul>
+      {% for item in result.assumptions %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+</section>
+
+<section class="actions-footer">
+  <a class="secondary-action" href="/">Calculate another building</a>
+  <form method="post" action="/certificate" target="_blank">
+    <input type="hidden" name="payload" value="{{ payload }}">
+    <button class="primary-action" type="submit">Generate A4 report</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}LaCurent - building energy calculation{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Residential building energy calculator</p>
+    <h1>Describe the building. Get a clear energy-performance result.</h1>
+    <p class="hero-copy">
+      A simple commercial workflow for homes: building envelope, ventilation,
+      systems, energy demand, primary energy, CO₂ emissions and an A4 report.
+    </p>
+  </div>
+  <div class="hero-actions">
+    <a class="secondary-action" href="/demo">Load demo</a>
+    <a class="primary-action" href="#building">Start analysis</a>
+  </div>
+</section>
+
+{% if error %}
+  <div class="error-banner" role="alert">
+    <strong>Please correct the input data.</strong>
+    <span>{{ error }}</span>
+  </div>
+{% endif %}
+
+<form id="calculationForm" class="analysis-form" method="post" action="/calculate">
+  <section id="building" class="input-section">
+    <div class="section-heading">
+      <span>01</span>
+      <div>
+        <h2>Building</h2>
+        <p>Enter the essential physical data for the heated space.</p>
+      </div>
+    </div>
+
+    <div class="field-grid project-grid">
+      <label>
+        <span>Project name</span>
+        <input name="project_name" required value="{{ values.project_name }}">
+      </label>
+    </div>
+
+    <div
+      class="location-selector"
+      data-location-selector
+      data-initial-locality-id="{{ values.locality_id }}"
+      data-initial-locality="{{ values.locality }}"
+    >
+      <div class="location-copy">
+        <h3>Building location</h3>
+        <p>Search for a locality or choose a visible point on the Romania map. Climate data is selected automatically.</p>
+      </div>
+
+      <div class="location-search">
+        <label for="localitySearch">
+          <span>Search for a locality</span>
+          <input
+            id="localitySearch"
+            name="locality"
+            type="search"
+            required
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            aria-controls="localityResults"
+            value="{{ values.locality }}"
+            placeholder="E.g. Cluj, Brașov, Florești"
+          >
+        </label>
+        <input id="localityId" name="locality_id" type="hidden" value="{{ values.locality_id }}">
+        <div id="localityResults" class="locality-results" role="listbox" hidden></div>
+      </div>
+
+      <div class="location-map-layout">
+        <div class="romania-map-card">
+          <div id="romaniaLocationMap" class="romania-location-map" role="group" aria-label="Interactive Romania map for locality selection">
+            <p>Loading Romania map...</p>
+          </div>
+        </div>
+        <aside class="selected-location-card" aria-live="polite">
+          <span>Selected locality</span>
+          <strong id="selectedLocationName">Cluj-Napoca, Cluj</strong>
+          <dl>
+            <div>
+              <dt>Winter climate zone</dt>
+              <dd id="selectedClimateZone">-</dd>
+            </div>
+            <div>
+              <dt>Winter design temperature</dt>
+              <dd id="selectedDesignTemperature">-</dd>
+            </div>
+            <div>
+              <dt>Climate station</dt>
+              <dd id="selectedClimateStation">-</dd>
+            </div>
+          </dl>
+          <small id="selectedClimateResolution">Climate data selected automatically.</small>
+        </aside>
+      </div>
+    </div>
+
+    <div class="field-grid">
+      <label>
+        <span>Heated floor area</span>
+        <div class="unit-field">
+          <input name="heated_floor_area_m2" type="number" step="0.1" min="1" required value="{{ values.heated_floor_area_m2 }}">
+          <em>m²</em>
+        </div>
+      </label>
+      <label>
+        <span>Heated volume</span>
+        <div class="unit-field">
+          <input name="heated_volume_m3" type="number" step="0.1" min="1" required value="{{ values.heated_volume_m3 }}">
+          <em>m³</em>
+        </div>
+      </label>
+      <label>
+        <span>Indoor design temperature</span>
+        <div class="unit-field">
+          <input name="indoor_design_temperature_c" type="number" step="0.1" min="16" max="24" required value="{{ values.indoor_design_temperature_c }}">
+          <em>°C</em>
+        </div>
+      </label>
+      <label>
+        <span>Construction year</span>
+        <input name="construction_year" type="number" min="1800" max="2100" value="{{ values.construction_year }}">
+      </label>
+    </div>
+
+    <fieldset class="typology-picker">
+      <legend>Building type</legend>
+      <label class="typology-card">
+        <input type="radio" name="building_type" value="residential_individual" {% if values.building_type == "residential_individual" %}checked{% endif %}>
+        <span class="building-figure house"></span>
+        <strong>Detached house</strong>
+        <small>Single-family dwelling</small>
+      </label>
+      <label class="typology-card">
+        <input type="radio" name="building_type" value="residential_collective" {% if values.building_type == "residential_collective" %}checked{% endif %}>
+        <span class="building-figure block"></span>
+        <strong>Apartment / multifamily building</strong>
+        <small>Collective residential building</small>
+      </label>
+    </fieldset>
+  </section>
+
+  <section id="envelope" class="input-section">
+    <div class="section-heading">
+      <span>02</span>
+      <div>
+        <h2>Building envelope</h2>
+        <p>A simple surface and U-value model. Detailed material assemblies can be added later.</p>
+      </div>
+    </div>
+
+    <div class="envelope-table" role="group" aria-label="Building envelope components">
+      <div class="envelope-row envelope-header">
+        <span>Element</span>
+        <span>Area</span>
+        <span>U-value</span>
+      </div>
+      {% set rows = [
+        ("External walls", "wall_area_m2", "wall_u_value"),
+        ("Roof / ceiling", "roof_area_m2", "roof_u_value"),
+        ("Ground floor", "floor_area_m2", "floor_u_value"),
+        ("Windows", "window_area_m2", "window_u_value"),
+        ("External doors", "door_area_m2", "door_u_value")
+      ] %}
+      {% for label, area, uvalue in rows %}
+        <div class="envelope-row">
+          <strong>{{ label }}</strong>
+          <label>
+            <span class="sr-only">{{ label }} area</span>
+            <input name="{{ area }}" type="number" step="0.1" min="0.1" required value="{{ values[area] }}">
+            <em>m²</em>
+          </label>
+          <label>
+            <span class="sr-only">{{ label }} U-value</span>
+            <input name="{{ uvalue }}" type="number" step="0.01" min="0.01" required value="{{ values[uvalue] }}">
+            <em>W/m²K</em>
+          </label>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="field-grid compact">
+      <label>
+        <span>Thermal bridge length</span>
+        <div class="unit-field">
+          <input name="thermal_bridge_length_m" type="number" step="0.1" min="0.1" value="{{ values.thermal_bridge_length_m }}">
+          <em>m</em>
+        </div>
+      </label>
+      <label>
+        <span>Linear thermal transmittance ψ</span>
+        <div class="unit-field">
+          <input name="thermal_bridge_psi_w_mk" type="number" step="0.001" min="0" value="{{ values.thermal_bridge_psi_w_mk }}">
+          <em>W/mK</em>
+        </div>
+      </label>
+      <label>
+        <span>Explicit solar gain</span>
+        <div class="unit-field">
+          <input name="solar_gains_kwh_m2_month" type="number" step="0.1" min="0" value="{{ values.solar_gains_kwh_m2_month }}">
+          <em>kWh/m² month</em>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <section id="ventilation" class="input-section">
+    <div class="section-heading">
+      <span>03</span>
+      <div>
+        <h2>Ventilation</h2>
+        <p>Simplified airflow through air changes per hour and heat recovery efficiency.</p>
+      </div>
+    </div>
+    <div class="field-grid compact">
+      <label>
+        <span>Air changes per hour</span>
+        <div class="unit-field">
+          <input name="air_changes_per_hour" type="number" step="0.05" min="0" max="5" required value="{{ values.air_changes_per_hour }}">
+          <em>h⁻¹</em>
+        </div>
+      </label>
+      <label>
+        <span>Heat recovery efficiency</span>
+        <div class="unit-field">
+          <input name="heat_recovery_efficiency" type="number" step="0.01" min="0" max="0.95" value="{{ values.heat_recovery_efficiency }}">
+          <em>0-0.95</em>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <section id="systems" class="input-section">
+    <div class="section-heading">
+      <span>04</span>
+      <div>
+        <h2>Systems</h2>
+        <p>Describe the real generator and the seasonal performance used in the calculation.</p>
+      </div>
+    </div>
+
+    <div class="systems-layout">
+      <div class="system-diagram" aria-hidden="true">
+        <div class="energy-source">Energy carrier</div>
+        <div class="diagram-line"></div>
+        <div class="generator-symbol">Generator</div>
+        <div class="diagram-branches">
+          <span>Heating</span>
+          <span>DHW</span>
+          <span>Cooling</span>
+        </div>
+      </div>
+
+      <div class="system-fields">
+        <div class="field-grid compact">
+          <label>
+            <span>Heating generator</span>
+            <select name="heating_system_type" id="heatingSystemType">
+              <option value="condensing_gas_boiler" {% if values.heating_system_type == "condensing_gas_boiler" %}selected{% endif %}>Condensing gas boiler</option>
+              <option value="gas_boiler" {% if values.heating_system_type == "gas_boiler" %}selected{% endif %}>Gas boiler</option>
+              <option value="electric_resistance" {% if values.heating_system_type == "electric_resistance" %}selected{% endif %}>Electric resistance heating</option>
+              <option value="heat_pump" {% if values.heating_system_type == "heat_pump" %}selected{% endif %}>Heat pump</option>
+              <option value="district_heat" {% if values.heating_system_type == "district_heat" %}selected{% endif %}>District heating</option>
+              <option value="custom" {% if values.heating_system_type == "custom" %}selected{% endif %}>Configurable system</option>
+            </select>
+          </label>
+          <label>
+            <span>Energy carrier</span>
+            <select name="heating_carrier">
+              <option value="natural_gas" {% if values.heating_carrier == "natural_gas" %}selected{% endif %}>Natural gas</option>
+              <option value="electricity" {% if values.heating_carrier == "electricity" %}selected{% endif %}>Electricity</option>
+              <option value="district_heat" {% if values.heating_carrier == "district_heat" %}selected{% endif %}>District heat</option>
+              <option value="biomass" {% if values.heating_carrier == "biomass" %}selected{% endif %}>Biomass</option>
+            </select>
+          </label>
+          <label>
+            <span>Seasonal efficiency</span>
+            <div class="unit-field">
+              <input name="heating_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.heating_efficiency }}">
+              <em>η</em>
+            </div>
+          </label>
+          <label>
+            <span>Heat pump SCOP</span>
+            <input name="heating_scop" type="number" step="0.1" min="1" value="{{ values.heating_scop }}">
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <label>
+            <input type="checkbox" name="cooling_enabled" {% if values.cooling_enabled %}checked{% endif %}>
+            <span>Active cooling</span>
+          </label>
+          <label>
+            <input type="checkbox" name="dhw_enabled" {% if values.dhw_enabled %}checked{% endif %}>
+            <span>Domestic hot water</span>
+          </label>
+        </div>
+
+        <div class="field-grid compact">
+          <label>
+            <span>Cooling SEER</span>
+            <input name="cooling_seer" type="number" step="0.1" min="1" value="{{ values.cooling_seer }}">
+          </label>
+          <label>
+            <span>Cooling setpoint</span>
+            <div class="unit-field">
+              <input name="cooling_setpoint_c" type="number" step="0.1" min="20" max="30" value="{{ values.cooling_setpoint_c }}">
+              <em>°C</em>
+            </div>
+          </label>
+          <label>
+            <span>DHW occupants</span>
+            <input name="dhw_occupants" type="number" min="0" max="30" value="{{ values.dhw_occupants }}">
+          </label>
+          <label>
+            <span>DHW efficiency</span>
+            <input name="dhw_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.dhw_efficiency }}">
+          </label>
+          <label>
+            <span>DHW demand</span>
+            <div class="unit-field">
+              <input name="dhw_litres_per_person_day_at_60c" type="number" step="1" min="1" value="{{ values.dhw_litres_per_person_day_at_60c }}">
+              <em>L/person/day</em>
+            </div>
+          </label>
+          <label>
+            <span>DHW energy carrier</span>
+            <select name="dhw_carrier">
+              <option value="natural_gas" {% if values.dhw_carrier == "natural_gas" %}selected{% endif %}>Natural gas</option>
+              <option value="electricity" {% if values.dhw_carrier == "electricity" %}selected{% endif %}>Electricity</option>
+              <option value="district_heat" {% if values.dhw_carrier == "district_heat" %}selected{% endif %}>District heat</option>
+              <option value="biomass" {% if values.dhw_carrier == "biomass" %}selected{% endif %}>Biomass</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="submit-strip" aria-label="Calculation">
+    <div>
+      <strong>Ready to calculate</strong>
+      <span>The result uses the simplified monthly model and the declared methodology factors.</span>
+    </div>
+    <button class="primary-action" type="submit">Calculate performance</button>
+  </section>
+</form>
+{% endblock %}
