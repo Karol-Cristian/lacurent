@@ -59,7 +59,10 @@ jobs:
       - name: Sync Python Worker dependencies
         working-directory: .wrangler/commercial-v2-worker
         run: |
-          export PATH="$PWD/node_modules/.bin:$PATH"
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           wrangler --version
           uvx --from workers-py pywrangler --version
           uvx --from workers-py pywrangler sync --force
@@ -67,7 +70,10 @@ jobs:
       - name: Prove real Worker runtime
         working-directory: .wrangler/commercial-v2-worker
         run: |
-          export PATH="$PWD/node_modules/.bin:$PATH"
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler dev --ip 127.0.0.1 --port 8788 > worker-dev.log 2>&1 &
           echo "$!" > worker-dev.pid
           for attempt in $(seq 1 90); do
@@ -176,5 +182,9 @@ jobs:
             echo "Cloudflare staging deploy skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both configured."
             exit 0
           fi
-          export PATH="$PWD/node_modules/.bin:$PATH"
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler deploy
+
