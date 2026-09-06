@@ -40,16 +40,26 @@ The app calculates:
 
 ## Methodology Data
 
-The following values were copied into `commercial/data/methodology.json` from
-validated data already present in the repository:
+The following values were copied or transformed from validated assets already
+present in the repository:
 
 - carrier primary-energy factors and CO2 factors from
   `src/physics-engine/datasets/mc001PrimaryEnergyAndCO2Factors.mjs`;
 - residential energy-class thresholds from
   `src/physics-engine/datasets/mc001EnergyClassThresholds.mjs`;
 - residential internal-gain values from the existing MC001 Table 2.15 data;
-- selected MC001/6-2013 monthly exterior temperature rows from
-  `src/climate-platform/datasets/mc001_6_2013ClimateDataset.mjs`.
+- all 42 MC001/6-2013 monthly exterior temperature station rows from
+  `src/climate-platform/datasets/mc001_6_2013ClimateDataset.mjs`;
+- 13,622 Romanian locality points with SIRUTA identifiers from
+  `assets/geography/romania-localities/localities.json`;
+- winter climate-zone GeoJSON from
+  `assets/geography/climate-zones/winter-climate-zones.geojson`.
+
+For station cities, climate resolves directly to the MC001 station. For other
+localities, the commercial app uses the source-backed locality coordinate and
+the nearest MC001/6-2013 station by WGS84 distance. The winter climate zone is
+derived from the canonical GeoJSON polygon layer, not from a manually selected
+form value.
 
 The commercial DHW model uses explicit methodology values: 50 L/person/day at
 60 C and 0.05814 kWh/L for a 10 C to 60 C water temperature rise.
@@ -60,3 +70,6 @@ This is a commercial performance report, not a legally issued Romanian CPE.
 The v2 app intentionally does not implement detailed material assemblies,
 automatic solar preprocessing, official CPE layout/mapping, accounts,
 persistence, renovation scenarios, authentication or cloud deployment logic.
+The nearest-station rule is a transparent commercial resolver for localities
+that are not themselves MC001 climate stations; it is not a claim that every
+locality has an individually measured MC001 monthly climate table.

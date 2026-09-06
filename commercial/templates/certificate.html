@@ -30,7 +30,7 @@
         <h2>Identificare</h2>
         <table>
           <tr><th>Proiect</th><td>{{ result.input.project_name }}</td></tr>
-          <tr><th>Localitate</th><td>{{ result.input.locality }}</td></tr>
+          <tr><th>Localitate</th><td>{{ result.climate.selected_locality.display_name or result.input.locality }}</td></tr>
           <tr><th>Stație climatică</th><td>{{ result.climate.station }}</td></tr>
           <tr><th>Suprafață încălzită</th><td>{{ result.input.heated_floor_area_m2|fmt("m²", 1) }}</td></tr>
           <tr><th>Volum încălzit</th><td>{{ result.input.heated_volume_m3|fmt("m³", 1) }}</td></tr>

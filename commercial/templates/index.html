@@ -35,20 +35,74 @@
       </div>
     </div>
 
-    <div class="field-grid">
+    <div class="field-grid project-grid">
       <label>
         <span>Nume proiect</span>
         <input name="project_name" required value="{{ values.project_name }}">
       </label>
-      <label>
-        <span>Localitate</span>
-        <input name="locality" list="climateLocalities" required value="{{ values.locality }}">
-        <datalist id="climateLocalities">
-          {% for name in climate_options %}
-            <option value="{{ name }}"></option>
-          {% endfor %}
-        </datalist>
-      </label>
+    </div>
+
+    <div
+      class="location-selector"
+      data-location-selector
+      data-initial-locality-id="{{ values.locality_id }}"
+      data-initial-locality="{{ values.locality }}"
+    >
+      <div class="location-copy">
+        <h3>Localizarea clădirii</h3>
+        <p>Căutați localitatea sau selectați un punct major de pe hartă. Datele climatice se aleg automat.</p>
+      </div>
+
+      <div class="location-search">
+        <label for="localitySearch">
+          <span>Caută localitatea</span>
+          <input
+            id="localitySearch"
+            name="locality"
+            type="search"
+            required
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            aria-controls="localityResults"
+            value="{{ values.locality }}"
+            placeholder="Ex. Cluj, Brașov, Florești"
+          >
+        </label>
+        <input id="localityId" name="locality_id" type="hidden" value="{{ values.locality_id }}">
+        <div id="localityResults" class="locality-results" role="listbox" hidden></div>
+      </div>
+
+      <div class="location-map-layout">
+        <div class="romania-map-card">
+          <div id="romaniaLocationMap" class="romania-location-map" role="group" aria-label="Hartă interactivă a României pentru alegerea localității">
+            <p>Se încarcă harta României...</p>
+          </div>
+        </div>
+        <aside class="selected-location-card" aria-live="polite">
+          <span>Localitate selectată</span>
+          <strong id="selectedLocationName">Cluj-Napoca, Cluj</strong>
+          <dl>
+            <div>
+              <dt>Zona climatică</dt>
+              <dd id="selectedClimateZone">-</dd>
+            </div>
+            <div>
+              <dt>Temperatură iarnă</dt>
+              <dd id="selectedDesignTemperature">-</dd>
+            </div>
+            <div>
+              <dt>Stație climatică</dt>
+              <dd id="selectedClimateStation">-</dd>
+            </div>
+          </dl>
+          <small id="selectedClimateResolution">Date climatice selectate automat.</small>
+        </aside>
+      </div>
+    </div>
+
+    <div class="field-grid">
       <label>
         <span>Suprafață încălzită</span>
         <div class="unit-field">
@@ -120,7 +174,7 @@
           <strong>{{ label }}</strong>
           <label>
             <span class="sr-only">{{ label }} suprafață</span>
-            <input name="{{ area }}" type="number" step="0.1" min="0.01" required value="{{ values[area] }}">
+            <input name="{{ area }}" type="number" step="0.1" min="0.1" required value="{{ values[area] }}">
             <em>m²</em>
           </label>
           <label>
@@ -136,7 +190,7 @@
       <label>
         <span>Lungime punți termice</span>
         <div class="unit-field">
-          <input name="thermal_bridge_length_m" type="number" step="0.1" min="0.01" value="{{ values.thermal_bridge_length_m }}">
+          <input name="thermal_bridge_length_m" type="number" step="0.1" min="0.1" value="{{ values.thermal_bridge_length_m }}">
           <em>m</em>
         </div>
       </label>

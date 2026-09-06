@@ -18,6 +18,21 @@ def climate_data() -> dict[str, Any]:
     return json.loads((DATA_DIR / "climate.json").read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=1)
+def locality_data() -> dict[str, Any]:
+    return json.loads((DATA_DIR / "localities.json").read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def climate_zones_geojson() -> dict[str, Any]:
+    return json.loads((DATA_DIR / "winter-climate-zones.geojson").read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def romania_boundary_geojson() -> dict[str, Any]:
+    return json.loads((DATA_DIR / "romania-boundary.geojson").read_text(encoding="utf-8"))
+
+
 def normalize_key(value: str) -> str:
     replacements = str.maketrans({
         "ă": "a",
@@ -38,15 +53,100 @@ def normalize_key(value: str) -> str:
     return " ".join(value.translate(replacements).lower().replace("-", " ").split())
 
 
+@lru_cache(maxsize=1)
+def _locality_indexes() -> dict[str, Any]:
+    localities = locality_data()["localities"]
+    by_id = {item["id"]: item for item in localities}
+    by_name: dict[str, list[dict[str, Any]]] = {}
+    for item in localities:
+        by_name.setdefault(normalize_key(item["name"]), []).append(item)
+    for matches in by_name.values():
+        matches.sort(key=lambda item: item.get("importance") or 0, reverse=True)
+    return {"by_id": by_id, "by_name": by_name}
+
+
+@lru_cache(maxsize=1)
+def _station_index() -> dict[str, dict[str, Any]]:
+    return {item["id"]: item for item in climate_data()["localities"]}
+
+
+def resolve_locality(locality: str) -> dict[str, Any]:
+    indexes = _locality_indexes()
+    value = " ".join(str(locality or "").strip().split())
+    if value in indexes["by_id"]:
+        return indexes["by_id"][value]
+
+    key = normalize_key(value)
+    matches = indexes["by_name"].get(key)
+    if matches:
+        return matches[0]
+
+    candidates = [
+        item
+        for item in locality_data()["localities"]
+        if key and key in item.get("search", "")
+    ]
+    if candidates:
+        candidates.sort(key=lambda item: item.get("importance") or 0, reverse=True)
+        return candidates[0]
+
+    raise ValueError(
+        f"Localitatea '{locality}' nu este in registrul geografic comercial LaCurent."
+    )
+
+
 def resolve_climate(locality: str) -> dict[str, Any]:
-    climates = climate_data()["localities"]
-    key = normalize_key(locality)
-    for item in climates:
-        names = [item["name"], *item.get("aliases", [])]
-        if key in {normalize_key(name) for name in names}:
-            return item
-    available = ", ".join(item["name"] for item in climates)
-    raise ValueError(f"Localitatea '{locality}' nu este in setul climatic v2. Disponibil: {available}.")
+    selected = resolve_locality(locality)
+    station = _station_index().get(selected.get("stationId"))
+    if not station:
+        raise ValueError(
+            f"Localitatea '{selected['name']}' nu are o statie climatica MC001 rezolvata."
+        )
+
+    return {
+        **station,
+        "station": station["name"],
+        "station_id": station["id"],
+        "selected_locality": {
+            "id": selected["id"],
+            "siruta": selected.get("siruta"),
+            "name": selected["name"],
+            "county": selected["county"],
+            "uat_name": selected.get("uatName"),
+            "locality_type": selected.get("localityType"),
+            "lon": selected.get("lon"),
+            "lat": selected.get("lat"),
+            "display_name": locality_display_name(selected),
+        },
+        "climate_zone": selected.get("climateZone"),
+        "winter_design_temperature_c": selected.get("winterDesignTemperatureC"),
+        "station_resolution": selected.get("stationResolution"),
+        "station_distance_km": selected.get("stationDistanceKm"),
+    }
+
+
+def locality_display_name(locality: dict[str, Any]) -> str:
+    uat = locality.get("uatName")
+    uat_text = f", UAT {uat}" if uat and uat != locality.get("name") else ""
+    return (
+        f"{locality.get('name')}, {locality.get('localityType')} - "
+        f"{locality.get('county')}{uat_text}"
+    )
+
+
+def location_payload() -> dict[str, Any]:
+    data = locality_data()
+    return {
+        "schema": "lacurent_commercial_location_payload_v1",
+        "stats": data["stats"],
+        "source": data["source"],
+        "station_resolution": data["station_resolution"],
+        "climateZoneTemperatures": data["climateZoneTemperatures"],
+        "counties": data["counties"],
+        "localities": data["localities"],
+        "climateZones": climate_zones_geojson(),
+        "romaniaBoundary": romania_boundary_geojson(),
+    }
 
 
 def carrier_factors(carrier: str) -> dict[str, float]:

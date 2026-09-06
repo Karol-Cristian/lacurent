@@ -8,8 +8,9 @@
     <p class="eyebrow">Rezultat calcul</p>
     <h1>{{ result.input.project_name }}</h1>
     <p class="hero-copy">
-      {{ result.input.locality }} · {{ result.input.heated_floor_area_m2|fmt("m²", 0) }} ·
-      {{ result.climate.station }}
+      {{ result.climate.selected_locality.display_name or result.input.locality }} ·
+      {{ result.input.heated_floor_area_m2|fmt("m²", 0) }} ·
+      stație climatică {{ result.climate.station }}
     </p>
   </div>
   <div class="class-badge" aria-label="Clasa energetică">

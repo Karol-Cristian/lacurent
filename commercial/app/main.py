@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from .engine import calculate, demo_building
-from .methodology import climate_data, methodology
+from .methodology import climate_data, location_payload, methodology, resolve_climate, resolve_locality
 from .models import BuildingInput
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -45,6 +45,7 @@ def climate_options() -> list[str]:
 def default_form_values() -> dict[str, Any]:
     return {
         "project_name": "",
+        "locality_id": "siruta-54984",
         "locality": "Cluj-Napoca",
         "heated_floor_area_m2": 150,
         "heated_volume_m3": 405,
@@ -83,10 +84,15 @@ def default_form_values() -> dict[str, Any]:
 
 def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
     values = default_form_values()
+    try:
+        locality = resolve_locality(building.locality)
+        values["locality_id"] = locality["id"]
+        values["locality"] = locality["name"]
+    except Exception:
+        values["locality"] = building.locality
     values.update(
         {
             "project_name": building.project_name,
-            "locality": building.locality,
             "heated_floor_area_m2": building.heated_floor_area_m2,
             "heated_volume_m3": building.heated_volume_m3,
             "indoor_design_temperature_c": building.indoor_design_temperature_c,
@@ -181,7 +187,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
 
     return BuildingInput(
         project_name=str(form.get("project_name") or "Proiect LaCurent"),
-        locality=str(form.get("locality") or ""),
+        locality=str(form.get("locality_id") or form.get("locality") or ""),
         heated_floor_area_m2=parse_optional_float(form.get("heated_floor_area_m2")),
         heated_volume_m3=parse_optional_float(form.get("heated_volume_m3")),
         indoor_design_temperature_c=parse_optional_float(form.get("indoor_design_temperature_c")) or 20,
@@ -238,6 +244,11 @@ def result_context(result: Any) -> dict[str, Any]:
         "monthly_max": monthly_max,
         "payload": result.input.model_dump_json(),
     }
+
+
+@app.get("/api/location-data")
+async def location_data_api() -> JSONResponse:
+    return JSONResponse(location_payload())
 
 
 @app.get("/", response_class=HTMLResponse)
