@@ -153,7 +153,7 @@ jobs:
           demo = demo_building()
           direct = calculate(demo)
           expected_primary = fmt(
-              direct.performance.specific_primary_energy_kwh_m2_year,
+              direct.primary_energy.specific_kwh_m2,
               "kWh/m²/year",
           )
           demo_html = get("/demo")
