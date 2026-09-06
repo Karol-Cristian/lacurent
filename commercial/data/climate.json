@@ -1,0 +1,220 @@
+{
+  "version": "mc001-6-2013-commercial-subset-v1",
+  "source": "Extracted from the existing LaCurent MC001/6-2013 climate dataset: src/climate-platform/datasets/mc001_6_2013ClimateDataset.mjs.",
+  "months": [
+    {"id": "ian", "label": "Ianuarie", "days": 31},
+    {"id": "feb", "label": "Februarie", "days": 28},
+    {"id": "mar", "label": "Martie", "days": 31},
+    {"id": "apr", "label": "Aprilie", "days": 30},
+    {"id": "mai", "label": "Mai", "days": 31},
+    {"id": "iun", "label": "Iunie", "days": 30},
+    {"id": "iul", "label": "Iulie", "days": 31},
+    {"id": "aug", "label": "August", "days": 31},
+    {"id": "sep", "label": "Septembrie", "days": 30},
+    {"id": "oct", "label": "Octombrie", "days": 31},
+    {"id": "nov", "label": "Noiembrie", "days": 30},
+    {"id": "dec", "label": "Decembrie", "days": 31}
+  ],
+  "localities": [
+    {
+      "name": "Bucuresti",
+      "aliases": ["București"],
+      "station": "mc001_6_2013_bucuresti",
+      "winter_design_mean_daily_temperature_c": -12.32,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -1.2},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": 1.2},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 5.6},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 11.3},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 17.5},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 21.4},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 23.4},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 22.5},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 16.8},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 11.1},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 5.2},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": -0.2}
+      ]
+    },
+    {
+      "name": "Cluj-Napoca",
+      "aliases": ["Cluj", "Cluj Napoca"],
+      "station": "mc001_6_2013_cluj_napoca",
+      "winter_design_mean_daily_temperature_c": -13.5,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -2.4},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": -0.6},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 3.8},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 9.6},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 15.1},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 18.2},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 19.8},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 19.1},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 14.0},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 9.1},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 3.4},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": -1.7}
+      ]
+    },
+    {
+      "name": "Timisoara",
+      "aliases": ["Timișoara", "Timisoara"],
+      "station": "mc001_6_2013_timisoara",
+      "winter_design_mean_daily_temperature_c": -12.61,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": 0.0},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": 1.8},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 6.0},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 11.7},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 17.4},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 20.7},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 22.5},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 21.8},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 16.2},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 11.4},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 5.9},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": 1.0}
+      ]
+    },
+    {
+      "name": "Iasi",
+      "aliases": ["Iași"],
+      "station": "mc001_6_2013_iasi",
+      "winter_design_mean_daily_temperature_c": -18.63,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -2.1},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": -0.1},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 4.3},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 10.8},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 16.9},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 20.4},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 22.3},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 21.1},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 15.6},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 10.3},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 4.4},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": -1.2}
+      ]
+    },
+    {
+      "name": "Brasov",
+      "aliases": ["Brașov"],
+      "station": "mc001_6_2013_brasov",
+      "winter_design_mean_daily_temperature_c": -19.27,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -3.3},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": -1.9},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 2.7},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 8.5},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 14.2},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 17.4},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 19.1},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 18.2},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 13.2},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 8.4},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 2.7},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": -2.8}
+      ]
+    },
+    {
+      "name": "Constanta",
+      "aliases": ["Constanța"],
+      "station": "mc001_6_2013_constanta",
+      "winter_design_mean_daily_temperature_c": -10.17,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": 1.4},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": 2.7},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 6.1},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 10.6},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 16.5},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 21.2},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 23.8},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 23.4},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 18.6},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 13.6},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 8.0},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": 2.8}
+      ]
+    },
+    {
+      "name": "Craiova",
+      "aliases": [],
+      "station": "mc001_6_2013_craiova",
+      "winter_design_mean_daily_temperature_c": -13.2,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -1.1},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": 1.7},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 6.0},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 11.6},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 17.5},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 21.3},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 23.2},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 22.5},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 16.9},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 11.5},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 5.3},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": -0.2}
+      ]
+    },
+    {
+      "name": "Sibiu",
+      "aliases": [],
+      "station": "mc001_6_2013_sibiu",
+      "winter_design_mean_daily_temperature_c": -16.02,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -2.3},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": -0.3},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 3.8},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 9.7},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 15.2},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 18.5},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 20.1},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 19.2},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 14.0},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 9.2},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 3.6},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": -1.5}
+      ]
+    },
+    {
+      "name": "Oradea",
+      "aliases": [],
+      "station": "mc001_6_2013_oradea",
+      "winter_design_mean_daily_temperature_c": -12.62,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -0.3},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": 1.1},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 5.2},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 11.2},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 16.9},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 20.1},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 21.8},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 21.2},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 15.8},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 11.1},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 5.6},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": 0.4}
+      ]
+    },
+    {
+      "name": "Galati",
+      "aliases": ["Galați"],
+      "station": "mc001_6_2013_galati",
+      "winter_design_mean_daily_temperature_c": -14.17,
+      "monthly_temperatures": [
+        {"id": "ian", "label": "Ianuarie", "days": 31, "temperature_c": -1.1},
+        {"id": "feb", "label": "Februarie", "days": 28, "temperature_c": 1.2},
+        {"id": "mar", "label": "Martie", "days": 31, "temperature_c": 5.5},
+        {"id": "apr", "label": "Aprilie", "days": 30, "temperature_c": 11.4},
+        {"id": "mai", "label": "Mai", "days": 31, "temperature_c": 17.7},
+        {"id": "iun", "label": "Iunie", "days": 30, "temperature_c": 21.5},
+        {"id": "iul", "label": "Iulie", "days": 31, "temperature_c": 23.8},
+        {"id": "aug", "label": "August", "days": 31, "temperature_c": 22.8},
+        {"id": "sep", "label": "Septembrie", "days": 30, "temperature_c": 17.1},
+        {"id": "oct", "label": "Octombrie", "days": 31, "temperature_c": 11.7},
+        {"id": "nov", "label": "Noiembrie", "days": 30, "temperature_c": 5.7},
+        {"id": "dec", "label": "Decembrie", "days": 31, "temperature_c": 0.0}
+      ]
+    }
+  ]
+}

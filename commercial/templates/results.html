@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Rezultate - {{ result.input.project_name }}{% endblock %}
+
+{% block content %}
+<section class="results-hero">
+  <div>
+    <p class="eyebrow">Rezultat calcul</p>
+    <h1>{{ result.input.project_name }}</h1>
+    <p class="hero-copy">
+      {{ result.input.locality }} · {{ result.input.heated_floor_area_m2|fmt("m²", 0) }} ·
+      {{ result.climate.station }}
+    </p>
+  </div>
+  <div class="class-badge" aria-label="Clasa energetică">
+    <span>Clasă</span>
+    <strong>{{ result.energy_class }}</strong>
+    <em>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/an", 1) }}</em>
+  </div>
+</section>
+
+<section class="metric-grid">
+  <article>
+    <span>Energie primară</span>
+    <strong>{{ result.primary_energy.total_kwh|fmt("kWh/an", 0) }}</strong>
+    <em>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/an", 1) }}</em>
+  </article>
+  <article>
+    <span>Energie finală</span>
+    <strong>{{ result.total_final_energy_kwh|fmt("kWh/an", 0) }}</strong>
+    <em>pe toți purtătorii</em>
+  </article>
+  <article>
+    <span>Emisii CO₂</span>
+    <strong>{{ result.co2.total_kg|fmt("kg/an", 0) }}</strong>
+    <em>{{ result.co2.specific_kg_m2|fmt("kg/m²/an", 1) }}</em>
+  </article>
+  <article>
+    <span>Coeficient pierderi</span>
+    <strong>{{ result.heat_loss_w_k|fmt("W/K", 1) }}</strong>
+    <em>Htr + Hve</em>
+  </article>
+</section>
+
+<section class="results-layout">
+  <div class="panel large">
+    <div class="panel-title">
+      <h2>Consum final pe utilizări</h2>
+      <p>Valori anuale calculate din cererea utilă și performanța sistemelor.</p>
+    </div>
+    <div class="bar-list">
+      {% set service_labels = {"heating": "Încălzire", "cooling": "Răcire", "dhw": "ACM"} %}
+      {% for key, value in result.final_energy_by_service.items() %}
+        <div class="bar-row">
+          <span>{{ service_labels.get(key, key) }}</span>
+          <div class="bar-track"><i style="width: {{ (100 * value / service_max)|round(1) }}%"></i></div>
+          <strong>{{ value|fmt("kWh/an", 0) }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <aside class="panel">
+    <div class="panel-title">
+      <h2>Comparație referință</h2>
+      <p>Aceeași geometrie, parametri de referință, același motor.</p>
+    </div>
+    <div class="comparison">
+      <div>
+        <span>Clădire evaluată</span>
+        <strong>{{ result.reference.actual_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+      </div>
+      <div>
+        <span>Clădire referință</span>
+        <strong>{{ result.reference.reference_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+      </div>
+      <div class="delta {% if result.reference.difference_percent <= 0 %}good{% endif %}">
+        {{ result.reference.difference_percent|fmt("%", 1) }}
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="results-layout">
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Anvelopă</h2>
+      <p>Contribuții la transmisie, în W/K.</p>
+    </div>
+    <div class="contribution-list">
+      {% for item in envelope_sorted %}
+        <div>
+          <span>{{ item.name }}</span>
+          <strong>{{ item.value|fmt("W/K", 1) }}</strong>
+          <em>{{ item.percent|fmt("%", 1) }}</em>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Purtători energetici</h2>
+      <p>Agregare finală pe carrier.</p>
+    </div>
+    <div class="bar-list compact-bars">
+      {% set carrier_labels = {"natural_gas": "Gaz natural", "electricity": "Electricitate", "district_heat": "Termoficare", "biomass": "Biomasă"} %}
+      {% for key, value in result.final_energy_by_carrier.items() %}
+        <div class="bar-row">
+          <span>{{ carrier_labels.get(key, key) }}</span>
+          <div class="bar-track"><i style="width: {{ (100 * value / carrier_max)|round(1) }}%"></i></div>
+          <strong>{{ value|fmt("kWh/an", 0) }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel monthly-panel">
+  <div class="panel-title">
+    <h2>Profil lunar</h2>
+    <p>Necesar util pentru încălzire și răcire.</p>
+  </div>
+  <div class="monthly-chart" aria-label="Profil lunar">
+    {% for row in result.monthly %}
+      {% set value = row.useful_heating_kwh + row.useful_cooling_kwh %}
+      <div>
+        <span style="height: {{ (100 * value / monthly_max)|round(1) }}%"></span>
+        <em>{{ row.month }}</em>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="technical-summary">
+  <details>
+    <summary>Detalii metodologice</summary>
+    <dl>
+      <div><dt>Htr</dt><dd>{{ result.h_tr_w_k|fmt("W/K", 2) }}</dd></div>
+      <div><dt>Hve</dt><dd>{{ result.h_ve_w_k|fmt("W/K", 2) }}</dd></div>
+      <div><dt>Încălzire utilă</dt><dd>{{ result.annual_heating_demand_kwh|fmt("kWh/an", 1) }}</dd></div>
+      <div><dt>Răcire utilă</dt><dd>{{ result.annual_cooling_demand_kwh|fmt("kWh/an", 1) }}</dd></div>
+      <div><dt>Metodologie</dt><dd>{{ result.methodology_version }}</dd></div>
+    </dl>
+    <ul>
+      {% for item in result.assumptions %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+</section>
+
+<section class="actions-footer">
+  <a class="secondary-action" href="/">Calculează altă clădire</a>
+  <form method="post" action="/certificate" target="_blank">
+    <input type="hidden" name="payload" value="{{ payload }}">
+    <button class="primary-action" type="submit">Generează raport A4</button>
+  </form>
+</section>
+{% endblock %}

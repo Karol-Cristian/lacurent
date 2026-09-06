@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ result.input.project_name }} - Raport LaCurent</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+</head>
+<body class="certificate-body">
+  <div class="print-toolbar">
+    <button id="printButton" type="button">Tipărește / salvează PDF</button>
+  </div>
+
+  <main class="certificate-page">
+    <header class="certificate-header">
+      <div>
+        <p class="eyebrow">LaCurent</p>
+        <h1>Raport de performanță energetică</h1>
+        <p>{{ result.input.project_name }} · generat automat pentru analiza curentă</p>
+      </div>
+      <div class="class-badge print-badge">
+        <span>Clasă</span>
+        <strong>{{ result.energy_class }}</strong>
+        <em>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/an", 1) }}</em>
+      </div>
+    </header>
+
+    <section class="certificate-grid">
+      <article>
+        <h2>Identificare</h2>
+        <table>
+          <tr><th>Proiect</th><td>{{ result.input.project_name }}</td></tr>
+          <tr><th>Localitate</th><td>{{ result.input.locality }}</td></tr>
+          <tr><th>Stație climatică</th><td>{{ result.climate.station }}</td></tr>
+          <tr><th>Suprafață încălzită</th><td>{{ result.input.heated_floor_area_m2|fmt("m²", 1) }}</td></tr>
+          <tr><th>Volum încălzit</th><td>{{ result.input.heated_volume_m3|fmt("m³", 1) }}</td></tr>
+        </table>
+      </article>
+
+      <article>
+        <h2>Indicatori principali</h2>
+        <table>
+          <tr><th>Energie primară</th><td>{{ result.primary_energy.total_kwh|fmt("kWh/an", 0) }}</td></tr>
+          <tr><th>Energie finală</th><td>{{ result.total_final_energy_kwh|fmt("kWh/an", 0) }}</td></tr>
+          <tr><th>Emisii CO₂</th><td>{{ result.co2.total_kg|fmt("kg/an", 0) }}</td></tr>
+          <tr><th>Încălzire utilă</th><td>{{ result.annual_heating_demand_kwh|fmt("kWh/an", 0) }}</td></tr>
+          <tr><th>Răcire utilă</th><td>{{ result.annual_cooling_demand_kwh|fmt("kWh/an", 0) }}</td></tr>
+          <tr><th>ACM final</th><td>{{ result.dhw.final_kwh|fmt("kWh/an", 0) }}</td></tr>
+        </table>
+      </article>
+    </section>
+
+    <section class="certificate-comparison">
+      <h2>Comparație cu o clădire de referință</h2>
+      <div>
+        <span>Evaluată</span>
+        <strong>{{ result.reference.actual_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+        <span>Referință</span>
+        <strong>{{ result.reference.reference_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+        <span>Diferență</span>
+        <strong>{{ result.reference.difference_percent|fmt("%", 1) }}</strong>
+      </div>
+    </section>
+
+    <section>
+      <h2>Rezumat anvelopă</h2>
+      <table class="wide-table">
+        <thead>
+          <tr><th>Element</th><th>Tip</th><th>Contribuție</th><th>Pondere</th></tr>
+        </thead>
+        <tbody>
+          {% for item in result.envelope_contributions %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.value|fmt("W/K", 1) }}</td>
+              <td>{{ item.percent|fmt("%", 1) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Metodologie și limitări</h2>
+      <p>
+        Calculul folosește metodologia {{ result.methodology_version }} pentru
+        domeniul comercial v2 implementat. Documentul este un raport de
+        performanță energetică și nu reprezintă, prin el însuși, un certificat
+        de performanță energetică emis legal de un auditor autorizat.
+      </p>
+      <ul>
+        {% for item in result.assumptions %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <footer>
+      LaCurent · raport generat la cererea utilizatorului · {{ result.methodology_version }}
+    </footer>
+  </main>
+</body>
+</html>

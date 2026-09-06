@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}LaCurent{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="brand-rail" aria-label="Navigație LaCurent">
+      <a class="brand-mark" href="/">
+        <span class="brand-symbol">LC</span>
+        <span>
+          <strong>LaCurent</strong>
+          <small>Performanță energetică</small>
+        </span>
+      </a>
+
+      <nav class="rail-nav" aria-label="Flux produs">
+        <a href="/#building">Clădire</a>
+        <a href="/#envelope">Anvelopă</a>
+        <a href="/#ventilation">Ventilație</a>
+        <a href="/#systems">Instalații</a>
+        <a href="/demo">Exemplu</a>
+      </nav>
+    </aside>
+
+    <main class="workspace">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', path='app.js') }}"></script>
+</body>
+</html>
