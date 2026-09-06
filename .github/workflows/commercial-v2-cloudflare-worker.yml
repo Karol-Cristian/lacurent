@@ -1,0 +1,180 @@
+name: Commercial v2 Cloudflare Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/commercial-v2-cloudflare-python
+    paths:
+      - ".github/workflows/commercial-v2-cloudflare-worker.yml"
+      - "commercial/**"
+      - "scripts/prepare-commercial-cloudflare-worker.mjs"
+
+jobs:
+  worker-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install local Python test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Run normal Commercial v2 checks
+        run: |
+          git diff --check
+          node --check commercial/static/app.js
+          python -m compileall -q commercial
+          python -m pytest commercial/tests -q
+
+      - name: Install uv
+        run: python -m pip install uv
+
+      - name: Prepare Cloudflare Worker bundle
+        run: node scripts/prepare-commercial-cloudflare-worker.mjs
+
+      - name: Install current Wrangler
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          npm install --save-dev wrangler@latest
+          npx wrangler --version
+
+      - name: Sync Python Worker dependencies
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          wrangler --version
+          uvx --from workers-py pywrangler --version
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Prove real Worker runtime
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler dev --ip 127.0.0.1 --port 8788 > worker-dev.log 2>&1 &
+          echo "$!" > worker-dev.pid
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8788/health; then
+              break
+            fi
+            if ! kill -0 "$(cat worker-dev.pid)" 2>/dev/null; then
+              cat worker-dev.log
+              exit 1
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8788/health
+
+      - name: Smoke-test Worker HTTP routes
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          import urllib.parse
+          import urllib.request
+
+          sys.path.insert(0, "src")
+
+          from app.engine import calculate, demo_building
+          from app.main import default_form_values, fmt
+          from app.models import model_to_json
+
+          base = "http://127.0.0.1:8788"
+
+          def get(path):
+              with urllib.request.urlopen(base + path, timeout=20) as response:
+                  body = response.read().decode("utf-8")
+                  if response.status != 200:
+                      raise AssertionError(f"{path} returned {response.status}")
+                  return body
+
+          def post(path, data):
+              body = urllib.parse.urlencode(data).encode("utf-8")
+              request = urllib.request.Request(
+                  base + path,
+                  data=body,
+                  headers={"Content-Type": "application/x-www-form-urlencoded"},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  text = response.read().decode("utf-8")
+                  if response.status != 200:
+                      raise AssertionError(f"{path} returned {response.status}")
+                  return text
+
+          checks = {
+              "/": "Building energy performance",
+              "/health": '"status":"ok"',
+              "/demo": "Cluj Demonstration House",
+              "/static/app.css": ".app-shell",
+              "/static/app.js": "locationData",
+          }
+
+          for path, expected in checks.items():
+              body = get(path)
+              if expected not in body.replace(" ", "") and expected not in body:
+                  raise AssertionError(f"{path} did not contain {expected!r}")
+
+          location_payload = json.loads(get("/api/location-data"))
+          localities = location_payload.get("localities", [])
+          if len(localities) != 13622:
+              raise AssertionError(f"Expected 13622 localities, got {len(localities)}")
+
+          form = default_form_values()
+          form["dhw_enabled"] = "on"
+          form.pop("cooling_enabled", None)
+          calculation_html = post("/calculate", form)
+          if "Results" not in calculation_html:
+              raise AssertionError("Calculation response did not render Results")
+
+          demo = demo_building()
+          direct = calculate(demo)
+          expected_primary = fmt(
+              direct.performance.specific_primary_energy_kwh_m2_year,
+              "kWh/m²/year",
+          )
+          demo_html = get("/demo")
+          if expected_primary not in demo_html:
+              raise AssertionError(
+                  f"Worker demo output did not include CPython primary-energy value {expected_primary!r}"
+              )
+
+          certificate_html = post("/certificate", {"payload": model_to_json(demo)})
+          if "Energy Performance Report" not in certificate_html:
+              raise AssertionError("Certificate route did not render the report")
+
+          for locality in ["București", "Cluj-Napoca", "Brașov", "Iași", "Timișoara", "Florești"]:
+              if locality not in json.dumps(location_payload, ensure_ascii=False):
+                  raise AssertionError(f"Missing geographic smoke locality: {locality}")
+
+          print("Worker HTTP smoke passed")
+          print("localities", len(localities))
+          print("specific_primary_energy", expected_primary)
+          PY
+
+      - name: Deploy staging Worker
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare staging deploy skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both configured."
+            exit 0
+          fi
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler deploy
