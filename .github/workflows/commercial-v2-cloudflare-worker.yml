@@ -187,4 +187,3 @@ jobs:
           chmod +x .bin/wrangler
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler deploy
-
