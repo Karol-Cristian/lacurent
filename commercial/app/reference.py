@@ -3,13 +3,13 @@ from __future__ import annotations
 from copy import deepcopy
 
 from .methodology import methodology
-from .models import BuildingInput, CoolingInput, DhwInput, HeatingInput, HeatingSystemType
+from .models import BuildingInput, CoolingInput, DhwInput, HeatingInput, HeatingSystemType, model_to_dict
 
 
 def build_reference_input(actual: BuildingInput) -> BuildingInput:
     """Create the reference building by changing parameters, not the engine."""
 
-    data = actual.model_dump()
+    data = model_to_dict(actual)
     rules = methodology()["reference_building"]
     u_values = rules["u_values_w_m2k"]
 
@@ -26,17 +26,20 @@ def build_reference_input(actual: BuildingInput) -> BuildingInput:
     data["heating"] = HeatingInput(
         system_type=HeatingSystemType.condensing_gas_boiler,
         efficiency=rules["heating_efficiency"],
-    ).model_dump()
+    )
+    data["heating"] = model_to_dict(data["heating"])
     data["cooling"] = CoolingInput(
         enabled=actual.cooling.enabled,
         seer=rules["cooling_seer"] if actual.cooling.enabled else None,
         setpoint_c=actual.cooling.setpoint_c,
-    ).model_dump()
+    )
+    data["cooling"] = model_to_dict(data["cooling"])
     data["dhw"] = DhwInput(
         enabled=actual.dhw.enabled,
         occupants=actual.dhw.occupants,
         litres_per_person_day_at_60c=actual.dhw.litres_per_person_day_at_60c,
         efficiency=rules["dhw_efficiency"],
-    ).model_dump()
+    )
+    data["dhw"] = model_to_dict(data["dhw"])
 
     return BuildingInput(**deepcopy(data))

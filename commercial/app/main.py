@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from .engine import calculate, demo_building
 from .methodology import climate_data, location_payload, methodology, resolve_locality
-from .models import BuildingInput
+from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
@@ -242,7 +242,7 @@ def result_context(result: Any) -> dict[str, Any]:
         "service_max": service_max,
         "carrier_max": carrier_max,
         "monthly_max": monthly_max,
-        "payload": result.input.model_dump_json(),
+        "payload": model_to_json(result.input),
     }
 
 
@@ -316,7 +316,7 @@ async def certificate(request: Request) -> HTMLResponse:
     form = dict(await request.form())
     payload = form.get("payload")
     try:
-        building = BuildingInput.model_validate_json(str(payload))
+        building = building_from_json(str(payload))
         result = calculate(building)
     except Exception as exc:
         return templates.TemplateResponse(
@@ -337,6 +337,6 @@ async def certificate(request: Request) -> HTMLResponse:
         "certificate.html",
         {
             "result": result,
-            "payload": json.dumps(result.input.model_dump(mode="json"), ensure_ascii=False),
+            "payload": json.dumps(model_to_dict(result.input), ensure_ascii=False, default=str),
         },
     )

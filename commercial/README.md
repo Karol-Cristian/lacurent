@@ -21,7 +21,7 @@ python -m pytest commercial/tests
 
 ## Production
 
-Production should run the ASGI application with:
+For conventional ASGI hosting, run:
 
 ```bash
 uvicorn commercial.app.main:app --host 0.0.0.0 --port ${PORT}
@@ -30,6 +30,34 @@ uvicorn commercial.app.main:app --host 0.0.0.0 --port ${PORT}
 The repository root `Dockerfile` packages the commercial FastAPI application
 for container hosts. The health endpoint is `/health` and returns
 `{"status": "ok"}`.
+
+The preferred LaCurent production path is Cloudflare Python Workers. The Worker
+configuration template lives next to the app:
+
+```bash
+node scripts/prepare-commercial-cloudflare-worker.mjs
+cd .wrangler/commercial-v2-worker
+uv run pywrangler dev
+uv run pywrangler deploy
+```
+
+The prepare script copies the app, data, templates and static files into an
+ignored Worker bundle. `src/worker.py` imports the existing FastAPI `app` and
+exposes it with Cloudflare's ASGI adapter. Uvicorn is not used inside the
+Worker runtime.
+
+The Worker dependency template pins `pydantic<2` because the current Pyodide
+resolver used by Python Workers does not provide usable `pydantic-core` v2
+wheels. The application model layer remains compatible with both Pydantic v1
+and v2.
+
+On Windows paths containing spaces, set no-space uv cache/install locations
+before running `pywrangler`:
+
+```powershell
+$env:UV_PYTHON_INSTALL_DIR = "C:\uv-python"
+$env:UV_CACHE_DIR = "C:\uv-cache"
+```
 
 ## Calculation Scope
 

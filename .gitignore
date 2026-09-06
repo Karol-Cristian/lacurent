@@ -1,4 +1,6 @@
 .wrangler/
 dist/
 __pycache__/
+commercial/.pytest_cache/
+commercial/.venv/
 commercial/tmp-qa/

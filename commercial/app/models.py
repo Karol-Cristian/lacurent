@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, root_validator, validator
 
 
 class EnvelopeType(str, Enum):
@@ -85,29 +86,31 @@ class BuildingInput(BaseModel):
     construction_year: int | None = Field(default=None, ge=1800, le=2100)
     internal_gains_w_m2: float | None = Field(default=None, ge=0)
     solar_gains_kwh_m2_month: float = Field(default=0, ge=0)
-    envelope: list[EnvelopeComponent] = Field(min_length=1)
+    envelope: list[EnvelopeComponent] = Field(min_items=1)
     thermal_bridges: list[ThermalBridge] = Field(default_factory=list)
     ventilation: VentilationInput
     heating: HeatingInput
     cooling: CoolingInput = Field(default_factory=CoolingInput)
     dhw: DhwInput = Field(default_factory=DhwInput)
 
-    @field_validator("locality")
-    @classmethod
+    @validator("locality")
     def normalize_locality(cls, value: str) -> str:
         return " ".join(value.strip().split())
 
-    @model_validator(mode="after")
-    def validate_supported_scope(self) -> "BuildingInput":
-        if self.cooling.enabled and self.cooling.seer is None:
+    @root_validator(skip_on_failure=True)
+    def validate_supported_scope(cls, values: dict) -> dict:
+        cooling = values.get("cooling")
+        heating = values.get("heating")
+        dhw = values.get("dhw")
+        if cooling and cooling.enabled and cooling.seer is None:
             raise ValueError("Active cooling requires SEER.")
-        if self.heating.system_type == HeatingSystemType.heat_pump and self.heating.scop is None:
+        if heating and heating.system_type == HeatingSystemType.heat_pump and heating.scop is None:
             raise ValueError("A heat pump heating system requires SCOP.")
-        if self.heating.system_type == HeatingSystemType.custom and self.heating.efficiency is None:
+        if heating and heating.system_type == HeatingSystemType.custom and heating.efficiency is None:
             raise ValueError("A custom heating system requires seasonal efficiency.")
-        if self.dhw.enabled and self.dhw.occupants <= 0:
+        if dhw and dhw.enabled and dhw.occupants <= 0:
             raise ValueError("Domestic hot water requires at least one occupant.")
-        return self
+        return values
 
 
 class Contribution(BaseModel):
@@ -175,3 +178,21 @@ class CalculationResult(BaseModel):
     reference: ComparisonResult | None = None
     methodology_version: str
     assumptions: list[str]
+
+
+def model_to_dict(model: BaseModel) -> dict:
+    if hasattr(model, "model_dump"):
+        return model.model_dump(mode="json")
+    return json.loads(model.json())
+
+
+def model_to_json(model: BaseModel) -> str:
+    if hasattr(model, "model_dump_json"):
+        return model.model_dump_json()
+    return model.json()
+
+
+def building_from_json(payload: str) -> BuildingInput:
+    if hasattr(BuildingInput, "model_validate_json"):
+        return BuildingInput.model_validate_json(payload)
+    return BuildingInput.parse_raw(payload)
