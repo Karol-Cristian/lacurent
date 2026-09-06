@@ -57,6 +57,13 @@ def test_home_page_renders_complete_form() -> None:
     assert "Systems" in response.text
 
 
+def test_health_endpoint_is_lightweight() -> None:
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_form_calculation_renders_commercial_results() -> None:
     response = client.post("/calculate", data=demo_form_data())
 

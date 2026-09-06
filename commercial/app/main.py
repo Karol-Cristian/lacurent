@@ -251,6 +251,11 @@ async def location_data_api() -> JSONResponse:
     return JSONResponse(location_payload())
 
 
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(

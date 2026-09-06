@@ -7,9 +7,8 @@ architecture in the rest of the repository.
 ## Run
 
 ```bash
-cd commercial
-python -m pip install -r requirements.txt
-uvicorn app.main:app --reload
+python -m pip install -r commercial/requirements.txt
+uvicorn commercial.app.main:app --reload
 ```
 
 Then open `http://127.0.0.1:8000`.
@@ -19,6 +18,18 @@ Then open `http://127.0.0.1:8000`.
 ```bash
 python -m pytest commercial/tests
 ```
+
+## Production
+
+Production should run the ASGI application with:
+
+```bash
+uvicorn commercial.app.main:app --host 0.0.0.0 --port ${PORT}
+```
+
+The repository root `Dockerfile` packages the commercial FastAPI application
+for container hosts. The health endpoint is `/health` and returns
+`{"status": "ok"}`.
 
 ## Calculation Scope
 
@@ -66,10 +77,12 @@ The commercial DHW model uses explicit methodology values: 50 L/person/day at
 
 ## Limitations
 
-This is a commercial performance report, not a legally issued Romanian CPE.
+This is a commercial Energy Performance Report, not a legally issued Energy
+Performance Certificate.
 The v2 app intentionally does not implement detailed material assemblies,
 automatic solar preprocessing, official CPE layout/mapping, accounts,
-persistence, renovation scenarios, authentication or cloud deployment logic.
+persistence, renovation scenarios, authentication or platform-specific cloud
+logic.
 The nearest-station rule is a transparent commercial resolver for localities
 that are not themselves MC001 climate stations; it is not a claim that every
 locality has an individually measured MC001 monthly climate table.
