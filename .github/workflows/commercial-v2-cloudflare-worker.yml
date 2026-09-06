@@ -130,7 +130,7 @@ jobs:
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
-              "/static/app.js": "locationData",
+              "/static/app.js": "initLocationSelector",
           }
 
           for path, expected in checks.items():
