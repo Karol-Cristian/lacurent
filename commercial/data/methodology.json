@@ -12,57 +12,57 @@
   },
   "heating_system_defaults": {
     "gas_boiler": {
-      "label": "Centrala pe gaz",
+      "label": "Gas boiler",
       "efficiency": 0.9,
       "carrier": "natural_gas"
     },
     "condensing_gas_boiler": {
-      "label": "Centrala in condensare",
+      "label": "Condensing gas boiler",
       "efficiency": 0.96,
       "carrier": "natural_gas"
     },
     "electric_resistance": {
-      "label": "Incalzire electrica rezistiva",
+      "label": "Electric resistance heating",
       "efficiency": 1.0,
       "carrier": "electricity"
     },
     "heat_pump": {
-      "label": "Pompa de caldura",
+      "label": "Heat pump",
       "scop": 3.2,
       "carrier": "electricity"
     },
     "district_heat": {
-      "label": "Termoficare",
+      "label": "District heating",
       "efficiency": 1.0,
       "carrier": "district_heat"
     },
     "custom": {
-      "label": "Sistem configurabil",
+      "label": "Configurable system",
       "efficiency": 0.9,
       "carrier": "natural_gas"
     }
   },
   "carriers": {
     "natural_gas": {
-      "label": "Gaz natural",
+      "label": "Natural gas",
       "primary_energy_factor": 1.17,
       "co2_kg_per_kwh_final": 0.202,
       "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
     },
     "electricity": {
-      "label": "Electricitate SEN",
+      "label": "Grid electricity",
       "primary_energy_factor": 2.5,
       "co2_kg_per_kwh_final": 0.107,
       "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
     },
     "district_heat": {
-      "label": "Termoficare/cogenerare la distanta",
+      "label": "District heat / remote cogeneration",
       "primary_energy_factor": 0.92,
       "co2_kg_per_kwh_final": 0.22,
       "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
     },
     "biomass": {
-      "label": "Biomasa - brichete/peleti",
+      "label": "Biomass - briquettes/pellets",
       "primary_energy_factor": 1.08,
       "co2_kg_per_kwh_final": 0.039,
       "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."

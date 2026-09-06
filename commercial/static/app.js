@@ -25,12 +25,29 @@ function localityShortLabel(locality) {
   return `${locality.name}${uat}, ${locality.county}`;
 }
 
+function localityTypeLabel(localityType) {
+  const labels = {
+    municipiu: "municipality",
+    oras: "town",
+    oraș: "town",
+    comuna: "commune",
+    comună: "commune",
+    sat: "village",
+    "localitate componenta municipiu": "municipality component locality",
+    "localitate componenta oras": "town component locality",
+    "sat apartinator municipiu": "municipality-administered village",
+    "sat apartinator oras": "town-administered village",
+    sector: "sector"
+  };
+  return labels[String(localityType || "").toLowerCase()] || String(localityType || "locality");
+}
+
 function localityDisplayLabel(locality) {
   if (!locality) return "";
   const uat = locality.uatName && locality.uatName !== locality.name
-    ? `, UAT ${locality.uatName}`
+    ? `, administrative unit ${locality.uatName}`
     : "";
-  return `${locality.name}, ${locality.localityType} - ${locality.county}${uat}`;
+  return `${locality.name}, ${localityTypeLabel(locality.localityType)} - ${locality.county}${uat}`;
 }
 
 function geometryRings(geometry) {
@@ -164,14 +181,14 @@ function initLocationSelector() {
     input.value = localityShortLabel(locality);
     setHiddenLocalityId(locality.id);
     name.textContent = localityDisplayLabel(locality);
-    zone.textContent = locality.climateZone ? `Zona ${locality.climateZone}` : "-";
+    zone.textContent = locality.climateZone ? `Zone ${locality.climateZone}` : "-";
     designTemp.textContent = Number.isFinite(locality.winterDesignTemperatureC)
       ? `${locality.winterDesignTemperatureC} °C`
       : "-";
     station.textContent = locality.stationName || "-";
     resolution.textContent = locality.stationResolution === "exact"
-      ? "Date climatice selectate automat din stația localității."
-      : `Date climatice selectate automat: stația reprezentativă ${locality.stationName || "-"}${Number.isFinite(locality.stationDistanceKm) ? `, la ${locality.stationDistanceKm} km` : ""}.`;
+      ? "Climate data selected automatically from the locality climate station."
+      : `Climate data selected automatically: representative station ${locality.stationName || "-"}${Number.isFinite(locality.stationDistanceKm) ? `, ${locality.stationDistanceKm} km away` : ""}.`;
     renderMap();
   }
 
@@ -218,7 +235,7 @@ function initLocationSelector() {
     `).join("");
 
     const legend = ["I", "II", "III", "IV", "V"].map((item) => (
-      `<span><i class="legend-${item}"></i>Zona ${item}</span>`
+      `<span><i class="legend-${item}"></i>Zone ${item}</span>`
     )).join("");
 
     map.innerHTML = `
@@ -228,7 +245,7 @@ function initLocationSelector() {
         <g class="map-boundary">${boundaryPaths}</g>
         <g class="map-localities">${markerHtml}</g>
       </svg>
-      <div class="map-legend" aria-label="Legenda zonelor climatice">${legend}</div>
+      <div class="map-legend" aria-label="Climate-zone legend">${legend}</div>
     `;
   }
 
@@ -248,7 +265,7 @@ function initLocationSelector() {
       : -1;
     input.setAttribute("aria-expanded", state.searchResults.length ? "true" : "false");
     if (!state.searchResults.length) {
-      results.innerHTML = `<div class="locality-no-results">Nu am găsit localitatea în registrul disponibil.</div>`;
+      results.innerHTML = `<div class="locality-no-results">No matching locality was found in the available registry.</div>`;
       results.hidden = false;
       return;
     }
@@ -256,7 +273,7 @@ function initLocationSelector() {
       <button class="locality-option${index === state.activeIndex ? " active" : ""}" id="locality-option-${index}" type="button" role="option" aria-selected="${index === state.activeIndex ? "true" : "false"}" data-locality-id="${escapeHtml(locality.id)}">
         <strong>${escapeHtml(locality.name)}</strong>
         <em>${escapeHtml(locality.countyMnemonic || locality.county)}</em>
-        <span>${escapeHtml(locality.localityType)}${locality.uatName && locality.uatName !== locality.name ? `, UAT ${escapeHtml(locality.uatName)}` : ""} - ${escapeHtml(locality.county)}</span>
+        <span>${escapeHtml(localityTypeLabel(locality.localityType))}${locality.uatName && locality.uatName !== locality.name ? `, administrative unit ${escapeHtml(locality.uatName)}` : ""} - ${escapeHtml(locality.county)}</span>
       </button>
     `).join("");
     input.setAttribute("aria-activedescendant", `locality-option-${state.activeIndex}`);
@@ -302,8 +319,8 @@ function initLocationSelector() {
       window.__lacurentLocationState = state;
     })
     .catch(() => {
-      map.innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea textuală rămâne disponibilă.</p>";
-      name.textContent = input.value || "Localitate nespecificată";
+      map.innerHTML = "<p>The map could not be loaded. Text search remains available.</p>";
+      name.textContent = input.value || "No locality selected";
       setHiddenLocalityId("");
     });
 
@@ -367,7 +384,7 @@ if (form) {
     const button = form.querySelector('button[type="submit"]');
     if (button) {
       button.disabled = true;
-      button.textContent = "Se calculează...";
+      button.textContent = "Calculating...";
       button.setAttribute("aria-busy", "true");
     }
   });

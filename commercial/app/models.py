@@ -100,13 +100,13 @@ class BuildingInput(BaseModel):
     @model_validator(mode="after")
     def validate_supported_scope(self) -> "BuildingInput":
         if self.cooling.enabled and self.cooling.seer is None:
-            raise ValueError("Racirea activa necesita SEER.")
+            raise ValueError("Active cooling requires SEER.")
         if self.heating.system_type == HeatingSystemType.heat_pump and self.heating.scop is None:
-            raise ValueError("Pompa de caldura necesita SCOP.")
+            raise ValueError("A heat pump heating system requires SCOP.")
         if self.heating.system_type == HeatingSystemType.custom and self.heating.efficiency is None:
-            raise ValueError("Sistemul personalizat necesita randament.")
+            raise ValueError("A custom heating system requires seasonal efficiency.")
         if self.dhw.enabled and self.dhw.occupants <= 0:
-            raise ValueError("ACM activ necesita cel putin un ocupant.")
+            raise ValueError("Domestic hot water requires at least one occupant.")
         return self
 
 

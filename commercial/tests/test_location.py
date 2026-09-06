@@ -53,8 +53,17 @@ def test_commune_and_village_resolve_to_climate_zone_and_station() -> None:
 
     assert village["selected_locality"]["locality_type"] == "sat"
     assert village["selected_locality"]["name"] == "Măgura"
+    assert "Măgura, village - Brașov" in village["selected_locality"]["display_name"]
     assert village["climate_zone"] == "IV"
     assert village["station"] == "Brașov"
+
+
+def test_component_locality_type_is_displayed_in_english() -> None:
+    climate = resolve_climate("Poiana Brasov")
+
+    assert climate["selected_locality"]["name"] == "Poiana Brașov"
+    assert "municipality component locality" in climate["selected_locality"]["display_name"]
+    assert "localitate componenta" not in climate["selected_locality"]["display_name"]
 
 
 def test_duplicate_name_can_be_disambiguated_by_stable_locality_id() -> None:
@@ -68,8 +77,8 @@ def test_duplicate_name_can_be_disambiguated_by_stable_locality_id() -> None:
 
 
 def test_unknown_locality_is_rejected() -> None:
-    with pytest.raises(ValueError, match="registrul geografic"):
-        resolve_climate("Localitate Inventată")
+    with pytest.raises(ValueError, match="geographic dataset"):
+        resolve_climate("Invented Locality")
 
 
 def test_location_data_endpoint_exposes_map_and_search_payload() -> None:
@@ -88,7 +97,7 @@ def test_calculate_form_accepts_stable_locality_id() -> None:
     response = client.post(
         "/calculate",
         data={
-            "project_name": "Casa Florești",
+            "project_name": "Florești Test House",
             "locality": "Florești, Cluj",
             "locality_id": "siruta-57715",
             "heated_floor_area_m2": "120",
@@ -124,5 +133,5 @@ def test_calculate_form_accepts_stable_locality_id() -> None:
     )
 
     assert response.status_code == 200
-    assert "Florești, comuna - Cluj" in response.text
-    assert "stație climatică Cluj-Napoca" in response.text
+    assert "Florești, commune - Cluj" in response.text
+    assert "climate station Cluj-Napoca" in response.text

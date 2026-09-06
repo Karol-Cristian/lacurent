@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from .engine import calculate, demo_building
-from .methodology import climate_data, location_payload, methodology, resolve_climate, resolve_locality
+from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -150,11 +150,11 @@ def parse_optional_int(value: Any) -> int | None:
 def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     components = []
     component_map = [
-        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value"),
-        ("Acoperiș / tavan", "roof", "roof_area_m2", "roof_u_value"),
-        ("Planșeu peste sol", "floor", "floor_area_m2", "floor_u_value"),
-        ("Ferestre", "window", "window_area_m2", "window_u_value"),
-        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value"),
+        ("External walls", "exterior_wall", "wall_area_m2", "wall_u_value"),
+        ("Roof / ceiling", "roof", "roof_area_m2", "roof_u_value"),
+        ("Ground floor", "floor", "floor_area_m2", "floor_u_value"),
+        ("Windows", "window", "window_area_m2", "window_u_value"),
+        ("External doors", "exterior_door", "door_area_m2", "door_u_value"),
     ]
 
     for name, kind, area_key, u_key in component_map:
@@ -176,7 +176,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     if bridge_length is not None or bridge_psi is not None:
         thermal_bridges.append(
             {
-                "name": "Punți termice liniare",
+                "name": "Linear thermal bridges",
                 "length_m": bridge_length,
                 "psi_w_mk": bridge_psi if bridge_psi is not None else 0,
             }
@@ -186,7 +186,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     dhw_enabled = form.get("dhw_enabled") == "on"
 
     return BuildingInput(
-        project_name=str(form.get("project_name") or "Proiect LaCurent"),
+        project_name=str(form.get("project_name") or "LaCurent Project"),
         locality=str(form.get("locality_id") or form.get("locality") or ""),
         heated_floor_area_m2=parse_optional_float(form.get("heated_floor_area_m2")),
         heated_volume_m3=parse_optional_float(form.get("heated_volume_m3")),
@@ -225,7 +225,7 @@ def user_error(exc: Exception) -> str:
     if isinstance(exc, ValidationError):
         first = exc.errors()[0]
         field = " / ".join(str(item) for item in first.get("loc", []))
-        return f"{field}: {first.get('msg', 'valoare invalida')}"
+        return f"{field}: {first.get('msg', 'invalid value')}"
     return str(exc)
 
 

@@ -11,7 +11,7 @@ client = TestClient(app)
 
 def demo_form_data() -> dict[str, str]:
     return {
-        "project_name": "Casa test comercial",
+        "project_name": "Commercial test house",
         "locality": "Cluj-Napoca",
         "heated_floor_area_m2": "160",
         "heated_volume_m3": "432",
@@ -52,19 +52,19 @@ def test_home_page_renders_complete_form() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Calculează performanța" in response.text
-    assert "Anvelopă" in response.text
-    assert "Instalații" in response.text
+    assert "Calculate performance" in response.text
+    assert "Building envelope" in response.text
+    assert "Systems" in response.text
 
 
 def test_form_calculation_renders_commercial_results() -> None:
     response = client.post("/calculate", data=demo_form_data())
 
     assert response.status_code == 200
-    assert "Rezultat calcul" in response.text
-    assert "Casa test comercial" in response.text
-    assert "Energie primară" in response.text
-    assert "Generează raport A4" in response.text
+    assert "Calculation result" in response.text
+    assert "Commercial test house" in response.text
+    assert "Primary energy" in response.text
+    assert "Generate A4 report" in response.text
     assert "Trace" not in response.text
 
 
@@ -73,6 +73,7 @@ def test_certificate_renders_printable_report() -> None:
     response = client.post("/certificate", data={"payload": payload})
 
     assert response.status_code == 200
-    assert "Raport de performanță energetică" in response.text
-    assert "Tipărește / salvează PDF" in response.text
-    assert "nu reprezintă" in response.text
+    assert "Energy Performance Report" in response.text
+    assert "Print / save PDF" in response.text
+    assert "not a legally issued" in response.text
+    assert "Certificate" in response.text

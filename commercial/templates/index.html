@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}LaCurent - calcul energetic{% endblock %}
+{% block title %}LaCurent - building energy calculation{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div>
-    <p class="eyebrow">Calculator energetic rezidențial</p>
-    <h1>Descrie clădirea. Primește un rezultat energetic clar.</h1>
+    <p class="eyebrow">Residential building energy calculator</p>
+    <h1>Describe the building. Get a clear energy-performance result.</h1>
     <p class="hero-copy">
-      Un flux comercial simplu pentru locuințe: anvelopă, ventilație,
-      instalații, cerere de energie, energie primară, emisii CO₂ și raport A4.
+      A simple commercial workflow for homes: building envelope, ventilation,
+      systems, energy demand, primary energy, CO₂ emissions and an A4 report.
     </p>
   </div>
   <div class="hero-actions">
-    <a class="secondary-action" href="/demo">Încarcă exemplu</a>
-    <a class="primary-action" href="#building">Începe analiza</a>
+    <a class="secondary-action" href="/demo">Load demo</a>
+    <a class="primary-action" href="#building">Start analysis</a>
   </div>
 </section>
 
 {% if error %}
   <div class="error-banner" role="alert">
-    <strong>Datele trebuie corectate.</strong>
+    <strong>Please correct the input data.</strong>
     <span>{{ error }}</span>
   </div>
 {% endif %}
@@ -30,14 +30,14 @@
     <div class="section-heading">
       <span>01</span>
       <div>
-        <h2>Clădire</h2>
-        <p>Introduceți datele fizice esențiale pentru spațiul încălzit.</p>
+        <h2>Building</h2>
+        <p>Enter the essential physical data for the heated space.</p>
       </div>
     </div>
 
     <div class="field-grid project-grid">
       <label>
-        <span>Nume proiect</span>
+        <span>Project name</span>
         <input name="project_name" required value="{{ values.project_name }}">
       </label>
     </div>
@@ -49,13 +49,13 @@
       data-initial-locality="{{ values.locality }}"
     >
       <div class="location-copy">
-        <h3>Localizarea clădirii</h3>
-        <p>Căutați localitatea sau selectați un punct major de pe hartă. Datele climatice se aleg automat.</p>
+        <h3>Building location</h3>
+        <p>Search for a locality or choose a visible point on the Romania map. Climate data is selected automatically.</p>
       </div>
 
       <div class="location-search">
         <label for="localitySearch">
-          <span>Caută localitatea</span>
+          <span>Search for a locality</span>
           <input
             id="localitySearch"
             name="locality"
@@ -67,7 +67,7 @@
             aria-expanded="false"
             aria-controls="localityResults"
             value="{{ values.locality }}"
-            placeholder="Ex. Cluj, Brașov, Florești"
+            placeholder="E.g. Cluj, Brașov, Florești"
           >
         </label>
         <input id="localityId" name="locality_id" type="hidden" value="{{ values.locality_id }}">
@@ -76,73 +76,73 @@
 
       <div class="location-map-layout">
         <div class="romania-map-card">
-          <div id="romaniaLocationMap" class="romania-location-map" role="group" aria-label="Hartă interactivă a României pentru alegerea localității">
-            <p>Se încarcă harta României...</p>
+          <div id="romaniaLocationMap" class="romania-location-map" role="group" aria-label="Interactive Romania map for locality selection">
+            <p>Loading Romania map...</p>
           </div>
         </div>
         <aside class="selected-location-card" aria-live="polite">
-          <span>Localitate selectată</span>
+          <span>Selected locality</span>
           <strong id="selectedLocationName">Cluj-Napoca, Cluj</strong>
           <dl>
             <div>
-              <dt>Zona climatică</dt>
+              <dt>Winter climate zone</dt>
               <dd id="selectedClimateZone">-</dd>
             </div>
             <div>
-              <dt>Temperatură iarnă</dt>
+              <dt>Winter design temperature</dt>
               <dd id="selectedDesignTemperature">-</dd>
             </div>
             <div>
-              <dt>Stație climatică</dt>
+              <dt>Climate station</dt>
               <dd id="selectedClimateStation">-</dd>
             </div>
           </dl>
-          <small id="selectedClimateResolution">Date climatice selectate automat.</small>
+          <small id="selectedClimateResolution">Climate data selected automatically.</small>
         </aside>
       </div>
     </div>
 
     <div class="field-grid">
       <label>
-        <span>Suprafață încălzită</span>
+        <span>Heated floor area</span>
         <div class="unit-field">
           <input name="heated_floor_area_m2" type="number" step="0.1" min="1" required value="{{ values.heated_floor_area_m2 }}">
           <em>m²</em>
         </div>
       </label>
       <label>
-        <span>Volum încălzit</span>
+        <span>Heated volume</span>
         <div class="unit-field">
           <input name="heated_volume_m3" type="number" step="0.1" min="1" required value="{{ values.heated_volume_m3 }}">
           <em>m³</em>
         </div>
       </label>
       <label>
-        <span>Temperatură interioară de calcul</span>
+        <span>Indoor design temperature</span>
         <div class="unit-field">
           <input name="indoor_design_temperature_c" type="number" step="0.1" min="16" max="24" required value="{{ values.indoor_design_temperature_c }}">
           <em>°C</em>
         </div>
       </label>
       <label>
-        <span>An construcție</span>
+        <span>Construction year</span>
         <input name="construction_year" type="number" min="1800" max="2100" value="{{ values.construction_year }}">
       </label>
     </div>
 
     <fieldset class="typology-picker">
-      <legend>Tip clădire</legend>
+      <legend>Building type</legend>
       <label class="typology-card">
         <input type="radio" name="building_type" value="residential_individual" {% if values.building_type == "residential_individual" %}checked{% endif %}>
         <span class="building-figure house"></span>
-        <strong>Casă individuală</strong>
-        <small>Locuință unifamilială</small>
+        <strong>Detached house</strong>
+        <small>Single-family dwelling</small>
       </label>
       <label class="typology-card">
         <input type="radio" name="building_type" value="residential_collective" {% if values.building_type == "residential_collective" %}checked{% endif %}>
         <span class="building-figure block"></span>
-        <strong>Bloc / apartament</strong>
-        <small>Locuință colectivă</small>
+        <strong>Apartment / multifamily building</strong>
+        <small>Collective residential building</small>
       </label>
     </fieldset>
   </section>
@@ -151,29 +151,29 @@
     <div class="section-heading">
       <span>02</span>
       <div>
-        <h2>Anvelopă</h2>
-        <p>Model simplu pe suprafețe și coeficienți U. Materialele detaliate pot fi adăugate ulterior.</p>
+        <h2>Building envelope</h2>
+        <p>A simple surface and U-value model. Detailed material assemblies can be added later.</p>
       </div>
     </div>
 
-    <div class="envelope-table" role="group" aria-label="Componente anvelopă">
+    <div class="envelope-table" role="group" aria-label="Building envelope components">
       <div class="envelope-row envelope-header">
         <span>Element</span>
-        <span>Suprafață</span>
-        <span>U</span>
+        <span>Area</span>
+        <span>U-value</span>
       </div>
       {% set rows = [
-        ("Pereți exteriori", "wall_area_m2", "wall_u_value"),
-        ("Acoperiș / tavan", "roof_area_m2", "roof_u_value"),
-        ("Planșeu peste sol", "floor_area_m2", "floor_u_value"),
-        ("Ferestre", "window_area_m2", "window_u_value"),
-        ("Uși exterioare", "door_area_m2", "door_u_value")
+        ("External walls", "wall_area_m2", "wall_u_value"),
+        ("Roof / ceiling", "roof_area_m2", "roof_u_value"),
+        ("Ground floor", "floor_area_m2", "floor_u_value"),
+        ("Windows", "window_area_m2", "window_u_value"),
+        ("External doors", "door_area_m2", "door_u_value")
       ] %}
       {% for label, area, uvalue in rows %}
         <div class="envelope-row">
           <strong>{{ label }}</strong>
           <label>
-            <span class="sr-only">{{ label }} suprafață</span>
+            <span class="sr-only">{{ label }} area</span>
             <input name="{{ area }}" type="number" step="0.1" min="0.1" required value="{{ values[area] }}">
             <em>m²</em>
           </label>
@@ -188,24 +188,24 @@
 
     <div class="field-grid compact">
       <label>
-        <span>Lungime punți termice</span>
+        <span>Thermal bridge length</span>
         <div class="unit-field">
           <input name="thermal_bridge_length_m" type="number" step="0.1" min="0.1" value="{{ values.thermal_bridge_length_m }}">
           <em>m</em>
         </div>
       </label>
       <label>
-        <span>Coeficient ψ</span>
+        <span>Linear thermal transmittance ψ</span>
         <div class="unit-field">
           <input name="thermal_bridge_psi_w_mk" type="number" step="0.001" min="0" value="{{ values.thermal_bridge_psi_w_mk }}">
           <em>W/mK</em>
         </div>
       </label>
       <label>
-        <span>Câștig solar explicit</span>
+        <span>Explicit solar gain</span>
         <div class="unit-field">
           <input name="solar_gains_kwh_m2_month" type="number" step="0.1" min="0" value="{{ values.solar_gains_kwh_m2_month }}">
-          <em>kWh/m² lună</em>
+          <em>kWh/m² month</em>
         </div>
       </label>
     </div>
@@ -215,23 +215,23 @@
     <div class="section-heading">
       <span>03</span>
       <div>
-        <h2>Ventilație</h2>
-        <p>Debit simplificat prin număr de schimburi orare și recuperare de căldură.</p>
+        <h2>Ventilation</h2>
+        <p>Simplified airflow through air changes per hour and heat recovery efficiency.</p>
       </div>
     </div>
     <div class="field-grid compact">
       <label>
-        <span>Schimburi de aer</span>
+        <span>Air changes per hour</span>
         <div class="unit-field">
           <input name="air_changes_per_hour" type="number" step="0.05" min="0" max="5" required value="{{ values.air_changes_per_hour }}">
           <em>h⁻¹</em>
         </div>
       </label>
       <label>
-        <span>Eficiență recuperare</span>
+        <span>Heat recovery efficiency</span>
         <div class="unit-field">
           <input name="heat_recovery_efficiency" type="number" step="0.01" min="0" max="0.95" value="{{ values.heat_recovery_efficiency }}">
-          <em>0-0,95</em>
+          <em>0-0.95</em>
         </div>
       </label>
     </div>
@@ -241,54 +241,54 @@
     <div class="section-heading">
       <span>04</span>
       <div>
-        <h2>Instalații</h2>
-        <p>Descrieți generatorul real și eficiența sezonieră utilizată în calcul.</p>
+        <h2>Systems</h2>
+        <p>Describe the real generator and the seasonal performance used in the calculation.</p>
       </div>
     </div>
 
     <div class="systems-layout">
       <div class="system-diagram" aria-hidden="true">
-        <div class="energy-source">Purtător energetic</div>
+        <div class="energy-source">Energy carrier</div>
         <div class="diagram-line"></div>
         <div class="generator-symbol">Generator</div>
         <div class="diagram-branches">
-          <span>Încălzire</span>
-          <span>ACM</span>
-          <span>Răcire</span>
+          <span>Heating</span>
+          <span>DHW</span>
+          <span>Cooling</span>
         </div>
       </div>
 
       <div class="system-fields">
         <div class="field-grid compact">
           <label>
-            <span>Generator încălzire</span>
+            <span>Heating generator</span>
             <select name="heating_system_type" id="heatingSystemType">
-              <option value="condensing_gas_boiler" {% if values.heating_system_type == "condensing_gas_boiler" %}selected{% endif %}>Centrală în condensare</option>
-              <option value="gas_boiler" {% if values.heating_system_type == "gas_boiler" %}selected{% endif %}>Centrală pe gaz</option>
-              <option value="electric_resistance" {% if values.heating_system_type == "electric_resistance" %}selected{% endif %}>Încălzire electrică</option>
-              <option value="heat_pump" {% if values.heating_system_type == "heat_pump" %}selected{% endif %}>Pompă de căldură</option>
-              <option value="district_heat" {% if values.heating_system_type == "district_heat" %}selected{% endif %}>Termoficare</option>
-              <option value="custom" {% if values.heating_system_type == "custom" %}selected{% endif %}>Sistem configurabil</option>
+              <option value="condensing_gas_boiler" {% if values.heating_system_type == "condensing_gas_boiler" %}selected{% endif %}>Condensing gas boiler</option>
+              <option value="gas_boiler" {% if values.heating_system_type == "gas_boiler" %}selected{% endif %}>Gas boiler</option>
+              <option value="electric_resistance" {% if values.heating_system_type == "electric_resistance" %}selected{% endif %}>Electric resistance heating</option>
+              <option value="heat_pump" {% if values.heating_system_type == "heat_pump" %}selected{% endif %}>Heat pump</option>
+              <option value="district_heat" {% if values.heating_system_type == "district_heat" %}selected{% endif %}>District heating</option>
+              <option value="custom" {% if values.heating_system_type == "custom" %}selected{% endif %}>Configurable system</option>
             </select>
           </label>
           <label>
-            <span>Purtător energetic</span>
+            <span>Energy carrier</span>
             <select name="heating_carrier">
-              <option value="natural_gas" {% if values.heating_carrier == "natural_gas" %}selected{% endif %}>Gaz natural</option>
-              <option value="electricity" {% if values.heating_carrier == "electricity" %}selected{% endif %}>Electricitate</option>
-              <option value="district_heat" {% if values.heating_carrier == "district_heat" %}selected{% endif %}>Termoficare</option>
-              <option value="biomass" {% if values.heating_carrier == "biomass" %}selected{% endif %}>Biomasă</option>
+              <option value="natural_gas" {% if values.heating_carrier == "natural_gas" %}selected{% endif %}>Natural gas</option>
+              <option value="electricity" {% if values.heating_carrier == "electricity" %}selected{% endif %}>Electricity</option>
+              <option value="district_heat" {% if values.heating_carrier == "district_heat" %}selected{% endif %}>District heat</option>
+              <option value="biomass" {% if values.heating_carrier == "biomass" %}selected{% endif %}>Biomass</option>
             </select>
           </label>
           <label>
-            <span>Randament sezonier</span>
+            <span>Seasonal efficiency</span>
             <div class="unit-field">
               <input name="heating_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.heating_efficiency }}">
               <em>η</em>
             </div>
           </label>
           <label>
-            <span>SCOP pompă de căldură</span>
+            <span>Heat pump SCOP</span>
             <input name="heating_scop" type="number" step="0.1" min="1" value="{{ values.heating_scop }}">
           </label>
         </div>
@@ -296,48 +296,48 @@
         <div class="toggle-row">
           <label>
             <input type="checkbox" name="cooling_enabled" {% if values.cooling_enabled %}checked{% endif %}>
-            <span>Răcire activă</span>
+            <span>Active cooling</span>
           </label>
           <label>
             <input type="checkbox" name="dhw_enabled" {% if values.dhw_enabled %}checked{% endif %}>
-            <span>Apă caldă menajeră</span>
+            <span>Domestic hot water</span>
           </label>
         </div>
 
         <div class="field-grid compact">
           <label>
-            <span>SEER răcire</span>
+            <span>Cooling SEER</span>
             <input name="cooling_seer" type="number" step="0.1" min="1" value="{{ values.cooling_seer }}">
           </label>
           <label>
-            <span>Setpoint răcire</span>
+            <span>Cooling setpoint</span>
             <div class="unit-field">
               <input name="cooling_setpoint_c" type="number" step="0.1" min="20" max="30" value="{{ values.cooling_setpoint_c }}">
               <em>°C</em>
             </div>
           </label>
           <label>
-            <span>Ocupanți ACM</span>
+            <span>DHW occupants</span>
             <input name="dhw_occupants" type="number" min="0" max="30" value="{{ values.dhw_occupants }}">
           </label>
           <label>
-            <span>Randament ACM</span>
+            <span>DHW efficiency</span>
             <input name="dhw_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.dhw_efficiency }}">
           </label>
           <label>
-            <span>Consum ACM</span>
+            <span>DHW demand</span>
             <div class="unit-field">
               <input name="dhw_litres_per_person_day_at_60c" type="number" step="1" min="1" value="{{ values.dhw_litres_per_person_day_at_60c }}">
-              <em>L/pers/zi</em>
+              <em>L/person/day</em>
             </div>
           </label>
           <label>
-            <span>Purtător ACM</span>
+            <span>DHW energy carrier</span>
             <select name="dhw_carrier">
-              <option value="natural_gas" {% if values.dhw_carrier == "natural_gas" %}selected{% endif %}>Gaz natural</option>
-              <option value="electricity" {% if values.dhw_carrier == "electricity" %}selected{% endif %}>Electricitate</option>
-              <option value="district_heat" {% if values.dhw_carrier == "district_heat" %}selected{% endif %}>Termoficare</option>
-              <option value="biomass" {% if values.dhw_carrier == "biomass" %}selected{% endif %}>Biomasă</option>
+              <option value="natural_gas" {% if values.dhw_carrier == "natural_gas" %}selected{% endif %}>Natural gas</option>
+              <option value="electricity" {% if values.dhw_carrier == "electricity" %}selected{% endif %}>Electricity</option>
+              <option value="district_heat" {% if values.dhw_carrier == "district_heat" %}selected{% endif %}>District heat</option>
+              <option value="biomass" {% if values.dhw_carrier == "biomass" %}selected{% endif %}>Biomass</option>
             </select>
           </label>
         </div>
@@ -345,12 +345,12 @@
     </div>
   </section>
 
-  <section class="submit-strip" aria-label="Calcul">
+  <section class="submit-strip" aria-label="Calculation">
     <div>
-      <strong>Gata de calcul</strong>
-      <span>Rezultatul folosește modelul lunar simplificat și factorii metodologici declarați.</span>
+      <strong>Ready to calculate</strong>
+      <span>The result uses the simplified monthly model and the declared methodology factors.</span>
     </div>
-    <button class="primary-action" type="submit">Calculează performanța</button>
+    <button class="primary-action" type="submit">Calculate performance</button>
   </section>
 </form>
 {% endblock %}

@@ -91,7 +91,7 @@ def resolve_locality(locality: str) -> dict[str, Any]:
         return candidates[0]
 
     raise ValueError(
-        f"Localitatea '{locality}' nu este in registrul geografic comercial LaCurent."
+        f"The selected locality '{locality}' is not available in the LaCurent geographic dataset."
     )
 
 
@@ -100,7 +100,7 @@ def resolve_climate(locality: str) -> dict[str, Any]:
     station = _station_index().get(selected.get("stationId"))
     if not station:
         raise ValueError(
-            f"Localitatea '{selected['name']}' nu are o statie climatica MC001 rezolvata."
+            f"The selected locality '{selected['name']}' does not have a resolved MC001 climate station."
         )
 
     return {
@@ -127,11 +127,28 @@ def resolve_climate(locality: str) -> dict[str, Any]:
 
 def locality_display_name(locality: dict[str, Any]) -> str:
     uat = locality.get("uatName")
-    uat_text = f", UAT {uat}" if uat and uat != locality.get("name") else ""
+    uat_text = f", administrative unit {uat}" if uat and uat != locality.get("name") else ""
     return (
-        f"{locality.get('name')}, {locality.get('localityType')} - "
+        f"{locality.get('name')}, {locality_type_label(locality.get('localityType'))} - "
         f"{locality.get('county')}{uat_text}"
     )
+
+
+def locality_type_label(locality_type: str | None) -> str:
+    labels = {
+        "municipiu": "municipality",
+        "oras": "town",
+        "oraș": "town",
+        "comuna": "commune",
+        "comună": "commune",
+        "sat": "village",
+        "localitate componenta municipiu": "municipality component locality",
+        "localitate componenta oras": "town component locality",
+        "sat apartinator municipiu": "municipality-administered village",
+        "sat apartinator oras": "town-administered village",
+        "sector": "sector",
+    }
+    return labels.get(str(locality_type or "").lower(), str(locality_type or "locality"))
 
 
 def location_payload() -> dict[str, Any]:
@@ -152,12 +169,12 @@ def location_payload() -> dict[str, Any]:
 def carrier_factors(carrier: str) -> dict[str, float]:
     factors = methodology()["carriers"].get(carrier)
     if not factors:
-        raise ValueError(f"Purtatorul energetic '{carrier}' nu are factori metodologici.")
+        raise ValueError(f"The energy carrier '{carrier}' does not have methodology factors.")
     return factors
 
 
 def default_heating_performance(system_type: str) -> dict[str, Any]:
     defaults = methodology()["heating_system_defaults"].get(system_type)
     if not defaults:
-        raise ValueError(f"Sistemul de incalzire '{system_type}' nu este suportat.")
+        raise ValueError(f"The heating system '{system_type}' is not supported.")
     return defaults
