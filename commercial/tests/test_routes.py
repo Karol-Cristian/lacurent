@@ -64,6 +64,17 @@ def test_health_endpoint_is_lightweight() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_www_host_redirects_to_canonical_apex() -> None:
+    response = client.get(
+        "/demo?source=www",
+        headers={"host": "www.lacurent.com"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 308
+    assert response.headers["location"] == "https://lacurent.com/demo?source=www"
+
+
 def test_form_calculation_renders_commercial_results() -> None:
     response = client.post("/calculate", data=demo_form_data())
 

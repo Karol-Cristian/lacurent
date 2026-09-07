@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -36,6 +36,15 @@ def fmt(value: float | int | None, unit: str = "", digits: int = 1) -> str:
 
 
 templates.env.filters["fmt"] = fmt
+
+
+@app.middleware("http")
+async def redirect_www_host(request: Request, call_next: Any) -> Any:
+    host = request.headers.get("host", "").split(":", 1)[0].lower()
+    if host == "www.lacurent.com":
+        target = request.url.replace(scheme="https", netloc="lacurent.com")
+        return RedirectResponse(str(target), status_code=308)
+    return await call_next(request)
 
 
 def climate_options() -> list[str]:

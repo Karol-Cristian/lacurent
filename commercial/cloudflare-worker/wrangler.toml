@@ -8,6 +8,10 @@ workers_dev = true
 pattern = "lacurent.com"
 custom_domain = true
 
+[[routes]]
+pattern = "www.lacurent.com"
+custom_domain = true
+
 [[rules]]
 type = "Text"
 globs = ["**/*.html", "**/*.css", "**/*.js", "**/*.json", "**/*.geojson"]

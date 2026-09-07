@@ -175,7 +175,94 @@ jobs:
           print("specific_primary_energy", expected_primary)
           PY
 
-      - name: Deploy staging Worker
+      - name: Prepare production custom domains
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare domain preparation skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both configured."
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          api = "https://api.cloudflare.com/client/v4"
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Content-Type": "application/json",
+          }
+
+          def request(method, path):
+              req = urllib.request.Request(api + path, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      body = response.read().decode("utf-8")
+                      return response.status, json.loads(body) if body else {}
+              except urllib.error.HTTPError as error:
+                  body = error.read().decode("utf-8")
+                  try:
+                      payload = json.loads(body) if body else {}
+                  except json.JSONDecodeError:
+                      payload = {"success": False, "errors": [{"message": body[:500]}]}
+                  return error.code, payload
+
+          def log(label, status, payload):
+              print(f"{label}: HTTP {status}, success={payload.get('success')}")
+              for error in payload.get("errors", [])[:5]:
+                  print(f"  error {error.get('code')}: {error.get('message')}")
+
+          status, zones = request("GET", "/zones?name=lacurent.com&per_page=1")
+          log("zone lookup lacurent.com", status, zones)
+          results = zones.get("result") or []
+          if not results:
+              raise SystemExit("No Cloudflare zone found for lacurent.com.")
+          zone_id = results[0]["id"]
+
+          for host in ("lacurent.com", "www.lacurent.com"):
+              query = urllib.parse.urlencode({"name": host, "per_page": 100})
+              status, records = request("GET", f"/zones/{zone_id}/dns_records?{query}")
+              log(f"dns list {host}", status, records)
+              for record in records.get("result", []):
+                  print(
+                      "  dns",
+                      record.get("type"),
+                      record.get("name"),
+                      record.get("content"),
+                      f"proxied={record.get('proxied')}",
+                  )
+                  if (
+                      record.get("type") == "CNAME"
+                      and record.get("name") == host
+                      and record.get("content") == "lacurent.pages.dev"
+                  ):
+                      status, deleted = request(
+                          "DELETE",
+                          f"/zones/{zone_id}/dns_records/{record['id']}",
+                      )
+                      log(f"delete Pages CNAME {host}", status, deleted)
+
+          status, pages_domains = request(
+              "GET",
+              f"/accounts/{account_id}/pages/projects/lacurent/domains",
+          )
+          log("Pages custom domains list", status, pages_domains)
+          for host in ("lacurent.com", "www.lacurent.com"):
+              domains = pages_domains.get("result") or []
+              if any((item.get("name") or item.get("domain_name")) == host for item in domains):
+                  encoded = urllib.parse.quote(host, safe="")
+                  status, deleted = request(
+                      "DELETE",
+                      f"/accounts/{account_id}/pages/projects/lacurent/domains/{encoded}",
+                  )
+                  log(f"detach Pages custom domain {host}", status, deleted)
+          PY
+
+      - name: Deploy Commercial v2 Worker
         working-directory: .wrangler/commercial-v2-worker
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
@@ -187,3 +274,128 @@ jobs:
           chmod +x .bin/wrangler
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler deploy
+
+      - name: Verify production custom domain
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare production verification skipped: deployment credentials are not both configured."
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          import sys
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          sys.path.insert(0, "src")
+
+          from app.engine import calculate, demo_building
+          from app.main import default_form_values, fmt
+          from app.models import model_to_json
+
+          apex = "https://lacurent.com"
+          staging = "https://lacurent-commercial-v2.lemnarukarol.workers.dev"
+
+          def open_url(url, data=None, headers=None, timeout=30, follow_redirects=True):
+              opener = urllib.request.build_opener()
+              if not follow_redirects:
+                  class NoRedirect(urllib.request.HTTPRedirectHandler):
+                      def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+                          return None
+                  opener = urllib.request.build_opener(NoRedirect)
+              request = urllib.request.Request(url, data=data, headers=headers or {})
+              try:
+                  with opener.open(request, timeout=timeout) as response:
+                      return response.status, response.geturl(), response.read().decode("utf-8")
+              except urllib.error.HTTPError as error:
+                  return error.code, error.headers.get("Location") or url, error.read().decode("utf-8")
+
+          for attempt in range(1, 41):
+              status, _, body = open_url(apex + "/health")
+              if status == 200 and '"status":"ok"' in body.replace(" ", ""):
+                  break
+              print(f"waiting for production health, attempt {attempt}: HTTP {status}")
+              time.sleep(15)
+          else:
+              raise AssertionError("Production /health did not become healthy.")
+
+          checks = {
+              "/": "Building energy performance",
+              "/health": '"status":"ok"',
+              "/demo": "Cluj Demonstration House",
+              "/static/app.css": ".app-shell",
+              "/static/app.js": "initLocationSelector",
+          }
+          for path, expected in checks.items():
+              status, _, body = open_url(apex + path)
+              if status != 200:
+                  raise AssertionError(f"{path} returned HTTP {status}")
+              if expected not in body and expected not in body.replace(" ", ""):
+                  raise AssertionError(f"{path} did not contain {expected!r}")
+              print(path, status)
+
+          status, _, location_body = open_url(apex + "/api/location-data")
+          if status != 200:
+              raise AssertionError(f"/api/location-data returned HTTP {status}")
+          payload = json.loads(location_body)
+          localities = payload.get("localities", [])
+          if len(localities) != 13622:
+              raise AssertionError(f"Expected 13622 localities, got {len(localities)}")
+          print("/api/location-data", status, len(localities))
+
+          form = default_form_values()
+          form["dhw_enabled"] = "on"
+          form.pop("cooling_enabled", None)
+          encoded = urllib.parse.urlencode(form).encode("utf-8")
+          status, _, calculation = open_url(
+              apex + "/calculate",
+              data=encoded,
+              headers={"Content-Type": "application/x-www-form-urlencoded"},
+          )
+          if status != 200 or "Results" not in calculation:
+              raise AssertionError(f"/calculate failed with HTTP {status}")
+          print("/calculate", status)
+
+          demo = demo_building()
+          direct = calculate(demo)
+          expected_primary = fmt(
+              direct.primary_energy.specific_kwh_m2,
+              "kWh/m²/year",
+          )
+          status, _, demo_html = open_url(apex + "/demo")
+          if expected_primary not in demo_html:
+              raise AssertionError(
+                  f"/demo did not include CPython primary-energy value {expected_primary!r}"
+              )
+          print("demo specific primary", expected_primary)
+
+          report_body = urllib.parse.urlencode({"payload": model_to_json(demo)}).encode("utf-8")
+          status, _, certificate = open_url(
+              apex + "/certificate",
+              data=report_body,
+              headers={"Content-Type": "application/x-www-form-urlencoded"},
+          )
+          if status != 200 or "Energy Performance Report" not in certificate:
+              raise AssertionError(f"/certificate failed with HTTP {status}")
+          print("/certificate", status)
+
+          for path in ("/", "/demo?source=www"):
+              status, location, _ = open_url(
+                  "https://www.lacurent.com" + path,
+                  follow_redirects=False,
+              )
+              expected = "https://lacurent.com" + path
+              if status not in (301, 308) or location != expected:
+                  raise AssertionError(
+                      f"www redirect mismatch: HTTP {status}, location={location!r}, expected={expected!r}"
+                  )
+              print("www redirect", path, status, location)
+
+          status, _, staging_health = open_url(staging + "/health")
+          if status != 200 or '"status":"ok"' not in staging_health.replace(" ", ""):
+              raise AssertionError("Staging workers.dev health failed after production deployment.")
+          print("staging health", status)
+          PY
