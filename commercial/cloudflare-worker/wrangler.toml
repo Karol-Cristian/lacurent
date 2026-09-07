@@ -9,8 +9,8 @@ pattern = "lacurent.com"
 custom_domain = true
 
 [[routes]]
-pattern = "www.lacurent.com"
-custom_domain = true
+pattern = "www.lacurent.com/*"
+zone_name = "lacurent.com"
 
 [[rules]]
 type = "Text"

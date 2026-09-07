@@ -250,6 +250,33 @@ jobs:
                       )
                       log(f"delete Pages CNAME {host}", status, deleted)
 
+          status, routes = request("GET", f"/zones/{zone_id}/workers/routes")
+          log("Worker routes list", status, routes)
+          route_items = routes.get("result")
+          if not isinstance(route_items, list):
+              print("  Worker routes were not available; continuing safely.")
+              route_items = []
+
+          def route_host(pattern):
+              value = str(pattern or "").lower()
+              for prefix in ("https://", "http://"):
+                  if value.startswith(prefix):
+                      value = value[len(prefix):]
+              return value.split("/", 1)[0]
+
+          for route in route_items:
+              pattern = route.get("pattern")
+              script = route.get("script")
+              host = route_host(pattern)
+              print("  route", pattern, "script=", script)
+              if script == "lacurent" and host in {"lacurent.com", "www.lacurent.com"}:
+                  print(f"  rollback note: recreate route {pattern!r} -> script 'lacurent' if rollback is needed.")
+                  status, deleted = request(
+                      "DELETE",
+                      f"/zones/{zone_id}/workers/routes/{route['id']}",
+                  )
+                  log(f"delete legacy Worker route {pattern}", status, deleted)
+
           status, pages_domains = request(
               "GET",
               f"/accounts/{account_id}/pages/projects/lacurent/domains",
