@@ -227,7 +227,11 @@ jobs:
               query = urllib.parse.urlencode({"name": host, "per_page": 100})
               status, records = request("GET", f"/zones/{zone_id}/dns_records?{query}")
               log(f"dns list {host}", status, records)
-              for record in records.get("result", []):
+              dns_records = records.get("result")
+              if not isinstance(dns_records, list):
+                  print(f"  dns records for {host} were not available; continuing safely.")
+                  dns_records = []
+              for record in dns_records:
                   print(
                       "  dns",
                       record.get("type"),
@@ -252,7 +256,10 @@ jobs:
           )
           log("Pages custom domains list", status, pages_domains)
           for host in ("lacurent.com", "www.lacurent.com"):
-              domains = pages_domains.get("result") or []
+              domains = pages_domains.get("result")
+              if not isinstance(domains, list):
+                  print(f"  Pages domains were not available while checking {host}; continuing safely.")
+                  domains = []
               if any((item.get("name") or item.get("domain_name")) == host for item in domains):
                   encoded = urllib.parse.quote(host, safe="")
                   status, deleted = request(
