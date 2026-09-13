@@ -65,6 +65,10 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "Test Automation Rescue Sprint" in response.text
     assert "CANoe" in response.text
     assert "CAPL" in response.text
+    assert "ASPICE SWE.6 / SYS.4" in response.text
+    assert "ASIL B-oriented validation strategy" in response.text
+    assert "aerospace-oriented" in response.text
+    assert "Do you claim aerospace project experience?" in response.text
     assert "karol@lacurent.com" in response.text
 
 
