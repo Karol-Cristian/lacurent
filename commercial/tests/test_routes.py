@@ -67,6 +67,11 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "Late defect risk" in response.text
     assert "Engineering capacity" in response.text
     assert "Regression automation" in response.text
+    assert "30-second bottleneck check" in response.text
+    assert "What sounds familiar?" in response.text
+    assert "Defects appear too late" in response.text
+    assert "Prepare the email" in response.text
+    assert "Embedded verification bottleneck — quick brief" in response.text
     assert "CANoe" in response.text
     assert "CAPL" in response.text
     assert "ASPICE SWE.6 / SYS.4" in response.text
