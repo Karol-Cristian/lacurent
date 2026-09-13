@@ -63,15 +63,20 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
 
     assert response.status_code == 200
     assert "Reduce qualification effort" in response.text
-    assert "More software should not automatically mean more manual testing" in response.text
-    assert "Late defect risk" in response.text
-    assert "Engineering capacity" in response.text
-    assert "Regression automation" in response.text
+    assert "44%" in response.text
+    assert "Not enough time to test everything" in response.text
+    assert "HIL throughput becomes a constraint" in response.text
+    assert "SIL and HIL work gets duplicated" in response.text
     assert "30-second bottleneck check" in response.text
-    assert "What sounds familiar?" in response.text
-    assert "Defects appear too late" in response.text
+    assert "We cannot test enough" in response.text
+    assert "HIL is the bottleneck" in response.text
+    assert "CI stops before the bench" in response.text
+    assert "What does that cause?" in response.text
     assert "Prepare the email" in response.text
+    assert "What it is costing us:" in response.text
     assert "Embedded verification bottleneck — quick brief" in response.text
+    assert "dSPACE / AutomationDesk" in response.text
+    assert "ETAS / INCA / LABCAR" in response.text
     assert "CANoe" in response.text
     assert "CAPL" in response.text
     assert "ASPICE SWE.6 / SYS.4" in response.text
