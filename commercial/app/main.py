@@ -17,9 +17,9 @@ from .models import BuildingInput, building_from_json, model_to_dict, model_to_j
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 app = FastAPI(
-    title="LaCurent Commercial",
-    version="2.0.0",
-    description="Clean residential building-energy calculator.",
+    title="LaCurent",
+    version="2.1.0",
+    description="LaCurent engineering, software testing and energy services.",
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
@@ -255,6 +255,15 @@ def result_context(result: Any) -> dict[str, Any]:
     }
 
 
+def calculator_context(error: str | None = None, values: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {
+        "values": values or default_form_values(),
+        "climate_options": climate_options(),
+        "methodology": methodology(),
+        "error": error,
+    }
+
+
 @app.get("/api/location-data")
 async def location_data_api() -> JSONResponse:
     return JSONResponse(location_payload())
@@ -267,16 +276,25 @@ async def health() -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "index.html", {"request": request})
+
+
+@app.get("/software-testing", response_class=HTMLResponse)
+async def software_testing(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "software_testing.html", {"request": request})
+
+
+@app.get("/instalatii", response_class=HTMLResponse)
+async def installations(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "instalatii.html", {"request": request})
+
+
+@app.get("/instalatii/calculator", response_class=HTMLResponse)
+async def energy_calculator(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
-        "index.html",
-        {
-            "request": request,
-            "values": default_form_values(),
-            "climate_options": climate_options(),
-            "methodology": methodology(),
-            "error": None,
-        },
+        "calculator.html",
+        {"request": request, **calculator_context()},
     )
 
 
@@ -292,13 +310,10 @@ async def calculate_from_form(request: Request) -> HTMLResponse:
     except Exception as exc:
         return templates.TemplateResponse(
             request,
-            "index.html",
+            "calculator.html",
             {
                 "request": request,
-                "values": values,
-                "climate_options": climate_options(),
-                "methodology": methodology(),
-                "error": user_error(exc),
+                **calculator_context(error=user_error(exc), values=values),
             },
             status_code=422,
         )
@@ -330,13 +345,10 @@ async def certificate(request: Request) -> HTMLResponse:
     except Exception as exc:
         return templates.TemplateResponse(
             request,
-            "index.html",
+            "calculator.html",
             {
                 "request": request,
-                "values": default_form_values(),
-                "climate_options": climate_options(),
-                "methodology": methodology(),
-                "error": user_error(exc),
+                **calculator_context(error=user_error(exc)),
             },
             status_code=422,
         )

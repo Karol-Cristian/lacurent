@@ -48,8 +48,37 @@ def demo_form_data() -> dict[str, str]:
     }
 
 
-def test_home_page_renders_complete_form() -> None:
+def test_company_home_routes_to_two_businesses() -> None:
     response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Software Testing" in response.text
+    assert "Instalații & Energie" in response.text
+    assert "/software-testing" in response.text
+    assert "/instalatii" in response.text
+
+
+def test_software_testing_landing_page_is_sales_ready() -> None:
+    response = client.get("/software-testing")
+
+    assert response.status_code == 200
+    assert "Test Automation Rescue Sprint" in response.text
+    assert "CANoe" in response.text
+    assert "CAPL" in response.text
+    assert "karol@lacurent.com" in response.text
+
+
+def test_installations_landing_page_links_energy_calculator() -> None:
+    response = client.get("/instalatii")
+
+    assert response.status_code == 200
+    assert "Fotovoltaice" in response.text
+    assert "Eficiență energetică" in response.text
+    assert "/instalatii/calculator" in response.text
+
+
+def test_energy_calculator_renders_complete_form() -> None:
+    response = client.get("/instalatii/calculator")
 
     assert response.status_code == 200
     assert "Calculate performance" in response.text
@@ -66,13 +95,13 @@ def test_health_endpoint_is_lightweight() -> None:
 
 def test_www_host_redirects_to_canonical_apex() -> None:
     response = client.get(
-        "/demo?source=www",
+        "/software-testing?source=www",
         headers={"host": "www.lacurent.com"},
         follow_redirects=False,
     )
 
     assert response.status_code == 308
-    assert response.headers["location"] == "https://lacurent.com/demo?source=www"
+    assert response.headers["location"] == "https://lacurent.com/software-testing?source=www"
 
 
 def test_form_calculation_renders_commercial_results() -> None:
