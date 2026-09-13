@@ -66,9 +66,14 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "Regression & qualification automation" in response.text
     assert "UDS, diagnostics & fault handling" in response.text
     assert "HIL / SIL / PIL throughput" in response.text
+    assert "Qualification and system test are always catching up with fast HW/SW evolution." in response.text
+    assert "Physical HIL setup has to be adapted again when PCB samples or interfaces change." in response.text
+    assert "Several days → about 2 hours" in response.text
+    assert "past engineering result, not a blanket performance guarantee" in response.text
     assert "30-second bottleneck check" in response.text
     assert "We cannot test enough" in response.text
     assert "HIL is the bottleneck" in response.text
+    assert "Qualification is always catching up" in response.text
     assert "CI stops before the bench" in response.text
     assert "Prepare the email" in response.text
     assert "What it is costing us:" in response.text
@@ -84,6 +89,7 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "A debounce bug that looked like a test problem" in response.text
     assert "karol@lacurent.com" in response.text
     assert "/static/favicon.svg" in response.text
+    assert "/static/painpoints.css" in response.text
     assert "€1,000" not in response.text
     assert "10 business days" not in response.text
     assert "Test Automation Rescue Sprint" not in response.text
