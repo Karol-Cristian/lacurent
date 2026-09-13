@@ -83,10 +83,35 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "ASIL B-oriented validation strategy" in response.text
     assert "aerospace-oriented" in response.text
     assert "Do you claim aerospace project experience?" in response.text
+    assert "/software-testing/resources" in response.text
+    assert "A debounce bug that looked like a test problem" in response.text
     assert "karol@lacurent.com" in response.text
     assert "€1,000" not in response.text
     assert "10 business days" not in response.text
     assert "Test Automation Rescue Sprint" not in response.text
+
+
+def test_software_resources_are_public_and_anonymized() -> None:
+    response = client.get("/software-testing/resources")
+
+    assert response.status_code == 200
+    assert "Useful verification knowledge" in response.text
+    assert "From one-off fault injection to repeatable UDS regression" in response.text
+    assert "Research library" in response.text
+    assert "Project details are intentionally anonymized" in response.text
+
+    article = client.get("/software-testing/resources/timing-is-a-requirement")
+    assert article.status_code == 200
+    assert "A debounce bug that looked like a test problem" in article.text
+    assert "Publication rule" in article.text
+    assert "employer/customer identities" in article.text
+
+
+def test_favicon_route_is_available() -> None:
+    response = client.get("/favicon.ico", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/static/favicon.svg"
 
 
 def test_installations_landing_page_links_energy_calculator() -> None:
