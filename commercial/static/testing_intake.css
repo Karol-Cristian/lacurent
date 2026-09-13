@@ -220,6 +220,11 @@ body {
   background: #ffffff;
 }
 
+.software-card,
+.energy-card {
+  background: #ffffff;
+}
+
 /* Make the solution block immediately after the intake read as the answer to the diagnosis. */
 .quick-check-section + .content-section {
   position: relative;
@@ -237,13 +242,47 @@ body {
 }
 
 .quick-check-section + .content-section .service-list-grid article {
+  position: relative;
   border-top: 3px solid #dcebe7;
 }
+
+.quick-check-section + .content-section .service-list-grid article:nth-child(1) { order: 1; }
+.quick-check-section + .content-section .service-list-grid article:nth-child(4) { order: 2; }
+.quick-check-section + .content-section .service-list-grid article:nth-child(3) { order: 3; }
+.quick-check-section + .content-section .service-list-grid article:nth-child(2) { order: 4; }
+.quick-check-section + .content-section .service-list-grid article:nth-child(5) { order: 5; }
+.quick-check-section + .content-section .service-list-grid article:nth-child(6) { order: 6; }
 
 .quick-check-section + .content-section .service-list-grid article:nth-child(1),
 .quick-check-section + .content-section .service-list-grid article:nth-child(3),
 .quick-check-section + .content-section .service-list-grid article:nth-child(4) {
   border-top-color: var(--accent);
+  padding-top: 44px;
+}
+
+.quick-check-section + .content-section .service-list-grid article:nth-child(1)::before,
+.quick-check-section + .content-section .service-list-grid article:nth-child(3)::before,
+.quick-check-section + .content-section .service-list-grid article:nth-child(4)::before {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.quick-check-section + .content-section .service-list-grid article:nth-child(1)::before {
+  content: "PRIMARY · REGRESSION ACCELERATION";
+}
+
+.quick-check-section + .content-section .service-list-grid article:nth-child(4)::before {
+  content: "PRIMARY · HIL CAPACITY & AUTOMATION";
+}
+
+.quick-check-section + .content-section .service-list-grid article:nth-child(3)::before {
+  content: "PRIMARY · DIAGNOSTICS & FAULT VERIFICATION";
 }
 
 .contact-band {
