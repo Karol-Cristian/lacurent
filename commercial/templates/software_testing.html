@@ -8,6 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
   <link rel="shortcut icon" href="/static/favicon.svg?v=3">
   <link rel="stylesheet" href="/static/company.css?v=5">
+  <link rel="stylesheet" href="/static/painpoints.css?v=1">
 </head>
 <body>
   <main class="company-shell service-shell">
@@ -38,10 +39,10 @@
       </div>
       <aside class="clean-hero-aside">
         <p class="panel-label">Good reason to call LaCurent</p>
-        <p>Regression keeps growing.</p>
+        <p>Physical HIL setup has to be adapted again when PCB samples or interfaces change.</p>
+        <p>Qualification and system test are always catching up with fast HW/SW evolution.</p>
         <p>Diagnostics or fault recovery still need manual checking.</p>
-        <p>HIL time is scarce or overnight runs are unreliable.</p>
-        <p>Qualification evidence takes almost as much effort as the test itself.</p>
+        <p>Bench instability turns an execution that should take hours into multi-day work.</p>
       </aside>
     </section>
 
@@ -55,8 +56,8 @@
       <div class="capability-table" role="list">
         <article class="capability-row" role="listitem">
           <div class="capability-index">01</div>
-          <div class="capability-title"><h3>Regression & qualification automation</h3><p>When the suite is slow, fragile, duplicated or hard to review.</p></div>
-          <div class="capability-output"><strong>Typical output</strong><p>Stable CANoe/CAPL or code-driven flows, parameterized variants, explicit expected-versus-actual checks, deterministic verdicts and qualification-ready reporting.</p></div>
+          <div class="capability-title"><h3>Regression & qualification automation</h3><p>When hardware and software change faster than qualification and system test can absorb the updates.</p></div>
+          <div class="capability-output"><strong>Typical output</strong><p>A test architecture that is cheaper to update across software releases and PCB variants: centralized parameters, reusable helpers, version-aware setup, explicit expected-versus-actual checks and qualification-ready reporting.</p></div>
         </article>
         <article class="capability-row" role="listitem">
           <div class="capability-index">02</div>
@@ -65,8 +66,8 @@
         </article>
         <article class="capability-row" role="listitem">
           <div class="capability-index">03</div>
-          <div class="capability-title"><h3>HIL / SIL / PIL throughput</h3><p>When physical bench time is the bottleneck or the same logic is rebuilt at every test level.</p></div>
-          <div class="capability-output"><strong>Typical output</strong><p>A clearer split between virtual and physical verification, reusable test intent across environments, better HIL utilization and CI-ready execution where practical.</p></div>
+          <div class="capability-title"><h3>HIL / SIL / PIL throughput</h3><p>When every PCB sample requires physical environment work, new components or bench adaptation before useful verification can even start.</p></div>
+          <div class="capability-output"><strong>Typical output</strong><p>Move suitable checks away from repeated physical-environment dependence, keep only genuinely hardware-dependent verification on HIL, reuse test intent across levels and reduce setup, recovery and execution time.</p></div>
         </article>
       </div>
     </section>
@@ -86,14 +87,14 @@
             <label class="check-card"><input type="checkbox" name="problem" value="Regression cycles keep growing with every release"><span><strong>Regression keeps growing</strong><small>Each release adds execution and analysis time.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Engineers repeat manual test execution, log checks, triage or evidence preparation"><span><strong>Too much manual work</strong><small>Setup, execution, log review, triage or reporting stays manual.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Tests are flaky, timing-sensitive or depend on tribal setup knowledge"><span><strong>Tests are unreliable</strong><small>Timing, environment state or hidden setup assumptions create false failures.</small></span></label>
-            <label class="check-card"><input type="checkbox" name="problem" value="HIL availability, downtime, failed overnight runs or bench setup limits throughput"><span><strong>HIL is the bottleneck</strong><small>Bench availability, downtime or failed runs waste scarce hardware time.</small></span></label>
+            <label class="check-card"><input type="checkbox" name="problem" value="Physical HIL adaptation, PCB changes, downtime or failed runs limit throughput"><span><strong>HIL is the bottleneck</strong><small>PCB revisions, fixture adaptation, downtime or failed runs stretch work that should take hours into days.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="SIL, HIL or project variants duplicate test logic and artifacts"><span><strong>We duplicate tests</strong><small>SIL/HIL, variants or projects repeat logic instead of reusing it.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="UDS, DTC, OBD or network verification still requires too much manual checking"><span><strong>Diagnostics are manual</strong><small>UDS, DTC, OBD or network checks need repeated human review.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Negative paths, fault injection, reset or recovery coverage is incomplete"><span><strong>Fault coverage has gaps</strong><small>Negative paths, faults and recovery are not exercised consistently.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Requirements, traceability, coverage or qualification evidence is difficult to keep current"><span><strong>Evidence is expensive</strong><small>Traceability, coverage and reporting become a separate workload.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Defects are discovered late during hardware integration, vehicle, customer or release validation"><span><strong>Defects appear too late</strong><small>Problems first surface when rework and debugging cost more.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="CI automation stops before SIL/HIL or still needs manual triggering and hand-offs"><span><strong>CI stops before the bench</strong><small>The pipeline builds software but validation still needs manual hand-offs.</small></span></label>
-            <label class="check-card"><input type="checkbox" name="problem" value="Test capacity has to grow almost one-for-one with software scope"><span><strong>The team does not scale</strong><small>More software keeps demanding more test headcount.</small></span></label>
+            <label class="check-card"><input type="checkbox" name="problem" value="Qualification and system test cannot keep pace with hardware and software updates because verification is late in the workflow"><span><strong>Qualification is always catching up</strong><small>HW/SW updates arrive faster than tests, environments and evidence can be updated.</small></span></label>
           </div>
         </fieldset>
 
@@ -107,7 +108,7 @@
             <label><input type="checkbox" name="impact" value="Failure analysis and root-cause loops take too long">Slow failure triage</label>
             <label><input type="checkbox" name="impact" value="Compliance, ASPICE or safety evidence takes too much effort">Compliance effort</label>
             <label><input type="checkbox" name="impact" value="Defects escape into vehicle, customer or field validation">Late defect escapes</label>
-            <label><input type="checkbox" name="impact" value="We need more test people to keep up">More headcount needed</label>
+            <label><input type="checkbox" name="impact" value="Repeated HW/SW changes force qualification and system-test rework">Repeated rework</label>
           </div>
         </fieldset>
 
@@ -162,6 +163,10 @@
           <p>Embedded C, diagnostic-stack extensions, bootloader/version integration, build configurations and target-level HW/SW debugging.</p>
           <small>TI C2000 · target debugging · integration</small>
         </div>
+      </div>
+      <div class="measured-result">
+        <div><span>Representative result from prior engineering work</span><strong>Several days → about 2 hours</strong></div>
+        <p>For one qualification workflow, moving suitable verification away from repeated physical-environment adaptation cut execution from multi-day HIL cycles — including setup and recovery from bench issues — to roughly two hours. It also avoided repeated hardware-component purchases and environment rework from PCB sample to PCB sample. This is a past engineering result, not a blanket performance guarantee.</p>
       </div>
       <p class="experience-note">Current project experience is primarily automotive. Aerospace-oriented work is positioned through transferable safety-critical verification discipline; we do not claim aerospace project history.</p>
     </section>
