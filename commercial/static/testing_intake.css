@@ -162,6 +162,106 @@
   line-height: 1.5;
 }
 
+/* White-first commercial theme. The marketing pages should feel like an engineering consultancy,
+   not a dark SaaS landing page. Keep green only as a restrained accent. */
+body {
+  background: #ffffff;
+}
+
+.company-shell,
+.home-shell,
+.service-shell {
+  background: #ffffff;
+}
+
+.company-mark {
+  background: #ffffff;
+  color: var(--ink);
+  border: 1px solid #cfd6dd;
+  box-shadow: 0 1px 2px rgba(16, 21, 28, .04);
+}
+
+.primary-cta,
+.primary-cta.light {
+  background: #ffffff;
+  color: var(--ink);
+  border: 1px solid #aeb7c1;
+  box-shadow: 0 1px 2px rgba(16, 21, 28, .04);
+}
+
+.primary-cta:hover,
+.primary-cta.light:hover {
+  border-color: var(--accent);
+  background: #f8fbfa;
+}
+
+.proof-panel,
+.feature-card,
+.experience-card,
+.service-list-grid article,
+.domain-transfer div,
+.faq-grid details,
+.bottleneck-form,
+.business-card {
+  box-shadow: 0 8px 30px rgba(16, 21, 28, .035);
+}
+
+.proof-panel-visual {
+  background: #ffffff;
+}
+
+.check-card > span,
+.tool-checks label,
+.brief-field textarea {
+  background: #ffffff;
+}
+
+.quick-check-section {
+  background: #ffffff;
+}
+
+/* Make the solution block immediately after the intake read as the answer to the diagnosis. */
+.quick-check-section + .content-section {
+  position: relative;
+  padding-top: 92px;
+}
+
+.quick-check-section + .content-section::before {
+  content: "HOW WE ATTACK THE BOTTLENECK";
+  display: inline-block;
+  margin-bottom: 14px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.quick-check-section + .content-section .service-list-grid article {
+  border-top: 3px solid #dcebe7;
+}
+
+.quick-check-section + .content-section .service-list-grid article:nth-child(1),
+.quick-check-section + .content-section .service-list-grid article:nth-child(3),
+.quick-check-section + .content-section .service-list-grid article:nth-child(4) {
+  border-top-color: var(--accent);
+}
+
+.contact-band {
+  background: #ffffff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 36px rgba(16, 21, 28, .045);
+}
+
+.contact-band .company-eyebrow,
+.energy-contact .company-eyebrow {
+  color: var(--accent);
+}
+
+.contact-band p {
+  color: var(--muted);
+}
+
 @media (max-width: 900px) {
   .check-grid {
     grid-template-columns: repeat(2, 1fr);
