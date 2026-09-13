@@ -13,15 +13,17 @@ from pydantic import ValidationError
 from .engine import calculate, demo_building
 from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
+from .software_resources import router as software_resources_router
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 app = FastAPI(
     title="LaCurent",
-    version="2.1.0",
+    version="2.2.0",
     description="LaCurent engineering, software testing and energy services.",
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.include_router(software_resources_router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -272,6 +274,11 @@ async def location_data_api() -> JSONResponse:
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico")
+async def favicon() -> RedirectResponse:
+    return RedirectResponse("/static/favicon.svg", status_code=307)
 
 
 @app.get("/", response_class=HTMLResponse)

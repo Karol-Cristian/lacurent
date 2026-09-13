@@ -3,65 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Reduce embedded qualification effort, shorten regression cycles, improve HIL utilization and catch costly integration defects earlier with CANoe/CAPL, UDS, HIL and ASPICE-aligned verification support.">
-  <title>Embedded Verification &amp; Test Automation | LaCurent</title>
-  <link rel="stylesheet" href="/static/company.css?v=3">
+  <meta name="description" content="Embedded verification and test automation for automotive and safety-critical teams: CANoe/CAPL, UDS, HIL/SIL/PIL, ASPICE-aligned qualification and fault/recovery validation.">
+  <title>Embedded Verification & Test Automation | LaCurent</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/company.css?v=4">
 </head>
 <body>
   <main class="company-shell service-shell">
-    <header class="company-header">
+    <header class="company-header resource-header">
       <a class="company-brand" href="/">
         <span class="company-mark">LC</span>
-        <span><strong>LaCurent</strong><small>Embedded Verification &amp; Test Automation</small></span>
+        <span><strong>LaCurent</strong><small>Embedded Verification & Test Automation</small></span>
       </a>
-      <a class="header-link" href="#quick-check">30-second bottleneck check</a>
+      <nav class="header-nav" aria-label="Software testing navigation">
+        <a href="#services">Services</a>
+        <a href="/software-testing/resources">Resources</a>
+        <a class="header-cta" href="#quick-check">30-second check</a>
+      </nav>
     </header>
 
-    <section class="service-hero enriched-hero">
-      <div>
-        <p class="company-eyebrow">Automotive &amp; safety-critical embedded verification</p>
+    <section class="service-hero redesigned-hero">
+      <div class="hero-copy">
+        <p class="company-eyebrow">Automotive & safety-critical embedded verification</p>
         <h1>Reduce qualification effort. Catch expensive defects earlier.</h1>
-        <p class="lead">LaCurent helps embedded teams shorten regression cycles, reduce manual verification work and expose integration, diagnostic and fault-handling problems before they become release problems.</p>
+        <p class="lead">LaCurent takes ownership of concrete embedded verification bottlenecks: regression that takes too long, diagnostics that remain manual, HIL capacity that is wasted, fault paths that are hard to reproduce, or evidence that becomes a project of its own.</p>
         <div class="hero-cta-row">
-          <a class="primary-cta" href="#quick-check">See if this sounds familiar</a>
-          <a class="text-cta" href="#industry-patterns">See the industry patterns</a>
+          <a class="primary-cta" href="#quick-check">Find the bottleneck</a>
+          <a class="text-cta" href="/software-testing/resources">Read field notes</a>
         </div>
         <div class="credibility-strip" aria-label="Technical focus areas">
           <span>CANoe / CAPL</span><span>UDS</span><span>CAN / LIN / DoIP</span><span>HIL / SIL / PIL</span><span>ASPICE</span><span>ASIL-oriented validation</span>
         </div>
       </div>
-      <aside class="proof-panel proof-panel-visual">
-        <p>Where cost accumulates</p>
-        <div class="verification-flow" aria-label="How embedded test effort grows">
-          <div><strong>Software grows</strong><span>More features, variants and fault paths</span></div>
-          <b>↓</b>
-          <div><strong>Regression grows</strong><span>More execution, diagnostics and evidence</span></div>
-          <b>↓</b>
-          <div><strong>Bench and people become bottlenecks</strong><span>Manual setup, analysis and scarce HIL time constrain throughput</span></div>
-          <b>↓</b>
-          <div><strong>Late defects block delivery</strong><span>Integration, vehicle, customer and release phases carry the risk</span></div>
-        </div>
+      <aside class="outcome-panel">
+        <p class="panel-label">What an engagement should leave behind</p>
+        <div class="outcome-item"><span>01</span><div><strong>A measured bottleneck</strong><small>Where time, bench capacity or evidence effort is actually being lost.</small></div></div>
+        <div class="outcome-item"><span>02</span><div><strong>Working automation</strong><small>Implemented flows, not a recommendation deck.</small></div></div>
+        <div class="outcome-item"><span>03</span><div><strong>Repeatable regression</strong><small>Explicit setup, timing, expected values, recovery and verdicts.</small></div></div>
+        <div class="outcome-item"><span>04</span><div><strong>Usable qualification evidence</strong><small>Results that can support review, release and ASPICE-oriented delivery.</small></div></div>
       </aside>
+    </section>
+
+    <section class="signal-band" aria-label="Engagement model">
+      <div><small>Best fit</small><strong>ECU · BMS · power electronics · embedded control · diagnostics</strong></div>
+      <div><small>Typical trigger</small><strong>Release pressure · unstable regression · HIL bottleneck · qualification backlog</strong></div>
+      <div><small>Delivery model</small><strong>Focused work package · remote collaboration · implementation ownership</strong></div>
+    </section>
+
+    <section class="content-section" id="services">
+      <div class="section-heading-row">
+        <div>
+          <p class="company-eyebrow">Concrete problems we solve</p>
+          <h2>Start from the failure mode, not from a generic service catalogue.</h2>
+        </div>
+        <p>Most teams do not need “more testing.” They need one expensive part of the verification flow to become faster, more deterministic or easier to maintain.</p>
+      </div>
+      <div class="problem-grid">
+        <article><span>Regression</span><h3>Runs take too long or need morning-after repair</h3><p>Stabilize setup, timing, reusable helpers, verdict logic and machine-readable reporting so regression stops depending on tribal knowledge.</p></article>
+        <article><span>Diagnostics</span><h3>UDS / DTC / OBD checks are still manual</h3><p>Automate sessions, NRC handling, security flows, diagnostic parameters, DTC/OBD checks, wake-up, recovery and reset behaviour.</p></article>
+        <article><span>Fault handling</span><h3>Negative paths are difficult to reproduce</h3><p>Build deterministic fault injection around sensors, communication, supply boundaries and recovery criteria with explicit expected-versus-actual checks.</p></article>
+        <article><span>HIL throughput</span><h3>The bench is scarce and too much work waits for it</h3><p>Separate what truly needs HIL from what can move to SIL/PIL, then preserve reusable test intent across environments.</p></article>
+        <article><span>Variants</span><h3>Every product version grows another test copy</h3><p>Refactor test architecture toward parameterized variants, reusable domain helpers and environment-specific setup layers.</p></article>
+        <article><span>Qualification</span><h3>Evidence is rebuilt after testing is finished</h3><p>Make requirement IDs, parameters, monitored values, expected results, actual results and verdicts part of the execution flow.</p></article>
+      </div>
+    </section>
+
+    <section class="content-section field-note-preview">
+      <div class="section-heading-row">
+        <div>
+          <p class="company-eyebrow">From real engineering work</p>
+          <h2>The useful proof is how problems were attacked.</h2>
+        </div>
+        <p>These are anonymized lessons from hands-on embedded work. No previous employer or customer code, requirements, identifiers or proprietary test assets are reused.</p>
+      </div>
+      <div class="story-grid">
+        <a href="/software-testing/resources/timing-is-a-requirement" class="story-card">
+          <span>Timing & HIL</span><h3>A debounce bug that looked like a test problem</h3><p>Why increasing a wait can hide the real issue, and how to structure deterministic detection and recovery timing.</p><small>Read field note →</small>
+        </a>
+        <a href="/software-testing/resources/uds-fault-injection-regression" class="story-card">
+          <span>UDS automation</span><h3>From one-off fault injection to repeatable regression</h3><p>Turning repeated sensor-fault scripts into data-driven diagnostic flows with consistent recovery and reporting.</p><small>Read field note →</small>
+        </a>
+        <a href="/software-testing/resources/measurement-changes-system" class="story-card">
+          <span>HW/SW debugging</span><h3>When measuring the system changes the system</h3><p>A reminder that instrumentation can create the symptom — and why verification engineers need to debug across hardware and software boundaries.</p><small>Read field note →</small>
+        </a>
+      </div>
+      <div class="section-action"><a class="text-cta" href="/software-testing/resources">Browse all resources and research →</a></div>
     </section>
 
     <section class="content-section" id="industry-patterns">
       <div class="section-copy">
         <p class="company-eyebrow">What the industry is reporting</p>
         <h2>The bottleneck is not “testing” in the abstract. It is throughput, timing and evidence.</h2>
-        <p>A 2026 survey of more than 450 automotive development professionals reported verification and validation as the most time-consuming development activity for 44% of respondents. The same report says teams still struggle because testing is not exhaustive and there is not enough time to test more; inefficient testing remains the leading testing concern, while late bug discovery is also rising.</p>
-        <p><small>Source: <a href="https://www.perforce.com/resources/sca/2026-state-automotive-software-development-report/leading-concerns" target="_blank" rel="noopener">Perforce 2026 State of Automotive Software Development</a>, produced with Automotive IQ and the Eclipse Foundation.</small></p>
+        <p>A 2026 survey of more than 450 automotive development professionals reported verification and validation as the most time-consuming development activity for <strong>44%</strong> of respondents. The same report highlights insufficient time for exhaustive testing, inefficient testing and growing concern around late bug discovery.</p>
       </div>
-      <div class="feature-grid three">
-        <article class="feature-card"><span>01</span><h3>Not enough time to test everything</h3><p>Coverage grows faster than the available release window. Teams need to choose between test depth, turnaround time and engineering effort.</p></article>
-        <article class="feature-card"><span>02</span><h3>HIL throughput becomes a constraint</h3><p>Physical benches are expensive, scarce and difficult to parallelize. Failed overnight runs, setup work and rig downtime waste valuable capacity.</p></article>
-        <article class="feature-card"><span>03</span><h3>Integration defects arrive late</h3><p>Interface mismatches, diagnostics and communication problems can remain hidden until hardware or system integration, where rework is slower and more expensive.</p></article>
-        <article class="feature-card"><span>04</span><h3>SIL and HIL work gets duplicated</h3><p>Fragmented toolchains create redundant test artifacts, duplicated logic and manual transitions between virtual and physical environments.</p></article>
-        <article class="feature-card"><span>05</span><h3>Variants multiply the test matrix</h3><p>Product variants, parameters and configurations make copy-paste test suites difficult to maintain and expensive to rerun.</p></article>
-        <article class="feature-card"><span>06</span><h3>Evidence becomes its own workload</h3><p>Requirements traceability, expected-versus-actual results, coverage and audit-ready reports must stay aligned as requirements and software change.</p></article>
+      <div class="feature-grid three evidence-grid">
+        <article class="feature-card"><span>01</span><h3>Not enough time to test everything</h3><p>Coverage grows faster than the useful release window. The decision becomes what to automate, what to move earlier and what must stay on physical hardware.</p></article>
+        <article class="feature-card"><span>02</span><h3>HIL throughput becomes a constraint</h3><p>Bench availability, setup work, failed overnight runs and analysis loops consume capacity that cannot scale one-for-one with software scope.</p></article>
+        <article class="feature-card"><span>03</span><h3>SIL and HIL work gets duplicated</h3><p>When test intent is tied to one environment, teams rebuild logic instead of reusing it and moving verification to the cheapest useful level.</p></article>
       </div>
-      <div class="section-copy" style="margin-top: 28px; margin-bottom: 0;">
-        <p>These are also the themes emphasized by current Vector and dSPACE tooling: reusable test logic across environments, variant handling, traceability, headless CI/CT execution, earlier validation, better HIL utilization and less duplicated work across SIL and HIL.</p>
-        <p><small>References: <a href="https://www.vector.com/en/product/vteststudio/" target="_blank" rel="noopener">Vector vTESTstudio</a> · <a href="https://www.vector.com/en/business-unit/testing-validation-diagnostics/" target="_blank" rel="noopener">Vector Testing, Validation &amp; Diagnostics</a> · <a href="https://www.dspace.com/en/pub/home/applicationfields/ind-appl/automotive-industry/software-defined-vehicle/solutions-for-sdv-development.cfm" target="_blank" rel="noopener">dSPACE Continuous Testing</a> · <a href="https://www.dspace.com/en/pub/home/products/systems/sil_testing/viva_usecases/viva_usecase_preparationhil.cfm" target="_blank" rel="noopener">dSPACE HIL utilization</a>.</small></p>
+      <div class="research-source-line">
+        <span>Research references</span>
+        <a href="https://www.perforce.com/resources/sca/2026-state-automotive-software-development-report/leading-concerns" target="_blank" rel="noopener">Perforce 2026 report ↗</a>
+        <a href="https://www.vector.com/en/product/vteststudio/" target="_blank" rel="noopener">Vector vTESTstudio ↗</a>
+        <a href="https://www.dspace.com/en/pub/home/applicationfields/ind-appl/automotive-industry/software-defined-vehicle/solutions-for-sdv-development.cfm" target="_blank" rel="noopener">dSPACE continuous testing ↗</a>
       </div>
     </section>
 
@@ -69,7 +113,7 @@
       <div class="section-copy">
         <p class="company-eyebrow">30-second bottleneck check</p>
         <h2>Which of these already looks like your team?</h2>
-        <p>Do not write a specification from scratch. Select the patterns you recognize, select what they are costing you, and we will prepare a concise email you can review before sending.</p>
+        <p>Select the patterns you recognize. The form prepares a concise technical brief in your email app; nothing is submitted automatically.</p>
       </div>
 
       <form class="bottleneck-form" id="bottleneck-form" onsubmit="return false;">
@@ -135,68 +179,37 @@
       </form>
     </section>
 
-    <section class="content-section">
-      <div class="section-copy">
-        <p class="company-eyebrow">What we change</p>
-        <h2>Remove the highest-cost manual constraint first.</h2>
-        <p>The answer is not always “write more tests.” Depending on the bottleneck, the highest leverage may be stabilizing the existing suite, making tests reusable across variants, bringing diagnostics into automation, improving HIL utilization, moving suitable work to SIL, connecting validation to CI/CT, or automating evidence and failure triage.</p>
+    <section class="content-section engagement-section">
+      <div class="section-heading-row">
+        <div><p class="company-eyebrow">How work starts</p><h2>One bounded problem. Working result. Then scale.</h2></div>
+        <p>No arbitrary fixed package. Scope starts where the current process is measurably losing time, capacity or confidence.</p>
       </div>
-      <div class="service-list-grid">
-        <article><strong>Regression automation</strong><p>Turn repetitive execution and checking into stable CANoe/CAPL or code-driven flows that run consistently across releases.</p></article>
-        <article><strong>Test architecture &amp; reuse</strong><p>Separate environment-specific setup from reusable test logic, reduce duplicated helpers and make variants parameter-driven where practical.</p></article>
-        <article><strong>UDS &amp; diagnostics</strong><p>Automate sessions, NRC handling, security flows, DTC/OBD checks, fault injection, recovery and wake-up behaviour.</p></article>
-        <article><strong>HIL / SIL / PIL strategy</strong><p>Put each verification activity at the cheapest useful test level and preserve reusable artifacts across virtual and physical environments.</p></article>
-        <article><strong>CI / continuous testing</strong><p>Move repeatable test execution toward headless, reproducible pipelines with clear setup, verdicts and machine-readable results.</p></article>
-        <article><strong>Traceability &amp; evidence</strong><p>Design expected-versus-actual checks, requirement links and reporting into the flow so qualification evidence is not rebuilt manually.</p></article>
-      </div>
-    </section>
-
-    <section class="content-section">
-      <div class="section-copy"><p class="company-eyebrow">From engineering change to business effect</p><h2>Automation matters when it changes the economics of delivery.</h2></div>
-      <div class="domain-transfer" aria-label="From current testing pain to delivery impact">
-        <div><small>Current state</small><strong>Coverage pressure · scarce benches · duplicated tests · manual triage · late debugging</strong></div><span>→</span>
-        <div><small>Engineering change</small><strong>Reusable automation · CI/CT · fault injection · traceability · SIL/HIL continuity</strong></div><span>→</span>
-        <div><small>Business effect</small><strong>More test throughput · less repeated effort · earlier defects · better bench utilization · clearer release evidence</strong></div>
-      </div>
+      <ol class="engagement-steps">
+        <li><span>01</span><div><strong>Baseline</strong><p>Reproduce the current flow and quantify the constraint: execution time, manual steps, bench wait, triage effort or evidence overhead.</p></div></li>
+        <li><span>02</span><div><strong>Implement</strong><p>Automate, refactor or reposition the representative verification flow at the appropriate level.</p></div></li>
+        <li><span>03</span><div><strong>Prove</strong><p>Compare reliability, execution, analysis and evidence against the original baseline.</p></div></li>
+        <li><span>04</span><div><strong>Scale selectively</strong><p>Expand only where the next bottleneck has enough engineering or business value to justify it.</p></div></li>
+      </ol>
     </section>
 
     <section class="content-section" id="experience">
-      <div class="section-copy">
-        <p class="company-eyebrow">Relevant experience</p>
-        <h2>Embedded engineering depth behind the service.</h2>
-        <p>Work directly with Karol. The experience below is professional background presented at capability level only; it is not a claim of prior LaCurent customer engagements. Employer or customer code, project identifiers, requirements and proprietary test assets are never reused.</p>
+      <div class="section-heading-row">
+        <div><p class="company-eyebrow">Engineering background</p><h2>Embedded depth behind the service.</h2></div>
+        <p>Work directly with Karol. Experience is shown at capability level only; it is not presented as prior LaCurent customer work.</p>
       </div>
-      <div class="experience-grid">
-        <article class="experience-card"><span>Qualification &amp; integration</span><h3>Automotive embedded verification</h3><p>Automotive software qualification and system integration experience since 2022, including requirements-based testing, ECU timing, fault reactions, regression automation and power-electronics / battery-related embedded systems.</p><ul><li>ASPICE SWE.6 / SYS.4</li><li>Requirements-to-test traceability</li><li>Regression and qualification evidence</li></ul></article>
-        <article class="experience-card"><span>Diagnostics &amp; automation</span><h3>CANoe, CAPL and UDS</h3><p>Automation of diagnostic services, sensor fault injection, recovery behaviour, OBD/DTC checks and deterministic reporting in CANoe-based qualification environments.</p><ul><li>UDS positive / negative response handling</li><li>CAN / LIN / DoIP-related workflows</li><li>Fault injection and recovery automation</li></ul></article>
-        <article class="experience-card"><span>Embedded development</span><h3>Software and integration depth</h3><p>Experience beyond black-box testing, including embedded C work, diagnostic-stack extensions, bootloader/version integration, multiple build configurations and target-level debugging.</p><ul><li>Embedded C</li><li>TI C2000 / target debugging</li><li>HW-SW integration</li></ul></article>
-        <article class="experience-card"><span>Coordination &amp; assessments</span><h3>ASPICE and safety-oriented delivery</h3><p>Technical coordination across SWE.4, SWE.5, SWE.6 and SYS.4, including ASPICE Level 2 assessment preparation and process representation. Validation-strategy work includes ASIL B-oriented automotive functions.</p><ul><li>SWE.4 / SWE.5 / SWE.6</li><li>SYS.4 / STA.4 coordination</li><li>ASIL B-oriented validation strategy</li></ul></article>
-      </div>
-    </section>
-
-    <section class="content-section">
-      <div class="section-copy">
-        <p class="company-eyebrow">Automotive foundation, transferable discipline</p>
-        <h2>Safety-critical verification problems repeat across industries.</h2>
-        <p>Current project experience is primarily automotive. We do not present it as aerospace project history. What transfers to aerospace-oriented and other safety-critical embedded work is the discipline around requirements-based testing, bidirectional traceability, deterministic execution, structural and functional evidence, real-time behaviour, HW/SW integration and fault handling.</p>
-        <p>Vector's current aerospace portfolio highlights the same classes of work: DO-178C/DO-330-oriented automation, SIL/HIL system testing, traceability, continuous integration, ARINC 429, AFDX, CAN and automated test sequences.</p>
+      <div class="experience-grid compact-experience">
+        <article class="experience-card"><span>Qualification & integration</span><h3>Automotive embedded verification</h3><p>Requirements-based ECU qualification and system integration since 2022, including timing, fault reactions, regression automation, power electronics and battery-related embedded systems.</p><ul><li>ASPICE SWE.6 / SYS.4</li><li>Requirements-to-test traceability</li><li>Regression and qualification evidence</li></ul></article>
+        <article class="experience-card"><span>Diagnostics & automation</span><h3>CANoe, CAPL and UDS</h3><p>Diagnostic automation, sensor fault injection, recovery behaviour, OBD/DTC checks, network verification and deterministic expected-versus-actual reporting.</p><ul><li>Positive / negative UDS responses</li><li>CAN / LIN / DoIP workflows</li><li>Fault injection and recovery</li></ul></article>
+        <article class="experience-card"><span>Development & debugging</span><h3>Software and target-level depth</h3><p>Embedded C, diagnostic-stack extensions, bootloader/version integration, build configurations and target-level HW/SW debugging.</p><ul><li>Embedded C</li><li>TI C2000 / target debugging</li><li>HW/SW integration</li></ul></article>
+        <article class="experience-card"><span>Coordination & process</span><h3>ASPICE and safety-oriented delivery</h3><p>Technical coordination across SWE.4, SWE.5, SWE.6 and SYS.4, ASPICE Level 2 assessment preparation and ASIL B-oriented validation strategy.</p><ul><li>SWE.4 / SWE.5 / SWE.6</li><li>SYS.4 / STA.4 coordination</li><li>Assessment-oriented evidence</li></ul></article>
       </div>
     </section>
 
-    <section class="sprint-section" id="start-small">
-      <div>
-        <p class="company-eyebrow">How an engagement can start</p>
-        <h2>Prove the leverage on one expensive bottleneck.</h2>
-        <p>We do not force a fixed package before understanding the environment. Start with one workflow where time, bench capacity, manual effort or late defects are already measurable.</p>
-        <a class="primary-cta" href="#quick-check">Describe it in 30 seconds</a>
-      </div>
-      <div>
-        <ol class="sprint-steps">
-          <li><strong>Baseline</strong><span>Measure where time or capacity is currently lost and what makes the flow unreliable or expensive.</span></li>
-          <li><strong>Improve</strong><span>Automate, refactor or reposition the representative flow at the appropriate test level.</span></li>
-          <li><strong>Measure</strong><span>Compare execution, triage, bench utilization and evidence effort against the original baseline.</span></li>
-          <li><strong>Scale</strong><span>If the economics make sense, expand only into the next highest-value bottleneck.</span></li>
-        </ol>
+    <section class="content-section transfer-section">
+      <div class="transfer-callout">
+        <p class="company-eyebrow">Automotive foundation · aerospace-oriented discipline</p>
+        <h2>Safety-critical verification patterns transfer. Project history should not be exaggerated.</h2>
+        <p>Current project experience is primarily automotive. LaCurent does not present that as aerospace project history. The transferable capability is requirements-based testing, bidirectional traceability, deterministic execution, real-time behaviour, HW/SW integration, communication protocols and fault handling.</p>
       </div>
     </section>
 
@@ -204,61 +217,48 @@
       <div class="section-copy"><p class="company-eyebrow">FAQ</p><h2>Commercial and technical questions.</h2></div>
       <div class="faq-grid">
         <details><summary>What business problem do you optimize for?</summary><p>Usually test throughput: release time, engineering hours, bench utilization, failure-analysis effort, late defect discovery, traceability or evidence overhead.</p></details>
-        <details><summary>Do you promise a fixed percentage of savings?</summary><p>No. The current workflow is baselined first. Improvement should be demonstrated against the real environment rather than sold as a generic percentage claim.</p></details>
-        <details><summary>Can you work with a mixed toolchain?</summary><p>Yes. The core problem is usually workflow architecture and automation, not loyalty to one vendor. CANoe/CAPL is a strong area, but mixed Vector, dSPACE, ETAS, Python, CI/CD and requirements-management environments are normal.</p></details>
-        <details><summary>Can you work with an existing test environment?</summary><p>Yes. Existing test setups with technical debt, incomplete automation, duplicated test logic or qualification pressure are often the most useful place to start.</p></details>
         <details><summary>Do you only advise, or also implement?</summary><p>Implementation is part of the service. The objective is working automation and measurable improvement, not a slide deck of recommendations.</p></details>
-        <details><summary>How do you handle confidential material?</summary><p>Only professional capabilities are described publicly. Employer or previous customer code, requirements and test assets are never reused. Project work uses only the customer's authorized inputs and agreed access arrangements.</p></details>
+        <details><summary>Can you work with an existing test environment?</summary><p>Yes. Existing setups with technical debt, incomplete automation, duplicated logic or qualification pressure are often the highest-leverage place to start.</p></details>
+        <details><summary>Can you work with a mixed toolchain?</summary><p>Yes. CANoe/CAPL is a strong area, but mixed Vector, dSPACE, ETAS, Python, CI/CD and requirements-management environments are normal.</p></details>
+        <details><summary>How do you handle confidential material?</summary><p>Employer or previous customer code, requirements, project identifiers and test assets are never reused. Public field notes are deliberately anonymized.</p></details>
         <details><summary>Do you claim aerospace project experience?</summary><p>No. Current project experience is primarily automotive embedded systems. Aerospace-oriented support is positioned through transferable safety-critical verification and real-time embedded engineering practices without misrepresenting project history.</p></details>
-        <details><summary>Can you work remotely with international teams?</summary><p>Yes. The service is designed for remote technical collaboration with engineering teams, suppliers and test organizations.</p></details>
       </div>
     </section>
 
     <section class="contact-band">
       <div>
-        <p class="company-eyebrow">Do any of those bottlenecks look familiar?</p>
-        <h2>Do not start from a blank email.</h2>
-        <p>Use the 30-second check above. Your selections become a concise technical brief that you review before sending.</p>
+        <p class="company-eyebrow">Have a verification bottleneck?</p>
+        <h2>Send the failure pattern, not a procurement specification.</h2>
+        <p>The short check turns what you already know into a technical brief. From there, we can identify whether automation, test architecture or test-level changes would create useful leverage.</p>
       </div>
       <a class="primary-cta light" href="#quick-check">Build the brief</a>
     </section>
 
-    <footer class="company-footer"><a href="/">← LaCurent</a><span>Embedded verification · Test automation · ASPICE-aligned delivery</span></footer>
+    <footer class="company-footer"><a href="/">← LaCurent</a><span><a href="/software-testing/resources">Resources</a> · <a href="mailto:karol@lacurent.com">karol@lacurent.com</a></span></footer>
   </main>
 
   <script>
     (() => {
       const button = document.getElementById('prepare-email');
       if (!button) return;
-
       button.addEventListener('click', () => {
         const problems = [...document.querySelectorAll('input[name="problem"]:checked')].map((el) => el.value);
         const impacts = [...document.querySelectorAll('input[name="impact"]:checked')].map((el) => el.value);
         const tools = [...document.querySelectorAll('input[name="tool"]:checked')].map((el) => el.value);
         const note = document.getElementById('bottleneck-note').value.trim();
-
         const lines = [
-          'Hi Karol,',
-          '',
-          'I would like to discuss an embedded verification bottleneck.',
-          '',
+          'Hi Karol,', '',
+          'I would like to discuss an embedded verification bottleneck.', '',
           'What is happening:',
-          ...(problems.length ? problems.map((item) => `- ${item}`) : ['- I am not sure yet — I would like help identifying the highest-cost bottleneck.']),
-          '',
+          ...(problems.length ? problems.map((item) => `- ${item}`) : ['- I am not sure yet — I would like help identifying the highest-cost bottleneck.']), '',
           'What it is costing us:',
-          ...(impacts.length ? impacts.map((item) => `- ${item}`) : ['- Not quantified yet']),
-          '',
+          ...(impacts.length ? impacts.map((item) => `- ${item}`) : ['- Not quantified yet']), '',
           'Current environment:',
-          ...(tools.length ? tools.map((item) => `- ${item}`) : ['- Not specified yet']),
-          '',
-          'Additional context:',
-          note || 'Not specified yet.',
-          '',
-          'Could we have a short discussion about where automation or test-architecture changes would create the most leverage?',
-          '',
+          ...(tools.length ? tools.map((item) => `- ${item}`) : ['- Not specified yet']), '',
+          'Additional context:', note || 'Not specified yet.', '',
+          'Could we have a short discussion about where automation or test-architecture changes would create the most leverage?', '',
           'Best regards,'
         ];
-
         const subject = encodeURIComponent('Embedded verification bottleneck — quick brief');
         const body = encodeURIComponent(lines.join('\n'));
         window.location.href = `mailto:karol@lacurent.com?subject=${subject}&body=${body}`;
