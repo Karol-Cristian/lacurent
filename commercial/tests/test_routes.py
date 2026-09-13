@@ -50,28 +50,26 @@ def demo_form_data() -> dict[str, str]:
 
 def test_company_home_routes_to_two_businesses() -> None:
     response = client.get("/")
-
     assert response.status_code == 200
     assert "Software Testing" in response.text
     assert "Instalații & Energie" in response.text
     assert "/software-testing" in response.text
     assert "/instalatii" in response.text
+    assert "/static/favicon.svg" in response.text
 
 
 def test_software_testing_landing_page_is_sales_ready() -> None:
     response = client.get("/software-testing")
-
     assert response.status_code == 200
-    assert "Reduce qualification effort" in response.text
-    assert "44%" in response.text
-    assert "Not enough time to test everything" in response.text
-    assert "HIL throughput becomes a constraint" in response.text
-    assert "SIL and HIL work gets duplicated" in response.text
+    assert "Get regression, diagnostics and qualification under control." in response.text
+    assert "Three concrete work areas." in response.text
+    assert "Regression & qualification automation" in response.text
+    assert "UDS, diagnostics & fault handling" in response.text
+    assert "HIL / SIL / PIL throughput" in response.text
     assert "30-second bottleneck check" in response.text
     assert "We cannot test enough" in response.text
     assert "HIL is the bottleneck" in response.text
     assert "CI stops before the bench" in response.text
-    assert "What does that cause?" in response.text
     assert "Prepare the email" in response.text
     assert "What it is costing us:" in response.text
     assert "Embedded verification bottleneck — quick brief" in response.text
@@ -82,10 +80,10 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "ASPICE SWE.6 / SYS.4" in response.text
     assert "ASIL B-oriented validation strategy" in response.text
     assert "aerospace-oriented" in response.text
-    assert "Do you claim aerospace project experience?" in response.text
     assert "/software-testing/resources" in response.text
     assert "A debounce bug that looked like a test problem" in response.text
     assert "karol@lacurent.com" in response.text
+    assert "/static/favicon.svg" in response.text
     assert "€1,000" not in response.text
     assert "10 business days" not in response.text
     assert "Test Automation Rescue Sprint" not in response.text
@@ -93,7 +91,6 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
 
 def test_software_resources_are_public_and_anonymized() -> None:
     response = client.get("/software-testing/resources")
-
     assert response.status_code == 200
     assert "Useful verification knowledge" in response.text
     assert "From one-off fault injection to repeatable UDS regression" in response.text
@@ -107,34 +104,37 @@ def test_software_resources_are_public_and_anonymized() -> None:
     assert "employer/customer identities" in article.text
 
 
-def test_favicon_route_is_available() -> None:
+def test_favicon_route_and_asset_are_available() -> None:
     response = client.get("/favicon.ico", follow_redirects=False)
-
     assert response.status_code == 307
     assert response.headers["location"] == "/static/favicon.svg"
+
+    asset = client.get("/static/favicon.svg")
+    assert asset.status_code == 200
+    assert "<svg" in asset.text
+    assert "LaCurent" in asset.text
 
 
 def test_installations_landing_page_links_energy_calculator() -> None:
     response = client.get("/instalatii")
-
     assert response.status_code == 200
     assert "Fotovoltaice" in response.text
     assert "Eficiență energetică" in response.text
     assert "/instalatii/calculator" in response.text
+    assert "/static/favicon.svg" in response.text
 
 
 def test_energy_calculator_renders_complete_form() -> None:
     response = client.get("/instalatii/calculator")
-
     assert response.status_code == 200
     assert "Calculate performance" in response.text
     assert "Building envelope" in response.text
     assert "Systems" in response.text
+    assert "/static/favicon.svg" in response.text
 
 
 def test_health_endpoint_is_lightweight() -> None:
     response = client.get("/health")
-
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
@@ -145,14 +145,12 @@ def test_www_host_redirects_to_canonical_apex() -> None:
         headers={"host": "www.lacurent.com"},
         follow_redirects=False,
     )
-
     assert response.status_code == 308
     assert response.headers["location"] == "https://lacurent.com/software-testing?source=www"
 
 
 def test_form_calculation_renders_commercial_results() -> None:
     response = client.post("/calculate", data=demo_form_data())
-
     assert response.status_code == 200
     assert "Calculation result" in response.text
     assert "Commercial test house" in response.text
@@ -164,7 +162,6 @@ def test_form_calculation_renders_commercial_results() -> None:
 def test_certificate_renders_printable_report() -> None:
     payload = demo_building().model_dump_json()
     response = client.post("/certificate", data={"payload": payload})
-
     assert response.status_code == 200
     assert "Energy Performance Report" in response.text
     assert "Print / save PDF" in response.text
