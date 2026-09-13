@@ -62,7 +62,11 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     response = client.get("/software-testing")
 
     assert response.status_code == 200
-    assert "Test Automation Rescue Sprint" in response.text
+    assert "Reduce qualification effort" in response.text
+    assert "More software should not automatically mean more manual testing" in response.text
+    assert "Late defect risk" in response.text
+    assert "Engineering capacity" in response.text
+    assert "Regression automation" in response.text
     assert "CANoe" in response.text
     assert "CAPL" in response.text
     assert "ASPICE SWE.6 / SYS.4" in response.text
@@ -70,6 +74,9 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "aerospace-oriented" in response.text
     assert "Do you claim aerospace project experience?" in response.text
     assert "karol@lacurent.com" in response.text
+    assert "€1,000" not in response.text
+    assert "10 business days" not in response.text
+    assert "Test Automation Rescue Sprint" not in response.text
 
 
 def test_installations_landing_page_links_energy_calculator() -> None:
