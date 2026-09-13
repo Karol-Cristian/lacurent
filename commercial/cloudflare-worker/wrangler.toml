@@ -14,5 +14,5 @@ zone_name = "lacurent.com"
 
 [[rules]]
 type = "Text"
-globs = ["**/*.html", "**/*.css", "**/*.js", "**/*.json", "**/*.geojson"]
+globs = ["**/*.html", "**/*.css", "**/*.js", "**/*.json", "**/*.geojson", "**/*.svg"]
 fallthrough = true

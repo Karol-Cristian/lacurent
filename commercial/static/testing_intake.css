@@ -1,4 +1,4 @@
-@import url("/static/software_testing_v2.css?v=1");
+@import url("/static/software_testing_v2.css?v=3");
 
 .quick-check-section {
   scroll-margin-top: 24px;
@@ -10,7 +10,7 @@
   padding: 30px;
   border: 1px solid var(--line);
   border-radius: 24px;
-  background: var(--white);
+  background: #fff;
 }
 
 .bottleneck-form fieldset {
@@ -52,7 +52,7 @@
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: var(--paper);
+  background: #fff;
   transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
@@ -96,7 +96,7 @@
   padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--paper);
+  background: #fff;
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -133,7 +133,7 @@
   padding: 14px 15px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--paper);
+  background: #fff;
   color: var(--ink);
   font: inherit;
   line-height: 1.5;
@@ -164,20 +164,15 @@
   line-height: 1.5;
 }
 
-/* White-first commercial theme. The marketing pages should feel like an engineering consultancy,
-   not a dark SaaS landing page. Keep green only as a restrained accent. */
-body {
-  background: #ffffff;
-}
-
+body,
 .company-shell,
 .home-shell,
 .service-shell {
-  background: #ffffff;
+  background: #fff;
 }
 
 .company-mark {
-  background: #ffffff;
+  background: #fff;
   color: var(--ink);
   border: 1px solid #cfd6dd;
   box-shadow: 0 1px 2px rgba(16, 21, 28, .04);
@@ -185,7 +180,7 @@ body {
 
 .primary-cta,
 .primary-cta.light {
-  background: #ffffff;
+  background: #fff;
   color: var(--ink);
   border: 1px solid #aeb7c1;
   box-shadow: 0 1px 2px rgba(16, 21, 28, .04);
@@ -197,98 +192,8 @@ body {
   background: #f8fbfa;
 }
 
-.proof-panel,
-.feature-card,
-.experience-card,
-.service-list-grid article,
-.domain-transfer div,
-.faq-grid details,
-.bottleneck-form,
-.business-card {
-  box-shadow: 0 8px 30px rgba(16, 21, 28, .035);
-}
-
-.proof-panel-visual {
-  background: #ffffff;
-}
-
-.check-card > span,
-.tool-checks label,
-.brief-field textarea {
-  background: #ffffff;
-}
-
-.quick-check-section {
-  background: #ffffff;
-}
-
-.software-card,
-.energy-card {
-  background: #ffffff;
-}
-
-/* Make the solution block immediately after the intake read as the answer to the diagnosis. */
-.quick-check-section + .content-section {
-  position: relative;
-  padding-top: 92px;
-}
-
-.quick-check-section + .content-section::before {
-  content: "HOW WE ATTACK THE BOTTLENECK";
-  display: inline-block;
-  margin-bottom: 14px;
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .12em;
-}
-
-.quick-check-section + .content-section .service-list-grid article {
-  position: relative;
-  border-top: 3px solid #dcebe7;
-}
-
-.quick-check-section + .content-section .service-list-grid article:nth-child(1) { order: 1; }
-.quick-check-section + .content-section .service-list-grid article:nth-child(4) { order: 2; }
-.quick-check-section + .content-section .service-list-grid article:nth-child(3) { order: 3; }
-.quick-check-section + .content-section .service-list-grid article:nth-child(2) { order: 4; }
-.quick-check-section + .content-section .service-list-grid article:nth-child(5) { order: 5; }
-.quick-check-section + .content-section .service-list-grid article:nth-child(6) { order: 6; }
-
-.quick-check-section + .content-section .service-list-grid article:nth-child(1),
-.quick-check-section + .content-section .service-list-grid article:nth-child(3),
-.quick-check-section + .content-section .service-list-grid article:nth-child(4) {
-  border-top-color: var(--accent);
-  padding-top: 44px;
-}
-
-.quick-check-section + .content-section .service-list-grid article:nth-child(1)::before,
-.quick-check-section + .content-section .service-list-grid article:nth-child(3)::before,
-.quick-check-section + .content-section .service-list-grid article:nth-child(4)::before {
-  position: absolute;
-  top: 18px;
-  left: 24px;
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-
-.quick-check-section + .content-section .service-list-grid article:nth-child(1)::before {
-  content: "PRIMARY · REGRESSION ACCELERATION";
-}
-
-.quick-check-section + .content-section .service-list-grid article:nth-child(4)::before {
-  content: "PRIMARY · HIL CAPACITY & AUTOMATION";
-}
-
-.quick-check-section + .content-section .service-list-grid article:nth-child(3)::before {
-  content: "PRIMARY · DIAGNOSTICS & FAULT VERIFICATION";
-}
-
 .contact-band {
-  background: #ffffff;
+  background: #fff;
   color: var(--ink);
   border: 1px solid var(--line);
   box-shadow: 0 12px 36px rgba(16, 21, 28, .045);
