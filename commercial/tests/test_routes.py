@@ -79,7 +79,7 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "CAPL" in response.text
     assert "ASPICE SWE.6 / SYS.4" in response.text
     assert "ASIL B-oriented validation strategy" in response.text
-    assert "aerospace-oriented" in response.text
+    assert "Aerospace-oriented" in response.text
     assert "/software-testing/resources" in response.text
     assert "A debounce bug that looked like a test problem" in response.text
     assert "karol@lacurent.com" in response.text
