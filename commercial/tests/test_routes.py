@@ -72,7 +72,7 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "UDS, diagnostics & fault handling" in response.text
     assert "HIL / SIL / PIL throughput" in response.text
     assert "Repeatable execution with expected-versus-actual evidence." in response.text
-    assert "Physical HIL setup has to be adapted again when PCB samples or interfaces change." in response.text
+    assert "A reproduced baseline and documented root-cause findings." in response.text
     assert "Several days → about 2 hours" in response.text
     assert "past engineering result, not a blanket performance guarantee" in response.text
     assert "30-second bottleneck check" in response.text
