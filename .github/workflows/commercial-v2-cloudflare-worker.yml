@@ -358,8 +358,18 @@ jobs:
           else:
               raise AssertionError("Production /health did not become healthy.")
 
+          homepage_marker = "Get regression, diagnostics and qualification under control."
+          for attempt in range(1, 21):
+              status, _, body = open_url(apex + f"/?deploy={attempt}")
+              if status == 200 and homepage_marker in body:
+                  print("/", status)
+                  break
+              print(f"waiting for testing homepage, attempt {attempt}: HTTP {status}")
+              time.sleep(5)
+          else:
+              raise AssertionError(f"/ did not contain {homepage_marker!r}")
+
           checks = {
-              "/": "Get regression, diagnostics and qualification under control.",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
