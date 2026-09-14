@@ -48,13 +48,14 @@ def demo_form_data() -> dict[str, str]:
     }
 
 
-def test_company_home_routes_to_two_businesses() -> None:
+def test_company_home_leads_with_software_testing() -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert "Software Testing" in response.text
-    assert "Instalații & Energie" in response.text
-    assert "/software-testing" in response.text
-    assert "/instalatii" in response.text
+    assert "Get regression, diagnostics and qualification under control." in response.text
+    assert "CANoe" in response.text
+    assert "karol@lacurent.com" in response.text
+    assert "Instalații & Energie" not in response.text
+    assert 'href="/instalatii"' not in response.text
     assert "/static/favicon.svg" in response.text
 
 
