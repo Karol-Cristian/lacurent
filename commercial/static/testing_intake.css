@@ -208,6 +208,46 @@ body,
   color: var(--muted);
 }
 
+/* Keep every marketing section on one centered horizontal rhythm. The doubled
+   class deliberately outranks the older width-only .company-shell rule that
+   appears later in company.css. */
+.company-shell.company-shell {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(24px, 4vw, 56px);
+}
+
+.service-shell,
+.home-shell {
+  overflow-x: clip;
+}
+
+.clean-hero > *,
+.capability-row > *,
+.section-heading-row > *,
+.contact-band > *,
+.company-header > * {
+  min-width: 0;
+}
+
+.clean-section-heading,
+.section-copy,
+.capability-table,
+.bottleneck-form,
+.contact-band,
+.company-footer {
+  max-width: 100%;
+}
+
+.clean-section-heading h2,
+.capability-title h3,
+.capability-output,
+.contact-band h2,
+.company-footer {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .check-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -215,6 +255,11 @@ body,
 }
 
 @media (max-width: 620px) {
+  .company-shell.company-shell {
+    width: 100%;
+    padding-inline: 20px;
+  }
+
   .bottleneck-form {
     padding: 18px;
   }
