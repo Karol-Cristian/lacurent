@@ -85,7 +85,9 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "ETAS / INCA / LABCAR" in response.text
     assert "CANoe" in response.text
     assert "CAPL" in response.text
-    assert "ASPICE" in response.text\n    assert "SWE.6" not in response.text\n    assert "SYS.4" not in response.text
+    assert "ASPICE" in response.text
+    assert "SWE.6" not in response.text
+    assert "SYS.4" not in response.text
     assert "Functional safety · ISO 26262" in response.text
     assert "ASIL B" not in response.text
     assert "Aerospace-oriented" in response.text
