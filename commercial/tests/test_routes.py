@@ -71,7 +71,7 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "Regression & qualification automation" in response.text
     assert "UDS, diagnostics & fault handling" in response.text
     assert "HIL / SIL / PIL throughput" in response.text
-    assert "Qualification and system test are always catching up with fast HW/SW evolution." in response.text
+    assert "Repeatable execution with expected-versus-actual evidence." in response.text
     assert "Physical HIL setup has to be adapted again when PCB samples or interfaces change." in response.text
     assert "Several days → about 2 hours" in response.text
     assert "past engineering result, not a blanket performance guarantee" in response.text
