@@ -86,7 +86,7 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "CANoe" in response.text
     assert "CAPL" in response.text
     assert "ASPICE SWE.6 / SYS.4" in response.text
-    assert "Functional safety · ISO 26262 · ASIL B" in response.text
+    assert "Functional safety · ISO 26262" in response.text\n    assert "ASIL B" not in response.text
     assert "Aerospace-oriented" in response.text
     assert "/software-testing/resources" in response.text
     assert "A debounce bug that looked like a test problem" in response.text
