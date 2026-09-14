@@ -126,7 +126,7 @@ jobs:
                   return text
 
           checks = {
-              "/": "Building energy performance",
+              "/": "Get regression, diagnostics and qualification under control.",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
@@ -359,7 +359,7 @@ jobs:
               raise AssertionError("Production /health did not become healthy.")
 
           checks = {
-              "/": "Building energy performance",
+              "/": "Get regression, diagnostics and qualification under control.",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
