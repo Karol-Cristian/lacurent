@@ -283,7 +283,7 @@ async def favicon() -> RedirectResponse:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "index.html", {"request": request})
+    return templates.TemplateResponse(request, "software_testing.html", {"request": request})
 
 
 @app.get("/software-testing", response_class=HTMLResponse)
