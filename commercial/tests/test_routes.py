@@ -51,7 +51,7 @@ def demo_form_data() -> dict[str, str]:
 def test_company_home_is_a_focused_testing_entry_page() -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert "Make embedded testing predictable." in response.text
+    assert "Bring one problematic test flow. Leave with working automation." in response.text
     assert 'href="/software-testing"' in response.text
     assert "CANoe / CAPL" in response.text
     assert "karol@lacurent.com" in response.text
@@ -64,8 +64,10 @@ def test_company_home_is_a_focused_testing_entry_page() -> None:
 def test_software_testing_landing_page_is_sales_ready() -> None:
     response = client.get("/software-testing")
     assert response.status_code == 200
-    assert "Get regression, diagnostics and qualification under control." in response.text
-    assert "Three concrete work areas." in response.text
+    assert "Bring one problematic test flow. Leave with working automation." in response.text
+    assert "What the intervention delivers" in response.text
+    assert "Modified test scripts and configuration" in response.text
+    assert "One defined bottleneck. A concrete engineering output." in response.text
     assert "Regression & qualification automation" in response.text
     assert "UDS, diagnostics & fault handling" in response.text
     assert "HIL / SIL / PIL throughput" in response.text

@@ -126,7 +126,7 @@ jobs:
                   return text
 
           checks = {
-              "/": "Make embedded testing predictable.",
+              "/": "Bring one problematic test flow. Leave with working automation.",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
@@ -358,7 +358,7 @@ jobs:
           else:
               raise AssertionError("Production /health did not become healthy.")
 
-          homepage_marker = "Make embedded testing predictable."
+          homepage_marker = "Bring one problematic test flow. Leave with working automation."
           for attempt in range(1, 21):
               status, _, body = open_url(apex + f"/?deploy={attempt}")
               if status == 200 and homepage_marker in body:
