@@ -52,6 +52,9 @@ def test_company_home_is_a_focused_testing_entry_page() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "Bring one problematic test flow. Leave with working automation." in response.text
+    assert 'data-page="testing-home"' in response.text
+    assert 'data-page="software-testing"' not in response.text
+    assert 'href="/software-testing#quick-check"' in response.text
     assert 'href="/software-testing"' in response.text
     assert "CANoe / CAPL" in response.text
     assert "karol@lacurent.com" in response.text
@@ -64,7 +67,7 @@ def test_company_home_is_a_focused_testing_entry_page() -> None:
 def test_software_testing_landing_page_is_sales_ready() -> None:
     response = client.get("/software-testing")
     assert response.status_code == 200
-    assert "Bring one problematic test flow. Leave with working automation." in response.text
+    assert "Working test files. Evidence you can reproduce." in response.text
     assert "What the intervention delivers" in response.text
     assert "Modified test scripts and configuration" in response.text
     assert "One defined bottleneck. A concrete engineering output." in response.text
@@ -75,12 +78,16 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "A reproduced baseline and documented root-cause findings." in response.text
     assert "Several days → about 2 hours" in response.text
     assert "past engineering result, not a blanket performance guarantee" in response.text
-    assert "30-second bottleneck check" in response.text
+    assert "Quick bottleneck check" in response.text
     assert "We cannot test enough" in response.text
     assert "HIL is the bottleneck" in response.text
     assert "Qualification is always catching up" in response.text
     assert "CI stops before the bench" in response.text
-    assert "Prepare the email" in response.text
+    assert "Prepare the brief" in response.text
+    assert 'data-page="software-testing"' in response.text
+    assert 'id="brief-preview" hidden' in response.text
+    assert "Copy brief" in response.text
+    assert "Open email app" in response.text
     assert "What it is costing us:" in response.text
     assert "Embedded verification bottleneck — quick brief" in response.text
     assert "dSPACE / AutomationDesk" in response.text

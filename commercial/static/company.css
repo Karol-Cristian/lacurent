@@ -1,4 +1,5 @@
-@import url("/static/testing_intake.css?v=1");
+@import url("/static/software_testing_v2.css?v=4");
+@import url("/static/testing_intake.css?v=2");
 
 :root {
   --ink: #10151c;
@@ -26,15 +27,18 @@ body {
 a { color: inherit; }
 
 .company-shell {
-  width: min(1180px, calc(100% - 40px));
-  margin: 0 auto;
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(24px, 4vw, 56px);
+  background: var(--white);
 }
 
 .home-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 32px 0 24px;
+  padding-block: 16px 24px;
 }
 
 .company-brand {
@@ -205,6 +209,7 @@ a { color: inherit; }
   border-radius: 12px;
   background: var(--ink);
   color: var(--white);
+  border: 1px solid var(--ink);
   text-decoration: none;
   font-size: 14px;
   font-weight: 800;
@@ -213,6 +218,7 @@ a { color: inherit; }
 .primary-cta.light {
   background: var(--white);
   color: var(--ink);
+  border: 1px solid #aeb7c1;
 }
 
 .proof-panel {
@@ -327,17 +333,18 @@ a { color: inherit; }
   margin: 50px 0 30px;
   padding: 42px;
   border-radius: 24px;
-  background: var(--ink);
-  color: var(--white);
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--line);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 40px;
   align-items: end;
 }
 
-.contact-band .company-eyebrow { color: #a6d3c9; }
-.contact-band p { color: #c9d0d8; max-width: 680px; }
-.energy-contact .company-eyebrow { color: #ead39e; }
+.contact-band .company-eyebrow { color: var(--accent); }
+.contact-band p { color: var(--muted); max-width: 680px; }
+.energy-contact .company-eyebrow { color: var(--energy); }
 
 .energy-hero .company-eyebrow,
 .energy-hero .card-kicker { color: var(--energy); }
@@ -520,7 +527,7 @@ a { color: inherit; }
 }
 
 @media (max-width: 620px) {
-  .company-shell { width: min(100% - 24px, 1180px); }
+  .company-shell { padding-inline: 20px; }
   .home-shell { padding-top: 18px; }
   .home-intro { padding: 72px 0 30px; }
   .business-card { min-height: 260px; padding: 22px; }
@@ -545,14 +552,14 @@ a { color: inherit; }
 
 .testing-home-intro {
   max-width: 940px;
-  padding: clamp(72px, 13vh, 140px) 0 84px;
+  padding: clamp(36px, 6vh, 64px) 0 48px;
 }
 
 .testing-home-intro h1 {
   max-width: 880px;
   margin: 0;
-  font-size: clamp(48px, 8vw, 96px);
-  line-height: 0.96;
+  font-size: clamp(38px, 5.2vw, 68px);
+  line-height: 1.04;
   letter-spacing: -0.06em;
 }
 
@@ -582,8 +589,42 @@ a { color: inherit; }
 }
 
 @media (max-width: 620px) {
-  .testing-home-intro { padding: 72px 0 48px; }
-  .testing-home-intro h1 { font-size: clamp(46px, 14vw, 64px); }
+  .testing-home-intro { padding: 30px 0 36px; }
+  .testing-home-intro h1 { font-size: clamp(36px, 9vw, 48px); }
   .testing-home-lead { margin-top: 22px; }
   .home-capabilities { margin-top: 32px; }
 }
+
+/* Shared sizing safeguards: wrap content rather than hiding overflow. */
+.clean-hero > *,
+.capability-row > *,
+.section-heading-row > *,
+.contact-band > *,
+.company-header > * {
+  min-width: 0;
+}
+
+.clean-section-heading,
+.section-copy,
+.capability-table,
+.bottleneck-form,
+.contact-band,
+.company-footer {
+  max-width: 100%;
+}
+
+.clean-section-heading h2,
+.capability-title h3,
+.capability-output,
+.contact-band h2,
+.company-footer {
+  overflow-wrap: anywhere;
+}
+
+
+.testing-home-intro h1, .clean-hero h1 { overflow-wrap: anywhere; }
+.primary-cta { max-width: 100%; text-align: center; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.primary-cta:hover { filter: brightness(1.15); }
+.primary-cta:focus-visible, .intake-details summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
