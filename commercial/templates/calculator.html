@@ -50,7 +50,7 @@
     >
       <div class="location-copy">
         <h3>Building location</h3>
-        <p>Search for a locality or choose a visible point on the Romania map. Climate data is selected automatically.</p>
+        <p>Search for a locality, or click anywhere on the Romania map to choose from nearby localities. Climate data is selected automatically.</p>
       </div>
 
       <div class="location-search">
@@ -79,6 +79,7 @@
           <div id="romaniaLocationMap" class="romania-location-map" role="group" aria-label="Interactive Romania map for locality selection">
             <p>Loading Romania map...</p>
           </div>
+          <div id="mapLocalityResults" class="map-locality-results" hidden></div>
         </div>
         <aside class="selected-location-card" aria-live="polite">
           <span>Selected locality</span>
@@ -354,3 +355,4 @@
   </section>
 </form>
 {% endblock %}
+

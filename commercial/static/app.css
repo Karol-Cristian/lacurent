@@ -416,6 +416,23 @@ select {
   color: var(--muted);
 }
 
+.map-locality-results {
+  margin: 0 14px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.map-locality-results h4 {
+  margin: 12px 0 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.map-locality-results .locality-option {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-bottom: 6px;
+}
+
 .romania-map-svg {
   display: block;
   width: 100%;
@@ -1333,3 +1350,4 @@ td {
     margin: 8mm;
   }
 }
+

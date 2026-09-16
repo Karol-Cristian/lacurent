@@ -153,6 +153,7 @@ function initLocationSelector() {
   const input = document.getElementById("localitySearch");
   const hiddenId = document.getElementById("localityId");
   const results = document.getElementById("localityResults");
+  const mapResults = document.getElementById("mapLocalityResults");
   const map = document.getElementById("romaniaLocationMap");
   const name = document.getElementById("selectedLocationName");
   const zone = document.getElementById("selectedClimateZone");
@@ -169,6 +170,40 @@ function initLocationSelector() {
     activeIndex: -1,
     searchResults: []
   };
+
+  function nearestLocalities(svg, event, limit = 6) {
+    const point = svgPointFromEvent(svg, event);
+    if (!point || !state.projection || !state.data) return [];
+    return state.data.localities
+      .filter((locality) => Number.isFinite(locality.lon) && Number.isFinite(locality.lat))
+      .map((locality) => {
+        const [x, y] = state.projection.project(locality.lon, locality.lat);
+        return { locality, distance: Math.hypot(point.x - x, point.y - y) };
+      })
+      .sort((a, b) => a.distance - b.distance || (b.locality.importance || 0) - (a.locality.importance || 0))
+      .slice(0, limit)
+      .map((item) => item.locality);
+  }
+
+  function renderMapCandidates(localities) {
+    if (!mapResults) return;
+    if (!localities.length) {
+      mapResults.hidden = true;
+      mapResults.innerHTML = "";
+      return;
+    }
+    mapResults.innerHTML = `
+      <h4>Localități apropiate de punctul ales</h4>
+      ${localities.map((locality) => `
+        <button class="locality-option" type="button" data-map-locality-id="${escapeHtml(locality.id)}">
+          <strong>${escapeHtml(locality.name)}</strong>
+          <em>${escapeHtml(locality.countyMnemonic || locality.county)}</em>
+          <span>${escapeHtml(localityTypeLabel(locality.localityType))}${locality.uatName && locality.uatName !== locality.name ? `, ${escapeHtml(locality.uatName)}` : ""} - ${escapeHtml(locality.county)}</span>
+        </button>
+      `).join("")}
+    `;
+    mapResults.hidden = false;
+  }
 
   function setHiddenLocalityId(value) {
     hiddenId.value = value || "";
@@ -287,21 +322,6 @@ function initLocationSelector() {
     hideResults();
   }
 
-  function selectNearestRenderedLocality(svg, event) {
-    const point = svgPointFromEvent(svg, event);
-    if (!point) return;
-    const rect = svg.getBoundingClientRect();
-    const threshold = (svg.viewBox.baseVal.width / rect.width) * 22;
-    let best = null;
-    for (const item of state.renderedLocalities) {
-      const distance = Math.hypot(point.x - item.x, point.y - item.y);
-      if (distance <= threshold && (!best || distance < best.distance)) {
-        best = { item, distance };
-      }
-    }
-    if (best) updateSelected(best.item.locality);
-  }
-
   fetch("/api/location-data")
     .then((response) => {
       if (!response.ok) throw new Error("Location payload unavailable.");
@@ -357,10 +377,21 @@ function initLocationSelector() {
     const marker = event.target.closest?.(".locality-marker");
     if (marker) {
       updateSelected(state.byId.get(marker.dataset.localityId));
+      renderMapCandidates([]);
       return;
     }
     const svg = event.target.closest?.("svg");
-    if (svg) selectNearestRenderedLocality(svg, event);
+    if (svg) {
+      const nearby = nearestLocalities(svg, event);
+      renderMapCandidates(nearby);
+    }
+  });
+
+  mapResults?.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-map-locality-id]");
+    if (!option) return;
+    updateSelected(state.byId.get(option.dataset.mapLocalityId));
+    renderMapCandidates([]);
   });
 
   map?.addEventListener("keydown", (event) => {
@@ -395,3 +426,4 @@ initLocationSelector();
 document.getElementById("printButton")?.addEventListener("click", () => {
   window.print();
 });
+
