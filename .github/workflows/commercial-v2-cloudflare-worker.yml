@@ -129,6 +129,8 @@ jobs:
           checks = {
               "/": 'data-page="testing-home"',
               "/software-testing": 'data-page="software-testing"',
+              "/instalatii": 'data-page="energy-home"',
+              "/instalatii/calculator": "romaniaLocationMap",
               "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
               "/static/testing_intake.css": ".intake-details",
@@ -151,6 +153,9 @@ jobs:
           assert 'href="/software-testing#quick-check"' in home_html
           assert 'data-page="software-testing"' not in home_html
           assert 'data-page="testing-home"' not in sales_html
+          energy_html = get("/instalatii")
+          assert 'href="/instalatii/calculator"' in energy_html
+          assert 'id="energy-brief-preview"' in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
@@ -387,6 +392,8 @@ jobs:
 
           checks = {
               "/software-testing": 'data-page="software-testing"',
+              "/instalatii": 'data-page="energy-home"',
+              "/instalatii/calculator": "romaniaLocationMap",
               "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
               "/static/testing_intake.css": ".intake-details",
@@ -413,6 +420,10 @@ jobs:
           assert 'href="/software-testing#quick-check"' in home_html
           assert 'data-page="software-testing"' not in home_html
           assert 'data-page="testing-home"' not in sales_html
+          energy_status, _, energy_html = open_url(apex + "/instalatii")
+          assert energy_status == 200
+          assert 'href="/instalatii/calculator"' in energy_html
+          assert 'id="energy-brief-preview"' in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 

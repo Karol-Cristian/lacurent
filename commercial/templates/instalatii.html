@@ -3,90 +3,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="LaCurent - instalații, sisteme fotovoltaice și eficiență energetică.">
-  <title>Instalații & Energie | LaCurent</title>
+  <meta name="description" content="Calculator energetic și evaluare tehnică pentru locuințe: încălzire, fotovoltaice, instalații electrice și eficiență energetică.">
+  <title>Calculator energetic și evaluare tehnică | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
   <link rel="shortcut icon" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/company.css?v=8">
+  <link rel="stylesheet" href="/static/company.css?v=9">
 </head>
 <body>
-  <main class="company-shell service-shell">
-    <header class="company-header">
+  <main class="company-shell service-shell energy-landing" data-page="energy-home">
+    <header class="company-header clean-header">
       <a class="company-brand" href="/">
         <span class="company-mark">LC</span>
         <span><strong>LaCurent</strong><small>Instalații & Energie</small></span>
       </a>
-      <a class="header-link" href="mailto:karol@lacurent.com?subject=Solicitare%20instalatii%20si%20energie">Cere o evaluare</a>
+      <nav class="clean-nav" aria-label="Navigare instalații și energie">
+        <a href="#servicii">Servicii</a>
+        <a href="#evaluare">Evaluare</a>
+        <a class="nav-cta" href="/instalatii/calculator">Calculator</a>
+      </nav>
     </header>
 
-    <section class="service-hero energy-hero">
-      <div>
-        <p class="company-eyebrow">Instalații · Fotovoltaice · Eficiență energetică</p>
-        <h1>Soluții tehnice pentru consum mai mic și sisteme mai bine dimensionate.</h1>
-        <p class="lead">Evaluăm situația existentă, calculăm necesarul și propunem o soluție tehnică potrivită pentru locuință sau clădire.</p>
+    <section class="energy-lead">
+      <div class="energy-lead-copy">
+        <p class="company-eyebrow">Calculator energetic pentru locuințe · România</p>
+        <h1>Înțelege consumul casei înainte să investești.</h1>
+        <p class="lead">Alege localitatea pe harta României, descrie clădirea și obține o estimare structurată pentru încălzire, răcire, ACM, energie primară și emisii.</p>
         <div class="hero-cta-row">
-          <a class="primary-cta" href="mailto:karol@lacurent.com?subject=Evaluare%20energetica%20LaCurent">Cere o evaluare</a>
-          <a class="text-cta" href="/instalatii/calculator">Deschide calculatorul energetic</a>
+          <a class="primary-cta" href="/instalatii/calculator">Începe calculul</a>
+          <a class="text-cta" href="#evaluare">Cere o evaluare tehnică</a>
         </div>
       </div>
-      <aside class="proof-panel">
-        <p>Direcții de lucru</p>
-        <ul>
-          <li>Sisteme fotovoltaice</li>
-          <li>Instalații electrice și modernizări</li>
-          <li>Analiză consum și eficiență energetică</li>
-          <li>Dimensionare și comparații de soluții</li>
-          <li>Calcul energetic pentru clădiri</li>
-        </ul>
+      <aside class="energy-lead-aside">
+        <p class="panel-label">Ce primești</p>
+        <p>Rezultat calculat pe baza datelor clădirii și a localității.</p>
+        <p>Comparație cu o clădire de referință.</p>
+        <p>Zonele cu cele mai mari pierderi și următorii pași.</p>
       </aside>
     </section>
 
-    <section class="content-section">
-      <div class="section-copy">
-        <p class="company-eyebrow">Servicii</p>
-        <h2>Începem cu măsurători și calcule, nu cu o soluție standard.</h2>
+    <section class="content-section energy-steps" id="servicii">
+      <div class="clean-section-heading">
+        <p class="company-eyebrow">De la calcul la soluție</p>
+        <h2>Un punct de pornire concret pentru casa ta.</h2>
+        <p>Calculatorul nu înlocuiește proiectarea sau execuția. Îți arată unde merită investigat mai departe și ne permite să discutăm pe date reale.</p>
       </div>
       <div class="feature-grid three">
-        <article class="feature-card">
-          <span>01</span>
-          <h3>Fotovoltaice</h3>
-          <p>Estimarea producției, dimensionarea sistemului și analiza raportului dintre consum, investiție și recuperare.</p>
-        </article>
-        <article class="feature-card">
-          <span>02</span>
-          <h3>Instalații</h3>
-          <p>Evaluarea instalației existente, opțiuni de modernizare și definirea soluției tehnice înainte de execuție.</p>
-        </article>
-        <article class="feature-card">
-          <span>03</span>
-          <h3>Eficiență energetică</h3>
-          <p>Identificarea pierderilor și compararea măsurilor care reduc consumul: anvelopă, încălzire, ventilație și producție locală.</p>
-        </article>
+        <article class="feature-card"><span>01</span><h3>Calculează</h3><p>Localitate, suprafață, anvelopă și sisteme. Harta și datele climatice sunt selectate automat.</p><a class="text-cta" href="/instalatii/calculator">Deschide calculatorul →</a></article>
+        <article class="feature-card"><span>02</span><h3>Compară</h3><p>Vezi cererea de energie, pierderile, energia primară, emisiile și comparația cu referința.</p><a class="text-cta" href="/demo">Vezi un exemplu →</a></article>
+        <article class="feature-card"><span>03</span><h3>Decide</h3><p>Trimite rezultatul pentru o discuție despre încălzire, fotovoltaice, instalații electrice sau eficiență.</p><a class="text-cta" href="#evaluare">Cere evaluarea →</a></article>
       </div>
     </section>
 
-    <section class="tool-band">
-      <div>
-        <p class="company-eyebrow">Instrument LaCurent</p>
-        <h2>Calculator de performanță energetică</h2>
-        <p>Introdu datele clădirii și obține rapid o estimare structurată pentru anvelopă, sisteme, energie primară și emisii.</p>
+    <section class="content-section energy-offer" id="evaluare">
+      <div class="clean-section-heading">
+        <p class="company-eyebrow">Evaluare tehnică</p>
+        <h2>Ai un proiect real? Trimite-ne punctul de plecare.</h2>
+        <p>Alege ce vrei să îmbunătățești. Formularul pregătește un mesaj pe care îl verifici înainte să îl trimiți.</p>
       </div>
-      <a class="primary-cta" href="/instalatii/calculator">Deschide calculatorul</a>
+      <form class="energy-intake" id="energy-intake" onsubmit="return false;">
+        <fieldset><legend>Ce te interesează?</legend><div class="tool-checks">
+          <label><input type="checkbox" name="need" value="Calcul și analiză energetică"> Calcul și analiză energetică</label>
+          <label><input type="checkbox" name="need" value="Încălzire sau răcire"> Încălzire / răcire</label>
+          <label><input type="checkbox" name="need" value="Fotovoltaice"> Fotovoltaice</label>
+          <label><input type="checkbox" name="need" value="Instalații electrice"> Instalații electrice</label>
+          <label><input type="checkbox" name="need" value="Modernizare și eficiență"> Modernizare / Eficiență energetică</label>
+        </div></fieldset>
+        <div class="field-grid energy-contact-fields">
+          <label><span>Localitate</span><input id="energy-locality" name="locality" placeholder="Ex. Cluj-Napoca"></label>
+          <label><span>Suprafață aproximativă</span><input id="energy-area" name="area" type="number" min="1" placeholder="m²"></label>
+        </div>
+        <label class="brief-field" for="energy-note"><span>Ce vrei să rezolvi? <small>Opțional</small></span><textarea id="energy-note" maxlength="600" placeholder="Exemplu: vreau să știu dacă merită pompa de căldură și fotovoltaicele."></textarea></label>
+        <div class="intake-actions"><button class="primary-cta" type="button" id="prepare-energy-email">Pregătește cererea</button><p>Nu se trimite nimic automat. Vei putea verifica mesajul înainte de trimitere.</p></div>
+        <section id="energy-brief-preview" class="energy-brief-preview" hidden aria-labelledby="energy-brief-title"><h3 id="energy-brief-title">Cererea ta</h3><textarea id="energy-brief-text" rows="12"></textarea><div class="intake-actions"><button class="primary-cta" type="button" id="copy-energy-brief">Copiază</button><a class="text-cta" id="open-energy-email" href="mailto:karol@lacurent.com">Deschide emailul</a></div><p id="energy-brief-status" role="status" aria-live="polite"></p></section>
+      </form>
     </section>
 
-    <section class="contact-band energy-contact">
-      <div>
-        <p class="company-eyebrow">Ai un proiect concret?</p>
-        <h2>Trimite câteva date și pornim de la situația reală.</h2>
-        <p>Locație, consum, tipul clădirii și ce vrei să îmbunătățești sunt suficiente pentru prima discuție.</p>
-      </div>
-      <a class="primary-cta light" href="mailto:karol@lacurent.com?subject=Proiect%20energie%20LaCurent">karol@lacurent.com</a>
-    </section>
-
-    <footer class="company-footer">
-      <a href="/">← LaCurent</a>
-      <span>Instalații & Energie</span>
-    </footer>
+    <section class="contact-band energy-contact"><div><p class="company-eyebrow">Instalații & Energie</p><h2>Începem cu situația existentă, apoi alegem soluția.</h2><p>Calcul, proiectare și consultanță tehnică pentru locuințe și clădiri.</p></div><a class="primary-cta light" href="mailto:karol@lacurent.com?subject=Evaluare%20tehnica%20locuinta">karol@lacurent.com</a></section>
+    <footer class="company-footer"><a href="/">← LaCurent</a><span><a href="/instalatii/calculator">Calculator energetic</a> · Instalații & Energie</span></footer>
   </main>
+  <script>
+    (() => {
+      const button = document.getElementById('prepare-energy-email');
+      const preview = document.getElementById('energy-brief-preview');
+      const brief = document.getElementById('energy-brief-text');
+      const status = document.getElementById('energy-brief-status');
+      const email = document.getElementById('open-energy-email');
+      const subject = encodeURIComponent('Evaluare tehnică locuință — LaCurent');
+      const updateEmail = () => { email.href = `mailto:karol@lacurent.com?subject=${subject}&body=${encodeURIComponent(brief.value)}`; };
+      button.addEventListener('click', () => {
+        const needs = [...document.querySelectorAll('input[name="need"]:checked')].map((el) => `- ${el.value}`);
+        const locality = document.getElementById('energy-locality').value.trim() || 'Nespecificată';
+        const area = document.getElementById('energy-area').value.trim() || 'Nespecificată';
+        const note = document.getElementById('energy-note').value.trim() || 'Nespecificat';
+        brief.value = ['Bună ziua,', '', 'Doresc o evaluare tehnică pentru locuința mea.', '', `Localitate: ${locality}`, `Suprafață: ${area} m²`, '', 'Mă interesează:', ...(needs.length ? needs : ['- Încă nu sunt sigur(ă); doresc să identificăm prioritatea.']), '', 'Ce vreau să rezolv:', note, '', 'Mulțumesc!'].join('\n');
+        updateEmail(); preview.hidden = false; status.textContent = 'Cererea este pregătită. Verific-o înainte de trimitere.'; brief.focus();
+      });
+      brief.addEventListener('input', updateEmail);
+      document.getElementById('copy-energy-brief').addEventListener('click', async () => { try { await navigator.clipboard.writeText(brief.value); status.textContent = 'Cererea a fost copiată.'; } catch { brief.focus(); brief.select(); status.textContent = 'Copiarea automată nu este disponibilă. Textul este selectat.'; } });
+    })();
+  </script>
 </body>
 </html>
