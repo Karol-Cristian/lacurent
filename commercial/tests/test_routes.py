@@ -140,6 +140,11 @@ def test_installations_landing_page_links_energy_calculator() -> None:
     response = client.get("/instalatii")
     assert response.status_code == 200
     assert "Fotovoltaice" in response.text
+    assert 'data-page="energy-home"' in response.text
+    assert "Înțelege consumul casei înainte să investești." in response.text
+    assert "/instalatii/calculator" in response.text
+    assert "Pregătește cererea" in response.text
+    assert "energy-brief-preview" in response.text
     assert "Eficiență energetică" in response.text
     assert "/instalatii/calculator" in response.text
     assert "/static/favicon.svg" in response.text
@@ -177,6 +182,7 @@ def test_form_calculation_renders_commercial_results() -> None:
     assert "Commercial test house" in response.text
     assert "Primary energy" in response.text
     assert "Generate A4 report" in response.text
+    assert "Cere o evaluare tehnică" in response.text
     assert "Trace" not in response.text
 
 
