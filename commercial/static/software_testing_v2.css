@@ -45,7 +45,7 @@
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, .5fr);
   gap: 70px;
   align-items: center;
-  padding: 104px 0 96px;
+  padding: 56px 0 64px;
 }
 
 .clean-hero-copy { max-width: 820px; }
@@ -53,7 +53,7 @@
 .clean-hero h1 {
   margin: 0;
   max-width: 900px;
-  font-size: clamp(50px, 7vw, 86px);
+  font-size: clamp(36px, 4.6vw, 62px);
   line-height: .98;
   letter-spacing: -.055em;
 }
@@ -370,7 +370,7 @@
   .section-heading-row {
     grid-template-columns: 1fr;
   }
-  .clean-hero { gap: 42px; padding: 70px 0; }
+  .clean-hero { gap: 32px; padding: 44px 0; }
   .capability-row { grid-template-columns: 42px 1fr; }
   .capability-output { grid-column: 2; }
   .proof-columns { grid-template-columns: 1fr; }
@@ -391,7 +391,7 @@
   .header-nav { gap: 10px; }
   .clean-nav a:not(.nav-cta),
   .header-nav a:not(.header-cta) { display: none; }
-  .clean-hero { padding-top: 48px; }
+  .clean-hero { padding-top: 32px; }
   .clean-hero-aside { padding-left: 20px; }
   .capability-row { grid-template-columns: 32px 1fr; gap: 16px; }
   .resource-preview-list > a,

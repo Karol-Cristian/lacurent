@@ -7,7 +7,7 @@
   <title>Embedded Verification & Test Automation | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
   <link rel="shortcut icon" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/company.css?v=5">
+  <link rel="stylesheet" href="/static/company.css?v=8">
   <link rel="stylesheet" href="/static/painpoints.css?v=1">
 </head>
 <body>
@@ -20,14 +20,14 @@
       <nav class="clean-nav" aria-label="Software testing navigation">
         <a href="#capabilities">Capabilities</a>
         <a href="/software-testing/resources">Resources</a>
-        <a class="nav-cta" href="#quick-check">30-second check</a>
+        <a class="nav-cta" href="#quick-check">Quick check</a>
       </nav>
     </header>
 
     <section class="clean-hero">
       <div class="clean-hero-copy">
         <p class="company-eyebrow">Fixed-scope technical intervention · global B2B</p>
-        <h1>Bring one problematic test flow. Leave with working automation.</h1>
+        <h1>Working test files. Evidence you can reproduce.</h1>
         <p class="lead">You bring one existing verification flow that is unstable, slow or too manual. LaCurent reproduces the issue, repairs the automation in your authorized environment, validates it and hands back the changed files, execution evidence and run instructions.</p>
         <div class="hero-cta-row">
           <a class="primary-cta" href="#quick-check">Describe one problematic flow</a>
@@ -74,9 +74,9 @@
 
     <section class="content-section quick-check-section" id="quick-check">
       <div class="clean-section-heading quiz-heading">
-        <p class="company-eyebrow">30-second bottleneck check</p>
-        <h2>Which of these already looks like your team?</h2>
-        <p>Select what you recognize. Preview and copy a concise technical brief, or open it in your email app. Nothing is submitted automatically.</p>
+        <p class="company-eyebrow">Quick bottleneck check</p>
+        <h2>What is slowing your testing down?</h2>
+        <p>Choose any relevant problem, or describe it in one sentence. Extra details are optional. Preview and copy a concise technical brief, or open it in your email app. Nothing is submitted automatically.</p>
       </div>
 
       <form class="bottleneck-form" id="bottleneck-form" onsubmit="return false;">
@@ -84,22 +84,29 @@
           <legend>1. What is happening?</legend>
           <div class="check-grid">
             <label class="check-card"><input type="checkbox" name="problem" value="We cannot execute enough of the test scope inside the release window"><span><strong>We cannot test enough</strong><small>The release window is shorter than the useful test scope.</small></span></label>
-            <label class="check-card"><input type="checkbox" name="problem" value="Regression cycles keep growing with every release"><span><strong>Regression keeps growing</strong><small>Each release adds execution and analysis time.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Engineers repeat manual test execution, log checks, triage or evidence preparation"><span><strong>Too much manual work</strong><small>Setup, execution, log review, triage or reporting stays manual.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Tests are flaky, timing-sensitive or depend on tribal setup knowledge"><span><strong>Tests are unreliable</strong><small>Timing, environment state or hidden setup assumptions create false failures.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Physical HIL adaptation, PCB changes, downtime or failed runs limit throughput"><span><strong>HIL is the bottleneck</strong><small>PCB revisions, fixture adaptation, downtime or failed runs stretch work that should take hours into days.</small></span></label>
-            <label class="check-card"><input type="checkbox" name="problem" value="SIL, HIL or project variants duplicate test logic and artifacts"><span><strong>We duplicate tests</strong><small>SIL/HIL, variants or projects repeat logic instead of reusing it.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="UDS, DTC, OBD or network verification still requires too much manual checking"><span><strong>Diagnostics are manual</strong><small>UDS, DTC, OBD or network checks need repeated human review.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Negative paths, fault injection, reset or recovery coverage is incomplete"><span><strong>Fault coverage has gaps</strong><small>Negative paths, faults and recovery are not exercised consistently.</small></span></label>
+          </div>
+          <details class="intake-details">
+            <summary>More testing problems (optional)</summary>
+            <div class="check-grid">
+            <label class="check-card"><input type="checkbox" name="problem" value="Regression cycles keep growing with every release"><span><strong>Regression keeps growing</strong><small>Each release adds execution and analysis time.</small></span></label>
+            <label class="check-card"><input type="checkbox" name="problem" value="SIL, HIL or project variants duplicate test logic and artifacts"><span><strong>We duplicate tests</strong><small>SIL/HIL, variants or projects repeat logic instead of reusing it.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Requirements, traceability, coverage or qualification evidence is difficult to keep current"><span><strong>Evidence is expensive</strong><small>Traceability, coverage and reporting become a separate workload.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Defects are discovered late during hardware integration, vehicle, customer or release validation"><span><strong>Defects appear too late</strong><small>Problems first surface when rework and debugging cost more.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="CI automation stops before SIL/HIL or still needs manual triggering and hand-offs"><span><strong>CI stops before the bench</strong><small>The pipeline builds software but validation still needs manual hand-offs.</small></span></label>
             <label class="check-card"><input type="checkbox" name="problem" value="Qualification and system test cannot keep pace with hardware and software updates because verification is late in the workflow"><span><strong>Qualification is always catching up</strong><small>HW/SW updates arrive faster than tests, environments and evidence can be updated.</small></span></label>
-          </div>
+            </div>
+          </details>
         </fieldset>
 
+        <details class="intake-details">
+          <summary>Add impact and toolchain details (optional)</summary>
         <fieldset>
-          <legend>2. What does that cause?</legend>
+          <legend>What does that cause?</legend>
           <div class="tool-checks">
             <label><input type="checkbox" name="impact" value="Release or milestone delays">Release / milestone delays</label>
             <label><input type="checkbox" name="impact" value="Reduced test depth or skipped coverage">Reduced coverage</label>
@@ -113,7 +120,7 @@
         </fieldset>
 
         <fieldset>
-          <legend>3. What is in your environment?</legend>
+          <legend>What is in your environment?</legend>
           <div class="tool-checks">
             <label><input type="checkbox" name="tool" value="CANoe / CAPL">CANoe / CAPL</label>
             <label><input type="checkbox" name="tool" value="vTESTstudio">vTESTstudio</label>
@@ -129,6 +136,8 @@
             <label><input type="checkbox" name="tool" value="Other / mixed toolchain">Other / mixed</label>
           </div>
         </fieldset>
+
+        </details>
 
         <label class="brief-field" for="bottleneck-note">
           <span>Anything we missed? <small>Optional — one sentence is enough.</small></span>
