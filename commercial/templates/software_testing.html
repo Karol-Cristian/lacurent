@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/static/painpoints.css?v=1">
 </head>
 <body>
-  <main class="company-shell service-shell">
+  <main class="company-shell service-shell" data-page="software-testing">
     <header class="company-header clean-header">
       <a class="company-brand" href="/">
         <span class="company-mark">LC</span>
@@ -76,7 +76,7 @@
       <div class="clean-section-heading quiz-heading">
         <p class="company-eyebrow">30-second bottleneck check</p>
         <h2>Which of these already looks like your team?</h2>
-        <p>Select what you recognize. The page prepares a concise technical brief in your email app; nothing is submitted automatically.</p>
+        <p>Select what you recognize. Preview and copy a concise technical brief, or open it in your email app. Nothing is submitted automatically.</p>
       </div>
 
       <form class="bottleneck-form" id="bottleneck-form" onsubmit="return false;">
@@ -136,9 +136,22 @@
         </label>
 
         <div class="intake-actions">
-          <button class="primary-cta" type="button" id="prepare-email">Prepare the email</button>
-          <p>No data is submitted to LaCurent by this form. Your email app opens with the brief already structured, and you decide whether to send it.</p>
+          <button class="primary-cta" type="button" id="prepare-email">Prepare the brief</button>
+          <p>No data is submitted to LaCurent by this form. Review the brief below, then copy it or open your email app when ready.</p>
         </div>
+        <section id="brief-preview" hidden aria-labelledby="brief-preview-title">
+          <h3 id="brief-preview-title">Your technical brief</h3>
+          <p>Send to <a href="mailto:karol@lacurent.com">karol@lacurent.com</a>. You can edit the text before copying or opening your email app.</p>
+          <label class="brief-field" for="brief-text"><span>Brief text</span>
+            <textarea id="brief-text" rows="16"></textarea>
+          </label>
+          <div class="intake-actions">
+            <button class="primary-cta" type="button" id="copy-brief">Copy brief</button>
+            <a class="text-cta" id="open-email" href="mailto:karol@lacurent.com">Open email app</a>
+          </div>
+          <p id="brief-status" role="status" aria-live="polite"></p>
+        </section>
+        <noscript><p>Email your problem description directly to <a href="mailto:karol@lacurent.com">karol@lacurent.com</a>; the brief builder requires JavaScript.</p></noscript>
       </form>
     </section>
 
@@ -201,6 +214,34 @@
     (() => {
       const button = document.getElementById('prepare-email');
       if (!button) return;
+      const preview = document.getElementById('brief-preview');
+      const brief = document.getElementById('brief-text');
+      const status = document.getElementById('brief-status');
+      const email = document.getElementById('open-email');
+      const subject = encodeURIComponent('Embedded verification bottleneck — quick brief');
+      const updateEmail = () => {
+        email.href = `mailto:karol@lacurent.com?subject=${subject}&body=${encodeURIComponent(brief.value)}`;
+      };
+      brief.addEventListener('input', () => {
+        updateEmail();
+        status.textContent = '';
+      });
+      document.getElementById('copy-brief').addEventListener('click', async () => {
+        const text = brief.value;
+        try {
+          await navigator.clipboard.writeText(text);
+          status.textContent = brief.value === text ? 'Brief copied.' : 'Earlier text copied. Copy again to include your latest edits.';
+        } catch {
+          brief.focus();
+          brief.select();
+          status.textContent = 'Automatic copying is unavailable. The brief is selected; copy it using your device’s Copy command.';
+        }
+      });
+      document.getElementById('bottleneck-form').addEventListener('input', (event) => {
+        if (!preview.hidden && event.target !== brief) {
+          status.textContent = 'Your answers changed. Select Prepare the brief to update the preview; this replaces any edits to the brief.';
+        }
+      });
       button.addEventListener('click', () => {
         const problems = [...document.querySelectorAll('input[name="problem"]:checked')].map((el) => el.value);
         const impacts = [...document.querySelectorAll('input[name="impact"]:checked')].map((el) => el.value);
@@ -219,9 +260,11 @@
           'Could we have a short discussion about where automation or test-architecture changes would create the most leverage?', '',
           'Best regards,'
         ];
-        const subject = encodeURIComponent('Embedded verification bottleneck — quick brief');
-        const body = encodeURIComponent(lines.join('\n'));
-        window.location.href = `mailto:karol@lacurent.com?subject=${subject}&body=${body}`;
+        brief.value = lines.join('\n');
+        updateEmail();
+        preview.hidden = false;
+        status.textContent = 'Brief ready. Review it before sharing.';
+        brief.focus();
       });
     })();
   </script>

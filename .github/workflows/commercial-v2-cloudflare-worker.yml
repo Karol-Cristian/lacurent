@@ -41,6 +41,7 @@ jobs:
         run: |
           git diff --check
           node --check commercial/static/app.js
+          node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
 
@@ -126,7 +127,14 @@ jobs:
                   return text
 
           checks = {
-              "/": "Bring one problematic test flow. Leave with working automation.",
+              "/": 'data-page="testing-home"',
+              "/software-testing": 'data-page="software-testing"',
+              "/software-testing/resources": "Useful verification knowledge",
+              "/static/company.css": ".company-shell",
+              "/static/testing_intake.css": ".company-shell.company-shell",
+              "/static/software_testing_v2.css": ".clean-hero",
+              "/static/painpoints.css": ".measured-result",
+              "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
@@ -137,6 +145,14 @@ jobs:
               body = get(path)
               if expected not in body.replace(" ", "") and expected not in body:
                   raise AssertionError(f"{path} did not contain {expected!r}")
+
+          home_html = get("/")
+          sales_html = get("/software-testing")
+          assert 'href="/software-testing#quick-check"' in home_html
+          assert 'data-page="software-testing"' not in home_html
+          assert 'data-page="testing-home"' not in sales_html
+          for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
+              assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
           location_payload = json.loads(get("/api/location-data"))
           localities = location_payload.get("localities", [])
@@ -358,7 +374,7 @@ jobs:
           else:
               raise AssertionError("Production /health did not become healthy.")
 
-          homepage_marker = "Bring one problematic test flow. Leave with working automation."
+          homepage_marker = 'data-page="testing-home"'
           for attempt in range(1, 21):
               status, _, body = open_url(apex + f"/?deploy={attempt}")
               if status == 200 and homepage_marker in body:
@@ -370,6 +386,13 @@ jobs:
               raise AssertionError(f"/ did not contain {homepage_marker!r}")
 
           checks = {
+              "/software-testing": 'data-page="software-testing"',
+              "/software-testing/resources": "Useful verification knowledge",
+              "/static/company.css": ".company-shell",
+              "/static/testing_intake.css": ".company-shell.company-shell",
+              "/static/software_testing_v2.css": ".clean-hero",
+              "/static/painpoints.css": ".measured-result",
+              "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
@@ -382,6 +405,16 @@ jobs:
               if expected not in body and expected not in body.replace(" ", ""):
                   raise AssertionError(f"{path} did not contain {expected!r}")
               print(path, status)
+
+          home_status, _, home_html = open_url(apex + "/")
+          assert home_status == 200
+          sales_status, _, sales_html = open_url(apex + "/software-testing")
+          assert sales_status == 200
+          assert 'href="/software-testing#quick-check"' in home_html
+          assert 'data-page="software-testing"' not in home_html
+          assert 'data-page="testing-home"' not in sales_html
+          for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
+              assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
           status, _, location_body = open_url(apex + "/api/location-data")
           if status != 200:

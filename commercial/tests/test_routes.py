@@ -52,6 +52,9 @@ def test_company_home_is_a_focused_testing_entry_page() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "Bring one problematic test flow. Leave with working automation." in response.text
+    assert 'data-page="testing-home"' in response.text
+    assert 'data-page="software-testing"' not in response.text
+    assert 'href="/software-testing#quick-check"' in response.text
     assert 'href="/software-testing"' in response.text
     assert "CANoe / CAPL" in response.text
     assert "karol@lacurent.com" in response.text
@@ -80,7 +83,11 @@ def test_software_testing_landing_page_is_sales_ready() -> None:
     assert "HIL is the bottleneck" in response.text
     assert "Qualification is always catching up" in response.text
     assert "CI stops before the bench" in response.text
-    assert "Prepare the email" in response.text
+    assert "Prepare the brief" in response.text
+    assert 'data-page="software-testing"' in response.text
+    assert 'id="brief-preview" hidden' in response.text
+    assert "Copy brief" in response.text
+    assert "Open email app" in response.text
     assert "What it is costing us:" in response.text
     assert "Embedded verification bottleneck — quick brief" in response.text
     assert "dSPACE / AutomationDesk" in response.text
