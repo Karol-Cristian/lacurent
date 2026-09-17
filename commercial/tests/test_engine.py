@@ -3,6 +3,9 @@ from __future__ import annotations
 import math
 
 from commercial.app.engine import (
+    _cooling_heat_transfer_utilization_factor,
+    _monthly_cooling_need,
+    _monthly_utilization_parameter,
     calculate,
     co2_emissions,
     demo_building,
@@ -12,6 +15,7 @@ from commercial.app.engine import (
     transmission_heat_transfer,
     ventilation_heat_transfer,
 )
+from commercial.app.methodology import methodology
 from commercial.app.models import BuildingInput, EnergyServiceResult
 
 
@@ -108,13 +112,37 @@ def test_final_energy_by_carrier_keeps_carriers_separate() -> None:
     }
 
 
-def test_cooling_setpoint_changes_summer_demand() -> None:
+def test_monthly_method_uses_mc001_medium_thermal_capacity_default() -> None:
+    building = simple_building()
+    total_h = transmission_heat_transfer(building)[0] + ventilation_heat_transfer(building)
+    a_c = _monthly_utilization_parameter(building, total_h, "cooling")
+
+    expected_tau = ((165000 * 100) / 3600) / total_h
+    assert_close(a_c, 1 + expected_tau / 15)
+    assert methodology()["monthly_method"]["default_effective_internal_heat_capacity_class"] == "medium"
+
+
+def test_cooling_loss_utilization_handles_negative_transfer_per_mc001_sign_convention() -> None:
+    eta = _cooling_heat_transfer_utilization_factor(gamma_c=-1.6, a_c=3.0)
+    assert_close(eta, 1.0)
+
+    # Negative Q_C,ht means heat enters the zone; it therefore increases the cooling need.
+    assert_close(_monthly_cooling_need(-500, 800, a_c=3.0), 1300)
+
+
+def test_cooling_zero_branch_when_heat_losses_dominate_gains() -> None:
+    # 1 / gamma_C = Q_C,ht / Q_C,gn = 2.5 > 2 -> Figure 2.19 zero-demand branch.
+    assert_close(_monthly_cooling_need(2000, 800, a_c=3.0), 0)
+
+
+def test_cooling_setpoint_changes_summer_demand_with_explicit_monthly_gains() -> None:
+    base = {"solar_gains_kwh_m2_month": 4.0}
     setpoint_26 = calculate(
-        simple_building(cooling={"enabled": True, "seer": 3.5, "setpoint_c": 26}),
+        simple_building(**base, cooling={"enabled": True, "seer": 3.5, "setpoint_c": 26}),
         include_reference=False,
     )
     setpoint_22 = calculate(
-        simple_building(cooling={"enabled": True, "seer": 3.5, "setpoint_c": 22}),
+        simple_building(**base, cooling={"enabled": True, "seer": 3.5, "setpoint_c": 22}),
         include_reference=False,
     )
 
@@ -128,17 +156,31 @@ def test_cooling_setpoint_changes_summer_demand() -> None:
 
 def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
     seer_3 = calculate(
-        simple_building(cooling={"enabled": True, "seer": 3.0, "setpoint_c": 24}),
+        simple_building(
+            solar_gains_kwh_m2_month=4.0,
+            cooling={"enabled": True, "seer": 3.0, "setpoint_c": 24},
+        ),
         include_reference=False,
     )
     seer_6 = calculate(
-        simple_building(cooling={"enabled": True, "seer": 6.0, "setpoint_c": 24}),
+        simple_building(
+            solar_gains_kwh_m2_month=4.0,
+            cooling={"enabled": True, "seer": 6.0, "setpoint_c": 24},
+        ),
         include_reference=False,
     )
 
     assert_close(seer_3.annual_cooling_demand_kwh, seer_6.annual_cooling_demand_kwh)
     assert seer_6.cooling.final_kwh < seer_3.cooling.final_kwh
     assert_close(seer_3.cooling.final_kwh / 2, seer_6.cooling.final_kwh, tolerance=1e-3)
+
+
+def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
+    cfg = methodology()
+    assert cfg["version"] == "lacurent-commercial-v2.2"
+    assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
+    assert "24 h" not in " ".join(cfg["assumptions"])
+    assert "Mc 001-2022" in cfg["monthly_method"]["model"]
 
 
 def test_reference_building_is_calculated_with_same_engine() -> None:
@@ -149,14 +191,14 @@ def test_reference_building_is_calculated_with_same_engine() -> None:
     assert result.reference.actual_specific_primary_kwh_m2 == result.primary_energy.specific_kwh_m2
 
 
-def test_demo_building_end_to_end_has_complete_non_zero_result() -> None:
+def test_demo_building_end_to_end_has_complete_result() -> None:
     result = calculate(demo_building())
 
     assert result.h_tr_w_k > 0
     assert result.h_ve_w_k > 0
     assert result.annual_heating_demand_kwh > 0
-    assert result.annual_cooling_demand_kwh > 0
-    assert result.cooling.final_kwh > 0
+    assert result.annual_cooling_demand_kwh >= 0
+    assert result.cooling.final_kwh >= 0
     assert result.dhw.final_kwh > 0
     assert result.total_final_energy_kwh > 0
     assert result.primary_energy.specific_kwh_m2 > 0
