@@ -61,6 +61,10 @@
         <p>Alege ce vrei să îmbunătățești. Formularul pregătește un mesaj pe care îl verifici înainte să îl trimiți.</p>
       </div>
       <form class="energy-intake" id="energy-intake" onsubmit="return false;">
+        <div id="energy-calculator-context" class="energy-calculator-context" hidden aria-live="polite">
+          <strong>Rezultat preluat din calculator</strong>
+          <p id="energy-calculator-context-text"></p>
+        </div>
         <fieldset><legend>Ce te interesează?</legend><div class="tool-checks">
           <label><input type="checkbox" name="need" value="Calcul și analiză energetică"> Calcul și analiză energetică</label>
           <label><input type="checkbox" name="need" value="Încălzire sau răcire"> Încălzire / răcire</label>
@@ -88,18 +92,180 @@
       const brief = document.getElementById('energy-brief-text');
       const status = document.getElementById('energy-brief-status');
       const email = document.getElementById('open-energy-email');
-      const subject = encodeURIComponent('Evaluare tehnică locuință — LaCurent');
-      const updateEmail = () => { email.href = `mailto:karol@lacurent.com?subject=${subject}&body=${encodeURIComponent(brief.value)}`; };
-      button.addEventListener('click', () => {
-        const needs = [...document.querySelectorAll('input[name="need"]:checked')].map((el) => `- ${el.value}`);
-        const locality = document.getElementById('energy-locality').value.trim() || 'Nespecificată';
-        const area = document.getElementById('energy-area').value.trim() || 'Nespecificată';
-        const note = document.getElementById('energy-note').value.trim() || 'Nespecificat';
-        brief.value = ['Bună ziua,', '', 'Doresc o evaluare tehnică pentru locuința mea.', '', `Localitate: ${locality}`, `Suprafață: ${area} m²`, '', 'Mă interesează:', ...(needs.length ? needs : ['- Încă nu sunt sigur(ă); doresc să identificăm prioritatea.']), '', 'Ce vreau să rezolv:', note, '', 'Mulțumesc!'].join('\n');
-        updateEmail(); preview.hidden = false; status.textContent = 'Cererea este pregătită. Verific-o înainte de trimitere.'; brief.focus();
+      const copyButton = document.getElementById('copy-energy-brief');
+      const localityInput = document.getElementById('energy-locality');
+      const areaInput = document.getElementById('energy-area');
+      const noteInput = document.getElementById('energy-note');
+      const contextPanel = document.getElementById('energy-calculator-context');
+      const contextText = document.getElementById('energy-calculator-context-text');
+      const params = new URLSearchParams(window.location.search);
+      const calculatorContext = params.get('source') === 'calculator'
+        ? {
+            project: params.get('project') || '',
+            locality: params.get('locality') || '',
+            area: params.get('area') || '',
+            energyClass: params.get('energy_class') || '',
+            primaryEnergy: params.get('primary_energy') || '',
+            co2: params.get('co2') || '',
+            mainLoss: params.get('main_loss') || '',
+            mainLossValue: params.get('main_loss_value') || ''
+          }
+        : null;
+
+      if (calculatorContext) {
+        if (calculatorContext.locality) localityInput.value = calculatorContext.locality;
+        if (calculatorContext.area) areaInput.value = calculatorContext.area;
+        const summary = [
+          calculatorContext.project ? 'Proiect: ' + calculatorContext.project : '',
+          calculatorContext.locality ? 'Localitate: ' + calculatorContext.locality : '',
+          calculatorContext.energyClass ? 'Clasă energetică: ' + calculatorContext.energyClass : '',
+          calculatorContext.primaryEnergy ? 'Energie primară: ' + calculatorContext.primaryEnergy : '',
+          calculatorContext.co2 ? 'Emisii: ' + calculatorContext.co2 : '',
+          calculatorContext.mainLoss
+            ? 'Pierdere principală: ' + calculatorContext.mainLoss
+              + (calculatorContext.mainLossValue ? ' (' + calculatorContext.mainLossValue + ')' : '')
+            : ''
+        ].filter(Boolean);
+        if (summary.length) {
+          contextText.textContent = 'Date preluate din calculator. ' + summary.join(' · ');
+          contextPanel.hidden = false;
+        }
+      }
+
+      const selectedNeeds = () =>
+        [...document.querySelectorAll('input[name="need"]:checked')].map((el) => '- ' + el.value);
+
+      const sourceSnapshot = () => JSON.stringify({
+        needs: selectedNeeds(),
+        locality: localityInput.value.trim(),
+        area: areaInput.value.trim(),
+        note: noteInput.value.trim()
       });
+
+      const currentSubject = () =>
+        'Evaluare tehnică'
+        + (localityInput.value.trim() ? ' — ' + localityInput.value.trim() : '')
+        + ' — LaCurent';
+
+      let preparedSource = null;
+
+      const isStale = () =>
+        preparedSource !== null && sourceSnapshot() !== preparedSource;
+
+      const updateEmail = () => {
+        email.href =
+          'mailto:karol@lacurent.com?subject='
+          + encodeURIComponent(currentSubject())
+          + '&body='
+          + encodeURIComponent(brief.value);
+      };
+
+      const markStale = () => {
+        if (!preparedSource || preview.hidden) return;
+        if (isStale()) {
+          preview.classList.add('is-stale');
+          email.dataset.stale = 'true';
+          email.setAttribute('aria-disabled', 'true');
+          copyButton.disabled = true;
+          status.textContent = 'Datele s-au schimbat. Regenerează cererea înainte de trimitere.';
+        } else {
+          preview.classList.remove('is-stale');
+          delete email.dataset.stale;
+          email.removeAttribute('aria-disabled');
+          copyButton.disabled = false;
+          status.textContent = 'Cererea este sincronizată cu datele introduse.';
+        }
+      };
+
+      const calculationSummary = calculatorContext
+        ? [
+            'Rezumatul calculului:',
+            calculatorContext.project ? 'Proiect: ' + calculatorContext.project : '',
+            calculatorContext.energyClass ? 'Clasă energetică: ' + calculatorContext.energyClass : '',
+            calculatorContext.primaryEnergy ? 'Energie primară: ' + calculatorContext.primaryEnergy : '',
+            calculatorContext.co2 ? 'Emisii: ' + calculatorContext.co2 : '',
+            calculatorContext.mainLoss
+              ? 'Pierdere principală: ' + calculatorContext.mainLoss
+                + (calculatorContext.mainLossValue ? ' (' + calculatorContext.mainLossValue + ')' : '')
+              : ''
+          ].filter(Boolean)
+        : [];
+
+      const buildBrief = () => {
+        const needs = selectedNeeds();
+        const locality = localityInput.value.trim() || 'Nespecificată';
+        const area = areaInput.value.trim();
+        const areaText = area ? area + ' m²' : 'Nespecificată';
+        return [
+          'Bună ziua,',
+          '',
+          'Doresc o evaluare tehnică pentru locuința mea.',
+          '',
+          'Localitate: ' + locality,
+          'Suprafață: ' + areaText,
+          ...(calculationSummary.length ? ['', ...calculationSummary] : []),
+          '',
+          'Mă interesează:',
+          ...(needs.length ? needs : ['- Încă nu sunt sigur(ă); doresc să identificăm prioritatea.']),
+          '',
+          'Ce vreau să rezolv:',
+          noteInput.value.trim() || 'Nespecificat',
+          '',
+          'Mulțumesc!'
+        ].join('\n');
+      };
+
+      const prepare = () => {
+        brief.value = buildBrief();
+        preparedSource = sourceSnapshot();
+        preview.hidden = false;
+        preview.classList.remove('is-stale');
+        delete email.dataset.stale;
+        email.removeAttribute('aria-disabled');
+        copyButton.disabled = false;
+        button.textContent = 'Regenerează cererea';
+        updateEmail();
+        status.textContent = 'Cererea este pregătită. Verific-o înainte de trimitere.';
+        brief.focus();
+      };
+
+      button.addEventListener('click', prepare);
       brief.addEventListener('input', updateEmail);
-      document.getElementById('copy-energy-brief').addEventListener('click', async () => { try { await navigator.clipboard.writeText(brief.value); status.textContent = 'Cererea a fost copiată.'; } catch { brief.focus(); brief.select(); status.textContent = 'Copiarea automată nu este disponibilă. Textul este selectat.'; } });
+
+      const sourceControls = [
+        ...document.querySelectorAll('input[name="need"]'),
+        localityInput,
+        areaInput,
+        noteInput
+      ].filter(Boolean);
+      sourceControls.forEach((control) => {
+        control.addEventListener('input', markStale);
+        control.addEventListener('change', markStale);
+      });
+
+      email.addEventListener('click', (event) => {
+        if (isStale()) {
+          event.preventDefault();
+          markStale();
+        }
+      });
+
+      copyButton.addEventListener('click', async () => {
+        if (isStale()) {
+          markStale();
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(brief.value);
+          status.textContent = 'Cererea a fost copiată.';
+        } catch {
+          brief.focus();
+          brief.select();
+          status.textContent = 'Copiarea automată nu este disponibilă. Textul este selectat.';
+        }
+      });
+
+      updateEmail();
     })();
   </script>
 </body>
