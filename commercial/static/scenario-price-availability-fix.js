@@ -1,55 +1,38 @@
 (() => {
   const heating = document.getElementById("simHeating");
+  const status = document.getElementById("scenarioStatus");
   const costValue = document.getElementById("simCostValue");
   const costDelta = document.getElementById("simCostDelta");
   const savingValue = document.getElementById("simSavingValue");
   const savingNote = document.querySelector('[data-sim="saving-note"]');
-  if (!heating || !costValue || !costDelta || !savingValue) return;
+  if (!heating || !status || !costValue || !costDelta || !savingValue) return;
 
   const ro = () => document.documentElement.lang !== "en";
-  const unavailableHeating = new Set(["pellet_boiler", "district_heat"]);
 
-  function messageFor(value) {
-    if (value === "pellet_boiler") {
-      return ro()
-        ? "Preț național oficial unic indisponibil · introduceți un preț local când această opțiune va fi disponibilă"
-        : "No single official national price · enter a local price when this option becomes available";
-    }
-    if (value === "district_heat") {
-      return ro()
-        ? "Tariful este local și trebuie preluat de la operatorul de termoficare"
-        : "The tariff is local and must come from the district-heating operator";
-    }
-    return ro() ? "Cost incomplet" : "Incomplete cost";
-  }
-
-  function applyAvailabilityState() {
-    const selected = heating.value;
-    const partial = /parțial|partial|calculabil|priceable/i.test(costDelta.textContent || "");
-    if (!unavailableHeating.has(selected) && !partial) return;
-
-    // An unknown tariff is not zero. Do not allow the simulator to present a
-    // partial/unknown cost as a saving against a fully priced baseline.
-    costValue.textContent = ro() ? "Preț indisponibil" : "Price unavailable";
-    costDelta.textContent = messageFor(selected);
+  function applyDistrictHeatState() {
+    if (heating.value !== "district_heat") return;
+    costValue.textContent = ro() ? "Preț local necesar" : "Local tariff required";
+    costDelta.textContent = ro()
+      ? "Tariful de termoficare depinde de localitate și operator"
+      : "District-heating tariff depends on the location and operator";
     costDelta.className = "";
     savingValue.textContent = "—";
     savingValue.className = "";
     if (savingNote) {
       savingNote.textContent = ro()
-        ? "comparația în lei este indisponibilă fără un preț complet"
-        : "cost comparison is unavailable without a complete price";
+        ? "comparația în lei este indisponibilă fără tariful local"
+        : "cost comparison is unavailable without the local tariff";
     }
   }
 
-  const observer = new MutationObserver(() => queueMicrotask(applyAvailabilityState));
-  observer.observe(costDelta, { childList: true, characterData: true, subtree: true });
-  observer.observe(costValue, { childList: true, characterData: true, subtree: true });
+  // Observe only the simulator status. We never mutate this node, so this
+  // cannot recurse. When the asynchronous calculation finishes, the status
+  // changes and the local-tariff state is re-applied if needed.
+  const observer = new MutationObserver(applyDistrictHeatState);
+  observer.observe(status, { childList: true, characterData: true, subtree: true });
 
-  heating.addEventListener("change", () => setTimeout(applyAvailabilityState, 0));
+  heating.addEventListener("change", () => setTimeout(applyDistrictHeatState, 0));
   document.querySelectorAll("[data-site-language]").forEach((button) => {
-    button.addEventListener("click", () => setTimeout(applyAvailabilityState, 0));
+    button.addEventListener("click", () => setTimeout(applyDistrictHeatState, 0));
   });
-
-  applyAvailabilityState();
 })();
