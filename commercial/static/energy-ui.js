@@ -26,16 +26,32 @@
   };
 
   const heatingProfiles = {
-    condensing_gas_boiler: { type: "condensing_gas_boiler", carrier: "natural_gas", efficiency: 0.94, scop: 3.2 },
-    gas_boiler: { type: "gas_boiler", carrier: "natural_gas", efficiency: 0.85, scop: 3.2 },
-    electric_resistance: { type: "electric_resistance", carrier: "electricity", efficiency: 1, scop: 3.2 },
-    heat_pump: { type: "heat_pump", carrier: "electricity", efficiency: 1, scop: 3.2 },
-    wood_stove: { type: "custom", carrier: "biomass", efficiency: 0.75, scop: 3.2 },
-    wood_boiler: { type: "custom", carrier: "biomass", efficiency: 0.80, scop: 3.2 },
-    pellet_boiler: { type: "custom", carrier: "biomass", efficiency: 0.88, scop: 3.2 },
-    district_heat: { type: "district_heat", carrier: "district_heat", efficiency: 0.95, scop: 3.2 },
-    custom: { type: "custom", carrier: "natural_gas", efficiency: 0.85, scop: 3.2 }
+    condensing_gas_boiler: { type: "condensing_gas_boiler", carrier: "natural_gas", efficiency: 0.94, scop: 3.2, costProfile: "natural_gas" },
+    gas_boiler: { type: "gas_boiler", carrier: "natural_gas", efficiency: 0.85, scop: 3.2, costProfile: "natural_gas" },
+    electric_resistance: { type: "electric_resistance", carrier: "electricity", efficiency: 1, scop: 3.2, costProfile: "electricity" },
+    heat_pump: { type: "heat_pump", carrier: "electricity", efficiency: 1, scop: 3.2, costProfile: "electricity" },
+    wood_stove: { type: "custom", carrier: "biomass", efficiency: 0.75, scop: 3.2, costProfile: "firewood" },
+    wood_boiler: { type: "custom", carrier: "biomass", efficiency: 0.80, scop: 3.2, costProfile: "firewood" },
+    pellet_boiler: { type: "custom", carrier: "biomass", efficiency: 0.88, scop: 3.2, costProfile: "pellets" },
+    district_heat: { type: "district_heat", carrier: "district_heat", efficiency: 0.95, scop: 3.2, costProfile: "district_heat" },
+    custom: { type: "custom", carrier: "natural_gas", efficiency: 0.85, scop: 3.2, costProfile: "other" }
   };
+
+  const LABEL_LIMITS = Object.freeze([
+    { zoomBelow: 1.45, maxLabels: 14, maxMarkers: 90 },
+    { zoomBelow: 2.4, maxLabels: 32, maxMarkers: 180 },
+    { zoomBelow: 4.0, maxLabels: 60, maxMarkers: 360 },
+    { zoomBelow: 6.0, maxLabels: 95, maxMarkers: 700 },
+    { zoomBelow: Infinity, maxLabels: 140, maxMarkers: 1200 }
+  ]);
+
+  const LABEL_STYLES = Object.freeze({
+    1: { fontSize: 12, radius: 4.3, weight: 900 },
+    2: { fontSize: 11, radius: 3.6, weight: 850 },
+    3: { fontSize: 10, radius: 3.0, weight: 800 },
+    4: { fontSize: 9, radius: 2.4, weight: 760 },
+    5: { fontSize: 8.3, radius: 2.0, weight: 720 }
+  });
 
   function updateDerivedLabels(values) {
     const mapping = {
@@ -136,6 +152,7 @@
     setValue(form, "heating_carrier", profile.carrier);
     setValue(form, "heating_efficiency", profile.efficiency);
     setValue(form, "heating_scop", profile.scop);
+    setValue(form, "heating_cost_profile", profile.costProfile);
 
     if (byName(form, "expert_dhw_override")?.value !== "on") {
       setValue(form, "dhw_carrier", profile.carrier);
@@ -182,6 +199,54 @@
     }
   }
 
+  function localityTier(locality) {
+    const type = String(locality.localityType || "").toLowerCase();
+    const importance = Number(locality.importance || 0);
+    if (importance >= 900000) return 1;
+    if (importance >= 350000 || type === "municipiu") return 2;
+    if (importance >= 100000 || type === "oras" || type === "oraș" || type === "sector") return 3;
+    if (type === "comuna" || type === "comună") return 4;
+    return 5;
+  }
+
+  function labelSettings(zoom) {
+    return LABEL_LIMITS.find((item) => zoom < item.zoomBelow) || LABEL_LIMITS[LABEL_LIMITS.length - 1];
+  }
+
+  function labelBox(screenX, screenY, name, style, position) {
+    const width = Math.max(28, name.length * style.fontSize * 0.57 + 8);
+    const height = style.fontSize + 6;
+    const gap = style.radius + 4;
+    const positions = {
+      right: { x: screenX + gap, y: screenY - height / 2, tx: gap, ty: 4, anchor: "start" },
+      left: { x: screenX - gap - width, y: screenY - height / 2, tx: -gap, ty: 4, anchor: "end" },
+      above: { x: screenX - width / 2, y: screenY - gap - height, tx: 0, ty: -gap - 2, anchor: "middle" },
+      below: { x: screenX - width / 2, y: screenY + gap, tx: 0, ty: gap + style.fontSize, anchor: "middle" }
+    };
+    return { ...positions[position], width, height };
+  }
+
+  function boxesOverlap(a, b, padding = 7) {
+    return !(
+      a.x + a.width + padding < b.x ||
+      b.x + b.width + padding < a.x ||
+      a.y + a.height + padding < b.y ||
+      b.y + b.height + padding < a.y
+    );
+  }
+
+  function boxInside(box, width, height) {
+    return box.x >= 4 && box.y >= 4 && box.x + box.width <= width - 4 && box.y + box.height <= height - 4;
+  }
+
+  function escapeAttr(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
   function initMapGestures() {
     const map = document.getElementById("romaniaLocationMap");
     const card = map?.closest(".romania-map-card");
@@ -189,11 +254,11 @@
 
     const controls = document.createElement("div");
     controls.className = "map-controls";
-    controls.innerHTML = '<button type="button" data-map-zoom="in" aria-label="Zoom in">+</button><button type="button" data-map-zoom="out" aria-label="Zoom out">−</button><button type="button" data-map-zoom="reset" aria-label="Reset map view">↺</button>';
+    controls.innerHTML = '<button type="button" data-map-zoom="in" aria-label="Mărește harta">+</button><button type="button" data-map-zoom="out" aria-label="Micșorează harta">−</button><button type="button" data-map-zoom="reset" aria-label="Resetează harta">↺</button>';
     card.appendChild(controls);
     const hint = document.createElement("p");
     hint.className = "map-gesture-hint";
-    hint.textContent = "Scroll to zoom · drag to move · pinch on phone";
+    hint.textContent = "Scroll pentru zoom · trage pentru deplasare · două degete pe telefon";
     card.appendChild(hint);
 
     let base = null;
@@ -202,6 +267,7 @@
     let draggedRecently = false;
     const pointers = new Map();
     let pinch = null;
+    let renderFrame = null;
 
     function svg() { return map.querySelector("svg.romania-map-svg"); }
     function parseBase(node) {
@@ -209,6 +275,7 @@
       if (!box || !box.width || !box.height) return null;
       return { x: box.x, y: box.y, width: box.width, height: box.height };
     }
+
     function ensureView() {
       const node = svg();
       if (!node) return null;
@@ -220,17 +287,94 @@
       if (view) node.setAttribute("viewBox", `${view.x} ${view.y} ${view.width} ${view.height}`);
       return node;
     }
+
+    function scheduleLocalityRender() {
+      if (renderFrame) cancelAnimationFrame(renderFrame);
+      renderFrame = requestAnimationFrame(renderVisibleLocalities);
+    }
+
+    function renderVisibleLocalities() {
+      renderFrame = null;
+      const node = ensureView();
+      const state = window.__lacurentLocationState;
+      const layer = node?.querySelector(".map-localities");
+      if (!node || !layer || !state?.data || !state?.projection || !view || !base) return;
+
+      const rect = node.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const zoom = base.width / view.width;
+      const settings = labelSettings(zoom);
+      const mapUnitsPerPixel = view.width / rect.width;
+      const marginX = view.width * 0.04;
+      const marginY = view.height * 0.04;
+
+      const candidates = state.data.localities
+        .filter((locality) => Number.isFinite(locality.lon) && Number.isFinite(locality.lat))
+        .map((locality) => {
+          const [x, y] = state.projection.project(locality.lon, locality.lat);
+          const selected = locality.id === state.selected?.id;
+          return { locality, x, y, selected, tier: localityTier(locality) };
+        })
+        .filter((item) => item.selected || (
+          item.x >= view.x - marginX && item.x <= view.x + view.width + marginX &&
+          item.y >= view.y - marginY && item.y <= view.y + view.height + marginY
+        ))
+        .sort((a, b) => Number(b.selected) - Number(a.selected) || a.tier - b.tier || (b.locality.importance || 0) - (a.locality.importance || 0))
+        .slice(0, settings.maxMarkers);
+
+      const acceptedBoxes = [];
+      let labelCount = 0;
+      const markerHtml = candidates.map((item) => {
+        const style = LABEL_STYLES[item.tier] || LABEL_STYLES[5];
+        const screenX = ((item.x - view.x) / view.width) * rect.width;
+        const screenY = ((item.y - view.y) / view.height) * rect.height;
+        let placement = null;
+
+        if (item.selected || labelCount < settings.maxLabels) {
+          for (const position of ["right", "left", "above", "below"]) {
+            const box = labelBox(screenX, screenY, item.locality.name, style, position);
+            if ((item.selected || boxInside(box, rect.width, rect.height)) && (item.selected || !acceptedBoxes.some((used) => boxesOverlap(box, used)))) {
+              placement = box;
+              if (!item.selected) acceptedBoxes.push(box);
+              labelCount += 1;
+              break;
+            }
+          }
+        }
+
+        const radius = item.selected ? Math.max(style.radius + 2.2, 5.2) : style.radius;
+        const innerScale = mapUnitsPerPixel;
+        const label = placement
+          ? `<text x="${placement.tx.toFixed(2)}" y="${placement.ty.toFixed(2)}" text-anchor="${placement.anchor}" style="font-size:${style.fontSize}px;font-weight:${style.weight}">${escapeAttr(item.locality.name)}</text>`
+          : "";
+        return `
+          <g class="locality-marker${item.selected ? " selected" : ""}" data-locality-id="${escapeAttr(item.locality.id)}" tabindex="0" role="button" aria-label="${escapeAttr(item.locality.name)}, ${escapeAttr(item.locality.county)}" transform="translate(${item.x.toFixed(2)} ${item.y.toFixed(2)})">
+            <g class="locality-marker-screen" transform="scale(${innerScale.toFixed(6)})">
+              <circle cx="0" cy="0" r="${radius.toFixed(2)}"></circle>
+              ${label}
+            </g>
+          </g>`;
+      }).join("");
+
+      layer.innerHTML = markerHtml;
+      state.renderedLocalities = candidates;
+    }
+
     function applyView() {
       const node = svg();
-      if (node && view) node.setAttribute("viewBox", `${view.x} ${view.y} ${view.width} ${view.height}`);
+      if (node && view) {
+        node.setAttribute("viewBox", `${view.x} ${view.y} ${view.width} ${view.height}`);
+        scheduleLocalityRender();
+      }
     }
+
     function zoomAt(clientX, clientY, factor) {
       const node = ensureView();
       if (!node || !base || !view) return;
       const rect = node.getBoundingClientRect();
       const px = view.x + ((clientX - rect.left) / rect.width) * view.width;
       const py = view.y + ((clientY - rect.top) / rect.height) * view.height;
-      const nextWidth = clamp(view.width * factor, base.width / 5, base.width);
+      const nextWidth = clamp(view.width * factor, base.width / 8, base.width);
       const nextHeight = nextWidth * (base.height / base.width);
       const rx = (px - view.x) / view.width;
       const ry = (py - view.y) / view.height;
@@ -240,15 +384,17 @@
         width: nextWidth,
         height: nextHeight
       };
-      const minX = base.x;
-      const minY = base.y;
-      view.x = clamp(view.x, minX, base.x + base.width - view.width);
-      view.y = clamp(view.y, minY, base.y + base.height - view.height);
+      view.x = clamp(view.x, base.x, base.x + base.width - view.width);
+      view.y = clamp(view.y, base.y, base.y + base.height - view.height);
       applyView();
     }
+
     function resetView() {
       if (!base) ensureView();
-      if (base) { view = { ...base }; applyView(); }
+      if (base) {
+        view = { ...base };
+        applyView();
+      }
     }
 
     map.addEventListener("wheel", (event) => {
@@ -257,6 +403,7 @@
     }, { passive: false });
 
     map.addEventListener("pointerdown", (event) => {
+      ensureView();
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       map.setPointerCapture?.(event.pointerId);
       if (pointers.size === 1 && view) {
@@ -280,7 +427,7 @@
         if (distance > 0) {
           const centerX = (a.x + b.x) / 2;
           const centerY = (a.y + b.y) / 2;
-          const desiredWidth = clamp(pinch.width * (pinch.distance / distance), base.width / 5, base.width);
+          const desiredWidth = clamp(pinch.width * (pinch.distance / distance), base.width / 8, base.width);
           zoomAt(centerX, centerY, desiredWidth / view.width);
           draggedRecently = true;
         }
@@ -319,29 +466,24 @@
       if (action === "out") zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1.30);
     });
 
-    function addMoreLabels() {
-      const node = ensureView();
-      const state = window.__lacurentLocationState;
-      if (!node || !state?.renderedLocalities) return;
-      state.renderedLocalities.slice(0, 38).forEach((item) => {
-        const marker = node.querySelector(`.locality-marker[data-locality-id="${CSS.escape(item.locality.id)}"]`);
-        if (!marker || marker.querySelector("text")) return;
-        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute("x", String(item.x + 6));
-        text.setAttribute("y", String(item.y - 4));
-        text.textContent = item.locality.name;
-        marker.appendChild(text);
+    const observer = new MutationObserver(() => {
+      requestAnimationFrame(() => {
+        const node = ensureView();
+        if (node && view) node.setAttribute("viewBox", `${view.x} ${view.y} ${view.width} ${view.height}`);
+        scheduleLocalityRender();
       });
-    }
-
-    const observer = new MutationObserver(() => requestAnimationFrame(addMoreLabels));
+    });
     observer.observe(map, { childList: true, subtree: false });
+
+    const resizeObserver = new ResizeObserver(() => scheduleLocalityRender());
+    resizeObserver.observe(map);
+
     const timer = setInterval(() => {
-      if (ensureView()) {
-        addMoreLabels();
-        if (window.__lacurentLocationState?.data) clearInterval(timer);
+      if (ensureView() && window.__lacurentLocationState?.data) {
+        scheduleLocalityRender();
+        clearInterval(timer);
       }
-    }, 120);
+    }, 100);
   }
 
   function normalize(text) {
