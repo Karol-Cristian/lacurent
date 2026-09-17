@@ -146,16 +146,21 @@ def test_installations_landing_page_links_energy_calculator() -> None:
     assert "Pregătește cererea" in response.text
     assert "energy-brief-preview" in response.text
     assert "Eficiență energetică" in response.text
-    assert "/instalatii/calculator" in response.text
+    assert "Cost energetic estimat în lei" in response.text
+    assert 'href="/"' not in response.text
     assert "/static/favicon.svg" in response.text
 
 
-def test_energy_calculator_renders_complete_form() -> None:
+def test_energy_calculator_is_romanian_and_isolated_from_testing_home() -> None:
     response = client.get("/instalatii/calculator")
     assert response.status_code == 200
-    assert "Calculate performance" in response.text
-    assert "Building envelope" in response.text
-    assert "Systems" in response.text
+    assert "Calculează performanța" in response.text
+    assert "Anvelopa clădirii" in response.text
+    assert "Instalațiile" in response.text
+    assert "Ventilație naturală" in response.text
+    assert "Sobă / șemineu pe lemne" in response.text
+    assert 'href="/"' not in response.text
+    assert "Building envelope" not in response.text
     assert "/static/favicon.svg" in response.text
 
 
@@ -175,22 +180,36 @@ def test_www_host_redirects_to_canonical_apex() -> None:
     assert response.headers["location"] == "https://lacurent.com/software-testing?source=www"
 
 
-def test_form_calculation_renders_commercial_results() -> None:
+def test_form_calculation_renders_romanian_results_and_costs() -> None:
     response = client.post("/calculate", data=demo_form_data())
     assert response.status_code == 200
-    assert "Calculation result" in response.text
+    assert "Rezultatul calculului" in response.text
     assert "Commercial test house" in response.text
-    assert "Primary energy" in response.text
-    assert "Generate A4 report" in response.text
+    assert "Energie primară" in response.text
+    assert "Cost anual estimat al energiei" in response.text
+    assert "lei/an" in response.text
+    assert "Generează raportul A4" in response.text
     assert "Cere o evaluare tehnică" in response.text
+    assert 'href="/"' not in response.text
     assert "Trace" not in response.text
 
 
-def test_certificate_renders_printable_report() -> None:
+def test_certificate_renders_romanian_printable_report_with_costs() -> None:
     payload = demo_building().model_dump_json()
     response = client.post("/certificate", data={"payload": payload})
     assert response.status_code == 200
-    assert "Energy Performance Report" in response.text
-    assert "Print / save PDF" in response.text
-    assert "not a legally issued" in response.text
-    assert "Certificate" in response.text
+    assert "Raport de performanță energetică" in response.text
+    assert "Tipărește / salvează PDF" in response.text
+    assert "Cost anual estimat al energiei" in response.text
+    assert "nu reprezintă un Certificat de Performanță Energetică" in response.text
+    assert "lei/an" in response.text
+
+
+def test_official_price_registry_endpoint_is_available() -> None:
+    response = client.get("/api/energy-prices")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["retrieved_on"] == "2026-09-17"
+    assert payload["electricity"]["source_name"] == "POSF / ANRE"
+    assert payload["natural_gas"]["source_name"] == "POSF / ANRE"
+    assert payload["firewood"]["source_name"].startswith("Romsilva")

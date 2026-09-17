@@ -60,6 +60,14 @@ class HeatingInput(BaseModel):
     carrier: Carrier = Carrier.natural_gas
     efficiency: float | None = Field(default=None, gt=0, le=1)
     scop: float | None = Field(default=None, gt=0)
+    cost_profile: Literal[
+        "electricity",
+        "natural_gas",
+        "firewood",
+        "pellets",
+        "district_heat",
+        "other",
+    ] | None = None
 
 
 class CoolingInput(BaseModel):

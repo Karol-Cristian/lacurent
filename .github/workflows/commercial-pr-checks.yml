@@ -1,0 +1,43 @@
+name: Commercial PR Checks
+
+on:
+  pull_request:
+    branches:
+      - codex/commercial-v2-cloudflare-python
+    paths:
+      - "commercial/**"
+      - ".github/workflows/commercial-pr-checks.yml"
+      - "scripts/prepare-commercial-cloudflare-worker.mjs"
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Run Commercial v2 checks
+        run: |
+          git diff --check
+          node --check commercial/static/app.js
+          node --check commercial/static/energy-ui.js
+          node --test commercial/tests/intake.test.cjs
+          python -m compileall -q commercial
+          python -m pytest commercial/tests -q

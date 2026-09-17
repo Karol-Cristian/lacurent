@@ -13,13 +13,14 @@ from pydantic import ValidationError
 from .engine import calculate, demo_building
 from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
+from .pricing import energy_prices, estimate_energy_cost
 from .software_resources import router as software_resources_router
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 app = FastAPI(
     title="LaCurent",
-    version="2.3.0",
+    version="2.4.0",
     description="LaCurent engineering, software testing and energy services.",
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -68,15 +69,15 @@ VENTILATION_PROFILES: dict[str, tuple[float, float]] = {
 }
 
 HEATING_PROFILES: dict[str, dict[str, Any]] = {
-    "condensing_gas_boiler": {"system_type": "condensing_gas_boiler", "carrier": "natural_gas", "efficiency": 0.94, "scop": 3.2},
-    "gas_boiler": {"system_type": "gas_boiler", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2},
-    "electric_resistance": {"system_type": "electric_resistance", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2},
-    "heat_pump": {"system_type": "heat_pump", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2},
-    "wood_stove": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.75, "scop": 3.2},
-    "wood_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.80, "scop": 3.2},
-    "pellet_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.88, "scop": 3.2},
-    "district_heat": {"system_type": "district_heat", "carrier": "district_heat", "efficiency": 0.95, "scop": 3.2},
-    "custom": {"system_type": "custom", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2},
+    "condensing_gas_boiler": {"system_type": "condensing_gas_boiler", "carrier": "natural_gas", "efficiency": 0.94, "scop": 3.2, "cost_profile": "natural_gas"},
+    "gas_boiler": {"system_type": "gas_boiler", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2, "cost_profile": "natural_gas"},
+    "electric_resistance": {"system_type": "electric_resistance", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2, "cost_profile": "electricity"},
+    "heat_pump": {"system_type": "heat_pump", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2, "cost_profile": "electricity"},
+    "wood_stove": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.75, "scop": 3.2, "cost_profile": "firewood"},
+    "wood_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.80, "scop": 3.2, "cost_profile": "firewood"},
+    "pellet_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.88, "scop": 3.2, "cost_profile": "pellets"},
+    "district_heat": {"system_type": "district_heat", "carrier": "district_heat", "efficiency": 0.95, "scop": 3.2, "cost_profile": "district_heat"},
+    "custom": {"system_type": "custom", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2, "cost_profile": "other"},
 }
 
 
@@ -124,6 +125,7 @@ def default_form_values() -> dict[str, Any]:
         "heating_efficiency": 0.94,
         "heating_scop": 3.2,
         "heating_carrier": "natural_gas",
+        "heating_cost_profile": "natural_gas",
         "cooling_enabled": False,
         "cooling_seer": 3.5,
         "cooling_setpoint_c": 26,
@@ -163,6 +165,7 @@ def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
             "heating_efficiency": building.heating.efficiency,
             "heating_scop": building.heating.scop,
             "heating_carrier": building.heating.carrier.value,
+            "heating_cost_profile": building.heating.cost_profile,
             "cooling_enabled": building.cooling.enabled,
             "cooling_seer": building.cooling.seer,
             "cooling_setpoint_c": building.cooling.setpoint_c,
@@ -313,6 +316,7 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
             "carrier": form.get("heating_carrier") or "natural_gas",
             "efficiency": parse_optional_float(form.get("heating_efficiency")),
             "scop": parse_optional_float(form.get("heating_scop")),
+            "cost_profile": form.get("heating_cost_profile") or None,
         }
     else:
         heating = dict(HEATING_PROFILES.get(str(form.get("heating_choice") or "condensing_gas_boiler"), HEATING_PROFILES["custom"]))
@@ -330,11 +334,11 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     technical = _technical_values(form)
     components = []
     component_map = [
-        ("External walls", "exterior_wall", "wall_area_m2", "wall_u_value"),
-        ("Roof / ceiling", "roof", "roof_area_m2", "roof_u_value"),
-        ("Ground floor", "floor", "floor_area_m2", "floor_u_value"),
-        ("Windows", "window", "window_area_m2", "window_u_value"),
-        ("External doors", "exterior_door", "door_area_m2", "door_u_value"),
+        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value"),
+        ("Acoperiș / tavan", "roof", "roof_area_m2", "roof_u_value"),
+        ("Pardoseală spre sol", "floor", "floor_area_m2", "floor_u_value"),
+        ("Ferestre", "window", "window_area_m2", "window_u_value"),
+        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value"),
     ]
 
     for name, kind, area_key, u_key in component_map:
@@ -350,7 +354,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     if bridge_length is not None and bridge_length > 0:
         thermal_bridges.append(
             {
-                "name": "Linear thermal bridges",
+                "name": "Punți termice liniare",
                 "length_m": bridge_length,
                 "psi_w_mk": bridge_psi if bridge_psi is not None else 0,
             }
@@ -365,7 +369,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
         dhw_carrier = heating["carrier"]
 
     return BuildingInput(
-        project_name=str(form.get("project_name") or "LaCurent Project"),
+        project_name=str(form.get("project_name") or "Proiect LaCurent"),
         locality=str(form.get("locality_id") or form.get("locality") or ""),
         heated_floor_area_m2=technical.get("heated_floor_area_m2"),
         heated_volume_m3=technical.get("heated_volume_m3"),
@@ -399,7 +403,7 @@ def user_error(exc: Exception) -> str:
     if isinstance(exc, ValidationError):
         first = exc.errors()[0]
         field = " / ".join(str(item) for item in first.get("loc", []))
-        return f"{field}: {first.get('msg', 'invalid value')}"
+        return f"{field}: {first.get('msg', 'valoare invalidă')}"
     return str(exc)
 
 
@@ -414,6 +418,7 @@ def result_context(result: Any) -> dict[str, Any]:
         "service_max": service_max,
         "carrier_max": carrier_max,
         "monthly_max": monthly_max,
+        "cost_estimate": estimate_energy_cost(result),
         "payload": model_to_json(result.input),
     }
 
@@ -430,6 +435,11 @@ def calculator_context(error: str | None = None, values: dict[str, Any] | None =
 @app.get("/api/location-data")
 async def location_data_api() -> JSONResponse:
     return JSONResponse(location_payload())
+
+
+@app.get("/api/energy-prices")
+async def energy_prices_api() -> JSONResponse:
+    return JSONResponse(energy_prices())
 
 
 @app.get("/health")
@@ -508,6 +518,7 @@ async def certificate(request: Request) -> HTMLResponse:
         "certificate.html",
         {
             "result": result,
+            "cost_estimate": estimate_energy_cost(result),
             "payload": json.dumps(model_to_dict(result.input), ensure_ascii=False, default=str),
         },
     )

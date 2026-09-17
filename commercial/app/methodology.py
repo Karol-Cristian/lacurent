@@ -91,7 +91,7 @@ def resolve_locality(locality: str) -> dict[str, Any]:
         return candidates[0]
 
     raise ValueError(
-        f"The selected locality '{locality}' is not available in the LaCurent geographic dataset."
+        f"Localitatea selectată „{locality}” nu este disponibilă în setul geografic LaCurent."
     )
 
 
@@ -100,7 +100,7 @@ def resolve_climate(locality: str) -> dict[str, Any]:
     station = _station_index().get(selected.get("stationId"))
     if not station:
         raise ValueError(
-            f"The selected locality '{selected['name']}' does not have a resolved MC001 climate station."
+            f"Localitatea „{selected['name']}” nu are o stație climatică MC001 asociată."
         )
 
     return {
@@ -127,7 +127,7 @@ def resolve_climate(locality: str) -> dict[str, Any]:
 
 def locality_display_name(locality: dict[str, Any]) -> str:
     uat = locality.get("uatName")
-    uat_text = f", administrative unit {uat}" if uat and uat != locality.get("name") else ""
+    uat_text = f", UAT {uat}" if uat and uat != locality.get("name") else ""
     return (
         f"{locality.get('name')}, {locality_type_label(locality.get('localityType'))} - "
         f"{locality.get('county')}{uat_text}"
@@ -136,19 +136,19 @@ def locality_display_name(locality: dict[str, Any]) -> str:
 
 def locality_type_label(locality_type: str | None) -> str:
     labels = {
-        "municipiu": "municipality",
-        "oras": "town",
-        "oraș": "town",
-        "comuna": "commune",
-        "comună": "commune",
-        "sat": "village",
-        "localitate componenta municipiu": "municipality component locality",
-        "localitate componenta oras": "town component locality",
-        "sat apartinator municipiu": "municipality-administered village",
-        "sat apartinator oras": "town-administered village",
+        "municipiu": "municipiu",
+        "oras": "oraș",
+        "oraș": "oraș",
+        "comuna": "comună",
+        "comună": "comună",
+        "sat": "sat",
+        "localitate componenta municipiu": "localitate componentă a municipiului",
+        "localitate componenta oras": "localitate componentă a orașului",
+        "sat apartinator municipiu": "sat aparținător municipiului",
+        "sat apartinator oras": "sat aparținător orașului",
         "sector": "sector",
     }
-    return labels.get(str(locality_type or "").lower(), str(locality_type or "locality"))
+    return labels.get(str(locality_type or "").lower(), str(locality_type or "localitate"))
 
 
 def location_payload() -> dict[str, Any]:
@@ -169,12 +169,12 @@ def location_payload() -> dict[str, Any]:
 def carrier_factors(carrier: str) -> dict[str, float]:
     factors = methodology()["carriers"].get(carrier)
     if not factors:
-        raise ValueError(f"The energy carrier '{carrier}' does not have methodology factors.")
+        raise ValueError(f"Sursa de energie „{carrier}” nu are factori metodologici definiți.")
     return factors
 
 
 def default_heating_performance(system_type: str) -> dict[str, Any]:
     defaults = methodology()["heating_system_defaults"].get(system_type)
     if not defaults:
-        raise ValueError(f"The heating system '{system_type}' is not supported.")
+        raise ValueError(f"Sistemul de încălzire „{system_type}” nu este suportat.")
     return defaults

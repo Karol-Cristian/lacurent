@@ -1,6 +1,6 @@
 {
   "version": "lacurent-commercial-v2.0",
-  "scope": "Commercial v2 residential monthly balance built from the repository's validated MC001 formula/data content where present.",
+  "scope": "Bilanț lunar rezidențial pentru versiunea comercială v2, construit din formulele și datele MC001 validate existente în proiect acolo unde sunt disponibile.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
     "residential_collective": 3.1
@@ -12,69 +12,69 @@
   },
   "heating_system_defaults": {
     "gas_boiler": {
-      "label": "Gas boiler",
+      "label": "Centrală pe gaz",
       "efficiency": 0.9,
       "carrier": "natural_gas"
     },
     "condensing_gas_boiler": {
-      "label": "Condensing gas boiler",
+      "label": "Centrală în condensare pe gaz",
       "efficiency": 0.96,
       "carrier": "natural_gas"
     },
     "electric_resistance": {
-      "label": "Electric resistance heating",
+      "label": "Încălzire electrică directă",
       "efficiency": 1.0,
       "carrier": "electricity"
     },
     "heat_pump": {
-      "label": "Heat pump",
+      "label": "Pompă de căldură",
       "scop": 3.2,
       "carrier": "electricity"
     },
     "district_heat": {
-      "label": "District heating",
+      "label": "Termoficare",
       "efficiency": 1.0,
       "carrier": "district_heat"
     },
     "custom": {
-      "label": "Configurable system",
+      "label": "Sistem configurabil",
       "efficiency": 0.9,
       "carrier": "natural_gas"
     }
   },
   "carriers": {
     "natural_gas": {
-      "label": "Natural gas",
+      "label": "Gaz natural",
       "primary_energy_factor": 1.17,
       "co2_kg_per_kwh_final": 0.202,
-      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+      "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     },
     "electricity": {
-      "label": "Grid electricity",
+      "label": "Electricitate din rețea",
       "primary_energy_factor": 2.5,
       "co2_kg_per_kwh_final": 0.107,
-      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+      "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     },
     "district_heat": {
-      "label": "District heat / remote cogeneration",
+      "label": "Termoficare / cogenerare la distanță",
       "primary_energy_factor": 0.92,
       "co2_kg_per_kwh_final": 0.22,
-      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+      "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     },
     "biomass": {
-      "label": "Biomass - briquettes/pellets",
+      "label": "Biomasă - lemn / brichete / peleți",
       "primary_energy_factor": 1.08,
       "co2_kg_per_kwh_final": 0.039,
-      "source": "Existing repository dataset mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 Tables 5.17 and 5.18."
+      "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     }
   },
   "energy_class_thresholds": {
     "residential_individual": {
-      "source": "Existing repository dataset mc001EnergyClassThresholds.mjs, MC001-2022 Table 5.7.",
+      "source": "Setul existent din proiect mc001EnergyClassThresholds.mjs, MC001-2022 tabelul 5.7.",
       "total_primary_kwh_m2": [91, 129, 257, 390, 522, 652, 783]
     },
     "residential_collective": {
-      "source": "Existing repository dataset mc001EnergyClassThresholds.mjs, MC001-2022 Table 5.8.",
+      "source": "Setul existent din proiect mc001EnergyClassThresholds.mjs, MC001-2022 tabelul 5.8.",
       "total_primary_kwh_m2": [73, 101, 198, 297, 396, 495, 595]
     }
   },
@@ -93,11 +93,11 @@
     "dhw_efficiency": 0.85
   },
   "assumptions": [
-    "Transmission heat transfer uses the validated MC001 direct form Htr = sum(U*A) + sum(psi*L) for the commercial v2 scope.",
-    "Ventilation heat transfer uses the MC001 helper form Hve = 0.34 * airflow_m3h * recovery_factor with airflow derived from ACH * heated volume.",
-    "Monthly heating and cooling use a transparent balance over monthly mean exterior temperatures, envelope/ventilation loss, internal gains and optional explicit solar gains.",
-    "DHW demand uses an explicit commercial-methodology value of 50 L/person/day at 60 C and 0.05814 kWh/L for a 10 C to 60 C water temperature rise.",
-    "Reference-building values are explicit methodology parameters, then calculated through the same engine as the evaluated building.",
-    "This commercial report is not a legally issued Romanian CPE."
+    "Transferul termic prin transmisie folosește forma directă MC001 validată: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul versiunii comerciale v2.",
+    "Pierderile prin ventilare folosesc forma Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
+    "Încălzirea și răcirea lunară folosesc un bilanț transparent cu temperatura exterioară medie lunară, pierderile prin anvelopă și ventilare, aporturile interne și aporturile solare explicite dacă sunt introduse.",
+    "Necesarul pentru apa caldă menajeră folosește 50 L/persoană/zi la 60 °C și 0,05814 kWh/L pentru încălzirea apei de la 10 °C la 60 °C.",
+    "Clădirea de referință folosește parametri metodologici expliciți și este calculată cu același motor ca locuința evaluată.",
+    "Raportul comercial LaCurent este o estimare tehnică și nu reprezintă un Certificat de Performanță Energetică emis legal în România."
   ]
 }

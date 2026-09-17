@@ -26,15 +26,15 @@
   };
 
   const heatingProfiles = {
-    condensing_gas_boiler: { type: "condensing_gas_boiler", carrier: "natural_gas", efficiency: 0.94, scop: 3.2 },
-    gas_boiler: { type: "gas_boiler", carrier: "natural_gas", efficiency: 0.85, scop: 3.2 },
-    electric_resistance: { type: "electric_resistance", carrier: "electricity", efficiency: 1, scop: 3.2 },
-    heat_pump: { type: "heat_pump", carrier: "electricity", efficiency: 1, scop: 3.2 },
-    wood_stove: { type: "custom", carrier: "biomass", efficiency: 0.75, scop: 3.2 },
-    wood_boiler: { type: "custom", carrier: "biomass", efficiency: 0.80, scop: 3.2 },
-    pellet_boiler: { type: "custom", carrier: "biomass", efficiency: 0.88, scop: 3.2 },
-    district_heat: { type: "district_heat", carrier: "district_heat", efficiency: 0.95, scop: 3.2 },
-    custom: { type: "custom", carrier: "natural_gas", efficiency: 0.85, scop: 3.2 }
+    condensing_gas_boiler: { type: "condensing_gas_boiler", carrier: "natural_gas", efficiency: 0.94, scop: 3.2, costProfile: "natural_gas" },
+    gas_boiler: { type: "gas_boiler", carrier: "natural_gas", efficiency: 0.85, scop: 3.2, costProfile: "natural_gas" },
+    electric_resistance: { type: "electric_resistance", carrier: "electricity", efficiency: 1, scop: 3.2, costProfile: "electricity" },
+    heat_pump: { type: "heat_pump", carrier: "electricity", efficiency: 1, scop: 3.2, costProfile: "electricity" },
+    wood_stove: { type: "custom", carrier: "biomass", efficiency: 0.75, scop: 3.2, costProfile: "firewood" },
+    wood_boiler: { type: "custom", carrier: "biomass", efficiency: 0.80, scop: 3.2, costProfile: "firewood" },
+    pellet_boiler: { type: "custom", carrier: "biomass", efficiency: 0.88, scop: 3.2, costProfile: "pellets" },
+    district_heat: { type: "district_heat", carrier: "district_heat", efficiency: 0.95, scop: 3.2, costProfile: "district_heat" },
+    custom: { type: "custom", carrier: "natural_gas", efficiency: 0.85, scop: 3.2, costProfile: "other" }
   };
 
   function updateDerivedLabels(values) {
@@ -136,6 +136,7 @@
     setValue(form, "heating_carrier", profile.carrier);
     setValue(form, "heating_efficiency", profile.efficiency);
     setValue(form, "heating_scop", profile.scop);
+    setValue(form, "heating_cost_profile", profile.costProfile);
 
     if (byName(form, "expert_dhw_override")?.value !== "on") {
       setValue(form, "dhw_carrier", profile.carrier);
@@ -180,168 +181,6 @@
     if (localityId) {
       new MutationObserver(persistLocality).observe(localityId, { attributes: true, attributeFilter: ["value"] });
     }
-  }
-
-  function initMapGestures() {
-    const map = document.getElementById("romaniaLocationMap");
-    const card = map?.closest(".romania-map-card");
-    if (!map || !card) return;
-
-    const controls = document.createElement("div");
-    controls.className = "map-controls";
-    controls.innerHTML = '<button type="button" data-map-zoom="in" aria-label="Zoom in">+</button><button type="button" data-map-zoom="out" aria-label="Zoom out">−</button><button type="button" data-map-zoom="reset" aria-label="Reset map view">↺</button>';
-    card.appendChild(controls);
-    const hint = document.createElement("p");
-    hint.className = "map-gesture-hint";
-    hint.textContent = "Scroll to zoom · drag to move · pinch on phone";
-    card.appendChild(hint);
-
-    let base = null;
-    let view = null;
-    let drag = null;
-    let draggedRecently = false;
-    const pointers = new Map();
-    let pinch = null;
-
-    function svg() { return map.querySelector("svg.romania-map-svg"); }
-    function parseBase(node) {
-      const box = node?.viewBox?.baseVal;
-      if (!box || !box.width || !box.height) return null;
-      return { x: box.x, y: box.y, width: box.width, height: box.height };
-    }
-    function ensureView() {
-      const node = svg();
-      if (!node) return null;
-      const freshBase = parseBase(node);
-      if (!base && freshBase) {
-        base = freshBase;
-        view = { ...base };
-      }
-      if (view) node.setAttribute("viewBox", `${view.x} ${view.y} ${view.width} ${view.height}`);
-      return node;
-    }
-    function applyView() {
-      const node = svg();
-      if (node && view) node.setAttribute("viewBox", `${view.x} ${view.y} ${view.width} ${view.height}`);
-    }
-    function zoomAt(clientX, clientY, factor) {
-      const node = ensureView();
-      if (!node || !base || !view) return;
-      const rect = node.getBoundingClientRect();
-      const px = view.x + ((clientX - rect.left) / rect.width) * view.width;
-      const py = view.y + ((clientY - rect.top) / rect.height) * view.height;
-      const nextWidth = clamp(view.width * factor, base.width / 5, base.width);
-      const nextHeight = nextWidth * (base.height / base.width);
-      const rx = (px - view.x) / view.width;
-      const ry = (py - view.y) / view.height;
-      view = {
-        x: px - rx * nextWidth,
-        y: py - ry * nextHeight,
-        width: nextWidth,
-        height: nextHeight
-      };
-      const minX = base.x;
-      const minY = base.y;
-      view.x = clamp(view.x, minX, base.x + base.width - view.width);
-      view.y = clamp(view.y, minY, base.y + base.height - view.height);
-      applyView();
-    }
-    function resetView() {
-      if (!base) ensureView();
-      if (base) { view = { ...base }; applyView(); }
-    }
-
-    map.addEventListener("wheel", (event) => {
-      event.preventDefault();
-      zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 0.84 : 1.18);
-    }, { passive: false });
-
-    map.addEventListener("pointerdown", (event) => {
-      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      map.setPointerCapture?.(event.pointerId);
-      if (pointers.size === 1 && view) {
-        drag = { x: event.clientX, y: event.clientY, view: { ...view } };
-        draggedRecently = false;
-      } else if (pointers.size === 2) {
-        const [a, b] = [...pointers.values()];
-        pinch = { distance: Math.hypot(a.x - b.x, a.y - b.y), width: view?.width || 0 };
-        drag = null;
-      }
-    });
-
-    map.addEventListener("pointermove", (event) => {
-      if (!pointers.has(event.pointerId)) return;
-      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      const node = ensureView();
-      if (!node || !base || !view) return;
-      if (pointers.size === 2 && pinch) {
-        const [a, b] = [...pointers.values()];
-        const distance = Math.hypot(a.x - b.x, a.y - b.y);
-        if (distance > 0) {
-          const centerX = (a.x + b.x) / 2;
-          const centerY = (a.y + b.y) / 2;
-          const desiredWidth = clamp(pinch.width * (pinch.distance / distance), base.width / 5, base.width);
-          zoomAt(centerX, centerY, desiredWidth / view.width);
-          draggedRecently = true;
-        }
-      } else if (drag && pointers.size === 1) {
-        const rect = node.getBoundingClientRect();
-        const dx = (event.clientX - drag.x) * (drag.view.width / rect.width);
-        const dy = (event.clientY - drag.y) * (drag.view.height / rect.height);
-        if (Math.abs(dx) + Math.abs(dy) > 2) draggedRecently = true;
-        view.x = clamp(drag.view.x - dx, base.x, base.x + base.width - view.width);
-        view.y = clamp(drag.view.y - dy, base.y, base.y + base.height - view.height);
-        applyView();
-        map.classList.add("is-panning");
-      }
-    });
-
-    const finishPointer = (event) => {
-      pointers.delete(event.pointerId);
-      map.classList.remove("is-panning");
-      if (pointers.size < 2) pinch = null;
-      if (!pointers.size) drag = null;
-      if (draggedRecently) setTimeout(() => { draggedRecently = false; }, 50);
-    };
-    map.addEventListener("pointerup", finishPointer);
-    map.addEventListener("pointercancel", finishPointer);
-    map.addEventListener("click", (event) => {
-      if (!draggedRecently) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }, true);
-
-    controls.addEventListener("click", (event) => {
-      const action = event.target.closest("button")?.dataset.mapZoom;
-      const rect = map.getBoundingClientRect();
-      if (action === "reset") resetView();
-      if (action === "in") zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 0.76);
-      if (action === "out") zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1.30);
-    });
-
-    function addMoreLabels() {
-      const node = ensureView();
-      const state = window.__lacurentLocationState;
-      if (!node || !state?.renderedLocalities) return;
-      state.renderedLocalities.slice(0, 38).forEach((item) => {
-        const marker = node.querySelector(`.locality-marker[data-locality-id="${CSS.escape(item.locality.id)}"]`);
-        if (!marker || marker.querySelector("text")) return;
-        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute("x", String(item.x + 6));
-        text.setAttribute("y", String(item.y - 4));
-        text.textContent = item.locality.name;
-        marker.appendChild(text);
-      });
-    }
-
-    const observer = new MutationObserver(() => requestAnimationFrame(addMoreLabels));
-    observer.observe(map, { childList: true, subtree: false });
-    const timer = setInterval(() => {
-      if (ensureView()) {
-        addMoreLabels();
-        if (window.__lacurentLocationState?.data) clearInterval(timer);
-      }
-    }, 120);
   }
 
   function normalize(text) {
@@ -400,7 +239,6 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     initFriendlyCalculator();
-    initMapGestures();
     initIntakeLocality();
   });
 })();

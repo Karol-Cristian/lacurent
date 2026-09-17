@@ -50,6 +50,7 @@ def test_simple_house_derives_geometry_ventilation_and_wood_heating() -> None:
     assert building.heating.system_type.value == "custom"
     assert building.heating.carrier.value == "biomass"
     assert building.heating.efficiency == pytest.approx(0.75)
+    assert building.heating.cost_profile == "firewood"
     assert building.dhw.carrier.value == "biomass"
 
 
@@ -78,19 +79,21 @@ def test_simple_apartment_only_adds_exposed_roof_or_floor() -> None:
     assert "exterior_door" not in envelope
     assert building.heating.system_type.value == "heat_pump"
     assert building.heating.carrier.value == "electricity"
+    assert building.heating.cost_profile == "electricity"
 
 
-def test_calculator_exposes_friendly_defaults_and_advanced_escape_hatch() -> None:
+def test_calculator_exposes_friendly_romanian_defaults_and_advanced_escape_hatch() -> None:
     response = client.get("/instalatii/calculator")
     assert response.status_code == 200
-    assert "Scroll to zoom on desktop" in response.text
-    assert "Natural ventilation" in response.text
-    assert "Mechanical with heat recovery" in response.text
-    assert "Wood stove / fireplace" in response.text
-    assert "Wood boiler" in response.text
-    assert "Pellet boiler" in response.text
-    assert "Advanced settings — exact envelope areas and coefficients" in response.text
-    assert "Calculate performance" in response.text
+    assert "rotița pentru zoom" in response.text
+    assert "Ventilație naturală" in response.text
+    assert "Ventilație cu recuperare" in response.text
+    assert "Sobă / șemineu pe lemne" in response.text
+    assert "Centrală pe lemne" in response.text
+    assert "Centrală pe peleți" in response.text
+    assert "Setări avansate — suprafețe și coeficienți exacți" in response.text
+    assert "Calculează performanța" in response.text
+    assert "Natural ventilation" not in response.text
 
 
 def test_installations_offer_uses_registry_ready_locality_picker() -> None:

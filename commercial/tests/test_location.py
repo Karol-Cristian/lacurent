@@ -53,17 +53,17 @@ def test_commune_and_village_resolve_to_climate_zone_and_station() -> None:
 
     assert village["selected_locality"]["locality_type"] == "sat"
     assert village["selected_locality"]["name"] == "Măgura"
-    assert "Măgura, village - Brașov" in village["selected_locality"]["display_name"]
+    assert "Măgura, sat - Brașov" in village["selected_locality"]["display_name"]
     assert village["climate_zone"] == "IV"
     assert village["station"] == "Brașov"
 
 
-def test_component_locality_type_is_displayed_in_english() -> None:
+def test_component_locality_type_is_displayed_in_romanian() -> None:
     climate = resolve_climate("Poiana Brasov")
 
     assert climate["selected_locality"]["name"] == "Poiana Brașov"
-    assert "municipality component locality" in climate["selected_locality"]["display_name"]
-    assert "localitate componenta" not in climate["selected_locality"]["display_name"]
+    assert "localitate componentă a municipiului" in climate["selected_locality"]["display_name"]
+    assert "municipality component locality" not in climate["selected_locality"]["display_name"]
 
 
 def test_duplicate_name_can_be_disambiguated_by_stable_locality_id() -> None:
@@ -77,7 +77,7 @@ def test_duplicate_name_can_be_disambiguated_by_stable_locality_id() -> None:
 
 
 def test_unknown_locality_is_rejected() -> None:
-    with pytest.raises(ValueError, match="geographic dataset"):
+    with pytest.raises(ValueError, match="setul geografic"):
         resolve_climate("Invented Locality")
 
 
@@ -133,5 +133,5 @@ def test_calculate_form_accepts_stable_locality_id() -> None:
     )
 
     assert response.status_code == 200
-    assert "Florești, commune - Cluj" in response.text
-    assert "climate station Cluj-Napoca" in response.text
+    assert "Florești, comună - Cluj" in response.text
+    assert "stația climatică Cluj-Napoca" in response.text

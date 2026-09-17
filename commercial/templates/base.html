@@ -1,33 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LaCurent{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
   <link rel="shortcut icon" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=v2eng2">
-  <link rel="stylesheet" href="{{ url_for('static', path='energy-ui.css') }}?v=energy1">
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=v2eng3">
+  <link rel="stylesheet" href="{{ url_for('static', path='energy-ui.css') }}?v=energy2">
 </head>
 <body>
   <div class="app-shell">
-    <aside class="brand-rail" aria-label="LaCurent navigation">
-      <a class="brand-mark" href="/">
+    <aside class="brand-rail" aria-label="Navigare LaCurent Instalații & Energie">
+      <a class="brand-mark" href="/instalatii">
         <span class="brand-symbol">LC</span>
         <span>
           <strong>LaCurent</strong>
-          <small>Building energy tools</small>
+          <small>Instalații & Energie</small>
         </span>
       </a>
 
-      <nav class="rail-nav" aria-label="Product workflow">
+      <nav class="rail-nav" aria-label="Flux calculator energetic">
         <a href="/instalatii">Instalații & energie</a>
-        <a href="/instalatii/calculator#building">Building</a>
-        <a href="/instalatii/calculator#envelope">Envelope</a>
-        <a href="/instalatii/calculator#ventilation">Ventilation</a>
-        <a href="/instalatii/calculator#systems">Systems</a>
-        <a href="/demo">Demo</a>
-        <a href="/">LaCurent home</a>
+        <a href="/instalatii/calculator#building">Clădire</a>
+        <a href="/instalatii/calculator#envelope">Anvelopă</a>
+        <a href="/instalatii/calculator#ventilation">Ventilație</a>
+        <a href="/instalatii/calculator#systems">Sisteme</a>
+        <a href="/demo">Exemplu calculat</a>
       </nav>
     </aside>
 
@@ -36,7 +35,7 @@
     </main>
   </div>
 
-  <script src="{{ url_for('static', path='app.js') }}?v=v2eng2"></script>
-  <script src="{{ url_for('static', path='energy-ui.js') }}?v=energy1"></script>
+  <script src="{{ url_for('static', path='app.js') }}?v=v2eng3"></script>
+  <script src="{{ url_for('static', path='energy-ui.js') }}?v=energy2"></script>
 </body>
 </html>
