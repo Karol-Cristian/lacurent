@@ -76,13 +76,22 @@ def _gas_reference() -> dict[str, Any]:
 
 def _firewood_reference() -> dict[str, Any]:
     data = energy_prices()["firewood"]
-    price_per_m3 = float(data["price_lei_per_solid_m3"])
+    base_price_per_m3 = float(data["price_lei_per_solid_m3"])
+    consumer_multiplier = float(data.get("consumer_cost_multiplier", 1.0))
+    price_per_m3 = base_price_per_m3 * consumer_multiplier
     energy_per_m3 = float(data["energy_kwh_per_solid_m3"])
     return {
         "unit_price_lei_per_kwh": price_per_m3 / energy_per_m3,
         "price_lei_per_m3": price_per_m3,
+        "base_price_lei_per_m3": base_price_per_m3,
+        "consumer_cost_multiplier": consumer_multiplier,
+        "consumer_cost_multiplier_note": data.get("consumer_cost_multiplier_note"),
         "energy_kwh_per_m3": energy_per_m3,
-        "basis": f"{data['price_reference']} · {data['assumed_water_content_percent']}% umiditate",
+        "basis": (
+            f"{data['price_reference']} · Romsilva {base_price_per_m3:.0f} lei/m³ · "
+            f"estimare consumator ×{consumer_multiplier:.1f} = {price_per_m3:.0f} lei/m³ · "
+            f"{data['assumed_water_content_percent']}% umiditate"
+        ),
         "source_name": data["source_name"],
         "source_url": data["source_url"],
         "catalog_url": data["catalog_url"],
