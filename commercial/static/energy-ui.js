@@ -34,7 +34,7 @@
     wood_boiler: { type: "custom", carrier: "biomass", efficiency: 0.80, scop: 3.2 },
     pellet_boiler: { type: "custom", carrier: "biomass", efficiency: 0.88, scop: 3.2 },
     district_heat: { type: "district_heat", carrier: "district_heat", efficiency: 0.95, scop: 3.2 },
-    custom: { type: "custom", carrier: "other", efficiency: 0.85, scop: 3.2 }
+    custom: { type: "custom", carrier: "natural_gas", efficiency: 0.85, scop: 3.2 }
   };
 
   function updateDerivedLabels(values) {
@@ -137,13 +137,8 @@
     setValue(form, "heating_efficiency", profile.efficiency);
     setValue(form, "heating_scop", profile.scop);
 
-    const dhwCarrier = profile.carrier === "other"
-      ? "electricity"
-      : profile.carrier === "biomass"
-        ? "biomass"
-        : profile.carrier;
     if (byName(form, "expert_dhw_override")?.value !== "on") {
-      setValue(form, "dhw_carrier", dhwCarrier);
+      setValue(form, "dhw_carrier", profile.carrier);
     }
   }
 
@@ -283,7 +278,6 @@
         const [a, b] = [...pointers.values()];
         const distance = Math.hypot(a.x - b.x, a.y - b.y);
         if (distance > 0) {
-          const rect = node.getBoundingClientRect();
           const centerX = (a.x + b.x) / 2;
           const centerY = (a.y + b.y) / 2;
           const desiredWidth = clamp(pinch.width * (pinch.distance / distance), base.width / 5, base.width);
