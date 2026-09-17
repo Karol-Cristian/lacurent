@@ -18,17 +18,18 @@ def climate_data() -> dict[str, Any]:
     return json.loads((DATA_DIR / "climate.json").read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=1)
 def locality_data() -> dict[str, Any]:
+    # The locality registry is ~6.5 MB. Do not keep it in the Python Worker
+    # isolate after the map payload has been returned: Cloudflare isolates have
+    # a 128 MB memory limit and the parsed object is substantially larger than
+    # the JSON file on disk.
     return json.loads((DATA_DIR / "localities.json").read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=1)
 def climate_zones_geojson() -> dict[str, Any]:
     return json.loads((DATA_DIR / "winter-climate-zones.geojson").read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=1)
 def romania_boundary_geojson() -> dict[str, Any]:
     return json.loads((DATA_DIR / "romania-boundary.geojson").read_text(encoding="utf-8"))
 
@@ -55,6 +56,9 @@ def normalize_key(value: str) -> str:
 
 @lru_cache(maxsize=1)
 def _locality_indexes() -> dict[str, Any]:
+    # Legacy/server-side fallback only. Normal calculator submissions carry a
+    # compact climate token produced from the already-loaded browser map, so
+    # this expensive index is not built in the normal Worker request path.
     localities = locality_data()["localities"]
     by_id = {item["id"]: item for item in localities}
     by_name: dict[str, list[dict[str, Any]]] = {}
@@ -68,6 +72,93 @@ def _locality_indexes() -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def _station_index() -> dict[str, dict[str, Any]]:
     return {item["id"]: item for item in climate_data()["localities"]}
+
+
+@lru_cache(maxsize=1)
+def _station_alias_index() -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+    for item in climate_data()["localities"]:
+        for value in (
+            item.get("id"),
+            item.get("locality_id"),
+            item.get("source_locality_id"),
+            item.get("name"),
+            *(item.get("aliases") or []),
+        ):
+            if value:
+                index[str(value)] = item
+                index[normalize_key(str(value))] = item
+    return index
+
+
+def _station_from_value(value: str) -> dict[str, Any] | None:
+    raw = " ".join(str(value or "").strip().split())
+    if not raw:
+        return None
+    index = _station_alias_index()
+    return index.get(raw) or index.get(normalize_key(raw))
+
+
+def _climate_from_station(
+    station: dict[str, Any],
+    *,
+    locality_name: str | None = None,
+    climate_zone: str | None = None,
+    winter_design_temperature_c: float | None = None,
+    resolution: str = "exact",
+) -> dict[str, Any]:
+    selected_name = locality_name or station["name"]
+    return {
+        **station,
+        "station": station["name"],
+        "station_id": station["id"],
+        "selected_locality": {
+            "id": station.get("source_locality_id") or station.get("locality_id") or station["id"],
+            "siruta": station.get("source_locality_id"),
+            "name": selected_name,
+            "county": station.get("county"),
+            "uat_name": None,
+            "locality_type": None,
+            "lon": station.get("lon"),
+            "lat": station.get("lat"),
+            "display_name": selected_name,
+        },
+        "climate_zone": climate_zone,
+        "winter_design_temperature_c": (
+            winter_design_temperature_c
+            if winter_design_temperature_c is not None
+            else station.get("winter_design_mean_daily_temperature_c")
+        ),
+        "station_resolution": resolution,
+        "station_distance_km": None,
+    }
+
+
+def _resolve_browser_climate_token(value: str) -> dict[str, Any] | None:
+    # Format: @lc|<station-short-id>|<zone>|<design-temp>|<locality-name>
+    # It contains only data already selected from the official map payload in
+    # the browser. The station itself is revalidated against climate.json.
+    if not str(value or "").startswith("@lc|"):
+        return None
+    parts = str(value).split("|", 4)
+    if len(parts) != 5:
+        return None
+    _, station_key, zone, temperature_text, locality_name = parts
+    station_id = station_key if station_key.startswith("mc001_6_2013_") else f"mc001_6_2013_{station_key}"
+    station = _station_index().get(station_id)
+    if not station:
+        raise ValueError("Stația climatică selectată nu este disponibilă în setul MC001 LaCurent.")
+    try:
+        winter_temperature = float(temperature_text) if temperature_text else None
+    except ValueError:
+        winter_temperature = None
+    return _climate_from_station(
+        station,
+        locality_name=locality_name or station["name"],
+        climate_zone=zone or None,
+        winter_design_temperature_c=winter_temperature,
+        resolution="browser-selected",
+    )
 
 
 def resolve_locality(locality: str) -> dict[str, Any]:
@@ -96,6 +187,17 @@ def resolve_locality(locality: str) -> dict[str, Any]:
 
 
 def resolve_climate(locality: str) -> dict[str, Any]:
+    browser_climate = _resolve_browser_climate_token(locality)
+    if browser_climate:
+        return browser_climate
+
+    # The 42 MC001 source stations and their source SIRUTA identifiers can be
+    # resolved from the small climate file without touching the 6.5 MB locality
+    # registry. This also keeps /demo and the standard Cluj smoke test light.
+    direct_station = _station_from_value(locality)
+    if direct_station:
+        return _climate_from_station(direct_station)
+
     selected = resolve_locality(locality)
     station = _station_index().get(selected.get("stationId"))
     if not station:
