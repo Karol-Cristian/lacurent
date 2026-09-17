@@ -1,0 +1,292 @@
+/* Simplified residential energy workflow layered on top of app.css/company.css. */
+
+.simple-intro {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: var(--muted, #64748b);
+}
+
+.simple-intro strong { color: var(--ink, #172033); }
+
+.mode-note {
+  margin: 0;
+  color: var(--muted, #64748b);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.location-map-layout.energy-map-layout {
+  display: block;
+}
+
+.energy-map-layout .romania-map-card {
+  position: relative;
+}
+
+.romania-location-map {
+  min-height: 520px !important;
+  padding: 18px !important;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.romania-location-map.is-panning { cursor: grabbing; }
+
+.romania-map-svg {
+  width: 100% !important;
+  max-height: none !important;
+  height: 500px !important;
+  aspect-ratio: auto !important;
+}
+
+.map-controls {
+  position: absolute;
+  z-index: 8;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  gap: 7px;
+}
+
+.map-controls button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #c8d3df;
+  border-radius: 10px;
+  background: rgba(255,255,255,.94);
+  color: #172033;
+  font-size: 20px;
+  font-weight: 800;
+  box-shadow: 0 6px 18px rgba(20,35,55,.12);
+  cursor: pointer;
+}
+
+.map-gesture-hint {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 8;
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+  color: #526174;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.selected-location-card.location-summary-bar {
+  grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(135px, .75fr));
+  align-items: center;
+  margin-top: 12px;
+  padding: 14px 16px;
+}
+
+.location-summary-bar > span,
+.location-summary-bar > small { grid-column: 1 / -1; }
+.location-summary-bar strong { font-size: 18px; }
+.location-summary-bar dl { display: contents; }
+.location-summary-bar dl > div { padding: 0; border: 0; }
+.location-summary-bar dt { color: var(--muted, #64748b); font-size: 11px; }
+.location-summary-bar dd { margin-top: 4px; font-weight: 800; }
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.choice-card {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-height: 86px;
+  padding: 15px 16px 15px 44px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.choice-card input {
+  position: absolute;
+  top: 17px;
+  left: 16px;
+  width: 18px;
+  min-height: 18px;
+}
+
+.choice-card:has(input:checked) {
+  border-color: var(--blue, #1459c8);
+  box-shadow: 0 0 0 2px rgba(20,89,200,.10);
+  background: #f8fbff;
+}
+
+.choice-card strong { color: var(--ink, #172033); font-size: 15px; }
+.choice-card small { color: var(--muted, #64748b); font-weight: 500; line-height: 1.4; }
+
+.simple-panel {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 13px;
+  background: var(--surface-soft, #f8fafc);
+}
+
+.simple-panel[hidden] { display: none; }
+
+.derived-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.derived-strip div {
+  padding: 11px 12px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.derived-strip span,
+.derived-strip strong { display: block; }
+.derived-strip span { color: var(--muted, #64748b); font-size: 11px; }
+.derived-strip strong { margin-top: 3px; font-size: 15px; }
+
+.friendly-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.friendly-fieldset > legend {
+  margin-bottom: 10px;
+  color: var(--ink, #172033);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.advanced-settings {
+  margin-top: 18px;
+  border: 1px dashed #c8d3df;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.advanced-settings summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  color: #334155;
+  font-weight: 800;
+}
+
+.advanced-settings > div {
+  padding: 0 16px 16px;
+}
+
+.expert-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 12px;
+}
+
+.expert-grid + .expert-grid { margin-top: 12px; }
+
+.hidden-technical { display: none !important; }
+
+.system-choice {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+}
+
+.system-choice label {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.system-choice label:has(input:checked) {
+  border-color: var(--blue, #1459c8);
+  background: #f7faff;
+}
+
+.system-choice input { width: auto; min-height: auto; }
+
+.inline-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.inline-switches label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.inline-switches input { width: auto; min-height: auto; }
+
+.energy-locality-picker { position: relative; }
+.energy-locality-picker .locality-results { top: calc(100% + 6px); }
+
+.service-cards-six {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.service-card-simple {
+  min-height: 160px;
+  padding: 18px;
+  border: 1px solid #dbe3ed;
+  border-radius: 14px;
+  background: #fff;
+}
+.service-card-simple h3 { margin-bottom: 7px; }
+.service-card-simple p { color: #64748b; line-height: 1.5; }
+
+@media (max-width: 900px) {
+  .selected-location-card.location-summary-bar { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .location-summary-bar > strong { grid-column: 1 / -1; }
+  .choice-grid,
+  .system-choice,
+  .expert-grid,
+  .service-cards-six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .derived-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .romania-location-map { min-height: 430px !important; padding: 8px !important; }
+  .romania-map-svg { height: 410px !important; }
+  .map-gesture-hint { display: none; }
+  .selected-location-card.location-summary-bar,
+  .choice-grid,
+  .system-choice,
+  .expert-grid,
+  .derived-strip,
+  .service-cards-six { grid-template-columns: 1fr; }
+  .simple-intro { align-items: flex-start; flex-direction: column; }
+}

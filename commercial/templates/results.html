@@ -105,7 +105,7 @@
       <p>Final-energy aggregation by carrier.</p>
     </div>
     <div class="bar-list compact-bars">
-      {% set carrier_labels = {"natural_gas": "Natural gas", "electricity": "Electricity", "district_heat": "District heat", "biomass": "Biomass"} %}
+      {% set carrier_labels = {"natural_gas": "Natural gas", "electricity": "Electricity", "district_heat": "District heat", "biomass": "Wood / pellets"} %}
       {% for key, value in result.final_energy_by_carrier.items() %}
         <div class="bar-row">
           <span>{{ carrier_labels.get(key, key) }}</span>

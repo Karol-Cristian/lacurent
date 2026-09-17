@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 
 app = FastAPI(
     title="LaCurent",
-    version="2.2.0",
+    version="2.3.0",
     description="LaCurent engineering, software testing and energy services.",
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -53,31 +53,73 @@ def climate_options() -> list[str]:
     return [item["name"] for item in climate_data()["localities"]]
 
 
+ENVELOPE_PROFILES: dict[str, dict[str, float]] = {
+    "poor": {"wall": 1.30, "roof": 1.00, "floor": 0.90, "window": 2.80, "door": 2.50, "psi": 0.15},
+    "average": {"wall": 0.55, "roof": 0.35, "floor": 0.45, "window": 1.60, "door": 1.80, "psi": 0.08},
+    "good": {"wall": 0.30, "roof": 0.20, "floor": 0.30, "window": 1.10, "door": 1.40, "psi": 0.05},
+    "very_good": {"wall": 0.18, "roof": 0.15, "floor": 0.20, "window": 0.85, "door": 1.10, "psi": 0.03},
+}
+
+VENTILATION_PROFILES: dict[str, tuple[float, float]] = {
+    "natural": (0.50, 0.0),
+    "mechanical": (0.60, 0.0),
+    "heat_recovery": (0.45, 0.75),
+    "unknown": (0.50, 0.0),
+}
+
+HEATING_PROFILES: dict[str, dict[str, Any]] = {
+    "condensing_gas_boiler": {"system_type": "condensing_gas_boiler", "carrier": "natural_gas", "efficiency": 0.94, "scop": 3.2},
+    "gas_boiler": {"system_type": "gas_boiler", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2},
+    "electric_resistance": {"system_type": "electric_resistance", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2},
+    "heat_pump": {"system_type": "heat_pump", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2},
+    "wood_stove": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.75, "scop": 3.2},
+    "wood_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.80, "scop": 3.2},
+    "pellet_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.88, "scop": 3.2},
+    "district_heat": {"system_type": "district_heat", "carrier": "district_heat", "efficiency": 0.95, "scop": 3.2},
+    "custom": {"system_type": "custom", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2},
+}
+
+
 def default_form_values() -> dict[str, Any]:
     return {
         "project_name": "",
         "locality_id": "siruta-54984",
         "locality": "Cluj-Napoca",
-        "heated_floor_area_m2": 150,
-        "heated_volume_m3": 405,
-        "indoor_design_temperature_c": 20,
         "building_type": "residential_individual",
+        "building_length_m": 10,
+        "building_width_m": 8,
+        "heated_levels": 2,
+        "average_height_m": 2.7,
+        "house_window_area_m2": 20,
+        "house_door_area_m2": 2.2,
+        "apartment_area_m2": 80,
+        "apartment_height_m": 2.65,
+        "apartment_exterior_wall_length_m": 12,
+        "apartment_window_area_m2": 12,
+        "apartment_top_exposed": False,
+        "apartment_bottom_exposed": False,
+        "heated_floor_area_m2": 160,
+        "heated_volume_m3": 432,
+        "indoor_design_temperature_c": 20,
         "construction_year": 2005,
+        "insulation_profile": "average",
         "solar_gains_kwh_m2_month": 0,
-        "wall_area_m2": 160,
-        "wall_u_value": 0.45,
-        "roof_area_m2": 90,
-        "roof_u_value": 0.25,
+        "wall_area_m2": 171.8,
+        "wall_u_value": 0.55,
+        "roof_area_m2": 80,
+        "roof_u_value": 0.35,
         "floor_area_m2": 80,
-        "floor_u_value": 0.35,
-        "window_area_m2": 24,
-        "window_u_value": 1.4,
-        "door_area_m2": 3,
-        "door_u_value": 1.7,
-        "thermal_bridge_length_m": 40,
-        "thermal_bridge_psi_w_mk": 0.05,
+        "floor_u_value": 0.45,
+        "window_area_m2": 20,
+        "window_u_value": 1.6,
+        "door_area_m2": 2.2,
+        "door_u_value": 1.8,
+        "thermal_bridge_length_m": 72,
+        "thermal_bridge_psi_w_mk": 0.08,
+        "ventilation_type": "natural",
         "air_changes_per_hour": 0.5,
         "heat_recovery_efficiency": 0,
+        "heating_choice": "condensing_gas_boiler",
         "heating_system_type": "condensing_gas_boiler",
         "heating_efficiency": 0.94,
         "heating_scop": 3.2,
@@ -90,6 +132,11 @@ def default_form_values() -> dict[str, Any]:
         "dhw_litres_per_person_day_at_60c": 50,
         "dhw_efficiency": 0.86,
         "dhw_carrier": "natural_gas",
+        "expert_geometry_override": "",
+        "expert_envelope_override": "",
+        "expert_ventilation_override": "",
+        "expert_heating_override": "",
+        "expert_dhw_override": "",
     }
 
 
@@ -158,7 +205,129 @@ def parse_optional_int(value: Any) -> int | None:
     return int(text) if text else None
 
 
+def _checked(form: dict[str, Any], name: str) -> bool:
+    return form.get(name) in {"on", "true", "1", True}
+
+
+def _simple_form_present(form: dict[str, Any]) -> bool:
+    return any(key in form for key in ("building_length_m", "apartment_area_m2", "ventilation_type", "heating_choice"))
+
+
+def _derived_geometry(form: dict[str, Any], building_type: str) -> dict[str, float]:
+    if building_type == "residential_collective":
+        area = max(parse_optional_float(form.get("apartment_area_m2")) or 80, 1)
+        height = max(parse_optional_float(form.get("apartment_height_m")) or 2.65, 1.8)
+        exterior_length = max(parse_optional_float(form.get("apartment_exterior_wall_length_m")) or 12, 1)
+        windows = max(parse_optional_float(form.get("apartment_window_area_m2")) or 12, 0.1)
+        volume = area * height
+        wall = max(exterior_length * height - windows, 0.1)
+        roof = area if _checked(form, "apartment_top_exposed") else 0.0
+        floor = area if _checked(form, "apartment_bottom_exposed") else 0.0
+        return {
+            "heated_floor_area_m2": area,
+            "heated_volume_m3": volume,
+            "wall_area_m2": wall,
+            "roof_area_m2": roof,
+            "floor_area_m2": floor,
+            "window_area_m2": windows,
+            "door_area_m2": 0.0,
+            "thermal_bridge_length_m": exterior_length,
+        }
+
+    length = max(parse_optional_float(form.get("building_length_m")) or 10, 1)
+    width = max(parse_optional_float(form.get("building_width_m")) or 8, 1)
+    levels = min(max(parse_optional_int(form.get("heated_levels")) or 2, 1), 5)
+    height = max(parse_optional_float(form.get("average_height_m")) or 2.7, 1.8)
+    windows = max(parse_optional_float(form.get("house_window_area_m2")) or 20, 0.1)
+    doors = max(parse_optional_float(form.get("house_door_area_m2")) or 2.2, 0.1)
+    footprint = length * width
+    heated_area = footprint * levels
+    gross_walls = 2 * (length + width) * height * levels
+    return {
+        "heated_floor_area_m2": heated_area,
+        "heated_volume_m3": heated_area * height,
+        "wall_area_m2": max(gross_walls - windows - doors, 0.1),
+        "roof_area_m2": footprint,
+        "floor_area_m2": footprint,
+        "window_area_m2": windows,
+        "door_area_m2": doors,
+        "thermal_bridge_length_m": 2 * (length + width) * levels,
+    }
+
+
+def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
+    simple = _simple_form_present(form)
+    building_type = str(form.get("building_type") or "residential_individual")
+    derived = _derived_geometry(form, building_type) if simple else {}
+
+    geometry_override = form.get("expert_geometry_override") == "on" or not simple
+    if geometry_override:
+        geometry = {
+            key: parse_optional_float(form.get(key))
+            for key in (
+                "heated_floor_area_m2",
+                "heated_volume_m3",
+                "wall_area_m2",
+                "roof_area_m2",
+                "floor_area_m2",
+                "window_area_m2",
+                "door_area_m2",
+                "thermal_bridge_length_m",
+            )
+        }
+    else:
+        geometry = derived
+
+    envelope_override = form.get("expert_envelope_override") == "on" or not simple
+    profile = ENVELOPE_PROFILES.get(str(form.get("insulation_profile") or "average"), ENVELOPE_PROFILES["average"])
+    if envelope_override:
+        u_values = {
+            "wall_u_value": parse_optional_float(form.get("wall_u_value")),
+            "roof_u_value": parse_optional_float(form.get("roof_u_value")),
+            "floor_u_value": parse_optional_float(form.get("floor_u_value")),
+            "window_u_value": parse_optional_float(form.get("window_u_value")),
+            "door_u_value": parse_optional_float(form.get("door_u_value")),
+            "thermal_bridge_psi_w_mk": parse_optional_float(form.get("thermal_bridge_psi_w_mk")),
+        }
+    else:
+        u_values = {
+            "wall_u_value": profile["wall"],
+            "roof_u_value": profile["roof"],
+            "floor_u_value": profile["floor"],
+            "window_u_value": profile["window"],
+            "door_u_value": profile["door"],
+            "thermal_bridge_psi_w_mk": profile["psi"],
+        }
+
+    ventilation_override = form.get("expert_ventilation_override") == "on" or not simple
+    if ventilation_override:
+        ach = parse_optional_float(form.get("air_changes_per_hour"))
+        recovery = parse_optional_float(form.get("heat_recovery_efficiency")) or 0
+    else:
+        ach, recovery = VENTILATION_PROFILES.get(str(form.get("ventilation_type") or "unknown"), VENTILATION_PROFILES["unknown"])
+
+    heating_override = form.get("expert_heating_override") == "on" or not simple
+    if heating_override:
+        heating = {
+            "system_type": form.get("heating_system_type") or "condensing_gas_boiler",
+            "carrier": form.get("heating_carrier") or "natural_gas",
+            "efficiency": parse_optional_float(form.get("heating_efficiency")),
+            "scop": parse_optional_float(form.get("heating_scop")),
+        }
+    else:
+        heating = dict(HEATING_PROFILES.get(str(form.get("heating_choice") or "condensing_gas_boiler"), HEATING_PROFILES["custom"]))
+
+    return {
+        **geometry,
+        **u_values,
+        "air_changes_per_hour": ach,
+        "heat_recovery_efficiency": recovery,
+        "heating": heating,
+    }
+
+
 def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
+    technical = _technical_values(form)
     components = []
     component_map = [
         ("External walls", "exterior_wall", "wall_area_m2", "wall_u_value"),
@@ -169,22 +338,16 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     ]
 
     for name, kind, area_key, u_key in component_map:
-        area = parse_optional_float(form.get(area_key))
-        u_value = parse_optional_float(form.get(u_key))
-        if area is not None or u_value is not None:
-            components.append(
-                {
-                    "name": name,
-                    "type": kind,
-                    "area_m2": area,
-                    "u_value_w_m2k": u_value,
-                }
-            )
+        area = technical.get(area_key)
+        u_value = technical.get(u_key)
+        if area is None or area <= 0:
+            continue
+        components.append({"name": name, "type": kind, "area_m2": area, "u_value_w_m2k": u_value})
 
     thermal_bridges = []
-    bridge_length = parse_optional_float(form.get("thermal_bridge_length_m"))
-    bridge_psi = parse_optional_float(form.get("thermal_bridge_psi_w_mk"))
-    if bridge_length is not None or bridge_psi is not None:
+    bridge_length = technical.get("thermal_bridge_length_m")
+    bridge_psi = technical.get("thermal_bridge_psi_w_mk")
+    if bridge_length is not None and bridge_length > 0:
         thermal_bridges.append(
             {
                 "name": "Linear thermal bridges",
@@ -193,14 +356,19 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             }
         )
 
-    cooling_enabled = form.get("cooling_enabled") == "on"
-    dhw_enabled = form.get("dhw_enabled") == "on"
+    cooling_enabled = _checked(form, "cooling_enabled")
+    dhw_enabled = _checked(form, "dhw_enabled")
+    heating = technical["heating"]
+
+    dhw_carrier = form.get("dhw_carrier")
+    if form.get("expert_dhw_override") != "on" and _simple_form_present(form):
+        dhw_carrier = heating["carrier"]
 
     return BuildingInput(
         project_name=str(form.get("project_name") or "LaCurent Project"),
         locality=str(form.get("locality_id") or form.get("locality") or ""),
-        heated_floor_area_m2=parse_optional_float(form.get("heated_floor_area_m2")),
-        heated_volume_m3=parse_optional_float(form.get("heated_volume_m3")),
+        heated_floor_area_m2=technical.get("heated_floor_area_m2"),
+        heated_volume_m3=technical.get("heated_volume_m3"),
         indoor_design_temperature_c=parse_optional_float(form.get("indoor_design_temperature_c")) or 20,
         building_type=form.get("building_type") or "residential_individual",
         construction_year=parse_optional_int(form.get("construction_year")),
@@ -208,15 +376,10 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
         envelope=components,
         thermal_bridges=thermal_bridges,
         ventilation={
-            "air_changes_per_hour": parse_optional_float(form.get("air_changes_per_hour")),
-            "heat_recovery_efficiency": parse_optional_float(form.get("heat_recovery_efficiency")) or 0,
+            "air_changes_per_hour": technical.get("air_changes_per_hour"),
+            "heat_recovery_efficiency": technical.get("heat_recovery_efficiency") or 0,
         },
-        heating={
-            "system_type": form.get("heating_system_type") or "condensing_gas_boiler",
-            "carrier": form.get("heating_carrier") or "natural_gas",
-            "efficiency": parse_optional_float(form.get("heating_efficiency")),
-            "scop": parse_optional_float(form.get("heating_scop")),
-        },
+        heating=heating,
         cooling={
             "enabled": cooling_enabled,
             "seer": parse_optional_float(form.get("cooling_seer")) if cooling_enabled else None,
@@ -227,7 +390,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             "occupants": parse_optional_int(form.get("dhw_occupants")) or 0,
             "litres_per_person_day_at_60c": parse_optional_float(form.get("dhw_litres_per_person_day_at_60c")),
             "efficiency": parse_optional_float(form.get("dhw_efficiency")) or 0.85,
-            "carrier": form.get("dhw_carrier") or "natural_gas",
+            "carrier": dhw_carrier or "natural_gas",
         },
     )
 
@@ -244,9 +407,7 @@ def result_context(result: Any) -> dict[str, Any]:
     envelope = sorted(result.envelope_contributions, key=lambda item: item.value, reverse=True)
     service_max = max(result.final_energy_by_service.values()) or 1
     carrier_max = max(result.final_energy_by_carrier.values()) if result.final_energy_by_carrier else 1
-    monthly_max = max(
-        [row.useful_heating_kwh + row.useful_cooling_kwh for row in result.monthly] or [1]
-    )
+    monthly_max = max([row.useful_heating_kwh + row.useful_cooling_kwh for row in result.monthly] or [1])
     return {
         "result": result,
         "envelope_sorted": envelope,
@@ -298,19 +459,15 @@ async def installations(request: Request) -> HTMLResponse:
 
 @app.get("/instalatii/calculator", response_class=HTMLResponse)
 async def energy_calculator(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "calculator.html",
-        {"request": request, **calculator_context()},
-    )
+    return templates.TemplateResponse(request, "calculator.html", {"request": request, **calculator_context()})
 
 
 @app.post("/calculate", response_class=HTMLResponse)
 async def calculate_from_form(request: Request) -> HTMLResponse:
     form = dict(await request.form())
     values = {**default_form_values(), **form}
-    values["cooling_enabled"] = form.get("cooling_enabled") == "on"
-    values["dhw_enabled"] = form.get("dhw_enabled") == "on"
+    for key in ("cooling_enabled", "dhw_enabled", "apartment_top_exposed", "apartment_bottom_exposed"):
+        values[key] = _checked(form, key)
     try:
         building = build_input_from_form(form)
         result = calculate(building)
@@ -318,28 +475,17 @@ async def calculate_from_form(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(
             request,
             "calculator.html",
-            {
-                "request": request,
-                **calculator_context(error=user_error(exc), values=values),
-            },
+            {"request": request, **calculator_context(error=user_error(exc), values=values)},
             status_code=422,
         )
 
-    return templates.TemplateResponse(
-        request,
-        "results.html",
-        result_context(result),
-    )
+    return templates.TemplateResponse(request, "results.html", result_context(result))
 
 
 @app.get("/demo", response_class=HTMLResponse)
 async def demo(request: Request) -> HTMLResponse:
     result = calculate(demo_building())
-    return templates.TemplateResponse(
-        request,
-        "results.html",
-        result_context(result),
-    )
+    return templates.TemplateResponse(request, "results.html", result_context(result))
 
 
 @app.post("/certificate", response_class=HTMLResponse)
@@ -353,10 +499,7 @@ async def certificate(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(
             request,
             "calculator.html",
-            {
-                "request": request,
-                **calculator_context(error=user_error(exc)),
-            },
+            {"request": request, **calculator_context(error=user_error(exc))},
             status_code=422,
         )
 
