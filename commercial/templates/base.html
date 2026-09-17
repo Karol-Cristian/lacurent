@@ -6,7 +6,8 @@
   <title>{% block title %}LaCurent{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
   <link rel="shortcut icon" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=v2eng1">
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=v2eng2">
+  <link rel="stylesheet" href="{{ url_for('static', path='energy-ui.css') }}?v=energy1">
 </head>
 <body>
   <div class="app-shell">
@@ -35,6 +36,7 @@
     </main>
   </div>
 
-  <script src="{{ url_for('static', path='app.js') }}?v=v2eng1"></script>
+  <script src="{{ url_for('static', path='app.js') }}?v=v2eng2"></script>
+  <script src="{{ url_for('static', path='energy-ui.js') }}?v=energy1"></script>
 </body>
 </html>
