@@ -101,6 +101,30 @@ def _firewood_reference() -> dict[str, Any]:
     }
 
 
+def _pellet_reference() -> dict[str, Any]:
+    data = energy_prices()["pellets"]
+    price_per_kg = float(data["reference_price_lei_per_kg"])
+    energy_per_kg = float(data["energy_kwh_per_kg"])
+    return {
+        "unit_price_lei_per_kwh": price_per_kg / energy_per_kg,
+        "price_lei_per_kg": price_per_kg,
+        "price_lei_per_tonne": float(data["reference_price_lei_per_tonne"]),
+        "price_lei_per_15kg_bag": float(data["price_lei_per_15kg_bag"]),
+        "energy_kwh_per_kg": energy_per_kg,
+        "basis": (
+            f"{data['price_reference']} · "
+            f"≈{float(data['reference_price_lei_per_tonne']):.0f} lei/tonă · referință retail, nu tarif oficial"
+        ),
+        "source_name": data["source_name"],
+        "source_url": data["source_url"],
+        "secondary_source_name": data.get("secondary_source_name"),
+        "secondary_source_url": data.get("secondary_source_url"),
+        "energy_source_name": data.get("energy_source_name"),
+        "energy_source_url": data.get("energy_source_url"),
+        "note": data["note"],
+    }
+
+
 def _reference_for(
     carrier: str,
     county: str | None,
@@ -113,7 +137,7 @@ def _reference_for(
     if carrier == "biomass" and cost_profile == "firewood":
         return _firewood_reference(), None, "Lemn de foc"
     if carrier == "biomass" and cost_profile == "pellets":
-        return None, "Peleți: nu există un preț oficial național unic de retail disponibil pentru aplicare automată.", "Peleți"
+        return _pellet_reference(), None, "Peleți"
     if carrier == "district_heat":
         return None, "Termoficare: tariful este local și trebuie preluat de la operatorul sistemului din localitate.", "Termoficare"
     if carrier == "biomass":
@@ -241,6 +265,8 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
             }
             if key == "biomass" and heating_profile == "firewood":
                 row["estimated_volume_m3"] = final_kwh / float(reference["energy_kwh_per_m3"])
+            if key == "biomass" and heating_profile == "pellets":
+                row["estimated_mass_tonnes"] = final_kwh / float(reference["energy_kwh_per_kg"]) / 1000
             rows.append(row)
 
     service_rows = _service_cost_rows(result, county)
@@ -265,7 +291,7 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
         "retrieved_on": energy_prices()["retrieved_on"],
         "version": energy_prices()["version"],
         "disclaimer": (
-            "Costurile sunt estimări bazate pe energia finală cumpărată și pe referințe oficiale de preț. "
-            "Factura reală depinde de contract, furnizor, operator, taxe, categoria de consum și condițiile locale."
+            "Costurile sunt estimări bazate pe energia finală cumpărată și pe referințe oficiale sau de piață explicit marcate. "
+            "Factura reală depinde de contract, furnizor, operator, taxe, categoria de consum, sezon și condițiile locale."
         ),
     }

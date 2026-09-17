@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-17",
+  "version": "2026-09-17b",
   "retrieved_on": "2026-09-17",
   "electricity": {
     "source_name": "POSF / ANRE",
@@ -54,11 +54,20 @@
     "note": "Referința oficială Romsilva este pentru foioase tari fasonate la drum auto. Calculatorul nu tratează această valoare ca preț final la poarta consumatorului, ci aplică separat factorul comercial ×2,0. Prețul real poate diferi după județ, specie, sortiment, cantitate și condițiile de livrare."
   },
   "pellets": {
-    "source_name": "Eurostat",
-    "source_url": "https://eur-lex.europa.eu/legal-content/RO/ALL/?uri=CELEX%3A32017D0176",
+    "source_name": "Leroy Merlin România - referință retail",
+    "source_url": "https://www.leroymerlin.ro/produse/ac-incalzire-instalatii/combustibili-incalzire/peleti-si-brichete-foc-din-rumegus/peleti-15kg-p.html",
+    "secondary_source_name": "Dedeman - verificare retail ENplus A1",
+    "secondary_source_url": "https://www.dedeman.ro/ro/peleti/s/21222",
+    "price_reference": "Sac 15 kg, retail național; reper 30,98 lei/sac",
+    "price_lei_per_15kg_bag": 30.98,
+    "reference_price_lei_per_kg": 2.0653333333,
+    "reference_price_lei_per_tonne": 2065.3333333,
     "energy_kwh_per_kg": 4.66667,
-    "automatic_price_available": false,
-    "note": "Există o valoare energetică oficială de referință pentru peleți, dar nu există un preț unic oficial național de retail care să poată fi aplicat automat tuturor consumatorilor."
+    "energy_source_name": "Eurostat / referință energetică existentă LaCurent",
+    "energy_source_url": "https://eur-lex.europa.eu/legal-content/RO/ALL/?uri=CELEX%3A32017D0176",
+    "automatic_price_available": true,
+    "market_reference": true,
+    "note": "Referință de piață, nu tarif oficial național. La 17.09.2026 Leroy Merlin afișa mai multe sortimente de 15 kg în jur de 28,98–33,99 lei/sac, iar Dedeman aproximativ 30,99–32,99 lei/sac pentru peleți de încălzire. Calculatorul folosește 30,98 lei/15 kg (≈2.065 lei/tonă) ca reper retail. Prețul real variază regional, sezonier, după calitate, cantitate și transport."
   },
   "district_heat": {
     "automatic_price_available": false,
