@@ -1,0 +1,65 @@
+{
+  "version": "2026-09-17",
+  "retrieved_on": "2026-09-17",
+  "electricity": {
+    "source_name": "POSF / ANRE",
+    "supplier": "Premier Energy Furnizare S.A.",
+    "product": "PE Rezidențial Online Promo",
+    "source_url": "https://posf.ro/comparator/files/furnizori/1780390613Oferta%20tip%20energie%20casnici%20PE%20Rezidential%20online%20PROMO_6_2026.pdf",
+    "valid_until": "2026-09-30",
+    "unit": "lei/kWh",
+    "voltage_level": "Joasă tensiune (JT)",
+    "operator_prices_lei_per_kwh": {
+      "Distribuție Energie Oltenia": 1.24611,
+      "Rețele Electrice România": 1.22692,
+      "Delgaz Grid": 1.31225,
+      "Distribuție Energie Electrică România": 1.27284
+    },
+    "operator_counties": {
+      "Distribuție Energie Oltenia": ["Argeș", "Dolj", "Gorj", "Mehedinți", "Olt", "Teleorman", "Vâlcea"],
+      "Rețele Electrice România": ["București", "Ilfov", "Giurgiu", "Călărași", "Constanța", "Ialomița", "Tulcea", "Arad", "Caraș-Severin", "Hunedoara", "Timiș"],
+      "Delgaz Grid": ["Botoșani", "Suceava", "Neamț", "Iași", "Bacău", "Vaslui"],
+      "Distribuție Energie Electrică România": ["Brașov", "Alba", "Sibiu", "Mureș", "Harghita", "Covasna", "Cluj", "Maramureș", "Satu Mare", "Sălaj", "Bihor", "Bistrița-Năsăud", "Prahova", "Buzău", "Dâmbovița", "Brăila", "Galați", "Vrancea"]
+    },
+    "note": "Preț final cu TVA, fără abonament, pentru client casnic la joasă tensiune. Este o ofertă oficială din comparatorul POSF, nu prețul contractual al tuturor clienților."
+  },
+  "natural_gas": {
+    "source_name": "POSF / ANRE",
+    "supplier": "ENGIE România S.A.",
+    "product": "ElectriGaz - perioada 2",
+    "source_url": "https://posf.ro/comparator/files/furnizori/1764918045Detalii%20ofert%C4%83%20ElectriGaz.pdf",
+    "valid_from": "2026-04-01",
+    "valid_until": "2026-09-30",
+    "unit": "lei/kWh",
+    "reference_price_lei_per_kwh": 0.36627,
+    "reference_prices": {
+      "Distrigaz Sud Rețele": 0.365,
+      "Delgaz Grid": 0.36753
+    },
+    "note": "Referința folosită este media simplă a prețurilor finale cu TVA pentru categoriile casnice uzuale la doi operatori majori din oferta POSF. Operatorul și categoria reală de consum pot modifica prețul."
+  },
+  "firewood": {
+    "source_name": "Romsilva / Direcția Silvică Suceava",
+    "source_url": "https://sv.prefectura.mai.gov.ro/wp-content/uploads/sites/26/2026/02/Dir-silvica.pdf",
+    "catalog_url": "https://anunturi.rosilva.ro/preturilemnfoc",
+    "price_reference": "Foioase tari, fasonat la drum auto",
+    "price_lei_per_solid_m3": 300.0,
+    "unit": "lei/m³",
+    "energy_source_name": "Eurostat - Quality standard for statistics on wood fuel consumption in households",
+    "energy_source_url": "https://ec.europa.eu/eurostat/documents/38154/4956233/Quality_standard_statistics_wood_fuel_consumption_households_CA-RES_2012.pdf",
+    "energy_kwh_per_solid_m3": 2821.0,
+    "assumed_water_content_percent": 20,
+    "note": "Estimare de referință: preț Romsilva publicat pentru foioase tari și conversie energetică Eurostat pentru lemn de foioase la 20% umiditate. Prețul real diferă după județ, specie, sortiment și locul de livrare."
+  },
+  "pellets": {
+    "source_name": "Eurostat",
+    "source_url": "https://eur-lex.europa.eu/legal-content/RO/ALL/?uri=CELEX%3A32017D0176",
+    "energy_kwh_per_kg": 4.66667,
+    "automatic_price_available": false,
+    "note": "Există o valoare energetică oficială de referință pentru peleți, dar nu există un preț unic oficial național de retail care să poată fi aplicat automat tuturor consumatorilor."
+  },
+  "district_heat": {
+    "automatic_price_available": false,
+    "note": "Tariful este local și depinde de operatorul și localitatea sistemului centralizat."
+  }
+}
