@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 
 from .methodology import carrier_factors, default_heating_performance, methodology, resolve_climate
@@ -15,6 +14,9 @@ from .models import (
     HeatingSystemType,
     IndicatorResult,
 )
+
+
+GAMMA_EQUALITY_TOLERANCE = 1e-12
 
 
 def _round(value: float, digits: int = 3) -> float:
@@ -57,19 +59,77 @@ def ventilation_heat_transfer(building: BuildingInput) -> float:
     return _round(0.34 * airflow_m3h * recovery_factor)
 
 
-def _cooling_solar_weights(start_hour: float, end_hour: float) -> list[float]:
-    """Normalized daytime solar shape for the representative 24 h cooling profile."""
+def _monthly_utilization_parameter(building: BuildingInput, total_h_w_k: float, mode: str) -> float:
+    """Return aH/aC from Mc 001-2022 relations 2.55-2.58 for the configured thermal-mass class."""
 
-    span = max(end_hour - start_hour, 1.0)
-    weights = []
-    for hour in range(24):
-        phase = math.pi * (hour - start_hour) / span
-        weights.append(max(math.sin(phase), 0.0) if start_hour <= hour <= end_hour else 0.0)
-    total = sum(weights) or 1.0
-    return [weight / total for weight in weights]
+    cfg = methodology()["monthly_method"]
+    class_id = cfg["default_effective_internal_heat_capacity_class"]
+    capacity_j_m2k = float(cfg["effective_internal_heat_capacity_j_m2k"][class_id])
+    capacity_j_k = capacity_j_m2k * building.heated_floor_area_m2
+    tau_h = (capacity_j_k / 3600.0) / max(total_h_w_k, 1e-12)
+    if mode == "heating":
+        return float(cfg["a_h0"]) + tau_h / float(cfg["tau_h0_h"])
+    return float(cfg["a_c0"]) + tau_h / float(cfg["tau_c0_h"])
+
+
+def _heating_gain_utilization_factor(gamma_h: float, a_h: float) -> float:
+    """Mc 001-2022 Figure 2.14 / SR EN ISO 52016-1 monthly gain-utilization factor."""
+
+    if abs(gamma_h - 1.0) <= GAMMA_EQUALITY_TOLERANCE:
+        return a_h / (a_h + 1.0)
+    return (1.0 - gamma_h**a_h) / (1.0 - gamma_h ** (a_h + 1.0))
+
+
+def _monthly_heating_need(q_h_ht_kwh: float, q_h_gn_kwh: float, a_h: float) -> float:
+    """Mc 001-2022 Figure 2.18 monthly useful heating demand for continuous operation."""
+
+    if q_h_ht_kwh <= 0:
+        return 0.0
+    if q_h_gn_kwh <= 0:
+        return q_h_ht_kwh
+    gamma_h = q_h_gn_kwh / q_h_ht_kwh
+    if gamma_h > 2.0:
+        return 0.0
+    eta_h_gn = _heating_gain_utilization_factor(gamma_h, a_h)
+    return max(q_h_ht_kwh - eta_h_gn * q_h_gn_kwh, 0.0)
+
+
+def _cooling_heat_transfer_utilization_factor(gamma_c: float, a_c: float) -> float:
+    """Mc 001-2022 Figure 2.15 / SR EN ISO 52016-1 monthly heat-transfer utilization factor."""
+
+    if gamma_c < 0:
+        # Negative Q_C,ht means heat is transferred into the zone; such heat transfer
+        # cannot reduce the cooling need and therefore has utilization factor 1.
+        return 1.0
+    if abs(gamma_c - 1.0) <= GAMMA_EQUALITY_TOLERANCE:
+        return a_c / (a_c + 1.0)
+    return (1.0 - gamma_c ** (-a_c)) / (1.0 - gamma_c ** (-(a_c + 1.0)))
+
+
+def _monthly_cooling_need(
+    q_c_ht_kwh: float,
+    q_c_gn_kwh: float,
+    a_c: float,
+    a_c_red: float = 1.0,
+) -> float:
+    """Mc 001-2022 Figure 2.19 monthly useful cooling demand, continuous-operation branch."""
+
+    if q_c_gn_kwh <= 0:
+        return max(-q_c_ht_kwh, 0.0) * a_c_red
+    if abs(q_c_ht_kwh) <= 1e-12:
+        return q_c_gn_kwh * a_c_red
+
+    gamma_c = q_c_gn_kwh / q_c_ht_kwh
+    if gamma_c > 0 and (1.0 / gamma_c) > 2.0:
+        return 0.0
+
+    eta_c_ht = _cooling_heat_transfer_utilization_factor(gamma_c, a_c)
+    return max(a_c_red * (q_c_gn_kwh - eta_c_ht * q_c_ht_kwh), 0.0)
 
 
 def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: float) -> list[dict]:
+    """Monthly quasi-steady balance following the Mc 001-2022 / SR EN ISO 52016-1 structure."""
+
     data = methodology()
     climate = resolve_climate(building.locality)
     internal_gain_w_m2 = (
@@ -77,54 +137,35 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         if building.internal_gains_w_m2 is not None
         else data["internal_gains_w_m2"][building.building_type.value]
     )
-    cooling_cfg = data.get("cooling", {})
-    diurnal_amplitude_c = float(cooling_cfg.get("representative_diurnal_amplitude_c", 5.0))
-    peak_hour = float(cooling_cfg.get("representative_peak_hour_local", 15.0))
-    solar_start = float(cooling_cfg.get("solar_window_start_hour", 6.0))
-    solar_end = float(cooling_cfg.get("solar_window_end_hour", 18.0))
-    solar_weights = _cooling_solar_weights(solar_start, solar_end)
+    total_h = h_tr_w_k + h_ve_w_k
+    a_h = _monthly_utilization_parameter(building, total_h, "heating")
+    a_c = _monthly_utilization_parameter(building, total_h, "cooling")
+    a_c_red = float(data["monthly_method"]["cooling_reduction_factor_continuous"])
 
     monthly = []
-    total_h = h_tr_w_k + h_ve_w_k
-
     for month in climate["monthly_temperatures"]:
         days = month["days"]
         hours = days * 24
         outdoor = month["temperature_c"]
-        heating_delta = max(building.indoor_design_temperature_c - outdoor, 0)
-        heat_loss = total_h * heating_delta * hours / 1000
+
         internal_gains = internal_gain_w_m2 * building.heated_floor_area_m2 * hours / 1000
         solar_gains = building.solar_gains_kwh_m2_month * building.heated_floor_area_m2
-        useful_heating = max(heat_loss - internal_gains - solar_gains, 0)
+        total_gains = internal_gains + solar_gains
+
+        # Mc 001 sign convention: heat transfer is positive when heat leaves the zone.
+        q_h_ht = total_h * (building.indoor_design_temperature_c - outdoor) * hours / 1000
+        useful_heating = _monthly_heating_need(q_h_ht, total_gains, a_h)
 
         useful_cooling = 0.0
         if building.cooling.enabled:
-            # The climate source provides monthly means, which are sufficient for the
-            # heating balance but make a cooling setpoint appear inert. Reconstruct a
-            # transparent representative 24 h temperature cycle around each monthly
-            # mean and solve the sensible cooling load hour-by-hour. This is an
-            # engineering approximation, not an hourly weather-file simulation.
-            setpoint_c = building.cooling.setpoint_c
-            internal_gain_w = internal_gain_w_m2 * building.heated_floor_area_m2
-            solar_daily_kwh = solar_gains / max(days, 1)
-            representative_day_kwh = 0.0
-
-            for hour in range(24):
-                outdoor_hour_c = outdoor + diurnal_amplitude_c * math.cos(
-                    2 * math.pi * (hour - peak_hour) / 24
-                )
-                envelope_load_w = total_h * (outdoor_hour_c - setpoint_c)
-                solar_gain_w = solar_daily_kwh * 1000 * solar_weights[hour]
-                sensible_cooling_w = max(envelope_load_w + internal_gain_w + solar_gain_w, 0.0)
-                representative_day_kwh += sensible_cooling_w / 1000
-
-            useful_cooling = representative_day_kwh * days
+            q_c_ht = total_h * (building.cooling.setpoint_c - outdoor) * hours / 1000
+            useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
 
         monthly.append({
             "month": month["id"],
             "days": days,
             "outdoor_temperature_c": outdoor,
-            "heat_loss_kwh": _round(heat_loss),
+            "heat_loss_kwh": _round(max(q_h_ht, 0.0)),
             "internal_gains_kwh": _round(internal_gains),
             "solar_gains_kwh": _round(solar_gains),
             "useful_heating_kwh": _round(useful_heating),
