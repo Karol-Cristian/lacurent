@@ -248,7 +248,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
 
 def demo_building() -> BuildingInput:
     return BuildingInput(
-        project_name="Cluj Demonstration House",
+        project_name="Casă demonstrativă Cluj",
         locality="Cluj-Napoca",
         heated_floor_area_m2=160,
         heated_volume_m3=432,
@@ -257,17 +257,17 @@ def demo_building() -> BuildingInput:
         construction_year=2004,
         solar_gains_kwh_m2_month=1.2,
         envelope=[
-            {"name": "External walls", "type": "exterior_wall", "area_m2": 168, "u_value_w_m2k": 0.42},
-            {"name": "Roof", "type": "roof", "area_m2": 92, "u_value_w_m2k": 0.24},
-            {"name": "Ground floor", "type": "floor", "area_m2": 80, "u_value_w_m2k": 0.36},
-            {"name": "Windows", "type": "window", "area_m2": 24, "u_value_w_m2k": 1.35},
-            {"name": "External door", "type": "exterior_door", "area_m2": 3.2, "u_value_w_m2k": 1.7},
+            {"name": "Pereți exteriori", "type": "exterior_wall", "area_m2": 168, "u_value_w_m2k": 0.42},
+            {"name": "Acoperiș", "type": "roof", "area_m2": 92, "u_value_w_m2k": 0.24},
+            {"name": "Pardoseală spre sol", "type": "floor", "area_m2": 80, "u_value_w_m2k": 0.36},
+            {"name": "Ferestre", "type": "window", "area_m2": 24, "u_value_w_m2k": 1.35},
+            {"name": "Ușă exterioară", "type": "exterior_door", "area_m2": 3.2, "u_value_w_m2k": 1.7},
         ],
         thermal_bridges=[
-            {"name": "Floor perimeter", "length_m": 42, "psi_w_mk": 0.05},
+            {"name": "Perimetrul pardoselii", "length_m": 42, "psi_w_mk": 0.05},
         ],
         ventilation={"air_changes_per_hour": 0.5, "heat_recovery_efficiency": 0},
-        heating={"system_type": "condensing_gas_boiler", "efficiency": 0.94},
+        heating={"system_type": "condensing_gas_boiler", "efficiency": 0.94, "cost_profile": "natural_gas"},
         cooling={"enabled": True, "seer": 3.6, "setpoint_c": 26},
         dhw={"enabled": True, "occupants": 4, "efficiency": 0.86, "carrier": "natural_gas"},
     )
