@@ -1,0 +1,1 @@
+Regression coverage is implemented in scenario-price-availability.test.cjs and enforced by Commercial PR Checks.
