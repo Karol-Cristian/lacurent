@@ -44,12 +44,14 @@
     "catalog_url": "https://anunturi.rosilva.ro/preturilemnfoc",
     "price_reference": "Foioase tari, fasonat la drum auto",
     "price_lei_per_solid_m3": 300.0,
+    "consumer_cost_multiplier": 2.0,
+    "consumer_cost_multiplier_note": "Prețul Romsilva este folosit ca referință de bază. Pentru estimarea costului suportat de consumator calculatorul aplică un factor ×2,0, care acoperă orientativ transportul, manipularea, debitarea/despicarea și marja comercială. Valoarea rezultată nu reprezintă un preț oficial Romsilva de retail.",
     "unit": "lei/m³",
     "energy_source_name": "Eurostat - Quality standard for statistics on wood fuel consumption in households",
     "energy_source_url": "https://ec.europa.eu/eurostat/documents/38154/4956233/Quality_standard_statistics_wood_fuel_consumption_households_CA-RES_2012.pdf",
     "energy_kwh_per_solid_m3": 2821.0,
     "assumed_water_content_percent": 20,
-    "note": "Estimare de referință: preț Romsilva publicat pentru foioase tari și conversie energetică Eurostat pentru lemn de foioase la 20% umiditate. Prețul real diferă după județ, specie, sortiment și locul de livrare."
+    "note": "Referința oficială Romsilva este pentru foioase tari fasonate la drum auto. Calculatorul nu tratează această valoare ca preț final la poarta consumatorului, ci aplică separat factorul comercial ×2,0. Prețul real poate diferi după județ, specie, sortiment, cantitate și condițiile de livrare."
   },
   "pellets": {
     "source_name": "Eurostat",
