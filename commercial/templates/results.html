@@ -152,12 +152,48 @@
   </details>
 </section>
 
+{% set top_loss = envelope_sorted[0] if envelope_sorted else none %}
 <section class="actions-footer">
-  <a class="secondary-action" href="/instalatii#evaluare">Cere o evaluare tehnică</a>
+  <a
+    id="evaluation-handoff"
+    class="secondary-action"
+    href="/instalatii#evaluare"
+    data-project="{{ result.input.project_name }}"
+    data-locality="{{ result.climate.selected_locality.display_name or result.input.locality }}"
+    data-area="{{ result.input.heated_floor_area_m2 }}"
+    data-energy-class="{{ result.energy_class }}"
+    data-primary-energy="{{ result.primary_energy.specific_kwh_m2|fmt('kWh/m²/year', 1) }}"
+    data-co2="{{ result.co2.specific_kg_m2|fmt('kg/m²/year', 1) }}"
+    data-main-loss="{% if top_loss %}{{ top_loss.name }}{% endif %}"
+    data-main-loss-value="{% if top_loss %}{{ top_loss.value|fmt('W/K', 1) }}{% endif %}"
+  >Cere o evaluare tehnică folosind acest rezultat</a>
   <a class="secondary-action" href="/">Calculate another building</a>
   <form method="post" action="/certificate" target="_blank">
     <input type="hidden" name="payload" value="{{ payload }}">
     <button class="primary-action" type="submit">Generate A4 report</button>
   </form>
 </section>
+
+<script>
+(() => {
+  const link = document.getElementById("evaluation-handoff");
+  if (!link) return;
+  const params = new URLSearchParams();
+  params.set("source", "calculator");
+  const fields = [
+    ["project", link.dataset.project],
+    ["locality", link.dataset.locality],
+    ["area", link.dataset.area],
+    ["energy_class", link.dataset.energyClass],
+    ["primary_energy", link.dataset.primaryEnergy],
+    ["co2", link.dataset.co2],
+    ["main_loss", link.dataset.mainLoss],
+    ["main_loss_value", link.dataset.mainLossValue]
+  ];
+  fields.forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  link.href = "/instalatii?" + params.toString() + "#evaluare";
+})();
+</script>
 {% endblock %}

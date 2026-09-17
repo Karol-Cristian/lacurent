@@ -183,6 +183,8 @@ def test_form_calculation_renders_commercial_results() -> None:
     assert "Primary energy" in response.text
     assert "Generate A4 report" in response.text
     assert "Cere o evaluare tehnică" in response.text
+    assert 'id="evaluation-handoff"' in response.text
+    assert "data-energy-class=" in response.text
     assert "Trace" not in response.text
 
 

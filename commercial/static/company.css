@@ -638,6 +638,11 @@ a { color: inherit; }
 .energy-steps .feature-card { min-height: 280px; display: flex; flex-direction: column; }
 .energy-steps .feature-card .text-cta { margin-top: auto; }
 .energy-intake { display: grid; gap: 24px; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: #fff; }
+.energy-calculator-context { padding: 14px 16px; border: 1px solid rgba(31, 111, 95, .25); border-radius: 12px; background: rgba(31, 111, 95, .06); color: #334047; }
+.energy-calculator-context strong { display: block; color: var(--energy); }
+.energy-calculator-context p { margin: 6px 0 0; line-height: 1.45; }
+.energy-brief-preview.is-stale { border-color: #b26a00; }
+.energy-brief-preview.is-stale > textarea { background: #fff8e8; }
 .energy-intake fieldset { margin: 0; padding: 0; border: 0; }
 .energy-intake legend { margin-bottom: 14px; font-size: 14px; font-weight: 800; }
 .energy-contact-fields { max-width: 720px; }
