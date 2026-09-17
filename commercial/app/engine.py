@@ -274,7 +274,6 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         final_energy_by_carrier=by_carrier,
         total_final_energy_kwh=_round(sum(by_service.values())),
         primary_energy=primary,
-        co2_emissions=co2 if False else co2,
         co2=co2,
         energy_class=energy_class,
         reference=comparison,
