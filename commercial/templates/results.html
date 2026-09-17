@@ -44,43 +44,97 @@
   </article>
 </section>
 
-{% if cost_estimate.rows %}
-<section class="panel cost-panel">
+{% if cost_estimate.service_rows %}
+<section class="panel cost-panel cost-panel-compact">
   <div class="panel-title">
-    <h2>Cost anual estimat al energiei</h2>
-    <p>Costul se aplică energiei finale consumate de sistem, după randament sau SCOP, nu direct necesarului util de căldură.</p>
+    <h2>Cost estimat al energiei</h2>
+    <p>Calculat din energia finală cumpărată, după randamentul sau SCOP-ul instalației.</p>
   </div>
-  <div class="cost-total">
-    <span>Total calculat din sursele pentru care există preț automat</span>
-    <strong>{{ cost_estimate.priced_total_lei|fmt("lei/an", 0) }}</strong>
+  <div class="cost-headline-grid">
+    <div class="cost-total">
+      <span>{% if cost_estimate.complete %}Total anual estimat{% else %}Total anual calculabil{% endif %}</span>
+      <strong>{{ cost_estimate.priced_total_lei|fmt("lei/an", 0) }}</strong>
+    </div>
+    <div class="cost-total secondary-cost-total">
+      <span>Medie lunară</span>
+      <strong>{{ cost_estimate.average_monthly_priced_lei|fmt("lei/lună", 0) }}</strong>
+    </div>
   </div>
-  <div class="price-table-wrap">
-    <table class="price-table">
-      <thead>
-        <tr><th>Sursă de energie</th><th>Energie finală</th><th>Preț folosit</th><th>Cost anual</th><th>Referință</th></tr>
-      </thead>
-      <tbody>
-        {% for row in cost_estimate.rows %}
-          <tr>
-            <td><strong>{{ row.label }}</strong>{% if row.estimated_volume_m3 %}<small>≈ {{ row.estimated_volume_m3|fmt("m³/an", 1) }}</small>{% endif %}</td>
-            <td>{{ row.final_kwh|fmt("kWh/an", 0) }}</td>
-            <td>{{ row.unit_price_lei_per_kwh|fmt("lei/kWh", 3) }}</td>
-            <td><strong>{{ row.annual_cost_lei|fmt("lei/an", 0) }}</strong></td>
-            <td>
+
+  <details class="cost-breakdown">
+    <summary>
+      <span>
+        <strong>Vezi detaliile costului</strong>
+        <small>Încălzire · răcire · apă caldă · fiecare lună</small>
+      </span>
+      <em>Deschide</em>
+    </summary>
+    <div class="cost-breakdown-body">
+      <div class="cost-service-grid">
+        {% for row in cost_estimate.service_rows %}
+          <article>
+            <span>{{ row.label }}</span>
+            {% if row.annual_cost_lei is not none %}
+              <strong>{{ row.annual_cost_lei|fmt("lei/an", 0) }}</strong>
+              <em>{{ row.final_kwh|fmt("kWh/an", 0) }} · {{ row.carrier_label }}</em>
+            {% elif row.final_kwh > 0 %}
+              <strong>Preț local necesar</strong>
+              <em>{{ row.final_kwh|fmt("kWh/an", 0) }} · {{ row.carrier_label }}</em>
+            {% else %}
+              <strong>0 lei/an</strong>
+              <em>fără consum calculat</em>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+
+      <div class="cost-table-heading">
+        <div>
+          <h3>Cost lunar estimat</h3>
+          <p>Încălzirea și răcirea urmează profilul lunar calculat; ACM se distribuie după numărul de zile din lună.</p>
+        </div>
+      </div>
+      {% set month_labels = {"ian": "Ianuarie", "feb": "Februarie", "mar": "Martie", "apr": "Aprilie", "mai": "Mai", "iun": "Iunie", "iul": "Iulie", "aug": "August", "sep": "Septembrie", "oct": "Octombrie", "nov": "Noiembrie", "dec": "Decembrie"} %}
+      <div class="price-table-wrap cost-monthly-wrap">
+        <table class="price-table cost-monthly-table">
+          <thead>
+            <tr><th>Luna</th><th>Încălzire</th><th>Răcire</th><th>ACM</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            {% for row in cost_estimate.monthly_rows %}
+              <tr>
+                <td><strong>{{ month_labels.get(row.month, row.month) }}</strong></td>
+                <td>{% if row.cost_lei_by_service.heating is not none %}{{ row.cost_lei_by_service.heating|fmt("lei", 0) }}{% else %}—{% endif %}</td>
+                <td>{% if row.cost_lei_by_service.cooling is not none %}{{ row.cost_lei_by_service.cooling|fmt("lei", 0) }}{% else %}—{% endif %}</td>
+                <td>{% if row.cost_lei_by_service.dhw is not none %}{{ row.cost_lei_by_service.dhw|fmt("lei", 0) }}{% else %}—{% endif %}</td>
+                <td><strong>{{ row.priced_total_lei|fmt("lei", 0) }}{% if not row.complete %}*{% endif %}</strong></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if cost_estimate.rows %}
+        <div class="cost-sources">
+          <h3>Prețurile folosite</h3>
+          {% for row in cost_estimate.rows %}
+            <p>
+              <strong>{{ row.label }}:</strong>
+              {{ row.unit_price_lei_per_kwh|fmt("lei/kWh", 3) }} ·
               <a href="{{ row.source_url }}" target="_blank" rel="noreferrer">{{ row.source_name }}</a>
               <small>{{ row.basis }}{% if row.valid_until %} · valabil până la {{ row.valid_until }}{% endif %}</small>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if cost_estimate.unpriced_notes %}
-    <div class="price-notes">
-      {% for item in cost_estimate.unpriced_notes %}<p>{{ item }}</p>{% endfor %}
+            </p>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if cost_estimate.unpriced_notes %}
+        <div class="price-notes">
+          {% for item in cost_estimate.unpriced_notes %}<p>* {{ item }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      <p class="price-disclaimer">{{ cost_estimate.disclaimer }} Referințe verificate la {{ cost_estimate.retrieved_on }}.</p>
     </div>
-  {% endif %}
-  <p class="price-disclaimer">{{ cost_estimate.disclaimer }} Referințe verificate la {{ cost_estimate.retrieved_on }}.</p>
+  </details>
 </section>
 {% endif %}
 
