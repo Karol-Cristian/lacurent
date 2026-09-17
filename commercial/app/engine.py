@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 
 from .methodology import carrier_factors, default_heating_performance, methodology, resolve_climate
@@ -56,6 +57,18 @@ def ventilation_heat_transfer(building: BuildingInput) -> float:
     return _round(0.34 * airflow_m3h * recovery_factor)
 
 
+def _cooling_solar_weights(start_hour: float, end_hour: float) -> list[float]:
+    """Normalized daytime solar shape for the representative 24 h cooling profile."""
+
+    span = max(end_hour - start_hour, 1.0)
+    weights = []
+    for hour in range(24):
+        phase = math.pi * (hour - start_hour) / span
+        weights.append(max(math.sin(phase), 0.0) if start_hour <= hour <= end_hour else 0.0)
+    total = sum(weights) or 1.0
+    return [weight / total for weight in weights]
+
+
 def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: float) -> list[dict]:
     data = methodology()
     climate = resolve_climate(building.locality)
@@ -64,6 +77,13 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         if building.internal_gains_w_m2 is not None
         else data["internal_gains_w_m2"][building.building_type.value]
     )
+    cooling_cfg = data.get("cooling", {})
+    diurnal_amplitude_c = float(cooling_cfg.get("representative_diurnal_amplitude_c", 5.0))
+    peak_hour = float(cooling_cfg.get("representative_peak_hour_local", 15.0))
+    solar_start = float(cooling_cfg.get("solar_window_start_hour", 6.0))
+    solar_end = float(cooling_cfg.get("solar_window_end_hour", 18.0))
+    solar_weights = _cooling_solar_weights(solar_start, solar_end)
+
     monthly = []
     total_h = h_tr_w_k + h_ve_w_k
 
@@ -79,10 +99,26 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
 
         useful_cooling = 0.0
         if building.cooling.enabled:
-            cooling_delta = max(outdoor - building.cooling.setpoint_c, 0)
-            envelope_cooling = total_h * cooling_delta * hours / 1000
-            if outdoor >= data["cooling_balance_temperature_c"]:
-                useful_cooling = max(envelope_cooling + internal_gains + solar_gains, 0)
+            # The climate source provides monthly means, which are sufficient for the
+            # heating balance but make a cooling setpoint appear inert. Reconstruct a
+            # transparent representative 24 h temperature cycle around each monthly
+            # mean and solve the sensible cooling load hour-by-hour. This is an
+            # engineering approximation, not an hourly weather-file simulation.
+            setpoint_c = building.cooling.setpoint_c
+            internal_gain_w = internal_gain_w_m2 * building.heated_floor_area_m2
+            solar_daily_kwh = solar_gains / max(days, 1)
+            representative_day_kwh = 0.0
+
+            for hour in range(24):
+                outdoor_hour_c = outdoor + diurnal_amplitude_c * math.cos(
+                    2 * math.pi * (hour - peak_hour) / 24
+                )
+                envelope_load_w = total_h * (outdoor_hour_c - setpoint_c)
+                solar_gain_w = solar_daily_kwh * 1000 * solar_weights[hour]
+                sensible_cooling_w = max(envelope_load_w + internal_gain_w + solar_gain_w, 0.0)
+                representative_day_kwh += sensible_cooling_w / 1000
+
+            useful_cooling = representative_day_kwh * days
 
         monthly.append({
             "month": month["id"],
@@ -238,6 +274,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         final_energy_by_carrier=by_carrier,
         total_final_energy_kwh=_round(sum(by_service.values())),
         primary_energy=primary,
+        co2_emissions=co2 if False else co2,
         co2=co2,
         energy_class=energy_class,
         reference=comparison,
