@@ -37,6 +37,10 @@
     custom: { type: "custom", carrier: "natural_gas", efficiency: 0.85, scop: 3.2, costProfile: "other" }
   };
 
+  function normalize(text) {
+    return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  }
+
   function updateDerivedLabels(values) {
     const mapping = {
       derivedArea: `${Math.round(values.area)} m²`,
@@ -143,6 +147,61 @@
     }
   }
 
+  function syncCalculatorLocality() {
+    const state = window.__lacurentLocationState;
+    const input = document.getElementById("localitySearch");
+    const hidden = document.getElementById("localityId");
+    if (!input || !hidden || !state?.data?.localities) return;
+
+    const query = normalize(input.value);
+    if (!query) {
+      hidden.value = "";
+      state.selected = null;
+      return;
+    }
+
+    const selected = state.selected;
+    if (selected) {
+      const selectedName = normalize(selected.name);
+      const selectedShort = normalize(`${selected.name} ${selected.uatName && selected.uatName !== selected.name ? selected.uatName : ""} ${selected.county}`);
+      if (query === selectedName || query === selectedShort || query.startsWith(`${selectedName} `)) {
+        hidden.value = selected.id;
+        hidden.setAttribute("value", selected.id);
+        return;
+      }
+    }
+
+    const terms = query.split(" ").filter(Boolean);
+    const matches = state.data.localities
+      .filter((item) => terms.every((term) => item.search?.includes(term)))
+      .sort((a, b) => {
+        const an = normalize(a.name);
+        const bn = normalize(b.name);
+        const as = (an === query ? 10_000_000 : an.startsWith(query) ? 1_000_000 : 0) + (a.importance || 0);
+        const bs = (bn === query ? 10_000_000 : bn.startsWith(query) ? 1_000_000 : 0) + (b.importance || 0);
+        return bs - as || a.name.localeCompare(b.name, "ro");
+      });
+
+    const match = matches[0];
+    if (match) {
+      state.selected = match;
+      hidden.value = match.id;
+      hidden.setAttribute("value", match.id);
+    } else {
+      state.selected = null;
+      hidden.value = "";
+      hidden.setAttribute("value", "");
+    }
+  }
+
+  function resetSubmitButton(form) {
+    const button = form?.querySelector('button[type="submit"]');
+    if (!button) return;
+    button.disabled = false;
+    button.textContent = "Calculează performanța";
+    button.removeAttribute("aria-busy");
+  }
+
   function initFriendlyCalculator() {
     const form = document.getElementById("calculationForm");
     if (!form) return;
@@ -164,8 +223,13 @@
       recalculate();
     });
     form.addEventListener("change", recalculate);
-    form.addEventListener("submit", recalculate, { capture: true });
+    form.addEventListener("submit", () => {
+      recalculate();
+      syncCalculatorLocality();
+    }, { capture: true });
     recalculate();
+    resetSubmitButton(form);
+    window.addEventListener("pageshow", () => resetSubmitButton(form));
 
     const localityId = document.getElementById("localityId");
     const localitySearch = document.getElementById("localitySearch");
@@ -181,10 +245,6 @@
     if (localityId) {
       new MutationObserver(persistLocality).observe(localityId, { attributes: true, attributeFilter: ["value"] });
     }
-  }
-
-  function normalize(text) {
-    return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   }
 
   function initIntakeLocality() {
