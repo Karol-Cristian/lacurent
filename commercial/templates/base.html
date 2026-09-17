@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=v2eng3">
   <link rel="stylesheet" href="{{ url_for('static', path='energy-ui.css') }}?v=energy3">
   <link rel="stylesheet" href="{{ url_for('static', path='cost-details.css') }}?v=cost1">
+  <link rel="stylesheet" href="{{ url_for('static', path='language-switch.css') }}?v=lang2">
 </head>
 <body>
   <div class="app-shell">
@@ -32,6 +33,13 @@
     </aside>
 
     <main class="workspace">
+      <div class="workspace-toolbar" aria-label="Selector limbă">
+        <div class="site-language-switch header-language-switch" aria-label="Language / Limbă">
+          <span class="language-label" data-language-label>Limbă</span>
+          <button type="button" data-site-language="ro" aria-pressed="true">RO</button>
+          <button type="button" data-site-language="en" aria-pressed="false">EN</button>
+        </div>
+      </div>
       {% block content %}{% endblock %}
     </main>
   </div>
@@ -39,6 +47,7 @@
   <script src="{{ url_for('static', path='app.js') }}?v=v2eng3"></script>
   <script src="{{ url_for('static', path='energy-ui.js') }}?v=energy3"></script>
   <script src="{{ url_for('static', path='climate-submit-token.js') }}?v=climate1"></script>
+  <script src="{{ url_for('static', path='language-switch-runtime.js') }}?v=lang2"></script>
   <script src="{{ url_for('static', path='site-language.js') }}?v=lang1"></script>
 </body>
 </html>
