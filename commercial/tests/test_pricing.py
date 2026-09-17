@@ -69,3 +69,46 @@ def test_pellet_profile_is_not_assigned_an_invented_national_retail_price() -> N
     assert building.heating.cost_profile == "pellets"
     assert not any(row["carrier"] == "biomass" for row in estimate["rows"])
     assert any("Peleți" in note for note in estimate["unpriced_notes"])
+
+
+def test_service_costs_reconcile_with_annual_priced_total() -> None:
+    building = build_input_from_form(simple_form("heat_pump"))
+    result = calculate(building)
+    estimate = estimate_energy_cost(result)
+
+    assert [row["service"] for row in estimate["service_rows"]] == ["heating", "cooling", "dhw"]
+    service_total = sum(float(row["annual_cost_lei"] or 0) for row in estimate["service_rows"])
+    assert service_total == pytest.approx(estimate["priced_total_lei"], abs=0.01)
+    assert estimate["average_monthly_priced_lei"] == pytest.approx(estimate["priced_total_lei"] / 12, abs=0.01)
+
+
+def test_monthly_costs_reconcile_with_annual_and_follow_heating_profile() -> None:
+    building = build_input_from_form(simple_form("heat_pump"))
+    result = calculate(building)
+    estimate = estimate_energy_cost(result)
+
+    assert len(estimate["monthly_rows"]) == 12
+    monthly_total = sum(row["priced_total_lei"] for row in estimate["monthly_rows"])
+    assert monthly_total == pytest.approx(estimate["priced_total_lei"], abs=0.01)
+
+    by_month = {row["month"]: row for row in estimate["monthly_rows"]}
+    assert by_month["ian"]["cost_lei_by_service"]["heating"] > by_month["iul"]["cost_lei_by_service"]["heating"]
+
+    dhw_annual = next(row for row in estimate["service_rows"] if row["service"] == "dhw")["annual_cost_lei"]
+    dhw_monthly = sum(row["cost_lei_by_service"]["dhw"] or 0 for row in estimate["monthly_rows"])
+    assert dhw_monthly == pytest.approx(dhw_annual, abs=0.01)
+
+
+def test_cooling_cost_is_priced_as_electricity_when_enabled() -> None:
+    form = simple_form("condensing_gas_boiler")
+    form["cooling_enabled"] = "on"
+    building = build_input_from_form(form)
+    result = calculate(building)
+    estimate = estimate_energy_cost(result)
+    cooling = next(row for row in estimate["service_rows"] if row["service"] == "cooling")
+
+    assert cooling["carrier"] == "electricity"
+    assert cooling["unit_price_lei_per_kwh"] == pytest.approx(1.27284)
+    assert cooling["annual_cost_lei"] == pytest.approx(
+        cooling["final_kwh"] * cooling["unit_price_lei_per_kwh"], abs=0.01
+    )

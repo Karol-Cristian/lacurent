@@ -96,6 +96,28 @@ def test_calculator_exposes_friendly_romanian_defaults_and_advanced_escape_hatch
     assert "Natural ventilation" not in response.text
 
 
+def test_custom_house_submission_renders_its_own_result() -> None:
+    form = base_simple_form()
+    form.update({"project_name": "Casa completată de mine", "locality": "Satu Mare"})
+    response = client.post("/calculate", data=form)
+
+    assert response.status_code == 200
+    assert "Casa completată de mine" in response.text
+    assert "Satu Mare" in response.text
+    assert "Rezultatul calculului" in response.text
+    assert "Vezi detaliile costului" in response.text
+    assert "Cost lunar estimat" in response.text
+    assert "Medie lunară" in response.text
+
+
+def test_calculator_javascript_resets_submit_state_and_syncs_typed_locality() -> None:
+    response = client.get("/static/energy-ui.js")
+    assert response.status_code == 200
+    assert "syncCalculatorLocality" in response.text
+    assert 'window.addEventListener("pageshow"' in response.text
+    assert 'button.disabled = false' in response.text
+
+
 def test_installations_offer_uses_registry_ready_locality_picker() -> None:
     response = client.get("/instalatii")
     assert response.status_code == 200
