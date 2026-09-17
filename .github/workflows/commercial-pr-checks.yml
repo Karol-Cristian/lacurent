@@ -38,6 +38,7 @@ jobs:
           git diff --check
           node --check commercial/static/app.js
           node --check commercial/static/energy-ui.js
+          node --check commercial/static/site-language.js
           node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
