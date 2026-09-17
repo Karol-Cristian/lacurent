@@ -1,4 +1,8 @@
-/* Simplified residential energy workflow layered on top of app.css/company.css. */
+/* Interfața simplificată pentru calculul energetic rezidențial. */
+
+.workspace {
+  width: min(1420px, calc(100% - 40px));
+}
 
 .simple-intro {
   display: flex;
@@ -31,8 +35,10 @@
 }
 
 .romania-location-map {
-  min-height: 520px !important;
-  padding: 18px !important;
+  position: relative;
+  min-height: 690px !important;
+  padding: 16px !important;
+  overflow: hidden;
   touch-action: none;
   cursor: grab;
   user-select: none;
@@ -41,10 +47,41 @@
 .romania-location-map.is-panning { cursor: grabbing; }
 
 .romania-map-svg {
+  display: block;
   width: 100% !important;
   max-height: none !important;
-  height: 500px !important;
+  height: 650px !important;
   aspect-ratio: auto !important;
+  border-radius: 10px;
+}
+
+.locality-marker {
+  cursor: pointer;
+}
+
+.locality-marker circle {
+  vector-effect: non-scaling-stroke;
+}
+
+.locality-marker text.locality-label {
+  fill: #172033;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,.94);
+  stroke-width: 3.2px;
+  stroke-linejoin: round;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+.locality-marker.tier-4 text.locality-label,
+.locality-marker.tier-5 text.locality-label {
+  fill: #415065;
+  stroke-width: 2.8px;
+}
+
+.locality-marker.selected text.locality-label {
+  fill: var(--blue, #1459c8);
+  stroke-width: 4px;
 }
 
 .map-controls {
@@ -61,7 +98,7 @@
   height: 42px;
   border: 1px solid #c8d3df;
   border-radius: 10px;
-  background: rgba(255,255,255,.94);
+  background: rgba(255,255,255,.95);
   color: #172033;
   font-size: 20px;
   font-weight: 800;
@@ -72,20 +109,33 @@
 .map-gesture-hint {
   position: absolute;
   left: 16px;
-  bottom: 16px;
+  bottom: 14px;
   z-index: 8;
   margin: 0;
   padding: 7px 10px;
+  border: 1px solid rgba(200,211,223,.8);
   border-radius: 999px;
-  background: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.92);
   color: #526174;
   font-size: 11px;
   font-weight: 700;
   pointer-events: none;
 }
 
+.romania-location-map .map-legend {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  z-index: 7;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(200,211,223,.8);
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+}
+
 .selected-location-card.location-summary-bar {
-  grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(135px, .75fr));
+  grid-template-columns: minmax(240px, 1.6fr) repeat(3, minmax(145px, .75fr));
   align-items: center;
   margin-top: 12px;
   padding: 14px 16px;
@@ -268,6 +318,90 @@
 .service-card-simple h3 { margin-bottom: 7px; }
 .service-card-simple p { color: #64748b; line-height: 1.5; }
 
+.cost-panel {
+  margin-bottom: 18px;
+}
+
+.cost-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 4px 0 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.cost-total span { color: var(--muted, #64748b); }
+.cost-total strong { font-size: 28px; }
+
+.price-table-wrap {
+  overflow-x: auto;
+}
+
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.price-table th,
+.price-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line, #dbe3ed);
+  text-align: left;
+  vertical-align: top;
+}
+
+.price-table th {
+  color: #475569;
+  background: #f8fafc;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.price-table td small,
+.price-table td strong {
+  display: block;
+}
+
+.price-table td small {
+  margin-top: 4px;
+  color: var(--muted, #64748b);
+  line-height: 1.4;
+}
+
+.price-table a {
+  color: var(--blue, #1459c8);
+  font-weight: 750;
+}
+
+.price-notes {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid #c8d3df;
+  color: #526174;
+  background: #fafbfd;
+}
+
+.price-notes p { margin: 4px 0; }
+
+.price-disclaimer {
+  margin: 12px 0 0;
+  color: var(--muted, #64748b);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .workspace { width: min(1180px, calc(100% - 32px)); }
+  .romania-location-map { min-height: 570px !important; }
+  .romania-map-svg { height: 535px !important; }
+}
+
 @media (max-width: 900px) {
   .selected-location-card.location-summary-bar { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .location-summary-bar > strong { grid-column: 1 / -1; }
@@ -276,12 +410,23 @@
   .expert-grid,
   .service-cards-six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .derived-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .romania-location-map .map-legend { max-width: 55%; }
 }
 
 @media (max-width: 640px) {
-  .romania-location-map { min-height: 430px !important; padding: 8px !important; }
-  .romania-map-svg { height: 410px !important; }
+  .workspace { width: min(100% - 18px, 100%); }
+  .romania-location-map { min-height: 440px !important; padding: 8px !important; }
+  .romania-map-svg { height: 420px !important; }
   .map-gesture-hint { display: none; }
+  .romania-location-map .map-legend {
+    right: 8px;
+    bottom: 8px;
+    max-width: calc(100% - 16px);
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+  .map-controls { top: 9px; right: 9px; }
+  .map-controls button { width: 38px; height: 38px; }
   .selected-location-card.location-summary-bar,
   .choice-grid,
   .system-choice,
@@ -289,4 +434,6 @@
   .derived-strip,
   .service-cards-six { grid-template-columns: 1fr; }
   .simple-intro { align-items: flex-start; flex-direction: column; }
+  .cost-total { align-items: flex-start; flex-direction: column; }
+  .cost-total strong { font-size: 24px; }
 }
