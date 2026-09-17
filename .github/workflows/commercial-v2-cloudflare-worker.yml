@@ -41,7 +41,7 @@ jobs:
         run: |
           git diff --check
           node --check commercial/static/app.js
-          node --test commercial/tests/intake.test.cjs
+          node --test commercial/tests/intake.test.cjs commercial/tests/energy_intake.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
 
@@ -156,6 +156,7 @@ jobs:
           energy_html = get("/instalatii")
           assert 'href="/instalatii/calculator"' in energy_html
           assert 'id="energy-brief-preview"' in energy_html
+          assert 'id="energy-calculator-context"' in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
@@ -170,6 +171,8 @@ jobs:
           calculation_html = post("/calculate", form)
           if "Results" not in calculation_html:
               raise AssertionError("Calculation response did not render Results")
+          if 'id="evaluation-handoff"' not in calculation_html:
+              raise AssertionError("Calculation response did not render evaluation handoff")
 
           demo = demo_building()
           direct = calculate(demo)
@@ -424,6 +427,7 @@ jobs:
           assert energy_status == 200
           assert 'href="/instalatii/calculator"' in energy_html
           assert 'id="energy-brief-preview"' in energy_html
+          assert 'id="energy-calculator-context"' in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
@@ -447,6 +451,8 @@ jobs:
           )
           if status != 200 or "Results" not in calculation:
               raise AssertionError(f"/calculate failed with HTTP {status}")
+          if 'id="evaluation-handoff"' not in calculation:
+              raise AssertionError("Production calculation response did not render evaluation handoff")
           print("/calculate", status)
 
           demo = demo_building()
