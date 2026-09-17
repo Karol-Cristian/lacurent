@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}LaCurent - building energy calculation{% endblock %}
+{% block title %}Calculator energetic pentru locuințe | LaCurent{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div>
-    <p class="eyebrow">Residential building energy calculator</p>
-    <h1>Describe the home in normal terms. We derive the technical inputs.</h1>
-    <p class="hero-copy">Choose the locality, enter the basic geometry and select the systems you actually have. Exact engineering coefficients remain available under Advanced settings.</p>
+    <p class="eyebrow">Calculator energetic pentru locuințe</p>
+    <h1>Descrie locuința în termeni normali. Noi deducem valorile tehnice.</h1>
+    <p class="hero-copy">Alege localitatea, introdu dimensiunile de bază și selectează instalațiile pe care le ai. Coeficienții tehnici exacți rămân disponibili doar în setările avansate.</p>
   </div>
   <div class="hero-actions">
-    <a class="secondary-action" href="/demo">Load demo</a>
-    <a class="primary-action" href="#building">Start analysis</a>
+    <a class="secondary-action" href="/demo">Încarcă exemplul</a>
+    <a class="primary-action" href="#building">Începe analiza</a>
   </div>
 </section>
 
 {% if error %}
   <div class="error-banner" role="alert">
-    <strong>Please correct the input data.</strong>
+    <strong>Corectează datele marcate.</strong>
     <span>{{ error }}</span>
   </div>
 {% endif %}
@@ -33,20 +33,20 @@
     <div class="section-heading">
       <span>01</span>
       <div>
-        <h2>Building</h2>
-        <p>Start with the information you normally know about the dwelling.</p>
+        <h2>Clădirea</h2>
+        <p>Începem cu informațiile pe care le știi în mod normal despre locuință.</p>
       </div>
     </div>
 
     <div class="simple-intro">
-      <div><strong>Simple mode is the default.</strong> Dimensions and everyday choices are converted into the technical values used by the calculation.</div>
-      <p class="mode-note">Need exact values? Open Advanced settings in each section.</p>
+      <div><strong>Modul simplu este implicit.</strong> Dimensiunile și alegerile uzuale sunt transformate automat în valorile tehnice folosite de calcul.</div>
+      <p class="mode-note">Dacă ai măsurători exacte, deschide setările avansate din secțiunea corespunzătoare.</p>
     </div>
 
     <div class="field-grid project-grid">
       <label>
-        <span>Project name <small>(optional)</small></span>
-        <input name="project_name" value="{{ values.project_name }}" placeholder="My house">
+        <span>Numele proiectului <small>(opțional)</small></span>
+        <input name="project_name" value="{{ values.project_name }}" placeholder="Casa mea">
       </label>
     </div>
 
@@ -57,13 +57,13 @@
       data-initial-locality="{{ values.locality }}"
     >
       <div class="location-copy">
-        <h3>Building location</h3>
-        <p>Search for a locality or click anywhere on the Romania map. Scroll to zoom on desktop; drag or pinch with two fingers on a phone.</p>
+        <h3>Localitatea clădirii</h3>
+        <p>Caută localitatea sau alege direct pe hartă. Pe computer folosești rotița pentru zoom și tragi harta; pe telefon folosești două degete.</p>
       </div>
 
       <div class="location-search">
         <label for="localitySearch">
-          <span>Search for a locality</span>
+          <span>Caută localitatea</span>
           <input
             id="localitySearch"
             name="locality"
@@ -75,7 +75,7 @@
             aria-expanded="false"
             aria-controls="localityResults"
             value="{{ values.locality }}"
-            placeholder="E.g. Cluj, Brașov, Florești"
+            placeholder="Ex. Cluj, Brașov, Florești"
           >
         </label>
         <input id="localityId" name="locality_id" type="hidden" value="{{ values.locality_id }}">
@@ -84,80 +84,80 @@
 
       <div class="location-map-layout energy-map-layout">
         <div class="romania-map-card">
-          <div id="romaniaLocationMap" class="romania-location-map" role="group" aria-label="Interactive Romania map for locality selection">
-            <p>Loading Romania map...</p>
+          <div id="romaniaLocationMap" class="romania-location-map" role="group" aria-label="Hartă interactivă a României pentru alegerea localității">
+            <p>Se încarcă harta României...</p>
           </div>
           <div id="mapLocalityResults" class="map-locality-results" hidden></div>
         </div>
         <aside class="selected-location-card location-summary-bar" aria-live="polite">
-          <span>Selected locality</span>
+          <span>Localitatea selectată</span>
           <strong id="selectedLocationName">Cluj-Napoca, Cluj</strong>
           <dl>
-            <div><dt>Winter climate zone</dt><dd id="selectedClimateZone">-</dd></div>
-            <div><dt>Winter design temperature</dt><dd id="selectedDesignTemperature">-</dd></div>
-            <div><dt>Climate station</dt><dd id="selectedClimateStation">-</dd></div>
+            <div><dt>Zona climatică de iarnă</dt><dd id="selectedClimateZone">-</dd></div>
+            <div><dt>Temperatura exterioară de calcul</dt><dd id="selectedDesignTemperature">-</dd></div>
+            <div><dt>Stația climatică</dt><dd id="selectedClimateStation">-</dd></div>
           </dl>
-          <small id="selectedClimateResolution">Climate data selected automatically.</small>
+          <small id="selectedClimateResolution">Datele climatice sunt selectate automat.</small>
         </aside>
       </div>
     </div>
 
     <fieldset class="friendly-fieldset">
-      <legend>What are you calculating?</legend>
+      <legend>Ce calculezi?</legend>
       <div class="choice-grid">
         <label class="choice-card">
           <input type="radio" name="building_type" value="residential_individual" {% if values.building_type == "residential_individual" %}checked{% endif %}>
-          <strong>House</strong>
-          <small>Detached or attached house. We derive the envelope from length, width and heated levels.</small>
+          <strong>Casă</strong>
+          <small>Casă individuală sau alipită. Deducem anvelopa din lungime, lățime și numărul de niveluri încălzite.</small>
         </label>
         <label class="choice-card">
           <input type="radio" name="building_type" value="residential_collective" {% if values.building_type == "residential_collective" %}checked{% endif %}>
-          <strong>Apartment</strong>
-          <small>Apartment or unit in a multifamily building. We ask only for the surfaces exposed to outside/unheated spaces.</small>
+          <strong>Apartament</strong>
+          <small>Apartament într-un bloc. Cerem doar suprafețele expuse spre exterior sau spre spații neîncălzite.</small>
         </label>
       </div>
     </fieldset>
 
     <div id="houseGeometry" class="simple-panel">
       <div class="field-grid compact">
-        <label><span>Building length</span><div class="unit-field"><input name="building_length_m" type="number" step="0.1" min="1" value="{{ values.building_length_m }}"><em>m</em></div></label>
-        <label><span>Building width</span><div class="unit-field"><input name="building_width_m" type="number" step="0.1" min="1" value="{{ values.building_width_m }}"><em>m</em></div></label>
-        <label><span>Heated levels</span><input name="heated_levels" type="number" step="1" min="1" max="5" value="{{ values.heated_levels }}"></label>
-        <label><span>Average ceiling height</span><div class="unit-field"><input name="average_height_m" type="number" step="0.05" min="1.8" max="5" value="{{ values.average_height_m }}"><em>m</em></div></label>
-        <label><span>Approx. total window area</span><div class="unit-field"><input name="house_window_area_m2" type="number" step="0.5" min="0.1" value="{{ values.house_window_area_m2 }}"><em>m²</em></div></label>
-        <label><span>Approx. exterior door area</span><div class="unit-field"><input name="house_door_area_m2" type="number" step="0.1" min="0.1" value="{{ values.house_door_area_m2 }}"><em>m²</em></div></label>
+        <label><span>Lungimea clădirii</span><div class="unit-field"><input name="building_length_m" type="number" step="0.1" min="1" value="{{ values.building_length_m }}"><em>m</em></div></label>
+        <label><span>Lățimea clădirii</span><div class="unit-field"><input name="building_width_m" type="number" step="0.1" min="1" value="{{ values.building_width_m }}"><em>m</em></div></label>
+        <label><span>Niveluri încălzite</span><input name="heated_levels" type="number" step="1" min="1" max="5" value="{{ values.heated_levels }}"></label>
+        <label><span>Înălțimea medie interioară</span><div class="unit-field"><input name="average_height_m" type="number" step="0.05" min="1.8" max="5" value="{{ values.average_height_m }}"><em>m</em></div></label>
+        <label><span>Suprafața totală aproximativă a ferestrelor</span><div class="unit-field"><input name="house_window_area_m2" type="number" step="0.5" min="0.1" value="{{ values.house_window_area_m2 }}"><em>m²</em></div></label>
+        <label><span>Suprafața aproximativă a ușilor exterioare</span><div class="unit-field"><input name="house_door_area_m2" type="number" step="0.1" min="0.1" value="{{ values.house_door_area_m2 }}"><em>m²</em></div></label>
       </div>
     </div>
 
     <div id="apartmentGeometry" class="simple-panel" hidden>
       <div class="field-grid compact">
-        <label><span>Heated floor area</span><div class="unit-field"><input name="apartment_area_m2" type="number" step="0.5" min="1" value="{{ values.apartment_area_m2 }}"><em>m²</em></div></label>
-        <label><span>Ceiling height</span><div class="unit-field"><input name="apartment_height_m" type="number" step="0.05" min="1.8" max="5" value="{{ values.apartment_height_m }}"><em>m</em></div></label>
-        <label><span>Total length of exterior walls</span><div class="unit-field"><input name="apartment_exterior_wall_length_m" type="number" step="0.5" min="1" value="{{ values.apartment_exterior_wall_length_m }}"><em>m</em></div></label>
-        <label><span>Approx. window area</span><div class="unit-field"><input name="apartment_window_area_m2" type="number" step="0.5" min="0.1" value="{{ values.apartment_window_area_m2 }}"><em>m²</em></div></label>
+        <label><span>Suprafața utilă încălzită</span><div class="unit-field"><input name="apartment_area_m2" type="number" step="0.5" min="1" value="{{ values.apartment_area_m2 }}"><em>m²</em></div></label>
+        <label><span>Înălțimea interioară</span><div class="unit-field"><input name="apartment_height_m" type="number" step="0.05" min="1.8" max="5" value="{{ values.apartment_height_m }}"><em>m</em></div></label>
+        <label><span>Lungimea totală a pereților exteriori</span><div class="unit-field"><input name="apartment_exterior_wall_length_m" type="number" step="0.5" min="1" value="{{ values.apartment_exterior_wall_length_m }}"><em>m</em></div></label>
+        <label><span>Suprafața aproximativă a ferestrelor</span><div class="unit-field"><input name="apartment_window_area_m2" type="number" step="0.5" min="0.1" value="{{ values.apartment_window_area_m2 }}"><em>m²</em></div></label>
       </div>
       <div class="inline-switches">
-        <label><input type="checkbox" name="apartment_top_exposed" {% if values.apartment_top_exposed %}checked{% endif %}> Roof / unheated attic above</label>
-        <label><input type="checkbox" name="apartment_bottom_exposed" {% if values.apartment_bottom_exposed %}checked{% endif %}> Ground / unheated space below</label>
+        <label><input type="checkbox" name="apartment_top_exposed" {% if values.apartment_top_exposed %}checked{% endif %}> Deasupra este acoperiș / pod neîncălzit</label>
+        <label><input type="checkbox" name="apartment_bottom_exposed" {% if values.apartment_bottom_exposed %}checked{% endif %}> Dedesubt este sol / spațiu neîncălzit</label>
       </div>
     </div>
 
     <div class="derived-strip" aria-live="polite">
-      <div><span>Calculated heated area</span><strong id="derivedArea">-</strong></div>
-      <div><span>Calculated volume</span><strong id="derivedVolume">-</strong></div>
-      <div><span>Calculated exterior walls</span><strong id="derivedWalls">-</strong></div>
-      <div><span>Roof / ceiling exposed</span><strong id="derivedRoof">-</strong></div>
+      <div><span>Suprafață încălzită calculată</span><strong id="derivedArea">-</strong></div>
+      <div><span>Volum încălzit calculat</span><strong id="derivedVolume">-</strong></div>
+      <div><span>Pereți exteriori calculați</span><strong id="derivedWalls">-</strong></div>
+      <div><span>Acoperiș / tavan expus</span><strong id="derivedRoof">-</strong></div>
     </div>
 
     <div class="field-grid compact" style="margin-top:16px">
-      <label><span>Construction year <small>(optional)</small></span><input name="construction_year" type="number" min="1800" max="2100" value="{{ values.construction_year }}"></label>
+      <label><span>Anul construcției <small>(opțional)</small></span><input name="construction_year" type="number" min="1800" max="2100" value="{{ values.construction_year }}"></label>
       <label>
-        <span>Thermal condition</span>
+        <span>Nivelul termoizolației</span>
         <select name="insulation_profile">
-          <option value="poor" {% if values.insulation_profile == "poor" %}selected{% endif %}>Poor / little insulation</option>
-          <option value="average" {% if values.insulation_profile == "average" %}selected{% endif %}>Average</option>
-          <option value="good" {% if values.insulation_profile == "good" %}selected{% endif %}>Good / renovated</option>
-          <option value="very_good" {% if values.insulation_profile == "very_good" %}selected{% endif %}>Very good / modern low-energy</option>
+          <option value="poor" {% if values.insulation_profile == "poor" %}selected{% endif %}>Slabă / aproape fără izolație</option>
+          <option value="average" {% if values.insulation_profile == "average" %}selected{% endif %}>Medie</option>
+          <option value="good" {% if values.insulation_profile == "good" %}selected{% endif %}>Bună / renovată</option>
+          <option value="very_good" {% if values.insulation_profile == "very_good" %}selected{% endif %}>Foarte bună / locuință modernă</option>
         </select>
       </label>
     </div>
@@ -167,35 +167,35 @@
     <div class="section-heading">
       <span>02</span>
       <div>
-        <h2>Building envelope</h2>
-        <p>In Simple mode, areas come from the geometry above and U-values come from the selected thermal condition.</p>
+        <h2>Anvelopa clădirii</h2>
+        <p>În modul simplu, suprafețele rezultă din geometria de mai sus, iar coeficienții termici din nivelul de termoizolație selectat.</p>
       </div>
     </div>
 
-    <p class="mode-note">You do not need to calculate wall, roof or floor surfaces yourself. Open Advanced settings only if you know the exact values.</p>
+    <p class="mode-note">Nu trebuie să calculezi singur suprafața pereților, acoperișului sau pardoselii. Deschide setările avansate doar dacă ai valori exacte.</p>
 
     <details class="advanced-settings">
-      <summary>Advanced settings — exact envelope areas and coefficients</summary>
+      <summary>Setări avansate — suprafețe și coeficienți exacți</summary>
       <div>
         <div class="expert-grid">
-          <label><span>Heated area</span><input data-expert-geometry name="heated_floor_area_m2" type="number" step="0.1" min="0" value="{{ values.heated_floor_area_m2 }}"></label>
-          <label><span>Heated volume</span><input data-expert-geometry name="heated_volume_m3" type="number" step="0.1" min="0" value="{{ values.heated_volume_m3 }}"></label>
-          <label><span>Indoor design temperature</span><input name="indoor_design_temperature_c" type="number" step="0.1" min="16" max="24" value="{{ values.indoor_design_temperature_c }}"></label>
+          <label><span>Suprafață încălzită</span><input data-expert-geometry name="heated_floor_area_m2" type="number" step="0.1" min="0" value="{{ values.heated_floor_area_m2 }}"></label>
+          <label><span>Volum încălzit</span><input data-expert-geometry name="heated_volume_m3" type="number" step="0.1" min="0" value="{{ values.heated_volume_m3 }}"></label>
+          <label><span>Temperatura interioară de calcul</span><input name="indoor_design_temperature_c" type="number" step="0.1" min="16" max="24" value="{{ values.indoor_design_temperature_c }}"></label>
         </div>
         <div class="expert-grid">
-          <label><span>External wall area (m²)</span><input data-expert-geometry name="wall_area_m2" type="number" step="0.1" min="0" value="{{ values.wall_area_m2 }}"></label>
-          <label><span>Wall U-value</span><input data-expert-envelope name="wall_u_value" type="number" step="0.01" min="0.01" value="{{ values.wall_u_value }}"></label>
-          <label><span>Roof / ceiling area (m²)</span><input data-expert-geometry name="roof_area_m2" type="number" step="0.1" min="0" value="{{ values.roof_area_m2 }}"></label>
-          <label><span>Roof U-value</span><input data-expert-envelope name="roof_u_value" type="number" step="0.01" min="0.01" value="{{ values.roof_u_value }}"></label>
-          <label><span>Ground / exposed floor area (m²)</span><input data-expert-geometry name="floor_area_m2" type="number" step="0.1" min="0" value="{{ values.floor_area_m2 }}"></label>
-          <label><span>Floor U-value</span><input data-expert-envelope name="floor_u_value" type="number" step="0.01" min="0.01" value="{{ values.floor_u_value }}"></label>
-          <label><span>Window area (m²)</span><input data-expert-geometry name="window_area_m2" type="number" step="0.1" min="0" value="{{ values.window_area_m2 }}"></label>
-          <label><span>Window U-value</span><input data-expert-envelope name="window_u_value" type="number" step="0.01" min="0.01" value="{{ values.window_u_value }}"></label>
-          <label><span>Exterior door area (m²)</span><input data-expert-geometry name="door_area_m2" type="number" step="0.1" min="0" value="{{ values.door_area_m2 }}"></label>
-          <label><span>Door U-value</span><input data-expert-envelope name="door_u_value" type="number" step="0.01" min="0.01" value="{{ values.door_u_value }}"></label>
-          <label><span>Thermal bridge length (m)</span><input data-expert-geometry name="thermal_bridge_length_m" type="number" step="0.1" min="0" value="{{ values.thermal_bridge_length_m }}"></label>
-          <label><span>Linear transmittance ψ</span><input data-expert-envelope name="thermal_bridge_psi_w_mk" type="number" step="0.001" min="0" value="{{ values.thermal_bridge_psi_w_mk }}"></label>
-          <label><span>Explicit solar gain</span><input name="solar_gains_kwh_m2_month" type="number" step="0.1" min="0" value="{{ values.solar_gains_kwh_m2_month }}"></label>
+          <label><span>Pereți exteriori (m²)</span><input data-expert-geometry name="wall_area_m2" type="number" step="0.1" min="0" value="{{ values.wall_area_m2 }}"></label>
+          <label><span>Coeficient U pereți</span><input data-expert-envelope name="wall_u_value" type="number" step="0.01" min="0.01" value="{{ values.wall_u_value }}"></label>
+          <label><span>Acoperiș / tavan (m²)</span><input data-expert-geometry name="roof_area_m2" type="number" step="0.1" min="0" value="{{ values.roof_area_m2 }}"></label>
+          <label><span>Coeficient U acoperiș</span><input data-expert-envelope name="roof_u_value" type="number" step="0.01" min="0.01" value="{{ values.roof_u_value }}"></label>
+          <label><span>Pardoseală spre sol / spațiu rece (m²)</span><input data-expert-geometry name="floor_area_m2" type="number" step="0.1" min="0" value="{{ values.floor_area_m2 }}"></label>
+          <label><span>Coeficient U pardoseală</span><input data-expert-envelope name="floor_u_value" type="number" step="0.01" min="0.01" value="{{ values.floor_u_value }}"></label>
+          <label><span>Ferestre (m²)</span><input data-expert-geometry name="window_area_m2" type="number" step="0.1" min="0" value="{{ values.window_area_m2 }}"></label>
+          <label><span>Coeficient U ferestre</span><input data-expert-envelope name="window_u_value" type="number" step="0.01" min="0.01" value="{{ values.window_u_value }}"></label>
+          <label><span>Uși exterioare (m²)</span><input data-expert-geometry name="door_area_m2" type="number" step="0.1" min="0" value="{{ values.door_area_m2 }}"></label>
+          <label><span>Coeficient U uși</span><input data-expert-envelope name="door_u_value" type="number" step="0.01" min="0.01" value="{{ values.door_u_value }}"></label>
+          <label><span>Lungime punți termice (m)</span><input data-expert-geometry name="thermal_bridge_length_m" type="number" step="0.1" min="0" value="{{ values.thermal_bridge_length_m }}"></label>
+          <label><span>Transmitanță liniară ψ</span><input data-expert-envelope name="thermal_bridge_psi_w_mk" type="number" step="0.001" min="0" value="{{ values.thermal_bridge_psi_w_mk }}"></label>
+          <label><span>Aport solar explicit</span><input name="solar_gains_kwh_m2_month" type="number" step="0.1" min="0" value="{{ values.solar_gains_kwh_m2_month }}"></label>
         </div>
       </div>
     </details>
@@ -205,23 +205,23 @@
     <div class="section-heading">
       <span>03</span>
       <div>
-        <h2>Ventilation</h2>
-        <p>Choose the ventilation type. The airflow coefficients are derived internally.</p>
+        <h2>Ventilația</h2>
+        <p>Alege tipul de ventilare. Debitul de aer și recuperarea se deduc intern.</p>
       </div>
     </div>
 
     <div class="choice-grid">
-      <label class="choice-card"><input type="radio" name="ventilation_type" value="natural" {% if values.ventilation_type == "natural" %}checked{% endif %}><strong>Natural ventilation</strong><small>Windows, trickle vents or passive grilles; no central mechanical system.</small></label>
-      <label class="choice-card"><input type="radio" name="ventilation_type" value="mechanical" {% if values.ventilation_type == "mechanical" %}checked{% endif %}><strong>Mechanical ventilation</strong><small>Fans or mechanical extract/supply without heat recovery.</small></label>
-      <label class="choice-card"><input type="radio" name="ventilation_type" value="heat_recovery" {% if values.ventilation_type == "heat_recovery" %}checked{% endif %}><strong>Mechanical with heat recovery</strong><small>Balanced ventilation / HRV with heat recovery.</small></label>
-      <label class="choice-card"><input type="radio" name="ventilation_type" value="unknown" {% if values.ventilation_type == "unknown" %}checked{% endif %}><strong>I don't know</strong><small>Use a transparent residential default that can be refined later.</small></label>
+      <label class="choice-card"><input type="radio" name="ventilation_type" value="natural" {% if values.ventilation_type == "natural" %}checked{% endif %}><strong>Ventilație naturală</strong><small>Ferestre, grile sau fante de aerisire; fără sistem mecanic central.</small></label>
+      <label class="choice-card"><input type="radio" name="ventilation_type" value="mechanical" {% if values.ventilation_type == "mechanical" %}checked{% endif %}><strong>Ventilație mecanică</strong><small>Ventilatoare de extracție sau introducere fără recuperare de căldură.</small></label>
+      <label class="choice-card"><input type="radio" name="ventilation_type" value="heat_recovery" {% if values.ventilation_type == "heat_recovery" %}checked{% endif %}><strong>Ventilație cu recuperare</strong><small>Sistem mecanic echilibrat cu recuperare de căldură.</small></label>
+      <label class="choice-card"><input type="radio" name="ventilation_type" value="unknown" {% if values.ventilation_type == "unknown" %}checked{% endif %}><strong>Nu știu</strong><small>Folosim o ipoteză rezidențială explicită, care poate fi rafinată ulterior.</small></label>
     </div>
 
     <details class="advanced-settings">
-      <summary>Advanced settings — airflow coefficients</summary>
+      <summary>Setări avansate — coeficienți de ventilare</summary>
       <div class="expert-grid">
-        <label><span>Air changes per hour</span><input data-expert-ventilation name="air_changes_per_hour" type="number" step="0.05" min="0" max="5" value="{{ values.air_changes_per_hour }}"></label>
-        <label><span>Heat recovery efficiency</span><input data-expert-ventilation name="heat_recovery_efficiency" type="number" step="0.01" min="0" max="0.95" value="{{ values.heat_recovery_efficiency }}"></label>
+        <label><span>Schimburi de aer pe oră</span><input data-expert-ventilation name="air_changes_per_hour" type="number" step="0.05" min="0" max="5" value="{{ values.air_changes_per_hour }}"></label>
+        <label><span>Eficiența recuperării de căldură</span><input data-expert-ventilation name="heat_recovery_efficiency" type="number" step="0.01" min="0" max="0.95" value="{{ values.heat_recovery_efficiency }}"></label>
       </div>
     </details>
   </section>
@@ -230,24 +230,24 @@
     <div class="section-heading">
       <span>04</span>
       <div>
-        <h2>Systems</h2>
-        <p>Select the heating system you actually recognize. Fuel carrier and seasonal assumptions are handled internally.</p>
+        <h2>Instalațiile</h2>
+        <p>Selectează sistemul de încălzire pe care îl recunoști. Combustibilul și performanța sezonieră sunt tratate intern.</p>
       </div>
     </div>
 
     <fieldset class="friendly-fieldset">
-      <legend>Main heating system</legend>
+      <legend>Sistemul principal de încălzire</legend>
       <div class="system-choice">
         {% set heating_choices = [
-          ("condensing_gas_boiler", "Condensing gas boiler"),
-          ("gas_boiler", "Conventional gas boiler"),
-          ("heat_pump", "Heat pump"),
-          ("electric_resistance", "Direct electric heating"),
-          ("wood_stove", "Wood stove / fireplace"),
-          ("wood_boiler", "Wood boiler"),
-          ("pellet_boiler", "Pellet boiler"),
-          ("district_heat", "District heating"),
-          ("custom", "Other system")
+          ("condensing_gas_boiler", "Centrală în condensare pe gaz"),
+          ("gas_boiler", "Centrală convențională pe gaz"),
+          ("heat_pump", "Pompă de căldură"),
+          ("electric_resistance", "Încălzire electrică directă"),
+          ("wood_stove", "Sobă / șemineu pe lemne"),
+          ("wood_boiler", "Centrală pe lemne"),
+          ("pellet_boiler", "Centrală pe peleți"),
+          ("district_heat", "Termoficare"),
+          ("custom", "Alt sistem")
         ] %}
         {% for value, label in heating_choices %}
           <label><input type="radio" name="heating_choice" value="{{ value }}" {% if values.heating_choice == value %}checked{% endif %}> {{ label }}</label>
@@ -256,12 +256,12 @@
     </fieldset>
 
     <div class="inline-switches">
-      <label><input type="checkbox" name="cooling_enabled" {% if values.cooling_enabled %}checked{% endif %}> Active cooling / air conditioning</label>
-      <label><input type="checkbox" name="dhw_enabled" {% if values.dhw_enabled %}checked{% endif %}> Domestic hot water</label>
+      <label><input type="checkbox" name="cooling_enabled" {% if values.cooling_enabled %}checked{% endif %}> Răcire activă / aer condiționat</label>
+      <label><input type="checkbox" name="dhw_enabled" {% if values.dhw_enabled %}checked{% endif %}> Apă caldă menajeră</label>
     </div>
 
     <div class="field-grid compact" style="margin-top:16px">
-      <label><span>People using domestic hot water</span><input name="dhw_occupants" type="number" min="0" max="30" value="{{ values.dhw_occupants }}"></label>
+      <label><span>Persoane care folosesc apa caldă</span><input name="dhw_occupants" type="number" min="0" max="30" value="{{ values.dhw_occupants }}"></label>
     </div>
 
     <div class="hidden-technical" aria-hidden="true">
@@ -269,30 +269,31 @@
         <option value="condensing_gas_boiler">condensing_gas_boiler</option><option value="gas_boiler">gas_boiler</option><option value="electric_resistance">electric_resistance</option><option value="heat_pump">heat_pump</option><option value="district_heat">district_heat</option><option value="custom">custom</option>
       </select>
       <select name="heating_carrier"><option value="natural_gas">natural_gas</option><option value="electricity">electricity</option><option value="district_heat">district_heat</option><option value="biomass">biomass</option><option value="other">other</option></select>
+      <input name="heating_cost_profile" value="{{ values.heating_cost_profile or '' }}">
     </div>
 
     <details class="advanced-settings">
-      <summary>Advanced settings — exact system performance</summary>
+      <summary>Setări avansate — performanța exactă a sistemelor</summary>
       <div>
         <div class="expert-grid">
-          <label><span>Seasonal heating efficiency</span><input data-expert-heating name="heating_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.heating_efficiency }}"></label>
-          <label><span>Heat pump SCOP</span><input data-expert-heating name="heating_scop" type="number" step="0.1" min="1" value="{{ values.heating_scop }}"></label>
-          <label><span>Cooling SEER</span><input name="cooling_seer" type="number" step="0.1" min="1" value="{{ values.cooling_seer }}"></label>
-          <label><span>Cooling setpoint</span><input name="cooling_setpoint_c" type="number" step="0.1" min="20" max="30" value="{{ values.cooling_setpoint_c }}"></label>
-          <label><span>DHW efficiency</span><input data-expert-dhw name="dhw_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.dhw_efficiency }}"></label>
-          <label><span>DHW demand (L/person/day at 60 °C)</span><input data-expert-dhw name="dhw_litres_per_person_day_at_60c" type="number" step="1" min="1" value="{{ values.dhw_litres_per_person_day_at_60c }}"></label>
-          <label><span>DHW energy carrier</span><select data-expert-dhw name="dhw_carrier"><option value="natural_gas" {% if values.dhw_carrier == "natural_gas" %}selected{% endif %}>Natural gas</option><option value="electricity" {% if values.dhw_carrier == "electricity" %}selected{% endif %}>Electricity</option><option value="district_heat" {% if values.dhw_carrier == "district_heat" %}selected{% endif %}>District heat</option><option value="biomass" {% if values.dhw_carrier == "biomass" %}selected{% endif %}>Wood / pellets</option></select></label>
+          <label><span>Randament sezonier încălzire</span><input data-expert-heating name="heating_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.heating_efficiency }}"></label>
+          <label><span>SCOP pompă de căldură</span><input data-expert-heating name="heating_scop" type="number" step="0.1" min="1" value="{{ values.heating_scop }}"></label>
+          <label><span>SEER răcire</span><input name="cooling_seer" type="number" step="0.1" min="1" value="{{ values.cooling_seer }}"></label>
+          <label><span>Temperatura setată la răcire</span><input name="cooling_setpoint_c" type="number" step="0.1" min="20" max="30" value="{{ values.cooling_setpoint_c }}"></label>
+          <label><span>Randament apă caldă</span><input data-expert-dhw name="dhw_efficiency" type="number" step="0.01" min="0.1" max="1" value="{{ values.dhw_efficiency }}"></label>
+          <label><span>Consum apă caldă (L/persoană/zi la 60 °C)</span><input data-expert-dhw name="dhw_litres_per_person_day_at_60c" type="number" step="1" min="1" value="{{ values.dhw_litres_per_person_day_at_60c }}"></label>
+          <label><span>Sursa de energie pentru apa caldă</span><select data-expert-dhw name="dhw_carrier"><option value="natural_gas" {% if values.dhw_carrier == "natural_gas" %}selected{% endif %}>Gaz natural</option><option value="electricity" {% if values.dhw_carrier == "electricity" %}selected{% endif %}>Electricitate</option><option value="district_heat" {% if values.dhw_carrier == "district_heat" %}selected{% endif %}>Termoficare</option><option value="biomass" {% if values.dhw_carrier == "biomass" %}selected{% endif %}>Lemn / peleți</option></select></label>
         </div>
       </div>
     </details>
   </section>
 
-  <section class="submit-strip" aria-label="Calculation">
+  <section class="submit-strip" aria-label="Calcul energetic">
     <div>
-      <strong>Ready to calculate</strong>
-      <span>The result keeps the technical assumptions visible, but the normal workflow does not require you to enter engineering coefficients.</span>
+      <strong>Datele sunt pregătite</strong>
+      <span>Rezultatul păstrează ipotezele tehnice vizibile, dar fluxul normal nu te obligă să introduci coeficienți de inginerie.</span>
     </div>
-    <button class="primary-action" type="submit">Calculate performance</button>
+    <button class="primary-action" type="submit">Calculează performanța</button>
   </section>
 </form>
 {% endblock %}
