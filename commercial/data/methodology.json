@@ -1,11 +1,18 @@
 {
-  "version": "lacurent-commercial-v2.0",
+  "version": "lacurent-commercial-v2.1",
   "scope": "Bilanț lunar rezidențial pentru versiunea comercială v2, construit din formulele și datele MC001 validate existente în proiect acolo unde sunt disponibile.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
     "residential_collective": 3.1
   },
   "cooling_balance_temperature_c": 18.0,
+  "cooling": {
+    "representative_diurnal_amplitude_c": 5.0,
+    "representative_peak_hour_local": 15.0,
+    "solar_window_start_hour": 6.0,
+    "solar_window_end_hour": 18.0,
+    "model": "Representative 24 h sensible-load profile reconstructed around each MC001 monthly mean temperature."
+  },
   "dhw": {
     "litres_per_person_day_at_60c": 50.0,
     "kwh_per_litre_10_to_60c": 0.05814
@@ -95,7 +102,8 @@
   "assumptions": [
     "Transferul termic prin transmisie folosește forma directă MC001 validată: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul versiunii comerciale v2.",
     "Pierderile prin ventilare folosesc forma Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
-    "Încălzirea și răcirea lunară folosesc un bilanț transparent cu temperatura exterioară medie lunară, pierderile prin anvelopă și ventilare, aporturile interne și aporturile solare explicite dacă sunt introduse.",
+    "Încălzirea lunară folosește temperatura exterioară medie lunară, pierderile prin anvelopă și ventilare și aporturile interne și solare introduse.",
+    "Pentru răcire, deoarece setul climatic MC001 folosit aici conține temperaturi medii lunare și nu un fișier meteo orar, motorul reconstruiește un profil reprezentativ de 24 h cu amplitudine diurnă de 5 °C în jurul mediei lunare. Necesarul sensibil de răcire este integrat orar împreună cu aporturile interne și un profil solar diurn. Aceasta este o ipoteză de model LaCurent pentru analiză de scenarii, nu o simulare meteo orară normativă.",
     "Necesarul pentru apa caldă menajeră folosește 50 L/persoană/zi la 60 °C și 0,05814 kWh/L pentru încălzirea apei de la 10 °C la 60 °C.",
     "Clădirea de referință folosește parametri metodologici expliciți și este calculată cu același motor ca locuința evaluată.",
     "Raportul comercial LaCurent este o estimare tehnică și nu reprezintă un Certificat de Performanță Energetică emis legal în România."
