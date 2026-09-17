@@ -76,7 +76,7 @@ HEATING_PROFILES: dict[str, dict[str, Any]] = {
     "wood_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.80, "scop": 3.2},
     "pellet_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.88, "scop": 3.2},
     "district_heat": {"system_type": "district_heat", "carrier": "district_heat", "efficiency": 0.95, "scop": 3.2},
-    "custom": {"system_type": "custom", "carrier": "other", "efficiency": 0.85, "scop": 3.2},
+    "custom": {"system_type": "custom", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2},
 }
 
 
@@ -362,7 +362,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
 
     dhw_carrier = form.get("dhw_carrier")
     if form.get("expert_dhw_override") != "on" and _simple_form_present(form):
-        dhw_carrier = heating["carrier"] if heating["carrier"] != "other" else "electricity"
+        dhw_carrier = heating["carrier"]
 
     return BuildingInput(
         project_name=str(form.get("project_name") or "LaCurent Project"),
