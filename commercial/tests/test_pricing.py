@@ -46,7 +46,7 @@ def test_heat_pump_cost_uses_final_electricity_after_scop() -> None:
     assert electricity["unit_price_lei_per_kwh"] == pytest.approx(1.27284)
 
 
-def test_firewood_cost_uses_final_fuel_energy_and_official_volume_reference() -> None:
+def test_firewood_cost_uses_romsilva_reference_with_consumer_multiplier() -> None:
     building = build_input_from_form(simple_form("wood_stove"))
     result = calculate(building)
     estimate = estimate_energy_cost(result)
@@ -58,7 +58,13 @@ def test_firewood_cost_uses_final_fuel_energy_and_official_volume_reference() ->
     assert wood["estimated_volume_m3"] == pytest.approx(
         wood["final_kwh"] / wood["energy_kwh_per_m3"], abs=0.01
     )
-    assert wood["price_lei_per_m3"] == pytest.approx(300.0)
+    assert wood["base_price_lei_per_m3"] == pytest.approx(300.0)
+    assert wood["consumer_cost_multiplier"] == pytest.approx(2.0)
+    assert wood["price_lei_per_m3"] == pytest.approx(600.0)
+    assert wood["unit_price_lei_per_kwh"] == pytest.approx(600.0 / 2821.0)
+    assert "Romsilva 300 lei/m³" in wood["basis"]
+    assert "estimare consumator ×2.0 = 600 lei/m³" in wood["basis"]
+    assert "nu reprezintă un preț oficial Romsilva" in wood["consumer_cost_multiplier_note"]
 
 
 def test_pellet_profile_is_not_assigned_an_invented_national_retail_price() -> None:
