@@ -67,14 +67,23 @@ def test_firewood_cost_uses_romsilva_reference_with_consumer_multiplier() -> Non
     assert "nu reprezintă un preț oficial Romsilva" in wood["consumer_cost_multiplier_note"]
 
 
-def test_pellet_profile_is_not_assigned_an_invented_national_retail_price() -> None:
+def test_pellet_profile_uses_dated_retail_market_reference() -> None:
     building = build_input_from_form(simple_form("pellet_boiler"))
     result = calculate(building)
     estimate = estimate_energy_cost(result)
+    pellets = next(row for row in estimate["rows"] if row["carrier"] == "biomass")
 
     assert building.heating.cost_profile == "pellets"
-    assert not any(row["carrier"] == "biomass" for row in estimate["rows"])
-    assert any("Peleți" in note for note in estimate["unpriced_notes"])
+    assert pellets["label"] == "Peleți"
+    assert pellets["annual_cost_lei"] > 0
+    assert pellets["price_lei_per_tonne"] == pytest.approx(2065.3333333)
+    assert pellets["price_lei_per_15kg_bag"] == pytest.approx(30.98)
+    assert pellets["unit_price_lei_per_kwh"] == pytest.approx(2.0653333333 / 4.66667)
+    assert pellets["estimated_mass_tonnes"] == pytest.approx(
+        pellets["final_kwh"] / pellets["energy_kwh_per_kg"] / 1000, abs=0.01
+    )
+    assert not any("Peleți" in note for note in estimate["unpriced_notes"])
+    assert estimate["complete"] is True
 
 
 def test_service_costs_reconcile_with_annual_priced_total() -> None:
