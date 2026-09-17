@@ -1,0 +1,193 @@
+.cost-panel-compact {
+  margin-bottom: 18px;
+}
+
+.cost-headline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cost-headline-grid .cost-total {
+  margin: 0;
+}
+
+.secondary-cost-total {
+  background: #fff;
+}
+
+.cost-breakdown {
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 14px;
+  background: #fbfcfe;
+  overflow: hidden;
+}
+
+.cost-breakdown > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cost-breakdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.cost-breakdown > summary span {
+  display: grid;
+  gap: 3px;
+}
+
+.cost-breakdown > summary strong {
+  color: var(--ink, #172033);
+  font-size: 15px;
+}
+
+.cost-breakdown > summary small {
+  color: var(--muted, #64748b);
+  font-size: 12px;
+}
+
+.cost-breakdown > summary em {
+  color: var(--blue, #1459c8);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.cost-breakdown > summary em::after {
+  content: " ↓";
+}
+
+.cost-breakdown[open] > summary {
+  border-bottom: 1px solid var(--line, #dbe3ed);
+  background: #fff;
+}
+
+.cost-breakdown[open] > summary em::after {
+  content: " ↑";
+}
+
+.cost-breakdown-body {
+  padding: 18px;
+}
+
+.cost-service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.cost-service-grid article {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.cost-service-grid span {
+  color: var(--muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cost-service-grid strong {
+  color: var(--ink, #172033);
+  font-size: 20px;
+}
+
+.cost-service-grid em {
+  color: var(--muted, #64748b);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.cost-table-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  margin: 0 0 10px;
+}
+
+.cost-table-heading h3,
+.cost-sources h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.cost-table-heading p {
+  margin: 0;
+  color: var(--muted, #64748b);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cost-monthly-wrap {
+  border: 1px solid var(--line, #dbe3ed);
+  border-radius: 11px;
+  background: #fff;
+}
+
+.cost-monthly-table td:not(:first-child),
+.cost-monthly-table th:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cost-monthly-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.cost-sources {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line, #dbe3ed);
+}
+
+.cost-sources p {
+  margin: 7px 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cost-sources p small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted, #64748b);
+}
+
+.cost-sources a {
+  color: var(--blue, #1459c8);
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .cost-headline-grid,
+  .cost-service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cost-breakdown > summary {
+    align-items: flex-start;
+  }
+
+  .cost-breakdown-body {
+    padding: 14px;
+  }
+
+  .cost-monthly-table {
+    min-width: 620px;
+  }
+}
