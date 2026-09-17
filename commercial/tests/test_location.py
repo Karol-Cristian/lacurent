@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+import commercial.app.methodology as methodology_module
 from commercial.app.main import app
 from commercial.app.methodology import location_payload, resolve_climate, resolve_locality
 
@@ -40,6 +41,31 @@ def test_resolve_locality_supports_romanian_diacritics_and_aliases(
     assert climate["selected_locality"]["name"] == expected
     assert climate["station"] == station
     assert len(climate["monthly_temperatures"]) == 12
+
+
+def test_browser_climate_token_does_not_load_large_locality_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_if_loaded() -> dict:
+        raise AssertionError("large locality registry must not be loaded for calculator submit")
+
+    monkeypatch.setattr(methodology_module, "locality_data", fail_if_loaded)
+    climate = resolve_climate("@lc|cluj_napoca|III|-18|Florești")
+
+    assert climate["selected_locality"]["name"] == "Florești"
+    assert climate["climate_zone"] == "III"
+    assert climate["winter_design_temperature_c"] == -18
+    assert climate["station"] == "Cluj-Napoca"
+    assert len(climate["monthly_temperatures"]) == 12
+
+
+def test_source_station_siruta_does_not_require_large_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_if_loaded() -> dict:
+        raise AssertionError("large locality registry must not be loaded for source station")
+
+    monkeypatch.setattr(methodology_module, "locality_data", fail_if_loaded)
+    climate = resolve_climate("siruta-54984")
+
+    assert climate["selected_locality"]["name"] == "Cluj-Napoca"
+    assert climate["station"] == "Cluj-Napoca"
 
 
 def test_commune_and_village_resolve_to_climate_zone_and_station() -> None:
