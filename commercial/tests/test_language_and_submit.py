@@ -14,7 +14,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 def test_energy_calculator_loads_header_language_switch_and_submit_safeguard() -> None:
     response = client.get("/instalatii/calculator")
     assert response.status_code == 200
-    assert "language-switch-runtime.js?v=lang2" in response.text
+    assert "language-switch-runtime.js?v=lang3" in response.text
     assert "site-language.js?v=lang1" in response.text
     assert 'class="site-language-switch header-language-switch"' in response.text
     assert 'data-site-language="ro"' in response.text
@@ -24,7 +24,8 @@ def test_energy_calculator_loads_header_language_switch_and_submit_safeguard() -
     assert "event.stopImmediatePropagation()" in language_runtime
     assert "applyLanguage(language)" in language_runtime
     assert "window.location.reload" not in language_runtime
-    assert 'window.location.pathname === "/instalatii"' in language_runtime
+    assert "window.location.assign" not in language_runtime
+    assert 'window.location.pathname === "/instalatii"' not in language_runtime
 
     script = (STATIC_DIR / "site-language.js").read_text(encoding="utf-8")
     assert "form.noValidate = true" in script
@@ -37,7 +38,8 @@ def test_energy_landing_has_visible_header_language_switch() -> None:
     response = client.get("/instalatii")
     assert response.status_code == 200
     assert "language-switch.css?v=lang2" in response.text
-    assert "language-switch-runtime.js?v=lang2" in response.text
+    assert "language-switch-runtime.js?v=lang3" in response.text
+    assert "energy-home-language-toggle.js?v=lang3" in response.text
     assert 'class="site-language-switch header-language-switch"' in response.text
     assert "Limbă" in response.text
 

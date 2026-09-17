@@ -122,15 +122,8 @@
     event.stopImmediatePropagation();
     storeLanguage(language);
 
-    // The landing page has its own extended translation dictionary. It is a GET route,
-    // so a normal navigation is safe and avoids any POST resubmission semantics.
-    if (window.location.pathname === "/instalatii") {
-      window.location.assign(`/instalatii${window.location.hash || ""}`);
-      return;
-    }
-
-    // Calculator, calculated result and demo switch language in place. In particular,
-    // /calculate is produced by POST and must never be reloaded just to change language.
+    // Language switching must never contact the Worker. This is intentionally
+    // client-side on every route, including POST-generated result pages.
     applyLanguage(language);
   }
 

@@ -39,10 +39,13 @@ jobs:
           node --check commercial/static/app.js
           node --check commercial/static/energy-ui.js
           node --check commercial/static/site-language.js
+          node --check commercial/static/language-switch-runtime.js
+          node --check commercial/static/energy-home-language-toggle.js
           node --check commercial/static/scenario-simulator.js
           node --check commercial/static/scenario-climate-baseline-fix.js
           node --check commercial/static/scenario-price-availability-fix.js
           node --test commercial/tests/intake.test.cjs
+          node --test commercial/tests/language-toggle.test.cjs
           node --test commercial/tests/scenario-price-availability.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
