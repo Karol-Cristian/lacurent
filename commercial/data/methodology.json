@@ -1,17 +1,27 @@
 {
-  "version": "lacurent-commercial-v2.1",
-  "scope": "Bilanț lunar rezidențial pentru versiunea comercială v2, construit din formulele și datele MC001 validate existente în proiect acolo unde sunt disponibile.",
+  "version": "lacurent-commercial-v2.2",
+  "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
     "residential_collective": 3.1
   },
-  "cooling_balance_temperature_c": 18.0,
-  "cooling": {
-    "representative_diurnal_amplitude_c": 5.0,
-    "representative_peak_hour_local": 15.0,
-    "solar_window_start_hour": 6.0,
-    "solar_window_end_hour": 18.0,
-    "model": "Representative 24 h sensible-load profile reconstructed around each MC001 monthly mean temperature."
+  "monthly_method": {
+    "model": "Mc 001-2022 monthly quasi-steady heating/cooling balance",
+    "source": "Mc 001-2022 §2.7.6 and §2.8.1; SR EN ISO 52016-1 monthly method",
+    "a_h0": 1.0,
+    "tau_h0_h": 15.0,
+    "a_c0": 1.0,
+    "tau_c0_h": 15.0,
+    "cooling_reduction_factor_continuous": 1.0,
+    "default_effective_internal_heat_capacity_class": "medium",
+    "effective_internal_heat_capacity_j_m2k": {
+      "very_light": 80000,
+      "light": 110000,
+      "medium": 165000,
+      "massive": 260000,
+      "very_massive": 370000
+    },
+    "effective_internal_heat_capacity_source": "Mc 001-2022 Table 2.20"
   },
   "dhw": {
     "litres_per_person_day_at_60c": 50.0,
@@ -100,12 +110,15 @@
     "dhw_efficiency": 0.85
   },
   "assumptions": [
-    "Transferul termic prin transmisie folosește forma directă MC001 validată: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul versiunii comerciale v2.",
-    "Pierderile prin ventilare folosesc forma Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
-    "Încălzirea lunară folosește temperatura exterioară medie lunară, pierderile prin anvelopă și ventilare și aporturile interne și solare introduse.",
-    "Pentru răcire, deoarece setul climatic MC001 folosit aici conține temperaturi medii lunare și nu un fișier meteo orar, motorul reconstruiește un profil reprezentativ de 24 h cu amplitudine diurnă de 5 °C în jurul mediei lunare. Necesarul sensibil de răcire este integrat orar împreună cu aporturile interne și un profil solar diurn. Aceasta este o ipoteză de model LaCurent pentru analiză de scenarii, nu o simulare meteo orară normativă.",
+    "Transferul termic prin transmisie folosește forma directă MC001: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul simplificat al versiunii comerciale.",
+    "Transferul prin ventilare folosește Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
+    "Necesarul lunar de încălzire folosește structura Mc 001-2022 Figura 2.18: QH,nd = QH,ht − ηH,gn × QH,gn, cu factorul de utilizare al aporturilor și inerția termică.",
+    "Necesarul lunar de răcire folosește structura Mc 001-2022 Figura 2.19: QC,nd = aC,red × (QC,gn − ηC,ht × QC,ht), cu convenția de semn MC001, factorul de utilizare al transferului termic și inerția termică. Nu se mai reconstruiește un profil meteo orar sintetic.",
+    "Pentru formularul simplificat, clasa implicită de capacitate termică interioară este 'medie', 165000 J/(K·m²) × Ause, conform Mc 001-2022 Tabelul 2.20. Aceasta este o ipoteză explicită până când clasa de inerție este introdusă de utilizator.",
+    "Pentru scenariile cu răcire continuă se folosește aC,red = 1. Perioadele lungi de neocupare și programele de răcire intermitentă nu sunt încă modelate de formularul simplificat.",
+    "Aportul solar utilizat de versiunea comercială este un aport lunar echivalent introdus explicit. Infrastructura proiectului conține date Hsol cu proveniență MC001, dar derivarea completă Qsol din orientări, vitraje, umbriri și proprietăți optice nu este încă automatizată în acest formular.",
     "Necesarul pentru apa caldă menajeră folosește 50 L/persoană/zi la 60 °C și 0,05814 kWh/L pentru încălzirea apei de la 10 °C la 60 °C.",
     "Clădirea de referință folosește parametri metodologici expliciți și este calculată cu același motor ca locuința evaluată.",
-    "Raportul comercial LaCurent este o estimare tehnică și nu reprezintă un Certificat de Performanță Energetică emis legal în România."
+    "Raportul comercial LaCurent este o estimare tehnică bazată pe o implementare simplificată a structurii Mc 001-2022 și nu reprezintă un Certificat de Performanță Energetică emis legal în România."
   ]
 }
