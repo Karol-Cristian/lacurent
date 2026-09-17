@@ -108,6 +108,39 @@ def test_final_energy_by_carrier_keeps_carriers_separate() -> None:
     }
 
 
+def test_cooling_setpoint_changes_summer_demand() -> None:
+    setpoint_26 = calculate(
+        simple_building(cooling={"enabled": True, "seer": 3.5, "setpoint_c": 26}),
+        include_reference=False,
+    )
+    setpoint_22 = calculate(
+        simple_building(cooling={"enabled": True, "seer": 3.5, "setpoint_c": 22}),
+        include_reference=False,
+    )
+
+    assert setpoint_26.annual_cooling_demand_kwh > 0
+    assert setpoint_22.annual_cooling_demand_kwh > setpoint_26.annual_cooling_demand_kwh
+
+    july_26 = next(row for row in setpoint_26.monthly if row.month == "iul")
+    july_22 = next(row for row in setpoint_22.monthly if row.month == "iul")
+    assert july_22.useful_cooling_kwh > july_26.useful_cooling_kwh
+
+
+def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
+    seer_3 = calculate(
+        simple_building(cooling={"enabled": True, "seer": 3.0, "setpoint_c": 24}),
+        include_reference=False,
+    )
+    seer_6 = calculate(
+        simple_building(cooling={"enabled": True, "seer": 6.0, "setpoint_c": 24}),
+        include_reference=False,
+    )
+
+    assert_close(seer_3.annual_cooling_demand_kwh, seer_6.annual_cooling_demand_kwh)
+    assert seer_6.cooling.final_kwh < seer_3.cooling.final_kwh
+    assert_close(seer_3.cooling.final_kwh / 2, seer_6.cooling.final_kwh, tolerance=1e-3)
+
+
 def test_reference_building_is_calculated_with_same_engine() -> None:
     result = calculate(simple_building())
 
@@ -122,6 +155,8 @@ def test_demo_building_end_to_end_has_complete_non_zero_result() -> None:
     assert result.h_tr_w_k > 0
     assert result.h_ve_w_k > 0
     assert result.annual_heating_demand_kwh > 0
+    assert result.annual_cooling_demand_kwh > 0
+    assert result.cooling.final_kwh > 0
     assert result.dhw.final_kwh > 0
     assert result.total_final_energy_kwh > 0
     assert result.primary_energy.specific_kwh_m2 > 0
