@@ -27,25 +27,25 @@ function localityShortLabel(locality) {
 
 function localityTypeLabel(localityType) {
   const labels = {
-    municipiu: "municipality",
-    oras: "town",
-    oraș: "town",
-    comuna: "commune",
-    comună: "commune",
-    sat: "village",
-    "localitate componenta municipiu": "municipality component locality",
-    "localitate componenta oras": "town component locality",
-    "sat apartinator municipiu": "municipality-administered village",
-    "sat apartinator oras": "town-administered village",
+    municipiu: "municipiu",
+    oras: "oraș",
+    oraș: "oraș",
+    comuna: "comună",
+    comună: "comună",
+    sat: "sat",
+    "localitate componenta municipiu": "localitate componentă a municipiului",
+    "localitate componenta oras": "localitate componentă a orașului",
+    "sat apartinator municipiu": "sat aparținător municipiului",
+    "sat apartinator oras": "sat aparținător orașului",
     sector: "sector"
   };
-  return labels[String(localityType || "").toLowerCase()] || String(localityType || "locality");
+  return labels[String(localityType || "").toLowerCase()] || String(localityType || "localitate");
 }
 
 function localityDisplayLabel(locality) {
   if (!locality) return "";
   const uat = locality.uatName && locality.uatName !== locality.name
-    ? `, administrative unit ${locality.uatName}`
+    ? `, UAT ${locality.uatName}`
     : "";
   return `${locality.name}, ${localityTypeLabel(locality.localityType)} - ${locality.county}${uat}`;
 }
@@ -146,6 +146,124 @@ function locationSearchResults(data, query, limit = 12) {
     .map((item) => item.locality);
 }
 
+const LABEL_LIMITS = [
+  { zoomBelow: 1.45, maxLabels: 24 },
+  { zoomBelow: 2.4, maxLabels: 42 },
+  { zoomBelow: 4.0, maxLabels: 70 },
+  { zoomBelow: 6.0, maxLabels: 90 },
+  { zoomBelow: Infinity, maxLabels: 120 }
+];
+
+const LOCALITY_LABEL_STYLES = {
+  1: { fontSize: 13.0, radius: 4.0, weight: 850 },
+  2: { fontSize: 11.8, radius: 3.4, weight: 800 },
+  3: { fontSize: 10.8, radius: 2.8, weight: 760 },
+  4: { fontSize: 10.0, radius: 2.2, weight: 720 },
+  5: { fontSize: 9.4, radius: 1.8, weight: 680 }
+};
+
+function markerTier(locality) {
+  const population = Number(locality.population2002) || 0;
+  const rank = String(locality.rank ?? "");
+  if (rank === "0" || rank === "I" || population >= 200000) return 1;
+  if (rank === "II" || population >= 55000) return 2;
+  if (rank === "III" || population >= 12000) return 3;
+  if (String(locality.localityType || "").toLowerCase().includes("comuna") || population >= 1500) return 4;
+  return 5;
+}
+
+function markerStyle(tier, selected = false) {
+  const style = LOCALITY_LABEL_STYLES[tier] || LOCALITY_LABEL_STYLES[5];
+  return selected
+    ? { ...style, fontSize: Math.max(style.fontSize + 1.4, 12), radius: Math.max(style.radius + 1.3, 4.6), weight: 900 }
+    : style;
+}
+
+function labelLimitForZoom(zoom) {
+  return LABEL_LIMITS.find((limit) => zoom < limit.zoomBelow)?.maxLabels || 24;
+}
+
+function labelWidthPx(locality, fontSize) {
+  const text = locality.name || "";
+  return Math.min(230, Math.max(36, (text.length * fontSize * 0.61) + 18));
+}
+
+function labelBox(screen, locality, style, position) {
+  const width = labelWidthPx(locality, style.fontSize);
+  const height = style.fontSize + 9;
+  const offset = style.radius + 9;
+  const candidates = {
+    right: {
+      anchor: "start",
+      box: { x1: screen.x + offset, x2: screen.x + offset + width, y1: screen.y - (height * 0.78), y2: screen.y + (height * 0.22) },
+      x: offset,
+      y: -3
+    },
+    left: {
+      anchor: "end",
+      box: { x1: screen.x - offset - width, x2: screen.x - offset, y1: screen.y - (height * 0.78), y2: screen.y + (height * 0.22) },
+      x: -offset,
+      y: -3
+    },
+    above: {
+      anchor: "middle",
+      box: { x1: screen.x - width / 2, x2: screen.x + width / 2, y1: screen.y - offset - height, y2: screen.y - offset },
+      x: 0,
+      y: -offset
+    },
+    below: {
+      anchor: "middle",
+      box: { x1: screen.x - width / 2, x2: screen.x + width / 2, y1: screen.y + offset, y2: screen.y + offset + height },
+      x: 0,
+      y: offset + style.fontSize * 0.35
+    }
+  };
+  return { ...candidates[position], fontSize: style.fontSize, fontWeight: style.weight, position };
+}
+
+function boxesOverlap(a, b, padding = 6) {
+  return !(a.x2 + padding < b.x1 || a.x1 - padding > b.x2 || a.y2 + padding < b.y1 || a.y1 - padding > b.y2);
+}
+
+function declutterLocalityLabels(markers, viewBox, renderedWidth, selectedId) {
+  const renderedHeight = renderedWidth * (viewBox.height / viewBox.width);
+  const zoom = markers.zoom || 1;
+  const maxLabels = labelLimitForZoom(zoom);
+  const acceptedBoxes = [];
+  const accepted = new Map();
+  const sorted = [...markers].sort((a, b) => {
+    if (a.locality.id === selectedId) return -1;
+    if (b.locality.id === selectedId) return 1;
+    return a.tier - b.tier || (b.locality.importance || 0) - (a.locality.importance || 0) || a.locality.name.localeCompare(b.locality.name, "ro");
+  });
+
+  for (const marker of sorted) {
+    const selected = marker.locality.id === selectedId;
+    if (!selected && accepted.size >= maxLabels) continue;
+    const screen = {
+      x: ((marker.x - viewBox.x) / viewBox.width) * renderedWidth,
+      y: ((marker.y - viewBox.y) / viewBox.height) * renderedHeight
+    };
+    const style = markerStyle(marker.tier, selected);
+    const positions = selected ? ["right", "left", "above", "below"] : marker.tier <= 2 ? ["right", "left", "above", "below"] : ["right", "above", "left", "below"];
+    let chosen = null;
+    for (const position of positions) {
+      const candidate = labelBox(screen, marker.locality, style, position);
+      const inCanvas = candidate.box.x2 >= 6 && candidate.box.x1 <= renderedWidth - 6 && candidate.box.y2 >= 6 && candidate.box.y1 <= renderedHeight - 6;
+      if (!inCanvas && !selected) continue;
+      if (selected || !acceptedBoxes.some((box) => boxesOverlap(candidate.box, box))) {
+        chosen = candidate;
+        break;
+      }
+    }
+    if (!chosen && selected) chosen = labelBox(screen, marker.locality, style, "right");
+    if (!chosen) continue;
+    acceptedBoxes.push(chosen.box);
+    accepted.set(marker.locality.id, chosen);
+  }
+  return accepted;
+}
+
 function initLocationSelector() {
   const root = document.querySelector("[data-location-selector]");
   if (!root) return;
@@ -165,11 +283,67 @@ function initLocationSelector() {
     data: null,
     byId: new Map(),
     projection: null,
+    baseViewBox: null,
+    viewBox: null,
     renderedLocalities: [],
     selected: null,
     activeIndex: -1,
-    searchResults: []
+    searchResults: [],
+    renderFrame: null
   };
+
+  const pointers = new Map();
+  let drag = null;
+  let pinchDistance = null;
+  let movedRecently = false;
+
+  function mapZoomLevel() {
+    if (!state.baseViewBox || !state.viewBox) return 1;
+    return state.baseViewBox.width / state.viewBox.width;
+  }
+
+  function clampView(view) {
+    if (!state.baseViewBox) return view;
+    const base = state.baseViewBox;
+    const width = Math.min(base.width, Math.max(base.width / 8, view.width));
+    const height = width * (base.height / base.width);
+    return {
+      x: Math.min(base.x + base.width - width, Math.max(base.x, view.x)),
+      y: Math.min(base.y + base.height - height, Math.max(base.y, view.y)),
+      width,
+      height
+    };
+  }
+
+  function visibleLocalityMarkers() {
+    const projection = state.projection;
+    const view = state.viewBox;
+    if (!projection || !view || !state.data) return [];
+    const zoom = mapZoomLevel();
+    const tierLimit = zoom < 1.45 ? 2 : zoom < 2.4 ? 3 : zoom < 4 ? 4 : 5;
+    const maxCount = zoom < 1.45 ? 80 : zoom < 2.4 ? 180 : zoom < 4 ? 450 : zoom < 6 ? 700 : 1000;
+    const margin = 12 / zoom;
+    const selectedId = state.selected?.id;
+    const visible = [];
+
+    for (const locality of state.data.localities) {
+      if (!Number.isFinite(locality.lon) || !Number.isFinite(locality.lat)) continue;
+      const [x, y] = projection.project(locality.lon, locality.lat);
+      if (x < view.x - margin || x > view.x + view.width + margin || y < view.y - margin || y > view.y + view.height + margin) continue;
+      const tier = markerTier(locality);
+      if (tier > tierLimit && locality.id !== selectedId) continue;
+      visible.push({ locality, tier, x, y });
+    }
+
+    visible.sort((a, b) => {
+      if (a.locality.id === selectedId) return -1;
+      if (b.locality.id === selectedId) return 1;
+      return a.tier - b.tier || (b.locality.importance || 0) - (a.locality.importance || 0);
+    });
+    visible.length = Math.min(visible.length, maxCount);
+    visible.zoom = zoom;
+    return visible;
+  }
 
   function nearestLocalities(svg, event, limit = 6) {
     const point = svgPointFromEvent(svg, event);
@@ -216,33 +390,32 @@ function initLocationSelector() {
     input.value = localityShortLabel(locality);
     setHiddenLocalityId(locality.id);
     name.textContent = localityDisplayLabel(locality);
-    zone.textContent = locality.climateZone ? `Zone ${locality.climateZone}` : "-";
+    zone.textContent = locality.climateZone ? `Zona ${locality.climateZone}` : "-";
     designTemp.textContent = Number.isFinite(locality.winterDesignTemperatureC)
       ? `${locality.winterDesignTemperatureC} °C`
       : "-";
     station.textContent = locality.stationName || "-";
     resolution.textContent = locality.stationResolution === "exact"
-      ? "Climate data selected automatically from the locality climate station."
-      : `Climate data selected automatically: representative station ${locality.stationName || "-"}${Number.isFinite(locality.stationDistanceKm) ? `, ${locality.stationDistanceKm} km away` : ""}.`;
-    renderMap();
+      ? "Datele climatice sunt preluate automat de la stația asociată localității."
+      : `Date climatice reprezentative: stația ${locality.stationName || "-"}${Number.isFinite(locality.stationDistanceKm) ? `, la aproximativ ${locality.stationDistanceKm} km` : ""}.`;
+    scheduleRenderMap();
   }
 
-  function prominentLocalities() {
-    const selectedId = state.selected?.id;
-    const top = state.data.localities
-      .filter((item) => Number.isFinite(item.lon) && Number.isFinite(item.lat))
-      .sort((a, b) => (b.importance || 0) - (a.importance || 0))
-      .slice(0, 56);
-    if (selectedId && !top.some((item) => item.id === selectedId)) {
-      top.push(state.selected);
-    }
-    return top;
+  function renderedWidth() {
+    const width = Number(map?.clientWidth) || 1000;
+    return Math.max(320, Math.min(1380, width - 36));
   }
 
   function renderMap() {
     if (!state.data || !map) return;
     const projection = state.projection || createProjection(state.data);
     state.projection = projection;
+    if (!state.baseViewBox) {
+      state.baseViewBox = { x: 0, y: 0, width: projection.width, height: projection.height };
+      state.viewBox = { ...state.baseViewBox };
+    }
+    state.viewBox = clampView(state.viewBox || state.baseViewBox);
+    const view = state.viewBox;
     const selectedZone = state.selected?.climateZone;
 
     const zonePaths = (state.data.climateZones.features || []).map((feature) => {
@@ -254,34 +427,78 @@ function initLocationSelector() {
       `<path class="romania-boundary" d="${pathForGeometry(feature.geometry, projection)}"></path>`
     )).join("");
 
-    const localities = prominentLocalities();
-    state.renderedLocalities = localities.map((locality, index) => {
-      const [x, y] = projection.project(locality.lon, locality.lat);
-      const selected = locality.id === state.selected?.id;
-      const labeled = selected || index < 22;
-      return { locality, x, y, selected, labeled };
-    });
+    const markers = visibleLocalityMarkers();
+    state.renderedLocalities = markers;
+    const collisionWidth = renderedWidth();
+    const labels = declutterLocalityLabels(markers, view, collisionWidth, state.selected?.id);
+    const screenScale = Math.max(0.08, Math.min(2.5, view.width / collisionWidth));
 
-    const markerHtml = state.renderedLocalities.map((item) => `
-      <g class="locality-marker${item.selected ? " selected" : ""}" data-locality-id="${escapeHtml(item.locality.id)}" tabindex="0" role="button" aria-label="${escapeHtml(localityShortLabel(item.locality))}">
-        <circle cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="${item.selected ? 4.8 : 2.4}"></circle>
-        ${item.labeled ? `<text x="${(item.x + 6).toFixed(2)}" y="${(item.y - 4).toFixed(2)}">${escapeHtml(item.locality.name)}</text>` : ""}
-      </g>
-    `).join("");
+    const markerHtml = markers.map((item) => {
+      const selected = item.locality.id === state.selected?.id;
+      const label = labels.get(item.locality.id);
+      const style = markerStyle(item.tier, selected);
+      return `
+        <g class="locality-marker tier-${item.tier}${selected ? " selected" : ""}" data-locality-id="${escapeHtml(item.locality.id)}" tabindex="0" role="button" aria-label="${escapeHtml(localityShortLabel(item.locality))}" transform="translate(${item.x.toFixed(2)} ${item.y.toFixed(2)}) scale(${screenScale.toFixed(5)})">
+          <circle cx="0" cy="0" r="${style.radius.toFixed(2)}"></circle>
+          ${label ? `<text class="locality-label" x="${label.x.toFixed(1)}" y="${label.y.toFixed(1)}" text-anchor="${label.anchor}" style="font-size:${label.fontSize.toFixed(1)}px;font-weight:${label.fontWeight}">${escapeHtml(item.locality.name)}</text>` : ""}
+        </g>
+      `;
+    }).join("");
 
     const legend = ["I", "II", "III", "IV", "V"].map((item) => (
-      `<span><i class="legend-${item}"></i>Zone ${item}</span>`
+      `<span><i class="legend-${item}"></i>Zona ${item}</span>`
     )).join("");
 
     map.innerHTML = `
-      <svg class="romania-map-svg" viewBox="0 0 ${projection.width.toFixed(2)} ${projection.height.toFixed(2)}" preserveAspectRatio="xMidYMid meet" aria-hidden="false">
+      <svg class="romania-map-svg" viewBox="${view.x.toFixed(2)} ${view.y.toFixed(2)} ${view.width.toFixed(2)} ${view.height.toFixed(2)}" preserveAspectRatio="xMidYMid meet" aria-label="Hartă climatică și localități din România" data-map-zoom="${mapZoomLevel().toFixed(2)}">
         <rect class="map-sea" x="0" y="0" width="${projection.width.toFixed(2)}" height="${projection.height.toFixed(2)}"></rect>
         <g class="map-zones">${zonePaths}</g>
         <g class="map-boundary">${boundaryPaths}</g>
         <g class="map-localities">${markerHtml}</g>
       </svg>
-      <div class="map-legend" aria-label="Climate-zone legend">${legend}</div>
+      <div class="map-controls" aria-label="Comenzi hartă">
+        <button type="button" data-map-action="in" aria-label="Mărește harta">+</button>
+        <button type="button" data-map-action="out" aria-label="Micșorează harta">−</button>
+        <button type="button" data-map-action="reset" aria-label="Resetează harta">↺</button>
+      </div>
+      <p class="map-gesture-hint">Rotiță: zoom · trage: deplasare · telefon: două degete</p>
+      <div class="map-legend" aria-label="Legendă zone climatice">${legend}</div>
     `;
+  }
+
+  function scheduleRenderMap() {
+    if (state.renderFrame) return;
+    state.renderFrame = requestAnimationFrame(() => {
+      state.renderFrame = null;
+      renderMap();
+    });
+  }
+
+  function zoomAt(clientX, clientY, factor) {
+    const svg = map?.querySelector("svg.romania-map-svg");
+    if (!svg || !state.viewBox || !state.baseViewBox) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const current = state.viewBox;
+    const pointX = current.x + ((clientX - rect.left) / rect.width) * current.width;
+    const pointY = current.y + ((clientY - rect.top) / rect.height) * current.height;
+    const nextWidth = Math.min(state.baseViewBox.width, Math.max(state.baseViewBox.width / 8, current.width * factor));
+    const nextHeight = nextWidth * (state.baseViewBox.height / state.baseViewBox.width);
+    const ratioX = (pointX - current.x) / current.width;
+    const ratioY = (pointY - current.y) / current.height;
+    state.viewBox = clampView({
+      x: pointX - ratioX * nextWidth,
+      y: pointY - ratioY * nextHeight,
+      width: nextWidth,
+      height: nextHeight
+    });
+    scheduleRenderMap();
+  }
+
+  function resetView() {
+    if (!state.baseViewBox) return;
+    state.viewBox = { ...state.baseViewBox };
+    scheduleRenderMap();
   }
 
   function hideResults() {
@@ -300,7 +517,7 @@ function initLocationSelector() {
       : -1;
     input.setAttribute("aria-expanded", state.searchResults.length ? "true" : "false");
     if (!state.searchResults.length) {
-      results.innerHTML = `<div class="locality-no-results">No matching locality was found in the available registry.</div>`;
+      results.innerHTML = `<div class="locality-no-results">Nu am găsit o localitate corespunzătoare în registrul disponibil.</div>`;
       results.hidden = false;
       return;
     }
@@ -308,7 +525,7 @@ function initLocationSelector() {
       <button class="locality-option${index === state.activeIndex ? " active" : ""}" id="locality-option-${index}" type="button" role="option" aria-selected="${index === state.activeIndex ? "true" : "false"}" data-locality-id="${escapeHtml(locality.id)}">
         <strong>${escapeHtml(locality.name)}</strong>
         <em>${escapeHtml(locality.countyMnemonic || locality.county)}</em>
-        <span>${escapeHtml(localityTypeLabel(locality.localityType))}${locality.uatName && locality.uatName !== locality.name ? `, administrative unit ${escapeHtml(locality.uatName)}` : ""} - ${escapeHtml(locality.county)}</span>
+        <span>${escapeHtml(localityTypeLabel(locality.localityType))}${locality.uatName && locality.uatName !== locality.name ? `, UAT ${escapeHtml(locality.uatName)}` : ""} - ${escapeHtml(locality.county)}</span>
       </button>
     `).join("");
     input.setAttribute("aria-activedescendant", `locality-option-${state.activeIndex}`);
@@ -324,12 +541,15 @@ function initLocationSelector() {
 
   fetch("/api/location-data")
     .then((response) => {
-      if (!response.ok) throw new Error("Location payload unavailable.");
+      if (!response.ok) throw new Error("Datele geografice nu sunt disponibile.");
       return response.json();
     })
     .then((data) => {
       state.data = data;
       state.byId = new Map(data.localities.map((item) => [item.id, item]));
+      state.projection = createProjection(data);
+      state.baseViewBox = { x: 0, y: 0, width: state.projection.width, height: state.projection.height };
+      state.viewBox = { ...state.baseViewBox };
       const initial =
         state.byId.get(root.dataset.initialLocalityId)
         || locationSearchResults(data, root.dataset.initialLocality || "", 1)[0]
@@ -339,8 +559,8 @@ function initLocationSelector() {
       window.__lacurentLocationState = state;
     })
     .catch(() => {
-      map.innerHTML = "<p>The map could not be loaded. Text search remains available.</p>";
-      name.textContent = input.value || "No locality selected";
+      map.innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea text rămâne disponibilă.</p>";
+      name.textContent = input.value || "Nicio localitate selectată";
       setHiddenLocalityId("");
     });
 
@@ -372,19 +592,86 @@ function initLocationSelector() {
     hideResults();
   });
 
+  map?.addEventListener("wheel", (event) => {
+    if (!state.data || !event.target.closest?.("svg.romania-map-svg")) return;
+    event.preventDefault();
+    zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 0.84 : 1.18);
+  }, { passive: false });
+
+  map?.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest?.("svg.romania-map-svg")) return;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    map.setPointerCapture?.(event.pointerId);
+    movedRecently = false;
+    if (pointers.size === 1 && state.viewBox) {
+      drag = { x: event.clientX, y: event.clientY, view: { ...state.viewBox } };
+    } else if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinchDistance = Math.hypot(a.x - b.x, a.y - b.y);
+      drag = null;
+    }
+  });
+
+  map?.addEventListener("pointermove", (event) => {
+    if (!pointers.has(event.pointerId) || !state.viewBox || !state.baseViewBox) return;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const svg = map.querySelector("svg.romania-map-svg");
+    if (!svg) return;
+
+    if (pointers.size === 2 && pinchDistance) {
+      const [a, b] = [...pointers.values()];
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      if (distance > 2) {
+        const centerX = (a.x + b.x) / 2;
+        const centerY = (a.y + b.y) / 2;
+        zoomAt(centerX, centerY, pinchDistance / distance);
+        pinchDistance = distance;
+        movedRecently = true;
+      }
+      return;
+    }
+
+    if (drag && pointers.size === 1) {
+      const rect = svg.getBoundingClientRect();
+      const dxPixels = event.clientX - drag.x;
+      const dyPixels = event.clientY - drag.y;
+      if (Math.abs(dxPixels) + Math.abs(dyPixels) > 4) movedRecently = true;
+      const dx = dxPixels * (drag.view.width / rect.width);
+      const dy = dyPixels * (drag.view.height / rect.height);
+      state.viewBox = clampView({ ...drag.view, x: drag.view.x - dx, y: drag.view.y - dy });
+      map.classList.add("is-panning");
+      scheduleRenderMap();
+    }
+  });
+
+  const finishPointer = (event) => {
+    pointers.delete(event.pointerId);
+    map?.classList.remove("is-panning");
+    if (pointers.size < 2) pinchDistance = null;
+    if (!pointers.size) drag = null;
+    if (movedRecently) setTimeout(() => { movedRecently = false; }, 80);
+  };
+  map?.addEventListener("pointerup", finishPointer);
+  map?.addEventListener("pointercancel", finishPointer);
+
   map?.addEventListener("click", (event) => {
-    if (!state.data) return;
+    const action = event.target.closest?.("[data-map-action]")?.dataset.mapAction;
+    if (action) {
+      const rect = map.getBoundingClientRect();
+      if (action === "reset") resetView();
+      if (action === "in") zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 0.76);
+      if (action === "out") zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1.32);
+      return;
+    }
+    if (movedRecently || !state.data) return;
     const marker = event.target.closest?.(".locality-marker");
     if (marker) {
       updateSelected(state.byId.get(marker.dataset.localityId));
       renderMapCandidates([]);
       return;
     }
-    const svg = event.target.closest?.("svg");
-    if (svg) {
-      const nearby = nearestLocalities(svg, event);
-      renderMapCandidates(nearby);
-    }
+    const svg = event.target.closest?.("svg.romania-map-svg");
+    if (svg) renderMapCandidates(nearestLocalities(svg, event));
   });
 
   mapResults?.addEventListener("click", (event) => {
@@ -401,6 +688,8 @@ function initLocationSelector() {
     updateSelected(state.byId.get(marker.dataset.localityId));
   });
 
+  window.addEventListener("resize", scheduleRenderMap);
+
   document.addEventListener("click", (event) => {
     if (!root.contains(event.target)) hideResults();
   });
@@ -415,7 +704,7 @@ if (form) {
     const button = form.querySelector('button[type="submit"]');
     if (button) {
       button.disabled = true;
-      button.textContent = "Calculating...";
+      button.textContent = "Se calculează...";
       button.setAttribute("aria-busy", "true");
     }
   });
@@ -426,4 +715,3 @@ initLocationSelector();
 document.getElementById("printButton")?.addEventListener("click", () => {
   window.print();
 });
-
