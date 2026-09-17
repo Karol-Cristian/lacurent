@@ -121,9 +121,9 @@ def test_cooling_setpoint_changes_summer_demand() -> None:
     assert setpoint_26.annual_cooling_demand_kwh > 0
     assert setpoint_22.annual_cooling_demand_kwh > setpoint_26.annual_cooling_demand_kwh
 
-    july_26 = next(row for row in setpoint_26.monthly if row["month"] == "iul")
-    july_22 = next(row for row in setpoint_22.monthly if row["month"] == "iul")
-    assert july_22["useful_cooling_kwh"] > july_26["useful_cooling_kwh"]
+    july_26 = next(row for row in setpoint_26.monthly if row.month == "iul")
+    july_22 = next(row for row in setpoint_22.monthly if row.month == "iul")
+    assert july_22.useful_cooling_kwh > july_26.useful_cooling_kwh
 
 
 def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
