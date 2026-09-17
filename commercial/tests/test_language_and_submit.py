@@ -11,43 +11,47 @@ client = TestClient(app)
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
 
-def test_energy_calculator_loads_header_language_switch_and_submit_safeguard() -> None:
+def test_energy_calculator_loads_unified_language_switch_and_submit_safeguard() -> None:
     response = client.get("/instalatii/calculator")
     assert response.status_code == 200
-    assert "language-switch-runtime.js?v=lang3" in response.text
-    assert "site-language.js?v=lang1" in response.text
+    assert "energy-i18n.js?v=i18n1" in response.text
+    assert "calculator-submit-fix.js?v=submit2" in response.text
+    assert "language-switch-runtime.js" not in response.text
+    assert "site-language.js" not in response.text
     assert 'class="site-language-switch header-language-switch"' in response.text
     assert 'data-site-language="ro"' in response.text
     assert 'data-site-language="en"' in response.text
 
-    language_runtime = (STATIC_DIR / "language-switch-runtime.js").read_text(encoding="utf-8")
-    assert "event.stopImmediatePropagation()" in language_runtime
-    assert "applyLanguage(language)" in language_runtime
-    assert "window.location.reload" not in language_runtime
-    assert "window.location.assign" not in language_runtime
-    assert 'window.location.pathname === "/instalatii"' not in language_runtime
+    i18n = (STATIC_DIR / "energy-i18n.js").read_text(encoding="utf-8")
+    assert "lacurent:languagechange" in i18n
+    assert "setLanguage(currentLanguage())" in i18n
+    assert "window.location.reload" not in i18n
+    assert "window.location.assign" not in i18n
+    assert "location.href" not in i18n
 
-    script = (STATIC_DIR / "site-language.js").read_text(encoding="utf-8")
-    assert "form.noValidate = true" in script
-    assert "HTMLFormElement.prototype.submit.call(form)" in script
-    assert "Calculează performanța" in script
-    assert "Calculate performance" in script
+    submit = (STATIC_DIR / "calculator-submit-fix.js").read_text(encoding="utf-8")
+    assert "form.noValidate = true" in submit
+    assert "HTMLFormElement.prototype.submit.call(form)" in submit
+    assert "Calculează performanța" in submit
+    assert "Calculate performance" in submit
 
 
-def test_energy_landing_has_visible_header_language_switch() -> None:
+def test_energy_landing_uses_same_unified_language_runtime() -> None:
     response = client.get("/instalatii")
     assert response.status_code == 200
     assert "language-switch.css?v=lang2" in response.text
-    assert "language-switch-runtime.js?v=lang3" in response.text
-    assert "energy-home-language-toggle.js?v=lang3" in response.text
+    assert "energy-i18n.js?v=i18n1" in response.text
+    assert "language-switch-runtime.js" not in response.text
+    assert "energy-home-language-toggle.js" not in response.text
     assert 'class="site-language-switch header-language-switch"' in response.text
     assert "Limbă" in response.text
 
 
-def test_language_dictionary_covers_key_calculator_and_result_labels() -> None:
-    script = (STATIC_DIR / "site-language.js").read_text(encoding="utf-8")
-    assert '"Calculator energetic pentru locuințe": "Residential energy calculator"' in script
-    assert '"Cost anual estimat al energiei": "Estimated annual energy cost"' in script
-    assert '"Încălzire": "Heating"' in script
-    assert '"Răcire": "Cooling"' in script
-    assert '"Apă caldă menajeră": "Domestic hot water"' in script
+def test_language_dictionary_covers_landing_calculator_and_results() -> None:
+    script = (STATIC_DIR / "energy-i18n.js").read_text(encoding="utf-8")
+    assert '"Înțelege consumul casei înainte să investești."' in script
+    assert '"Calculator energetic pentru locuințe"' in script
+    assert '"Cost anual estimat al energiei"' in script
+    assert '"Încălzire":"Heating"' in script
+    assert '"Răcire":"Cooling"' in script
+    assert '"Apă caldă menajeră":"Domestic hot water"' in script
