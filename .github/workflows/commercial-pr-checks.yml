@@ -38,14 +38,11 @@ jobs:
           git diff --check
           node --check commercial/static/app.js
           node --check commercial/static/energy-ui.js
-          node --check commercial/static/site-language.js
-          node --check commercial/static/language-switch-runtime.js
-          node --check commercial/static/energy-home-language-toggle.js
-          node --check commercial/static/scenario-simulator.js
-          node --check commercial/static/scenario-climate-baseline-fix.js
-          node --check commercial/static/scenario-price-availability-fix.js
+          node --check commercial/static/energy-i18n.js
+          node --check commercial/static/calculator-submit-fix.js
+          node --check commercial/static/scenario-cockpit.js
           node --test commercial/tests/intake.test.cjs
           node --test commercial/tests/language-toggle.test.cjs
-          node --test commercial/tests/scenario-price-availability.test.cjs
+          node --test commercial/tests/scenario-cockpit.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
