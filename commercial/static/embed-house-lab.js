@@ -71,7 +71,7 @@
       comfortTitle:"Confort și utilizare", comfortSubtitle:"Parametri care modifică direct consumul calculat.", temperature:"Temperatură interioară iarna", occupants:"Persoane în locuință", personsUnit:"pers.",
       heating:"Sursa principală de încălzire",
       heatingVisualDefaultTitle:"Sursa de încălzire contează direct în cost", heatingVisualDefaultText:"Schimbarea sursei recalculează energia finală, energia primară, CO₂ și costul anual.",
-      resultsKicker:"Rezultat live", resultsTitle:"Casa configurată", class:"Clasă",
+      resultsKicker:"Rezultat live", resultsTitle:"Rezultatele tale", class:"Clasă",
       annualCost:"Cost anual estimat", finalEnergy:"Energie finală", allSources:"toate sursele", primarySpecific:"Energie primară specifică", designPower:"Putere termică estimată", designPowerNote:"din H × ΔT la temperatura de calcul",
       selectedPlace:"Localitate", climateStation:"Stație climatică", heatLoss:"Coeficient pierderi",
       monthlyChartTitle:"Costul pe luni", monthlyChartNote:"cum variază pe parcursul anului",
@@ -107,7 +107,7 @@
       comfortTitle:"Comfort and use", comfortSubtitle:"Parameters that directly change calculated consumption.", temperature:"Winter indoor temperature", occupants:"Occupants", personsUnit:"people",
       heating:"Main heating source",
       heatingVisualDefaultTitle:"Heating source directly changes cost", heatingVisualDefaultText:"Changing the source recalculates final energy, primary energy, CO₂ and annual cost.",
-      resultsKicker:"Live result", resultsTitle:"Configured house", class:"Class",
+      resultsKicker:"Live result", resultsTitle:"Your results", class:"Class",
       annualCost:"Estimated annual cost", finalEnergy:"Final energy", allSources:"all sources", primarySpecific:"Specific primary energy", designPower:"Estimated heat load", designPowerNote:"from H × ΔT at design temperature",
       selectedPlace:"Locality", climateStation:"Climate station", heatLoss:"Heat-loss coefficient",
       monthlyChartTitle:"Monthly cost", monthlyChartNote:"how it changes through the year",
@@ -398,6 +398,7 @@
   function renderResult(data) {
     lastResult = data;
     document.getElementById("labClass").textContent = data.energy_class || "—";
+    document.querySelector(".lab-class")?.setAttribute("data-grade", data.energy_class || "");
     document.getElementById("labAnnualCost").textContent = data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei/an`;
     document.getElementById("labMonthlyCost").textContent = data.average_monthly_cost_lei == null ? "—" : `${fmt(data.average_monthly_cost_lei)} lei · ${tr("monthly")}`;
     document.getElementById("labFinalEnergy").textContent = `${fmt(data.final_energy_kwh)} kWh/an`;
