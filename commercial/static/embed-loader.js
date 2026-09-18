@@ -30,6 +30,30 @@
     iframe.style.minWidth = "0";
     iframe.style.boxSizing = "border-box";
     iframe.style.height = host.dataset.initialHeight || "900px";
+
+    const isMobileCockpit = () => (
+      Math.min(
+        window.innerWidth || document.documentElement.clientWidth || 9999,
+        document.documentElement.clientWidth || window.innerWidth || 9999
+      ) <= 760
+    );
+    const mobileViewportHeight = () => Math.max(
+      560,
+      Math.round(
+        window.visualViewport?.height ||
+        window.innerHeight ||
+        document.documentElement.clientHeight ||
+        760
+      )
+    );
+    const syncFrameHeight = () => {
+      if (!isMobileCockpit()) return false;
+      const height = mobileViewportHeight();
+      iframe.style.height = `${height}px`;
+      host.style.minHeight = `${height}px`;
+      host.dataset.lacurentMobileCockpit = "true";
+      return true;
+    };
     iframe.style.border = "0";
     iframe.style.display = "block";
     iframe.style.background = "#fff";
@@ -62,6 +86,7 @@
       requestAnimationFrame(syncFrameWidth);
     });
     window.setTimeout(syncFrameWidth, 120);
+    syncFrameHeight();
 
     let widthObserver = null;
     if (typeof ResizeObserver === "function") {
@@ -72,6 +97,8 @@
     }
 
     iframe.addEventListener("load", syncFrameWidth);
+    window.addEventListener("resize", syncFrameHeight, {passive:true});
+    window.visualViewport?.addEventListener("resize", syncFrameHeight, {passive:true});
 
     let viewportRaf = 0;
     const publishViewport = () => {
@@ -101,6 +128,9 @@
       if (event.origin !== embedOrigin || event.source !== iframe.contentWindow) return;
       const data = event.data;
       if (!data || data.type !== "lacurent:embed-height") return;
+      if (syncFrameHeight()) return;
+      host.style.minHeight = "";
+      delete host.dataset.lacurentMobileCockpit;
       const height = Math.max(560, Math.min(8000, Number(data.height) || 0));
       if (height) iframe.style.height = `${height}px`;
     };
@@ -108,6 +138,7 @@
 
     iframe.addEventListener("load", () => {
       if (widthObserver) syncFrameWidth();
+      syncFrameHeight();
     });
   }
 

@@ -26,6 +26,18 @@
     cooling: document.getElementById("labCooling")
   };
 
+  const configPanel = root.querySelector(".lab-config-panel");
+  const mobileEditorToolbar = root.querySelector(".lab-mobile-editor-toolbar");
+  const mobileEditorTitle = document.getElementById("labMobileEditorTitle");
+  const CHAPTER_TITLES = {
+    "1":"1. Casă & confort",
+    "2":"2. Anvelopă termică",
+    "3":"3. Instalații",
+    "4":"4. Surse regenerabile",
+    "5":"5. Performanță energetică",
+    "6":"6. Audit & renovare"
+  };
+
   const PRESET = {
     area: 120,
     levels: 2,
@@ -52,7 +64,7 @@
       houseUseTitle:"1. Casă și utilizare", houseUseSubtitle:"Dimensiuni, niveluri și ocupare",
       envelopeTitle:"2. Anvelopă și ferestre", envelopeSubtitle:"Izolație, geamuri și orientare solară",
       systemsTitle:"3. Sisteme de încălzire și apă caldă", systemsSubtitle:"Alege sursa principală",
-      ventilationTitle:"4. Ventilație și răcire", ventilationSubtitle:"Schimbul de aer și confortul de vară",
+      ventilationTitle:"Ventilație și răcire", ventilationSubtitle:"Schimbul de aer și confortul de vară",
       ventilation:"Sistem ventilație", cooling:"Răcire", otherHeating:"Alte sisteme",
       compareScenarios:"Compară cu casa actuală", tabOverview:"Prezentare", tabCosts:"Costuri", tabEnergy:"Energie", tabLosses:"Pierderi", tabComparison:"Comparație",
       overviewBaselineTitle:"Față de casa ta actuală", overviewBaselineSubtitle:"baseline real salvat de tine", overviewBaselineEmptyTitle:"Salvează casa actuală", overviewBaselineEmptyText:"După aceea, orice modificare devine un scenariu comparat cu situația reală de azi.", details:"Detalii",
@@ -97,7 +109,7 @@
       houseUseTitle:"1. House and use", houseUseSubtitle:"Size, levels and occupants",
       envelopeTitle:"2. Envelope and windows", envelopeSubtitle:"Insulation, glazing and solar orientation",
       systemsTitle:"3. Heating and hot water", systemsSubtitle:"Choose the main heat source",
-      ventilationTitle:"4. Ventilation and cooling", ventilationSubtitle:"Air change and summer comfort",
+      ventilationTitle:"Ventilation and cooling", ventilationSubtitle:"Air change and summer comfort",
       ventilation:"Ventilation system", cooling:"Cooling", otherHeating:"Other systems",
       compareScenarios:"Compare with current home", tabOverview:"Overview", tabCosts:"Costs", tabEnergy:"Energy", tabLosses:"Losses", tabComparison:"Comparison",
       overviewBaselineTitle:"Compared with your current home", overviewBaselineSubtitle:"your saved real-home baseline", overviewBaselineEmptyTitle:"Save the current home", overviewBaselineEmptyText:"After that, every change becomes a scenario compared with the real situation today.", details:"Details",
@@ -141,6 +153,53 @@
   const lang = () => document.documentElement.lang === "en" ? "en" : "ro";
   const tr = key => COPY[lang()][key] || COPY.ro[key] || key;
   const formField = name => form.elements.namedItem(name);
+  const isMobileCockpit = () => root.getBoundingClientRect().width <= 760;
+  const optionLabel = control => control?.selectedOptions?.[0]?.textContent?.trim() || "";
+  const setText = (id,value) => { const node=document.getElementById(id); if (node) node.textContent=value; };
+
+  function updateChapterSummaries(data=lastResult) {
+    setText("labChapter1Summary",`${controls.area.value} m² · ${controls.occupants.value} pers. · ${controls.temperature.value}°C`);
+    setText("labChapter2Summary",`${controls.wallIns.value} cm pereți · ${optionLabel(controls.glazing)}`);
+    setText("labChapter3Summary",`${optionLabel(controls.heating)} · ${optionLabel(controls.ventilation)}`);
+    setText("labChapter4Summary",controls.heating.value==="heat_pump" ? "Pompă de căldură activă · PV/solar în curând" : "Pompă de căldură · PV/solar în curând");
+    if (data) {
+      const cost=data.annual_cost_lei == null ? "cost —" : `${fmt(data.annual_cost_lei)} lei/an`;
+      setText("labChapter5Summary",`Clasă ${data.energy_class || "—"} · ${cost}`);
+      setText("labMobileClass",data.energy_class || "—");
+      setText("labMobileCost",data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei`);
+      setText("labMobileEnergy",`${fmt(data.final_energy_kwh)} kWh`);
+      setText("labChapterClass",data.energy_class || "—");
+      setText("labChapterCost",data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei/an`);
+      setText("labChapterPrimary",`${fmt(data.primary_specific_kwh_m2,1)} kWh/m²/an`);
+      setText("labChapterCo2",`${fmt(data.co2_kg)} kg/an`);
+    }
+    setText("labChapter6Summary",baselineSnapshot ? `${baselineSnapshot.result?.energy_class || "—"} · baseline salvat` : "Casa actuală · scenarii");
+  }
+
+  function openChapter(chapter) {
+    const panels=Array.from(root.querySelectorAll("[data-lab-chapter-panel]"));
+    panels.forEach(panel => panel.classList.toggle("is-mobile-open",panel.dataset.labChapterPanel===chapter));
+    root.querySelectorAll("[data-lab-chapter-open]").forEach(button => button.classList.toggle("is-active",button.dataset.labChapterOpen===chapter));
+    if (isMobileCockpit()) {
+      configPanel?.classList.add("is-chapter-editing");
+      if (mobileEditorToolbar) mobileEditorToolbar.hidden=false;
+      if (mobileEditorTitle) mobileEditorTitle.textContent=CHAPTER_TITLES[chapter] || "Capitol";
+      configPanel?.scrollIntoView({block:"start"});
+    } else {
+      const first=panels.find(panel => panel.dataset.labChapterPanel===chapter);
+      first?.scrollIntoView({behavior:"smooth",block:"start"});
+    }
+  }
+
+  function closeChapter() {
+    configPanel?.classList.remove("is-chapter-editing");
+    root.querySelectorAll("[data-lab-chapter-panel]").forEach(panel => panel.classList.remove("is-mobile-open"));
+    root.querySelectorAll("[data-lab-chapter-open]").forEach(button => button.classList.remove("is-active"));
+    if (mobileEditorToolbar) mobileEditorToolbar.hidden=true;
+    configPanel?.scrollIntoView({block:"start"});
+  }
+
+
   const setField = (name, value) => { const field = formField(name); if (field) field.value = String(value); };
   const number = value => Number.parseFloat(String(value).replace(",", "."));
   const GLAZING_U = {
@@ -558,6 +617,7 @@
       if (title) title.textContent=tr("baselineTitle");
       if (summary) summary.textContent=tr("baselinePrompt");
       renderSavedScenarios();
+      updateChapterSummaries();
       return;
     }
 
@@ -644,6 +704,7 @@
     if (noteNode) noteNode.textContent=savings == null ? "" : Math.abs(savings)<.5 ? tr("noChange") : `${savingsPct == null ? "—" : `${fmt(Math.abs(savingsPct),1)}%`} ${savings>0?tr("savings"):tr("extraCost")}`;
 
     renderSavedScenarios();
+    updateChapterSummaries();
   }
 
   function restoreSnapshot(snapshot) {
@@ -703,6 +764,7 @@
     root.querySelectorAll("[data-class-grade]").forEach(el => el.classList.toggle("is-active", el.dataset.classGrade === data.energy_class));
     renderDashboard(data);
     renderBaselineComparison();
+    updateChapterSummaries(data);
     setStatus(tr("ready"), "live");
   }
 
@@ -833,17 +895,19 @@
     if (!control || control.tagName === "SELECT") return;
     control.addEventListener("input", () => {
       syncNumber(control);
+      updateChapterSummaries();
       scheduleCalculate();
     });
   });
   controls.heating.addEventListener("change", () => {
     updateHeatingVisual();
+    updateChapterSummaries();
     scheduleCalculate(80);
   });
-  controls.glazing.addEventListener("change", () => scheduleCalculate(80));
-  controls.orientation.addEventListener("change", () => scheduleCalculate(80));
-  controls.ventilation.addEventListener("change", () => scheduleCalculate(80));
-  controls.cooling.addEventListener("change", () => scheduleCalculate(80));
+  controls.glazing.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
+  controls.orientation.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
+  controls.ventilation.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
+  controls.cooling.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
 
   document.querySelectorAll("[data-lab-number-for]").forEach(numeric => {
     const range=document.getElementById(numeric.dataset.labNumberFor);
@@ -851,6 +915,7 @@
       const min=number(numeric.min), max=number(numeric.max), value=Math.min(max,Math.max(min,number(numeric.value)));
       range.value=String(value);
       numeric.value=range.value;
+      updateChapterSummaries();
       scheduleCalculate(80);
     });
   });
@@ -880,6 +945,7 @@
       controls.levels.value=button.dataset.segmentValue;
       syncNumber(controls.levels);
       syncLevelSegments();
+      updateChapterSummaries();
       scheduleCalculate(80);
     });
   });
@@ -894,6 +960,7 @@
     button.addEventListener("click", () => {
       controls.heating.value=button.dataset.heatingChoice;
       syncHeatingPills();
+      updateChapterSummaries();
       scheduleCalculate(80);
     });
   });
@@ -907,6 +974,31 @@
 
   root.querySelectorAll("[data-lab-tab]").forEach(button => button.addEventListener("click", () => openResultTab(button.dataset.labTab)));
   root.querySelectorAll("[data-open-tab]").forEach(button => button.addEventListener("click", () => openResultTab(button.dataset.openTab)));
+
+  root.querySelectorAll("[data-lab-chapter-open]").forEach(button => {
+    button.addEventListener("click", () => openChapter(button.dataset.labChapterOpen));
+  });
+  root.querySelector("[data-lab-chapter-close]")?.addEventListener("click", closeChapter);
+
+  root.querySelectorAll("[data-mobile-results]").forEach(button => {
+    button.addEventListener("click", () => {
+      if (!button.dataset.openTab) openResultTab("overview");
+      root.classList.add("is-mobile-results-view");
+      root.scrollIntoView({block:"start"});
+    });
+  });
+  root.querySelector("[data-mobile-back-config]")?.addEventListener("click", () => {
+    root.classList.remove("is-mobile-results-view");
+    root.scrollIntoView({block:"start"});
+  });
+
+  root.querySelector("[data-lab-product-action='heat_pump']")?.addEventListener("click", () => {
+    controls.heating.value="heat_pump";
+    syncHeatingPills();
+    updateHeatingVisual();
+    updateChapterSummaries();
+    scheduleCalculate(60);
+  });
 
   const saveButton=root.querySelector("[data-lab-key='saveConfig']");
   if (saveButton) {
@@ -938,6 +1030,7 @@
 
   saveBaselineButton?.addEventListener("click", saveBaseline);
   comparisonBaselineButton?.addEventListener("click", saveBaseline);
+  root.querySelector("[data-audit-save-baseline]")?.addEventListener("click", saveBaseline);
   restoreBaselineButton?.addEventListener("click", () => restoreSnapshot(baselineSnapshot));
 
   saveScenarioButton?.addEventListener("click", async () => {
@@ -982,7 +1075,7 @@
     }
   });
 
-  root.querySelector("[data-lab-reset]").addEventListener("click", () => {
+  root.querySelectorAll("[data-lab-reset]").forEach(resetButton => resetButton.addEventListener("click", () => {
     Object.entries(PRESET).forEach(([key,value]) => {
       if (!controls[key]) return;
       controls[key].value=String(value);
@@ -991,9 +1084,10 @@
     updateHeatingVisual();
     syncLevelSegments();
     syncHeatingPills();
+    updateChapterSummaries();
     const locality=byId.get(PRESET.localityId) || matches(localities,PRESET.locality,1)[0];
     if (locality) selectLocality(locality); else scheduleCalculate(20);
-  });
+  }));
 
   const languageObserver = new MutationObserver(() => applyLanguage());
   languageObserver.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
@@ -1063,6 +1157,7 @@
 
   initHouseVisualCarousel();
   updateHeatingVisual();
+  updateChapterSummaries();
   syncLevelSegments();
   syncHeatingPills();
   openResultTab("overview");

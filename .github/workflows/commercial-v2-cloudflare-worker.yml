@@ -184,6 +184,16 @@ jobs:
               if "image/webp" not in content_type.lower():
                   raise AssertionError(f"{path} returned unexpected content type {content_type!r}")
 
+          home_lab_html = get("/embed/demo-store")
+          if home_lab_html.count('data-lab-chapter-open=') != 6:
+              raise AssertionError("Home Lab cockpit did not expose all six MC001 chapter tiles.")
+          for marker in ("Panouri fotovoltaice", "Iluminat LED", 'data-lab-product-action="heat_pump"'):
+              if marker not in home_lab_html:
+                  raise AssertionError(f"Home Lab cockpit missing {marker!r}")
+          loader_html = get("/static/embed-loader.js")
+          if "isMobileCockpit" not in loader_html or "mobileViewportHeight" not in loader_html:
+              raise AssertionError("Embed loader did not include the mobile one-screen cockpit contract.")
+
           home_html = get("/")
           sales_html = get("/software-testing")
           assert 'href="/software-testing#quick-check"' in home_html
@@ -502,6 +512,19 @@ jobs:
               if "image/webp" not in content_type.lower():
                   raise AssertionError(f"{path} returned unexpected content type {content_type!r}")
               print(path, status, len(body), content_type)
+
+          status, _, home_lab_html = open_url(apex + "/embed/demo-store")
+          if status != 200:
+              raise AssertionError(f"/embed/demo-store cockpit verification returned HTTP {status}")
+          if home_lab_html.count('data-lab-chapter-open=') != 6:
+              raise AssertionError("Production Home Lab cockpit did not expose all six MC001 chapter tiles.")
+          for marker in ("Panouri fotovoltaice", "Iluminat LED", 'data-lab-product-action="heat_pump"'):
+              if marker not in home_lab_html:
+                  raise AssertionError(f"Production Home Lab cockpit missing {marker!r}")
+          status, _, loader_html = open_url(apex + "/static/embed-loader.js")
+          if status != 200 or "isMobileCockpit" not in loader_html or "mobileViewportHeight" not in loader_html:
+              raise AssertionError("Production embed loader did not include the mobile one-screen cockpit contract.")
+          print("Home Lab six-chapter cockpit", 200)
 
           home_status, _, home_html = open_url(apex + "/")
           assert home_status == 200

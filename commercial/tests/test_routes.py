@@ -301,7 +301,7 @@ def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
     assert "Servicii pentru proiectul tău" in response.text
     assert "Înainte să cumperi, estimează necesarul energetic al casei." in response.text
     assert 'data-lacurent-embed data-partner="demo-store"' in response.text
-    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed5"' in response.text
+    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed6"' in response.text
     assert "app.css" not in response.text
     assert "base.html" not in response.text
 
@@ -313,7 +313,7 @@ def test_store_demo_forces_full_width_embed_container() -> None:
     assert "width:100%;" in response.text
     assert ".embed-card{" in response.text
     assert "min-width:0;" in response.text
-    assert "embed-loader.js?v=embed5" in response.text
+    assert "embed-loader.js?v=embed6" in response.text
 
 
 def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
@@ -328,8 +328,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab13" in response.text
-    assert "embed-house-lab.js?v=lab13" in response.text
+    assert "embed-house-lab.css?v=lab14" in response.text
+    assert "embed-house-lab.js?v=lab14" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -510,6 +510,10 @@ def test_embed_loader_validates_message_origin_source_and_full_width() -> None:
     assert "lacurent:embed-height" in response.text
     assert "lacurent:embed-viewport" in response.text
     assert "window.addEventListener(\"scroll\", scheduleViewport" in response.text
+    assert "isMobileCockpit" in response.text
+    assert "mobileViewportHeight" in response.text
+    assert "window.visualViewport?.addEventListener(\"resize\", syncFrameHeight" in response.text
+    assert 'host.dataset.lacurentMobileCockpit = "true"' in response.text
 
 def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
     response = client.get("/instalatii/calculator")
@@ -539,6 +543,11 @@ def test_embed_house_lab_uses_three_column_product_layout() -> None:
     assert '.lab-class[data-grade="B"]' in response.text
     assert "@media(max-width:1020px)" in response.text
     assert "@media(max-width:760px)" in response.text
+    assert ".lab-chapter-grid" in response.text
+    assert ".lab-chapter-tile" in response.text
+    assert ".lab-mobile-livebar" in response.text
+    assert "[data-lab-chapter-panel]" in response.text
+    assert "min-height:100svh" in response.text
 
 
 def test_home_lab_baseline_and_scenario_comparison_has_commercial_layout() -> None:
@@ -561,6 +570,37 @@ def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
     assert response.status_code == 200
     assert "Modifică doar ce contează" in response.text
     assert "Cost anual estimat" in response.text
+
+
+def test_partner_embed_exposes_six_mc001_chapter_cockpit_and_product_scope() -> None:
+    response = client.get("/embed/demo-store")
+    assert response.status_code == 200
+    assert response.text.count("data-lab-chapter-open=") == 6
+    assert 'data-lab-chapter-open="1"' in response.text
+    assert 'data-lab-chapter-open="6"' in response.text
+    assert "Fațadă termoizolată" in response.text
+    assert "Ferestre eficiente" in response.text
+    assert "Iluminat LED" in response.text
+    assert "Panouri solare termice" in response.text
+    assert "Panouri fotovoltaice" in response.text
+    assert 'data-lab-product-action="heat_pump"' in response.text
+    assert "<strong>Panouri solare termice</strong><small>motor Python: în curând</small>" in response.text
+    assert "<strong>Panouri fotovoltaice</strong><small>motor Python: în curând</small>" in response.text
+    assert 'id="labMobileClass"' in response.text
+    assert 'data-mobile-results' in response.text
+
+
+def test_home_lab_runtime_wires_mobile_chapter_editor_and_live_summary() -> None:
+    response = client.get("/static/embed-house-lab.js")
+    assert response.status_code == 200
+    assert "function openChapter(chapter)" in response.text
+    assert "function closeChapter()" in response.text
+    assert "function updateChapterSummaries" in response.text
+    assert "is-mobile-results-view" in response.text
+    assert "data-lab-product-action='heat_pump'" in response.text
+    assert 'controls.heating.value="heat_pump"' in response.text
+    assert "labMobileCost" in response.text
+    assert "labChapter6Summary" in response.text
 
 
 def test_home_lab_live_fetch_is_resilient_and_does_not_expose_raw_json_errors() -> None:
