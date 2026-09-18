@@ -868,6 +868,31 @@ a:focus-visible {
   font-weight: 750;
 }
 
+.class-badge small {
+  max-width: 145px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.price-status-warning {
+  display: flex;
+  gap: 8px 14px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--amber);
+  background: #fff8ed;
+  color: #68420b;
+  font-size: 13px;
+}
+
+.price-status-warning strong {
+  color: var(--amber);
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
