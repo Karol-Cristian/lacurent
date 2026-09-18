@@ -78,25 +78,37 @@ def _gas_reference() -> dict[str, Any]:
 
 def _firewood_reference() -> dict[str, Any]:
     data = energy_prices()["firewood"]
-    base_price_per_m3 = float(data["price_lei_per_solid_m3"])
-    consumer_multiplier = float(data.get("consumer_cost_multiplier", 1.0))
-    price_per_m3 = base_price_per_m3 * consumer_multiplier
-    energy_per_m3 = float(data["energy_kwh_per_solid_m3"])
+    price_per_pallet = float(data["reference_price_lei_per_pallet"])
+    net_weight_kg = float(data["reference_net_weight_kg_per_pallet"])
+    water_content_percent = float(data["assumed_water_content_percent"])
+    dry_hardwood_ncv_mj_per_kg = float(data["dry_hardwood_ncv_mj_per_kg"])
+    water_vaporization_mj_per_kg = float(data["water_vaporization_mj_per_kg"])
+
+    # Eurostat household-energy manual: NCVw = (NCV0 * (100-w) - 2.447*w) / 100.
+    ncv_mj_per_kg = (
+        dry_hardwood_ncv_mj_per_kg * (100.0 - water_content_percent)
+        - water_vaporization_mj_per_kg * water_content_percent
+    ) / 100.0
+    energy_kwh_per_kg = ncv_mj_per_kg / 3.6
+    energy_kwh_per_pallet = net_weight_kg * energy_kwh_per_kg
+
     return {
-        "unit_price_lei_per_kwh": price_per_m3 / energy_per_m3,
-        "price_lei_per_m3": price_per_m3,
-        "base_price_lei_per_m3": base_price_per_m3,
-        "consumer_cost_multiplier": consumer_multiplier,
-        "consumer_cost_multiplier_note": data.get("consumer_cost_multiplier_note"),
-        "energy_kwh_per_m3": energy_per_m3,
+        "unit_price_lei_per_kwh": price_per_pallet / energy_kwh_per_pallet,
+        "price_lei_per_pallet": price_per_pallet,
+        "reference_volume_m3_per_pallet": float(data["reference_volume_m3_per_pallet"]),
+        "net_weight_kg_per_pallet": net_weight_kg,
+        "water_content_percent": water_content_percent,
+        "energy_kwh_per_kg": energy_kwh_per_kg,
+        "energy_kwh_per_pallet": energy_kwh_per_pallet,
         "basis": (
-            f"{data['price_reference']} · Romsilva {base_price_per_m3:.0f} lei/m³ · "
-            f"estimare consumator ×{consumer_multiplier:.1f} = {price_per_m3:.0f} lei/m³ · "
-            f"{data['assumed_water_content_percent']}% umiditate"
+            f"{data['price_reference']} · {price_per_pallet:.2f} lei/palet · "
+            f"{net_weight_kg:.0f} kg net · {water_content_percent:.0f}% umiditate · "
+            f"≈{energy_kwh_per_kg:.2f} kWh/kg PCI"
         ),
         "source_name": data["source_name"],
         "source_url": data["source_url"],
-        "catalog_url": data["catalog_url"],
+        "secondary_source_name": data.get("secondary_source_name"),
+        "secondary_source_url": data.get("secondary_source_url"),
         "energy_source_name": data["energy_source_name"],
         "energy_source_url": data["energy_source_url"],
         "note": data["note"],
@@ -289,7 +301,8 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
                 **reference,
             }
             if key == "biomass" and heating_profile == "firewood":
-                row["estimated_volume_m3"] = final_kwh / float(reference["energy_kwh_per_m3"])
+                row["estimated_pallets"] = final_kwh / float(reference["energy_kwh_per_pallet"])
+                row["estimated_mass_tonnes"] = final_kwh / float(reference["energy_kwh_per_kg"]) / 1000
             if key == "biomass" and heating_profile == "pellets":
                 row["estimated_mass_tonnes"] = final_kwh / float(reference["energy_kwh_per_kg"]) / 1000
             rows.append(row)
