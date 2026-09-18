@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-labelledby="t d">
+<title id="t">Șemineu și sobă</title><desc id="d">Ilustrație editorială a unui șemineu simplu într-un interior real de locuință.</desc>
+<rect width="480" height="320" rx="24" fill="#f5f2ec"/>
+<rect x="70" y="54" width="340" height="218" rx="8" fill="#e7dfd4"/>
+<rect x="128" y="92" width="224" height="180" fill="#f9f7f2"/>
+<rect x="155" y="131" width="170" height="141" rx="4" fill="#303436"/>
+<rect x="169" y="147" width="142" height="107" rx="3" fill="#15191b"/>
+<path d="M240 234c-34-28-28-55-7-75 4 24 22 28 23 51 13-11 18-25 14-41 29 25 30 52 3 71-10 7-22 9-33 7Z" fill="#c96f36"/>
+<path d="M239 233c-16-17-12-32-3-45 3 12 12 18 13 31 7-7 9-15 7-24 14 14 14 29 1 40-5 4-12 5-18 3Z" fill="#f0b24a"/>
+<rect x="115" y="112" width="250" height="19" rx="4" fill="#a87e59"/>
+<path d="M92 272h296" stroke="#c6b8a6" stroke-width="6" stroke-linecap="round"/>
+<path d="M115 67h250" stroke="#d5c6b5" stroke-width="5"/>
+<circle cx="370" cy="227" r="22" fill="#99a98b"/><path d="M370 249v23" stroke="#718066" stroke-width="5"/>
+</svg>
