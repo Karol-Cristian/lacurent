@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from commercial.app.engine import demo_building
 from commercial.app.main import app
+from commercial.app.pricing import _firewood_reference
 
 
 client = TestClient(app)
@@ -218,10 +219,23 @@ def test_official_price_registry_endpoint_is_available() -> None:
     response = client.get("/api/energy-prices")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["retrieved_on"] == "2026-09-17"
+    assert payload["retrieved_on"] == "2026-09-18"
     assert payload["electricity"]["source_name"] == "POSF / ANRE"
     assert payload["natural_gas"]["source_name"] == "POSF / ANRE"
-    assert payload["firewood"]["source_name"].startswith("Romsilva")
+    assert payload["firewood"]["source_name"] == "Leroy Merlin România - referință retail"
+    assert payload["firewood"]["secondary_source_name"].startswith("Dedeman")
+    assert payload["firewood"]["reference_price_lei_per_pallet"] == 738.99
+    assert payload["firewood"]["reference_net_weight_kg_per_pallet"] == 600.0
+
+
+def test_firewood_reference_uses_retail_mass_and_moisture_not_solid_m3_multiplier() -> None:
+    reference = _firewood_reference()
+    assert reference["price_lei_per_pallet"] == 738.99
+    assert reference["net_weight_kg_per_pallet"] == 600.0
+    assert reference["water_content_percent"] == 30.0
+    assert 3.29 < reference["energy_kwh_per_kg"] < 3.30
+    assert 0.373 < reference["unit_price_lei_per_kwh"] < 0.375
+    assert "Romsilva" not in reference["basis"]
 
 def test_form_calculation_accepts_normative_solar_controls() -> None:
     data = demo_form_data()

@@ -130,7 +130,7 @@
             <p>
               <strong>{{ row.label }}:</strong>
               {{ row.unit_price_lei_per_kwh|fmt("lei/kWh", 3) }} ·
-              <a href="{{ row.source_url }}" target="_blank" rel="noreferrer">{{ row.source_name }}</a>
+              <a href="{{ row.source_url }}" target="_blank" rel="noreferrer">{{ row.source_name }}</a>{% if row.secondary_source_url %} · <a href="{{ row.secondary_source_url }}" target="_blank" rel="noreferrer">{{ row.secondary_source_name }}</a>{% endif %}
               <small>{{ row.basis }}{% if row.valid_until %} · valabil până la {{ row.valid_until }}{% endif %}{% if row.price_status == "stale" %} · REFERINȚĂ EXPIRATĂ{% elif row.price_status == "not_yet_valid" %} · ÎNCĂ NEINTRATĂ ÎN VIGOARE{% endif %}</small>
             </p>
           {% endfor %}
