@@ -246,7 +246,7 @@
 
         <div class="lab-product-strip" aria-label="Produse instalații">
           <span>Centrală / sursă</span><span>Recuperare căldură</span><span>Climatizare</span><span>Apă caldă</span>
-          <span class="is-disabled">Iluminat LED <b>în curând</b></span>
+          <span class="is-disabled" aria-disabled="true" title="Motorul Python nu calculează încă energia pentru iluminat.">Iluminat LED <b>în curând</b></span>
         </div>
 
         <div class="lab-system-pills" role="group" aria-label="Sursa principală de încălzire">
@@ -307,10 +307,10 @@
           <button type="button" data-lab-product-action="heat_pump">
             <span class="lab-product-leaf">◆</span><strong>Pompă de căldură</strong><small>suportată de motor</small>
           </button>
-          <button type="button" disabled>
+          <button type="button" disabled aria-disabled="true" title="Motorul Python nu calculează încă aportul solar termic.">
             <span class="lab-product-leaf">◆</span><strong>Panouri solare termice</strong><small>motor Python: în curând</small>
           </button>
-          <button type="button" disabled>
+          <button type="button" disabled aria-disabled="true" title="Motorul Python nu calculează încă producția fotovoltaică.">
             <span class="lab-product-leaf">◆</span><strong>Panouri fotovoltaice</strong><small>motor Python: în curând</small>
           </button>
         </div>
@@ -340,7 +340,7 @@
           <button type="button" data-open-tab="comparison" data-mobile-results>Compară scenariile</button>
         </div>
         <div class="lab-product-strip">
-          <span>Pachet anvelopă</span><span>Pachet ferestre</span><span>Pachet instalații</span><span class="is-disabled">Pachet PV <b>în curând</b></span>
+          <span>Pachet anvelopă</span><span>Pachet ferestre</span><span>Pachet instalații</span><span class="is-disabled" aria-disabled="true">Pachet PV <b>în curând</b></span>
         </div>
       </section>
 
