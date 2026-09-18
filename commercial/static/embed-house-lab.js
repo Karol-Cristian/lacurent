@@ -571,7 +571,7 @@
     if (restore) restore.hidden=false;
     if (saveButton) saveButton.textContent=tr("updateBaseline");
     if (title) title.textContent=tr("baselineTitle");
-    if (summary) summary.textContent=`${base.energy_class || "—"} · ${fmt(base.annual_cost_lei)} lei/an · ${fmt(base.final_energy_kwh)} kWh/an`;
+    if (summary) summary.textContent=`${base.energy_class || "—"} · ${base.annual_cost_lei == null ? "—" : `${fmt(base.annual_cost_lei)} lei/an`} · ${base.final_energy_kwh == null ? "—" : `${fmt(base.final_energy_kwh)} kWh/an`}`;
 
     const baselineClass=document.getElementById("labBaselineClass");
     const scenarioClass=document.getElementById("labScenarioClass");
@@ -590,27 +590,29 @@
     const list=document.getElementById("labBaselineMetricList");
     if (list) list.innerHTML=metrics.map(row => `<div class="lab-baseline-metric">
       <span>${row.label}</span>
-      <strong>${fmt(row.base,row.digits)} <small>${row.unit}</small></strong>
+      <strong>${row.base == null ? "—" : fmt(row.base,row.digits)} <small>${row.unit}</small></strong>
       <b>→</b>
-      <strong>${fmt(row.current,row.digits)} <small>${row.unit}</small></strong>
+      <strong>${row.current == null ? "—" : fmt(row.current,row.digits)} <small>${row.unit}</small></strong>
       ${deltaBadge(row.base,row.current,true)}
     </div>`).join("") + `<div class="lab-baseline-metric lab-baseline-class-metric">
       <span>${tr("metricClass")}</span>
       <strong>${base.energy_class || "—"}</strong><b>→</b><strong>${current.energy_class || "—"}</strong>${classDeltaBadge(base.energy_class,current.energy_class)}
     </div>`;
 
-    const savings=(Number(base.annual_cost_lei)||0)-(Number(current.annual_cost_lei)||0);
-    const baseCost=Number(base.annual_cost_lei)||0;
+    const hasCost=base.annual_cost_lei != null && current.annual_cost_lei != null;
+    const savings=hasCost ? Number(base.annual_cost_lei)-Number(current.annual_cost_lei) : null;
+    const baseCost=hasCost ? Number(base.annual_cost_lei) : null;
 
     const overviewCost=document.getElementById("labOverviewBaselineCost");
     const overviewEnergy=document.getElementById("labOverviewBaselineEnergy");
     const overviewPower=document.getElementById("labOverviewBaselinePower");
 
-    const costDelta=Number(current.annual_cost_lei||0)-Number(base.annual_cost_lei||0);
-    const energyDelta=Number(current.final_energy_kwh||0)-Number(base.final_energy_kwh||0);
-    const powerDelta=Number(current.design_heat_load_kw||0)-Number(base.design_heat_load_kw||0);
+    const costDelta=hasCost ? Number(current.annual_cost_lei)-Number(base.annual_cost_lei) : null;
+    const energyDelta=current.final_energy_kwh != null && base.final_energy_kwh != null ? Number(current.final_energy_kwh)-Number(base.final_energy_kwh) : null;
+    const powerDelta=current.design_heat_load_kw != null && base.design_heat_load_kw != null ? Number(current.design_heat_load_kw)-Number(base.design_heat_load_kw) : null;
 
     const deltaText=(value,unit,digits=0) => {
+      if (value == null || !Number.isFinite(Number(value))) return "—";
       if (Math.abs(value) < (digits ? 0.05 : 0.5)) return tr("noChange");
       const sign=value>0?"+":"−";
       return `${sign}${fmt(Math.abs(value),digits)} ${unit}`;
@@ -618,28 +620,28 @@
 
     if (overviewCost) {
       overviewCost.textContent=deltaText(costDelta,"lei/an",0);
-      overviewCost.classList.toggle("is-good",costDelta < -0.5);
-      overviewCost.classList.toggle("is-bad",costDelta > 0.5);
+      overviewCost.classList.toggle("is-good",costDelta != null && costDelta < -0.5);
+      overviewCost.classList.toggle("is-bad",costDelta != null && costDelta > 0.5);
     }
     if (overviewEnergy) {
       overviewEnergy.textContent=deltaText(energyDelta,"kWh/an",0);
-      overviewEnergy.classList.toggle("is-good",energyDelta < -0.5);
-      overviewEnergy.classList.toggle("is-bad",energyDelta > 0.5);
+      overviewEnergy.classList.toggle("is-good",energyDelta != null && energyDelta < -0.5);
+      overviewEnergy.classList.toggle("is-bad",energyDelta != null && energyDelta > 0.5);
     }
     if (overviewPower) {
       overviewPower.textContent=deltaText(powerDelta,"kW",1);
-      overviewPower.classList.toggle("is-good",powerDelta < -0.05);
-      overviewPower.classList.toggle("is-bad",powerDelta > 0.05);
+      overviewPower.classList.toggle("is-good",powerDelta != null && powerDelta < -0.05);
+      overviewPower.classList.toggle("is-bad",powerDelta != null && powerDelta > 0.05);
     }
-    const savingsPct=baseCost ? 100*savings/baseCost : 0;
+    const savingsPct=baseCost != null && Math.abs(baseCost) > 1e-9 ? 100*savings/baseCost : null;
     const savingsNode=document.getElementById("labBaselineSavings");
     const noteNode=document.getElementById("labBaselineSavingsNote");
     if (savingsNode) {
-      savingsNode.classList.toggle("is-good", savings>0.5);
-      savingsNode.classList.toggle("is-bad", savings<-.5);
-      savingsNode.textContent=Math.abs(savings)<.5 ? tr("noChange") : `${savings>0?"−":"+"}${fmt(Math.abs(savings))} lei/an`;
+      savingsNode.classList.toggle("is-good", savings != null && savings>0.5);
+      savingsNode.classList.toggle("is-bad", savings != null && savings<-.5);
+      savingsNode.textContent=savings == null ? "—" : Math.abs(savings)<.5 ? tr("noChange") : `${savings>0?"−":"+"}${fmt(Math.abs(savings))} lei/an`;
     }
-    if (noteNode) noteNode.textContent=Math.abs(savings)<.5 ? tr("noChange") : `${fmt(Math.abs(savingsPct),1)}% ${savings>0?tr("savings"):tr("extraCost")}`;
+    if (noteNode) noteNode.textContent=savings == null ? "" : Math.abs(savings)<.5 ? tr("noChange") : `${savingsPct == null ? "—" : `${fmt(Math.abs(savingsPct),1)}%`} ${savings>0?tr("savings"):tr("extraCost")}`;
 
     renderSavedScenarios();
   }
