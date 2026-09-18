@@ -232,6 +232,9 @@
     const bs=baseline.solar||{}; const manualSolarChanged=!isBase(baseSolar,solar.value,.01);
     add(fd,'solar_mode',manualSolarChanged?'explicit':(bs.mode||'explicit'));
     add(fd,'solar_orientation',bs.orientation||'south'); add(fd,'solar_glazing_type_id',bs.glazing_type_id||'double_low_e_face_3');
+    add(fd,'solar_shading_device_id',bs.shading_device_id||''); add(fd,'solar_shading_mounting_side',bs.shading_mounting_side||'');
+    const groupFields={south:'solar_window_area_south_m2',south_west:'solar_window_area_south_west_m2',west:'solar_window_area_west_m2',north_west:'solar_window_area_north_west_m2',north:'solar_window_area_north_m2',north_east:'solar_window_area_north_east_m2',east:'solar_window_area_east_m2',south_east:'solar_window_area_south_east_m2'};
+    (bs.glazing_groups||[]).forEach(g=>add(fd,groupFields[g.orientation],Number(g.area_m2)*ratio));
     add(fd,'solar_frame_fraction',bs.frame_fraction??.20); add(fd,'solar_obstacle_shading_factor',bs.obstacle_shading_factor??1);
     add(fd,'solar_sky_view_factor',bs.sky_view_factor??.5); add(fd,'solar_exterior_surface_resistance_m2k_w',bs.exterior_surface_resistance_m2k_w??.04);
     add(fd,'solar_longwave_radiation_coefficient_w_m2k',bs.longwave_radiation_coefficient_w_m2k??5); add(fd,'solar_sky_temperature_difference_k',bs.sky_temperature_difference_k??11);
