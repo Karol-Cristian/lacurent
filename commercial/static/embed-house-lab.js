@@ -40,7 +40,8 @@
   const COPY = {
     ro: {
       kicker:"Laboratorul casei", title:"Configurează casa. Vezi imediat ce se schimbă.",
-      intro:"Pornești de la o casă presetată și modifici parametrii direct. Fiecare schimbare recalculează același motor energetic LaCurent.",
+      intro:"Pornești de la o casă presetată și modifici doar ce contează. Costul, consumul și necesarul termic se actualizează pe loc.",
+      proofClimate:"Profil climatic automat", proofLive:"Recalculare live", proofCost:"Cost anual estimat",
       reset:"Revino la preset", locationTitle:"Unde este casa?", locationSubtitle:"Scrie localitatea și alege rezultatul corect.",
       locationLabel:"Localitatea", locationInfo:"Localitatea este importantă pentru selectarea automată a profilului climatic. Nu trebuie să alegi manual o zonă climatică.",
       climateAuto:"Profil climatic selectat automat", geometryTitle:"Casa", geometrySubtitle:"Dimensiuni și suprafețe ușor de verificat.",
@@ -61,7 +62,8 @@
     },
     en: {
       kicker:"Home Lab", title:"Configure the house. See what changes immediately.",
-      intro:"Start from a preset home and change parameters directly. Every adjustment reruns the same LaCurent energy engine.",
+      intro:"Start from a preset home and change only what matters. Cost, energy use and heat load update instantly.",
+      proofClimate:"Automatic climate profile", proofLive:"Live recalculation", proofCost:"Estimated annual cost",
       reset:"Reset preset", locationTitle:"Where is the house?", locationSubtitle:"Type the locality and choose the correct result.",
       locationLabel:"Locality", locationInfo:"The locality is used to select the climate profile automatically. You do not need to choose a climate zone manually.",
       climateAuto:"Climate profile selected automatically", geometryTitle:"House", geometrySubtitle:"Dimensions and areas that are easy to verify.",
