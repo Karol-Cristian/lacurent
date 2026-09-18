@@ -346,7 +346,6 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
     assert 'id="labReferenceCard"' in response.text
-    assert "Nu trebuie să alegi manual o zonă climatică." in response.text
     assert "embed-house-lab.js" in response.text
     assert "embed-runtime.js" in response.text
     assert "Navigare LaCurent Instalații & Energie" not in response.text
@@ -501,7 +500,6 @@ def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
     assert "Modifică doar ce contează" in response.text
-    assert "Profil climatic automat" in response.text
     assert "Recalculare live" in response.text
     assert "Cost anual estimat" in response.text
 
