@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.4",
+  "version": "lacurent-commercial-v2.5",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -135,9 +135,10 @@
     "Transferul termic prin transmisie folosește forma directă MC001: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul simplificat al versiunii comerciale.",
     "Transferul prin ventilare folosește Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
     "Necesarul lunar de încălzire folosește structura Mc 001-2022 Figura 2.18: QH,nd = QH,ht − ηH,gn × QH,gn, cu factorul de utilizare al aporturilor și inerția termică.",
-    "Aporturile solare automate folosesc Hsol lunar sursă din Mc001/1-2-3/2006 Anexa A.9.6 numai când stația climatică MC001/6-2013 selectată are corespondent direct; nu se interpolează o stație solară vecină.",
+    "Aporturile solare automate folosesc Hsol lunar din Mc001/1-2-3/2006 Anexa A.9.6 pentru toate cele 42 de stații climatice MC001/6-2013. Se preferă corespondentul direct; în lipsa lui se folosește cea mai apropiată stație-sursă A.9.6, cu distanța raportată explicit. Valorile Hsol nu sunt interpolate între stații.",
+    "Ferestrele pot fi distribuite pe cele opt orientări A.9.6. Dacă distribuția nu este introdusă, suprafața totală de ferestre este asociată orientării dominante selectate.",
+    "Dispozitivele de umbrire selectate explicit folosesc factorii de reducere din Mc 001-2022 Tabelul 2.16; fără dispozitiv selectat nu se aplică un factor ascuns de umbrire a vitrajului.",
     "Pentru ferestre, forma simplificată aplică relațiile MC001 2.39, 2.40 și 2.54. Tipul de vitraj este preluat din Tabelul 2.13; fracția de ramă, umbrirea și parametrii Qsky sunt ipoteze explicite LaCurent ale formularului simplu și pot fi înlocuite prin setările avansate.",
-    "Dacă Hsol normativ A.9.6 nu este disponibil pentru stația climatică selectată, motorul nu inventează iradierea; folosește doar aportul solar explicit introdus de utilizator, implicit 0.",
     "Necesarul lunar de răcire folosește structura Mc 001-2022 Figura 2.19: QC,nd = aC,red × (QC,gn − ηC,ht × QC,ht), cu convenția de semn MC001, factorul de utilizare al transferului termic și inerția termică. Nu se mai reconstruiește un profil meteo orar sintetic.",
     "Pentru formularul simplificat, clasa implicită de capacitate termică interioară este 'medie', 165000 J/(K·m²) × Ause, conform Mc 001-2022 Tabelul 2.20. Aceasta este o ipoteză explicită până când clasa de inerție este introdusă de utilizator.",
     "Pentru scenariile cu răcire continuă se folosește aC,red = 1. Perioadele lungi de neocupare și programele de răcire intermitentă nu sunt încă modelate de formularul simplificat.",
@@ -147,13 +148,14 @@
     "Valorile sezoniere implicite ale sistemelor de încălzire sunt ipoteze comerciale LaCurent centralizate în registrul metodologic și pot fi suprascrise în setările avansate; nu sunt prezentate ca randamente universale pentru toate echipamentele reale."
   ],
   "solar": {
-    "model": "Mc 001-2022 monthly transparent-element solar gains using source-backed Annex A.9.6 vertical Hsol where the selected MC001/6-2013 climate station has a direct A.9.6 mapping.",
+    "model": "Mc 001-2022 monthly transparent-element solar gains using source-backed Annex A.9.6 vertical Hsol. Each MC001/6-2013 climate station resolves to one A.9.6 source station; direct matches are preferred and otherwise the nearest source row is selected without interpolating Hsol values.",
     "formula": "Qsol,wi = g_gl * A_gl * (1 - Ff) * Fsh,obst * Hsol - Qsky",
     "source_relations": [
       "MC001-2022 relation 2.39 transparent solar gains",
       "MC001-2022 relation 2.40 g_gl = 0.9 * g_gl,n",
       "MC001-2022 relation 2.54 long-wave sky radiation",
-      "MC001-2022 Table 2.13 glazing solar transmittance"
+      "MC001-2022 Table 2.13 glazing solar transmittance",
+      "MC001-2022 Table 2.16 shading-device reduction factor"
     ],
     "glazing_table_2_13_ggl_n": {
       "single_clear_glazing": 0.85,
@@ -172,8 +174,63 @@
       "sky_view_factor": 0.5,
       "exterior_surface_resistance_m2k_w": 0.04,
       "longwave_radiation_coefficient_w_m2k": 5,
-      "sky_temperature_difference_k": 11
+      "sky_temperature_difference_k": 11,
+      "shading_device_id": null,
+      "shading_mounting_side": null
     },
-    "default_status": "The orientation/glazing/frame/shading/sky values above are explicit LaCurent product assumptions for the simplified form. They are not presented as universal MC001 defaults and can be overridden by the user."
+    "default_status": "The orientation/glazing/frame/shading/sky values above are explicit LaCurent product assumptions for the simplified form. They are not presented as universal MC001 defaults and can be overridden by the user.",
+    "shading_table_2_16": {
+      "white_venetian_blinds_abs_0_1_trans_0_05": {
+        "label": "Storuri venetiene albe · τ=0,05",
+        "interior": 0.25,
+        "exterior": 0.1
+      },
+      "white_venetian_blinds_abs_0_1_trans_0_1": {
+        "label": "Storuri venetiene albe · τ=0,10",
+        "interior": 0.3,
+        "exterior": 0.15
+      },
+      "white_venetian_blinds_abs_0_1_trans_0_3": {
+        "label": "Storuri venetiene albe · τ=0,30",
+        "interior": 0.45,
+        "exterior": 0.35
+      },
+      "white_curtains_abs_0_1_trans_0_5": {
+        "label": "Perdele albe · τ=0,50",
+        "interior": 0.65,
+        "exterior": 0.55
+      },
+      "white_curtains_abs_0_1_trans_0_7": {
+        "label": "Perdele albe · τ=0,70",
+        "interior": 0.8,
+        "exterior": 0.75
+      },
+      "white_curtains_abs_0_1_trans_0_9": {
+        "label": "Perdele albe · τ=0,90",
+        "interior": 0.95,
+        "exterior": 0.95
+      },
+      "colored_textiles_abs_0_3_trans_0_1": {
+        "label": "Textile colorate · τ=0,10",
+        "interior": 0.42,
+        "exterior": 0.17
+      },
+      "colored_textiles_abs_0_3_trans_0_3": {
+        "label": "Textile colorate · τ=0,30",
+        "interior": 0.57,
+        "exterior": 0.37
+      },
+      "colored_textiles_abs_0_3_trans_0_5": {
+        "label": "Textile colorate · τ=0,50",
+        "interior": 0.77,
+        "exterior": 0.57
+      },
+      "aluminium_coated_textiles_abs_0_2_trans_0_05": {
+        "label": "Textile aluminizate · τ=0,05",
+        "interior": 0.2,
+        "exterior": 0.08
+      }
+    },
+    "coverage_note": "42/42 MC001/6-2013 climate stations have a deterministic source-backed A.9.6 Hsol row. 16 are direct, one is geographically coincident under a historical locality name, and 25 use the nearest A.9.6 source station. The maximum precomputed source distance is 74.5 km; no Hsol interpolation is performed."
   }
 }
