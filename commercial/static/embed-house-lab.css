@@ -1586,3 +1586,273 @@
   .lab-house-slide{transition:none;transform:none}
   .lab-house-slide.is-active{transform:none}
 }
+
+
+/* House-first interaction model */
+.lab-house-mode-bar{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:11px 12px;
+  border:1px solid #cfe2d6;
+  border-radius:13px;
+  background:linear-gradient(135deg,#f2f8f4,#fbfdfb);
+}
+.lab-house-mode-copy{display:grid;gap:2px;min-width:0}
+.lab-house-mode-copy>span{
+  color:var(--lab-green);
+  font-size:7px;
+  font-weight:850;
+  letter-spacing:.1em;
+}
+.lab-house-mode-copy>strong{
+  color:var(--lab-navy);
+  font-size:11px;
+  line-height:1.15;
+}
+.lab-house-mode-copy>small{
+  color:#69786f;
+  font-size:7.5px;
+  line-height:1.25;
+}
+.lab-house-mode-bar button{
+  min-height:34px;
+  padding:7px 10px;
+  border:1px solid var(--lab-green);
+  border-radius:8px;
+  background:var(--lab-green);
+  color:#fff;
+  font-size:8px;
+  font-weight:800;
+  cursor:pointer;
+}
+.lab-house-mode-bar button#labEditCurrentHome{
+  border-color:#cddbd2;
+  background:#fff;
+  color:#315f42;
+}
+.lab-house-mode-bar[data-house-mode="scenario"]{
+  border-color:#d9e4dd;
+  background:linear-gradient(135deg,#f7faf8,#fff);
+}
+.lab-house-mode-bar[data-house-mode="scenario"] .lab-house-mode-copy>span{color:#596d61}
+
+.lab-context-visual{
+  position:relative;
+  overflow:hidden;
+  min-height:106px;
+  border:1px solid var(--lab-line);
+  border-radius:13px;
+  background:#eef3ef;
+}
+.lab-context-visual img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.lab-context-visual::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,rgba(13,36,24,.76),rgba(13,36,24,.18) 72%,rgba(13,36,24,.02));
+}
+.lab-context-visual>div{
+  position:relative;
+  z-index:1;
+  display:grid;
+  gap:2px;
+  max-width:62%;
+  padding:14px;
+}
+.lab-context-visual strong{
+  color:#fff;
+  font-size:12px;
+  line-height:1.1;
+}
+.lab-context-visual small{
+  color:rgba(255,255,255,.86);
+  font-size:7.5px;
+  line-height:1.3;
+}
+.lab-chapter-tile.is-active{
+  border-color:#8fbea0;
+  background:#eef7f1;
+  box-shadow:0 0 0 2px rgba(31,122,77,.08);
+}
+.lab-mobile-livebar small{
+  min-height:9px;
+  color:#748079;
+  font-size:6px;
+  line-height:1.1;
+}
+.lab-mobile-livebar small.is-good{color:#1f7a4d}
+.lab-mobile-livebar small.is-bad{color:#b14b35}
+
+@media(max-width:760px){
+  .embed-body{
+    height:100svh;
+    min-height:100svh;
+    overflow:hidden;
+  }
+  .embed-house-lab{
+    height:100svh;
+    min-height:100svh;
+    overflow:hidden;
+    padding:3px 0;
+  }
+  .house-lab-layout{
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+  }
+  .lab-config-panel{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    min-height:0;
+    gap:6px;
+    padding-bottom:0;
+    overflow:hidden;
+  }
+  .lab-config-header{
+    flex:0 0 auto;
+    grid-template-columns:minmax(0,1fr) minmax(126px,.72fr);
+    padding:8px 9px;
+  }
+  .lab-config-header h1{font-size:16px}
+  .lab-location-chip{padding:6px 7px}
+  #labLocalitySearch{font-size:9.5px}
+  .lab-house-mode-bar{
+    flex:0 0 auto;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:7px;
+    padding:8px 9px;
+  }
+  .lab-house-mode-copy>strong{font-size:10px}
+  .lab-house-mode-copy>small{
+    overflow:hidden;
+    max-width:100%;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .lab-house-mode-bar button{
+    max-width:124px;
+    min-height:32px;
+    padding:6px 8px;
+    font-size:7.2px;
+    line-height:1.15;
+  }
+  .lab-chapter-grid{
+    flex:0 0 auto;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .lab-chapter-tile{
+    grid-template-columns:29px minmax(0,1fr);
+    min-height:62px;
+    padding:7px;
+  }
+  .lab-chapter-icon{
+    width:28px;
+    height:28px;
+  }
+  .lab-chapter-icon svg{width:18px;height:18px}
+  .lab-chapter-tile strong{font-size:9px}
+  .lab-chapter-tile small{font-size:6.5px}
+  .lab-chapter-tile em{font-size:5px}
+  .lab-context-visual{
+    flex:1 1 auto;
+    min-height:72px;
+    max-height:108px;
+  }
+  .lab-context-visual>div{
+    max-width:72%;
+    padding:10px;
+  }
+  .lab-context-visual strong{font-size:10px}
+  .lab-context-visual small{font-size:6.5px}
+
+  .lab-mobile-livebar{
+    position:static;
+    flex:0 0 auto;
+    order:99;
+    min-height:52px;
+    margin-top:auto;
+    grid-template-columns:.52fr 1fr 1fr auto;
+    padding:5px;
+    border-radius:10px;
+    box-shadow:0 -5px 18px rgba(16,42,67,.08);
+  }
+  .lab-mobile-livebar>div{padding:2px 4px}
+  .lab-mobile-livebar strong{font-size:9px}
+  .lab-mobile-livebar button{
+    min-height:36px;
+    padding:6px 8px;
+    font-size:7.5px;
+  }
+
+  .lab-config-panel.is-chapter-editing .lab-house-mode-bar,
+  .lab-config-panel.is-chapter-editing .lab-context-visual{
+    display:none;
+  }
+  .lab-config-panel.is-chapter-editing{
+    gap:6px;
+  }
+  .lab-mobile-editor-toolbar{
+    position:static;
+    flex:0 0 auto;
+  }
+  [data-lab-chapter-panel].is-mobile-open{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+  }
+  [data-lab-chapter-panel].is-mobile-open.lab-config-card{
+    display:block!important;
+  }
+  [data-lab-chapter-panel].is-mobile-open.lab-baseline-card{
+    display:grid!important;
+  }
+  .lab-config-panel.is-chapter-editing [data-lab-chapter-panel].is-mobile-open{
+    align-self:stretch;
+  }
+  .lab-config-card{
+    padding:9px;
+  }
+  .lab-config-card-title{margin-bottom:7px}
+  .lab-field-grid.three,
+  .lab-field-grid.two{
+    grid-template-columns:1fr 1fr!important;
+    gap:6px;
+  }
+  .lab-range-control>label,
+  .lab-select-field>span{font-size:7.5px}
+  .lab-compact-value{min-height:29px}
+  .lab-compact-value input{font-size:9.5px}
+  .lab-select-field select{
+    min-height:29px;
+    font-size:8px;
+  }
+  .lab-product-strip{margin-bottom:6px}
+  .lab-product-strip>span{min-height:19px;font-size:6.3px}
+  .lab-system-pills{margin-bottom:6px}
+  .lab-system-pills button{min-height:31px;font-size:7.4px}
+  .lab-product-options button{min-height:43px;padding:7px 8px}
+  .lab-performance-mini>div{padding:8px}
+  .lab-performance-mini strong{font-size:12px}
+
+  .embed-house-lab.is-mobile-results-view{
+    overflow:auto;
+  }
+  .embed-house-lab.is-mobile-results-view .house-lab-layout{
+    height:auto;
+    min-height:100%;
+    overflow:visible;
+  }
+  .embed-house-lab.is-mobile-results-view .lab-results-stage{
+    min-height:100svh;
+  }
+}
