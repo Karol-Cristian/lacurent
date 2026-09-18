@@ -85,7 +85,7 @@ class DhwInput(BaseModel):
 
 
 class SolarInput(BaseModel):
-    mode: Literal["normative_hsol", "explicit"] = "normative_hsol"
+    mode: Literal["normative_hsol", "explicit"] = "explicit"
     orientation: Literal[
         "south",
         "south_west",
