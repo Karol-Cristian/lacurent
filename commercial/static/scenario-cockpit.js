@@ -285,7 +285,8 @@
     controller?.abort(); controller=new AbortController(); const id=++requestId;
     status.className='cockpit-status is-loading'; status.textContent=t('Recalculez scenariul…','Recalculating scenario…');
     try {
-      const r=await fetch('/calculate',{method:'POST',body:buildForm(),signal:controller.signal}); const html=await r.text();
+      const partnerId=String(document.body?.dataset?.embedPartner||'').trim(); const calculateUrl=partnerId?'/embed/'+encodeURIComponent(partnerId)+'/calculate':'/calculate';
+      const r=await fetch(calculateUrl,{method:'POST',body:buildForm(),signal:controller.signal}); const html=await r.text();
       if(!r.ok) throw new Error(t('Scenariul nu a putut fi calculat.','The scenario could not be calculated.')); if(id!==requestId)return;
       const doc=new DOMParser().parseFromString(html,'text/html');
       if(doc.querySelector('#calculationForm')) throw new Error(doc.querySelector('.error-banner')?.textContent||t('Datele scenariului sunt invalide.','Scenario data is invalid.'));

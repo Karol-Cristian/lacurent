@@ -413,6 +413,10 @@ jobs:
               "/software-testing": 'data-page="software-testing"',
               "/instalatii": 'data-page="energy-home"',
               "/instalatii/calculator": "romaniaLocationMap",
+              "/embed": "LaCurent Embed",
+              "/embed/demo-store": 'data-embed-partner="demo-store"',
+              "/static/embed-loader.js": "lacurent:embed-height",
+              "/static/scenario-cockpit.js": "calculateUrl=partnerId?",
               "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
               "/static/testing_intake.css": ".intake-details",
@@ -467,6 +471,38 @@ jobs:
           if status != 200 or "Results" not in calculation:
               raise AssertionError(f"/calculate failed with HTTP {status}")
           print("/calculate", status)
+
+          status, _, embed_calculation = open_url(
+              apex + "/embed/demo-store/calculate",
+              data=encoded,
+              headers={"Content-Type": "application/x-www-form-urlencoded"},
+          )
+          if status != 200 or "Cere ofertă pentru scenariul ales" not in embed_calculation:
+              raise AssertionError(f"/embed/demo-store/calculate failed with HTTP {status}")
+          if 'data-embed-partner="demo-store"' not in embed_calculation:
+              raise AssertionError("Embedded calculation did not remain in partner shell.")
+          print("/embed/demo-store/calculate", status)
+
+          status, _, _ = open_url(apex + "/embed/not-a-real-partner")
+          if status != 404:
+              raise AssertionError(f"Unknown embed partner returned HTTP {status}, expected 404")
+          print("/embed/not-a-real-partner", status)
+
+          embed_request = urllib.request.Request(
+              apex + "/embed/demo-store",
+              headers={"User-Agent": "LaCurent-cutover-smoke/1.0"},
+          )
+          with urllib.request.urlopen(embed_request, timeout=30) as response:
+              frame_policy = response.headers.get("Content-Security-Policy")
+              if frame_policy != "frame-ancestors *":
+                  raise AssertionError(f"Unexpected production embed frame policy: {frame_policy!r}")
+          public_request = urllib.request.Request(
+              apex + "/instalatii/calculator",
+              headers={"User-Agent": "LaCurent-cutover-smoke/1.0"},
+          )
+          with urllib.request.urlopen(public_request, timeout=30) as response:
+              if response.headers.get("Content-Security-Policy") is not None:
+                  raise AssertionError("Public calculator unexpectedly received embed frame policy.")
 
           demo = demo_building()
           direct = calculate(demo)
