@@ -1012,6 +1012,24 @@
   controls.ventilation.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
   controls.cooling.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
 
+  root.querySelectorAll(".lab-compact-value").forEach(box => {
+    const numeric=box.querySelector('input[type="number"][data-lab-number-for]');
+    if (!numeric || box.classList.contains("lab-number-control")) return;
+    box.classList.add("lab-number-control");
+    const minus=document.createElement("button");
+    minus.type="button";
+    minus.dataset.labStep="-1";
+    minus.setAttribute("aria-label",lang()==="en"?"Decrease":"Scade");
+    minus.textContent="−";
+    const plus=document.createElement("button");
+    plus.type="button";
+    plus.dataset.labStep="1";
+    plus.setAttribute("aria-label",lang()==="en"?"Increase":"Crește");
+    plus.textContent="+";
+    box.insertBefore(minus,numeric);
+    box.appendChild(plus);
+  });
+
   document.querySelectorAll("[data-lab-number-for]").forEach(numeric => {
     const range=document.getElementById(numeric.dataset.labNumberFor);
     numeric.addEventListener("change", () => {
