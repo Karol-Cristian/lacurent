@@ -29,3 +29,12 @@ test('scenario changes are debounced and use the same calculate route', () => {
   assert.match(source, /setTimeout\(calculateScenario,280\)/);
   assert.match(source, /AbortController/);
 });
+
+
+test('scenario cockpit preserves oriented glazing and shading from the baseline', () => {
+  assert.match(source, /solar_shading_device_id/);
+  assert.match(source, /solar_shading_mounting_side/);
+  assert.match(source, /glazing_groups/);
+  assert.match(source, /solar_window_area_south_m2/);
+  assert.match(source, /solar_window_area_north_m2/);
+});
