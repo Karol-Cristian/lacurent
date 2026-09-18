@@ -265,6 +265,17 @@ def test_nearest_hsol_source_is_visible_in_result_provenance() -> None:
     assert "Sibiu" in response.text
     assert "54.3 km" in response.text
 
+def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
+    response = client.get("/embed-host-demo")
+    assert response.status_code == 200
+    assert "SITE DEMO PARTENER" in response.text
+    assert "Magazin Instalații Demo" in response.text
+    assert 'data-lacurent-embed data-partner="demo-store"' in response.text
+    assert 'src="https://lacurent.com/static/embed-loader.js"' in response.text
+    assert "app.css" not in response.text
+    assert "base.html" not in response.text
+
+
 def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
     response = client.get("/embed")
     assert response.status_code == 200
