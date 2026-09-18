@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from commercial.app.engine import calculate
 from commercial.app.main import build_input_from_form
-from commercial.app.pricing import estimate_energy_cost
+from commercial.app.pricing import _price_reference_status, estimate_energy_cost
 
 
 def simple_form(heating_choice: str) -> dict[str, str]:
@@ -127,3 +129,20 @@ def test_cooling_cost_is_priced_as_electricity_when_enabled() -> None:
     assert cooling["annual_cost_lei"] == pytest.approx(
         cooling["final_kwh"] * cooling["unit_price_lei_per_kwh"], abs=0.01
     )
+
+
+def test_price_reference_status_expires_dated_tariffs() -> None:
+    reference = {"valid_from": "2026-04-01", "valid_until": "2026-09-30"}
+    assert _price_reference_status(reference, today=date(2026, 9, 18)) == "current"
+    assert _price_reference_status(reference, today=date(2026, 10, 1)) == "stale"
+    assert _price_reference_status(reference, today=date(2026, 3, 31)) == "not_yet_valid"
+
+
+def test_current_cost_estimate_exposes_commercial_price_freshness() -> None:
+    building = build_input_from_form(simple_form("condensing_gas_boiler"))
+    estimate = estimate_energy_cost(calculate(building))
+
+    assert estimate["price_references_current"] is True
+    assert estimate["commercially_current"] is True
+    assert estimate["stale_price_labels"] == []
+    assert estimate["future_price_labels"] == []

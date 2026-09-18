@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import unicodedata
 from functools import lru_cache
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +70,7 @@ def _gas_reference() -> dict[str, Any]:
         "basis": f"{data['product']} · referință medie Distrigaz Sud / Delgaz Grid",
         "source_name": data["source_name"],
         "source_url": data["source_url"],
+        "valid_from": data.get("valid_from"),
         "valid_until": data.get("valid_until"),
         "note": data["note"],
     }
@@ -125,6 +127,27 @@ def _pellet_reference() -> dict[str, Any]:
     }
 
 
+def _price_reference_status(reference: dict[str, Any] | None, *, today: date | None = None) -> str:
+    if not reference:
+        return "unavailable"
+    current = today or date.today()
+    valid_from = reference.get("valid_from")
+    valid_until = reference.get("valid_until")
+    if valid_from:
+        try:
+            if current < date.fromisoformat(str(valid_from)):
+                return "not_yet_valid"
+        except ValueError:
+            pass
+    if valid_until:
+        try:
+            if current > date.fromisoformat(str(valid_until)):
+                return "stale"
+        except ValueError:
+            pass
+    return "current"
+
+
 def _reference_for(
     carrier: str,
     county: str | None,
@@ -175,6 +198,7 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
             "unit_price_lei_per_kwh": unit_price,
             "annual_cost_lei": annual_cost,
             "priced": reference is not None,
+            "price_status": _price_reference_status(reference),
             "unpriced_note": note,
         }
         if reference:
@@ -261,6 +285,7 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
                 "final_kwh": final_kwh,
                 "unit_price_lei_per_kwh": unit_price,
                 "annual_cost_lei": cost,
+                "price_status": _price_reference_status(reference),
                 **reference,
             }
             if key == "biomass" and heating_profile == "firewood":
@@ -280,6 +305,10 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
         if note not in unpriced:
             unpriced.append(note)
 
+    stale_rows = [row for row in rows if row.get("price_status") == "stale"]
+    future_rows = [row for row in rows if row.get("price_status") == "not_yet_valid"]
+    price_references_current = not stale_rows and not future_rows
+
     return {
         "rows": rows,
         "service_rows": service_rows,
@@ -287,6 +316,10 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
         "priced_total_lei": priced_total,
         "average_monthly_priced_lei": priced_total / 12,
         "complete": not unpriced,
+        "price_references_current": price_references_current,
+        "commercially_current": not unpriced and price_references_current,
+        "stale_price_labels": [row["label"] for row in stale_rows],
+        "future_price_labels": [row["label"] for row in future_rows],
         "unpriced_notes": unpriced,
         "retrieved_on": energy_prices()["retrieved_on"],
         "version": energy_prices()["version"],

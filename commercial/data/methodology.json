@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.3",
+  "version": "lacurent-commercial-v2.4",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -30,33 +30,39 @@
   "heating_system_defaults": {
     "gas_boiler": {
       "label": "Centrală pe gaz",
-      "efficiency": 0.9,
-      "carrier": "natural_gas"
+      "efficiency": 0.85,
+      "carrier": "natural_gas",
+      "status": "LaCurent simplified seasonal product assumption"
     },
     "condensing_gas_boiler": {
       "label": "Centrală în condensare pe gaz",
-      "efficiency": 0.96,
-      "carrier": "natural_gas"
+      "efficiency": 0.94,
+      "carrier": "natural_gas",
+      "status": "LaCurent simplified seasonal product assumption"
     },
     "electric_resistance": {
       "label": "Încălzire electrică directă",
       "efficiency": 1,
-      "carrier": "electricity"
+      "carrier": "electricity",
+      "status": "Direct electric conversion assumption"
     },
     "heat_pump": {
       "label": "Pompă de căldură",
       "scop": 3.2,
-      "carrier": "electricity"
+      "carrier": "electricity",
+      "status": "LaCurent default SCOP; user-overridable"
     },
     "district_heat": {
       "label": "Termoficare",
-      "efficiency": 1,
-      "carrier": "district_heat"
+      "efficiency": 0.95,
+      "carrier": "district_heat",
+      "status": "LaCurent simplified delivered-energy assumption"
     },
     "custom": {
       "label": "Sistem configurabil",
-      "efficiency": 0.9,
-      "carrier": "natural_gas"
+      "efficiency": 0.85,
+      "carrier": "natural_gas",
+      "status": "Fallback only; explicit value preferred"
     }
   },
   "carriers": {
@@ -135,10 +141,10 @@
     "Necesarul lunar de răcire folosește structura Mc 001-2022 Figura 2.19: QC,nd = aC,red × (QC,gn − ηC,ht × QC,ht), cu convenția de semn MC001, factorul de utilizare al transferului termic și inerția termică. Nu se mai reconstruiește un profil meteo orar sintetic.",
     "Pentru formularul simplificat, clasa implicită de capacitate termică interioară este 'medie', 165000 J/(K·m²) × Ause, conform Mc 001-2022 Tabelul 2.20. Aceasta este o ipoteză explicită până când clasa de inerție este introdusă de utilizator.",
     "Pentru scenariile cu răcire continuă se folosește aC,red = 1. Perioadele lungi de neocupare și programele de răcire intermitentă nu sunt încă modelate de formularul simplificat.",
-    "Aportul solar utilizat de versiunea comercială este un aport lunar echivalent introdus explicit. Infrastructura proiectului conține date Hsol cu proveniență MC001, dar derivarea completă Qsol din orientări, vitraje, umbriri și proprietăți optice nu este încă automatizată în acest formular.",
     "Necesarul pentru apa caldă menajeră folosește 50 L/persoană/zi la 60 °C și 0,05814 kWh/L pentru încălzirea apei de la 10 °C la 60 °C.",
     "Clădirea de referință folosește parametri metodologici expliciți și este calculată cu același motor ca locuința evaluată.",
-    "Raportul comercial LaCurent este o estimare tehnică bazată pe o implementare simplificată a structurii Mc 001-2022 și nu reprezintă un Certificat de Performanță Energetică emis legal în România."
+    "Raportul comercial LaCurent este o estimare tehnică bazată pe o implementare simplificată a structurii Mc 001-2022 și nu reprezintă un Certificat de Performanță Energetică emis legal în România.",
+    "Valorile sezoniere implicite ale sistemelor de încălzire sunt ipoteze comerciale LaCurent centralizate în registrul metodologic și pot fi suprascrise în setările avansate; nu sunt prezentate ca randamente universale pentru toate echipamentele reale."
   ],
   "solar": {
     "model": "Mc 001-2022 monthly transparent-element solar gains using source-backed Annex A.9.6 vertical Hsol where the selected MC001/6-2013 climate station has a direct A.9.6 mapping.",

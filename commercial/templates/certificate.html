@@ -20,9 +20,10 @@
         <p>{{ result.input.project_name }} · generat automat pentru analiza curentă</p>
       </div>
       <div class="class-badge print-badge">
-        <span>Clasa</span>
+        <span>Încadrare orientativă</span>
         <strong>{{ result.energy_class }}</strong>
         <em>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/an", 1) }}</em>
+        <small>Estimare tehnică · nu este CPE</small>
       </div>
     </header>
 
@@ -53,7 +54,10 @@
 
     {% if cost_estimate.rows %}
     <section>
-      <h2>Cost anual estimat al energiei</h2>
+      <h2>Cost estimat al serviciilor energetice modelate</h2>
+      {% if not cost_estimate.price_references_current %}
+      <p><strong>Atenție:</strong> una sau mai multe referințe de preț necesită actualizare. Costul este păstrat pentru comparație, nu ca ofertă comercială curentă.</p>
+      {% endif %}
       <table class="wide-table">
         <thead><tr><th>Sursă</th><th>Energie finală</th><th>Preț de referință</th><th>Cost estimat</th></tr></thead>
         <tbody>
@@ -70,7 +74,7 @@
       </table>
       <p><small>Surse oficiale de referință verificate la {{ cost_estimate.retrieved_on }}. Costul este aplicat energiei finale cumpărate, după randamentul sau SCOP-ul instalației.</small></p>
       {% for row in cost_estimate.rows %}
-        <p><small>{{ row.label }}: {{ row.source_name }} · {{ row.basis }}{% if row.valid_until %} · valabil până la {{ row.valid_until }}{% endif %}</small></p>
+        <p><small>{{ row.label }}: {{ row.source_name }} · {{ row.basis }}{% if row.valid_until %} · valabil până la {{ row.valid_until }}{% endif %}{% if row.price_status == "stale" %} · REFERINȚĂ EXPIRATĂ{% elif row.price_status == "not_yet_valid" %} · ÎNCĂ NEINTRATĂ ÎN VIGOARE{% endif %}</small></p>
       {% endfor %}
       {% for item in cost_estimate.unpriced_notes %}<p><small>{{ item }}</small></p>{% endfor %}
     </section>

@@ -3,7 +3,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from commercial.app.main import app, build_input_from_form
+from commercial.app.main import HEATING_PROFILES, app, build_input_from_form
+from commercial.app.methodology import methodology
 
 
 client = TestClient(app)
@@ -127,3 +128,22 @@ def test_installations_offer_uses_registry_ready_locality_picker() -> None:
     assert 'id="energy-locality-results"' in response.text
     assert "Începe să scrii localitatea" in response.text
     assert "scop de proiect" in response.text
+
+
+def test_ui_heating_profiles_use_canonical_methodology_defaults() -> None:
+    defaults = methodology()["heating_system_defaults"]
+    for choice in ("condensing_gas_boiler", "gas_boiler", "electric_resistance", "heat_pump", "district_heat", "custom"):
+        profile = HEATING_PROFILES[choice]
+        canonical = defaults[profile["system_type"]]
+        if canonical.get("efficiency") is not None:
+            assert profile["efficiency"] == pytest.approx(canonical["efficiency"])
+        assert profile["carrier"] == canonical["carrier"]
+
+
+def test_result_calls_energy_band_orientative_and_scopes_costs() -> None:
+    response = client.post("/calculate", data=base_simple_form())
+    assert response.status_code == 200
+    assert "Încadrare orientativă" in response.text
+    assert "Estimare tehnică · nu este CPE" in response.text
+    assert "Cost estimat al serviciilor energetice modelate" in response.text
+    assert "Nu include consumul electric de bază al locuinței" in response.text

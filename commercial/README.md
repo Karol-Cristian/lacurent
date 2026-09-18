@@ -65,8 +65,8 @@ The app calculates:
 
 - transmission heat transfer: `Htr = sum(U * A) + sum(psi * L)`;
 - ventilation heat transfer: `Hve = 0.34 * ACH * heated volume * recovery factor`;
-- monthly heating and cooling useful demand using monthly exterior
-  temperatures, heat loss, internal gains and optional explicit solar gains;
+- monthly heating and cooling useful demand using the Mc 001-2022 / SR EN ISO 52016-1 monthly structure;
+- source-backed transparent-element solar gains from Annex A.9.6 Hsol when a direct station mapping is available, with explicit bounded fallback otherwise;
 - heating final energy for boilers, electric resistance, district heat,
   heat pumps and configurable systems;
 - cooling final energy with SEER;
@@ -108,9 +108,10 @@ The commercial DHW model uses explicit methodology values: 50 L/person/day at
 This is a commercial Energy Performance Report, not a legally issued Energy
 Performance Certificate.
 The v2 app intentionally does not implement detailed material assemblies,
-automatic solar preprocessing, official CPE layout/mapping, accounts,
-persistence, renovation scenarios, authentication or platform-specific cloud
-logic.
+full-country solar-station coverage, window-by-orientation geometry, official CPE
+layout/mapping, accounts, server-side persistence, authentication or a legal EPC
+issuance workflow. The interactive renovation/scenario laboratory is decision
+support and is not an investment guarantee.
 The nearest-station rule is a transparent commercial resolver for localities
 that are not themselves MC001 climate stations; it is not a claim that every
 locality has an individually measured MC001 monthly climate table.

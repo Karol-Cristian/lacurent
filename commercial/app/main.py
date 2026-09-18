@@ -68,16 +68,27 @@ VENTILATION_PROFILES: dict[str, tuple[float, float]] = {
     "unknown": (0.50, 0.0),
 }
 
+def _heating_profile(system_type: str, cost_profile: str, *, efficiency: float | None = None, carrier: str | None = None) -> dict[str, Any]:
+    defaults = methodology()["heating_system_defaults"][system_type]
+    return {
+        "system_type": system_type,
+        "carrier": carrier or defaults["carrier"],
+        "efficiency": efficiency if efficiency is not None else defaults.get("efficiency"),
+        "scop": defaults.get("scop", 3.2),
+        "cost_profile": cost_profile,
+    }
+
+
 HEATING_PROFILES: dict[str, dict[str, Any]] = {
-    "condensing_gas_boiler": {"system_type": "condensing_gas_boiler", "carrier": "natural_gas", "efficiency": 0.94, "scop": 3.2, "cost_profile": "natural_gas"},
-    "gas_boiler": {"system_type": "gas_boiler", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2, "cost_profile": "natural_gas"},
-    "electric_resistance": {"system_type": "electric_resistance", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2, "cost_profile": "electricity"},
-    "heat_pump": {"system_type": "heat_pump", "carrier": "electricity", "efficiency": 1.0, "scop": 3.2, "cost_profile": "electricity"},
-    "wood_stove": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.75, "scop": 3.2, "cost_profile": "firewood"},
-    "wood_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.80, "scop": 3.2, "cost_profile": "firewood"},
-    "pellet_boiler": {"system_type": "custom", "carrier": "biomass", "efficiency": 0.88, "scop": 3.2, "cost_profile": "pellets"},
-    "district_heat": {"system_type": "district_heat", "carrier": "district_heat", "efficiency": 0.95, "scop": 3.2, "cost_profile": "district_heat"},
-    "custom": {"system_type": "custom", "carrier": "natural_gas", "efficiency": 0.85, "scop": 3.2, "cost_profile": "other"},
+    "condensing_gas_boiler": _heating_profile("condensing_gas_boiler", "natural_gas"),
+    "gas_boiler": _heating_profile("gas_boiler", "natural_gas"),
+    "electric_resistance": _heating_profile("electric_resistance", "electricity"),
+    "heat_pump": _heating_profile("heat_pump", "electricity"),
+    "wood_stove": _heating_profile("custom", "firewood", efficiency=0.75, carrier="biomass"),
+    "wood_boiler": _heating_profile("custom", "firewood", efficiency=0.80, carrier="biomass"),
+    "pellet_boiler": _heating_profile("custom", "pellets", efficiency=0.88, carrier="biomass"),
+    "district_heat": _heating_profile("district_heat", "district_heat"),
+    "custom": _heating_profile("custom", "other"),
 }
 
 
