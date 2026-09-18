@@ -628,6 +628,7 @@ async def calculate_from_form(request: Request) -> HTMLResponse:
     return await render_calculation_from_form(request)
 
 
+@app.get("/magazin", response_class=HTMLResponse)
 @app.get("/embed-host-demo", response_class=HTMLResponse)
 async def embed_host_demo(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "embed_host_demo.html", {"request": request})
