@@ -602,6 +602,13 @@
   color:#fff;
 }
 .lab-class strong{font-size:56px;line-height:1}
+.lab-class[data-grade="A"]{background:linear-gradient(145deg,#2f9a52,#227941)}
+.lab-class[data-grade="B"]{background:linear-gradient(145deg,#58ad43,#37913b)}
+.lab-class[data-grade="C"]{background:linear-gradient(145deg,#d9b93f,#b99b28)}
+.lab-class[data-grade="D"]{background:linear-gradient(145deg,#efb13a,#d98b22)}
+.lab-class[data-grade="E"]{background:linear-gradient(145deg,#f28b34,#dc6f24)}
+.lab-class[data-grade="F"]{background:linear-gradient(145deg,#e96934,#cf4f27)}
+.lab-class[data-grade="G"]{background:linear-gradient(145deg,#d6403b,#b92d31)}
 .lab-class-scale{display:grid;gap:2px}
 .lab-class-scale span{
   display:flex;
