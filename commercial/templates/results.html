@@ -237,6 +237,9 @@
       <div><dt>Hve</dt><dd>{{ result.h_ve_w_k|fmt("W/K", 2) }}</dd></div>
       <div><dt>Necesar util anual pentru încălzire</dt><dd>{{ result.annual_heating_demand_kwh|fmt("kWh/an", 1) }}</dd></div>
       <div><dt>Necesar util anual pentru răcire</dt><dd>{{ result.annual_cooling_demand_kwh|fmt("kWh/an", 1) }}</dd></div>
+      <div><dt>Model solar</dt><dd>{% if result.input.solar.mode == "normative_hsol" and result.monthly[0].solar_hsol_kwh_m2 is not none %}MC001 Hsol · Anexa A.9.6{% elif result.input.solar.mode == "normative_hsol" %}Fallback aport explicit · Hsol indisponibil{% else %}Aport lunar explicit{% endif %}</dd></div>
+      <div><dt>Orientare solară</dt><dd>{{ result.input.solar.orientation }}</dd></div>
+      <div><dt>Vitraj solar</dt><dd>{{ result.input.solar.glazing_type_id }}</dd></div>
       <div><dt>Metodologie</dt><dd>{{ result.methodology_version }}</dd></div>
     </dl>
     <ul>
