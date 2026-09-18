@@ -147,3 +147,23 @@ def test_result_calls_energy_band_orientative_and_scopes_costs() -> None:
     assert "Estimare tehnică · nu este CPE" in response.text
     assert "Cost estimat al serviciilor energetice modelate" in response.text
     assert "Nu include consumul electric de bază al locuinței" in response.text
+
+
+def test_simple_form_accepts_oriented_window_distribution_and_mc001_shading() -> None:
+    form = base_simple_form()
+    form.update(
+        {
+            "solar_mode": "normative_hsol",
+            "solar_window_area_south_m2": "8",
+            "solar_window_area_east_m2": "6",
+            "solar_window_area_west_m2": "6",
+            "solar_shading_device_id": "white_curtains_abs_0_1_trans_0_5",
+            "solar_shading_mounting_side": "interior",
+        }
+    )
+    building = build_input_from_form(form)
+
+    assert sum(group.area_m2 for group in building.solar.glazing_groups) == pytest.approx(20)
+    assert {group.orientation for group in building.solar.glazing_groups} == {"south", "east", "west"}
+    assert building.solar.shading_device_id == "white_curtains_abs_0_1_trans_0_5"
+    assert building.solar.shading_mounting_side == "interior"
