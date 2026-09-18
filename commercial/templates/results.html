@@ -263,9 +263,24 @@
   </details>
 </section>
 
+{% if embed_mode %}
+<section class="partner-offer-bar">
+  <div>
+    <span>Următorul pas</span>
+    <strong>Transformă scenariul ales într-o ofertă concretă.</strong>
+    <small>Rezultatele rămân estimări tehnice; partenerul poate verifica produsul, dimensionarea și condițiile de montaj.</small>
+  </div>
+  <a class="primary-action partner-cta" href="{{ partner.cta_url }}" target="_blank" rel="noopener noreferrer">{{ partner.cta_label }}</a>
+</section>
+{% endif %}
+
 <section class="actions-footer">
+  {% if embed_mode %}
+  <a class="secondary-action" href="{{ calculator_url }}">Calculează altă locuință</a>
+  {% else %}
   <a class="secondary-action" href="/instalatii#evaluare">Cere o evaluare tehnică</a>
   <a class="secondary-action" href="/instalatii/calculator">Calculează altă locuință</a>
+  {% endif %}
   <form method="post" action="/certificate" target="_blank">
     <input type="hidden" name="payload" value="{{ payload }}">
     <button class="primary-action" type="submit">Generează raportul A4</button>
