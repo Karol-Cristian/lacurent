@@ -12,18 +12,14 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from .engine import calculate, demo_building
+from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .pricing import energy_prices, estimate_energy_cost
 from .software_resources import router as software_resources_router
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-HOME_LAB_IMAGE_DIR = BASE_DIR / "static" / "home-lab"
-HOME_LAB_IMAGE_NAMES = {
-    "house-fireplace.webp",
-    "house-orientation.webp",
-    "house-pv.webp",
-}
+HOME_LAB_IMAGE_NAMES = frozenset(HOME_LAB_IMAGE_BYTES)
 
 @lru_cache(maxsize=1)
 def embed_partner_registry() -> dict[str, Any]:
@@ -64,13 +60,8 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 def home_lab_image_asset(filename: str) -> Response:
     if filename not in HOME_LAB_IMAGE_NAMES:
         raise HTTPException(status_code=404, detail="Unknown Home Lab image.")
-    path = HOME_LAB_IMAGE_DIR / filename
-    try:
-        payload = path.read_bytes()
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Home Lab image unavailable.") from exc
     return Response(
-        content=payload,
+        content=HOME_LAB_IMAGE_BYTES[filename],
         media_type="image/webp",
         headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )
