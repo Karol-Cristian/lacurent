@@ -895,17 +895,19 @@
     if (!control || control.tagName === "SELECT") return;
     control.addEventListener("input", () => {
       syncNumber(control);
+      updateChapterSummaries();
       scheduleCalculate();
     });
   });
   controls.heating.addEventListener("change", () => {
     updateHeatingVisual();
+    updateChapterSummaries();
     scheduleCalculate(80);
   });
-  controls.glazing.addEventListener("change", () => scheduleCalculate(80));
-  controls.orientation.addEventListener("change", () => scheduleCalculate(80));
-  controls.ventilation.addEventListener("change", () => scheduleCalculate(80));
-  controls.cooling.addEventListener("change", () => scheduleCalculate(80));
+  controls.glazing.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
+  controls.orientation.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
+  controls.ventilation.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
+  controls.cooling.addEventListener("change", () => { updateChapterSummaries(); scheduleCalculate(80); });
 
   document.querySelectorAll("[data-lab-number-for]").forEach(numeric => {
     const range=document.getElementById(numeric.dataset.labNumberFor);
@@ -913,6 +915,7 @@
       const min=number(numeric.min), max=number(numeric.max), value=Math.min(max,Math.max(min,number(numeric.value)));
       range.value=String(value);
       numeric.value=range.value;
+      updateChapterSummaries();
       scheduleCalculate(80);
     });
   });
@@ -942,6 +945,7 @@
       controls.levels.value=button.dataset.segmentValue;
       syncNumber(controls.levels);
       syncLevelSegments();
+      updateChapterSummaries();
       scheduleCalculate(80);
     });
   });
@@ -956,6 +960,7 @@
     button.addEventListener("click", () => {
       controls.heating.value=button.dataset.heatingChoice;
       syncHeatingPills();
+      updateChapterSummaries();
       scheduleCalculate(80);
     });
   });
