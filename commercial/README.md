@@ -116,3 +116,15 @@ support and is not an investment guarantee.
 The nearest-station rule is a transparent commercial resolver for localities
 that are not themselves MC001 climate stations; it is not a claim that every
 locality has an individually measured MC001 monthly climate table.
+
+## Partner Embed MVP
+
+A partner-specific calculator can be embedded with:
+
+```html
+<div data-lacurent-embed data-partner="demo-store"></div>
+<script async src="https://lacurent.com/static/embed-loader.js"></script>
+```
+
+Partner configuration is server-side in `data/embed-partners.json`; arbitrary query-string branding and CTA destinations are intentionally not supported. The embed routes reuse the same form parser, Python calculation engine, pricing model and scenario laboratory as the public calculator. The loader validates the iframe origin before applying resize messages, and calculator drafts are namespaced per partner.
+
