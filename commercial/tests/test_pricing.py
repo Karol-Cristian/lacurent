@@ -48,7 +48,7 @@ def test_heat_pump_cost_uses_final_electricity_after_scop() -> None:
     assert electricity["unit_price_lei_per_kwh"] == pytest.approx(1.27284)
 
 
-def test_firewood_cost_uses_romsilva_reference_with_consumer_multiplier() -> None:
+def test_firewood_cost_uses_current_retail_pallet_mass_and_moisture() -> None:
     building = build_input_from_form(simple_form("wood_stove"))
     result = calculate(building)
     estimate = estimate_energy_cost(result)
@@ -57,16 +57,20 @@ def test_firewood_cost_uses_romsilva_reference_with_consumer_multiplier() -> Non
     assert building.heating.cost_profile == "firewood"
     assert wood["label"] == "Lemn de foc"
     assert wood["annual_cost_lei"] > 0
-    assert wood["estimated_volume_m3"] == pytest.approx(
-        wood["final_kwh"] / wood["energy_kwh_per_m3"], abs=0.01
+    assert wood["price_lei_per_pallet"] == pytest.approx(738.99)
+    assert wood["net_weight_kg_per_pallet"] == pytest.approx(600.0)
+    assert wood["water_content_percent"] == pytest.approx(30.0)
+    assert wood["energy_kwh_per_kg"] == pytest.approx(3.2960833333)
+    assert wood["unit_price_lei_per_kwh"] == pytest.approx(0.3736707709)
+    assert wood["estimated_pallets"] == pytest.approx(
+        wood["final_kwh"] / wood["energy_kwh_per_pallet"], abs=0.01
     )
-    assert wood["base_price_lei_per_m3"] == pytest.approx(300.0)
-    assert wood["consumer_cost_multiplier"] == pytest.approx(2.0)
-    assert wood["price_lei_per_m3"] == pytest.approx(600.0)
-    assert wood["unit_price_lei_per_kwh"] == pytest.approx(600.0 / 2821.0)
-    assert "Romsilva 300 lei/m³" in wood["basis"]
-    assert "estimare consumator ×2.0 = 600 lei/m³" in wood["basis"]
-    assert "nu reprezintă un preț oficial Romsilva" in wood["consumer_cost_multiplier_note"]
+    assert wood["estimated_mass_tonnes"] == pytest.approx(
+        wood["final_kwh"] / wood["energy_kwh_per_kg"] / 1000, abs=0.01
+    )
+    assert "Leroy Merlin" in wood["source_name"]
+    assert wood["secondary_source_name"].startswith("Dedeman")
+    assert "Romsilva" not in wood["basis"]
 
 
 def test_pellet_profile_uses_dated_retail_market_reference() -> None:
