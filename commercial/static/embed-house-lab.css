@@ -625,6 +625,57 @@
 .lab-reference-track i{display:block;height:100%;border-radius:inherit;background:var(--lab-green)}
 .lab-reference-card>small{display:block;margin-top:6px;color:var(--lab-muted);font-size:7.5px}
 
+.lab-overview-baseline .lab-chart-title>button{
+  border:0;
+  background:transparent;
+  color:var(--lab-green);
+  font-size:8px;
+  font-weight:760;
+  cursor:pointer;
+}
+.lab-overview-baseline-empty{
+  display:grid;
+  gap:4px;
+  min-height:116px;
+  align-content:center;
+  padding:10px 2px;
+}
+.lab-overview-baseline-empty strong{
+  color:var(--lab-navy);
+  font-size:13px;
+}
+.lab-overview-baseline-empty small{
+  max-width:320px;
+  color:var(--lab-muted);
+  font-size:8.5px;
+  line-height:1.45;
+}
+.lab-overview-baseline-data{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.lab-overview-baseline-data>div{
+  display:grid;
+  gap:4px;
+  min-height:78px;
+  align-content:center;
+  padding:9px;
+  border-radius:8px;
+  background:#f7faf8;
+}
+.lab-overview-baseline-data span{
+  color:#65736c;
+  font-size:7.5px;
+  font-weight:700;
+}
+.lab-overview-baseline-data strong{
+  color:var(--lab-navy);
+  font-size:13px;
+}
+.lab-overview-baseline-data strong.is-good{color:#157347}
+.lab-overview-baseline-data strong.is-bad{color:#b42318}
+
 .lab-baseline-empty{
   display:grid;
   min-height:330px;
