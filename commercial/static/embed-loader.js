@@ -14,12 +14,21 @@
       return;
     }
 
+    host.style.display = "block";
+    host.style.width = "100%";
+    host.style.maxWidth = "none";
+    host.style.minWidth = "0";
+
     const iframe = document.createElement("iframe");
     iframe.src = `${embedOrigin}/embed/${encodeURIComponent(partner)}`;
     iframe.title = host.dataset.title || "Calculator energetic";
     iframe.loading = host.dataset.loading || "lazy";
     iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    iframe.setAttribute("width", "100%");
     iframe.style.width = "100%";
+    iframe.style.maxWidth = "none";
+    iframe.style.minWidth = "0";
+    iframe.style.boxSizing = "border-box";
     iframe.style.height = host.dataset.initialHeight || "900px";
     iframe.style.border = "0";
     iframe.style.display = "block";
