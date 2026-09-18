@@ -31,7 +31,7 @@ test('scenario changes are debounced and use the correct calculate route', () =>
   assert.ok(source.includes('fetch(calculateUrl'));
   assert.match(source, /setTimeout\(calculateScenario,280\)/);
   assert.match(source, /AbortController/);
-}
+});
 
 
 test('scenario cockpit preserves oriented glazing and shading from the baseline', () => {
