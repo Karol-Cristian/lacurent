@@ -140,6 +140,69 @@
 .locality-option span{grid-column:1/-1;color:var(--lab-muted);font-size:8px}
 .locality-no-results{padding:10px;color:var(--lab-muted);font-size:9px}
 
+.lab-baseline-card{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:13px 14px;
+  border:1px solid #cfe2d6;
+  border-radius:13px;
+  background:linear-gradient(135deg,#f2f8f4,#fbfdfb);
+  box-shadow:0 6px 20px rgba(31,122,77,.04);
+}
+.lab-baseline-copy{
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+.lab-baseline-copy>span{
+  color:var(--lab-green);
+  font-size:7.5px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.lab-baseline-copy>strong{
+  color:var(--lab-navy);
+  font-size:12px;
+  font-weight:780;
+}
+.lab-baseline-copy>small{
+  overflow:hidden;
+  color:#64736b;
+  font-size:8.5px;
+  line-height:1.35;
+  text-overflow:ellipsis;
+}
+.lab-baseline-actions{
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+.lab-baseline-actions button,
+.lab-baseline-empty button,
+.lab-baseline-comparison-head button{
+  min-height:32px;
+  padding:6px 10px;
+  border-radius:7px;
+  font-size:8.5px;
+  font-weight:760;
+  cursor:pointer;
+}
+.lab-baseline-primary,
+.lab-baseline-empty button,
+.lab-baseline-comparison-head button{
+  border:1px solid var(--lab-green);
+  background:var(--lab-green);
+  color:#fff;
+}
+.lab-baseline-secondary{
+  border:1px solid #d6ddd9;
+  background:#fff;
+  color:#506057;
+}
+
 .lab-config-card{
   padding:14px;
   border-radius:14px;
@@ -562,6 +625,282 @@
 .lab-reference-track i{display:block;height:100%;border-radius:inherit;background:var(--lab-green)}
 .lab-reference-card>small{display:block;margin-top:6px;color:var(--lab-muted);font-size:7.5px}
 
+.lab-overview-baseline .lab-chart-title>button{
+  border:0;
+  background:transparent;
+  color:var(--lab-green);
+  font-size:8px;
+  font-weight:760;
+  cursor:pointer;
+}
+.lab-overview-baseline-empty{
+  display:grid;
+  gap:4px;
+  min-height:116px;
+  align-content:center;
+  padding:10px 2px;
+}
+.lab-overview-baseline-empty strong{
+  color:var(--lab-navy);
+  font-size:13px;
+}
+.lab-overview-baseline-empty small{
+  max-width:320px;
+  color:var(--lab-muted);
+  font-size:8.5px;
+  line-height:1.45;
+}
+.lab-overview-baseline-data{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.lab-overview-baseline-data>div{
+  display:grid;
+  gap:4px;
+  min-height:78px;
+  align-content:center;
+  padding:9px;
+  border-radius:8px;
+  background:#f7faf8;
+}
+.lab-overview-baseline-data span{
+  color:#65736c;
+  font-size:7.5px;
+  font-weight:700;
+}
+.lab-overview-baseline-data strong{
+  color:var(--lab-navy);
+  font-size:13px;
+}
+.lab-overview-baseline-data strong.is-good{color:#157347}
+.lab-overview-baseline-data strong.is-bad{color:#b42318}
+
+.lab-baseline-empty{
+  display:grid;
+  min-height:330px;
+  place-items:center;
+  align-content:center;
+  gap:9px;
+  padding:28px;
+  text-align:center;
+}
+.lab-baseline-empty-icon{
+  display:grid;
+  width:54px;
+  height:54px;
+  place-items:center;
+  border-radius:16px;
+  background:#edf6f0;
+  color:var(--lab-green);
+  font-size:27px;
+}
+.lab-baseline-empty strong{
+  color:var(--lab-navy);
+  font-size:18px;
+}
+.lab-baseline-empty p{
+  max-width:410px;
+  margin:0;
+  color:var(--lab-muted);
+  font-size:10px;
+  line-height:1.5;
+}
+.lab-baseline-comparison{
+  display:grid;
+  gap:12px;
+}
+.lab-baseline-comparison-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding-bottom:10px;
+  border-bottom:1px solid #e9edef;
+}
+.lab-baseline-comparison-head>div{
+  display:grid;
+  gap:2px;
+}
+.lab-baseline-comparison-head span{
+  color:var(--lab-green);
+  font-size:7.5px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.lab-baseline-comparison-head h3{
+  margin:0;
+  color:var(--lab-navy);
+  font-size:17px;
+}
+.lab-baseline-columns{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  gap:10px;
+  align-items:center;
+}
+.lab-baseline-columns>div:not(.lab-baseline-arrow){
+  display:grid;
+  gap:3px;
+  min-height:84px;
+  align-content:center;
+  padding:12px;
+  border:1px solid #e1e7e4;
+  border-radius:10px;
+  background:#f8faf9;
+}
+.lab-baseline-columns span{
+  color:var(--lab-muted);
+  font-size:8px;
+}
+.lab-baseline-columns strong{
+  color:var(--lab-navy);
+  font-size:25px;
+}
+.lab-baseline-columns small{
+  color:#77837d;
+  font-size:7.5px;
+}
+.lab-baseline-arrow{
+  color:var(--lab-green);
+  font-size:18px;
+  font-weight:800;
+}
+.lab-baseline-metric-list{
+  display:grid;
+  overflow:hidden;
+  border:1px solid #e3e8e5;
+  border-radius:10px;
+}
+.lab-baseline-metric{
+  display:grid;
+  grid-template-columns:minmax(108px,1fr) minmax(92px,.82fr) 18px minmax(92px,.82fr) minmax(62px,.6fr);
+  gap:7px;
+  align-items:center;
+  min-height:42px;
+  padding:7px 10px;
+  border-bottom:1px solid #edf0ee;
+}
+.lab-baseline-metric:last-child{border-bottom:0}
+.lab-baseline-metric>span:first-child{
+  color:#53615a;
+  font-size:8.5px;
+  font-weight:700;
+}
+.lab-baseline-metric>strong{
+  color:var(--lab-navy);
+  font-size:10px;
+}
+.lab-baseline-metric>strong small{
+  color:var(--lab-muted);
+  font-size:7px;
+  font-weight:500;
+}
+.lab-baseline-metric>b{
+  color:#93a09a;
+  font-size:10px;
+  text-align:center;
+}
+.lab-baseline-metric>span:last-child{
+  justify-self:end;
+  padding:3px 6px;
+  border-radius:999px;
+  font-size:7.5px;
+  font-weight:800;
+}
+.is-good{color:#23804c!important}
+.is-bad{color:#b5473c!important}
+.lab-baseline-metric>span.is-good{background:#eaf6ef}
+.lab-baseline-metric>span.is-bad{background:#fff0ed}
+.lab-baseline-metric>span.is-neutral{background:#f0f2f1;color:#6e7974}
+.lab-saved-scenarios-block{
+  display:grid;
+  gap:8px;
+  padding-top:2px;
+}
+.lab-saved-scenarios-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.lab-saved-scenarios-head strong{
+  color:var(--lab-navy);
+  font-size:10px;
+}
+.lab-saved-scenarios-head button{
+  border:0;
+  background:transparent;
+  color:#8b9690;
+  font-size:7.5px;
+  cursor:pointer;
+}
+.lab-saved-scenarios{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+}
+.lab-scenario-card{
+  display:grid;
+  gap:3px;
+  min-width:0;
+  padding:9px;
+  border:1px solid #dfe5e1;
+  border-radius:9px;
+  background:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.lab-scenario-card:hover{
+  border-color:#abcdb8;
+  background:#f7fbf8;
+}
+.lab-scenario-card span{
+  overflow:hidden;
+  color:#617068;
+  font-size:7.5px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.lab-scenario-card strong{
+  color:var(--lab-navy);
+  font-size:10.5px;
+}
+.lab-scenario-card small{
+  font-size:7.5px;
+}
+.lab-scenario-empty{
+  grid-column:1/-1;
+  margin:0;
+  padding:10px;
+  border:1px dashed #d9e0dc;
+  border-radius:8px;
+  color:#7d8982;
+  font-size:8px;
+  text-align:center;
+}
+
+.lab-baseline-rail{
+  display:grid;
+  gap:2px;
+  padding:11px 15px;
+  border-bottom:1px solid #d9e8de;
+  background:#f0f7f2;
+}
+.lab-baseline-rail>span{
+  color:#5d7465;
+  font-size:7.5px;
+}
+.lab-baseline-rail>strong{
+  color:var(--lab-navy);
+  font-size:16px;
+}
+.lab-baseline-rail>small{
+  color:#68786e;
+  font-size:7.5px;
+}
+
 .lab-focus-card{
   display:grid;
   gap:4px;
@@ -706,6 +1045,8 @@
     gap:10px;
   }
   .lab-config-header{grid-template-columns:1fr}
+  .lab-baseline-card{grid-template-columns:1fr}
+  .lab-baseline-actions{justify-content:flex-start}
   .lab-field-grid.three{gap:8px}
   .lab-dashboard-grid{grid-template-columns:1fr}
   .lab-house-visual,.lab-house-visual img{height:230px;min-height:230px}
@@ -757,6 +1098,10 @@
   .lab-service-donut{width:88px;height:88px}
   .lab-service-donut::before{width:52px;height:52px}
   .lab-summary-metrics{grid-template-columns:1fr}
+  .lab-baseline-metric{grid-template-columns:1fr 1fr auto 1fr}
+  .lab-baseline-metric>span:first-child{grid-column:1/-1}
+  .lab-baseline-metric>span:last-child{grid-column:1/-1;justify-self:start}
+  .lab-saved-scenarios{grid-template-columns:1fr}
   .lab-summary-actions{grid-template-columns:1fr}
 }
 

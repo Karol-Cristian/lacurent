@@ -54,10 +54,18 @@
       systemsTitle:"3. Sisteme de încălzire și apă caldă", systemsSubtitle:"Alege sursa principală",
       ventilationTitle:"4. Ventilație și răcire", ventilationSubtitle:"Schimbul de aer și confortul de vară",
       ventilation:"Sistem ventilație", cooling:"Răcire", otherHeating:"Alte sisteme",
-      compareScenarios:"Compară scenarii", tabOverview:"Prezentare", tabCosts:"Costuri", tabEnergy:"Energie", tabLosses:"Pierderi", tabComparison:"Comparație",
+      compareScenarios:"Compară cu casa actuală", tabOverview:"Prezentare", tabCosts:"Costuri", tabEnergy:"Energie", tabLosses:"Pierderi", tabComparison:"Comparație",
+      overviewBaselineTitle:"Față de casa ta actuală", overviewBaselineSubtitle:"baseline real salvat de tine", overviewBaselineEmptyTitle:"Salvează casa actuală", overviewBaselineEmptyText:"După aceea, orice modificare devine un scenariu comparat cu situația reală de azi.", details:"Detalii",
       heroMessage:"O casă bine configurată înseamnă costuri mai mici și mai mult confort.",
       energyClass:"Clasă energetică", lossSubtitle:"% din pierderile totale", yourHouse:"Casa ta", referenceHouse:"Casă de referință",
       saveConfig:"Salvează configurația", exportReport:"Exportă raport", summaryPromise:"Case eficiente pentru oameni, comunități și un mediu mai curat.", summaryLearn:"Rezultatele folosesc motorul energetic LaCurent.",
+      baselineStep:"Punct de plecare", baselineTitle:"Casa actuală", baselinePrompt:"Configurează locuința așa cum este astăzi, apoi salveaz-o ca baseline.",
+      saveBaseline:"Salvează casa curentă", updateBaseline:"Actualizează casa curentă", restoreBaseline:"Revino la casa actuală",
+      comparisonNeedsBaseline:"Salvează mai întâi casa actuală", comparisonNeedsBaselineText:"Apoi modifică izolația, ferestrele sau sistemele și vei vedea exact diferența față de situația de azi.",
+      baselineComparisonKicker:"Comparație reală", baselineComparisonTitle:"Casa actuală vs scenariul curent", baselineCurrentHouse:"Casa actuală", baselineScenario:"Scenariul curent", liveScenario:"recalculat live",
+      saveScenario:"Salvează scenariul", savedScenarios:"Scenarii salvate", clearScenarios:"Șterge scenariile", versusBaseline:"Față de casa actuală",
+      metricAnnualCost:"Cost anual", metricFinalEnergy:"Energie finală", metricPrimary:"Energie primară specifică", metricCo2:"Emisii CO₂", metricPower:"Putere termică", metricClass:"Clasă energetică",
+      noSavedScenarios:"Nu ai salvat încă variante.", savedNow:"salvată acum", scenarioSaved:"Scenariu salvat", savings:"economie", extraCost:"cost suplimentar", noChange:"fără diferență",
       intro:"Pornești de la o casă presetată și modifici doar ce contează. Costul, consumul și necesarul termic se actualizează pe loc.",
       proofClimate:"Profil climatic automat", proofLive:"Recalculare live", proofCost:"Cost anual estimat",
       reset:"Revino la preset", locationTitle:"Unde este casa?", locationSubtitle:"Scrie localitatea și alege rezultatul corect.",
@@ -90,10 +98,18 @@
       systemsTitle:"3. Heating and hot water", systemsSubtitle:"Choose the main heat source",
       ventilationTitle:"4. Ventilation and cooling", ventilationSubtitle:"Air change and summer comfort",
       ventilation:"Ventilation system", cooling:"Cooling", otherHeating:"Other systems",
-      compareScenarios:"Compare scenarios", tabOverview:"Overview", tabCosts:"Costs", tabEnergy:"Energy", tabLosses:"Losses", tabComparison:"Comparison",
+      compareScenarios:"Compare with current home", tabOverview:"Overview", tabCosts:"Costs", tabEnergy:"Energy", tabLosses:"Losses", tabComparison:"Comparison",
+      overviewBaselineTitle:"Compared with your current home", overviewBaselineSubtitle:"your saved real-home baseline", overviewBaselineEmptyTitle:"Save the current home", overviewBaselineEmptyText:"After that, every change becomes a scenario compared with the real situation today.", details:"Details",
       heroMessage:"A well-configured home means lower costs and better comfort.",
       energyClass:"Energy class", lossSubtitle:"% of total losses", yourHouse:"Your home", referenceHouse:"Reference home",
       saveConfig:"Save configuration", exportReport:"Export report", summaryPromise:"Efficient homes for people, communities and a cleaner environment.", summaryLearn:"Results use the LaCurent energy engine.",
+      baselineStep:"Starting point", baselineTitle:"Current home", baselinePrompt:"Configure the home as it is today, then save it as the baseline.",
+      saveBaseline:"Save current home", updateBaseline:"Update current home", restoreBaseline:"Return to current home",
+      comparisonNeedsBaseline:"Save the current home first", comparisonNeedsBaselineText:"Then change insulation, windows or systems and see the exact difference versus today.",
+      baselineComparisonKicker:"Real comparison", baselineComparisonTitle:"Current home vs current scenario", baselineCurrentHouse:"Current home", baselineScenario:"Current scenario", liveScenario:"recalculated live",
+      saveScenario:"Save scenario", savedScenarios:"Saved scenarios", clearScenarios:"Clear scenarios", versusBaseline:"Compared with current home",
+      metricAnnualCost:"Annual cost", metricFinalEnergy:"Final energy", metricPrimary:"Specific primary energy", metricCo2:"CO₂ emissions", metricPower:"Heat load", metricClass:"Energy class",
+      noSavedScenarios:"No saved variants yet.", savedNow:"saved now", scenarioSaved:"Scenario saved", savings:"saving", extraCost:"extra cost", noChange:"no difference",
       intro:"Start from a preset home and change only what matters. Cost, energy use and heat load update instantly.",
       proofClimate:"Automatic climate profile", proofLive:"Live recalculation", proofCost:"Estimated annual cost",
       reset:"Reset preset", locationTitle:"Where is the house?", locationSubtitle:"Type the locality and choose the correct result.",
@@ -201,6 +217,18 @@
   let timer = null;
   let lastResult = null;
   let activeController = null;
+  const scenarioStorageKey = `lacurent-home-lab-scenarios-v1:${root.dataset.partnerId || "default"}`;
+  let baselineSnapshot = null;
+  let savedScenarios = [];
+
+  try {
+    const stored = JSON.parse(window.localStorage?.getItem(scenarioStorageKey) || "null");
+    if (stored && stored.baseline) baselineSnapshot = stored.baseline;
+    if (stored && Array.isArray(stored.scenarios)) savedScenarios = stored.scenarios.slice(0,6);
+  } catch (_) {
+    baselineSnapshot = null;
+    savedScenarios = [];
+  }
 
   function insulationU(baseU, centimetres) {
     const lambda = 0.040;
@@ -329,29 +357,6 @@
     }).join("");
   }
 
-  function renderReference(data) {
-    const card=document.getElementById("labReferenceCard");
-    if (!card) return;
-    if (!data.reference) {
-      card.hidden=true;
-      return;
-    }
-    card.hidden=false;
-    const actual=Number(data.reference.actual_specific_primary_kwh_m2)||0;
-    const reference=Number(data.reference.reference_specific_primary_kwh_m2)||0;
-    const difference=Number(data.reference.difference_percent)||0;
-    const deltaText=`${difference>0?"+":""}${fmt(difference,1)}%`;
-    const detail=`${fmt(actual,1)} vs ${fmt(reference,1)} kWh/m²/an · ${Math.abs(difference).toLocaleString(lang()==="en"?"en-US":"ro-RO",{maximumFractionDigits:1})}% ${difference<=0?tr("referenceBetter"):tr("referenceWorse")}`;
-    document.getElementById("labReferenceDelta").textContent = deltaText;
-    document.getElementById("labReferenceActual").textContent = fmt(actual,0);
-    document.getElementById("labReferenceTarget").textContent = fmt(reference,0);
-    document.getElementById("labReferenceText").textContent = detail;
-    document.getElementById("labComparisonDelta").textContent = deltaText;
-    document.getElementById("labComparisonText").textContent = detail;
-    const ratio = reference > 0 ? Math.min(100, 100*actual/reference) : 0;
-    document.getElementById("labReferenceBar").style.width = `${Math.max(2,ratio)}%`;
-  }
-
   function renderServiceDonut(data) {
     const services=data.final_energy_by_service || {};
     const rows=[
@@ -378,6 +383,216 @@
     document.getElementById("labServiceChartMirror").innerHTML=legendHtml;
   }
 
+  function snapshotResult(data) {
+    return {
+      energy_class:data?.energy_class || "—",
+      annual_cost_lei:Number(data?.annual_cost_lei)||0,
+      average_monthly_cost_lei:Number(data?.average_monthly_cost_lei)||0,
+      final_energy_kwh:Number(data?.final_energy_kwh)||0,
+      primary_specific_kwh_m2:Number(data?.primary_specific_kwh_m2)||0,
+      co2_kg:Number(data?.co2_kg)||0,
+      design_heat_load_kw:Number(data?.design_heat_load_kw)||0,
+      heat_loss_w_k:Number(data?.heat_loss_w_k)||0,
+      locality:data?.locality || localityInput.value || "",
+      climate_station:data?.climate_station || ""
+    };
+  }
+
+  function captureControlState() {
+    return Object.fromEntries(Object.entries(controls).filter(([,control]) => control).map(([key,control]) => [key, control.value]));
+  }
+
+  function captureSnapshot(name) {
+    if (!lastResult) return null;
+    const values={};
+    new FormData(form).forEach((value,key) => { values[key]=value; });
+    return {
+      id:`scenario-${Date.now().toString(36)}`,
+      name,
+      savedAt:new Date().toISOString(),
+      localityId:selectedLocality?.id || formField("locality_id")?.value || "",
+      localityLabel:localityInput.value || "",
+      controls:captureControlState(),
+      form:values,
+      result:snapshotResult(lastResult)
+    };
+  }
+
+  function persistScenarioState() {
+    try {
+      window.localStorage?.setItem(scenarioStorageKey, JSON.stringify({
+        baseline:baselineSnapshot,
+        scenarios:savedScenarios.slice(0,6)
+      }));
+    } catch (_) {}
+  }
+
+  function metricDelta(base,current,lowerIsBetter=true) {
+    const b=Number(base)||0;
+    const n=Number(current)||0;
+    if (!b) return {pct:null,good:null};
+    const pct=100*(n-b)/Math.abs(b);
+    return {pct,good:lowerIsBetter ? pct < -0.05 : pct > 0.05};
+  }
+
+  function deltaBadge(base,current,lowerIsBetter=true) {
+    const {pct,good}=metricDelta(base,current,lowerIsBetter);
+    if (pct == null || Math.abs(pct) < .05) return `<span class="is-neutral">${tr("noChange")}</span>`;
+    const sign=pct>0?"+":"";
+    return `<span class="${good?"is-good":"is-bad"}">${sign}${fmt(pct,1)}%</span>`;
+  }
+
+  function renderSavedScenarios() {
+    const node=document.getElementById("labSavedScenarios");
+    if (!node) return;
+    if (!savedScenarios.length) {
+      node.innerHTML=`<p class="lab-scenario-empty">${tr("noSavedScenarios")}</p>`;
+      return;
+    }
+    const baseCost=Number(baselineSnapshot?.result?.annual_cost_lei)||0;
+    node.innerHTML=savedScenarios.map((scenario,index) => {
+      const result=scenario.result || {};
+      const saving=baseCost ? baseCost-Number(result.annual_cost_lei||0) : 0;
+      const savingPct=baseCost ? 100*saving/baseCost : 0;
+      return `<button type="button" class="lab-scenario-card" data-load-scenario="${scenario.id}">
+        <span>${scenario.name || `Scenariul ${index+1}`}</span>
+        <strong>${fmt(result.annual_cost_lei)} lei/an</strong>
+        <small class="${saving>=0?"is-good":"is-bad"}">${saving>=0?"−":"+"}${fmt(Math.abs(savingPct),1)}% ${saving>=0?tr("savings"):tr("extraCost")}</small>
+      </button>`;
+    }).join("");
+  }
+
+  function renderBaselineComparison() {
+    const empty=document.getElementById("labBaselineEmpty");
+    const comparison=document.getElementById("labBaselineComparison");
+    const rail=document.getElementById("labBaselineRail");
+    const restore=document.getElementById("labRestoreBaseline");
+    const saveButton=document.getElementById("labSaveBaseline");
+    const title=document.getElementById("labBaselineTitle");
+    const summary=document.getElementById("labBaselineSummary");
+
+    const overviewEmpty=document.getElementById("labOverviewBaselineEmpty");
+    const overviewData=document.getElementById("labOverviewBaselineData");
+
+    if (!baselineSnapshot) {
+      if (overviewEmpty) overviewEmpty.hidden=false;
+      if (overviewData) overviewData.hidden=true;
+      if (empty) empty.hidden=false;
+      if (comparison) comparison.hidden=true;
+      if (rail) rail.hidden=true;
+      if (restore) restore.hidden=true;
+      if (saveButton) saveButton.textContent=tr("saveBaseline");
+      if (title) title.textContent=tr("baselineTitle");
+      if (summary) summary.textContent=tr("baselinePrompt");
+      renderSavedScenarios();
+      return;
+    }
+
+    const base=baselineSnapshot.result || {};
+    const current=lastResult ? snapshotResult(lastResult) : base;
+    if (overviewEmpty) overviewEmpty.hidden=true;
+    if (overviewData) overviewData.hidden=false;
+    if (empty) empty.hidden=true;
+    if (comparison) comparison.hidden=false;
+    if (rail) rail.hidden=false;
+    if (restore) restore.hidden=false;
+    if (saveButton) saveButton.textContent=tr("updateBaseline");
+    if (title) title.textContent=tr("baselineTitle");
+    if (summary) summary.textContent=`${base.energy_class || "—"} · ${fmt(base.annual_cost_lei)} lei/an · ${fmt(base.final_energy_kwh)} kWh/an`;
+
+    const baselineClass=document.getElementById("labBaselineClass");
+    const scenarioClass=document.getElementById("labScenarioClass");
+    const stamp=document.getElementById("labBaselineStamp");
+    if (baselineClass) baselineClass.textContent=base.energy_class || "—";
+    if (scenarioClass) scenarioClass.textContent=current.energy_class || "—";
+    if (stamp) stamp.textContent=baselineSnapshot.savedAt ? new Date(baselineSnapshot.savedAt).toLocaleString(lang()==="en"?"en-US":"ro-RO",{dateStyle:"short",timeStyle:"short"}) : tr("savedNow");
+
+    const metrics=[
+      {label:tr("metricAnnualCost"),base:base.annual_cost_lei,current:current.annual_cost_lei,unit:"lei/an",digits:0},
+      {label:tr("metricFinalEnergy"),base:base.final_energy_kwh,current:current.final_energy_kwh,unit:"kWh/an",digits:0},
+      {label:tr("metricPrimary"),base:base.primary_specific_kwh_m2,current:current.primary_specific_kwh_m2,unit:"kWh/m²/an",digits:1},
+      {label:tr("metricCo2"),base:base.co2_kg,current:current.co2_kg,unit:"kg/an",digits:0},
+      {label:tr("metricPower"),base:base.design_heat_load_kw,current:current.design_heat_load_kw,unit:"kW",digits:1}
+    ];
+    const list=document.getElementById("labBaselineMetricList");
+    if (list) list.innerHTML=metrics.map(row => `<div class="lab-baseline-metric">
+      <span>${row.label}</span>
+      <strong>${fmt(row.base,row.digits)} <small>${row.unit}</small></strong>
+      <b>→</b>
+      <strong>${fmt(row.current,row.digits)} <small>${row.unit}</small></strong>
+      ${deltaBadge(row.base,row.current,true)}
+    </div>`).join("") + `<div class="lab-baseline-metric lab-baseline-class-metric">
+      <span>${tr("metricClass")}</span>
+      <strong>${base.energy_class || "—"}</strong><b>→</b><strong>${current.energy_class || "—"}</strong><span></span>
+    </div>`;
+
+    const savings=(Number(base.annual_cost_lei)||0)-(Number(current.annual_cost_lei)||0);
+    const baseCost=Number(base.annual_cost_lei)||0;
+
+    const overviewCost=document.getElementById("labOverviewBaselineCost");
+    const overviewEnergy=document.getElementById("labOverviewBaselineEnergy");
+    const overviewPower=document.getElementById("labOverviewBaselinePower");
+
+    const costDelta=Number(current.annual_cost_lei||0)-Number(base.annual_cost_lei||0);
+    const energyDelta=Number(current.final_energy_kwh||0)-Number(base.final_energy_kwh||0);
+    const powerDelta=Number(current.design_heat_load_kw||0)-Number(base.design_heat_load_kw||0);
+
+    const deltaText=(value,unit,digits=0) => {
+      if (Math.abs(value) < (digits ? 0.05 : 0.5)) return tr("noChange");
+      const sign=value>0?"+":"−";
+      return `${sign}${fmt(Math.abs(value),digits)} ${unit}`;
+    };
+
+    if (overviewCost) {
+      overviewCost.textContent=deltaText(costDelta,"lei/an",0);
+      overviewCost.classList.toggle("is-good",costDelta < -0.5);
+      overviewCost.classList.toggle("is-bad",costDelta > 0.5);
+    }
+    if (overviewEnergy) {
+      overviewEnergy.textContent=deltaText(energyDelta,"kWh/an",0);
+      overviewEnergy.classList.toggle("is-good",energyDelta < -0.5);
+      overviewEnergy.classList.toggle("is-bad",energyDelta > 0.5);
+    }
+    if (overviewPower) {
+      overviewPower.textContent=deltaText(powerDelta,"kW",1);
+      overviewPower.classList.toggle("is-good",powerDelta < -0.05);
+      overviewPower.classList.toggle("is-bad",powerDelta > 0.05);
+    }
+    const savingsPct=baseCost ? 100*savings/baseCost : 0;
+    const savingsNode=document.getElementById("labBaselineSavings");
+    const noteNode=document.getElementById("labBaselineSavingsNote");
+    if (savingsNode) {
+      savingsNode.classList.toggle("is-good", savings>0.5);
+      savingsNode.classList.toggle("is-bad", savings<-.5);
+      savingsNode.textContent=Math.abs(savings)<.5 ? tr("noChange") : `${savings>0?"−":"+"}${fmt(Math.abs(savings))} lei/an`;
+    }
+    if (noteNode) noteNode.textContent=Math.abs(savings)<.5 ? tr("noChange") : `${fmt(Math.abs(savingsPct),1)}% ${savings>0?tr("savings"):tr("extraCost")}`;
+
+    renderSavedScenarios();
+  }
+
+  function restoreSnapshot(snapshot) {
+    if (!snapshot) return;
+    Object.entries(snapshot.controls || {}).forEach(([key,value]) => {
+      const control=controls[key];
+      if (!control) return;
+      control.value=String(value);
+      if (control.tagName !== "SELECT") syncNumber(control);
+    });
+    syncLevelSegments();
+    syncHeatingPills();
+    updateHeatingVisual();
+    const locality=byId.get(snapshot.localityId);
+    if (locality) {
+      selectLocality(locality);
+    } else {
+      localityInput.value=snapshot.localityLabel || "";
+      if (snapshot.form?.locality_id) setField("locality_id",snapshot.form.locality_id);
+      if (snapshot.form?.locality) setField("locality",snapshot.form.locality);
+      scheduleCalculate(20);
+    }
+  }
+
   function renderDashboard(data) {
     renderMonthlyChart(data);
     const monthly=document.getElementById("labMonthlyChart");
@@ -392,7 +607,6 @@
     }));
     renderHorizontalChart("labLossChart",lossRows,6);
     renderHorizontalChart("labLossChartMirror",lossRows,6);
-    renderReference(data);
   }
 
   function renderResult(data) {
@@ -413,6 +627,7 @@
     document.getElementById("labFinalEnergyMirror").textContent = `${fmt(data.final_energy_kwh)} kWh/an`;
     root.querySelectorAll("[data-class-grade]").forEach(el => el.classList.toggle("is-active", el.dataset.classGrade === data.energy_class));
     renderDashboard(data);
+    renderBaselineComparison();
     setStatus(tr("ready"), "live");
   }
 
@@ -514,6 +729,7 @@
     if (selectedLocality) selectLocality(selectedLocality);
     updateHeatingVisual();
     if (lastResult) renderDashboard(lastResult);
+    renderBaselineComparison();
   }
 
   Object.values(controls).forEach(control => {
@@ -607,6 +823,51 @@
     });
   }
 
+  const saveBaselineButton=document.getElementById("labSaveBaseline");
+  const restoreBaselineButton=document.getElementById("labRestoreBaseline");
+  const saveScenarioButton=document.getElementById("labSaveScenario");
+  const clearScenariosButton=document.getElementById("labClearScenarios");
+  const comparisonBaselineButton=root.querySelector("[data-baseline-from-comparison]");
+
+  function saveBaseline() {
+    const snapshot=captureSnapshot(tr("baselineTitle"));
+    if (!snapshot) return;
+    baselineSnapshot=snapshot;
+    savedScenarios=[];
+    persistScenarioState();
+    renderBaselineComparison();
+    openResultTab("comparison");
+  }
+
+  saveBaselineButton?.addEventListener("click", saveBaseline);
+  comparisonBaselineButton?.addEventListener("click", saveBaseline);
+  restoreBaselineButton?.addEventListener("click", () => restoreSnapshot(baselineSnapshot));
+
+  saveScenarioButton?.addEventListener("click", () => {
+    if (!baselineSnapshot || !lastResult) return;
+    const index=savedScenarios.length+1;
+    const scenario=captureSnapshot(`${lang()==="en"?"Scenario":"Scenariul"} ${index}`);
+    if (!scenario) return;
+    savedScenarios=[scenario,...savedScenarios].slice(0,6);
+    persistScenarioState();
+    renderSavedScenarios();
+    saveScenarioButton.textContent=tr("scenarioSaved");
+    window.setTimeout(()=>{ saveScenarioButton.textContent=tr("saveScenario"); },1200);
+  });
+
+  clearScenariosButton?.addEventListener("click", () => {
+    savedScenarios=[];
+    persistScenarioState();
+    renderSavedScenarios();
+  });
+
+  document.getElementById("labSavedScenarios")?.addEventListener("click", event => {
+    const button=event.target.closest("[data-load-scenario]");
+    if (!button) return;
+    const scenario=savedScenarios.find(item => item.id === button.dataset.loadScenario);
+    if (scenario) restoreSnapshot(scenario);
+  });
+
   localityInput.addEventListener("input", () => {
     setField("locality_id","");
     if (localities.length) renderLocalityResults(localityInput.value);
@@ -690,5 +951,6 @@
   syncLevelSegments();
   syncHeatingPills();
   openResultTab("overview");
+  renderBaselineComparison();
   applyLanguage();
 })();

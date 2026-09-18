@@ -42,6 +42,18 @@
         </div>
       </header>
 
+      <section class="lab-baseline-card" data-baseline-card>
+        <div class="lab-baseline-copy">
+          <span data-lab-key="baselineStep">Punct de plecare</span>
+          <strong id="labBaselineTitle" data-lab-key="baselineTitle">Casa actuală</strong>
+          <small id="labBaselineSummary" data-lab-key="baselinePrompt">Configurează locuința așa cum este astăzi, apoi salveaz-o ca baseline.</small>
+        </div>
+        <div class="lab-baseline-actions">
+          <button type="button" class="lab-baseline-primary" id="labSaveBaseline" data-lab-key="saveBaseline">Salvează casa curentă</button>
+          <button type="button" class="lab-baseline-secondary" id="labRestoreBaseline" data-lab-key="restoreBaseline" hidden>Revino la casa actuală</button>
+        </div>
+      </section>
+
       <section class="lab-config-card">
         <div class="lab-config-card-title">
           <span class="lab-card-icon">⌂</span>
@@ -296,20 +308,34 @@
             <div class="lab-horizontal-chart" id="labLossChart"></div>
           </section>
 
-          <section class="lab-chart-card lab-reference-card" id="labReferenceCard" hidden>
+          <section class="lab-chart-card lab-overview-baseline" id="labOverviewBaseline">
             <div class="lab-chart-title">
               <div>
-                <strong data-lab-key="referenceTitle">Față de o casă de referință</strong>
-                <small>kWh/m²/an</small>
+                <strong data-lab-key="overviewBaselineTitle">Față de casa ta actuală</strong>
+                <small data-lab-key="overviewBaselineSubtitle">baseline real salvat de tine</small>
+              </div>
+              <button type="button" data-open-tab="comparison" data-lab-key="details">Detalii</button>
+            </div>
+
+            <div class="lab-overview-baseline-empty" id="labOverviewBaselineEmpty">
+              <strong data-lab-key="overviewBaselineEmptyTitle">Salvează casa actuală</strong>
+              <small data-lab-key="overviewBaselineEmptyText">După aceea, orice modificare devine un scenariu comparat cu situația reală de azi.</small>
+            </div>
+
+            <div class="lab-overview-baseline-data" id="labOverviewBaselineData" hidden>
+              <div>
+                <span data-lab-key="metricAnnualCost">Cost anual</span>
+                <strong id="labOverviewBaselineCost">—</strong>
+              </div>
+              <div>
+                <span data-lab-key="metricFinalEnergy">Energie finală</span>
+                <strong id="labOverviewBaselineEnergy">—</strong>
+              </div>
+              <div>
+                <span data-lab-key="metricPower">Putere termică</span>
+                <strong id="labOverviewBaselinePower">—</strong>
               </div>
             </div>
-            <div class="lab-reference-comparison">
-              <div><strong id="labReferenceActual">—</strong><span data-lab-key="yourHouse">Casa ta</span></div>
-              <b id="labReferenceDelta">—</b>
-              <div><strong id="labReferenceTarget">—</strong><span data-lab-key="referenceHouse">Casă de referință</span></div>
-            </div>
-            <div class="lab-reference-track"><i id="labReferenceBar"></i></div>
-            <small id="labReferenceText">—</small>
           </section>
         </div>
       </div>
@@ -346,10 +372,45 @@
       </div>
 
       <div class="lab-result-panel" data-lab-panel="comparison">
-        <section class="lab-focus-card">
-          <span data-lab-key="referenceTitle">Față de o casă de referință</span>
-          <strong id="labComparisonDelta">—</strong>
-          <small id="labComparisonText">—</small>
+        <section class="lab-baseline-empty" id="labBaselineEmpty">
+          <span class="lab-baseline-empty-icon">⌂</span>
+          <strong data-lab-key="comparisonNeedsBaseline">Salvează mai întâi casa actuală</strong>
+          <p data-lab-key="comparisonNeedsBaselineText">Apoi modifică izolația, ferestrele sau sistemele și vei vedea exact diferența față de situația de azi.</p>
+          <button type="button" data-baseline-from-comparison data-lab-key="saveBaseline">Salvează casa curentă</button>
+        </section>
+
+        <section class="lab-baseline-comparison" id="labBaselineComparison" hidden>
+          <header class="lab-baseline-comparison-head">
+            <div>
+              <span data-lab-key="baselineComparisonKicker">Comparație reală</span>
+              <h3 data-lab-key="baselineComparisonTitle">Casa actuală vs scenariul curent</h3>
+            </div>
+            <button type="button" id="labSaveScenario" data-lab-key="saveScenario">Salvează scenariul</button>
+          </header>
+
+          <div class="lab-baseline-columns">
+            <div>
+              <span data-lab-key="baselineCurrentHouse">Casa actuală</span>
+              <strong id="labBaselineClass">—</strong>
+              <small id="labBaselineStamp">—</small>
+            </div>
+            <div class="lab-baseline-arrow">→</div>
+            <div>
+              <span data-lab-key="baselineScenario">Scenariul curent</span>
+              <strong id="labScenarioClass">—</strong>
+              <small id="labScenarioStatus" data-lab-key="liveScenario">recalculat live</small>
+            </div>
+          </div>
+
+          <div class="lab-baseline-metric-list" id="labBaselineMetricList"></div>
+
+          <div class="lab-saved-scenarios-block">
+            <div class="lab-saved-scenarios-head">
+              <strong data-lab-key="savedScenarios">Scenarii salvate</strong>
+              <button type="button" id="labClearScenarios" data-lab-key="clearScenarios">Șterge scenariile</button>
+            </div>
+            <div class="lab-saved-scenarios" id="labSavedScenarios"></div>
+          </div>
         </section>
       </div>
     </main>
@@ -367,6 +428,12 @@
             {% endfor %}
           </div>
         </div>
+      </section>
+
+      <section class="lab-baseline-rail" id="labBaselineRail" hidden>
+        <span data-lab-key="versusBaseline">Față de casa actuală</span>
+        <strong id="labBaselineSavings">—</strong>
+        <small id="labBaselineSavingsNote">—</small>
       </section>
 
       <div class="lab-summary-metrics">
