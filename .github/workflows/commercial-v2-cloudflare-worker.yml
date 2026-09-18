@@ -185,7 +185,7 @@ jobs:
               raise AssertionError("Calculation response did not render Results")
 
           embed_calculation_html = post("/embed/demo-store/calculate", form)
-          if "Cere ofertă pentru scenariul ales" not in embed_calculation_html:
+          if "Cere ofertă pentru casa configurată" not in embed_calculation_html:
               raise AssertionError("Embedded calculation did not preserve the partner conversion CTA")
 
           lab_form = dict(form)
@@ -495,7 +495,7 @@ jobs:
               data=encoded,
               headers={"Content-Type": "application/x-www-form-urlencoded"},
           )
-          if status != 200 or "Cere ofertă pentru scenariul ales" not in embed_calculation:
+          if status != 200 or "Cere ofertă pentru casa configurată" not in embed_calculation:
               raise AssertionError(f"/embed/demo-store/calculate failed with HTTP {status}")
           if 'data-embed-partner="demo-store"' not in embed_calculation:
               raise AssertionError("Embedded calculation did not remain in partner shell.")
