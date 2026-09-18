@@ -127,14 +127,46 @@ def _monthly_cooling_need(
     return max(a_c_red * (q_c_gn_kwh - eta_c_ht * q_c_ht_kwh), 0.0)
 
 
-def _window_solar_geometry(building: BuildingInput) -> tuple[float, float]:
-    """Return total glazing area and sum(U*A) for the aggregate transparent-element model."""
+def _window_solar_geometry(building: BuildingInput) -> tuple[float, float, float]:
+    """Return total glazing area, sum(U*A), and area-weighted U-value."""
 
     windows = [item for item in building.envelope if item.type.value == "window"]
-    return (
-        sum(item.area_m2 for item in windows),
-        sum(item.area_m2 * item.u_value_w_m2k for item in windows),
-    )
+    area = sum(item.area_m2 for item in windows)
+    ua = sum(item.area_m2 * item.u_value_w_m2k for item in windows)
+    return area, ua, (ua / area if area > 0 else 0.0)
+
+
+def _solar_glazing_groups(building: BuildingInput, window_area_m2: float) -> list[tuple[str, float]]:
+    """Return orientation/area groups while keeping envelope and solar geometry consistent."""
+
+    if not building.solar.glazing_groups:
+        return [(building.solar.orientation, window_area_m2)] if window_area_m2 > 0 else []
+
+    groups = [(item.orientation, float(item.area_m2)) for item in building.solar.glazing_groups]
+    oriented_total = sum(area for _, area in groups)
+    tolerance = max(0.5, 0.02 * window_area_m2)
+    if abs(oriented_total - window_area_m2) > tolerance:
+        raise ValueError(
+            "Suma suprafețelor vitrate pe orientări trebuie să corespundă suprafeței totale a ferestrelor "
+            f"(orientări {oriented_total:.1f} m² vs total {window_area_m2:.1f} m²)."
+        )
+    if oriented_total <= 0:
+        return []
+    # Small rounding differences are normalized to the envelope area so transmission
+    # and solar models use exactly the same transparent surface.
+    scale = window_area_m2 / oriented_total
+    return [(orientation, area * scale) for orientation, area in groups]
+
+
+def _solar_device_factor(building: BuildingInput) -> float:
+    device = building.solar.shading_device_id
+    side = building.solar.shading_mounting_side
+    if not device:
+        return 1.0
+    entry = methodology()["solar"]["shading_table_2_16"].get(device)
+    if not entry or side not in {"interior", "exterior"}:
+        raise ValueError("Dispozitivul de umbrire selectat nu are un factor MC001 Tabel 2.16 valid.")
+    return float(entry[side])
 
 
 def _monthly_solar_gains(
@@ -142,39 +174,76 @@ def _monthly_solar_gains(
     climate: dict,
     month_index: int,
     hours: float,
-) -> tuple[float, str, float | None]:
-    """Calculate monthly transparent-element solar gains in the simplified commercial scope.
+) -> dict:
+    """Calculate transparent-element solar gains for one month.
 
-    Normative mode uses source-backed Annex A.9.6 Hsol and the MC001 2.39 / 2.40 /
-    2.54 structure. If no direct A.9.6 mapping exists for the selected climate
-    station, no solar irradiation is invented: the explicit equivalent monthly gain
-    remains the fallback.
+    Normative mode uses one source-backed Annex A.9.6 station per MC001/6-2013
+    climate station. Glazing can be split across the eight A.9.6 orientations.
+    Source Hsol rows are selected, never interpolated.
     """
 
     explicit_gain = building.solar_gains_kwh_m2_month * building.heated_floor_area_m2
     if building.solar.mode == "explicit":
-        return explicit_gain, "explicit_equivalent_monthly_gain", None
+        return {
+            "gains_kwh": explicit_gain,
+            "source": "explicit_equivalent_monthly_gain",
+            "weighted_hsol_kwh_m2": None,
+            "hsol_by_orientation_kwh_m2": {},
+            "station_name": None,
+            "station_resolution": None,
+            "station_distance_km": None,
+        }
 
-    hsol = resolve_monthly_hsol(climate, building.solar.orientation)
-    if hsol is None:
-        return explicit_gain, "explicit_fallback_no_source_backed_A9_6_Hsol", None
-
-    window_area_m2, window_ua_w_k = _window_solar_geometry(building)
-    if window_area_m2 <= 0:
-        return 0.0, "normative_A9_6_Hsol_no_transparent_area", hsol["values_kwh_m2_month"][month_index]
+    window_area_m2, window_ua_w_k, _window_u = _window_solar_geometry(building)
+    groups = _solar_glazing_groups(building, window_area_m2)
+    if not groups:
+        hsol = resolve_monthly_hsol(climate, building.solar.orientation)
+        return {
+            "gains_kwh": 0.0,
+            "source": "normative_A9_6_Hsol_no_transparent_area",
+            "weighted_hsol_kwh_m2": None if hsol is None else float(hsol["values_kwh_m2_month"][month_index]),
+            "hsol_by_orientation_kwh_m2": {},
+            "station_name": None if hsol is None else hsol.get("solar_locality_name"),
+            "station_resolution": None if hsol is None else hsol.get("station_resolution"),
+            "station_distance_km": None if hsol is None else hsol.get("station_distance_km"),
+        }
 
     cfg = methodology()["solar"]
     ggl_n = float(cfg["glazing_table_2_13_ggl_n"][building.solar.glazing_type_id])
-    ggl = float(cfg["angle_correction_factor_relation_2_40"]) * ggl_n
-    hsol_kwh_m2 = float(hsol["values_kwh_m2_month"][month_index])
-
-    gross_solar = (
-        ggl
-        * window_area_m2
-        * (1.0 - building.solar.frame_fraction)
-        * building.solar.obstacle_shading_factor
-        * hsol_kwh_m2
+    ggl = (
+        float(cfg["angle_correction_factor_relation_2_40"])
+        * ggl_n
+        * _solar_device_factor(building)
     )
+
+    gross_solar = 0.0
+    weighted_hsol = 0.0
+    hsol_by_orientation: dict[str, float] = {}
+    source_meta = None
+    for orientation, area_m2 in groups:
+        hsol = resolve_monthly_hsol(climate, orientation)
+        if hsol is None:
+            return {
+                "gains_kwh": explicit_gain,
+                "source": "explicit_fallback_no_source_backed_A9_6_Hsol",
+                "weighted_hsol_kwh_m2": None,
+                "hsol_by_orientation_kwh_m2": {},
+                "station_name": None,
+                "station_resolution": None,
+                "station_distance_km": None,
+            }
+        hsol_kwh_m2 = float(hsol["values_kwh_m2_month"][month_index])
+        hsol_by_orientation[orientation] = hsol_kwh_m2
+        weighted_hsol += area_m2 * hsol_kwh_m2
+        gross_solar += (
+            ggl
+            * area_m2
+            * (1.0 - building.solar.frame_fraction)
+            * building.solar.obstacle_shading_factor
+            * hsol_kwh_m2
+        )
+        source_meta = source_meta or hsol
+
     q_sky = (
         0.001
         * building.solar.sky_view_factor
@@ -184,12 +253,19 @@ def _monthly_solar_gains(
         * building.solar.sky_temperature_difference_k
         * hours
     )
-    return (
-        gross_solar - q_sky,
-        "MC001_2_39_2_40_2_54_with_source_backed_A9_6_Hsol",
-        hsol_kwh_m2,
-    )
+    source_code = "MC001_2_39_2_40_2_54_with_source_backed_A9_6_oriented_Hsol"
+    if building.solar.shading_device_id:
+        source_code += "_TABLE_2_16_shading"
 
+    return {
+        "gains_kwh": gross_solar - q_sky,
+        "source": source_code,
+        "weighted_hsol_kwh_m2": weighted_hsol / window_area_m2,
+        "hsol_by_orientation_kwh_m2": hsol_by_orientation,
+        "station_name": source_meta.get("solar_locality_name") if source_meta else None,
+        "station_resolution": source_meta.get("station_resolution") if source_meta else None,
+        "station_distance_km": source_meta.get("station_distance_km") if source_meta else None,
+    }
 
 def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: float) -> list[dict]:
     """Monthly quasi-steady balance following the Mc 001-2022 / SR EN ISO 52016-1 structure."""
@@ -213,12 +289,13 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         outdoor = month["temperature_c"]
 
         internal_gains = internal_gain_w_m2 * building.heated_floor_area_m2 * hours / 1000
-        solar_gains, solar_source, solar_hsol = _monthly_solar_gains(
+        solar = _monthly_solar_gains(
             building,
             climate,
             len(monthly),
             hours,
         )
+        solar_gains = float(solar["gains_kwh"])
         total_gains = internal_gains + solar_gains
 
         # Mc 001 sign convention: heat transfer is positive when heat leaves the zone.
@@ -237,8 +314,19 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
             "heat_loss_kwh": _round(max(q_h_ht, 0.0)),
             "internal_gains_kwh": _round(internal_gains),
             "solar_gains_kwh": _round(solar_gains),
-            "solar_gains_source": solar_source,
-            "solar_hsol_kwh_m2": None if solar_hsol is None else _round(solar_hsol),
+            "solar_gains_source": solar["source"],
+            "solar_hsol_kwh_m2": (
+                None
+                if solar["weighted_hsol_kwh_m2"] is None
+                else _round(solar["weighted_hsol_kwh_m2"])
+            ),
+            "solar_hsol_by_orientation_kwh_m2": {
+                key: _round(value)
+                for key, value in solar["hsol_by_orientation_kwh_m2"].items()
+            },
+            "solar_station_name": solar["station_name"],
+            "solar_station_resolution": solar["station_resolution"],
+            "solar_station_distance_km": solar["station_distance_km"],
             "useful_heating_kwh": _round(useful_heating),
             "useful_cooling_kwh": _round(useful_cooling),
         })
