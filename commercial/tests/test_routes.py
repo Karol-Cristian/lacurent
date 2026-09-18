@@ -328,8 +328,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab14" in response.text
-    assert "embed-house-lab.js?v=lab14" in response.text
+    assert "embed-house-lab.css?v=lab15" in response.text
+    assert "embed-house-lab.js?v=lab15" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -548,6 +548,10 @@ def test_embed_house_lab_uses_three_column_product_layout() -> None:
     assert ".lab-mobile-livebar" in response.text
     assert "[data-lab-chapter-panel]" in response.text
     assert "min-height:100svh" in response.text
+    assert ".lab-house-mode-bar" in response.text
+    assert ".lab-context-visual" in response.text
+    assert "height:100svh" in response.text
+    assert ".lab-number-control" in response.text
 
 
 def test_home_lab_baseline_and_scenario_comparison_has_commercial_layout() -> None:
@@ -568,7 +572,7 @@ def test_home_lab_baseline_and_scenario_comparison_has_commercial_layout() -> No
 def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "Modifică doar ce contează" in response.text
+    assert "Corectează doar ce nu seamănă cu locuința ta" in response.text
     assert "Cost anual estimat" in response.text
 
 
@@ -584,10 +588,15 @@ def test_partner_embed_exposes_six_mc001_chapter_cockpit_and_product_scope() -> 
     assert "Panouri solare termice" in response.text
     assert "Panouri fotovoltaice" in response.text
     assert 'data-lab-product-action="heat_pump"' in response.text
-    assert "<strong>Panouri solare termice</strong><small>motor Python: în curând</small>" in response.text
-    assert "<strong>Panouri fotovoltaice</strong><small>motor Python: în curând</small>" in response.text
+    assert "<strong>Panouri solare termice</strong><small>calcul în curs de integrare</small>" in response.text
+    assert "<strong>Panouri fotovoltaice</strong><small>calcul în curs de integrare</small>" in response.text
     assert 'id="labMobileClass"' in response.text
     assert 'data-mobile-results' in response.text
+    assert 'class="lab-house-mode-bar"' in response.text
+    assert 'id="labConfirmCurrentHome"' in response.text
+    assert "Asta este casa mea acum" in response.text
+    assert 'id="labContextImage"' in response.text
+    assert "MC001 · 6" in response.text
 
 
 def test_home_lab_runtime_wires_mobile_chapter_editor_and_live_summary() -> None:
@@ -601,6 +610,14 @@ def test_home_lab_runtime_wires_mobile_chapter_editor_and_live_summary() -> None
     assert 'controls.heating.value="heat_pump"' in response.text
     assert "labMobileCost" in response.text
     assert "labChapter6Summary" in response.text
+    assert "function updateHouseFlow" in response.text
+    assert "let editingCurrentHome = !baselineSnapshot" in response.text
+    assert "function compactDelta" in response.text
+    assert "labMobileCostDelta" in response.text
+    assert 'document.getElementById("labConfirmCurrentHome")' in response.text
+    assert 'document.getElementById("labEditCurrentHome")' in response.text
+    assert "root.scrollIntoView" not in response.text
+    assert "lab-number-control" in response.text
 
 
 def test_home_lab_live_fetch_is_resilient_and_does_not_expose_raw_json_errors() -> None:
