@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-labelledby="title desc">
+<title id="title">Șemineu sau sobă pe lemne</title><desc id="desc">Ilustrație simplă a unei sobe pe lemne într-un interior calm.</desc>
+<rect width="720" height="420" rx="28" fill="#F4F1EA"/>
+<path d="M76 332h568" stroke="#D8D3C8" stroke-width="3"/>
+<rect x="255" y="137" width="209" height="192" rx="12" fill="#183B47"/>
+<rect x="287" y="171" width="145" height="115" rx="7" fill="#121D21" stroke="#365967" stroke-width="4"/>
+<path d="M359 136V58h45v79" fill="#6F777A" stroke="#183B47" stroke-width="4"/>
+<path d="M284 329v32M435 329v32" stroke="#183B47" stroke-width="12" stroke-linecap="round"/>
+<path d="M355 263c-43-30-37-64-6-93-2 25 14 36 24 52 14-18 24-36 16-59 43 35 49 74 9 100-15 10-29 11-43 0Z" fill="#D26B3F"/>
+<path d="M368 259c-17-16-12-31 3-48 1 12 8 18 13 26 6-7 10-15 9-26 18 19 16 37 1 48-9 7-18 7-26 0Z" fill="#E8B65D"/>
+<path d="M115 321h103l28-60H144Z" fill="#D8B28A" stroke="#183B47" stroke-width="4"/>
+<path d="M132 302h95M147 279h90" stroke="#9E704C" stroke-width="7" stroke-linecap="round"/>
+<path d="M520 329h81" stroke="#567D74" stroke-width="5" stroke-linecap="round"/>
+<path d="M560 329c-24-35-15-66 18-91-4 28 9 44 24 57-4 19-17 30-42 34Z" fill="#88A69D"/>
+</svg>
