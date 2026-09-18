@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab10" in response.text
-    assert "embed-house-lab.js?v=lab10" in response.text
+    assert "embed-house-lab.css?v=lab11" in response.text
+    assert "embed-house-lab.js?v=lab11" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -341,6 +341,12 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'data-lab-tab="comparison"' in response.text
     assert 'class="lab-summary-rail"' in response.text
     assert 'id="labServiceDonut"' in response.text
+    assert 'id="labSaveBaseline"' in response.text
+    assert 'id="labRestoreBaseline"' in response.text
+    assert 'id="labBaselineComparison"' in response.text
+    assert 'id="labSaveScenario"' in response.text
+    assert 'id="labSavedScenarios"' in response.text
+    assert 'id="labBaselineRail"' in response.text
     assert '/static/home-lab/home-envelope.svg' in response.text
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
@@ -496,6 +502,18 @@ def test_embed_house_lab_uses_three_column_product_layout() -> None:
     assert "@media(max-width:760px)" in response.text
 
 
+def test_home_lab_baseline_and_scenario_comparison_has_commercial_layout() -> None:
+    response = client.get("/static/embed-house-lab.css")
+    assert response.status_code == 200
+    assert ".lab-baseline-card" in response.text
+    assert ".lab-baseline-comparison" in response.text
+    assert ".lab-baseline-metric-list" in response.text
+    assert ".lab-saved-scenarios" in response.text
+    assert ".lab-baseline-rail" in response.text
+    assert ".is-good" in response.text
+    assert ".is-bad" in response.text
+
+
 def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
@@ -550,6 +568,20 @@ def test_home_lab_runtime_wires_product_tabs_system_pills_and_ventilation() -> N
     assert 'controls.cooling.addEventListener("change"' in response.text
     assert 'setField("cooling_enabled"' in response.text
     assert 'document.querySelector(".lab-summary-rail")' in response.text
+
+
+def test_home_lab_runtime_persists_current_house_baseline_and_scenarios_per_partner() -> None:
+    response = client.get("/static/embed-house-lab.js")
+    assert response.status_code == 200
+    assert "lacurent-home-lab-scenarios-v1:" in response.text
+    assert "captureSnapshot" in response.text
+    assert "persistScenarioState" in response.text
+    assert "renderBaselineComparison" in response.text
+    assert "restoreSnapshot" in response.text
+    assert "baselineSnapshot" in response.text
+    assert "savedScenarios" in response.text
+    assert 'data-load-scenario' in response.text
+    assert 'openResultTab("comparison")' in response.text
 
 
 def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None:
