@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Depozitul Constructorului Demo · materiale, instalații și scule</title>
+  {% if inline_lab %}<link rel="stylesheet" href="/static/embed-house-lab.css?v=lab4">{% endif %}
   <style>
     :root{
       color-scheme:light;
@@ -372,6 +373,8 @@
     .embed-card-head span{color:#667085;font-size:11px}
     [data-lacurent-embed]{display:block;width:100%;max-width:none;min-width:0;min-height:760px}
     [data-lacurent-embed] iframe{display:block;width:100%!important;max-width:none!important;min-width:0!important}
+    .inline-lab-card{padding:0 18px 18px}
+    .inline-lab-card .embed-house-lab{width:100%;max-width:none}
     .project-grid{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
@@ -628,12 +631,16 @@
           <div class="calculator-point"><strong>3. Ceri ofertă</strong>CTA-ul aparține partenerului.</div>
         </div>
       </div>
-      <div class="embed-card">
+      <div class="embed-card{% if inline_lab %} inline-lab-card{% endif %}">
         <div class="embed-card-head">
           <strong>Calculator energetic integrat</strong>
           <span>Tehnologie LaCurent · integrată în site-ul partenerului</span>
         </div>
+        {% if inline_lab %}
+        {% include "embed_house_lab_content.html" %}
+        {% else %}
         <div data-lacurent-embed data-partner="demo-store" data-initial-height="1050px"></div>
+        {% endif %}
       </div>
     </section>
 
@@ -676,6 +683,10 @@
     <div class="legal">Demo vizual. Produsele, prețurile, datele de contact și promisiunile comerciale de pe această pagină sunt fictive. Calculatorul integrat este LaCurent Embed.</div>
   </footer>
 
+  {% if inline_lab %}
+  <script src="/static/embed-house-lab.js?v=lab4"></script>
+  {% else %}
   <script async src="https://lacurent.com/static/embed-loader.js?v=embed3"></script>
+  {% endif %}
 </body>
 </html>

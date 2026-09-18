@@ -265,11 +265,33 @@ def test_nearest_hsol_source_is_visible_in_result_provenance() -> None:
     assert "Sibiu" in response.text
     assert "54.3 km" in response.text
 
-def test_magazin_route_exposes_construction_store_embed_demo() -> None:
+def test_magazin_route_renders_house_lab_inline_without_iframe() -> None:
     response = client.get("/magazin")
     assert response.status_code == 200
     assert "Depozitul Constructorului" in response.text
-    assert 'data-lacurent-embed data-partner="demo-store"' in response.text
+    assert 'data-embed-house-lab' in response.text
+    assert 'data-calculate-url="/embed/demo-store/lab-calculate"' in response.text
+    assert 'id="labWallIns"' in response.text
+    assert 'id="labWindows"' in response.text
+    assert "/static/embed-house-lab.css?v=lab4" in response.text
+    assert "/static/embed-house-lab.js?v=lab4" in response.text
+    assert '<div data-lacurent-embed' not in response.text
+    assert "embed-loader.js" not in response.text
+
+
+def test_home_lab_partial_is_shared_by_inline_and_embed_shell() -> None:
+    inline_page = client.get("/magazin")
+    embed_page = client.get("/embed/demo-store")
+    assert inline_page.status_code == 200
+    assert embed_page.status_code == 200
+    for marker in (
+        "Configurează casa. Vezi imediat ce se schimbă.",
+        'id="labLocalitySearch"',
+        'id="embedLabForm"',
+        'id="labAnnualCost"',
+    ):
+        assert marker in inline_page.text
+        assert marker in embed_page.text
 
 
 def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
