@@ -660,9 +660,26 @@ async def calculate_from_form(request: Request) -> HTMLResponse:
 
 
 @app.get("/magazin", response_class=HTMLResponse)
+async def magazine_demo(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "embed_host_demo.html",
+        {
+            "request": request,
+            **calculator_context(),
+            "partner": embed_partner("demo-store"),
+            "inline_lab": True,
+        },
+    )
+
+
 @app.get("/embed-host-demo", response_class=HTMLResponse)
 async def embed_host_demo(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "embed_host_demo.html", {"request": request})
+    return templates.TemplateResponse(
+        request,
+        "embed_host_demo.html",
+        {"request": request, "inline_lab": False},
+    )
 
 
 @app.get("/embed", response_class=HTMLResponse)
