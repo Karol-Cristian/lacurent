@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab6" in response.text
-    assert "embed-house-lab.js?v=lab6" in response.text
+    assert "embed-house-lab.css?v=lab7" in response.text
+    assert "embed-house-lab.js?v=lab7" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -372,7 +372,7 @@ def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None
     assert "Rezultatul calculului" in response.text
     assert "Commercial test house" in response.text
     assert "Transformă scenariul ales într-o ofertă concretă." in response.text
-    assert "Cere ofertă pentru scenariul ales" in response.text
+    assert "Cere ofertă pentru casa configurată" in response.text
     assert 'href="https://lacurent.com/instalatii#evaluare"' in response.text
     assert 'href="/embed/demo-store"' in response.text
     assert "embed-runtime.js" in response.text
@@ -423,8 +423,13 @@ def test_embed_house_lab_uses_commercial_configurator_hierarchy() -> None:
     assert ".house-lab-results{" in response.text
     assert "position:sticky" in response.text
     assert "border-radius:24px" in response.text
+    assert ".lab-results-status{" in response.text
+    assert "font-size:0" in response.text
     assert ".lab-price-hero{" in response.text
     assert "background:var(--lab-dark)" in response.text
+    assert "grid-template-columns:repeat(2,minmax(0,1fr))" in response.text
+    assert ".lab-partner-cta{" in response.text
+    assert "border-radius:999px" in response.text
     assert ".lab-monthly-chart{" in response.text
     assert "grid-template-columns:repeat(12" in response.text
     assert "@container (max-width:900px)" in response.text
