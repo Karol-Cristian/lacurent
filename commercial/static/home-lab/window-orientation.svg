@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-labelledby="title desc">
+<title id="title">Ferestre și orientare solară</title><desc id="desc">Fațadă simplă cu fereastră și compas de orientare.</desc>
+<rect width="720" height="420" rx="28" fill="#F4F1EA"/>
+<rect x="96" y="76" width="344" height="269" rx="10" fill="#FFF" stroke="#183B47" stroke-width="4"/>
+<rect x="146" y="119" width="244" height="177" rx="6" fill="#DCE9EA" stroke="#183B47" stroke-width="5"/>
+<path d="M268 119v177M146 207h244" stroke="#183B47" stroke-width="4"/>
+<path d="M148 294 389 121" stroke="#BCD3D1" stroke-width="3" opacity=".8"/>
+<circle cx="558" cy="208" r="89" fill="#FFF" stroke="#183B47" stroke-width="4"/>
+<circle cx="558" cy="208" r="5" fill="#183B47"/>
+<path d="M558 118v180M468 208h180" stroke="#CDD6D5" stroke-width="3"/>
+<path d="m558 130 19 69-19 9-19-9Z" fill="#D26B3F"/>
+<path d="m558 286-19-69 19-9 19 9Z" fill="#567D74"/>
+<path d="M558 118v-24" stroke="#183B47" stroke-width="4" stroke-linecap="round"/>
+<path d="M558 322v-24M444 208h24M648 208h24" stroke="#183B47" stroke-width="4" stroke-linecap="round"/>
+<circle cx="105" cy="74" r="22" fill="#E4B768"/>
+<path d="M104 35v-16M104 129v-16M65 74H49M159 74h-16" stroke="#D49B3D" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab8" in response.text
-    assert "embed-house-lab.js?v=lab8" in response.text
+    assert "embed-house-lab.css?v=lab9" in response.text
+    assert "embed-house-lab.js?v=lab9" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -328,6 +328,14 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'id="labLocalitySearch"' in response.text
     assert 'id="labWallIns" type="range" min="0" max="30" step="1"' in response.text
     assert 'id="labWindows" type="range" min="2" max="60" step="0.5"' in response.text
+    assert 'id="labGlazing"' in response.text
+    assert 'value="double_low_e_face_3"' in response.text
+    assert 'id="labOrientation"' in response.text
+    assert 'value="south_west"' in response.text
+    assert 'value="district_heat"' in response.text
+    assert 'value="wood_stove"' in response.text
+    assert '/static/home-lab/home-envelope.svg' in response.text
+    assert '/static/home-lab/window-orientation.svg' in response.text
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
@@ -336,6 +344,60 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert "embed-house-lab.js" in response.text
     assert "embed-runtime.js" in response.text
     assert "Navigare LaCurent Instalații & Energie" not in response.text
+
+
+def test_home_lab_generated_svg_assets_are_served() -> None:
+    for path in (
+        "/static/home-lab/home-envelope.svg",
+        "/static/home-lab/window-orientation.svg",
+        "/static/home-lab/wood-fireplace.svg",
+        "/static/home-lab/district-heating.svg",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "image/svg+xml" in response.headers.get("content-type", "")
+        assert "<svg" in response.text
+
+
+def test_home_lab_restored_heating_profiles_and_solar_controls_reach_engine() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "locality_id": "siruta-54984",
+            "expert_geometry_override": "on",
+            "expert_envelope_override": "on",
+            "expert_ventilation_override": "on",
+            "solar_mode": "normative_hsol",
+            "solar_orientation": "west",
+            "solar_glazing_type_id": "triple_low_e_faces_2_and_5",
+            "window_u_value": "0.9",
+        }
+    )
+    wood = dict(base)
+    wood["heating_choice"] = "wood_stove"
+    wood_response = client.post("/embed/demo-store/lab-calculate", data=wood)
+    assert wood_response.status_code == 200
+    assert wood_response.json()["final_energy_kwh"] > 0
+
+    district = dict(base)
+    district["heating_choice"] = "district_heat"
+    district_response = client.post("/embed/demo-store/lab-calculate", data=district)
+    assert district_response.status_code == 200
+    payload = district_response.json()
+    assert payload["final_energy_kwh"] > 0
+
+    south = dict(district)
+    south["solar_orientation"] = "south"
+    south_response = client.post("/embed/demo-store/lab-calculate", data=south)
+    assert south_response.status_code == 200
+    assert south_response.json()["final_energy_kwh"] != payload["final_energy_kwh"]
+
+    double_glazing = dict(district)
+    double_glazing["solar_glazing_type_id"] = "double_low_e_face_3"
+    double_glazing["window_u_value"] = "1.6"
+    double_response = client.post("/embed/demo-store/lab-calculate", data=double_glazing)
+    assert double_response.status_code == 200
+    assert double_response.json()["final_energy_kwh"] != payload["final_energy_kwh"]
 
 
 def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
@@ -469,6 +531,17 @@ def test_home_lab_live_indicator_and_class_badge_have_distinct_states() -> None:
     assert "width:58px" in response.text
     assert "height:58px" in response.text
     assert "border-radius:12px" in response.text
+
+
+def test_home_lab_runtime_syncs_glazing_orientation_and_heating_visuals() -> None:
+    response = client.get("/static/embed-house-lab.js")
+    assert response.status_code == 200
+    assert "GLAZING_U" in response.text
+    assert 'setField("solar_glazing_type_id", controls.glazing.value)' in response.text
+    assert 'setField("solar_orientation", controls.orientation.value)' in response.text
+    assert "HEATING_VISUALS" in response.text
+    assert 'district-heating.svg' in response.text
+    assert 'wood-fireplace.svg' in response.text
 
 
 def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None:

@@ -603,6 +603,8 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "climate_station": climate.get("station") or "",
         "climate_zone": climate.get("climate_zone"),
         "winter_design_temperature_c": design_temperature,
+        "solar_orientation": result.input.solar.orientation,
+        "solar_glazing_type_id": result.input.solar.glazing_type_id,
         "final_energy_by_service": {
             key: float(value)
             for key, value in result.final_energy_by_service.items()

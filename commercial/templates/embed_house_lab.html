@@ -77,6 +77,14 @@
           </div>
         </div>
 
+        <div class="lab-visual-inline lab-home-visual">
+          <img src="/static/home-lab/home-envelope.svg" alt="" loading="lazy">
+          <div>
+            <strong data-lab-key="houseVisualTitle">Casa ta, simplificată pentru calcul</strong>
+            <small data-lab-key="houseVisualText">Dimensiunile, anvelopa și instalațiile se combină într-un singur model energetic.</small>
+          </div>
+        </div>
+
         <div class="lab-range-grid">
           <div class="lab-range-control" data-lab-control="area">
             <div class="lab-control-head">
@@ -128,6 +136,34 @@
               </div>
             </div>
             <input id="labWindows" type="range" min="2" max="60" step="0.5" value="18">
+          </div>
+        </div>
+
+        <div class="lab-window-config">
+          <img src="/static/home-lab/window-orientation.svg" alt="" loading="lazy">
+          <div class="lab-window-config-fields">
+            <div>
+              <span data-lab-key="windowType">Tip ferestre</span>
+              <select id="labGlazing">
+                <option value="single_clear_glazing">Geam simplu</option>
+                <option value="double_clear_glazing">Geam dublu clar</option>
+                <option value="double_low_e_face_3" selected>Geam dublu Low‑E</option>
+                <option value="triple_low_e_faces_2_and_5">Tripan Low‑E</option>
+              </select>
+            </div>
+            <div>
+              <span data-lab-key="orientation">Orientare principală</span>
+              <select id="labOrientation">
+                <option value="south" selected>Sud</option>
+                <option value="south_west">Sud‑vest</option>
+                <option value="west">Vest</option>
+                <option value="north_west">Nord‑vest</option>
+                <option value="north">Nord</option>
+                <option value="north_east">Nord‑est</option>
+                <option value="east">Est</option>
+                <option value="south_east">Sud‑est</option>
+              </select>
+            </div>
           </div>
         </div>
       </section>
@@ -225,12 +261,23 @@
           <span data-lab-key="heating">Sursa principală de încălzire</span>
           <select id="labHeating">
             <option value="condensing_gas_boiler">Centrală gaz în condensare</option>
+            <option value="gas_boiler">Centrală gaz convențională</option>
             <option value="heat_pump">Pompă de căldură</option>
+            <option value="district_heat">Termoficare</option>
+            <option value="wood_stove">Șemineu / sobă pe lemne</option>
             <option value="electric_resistance">Încălzire electrică directă</option>
             <option value="wood_boiler">Centrală pe lemne</option>
             <option value="pellet_boiler">Centrală pe peleți</option>
           </select>
         </label>
+
+        <div class="lab-system-visual">
+          <img id="labHeatingVisual" src="/static/home-lab/home-envelope.svg" alt="" loading="lazy">
+          <div>
+            <strong id="labHeatingVisualTitle" data-lab-key="heatingVisualDefaultTitle">Sursa de încălzire contează direct în cost</strong>
+            <small id="labHeatingVisualText" data-lab-key="heatingVisualDefaultText">Schimbarea sursei recalculază energia finală, energia primară, CO₂ și costul anual.</small>
+          </div>
+        </div>
       </section>
 
       <form id="embedLabForm" hidden>
