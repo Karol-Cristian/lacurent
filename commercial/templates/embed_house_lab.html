@@ -278,6 +278,7 @@
 
     <aside class="house-lab-results" aria-live="polite">
       <div class="lab-results-status" id="labStatus">Se calculează presetul…</div>
+
       <div class="lab-results-head">
         <div>
           <span data-lab-key="resultsKicker">Rezultat live</span>
@@ -289,12 +290,20 @@
         </div>
       </div>
 
-      <div class="lab-metrics">
-        <article>
+      <div class="lab-price-hero">
+        <div>
           <span data-lab-key="annualCost">Cost anual estimat</span>
           <strong id="labAnnualCost">—</strong>
           <small id="labMonthlyCost">—</small>
-        </article>
+        </div>
+        <div class="lab-design-power">
+          <span data-lab-key="designPower">Putere termică estimată</span>
+          <strong id="labDesignPower">—</strong>
+          <small data-lab-key="designPowerNote">din H × ΔT la temperatura de calcul</small>
+        </div>
+      </div>
+
+      <div class="lab-metrics">
         <article>
           <span data-lab-key="finalEnergy">Energie finală</span>
           <strong id="labFinalEnergy">—</strong>
@@ -306,17 +315,58 @@
           <small>kWh/m²/an</small>
         </article>
         <article>
-          <span data-lab-key="designPower">Putere termică estimată</span>
-          <strong id="labDesignPower">—</strong>
-          <small data-lab-key="designPowerNote">din H × ΔT la temperatura de calcul</small>
+          <span>CO₂</span>
+          <strong id="labCo2">—</strong>
+          <small>kg/an</small>
+        </article>
+        <article>
+          <span data-lab-key="heatLoss">Coeficient pierderi</span>
+          <strong id="labHeatLoss">—</strong>
+          <small>W/K</small>
         </article>
       </div>
+
+      <section class="lab-chart-card lab-monthly-card">
+        <div class="lab-chart-title">
+          <div>
+            <strong data-lab-key="monthlyChartTitle">Cost lunar estimat</strong>
+            <small id="labMonthlyChartNote" data-lab-key="monthlyChartNote">profilul celor 12 luni</small>
+          </div>
+          <span id="labPriceStatus"></span>
+        </div>
+        <div class="lab-monthly-chart" id="labMonthlyChart" aria-label="Profil lunar"></div>
+      </section>
+
+      <div class="lab-chart-grid">
+        <section class="lab-chart-card">
+          <div class="lab-chart-title">
+            <strong data-lab-key="serviceChartTitle">Energie pe servicii</strong>
+            <small>kWh/an</small>
+          </div>
+          <div class="lab-horizontal-chart" id="labServiceChart"></div>
+        </section>
+
+        <section class="lab-chart-card">
+          <div class="lab-chart-title">
+            <strong data-lab-key="lossChartTitle">Unde pierde casa căldură</strong>
+            <small>W/K</small>
+          </div>
+          <div class="lab-horizontal-chart" id="labLossChart"></div>
+        </section>
+      </div>
+
+      <section class="lab-reference-card" id="labReferenceCard" hidden>
+        <div>
+          <span data-lab-key="referenceTitle">Față de clădirea de referință</span>
+          <strong id="labReferenceDelta">—</strong>
+        </div>
+        <div class="lab-reference-track"><i id="labReferenceBar"></i></div>
+        <small id="labReferenceText">—</small>
+      </section>
 
       <div class="lab-result-context">
         <div><span data-lab-key="selectedPlace">Localitate</span><strong id="labResultLocation">—</strong></div>
         <div><span data-lab-key="climateStation">Stație climatică</span><strong id="labResultStation">—</strong></div>
-        <div><span>CO₂</span><strong id="labCo2">—</strong></div>
-        <div><span data-lab-key="heatLoss">Coeficient pierderi</span><strong id="labHeatLoss">—</strong></div>
       </div>
 
       <p class="lab-method-note" data-lab-key="methodNote">Rezultatele se recalculează cu motorul energetic LaCurent. Valorile sunt estimări tehnice și nu reprezintă un certificat de performanță energetică.</p>

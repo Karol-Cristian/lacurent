@@ -73,6 +73,30 @@
 
     iframe.addEventListener("load", syncFrameWidth);
 
+    let viewportRaf = 0;
+    const publishViewport = () => {
+      viewportRaf = 0;
+      if (!iframe.contentWindow) return;
+      const rect = iframe.getBoundingClientRect();
+      const offset = Math.max(0, -rect.top);
+      iframe.contentWindow.postMessage({
+        type: "lacurent:embed-viewport",
+        offset,
+        viewportHeight: window.innerHeight || document.documentElement.clientHeight || 0
+      }, embedOrigin);
+    };
+    const scheduleViewport = () => {
+      if (viewportRaf) return;
+      viewportRaf = requestAnimationFrame(publishViewport);
+    };
+    window.addEventListener("scroll", scheduleViewport, {passive:true});
+    window.addEventListener("resize", scheduleViewport, {passive:true});
+    iframe.addEventListener("load", () => {
+      scheduleViewport();
+      window.setTimeout(scheduleViewport, 120);
+    });
+    scheduleViewport();
+
     const onMessage = event => {
       if (event.origin !== embedOrigin || event.source !== iframe.contentWindow) return;
       const data = event.data;

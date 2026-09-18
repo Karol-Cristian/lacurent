@@ -282,7 +282,7 @@ def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
     assert "Servicii pentru proiectul tău" in response.text
     assert "Înainte să cumperi, estimează necesarul energetic al casei." in response.text
     assert 'data-lacurent-embed data-partner="demo-store"' in response.text
-    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed4"' in response.text
+    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed5"' in response.text
     assert "app.css" not in response.text
     assert "base.html" not in response.text
 
@@ -294,7 +294,7 @@ def test_store_demo_forces_full_width_embed_container() -> None:
     assert "width:100%;" in response.text
     assert ".embed-card{" in response.text
     assert "min-width:0;" in response.text
-    assert "embed-loader.js?v=embed4" in response.text
+    assert "embed-loader.js?v=embed5" in response.text
 
 
 def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab4" in response.text
-    assert "embed-house-lab.js?v=lab3" in response.text
+    assert "embed-house-lab.css?v=lab5" in response.text
+    assert "embed-house-lab.js?v=lab5" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -328,6 +328,10 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'id="labLocalitySearch"' in response.text
     assert 'id="labWallIns" type="range" min="0" max="30" step="1"' in response.text
     assert 'id="labWindows" type="range" min="2" max="60" step="0.5"' in response.text
+    assert 'id="labMonthlyChart"' in response.text
+    assert 'id="labServiceChart"' in response.text
+    assert 'id="labLossChart"' in response.text
+    assert 'id="labReferenceCard"' in response.text
     assert "Nu trebuie să alegi manual o zonă climatică." in response.text
     assert "embed-house-lab.js" in response.text
     assert "embed-runtime.js" in response.text
@@ -354,6 +358,12 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert payload["design_heat_load_kw"] > 0
     assert payload["locality"]
     assert payload["climate_station"]
+    assert len(payload["monthly"]) == 12
+    assert len(payload["monthly_costs"]) == 12
+    assert payload["final_energy_by_service"]["heating"] >= 0
+    assert payload["heat_loss_breakdown"]
+    assert sum(row["value_w_k"] for row in payload["heat_loss_breakdown"]) > 0
+    assert payload["reference"] is not None
 
 
 def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None:
@@ -386,6 +396,8 @@ def test_embed_loader_validates_message_origin_source_and_full_width() -> None:
     assert "event.origin !== embedOrigin" in response.text
     assert "event.source !== iframe.contentWindow" in response.text
     assert "lacurent:embed-height" in response.text
+    assert "lacurent:embed-viewport" in response.text
+    assert "window.addEventListener(\"scroll\", scheduleViewport" in response.text
 
 def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
     response = client.get("/instalatii/calculator")
@@ -400,15 +412,26 @@ def test_embed_scenario_lab_uses_partner_calculation_route() -> None:
     assert "fetch(calculateUrl" in response.text
 
 
-def test_embed_house_lab_has_container_aware_laptop_breakpoints() -> None:
+def test_embed_house_lab_uses_compact_controls_and_wide_sticky_dashboard() -> None:
     response = client.get("/static/embed-house-lab.css")
     assert response.status_code == 200
     assert "container-type:inline-size" in response.text
-    assert "@container (max-width:1320px) and (min-width:1181px)" in response.text
-    assert "@container (max-width:1180px)" in response.text
-    assert "@container (max-width:620px)" in response.text
-    assert "grid-template-columns:minmax(0,1fr) minmax(286px,310px)" in response.text
+    assert "grid-template-columns:minmax(360px,.78fr) minmax(500px,1.22fr)" in response.text
+    assert ".lab-range-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))" in response.text
+    assert ".house-lab-results{position:sticky;top:8px" in response.text
+    assert ".lab-monthly-chart{display:grid;grid-template-columns:repeat(12" in response.text
+    assert "@container (max-width:900px)" in response.text
     assert ".house-lab-layout{grid-template-columns:1fr}" in response.text
+
+
+def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None:
+    response = client.get("/static/embed-house-lab.js")
+    assert response.status_code == 200
+    assert "renderMonthlyChart" in response.text
+    assert "renderHorizontalChart" in response.text
+    assert "renderReference" in response.text
+    assert 'data.type !== "lacurent:embed-viewport"' in response.text
+    assert "translateY(" in response.text
 
 
 def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_contract() -> None:

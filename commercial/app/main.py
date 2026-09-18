@@ -566,6 +566,30 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         if delta_t is not None
         else None
     )
+
+    loss_rows = [
+        {
+            "name": item.name,
+            "type": item.type,
+            "value_w_k": float(item.value),
+        }
+        for item in [*result.envelope_contributions, *result.thermal_bridge_contributions]
+        if float(item.value) > 0
+    ]
+    if float(result.h_ve_w_k) > 0:
+        loss_rows.append(
+            {
+                "name": "Ventilație / infiltrații",
+                "type": "ventilation",
+                "value_w_k": float(result.h_ve_w_k),
+            }
+        )
+    loss_total = sum(row["value_w_k"] for row in loss_rows) or 1.0
+    for row in loss_rows:
+        row["percent"] = 100.0 * row["value_w_k"] / loss_total
+    loss_rows.sort(key=lambda row: row["value_w_k"], reverse=True)
+
+    reference = result.reference
     return {
         "energy_class": result.energy_class,
         "final_energy_kwh": float(result.total_final_energy_kwh),
@@ -579,6 +603,43 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "climate_station": climate.get("station") or "",
         "climate_zone": climate.get("climate_zone"),
         "winter_design_temperature_c": design_temperature,
+        "final_energy_by_service": {
+            key: float(value)
+            for key, value in result.final_energy_by_service.items()
+        },
+        "final_energy_by_carrier": {
+            str(key): float(value)
+            for key, value in result.final_energy_by_carrier.items()
+        },
+        "monthly": [
+            {
+                "month": row.month,
+                "useful_heating_kwh": float(row.useful_heating_kwh),
+                "useful_cooling_kwh": float(row.useful_cooling_kwh),
+                "outdoor_temperature_c": float(row.outdoor_temperature_c),
+            }
+            for row in result.monthly
+        ],
+        "monthly_costs": [
+            {
+                "month": row["month"],
+                "cost_lei": float(row["priced_total_lei"]),
+                "complete": bool(row["complete"]),
+            }
+            for row in cost.get("monthly_rows", [])
+        ],
+        "heat_loss_breakdown": loss_rows,
+        "reference": (
+            {
+                "actual_specific_primary_kwh_m2": float(reference.actual_specific_primary_kwh_m2),
+                "reference_specific_primary_kwh_m2": float(reference.reference_specific_primary_kwh_m2),
+                "difference_percent": float(reference.difference_percent),
+            }
+            if reference is not None
+            else None
+        ),
+        "price_references_current": bool(cost.get("price_references_current")),
+        "price_retrieved_on": cost.get("retrieved_on"),
     }
 
 
