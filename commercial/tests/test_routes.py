@@ -368,9 +368,9 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'id="labBaselineRail"' in response.text
     assert 'data-lab-house-carousel' in response.text
     assert response.text.count('data-lab-house-slide') == 3
-    assert '/static/home-lab/house-fireplace.webp' in response.text
-    assert '/static/home-lab/house-orientation.webp' in response.text
-    assert '/static/home-lab/house-pv.webp' in response.text
+    assert '/home-lab-assets/house-fireplace.webp?v=2' in response.text
+    assert '/home-lab-assets/house-orientation.webp?v=2' in response.text
+    assert '/home-lab-assets/house-pv.webp?v=2' in response.text
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
@@ -384,13 +384,16 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
 
 def test_home_lab_house_carousel_assets_are_served() -> None:
     for path in (
-        "/static/home-lab/house-fireplace.webp",
-        "/static/home-lab/house-orientation.webp",
-        "/static/home-lab/house-pv.webp",
+        "/home-lab-assets/house-fireplace.webp?v=2",
+        "/home-lab-assets/house-orientation.webp?v=2",
+        "/home-lab-assets/house-pv.webp?v=2",
     ):
         response = client.get(path)
         assert response.status_code == 200
         assert "image/webp" in response.headers.get("content-type", "")
+        assert response.content.startswith(b"RIFF")
+        assert b"WEBP" in response.content[:16]
+        assert len(response.content) > 1000
 
 
 def test_home_lab_generated_svg_assets_are_served() -> None:
