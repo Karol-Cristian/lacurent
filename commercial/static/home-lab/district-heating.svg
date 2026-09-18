@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-labelledby="title desc">
+<title id="title">Termoficare</title><desc id="desc">Ilustrație simplă cu clădiri și conducte de termoficare.</desc>
+<rect width="720" height="420" rx="28" fill="#F4F1EA"/>
+<rect x="95" y="120" width="166" height="205" rx="4" fill="#FFF" stroke="#183B47" stroke-width="4"/>
+<rect x="459" y="90" width="166" height="235" rx="4" fill="#FFF" stroke="#183B47" stroke-width="4"/>
+<path d="M127 155h32v36h-32zm57 0h32v36h-32zm-57 62h32v36h-32zm57 0h32v36h-32zM491 126h32v36h-32zm57 0h32v36h-32zm-57 62h32v36h-32zm57 0h32v36h-32z" fill="#DCE9EA" stroke="#183B47" stroke-width="3"/>
+<path d="M258 284h202" stroke="#D26B3F" stroke-width="20" stroke-linecap="round"/>
+<path d="M258 317h202" stroke="#567D74" stroke-width="20" stroke-linecap="round"/>
+<path d="M281 284v-45h42M437 317v-51h-42" fill="none" stroke="#D26B3F" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M437 317v-50h-42M281 317v-51h42" fill="none" stroke="#567D74" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="359" cy="284" r="10" fill="#F4F1EA"/>
+<circle cx="359" cy="317" r="10" fill="#F4F1EA"/>
+<path d="M75 345h570" stroke="#D8D3C8" stroke-width="3"/>
+<path d="M359 92c-24-23-18-49 4-67M392 103c-20-19-15-41 3-56" fill="none" stroke="#D49B3D" stroke-width="6" stroke-linecap="round"/>
+</svg>
