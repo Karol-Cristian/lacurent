@@ -1,4 +1,4 @@
-.embed-house-lab{padding:18px 0 10px}
+.embed-house-lab{container-type:inline-size;padding:18px 0 10px}
 .house-lab-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:28px 2px 22px;border-bottom:1px solid var(--line)}
 .house-lab-hero h1{max-width:800px;margin:4px 0 10px;font-size:clamp(30px,4vw,50px);line-height:1.02}
 .house-lab-hero>div>p:last-child{max-width:780px;margin:0;color:var(--muted);line-height:1.55}
@@ -74,3 +74,32 @@
   .lab-control-head{align-items:center;flex-direction:row}
 }
 @media(max-width:620px){.embed-house-lab{padding-top:4px}.house-lab-hero{padding-top:18px}.lab-card,.house-lab-results{padding:15px}.lab-control-head{align-items:flex-start;flex-direction:column}.lab-number-control{width:100%;grid-template-columns:40px minmax(60px,1fr) auto 40px}.lab-metrics,.lab-result-context{grid-template-columns:1fr}.lab-climate-summary{align-items:flex-start;flex-direction:column}.house-lab-hero h1{font-size:34px}}
+@container (max-width:1320px) and (min-width:981px){
+  .house-lab-hero{gap:16px;padding:20px 2px 18px}
+  .house-lab-hero h1{font-size:38px}
+  .house-lab-layout{grid-template-columns:minmax(0,1fr) minmax(286px,310px);gap:14px;margin-top:14px}
+  .lab-card,.house-lab-results{padding:16px}
+  .lab-section-title{margin-bottom:14px}
+  .lab-range-grid{gap:14px}
+  .lab-control-head{align-items:stretch;flex-direction:column;gap:7px}
+  .lab-number-control{width:100%;grid-template-columns:38px minmax(58px,1fr) auto 38px}
+  .lab-metrics,.lab-result-context{grid-template-columns:1fr}
+  .lab-metrics article{min-height:88px}
+  .lab-class{width:62px;height:62px}
+  .lab-class strong{font-size:26px}
+}
+@container (max-width:980px){
+  .house-lab-layout{grid-template-columns:1fr}
+  .house-lab-results{position:static}
+  .house-lab-hero{align-items:stretch;flex-direction:column}
+  .lab-reset{align-self:flex-start}
+  .lab-control-head{align-items:center;flex-direction:row}
+}
+@container (max-width:620px){
+  .lab-card,.house-lab-results{padding:15px}
+  .lab-control-head{align-items:flex-start;flex-direction:column}
+  .lab-number-control{width:100%;grid-template-columns:40px minmax(60px,1fr) auto 40px}
+  .lab-metrics,.lab-result-context{grid-template-columns:1fr}
+  .lab-climate-summary{align-items:flex-start;flex-direction:column}
+  .house-lab-hero h1{font-size:34px}
+}
