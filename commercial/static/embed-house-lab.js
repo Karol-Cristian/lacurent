@@ -1254,10 +1254,10 @@
     const slides=Array.from(root.querySelectorAll("[data-lab-house-slide]"));
     if (slides.length < 2) return;
 
-    let active=0;
+    let active=isMobileCockpit() ? 1 : 0;
     const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    slides.forEach((slide,index) => slide.classList.toggle("is-active",index===0));
-    if (reduceMotion) return;
+    slides.forEach((slide,index) => slide.classList.toggle("is-active",index===active));
+    if (reduceMotion || isMobileCockpit()) return;
 
     window.setInterval(() => {
       if (document.hidden) return;
