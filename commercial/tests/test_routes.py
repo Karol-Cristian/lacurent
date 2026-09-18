@@ -328,8 +328,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab12" in response.text
-    assert "embed-house-lab.js?v=lab12" in response.text
+    assert "embed-house-lab.css?v=lab13" in response.text
+    assert "embed-house-lab.js?v=lab13" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -366,7 +366,11 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'id="labSaveScenario"' in response.text
     assert 'id="labSavedScenarios"' in response.text
     assert 'id="labBaselineRail"' in response.text
-    assert '/static/home-lab/home-envelope.svg' in response.text
+    assert 'data-lab-house-carousel' in response.text
+    assert response.text.count('data-lab-house-slide') == 3
+    assert '/static/home-lab/house-fireplace.webp' in response.text
+    assert '/static/home-lab/house-orientation.webp' in response.text
+    assert '/static/home-lab/house-pv.webp' in response.text
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
@@ -376,6 +380,17 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert "embed-house-lab.js" in response.text
     assert "embed-runtime.js" in response.text
     assert "Navigare LaCurent Instalații & Energie" not in response.text
+
+
+def test_home_lab_house_carousel_assets_are_served() -> None:
+    for path in (
+        "/static/home-lab/house-fireplace.webp",
+        "/static/home-lab/house-orientation.webp",
+        "/static/home-lab/house-pv.webp",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "image/webp" in response.headers.get("content-type", "")
 
 
 def test_home_lab_generated_svg_assets_are_served() -> None:
