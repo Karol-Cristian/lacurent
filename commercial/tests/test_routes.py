@@ -320,3 +320,22 @@ def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
     assert response.status_code == 200
     assert "content-security-policy" not in response.headers
 
+def test_embed_scenario_lab_uses_partner_calculation_route() -> None:
+    response = client.get("/static/scenario-cockpit.js")
+    assert response.status_code == 200
+    assert "dataset?.embedPartner" in response.text
+    assert "calculateUrl=partnerId?'/embed/'+encodeURIComponent(partnerId)+'/calculate':'/calculate'" in response.text
+    assert "fetch(calculateUrl" in response.text
+
+
+def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_contract() -> None:
+    page = client.get("/embed/demo-store")
+    assert page.status_code == 200
+    assert 'data-site-language="ro"' in page.text
+    assert 'data-site-language="en"' in page.text
+    script = client.get("/static/energy-i18n.js")
+    assert script.status_code == 200
+    assert 'if (lang !== "en") return raw;' in script.text
+    assert "originalText.get" in script.text
+    assert "window.lacurentSetLanguage = setLanguage" in script.text
+
