@@ -247,8 +247,12 @@
       <div><dt>Necesar util anual pentru încălzire</dt><dd>{{ result.annual_heating_demand_kwh|fmt("kWh/an", 1) }}</dd></div>
       <div><dt>Necesar util anual pentru răcire</dt><dd>{{ result.annual_cooling_demand_kwh|fmt("kWh/an", 1) }}</dd></div>
       <div><dt>Model solar</dt><dd>{% if result.input.solar.mode == "normative_hsol" and result.monthly[0].solar_hsol_kwh_m2 is not none %}MC001 Hsol · Anexa A.9.6{% elif result.input.solar.mode == "normative_hsol" %}Fallback aport explicit · Hsol indisponibil{% else %}Aport lunar explicit{% endif %}</dd></div>
-      <div><dt>Orientare solară</dt><dd>{{ result.input.solar.orientation }}</dd></div>
+      {% if result.input.solar.mode == "normative_hsol" and result.monthly[0].solar_station_name %}
+      <div><dt>Stație solară Hsol</dt><dd>{{ result.monthly[0].solar_station_name }} · {% if result.monthly[0].solar_station_resolution == "direct" %}corespondent direct{% elif result.monthly[0].solar_station_resolution == "coincident_source_station" %}stație-sursă coincidentă{% else %}cea mai apropiată{% if result.monthly[0].solar_station_distance_km is not none %} · {{ result.monthly[0].solar_station_distance_km|fmt("km", 1) }}{% endif %}{% endif %}</dd></div>
+      {% endif %}
+      <div><dt>Orientare solară</dt><dd>{% if result.input.solar.glazing_groups %}ferestre distribuite pe {{ result.input.solar.glazing_groups|length }} orientări{% else %}{{ result.input.solar.orientation }}{% endif %}</dd></div>
       <div><dt>Vitraj solar</dt><dd>{{ result.input.solar.glazing_type_id }}</dd></div>
+      {% if result.input.solar.shading_device_id %}<div><dt>Umbrire vitraj</dt><dd>MC001 Tabel 2.16 · {{ result.input.solar.shading_mounting_side }}</dd></div>{% endif %}
       <div><dt>Metodologie</dt><dd>{{ result.methodology_version }}</dd></div>
     </dl>
     <ul>
