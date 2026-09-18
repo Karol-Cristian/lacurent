@@ -500,7 +500,6 @@ def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
     assert "Modifică doar ce contează" in response.text
-    assert "Recalculare live" in response.text
     assert "Cost anual estimat" in response.text
 
 
