@@ -265,8 +265,12 @@
       </nav>
 
       <div class="lab-result-panel is-active" data-lab-panel="overview">
-        <section class="lab-house-visual">
-          <img src="/static/home-lab/home-envelope.svg" alt="" loading="lazy">
+        <section class="lab-house-visual" data-lab-house-carousel>
+          <div class="lab-house-slides" aria-hidden="true">
+            <img class="lab-house-slide is-active" data-lab-house-slide src="/static/home-lab/house-fireplace.webp" alt="" decoding="async">
+            <img class="lab-house-slide" data-lab-house-slide src="/static/home-lab/house-orientation.webp" alt="" loading="lazy" decoding="async">
+            <img class="lab-house-slide" data-lab-house-slide src="/static/home-lab/house-pv.webp" alt="" loading="lazy" decoding="async">
+          </div>
           <div class="lab-house-visual-overlay">
             <strong data-lab-key="heroMessage">O casă bine configurată înseamnă costuri mai mici și mai mult confort.</strong>
             <small><span id="labResultLocation">—</span> · <span id="labResultStation">—</span></small>
