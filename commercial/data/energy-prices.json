@@ -1,6 +1,6 @@
 {
-  "version": "2026-09-17b",
-  "retrieved_on": "2026-09-17",
+  "version": "2026-09-18a",
+  "retrieved_on": "2026-09-18",
   "electricity": {
     "source_name": "POSF / ANRE",
     "supplier": "Premier Energy Furnizare S.A.",
@@ -16,10 +16,56 @@
       "Distribuție Energie Electrică România": 1.27284
     },
     "operator_counties": {
-      "Distribuție Energie Oltenia": ["Argeș", "Dolj", "Gorj", "Mehedinți", "Olt", "Teleorman", "Vâlcea"],
-      "Rețele Electrice România": ["București", "Ilfov", "Giurgiu", "Călărași", "Constanța", "Ialomița", "Tulcea", "Arad", "Caraș-Severin", "Hunedoara", "Timiș"],
-      "Delgaz Grid": ["Botoșani", "Suceava", "Neamț", "Iași", "Bacău", "Vaslui"],
-      "Distribuție Energie Electrică România": ["Brașov", "Alba", "Sibiu", "Mureș", "Harghita", "Covasna", "Cluj", "Maramureș", "Satu Mare", "Sălaj", "Bihor", "Bistrița-Năsăud", "Prahova", "Buzău", "Dâmbovița", "Brăila", "Galați", "Vrancea"]
+      "Distribuție Energie Oltenia": [
+        "Argeș",
+        "Dolj",
+        "Gorj",
+        "Mehedinți",
+        "Olt",
+        "Teleorman",
+        "Vâlcea"
+      ],
+      "Rețele Electrice România": [
+        "București",
+        "Ilfov",
+        "Giurgiu",
+        "Călărași",
+        "Constanța",
+        "Ialomița",
+        "Tulcea",
+        "Arad",
+        "Caraș-Severin",
+        "Hunedoara",
+        "Timiș"
+      ],
+      "Delgaz Grid": [
+        "Botoșani",
+        "Suceava",
+        "Neamț",
+        "Iași",
+        "Bacău",
+        "Vaslui"
+      ],
+      "Distribuție Energie Electrică România": [
+        "Brașov",
+        "Alba",
+        "Sibiu",
+        "Mureș",
+        "Harghita",
+        "Covasna",
+        "Cluj",
+        "Maramureș",
+        "Satu Mare",
+        "Sălaj",
+        "Bihor",
+        "Bistrița-Năsăud",
+        "Prahova",
+        "Buzău",
+        "Dâmbovița",
+        "Brăila",
+        "Galați",
+        "Vrancea"
+      ]
     },
     "note": "Preț final cu TVA, fără abonament, pentru client casnic la joasă tensiune. Este o ofertă oficială din comparatorul POSF, nu prețul contractual al tuturor clienților."
   },
@@ -39,19 +85,23 @@
     "note": "Referința folosită este media simplă a prețurilor finale cu TVA pentru categoriile casnice uzuale la doi operatori majori din oferta POSF. Operatorul și categoria reală de consum pot modifica prețul."
   },
   "firewood": {
-    "source_name": "Romsilva / Direcția Silvică Suceava",
-    "source_url": "https://sv.prefectura.mai.gov.ro/wp-content/uploads/sites/26/2026/02/Dir-silvica.pdf",
-    "catalog_url": "https://anunturi.rosilva.ro/preturilemnfoc",
-    "price_reference": "Foioase tari, fasonat la drum auto",
-    "price_lei_per_solid_m3": 300.0,
-    "consumer_cost_multiplier": 2.0,
-    "consumer_cost_multiplier_note": "Prețul Romsilva este folosit ca referință de bază. Pentru estimarea costului suportat de consumator calculatorul aplică un factor ×2,0, care acoperă orientativ transportul, manipularea, debitarea/despicarea și marja comercială. Valoarea rezultată nu reprezintă un preț oficial Romsilva de retail.",
-    "unit": "lei/m³",
-    "energy_source_name": "Eurostat - Quality standard for statistics on wood fuel consumption in households",
-    "energy_source_url": "https://ec.europa.eu/eurostat/documents/38154/4956233/Quality_standard_statistics_wood_fuel_consumption_households_CA-RES_2012.pdf",
-    "energy_kwh_per_solid_m3": 2821.0,
-    "assumed_water_content_percent": 20,
-    "note": "Referința oficială Romsilva este pentru foioase tari fasonate la drum auto. Calculatorul nu tratează această valoare ca preț final la poarta consumatorului, ci aplică separat factorul comercial ×2,0. Prețul real poate diferi după județ, specie, sortiment, cantitate și condițiile de livrare."
+    "source_name": "Leroy Merlin România - referință retail",
+    "source_url": "https://www.leroymerlin.ro/produse/lemn-de-foc-fag-esenta-tare-ambalat-0-80-mc-12145945.html",
+    "secondary_source_name": "Dedeman - verificare format retail 0,8 m³ fag",
+    "secondary_source_url": "https://www.dedeman.ro/ro/lemne-de-foc-paletizate-0-8-mc-fag-1-2-m-x-1-45-m/p/7022046",
+    "price_reference": "Lemn de foc fag, esență tare, palet 0,80 m³",
+    "reference_price_lei_per_pallet": 738.99,
+    "reference_volume_m3_per_pallet": 0.8,
+    "reference_net_weight_kg_per_pallet": 600,
+    "unit": "lei/palet",
+    "energy_source_name": "Eurostat - Manual for statistics on energy consumption in households",
+    "energy_source_url": "https://ec.europa.eu/eurostat/documents/3859598/5935825/KS-GQ-13-003-EN.PDF.pdf/baa96509-3f4b-4c7a-94dd-feb1a31c7291?t=1414782907000",
+    "dry_hardwood_ncv_mj_per_kg": 18,
+    "water_vaporization_mj_per_kg": 2.447,
+    "assumed_water_content_percent": 30,
+    "automatic_price_available": true,
+    "market_reference": true,
+    "note": "Referință retail publică, nu tarif național: Leroy Merlin afișa 738,99 lei/palet pentru fag ambalat 0,80 m³, 600 kg net și 30% umiditate la 18.09.2026. Dedeman comercializează un produs echivalent de fag paletizat 0,8 m³, dar prețul este afișat doar după selectarea localității. Prețul real variază după localitate, stoc, umiditate, esență și livrare."
   },
   "pellets": {
     "source_name": "Leroy Merlin România - referință retail",
