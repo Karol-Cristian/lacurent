@@ -282,7 +282,7 @@ def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
     assert "Servicii pentru proiectul tău" in response.text
     assert "Înainte să cumperi, estimează necesarul energetic al casei." in response.text
     assert 'data-lacurent-embed data-partner="demo-store"' in response.text
-    assert 'src="https://lacurent.com/static/embed-loader.js"' in response.text
+    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed3"' in response.text
     assert "app.css" not in response.text
     assert "base.html" not in response.text
 
@@ -299,8 +299,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab2" in response.text
-    assert "embed-house-lab.js?v=lab2" in response.text
+    assert "embed-house-lab.css?v=lab3" in response.text
+    assert "embed-house-lab.js?v=lab3" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -368,7 +368,9 @@ def test_embed_loader_validates_message_origin_source_and_full_width() -> None:
     assert response.status_code == 200
     assert "[data-lacurent-embed]" in response.text
     assert 'host.style.width = "100%"' in response.text
-    assert 'iframe.setAttribute("width", "100%")' in response.text
+    assert 'iframe.setAttribute("width", String(width))' in response.text
+    assert "widthContainer.clientWidth" in response.text
+    assert "new ResizeObserver(syncFrameWidth)" in response.text
     assert 'iframe.style.maxWidth = "none"' in response.text
     assert "event.origin !== embedOrigin" in response.text
     assert "event.source !== iframe.contentWindow" in response.text
@@ -387,13 +389,15 @@ def test_embed_scenario_lab_uses_partner_calculation_route() -> None:
     assert "fetch(calculateUrl" in response.text
 
 
-def test_embed_house_lab_has_dedicated_laptop_breakpoint() -> None:
+def test_embed_house_lab_has_container_aware_laptop_breakpoints() -> None:
     response = client.get("/static/embed-house-lab.css")
     assert response.status_code == 200
-    assert "@media(max-width:1320px) and (min-width:981px)" in response.text
+    assert "container-type:inline-size" in response.text
+    assert "@container (max-width:1320px) and (min-width:981px)" in response.text
+    assert "@container (max-width:980px)" in response.text
+    assert "@container (max-width:620px)" in response.text
     assert "grid-template-columns:minmax(0,1fr) minmax(286px,310px)" in response.text
-    assert ".lab-control-head{align-items:stretch;flex-direction:column;gap:7px}" in response.text
-    assert ".lab-metrics,.lab-result-context{grid-template-columns:1fr}" in response.text
+    assert ".house-lab-layout{grid-template-columns:1fr}" in response.text
 
 
 def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_contract() -> None:
