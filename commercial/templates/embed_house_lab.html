@@ -9,256 +9,186 @@
   data-partner-id="{{ partner.id }}"
   data-calculate-url="/embed/{{ partner.id }}/lab-calculate"
 >
-  <header class="house-lab-hero">
-    <div>
-      <p class="eyebrow" data-lab-key="kicker">Laboratorul casei</p>
-      <h1 data-lab-key="title">Configurează casa. Vezi imediat ce se schimbă.</h1>
-      <p data-lab-key="intro">Pornești de la o casă presetată și modifici doar ce contează. Costul, consumul și necesarul termic se actualizează pe loc.</p>
-      <div class="lab-hero-proof" aria-label="Caracteristici calculator">
-        <span data-lab-key="proofClimate">Profil climatic automat</span>
-        <span data-lab-key="proofLive">Recalculare live</span>
-        <span data-lab-key="proofCost">Cost anual estimat</span>
-      </div>
-    </div>
-    <button type="button" class="secondary-action lab-reset" data-lab-reset data-lab-key="reset">Revino la preset</button>
-  </header>
-
   <div class="house-lab-layout">
-    <div class="house-lab-controls">
-      <section class="lab-card lab-location-card">
-        <div class="lab-section-title">
-          <span aria-hidden="true">01</span>
-          <div>
-            <strong data-lab-key="locationTitle">Unde este casa?</strong>
-            <small data-lab-key="locationSubtitle">Scrie localitatea și alege rezultatul corect.</small>
-          </div>
+    <aside class="lab-config-panel">
+      <header class="lab-config-header">
+        <div>
+          <p class="lab-product-kicker" data-lab-key="kicker">Laboratorul casei</p>
+          <h1 data-lab-key="configureTitle">Configurează casa ta</h1>
+          <p data-lab-key="configureSubtitle">Modifică doar ce contează. Rezultatele se actualizează în timp real.</p>
         </div>
-
         <div
-          class="lab-locality"
+          class="lab-location-chip lab-locality"
           data-initial-locality-id="{{ values.locality_id }}"
           data-initial-locality="{{ values.locality }}"
         >
-          <label for="labLocalitySearch" class="lab-locality-label">
-            <span data-lab-key="locationLabel">Localitatea</span>
-            <button
-              type="button"
-              class="lab-info-button"
-              aria-label="De ce este importantă localitatea?"
-              title="Localitatea este folosită pentru selectarea automată a profilului climatic și a temperaturilor exterioare utilizate în calcul."
-            >i</button>
-          </label>
-          <input
-            id="labLocalitySearch"
-            type="search"
-            autocomplete="off"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded="false"
-            aria-controls="labLocalityResults"
-            value="{{ values.locality }}"
-            placeholder="Ex. Cluj-Napoca, Brașov, Florești"
-          >
+          <span class="lab-location-pin" aria-hidden="true">●</span>
+          <div>
+            <label for="labLocalitySearch" data-lab-key="locationLabel">Localitatea</label>
+            <input
+              id="labLocalitySearch"
+              type="search"
+              autocomplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="labLocalityResults"
+              value="{{ values.locality }}"
+              placeholder="Cluj-Napoca"
+            >
+            <small id="labClimateDetails">—</small>
+          </div>
           <div id="labLocalityResults" class="locality-results lab-locality-results" role="listbox" hidden></div>
-          <p class="lab-location-info" data-lab-key="locationInfo">Localitatea este importantă pentru selectarea automată a profilului climatic. Nu trebuie să alegi manual o zonă climatică.</p>
-          <div class="lab-climate-summary" id="labClimateSummary" aria-live="polite">
-            <strong data-lab-key="climateAuto">Profil climatic selectat automat</strong>
-            <span id="labClimateDetails">—</span>
-          </div>
         </div>
-      </section>
+      </header>
 
-      <section class="lab-card">
-        <div class="lab-section-title">
-          <span aria-hidden="true">02</span>
+      <section class="lab-config-card">
+        <div class="lab-config-card-title">
+          <span class="lab-card-icon">⌂</span>
           <div>
-            <strong data-lab-key="geometryTitle">Casa</strong>
-            <small data-lab-key="geometrySubtitle">Dimensiuni și suprafețe ușor de verificat.</small>
+            <strong data-lab-key="houseUseTitle">1. Casă și utilizare</strong>
+            <small data-lab-key="houseUseSubtitle">Dimensiuni, niveluri și ocupare</small>
           </div>
         </div>
 
-        <div class="lab-visual-inline lab-home-visual">
-          <img src="/static/home-lab/home-envelope.svg" alt="" loading="lazy">
-          <div>
-            <strong data-lab-key="houseVisualTitle">Casa ta, simplificată pentru calcul</strong>
-            <small data-lab-key="houseVisualText">Dimensiunile, anvelopa și instalațiile se combină într-un singur model energetic.</small>
-          </div>
-        </div>
-
-        <div class="lab-range-grid">
+        <div class="lab-field-grid three">
           <div class="lab-range-control" data-lab-control="area">
-            <div class="lab-control-head">
-              <label for="labArea" data-lab-key="area">Suprafață încălzită</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade suprafața">−</button>
-                <input id="labAreaNumber" type="number" min="40" max="300" step="5" value="120" data-lab-number-for="labArea">
-                <span>m²</span>
-                <button type="button" data-lab-step="1" aria-label="Crește suprafața">+</button>
-              </div>
+            <label for="labArea" data-lab-key="area">Suprafață încălzită</label>
+            <div class="lab-compact-value">
+              <input id="labAreaNumber" type="number" min="40" max="300" step="5" value="120" data-lab-number-for="labArea">
+              <span>m²</span>
             </div>
             <input id="labArea" type="range" min="40" max="300" step="5" value="120">
           </div>
 
           <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labLevels" data-lab-key="levels">Niveluri încălzite</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade numărul de niveluri">−</button>
-                <input id="labLevelsNumber" type="number" min="1" max="3" step="1" value="2" data-lab-number-for="labLevels">
-                <span data-lab-key="levelsUnit">niv.</span>
-                <button type="button" data-lab-step="1" aria-label="Crește numărul de niveluri">+</button>
-              </div>
+            <label for="labLevels" data-lab-key="levels">Niveluri</label>
+            <div class="lab-segmented" data-segmented-for="labLevels">
+              <button type="button" data-segment-value="1">1</button>
+              <button type="button" data-segment-value="2" class="is-active">2</button>
+              <button type="button" data-segment-value="3">3+</button>
             </div>
-            <input id="labLevels" type="range" min="1" max="3" step="1" value="2">
+            <input id="labLevels" class="visually-hidden-range" type="range" min="1" max="3" step="1" value="2">
+            <input id="labLevelsNumber" type="hidden" value="2" data-lab-number-for="labLevels">
           </div>
 
           <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labHeight" data-lab-key="height">Înălțime interioară</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade înălțimea">−</button>
-                <input id="labHeightNumber" type="number" min="2.2" max="3.5" step="0.1" value="2.7" data-lab-number-for="labHeight">
-                <span>m</span>
-                <button type="button" data-lab-step="1" aria-label="Crește înălțimea">+</button>
-              </div>
-            </div>
-            <input id="labHeight" type="range" min="2.2" max="3.5" step="0.1" value="2.7">
-          </div>
-
-          <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labWindows" data-lab-key="windows">Suprafață totală ferestre</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade suprafața ferestrelor">−</button>
-                <input id="labWindowsNumber" type="number" min="2" max="60" step="0.5" value="18" data-lab-number-for="labWindows">
-                <span>m²</span>
-                <button type="button" data-lab-step="1" aria-label="Crește suprafața ferestrelor">+</button>
-              </div>
-            </div>
-            <input id="labWindows" type="range" min="2" max="60" step="0.5" value="18">
-          </div>
-        </div>
-
-        <div class="lab-window-config">
-          <img src="/static/home-lab/window-orientation-card.svg" alt="" loading="lazy">
-          <div class="lab-window-config-fields">
-            <div>
-              <span data-lab-key="windowType">Tip ferestre</span>
-              <select id="labGlazing">
-                <option value="single_clear_glazing">Geam simplu</option>
-                <option value="double_clear_glazing">Geam dublu clar</option>
-                <option value="double_low_e_face_3" selected>Geam dublu Low‑E</option>
-                <option value="triple_low_e_faces_2_and_5">Tripan Low‑E</option>
-              </select>
-            </div>
-            <div>
-              <span data-lab-key="orientation">Orientare principală</span>
-              <select id="labOrientation">
-                <option value="south" selected>Sud</option>
-                <option value="south_west">Sud‑vest</option>
-                <option value="west">Vest</option>
-                <option value="north_west">Nord‑vest</option>
-                <option value="north">Nord</option>
-                <option value="north_east">Nord‑est</option>
-                <option value="east">Est</option>
-                <option value="south_east">Sud‑est</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="lab-card">
-        <div class="lab-section-title">
-          <span aria-hidden="true">03</span>
-          <div>
-            <strong data-lab-key="insulationTitle">Izolația</strong>
-            <small data-lab-key="insulationSubtitle">Grosimea este introdusă direct în centimetri.</small>
-          </div>
-        </div>
-
-        <div class="lab-range-grid">
-          <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labWallIns" data-lab-key="wallIns">Izolație pereți</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade izolația pereților">−</button>
-                <input id="labWallInsNumber" type="number" min="0" max="30" step="1" value="5" data-lab-number-for="labWallIns">
-                <span>cm</span>
-                <button type="button" data-lab-step="1" aria-label="Crește izolația pereților">+</button>
-              </div>
-            </div>
-            <input id="labWallIns" type="range" min="0" max="30" step="1" value="5">
-          </div>
-
-          <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labRoofIns" data-lab-key="roofIns">Izolație pod / acoperiș</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade izolația acoperișului">−</button>
-                <input id="labRoofInsNumber" type="number" min="0" max="40" step="1" value="10" data-lab-number-for="labRoofIns">
-                <span>cm</span>
-                <button type="button" data-lab-step="1" aria-label="Crește izolația acoperișului">+</button>
-              </div>
-            </div>
-            <input id="labRoofIns" type="range" min="0" max="40" step="1" value="10">
-          </div>
-
-          <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labFloorIns" data-lab-key="floorIns">Izolație pardoseală</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade izolația pardoselii">−</button>
-                <input id="labFloorInsNumber" type="number" min="0" max="25" step="1" value="5" data-lab-number-for="labFloorIns">
-                <span>cm</span>
-                <button type="button" data-lab-step="1" aria-label="Crește izolația pardoselii">+</button>
-              </div>
-            </div>
-            <input id="labFloorIns" type="range" min="0" max="25" step="1" value="5">
-          </div>
-        </div>
-        <p class="lab-assumption" data-lab-key="insulationAssumption">Pentru simulare, grosimea este convertită automat în coeficienți U folosind o conductivitate termică de referință de 0,040 W/mK peste anvelopa de bază.</p>
-      </section>
-
-      <section class="lab-card">
-        <div class="lab-section-title">
-          <span aria-hidden="true">04</span>
-          <div>
-            <strong data-lab-key="comfortTitle">Confort și utilizare</strong>
-            <small data-lab-key="comfortSubtitle">Parametri care modifică direct consumul calculat.</small>
-          </div>
-        </div>
-
-        <div class="lab-range-grid">
-          <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labTemperature" data-lab-key="temperature">Temperatură interioară iarna</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade temperatura">−</button>
-                <input id="labTemperatureNumber" type="number" min="18" max="24" step="0.5" value="21" data-lab-number-for="labTemperature">
-                <span>°C</span>
-                <button type="button" data-lab-step="1" aria-label="Crește temperatura">+</button>
-              </div>
-            </div>
-            <input id="labTemperature" type="range" min="18" max="24" step="0.5" value="21">
-          </div>
-
-          <div class="lab-range-control">
-            <div class="lab-control-head">
-              <label for="labOccupants" data-lab-key="occupants">Persoane în locuință</label>
-              <div class="lab-number-control">
-                <button type="button" data-lab-step="-1" aria-label="Scade numărul de persoane">−</button>
-                <input id="labOccupantsNumber" type="number" min="1" max="8" step="1" value="4" data-lab-number-for="labOccupants">
-                <span data-lab-key="personsUnit">pers.</span>
-                <button type="button" data-lab-step="1" aria-label="Crește numărul de persoane">+</button>
-              </div>
+            <label for="labOccupants" data-lab-key="occupants">Persoane în locuință</label>
+            <div class="lab-compact-value">
+              <input id="labOccupantsNumber" type="number" min="1" max="8" step="1" value="4" data-lab-number-for="labOccupants">
+              <span data-lab-key="personsUnit">pers.</span>
             </div>
             <input id="labOccupants" type="range" min="1" max="8" step="1" value="4">
           </div>
         </div>
 
-        <label class="lab-select-control">
-          <span data-lab-key="heating">Sursa principală de încălzire</span>
+        <div class="lab-field-grid two lab-secondary-row">
+          <div class="lab-range-control">
+            <label for="labHeight" data-lab-key="height">Înălțime interioară</label>
+            <div class="lab-compact-value">
+              <input id="labHeightNumber" type="number" min="2.2" max="3.5" step="0.1" value="2.7" data-lab-number-for="labHeight">
+              <span>m</span>
+            </div>
+            <input id="labHeight" type="range" min="2.2" max="3.5" step="0.1" value="2.7">
+          </div>
+          <div class="lab-range-control">
+            <label for="labTemperature" data-lab-key="temperature">Temperatură iarna</label>
+            <div class="lab-compact-value">
+              <input id="labTemperatureNumber" type="number" min="18" max="24" step="0.5" value="21" data-lab-number-for="labTemperature">
+              <span>°C</span>
+            </div>
+            <input id="labTemperature" type="range" min="18" max="24" step="0.5" value="21">
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-config-card">
+        <div class="lab-config-card-title">
+          <span class="lab-card-icon">▱</span>
+          <div>
+            <strong data-lab-key="envelopeTitle">2. Anvelopă și ferestre</strong>
+            <small data-lab-key="envelopeSubtitle">Izolație, geamuri și orientare solară</small>
+          </div>
+        </div>
+
+        <div class="lab-field-grid three">
+          <div class="lab-range-control">
+            <label for="labWallIns" data-lab-key="wallIns">Izolație pereți</label>
+            <div class="lab-compact-value">
+              <input id="labWallInsNumber" type="number" min="0" max="30" step="1" value="5" data-lab-number-for="labWallIns">
+              <span>cm</span>
+            </div>
+            <input id="labWallIns" type="range" min="0" max="30" step="1" value="5">
+          </div>
+          <div class="lab-range-control">
+            <label for="labRoofIns" data-lab-key="roofIns">Izolație acoperiș</label>
+            <div class="lab-compact-value">
+              <input id="labRoofInsNumber" type="number" min="0" max="40" step="1" value="10" data-lab-number-for="labRoofIns">
+              <span>cm</span>
+            </div>
+            <input id="labRoofIns" type="range" min="0" max="40" step="1" value="10">
+          </div>
+          <div class="lab-range-control">
+            <label for="labFloorIns" data-lab-key="floorIns">Izolație pardoseală</label>
+            <div class="lab-compact-value">
+              <input id="labFloorInsNumber" type="number" min="0" max="25" step="1" value="5" data-lab-number-for="labFloorIns">
+              <span>cm</span>
+            </div>
+            <input id="labFloorIns" type="range" min="0" max="25" step="1" value="5">
+          </div>
+        </div>
+
+        <div class="lab-field-grid three lab-secondary-row">
+          <div class="lab-range-control">
+            <label for="labWindows" data-lab-key="windows">Suprafață totală ferestre</label>
+            <div class="lab-compact-value">
+              <input id="labWindowsNumber" type="number" min="2" max="60" step="0.5" value="18" data-lab-number-for="labWindows">
+              <span>m²</span>
+            </div>
+            <input id="labWindows" type="range" min="2" max="60" step="0.5" value="18">
+          </div>
+          <label class="lab-select-field">
+            <span data-lab-key="windowType">Tip ferestre</span>
+            <select id="labGlazing">
+              <option value="single_clear_glazing">Geam simplu</option>
+              <option value="double_clear_glazing">Geam dublu clar</option>
+              <option value="double_low_e_face_3">Geam dublu Low‑E</option>
+              <option value="triple_low_e_faces_2_and_5" selected>Tripan Low‑E</option>
+            </select>
+          </label>
+          <label class="lab-select-field">
+            <span data-lab-key="orientation">Orientare principală</span>
+            <select id="labOrientation">
+              <option value="south" selected>Sud</option>
+              <option value="south_west">Sud‑vest</option>
+              <option value="west">Vest</option>
+              <option value="north_west">Nord‑vest</option>
+              <option value="north">Nord</option>
+              <option value="north_east">Nord‑est</option>
+              <option value="east">Est</option>
+              <option value="south_east">Sud‑est</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="lab-config-card">
+        <div class="lab-config-card-title">
+          <span class="lab-card-icon">≋</span>
+          <div>
+            <strong data-lab-key="systemsTitle">3. Sisteme de încălzire și apă caldă</strong>
+            <small data-lab-key="systemsSubtitle">Alege sursa principală</small>
+          </div>
+        </div>
+
+        <div class="lab-system-pills" role="group" aria-label="Sursa principală de încălzire">
+          <button type="button" data-heating-choice="condensing_gas_boiler" class="is-active">Centrală gaz</button>
+          <button type="button" data-heating-choice="heat_pump">Pompă căldură</button>
+          <button type="button" data-heating-choice="district_heat">Termoficare</button>
+          <button type="button" data-heating-choice="wood_stove">Șemineu / Sobă</button>
+        </div>
+        <label class="lab-select-field lab-more-system">
+          <span data-lab-key="otherHeating">Alte sisteme</span>
           <select id="labHeating">
             <option value="condensing_gas_boiler">Centrală gaz în condensare</option>
             <option value="gas_boiler">Centrală gaz convențională</option>
@@ -270,92 +200,186 @@
             <option value="pellet_boiler">Centrală pe peleți</option>
           </select>
         </label>
+      </section>
 
-        <div class="lab-system-visual">
-          <img id="labHeatingVisual" src="/static/home-lab/home-envelope.svg" alt="" loading="lazy">
+      <section class="lab-config-card">
+        <div class="lab-config-card-title">
+          <span class="lab-card-icon">✣</span>
           <div>
-            <strong id="labHeatingVisualTitle" data-lab-key="heatingVisualDefaultTitle">Sursa de încălzire contează direct în cost</strong>
-            <small id="labHeatingVisualText" data-lab-key="heatingVisualDefaultText">Schimbarea sursei recalculază energia finală, energia primară, CO₂ și costul anual.</small>
+            <strong data-lab-key="ventilationTitle">4. Ventilație și răcire</strong>
+            <small data-lab-key="ventilationSubtitle">Schimbul de aer și confortul de vară</small>
+          </div>
+        </div>
+        <div class="lab-field-grid two">
+          <label class="lab-select-field">
+            <span data-lab-key="ventilation">Sistem ventilație</span>
+            <select id="labVentilation">
+              <option value="natural" selected>Naturală</option>
+              <option value="mechanical">Mecanică</option>
+              <option value="hrv">Cu recuperare de căldură</option>
+            </select>
+          </label>
+          <label class="lab-select-field">
+            <span data-lab-key="cooling">Răcire</span>
+            <select id="labCooling">
+              <option value="none" selected>Fără răcire</option>
+              <option value="split">Aer condiționat</option>
+              <option value="heat_pump">Pompă de căldură reversibilă</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <button type="button" class="lab-reset" data-lab-reset data-lab-key="reset">Revino la preset</button>
+    </aside>
+
+    <main class="lab-results-stage">
+      <header class="lab-results-toolbar">
+        <div>
+          <h2 data-lab-key="resultsTitle">Rezultatele tale</h2>
+          <div class="lab-live-copy">
+            <span class="lab-results-status" id="labStatus">Se calculează presetul…</span>
+          </div>
+        </div>
+        <button type="button" class="lab-compare-button" data-open-tab="comparison" data-lab-key="compareScenarios">Compară scenarii</button>
+      </header>
+
+      <nav class="lab-result-tabs" aria-label="Rezultate">
+        <button type="button" class="is-active" data-lab-tab="overview" data-lab-key="tabOverview">Prezentare</button>
+        <button type="button" data-lab-tab="costs" data-lab-key="tabCosts">Costuri</button>
+        <button type="button" data-lab-tab="energy" data-lab-key="tabEnergy">Energie</button>
+        <button type="button" data-lab-tab="losses" data-lab-key="tabLosses">Pierderi</button>
+        <button type="button" data-lab-tab="comparison" data-lab-key="tabComparison">Comparație</button>
+      </nav>
+
+      <div class="lab-result-panel is-active" data-lab-panel="overview">
+        <section class="lab-house-visual">
+          <img src="/static/home-lab/home-envelope.svg" alt="" loading="lazy">
+          <div class="lab-house-visual-overlay">
+            <strong data-lab-key="heroMessage">O casă bine configurată înseamnă costuri mai mici și mai mult confort.</strong>
+            <small><span id="labResultLocation">—</span> · <span id="labResultStation">—</span></small>
+          </div>
+        </section>
+
+        <div class="lab-dashboard-grid">
+          <section class="lab-chart-card lab-monthly-card">
+            <div class="lab-chart-title">
+              <div>
+                <strong data-lab-key="monthlyChartTitle">Costul pe luni</strong>
+                <small id="labMonthlyChartNote" data-lab-key="monthlyChartNote">cum variază pe parcursul anului</small>
+              </div>
+              <span id="labPriceStatus"></span>
+            </div>
+            <div class="lab-monthly-chart" id="labMonthlyChart" aria-label="Profil lunar"></div>
+          </section>
+
+          <section class="lab-chart-card lab-service-card">
+            <div class="lab-chart-title">
+              <div>
+                <strong data-lab-key="serviceChartTitle">Pentru ce consumi energia</strong>
+                <small>kWh/an</small>
+              </div>
+            </div>
+            <div class="lab-service-donut-wrap">
+              <div class="lab-service-donut" id="labServiceDonut"><strong>—</strong><span>kWh/an</span></div>
+              <div class="lab-service-legend" id="labServiceChart"></div>
+            </div>
+          </section>
+
+          <section class="lab-chart-card">
+            <div class="lab-chart-title">
+              <div>
+                <strong data-lab-key="lossChartTitle">Pe unde pierde casa căldură</strong>
+                <small data-lab-key="lossSubtitle">% din pierderile totale</small>
+              </div>
+            </div>
+            <div class="lab-horizontal-chart" id="labLossChart"></div>
+          </section>
+
+          <section class="lab-chart-card lab-reference-card" id="labReferenceCard" hidden>
+            <div class="lab-chart-title">
+              <div>
+                <strong data-lab-key="referenceTitle">Față de o casă de referință</strong>
+                <small>kWh/m²/an</small>
+              </div>
+            </div>
+            <div class="lab-reference-comparison">
+              <div><strong id="labReferenceActual">—</strong><span data-lab-key="yourHouse">Casa ta</span></div>
+              <b id="labReferenceDelta">—</b>
+              <div><strong id="labReferenceTarget">—</strong><span data-lab-key="referenceHouse">Casă de referință</span></div>
+            </div>
+            <div class="lab-reference-track"><i id="labReferenceBar"></i></div>
+            <small id="labReferenceText">—</small>
+          </section>
+        </div>
+      </div>
+
+      <div class="lab-result-panel" data-lab-panel="costs">
+        <section class="lab-focus-card">
+          <span data-lab-key="annualCost">Cost anual estimat</span>
+          <strong id="labAnnualCostMirror">—</strong>
+          <small id="labMonthlyCostMirror">—</small>
+        </section>
+        <section class="lab-chart-card">
+          <div class="lab-chart-title"><strong data-lab-key="monthlyChartTitle">Costul pe luni</strong></div>
+          <div class="lab-monthly-chart lab-monthly-chart-mirror" id="labMonthlyChartMirror"></div>
+        </section>
+      </div>
+
+      <div class="lab-result-panel" data-lab-panel="energy">
+        <section class="lab-focus-card">
+          <span data-lab-key="finalEnergy">Energie finală</span>
+          <strong id="labFinalEnergyMirror">—</strong>
+          <small data-lab-key="allSources">toate sursele</small>
+        </section>
+        <section class="lab-chart-card">
+          <div class="lab-chart-title"><strong data-lab-key="serviceChartTitle">Pentru ce consumi energia</strong></div>
+          <div class="lab-service-legend" id="labServiceChartMirror"></div>
+        </section>
+      </div>
+
+      <div class="lab-result-panel" data-lab-panel="losses">
+        <section class="lab-chart-card">
+          <div class="lab-chart-title"><strong data-lab-key="lossChartTitle">Pe unde pierde casa căldură</strong></div>
+          <div class="lab-horizontal-chart" id="labLossChartMirror"></div>
+        </section>
+      </div>
+
+      <div class="lab-result-panel" data-lab-panel="comparison">
+        <section class="lab-focus-card">
+          <span data-lab-key="referenceTitle">Față de o casă de referință</span>
+          <strong id="labComparisonDelta">—</strong>
+          <small id="labComparisonText">—</small>
+        </section>
+      </div>
+    </main>
+
+    <aside class="lab-summary-rail" aria-live="polite">
+      <section class="lab-energy-class-card">
+        <h3 data-lab-key="energyClass">Clasă energetică</h3>
+        <div class="lab-energy-class-row">
+          <div class="lab-class">
+            <strong id="labClass">—</strong>
+          </div>
+          <div class="lab-class-scale" aria-label="Scală energetică">
+            {% for grade in ["A","B","C","D","E","F","G"] %}
+            <span data-class-grade="{{ grade }}">{{ grade }}</span>
+            {% endfor %}
           </div>
         </div>
       </section>
 
-      <form id="embedLabForm" hidden>
-        <input name="project_name" value="Laboratorul casei">
-        <input name="locality_id" value="{{ values.locality_id }}">
-        <input name="locality" value="{{ values.locality }}">
-        <input name="building_type" value="residential_individual">
-        <input name="building_length_m" value="8">
-        <input name="building_width_m" value="7.5">
-        <input name="heated_levels" value="2">
-        <input name="average_height_m" value="2.7">
-        <input name="house_window_area_m2" value="18">
-        <input name="house_door_area_m2" value="2.2">
-
-        <input name="expert_geometry_override" value="on">
-        <input name="heated_floor_area_m2" value="120">
-        <input name="heated_volume_m3" value="324">
-        <input name="wall_area_m2" value="145">
-        <input name="roof_area_m2" value="60">
-        <input name="floor_area_m2" value="60">
-        <input name="window_area_m2" value="18">
-        <input name="door_area_m2" value="2.2">
-        <input name="thermal_bridge_length_m" value="62">
-
-        <input name="expert_envelope_override" value="on">
-        <input name="wall_u_value" value="0.46">
-        <input name="roof_u_value" value="0.29">
-        <input name="floor_u_value" value="0.42">
-        <input name="window_u_value" value="1.6">
-        <input name="door_u_value" value="1.8">
-        <input name="thermal_bridge_psi_w_mk" value="0.08">
-
-        <input name="indoor_design_temperature_c" value="21">
-        <input name="construction_year" value="1990">
-        <input name="solar_mode" value="normative_hsol">
-        <input name="solar_orientation" value="south">
-        <input name="solar_glazing_type_id" value="double_low_e_face_3">
-
-        <input name="expert_ventilation_override" value="on">
-        <input name="air_changes_per_hour" value="0.5">
-        <input name="heat_recovery_efficiency" value="0">
-
-        <input name="heating_choice" value="condensing_gas_boiler">
-        <input name="dhw_enabled" value="on">
-        <input name="dhw_occupants" value="4">
-        <input name="dhw_litres_per_person_day_at_60c" value="50">
-        <input name="dhw_efficiency" value="0.86">
-      </form>
-    </div>
-
-    <aside class="house-lab-results" aria-live="polite">
-      <div class="lab-results-status" id="labStatus">Se calculează presetul…</div>
-
-      <div class="lab-results-head">
-        <div>
-          <span data-lab-key="resultsKicker">Rezultat live</span>
-          <h2 data-lab-key="resultsTitle">Casa configurată</h2>
-        </div>
-        <div class="lab-class">
-          <span data-lab-key="class">Clasă</span>
-          <strong id="labClass">—</strong>
-        </div>
-      </div>
-
-      <div class="lab-price-hero">
-        <div>
+      <div class="lab-summary-metrics">
+        <article>
           <span data-lab-key="annualCost">Cost anual estimat</span>
           <strong id="labAnnualCost">—</strong>
           <small id="labMonthlyCost">—</small>
-        </div>
-        <div class="lab-design-power">
-          <span data-lab-key="designPower">Putere termică estimată</span>
+        </article>
+        <article>
+          <span data-lab-key="designPower">Putere termică necesară</span>
           <strong id="labDesignPower">—</strong>
-          <small data-lab-key="designPowerNote">din H × ΔT la temperatura de calcul</small>
-        </div>
-      </div>
-
-      <div class="lab-metrics">
+          <small data-lab-key="designPowerNote">la temperatura de calcul</small>
+        </article>
         <article>
           <span data-lab-key="finalEnergy">Energie finală</span>
           <strong id="labFinalEnergy">—</strong>
@@ -367,64 +391,79 @@
           <small>kWh/m²/an</small>
         </article>
         <article>
+          <span data-lab-key="heatLoss">Coeficient global</span>
+          <strong id="labHeatLoss">—</strong>
+          <small>W/K</small>
+        </article>
+        <article>
           <span>CO₂</span>
           <strong id="labCo2">—</strong>
           <small>kg/an</small>
         </article>
-        <article>
-          <span data-lab-key="heatLoss">Coeficient pierderi</span>
-          <strong id="labHeatLoss">—</strong>
-          <small>W/K</small>
-        </article>
       </div>
 
-      <section class="lab-chart-card lab-monthly-card">
-        <div class="lab-chart-title">
-          <div>
-            <strong data-lab-key="monthlyChartTitle">Cost lunar estimat</strong>
-            <small id="labMonthlyChartNote" data-lab-key="monthlyChartNote">profilul celor 12 luni</small>
-          </div>
-          <span id="labPriceStatus"></span>
-        </div>
-        <div class="lab-monthly-chart" id="labMonthlyChart" aria-label="Profil lunar"></div>
-      </section>
+      <a class="lab-partner-cta" href="{{ partner.cta_url }}" target="_blank" rel="noreferrer">{{ partner.cta_label }}</a>
 
-      <div class="lab-chart-grid">
-        <section class="lab-chart-card">
-          <div class="lab-chart-title">
-            <strong data-lab-key="serviceChartTitle">Energie pe servicii</strong>
-            <small>kWh/an</small>
-          </div>
-          <div class="lab-horizontal-chart" id="labServiceChart"></div>
-        </section>
-
-        <section class="lab-chart-card">
-          <div class="lab-chart-title">
-            <strong data-lab-key="lossChartTitle">Unde pierde casa căldură</strong>
-            <small>W/K</small>
-          </div>
-          <div class="lab-horizontal-chart" id="labLossChart"></div>
-        </section>
+      <div class="lab-summary-actions">
+        <button type="button" data-lab-key="saveConfig">Salvează configurația</button>
+        <a href="/certificate" target="_blank" data-lab-key="exportReport">Exportă raport</a>
       </div>
 
-      <section class="lab-reference-card" id="labReferenceCard" hidden>
-        <div>
-          <span data-lab-key="referenceTitle">Față de clădirea de referință</span>
-          <strong id="labReferenceDelta">—</strong>
-        </div>
-        <div class="lab-reference-track"><i id="labReferenceBar"></i></div>
-        <small id="labReferenceText">—</small>
-      </section>
-
-      <div class="lab-result-context">
-        <div><span data-lab-key="selectedPlace">Localitate</span><strong id="labResultLocation">—</strong></div>
-        <div><span data-lab-key="climateStation">Stație climatică</span><strong id="labResultStation">—</strong></div>
+      <div class="lab-summary-note">
+        <strong data-lab-key="summaryPromise">Case eficiente pentru oameni, comunități și un mediu mai curat.</strong>
+        <small data-lab-key="summaryLearn">Rezultatele folosesc motorul energetic LaCurent.</small>
       </div>
-
-      <p class="lab-method-note" data-lab-key="methodNote">Rezultatele se recalculează cu motorul energetic LaCurent. Valorile sunt estimări tehnice și nu reprezintă un certificat de performanță energetică.</p>
-
-      <a class="primary-action lab-partner-cta" href="{{ partner.cta_url }}" target="_blank" rel="noreferrer">{{ partner.cta_label }}</a>
     </aside>
   </div>
+
+  <form id="embedLabForm" hidden>
+    <input name="project_name" value="Laboratorul casei">
+    <input name="locality_id" value="{{ values.locality_id }}">
+    <input name="locality" value="{{ values.locality }}">
+    <input name="building_type" value="residential_individual">
+    <input name="building_length_m" value="8">
+    <input name="building_width_m" value="7.5">
+    <input name="heated_levels" value="2">
+    <input name="average_height_m" value="2.7">
+    <input name="house_window_area_m2" value="18">
+    <input name="house_door_area_m2" value="2.2">
+
+    <input name="expert_geometry_override" value="on">
+    <input name="heated_floor_area_m2" value="120">
+    <input name="heated_volume_m3" value="324">
+    <input name="wall_area_m2" value="145">
+    <input name="roof_area_m2" value="60">
+    <input name="floor_area_m2" value="60">
+    <input name="window_area_m2" value="18">
+    <input name="door_area_m2" value="2.2">
+    <input name="thermal_bridge_length_m" value="62">
+
+    <input name="expert_envelope_override" value="on">
+    <input name="wall_u_value" value="0.46">
+    <input name="roof_u_value" value="0.29">
+    <input name="floor_u_value" value="0.42">
+    <input name="window_u_value" value="0.9">
+    <input name="door_u_value" value="1.8">
+    <input name="thermal_bridge_psi_w_mk" value="0.08">
+
+    <input name="indoor_design_temperature_c" value="21">
+    <input name="construction_year" value="1990">
+    <input name="solar_mode" value="normative_hsol">
+    <input name="solar_orientation" value="south">
+    <input name="solar_glazing_type_id" value="triple_low_e_faces_2_and_5">
+
+    <input name="expert_ventilation_override" value="on">
+    <input name="air_changes_per_hour" value="0.5">
+    <input name="heat_recovery_efficiency" value="0">
+
+    <input name="heating_choice" value="condensing_gas_boiler">
+    <input name="cooling_enabled" value="">
+    <input name="cooling_seer" value="4.0">
+    <input name="cooling_setpoint_c" value="26">
+    <input name="dhw_enabled" value="on">
+    <input name="dhw_occupants" value="4">
+    <input name="dhw_litres_per_person_day_at_60c" value="50">
+    <input name="dhw_efficiency" value="0.86">
+  </form>
 </section>
 {% endblock %}
