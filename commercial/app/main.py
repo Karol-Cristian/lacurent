@@ -61,6 +61,18 @@ ENVELOPE_PROFILES: dict[str, dict[str, float]] = {
     "very_good": {"wall": 0.18, "roof": 0.15, "floor": 0.20, "window": 0.85, "door": 1.10, "psi": 0.03},
 }
 
+SOLAR_ORIENTATION_FIELDS: dict[str, str] = {
+    "south": "solar_window_area_south_m2",
+    "south_west": "solar_window_area_south_west_m2",
+    "west": "solar_window_area_west_m2",
+    "north_west": "solar_window_area_north_west_m2",
+    "north": "solar_window_area_north_m2",
+    "north_east": "solar_window_area_north_east_m2",
+    "east": "solar_window_area_east_m2",
+    "south_east": "solar_window_area_south_east_m2",
+}
+
+
 VENTILATION_PROFILES: dict[str, tuple[float, float]] = {
     "natural": (0.50, 0.0),
     "mechanical": (0.60, 0.0),
@@ -119,6 +131,16 @@ def default_form_values() -> dict[str, Any]:
         "solar_mode": "normative_hsol",
         "solar_orientation": "south",
         "solar_glazing_type_id": "double_low_e_face_3",
+        "solar_shading_device_id": "",
+        "solar_shading_mounting_side": "",
+        "solar_window_area_south_m2": 0,
+        "solar_window_area_south_west_m2": 0,
+        "solar_window_area_west_m2": 0,
+        "solar_window_area_north_west_m2": 0,
+        "solar_window_area_north_m2": 0,
+        "solar_window_area_north_east_m2": 0,
+        "solar_window_area_east_m2": 0,
+        "solar_window_area_south_east_m2": 0,
         "solar_frame_fraction": 0.20,
         "solar_obstacle_shading_factor": 1.0,
         "solar_sky_view_factor": 0.5,
@@ -182,6 +204,8 @@ def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
             "solar_mode": building.solar.mode,
             "solar_orientation": building.solar.orientation,
             "solar_glazing_type_id": building.solar.glazing_type_id,
+            "solar_shading_device_id": building.solar.shading_device_id or "",
+            "solar_shading_mounting_side": building.solar.shading_mounting_side or "",
             "solar_frame_fraction": building.solar.frame_fraction,
             "solar_obstacle_shading_factor": building.solar.obstacle_shading_factor,
             "solar_sky_view_factor": building.solar.sky_view_factor,
@@ -205,6 +229,11 @@ def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
             "dhw_carrier": building.dhw.carrier.value,
         }
     )
+    for group in building.solar.glazing_groups:
+        field = SOLAR_ORIENTATION_FIELDS.get(group.orientation)
+        if field:
+            values[field] = group.area_m2
+
     envelope_fields = {
         "exterior_wall": ("wall_area_m2", "wall_u_value"),
         "roof": ("roof_area_m2", "roof_u_value"),
@@ -397,6 +426,12 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     if form.get("expert_dhw_override") != "on" and _simple_form_present(form):
         dhw_carrier = heating["carrier"]
 
+    glazing_groups = []
+    for orientation, field in SOLAR_ORIENTATION_FIELDS.items():
+        area = parse_optional_float(form.get(field))
+        if area is not None and area > 0:
+            glazing_groups.append({"orientation": orientation, "area_m2": area})
+
     return BuildingInput(
         project_name=str(form.get("project_name") or "Proiect LaCurent"),
         locality=str(form.get("locality_id") or form.get("locality") or ""),
@@ -410,6 +445,9 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             "mode": form.get("solar_mode") or "normative_hsol",
             "orientation": form.get("solar_orientation") or "south",
             "glazing_type_id": form.get("solar_glazing_type_id") or "double_low_e_face_3",
+            "glazing_groups": glazing_groups,
+            "shading_device_id": form.get("solar_shading_device_id") or None,
+            "shading_mounting_side": form.get("solar_shading_mounting_side") or None,
             "frame_fraction": parse_optional_float(form.get("solar_frame_fraction")) if form.get("solar_frame_fraction") not in (None, "") else 0.20,
             "obstacle_shading_factor": parse_optional_float(form.get("solar_obstacle_shading_factor")) if form.get("solar_obstacle_shading_factor") not in (None, "") else 1.0,
             "sky_view_factor": parse_optional_float(form.get("solar_sky_view_factor")) if form.get("solar_sky_view_factor") not in (None, "") else 0.5,
