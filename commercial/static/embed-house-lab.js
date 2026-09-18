@@ -19,6 +19,8 @@
     floorIns: document.getElementById("labFloorIns"),
     temperature: document.getElementById("labTemperature"),
     occupants: document.getElementById("labOccupants"),
+    glazing: document.getElementById("labGlazing"),
+    orientation: document.getElementById("labOrientation"),
     heating: document.getElementById("labHeating")
   };
 
@@ -32,6 +34,8 @@
     floorIns: 5,
     temperature: 21,
     occupants: 4,
+    glazing: "double_low_e_face_3",
+    orientation: "south",
     heating: "condensing_gas_boiler",
     localityId: root.querySelector(".lab-locality")?.dataset.initialLocalityId || "siruta-54984",
     locality: root.querySelector(".lab-locality")?.dataset.initialLocality || "Cluj-Napoca"
@@ -46,10 +50,14 @@
       locationLabel:"Localitatea", locationInfo:"Localitatea este importantă pentru selectarea automată a profilului climatic. Nu trebuie să alegi manual o zonă climatică.",
       climateAuto:"Profil climatic selectat automat", geometryTitle:"Casa", geometrySubtitle:"Dimensiuni și suprafețe ușor de verificat.",
       area:"Suprafață încălzită", levels:"Niveluri încălzite", levelsUnit:"niv.", height:"Înălțime interioară", windows:"Suprafață totală ferestre",
+      houseVisualTitle:"Casa ta, simplificată pentru calcul", houseVisualText:"Dimensiunile, anvelopa și instalațiile se combină într-un singur model energetic.",
+      windowType:"Tip ferestre", orientation:"Orientare principală",
       insulationTitle:"Izolația", insulationSubtitle:"Grosimea este introdusă direct în centimetri.", wallIns:"Izolație pereți", roofIns:"Izolație pod / acoperiș", floorIns:"Izolație pardoseală",
       insulationAssumption:"Pentru simulare, grosimea este convertită automat în coeficienți U folosind o conductivitate termică de referință de 0,040 W/mK peste anvelopa de bază.",
       comfortTitle:"Confort și utilizare", comfortSubtitle:"Parametri care modifică direct consumul calculat.", temperature:"Temperatură interioară iarna", occupants:"Persoane în locuință", personsUnit:"pers.",
-      heating:"Sursa principală de încălzire", resultsKicker:"Rezultat live", resultsTitle:"Casa configurată", class:"Clasă",
+      heating:"Sursa principală de încălzire",
+      heatingVisualDefaultTitle:"Sursa de încălzire contează direct în cost", heatingVisualDefaultText:"Schimbarea sursei recalculează energia finală, energia primară, CO₂ și costul anual.",
+      resultsKicker:"Rezultat live", resultsTitle:"Casa configurată", class:"Clasă",
       annualCost:"Cost anual estimat", finalEnergy:"Energie finală", allSources:"toate sursele", primarySpecific:"Energie primară specifică", designPower:"Putere termică estimată", designPowerNote:"din H × ΔT la temperatura de calcul",
       selectedPlace:"Localitate", climateStation:"Stație climatică", heatLoss:"Coeficient pierderi",
       monthlyChartTitle:"Costul pe luni", monthlyChartNote:"cum variază pe parcursul anului",
@@ -68,10 +76,14 @@
       locationLabel:"Locality", locationInfo:"The locality is used to select the climate profile automatically. You do not need to choose a climate zone manually.",
       climateAuto:"Climate profile selected automatically", geometryTitle:"House", geometrySubtitle:"Dimensions and areas that are easy to verify.",
       area:"Heated area", levels:"Heated levels", levelsUnit:"levels", height:"Indoor height", windows:"Total window area",
+      houseVisualTitle:"Your house, simplified for calculation", houseVisualText:"Geometry, envelope and systems are combined into one energy model.",
+      windowType:"Window type", orientation:"Main orientation",
       insulationTitle:"Insulation", insulationSubtitle:"Thickness is entered directly in centimetres.", wallIns:"Wall insulation", roofIns:"Roof / attic insulation", floorIns:"Floor insulation",
       insulationAssumption:"For simulation, thickness is converted automatically to U-values using a reference thermal conductivity of 0.040 W/mK added to the base envelope.",
       comfortTitle:"Comfort and use", comfortSubtitle:"Parameters that directly change calculated consumption.", temperature:"Winter indoor temperature", occupants:"Occupants", personsUnit:"people",
-      heating:"Main heating source", resultsKicker:"Live result", resultsTitle:"Configured house", class:"Class",
+      heating:"Main heating source",
+      heatingVisualDefaultTitle:"Heating source directly changes cost", heatingVisualDefaultText:"Changing the source recalculates final energy, primary energy, CO₂ and annual cost.",
+      resultsKicker:"Live result", resultsTitle:"Configured house", class:"Class",
       annualCost:"Estimated annual cost", finalEnergy:"Final energy", allSources:"all sources", primarySpecific:"Specific primary energy", designPower:"Estimated heat load", designPowerNote:"from H × ΔT at design temperature",
       selectedPlace:"Locality", climateStation:"Climate station", heatLoss:"Heat-loss coefficient",
       monthlyChartTitle:"Monthly cost", monthlyChartNote:"how it changes through the year",
@@ -89,6 +101,54 @@
   const formField = name => form.elements.namedItem(name);
   const setField = (name, value) => { const field = formField(name); if (field) field.value = String(value); };
   const number = value => Number.parseFloat(String(value).replace(",", "."));
+  const GLAZING_U = {
+    single_clear_glazing: 5.0,
+    double_clear_glazing: 2.8,
+    double_low_e_face_3: 1.6,
+    triple_low_e_faces_2_and_5: 0.9
+  };
+
+  const HEATING_VISUALS = {
+    district_heat: {
+      src:"/static/home-lab/district-heating.svg",
+      ro:["Termoficare","Costul și energia primară se recalculează pentru energia termică din rețea."],
+      en:["District heating","Cost and primary energy are recalculated for heat supplied by the network."]
+    },
+    wood_stove: {
+      src:"/static/home-lab/wood-fireplace.svg",
+      ro:["Șemineu / sobă pe lemne","Motorul folosește profilul de biomasă și randamentul presetului pentru sobă."],
+      en:["Wood fireplace / stove","The engine uses the biomass profile and the stove preset efficiency."]
+    },
+    wood_boiler: {
+      src:"/static/home-lab/wood-fireplace.svg",
+      ro:["Centrală pe lemne","Consumul final și costul se recalculează cu profilul pentru lemn de foc."],
+      en:["Wood boiler","Final energy and cost are recalculated using the firewood profile."]
+    },
+    pellet_boiler: {
+      src:"/static/home-lab/wood-fireplace.svg",
+      ro:["Centrală pe peleți","Consumul final și costul se recalculează cu profilul pentru peleți."],
+      en:["Pellet boiler","Final energy and cost are recalculated using the pellet profile."]
+    }
+  };
+
+  function updateHeatingVisual() {
+    const image=document.getElementById("labHeatingVisual");
+    const title=document.getElementById("labHeatingVisualTitle");
+    const text=document.getElementById("labHeatingVisualText");
+    if (!image || !title || !text) return;
+    const item=HEATING_VISUALS[controls.heating.value];
+    if (!item) {
+      image.src="/static/home-lab/home-envelope.svg";
+      title.textContent=tr("heatingVisualDefaultTitle");
+      text.textContent=tr("heatingVisualDefaultText");
+      return;
+    }
+    image.src=item.src;
+    const copy=lang()==="en" ? item.en : item.ro;
+    title.textContent=copy[0];
+    text.textContent=copy[1];
+  }
+
 
   function normalize(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -160,6 +220,9 @@
     setField("wall_u_value", insulationU(1.30, controls.wallIns.value).toFixed(4));
     setField("roof_u_value", insulationU(1.00, controls.roofIns.value).toFixed(4));
     setField("floor_u_value", insulationU(0.90, controls.floorIns.value).toFixed(4));
+    setField("window_u_value", (GLAZING_U[controls.glazing.value] || 1.6).toFixed(2));
+    setField("solar_glazing_type_id", controls.glazing.value);
+    setField("solar_orientation", controls.orientation.value);
     setField("indoor_design_temperature_c", controls.temperature.value);
     setField("dhw_occupants", controls.occupants.value);
     setField("heating_choice", controls.heating.value);
@@ -378,6 +441,7 @@
       if (COPY[lang()][key]) el.textContent=COPY[lang()][key];
     });
     if (selectedLocality) selectLocality(selectedLocality);
+    updateHeatingVisual();
     if (lastResult) renderDashboard(lastResult);
   }
 
@@ -388,7 +452,12 @@
       scheduleCalculate();
     });
   });
-  controls.heating.addEventListener("change", () => scheduleCalculate(80));
+  controls.heating.addEventListener("change", () => {
+    updateHeatingVisual();
+    scheduleCalculate(80);
+  });
+  controls.glazing.addEventListener("change", () => scheduleCalculate(80));
+  controls.orientation.addEventListener("change", () => scheduleCalculate(80));
 
   document.querySelectorAll("[data-lab-number-for]").forEach(numeric => {
     const range=document.getElementById(numeric.dataset.labNumberFor);
@@ -432,12 +501,11 @@
 
   root.querySelector("[data-lab-reset]").addEventListener("click", () => {
     Object.entries(PRESET).forEach(([key,value]) => {
-      if (controls[key] && controls[key].tagName !== "SELECT") {
-        controls[key].value=String(value);
-        syncNumber(controls[key]);
-      }
+      if (!controls[key]) return;
+      controls[key].value=String(value);
+      if (controls[key].tagName !== "SELECT") syncNumber(controls[key]);
     });
-    controls.heating.value=PRESET.heating;
+    updateHeatingVisual();
     const locality=byId.get(PRESET.localityId) || matches(localities,PRESET.locality,1)[0];
     if (locality) selectLocality(locality); else scheduleCalculate(20);
   });
@@ -492,5 +560,6 @@
       calculateNow();
     });
 
+  updateHeatingVisual();
   applyLanguage();
 })();
