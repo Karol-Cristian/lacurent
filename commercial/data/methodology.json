@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.2",
+  "version": "lacurent-commercial-v2.3",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -8,11 +8,11 @@
   "monthly_method": {
     "model": "Mc 001-2022 monthly quasi-steady heating/cooling balance",
     "source": "Mc 001-2022 §2.7.6 and §2.8.1; SR EN ISO 52016-1 monthly method",
-    "a_h0": 1.0,
-    "tau_h0_h": 15.0,
-    "a_c0": 1.0,
-    "tau_c0_h": 15.0,
-    "cooling_reduction_factor_continuous": 1.0,
+    "a_h0": 1,
+    "tau_h0_h": 15,
+    "a_c0": 1,
+    "tau_c0_h": 15,
+    "cooling_reduction_factor_continuous": 1,
     "default_effective_internal_heat_capacity_class": "medium",
     "effective_internal_heat_capacity_j_m2k": {
       "very_light": 80000,
@@ -24,7 +24,7 @@
     "effective_internal_heat_capacity_source": "Mc 001-2022 Table 2.20"
   },
   "dhw": {
-    "litres_per_person_day_at_60c": 50.0,
+    "litres_per_person_day_at_60c": 50,
     "kwh_per_litre_10_to_60c": 0.05814
   },
   "heating_system_defaults": {
@@ -40,7 +40,7 @@
     },
     "electric_resistance": {
       "label": "Încălzire electrică directă",
-      "efficiency": 1.0,
+      "efficiency": 1,
       "carrier": "electricity"
     },
     "heat_pump": {
@@ -50,7 +50,7 @@
     },
     "district_heat": {
       "label": "Termoficare",
-      "efficiency": 1.0,
+      "efficiency": 1,
       "carrier": "district_heat"
     },
     "custom": {
@@ -88,11 +88,27 @@
   "energy_class_thresholds": {
     "residential_individual": {
       "source": "Setul existent din proiect mc001EnergyClassThresholds.mjs, MC001-2022 tabelul 5.7.",
-      "total_primary_kwh_m2": [91, 129, 257, 390, 522, 652, 783]
+      "total_primary_kwh_m2": [
+        91,
+        129,
+        257,
+        390,
+        522,
+        652,
+        783
+      ]
     },
     "residential_collective": {
       "source": "Setul existent din proiect mc001EnergyClassThresholds.mjs, MC001-2022 tabelul 5.8.",
-      "total_primary_kwh_m2": [73, 101, 198, 297, 396, 495, 595]
+      "total_primary_kwh_m2": [
+        73,
+        101,
+        198,
+        297,
+        396,
+        495,
+        595
+      ]
     }
   },
   "reference_building": {
@@ -104,7 +120,7 @@
       "exterior_door": 1.7
     },
     "air_changes_per_hour": 0.5,
-    "heat_recovery_efficiency": 0.0,
+    "heat_recovery_efficiency": 0,
     "heating_efficiency": 0.95,
     "cooling_seer": 3.2,
     "dhw_efficiency": 0.85
@@ -113,6 +129,9 @@
     "Transferul termic prin transmisie folosește forma directă MC001: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul simplificat al versiunii comerciale.",
     "Transferul prin ventilare folosește Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
     "Necesarul lunar de încălzire folosește structura Mc 001-2022 Figura 2.18: QH,nd = QH,ht − ηH,gn × QH,gn, cu factorul de utilizare al aporturilor și inerția termică.",
+    "Aporturile solare automate folosesc Hsol lunar sursă din Mc001/1-2-3/2006 Anexa A.9.6 numai când stația climatică MC001/6-2013 selectată are corespondent direct; nu se interpolează o stație solară vecină.",
+    "Pentru ferestre, forma simplificată aplică relațiile MC001 2.39, 2.40 și 2.54. Tipul de vitraj este preluat din Tabelul 2.13; fracția de ramă, umbrirea și parametrii Qsky sunt ipoteze explicite LaCurent ale formularului simplu și pot fi înlocuite prin setările avansate.",
+    "Dacă Hsol normativ A.9.6 nu este disponibil pentru stația climatică selectată, motorul nu inventează iradierea; folosește doar aportul solar explicit introdus de utilizator, implicit 0.",
     "Necesarul lunar de răcire folosește structura Mc 001-2022 Figura 2.19: QC,nd = aC,red × (QC,gn − ηC,ht × QC,ht), cu convenția de semn MC001, factorul de utilizare al transferului termic și inerția termică. Nu se mai reconstruiește un profil meteo orar sintetic.",
     "Pentru formularul simplificat, clasa implicită de capacitate termică interioară este 'medie', 165000 J/(K·m²) × Ause, conform Mc 001-2022 Tabelul 2.20. Aceasta este o ipoteză explicită până când clasa de inerție este introdusă de utilizator.",
     "Pentru scenariile cu răcire continuă se folosește aC,red = 1. Perioadele lungi de neocupare și programele de răcire intermitentă nu sunt încă modelate de formularul simplificat.",
@@ -120,5 +139,35 @@
     "Necesarul pentru apa caldă menajeră folosește 50 L/persoană/zi la 60 °C și 0,05814 kWh/L pentru încălzirea apei de la 10 °C la 60 °C.",
     "Clădirea de referință folosește parametri metodologici expliciți și este calculată cu același motor ca locuința evaluată.",
     "Raportul comercial LaCurent este o estimare tehnică bazată pe o implementare simplificată a structurii Mc 001-2022 și nu reprezintă un Certificat de Performanță Energetică emis legal în România."
-  ]
+  ],
+  "solar": {
+    "model": "Mc 001-2022 monthly transparent-element solar gains using source-backed Annex A.9.6 vertical Hsol where the selected MC001/6-2013 climate station has a direct A.9.6 mapping.",
+    "formula": "Qsol,wi = g_gl * A_gl * (1 - Ff) * Fsh,obst * Hsol - Qsky",
+    "source_relations": [
+      "MC001-2022 relation 2.39 transparent solar gains",
+      "MC001-2022 relation 2.40 g_gl = 0.9 * g_gl,n",
+      "MC001-2022 relation 2.54 long-wave sky radiation",
+      "MC001-2022 Table 2.13 glazing solar transmittance"
+    ],
+    "glazing_table_2_13_ggl_n": {
+      "single_clear_glazing": 0.85,
+      "double_clear_glazing": 0.75,
+      "double_window": 0.75,
+      "triple_clear_glazing": 0.7,
+      "double_low_e_face_3": 0.65,
+      "triple_low_e_faces_2_and_5": 0.5
+    },
+    "angle_correction_factor_relation_2_40": 0.9,
+    "commercial_defaults": {
+      "orientation": "south",
+      "glazing_type_id": "double_low_e_face_3",
+      "frame_fraction": 0.2,
+      "obstacle_shading_factor": 1,
+      "sky_view_factor": 0.5,
+      "exterior_surface_resistance_m2k_w": 0.04,
+      "longwave_radiation_coefficient_w_m2k": 5,
+      "sky_temperature_difference_k": 11
+    },
+    "default_status": "The orientation/glazing/frame/shading/sky values above are explicit LaCurent product assumptions for the simplified form. They are not presented as universal MC001 defaults and can be overridden by the user."
+  }
 }
