@@ -348,6 +348,51 @@
     savedScenarios = [];
   }
 
+  let editingCurrentHome = !baselineSnapshot;
+
+  function updateHouseFlow(data=lastResult) {
+    const modeBar=root.querySelector(".lab-house-mode-bar");
+    const kicker=document.getElementById("labHouseModeKicker");
+    const title=document.getElementById("labHouseModeTitle");
+    const hint=document.getElementById("labHouseModeHint");
+    const confirm=document.getElementById("labConfirmCurrentHome");
+    const edit=document.getElementById("labEditCurrentHome");
+    const english=lang()==="en";
+
+    if (!baselineSnapshot || editingCurrentHome) {
+      modeBar?.setAttribute("data-house-mode","current");
+      if (kicker) kicker.textContent=baselineSnapshot
+        ? (english?"CURRENT HOME · EDITING":"CASA ACTUALĂ · EDITARE")
+        : (english?"CURRENT HOME":"CASA ACTUALĂ");
+      if (title) title.textContent=baselineSnapshot
+        ? (english?"You are editing the starting point":"Editezi punctul de plecare")
+        : (english?"This is my home today":"Așa este locuința mea acum");
+      if (hint) hint.textContent=baselineSnapshot
+        ? (english?"Save again when the real-home description is correct.":"Salvează din nou când descrierea casei reale este corectă.")
+        : (english?"Check the six areas, then lock the starting point.":"Verifică cele 6 zone, apoi fixează punctul de plecare.");
+      if (confirm) {
+        confirm.hidden=false;
+        confirm.textContent=baselineSnapshot
+          ? (english?"Update current home":"Actualizează casa actuală")
+          : (english?"This is my home now":"Asta este casa mea acum");
+      }
+      if (edit) edit.hidden=true;
+    } else {
+      modeBar?.setAttribute("data-house-mode","scenario");
+      if (kicker) kicker.textContent=english?"CURRENT SCENARIO":"SCENARIUL CURENT";
+      if (title) title.textContent=english?"Test one improvement at a time":"Testează o îmbunătățire";
+      if (hint) hint.textContent=english
+        ? "Your current home is locked. Every change is compared with it."
+        : "Casa actuală este salvată. Orice schimbare este comparată cu ea.";
+      if (confirm) confirm.hidden=true;
+      if (edit) {
+        edit.hidden=false;
+        edit.textContent=english?"Edit current home":"Editează casa actuală";
+      }
+    }
+    updateChapterSummaries(data);
+  }
+
   function insulationU(baseU, centimetres) {
     const lambda = 0.040;
     const baseR = 1 / baseU;
@@ -820,7 +865,7 @@
     root.querySelectorAll("[data-class-grade]").forEach(el => el.classList.toggle("is-active", el.dataset.classGrade === data.energy_class));
     renderDashboard(data);
     renderBaselineComparison();
-    updateChapterSummaries(data);
+    updateHouseFlow(data);
     setStatus(tr("ready"), "live");
   }
 
@@ -945,6 +990,8 @@
     updateHeatingVisual();
     if (lastResult) renderDashboard(lastResult);
     renderBaselineComparison();
+    updateHouseFlow(lastResult);
+    setChapterContext("1");
   }
 
   Object.values(controls).forEach(control => {
@@ -1040,12 +1087,10 @@
     button.addEventListener("click", () => {
       if (!button.dataset.openTab) openResultTab("overview");
       root.classList.add("is-mobile-results-view");
-      root.scrollIntoView({block:"start"});
     });
   });
   root.querySelector("[data-mobile-back-config]")?.addEventListener("click", () => {
     root.classList.remove("is-mobile-results-view");
-    root.scrollIntoView({block:"start"});
   });
 
   root.querySelector("[data-lab-product-action='heat_pump']")?.addEventListener("click", () => {
@@ -1079,14 +1124,24 @@
     if (!snapshot) return;
     baselineSnapshot=snapshot;
     savedScenarios=[];
+    editingCurrentHome=false;
     persistScenarioState();
     renderBaselineComparison();
-    openResultTab("comparison");
+    updateHouseFlow(lastResult);
+    if (isMobileCockpit()) closeChapter();
   }
 
   saveBaselineButton?.addEventListener("click", saveBaseline);
   comparisonBaselineButton?.addEventListener("click", saveBaseline);
   root.querySelector("[data-audit-save-baseline]")?.addEventListener("click", saveBaseline);
+  document.getElementById("labConfirmCurrentHome")?.addEventListener("click", saveBaseline);
+  document.getElementById("labEditCurrentHome")?.addEventListener("click", () => {
+    if (!baselineSnapshot) return;
+    editingCurrentHome=true;
+    restoreSnapshot(baselineSnapshot);
+    updateHouseFlow();
+    if (isMobileCockpit()) closeChapter();
+  });
   restoreBaselineButton?.addEventListener("click", () => restoreSnapshot(baselineSnapshot));
 
   saveScenarioButton?.addEventListener("click", async () => {
@@ -1213,7 +1268,8 @@
 
   initHouseVisualCarousel();
   updateHeatingVisual();
-  updateChapterSummaries();
+  updateHouseFlow();
+  setChapterContext("1");
   syncLevelSegments();
   syncHeatingPills();
   openResultTab("overview");
