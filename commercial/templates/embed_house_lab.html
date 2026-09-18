@@ -308,20 +308,34 @@
             <div class="lab-horizontal-chart" id="labLossChart"></div>
           </section>
 
-          <section class="lab-chart-card lab-reference-card" id="labReferenceCard" hidden>
+          <section class="lab-chart-card lab-overview-baseline" id="labOverviewBaseline">
             <div class="lab-chart-title">
               <div>
-                <strong data-lab-key="referenceTitle">Față de o casă de referință</strong>
-                <small>kWh/m²/an</small>
+                <strong data-lab-key="overviewBaselineTitle">Față de casa ta actuală</strong>
+                <small data-lab-key="overviewBaselineSubtitle">baseline real salvat de tine</small>
+              </div>
+              <button type="button" data-open-tab="comparison" data-lab-key="details">Detalii</button>
+            </div>
+
+            <div class="lab-overview-baseline-empty" id="labOverviewBaselineEmpty">
+              <strong data-lab-key="overviewBaselineEmptyTitle">Salvează casa actuală</strong>
+              <small data-lab-key="overviewBaselineEmptyText">După aceea, orice modificare devine un scenariu comparat cu situația reală de azi.</small>
+            </div>
+
+            <div class="lab-overview-baseline-data" id="labOverviewBaselineData" hidden>
+              <div>
+                <span data-lab-key="metricAnnualCost">Cost anual</span>
+                <strong id="labOverviewBaselineCost">—</strong>
+              </div>
+              <div>
+                <span data-lab-key="metricFinalEnergy">Energie finală</span>
+                <strong id="labOverviewBaselineEnergy">—</strong>
+              </div>
+              <div>
+                <span data-lab-key="metricPower">Putere termică</span>
+                <strong id="labOverviewBaselinePower">—</strong>
               </div>
             </div>
-            <div class="lab-reference-comparison">
-              <div><strong id="labReferenceActual">—</strong><span data-lab-key="yourHouse">Casa ta</span></div>
-              <b id="labReferenceDelta">—</b>
-              <div><strong id="labReferenceTarget">—</strong><span data-lab-key="referenceHouse">Casă de referință</span></div>
-            </div>
-            <div class="lab-reference-track"><i id="labReferenceBar"></i></div>
-            <small id="labReferenceText">—</small>
           </section>
         </div>
       </div>
