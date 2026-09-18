@@ -75,6 +75,22 @@ async def redirect_www_host(request: Request, call_next: Any) -> Any:
     return await call_next(request)
 
 
+@app.middleware("http")
+async def embed_frame_policy(request: Request, call_next: Any) -> Any:
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/embed/"):
+        parts = path.split("/")
+        partner_id = parts[2] if len(parts) > 2 else ""
+        partner = embed_partner_registry().get("partners", {}).get(partner_id)
+        if partner:
+            ancestors = partner.get("frame_ancestors") or ["'self'"]
+            response.headers["Content-Security-Policy"] = "frame-ancestors " + " ".join(ancestors)
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 def climate_options() -> list[str]:
     return [item["name"] for item in climate_data()["localities"]]
 
