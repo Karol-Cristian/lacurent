@@ -18,13 +18,13 @@
     host.style.width = "100%";
     host.style.maxWidth = "none";
     host.style.minWidth = "0";
+    host.style.boxSizing = "border-box";
 
     const iframe = document.createElement("iframe");
     iframe.src = `${embedOrigin}/embed/${encodeURIComponent(partner)}`;
     iframe.title = host.dataset.title || "Calculator energetic";
     iframe.loading = host.dataset.loading || "lazy";
     iframe.referrerPolicy = "strict-origin-when-cross-origin";
-    iframe.setAttribute("width", "100%");
     iframe.style.width = "100%";
     iframe.style.maxWidth = "none";
     iframe.style.minWidth = "0";
@@ -37,6 +37,29 @@
     host.replaceChildren(iframe);
     host.dataset.lacurentMounted = "true";
 
+    const widthContainer = host.parentElement || host;
+    const syncFrameWidth = () => {
+      const width = Math.max(
+        1,
+        Math.floor(widthContainer.clientWidth || host.clientWidth || 0)
+      );
+      if (!width) return;
+      iframe.setAttribute("width", String(width));
+      iframe.style.width = `${width}px`;
+      host.style.width = `${width}px`;
+    };
+    syncFrameWidth();
+
+    let widthObserver = null;
+    if (typeof ResizeObserver === "function") {
+      widthObserver = new ResizeObserver(syncFrameWidth);
+      widthObserver.observe(widthContainer);
+    } else {
+      window.addEventListener("resize", syncFrameWidth);
+    }
+
+    iframe.addEventListener("load", syncFrameWidth);
+
     const onMessage = event => {
       if (event.origin !== embedOrigin || event.source !== iframe.contentWindow) return;
       const data = event.data;
@@ -45,6 +68,10 @@
       if (height) iframe.style.height = `${height}px`;
     };
     window.addEventListener("message", onMessage);
+
+    iframe.addEventListener("load", () => {
+      if (widthObserver) syncFrameWidth();
+    });
   }
 
   document.querySelectorAll("[data-lacurent-embed]").forEach(mount);
