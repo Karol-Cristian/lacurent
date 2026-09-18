@@ -222,20 +222,23 @@ def test_official_price_registry_endpoint_is_available() -> None:
     assert payload["retrieved_on"] == "2026-09-18"
     assert payload["electricity"]["source_name"] == "POSF / ANRE"
     assert payload["natural_gas"]["source_name"] == "POSF / ANRE"
-    assert payload["firewood"]["source_name"] == "Leroy Merlin România - referință retail"
-    assert payload["firewood"]["secondary_source_name"].startswith("Dedeman")
-    assert payload["firewood"]["reference_price_lei_per_pallet"] == 738.99
-    assert payload["firewood"]["reference_net_weight_kg_per_pallet"] == 600.0
+    assert payload["firewood"]["source_name"] == "Romsilva / Direcția Silvică Neamț"
+    assert payload["firewood"]["reference_price_lei_per_package"] == 414.0
+    assert payload["firewood"]["reference_volume_m3_per_package"] == 0.6
+    assert payload["firewood"]["reference_price_lei_per_m3"] == 690.0
+    assert payload["firewood"]["fixed_delivery_cost_lei"] == 200.0
 
 
-def test_firewood_reference_uses_retail_mass_and_moisture_not_solid_m3_multiplier() -> None:
+def test_firewood_reference_uses_romsilva_packaged_price_and_fixed_delivery() -> None:
     reference = _firewood_reference()
-    assert reference["price_lei_per_pallet"] == 738.99
-    assert reference["net_weight_kg_per_pallet"] == 600.0
-    assert reference["water_content_percent"] == 30.0
-    assert 3.29 < reference["energy_kwh_per_kg"] < 3.30
-    assert 0.373 < reference["unit_price_lei_per_kwh"] < 0.375
-    assert "Romsilva" not in reference["basis"]
+    assert reference["price_lei_per_package"] == 414.0
+    assert reference["reference_volume_m3_per_package"] == 0.6
+    assert reference["price_lei_per_m3"] == 690.0
+    assert reference["fixed_annual_cost_lei"] == 200.0
+    assert reference["energy_kwh_per_package"] == 0.6 * 2821.0
+    assert 0.244 < reference["unit_price_lei_per_kwh"] < 0.245
+    assert "Romsilva" in reference["source_name"]
+    assert "+ 200 lei transport/an" in reference["basis"]
 
 def test_form_calculation_accepts_normative_solar_controls() -> None:
     data = demo_form_data()

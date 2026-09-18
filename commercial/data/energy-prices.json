@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-18a",
+  "version": "2026-09-18b",
   "retrieved_on": "2026-09-18",
   "electricity": {
     "source_name": "POSF / ANRE",
@@ -85,23 +85,22 @@
     "note": "Referința folosită este media simplă a prețurilor finale cu TVA pentru categoriile casnice uzuale la doi operatori majori din oferta POSF. Operatorul și categoria reală de consum pot modifica prețul."
   },
   "firewood": {
-    "source_name": "Leroy Merlin România - referință retail",
-    "source_url": "https://www.leroymerlin.ro/produse/lemn-de-foc-fag-esenta-tare-ambalat-0-80-mc-12145945.html",
-    "secondary_source_name": "Dedeman - verificare format retail 0,8 m³ fag",
-    "secondary_source_url": "https://www.dedeman.ro/ro/lemne-de-foc-paletizate-0-8-mc-fag-1-2-m-x-1-45-m/p/7022046",
-    "price_reference": "Lemn de foc fag, esență tare, palet 0,80 m³",
-    "reference_price_lei_per_pallet": 738.99,
-    "reference_volume_m3_per_pallet": 0.8,
-    "reference_net_weight_kg_per_pallet": 600,
-    "unit": "lei/palet",
-    "energy_source_name": "Eurostat - Manual for statistics on energy consumption in households",
-    "energy_source_url": "https://ec.europa.eu/eurostat/documents/3859598/5935825/KS-GQ-13-003-EN.PDF.pdf/baa96509-3f4b-4c7a-94dd-feb1a31c7291?t=1414782907000",
-    "dry_hardwood_ncv_mj_per_kg": 18,
-    "water_vaporization_mj_per_kg": 2.447,
-    "assumed_water_content_percent": 30,
+    "source_name": "Romsilva / Direcția Silvică Neamț",
+    "source_url": "https://neamt.rosilva.ro/articole/lemn_de_foc__p_2800.htm",
+    "price_reference": "Foioase tari despicate și pachetizate, sac ventilat big-bag 0,6 m³",
+    "reference_price_lei_per_package": 414,
+    "reference_volume_m3_per_package": 0.6,
+    "reference_price_lei_per_m3": 690,
+    "fixed_delivery_cost_lei": 200,
+    "fixed_delivery_cost_note": "Ipoteză LaCurent: 200 lei transport o singură dată pentru întreaga cantitate anuală. Romsilva tarifează transportul separat în funcție de distanță; calculatorul folosește deliberat această valoare fixă simplificată.",
+    "unit": "lei/sac 0,6 m³",
+    "energy_source_name": "Eurostat - Quality standard for statistics on wood fuel consumption in households",
+    "energy_source_url": "https://ec.europa.eu/eurostat/documents/38154/4956233/Quality_standard_statistics_wood_fuel_consumption_households_CA-RES_2012.pdf",
+    "energy_kwh_per_m3": 2821,
+    "assumed_water_content_percent": 20,
     "automatic_price_available": true,
-    "market_reference": true,
-    "note": "Referință retail publică, nu tarif național: Leroy Merlin afișa 738,99 lei/palet pentru fag ambalat 0,80 m³, 600 kg net și 30% umiditate la 18.09.2026. Dedeman comercializează un produs echivalent de fag paletizat 0,8 m³, dar prețul este afișat doar după selectarea localității. Prețul real variază după localitate, stoc, umiditate, esență și livrare."
+    "market_reference": false,
+    "note": "Romsilva DS Neamț publică 414 lei cu TVA pentru un sac ventilat de 0,6 m³ de lemn de foc din specii de esență tare, echivalent cu 690 lei/m³. Pagina sursă nu publică umiditatea lotului; conversia energetică folosește separat referința Eurostat existentă LaCurent de 2.821 kWh/m³ la ipoteza de 20% umiditate. La cost se adaugă o singură dată ipoteza LaCurent de 200 lei pentru transportul întregii cantități anuale."
   },
   "pellets": {
     "source_name": "Leroy Merlin România - referință retail",

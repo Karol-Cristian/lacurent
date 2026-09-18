@@ -48,7 +48,7 @@ def test_heat_pump_cost_uses_final_electricity_after_scop() -> None:
     assert electricity["unit_price_lei_per_kwh"] == pytest.approx(1.27284)
 
 
-def test_firewood_cost_uses_current_retail_pallet_mass_and_moisture() -> None:
+def test_firewood_cost_uses_romsilva_packaged_price_plus_one_delivery_charge() -> None:
     building = build_input_from_form(simple_form("wood_stove"))
     result = calculate(building)
     estimate = estimate_energy_cost(result)
@@ -56,22 +56,27 @@ def test_firewood_cost_uses_current_retail_pallet_mass_and_moisture() -> None:
 
     assert building.heating.cost_profile == "firewood"
     assert wood["label"] == "Lemn de foc"
-    assert wood["annual_cost_lei"] > 0
-    assert wood["price_lei_per_pallet"] == pytest.approx(738.99)
-    assert wood["net_weight_kg_per_pallet"] == pytest.approx(600.0)
-    assert wood["water_content_percent"] == pytest.approx(30.0)
-    assert wood["energy_kwh_per_kg"] == pytest.approx(3.2960833333)
-    assert wood["unit_price_lei_per_kwh"] == pytest.approx(0.3736707709)
-    assert wood["estimated_pallets"] == pytest.approx(
-        wood["final_kwh"] / wood["energy_kwh_per_pallet"], abs=0.01
+    assert wood["source_name"] == "Romsilva / Direcția Silvică Neamț"
+    assert wood["price_lei_per_package"] == pytest.approx(414.0)
+    assert wood["reference_volume_m3_per_package"] == pytest.approx(0.6)
+    assert wood["price_lei_per_m3"] == pytest.approx(690.0)
+    assert wood["fixed_annual_cost_lei"] == pytest.approx(200.0)
+    assert wood["unit_price_lei_per_kwh"] == pytest.approx(690.0 / 2821.0)
+    assert wood["annual_cost_lei"] == pytest.approx(
+        wood["final_kwh"] * wood["unit_price_lei_per_kwh"] + 200.0, abs=0.01
     )
-    assert wood["estimated_mass_tonnes"] == pytest.approx(
-        wood["final_kwh"] / wood["energy_kwh_per_kg"] / 1000, abs=0.01
+    assert wood["estimated_packages"] == pytest.approx(
+        wood["final_kwh"] / wood["energy_kwh_per_package"], abs=0.01
     )
-    assert "Leroy Merlin" in wood["source_name"]
-    assert wood["secondary_source_name"].startswith("Dedeman")
-    assert "Romsilva" not in wood["basis"]
+    assert wood["estimated_volume_m3"] == pytest.approx(
+        wood["final_kwh"] / wood["energy_kwh_per_m3"], abs=0.01
+    )
+    assert "+ 200 lei transport/an" in wood["basis"]
 
+    service_total = sum(float(row["annual_cost_lei"] or 0) for row in estimate["service_rows"])
+    monthly_total = sum(float(row["priced_total_lei"]) for row in estimate["monthly_rows"])
+    assert service_total == pytest.approx(estimate["priced_total_lei"], abs=0.01)
+    assert monthly_total == pytest.approx(estimate["priced_total_lei"], abs=0.01)
 
 def test_pellet_profile_uses_dated_retail_market_reference() -> None:
     building = build_input_from_form(simple_form("pellet_boiler"))
