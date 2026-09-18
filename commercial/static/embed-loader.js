@@ -39,16 +39,29 @@
 
     const widthContainer = host.parentElement || host;
     const syncFrameWidth = () => {
+      const parentRect = widthContainer.getBoundingClientRect();
+      const hostRect = host.getBoundingClientRect();
       const width = Math.max(
         1,
-        Math.floor(widthContainer.clientWidth || host.clientWidth || 0)
+        Math.floor(
+          parentRect.width ||
+          widthContainer.clientWidth ||
+          hostRect.width ||
+          host.clientWidth ||
+          0
+        )
       );
       if (!width) return;
       iframe.setAttribute("width", String(width));
       iframe.style.width = `${width}px`;
-      host.style.width = `${width}px`;
+      host.dataset.lacurentFrameWidth = String(width);
     };
     syncFrameWidth();
+    requestAnimationFrame(() => {
+      syncFrameWidth();
+      requestAnimationFrame(syncFrameWidth);
+    });
+    window.setTimeout(syncFrameWidth, 120);
 
     let widthObserver = null;
     if (typeof ResizeObserver === "function") {
