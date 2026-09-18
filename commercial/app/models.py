@@ -165,6 +165,8 @@ class MonthlyBalance(BaseModel):
     heat_loss_kwh: float
     internal_gains_kwh: float
     solar_gains_kwh: float
+    solar_gains_source: str | None = None
+    solar_hsol_kwh_m2: float | None = None
     useful_heating_kwh: float
     useful_cooling_kwh: float
 
