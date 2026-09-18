@@ -8,7 +8,10 @@
       "accent": "#1459c8",
       "cta_label": "Cere ofertă pentru scenariul ales",
       "cta_url": "https://lacurent.com/instalatii#evaluare",
-      "show_powered_by": true
+      "show_powered_by": true,
+      "frame_ancestors": [
+        "*"
+      ]
     }
   }
 }
