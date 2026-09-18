@@ -14,8 +14,8 @@
       <header class="lab-config-header">
         <div>
           <p class="lab-product-kicker" data-lab-key="kicker">Laboratorul casei</p>
-          <h1 data-lab-key="configureTitle">Configurează casa ta</h1>
-          <p data-lab-key="configureSubtitle">Modifică doar ce contează. Rezultatele se actualizează în timp real.</p>
+          <h1 data-lab-key="configureTitle">Casa mea</h1>
+          <p data-lab-key="configureSubtitle">Corectează doar ce nu seamănă cu locuința ta. Restul îl estimăm noi.</p>
         </div>
         <div
           class="lab-location-chip lab-locality"
@@ -42,38 +42,56 @@
         </div>
       </header>
 
-      <nav class="lab-chapter-grid" aria-label="Capitole MC001-2022">
+      <section class="lab-house-mode-bar" data-house-mode="current">
+        <div class="lab-house-mode-copy">
+          <span id="labHouseModeKicker">CASA ACTUALĂ</span>
+          <strong id="labHouseModeTitle">Așa este locuința mea acum</strong>
+          <small id="labHouseModeHint">Verifică cele 6 zone. Când seamănă cu locuința ta, fixează punctul de plecare.</small>
+        </div>
+        <button type="button" id="labConfirmCurrentHome">Asta este casa mea acum</button>
+        <button type="button" id="labEditCurrentHome" hidden>Editează casa actuală</button>
+      </section>
+
+      <nav class="lab-chapter-grid" aria-label="Zonele casei · MC001-2022">
         <button type="button" class="lab-chapter-tile" data-lab-chapter-open="1">
           <span class="lab-chapter-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 16.5 16 8l10 8.5V26H6Z"/><path d="M12 26v-7h8v7"/><path class="leaf" d="M22 6c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
-          <span><strong>1. Casă & confort</strong><small id="labChapter1Summary">120 m² · 4 pers. · 21°C</small></span>
-          <em>model</em>
+          <span><strong>Casa</strong><small id="labChapter1Summary">120 m² · 2 niveluri · 21°C</small></span>
+          <em>MC001 · 1</em>
         </button>
         <button type="button" class="lab-chapter-tile" data-lab-chapter-open="2">
           <span class="lab-chapter-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 8h22v17H5Z"/><path d="M11 8v17M21 8v17M5 16h22"/><path class="leaf" d="M23 4c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
-          <span><strong>2. Anvelopă</strong><small id="labChapter2Summary">Izolație · ferestre · orientare</small></span>
-          <em>activ</em>
+          <span><strong>Anvelopa</strong><small id="labChapter2Summary">5 cm pereți · 10 cm pod · Tripan</small></span>
+          <em>MC001 · 2</em>
         </button>
         <button type="button" class="lab-chapter-tile" data-lab-chapter-open="3">
           <span class="lab-chapter-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M7 24V12h18v12"/><path d="M10 12c0-4 3-6 6-6s6 2 6 6"/><path d="M12 18h8M12 22h8"/><path class="leaf" d="M22 5c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
-          <span><strong>3. Instalații</strong><small id="labChapter3Summary">Încălzire · ventilație · răcire</small></span>
-          <em>activ</em>
+          <span><strong>Instalațiile</strong><small id="labChapter3Summary">Centrală gaz · ventilație naturală</small></span>
+          <em>MC001 · 3</em>
         </button>
         <button type="button" class="lab-chapter-tile" data-lab-chapter-open="4">
           <span class="lab-chapter-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="15" r="6"/><path d="M16 3v4M16 23v5M4 15h4M24 15h4M7.5 6.5l3 3M21.5 20.5l3 3M24.5 6.5l-3 3M10.5 20.5l-3 3"/><path class="leaf" d="M21 20c4 0 7 2 7 6-4 0-7-2-7-6Z"/></svg></span>
-          <span><strong>4. Regenerabile</strong><small id="labChapter4Summary">Pompă de căldură · PV · solar</small></span>
-          <em>mixt</em>
+          <span><strong>Regenerabile</strong><small id="labChapter4Summary">Nimic instalat · vezi opțiuni</small></span>
+          <em>MC001 · 4</em>
         </button>
         <button type="button" class="lab-chapter-tile" data-lab-chapter-open="5">
           <span class="lab-chapter-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M7 26V15M13 26V10M19 26V6M25 26V17"/><path d="M5 26h22"/><path class="leaf" d="M22 4c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
-          <span><strong>5. Performanță</strong><small id="labChapter5Summary">Clasă — · cost —</small></span>
-          <em>live</em>
+          <span><strong>Performanța</strong><small id="labChapter5Summary">Clasă — · cost —</small></span>
+          <em>MC001 · 5</em>
         </button>
         <button type="button" class="lab-chapter-tile" data-lab-chapter-open="6">
           <span class="lab-chapter-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 6h16v20H8Z"/><path d="M12 11h8M12 16h8M12 21h5"/><path class="leaf" d="M21 4c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
-          <span><strong>6. Audit & renovare</strong><small id="labChapter6Summary">Casa actuală · scenarii</small></span>
-          <em>scenarii</em>
+          <span><strong>Renovarea</strong><small id="labChapter6Summary">Fixează mai întâi casa actuală</small></span>
+          <em>MC001 · 6</em>
         </button>
       </nav>
+
+      <section class="lab-context-visual" aria-hidden="true">
+        <img id="labContextImage" src="/home-lab-assets/house-orientation.webp?v=2" alt="">
+        <div>
+          <strong id="labContextTitle">Casa ta, dintr-o privire</strong>
+          <small id="labContextText">Atinge o zonă ca să modifici doar acel sistem.</small>
+        </div>
+      </section>
 
       <div class="lab-mobile-editor-toolbar" hidden>
         <button type="button" data-lab-chapter-close aria-label="Înapoi">←</button>
@@ -82,10 +100,10 @@
       </div>
 
       <section class="lab-mobile-livebar" aria-live="polite">
-        <div><span>Clasă</span><strong id="labMobileClass">—</strong></div>
-        <div><span>Cost/an</span><strong id="labMobileCost">—</strong></div>
-        <div><span>Energie</span><strong id="labMobileEnergy">—</strong></div>
-        <button type="button" data-mobile-results>Detalii</button>
+        <div><span>Clasă</span><strong id="labMobileClass">—</strong><small id="labMobileClassDelta"></small></div>
+        <div><span>Cost/an</span><strong id="labMobileCost">—</strong><small id="labMobileCostDelta"></small></div>
+        <div><span>Energie</span><strong id="labMobileEnergy">—</strong><small id="labMobileEnergyDelta"></small></div>
+        <button type="button" data-mobile-results>Rezultat ›</button>
       </section>
 
       <section class="lab-baseline-card" data-baseline-card data-lab-chapter-panel="6">
@@ -105,7 +123,7 @@
         <div class="lab-config-card-title">
           <span class="lab-card-icon">⌂</span>
           <div>
-            <strong data-lab-key="houseUseTitle">1. Casă și utilizare</strong>
+            <strong data-lab-key="houseUseTitle">Casa și utilizarea</strong>
             <small data-lab-key="houseUseSubtitle">Dimensiuni, niveluri și ocupare</small>
           </div>
         </div>
@@ -165,7 +183,7 @@
         <div class="lab-config-card-title">
           <span class="lab-card-icon">▱</span>
           <div>
-            <strong data-lab-key="envelopeTitle">2. Anvelopă și ferestre</strong>
+            <strong data-lab-key="envelopeTitle">Anvelopa și ferestrele</strong>
             <small data-lab-key="envelopeSubtitle">Izolație, geamuri și orientare solară</small>
           </div>
         </div>
@@ -239,7 +257,7 @@
         <div class="lab-config-card-title">
           <span class="lab-card-icon">≋</span>
           <div>
-            <strong data-lab-key="systemsTitle">3. Sisteme de încălzire și apă caldă</strong>
+            <strong data-lab-key="systemsTitle">Încălzire și apă caldă</strong>
             <small data-lab-key="systemsSubtitle">Alege sursa principală</small>
           </div>
         </div>
@@ -301,17 +319,17 @@
       <section class="lab-config-card lab-product-chapter" data-lab-chapter-panel="4">
         <div class="lab-config-card-title">
           <span class="lab-card-icon">☼</span>
-          <div><strong>4. Surse regenerabile</strong><small>Produse care pot reduce energia cumpărată</small></div>
+          <div><strong>Surse regenerabile</strong><small>Testează intervențiile pe care motorul le poate calcula.</small></div>
         </div>
         <div class="lab-product-options">
           <button type="button" data-lab-product-action="heat_pump">
-            <span class="lab-product-leaf">◆</span><strong>Pompă de căldură</strong><small>suportată de motor</small>
+            <span class="lab-product-leaf">◆</span><strong>Pompă de căldură</strong><small>calcul disponibil</small>
           </button>
           <button type="button" disabled aria-disabled="true" title="Motorul Python nu calculează încă aportul solar termic.">
-            <span class="lab-product-leaf">◆</span><strong>Panouri solare termice</strong><small>motor Python: în curând</small>
+            <span class="lab-product-leaf">◆</span><strong>Panouri solare termice</strong><small>calcul în curs de integrare</small>
           </button>
           <button type="button" disabled aria-disabled="true" title="Motorul Python nu calculează încă producția fotovoltaică.">
-            <span class="lab-product-leaf">◆</span><strong>Panouri fotovoltaice</strong><small>motor Python: în curând</small>
+            <span class="lab-product-leaf">◆</span><strong>Panouri fotovoltaice</strong><small>calcul în curs de integrare</small>
           </button>
         </div>
       </section>
@@ -319,7 +337,7 @@
       <section class="lab-config-card lab-performance-chapter" data-lab-chapter-panel="5">
         <div class="lab-config-card-title">
           <span class="lab-card-icon">▥</span>
-          <div><strong>5. Performanță energetică</strong><small>Rezultatul modelului, nu o presupunere AI</small></div>
+          <div><strong>Performanța casei</strong><small>Cifre calculate din configurația curentă.</small></div>
         </div>
         <div class="lab-performance-mini">
           <div><span>Clasă</span><strong id="labChapterClass">—</strong></div>
@@ -333,7 +351,7 @@
       <section class="lab-config-card lab-audit-chapter" data-lab-chapter-panel="6">
         <div class="lab-config-card-title">
           <span class="lab-card-icon">✓</span>
-          <div><strong>6. Audit & renovare</strong><small>Compară casa reală cu variante de intervenție</small></div>
+          <div><strong>Renovarea</strong><small>Compară intervențiile cu casa reală salvată.</small></div>
         </div>
         <div class="lab-audit-actions">
           <button type="button" data-audit-save-baseline>Salvează casa actuală</button>
