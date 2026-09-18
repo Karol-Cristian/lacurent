@@ -264,3 +264,51 @@ def test_nearest_hsol_source_is_visible_in_result_provenance() -> None:
     assert "Stație solară Hsol" in response.text
     assert "Sibiu" in response.text
     assert "54.3 km" in response.text
+
+def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
+    response = client.get("/embed")
+    assert response.status_code == 200
+    assert "LaCurent Embed" in response.text
+    assert 'data-lacurent-embed data-partner="demo-store"' in response.text
+    assert "https://lacurent.com/static/embed-loader.js" in response.text
+    assert 'href="/embed/demo-store"' in response.text
+
+
+def test_partner_embed_calculator_uses_compact_partner_shell() -> None:
+    response = client.get("/embed/demo-store")
+    assert response.status_code == 200
+    assert 'class="embed-body"' in response.text
+    assert 'data-embed-partner="demo-store"' in response.text
+    assert "Partener Demo" in response.text
+    assert "Powered by LaCurent" in response.text
+    assert 'action="/embed/demo-store/calculate"' in response.text
+    assert 'href="/embed/demo-store/demo"' in response.text
+    assert "embed-runtime.js" in response.text
+    assert "Navigare LaCurent Instalații & Energie" not in response.text
+
+
+def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None:
+    response = client.post("/embed/demo-store/calculate", data=demo_form_data())
+    assert response.status_code == 200
+    assert "Rezultatul calculului" in response.text
+    assert "Commercial test house" in response.text
+    assert "Transformă scenariul ales într-o ofertă concretă." in response.text
+    assert "Cere ofertă pentru scenariul ales" in response.text
+    assert 'href="https://lacurent.com/instalatii#evaluare"' in response.text
+    assert 'href="/embed/demo-store"' in response.text
+    assert "embed-runtime.js" in response.text
+
+
+def test_unknown_partner_embed_returns_404() -> None:
+    response = client.get("/embed/not-a-real-partner")
+    assert response.status_code == 404
+
+
+def test_embed_loader_validates_message_origin_and_source() -> None:
+    response = client.get("/static/embed-loader.js")
+    assert response.status_code == 200
+    assert "[data-lacurent-embed]" in response.text
+    assert "event.origin !== embedOrigin" in response.text
+    assert "event.source !== iframe.contentWindow" in response.text
+    assert "lacurent:embed-height" in response.text
+
