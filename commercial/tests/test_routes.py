@@ -159,6 +159,11 @@ def test_energy_calculator_is_romanian_and_isolated_from_testing_home() -> None:
     assert "Instalațiile" in response.text
     assert "Ventilație naturală" in response.text
     assert "Sobă / șemineu pe lemne" in response.text
+    assert "Orientarea dominantă a ferestrelor" in response.text
+    assert "Tipul principal de vitraj" in response.text
+    assert "Automat MC001 / Hsol A.9.6" in response.text
+    assert 'name="solar_orientation"' in response.text
+    assert 'name="solar_glazing_type_id"' in response.text
     assert 'href="/"' not in response.text
     assert "Building envelope" not in response.text
     assert "/static/favicon.svg" in response.text
@@ -213,3 +218,24 @@ def test_official_price_registry_endpoint_is_available() -> None:
     assert payload["electricity"]["source_name"] == "POSF / ANRE"
     assert payload["natural_gas"]["source_name"] == "POSF / ANRE"
     assert payload["firewood"]["source_name"].startswith("Romsilva")
+
+def test_form_calculation_accepts_normative_solar_controls() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "solar_mode": "normative_hsol",
+            "solar_orientation": "south_west",
+            "solar_glazing_type_id": "triple_low_e_faces_2_and_5",
+            "solar_frame_fraction": "0.18",
+            "solar_obstacle_shading_factor": "0.85",
+            "solar_sky_view_factor": "0.5",
+            "solar_exterior_surface_resistance_m2k_w": "0.04",
+            "solar_longwave_radiation_coefficient_w_m2k": "5",
+            "solar_sky_temperature_difference_k": "11",
+        }
+    )
+    response = client.post("/calculate", data=data)
+    assert response.status_code == 200
+    assert "Rezultatul calculului" in response.text
+    assert "Commercial test house" in response.text
+
