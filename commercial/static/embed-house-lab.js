@@ -1045,6 +1045,23 @@
       calculateNow();
     });
 
+  function initHouseVisualCarousel() {
+    const slides=Array.from(root.querySelectorAll("[data-lab-house-slide]"));
+    if (slides.length < 2) return;
+
+    let active=0;
+    const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    slides.forEach((slide,index) => slide.classList.toggle("is-active",index===0));
+    if (reduceMotion) return;
+
+    window.setInterval(() => {
+      if (document.hidden) return;
+      active=(active+1)%slides.length;
+      slides.forEach((slide,index) => slide.classList.toggle("is-active",index===active));
+    },4200);
+  }
+
+  initHouseVisualCarousel();
   updateHeatingVisual();
   syncLevelSegments();
   syncHeatingPills();
