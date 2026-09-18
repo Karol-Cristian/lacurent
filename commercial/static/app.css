@@ -1376,3 +1376,146 @@ td {
   }
 }
 
+
+
+/* Partner embed */
+.embed-body {
+  background: #fff;
+  --blue: var(--partner-accent, #1459c8);
+}
+
+.embed-shell {
+  display: block;
+  min-height: 0;
+}
+
+.embed-body .workspace {
+  width: min(1440px, calc(100% - 24px));
+  padding: 12px 0 24px;
+}
+
+.embed-body .hero,
+.embed-body .results-hero {
+  padding-top: 24px;
+}
+
+.embed-body .primary-action {
+  background: var(--partner-accent, #1459c8);
+}
+
+.embed-partner-bar {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.embed-partner-identity,
+.embed-partner-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.embed-partner-identity > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.embed-partner-identity strong {
+  font-size: 14px;
+}
+
+.embed-partner-identity small,
+.embed-powered-by {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.embed-partner-symbol {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--partner-accent, #1459c8);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .04em;
+}
+
+.partner-offer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 18px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--partner-accent, #1459c8);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.partner-offer-bar > div {
+  display: grid;
+  gap: 4px;
+}
+
+.partner-offer-bar span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.partner-offer-bar strong {
+  font-size: 18px;
+}
+
+.partner-offer-bar small {
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.partner-cta {
+  flex: 0 0 auto;
+}
+
+.embed-doc-panel {
+  margin-bottom: 18px;
+}
+
+.embed-code {
+  overflow-x: auto;
+  margin: 18px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .embed-partner-bar,
+  .partner-offer-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .embed-partner-tools {
+    justify-content: space-between;
+  }
+
+  .partner-cta {
+    width: 100%;
+  }
+}

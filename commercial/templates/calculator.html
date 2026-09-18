@@ -10,7 +10,7 @@
     <p class="hero-copy">Alege localitatea, introdu dimensiunile de bază și selectează instalațiile pe care le ai. Coeficienții tehnici exacți rămân disponibili doar în setările avansate.</p>
   </div>
   <div class="hero-actions">
-    <a class="secondary-action" href="/demo">Încarcă exemplul</a>
+    <a class="secondary-action" href="{{ demo_url|default('/demo') }}">Încarcă exemplul</a>
     <a class="primary-action" href="#building">Începe analiza</a>
   </div>
 </section>
@@ -22,7 +22,7 @@
   </div>
 {% endif %}
 
-<form id="calculationForm" class="analysis-form" method="post" action="/calculate">
+<form id="calculationForm" class="analysis-form" method="post" action="{{ calculate_action|default('/calculate') }}">
   <input type="hidden" name="expert_geometry_override" value="{{ values.expert_geometry_override or '' }}">
   <input type="hidden" name="expert_envelope_override" value="{{ values.expert_envelope_override or '' }}">
   <input type="hidden" name="expert_ventilation_override" value="{{ values.expert_ventilation_override or '' }}">

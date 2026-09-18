@@ -1,0 +1,14 @@
+{
+  "schema": "lacurent_partner_embed_v1",
+  "partners": {
+    "demo-store": {
+      "brand_name": "Partener Demo",
+      "short_name": "PD",
+      "tagline": "Calculator energetic pentru clienții magazinului",
+      "accent": "#1459c8",
+      "cta_label": "Cere ofertă pentru scenariul ales",
+      "cta_url": "https://lacurent.com/instalatii#evaluare",
+      "show_powered_by": true
+    }
+  }
+}

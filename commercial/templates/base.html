@@ -12,8 +12,9 @@
   <link rel="stylesheet" href="{{ url_for('static', path='language-switch.css') }}?v=lang2">
   <link rel="stylesheet" href="{{ url_for('static', path='scenario-cockpit.css') }}?v=cockpit3">
 </head>
-<body>
-  <div class="app-shell">
+<body{% if embed_mode %} class="embed-body" data-embed-partner="{{ partner.id }}" style="--partner-accent: {{ partner.accent }}"{% endif %}>
+  <div class="app-shell{% if embed_mode %} embed-shell{% endif %}">
+    {% if not embed_mode %}
     <aside class="brand-rail" aria-label="Navigare LaCurent Instalații & Energie">
       <a class="brand-mark" href="/instalatii">
         <span class="brand-symbol">LC</span>
@@ -32,8 +33,28 @@
         <a href="/demo">Exemplu calculat</a>
       </nav>
     </aside>
+    {% endif %}
 
     <main class="workspace">
+      {% if embed_mode %}
+      <header class="embed-partner-bar">
+        <div class="embed-partner-identity">
+          <span class="embed-partner-symbol">{{ partner.short_name }}</span>
+          <span>
+            <strong>{{ partner.brand_name }}</strong>
+            <small>{{ partner.tagline }}</small>
+          </span>
+        </div>
+        <div class="embed-partner-tools">
+          <div class="site-language-switch header-language-switch" aria-label="Language / Limbă">
+            <span class="language-label" data-language-label>Limbă</span>
+            <button type="button" data-site-language="ro" aria-pressed="true">RO</button>
+            <button type="button" data-site-language="en" aria-pressed="false">EN</button>
+          </div>
+          {% if partner.show_powered_by %}<small class="embed-powered-by">Powered by LaCurent</small>{% endif %}
+        </div>
+      </header>
+      {% else %}
       <div class="workspace-toolbar" aria-label="Selector limbă">
         <div class="site-language-switch header-language-switch" aria-label="Language / Limbă">
           <span class="language-label" data-language-label>Limbă</span>
@@ -41,6 +62,7 @@
           <button type="button" data-site-language="en" aria-pressed="false">EN</button>
         </div>
       </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>
@@ -52,5 +74,6 @@
   <script src="{{ url_for('static', path='calculator-submit-fix.js') }}?v=submit2"></script>
   <script src="{{ url_for('static', path='energy-i18n.js') }}?v=i18n1"></script>
   <script src="{{ url_for('static', path='scenario-cockpit.js') }}?v=cockpit1"></script>
+  {% if embed_mode %}<script src="{{ url_for('static', path='embed-runtime.js') }}?v=embed1"></script>{% endif %}
 </body>
 </html>

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -17,6 +18,30 @@ from .pricing import energy_prices, estimate_energy_cost
 from .software_resources import router as software_resources_router
 
 BASE_DIR = Path(__file__).resolve().parents[1]
+
+@lru_cache(maxsize=1)
+def embed_partner_registry() -> dict[str, Any]:
+    path = BASE_DIR / "data" / "embed-partners.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def embed_partner(partner_id: str) -> dict[str, Any]:
+    raw = embed_partner_registry().get("partners", {}).get(partner_id)
+    if not raw:
+        raise HTTPException(status_code=404, detail="Unknown LaCurent embed partner.")
+    return {"id": partner_id, **raw}
+
+
+def embed_page_context(partner_id: str) -> dict[str, Any]:
+    partner = embed_partner(partner_id)
+    return {
+        "embed_mode": True,
+        "partner": partner,
+        "calculate_action": f"/embed/{partner_id}/calculate",
+        "calculator_url": f"/embed/{partner_id}",
+        "demo_url": f"/embed/{partner_id}/demo",
+    }
+
 
 app = FastAPI(
     title="LaCurent",
@@ -510,6 +535,38 @@ def calculator_context(error: str | None = None, values: dict[str, Any] | None =
     }
 
 
+async def render_calculation_from_form(
+    request: Request,
+    *,
+    page_context: dict[str, Any] | None = None,
+) -> HTMLResponse:
+    form = dict(await request.form())
+    values = {**default_form_values(), **form}
+    for key in ("cooling_enabled", "dhw_enabled", "apartment_top_exposed", "apartment_bottom_exposed"):
+        values[key] = _checked(form, key)
+    extra = page_context or {}
+    try:
+        building = build_input_from_form(form)
+        result = calculate(building)
+    except Exception as exc:
+        return templates.TemplateResponse(
+            request,
+            "calculator.html",
+            {
+                "request": request,
+                **calculator_context(error=user_error(exc), values=values),
+                **extra,
+            },
+            status_code=422,
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "results.html",
+        {"request": request, **result_context(result), **extra},
+    )
+
+
 @app.get("/api/location-data")
 async def location_data_api() -> JSONResponse:
     return JSONResponse(location_payload())
@@ -552,22 +609,45 @@ async def energy_calculator(request: Request) -> HTMLResponse:
 
 @app.post("/calculate", response_class=HTMLResponse)
 async def calculate_from_form(request: Request) -> HTMLResponse:
-    form = dict(await request.form())
-    values = {**default_form_values(), **form}
-    for key in ("cooling_enabled", "dhw_enabled", "apartment_top_exposed", "apartment_bottom_exposed"):
-        values[key] = _checked(form, key)
-    try:
-        building = build_input_from_form(form)
-        result = calculate(building)
-    except Exception as exc:
-        return templates.TemplateResponse(
-            request,
-            "calculator.html",
-            {"request": request, **calculator_context(error=user_error(exc), values=values)},
-            status_code=422,
-        )
+    return await render_calculation_from_form(request)
 
-    return templates.TemplateResponse(request, "results.html", result_context(result))
+
+@app.get("/embed", response_class=HTMLResponse)
+async def embed_integration(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "embed_info.html",
+        {
+            "request": request,
+            "demo_partner": embed_partner("demo-store"),
+        },
+    )
+
+
+@app.get("/embed/{partner_id}", response_class=HTMLResponse)
+async def partner_embed_calculator(request: Request, partner_id: str) -> HTMLResponse:
+    page = embed_page_context(partner_id)
+    return templates.TemplateResponse(
+        request,
+        "calculator.html",
+        {"request": request, **calculator_context(), **page},
+    )
+
+
+@app.post("/embed/{partner_id}/calculate", response_class=HTMLResponse)
+async def partner_embed_calculate(request: Request, partner_id: str) -> HTMLResponse:
+    return await render_calculation_from_form(request, page_context=embed_page_context(partner_id))
+
+
+@app.get("/embed/{partner_id}/demo", response_class=HTMLResponse)
+async def partner_embed_demo(request: Request, partner_id: str) -> HTMLResponse:
+    page = embed_page_context(partner_id)
+    result = calculate(demo_building())
+    return templates.TemplateResponse(
+        request,
+        "results.html",
+        {"request": request, **result_context(result), **page},
+    )
 
 
 @app.get("/demo", response_class=HTMLResponse)
