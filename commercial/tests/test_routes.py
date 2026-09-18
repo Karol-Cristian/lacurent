@@ -277,6 +277,9 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_calculator_uses_compact_partner_shell() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
+    assert response.headers["content-security-policy"] == "frame-ancestors *"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
     assert 'class="embed-body"' in response.text
     assert 'data-embed-partner="demo-store"' in response.text
     assert "Partener Demo" in response.text
@@ -311,4 +314,9 @@ def test_embed_loader_validates_message_origin_and_source() -> None:
     assert "event.origin !== embedOrigin" in response.text
     assert "event.source !== iframe.contentWindow" in response.text
     assert "lacurent:embed-height" in response.text
+
+def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
+    response = client.get("/instalatii/calculator")
+    assert response.status_code == 200
+    assert "content-security-policy" not in response.headers
 
