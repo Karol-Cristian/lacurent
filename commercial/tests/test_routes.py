@@ -335,7 +335,7 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'value="district_heat"' in response.text
     assert 'value="wood_stove"' in response.text
     assert '/static/home-lab/home-envelope.svg' in response.text
-    assert '/static/home-lab/window-orientation.svg' in response.text
+    assert '/static/home-lab/window-orientation-card.svg' in response.text
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
@@ -349,7 +349,7 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
 def test_home_lab_generated_svg_assets_are_served() -> None:
     for path in (
         "/static/home-lab/home-envelope.svg",
-        "/static/home-lab/window-orientation.svg",
+        "/static/home-lab/window-orientation-card.svg",
         "/static/home-lab/wood-fireplace.svg",
         "/static/home-lab/district-heating.svg",
     ):
