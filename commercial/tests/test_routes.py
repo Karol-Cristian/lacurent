@@ -296,7 +296,7 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
     assert 'href="/embed/demo-store"' in response.text
 
 
-def test_partner_embed_calculator_uses_compact_partner_shell() -> None:
+def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
     assert response.headers["content-security-policy"] == "frame-ancestors *"
@@ -306,10 +306,37 @@ def test_partner_embed_calculator_uses_compact_partner_shell() -> None:
     assert 'data-embed-partner="demo-store"' in response.text
     assert "Partener Demo" in response.text
     assert "Powered by LaCurent" in response.text
-    assert 'action="/embed/demo-store/calculate"' in response.text
-    assert 'href="/embed/demo-store/demo"' in response.text
+    assert "Laboratorul casei" in response.text
+    assert 'data-calculate-url="/embed/demo-store/lab-calculate"' in response.text
+    assert 'id="labLocalitySearch"' in response.text
+    assert 'id="labWallIns" type="range" min="0" max="30" step="1"' in response.text
+    assert 'id="labWindows" type="range" min="2" max="60" step="0.5"' in response.text
+    assert "Nu trebuie să alegi manual o zonă climatică." in response.text
+    assert "embed-house-lab.js" in response.text
     assert "embed-runtime.js" in response.text
     assert "Navigare LaCurent Instalații & Energie" not in response.text
+
+
+def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "locality_id": "siruta-54984",
+            "expert_geometry_override": "on",
+            "expert_envelope_override": "on",
+            "expert_ventilation_override": "on",
+            "heating_choice": "condensing_gas_boiler",
+        }
+    )
+    response = client.post("/embed/demo-store/lab-calculate", data=data)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["final_energy_kwh"] > 0
+    assert payload["primary_specific_kwh_m2"] > 0
+    assert payload["heat_loss_w_k"] > 0
+    assert payload["design_heat_load_kw"] > 0
+    assert payload["locality"]
+    assert payload["climate_station"]
 
 
 def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None:
