@@ -51,6 +51,11 @@
       heating:"Sursa principală de încălzire", resultsKicker:"Rezultat live", resultsTitle:"Casa configurată", class:"Clasă",
       annualCost:"Cost anual estimat", finalEnergy:"Energie finală", allSources:"toate sursele", primarySpecific:"Energie primară specifică", designPower:"Putere termică estimată", designPowerNote:"din H × ΔT la temperatura de calcul",
       selectedPlace:"Localitate", climateStation:"Stație climatică", heatLoss:"Coeficient pierderi",
+      monthlyChartTitle:"Cost lunar estimat", monthlyChartNote:"profilul celor 12 luni",
+      serviceChartTitle:"Energie pe servicii", lossChartTitle:"Unde pierde casa căldură", referenceTitle:"Față de clădirea de referință",
+      priceCurrent:"referințe de preț actualizate", priceCheck:"verifică referințele de preț",
+      serviceHeating:"Încălzire", serviceCooling:"Răcire", serviceDhw:"Apă caldă",
+      referenceBetter:"sub referință", referenceWorse:"peste referință",
       methodNote:"Rezultatele se recalculează cu motorul energetic LaCurent. Valorile sunt estimări tehnice și nu reprezintă un certificat de performanță energetică.",
       calculating:"Se recalculează…", ready:"Actualizat", monthly:"medie lunară", error:"Calculul nu a putut fi actualizat."
     },
@@ -67,6 +72,11 @@
       heating:"Main heating source", resultsKicker:"Live result", resultsTitle:"Configured house", class:"Class",
       annualCost:"Estimated annual cost", finalEnergy:"Final energy", allSources:"all sources", primarySpecific:"Specific primary energy", designPower:"Estimated heat load", designPowerNote:"from H × ΔT at design temperature",
       selectedPlace:"Locality", climateStation:"Climate station", heatLoss:"Heat-loss coefficient",
+      monthlyChartTitle:"Estimated monthly cost", monthlyChartNote:"12-month profile",
+      serviceChartTitle:"Energy by service", lossChartTitle:"Where the house loses heat", referenceTitle:"Compared with reference building",
+      priceCurrent:"price references current", priceCheck:"check price references",
+      serviceHeating:"Heating", serviceCooling:"Cooling", serviceDhw:"Hot water",
+      referenceBetter:"below reference", referenceWorse:"above reference",
       methodNote:"Results are recalculated with the LaCurent energy engine. Values are technical estimates and are not an energy performance certificate.",
       calculating:"Recalculating…", ready:"Updated", monthly:"monthly average", error:"The calculation could not be updated."
     }
@@ -103,6 +113,7 @@
   let selectedLocality = null;
   let requestToken = 0;
   let timer = null;
+  let lastResult = null;
 
   function insulationU(baseU, centimetres) {
     const lambda = 0.040;
@@ -160,7 +171,97 @@
     return Number(value || 0).toLocaleString(lang()==="en"?"en-US":"ro-RO", {minimumFractionDigits:digits, maximumFractionDigits:digits});
   }
 
+  const MONTHS = {
+    ro:{ian:"Ian",feb:"Feb",mar:"Mar",apr:"Apr",mai:"Mai",iun:"Iun",iul:"Iul",aug:"Aug",sep:"Sep",oct:"Oct",nov:"Nov",dec:"Dec"},
+    en:{ian:"Jan",feb:"Feb",mar:"Mar",apr:"Apr",mai:"May",iun:"Jun",iul:"Jul",aug:"Aug",sep:"Sep",oct:"Oct",nov:"Nov",dec:"Dec"}
+  };
+
+  function renderMonthlyChart(data) {
+    const node = document.getElementById("labMonthlyChart");
+    const note = document.getElementById("labMonthlyChartNote");
+    const priceStatus = document.getElementById("labPriceStatus");
+    if (!node) return;
+
+    const completeCosts = (data.monthly_costs || []).length === 12 && (data.monthly_costs || []).every(row => row.complete);
+    const rows = completeCosts
+      ? data.monthly_costs.map(row => ({month:row.month,value:Number(row.cost_lei)||0,unit:"lei"}))
+      : (data.monthly || []).map(row => ({month:row.month,value:(Number(row.useful_heating_kwh)||0)+(Number(row.useful_cooling_kwh)||0),unit:"kWh"}));
+    const max = Math.max(...rows.map(row => row.value), 1);
+
+    node.innerHTML = rows.map(row => {
+      const height = Math.max(3, Math.round(100 * row.value / max));
+      const month = MONTHS[lang()][row.month] || row.month;
+      return `<div class="lab-month-bar" title="${month}: ${fmt(row.value)} ${row.unit}">
+        <i style="height:${height}%"></i>
+        <span>${month}</span>
+      </div>`;
+    }).join("");
+
+    note.textContent = completeCosts
+      ? tr("monthlyChartNote")
+      : (lang()==="en" ? "useful heating + cooling energy" : "energie utilă încălzire + răcire");
+    priceStatus.textContent = data.price_retrieved_on
+      ? `${data.price_references_current ? tr("priceCurrent") : tr("priceCheck")} · ${data.price_retrieved_on}`
+      : "";
+  }
+
+  function renderHorizontalChart(nodeId, rows, maxRows=4) {
+    const node = document.getElementById(nodeId);
+    if (!node) return;
+    const filtered = rows.filter(row => Number(row.value) > 0).sort((a,b) => b.value-a.value).slice(0,maxRows);
+    const max = Math.max(...filtered.map(row => Number(row.value)||0),1);
+    node.innerHTML = filtered.map(row => {
+      const width = Math.max(2, Math.round(100 * Number(row.value) / max));
+      return `<div class="lab-chart-row" title="${row.label}: ${fmt(row.value, row.digits ?? 0)} ${row.unit || ""}">
+        <div class="lab-chart-row-label"><span>${row.label}</span><strong>${fmt(row.value, row.digits ?? 0)}</strong></div>
+        <div class="lab-chart-track"><i style="width:${width}%"></i></div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderReference(data) {
+    const card=document.getElementById("labReferenceCard");
+    if (!card) return;
+    if (!data.reference) {
+      card.hidden=true;
+      return;
+    }
+    card.hidden=false;
+    const actual=Number(data.reference.actual_specific_primary_kwh_m2)||0;
+    const reference=Number(data.reference.reference_specific_primary_kwh_m2)||0;
+    const difference=Number(data.reference.difference_percent)||0;
+    document.getElementById("labReferenceDelta").textContent = `${difference>0?"+":""}${fmt(difference,1)}%`;
+    document.getElementById("labReferenceText").textContent =
+      `${fmt(actual,1)} vs ${fmt(reference,1)} kWh/m²/an · ${Math.abs(difference).toLocaleString(lang()==="en"?"en-US":"ro-RO",{maximumFractionDigits:1})}% ${difference<=0?tr("referenceBetter"):tr("referenceWorse")}`;
+    const ratio = reference > 0 ? Math.min(100, 100*actual/reference) : 0;
+    document.getElementById("labReferenceBar").style.width = `${Math.max(2,ratio)}%`;
+  }
+
+  function renderDashboard(data) {
+    renderMonthlyChart(data);
+
+    const services=data.final_energy_by_service || {};
+    renderHorizontalChart("labServiceChart",[
+      {label:tr("serviceHeating"),value:Number(services.heating)||0,unit:"kWh"},
+      {label:tr("serviceDhw"),value:Number(services.dhw)||0,unit:"kWh"},
+      {label:tr("serviceCooling"),value:Number(services.cooling)||0,unit:"kWh"}
+    ],3);
+
+    renderHorizontalChart(
+      "labLossChart",
+      (data.heat_loss_breakdown || []).map(row => ({
+        label:row.name,
+        value:Number(row.value_w_k)||0,
+        unit:"W/K",
+        digits:1
+      })),
+      5
+    );
+    renderReference(data);
+  }
+
   function renderResult(data) {
+    lastResult = data;
     document.getElementById("labClass").textContent = data.energy_class || "—";
     document.getElementById("labAnnualCost").textContent = data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei/an`;
     document.getElementById("labMonthlyCost").textContent = data.average_monthly_cost_lei == null ? "—" : `${fmt(data.average_monthly_cost_lei)} lei · ${tr("monthly")}`;
@@ -169,8 +270,9 @@
     document.getElementById("labDesignPower").textContent = `${fmt(data.design_heat_load_kw,1)} kW`;
     document.getElementById("labResultLocation").textContent = data.locality || localityInput.value || "—";
     document.getElementById("labResultStation").textContent = data.climate_station || "—";
-    document.getElementById("labCo2").textContent = `${fmt(data.co2_kg)} kg/an`;
-    document.getElementById("labHeatLoss").textContent = `${fmt(data.heat_loss_w_k,1)} W/K`;
+    document.getElementById("labCo2").textContent = fmt(data.co2_kg);
+    document.getElementById("labHeatLoss").textContent = fmt(data.heat_loss_w_k,1);
+    renderDashboard(data);
     setStatus(tr("ready"));
   }
 
@@ -229,6 +331,7 @@
       if (COPY[lang()][key]) el.textContent=COPY[lang()][key];
     });
     if (selectedLocality) selectLocality(selectedLocality);
+    if (lastResult) renderDashboard(lastResult);
   }
 
   Object.values(controls).forEach(control => {
@@ -294,6 +397,37 @@
 
   const languageObserver = new MutationObserver(() => applyLanguage());
   languageObserver.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
+
+  function documentTop(element) {
+    let top=0;
+    let node=element;
+    while (node) {
+      top += node.offsetTop || 0;
+      node = node.offsetParent;
+    }
+    return top;
+  }
+
+  function followParentViewport(offset) {
+    const panel=document.querySelector(".house-lab-results");
+    const layout=document.querySelector(".house-lab-layout");
+    if (!panel || !layout) return;
+    if (root.getBoundingClientRect().width <= 900) {
+      panel.style.transform="";
+      return;
+    }
+    const layoutTop=documentTop(layout);
+    const max=Math.max(0,layout.offsetHeight-panel.offsetHeight);
+    const target=Math.max(0,Math.min(max,(Number(offset)||0)-layoutTop+8));
+    panel.style.transform=`translateY(${Math.round(target)}px)`;
+  }
+
+  window.addEventListener("message", event => {
+    if (event.source !== window.parent) return;
+    const data=event.data;
+    if (!data || data.type !== "lacurent:embed-viewport") return;
+    followParentViewport(data.offset);
+  });
 
   fetch("/api/location-data")
     .then(response => {
