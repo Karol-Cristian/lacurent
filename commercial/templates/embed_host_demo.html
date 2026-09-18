@@ -310,6 +310,7 @@
     .service strong{display:block;margin-bottom:7px;font-size:15px}
     .service p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
     .calculator-section{
+      width:100%;
       max-width:1400px;
       margin:48px auto 0;
       padding:0 24px;
@@ -353,6 +354,8 @@
     }
     .calculator-point strong{display:block;color:#173b31;font-size:13px;margin-bottom:3px}
     .embed-card{
+      width:100%;
+      min-width:0;
       overflow:hidden;
       border:1px solid #cfe8dd;
       border-radius:0 0 18px 18px;
@@ -370,7 +373,7 @@
     }
     .embed-card-head strong{font-size:14px}
     .embed-card-head span{color:#667085;font-size:11px}
-    [data-lacurent-embed]{display:block;width:100%;max-width:none;min-width:0;min-height:760px}
+    [data-lacurent-embed]{display:block;width:100%;max-width:none;min-width:0;min-height:760px;box-sizing:border-box}
     [data-lacurent-embed] iframe{display:block;width:100%!important;max-width:none!important;min-width:0!important}
     .project-grid{
       display:grid;
@@ -676,6 +679,6 @@
     <div class="legal">Demo vizual. Produsele, prețurile, datele de contact și promisiunile comerciale de pe această pagină sunt fictive. Calculatorul integrat este LaCurent Embed.</div>
   </footer>
 
-  <script async src="https://lacurent.com/static/embed-loader.js?v=embed3"></script>
+  <script async src="https://lacurent.com/static/embed-loader.js?v=embed4"></script>
 </body>
 </html>
