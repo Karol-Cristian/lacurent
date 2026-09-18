@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab5" in response.text
-    assert "embed-house-lab.js?v=lab5" in response.text
+    assert "embed-house-lab.css?v=lab6" in response.text
+    assert "embed-house-lab.js?v=lab6" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -412,16 +412,32 @@ def test_embed_scenario_lab_uses_partner_calculation_route() -> None:
     assert "fetch(calculateUrl" in response.text
 
 
-def test_embed_house_lab_uses_compact_controls_and_wide_sticky_dashboard() -> None:
+def test_embed_house_lab_uses_commercial_configurator_hierarchy() -> None:
     response = client.get("/static/embed-house-lab.css")
     assert response.status_code == 200
     assert "container-type:inline-size" in response.text
-    assert "grid-template-columns:minmax(360px,.78fr) minmax(500px,1.22fr)" in response.text
-    assert ".lab-range-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))" in response.text
-    assert ".house-lab-results{position:sticky;top:8px" in response.text
-    assert ".lab-monthly-chart{display:grid;grid-template-columns:repeat(12" in response.text
+    assert "grid-template-columns:minmax(360px,.76fr) minmax(520px,1.24fr)" in response.text
+    assert ".house-lab-controls{" in response.text
+    assert "border-radius:22px" in response.text
+    assert ".lab-section-title>span{display:none}" in response.text
+    assert ".house-lab-results{" in response.text
+    assert "position:sticky" in response.text
+    assert "border-radius:24px" in response.text
+    assert ".lab-price-hero{" in response.text
+    assert "background:var(--lab-dark)" in response.text
+    assert ".lab-monthly-chart{" in response.text
+    assert "grid-template-columns:repeat(12" in response.text
     assert "@container (max-width:900px)" in response.text
     assert ".house-lab-layout{grid-template-columns:1fr}" in response.text
+
+
+def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
+    response = client.get("/embed/demo-store")
+    assert response.status_code == 200
+    assert "modifici doar ce contează" in response.text
+    assert "Profil climatic automat" in response.text
+    assert "Recalculare live" in response.text
+    assert "Cost anual estimat" in response.text
 
 
 def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None:
