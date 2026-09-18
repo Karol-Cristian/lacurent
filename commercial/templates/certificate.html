@@ -63,7 +63,7 @@
         <tbody>
           {% for row in cost_estimate.rows %}
           <tr>
-            <td>{{ row.label }}{% if row.estimated_packages %}<br><small>≈ {{ row.estimated_packages|fmt("saci 0,6 m³/an", 1) }} · {{ row.estimated_volume_m3|fmt("m³/an", 1) }}</small>{% elif row.estimated_volume_m3 %}<br><small>≈ {{ row.estimated_volume_m3|fmt("m³/an", 1) }}</small>{% endif %}</td>
+            <td>{{ row.label }}{% if row.estimated_packages %}<br><small>≈ {{ row.estimated_packages|fmt("paleți 0,8 m³/an", 1) }} · {{ row.estimated_volume_m3|fmt("m³/an", 1) }}</small>{% elif row.estimated_volume_m3 %}<br><small>≈ {{ row.estimated_volume_m3|fmt("m³/an", 1) }}</small>{% endif %}</td>
             <td>{{ row.final_kwh|fmt("kWh/an", 0) }}</td>
             <td>{{ row.unit_price_lei_per_kwh|fmt("lei/kWh", 3) }}</td>
             <td><strong>{{ row.annual_cost_lei|fmt("lei/an", 0) }}</strong></td>
