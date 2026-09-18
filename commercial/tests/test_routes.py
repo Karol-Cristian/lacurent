@@ -296,6 +296,13 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
     assert 'href="/embed/demo-store"' in response.text
 
 
+def test_partner_embed_uses_current_house_lab_assets() -> None:
+    response = client.get("/embed/demo-store")
+    assert response.status_code == 200
+    assert "embed-house-lab.css?v=lab2" in response.text
+    assert "embed-house-lab.js?v=lab2" in response.text
+
+
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
@@ -356,10 +363,13 @@ def test_unknown_partner_embed_returns_404() -> None:
     assert response.status_code == 404
 
 
-def test_embed_loader_validates_message_origin_and_source() -> None:
+def test_embed_loader_validates_message_origin_source_and_full_width() -> None:
     response = client.get("/static/embed-loader.js")
     assert response.status_code == 200
     assert "[data-lacurent-embed]" in response.text
+    assert 'host.style.width = "100%"' in response.text
+    assert 'iframe.setAttribute("width", "100%")' in response.text
+    assert 'iframe.style.maxWidth = "none"' in response.text
     assert "event.origin !== embedOrigin" in response.text
     assert "event.source !== iframe.contentWindow" in response.text
     assert "lacurent:embed-height" in response.text
