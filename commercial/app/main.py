@@ -551,6 +551,37 @@ def calculator_context(error: str | None = None, values: dict[str, Any] | None =
     }
 
 
+def embed_lab_result_payload(result: Any) -> dict[str, Any]:
+    cost = estimate_energy_cost(result)
+    climate = result.climate or {}
+    selected = climate.get("selected_locality", {})
+    design_temperature = climate.get("winter_design_temperature_c")
+    delta_t = (
+        max(float(result.input.indoor_design_temperature_c) - float(design_temperature), 0.0)
+        if design_temperature is not None
+        else None
+    )
+    design_heat_load_kw = (
+        float(result.heat_loss_w_k) * delta_t / 1000.0
+        if delta_t is not None
+        else None
+    )
+    return {
+        "energy_class": result.energy_class,
+        "final_energy_kwh": float(result.total_final_energy_kwh),
+        "primary_specific_kwh_m2": float(result.primary_energy.specific_kwh_m2),
+        "co2_kg": float(result.co2.total_kg),
+        "heat_loss_w_k": float(result.heat_loss_w_k),
+        "annual_cost_lei": float(cost["priced_total_lei"]) if cost.get("complete") else None,
+        "average_monthly_cost_lei": float(cost["average_monthly_priced_lei"]) if cost.get("complete") else None,
+        "design_heat_load_kw": design_heat_load_kw,
+        "locality": selected.get("display_name") or result.input.locality,
+        "climate_station": climate.get("station") or "",
+        "climate_zone": climate.get("climate_zone"),
+        "winter_design_temperature_c": design_temperature,
+    }
+
+
 async def render_calculation_from_form(
     request: Request,
     *,
@@ -651,9 +682,26 @@ async def partner_embed_calculator(request: Request, partner_id: str) -> HTMLRes
     page = embed_page_context(partner_id)
     return templates.TemplateResponse(
         request,
-        "calculator.html",
-        {"request": request, **calculator_context(), **page},
+        "embed_house_lab.html",
+        {
+            "request": request,
+            **calculator_context(),
+            **page,
+            "embed_lab_mode": True,
+        },
     )
+
+
+@app.post("/embed/{partner_id}/lab-calculate")
+async def partner_embed_lab_calculate(request: Request, partner_id: str) -> JSONResponse:
+    embed_partner(partner_id)
+    form = dict(await request.form())
+    try:
+        building = build_input_from_form(form)
+        result = calculate(building)
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
+    return JSONResponse(embed_lab_result_payload(result))
 
 
 @app.post("/embed/{partner_id}/calculate", response_class=HTMLResponse)
