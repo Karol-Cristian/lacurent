@@ -503,7 +503,7 @@
     }
 
     const base=baselineSnapshot.result || {};
-    const current=snapshotResult(lastResult || {});
+    const current=lastResult ? snapshotResult(lastResult) : base;
     if (empty) empty.hidden=true;
     if (comparison) comparison.hidden=false;
     if (rail) rail.hidden=false;
