@@ -2,7 +2,10 @@
   const form = document.getElementById("calculationForm");
   if (!form) return;
 
-  const STORAGE_KEY = "lacurent-calculator-draft-v1";
+  const partnerId = String(document.body?.dataset?.embedPartner || "").trim();
+  const STORAGE_KEY = partnerId
+    ? `lacurent-calculator-draft-v1:${partnerId}`
+    : "lacurent-calculator-draft-v1";
   const VERSION = 1;
   const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
   const SKIP_TYPES = new Set(["button", "submit", "reset", "file", "image"]);
