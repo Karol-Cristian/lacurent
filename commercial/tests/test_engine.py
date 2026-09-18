@@ -15,7 +15,7 @@ from commercial.app.engine import (
     transmission_heat_transfer,
     ventilation_heat_transfer,
 )
-from commercial.app.methodology import methodology
+from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol
 from commercial.app.models import BuildingInput, EnergyServiceResult
 
 
@@ -177,7 +177,7 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.4"
+    assert cfg["version"] == "lacurent-commercial-v2.5"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]
@@ -241,12 +241,28 @@ def test_normative_hsol_uses_annex_a9_6_and_orientation() -> None:
     january_north = next(row for row in north.monthly if row.month == "ian")
 
     assert january_south.solar_hsol_kwh_m2 is not None
-    assert january_south.solar_gains_source == "MC001_2_39_2_40_2_54_with_source_backed_A9_6_Hsol"
+    assert january_south.solar_gains_source == "MC001_2_39_2_40_2_54_with_source_backed_A9_6_oriented_Hsol"
     assert january_south.solar_hsol_kwh_m2 > january_north.solar_hsol_kwh_m2
     assert january_south.solar_gains_kwh > january_north.solar_gains_kwh
 
 
-def test_normative_hsol_does_not_invent_missing_solar_station() -> None:
+def test_every_mc001_climate_station_has_source_backed_hsol_coverage() -> None:
+    resolutions = []
+    distances = []
+    for station in climate_data()["localities"]:
+        resolved = resolve_monthly_hsol({"station_id": station["id"]}, "south")
+        assert resolved is not None, station["id"]
+        assert len(resolved["values_kwh_m2_month"]) == 12
+        resolutions.append(resolved["station_resolution"])
+        distances.append(float(resolved["station_distance_km"] or 0))
+
+    assert len(resolutions) == 42
+    assert "direct" in resolutions
+    assert "nearest_source_station" in resolutions
+    assert max(distances) <= 74.5
+
+
+def test_alba_iulia_uses_nearest_normative_solar_source_not_zero_fallback() -> None:
     result = calculate(
         simple_building(
             locality="Alba Iulia",
@@ -257,9 +273,89 @@ def test_normative_hsol_does_not_invent_missing_solar_station() -> None:
     )
 
     july = next(row for row in result.monthly if row.month == "iul")
-    assert july.solar_hsol_kwh_m2 is None
-    assert july.solar_gains_source == "explicit_fallback_no_source_backed_A9_6_Hsol"
-    assert_close(july.solar_gains_kwh, 150.0)
+    assert july.solar_hsol_kwh_m2 is not None
+    assert july.solar_station_name == "Sibiu"
+    assert july.solar_station_resolution == "nearest_source_station"
+    assert july.solar_station_distance_km == 54.3
+    assert july.solar_gains_source.startswith("MC001_2_39_2_40_2_54_with_source_backed_A9_6")
+
+
+def test_oriented_glazing_combines_multiple_annex_a9_6_orientations() -> None:
+    all_south = calculate(
+        simple_building(
+            solar={
+                "mode": "normative_hsol",
+                "orientation": "south",
+                "glazing_type_id": "double_low_e_face_3",
+            },
+        ),
+        include_reference=False,
+    )
+    split = calculate(
+        simple_building(
+            solar={
+                "mode": "normative_hsol",
+                "orientation": "south",
+                "glazing_type_id": "double_low_e_face_3",
+                "glazing_groups": [
+                    {"orientation": "south", "area_m2": 10},
+                    {"orientation": "north", "area_m2": 10},
+                ],
+            },
+        ),
+        include_reference=False,
+    )
+
+    jan_all_south = next(row for row in all_south.monthly if row.month == "ian")
+    jan_split = next(row for row in split.monthly if row.month == "ian")
+    assert jan_split.solar_gains_kwh < jan_all_south.solar_gains_kwh
+    assert set(jan_split.solar_hsol_by_orientation_kwh_m2) == {"south", "north"}
+    assert jan_split.solar_hsol_by_orientation_kwh_m2["south"] > jan_split.solar_hsol_by_orientation_kwh_m2["north"]
+
+
+def test_mc001_table_2_16_shading_reduces_transparent_solar_gains() -> None:
+    unshaded = calculate(
+        simple_building(
+            solar={
+                "mode": "normative_hsol",
+                "orientation": "south",
+                "glazing_type_id": "double_low_e_face_3",
+            },
+        ),
+        include_reference=False,
+    )
+    shaded = calculate(
+        simple_building(
+            solar={
+                "mode": "normative_hsol",
+                "orientation": "south",
+                "glazing_type_id": "double_low_e_face_3",
+                "shading_device_id": "white_venetian_blinds_abs_0_1_trans_0_05",
+                "shading_mounting_side": "exterior",
+            },
+        ),
+        include_reference=False,
+    )
+
+    july_unshaded = next(row for row in unshaded.monthly if row.month == "iul")
+    july_shaded = next(row for row in shaded.monthly if row.month == "iul")
+    assert july_shaded.solar_gains_kwh < july_unshaded.solar_gains_kwh
+    assert "TABLE_2_16_shading" in july_shaded.solar_gains_source
+
+
+def test_oriented_glazing_area_must_match_envelope_window_area() -> None:
+    building = simple_building(
+        solar={
+            "mode": "normative_hsol",
+            "glazing_groups": [{"orientation": "south", "area_m2": 8}],
+        }
+    )
+    try:
+        calculate(building, include_reference=False)
+    except ValueError as exc:
+        assert "suprafețelor vitrate pe orientări" in str(exc)
+    else:
+        raise AssertionError("Expected inconsistent oriented glazing area to be rejected")
 
 
 def test_explicit_solar_mode_preserves_legacy_equivalent_monthly_gain() -> None:
