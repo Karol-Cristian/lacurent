@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-labelledby="title desc">
+<title id="title">Casă eficientă energetic</title><desc id="desc">Ilustrație arhitecturală simplă a unei case cu două niveluri.</desc>
+<rect width="720" height="420" rx="28" fill="#F4F1EA"/>
+<path d="M82 321h556" stroke="#D8D3C8" stroke-width="2"/>
+<path d="M161 210 352 79l207 142v119H161Z" fill="#FFF" stroke="#183B47" stroke-width="4" stroke-linejoin="round"/>
+<path d="M130 218 351 63l240 165" fill="none" stroke="#183B47" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M493 111v-48h38v75" fill="#D26B3F" stroke="#183B47" stroke-width="4"/>
+<rect x="212" y="233" width="92" height="107" rx="3" fill="#F0C49B" stroke="#183B47" stroke-width="4"/>
+<rect x="382" y="220" width="119" height="74" rx="3" fill="#DCE9EA" stroke="#183B47" stroke-width="4"/>
+<path d="M441 220v74M382 257h119" stroke="#183B47" stroke-width="3"/>
+<rect x="365" y="139" width="74" height="55" rx="3" fill="#DCE9EA" stroke="#183B47" stroke-width="4"/>
+<path d="M402 139v55" stroke="#183B47" stroke-width="3"/>
+<path d="M118 341h484" stroke="#567D74" stroke-width="5" stroke-linecap="round"/>
+<path d="M116 321c19-27 39-27 58 0M542 321c19-34 41-34 62 0" fill="none" stroke="#88A69D" stroke-width="7" stroke-linecap="round"/>
+<circle cx="99" cy="117" r="29" fill="#E4B768"/>
+<path d="M99 70v-21M99 185v-21M52 117H31M167 117h-21M66 84 51 69M147 165l-15-15M66 150l-15 15M147 69l-15 15" stroke="#D49B3D" stroke-width="5" stroke-linecap="round"/>
+</svg>
