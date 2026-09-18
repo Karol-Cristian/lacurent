@@ -174,6 +174,34 @@
 
     <p class="mode-note">Nu trebuie să calculezi singur suprafața pereților, acoperișului sau pardoselii. Deschide setările avansate doar dacă ai valori exacte.</p>
 
+    <div class="field-grid compact" style="margin-top:16px">
+      <label>
+        <span>Orientarea dominantă a ferestrelor</span>
+        <select name="solar_orientation">
+          {% set solar_orientations = [
+            ("south", "Sud"), ("south_west", "Sud-Vest"), ("west", "Vest"), ("north_west", "Nord-Vest"),
+            ("north", "Nord"), ("north_east", "Nord-Est"), ("east", "Est"), ("south_east", "Sud-Est")
+          ] %}
+          {% for value, label in solar_orientations %}<option value="{{ value }}" {% if values.solar_orientation == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>Tipul principal de vitraj</span>
+        <select name="solar_glazing_type_id">
+          {% set glazing_types = [
+            ("single_clear_glazing", "Vitraj simplu"),
+            ("double_clear_glazing", "Vitraj dublu"),
+            ("double_window", "Fereastră dublă"),
+            ("triple_clear_glazing", "Vitraj triplu"),
+            ("double_low_e_face_3", "Vitraj dublu low-e"),
+            ("triple_low_e_faces_2_and_5", "Vitraj triplu low-e")
+          ] %}
+          {% for value, label in glazing_types %}<option value="{{ value }}" {% if values.solar_glazing_type_id == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <p class="mode-note">În modul automat, aportul solar lunar folosește Hsol din Anexa A.9.6 și relațiile MC001 pentru vitraj. Dacă stația climatică nu are un rând solar normativ direct, nu interpolăm o stație vecină.</p>
+
     <details class="advanced-settings">
       <summary>Setări avansate — suprafețe și coeficienți exacți</summary>
       <div>
@@ -195,7 +223,14 @@
           <label><span>Coeficient U uși</span><input data-expert-envelope name="door_u_value" type="number" step="0.01" min="0.01" value="{{ values.door_u_value }}"></label>
           <label><span>Lungime punți termice (m)</span><input data-expert-geometry name="thermal_bridge_length_m" type="number" step="0.1" min="0" value="{{ values.thermal_bridge_length_m }}"></label>
           <label><span>Transmitanță liniară ψ</span><input data-expert-envelope name="thermal_bridge_psi_w_mk" type="number" step="0.001" min="0" value="{{ values.thermal_bridge_psi_w_mk }}"></label>
-          <label><span>Aport solar explicit</span><input name="solar_gains_kwh_m2_month" type="number" step="0.1" min="0" value="{{ values.solar_gains_kwh_m2_month }}"></label>
+          <label><span>Metodă aport solar</span><select name="solar_mode"><option value="normative_hsol" {% if values.solar_mode == "normative_hsol" %}selected{% endif %}>Automat MC001 / Hsol A.9.6</option><option value="explicit" {% if values.solar_mode == "explicit" %}selected{% endif %}>Aport lunar explicit</option></select></label>
+          <label><span>Aport solar explicit</span><div class="unit-field"><input name="solar_gains_kwh_m2_month" type="number" step="0.1" min="0" value="{{ values.solar_gains_kwh_m2_month }}"><em>kWh/m² lună</em></div></label>
+          <label><span>Fracție ramă fereastră</span><input name="solar_frame_fraction" type="number" step="0.01" min="0" max="0.95" value="{{ values.solar_frame_fraction }}"></label>
+          <label><span>Factor umbrire obstacole</span><input name="solar_obstacle_shading_factor" type="number" step="0.05" min="0" max="1" value="{{ values.solar_obstacle_shading_factor }}"></label>
+          <label><span>Factor vedere către cer</span><input name="solar_sky_view_factor" type="number" step="0.05" min="0" max="1" value="{{ values.solar_sky_view_factor }}"></label>
+          <label><span>Rezistență superficială exterioară Rse</span><div class="unit-field"><input name="solar_exterior_surface_resistance_m2k_w" type="number" step="0.01" min="0.01" value="{{ values.solar_exterior_surface_resistance_m2k_w }}"><em>m²K/W</em></div></label>
+          <label><span>Coeficient radiație lungă spre cer</span><div class="unit-field"><input name="solar_longwave_radiation_coefficient_w_m2k" type="number" step="0.1" min="0" value="{{ values.solar_longwave_radiation_coefficient_w_m2k }}"><em>W/m²K</em></div></label>
+          <label><span>Diferență temperatură cer</span><div class="unit-field"><input name="solar_sky_temperature_difference_k" type="number" step="0.5" min="0" value="{{ values.solar_sky_temperature_difference_k }}"><em>K</em></div></label>
         </div>
       </div>
     </details>
