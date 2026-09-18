@@ -141,7 +141,8 @@ jobs:
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
               "/magazin": "Depozitul Constructorului",
-              "/embed/demo-store": 'data-embed-partner="demo-store"',
+              "/embed/demo-store": "Laboratorul casei",
+              "/static/embed-house-lab.js": "insulationU",
               "/static/embed-loader.js": "lacurent:embed-height",
               "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
@@ -186,6 +187,18 @@ jobs:
           embed_calculation_html = post("/embed/demo-store/calculate", form)
           if "Cere ofertă pentru scenariul ales" not in embed_calculation_html:
               raise AssertionError("Embedded calculation did not preserve the partner conversion CTA")
+
+          lab_form = dict(form)
+          lab_form.update({
+              "expert_geometry_override": "on",
+              "expert_envelope_override": "on",
+              "expert_ventilation_override": "on",
+          })
+          lab_payload = json.loads(post("/embed/demo-store/lab-calculate", lab_form))
+          if float(lab_payload.get("final_energy_kwh", 0)) <= 0:
+              raise AssertionError("Embedded house lab did not return final energy.")
+          if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
+              raise AssertionError("Embedded house lab did not return design heat load.")
 
           with urllib.request.urlopen(base + "/embed/demo-store", timeout=20) as response:
               frame_policy = response.headers.get("Content-Security-Policy")
@@ -418,7 +431,8 @@ jobs:
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
               "/magazin": "Depozitul Constructorului",
-              "/embed/demo-store": 'data-embed-partner="demo-store"',
+              "/embed/demo-store": "Laboratorul casei",
+              "/static/embed-house-lab.js": "insulationU",
               "/static/embed-loader.js": "lacurent:embed-height",
               "/static/scenario-cockpit.js": "calculateUrl=partnerId?",
               "/software-testing/resources": "Useful verification knowledge",
@@ -486,6 +500,27 @@ jobs:
           if 'data-embed-partner="demo-store"' not in embed_calculation:
               raise AssertionError("Embedded calculation did not remain in partner shell.")
           print("/embed/demo-store/calculate", status)
+
+          lab_form = dict(form)
+          lab_form.update({
+              "expert_geometry_override": "on",
+              "expert_envelope_override": "on",
+              "expert_ventilation_override": "on",
+          })
+          lab_encoded = urllib.parse.urlencode(lab_form).encode("utf-8")
+          status, _, lab_body = open_url(
+              apex + "/embed/demo-store/lab-calculate",
+              data=lab_encoded,
+              headers={"Content-Type": "application/x-www-form-urlencoded"},
+          )
+          if status != 200:
+              raise AssertionError(f"/embed/demo-store/lab-calculate failed with HTTP {status}")
+          lab_payload = json.loads(lab_body)
+          if float(lab_payload.get("final_energy_kwh", 0)) <= 0:
+              raise AssertionError("Production house lab did not return final energy.")
+          if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
+              raise AssertionError("Production house lab did not return design heat load.")
+          print("/embed/demo-store/lab-calculate", status)
 
           status, _, _ = open_url(apex + "/embed/not-a-real-partner")
           if status != 404:
