@@ -191,7 +191,7 @@ def test_form_calculation_renders_romanian_results_and_costs() -> None:
     assert "Rezultatul calculului" in response.text
     assert "Commercial test house" in response.text
     assert "Energie primară" in response.text
-    assert "Cost anual estimat al energiei" in response.text
+    assert "Cost estimat al serviciilor energetice modelate" in response.text
     assert "lei/an" in response.text
     assert "Generează raportul A4" in response.text
     assert "Cere o evaluare tehnică" in response.text
@@ -205,7 +205,7 @@ def test_certificate_renders_romanian_printable_report_with_costs() -> None:
     assert response.status_code == 200
     assert "Raport de performanță energetică" in response.text
     assert "Tipărește / salvează PDF" in response.text
-    assert "Cost anual estimat al energiei" in response.text
+    assert "Cost estimat al serviciilor energetice modelate" in response.text
     assert "nu reprezintă un Certificat de Performanță Energetică" in response.text
     assert "lei/an" in response.text
 
