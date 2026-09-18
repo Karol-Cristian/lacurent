@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab9" in response.text
-    assert "embed-house-lab.js?v=lab9" in response.text
+    assert "embed-house-lab.css?v=lab10" in response.text
+    assert "embed-house-lab.js?v=lab10" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -334,6 +334,13 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'value="south_west"' in response.text
     assert 'value="district_heat"' in response.text
     assert 'value="wood_stove"' in response.text
+    assert 'id="labVentilation"' in response.text
+    assert 'id="labCooling"' in response.text
+    assert 'data-heating-choice="heat_pump"' in response.text
+    assert 'data-lab-tab="overview"' in response.text
+    assert 'data-lab-tab="comparison"' in response.text
+    assert 'class="lab-summary-rail"' in response.text
+    assert 'id="labServiceDonut"' in response.text
     assert '/static/home-lab/home-envelope.svg' in response.text
     assert '/static/home-lab/window-orientation-card.svg' in response.text
     assert 'id="labMonthlyChart"' in response.text
@@ -474,28 +481,21 @@ def test_embed_scenario_lab_uses_partner_calculation_route() -> None:
     assert "fetch(calculateUrl" in response.text
 
 
-def test_embed_house_lab_uses_commercial_configurator_hierarchy() -> None:
+def test_embed_house_lab_uses_three_column_product_layout() -> None:
     response = client.get("/static/embed-house-lab.css")
     assert response.status_code == 200
     assert "container-type:inline-size" in response.text
-    assert "grid-template-columns:minmax(360px,.76fr) minmax(520px,1.24fr)" in response.text
-    assert ".house-lab-controls{" in response.text
-    assert "border-radius:22px" in response.text
-    assert ".lab-section-title>span{display:none}" in response.text
-    assert ".house-lab-results{" in response.text
+    assert "grid-template-columns:minmax(390px,1.02fr) minmax(500px,1.18fr) minmax(220px,.54fr)" in response.text
+    assert ".lab-config-panel" in response.text
+    assert ".lab-results-stage" in response.text
+    assert ".lab-summary-rail" in response.text
     assert "position:sticky" in response.text
-    assert "border-radius:24px" in response.text
-    assert ".lab-results-status{" in response.text
-    assert "font-size:0" in response.text
-    assert ".lab-price-hero{" in response.text
-    assert "background:var(--lab-dark)" in response.text
-    assert "grid-template-columns:repeat(2,minmax(0,1fr))" in response.text
-    assert ".lab-partner-cta{" in response.text
-    assert "border-radius:999px" in response.text
-    assert ".lab-monthly-chart{" in response.text
-    assert "grid-template-columns:repeat(12" in response.text
-    assert "@container (max-width:900px)" in response.text
-    assert ".house-lab-layout{grid-template-columns:1fr}" in response.text
+    assert ".lab-result-tabs" in response.text
+    assert ".lab-service-donut" in response.text
+    assert ".lab-class-scale" in response.text
+    assert '.lab-class[data-grade="B"]' in response.text
+    assert "@media(max-width:1020px)" in response.text
+    assert "@media(max-width:760px)" in response.text
 
 
 def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
@@ -524,13 +524,12 @@ def test_home_lab_live_indicator_and_class_badge_have_distinct_states() -> None:
     response = client.get("/static/embed-house-lab.css")
     assert response.status_code == 200
     assert ".lab-results-status.is-calculating::before" in response.text
-    assert ".lab-results-status.is-live::before" in response.text
-    assert ".lab-results-status.is-error::before" in response.text
-    assert "@keyframes lab-live-pulse" in response.text
+    assert ".lab-results-status.is-error" in response.text
+    assert "@keyframes lab-pulse" in response.text
     assert ".lab-class{" in response.text
-    assert "width:58px" in response.text
-    assert "height:58px" in response.text
-    assert "border-radius:12px" in response.text
+    assert "min-height:104px" in response.text
+    assert '.lab-class[data-grade="A"]' in response.text
+    assert '.lab-class[data-grade="G"]' in response.text
 
 
 def test_home_lab_runtime_syncs_glazing_orientation_and_heating_visuals() -> None:
@@ -542,6 +541,19 @@ def test_home_lab_runtime_syncs_glazing_orientation_and_heating_visuals() -> Non
     assert "HEATING_VISUALS" in response.text
     assert 'district-heating.svg' in response.text
     assert 'wood-fireplace.svg' in response.text
+
+
+def test_home_lab_runtime_wires_product_tabs_system_pills_and_ventilation() -> None:
+    response = client.get("/static/embed-house-lab.js")
+    assert response.status_code == 200
+    assert "renderServiceDonut" in response.text
+    assert "syncHeatingPills" in response.text
+    assert "syncLevelSegments" in response.text
+    assert "openResultTab" in response.text
+    assert 'controls.ventilation.addEventListener("change"' in response.text
+    assert 'controls.cooling.addEventListener("change"' in response.text
+    assert 'setField("cooling_enabled"' in response.text
+    assert 'document.querySelector(".lab-summary-rail")' in response.text
 
 
 def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None:
