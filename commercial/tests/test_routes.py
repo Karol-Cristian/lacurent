@@ -164,6 +164,10 @@ def test_energy_calculator_is_romanian_and_isolated_from_testing_home() -> None:
     assert "Automat MC001 / Hsol A.9.6" in response.text
     assert 'name="solar_orientation"' in response.text
     assert 'name="solar_glazing_type_id"' in response.text
+    assert 'name="solar_window_area_south_m2"' in response.text
+    assert 'name="solar_window_area_north_m2"' in response.text
+    assert 'name="solar_shading_device_id"' in response.text
+    assert "Ferestre pe orientări" in response.text
     assert 'href="/"' not in response.text
     assert "Building envelope" not in response.text
     assert "/static/favicon.svg" in response.text
@@ -232,6 +236,10 @@ def test_form_calculation_accepts_normative_solar_controls() -> None:
             "solar_exterior_surface_resistance_m2k_w": "0.04",
             "solar_longwave_radiation_coefficient_w_m2k": "5",
             "solar_sky_temperature_difference_k": "11",
+            "solar_window_area_south_m2": "12",
+            "solar_window_area_west_m2": "12",
+            "solar_shading_device_id": "white_venetian_blinds_abs_0_1_trans_0_05",
+            "solar_shading_mounting_side": "exterior",
         }
     )
     response = client.post("/calculate", data=data)
@@ -239,3 +247,20 @@ def test_form_calculation_accepts_normative_solar_controls() -> None:
     assert "Rezultatul calculului" in response.text
     assert "Commercial test house" in response.text
 
+
+
+def test_nearest_hsol_source_is_visible_in_result_provenance() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "locality": "Alba Iulia",
+            "solar_mode": "normative_hsol",
+            "solar_orientation": "south",
+            "solar_glazing_type_id": "double_low_e_face_3",
+        }
+    )
+    response = client.post("/calculate", data=data)
+    assert response.status_code == 200
+    assert "Stație solară Hsol" in response.text
+    assert "Sibiu" in response.text
+    assert "54.3 km" in response.text

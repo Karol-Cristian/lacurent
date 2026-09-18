@@ -66,7 +66,8 @@ The app calculates:
 - transmission heat transfer: `Htr = sum(U * A) + sum(psi * L)`;
 - ventilation heat transfer: `Hve = 0.34 * ACH * heated volume * recovery factor`;
 - monthly heating and cooling useful demand using the Mc 001-2022 / SR EN ISO 52016-1 monthly structure;
-- source-backed transparent-element solar gains from Annex A.9.6 Hsol when a direct station mapping is available, with explicit bounded fallback otherwise;
+- source-backed transparent-element solar gains from Annex A.9.6 Hsol for all 42 MC001/6-2013 climate stations: direct source rows when available, otherwise the nearest A.9.6 source station without Hsol interpolation;
+- optional glazing-area distribution across the eight A.9.6 orientations and explicit MC001 Table 2.16 shading-device factors;
 - heating final energy for boilers, electric resistance, district heat,
   heat pumps and configurable systems;
 - cooling final energy with SEER;
@@ -75,7 +76,7 @@ The app calculates:
 - final energy by service and carrier;
 - primary energy and CO2 emissions from methodology factors;
 - a reference building calculated by the same engine from the same geometry;
-- residential performance class from explicit methodology thresholds.
+- an indicative residential energy band from explicit methodology thresholds; this is not a legally issued CPE class.
 
 ## Methodology Data
 
@@ -108,9 +109,9 @@ The commercial DHW model uses explicit methodology values: 50 L/person/day at
 This is a commercial Energy Performance Report, not a legally issued Energy
 Performance Certificate.
 The v2 app intentionally does not implement detailed material assemblies,
-full-country solar-station coverage, window-by-orientation geometry, official CPE
-layout/mapping, accounts, server-side persistence, authentication or a legal EPC
-issuance workflow. The interactive renovation/scenario laboratory is decision
+per-window heterogeneous glazing/shading definitions, full obstacle-geometry solar
+shading, official CPE layout/mapping, accounts, server-side persistence,
+authentication or a legal EPC issuance workflow. The interactive renovation/scenario laboratory is decision
 support and is not an investment guarantee.
 The nearest-station rule is a transparent commercial resolver for localities
 that are not themselves MC001 climate stations; it is not a claim that every

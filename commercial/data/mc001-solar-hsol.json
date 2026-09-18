@@ -1,5 +1,5 @@
 {
-  "schema": "lacurent_commercial_mc001_a9_6_hsol_v1",
+  "schema": "lacurent_commercial_mc001_a9_6_hsol_v2",
   "datasetVersion": "mc001_1_2006_annex_a9_6_solar_p5b3_v1",
   "sourceDocument": {
     "documentId": "mc001_1_2006_parts_1_2_3",
@@ -174,7 +174,10 @@
           39.672,
           30.504
         ]
-      }
+      },
+      "latitude": 43.969356,
+      "longitude": 25.331228,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_bacau",
@@ -310,7 +313,10 @@
           33.264,
           25.5192
         ]
-      }
+      },
+      "latitude": 46.566269,
+      "longitude": 26.90979,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_barlad",
@@ -446,7 +452,10 @@
           34.704,
           26.1888
         ]
-      }
+      },
+      "latitude": 46.225552,
+      "longitude": 27.669171,
+      "coordinateSource": "commercial/data/localities.json:siruta-161801"
     },
     {
       "localityId": "ro_botosani",
@@ -582,7 +591,10 @@
           33.192,
           25.5936
         ]
-      }
+      },
+      "latitude": 47.739616,
+      "longitude": 26.669974,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_bucuresti",
@@ -718,7 +730,10 @@
           39.024,
           30.7272
         ]
-      }
+      },
+      "latitude": 44.435582,
+      "longitude": 26.102387,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_calafat",
@@ -854,7 +869,10 @@
           38.16,
           29.6856
         ]
-      }
+      },
+      "latitude": 43.990065,
+      "longitude": 22.933638,
+      "coordinateSource": "commercial/data/localities.json:siruta-70361"
     },
     {
       "localityId": "ro_calarasi",
@@ -990,7 +1008,10 @@
           40.032,
           30.6528
         ]
-      }
+      },
+      "latitude": 44.195521,
+      "longitude": 27.335026,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_campina",
@@ -1126,7 +1147,10 @@
           44.208,
           32.0664
         ]
-      }
+      },
+      "latitude": 45.125905,
+      "longitude": 25.733435,
+      "coordinateSource": "commercial/data/localities.json:siruta-131265"
     },
     {
       "localityId": "ro_caransebes",
@@ -1262,7 +1286,10 @@
           36.936,
           27.3792
         ]
-      }
+      },
+      "latitude": 45.411636,
+      "longitude": 22.216949,
+      "coordinateSource": "commercial/data/localities.json:siruta-51029"
     },
     {
       "localityId": "ro_cluj_napoca",
@@ -1398,7 +1425,10 @@
           37.872,
           23.2128
         ]
-      }
+      },
+      "latitude": 46.777625,
+      "longitude": 23.603524,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_constanta",
@@ -1534,7 +1564,10 @@
           41.976,
           31.3968
         ]
-      }
+      },
+      "latitude": 44.175367,
+      "longitude": 28.626365,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_craiova",
@@ -1670,7 +1703,10 @@
           39.024,
           30.7272
         ]
-      }
+      },
+      "latitude": 44.318219,
+      "longitude": 23.801745,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_curtea_de_arges",
@@ -1806,7 +1842,10 @@
           40.68,
           33.7032
         ]
-      }
+      },
+      "latitude": 45.142027,
+      "longitude": 24.676584,
+      "coordinateSource": "commercial/data/localities.json:siruta-13631"
     },
     {
       "localityId": "ro_dorohoi",
@@ -1942,7 +1981,10 @@
           32.976,
           25.9656
         ]
-      }
+      },
+      "latitude": 47.952686,
+      "longitude": 26.399362,
+      "coordinateSource": "commercial/data/localities.json:siruta-36015"
     },
     {
       "localityId": "ro_dragasani",
@@ -2078,7 +2120,10 @@
           40.392,
           32.9592
         ]
-      }
+      },
+      "latitude": 44.660224,
+      "longitude": 24.258577,
+      "coordinateSource": "commercial/data/localities.json:siruta-167990"
     },
     {
       "localityId": "ro_galati",
@@ -2214,7 +2259,10 @@
           37.44,
           30.2064
         ]
-      }
+      },
+      "latitude": 45.440535,
+      "longitude": 28.03968,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_iasi",
@@ -2350,7 +2398,10 @@
           33.408,
           25.3704
         ]
-      }
+      },
+      "latitude": 47.161616,
+      "longitude": 27.582949,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_oradea",
@@ -2486,7 +2537,10 @@
           36.936,
           26.4864
         ]
-      }
+      },
+      "latitude": 47.053217,
+      "longitude": 21.934709,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_predeal",
@@ -2622,7 +2676,10 @@
           39.456,
           31.62
         ]
-      }
+      },
+      "latitude": 45.505394,
+      "longitude": 25.574215,
+      "coordinateSource": "commercial/data/localities.json:siruta-40312"
     },
     {
       "localityId": "ro_ramnicu_sarat",
@@ -2758,7 +2815,10 @@
           40.032,
           32.6616
         ]
-      }
+      },
+      "latitude": 45.38298,
+      "longitude": 27.050112,
+      "coordinateSource": "commercial/data/localities.json:siruta-44854"
     },
     {
       "localityId": "ro_rosiori_de_vede",
@@ -2894,7 +2954,10 @@
           39.744,
           30.4296
         ]
-      }
+      },
+      "latitude": 44.113368,
+      "longitude": 24.985721,
+      "coordinateSource": "commercial/data/localities.json:siruta-151889"
     },
     {
       "localityId": "ro_satu_mare",
@@ -3030,7 +3093,10 @@
           33.84,
           25.9656
         ]
-      }
+      },
+      "latitude": 47.795302,
+      "longitude": 22.874317,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_sibiu",
@@ -3166,7 +3232,10 @@
           38.952,
           24.4776
         ]
-      }
+      },
+      "latitude": 45.792841,
+      "longitude": 24.150576,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_sighet",
@@ -3302,7 +3371,10 @@
           38.448,
           22.7664
         ]
-      }
+      },
+      "latitude": 47.928625,
+      "longitude": 23.893758,
+      "coordinateSource": "commercial/data/localities.json:siruta-106568"
     },
     {
       "localityId": "ro_targu_jiu",
@@ -3438,7 +3510,10 @@
           37.512,
           30.504
         ]
-      }
+      },
+      "latitude": 45.035746,
+      "longitude": 23.274063,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_targu_mures",
@@ -3574,7 +3649,10 @@
           38.304,
           23.3616
         ]
-      }
+      },
+      "latitude": 46.540227,
+      "longitude": 24.558206,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_targu_secuiesc",
@@ -3710,7 +3788,10 @@
           41.976,
           25.296
         ]
-      }
+      },
+      "latitude": 45.999429,
+      "longitude": 26.133172,
+      "coordinateSource": "commercial/data/localities.json:siruta-63759"
     },
     {
       "localityId": "ro_timisoara",
@@ -3846,7 +3927,10 @@
           36,
           26.784
         ]
-      }
+      },
+      "latitude": 45.756066,
+      "longitude": 21.228153,
+      "coordinateSource": "commercial/data/climate.json"
     },
     {
       "localityId": "ro_turnu_magurele",
@@ -3982,7 +4066,10 @@
           38.952,
           29.9832
         ]
-      }
+      },
+      "latitude": 43.746135,
+      "longitude": 24.867436,
+      "coordinateSource": "commercial/data/localities.json:siruta-151692"
     },
     {
       "localityId": "ro_turnu_severin",
@@ -4118,7 +4205,404 @@
           37.656,
           31.992
         ]
-      }
+      },
+      "latitude": 44.63408,
+      "longitude": 22.658495,
+      "coordinateSource": "commercial/data/localities.json:siruta-109782"
+    }
+  ],
+  "coverageMethod": {
+    "description": "Every MC001/6-2013 climate station resolves to one source row from Mc001/1-2-3/2006 Annex A.9.6. Direct source rows are preferred; otherwise the geographically nearest A.9.6 source station is selected by precomputed great-circle distance. Hsol values themselves are never interpolated.",
+    "distanceMethod": "haversine_km_precomputed",
+    "directCount": 16,
+    "coincidentCount": 1,
+    "nearestCount": 25,
+    "maxNearestDistanceKm": 74.5,
+    "guraPortiteiCoordinateReference": {
+      "latitude": 44.6898,
+      "longitude": 28.9989,
+      "source": "Geographia Technica 19(1), meteorological station table",
+      "url": "https://technicalgeography.org/pdf/fullvolumes/GT_19_1.pdf"
+    }
+  },
+  "climateStationCoverage": [
+    {
+      "climateStationId": "mc001_6_2013_alba_iulia",
+      "climateStationName": "Alba Iulia",
+      "solarStationId": "mc001_1_2006_solar_sibiu",
+      "solarLocalityName": "Sibiu",
+      "resolution": "nearest_source_station",
+      "distanceKm": 54.3,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_alexandria",
+      "climateStationName": "Alexandria",
+      "solarStationId": "mc001_1_2006_solar_alexandria",
+      "solarLocalityName": "Alexandria",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_arad",
+      "climateStationName": "Arad",
+      "solarStationId": "mc001_1_2006_solar_timisoara",
+      "solarLocalityName": "Timisoara",
+      "resolution": "nearest_source_station",
+      "distanceKm": 48.5,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_bacau",
+      "climateStationName": "Bacău",
+      "solarStationId": "mc001_1_2006_solar_bacau",
+      "solarLocalityName": "Bacau",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_baia_mare",
+      "climateStationName": "Baia Mare",
+      "solarStationId": "mc001_1_2006_solar_sighet",
+      "solarLocalityName": "Sighet",
+      "resolution": "nearest_source_station",
+      "distanceKm": 38.3,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_bistrita",
+      "climateStationName": "Bistrița",
+      "solarStationId": "mc001_1_2006_solar_targu_mures",
+      "solarLocalityName": "Targu Mures",
+      "resolution": "nearest_source_station",
+      "distanceKm": 66,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_botosani",
+      "climateStationName": "Botoșani",
+      "solarStationId": "mc001_1_2006_solar_botosani",
+      "solarLocalityName": "Botosani",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_braila",
+      "climateStationName": "Brăila",
+      "solarStationId": "mc001_1_2006_solar_galati",
+      "solarLocalityName": "Galati",
+      "resolution": "nearest_source_station",
+      "distanceKm": 19.5,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_brasov",
+      "climateStationName": "Brașov",
+      "solarStationId": "mc001_1_2006_solar_predeal",
+      "solarLocalityName": "Predeal",
+      "resolution": "nearest_source_station",
+      "distanceKm": 16.4,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_bucuresti",
+      "climateStationName": "București",
+      "solarStationId": "mc001_1_2006_solar_municipiul_bucuresti",
+      "solarLocalityName": "Municipiul Bucuresti",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_buzau",
+      "climateStationName": "Buzău",
+      "solarStationId": "mc001_1_2006_solar_ramnicu_sarat",
+      "solarLocalityName": "Ramnicu Sarat",
+      "resolution": "nearest_source_station",
+      "distanceKm": 31.5,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_calarasi",
+      "climateStationName": "Călărași",
+      "solarStationId": "mc001_1_2006_solar_calarasi",
+      "solarLocalityName": "Calarasi",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_cluj_napoca",
+      "climateStationName": "Cluj-Napoca",
+      "solarStationId": "mc001_1_2006_solar_cluj_napoca",
+      "solarLocalityName": "Cluj-Napoca",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_constanta",
+      "climateStationName": "Constanța",
+      "solarStationId": "mc001_1_2006_solar_constanta",
+      "solarLocalityName": "Constanta",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_craiova",
+      "climateStationName": "Craiova",
+      "solarStationId": "mc001_1_2006_solar_craiova",
+      "solarLocalityName": "Craiova",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_deva",
+      "climateStationName": "Deva",
+      "solarStationId": "mc001_1_2006_solar_caransebes",
+      "solarLocalityName": "Caransebes",
+      "resolution": "nearest_source_station",
+      "distanceKm": 74.5,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_drobeta_turnu_severin",
+      "climateStationName": "Drobeta-Turnu Severin",
+      "solarStationId": "mc001_1_2006_solar_turnu_severin",
+      "solarLocalityName": "Turnu Severin",
+      "resolution": "coincident_source_station",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_focsani",
+      "climateStationName": "Focșani",
+      "solarStationId": "mc001_1_2006_solar_ramnicu_sarat",
+      "solarLocalityName": "Ramnicu Sarat",
+      "resolution": "nearest_source_station",
+      "distanceKm": 36.7,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_galati",
+      "climateStationName": "Galați",
+      "solarStationId": "mc001_1_2006_solar_galati",
+      "solarLocalityName": "Galati",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_giurgiu",
+      "climateStationName": "Giurgiu",
+      "solarStationId": "mc001_1_2006_solar_alexandria",
+      "solarLocalityName": "Alexandria",
+      "resolution": "nearest_source_station",
+      "distanceKm": 51.5,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_gura_portitei",
+      "climateStationName": "Gura Portitei",
+      "solarStationId": "mc001_1_2006_solar_constanta",
+      "solarLocalityName": "Constanta",
+      "resolution": "nearest_source_station",
+      "distanceKm": 64.4,
+      "targetCoordinateSource": "Geographia Technica 19(1), Gura Portiței station coordinates"
+    },
+    {
+      "climateStationId": "mc001_6_2013_iasi",
+      "climateStationName": "Iași",
+      "solarStationId": "mc001_1_2006_solar_iasi",
+      "solarLocalityName": "Iasi",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_miercurea_ciuc",
+      "climateStationName": "Miercurea Ciuc",
+      "solarStationId": "mc001_1_2006_solar_targu_secuiesc",
+      "solarLocalityName": "Targu Secuiesc",
+      "resolution": "nearest_source_station",
+      "distanceKm": 47.6,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_oradea",
+      "climateStationName": "Oradea",
+      "solarStationId": "mc001_1_2006_solar_oradea",
+      "solarLocalityName": "Oradea",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_piatra_neamt",
+      "climateStationName": "Piatra-Neamț",
+      "solarStationId": "mc001_1_2006_solar_bacau",
+      "solarLocalityName": "Bacau",
+      "resolution": "nearest_source_station",
+      "distanceKm": 58.1,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_pitesti",
+      "climateStationName": "Pitești",
+      "solarStationId": "mc001_1_2006_solar_curtea_de_arges",
+      "solarLocalityName": "Curtea de Arges",
+      "resolution": "nearest_source_station",
+      "distanceKm": 35.2,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_ploiesti",
+      "climateStationName": "Ploiești",
+      "solarStationId": "mc001_1_2006_solar_campina",
+      "solarLocalityName": "Campina",
+      "resolution": "nearest_source_station",
+      "distanceKm": 30.4,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_ramnicu_valcea",
+      "climateStationName": "Râmnicu Vâlcea",
+      "solarStationId": "mc001_1_2006_solar_curtea_de_arges",
+      "solarLocalityName": "Curtea de Arges",
+      "resolution": "nearest_source_station",
+      "distanceKm": 24.4,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_resita",
+      "climateStationName": "Reșița",
+      "solarStationId": "mc001_1_2006_solar_caransebes",
+      "solarLocalityName": "Caransebes",
+      "resolution": "nearest_source_station",
+      "distanceKm": 27.9,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_satu_mare",
+      "climateStationName": "Satu Mare",
+      "solarStationId": "mc001_1_2006_solar_satu_mare",
+      "solarLocalityName": "Satu Mare",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_sfantu_gheorghe",
+      "climateStationName": "Sfântu Gheorghe",
+      "solarStationId": "mc001_1_2006_solar_targu_secuiesc",
+      "solarLocalityName": "Targu Secuiesc",
+      "resolution": "nearest_source_station",
+      "distanceKm": 30.7,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_sibiu",
+      "climateStationName": "Sibiu",
+      "solarStationId": "mc001_1_2006_solar_sibiu",
+      "solarLocalityName": "Sibiu",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_slatina",
+      "climateStationName": "Slatina",
+      "solarStationId": "mc001_1_2006_solar_dragasani",
+      "solarLocalityName": "Dragasani",
+      "resolution": "nearest_source_station",
+      "distanceKm": 26.8,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_slobozia",
+      "climateStationName": "Slobozia",
+      "solarStationId": "mc001_1_2006_solar_calarasi",
+      "solarLocalityName": "Calarasi",
+      "resolution": "nearest_source_station",
+      "distanceKm": 40.9,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_suceava",
+      "climateStationName": "Suceava",
+      "solarStationId": "mc001_1_2006_solar_botosani",
+      "solarLocalityName": "Botosani",
+      "resolution": "nearest_source_station",
+      "distanceKm": 30.1,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_targoviste",
+      "climateStationName": "Târgoviște",
+      "solarStationId": "mc001_1_2006_solar_campina",
+      "solarLocalityName": "Campina",
+      "resolution": "nearest_source_station",
+      "distanceKm": 30.8,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_targu_jiu",
+      "climateStationName": "Târgu Jiu",
+      "solarStationId": "mc001_1_2006_solar_targu_jiu",
+      "solarLocalityName": "Targu Jiu",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_targu_mures",
+      "climateStationName": "Târgu Mureș",
+      "solarStationId": "mc001_1_2006_solar_targu_mures",
+      "solarLocalityName": "Targu Mures",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_timisoara",
+      "climateStationName": "Timișoara",
+      "solarStationId": "mc001_1_2006_solar_timisoara",
+      "solarLocalityName": "Timisoara",
+      "resolution": "direct",
+      "distanceKm": 0,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_tulcea",
+      "climateStationName": "Tulcea",
+      "solarStationId": "mc001_1_2006_solar_galati",
+      "solarLocalityName": "Galati",
+      "resolution": "nearest_source_station",
+      "distanceKm": 65.1,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_vaslui",
+      "climateStationName": "Vaslui",
+      "solarStationId": "mc001_1_2006_solar_barlad",
+      "solarLocalityName": "Barlad",
+      "resolution": "nearest_source_station",
+      "distanceKm": 46.4,
+      "targetCoordinateSource": "commercial/data/climate.json"
+    },
+    {
+      "climateStationId": "mc001_6_2013_zalau",
+      "climateStationName": "Zalău",
+      "solarStationId": "mc001_1_2006_solar_cluj_napoca",
+      "solarLocalityName": "Cluj-Napoca",
+      "resolution": "nearest_source_station",
+      "distanceKm": 61,
+      "targetCoordinateSource": "commercial/data/climate.json"
     }
   ]
 }

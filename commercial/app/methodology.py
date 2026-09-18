@@ -26,10 +26,19 @@ def solar_hsol_data() -> dict[str, Any]:
 
 
 @lru_cache(maxsize=1)
-def _solar_hsol_by_climate_station() -> dict[str, dict[str, Any]]:
+def _solar_hsol_by_solar_station() -> dict[str, dict[str, Any]]:
+    return {
+        row["solarStationId"]: row
+        for row in solar_hsol_data()["rows"]
+        if row.get("solarStationId")
+    }
+
+
+@lru_cache(maxsize=1)
+def _solar_hsol_coverage_by_climate_station() -> dict[str, dict[str, Any]]:
     return {
         row["climateStationId"]: row
-        for row in solar_hsol_data()["rows"]
+        for row in solar_hsol_data().get("climateStationCoverage", [])
         if row.get("climateStationId")
     }
 
@@ -49,15 +58,19 @@ _HSOL_ORIENTATION_KEYS = {
 def resolve_monthly_hsol(climate: dict[str, Any], orientation: str) -> dict[str, Any] | None:
     """Resolve source-backed vertical Hsol for the selected MC001 climate station.
 
-    No nearest-solar-station interpolation is performed. If the selected MC001/6-2013
-    station has no direct Annex A.9.6 row, the normative solar path is unavailable.
+    Direct Annex A.9.6 rows are preferred. Otherwise the compact dataset provides a
+    precomputed nearest source station. Hsol values are selected from one normative
+    source row and are never numerically interpolated between stations.
     """
 
     source_key = _HSOL_ORIENTATION_KEYS.get(str(orientation))
     if source_key is None:
         return None
-    station_id = climate.get("station_id") or climate.get("id")
-    row = _solar_hsol_by_climate_station().get(str(station_id))
+    station_id = str(climate.get("station_id") or climate.get("id") or "")
+    coverage = _solar_hsol_coverage_by_climate_station().get(station_id)
+    if coverage is None:
+        return None
+    row = _solar_hsol_by_solar_station().get(str(coverage.get("solarStationId")))
     if row is None:
         return None
     values = row.get("hsolKwhPerM2ByOrientation", {}).get(source_key)
@@ -70,7 +83,10 @@ def resolve_monthly_hsol(climate: dict[str, Any], orientation: str) -> dict[str,
         "values_kwh_m2_month": [float(value) for value in values],
         "locality_name": row.get("localityName"),
         "solar_station_id": row.get("solarStationId"),
-        "climate_station_id": row.get("climateStationId"),
+        "solar_locality_name": row.get("localityName"),
+        "climate_station_id": station_id,
+        "station_resolution": coverage.get("resolution"),
+        "station_distance_km": coverage.get("distanceKm"),
         "source_pdf_page": row.get("sourcePdfPage"),
         "dataset_version": dataset.get("datasetVersion"),
         "source_reference": dataset.get("sourceReference"),

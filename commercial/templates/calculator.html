@@ -200,7 +200,7 @@
         </select>
       </label>
     </div>
-    <p class="mode-note">În modul automat, aportul solar lunar folosește Hsol din Anexa A.9.6 și relațiile MC001 pentru vitraj. Dacă stația climatică nu are un rând solar normativ direct, nu interpolăm o stație vecină.</p>
+    <p class="mode-note">În modul automat, aportul solar lunar folosește Hsol din Anexa A.9.6. Se folosește stația-sursă directă sau cea mai apropiată disponibilă; valorile Hsol nu sunt interpolate, iar sursa și distanța apar în raport.</p>
 
     <details class="advanced-settings">
       <summary>Setări avansate — suprafețe și coeficienți exacți</summary>
@@ -219,12 +219,52 @@
           <label><span>Coeficient U pardoseală</span><input data-expert-envelope name="floor_u_value" type="number" step="0.01" min="0.01" value="{{ values.floor_u_value }}"></label>
           <label><span>Ferestre (m²)</span><input data-expert-geometry name="window_area_m2" type="number" step="0.1" min="0" value="{{ values.window_area_m2 }}"></label>
           <label><span>Coeficient U ferestre</span><input data-expert-envelope name="window_u_value" type="number" step="0.01" min="0.01" value="{{ values.window_u_value }}"></label>
+        </div>
+        <div class="advanced-subsection">
+          <h3>Ferestre pe orientări <small>(opțional)</small></h3>
+          <p class="mode-note">Dacă introduci aici suprafețe, suma lor trebuie să corespundă suprafeței totale a ferestrelor. Dacă le lași la 0, toate ferestrele folosesc orientarea dominantă selectată mai sus.</p>
+          <div class="expert-grid solar-orientation-grid">
+            <label><span>Sud (m²)</span><input name="solar_window_area_south_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_south_m2 }}"></label>
+            <label><span>Sud-Vest (m²)</span><input name="solar_window_area_south_west_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_south_west_m2 }}"></label>
+            <label><span>Vest (m²)</span><input name="solar_window_area_west_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_west_m2 }}"></label>
+            <label><span>Nord-Vest (m²)</span><input name="solar_window_area_north_west_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_north_west_m2 }}"></label>
+            <label><span>Nord (m²)</span><input name="solar_window_area_north_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_north_m2 }}"></label>
+            <label><span>Nord-Est (m²)</span><input name="solar_window_area_north_east_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_north_east_m2 }}"></label>
+            <label><span>Est (m²)</span><input name="solar_window_area_east_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_east_m2 }}"></label>
+            <label><span>Sud-Est (m²)</span><input name="solar_window_area_south_east_m2" type="number" step="0.1" min="0" value="{{ values.solar_window_area_south_east_m2 }}"></label>
+          </div>
+        </div>
+        <div class="expert-grid">
           <label><span>Uși exterioare (m²)</span><input data-expert-geometry name="door_area_m2" type="number" step="0.1" min="0" value="{{ values.door_area_m2 }}"></label>
           <label><span>Coeficient U uși</span><input data-expert-envelope name="door_u_value" type="number" step="0.01" min="0.01" value="{{ values.door_u_value }}"></label>
           <label><span>Lungime punți termice (m)</span><input data-expert-geometry name="thermal_bridge_length_m" type="number" step="0.1" min="0" value="{{ values.thermal_bridge_length_m }}"></label>
           <label><span>Transmitanță liniară ψ</span><input data-expert-envelope name="thermal_bridge_psi_w_mk" type="number" step="0.001" min="0" value="{{ values.thermal_bridge_psi_w_mk }}"></label>
           <label><span>Metodă aport solar</span><select name="solar_mode"><option value="normative_hsol" {% if values.solar_mode == "normative_hsol" %}selected{% endif %}>Automat MC001 / Hsol A.9.6</option><option value="explicit" {% if values.solar_mode == "explicit" %}selected{% endif %}>Aport lunar explicit</option></select></label>
           <label><span>Aport solar explicit</span><div class="unit-field"><input name="solar_gains_kwh_m2_month" type="number" step="0.1" min="0" value="{{ values.solar_gains_kwh_m2_month }}"><em>kWh/m² lună</em></div></label>
+          <label>
+            <span>Dispozitiv de umbrire MC001</span>
+            <select name="solar_shading_device_id">
+              <option value="" {% if not values.solar_shading_device_id %}selected{% endif %}>Fără dispozitiv selectat</option>
+              <option value="white_venetian_blinds_abs_0_1_trans_0_05" {% if values.solar_shading_device_id == "white_venetian_blinds_abs_0_1_trans_0_05" %}selected{% endif %}>Storuri venetiene albe · τ 0,05</option>
+              <option value="white_venetian_blinds_abs_0_1_trans_0_1" {% if values.solar_shading_device_id == "white_venetian_blinds_abs_0_1_trans_0_1" %}selected{% endif %}>Storuri venetiene albe · τ 0,10</option>
+              <option value="white_venetian_blinds_abs_0_1_trans_0_3" {% if values.solar_shading_device_id == "white_venetian_blinds_abs_0_1_trans_0_3" %}selected{% endif %}>Storuri venetiene albe · τ 0,30</option>
+              <option value="white_curtains_abs_0_1_trans_0_5" {% if values.solar_shading_device_id == "white_curtains_abs_0_1_trans_0_5" %}selected{% endif %}>Perdele albe · τ 0,50</option>
+              <option value="white_curtains_abs_0_1_trans_0_7" {% if values.solar_shading_device_id == "white_curtains_abs_0_1_trans_0_7" %}selected{% endif %}>Perdele albe · τ 0,70</option>
+              <option value="white_curtains_abs_0_1_trans_0_9" {% if values.solar_shading_device_id == "white_curtains_abs_0_1_trans_0_9" %}selected{% endif %}>Perdele albe · τ 0,90</option>
+              <option value="colored_textiles_abs_0_3_trans_0_1" {% if values.solar_shading_device_id == "colored_textiles_abs_0_3_trans_0_1" %}selected{% endif %}>Textile colorate · τ 0,10</option>
+              <option value="colored_textiles_abs_0_3_trans_0_3" {% if values.solar_shading_device_id == "colored_textiles_abs_0_3_trans_0_3" %}selected{% endif %}>Textile colorate · τ 0,30</option>
+              <option value="colored_textiles_abs_0_3_trans_0_5" {% if values.solar_shading_device_id == "colored_textiles_abs_0_3_trans_0_5" %}selected{% endif %}>Textile colorate · τ 0,50</option>
+              <option value="aluminium_coated_textiles_abs_0_2_trans_0_05" {% if values.solar_shading_device_id == "aluminium_coated_textiles_abs_0_2_trans_0_05" %}selected{% endif %}>Textile aluminizate · τ 0,05</option>
+            </select>
+          </label>
+          <label>
+            <span>Poziția dispozitivului</span>
+            <select name="solar_shading_mounting_side">
+              <option value="" {% if not values.solar_shading_mounting_side %}selected{% endif %}>—</option>
+              <option value="interior" {% if values.solar_shading_mounting_side == "interior" %}selected{% endif %}>Interior</option>
+              <option value="exterior" {% if values.solar_shading_mounting_side == "exterior" %}selected{% endif %}>Exterior</option>
+            </select>
+          </label>
           <label><span>Fracție ramă fereastră</span><input name="solar_frame_fraction" type="number" step="0.01" min="0" max="0.95" value="{{ values.solar_frame_fraction }}"></label>
           <label><span>Factor umbrire obstacole</span><input name="solar_obstacle_shading_factor" type="number" step="0.05" min="0" max="1" value="{{ values.solar_obstacle_shading_factor }}"></label>
           <label><span>Factor vedere către cer</span><input name="solar_sky_view_factor" type="number" step="0.05" min="0" max="1" value="{{ values.solar_sky_view_factor }}"></label>
