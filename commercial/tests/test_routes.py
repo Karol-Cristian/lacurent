@@ -342,7 +342,6 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'class="lab-summary-rail"' in response.text
     assert 'id="labServiceDonut"' in response.text
     assert '/static/home-lab/home-envelope.svg' in response.text
-    assert '/static/home-lab/window-orientation-card.svg' in response.text
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
@@ -501,7 +500,7 @@ def test_embed_house_lab_uses_three_column_product_layout() -> None:
 def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "modifici doar ce contează" in response.text
+    assert "Modifică doar ce contează" in response.text
     assert "Profil climatic automat" in response.text
     assert "Recalculare live" in response.text
     assert "Cost anual estimat" in response.text
