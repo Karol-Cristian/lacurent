@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import math
 
 import pytest
 
@@ -48,7 +49,7 @@ def test_heat_pump_cost_uses_final_electricity_after_scop() -> None:
     assert electricity["unit_price_lei_per_kwh"] == pytest.approx(1.27284)
 
 
-def test_firewood_cost_uses_romsilva_packaged_price_plus_one_delivery_charge() -> None:
+def test_firewood_cost_uses_huedin_pallet_price_and_delivery_per_four_pallets() -> None:
     building = build_input_from_form(simple_form("wood_stove"))
     result = calculate(building)
     estimate = estimate_energy_cost(result)
@@ -56,22 +57,27 @@ def test_firewood_cost_uses_romsilva_packaged_price_plus_one_delivery_charge() -
 
     assert building.heating.cost_profile == "firewood"
     assert wood["label"] == "Lemn de foc"
-    assert wood["source_name"] == "Romsilva / Direcția Silvică Neamț"
-    assert wood["price_lei_per_package"] == pytest.approx(414.0)
-    assert wood["reference_volume_m3_per_package"] == pytest.approx(0.6)
-    assert wood["price_lei_per_m3"] == pytest.approx(690.0)
-    assert wood["fixed_annual_cost_lei"] == pytest.approx(200.0)
-    assert wood["unit_price_lei_per_kwh"] == pytest.approx(690.0 / 2821.0)
+    assert wood["source_name"] == "Romsilva Store / DS Cluj - Ocolul Silvic Huedin"
+    assert wood["price_lei_per_package"] == pytest.approx(700.0)
+    assert wood["reference_volume_m3_per_package"] == pytest.approx(0.8)
+    assert wood["price_lei_per_m3"] == pytest.approx(875.0)
+    assert wood["delivery_cost_lei_per_batch"] == pytest.approx(200.0)
+    assert wood["delivery_batch_size_packages"] == 4
+    assert wood["unit_price_lei_per_kwh"] == pytest.approx(875.0 / 2821.0)
+
+    expected_packages = wood["final_kwh"] / wood["energy_kwh_per_package"]
+    expected_batches = math.ceil(expected_packages / 4)
+    expected_delivery = expected_batches * 200.0
+    assert wood["estimated_packages"] == pytest.approx(expected_packages, abs=0.01)
+    assert wood["delivery_batches"] == expected_batches
+    assert wood["delivery_cost_lei"] == pytest.approx(expected_delivery)
     assert wood["annual_cost_lei"] == pytest.approx(
-        wood["final_kwh"] * wood["unit_price_lei_per_kwh"] + 200.0, abs=0.01
-    )
-    assert wood["estimated_packages"] == pytest.approx(
-        wood["final_kwh"] / wood["energy_kwh_per_package"], abs=0.01
+        wood["final_kwh"] * wood["unit_price_lei_per_kwh"] + expected_delivery, abs=0.01
     )
     assert wood["estimated_volume_m3"] == pytest.approx(
         wood["final_kwh"] / wood["energy_kwh_per_m3"], abs=0.01
     )
-    assert "+ 200 lei transport/an" in wood["basis"]
+    assert "transport 200 lei / max. 4 paleți" in wood["basis"]
 
     service_total = sum(float(row["annual_cost_lei"] or 0) for row in estimate["service_rows"])
     monthly_total = sum(float(row["priced_total_lei"]) for row in estimate["monthly_rows"])
