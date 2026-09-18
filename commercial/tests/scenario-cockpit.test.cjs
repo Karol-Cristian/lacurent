@@ -24,7 +24,7 @@ test('scenario cockpit includes summer cooling and ventilation controls', () => 
   assert.match(source, /cost-monthly-table/);
 });
 
-test('scenario changes are debounced and use the same calculate route', () => {
+test('scenario changes are debounced and use the correct calculate route', () => {
   assert.match(source, /fetch\('\/calculate'/);
   assert.match(source, /setTimeout\(calculateScenario,280\)/);
   assert.match(source, /AbortController/);
