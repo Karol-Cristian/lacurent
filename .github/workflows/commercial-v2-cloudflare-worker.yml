@@ -187,9 +187,17 @@ jobs:
           home_lab_html = get("/embed/demo-store")
           if home_lab_html.count('data-lab-chapter-open=') != 6:
               raise AssertionError("Home Lab cockpit did not expose all six MC001 chapter tiles.")
-          for marker in ("Panouri fotovoltaice", "Iluminat LED", 'data-lab-product-action="heat_pump"'):
+          for marker in (
+              "Panouri fotovoltaice",
+              "Iluminat LED",
+              'data-lab-product-action="heat_pump"',
+              'class="lab-house-mode-bar"',
+              'id="labConfirmCurrentHome"',
+              "Asta este casa mea acum",
+              'id="labContextImage"',
+          ):
               if marker not in home_lab_html:
-                  raise AssertionError(f"Home Lab cockpit missing {marker!r}")
+                  raise AssertionError(f"Home Lab house-first flow missing {marker!r}")
           loader_html = get("/static/embed-loader.js")
           if "isMobileCockpit" not in loader_html or "mobileViewportHeight" not in loader_html:
               raise AssertionError("Embed loader did not include the mobile one-screen cockpit contract.")
@@ -518,9 +526,17 @@ jobs:
               raise AssertionError(f"/embed/demo-store cockpit verification returned HTTP {status}")
           if home_lab_html.count('data-lab-chapter-open=') != 6:
               raise AssertionError("Production Home Lab cockpit did not expose all six MC001 chapter tiles.")
-          for marker in ("Panouri fotovoltaice", "Iluminat LED", 'data-lab-product-action="heat_pump"'):
+          for marker in (
+              "Panouri fotovoltaice",
+              "Iluminat LED",
+              'data-lab-product-action="heat_pump"',
+              'class="lab-house-mode-bar"',
+              'id="labConfirmCurrentHome"',
+              "Asta este casa mea acum",
+              'id="labContextImage"',
+          ):
               if marker not in home_lab_html:
-                  raise AssertionError(f"Production Home Lab cockpit missing {marker!r}")
+                  raise AssertionError(f"Production Home Lab house-first flow missing {marker!r}")
           status, _, loader_html = open_url(apex + "/static/embed-loader.js")
           if status != 200 or "isMobileCockpit" not in loader_html or "mobileViewportHeight" not in loader_html:
               raise AssertionError("Production embed loader did not include the mobile one-screen cockpit contract.")
