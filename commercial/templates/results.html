@@ -14,10 +14,11 @@
       stația climatică {{ result.climate.station }}
     </p>
   </div>
-  <div class="class-badge" aria-label="Clasa de performanță energetică">
-    <span>Clasa</span>
+  <div class="class-badge" aria-label="Încadrare energetică orientativă">
+    <span>Încadrare orientativă</span>
     <strong>{{ result.energy_class }}</strong>
     <em>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/an", 1) }}</em>
+    <small>Estimare tehnică · nu este CPE</small>
   </div>
 </section>
 
@@ -47,9 +48,17 @@
 {% if cost_estimate.service_rows %}
 <section class="panel cost-panel cost-panel-compact">
   <div class="panel-title">
-    <h2>Cost anual estimat al energiei</h2>
-    <p>Calculat din energia finală cumpărată, după randamentul sau SCOP-ul instalației.</p>
+    <h2>Cost estimat al serviciilor energetice modelate</h2>
+    <p>Încălzire · răcire · apă caldă. Nu include consumul electric de bază al locuinței.</p>
   </div>
+  {% if not cost_estimate.price_references_current %}
+  <div class="price-status-warning" role="status">
+    <strong>Referință de preț care necesită actualizare.</strong>
+    {% if cost_estimate.stale_price_labels %}<span>Expirată: {{ cost_estimate.stale_price_labels|join(", ") }}.</span>{% endif %}
+    {% if cost_estimate.future_price_labels %}<span>Încă neintrată în vigoare: {{ cost_estimate.future_price_labels|join(", ") }}.</span>{% endif %}
+    <span>Costul rămâne vizibil pentru comparație, dar nu trebuie tratat ca preț comercial curent.</span>
+  </div>
+  {% endif %}
   <div class="cost-headline-grid">
     <div class="cost-total">
       <span>{% if cost_estimate.complete %}Total anual estimat{% else %}Total anual calculabil{% endif %}</span>
@@ -122,7 +131,7 @@
               <strong>{{ row.label }}:</strong>
               {{ row.unit_price_lei_per_kwh|fmt("lei/kWh", 3) }} ·
               <a href="{{ row.source_url }}" target="_blank" rel="noreferrer">{{ row.source_name }}</a>
-              <small>{{ row.basis }}{% if row.valid_until %} · valabil până la {{ row.valid_until }}{% endif %}</small>
+              <small>{{ row.basis }}{% if row.valid_until %} · valabil până la {{ row.valid_until }}{% endif %}{% if row.price_status == "stale" %} · REFERINȚĂ EXPIRATĂ{% elif row.price_status == "not_yet_valid" %} · ÎNCĂ NEINTRATĂ ÎN VIGOARE{% endif %}</small>
             </p>
           {% endfor %}
         </div>
