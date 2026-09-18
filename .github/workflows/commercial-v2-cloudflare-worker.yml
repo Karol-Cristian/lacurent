@@ -138,6 +138,9 @@ jobs:
               "/software-testing": 'data-page="software-testing"',
               "/instalatii": 'data-page="energy-home"',
               "/instalatii/calculator": "romaniaLocationMap",
+              "/embed": "LaCurent Embed",
+              "/embed/demo-store": 'data-embed-partner="demo-store"',
+              "/static/embed-loader.js": "lacurent:embed-height",
               "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
               "/static/testing_intake.css": ".intake-details",
@@ -177,6 +180,15 @@ jobs:
           calculation_html = post("/calculate", form)
           if "Results" not in calculation_html:
               raise AssertionError("Calculation response did not render Results")
+
+          embed_calculation_html = post("/embed/demo-store/calculate", form)
+          if "Cere ofertă pentru scenariul ales" not in embed_calculation_html:
+              raise AssertionError("Embedded calculation did not preserve the partner conversion CTA")
+
+          with urllib.request.urlopen(base + "/embed/demo-store", timeout=20) as response:
+              frame_policy = response.headers.get("Content-Security-Policy")
+              if frame_policy != "frame-ancestors *":
+                  raise AssertionError(f"Unexpected embed frame policy: {frame_policy!r}")
 
           demo = demo_building()
           direct = calculate(demo)
