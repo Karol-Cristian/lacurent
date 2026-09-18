@@ -617,6 +617,7 @@
       if (title) title.textContent=tr("baselineTitle");
       if (summary) summary.textContent=tr("baselinePrompt");
       renderSavedScenarios();
+      updateChapterSummaries();
       return;
     }
 
@@ -703,6 +704,7 @@
     if (noteNode) noteNode.textContent=savings == null ? "" : Math.abs(savings)<.5 ? tr("noChange") : `${savingsPct == null ? "—" : `${fmt(Math.abs(savingsPct),1)}%`} ${savings>0?tr("savings"):tr("extraCost")}`;
 
     renderSavedScenarios();
+    updateChapterSummaries();
   }
 
   function restoreSnapshot(snapshot) {
@@ -762,6 +764,7 @@
     root.querySelectorAll("[data-class-grade]").forEach(el => el.classList.toggle("is-active", el.dataset.classGrade === data.energy_class));
     renderDashboard(data);
     renderBaselineComparison();
+    updateChapterSummaries(data);
     setStatus(tr("ready"), "live");
   }
 
@@ -967,6 +970,31 @@
   root.querySelectorAll("[data-lab-tab]").forEach(button => button.addEventListener("click", () => openResultTab(button.dataset.labTab)));
   root.querySelectorAll("[data-open-tab]").forEach(button => button.addEventListener("click", () => openResultTab(button.dataset.openTab)));
 
+  root.querySelectorAll("[data-lab-chapter-open]").forEach(button => {
+    button.addEventListener("click", () => openChapter(button.dataset.labChapterOpen));
+  });
+  root.querySelector("[data-lab-chapter-close]")?.addEventListener("click", closeChapter);
+
+  root.querySelectorAll("[data-mobile-results]").forEach(button => {
+    button.addEventListener("click", () => {
+      if (!button.dataset.openTab) openResultTab("overview");
+      root.classList.add("is-mobile-results-view");
+      root.scrollIntoView({block:"start"});
+    });
+  });
+  root.querySelector("[data-mobile-back-config]")?.addEventListener("click", () => {
+    root.classList.remove("is-mobile-results-view");
+    root.scrollIntoView({block:"start"});
+  });
+
+  root.querySelector("[data-lab-product-action='heat_pump']")?.addEventListener("click", () => {
+    controls.heating.value="heat_pump";
+    syncHeatingPills();
+    updateHeatingVisual();
+    updateChapterSummaries();
+    scheduleCalculate(60);
+  });
+
   const saveButton=root.querySelector("[data-lab-key='saveConfig']");
   if (saveButton) {
     saveButton.addEventListener("click", () => {
@@ -997,6 +1025,7 @@
 
   saveBaselineButton?.addEventListener("click", saveBaseline);
   comparisonBaselineButton?.addEventListener("click", saveBaseline);
+  root.querySelector("[data-audit-save-baseline]")?.addEventListener("click", saveBaseline);
   restoreBaselineButton?.addEventListener("click", () => restoreSnapshot(baselineSnapshot));
 
   saveScenarioButton?.addEventListener("click", async () => {
@@ -1041,7 +1070,7 @@
     }
   });
 
-  root.querySelector("[data-lab-reset]").addEventListener("click", () => {
+  root.querySelectorAll("[data-lab-reset]").forEach(resetButton => resetButton.addEventListener("click", () => {
     Object.entries(PRESET).forEach(([key,value]) => {
       if (!controls[key]) return;
       controls[key].value=String(value);
@@ -1050,9 +1079,10 @@
     updateHeatingVisual();
     syncLevelSegments();
     syncHeatingPills();
+    updateChapterSummaries();
     const locality=byId.get(PRESET.localityId) || matches(localities,PRESET.locality,1)[0];
     if (locality) selectLocality(locality); else scheduleCalculate(20);
-  });
+  }));
 
   const languageObserver = new MutationObserver(() => applyLanguage());
   languageObserver.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
@@ -1122,6 +1152,7 @@
 
   initHouseVisualCarousel();
   updateHeatingVisual();
+  updateChapterSummaries();
   syncLevelSegments();
   syncHeatingPills();
   openResultTab("overview");
