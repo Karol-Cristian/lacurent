@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Magazin Demo Instalații · LaCurent Embed</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f4f6f8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f6f8; }
+    .demo-notice {
+      padding: 9px 18px;
+      background: #172033;
+      color: #fff;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 18px max(24px, calc((100vw - 1280px) / 2));
+      background: #fff;
+      border-bottom: 1px solid #dde2e8;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 10px;
+      background: #195c43;
+      color: white;
+      font-weight: 800;
+    }
+    .brand span { display: grid; gap: 2px; }
+    .brand strong { font-size: 16px; }
+    .brand small { color: #687386; }
+    nav { display: flex; gap: 22px; color: #586273; font-size: 14px; }
+    .hero {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 48px 24px 28px;
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: #195c43;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1 { max-width: 760px; margin: 0; font-size: clamp(32px, 5vw, 56px); line-height: 1.02; }
+    .hero p:last-child { max-width: 720px; color: #687386; font-size: 17px; line-height: 1.6; }
+    .embed-wrap {
+      max-width: 1280px;
+      margin: 0 auto 56px;
+      padding: 0 24px;
+    }
+    .embed-card {
+      overflow: hidden;
+      border: 1px solid #d9dfe6;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 16px 44px rgba(23,32,51,.08);
+    }
+    .embed-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e3e7ec;
+    }
+    .embed-card-head strong { font-size: 15px; }
+    .embed-card-head span { color: #7b8492; font-size: 12px; }
+    [data-lacurent-embed] { min-height: 700px; }
+    footer {
+      padding: 30px 24px 42px;
+      color: #7a8492;
+      text-align: center;
+      font-size: 12px;
+    }
+    @media (max-width: 720px) {
+      nav { display: none; }
+      .site-header { padding: 14px 18px; }
+      .hero { padding: 34px 18px 20px; }
+      .embed-wrap { padding: 0 10px; }
+      .embed-card { border-radius: 12px; }
+      .embed-card-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-notice">SITE DEMO PARTENER · integrare cross-origin pentru LaCurent Embed MVP</div>
+
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark">MI</div>
+      <span>
+        <strong>Magazin Instalații Demo</strong>
+        <small>Încălzire · eficiență · materiale</small>
+      </span>
+    </div>
+    <nav aria-label="Navigare magazin demo">
+      <span>Produse</span>
+      <span>Soluții</span>
+      <span>Consultanță</span>
+      <span>Contact</span>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Instrument pentru clienți</p>
+      <h1>Află ce soluție energetică se potrivește locuinței tale.</h1>
+      <p>Aceasta este o pagină de probă care simulează site-ul unui magazin partener. Pagina nu folosește shell-ul sau CSS-ul LaCurent; calculatorul de mai jos este încărcat prin integrarea publică Embed.</p>
+    </section>
+
+    <section class="embed-wrap">
+      <div class="embed-card">
+        <div class="embed-card-head">
+          <strong>Calculator energetic</strong>
+          <span>Powered by LaCurent Embed</span>
+        </div>
+        <div data-lacurent-embed data-partner="demo-store" data-initial-height="1000px"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Magazin Instalații Demo este o identitate fictivă folosită exclusiv pentru testarea integrării.</footer>
+
+  <script async src="https://lacurent.com/static/embed-loader.js"></script>
+</body>
+</html>
