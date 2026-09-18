@@ -229,6 +229,12 @@
     add(fd,'project_name',baseline.project_name||'Scenariu'); add(fd,'locality',localityForZone()); add(fd,'building_type',baseline.building_type);
     add(fd,'heated_floor_area_m2',A); add(fd,'heated_volume_m3',Number(baseline.heated_volume_m3)*ratio); add(fd,'indoor_design_temperature_c',Number(temp.value));
     add(fd,'construction_year',baseline.construction_year); add(fd,'solar_gains_kwh_m2_month',Number(solar.value));
+    const bs=baseline.solar||{}; const manualSolarChanged=!isBase(baseSolar,solar.value,.01);
+    add(fd,'solar_mode',manualSolarChanged?'explicit':(bs.mode||'explicit'));
+    add(fd,'solar_orientation',bs.orientation||'south'); add(fd,'solar_glazing_type_id',bs.glazing_type_id||'double_low_e_face_3');
+    add(fd,'solar_frame_fraction',bs.frame_fraction??.20); add(fd,'solar_obstacle_shading_factor',bs.obstacle_shading_factor??1);
+    add(fd,'solar_sky_view_factor',bs.sky_view_factor??.5); add(fd,'solar_exterior_surface_resistance_m2k_w',bs.exterior_surface_resistance_m2k_w??.04);
+    add(fd,'solar_longwave_radiation_coefficient_w_m2k',bs.longwave_radiation_coefficient_w_m2k??5); add(fd,'solar_sky_temperature_difference_k',bs.sky_temperature_difference_k??11);
     (baseline.envelope||[]).forEach(c=>{ const f=COMPONENT_FIELDS[c.type]; if(!f)return; const scale=['roof','floor'].includes(c.type)?ratio:linear; add(fd,f[0],Number(c.area_m2)*scale); add(fd,f[1],profile?profile[c.type]:c.u_value_w_m2k); });
     const b=baseline.thermal_bridges?.[0]; if(b){ add(fd,'thermal_bridge_length_m',Number(b.length_m)*linear); add(fd,'thermal_bridge_psi_w_mk',profile?profile.psi:b.psi_w_mk); }
     add(fd,'air_changes_per_hour',Number(ach.value)); add(fd,'heat_recovery_efficiency',Number(recovery.value)/100);
