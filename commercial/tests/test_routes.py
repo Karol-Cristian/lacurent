@@ -377,6 +377,15 @@ def test_embed_scenario_lab_uses_partner_calculation_route() -> None:
     assert "fetch(calculateUrl" in response.text
 
 
+def test_embed_house_lab_has_dedicated_laptop_breakpoint() -> None:
+    response = client.get("/static/embed-house-lab.css")
+    assert response.status_code == 200
+    assert "@media(max-width:1320px) and (min-width:981px)" in response.text
+    assert "grid-template-columns:minmax(0,1fr) minmax(286px,310px)" in response.text
+    assert ".lab-control-head{align-items:stretch;flex-direction:column;gap:7px}" in response.text
+    assert ".lab-metrics,.lab-result-context{grid-template-columns:1fr}" in response.text
+
+
 def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_contract() -> None:
     page = client.get("/embed/demo-store")
     assert page.status_code == 200
