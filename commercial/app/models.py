@@ -84,6 +84,34 @@ class DhwInput(BaseModel):
     carrier: Carrier = Carrier.natural_gas
 
 
+class SolarInput(BaseModel):
+    mode: Literal["normative_hsol", "explicit"] = "explicit"
+    orientation: Literal[
+        "south",
+        "south_west",
+        "west",
+        "north_west",
+        "north",
+        "north_east",
+        "east",
+        "south_east",
+    ] = "south"
+    glazing_type_id: Literal[
+        "single_clear_glazing",
+        "double_clear_glazing",
+        "double_window",
+        "triple_clear_glazing",
+        "double_low_e_face_3",
+        "triple_low_e_faces_2_and_5",
+    ] = "double_low_e_face_3"
+    frame_fraction: float = Field(default=0.20, ge=0, lt=1)
+    obstacle_shading_factor: float = Field(default=1.0, ge=0, le=1)
+    sky_view_factor: float = Field(default=0.5, ge=0, le=1)
+    exterior_surface_resistance_m2k_w: float = Field(default=0.04, gt=0)
+    longwave_radiation_coefficient_w_m2k: float = Field(default=5.0, ge=0)
+    sky_temperature_difference_k: float = Field(default=11.0, ge=0)
+
+
 class BuildingInput(BaseModel):
     project_name: str = Field(min_length=1, max_length=120)
     locality: str = Field(min_length=1, max_length=80)
@@ -94,6 +122,7 @@ class BuildingInput(BaseModel):
     construction_year: int | None = Field(default=None, ge=1800, le=2100)
     internal_gains_w_m2: float | None = Field(default=None, ge=0)
     solar_gains_kwh_m2_month: float = Field(default=0, ge=0)
+    solar: SolarInput = Field(default_factory=SolarInput)
     envelope: list[EnvelopeComponent] = Field(min_items=1)
     thermal_bridges: list[ThermalBridge] = Field(default_factory=list)
     ventilation: VentilationInput
@@ -136,6 +165,8 @@ class MonthlyBalance(BaseModel):
     heat_loss_kwh: float
     internal_gains_kwh: float
     solar_gains_kwh: float
+    solar_gains_source: str | None = None
+    solar_hsol_kwh_m2: float | None = None
     useful_heating_kwh: float
     useful_cooling_kwh: float
 

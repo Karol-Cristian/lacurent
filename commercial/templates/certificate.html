@@ -113,6 +113,7 @@
         Acest raport folosește metodologia {{ result.methodology_version }} pentru domeniul de calcul implementat în versiunea comercială LaCurent.
         Rezultatul este o estimare tehnică a performanței energetice a clădirii și nu reprezintă un Certificat de Performanță Energetică emis legal.
       </p>
+      <p><strong>Model solar:</strong> {% if result.input.solar.mode == "normative_hsol" and result.monthly[0].solar_hsol_kwh_m2 is not none %}MC001 Hsol · Anexa A.9.6 · orientare {{ result.input.solar.orientation }} · {{ result.input.solar.glazing_type_id }}{% elif result.input.solar.mode == "normative_hsol" %}aport explicit de rezervă; Hsol A.9.6 indisponibil pentru stația climatică selectată{% else %}aport lunar explicit{% endif %}.</p>
       <ul>
         {% for item in result.assumptions %}
           <li>{{ item }}</li>

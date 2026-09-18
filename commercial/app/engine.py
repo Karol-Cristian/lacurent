@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from .methodology import carrier_factors, default_heating_performance, methodology, resolve_climate
+from .methodology import carrier_factors, default_heating_performance, methodology, resolve_climate, resolve_monthly_hsol
 from .models import (
     BuildingInput,
     CalculationResult,
@@ -127,6 +127,70 @@ def _monthly_cooling_need(
     return max(a_c_red * (q_c_gn_kwh - eta_c_ht * q_c_ht_kwh), 0.0)
 
 
+def _window_solar_geometry(building: BuildingInput) -> tuple[float, float]:
+    """Return total glazing area and sum(U*A) for the aggregate transparent-element model."""
+
+    windows = [item for item in building.envelope if item.type.value == "window"]
+    return (
+        sum(item.area_m2 for item in windows),
+        sum(item.area_m2 * item.u_value_w_m2k for item in windows),
+    )
+
+
+def _monthly_solar_gains(
+    building: BuildingInput,
+    climate: dict,
+    month_index: int,
+    hours: float,
+) -> tuple[float, str, float | None]:
+    """Calculate monthly transparent-element solar gains in the simplified commercial scope.
+
+    Normative mode uses source-backed Annex A.9.6 Hsol and the MC001 2.39 / 2.40 /
+    2.54 structure. If no direct A.9.6 mapping exists for the selected climate
+    station, no solar irradiation is invented: the explicit equivalent monthly gain
+    remains the fallback.
+    """
+
+    explicit_gain = building.solar_gains_kwh_m2_month * building.heated_floor_area_m2
+    if building.solar.mode == "explicit":
+        return explicit_gain, "explicit_equivalent_monthly_gain", None
+
+    hsol = resolve_monthly_hsol(climate, building.solar.orientation)
+    if hsol is None:
+        return explicit_gain, "explicit_fallback_no_source_backed_A9_6_Hsol", None
+
+    window_area_m2, window_ua_w_k = _window_solar_geometry(building)
+    if window_area_m2 <= 0:
+        return 0.0, "normative_A9_6_Hsol_no_transparent_area", hsol["values_kwh_m2_month"][month_index]
+
+    cfg = methodology()["solar"]
+    ggl_n = float(cfg["glazing_table_2_13_ggl_n"][building.solar.glazing_type_id])
+    ggl = float(cfg["angle_correction_factor_relation_2_40"]) * ggl_n
+    hsol_kwh_m2 = float(hsol["values_kwh_m2_month"][month_index])
+
+    gross_solar = (
+        ggl
+        * window_area_m2
+        * (1.0 - building.solar.frame_fraction)
+        * building.solar.obstacle_shading_factor
+        * hsol_kwh_m2
+    )
+    q_sky = (
+        0.001
+        * building.solar.sky_view_factor
+        * building.solar.exterior_surface_resistance_m2k_w
+        * window_ua_w_k
+        * building.solar.longwave_radiation_coefficient_w_m2k
+        * building.solar.sky_temperature_difference_k
+        * hours
+    )
+    return (
+        gross_solar - q_sky,
+        "MC001_2_39_2_40_2_54_with_source_backed_A9_6_Hsol",
+        hsol_kwh_m2,
+    )
+
+
 def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: float) -> list[dict]:
     """Monthly quasi-steady balance following the Mc 001-2022 / SR EN ISO 52016-1 structure."""
 
@@ -149,7 +213,12 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         outdoor = month["temperature_c"]
 
         internal_gains = internal_gain_w_m2 * building.heated_floor_area_m2 * hours / 1000
-        solar_gains = building.solar_gains_kwh_m2_month * building.heated_floor_area_m2
+        solar_gains, solar_source, solar_hsol = _monthly_solar_gains(
+            building,
+            climate,
+            len(monthly),
+            hours,
+        )
         total_gains = internal_gains + solar_gains
 
         # Mc 001 sign convention: heat transfer is positive when heat leaves the zone.
@@ -168,6 +237,8 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
             "heat_loss_kwh": _round(max(q_h_ht, 0.0)),
             "internal_gains_kwh": _round(internal_gains),
             "solar_gains_kwh": _round(solar_gains),
+            "solar_gains_source": solar_source,
+            "solar_hsol_kwh_m2": None if solar_hsol is None else _round(solar_hsol),
             "useful_heating_kwh": _round(useful_heating),
             "useful_cooling_kwh": _round(useful_cooling),
         })
@@ -333,6 +404,7 @@ def demo_building() -> BuildingInput:
         building_type="residential_individual",
         construction_year=2004,
         solar_gains_kwh_m2_month=1.2,
+        solar={"mode": "explicit"},
         envelope=[
             {"name": "Pereți exteriori", "type": "exterior_wall", "area_m2": 168, "u_value_w_m2k": 0.42},
             {"name": "Acoperiș", "type": "roof", "area_m2": 92, "u_value_w_m2k": 0.24},
