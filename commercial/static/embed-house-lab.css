@@ -1566,6 +1566,16 @@
   .lab-summary-actions{grid-template-columns:1fr}
 }
 
+@media(max-width:760px){
+  .embed-body{min-height:100svh;overflow-y:auto}
+  .lab-config-header{padding:10px 11px}
+  .lab-config-header h1{font-size:17px}
+  .lab-field-grid.three,.lab-field-grid.two{grid-template-columns:1fr 1fr}
+  .lab-summary-rail{display:none!important}
+  .embed-house-lab.is-mobile-results-view .lab-summary-rail{display:none!important}
+  .lab-results-stage{display:none}
+  .embed-house-lab.is-mobile-results-view .lab-results-stage{display:block}
+}
 @container (max-width:1020px){
   .lab-summary-rail{transform:none!important}
 }
