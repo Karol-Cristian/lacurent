@@ -25,13 +25,13 @@ test('scenario cockpit includes summer cooling and ventilation controls', () => 
 });
 
 test('scenario changes are debounced and use the correct calculate route', () => {
-  assert.match(source, /dataset\\?\\.embedPartner/);
-  assert.match(source, /encodeURIComponent\\(partnerId\\)/);
-  assert.match(source, /:'\\/calculate'/);
-  assert.match(source, /fetch\\(calculateUrl/);
+  assert.ok(source.includes('dataset?.embedPartner'));
+  assert.ok(source.includes('encodeURIComponent(partnerId)'));
+  assert.ok(source.includes(":'/calculate'"));
+  assert.ok(source.includes('fetch(calculateUrl'));
   assert.match(source, /setTimeout\(calculateScenario,280\)/);
   assert.match(source, /AbortController/);
-});
+}
 
 
 test('scenario cockpit preserves oriented glazing and shading from the baseline', () => {
