@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab11" in response.text
-    assert "embed-house-lab.js?v=lab11" in response.text
+    assert "embed-house-lab.css?v=lab12" in response.text
+    assert "embed-house-lab.js?v=lab12" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -513,6 +513,7 @@ def test_home_lab_baseline_and_scenario_comparison_has_commercial_layout() -> No
     assert ".lab-baseline-comparison" in response.text
     assert ".lab-baseline-metric-list" in response.text
     assert ".lab-saved-scenarios" in response.text
+    assert ".lab-scenario-card.is-baseline" in response.text
     assert ".lab-baseline-rail" in response.text
     assert ".is-good" in response.text
     assert ".is-bad" in response.text
@@ -585,6 +586,11 @@ def test_home_lab_runtime_persists_current_house_baseline_and_scenarios_per_part
     assert "baselineSnapshot" in response.text
     assert "savedScenarios" in response.text
     assert 'data-load-scenario' in response.text
+    assert "lastCalculatedFormSignature" in response.text
+    assert "currentFormSignature" in response.text
+    assert "captureFreshSnapshot" in response.text
+    assert "scenarioNameFromChanges" in response.text
+    assert "classDeltaBadge" in response.text
     assert 'openResultTab("comparison")' in response.text
 
 
