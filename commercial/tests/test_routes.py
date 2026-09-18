@@ -685,7 +685,8 @@ def test_home_lab_runtime_persists_current_house_baseline_and_scenarios_per_part
     assert "captureFreshSnapshot" in response.text
     assert "scenarioNameFromChanges" in response.text
     assert "classDeltaBadge" in response.text
-    assert 'openResultTab("comparison")' in response.text
+    assert "function updateHouseFlow" in response.text
+    assert "editingCurrentHome=false" in response.text
 
 
 def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None:
