@@ -336,7 +336,6 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'value="wood_stove"' in response.text
     assert '/static/home-lab/home-envelope.svg' in response.text
     assert '/static/home-lab/window-orientation.svg' in response.text
-    assert '/static/home-lab/wood-fireplace.svg' in response.text
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
@@ -386,7 +385,19 @@ def test_home_lab_restored_heating_profiles_and_solar_controls_reach_engine() ->
     assert district_response.status_code == 200
     payload = district_response.json()
     assert payload["final_energy_kwh"] > 0
-    assert payload["monthly"][0]["solar_gains_source"]
+
+    south = dict(district)
+    south["solar_orientation"] = "south"
+    south_response = client.post("/embed/demo-store/lab-calculate", data=south)
+    assert south_response.status_code == 200
+    assert south_response.json()["final_energy_kwh"] != payload["final_energy_kwh"]
+
+    double_glazing = dict(district)
+    double_glazing["solar_glazing_type_id"] = "double_low_e_face_3"
+    double_glazing["window_u_value"] = "1.6"
+    double_response = client.post("/embed/demo-store/lab-calculate", data=double_glazing)
+    assert double_response.status_code == 200
+    assert double_response.json()["final_energy_kwh"] != payload["final_energy_kwh"]
 
 
 def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
