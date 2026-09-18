@@ -222,23 +222,25 @@ def test_official_price_registry_endpoint_is_available() -> None:
     assert payload["retrieved_on"] == "2026-09-18"
     assert payload["electricity"]["source_name"] == "POSF / ANRE"
     assert payload["natural_gas"]["source_name"] == "POSF / ANRE"
-    assert payload["firewood"]["source_name"] == "Romsilva / Direcția Silvică Neamț"
-    assert payload["firewood"]["reference_price_lei_per_package"] == 414.0
-    assert payload["firewood"]["reference_volume_m3_per_package"] == 0.6
-    assert payload["firewood"]["reference_price_lei_per_m3"] == 690.0
-    assert payload["firewood"]["fixed_delivery_cost_lei"] == 200.0
+    assert payload["firewood"]["source_name"] == "Romsilva Store / DS Cluj - Ocolul Silvic Huedin"
+    assert payload["firewood"]["reference_price_lei_per_package"] == 700.0
+    assert payload["firewood"]["reference_volume_m3_per_package"] == 0.8
+    assert payload["firewood"]["reference_price_lei_per_m3"] == 875.0
+    assert payload["firewood"]["delivery_cost_lei_per_batch"] == 200.0
+    assert payload["firewood"]["delivery_batch_size_packages"] == 4
 
 
-def test_firewood_reference_uses_romsilva_packaged_price_and_fixed_delivery() -> None:
+def test_firewood_reference_uses_huedin_pallet_price_and_delivery_rule() -> None:
     reference = _firewood_reference()
-    assert reference["price_lei_per_package"] == 414.0
-    assert reference["reference_volume_m3_per_package"] == 0.6
-    assert reference["price_lei_per_m3"] == 690.0
-    assert reference["fixed_annual_cost_lei"] == 200.0
-    assert reference["energy_kwh_per_package"] == 0.6 * 2821.0
-    assert 0.244 < reference["unit_price_lei_per_kwh"] < 0.245
-    assert "Romsilva" in reference["source_name"]
-    assert "+ 200 lei transport/an" in reference["basis"]
+    assert reference["price_lei_per_package"] == 700.0
+    assert reference["reference_volume_m3_per_package"] == 0.8
+    assert reference["price_lei_per_m3"] == 875.0
+    assert reference["delivery_cost_lei_per_batch"] == 200.0
+    assert reference["delivery_batch_size_packages"] == 4
+    assert reference["energy_kwh_per_package"] == 0.8 * 2821.0
+    assert 0.310 < reference["unit_price_lei_per_kwh"] < 0.311
+    assert "Ocolul Silvic Huedin" in reference["source_name"]
+    assert "transport 200 lei / max. 4 paleți" in reference["basis"]
 
 def test_form_calculation_accepts_normative_solar_controls() -> None:
     data = demo_form_data()

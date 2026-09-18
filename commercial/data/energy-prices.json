@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-18b",
+  "version": "2026-09-18c",
   "retrieved_on": "2026-09-18",
   "electricity": {
     "source_name": "POSF / ANRE",
@@ -85,22 +85,23 @@
     "note": "Referința folosită este media simplă a prețurilor finale cu TVA pentru categoriile casnice uzuale la doi operatori majori din oferta POSF. Operatorul și categoria reală de consum pot modifica prețul."
   },
   "firewood": {
-    "source_name": "Romsilva / Direcția Silvică Neamț",
-    "source_url": "https://neamt.rosilva.ro/articole/lemn_de_foc__p_2800.htm",
-    "price_reference": "Foioase tari despicate și pachetizate, sac ventilat big-bag 0,6 m³",
-    "reference_price_lei_per_package": 414,
-    "reference_volume_m3_per_package": 0.6,
-    "reference_price_lei_per_m3": 690,
-    "fixed_delivery_cost_lei": 200,
-    "fixed_delivery_cost_note": "Ipoteză LaCurent: 200 lei transport o singură dată pentru întreaga cantitate anuală. Romsilva tarifează transportul separat în funcție de distanță; calculatorul folosește deliberat această valoare fixă simplificată.",
-    "unit": "lei/sac 0,6 m³",
+    "source_name": "Romsilva Store / DS Cluj - Ocolul Silvic Huedin",
+    "source_url": "https://romsilva.store/products/lemn-pentru-foc-despicat-i-paletizat-in-ambalaj-din-lemn-dezmir-cj",
+    "price_reference": "Lemn pentru foc despicat și paletizat în ambalaj din plasă, 0,8 m³, FAG/DT - Huedin CJ",
+    "reference_price_lei_per_package": 700,
+    "reference_volume_m3_per_package": 0.8,
+    "reference_price_lei_per_m3": 875,
+    "delivery_cost_lei_per_batch": 200,
+    "delivery_batch_size_packages": 4,
+    "delivery_cost_note": "Ipoteză LaCurent: 200 lei transport pentru fiecare grup de maximum 4 paleți. Exemplu: 1-4 paleți = 200 lei, 5-8 paleți = 400 lei.",
+    "unit": "lei/palet 0,8 m³",
     "energy_source_name": "Eurostat - Quality standard for statistics on wood fuel consumption in households",
     "energy_source_url": "https://ec.europa.eu/eurostat/documents/38154/4956233/Quality_standard_statistics_wood_fuel_consumption_households_CA-RES_2012.pdf",
     "energy_kwh_per_m3": 2821,
     "assumed_water_content_percent": 20,
     "automatic_price_available": true,
     "market_reference": false,
-    "note": "Romsilva DS Neamț publică 414 lei cu TVA pentru un sac ventilat de 0,6 m³ de lemn de foc din specii de esență tare, echivalent cu 690 lei/m³. Pagina sursă nu publică umiditatea lotului; conversia energetică folosește separat referința Eurostat existentă LaCurent de 2.821 kWh/m³ la ipoteza de 20% umiditate. La cost se adaugă o singură dată ipoteza LaCurent de 200 lei pentru transportul întregii cantități anuale."
+    "note": "Referință oficială Romsilva Store observată la 18.09.2026: 700 lei pentru un palet de 0,8 m³ de lemn pentru foc despicat și paletizat FAG/DT, Ocolul Silvic Huedin. Pagina precizează că transportul nu este inclus în preț. Pentru comparația LaCurent se adaugă 200 lei pentru fiecare grup de maximum 4 paleți. Pagina produsului nu publică umiditatea lotului; conversia energetică păstrează separat ipoteza Eurostat existentă LaCurent de 2.821 kWh/m³ la 20% umiditate."
   },
   "pellets": {
     "source_name": "Leroy Merlin România - referință retail",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import unicodedata
 from functools import lru_cache
 from datetime import date
@@ -83,7 +84,8 @@ def _firewood_reference() -> dict[str, Any]:
     price_per_m3 = float(data["reference_price_lei_per_m3"])
     energy_per_m3 = float(data["energy_kwh_per_m3"])
     energy_per_package = volume_per_package * energy_per_m3
-    fixed_delivery_cost = float(data.get("fixed_delivery_cost_lei", 0.0))
+    delivery_cost_per_batch = float(data["delivery_cost_lei_per_batch"])
+    delivery_batch_size = int(data["delivery_batch_size_packages"])
 
     return {
         "unit_price_lei_per_kwh": price_per_m3 / energy_per_m3,
@@ -93,13 +95,14 @@ def _firewood_reference() -> dict[str, Any]:
         "energy_kwh_per_m3": energy_per_m3,
         "energy_kwh_per_package": energy_per_package,
         "water_content_percent": float(data["assumed_water_content_percent"]),
-        "fixed_annual_cost_lei": fixed_delivery_cost,
-        "fixed_annual_cost_group": "firewood_delivery",
-        "fixed_delivery_cost_note": data.get("fixed_delivery_cost_note"),
+        "delivery_cost_group": "firewood_delivery",
+        "delivery_cost_lei_per_batch": delivery_cost_per_batch,
+        "delivery_batch_size_packages": delivery_batch_size,
+        "delivery_cost_note": data.get("delivery_cost_note"),
         "basis": (
-            f"{data['price_reference']} · {price_per_package:.0f} lei/sac · "
-            f"{volume_per_package:.1f} m³/sac · {price_per_m3:.0f} lei/m³ · "
-            f"+ {fixed_delivery_cost:.0f} lei transport/an"
+            f"{data['price_reference']} · {price_per_package:.0f} lei/palet · "
+            f"{volume_per_package:.1f} m³/palet · {price_per_m3:.0f} lei/m³ · "
+            f"transport {delivery_cost_per_batch:.0f} lei / max. {delivery_batch_size} paleți"
         ),
         "source_name": data["source_name"],
         "source_url": data["source_url"],
@@ -108,6 +111,24 @@ def _firewood_reference() -> dict[str, Any]:
         "note": data["note"],
     }
 
+
+def _delivery_cost(reference: dict[str, Any], final_kwh: float) -> dict[str, float | int]:
+    if final_kwh <= 0 or not reference.get("delivery_cost_group"):
+        return {
+            "estimated_packages": 0.0,
+            "delivery_batches": 0,
+            "delivery_cost_lei": 0.0,
+        }
+    energy_per_package = float(reference["energy_kwh_per_package"])
+    estimated_packages = final_kwh / energy_per_package
+    batch_size = max(1, int(reference["delivery_batch_size_packages"]))
+    batches = math.ceil(estimated_packages / batch_size)
+    delivery_cost = batches * float(reference["delivery_cost_lei_per_batch"])
+    return {
+        "estimated_packages": estimated_packages,
+        "delivery_batches": batches,
+        "delivery_cost_lei": delivery_cost,
+    }
 
 def _pellet_reference() -> dict[str, Any]:
     data = energy_prices()["pellets"]
@@ -203,7 +224,7 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
             "final_kwh": final_kwh,
             "unit_price_lei_per_kwh": unit_price,
             "annual_cost_lei": annual_cost,
-            "allocated_fixed_cost_lei": 0.0,
+            "allocated_delivery_cost_lei": 0.0,
             "priced": reference is not None,
             "price_status": _price_reference_status(reference),
             "unpriced_note": note,
@@ -214,22 +235,24 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
 
     groups: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
-        group = row.get("fixed_annual_cost_group")
+        group = row.get("delivery_cost_group")
         if group and row["final_kwh"] > 0:
             groups.setdefault(str(group), []).append(row)
 
     for group_rows in groups.values():
-        fixed_cost = max(float(row.get("fixed_annual_cost_lei", 0) or 0) for row in group_rows)
         total_kwh = sum(float(row["final_kwh"]) for row in group_rows)
-        if fixed_cost <= 0 or total_kwh <= 0:
+        if total_kwh <= 0:
             continue
+        delivery = _delivery_cost(group_rows[0], total_kwh)
+        delivery_cost = float(delivery["delivery_cost_lei"])
         for row in group_rows:
-            allocation = fixed_cost * float(row["final_kwh"]) / total_kwh
-            row["allocated_fixed_cost_lei"] = allocation
+            allocation = delivery_cost * float(row["final_kwh"]) / total_kwh
+            row["allocated_delivery_cost_lei"] = allocation
+            row["delivery_batches"] = int(delivery["delivery_batches"])
+            row["delivery_cost_lei"] = delivery_cost
             if row["annual_cost_lei"] is not None:
                 row["annual_cost_lei"] += allocation
     return rows
-
 
 def _monthly_cost_rows(result: Any, service_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     service_map = {row["service"]: row for row in service_rows}
@@ -272,9 +295,9 @@ def _monthly_cost_rows(result: Any, service_rows: list[dict[str, Any]]) -> list[
             else:
                 cost = final_kwh * float(unit_price)
                 annual_service_kwh = float(service_map[service]["final_kwh"])
-                allocated_fixed = float(service_map[service].get("allocated_fixed_cost_lei", 0) or 0)
-                if annual_service_kwh > 0 and allocated_fixed > 0:
-                    cost += allocated_fixed * final_kwh / annual_service_kwh
+                allocated_delivery = float(service_map[service].get("allocated_delivery_cost_lei", 0) or 0)
+                if annual_service_kwh > 0 and allocated_delivery > 0:
+                    cost += allocated_delivery * final_kwh / annual_service_kwh
                 service_costs[service] = cost
                 priced_total += cost
         rows.append(
@@ -305,8 +328,8 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
             unpriced.append(note)
         if reference:
             unit_price = float(reference["unit_price_lei_per_kwh"])
-            fixed_cost = float(reference.get("fixed_annual_cost_lei", 0) or 0) if final_kwh > 0 else 0.0
-            cost = final_kwh * unit_price + fixed_cost
+            delivery = _delivery_cost(reference, final_kwh)
+            cost = final_kwh * unit_price + float(delivery["delivery_cost_lei"])
             priced_total += cost
             row = {
                 "carrier": key,
@@ -318,8 +341,10 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
                 **reference,
             }
             if key == "biomass" and heating_profile == "firewood":
-                row["estimated_packages"] = final_kwh / float(reference["energy_kwh_per_package"])
+                row["estimated_packages"] = float(delivery["estimated_packages"])
                 row["estimated_volume_m3"] = final_kwh / float(reference["energy_kwh_per_m3"])
+                row["delivery_batches"] = int(delivery["delivery_batches"])
+                row["delivery_cost_lei"] = float(delivery["delivery_cost_lei"])
             if key == "biomass" and heating_profile == "pellets":
                 row["estimated_mass_tonnes"] = final_kwh / float(reference["energy_kwh_per_kg"]) / 1000
             rows.append(row)
