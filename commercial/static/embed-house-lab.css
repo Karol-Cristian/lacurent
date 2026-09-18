@@ -1453,6 +1453,7 @@
   }
   .lab-audit-actions{margin-bottom:7px}
   .lab-mobile-livebar{
+    order:99;
     position:sticky;
     z-index:18;
     bottom:0;
