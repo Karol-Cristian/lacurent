@@ -26,6 +26,18 @@
     cooling: document.getElementById("labCooling")
   };
 
+  const configPanel = root.querySelector(".lab-config-panel");
+  const mobileEditorToolbar = root.querySelector(".lab-mobile-editor-toolbar");
+  const mobileEditorTitle = document.getElementById("labMobileEditorTitle");
+  const CHAPTER_TITLES = {
+    "1":"1. Casă & confort",
+    "2":"2. Anvelopă termică",
+    "3":"3. Instalații",
+    "4":"4. Surse regenerabile",
+    "5":"5. Performanță energetică",
+    "6":"6. Audit & renovare"
+  };
+
   const PRESET = {
     area: 120,
     levels: 2,
@@ -141,6 +153,53 @@
   const lang = () => document.documentElement.lang === "en" ? "en" : "ro";
   const tr = key => COPY[lang()][key] || COPY.ro[key] || key;
   const formField = name => form.elements.namedItem(name);
+  const isMobileCockpit = () => root.getBoundingClientRect().width <= 760;
+  const optionLabel = control => control?.selectedOptions?.[0]?.textContent?.trim() || "";
+  const setText = (id,value) => { const node=document.getElementById(id); if (node) node.textContent=value; };
+
+  function updateChapterSummaries(data=lastResult) {
+    setText("labChapter1Summary",`${controls.area.value} m² · ${controls.occupants.value} pers. · ${controls.temperature.value}°C`);
+    setText("labChapter2Summary",`${controls.wallIns.value} cm pereți · ${optionLabel(controls.glazing)}`);
+    setText("labChapter3Summary",`${optionLabel(controls.heating)} · ${optionLabel(controls.ventilation)}`);
+    setText("labChapter4Summary",controls.heating.value==="heat_pump" ? "Pompă de căldură activă · PV/solar în curând" : "Pompă de căldură · PV/solar în curând");
+    if (data) {
+      const cost=data.annual_cost_lei == null ? "cost —" : `${fmt(data.annual_cost_lei)} lei/an`;
+      setText("labChapter5Summary",`Clasă ${data.energy_class || "—"} · ${cost}`);
+      setText("labMobileClass",data.energy_class || "—");
+      setText("labMobileCost",data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei`);
+      setText("labMobileEnergy",`${fmt(data.final_energy_kwh)} kWh`);
+      setText("labChapterClass",data.energy_class || "—");
+      setText("labChapterCost",data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei/an`);
+      setText("labChapterPrimary",`${fmt(data.primary_specific_kwh_m2,1)} kWh/m²/an`);
+      setText("labChapterCo2",`${fmt(data.co2_kg)} kg/an`);
+    }
+    setText("labChapter6Summary",baselineSnapshot ? `${baselineSnapshot.result?.energy_class || "—"} · baseline salvat` : "Casa actuală · scenarii");
+  }
+
+  function openChapter(chapter) {
+    const panels=Array.from(root.querySelectorAll("[data-lab-chapter-panel]"));
+    panels.forEach(panel => panel.classList.toggle("is-mobile-open",panel.dataset.labChapterPanel===chapter));
+    root.querySelectorAll("[data-lab-chapter-open]").forEach(button => button.classList.toggle("is-active",button.dataset.labChapterOpen===chapter));
+    if (isMobileCockpit()) {
+      configPanel?.classList.add("is-chapter-editing");
+      if (mobileEditorToolbar) mobileEditorToolbar.hidden=false;
+      if (mobileEditorTitle) mobileEditorTitle.textContent=CHAPTER_TITLES[chapter] || "Capitol";
+      configPanel?.scrollIntoView({block:"start"});
+    } else {
+      const first=panels.find(panel => panel.dataset.labChapterPanel===chapter);
+      first?.scrollIntoView({behavior:"smooth",block:"start"});
+    }
+  }
+
+  function closeChapter() {
+    configPanel?.classList.remove("is-chapter-editing");
+    root.querySelectorAll("[data-lab-chapter-panel]").forEach(panel => panel.classList.remove("is-mobile-open"));
+    root.querySelectorAll("[data-lab-chapter-open]").forEach(button => button.classList.remove("is-active"));
+    if (mobileEditorToolbar) mobileEditorToolbar.hidden=true;
+    configPanel?.scrollIntoView({block:"start"});
+  }
+
+
   const setField = (name, value) => { const field = formField(name); if (field) field.value = String(value); };
   const number = value => Number.parseFloat(String(value).replace(",", "."));
   const GLAZING_U = {
