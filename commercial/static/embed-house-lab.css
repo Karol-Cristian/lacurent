@@ -856,6 +856,15 @@
   border-color:#abcdb8;
   background:#f7fbf8;
 }
+.lab-scenario-card.is-baseline{
+  border-color:#cfe2d6;
+  background:#f0f7f2;
+  cursor:default;
+}
+.lab-scenario-card.is-baseline:hover{
+  border-color:#cfe2d6;
+  background:#f0f7f2;
+}
 .lab-scenario-card span{
   overflow:hidden;
   color:#617068;

@@ -63,9 +63,10 @@
       saveBaseline:"Salvează casa curentă", updateBaseline:"Actualizează casa curentă", restoreBaseline:"Revino la casa actuală",
       comparisonNeedsBaseline:"Salvează mai întâi casa actuală", comparisonNeedsBaselineText:"Apoi modifică izolația, ferestrele sau sistemele și vei vedea exact diferența față de situația de azi.",
       baselineComparisonKicker:"Comparație reală", baselineComparisonTitle:"Casa actuală vs scenariul curent", baselineCurrentHouse:"Casa actuală", baselineScenario:"Scenariul curent", liveScenario:"recalculat live",
-      saveScenario:"Salvează scenariul", savedScenarios:"Scenarii salvate", clearScenarios:"Șterge scenariile", versusBaseline:"Față de casa actuală",
+      saveScenario:"Salvează scenariul", savedScenarios:"Casa actuală și scenarii", clearScenarios:"Șterge scenariile", versusBaseline:"Față de casa actuală",
       metricAnnualCost:"Cost anual", metricFinalEnergy:"Energie finală", metricPrimary:"Energie primară specifică", metricCo2:"Emisii CO₂", metricPower:"Putere termică", metricClass:"Clasă energetică",
       noSavedScenarios:"Nu ai salvat încă variante.", savedNow:"salvată acum", scenarioSaved:"Scenariu salvat", savings:"economie", extraCost:"cost suplimentar", noChange:"fără diferență",
+      classImproved:"clasă mai bună", classWorsened:"clasă mai slabă",
       intro:"Pornești de la o casă presetată și modifici doar ce contează. Costul, consumul și necesarul termic se actualizează pe loc.",
       proofClimate:"Profil climatic automat", proofLive:"Recalculare live", proofCost:"Cost anual estimat",
       reset:"Revino la preset", locationTitle:"Unde este casa?", locationSubtitle:"Scrie localitatea și alege rezultatul corect.",
@@ -107,9 +108,10 @@
       saveBaseline:"Save current home", updateBaseline:"Update current home", restoreBaseline:"Return to current home",
       comparisonNeedsBaseline:"Save the current home first", comparisonNeedsBaselineText:"Then change insulation, windows or systems and see the exact difference versus today.",
       baselineComparisonKicker:"Real comparison", baselineComparisonTitle:"Current home vs current scenario", baselineCurrentHouse:"Current home", baselineScenario:"Current scenario", liveScenario:"recalculated live",
-      saveScenario:"Save scenario", savedScenarios:"Saved scenarios", clearScenarios:"Clear scenarios", versusBaseline:"Compared with current home",
+      saveScenario:"Save scenario", savedScenarios:"Current home and scenarios", clearScenarios:"Clear scenarios", versusBaseline:"Compared with current home",
       metricAnnualCost:"Annual cost", metricFinalEnergy:"Final energy", metricPrimary:"Specific primary energy", metricCo2:"CO₂ emissions", metricPower:"Heat load", metricClass:"Energy class",
       noSavedScenarios:"No saved variants yet.", savedNow:"saved now", scenarioSaved:"Scenario saved", savings:"saving", extraCost:"extra cost", noChange:"no difference",
+      classImproved:"better class", classWorsened:"worse class",
       intro:"Start from a preset home and change only what matters. Cost, energy use and heat load update instantly.",
       proofClimate:"Automatic climate profile", proofLive:"Live recalculation", proofCost:"Estimated annual cost",
       reset:"Reset preset", locationTitle:"Where is the house?", locationSubtitle:"Type the locality and choose the correct result.",
@@ -216,6 +218,7 @@
   let requestToken = 0;
   let timer = null;
   let lastResult = null;
+  let lastCalculatedFormSignature = "";
   let activeController = null;
   const scenarioStorageKey = `lacurent-home-lab-scenarios-v1:${root.dataset.partnerId || "default"}`;
   let baselineSnapshot = null;
@@ -383,19 +386,32 @@
     document.getElementById("labServiceChartMirror").innerHTML=legendHtml;
   }
 
+  function nullableNumber(value) {
+    if (value == null || value === "") return null;
+    const parsed=Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   function snapshotResult(data) {
     return {
       energy_class:data?.energy_class || "—",
-      annual_cost_lei:Number(data?.annual_cost_lei)||0,
-      average_monthly_cost_lei:Number(data?.average_monthly_cost_lei)||0,
-      final_energy_kwh:Number(data?.final_energy_kwh)||0,
-      primary_specific_kwh_m2:Number(data?.primary_specific_kwh_m2)||0,
-      co2_kg:Number(data?.co2_kg)||0,
-      design_heat_load_kw:Number(data?.design_heat_load_kw)||0,
-      heat_loss_w_k:Number(data?.heat_loss_w_k)||0,
+      annual_cost_lei:nullableNumber(data?.annual_cost_lei),
+      average_monthly_cost_lei:nullableNumber(data?.average_monthly_cost_lei),
+      final_energy_kwh:nullableNumber(data?.final_energy_kwh),
+      primary_specific_kwh_m2:nullableNumber(data?.primary_specific_kwh_m2),
+      co2_kg:nullableNumber(data?.co2_kg),
+      design_heat_load_kw:nullableNumber(data?.design_heat_load_kw),
+      heat_loss_w_k:nullableNumber(data?.heat_loss_w_k),
       locality:data?.locality || localityInput.value || "",
       climate_station:data?.climate_station || ""
     };
+  }
+
+  function currentFormSignature() {
+    const values=[];
+    new FormData(form).forEach((value,key) => values.push([key,String(value)]));
+    values.sort((a,b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+    return JSON.stringify(values);
   }
 
   function captureControlState() {
@@ -403,7 +419,8 @@
   }
 
   function captureSnapshot(name) {
-    if (!lastResult) return null;
+    syncGeometry();
+    if (!lastResult || lastCalculatedFormSignature !== currentFormSignature()) return null;
     const values={};
     new FormData(form).forEach((value,key) => { values[key]=value; });
     return {
@@ -428,9 +445,10 @@
   }
 
   function metricDelta(base,current,lowerIsBetter=true) {
-    const b=Number(base)||0;
-    const n=Number(current)||0;
-    if (!b) return {pct:null,good:null};
+    if (base == null || current == null) return {pct:null,good:null};
+    const b=Number(base);
+    const n=Number(current);
+    if (!Number.isFinite(b) || !Number.isFinite(n) || Math.abs(b) < 1e-9) return {pct:null,good:null};
     const pct=100*(n-b)/Math.abs(b);
     return {pct,good:lowerIsBetter ? pct < -0.05 : pct > 0.05};
   }
@@ -442,22 +460,77 @@
     return `<span class="${good?"is-good":"is-bad"}">${sign}${fmt(pct,1)}%</span>`;
   }
 
+  const ENERGY_CLASS_RANK={A:1,B:2,C:3,D:4,E:5,F:6,G:7};
+
+  function classDeltaBadge(base,current) {
+    const b=ENERGY_CLASS_RANK[String(base || "").toUpperCase()];
+    const n=ENERGY_CLASS_RANK[String(current || "").toUpperCase()];
+    if (!b || !n || b === n) return `<span class="is-neutral">${tr("noChange")}</span>`;
+    const improved=n < b;
+    return `<span class="${improved?"is-good":"is-bad"}">${tr(improved?"classImproved":"classWorsened")}</span>`;
+  }
+
+  function optionText(control,value) {
+    const option=Array.from(control?.options || []).find(item => item.value === String(value));
+    return option?.textContent?.trim() || "";
+  }
+
+  function scenarioNameFromChanges(snapshot,index) {
+    const base=baselineSnapshot?.controls || {};
+    const current=snapshot?.controls || {};
+    const changes=[];
+    if (["wallIns","roofIns","floorIns"].some(key => String(base[key]) !== String(current[key]))) {
+      changes.push(lang()==="en" ? "Insulation" : "Izolație");
+    }
+    if (String(base.glazing) !== String(current.glazing)) {
+      changes.push(optionText(controls.glazing,current.glazing) || (lang()==="en" ? "Windows" : "Ferestre"));
+    }
+    if (String(base.heating) !== String(current.heating)) {
+      changes.push(optionText(controls.heating,current.heating) || tr("heating"));
+    }
+    if (String(base.ventilation) !== String(current.ventilation)) {
+      changes.push(optionText(controls.ventilation,current.ventilation) || tr("ventilation"));
+    }
+    if (String(base.cooling) !== String(current.cooling)) {
+      changes.push(optionText(controls.cooling,current.cooling) || tr("cooling"));
+    }
+    if (String(base.windows) !== String(current.windows) && !changes.some(item => /fere|window/i.test(item))) {
+      changes.push(lang()==="en" ? "Windows" : "Ferestre");
+    }
+    return changes.length
+      ? changes.slice(0,3).join(" + ")
+      : `${lang()==="en"?"Scenario":"Scenariul"} ${index}`;
+  }
+
   function renderSavedScenarios() {
     const node=document.getElementById("labSavedScenarios");
     if (!node) return;
+    const base=baselineSnapshot?.result || null;
+    const baseCost=base?.annual_cost_lei;
+    const baselineCard=base ? `<article class="lab-scenario-card is-baseline">
+      <span>${tr("baselineCurrentHouse")}</span>
+      <strong>${baseCost == null ? "—" : `${fmt(baseCost)} lei/an`}</strong>
+      <small>${base.energy_class || "—"} · ${base.final_energy_kwh == null ? "—" : `${fmt(base.final_energy_kwh)} kWh/an`}</small>
+    </article>` : "";
+
     if (!savedScenarios.length) {
-      node.innerHTML=`<p class="lab-scenario-empty">${tr("noSavedScenarios")}</p>`;
+      node.innerHTML=baselineCard + `<p class="lab-scenario-empty">${tr("noSavedScenarios")}</p>`;
       return;
     }
-    const baseCost=Number(baselineSnapshot?.result?.annual_cost_lei)||0;
-    node.innerHTML=savedScenarios.map((scenario,index) => {
+
+    node.innerHTML=baselineCard + savedScenarios.map((scenario,index) => {
       const result=scenario.result || {};
-      const saving=baseCost ? baseCost-Number(result.annual_cost_lei||0) : 0;
-      const savingPct=baseCost ? 100*saving/baseCost : 0;
+      const hasCost=baseCost != null && result.annual_cost_lei != null;
+      const saving=hasCost ? Number(baseCost)-Number(result.annual_cost_lei) : null;
+      const savingPct=hasCost && Math.abs(Number(baseCost)) > 1e-9 ? 100*saving/Number(baseCost) : null;
+      const delta=savingPct == null
+        ? tr("noChange")
+        : `${saving>=0?"−":"+"}${fmt(Math.abs(savingPct),1)}% ${saving>=0?tr("savings"):tr("extraCost")}`;
       return `<button type="button" class="lab-scenario-card" data-load-scenario="${scenario.id}">
-        <span>${scenario.name || `Scenariul ${index+1}`}</span>
-        <strong>${fmt(result.annual_cost_lei)} lei/an</strong>
-        <small class="${saving>=0?"is-good":"is-bad"}">${saving>=0?"−":"+"}${fmt(Math.abs(savingPct),1)}% ${saving>=0?tr("savings"):tr("extraCost")}</small>
+        <span>${scenario.name || `${lang()==="en"?"Scenario":"Scenariul"} ${index+1}`}</span>
+        <strong>${result.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`}</strong>
+        <small>${result.energy_class || "—"} · ${result.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`}</small>
+        <small class="${saving == null ? "is-neutral" : saving>=0?"is-good":"is-bad"}">${delta}</small>
       </button>`;
     }).join("");
   }
@@ -498,7 +571,7 @@
     if (restore) restore.hidden=false;
     if (saveButton) saveButton.textContent=tr("updateBaseline");
     if (title) title.textContent=tr("baselineTitle");
-    if (summary) summary.textContent=`${base.energy_class || "—"} · ${fmt(base.annual_cost_lei)} lei/an · ${fmt(base.final_energy_kwh)} kWh/an`;
+    if (summary) summary.textContent=`${base.energy_class || "—"} · ${base.annual_cost_lei == null ? "—" : `${fmt(base.annual_cost_lei)} lei/an`} · ${base.final_energy_kwh == null ? "—" : `${fmt(base.final_energy_kwh)} kWh/an`}`;
 
     const baselineClass=document.getElementById("labBaselineClass");
     const scenarioClass=document.getElementById("labScenarioClass");
@@ -517,27 +590,29 @@
     const list=document.getElementById("labBaselineMetricList");
     if (list) list.innerHTML=metrics.map(row => `<div class="lab-baseline-metric">
       <span>${row.label}</span>
-      <strong>${fmt(row.base,row.digits)} <small>${row.unit}</small></strong>
+      <strong>${row.base == null ? "—" : fmt(row.base,row.digits)} <small>${row.unit}</small></strong>
       <b>→</b>
-      <strong>${fmt(row.current,row.digits)} <small>${row.unit}</small></strong>
+      <strong>${row.current == null ? "—" : fmt(row.current,row.digits)} <small>${row.unit}</small></strong>
       ${deltaBadge(row.base,row.current,true)}
     </div>`).join("") + `<div class="lab-baseline-metric lab-baseline-class-metric">
       <span>${tr("metricClass")}</span>
-      <strong>${base.energy_class || "—"}</strong><b>→</b><strong>${current.energy_class || "—"}</strong><span></span>
+      <strong>${base.energy_class || "—"}</strong><b>→</b><strong>${current.energy_class || "—"}</strong>${classDeltaBadge(base.energy_class,current.energy_class)}
     </div>`;
 
-    const savings=(Number(base.annual_cost_lei)||0)-(Number(current.annual_cost_lei)||0);
-    const baseCost=Number(base.annual_cost_lei)||0;
+    const hasCost=base.annual_cost_lei != null && current.annual_cost_lei != null;
+    const savings=hasCost ? Number(base.annual_cost_lei)-Number(current.annual_cost_lei) : null;
+    const baseCost=hasCost ? Number(base.annual_cost_lei) : null;
 
     const overviewCost=document.getElementById("labOverviewBaselineCost");
     const overviewEnergy=document.getElementById("labOverviewBaselineEnergy");
     const overviewPower=document.getElementById("labOverviewBaselinePower");
 
-    const costDelta=Number(current.annual_cost_lei||0)-Number(base.annual_cost_lei||0);
-    const energyDelta=Number(current.final_energy_kwh||0)-Number(base.final_energy_kwh||0);
-    const powerDelta=Number(current.design_heat_load_kw||0)-Number(base.design_heat_load_kw||0);
+    const costDelta=hasCost ? Number(current.annual_cost_lei)-Number(base.annual_cost_lei) : null;
+    const energyDelta=current.final_energy_kwh != null && base.final_energy_kwh != null ? Number(current.final_energy_kwh)-Number(base.final_energy_kwh) : null;
+    const powerDelta=current.design_heat_load_kw != null && base.design_heat_load_kw != null ? Number(current.design_heat_load_kw)-Number(base.design_heat_load_kw) : null;
 
     const deltaText=(value,unit,digits=0) => {
+      if (value == null || !Number.isFinite(Number(value))) return "—";
       if (Math.abs(value) < (digits ? 0.05 : 0.5)) return tr("noChange");
       const sign=value>0?"+":"−";
       return `${sign}${fmt(Math.abs(value),digits)} ${unit}`;
@@ -545,28 +620,28 @@
 
     if (overviewCost) {
       overviewCost.textContent=deltaText(costDelta,"lei/an",0);
-      overviewCost.classList.toggle("is-good",costDelta < -0.5);
-      overviewCost.classList.toggle("is-bad",costDelta > 0.5);
+      overviewCost.classList.toggle("is-good",costDelta != null && costDelta < -0.5);
+      overviewCost.classList.toggle("is-bad",costDelta != null && costDelta > 0.5);
     }
     if (overviewEnergy) {
       overviewEnergy.textContent=deltaText(energyDelta,"kWh/an",0);
-      overviewEnergy.classList.toggle("is-good",energyDelta < -0.5);
-      overviewEnergy.classList.toggle("is-bad",energyDelta > 0.5);
+      overviewEnergy.classList.toggle("is-good",energyDelta != null && energyDelta < -0.5);
+      overviewEnergy.classList.toggle("is-bad",energyDelta != null && energyDelta > 0.5);
     }
     if (overviewPower) {
       overviewPower.textContent=deltaText(powerDelta,"kW",1);
-      overviewPower.classList.toggle("is-good",powerDelta < -0.05);
-      overviewPower.classList.toggle("is-bad",powerDelta > 0.05);
+      overviewPower.classList.toggle("is-good",powerDelta != null && powerDelta < -0.05);
+      overviewPower.classList.toggle("is-bad",powerDelta != null && powerDelta > 0.05);
     }
-    const savingsPct=baseCost ? 100*savings/baseCost : 0;
+    const savingsPct=baseCost != null && Math.abs(baseCost) > 1e-9 ? 100*savings/baseCost : null;
     const savingsNode=document.getElementById("labBaselineSavings");
     const noteNode=document.getElementById("labBaselineSavingsNote");
     if (savingsNode) {
-      savingsNode.classList.toggle("is-good", savings>0.5);
-      savingsNode.classList.toggle("is-bad", savings<-.5);
-      savingsNode.textContent=Math.abs(savings)<.5 ? tr("noChange") : `${savings>0?"−":"+"}${fmt(Math.abs(savings))} lei/an`;
+      savingsNode.classList.toggle("is-good", savings != null && savings>0.5);
+      savingsNode.classList.toggle("is-bad", savings != null && savings<-.5);
+      savingsNode.textContent=savings == null ? "—" : Math.abs(savings)<.5 ? tr("noChange") : `${savings>0?"−":"+"}${fmt(Math.abs(savings))} lei/an`;
     }
-    if (noteNode) noteNode.textContent=Math.abs(savings)<.5 ? tr("noChange") : `${fmt(Math.abs(savingsPct),1)}% ${savings>0?tr("savings"):tr("extraCost")}`;
+    if (noteNode) noteNode.textContent=savings == null ? "" : Math.abs(savings)<.5 ? tr("noChange") : `${savingsPct == null ? "—" : `${fmt(Math.abs(savingsPct),1)}%`} ${savings>0?tr("savings"):tr("extraCost")}`;
 
     renderSavedScenarios();
   }
@@ -660,6 +735,7 @@
 
   async function calculateNow() {
     syncGeometry();
+    const calculationSignature=currentFormSignature();
     const token = ++requestToken;
 
     if (activeController) activeController.abort();
@@ -673,23 +749,44 @@
       try {
         data = await fetchCalculation(signal);
       } catch (error) {
-        if (signal.aborted) return;
+        if (signal.aborted) return null;
         if (!error?.transient) throw error;
         await wait(450);
-        if (signal.aborted || token !== requestToken) return;
+        if (signal.aborted || token !== requestToken) return null;
         data = await fetchCalculation(signal);
       }
 
-      if (signal.aborted || token !== requestToken) return;
+      if (signal.aborted || token !== requestToken) return null;
+      lastCalculatedFormSignature=calculationSignature;
       renderResult(data);
+      return data;
     } catch (error) {
-      if (signal.aborted || token !== requestToken) return;
+      if (signal.aborted || token !== requestToken) return null;
       setStatus(tr("error"), "error");
+      return null;
     }
+  }
+
+  async function captureFreshSnapshot(name) {
+    clearTimeout(timer);
+    for (let attempt=0; attempt<2; attempt+=1) {
+      syncGeometry();
+      const wantedSignature=currentFormSignature();
+      if (!lastResult || lastCalculatedFormSignature !== wantedSignature) {
+        const data=await calculateNow();
+        if (!data) return null;
+      }
+      syncGeometry();
+      if (lastResult && lastCalculatedFormSignature === currentFormSignature()) {
+        return captureSnapshot(name);
+      }
+    }
+    return null;
   }
 
   function scheduleCalculate(delay=180) {
     clearTimeout(timer);
+    setStatus(tr("calculating"), "calculating");
     timer = setTimeout(calculateNow, delay);
   }
 
@@ -829,8 +926,8 @@
   const clearScenariosButton=document.getElementById("labClearScenarios");
   const comparisonBaselineButton=root.querySelector("[data-baseline-from-comparison]");
 
-  function saveBaseline() {
-    const snapshot=captureSnapshot(tr("baselineTitle"));
+  async function saveBaseline() {
+    const snapshot=await captureFreshSnapshot(tr("baselineTitle"));
     if (!snapshot) return;
     baselineSnapshot=snapshot;
     savedScenarios=[];
@@ -843,11 +940,12 @@
   comparisonBaselineButton?.addEventListener("click", saveBaseline);
   restoreBaselineButton?.addEventListener("click", () => restoreSnapshot(baselineSnapshot));
 
-  saveScenarioButton?.addEventListener("click", () => {
-    if (!baselineSnapshot || !lastResult) return;
+  saveScenarioButton?.addEventListener("click", async () => {
+    if (!baselineSnapshot) return;
     const index=savedScenarios.length+1;
-    const scenario=captureSnapshot(`${lang()==="en"?"Scenario":"Scenariul"} ${index}`);
+    const scenario=await captureFreshSnapshot(`${lang()==="en"?"Scenario":"Scenariul"} ${index}`);
     if (!scenario) return;
+    scenario.name=scenarioNameFromChanges(scenario,index);
     savedScenarios=[scenario,...savedScenarios].slice(0,6);
     persistScenarioState();
     renderSavedScenarios();
