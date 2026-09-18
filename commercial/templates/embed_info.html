@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}LaCurent Embed · Integrare pentru parteneri{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">LaCurent Embed</p>
+    <h1>Calculator energetic integrabil direct în site-ul partenerului.</h1>
+    <p class="hero-copy">Același motor LaCurent, aceeași metodologie și același laborator de scenarii, într-un widget configurat cu branding și CTA propriu.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="primary-action" href="/embed/{{ demo_partner.id }}">Deschide demo-ul</a>
+  </div>
+</section>
+
+<section class="panel embed-doc-panel">
+  <div class="panel-title">
+    <h2>Integrare minimă</h2>
+    <p>Partenerul adaugă containerul și loader-ul. Înălțimea iframe-ului se adaptează automat.</p>
+  </div>
+  <pre class="embed-code"><code>&lt;div data-lacurent-embed data-partner="{{ demo_partner.id }}"&gt;&lt;/div&gt;
+&lt;script async src="https://lacurent.com/static/embed-loader.js"&gt;&lt;/script&gt;</code></pre>
+</section>
+
+<section class="metric-grid embed-capabilities">
+  <article><span>Motor</span><strong>Unic</strong><em>Calculatorul public și widgetul folosesc același backend.</em></article>
+  <article><span>Branding</span><strong>Per partener</strong><em>Nume, accent vizual și CTA configurate server-side.</em></article>
+  <article><span>Conversie</span><strong>CTA propriu</strong><em>Rezultatul poate trimite clientul către ofertare sau catalog.</em></article>
+  <article><span>Integrare</span><strong>2 linii</strong><em>Fără SDK și fără duplicarea motorului pe site-ul magazinului.</em></article>
+</section>
+
+<section class="panel embed-doc-panel">
+  <div class="panel-title">
+    <h2>Ce rămâne sub control LaCurent</h2>
+    <p>Metodologia, actualizările motorului, prețurile de referință, testele și compatibilitatea browserului. Catalogul de produse și logica de ofertare pot fi conectate separat în etapa următoare.</p>
+  </div>
+</section>
+{% endblock %}
