@@ -351,7 +351,9 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'id="labMonthlyChart"' in response.text
     assert 'id="labServiceChart"' in response.text
     assert 'id="labLossChart"' in response.text
-    assert 'id="labReferenceCard"' in response.text
+    assert 'id="labOverviewBaseline"' in response.text
+    assert 'id="labOverviewBaselineData"' in response.text
+    assert 'id="labReferenceCard"' not in response.text
     assert "embed-house-lab.js" in response.text
     assert "embed-runtime.js" in response.text
     assert "Navigare LaCurent Instalații & Energie" not in response.text
@@ -506,6 +508,8 @@ def test_home_lab_baseline_and_scenario_comparison_has_commercial_layout() -> No
     response = client.get("/static/embed-house-lab.css")
     assert response.status_code == 200
     assert ".lab-baseline-card" in response.text
+    assert ".lab-overview-baseline" in response.text
+    assert ".lab-overview-baseline-data" in response.text
     assert ".lab-baseline-comparison" in response.text
     assert ".lab-baseline-metric-list" in response.text
     assert ".lab-saved-scenarios" in response.text
@@ -589,7 +593,8 @@ def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None
     assert response.status_code == 200
     assert "renderMonthlyChart" in response.text
     assert "renderHorizontalChart" in response.text
-    assert "renderReference" in response.text
+    assert "renderBaselineComparison" in response.text
+    assert "renderReference" not in response.text
     assert 'data.type !== "lacurent:embed-viewport"' in response.text
     assert "translateY(" in response.text
 
