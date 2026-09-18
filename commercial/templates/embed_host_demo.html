@@ -3,140 +3,677 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Magazin Demo Instalații · LaCurent Embed</title>
+  <title>Depozitul Constructorului Demo · materiale, instalații și scule</title>
   <style>
-    :root {
-      color-scheme: light;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #172033;
-      background: #f4f6f8;
+    :root{
+      color-scheme:light;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --ink:#182230;
+      --muted:#667085;
+      --line:#e4e7ec;
+      --paper:#fff;
+      --bg:#f7f8fa;
+      --brand:#ef6c00;
+      --brand-dark:#b54708;
+      --green:#15785b;
+      --soft:#fff5eb;
+      background:var(--bg);
+      color:var(--ink);
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #f4f6f8; }
-    .demo-notice {
-      padding: 9px 18px;
-      background: #172033;
-      color: #fff;
-      text-align: center;
-      font-size: 12px;
-      letter-spacing: .04em;
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--ink)}
+    a{color:inherit;text-decoration:none}
+    button,input{font:inherit}
+    .demo-notice{
+      padding:8px 18px;
+      background:#111827;
+      color:#fff;
+      text-align:center;
+      font-size:12px;
+      letter-spacing:.05em;
     }
-    .site-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-      padding: 18px max(24px, calc((100vw - 1280px) / 2));
-      background: #fff;
-      border-bottom: 1px solid #dde2e8;
+    .utility{
+      display:flex;
+      justify-content:space-between;
+      gap:24px;
+      max-width:1400px;
+      margin:auto;
+      padding:8px 24px;
+      color:#667085;
+      font-size:12px;
     }
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-mark {
-      display: grid;
-      width: 42px;
-      height: 42px;
-      place-items: center;
-      border-radius: 10px;
-      background: #195c43;
-      color: white;
-      font-weight: 800;
+    .utility span{display:inline-flex;gap:16px}
+    .header-shell{
+      position:sticky;
+      top:0;
+      z-index:10;
+      background:#fff;
+      border-top:1px solid #f0f1f3;
+      border-bottom:1px solid var(--line);
+      box-shadow:0 2px 14px rgba(16,24,40,.04);
     }
-    .brand span { display: grid; gap: 2px; }
-    .brand strong { font-size: 16px; }
-    .brand small { color: #687386; }
-    nav { display: flex; gap: 22px; color: #586273; font-size: 14px; }
-    .hero {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 48px 24px 28px;
+    .site-header{
+      display:grid;
+      grid-template-columns:auto minmax(260px,1fr) auto;
+      align-items:center;
+      gap:24px;
+      max-width:1400px;
+      margin:auto;
+      padding:16px 24px;
     }
-    .eyebrow {
-      margin: 0 0 10px;
-      color: #195c43;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: .12em;
-      text-transform: uppercase;
+    .brand{display:flex;align-items:center;gap:12px;min-width:max-content}
+    .brand-mark{
+      display:grid;
+      width:48px;
+      height:48px;
+      place-items:center;
+      border-radius:12px;
+      background:var(--brand);
+      color:#fff;
+      font-size:20px;
+      font-weight:900;
+      letter-spacing:-.04em;
     }
-    h1 { max-width: 760px; margin: 0; font-size: clamp(32px, 5vw, 56px); line-height: 1.02; }
-    .hero p:last-child { max-width: 720px; color: #687386; font-size: 17px; line-height: 1.6; }
-    .embed-wrap {
-      max-width: 1280px;
-      margin: 0 auto 56px;
-      padding: 0 24px;
+    .brand-copy{display:grid;gap:1px}
+    .brand-copy strong{font-size:16px}
+    .brand-copy small{color:#667085;font-size:11px}
+    .search{
+      display:flex;
+      align-items:center;
+      border:1px solid #d0d5dd;
+      border-radius:10px;
+      overflow:hidden;
+      background:#fff;
     }
-    .embed-card {
-      overflow: hidden;
-      border: 1px solid #d9dfe6;
-      border-radius: 16px;
-      background: #fff;
-      box-shadow: 0 16px 44px rgba(23,32,51,.08);
+    .search input{width:100%;border:0;outline:0;padding:12px 14px;color:#475467}
+    .search button{border:0;background:var(--brand);color:#fff;padding:12px 17px;font-weight:700}
+    .header-actions{display:flex;gap:10px}
+    .action-pill{
+      display:grid;
+      min-width:68px;
+      gap:2px;
+      padding:9px 12px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:#fff;
+      text-align:center;
+      font-size:11px;
+      color:#667085;
     }
-    .embed-card-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      padding: 16px 20px;
-      border-bottom: 1px solid #e3e7ec;
+    .action-pill strong{color:var(--ink);font-size:13px}
+    .main-nav{
+      background:#fff;
+      border-top:1px solid #f0f1f3;
     }
-    .embed-card-head strong { font-size: 15px; }
-    .embed-card-head span { color: #7b8492; font-size: 12px; }
-    [data-lacurent-embed] { min-height: 700px; }
-    footer {
-      padding: 30px 24px 42px;
-      color: #7a8492;
-      text-align: center;
-      font-size: 12px;
+    .main-nav-inner{
+      display:flex;
+      gap:6px;
+      max-width:1400px;
+      margin:auto;
+      padding:0 24px;
+      overflow:auto;
+      scrollbar-width:none;
     }
-    @media (max-width: 720px) {
-      nav { display: none; }
-      .site-header { padding: 14px 18px; }
-      .hero { padding: 34px 18px 20px; }
-      .embed-wrap { padding: 0 10px; }
-      .embed-card { border-radius: 12px; }
-      .embed-card-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+    .main-nav a{
+      white-space:nowrap;
+      padding:12px 14px;
+      font-size:13px;
+      font-weight:650;
+      color:#475467;
+      border-bottom:2px solid transparent;
+    }
+    .main-nav a:first-child{color:var(--brand-dark);border-color:var(--brand)}
+    .hero{
+      max-width:1400px;
+      margin:22px auto 0;
+      padding:0 24px;
+    }
+    .hero-panel{
+      display:grid;
+      grid-template-columns:minmax(0,1.3fr) minmax(320px,.7fr);
+      min-height:400px;
+      border-radius:18px;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 80% 20%,rgba(255,255,255,.22),transparent 32%),
+        linear-gradient(120deg,#252f3f 0%,#344054 58%,#475467 100%);
+      color:#fff;
+    }
+    .hero-copy{align-self:center;padding:52px}
+    .eyebrow{
+      display:inline-flex;
+      margin-bottom:14px;
+      padding:6px 9px;
+      border-radius:999px;
+      background:rgba(255,255,255,.12);
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    h1{max-width:760px;margin:0;font-size:clamp(34px,5vw,62px);line-height:.98;letter-spacing:-.04em}
+    .hero-copy p{max-width:660px;margin:18px 0 0;color:#eaecf0;font-size:17px;line-height:1.6}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+    .btn{
+      display:inline-flex;
+      justify-content:center;
+      align-items:center;
+      padding:12px 16px;
+      border-radius:10px;
+      font-weight:750;
+      font-size:14px;
+    }
+    .btn-primary{background:var(--brand);color:#fff}
+    .btn-secondary{background:#fff;color:#344054}
+    .hero-side{
+      display:grid;
+      align-content:center;
+      gap:14px;
+      padding:30px;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+    }
+    .hero-stat{
+      padding:18px;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:14px;
+      background:rgba(255,255,255,.08);
+      backdrop-filter:blur(8px);
+    }
+    .hero-stat strong{display:block;font-size:26px}
+    .hero-stat span{color:#eaecf0;font-size:13px}
+    .section{
+      max-width:1400px;
+      margin:0 auto;
+      padding:44px 24px 0;
+    }
+    .section-head{
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      gap:20px;
+      margin-bottom:18px;
+    }
+    .section-head h2{margin:0;font-size:26px;letter-spacing:-.02em}
+    .section-head p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .section-link{color:var(--brand-dark);font-size:13px;font-weight:750}
+    .categories{
+      display:grid;
+      grid-template-columns:repeat(8,minmax(0,1fr));
+      gap:12px;
+    }
+    .category{
+      display:grid;
+      gap:10px;
+      min-height:126px;
+      padding:16px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      box-shadow:0 3px 12px rgba(16,24,40,.03);
+    }
+    .category-icon{
+      display:grid;
+      width:42px;
+      height:42px;
+      place-items:center;
+      border-radius:10px;
+      background:#fff3e8;
+      font-size:22px;
+    }
+    .category strong{font-size:13px}
+    .category span{color:var(--muted);font-size:11px;line-height:1.4}
+    .promo-grid{
+      display:grid;
+      grid-template-columns:1.1fr .9fr .9fr;
+      gap:14px;
+    }
+    .promo{
+      min-height:190px;
+      padding:24px;
+      border-radius:16px;
+      overflow:hidden;
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      border:1px solid var(--line);
+      background:#fff;
+    }
+    .promo:first-child{background:linear-gradient(135deg,#fff0df,#ffd9b0)}
+    .promo:nth-child(2){background:linear-gradient(135deg,#e7f6ef,#ccecdf)}
+    .promo:nth-child(3){background:linear-gradient(135deg,#eef2f6,#dce3ea)}
+    .promo small{font-weight:800;color:#7a2e0e;text-transform:uppercase;letter-spacing:.08em}
+    .promo strong{display:block;max-width:330px;margin-top:7px;font-size:23px;line-height:1.05}
+    .promo span{margin-top:7px;color:#475467;font-size:13px}
+    .product-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+    }
+    .product{
+      display:flex;
+      flex-direction:column;
+      min-height:330px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .product-visual{
+      display:grid;
+      height:154px;
+      place-items:center;
+      position:relative;
+      background:linear-gradient(145deg,#f7f8fa,#e9edf2);
+      color:#475467;
+      font-size:48px;
+    }
+    .badge{
+      position:absolute;
+      top:12px;
+      left:12px;
+      padding:5px 7px;
+      border-radius:7px;
+      background:#b42318;
+      color:#fff;
+      font-size:10px;
+      font-weight:800;
+    }
+    .product-body{display:flex;flex:1;flex-direction:column;padding:15px}
+    .product-body small{color:#98a2b3;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+    .product-body h3{margin:7px 0 6px;font-size:15px;line-height:1.3}
+    .product-body p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+    .price-row{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-top:auto;padding-top:16px}
+    .price strong{display:block;font-size:20px}
+    .price span{color:#98a2b3;font-size:11px}
+    .cart-btn{
+      border:0;
+      border-radius:9px;
+      background:#182230;
+      color:#fff;
+      padding:9px 11px;
+      font-weight:750;
+      font-size:12px;
+    }
+    .services{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+    }
+    .service{
+      padding:20px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+    }
+    .service strong{display:block;margin-bottom:7px;font-size:15px}
+    .service p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+    .calculator-section{
+      max-width:1400px;
+      margin:48px auto 0;
+      padding:0 24px;
+    }
+    .calculator-intro{
+      display:grid;
+      grid-template-columns:1.05fr .95fr;
+      gap:24px;
+      align-items:end;
+      padding:26px 28px;
+      border:1px solid #cfe8dd;
+      border-bottom:0;
+      border-radius:18px 18px 0 0;
+      background:linear-gradient(130deg,#edf9f4,#f9fffc);
+    }
+    .calculator-intro .tag{
+      display:inline-flex;
+      padding:5px 8px;
+      border-radius:999px;
+      background:#d7f0e5;
+      color:#0f684d;
+      font-size:10px;
+      font-weight:850;
+      letter-spacing:.07em;
+      text-transform:uppercase;
+    }
+    .calculator-intro h2{margin:10px 0 0;font-size:32px;letter-spacing:-.03em}
+    .calculator-intro p{margin:8px 0 0;color:#526270;line-height:1.55}
+    .calculator-points{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+    }
+    .calculator-point{
+      padding:12px;
+      border:1px solid #dbeee6;
+      border-radius:12px;
+      background:#fff;
+      font-size:12px;
+      color:#526270;
+    }
+    .calculator-point strong{display:block;color:#173b31;font-size:13px;margin-bottom:3px}
+    .embed-card{
+      overflow:hidden;
+      border:1px solid #cfe8dd;
+      border-radius:0 0 18px 18px;
+      background:#fff;
+      box-shadow:0 18px 48px rgba(16,24,40,.08);
+    }
+    .embed-card-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+      padding:14px 18px;
+      border-bottom:1px solid #e6eee9;
+      background:#fbfdfc;
+    }
+    .embed-card-head strong{font-size:14px}
+    .embed-card-head span{color:#667085;font-size:11px}
+    [data-lacurent-embed]{min-height:760px}
+    .project-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+    }
+    .project{
+      min-height:200px;
+      padding:22px;
+      border-radius:16px;
+      color:#fff;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      background:#344054;
+    }
+    .project:nth-child(2){background:#475467}
+    .project:nth-child(3){background:#15785b}
+    .project small{font-size:10px;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
+    .project strong{margin-top:7px;font-size:20px}
+    .project span{margin-top:5px;font-size:12px;opacity:.8}
+    .trust-strip{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:1px;
+      margin-top:48px;
+      border:1px solid var(--line);
+      background:var(--line);
+    }
+    .trust-item{padding:22px;background:#fff;text-align:center}
+    .trust-item strong{display:block;font-size:14px}
+    .trust-item span{display:block;margin-top:4px;color:var(--muted);font-size:11px}
+    .newsletter{
+      margin-top:48px;
+      background:#182230;
+      color:#fff;
+    }
+    .newsletter-inner{
+      display:flex;
+      max-width:1400px;
+      margin:auto;
+      padding:32px 24px;
+      align-items:center;
+      justify-content:space-between;
+      gap:24px;
+    }
+    .newsletter h3{margin:0;font-size:22px}
+    .newsletter p{margin:5px 0 0;color:#cfd4dc;font-size:12px}
+    .newsletter-form{display:flex;min-width:min(420px,100%)}
+    .newsletter-form input{flex:1;border:0;border-radius:9px 0 0 9px;padding:12px 13px}
+    .newsletter-form button{border:0;border-radius:0 9px 9px 0;background:var(--brand);color:#fff;padding:12px 15px;font-weight:800}
+    footer{background:#101828;color:#98a2b3}
+    .footer-inner{
+      display:grid;
+      grid-template-columns:1.3fr repeat(3,.7fr);
+      gap:32px;
+      max-width:1400px;
+      margin:auto;
+      padding:40px 24px;
+    }
+    footer strong{color:#fff;font-size:13px}
+    footer p,footer li{font-size:11px;line-height:1.8}
+    footer ul{list-style:none;margin:10px 0 0;padding:0}
+    .legal{
+      padding:14px 24px 24px;
+      border-top:1px solid #344054;
+      text-align:center;
+      font-size:10px;
+    }
+    @media(max-width:1100px){
+      .categories{grid-template-columns:repeat(4,1fr)}
+      .product-grid{grid-template-columns:repeat(2,1fr)}
+      .promo-grid{grid-template-columns:1fr 1fr}
+      .promo:first-child{grid-column:1/-1}
+      .hero-panel{grid-template-columns:1fr}
+      .hero-side{grid-template-columns:repeat(3,1fr)}
+      .calculator-intro{grid-template-columns:1fr}
+    }
+    @media(max-width:760px){
+      .utility{display:none}
+      .site-header{grid-template-columns:1fr auto;padding:12px 16px}
+      .search{grid-column:1/-1;grid-row:2}
+      .header-actions .action-pill:first-child{display:none}
+      .main-nav-inner{padding:0 10px}
+      .hero{padding:0 12px;margin-top:12px}
+      .hero-copy{padding:32px 22px}
+      .hero-side{grid-template-columns:1fr;padding:18px 22px 24px}
+      .section{padding:32px 12px 0}
+      .categories{grid-template-columns:repeat(2,1fr)}
+      .promo-grid,.product-grid,.services,.project-grid{grid-template-columns:1fr}
+      .promo:first-child{grid-column:auto}
+      .calculator-section{padding:0 8px;margin-top:36px}
+      .calculator-intro{padding:22px 16px}
+      .calculator-points{grid-template-columns:1fr}
+      .embed-card-head{align-items:flex-start;flex-direction:column;gap:4px}
+      .trust-strip{grid-template-columns:1fr 1fr}
+      .newsletter-inner{align-items:flex-start;flex-direction:column}
+      .newsletter-form{width:100%;min-width:0}
+      .footer-inner{grid-template-columns:1fr 1fr}
     }
   </style>
 </head>
 <body>
-  <div class="demo-notice">SITE DEMO PARTENER · integrare cross-origin pentru LaCurent Embed MVP</div>
+  <div class="demo-notice">SITE DEMO PARTENER · magazin fictiv de construcții · integrare reală LaCurent Embed</div>
 
-  <header class="site-header">
-    <div class="brand">
-      <div class="brand-mark">MI</div>
-      <span>
-        <strong>Magazin Instalații Demo</strong>
-        <small>Încălzire · eficiență · materiale</small>
-      </span>
-    </div>
-    <nav aria-label="Navigare magazin demo">
-      <span>Produse</span>
-      <span>Soluții</span>
-      <span>Consultanță</span>
-      <span>Contact</span>
+  <div class="utility">
+    <span><b>Livrare în toată țara</b><span>Ridicare din depozit</span><span>Consultanță tehnică</span></span>
+    <span><span>Persoane juridice</span><span>Comenzi: 0800 DEMO</span></span>
+  </div>
+
+  <div class="header-shell">
+    <header class="site-header">
+      <a class="brand" href="#">
+        <div class="brand-mark">DC</div>
+        <span class="brand-copy">
+          <strong>Depozitul Constructorului</strong>
+          <small>materiale · instalații · scule</small>
+        </span>
+      </a>
+
+      <div class="search" role="search">
+        <input aria-label="Caută produse" placeholder="Caută ciment, polistiren, centrală, scule...">
+        <button type="button">Caută</button>
+      </div>
+
+      <div class="header-actions">
+        <div class="action-pill"><span>Cont</span><strong>Intră</strong></div>
+        <div class="action-pill"><span>Coș</span><strong>0 produse</strong></div>
+      </div>
+    </header>
+
+    <nav class="main-nav" aria-label="Categorii magazin">
+      <div class="main-nav-inner">
+        <a href="#categorii">Toate categoriile</a>
+        <a href="#produse">Materiale construcții</a>
+        <a href="#produse">Termoizolații</a>
+        <a href="#calculator">Instalații termice</a>
+        <a href="#produse">Electrice</a>
+        <a href="#produse">Scule</a>
+        <a href="#produse">Finisaje</a>
+        <a href="#servicii">Servicii</a>
+        <a href="#proiecte">Ghiduri proiecte</a>
+      </div>
     </nav>
-  </header>
+  </div>
 
   <main>
     <section class="hero">
-      <p class="eyebrow">Instrument pentru clienți</p>
-      <h1>Află ce soluție energetică se potrivește locuinței tale.</h1>
-      <p>Aceasta este o pagină de probă care simulează site-ul unui magazin partener. Pagina nu folosește shell-ul sau CSS-ul LaCurent; calculatorul de mai jos este încărcat prin integrarea publică Embed.</p>
-    </section>
-
-    <section class="embed-wrap">
-      <div class="embed-card">
-        <div class="embed-card-head">
-          <strong>Calculator energetic</strong>
-          <span>Powered by LaCurent Embed</span>
+      <div class="hero-panel">
+        <div class="hero-copy">
+          <span class="eyebrow">Campania de renovare · demo</span>
+          <h1>Tot pentru casă, de la fundație până la instalații.</h1>
+          <p>Materiale de construcții, termoizolații, instalații, electrice, scule și finisaje. În această pagină demo, calculatorul LaCurent apare exact cum ar putea fi integrat în magazinul unui partener.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#produse">Vezi ofertele</a>
+            <a class="btn btn-secondary" href="#calculator">Calculează necesarul energetic</a>
+          </div>
         </div>
-        <div data-lacurent-embed data-partner="demo-store" data-initial-height="1000px"></div>
+        <div class="hero-side">
+          <div class="hero-stat"><strong>20.000+</strong><span>produse simulate în catalog</span></div>
+          <div class="hero-stat"><strong>24–48 h</strong><span>livrare demo pentru stoc local</span></div>
+          <div class="hero-stat"><strong>Proiect complet</strong><span>materiale + estimare + soluție tehnică</span></div>
+        </div>
       </div>
     </section>
+
+    <section class="section" id="categorii">
+      <div class="section-head">
+        <div><h2>Categorii populare</h2><p>De la structură și izolație până la instalații și amenajări.</p></div>
+        <span class="section-link">Vezi toate categoriile →</span>
+      </div>
+      <div class="categories">
+        <div class="category"><div class="category-icon">🧱</div><strong>Construcții</strong><span>Ciment, cărămidă, BCA, OSB</span></div>
+        <div class="category"><div class="category-icon">🏠</div><strong>Termoizolații</strong><span>EPS, XPS, vată minerală</span></div>
+        <div class="category"><div class="category-icon">🔥</div><strong>Încălzire</strong><span>Centrale, pompe, radiatoare</span></div>
+        <div class="category"><div class="category-icon">🚿</div><strong>Instalații</strong><span>Țevi, fitinguri, sanitare</span></div>
+        <div class="category"><div class="category-icon">⚡</div><strong>Electrice</strong><span>Cabluri, tablouri, aparataj</span></div>
+        <div class="category"><div class="category-icon">🛠️</div><strong>Scule</strong><span>Electrice și de mână</span></div>
+        <div class="category"><div class="category-icon">🎨</div><strong>Finisaje</strong><span>Glet, vopsea, gresie, parchet</span></div>
+        <div class="category"><div class="category-icon">🌿</div><strong>Exterior</strong><span>Pavaje, garduri, grădină</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="promo-grid">
+        <div class="promo"><small>Oferta săptămânii</small><strong>Sistem termoizolație fațadă</strong><span>Pachete demo EPS + adeziv + plasă + tencuială.</span></div>
+        <div class="promo"><small>Instalații</small><strong>Pregătește sezonul rece</strong><span>Pompe de căldură, radiatoare și accesorii.</span></div>
+        <div class="promo"><small>Profesioniști</small><strong>Prețuri pentru șantier</strong><span>Solicită ofertă pentru cantități mari.</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="produse">
+      <div class="section-head">
+        <div><h2>Produse recomandate</h2><p>Produse fictive folosite doar pentru a face demo-ul să arate ca un magazin real.</p></div>
+        <span class="section-link">Vezi catalogul →</span>
+      </div>
+      <div class="product-grid">
+        <article class="product">
+          <div class="product-visual"><span class="badge">-12%</span>▤</div>
+          <div class="product-body"><small>Termoizolații</small><h3>Polistiren EPS 80, 10 cm</h3><p>Placă termoizolantă pentru fațade, pachet 2.5 m².</p><div class="price-row"><div class="price"><strong>74,90 lei</strong><span>/ pachet</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+        <article class="product">
+          <div class="product-visual">▥</div>
+          <div class="product-body"><small>Construcții</small><h3>Placă OSB 3, 12 mm</h3><p>2500 × 1250 mm, utilizare structurală și amenajări.</p><div class="price-row"><div class="price"><strong>96,50 lei</strong><span>/ bucată</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+        <article class="product">
+          <div class="product-visual"><span class="badge">TOP</span>◫</div>
+          <div class="product-body"><small>Izolații</small><h3>Vată bazaltică fațadă, 10 cm</h3><p>Panou rigid pentru termoizolația pereților exteriori.</p><div class="price-row"><div class="price"><strong>119,00 lei</strong><span>/ pachet</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+        <article class="product">
+          <div class="product-visual">⬡</div>
+          <div class="product-body"><small>Scule</small><h3>Mașină de găurit 18 V</h3><p>Set demo cu acumulator, încărcător și cutie.</p><div class="price-row"><div class="price"><strong>449,00 lei</strong><span>/ set</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+        <article class="product">
+          <div class="product-visual">◉</div>
+          <div class="product-body"><small>Instalații termice</small><h3>Pompă circulație eficiență ridicată</h3><p>Pentru instalații rezidențiale de încălzire.</p><div class="price-row"><div class="price"><strong>589,00 lei</strong><span>/ bucată</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+        <article class="product">
+          <div class="product-visual">▦</div>
+          <div class="product-body"><small>Finisaje</small><h3>Gresie porțelanată 60 × 60</h3><p>Aspect piatră, trafic intens, interior/exterior.</p><div class="price-row"><div class="price"><strong>89,90 lei</strong><span>/ m²</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+        <article class="product">
+          <div class="product-visual">⌁</div>
+          <div class="product-body"><small>Electrice</small><h3>Cablu cupru 3 × 2.5 mm²</h3><p>Rolă demo pentru circuite de prize rezidențiale.</p><div class="price-row"><div class="price"><strong>4,80 lei</strong><span>/ metru</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+        <article class="product">
+          <div class="product-visual"><span class="badge">NOU</span>▰</div>
+          <div class="product-body"><small>Acoperiș</small><h3>Membrană hidroizolantă premium</h3><p>Protecție pentru acoperiș și zone expuse la umezeală.</p><div class="price-row"><div class="price"><strong>219,00 lei</strong><span>/ rolă</span></div><button class="cart-btn">Adaugă</button></div></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="servicii">
+      <div class="section-head">
+        <div><h2>Servicii pentru proiectul tău</h2><p>Magazinul poate vinde mai mult decât produse: poate ghida clientul spre soluția corectă.</p></div>
+      </div>
+      <div class="services">
+        <div class="service"><strong>Livrare pe șantier</strong><p>Planificare pentru materiale voluminoase și comenzi de proiect.</p></div>
+        <div class="service"><strong>Debitare și pregătire</strong><p>Servicii demo pentru lemn, plăci și materiale selectate.</p></div>
+        <div class="service"><strong>Consultanță tehnică</strong><p>Alegerea sistemului potrivit în funcție de clădire și buget.</p></div>
+        <div class="service"><strong>Ofertare proiect</strong><p>Transformarea listelor de necesar în ofertă comercială.</p></div>
+      </div>
+    </section>
+
+    <section class="calculator-section" id="calculator">
+      <div class="calculator-intro">
+        <div>
+          <span class="tag">Instrument gratuit pentru clienți</span>
+          <h2>Înainte să cumperi, estimează necesarul energetic al casei.</h2>
+          <p>Calculatorul LaCurent rulează în interiorul site-ului magazinului, folosește același motor de calcul ca produsul principal și poate conduce clientul de la estimare către o ofertă relevantă.</p>
+        </div>
+        <div class="calculator-points">
+          <div class="calculator-point"><strong>1. Completezi casa</strong>Localitate, geometrie și anvelopă.</div>
+          <div class="calculator-point"><strong>2. Compari scenarii</strong>Necesar și opțiuni energetice.</div>
+          <div class="calculator-point"><strong>3. Ceri ofertă</strong>CTA-ul aparține partenerului.</div>
+        </div>
+      </div>
+      <div class="embed-card">
+        <div class="embed-card-head">
+          <strong>Calculator energetic integrat</strong>
+          <span>Tehnologie LaCurent · integrată în site-ul partenerului</span>
+        </div>
+        <div data-lacurent-embed data-partner="demo-store" data-initial-height="1050px"></div>
+      </div>
+    </section>
+
+    <section class="section" id="proiecte">
+      <div class="section-head">
+        <div><h2>Planifică pe proiect, nu doar pe produs</h2><p>Exemple de zone editoriale pe care un retailer le-ar putea lega de calculator.</p></div>
+      </div>
+      <div class="project-grid">
+        <div class="project"><small>Ghid renovare</small><strong>Termoizolează corect o casă veche</strong><span>Fațadă, soclu, pod și punți termice.</span></div>
+        <div class="project"><small>Ghid instalații</small><strong>Alege sistemul de încălzire</strong><span>Necesar termic, distribuție și control.</span></div>
+        <div class="project"><small>Ghid eficiență</small><strong>Unde merită investit primul leu</strong><span>Compară intervențiile înainte de achiziție.</span></div>
+      </div>
+    </section>
+
+    <div class="trust-strip">
+      <div class="trust-item"><strong>Plată securizată</strong><span>Element demonstrativ</span></div>
+      <div class="trust-item"><strong>Retur simplu</strong><span>Politică demo 30 zile</span></div>
+      <div class="trust-item"><strong>Suport tehnic</strong><span>Luni–sâmbătă</span></div>
+      <div class="trust-item"><strong>Stoc local</strong><span>Depozit demonstrativ</span></div>
+    </div>
   </main>
 
-  <footer>Magazin Instalații Demo este o identitate fictivă folosită exclusiv pentru testarea integrării.</footer>
+  <section class="newsletter">
+    <div class="newsletter-inner">
+      <div><h3>Primește ofertele pentru următorul proiect.</h3><p>Newsletter demonstrativ — formularul nu trimite date nicăieri.</p></div>
+      <div class="newsletter-form"><input aria-label="Email" placeholder="adresa@email.ro"><button type="button">Abonează-mă</button></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <strong>Depozitul Constructorului · DEMO</strong>
+        <p>Identitate comercială fictivă creată exclusiv pentru demonstrarea integrării LaCurent Embed într-un magazin de construcții.</p>
+      </div>
+      <div><strong>Magazin</strong><ul><li>Materiale</li><li>Instalații</li><li>Electrice</li><li>Scule</li></ul></div>
+      <div><strong>Servicii</strong><ul><li>Livrare</li><li>Ofertare</li><li>Consultanță</li><li>Profesioniști</li></ul></div>
+      <div><strong>Ajutor</strong><ul><li>Contact</li><li>Livrare și retur</li><li>Termeni</li><li>Confidențialitate</li></ul></div>
+    </div>
+    <div class="legal">Demo vizual. Produsele, prețurile, datele de contact și promisiunile comerciale de pe această pagină sunt fictive. Calculatorul integrat este LaCurent Embed.</div>
+  </footer>
 
   <script async src="https://lacurent.com/static/embed-loader.js"></script>
 </body>
