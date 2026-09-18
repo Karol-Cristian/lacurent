@@ -84,18 +84,26 @@ class DhwInput(BaseModel):
     carrier: Carrier = Carrier.natural_gas
 
 
+SolarOrientation = Literal[
+    "south",
+    "south_west",
+    "west",
+    "north_west",
+    "north",
+    "north_east",
+    "east",
+    "south_east",
+]
+
+
+class SolarGlazingGroup(BaseModel):
+    orientation: SolarOrientation
+    area_m2: float = Field(gt=0)
+
+
 class SolarInput(BaseModel):
     mode: Literal["normative_hsol", "explicit"] = "explicit"
-    orientation: Literal[
-        "south",
-        "south_west",
-        "west",
-        "north_west",
-        "north",
-        "north_east",
-        "east",
-        "south_east",
-    ] = "south"
+    orientation: SolarOrientation = "south"
     glazing_type_id: Literal[
         "single_clear_glazing",
         "double_clear_glazing",
@@ -104,12 +112,34 @@ class SolarInput(BaseModel):
         "double_low_e_face_3",
         "triple_low_e_faces_2_and_5",
     ] = "double_low_e_face_3"
+    glazing_groups: list[SolarGlazingGroup] = Field(default_factory=list)
     frame_fraction: float = Field(default=0.20, ge=0, lt=1)
     obstacle_shading_factor: float = Field(default=1.0, ge=0, le=1)
+    shading_device_id: Literal[
+        "white_venetian_blinds_abs_0_1_trans_0_05",
+        "white_venetian_blinds_abs_0_1_trans_0_1",
+        "white_venetian_blinds_abs_0_1_trans_0_3",
+        "white_curtains_abs_0_1_trans_0_5",
+        "white_curtains_abs_0_1_trans_0_7",
+        "white_curtains_abs_0_1_trans_0_9",
+        "colored_textiles_abs_0_3_trans_0_1",
+        "colored_textiles_abs_0_3_trans_0_3",
+        "colored_textiles_abs_0_3_trans_0_5",
+        "aluminium_coated_textiles_abs_0_2_trans_0_05",
+    ] | None = None
+    shading_mounting_side: Literal["interior", "exterior"] | None = None
     sky_view_factor: float = Field(default=0.5, ge=0, le=1)
     exterior_surface_resistance_m2k_w: float = Field(default=0.04, gt=0)
     longwave_radiation_coefficient_w_m2k: float = Field(default=5.0, ge=0)
     sky_temperature_difference_k: float = Field(default=11.0, ge=0)
+
+    @root_validator(skip_on_failure=True)
+    def validate_shading_device_pair(cls, values: dict) -> dict:
+        device = values.get("shading_device_id")
+        side = values.get("shading_mounting_side")
+        if bool(device) != bool(side):
+            raise ValueError("Solar shading device and mounting side must be selected together.")
+        return values
 
 
 class BuildingInput(BaseModel):
@@ -167,6 +197,10 @@ class MonthlyBalance(BaseModel):
     solar_gains_kwh: float
     solar_gains_source: str | None = None
     solar_hsol_kwh_m2: float | None = None
+    solar_hsol_by_orientation_kwh_m2: dict[str, float] = Field(default_factory=dict)
+    solar_station_name: str | None = None
+    solar_station_resolution: str | None = None
+    solar_station_distance_km: float | None = None
     useful_heating_kwh: float
     useful_cooling_kwh: float
 
