@@ -18,6 +18,66 @@ def climate_data() -> dict[str, Any]:
     return json.loads((DATA_DIR / "climate.json").read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=1)
+def solar_hsol_data() -> dict[str, Any]:
+    """Compact source-backed Hsol dataset derived from Mc001/1-2-3/2006 Annex A.9.6."""
+
+    return json.loads((DATA_DIR / "mc001-solar-hsol.json").read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _solar_hsol_by_climate_station() -> dict[str, dict[str, Any]]:
+    return {
+        row["climateStationId"]: row
+        for row in solar_hsol_data()["rows"]
+        if row.get("climateStationId")
+    }
+
+
+_HSOL_ORIENTATION_KEYS = {
+    "south": "south",
+    "south_west": "southWest",
+    "west": "west",
+    "north_west": "northWest",
+    "north": "north",
+    "north_east": "northEast",
+    "east": "east",
+    "south_east": "southEast",
+}
+
+
+def resolve_monthly_hsol(climate: dict[str, Any], orientation: str) -> dict[str, Any] | None:
+    """Resolve source-backed vertical Hsol for the selected MC001 climate station.
+
+    No nearest-solar-station interpolation is performed. If the selected MC001/6-2013
+    station has no direct Annex A.9.6 row, the normative solar path is unavailable.
+    """
+
+    source_key = _HSOL_ORIENTATION_KEYS.get(str(orientation))
+    if source_key is None:
+        return None
+    station_id = climate.get("station_id") or climate.get("id")
+    row = _solar_hsol_by_climate_station().get(str(station_id))
+    if row is None:
+        return None
+    values = row.get("hsolKwhPerM2ByOrientation", {}).get(source_key)
+    if not isinstance(values, list) or len(values) != 12:
+        return None
+    dataset = solar_hsol_data()
+    return {
+        "orientation": orientation,
+        "source_orientation": source_key,
+        "values_kwh_m2_month": [float(value) for value in values],
+        "locality_name": row.get("localityName"),
+        "solar_station_id": row.get("solarStationId"),
+        "climate_station_id": row.get("climateStationId"),
+        "source_pdf_page": row.get("sourcePdfPage"),
+        "dataset_version": dataset.get("datasetVersion"),
+        "source_reference": dataset.get("sourceReference"),
+        "calculation": dataset.get("calculation"),
+    }
+
+
 def locality_data() -> dict[str, Any]:
     # The locality registry is ~6.5 MB. Do not keep it in the Python Worker
     # isolate after the map payload has been returned: Cloudflare isolates have
