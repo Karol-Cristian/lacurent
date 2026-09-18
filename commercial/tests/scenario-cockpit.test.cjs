@@ -25,7 +25,10 @@ test('scenario cockpit includes summer cooling and ventilation controls', () => 
 });
 
 test('scenario changes are debounced and use the correct calculate route', () => {
-  assert.match(source, /fetch\('\/calculate'/);
+  assert.match(source, /dataset\\?\\.embedPartner/);
+  assert.match(source, /encodeURIComponent\\(partnerId\\)/);
+  assert.match(source, /:'\\/calculate'/);
+  assert.match(source, /fetch\\(calculateUrl/);
   assert.match(source, /setTimeout\(calculateScenario,280\)/);
   assert.match(source, /AbortController/);
 });
