@@ -120,6 +120,14 @@ jobs:
                       raise AssertionError(f"{path} returned {response.status}")
                   return body
 
+          def get_binary(path):
+              with urllib.request.urlopen(base + path, timeout=20) as response:
+                  body = response.read()
+                  content_type = response.headers.get("Content-Type", "")
+                  if response.status != 200:
+                      raise AssertionError(f"{path} returned {response.status}")
+                  return body, content_type
+
           def post(path, data):
               body = urllib.parse.urlencode(data).encode("utf-8")
               request = urllib.request.Request(
@@ -164,6 +172,17 @@ jobs:
               body = get(path)
               if expected not in body.replace(" ", "") and expected not in body:
                   raise AssertionError(f"{path} did not contain {expected!r}")
+
+          for path in (
+              "/home-lab-assets/house-fireplace.webp?v=2",
+              "/home-lab-assets/house-orientation.webp?v=2",
+              "/home-lab-assets/house-pv.webp?v=2",
+          ):
+              body, content_type = get_binary(path)
+              if not body.startswith(b"RIFF") or b"WEBP" not in body[:16]:
+                  raise AssertionError(f"{path} did not return a valid WebP payload.")
+              if "image/webp" not in content_type.lower():
+                  raise AssertionError(f"{path} returned unexpected content type {content_type!r}")
 
           home_html = get("/")
           sales_html = get("/software-testing")
@@ -408,6 +427,14 @@ jobs:
               except urllib.error.HTTPError as error:
                   return error.code, error.headers.get("Location") or url, error.read().decode("utf-8")
 
+          def open_binary(url, timeout=30):
+              request = urllib.request.Request(
+                  url,
+                  headers={"User-Agent": "LaCurent-cutover-smoke/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=timeout) as response:
+                  return response.status, response.headers.get("Content-Type", ""), response.read()
+
           for attempt in range(1, 41):
               status, _, body = open_url(apex + "/health")
               if status == 200 and '"status":"ok"' in body.replace(" ", ""):
@@ -461,6 +488,20 @@ jobs:
               if expected not in body and expected not in body.replace(" ", ""):
                   raise AssertionError(f"{path} did not contain {expected!r}")
               print(path, status)
+
+          for path in (
+              "/home-lab-assets/house-fireplace.webp?v=2",
+              "/home-lab-assets/house-orientation.webp?v=2",
+              "/home-lab-assets/house-pv.webp?v=2",
+          ):
+              status, content_type, body = open_binary(apex + path)
+              if status != 200:
+                  raise AssertionError(f"{path} returned HTTP {status}")
+              if not body.startswith(b"RIFF") or b"WEBP" not in body[:16]:
+                  raise AssertionError(f"{path} did not return a valid WebP payload.")
+              if "image/webp" not in content_type.lower():
+                  raise AssertionError(f"{path} returned unexpected content type {content_type!r}")
+              print(path, status, len(body), content_type)
 
           home_status, _, home_html = open_url(apex + "/")
           assert home_status == 200
