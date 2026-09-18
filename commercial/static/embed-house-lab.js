@@ -21,7 +21,9 @@
     occupants: document.getElementById("labOccupants"),
     glazing: document.getElementById("labGlazing"),
     orientation: document.getElementById("labOrientation"),
-    heating: document.getElementById("labHeating")
+    heating: document.getElementById("labHeating"),
+    ventilation: document.getElementById("labVentilation"),
+    cooling: document.getElementById("labCooling")
   };
 
   const PRESET = {
@@ -34,9 +36,11 @@
     floorIns: 5,
     temperature: 21,
     occupants: 4,
-    glazing: "double_low_e_face_3",
+    glazing: "triple_low_e_faces_2_and_5",
     orientation: "south",
     heating: "condensing_gas_boiler",
+    ventilation: "natural",
+    cooling: "none",
     localityId: root.querySelector(".lab-locality")?.dataset.initialLocalityId || "siruta-54984",
     locality: root.querySelector(".lab-locality")?.dataset.initialLocality || "Cluj-Napoca"
   };
@@ -44,6 +48,16 @@
   const COPY = {
     ro: {
       kicker:"Laboratorul casei", title:"Configurează casa. Vezi imediat ce se schimbă.",
+      configureTitle:"Configurează casa ta", configureSubtitle:"Modifică doar ce contează. Rezultatele se actualizează în timp real.",
+      houseUseTitle:"1. Casă și utilizare", houseUseSubtitle:"Dimensiuni, niveluri și ocupare",
+      envelopeTitle:"2. Anvelopă și ferestre", envelopeSubtitle:"Izolație, geamuri și orientare solară",
+      systemsTitle:"3. Sisteme de încălzire și apă caldă", systemsSubtitle:"Alege sursa principală",
+      ventilationTitle:"4. Ventilație și răcire", ventilationSubtitle:"Schimbul de aer și confortul de vară",
+      ventilation:"Sistem ventilație", cooling:"Răcire", otherHeating:"Alte sisteme",
+      compareScenarios:"Compară scenarii", tabOverview:"Prezentare", tabCosts:"Costuri", tabEnergy:"Energie", tabLosses:"Pierderi", tabComparison:"Comparație",
+      heroMessage:"O casă bine configurată înseamnă costuri mai mici și mai mult confort.",
+      energyClass:"Clasă energetică", lossSubtitle:"% din pierderile totale", yourHouse:"Casa ta", referenceHouse:"Casă de referință",
+      saveConfig:"Salvează configurația", exportReport:"Exportă raport", summaryPromise:"Case eficiente pentru oameni, comunități și un mediu mai curat.", summaryLearn:"Rezultatele folosesc motorul energetic LaCurent.",
       intro:"Pornești de la o casă presetată și modifici doar ce contează. Costul, consumul și necesarul termic se actualizează pe loc.",
       proofClimate:"Profil climatic automat", proofLive:"Recalculare live", proofCost:"Cost anual estimat",
       reset:"Revino la preset", locationTitle:"Unde este casa?", locationSubtitle:"Scrie localitatea și alege rezultatul corect.",
@@ -70,6 +84,16 @@
     },
     en: {
       kicker:"Home Lab", title:"Configure the house. See what changes immediately.",
+      configureTitle:"Configure your home", configureSubtitle:"Change only what matters. Results update in real time.",
+      houseUseTitle:"1. House and use", houseUseSubtitle:"Size, levels and occupants",
+      envelopeTitle:"2. Envelope and windows", envelopeSubtitle:"Insulation, glazing and solar orientation",
+      systemsTitle:"3. Heating and hot water", systemsSubtitle:"Choose the main heat source",
+      ventilationTitle:"4. Ventilation and cooling", ventilationSubtitle:"Air change and summer comfort",
+      ventilation:"Ventilation system", cooling:"Cooling", otherHeating:"Other systems",
+      compareScenarios:"Compare scenarios", tabOverview:"Overview", tabCosts:"Costs", tabEnergy:"Energy", tabLosses:"Losses", tabComparison:"Comparison",
+      heroMessage:"A well-configured home means lower costs and better comfort.",
+      energyClass:"Energy class", lossSubtitle:"% of total losses", yourHouse:"Your home", referenceHouse:"Reference home",
+      saveConfig:"Save configuration", exportReport:"Export report", summaryPromise:"Efficient homes for people, communities and a cleaner environment.", summaryLearn:"Results use the LaCurent energy engine.",
       intro:"Start from a preset home and change only what matters. Cost, energy use and heat load update instantly.",
       proofClimate:"Automatic climate profile", proofLive:"Live recalculation", proofCost:"Estimated annual cost",
       reset:"Reset preset", locationTitle:"Where is the house?", locationSubtitle:"Type the locality and choose the correct result.",
@@ -226,6 +250,23 @@
     setField("indoor_design_temperature_c", controls.temperature.value);
     setField("dhw_occupants", controls.occupants.value);
     setField("heating_choice", controls.heating.value);
+
+    const ventilation = controls.ventilation?.value || "natural";
+    if (ventilation === "hrv") {
+      setField("air_changes_per_hour", "0.5");
+      setField("heat_recovery_efficiency", "0.75");
+    } else if (ventilation === "mechanical") {
+      setField("air_changes_per_hour", "0.65");
+      setField("heat_recovery_efficiency", "0");
+    } else {
+      setField("air_changes_per_hour", "0.5");
+      setField("heat_recovery_efficiency", "0");
+    }
+
+    const cooling = controls.cooling?.value || "none";
+    setField("cooling_enabled", cooling === "none" ? "" : "on");
+    setField("cooling_seer", cooling === "split" ? "4.2" : "4.0");
+    setField("cooling_setpoint_c", "26");
   }
 
   function setStatus(message, state="live") {
@@ -299,33 +340,58 @@
     const actual=Number(data.reference.actual_specific_primary_kwh_m2)||0;
     const reference=Number(data.reference.reference_specific_primary_kwh_m2)||0;
     const difference=Number(data.reference.difference_percent)||0;
-    document.getElementById("labReferenceDelta").textContent = `${difference>0?"+":""}${fmt(difference,1)}%`;
-    document.getElementById("labReferenceText").textContent =
-      `${fmt(actual,1)} vs ${fmt(reference,1)} kWh/m²/an · ${Math.abs(difference).toLocaleString(lang()==="en"?"en-US":"ro-RO",{maximumFractionDigits:1})}% ${difference<=0?tr("referenceBetter"):tr("referenceWorse")}`;
+    const deltaText=`${difference>0?"+":""}${fmt(difference,1)}%`;
+    const detail=`${fmt(actual,1)} vs ${fmt(reference,1)} kWh/m²/an · ${Math.abs(difference).toLocaleString(lang()==="en"?"en-US":"ro-RO",{maximumFractionDigits:1})}% ${difference<=0?tr("referenceBetter"):tr("referenceWorse")}`;
+    document.getElementById("labReferenceDelta").textContent = deltaText;
+    document.getElementById("labReferenceActual").textContent = fmt(actual,0);
+    document.getElementById("labReferenceTarget").textContent = fmt(reference,0);
+    document.getElementById("labReferenceText").textContent = detail;
+    document.getElementById("labComparisonDelta").textContent = deltaText;
+    document.getElementById("labComparisonText").textContent = detail;
     const ratio = reference > 0 ? Math.min(100, 100*actual/reference) : 0;
     document.getElementById("labReferenceBar").style.width = `${Math.max(2,ratio)}%`;
   }
 
+  function renderServiceDonut(data) {
+    const services=data.final_energy_by_service || {};
+    const rows=[
+      {label:tr("serviceHeating"),value:Number(services.heating)||0,color:"#f97316"},
+      {label:tr("serviceDhw"),value:Number(services.dhw)||0,color:"#fb7185"},
+      {label:tr("serviceCooling"),value:Number(services.cooling)||0,color:"#3b82f6"}
+    ].filter(row => row.value > 0);
+    const total=rows.reduce((sum,row)=>sum+row.value,0) || 1;
+    let cursor=0;
+    const stops=rows.map(row => {
+      const start=cursor;
+      cursor += 100*row.value/total;
+      return `${row.color} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
+    });
+    if (cursor < 100) stops.push(`#e8ebe7 ${cursor.toFixed(2)}% 100%`);
+    const donut=document.getElementById("labServiceDonut");
+    donut.style.background=`conic-gradient(${stops.join(",")})`;
+    donut.querySelector("strong").textContent=fmt(total);
+    const legendHtml=rows.map(row => {
+      const pct=100*row.value/total;
+      return `<div class="lab-service-legend-row"><i style="background:${row.color}"></i><span>${row.label}</span><strong>${fmt(pct,0)}%</strong></div>`;
+    }).join("");
+    document.getElementById("labServiceChart").innerHTML=legendHtml;
+    document.getElementById("labServiceChartMirror").innerHTML=legendHtml;
+  }
+
   function renderDashboard(data) {
     renderMonthlyChart(data);
+    const monthly=document.getElementById("labMonthlyChart");
+    document.getElementById("labMonthlyChartMirror").innerHTML=monthly.innerHTML;
+    renderServiceDonut(data);
 
-    const services=data.final_energy_by_service || {};
-    renderHorizontalChart("labServiceChart",[
-      {label:tr("serviceHeating"),value:Number(services.heating)||0,unit:"kWh"},
-      {label:tr("serviceDhw"),value:Number(services.dhw)||0,unit:"kWh"},
-      {label:tr("serviceCooling"),value:Number(services.cooling)||0,unit:"kWh"}
-    ],3);
-
-    renderHorizontalChart(
-      "labLossChart",
-      (data.heat_loss_breakdown || []).map(row => ({
-        label:row.name,
-        value:Number(row.value_w_k)||0,
-        unit:"W/K",
-        digits:1
-      })),
-      5
-    );
+    const lossRows=(data.heat_loss_breakdown || []).map(row => ({
+      label:row.name,
+      value:Number(row.percent)||0,
+      unit:"%",
+      digits:0
+    }));
+    renderHorizontalChart("labLossChart",lossRows,6);
+    renderHorizontalChart("labLossChartMirror",lossRows,6);
     renderReference(data);
   }
 
@@ -341,6 +407,10 @@
     document.getElementById("labResultStation").textContent = data.climate_station || "—";
     document.getElementById("labCo2").textContent = fmt(data.co2_kg);
     document.getElementById("labHeatLoss").textContent = fmt(data.heat_loss_w_k,1);
+    document.getElementById("labAnnualCostMirror").textContent = data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei/an`;
+    document.getElementById("labMonthlyCostMirror").textContent = data.average_monthly_cost_lei == null ? "—" : `${fmt(data.average_monthly_cost_lei)} lei · ${tr("monthly")}`;
+    document.getElementById("labFinalEnergyMirror").textContent = `${fmt(data.final_energy_kwh)} kWh/an`;
+    root.querySelectorAll("[data-class-grade]").forEach(el => el.classList.toggle("is-active", el.dataset.classGrade === data.energy_class));
     renderDashboard(data);
     setStatus(tr("ready"), "live");
   }
@@ -458,6 +528,8 @@
   });
   controls.glazing.addEventListener("change", () => scheduleCalculate(80));
   controls.orientation.addEventListener("change", () => scheduleCalculate(80));
+  controls.ventilation.addEventListener("change", () => scheduleCalculate(80));
+  controls.cooling.addEventListener("change", () => scheduleCalculate(80));
 
   document.querySelectorAll("[data-lab-number-for]").forEach(numeric => {
     const range=document.getElementById(numeric.dataset.labNumberFor);
@@ -483,6 +555,57 @@
     });
   });
 
+  function syncLevelSegments() {
+    root.querySelectorAll("[data-segmented-for='labLevels'] [data-segment-value]").forEach(button => {
+      button.classList.toggle("is-active", button.dataset.segmentValue === controls.levels.value);
+    });
+  }
+
+  root.querySelectorAll("[data-segmented-for='labLevels'] [data-segment-value]").forEach(button => {
+    button.addEventListener("click", () => {
+      controls.levels.value=button.dataset.segmentValue;
+      syncNumber(controls.levels);
+      syncLevelSegments();
+      scheduleCalculate(80);
+    });
+  });
+
+  function syncHeatingPills() {
+    root.querySelectorAll("[data-heating-choice]").forEach(button => {
+      button.classList.toggle("is-active", button.dataset.heatingChoice === controls.heating.value);
+    });
+  }
+
+  root.querySelectorAll("[data-heating-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      controls.heating.value=button.dataset.heatingChoice;
+      syncHeatingPills();
+      scheduleCalculate(80);
+    });
+  });
+
+  controls.heating.addEventListener("change", syncHeatingPills);
+
+  function openResultTab(name) {
+    root.querySelectorAll("[data-lab-tab]").forEach(button => button.classList.toggle("is-active", button.dataset.labTab === name));
+    root.querySelectorAll("[data-lab-panel]").forEach(panel => panel.classList.toggle("is-active", panel.dataset.labPanel === name));
+  }
+
+  root.querySelectorAll("[data-lab-tab]").forEach(button => button.addEventListener("click", () => openResultTab(button.dataset.labTab)));
+  root.querySelectorAll("[data-open-tab]").forEach(button => button.addEventListener("click", () => openResultTab(button.dataset.openTab)));
+
+  const saveButton=root.querySelector("[data-lab-key='saveConfig']");
+  if (saveButton) {
+    saveButton.addEventListener("click", () => {
+      const values={};
+      new FormData(form).forEach((value,key) => { values[key]=value; });
+      window.localStorage?.setItem(`lacurent-home-lab:${root.dataset.partnerId}`, JSON.stringify(values));
+      const original=tr("saveConfig");
+      saveButton.textContent=lang()==="en"?"Saved":"Salvat";
+      window.setTimeout(()=>{ saveButton.textContent=original; },1200);
+    });
+  }
+
   localityInput.addEventListener("input", () => {
     setField("locality_id","");
     if (localities.length) renderLocalityResults(localityInput.value);
@@ -506,6 +629,8 @@
       if (controls[key].tagName !== "SELECT") syncNumber(controls[key]);
     });
     updateHeatingVisual();
+    syncLevelSegments();
+    syncHeatingPills();
     const locality=byId.get(PRESET.localityId) || matches(localities,PRESET.locality,1)[0];
     if (locality) selectLocality(locality); else scheduleCalculate(20);
   });
@@ -524,7 +649,7 @@
   }
 
   function followParentViewport(offset) {
-    const panel=document.querySelector(".house-lab-results");
+    const panel=document.querySelector(".lab-summary-rail");
     const layout=document.querySelector(".house-lab-layout");
     if (!panel || !layout) return;
     if (root.getBoundingClientRect().width <= 900) {
@@ -561,5 +686,8 @@
     });
 
   updateHeatingVisual();
+  syncLevelSegments();
+  syncHeatingPills();
+  openResultTab("overview");
   applyLanguage();
 })();
