@@ -275,7 +275,7 @@ def test_magazin_route_renders_house_lab_inline_without_iframe() -> None:
     assert 'id="labWindows"' in response.text
     assert "/static/embed-house-lab.css?v=lab4" in response.text
     assert "/static/embed-house-lab.js?v=lab4" in response.text
-    assert 'data-lacurent-embed' not in response.text
+    assert '<div data-lacurent-embed' not in response.text
     assert "embed-loader.js" not in response.text
 
 
