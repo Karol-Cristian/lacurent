@@ -77,6 +77,11 @@
     if (!out) {
       out = t
         .replace(/\bstația climatică\b/gi,"climate station")
+        .replace(/\bcorespondent direct\b/gi,"direct match")
+        .replace(/\bstație-sursă coincidentă\b/gi,"coincident source station")
+        .replace(/\bcea mai apropiată\b/gi,"nearest source")
+        .replace(/ferestre distribuite pe\s+(\d+)\s+orientări/gi,"windows distributed across $1 orientations")
+        .replace(/\bTabel\s+2\.16\b/gi,"Table 2.16")
         .replace(/\bZona\s+([IV]+)\b/g,"Zone $1")
         .replace(/\bkWh\/m²\/an\b/g,"kWh/m²/year")
         .replace(/\bkWh\/an\b/g,"kWh/year")
