@@ -206,3 +206,72 @@ def test_demo_building_end_to_end_has_complete_result() -> None:
     assert result.reference is not None
     assert result.energy_class in {"A+", "A", "B", "C", "D", "E", "F", "G"}
     assert len(result.monthly) == 12
+
+def test_normative_hsol_uses_annex_a9_6_and_orientation() -> None:
+    south = calculate(
+        simple_building(
+            locality="Cluj-Napoca",
+            solar_gains_kwh_m2_month=0,
+            solar={
+                "mode": "normative_hsol",
+                "orientation": "south",
+                "glazing_type_id": "double_low_e_face_3",
+                "frame_fraction": 0.20,
+                "obstacle_shading_factor": 1.0,
+            },
+        ),
+        include_reference=False,
+    )
+    north = calculate(
+        simple_building(
+            locality="Cluj-Napoca",
+            solar_gains_kwh_m2_month=0,
+            solar={
+                "mode": "normative_hsol",
+                "orientation": "north",
+                "glazing_type_id": "double_low_e_face_3",
+                "frame_fraction": 0.20,
+                "obstacle_shading_factor": 1.0,
+            },
+        ),
+        include_reference=False,
+    )
+
+    january_south = next(row for row in south.monthly if row.month == "ian")
+    january_north = next(row for row in north.monthly if row.month == "ian")
+
+    assert january_south.solar_hsol_kwh_m2 is not None
+    assert january_south.solar_gains_source == "MC001_2_39_2_40_2_54_with_source_backed_A9_6_Hsol"
+    assert january_south.solar_hsol_kwh_m2 > january_north.solar_hsol_kwh_m2
+    assert january_south.solar_gains_kwh > january_north.solar_gains_kwh
+
+
+def test_normative_hsol_does_not_invent_missing_solar_station() -> None:
+    result = calculate(
+        simple_building(
+            locality="Alba Iulia",
+            solar_gains_kwh_m2_month=1.5,
+            solar={"mode": "normative_hsol", "orientation": "south"},
+        ),
+        include_reference=False,
+    )
+
+    july = next(row for row in result.monthly if row.month == "iul")
+    assert july.solar_hsol_kwh_m2 is None
+    assert july.solar_gains_source == "explicit_fallback_no_source_backed_A9_6_Hsol"
+    assert_close(july.solar_gains_kwh, 150.0)
+
+
+def test_explicit_solar_mode_preserves_legacy_equivalent_monthly_gain() -> None:
+    result = calculate(
+        simple_building(
+            solar_gains_kwh_m2_month=1.2,
+            solar={"mode": "explicit"},
+        ),
+        include_reference=False,
+    )
+
+    assert all(row.solar_gains_source == "explicit_equivalent_monthly_gain" for row in result.monthly)
+    assert all(row.solar_hsol_kwh_m2 is None for row in result.monthly)
+    assert all(math.isclose(row.solar_gains_kwh, 120.0, rel_tol=1e-9) for row in result.monthly)
+
