@@ -269,7 +269,11 @@ def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
     response = client.get("/embed-host-demo")
     assert response.status_code == 200
     assert "SITE DEMO PARTENER" in response.text
-    assert "Magazin Instalații Demo" in response.text
+    assert "Depozitul Constructorului" in response.text
+    assert "Categorii populare" in response.text
+    assert "Produse recomandate" in response.text
+    assert "Servicii pentru proiectul tău" in response.text
+    assert "Înainte să cumperi, estimează necesarul energetic al casei." in response.text
     assert 'data-lacurent-embed data-partner="demo-store"' in response.text
     assert 'src="https://lacurent.com/static/embed-loader.js"' in response.text
     assert "app.css" not in response.text
