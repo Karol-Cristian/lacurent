@@ -309,8 +309,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab7" in response.text
-    assert "embed-house-lab.js?v=lab7" in response.text
+    assert "embed-house-lab.css?v=lab8" in response.text
+    assert "embed-house-lab.js?v=lab8" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -443,6 +443,32 @@ def test_partner_embed_exposes_commercial_home_lab_copy() -> None:
     assert "Profil climatic automat" in response.text
     assert "Recalculare live" in response.text
     assert "Cost anual estimat" in response.text
+
+
+def test_home_lab_live_fetch_is_resilient_and_does_not_expose_raw_json_errors() -> None:
+    response = client.get("/static/embed-house-lab.js")
+    assert response.status_code == 200
+    assert "new AbortController()" in response.text
+    assert 'response.headers.get("content-type")' in response.text
+    assert 'contentType.includes("application/json")' in response.text
+    assert 'error.transient = transient' in response.text
+    assert 'await wait(450)' in response.text
+    assert 'setStatus(tr("calculating"), "calculating")' in response.text
+    assert 'setStatus(tr("error"), "error")' in response.text
+    assert 'Unexpected token' not in response.text
+
+
+def test_home_lab_live_indicator_and_class_badge_have_distinct_states() -> None:
+    response = client.get("/static/embed-house-lab.css")
+    assert response.status_code == 200
+    assert ".lab-results-status.is-calculating::before" in response.text
+    assert ".lab-results-status.is-live::before" in response.text
+    assert ".lab-results-status.is-error::before" in response.text
+    assert "@keyframes lab-live-pulse" in response.text
+    assert ".lab-class{" in response.text
+    assert "width:58px" in response.text
+    assert "height:58px" in response.text
+    assert "border-radius:12px" in response.text
 
 
 def test_home_lab_runtime_renders_dashboard_and_parent_sticky_contract() -> None:

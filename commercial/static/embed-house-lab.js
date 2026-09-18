@@ -58,7 +58,7 @@
       serviceHeating:"Încălzire", serviceCooling:"Răcire", serviceDhw:"Apă caldă",
       referenceBetter:"sub referință", referenceWorse:"peste referință",
       methodNote:"Rezultatele se recalculează cu motorul energetic LaCurent. Valorile sunt estimări tehnice și nu reprezintă un certificat de performanță energetică.",
-      calculating:"Se recalculează…", ready:"Actualizat", monthly:"medie lunară", error:"Calculul nu a putut fi actualizat."
+      calculating:"Se recalculează…", ready:"Actualizat", monthly:"medie lunară", error:"Calculul live a fost întrerupt. Rezultatul afișat rămâne ultima valoare validă."
     },
     en: {
       kicker:"Home Lab", title:"Configure the house. See what changes immediately.",
@@ -80,7 +80,7 @@
       serviceHeating:"Heating", serviceCooling:"Cooling", serviceDhw:"Hot water",
       referenceBetter:"below reference", referenceWorse:"above reference",
       methodNote:"Results are recalculated with the LaCurent energy engine. Values are technical estimates and are not an energy performance certificate.",
-      calculating:"Recalculating…", ready:"Updated", monthly:"monthly average", error:"The calculation could not be updated."
+      calculating:"Recalculating…", ready:"Updated", monthly:"monthly average", error:"Live calculation was interrupted. The displayed result remains the last valid value."
     }
   };
 
@@ -116,6 +116,7 @@
   let requestToken = 0;
   let timer = null;
   let lastResult = null;
+  let activeController = null;
 
   function insulationU(baseU, centimetres) {
     const lambda = 0.040;
@@ -164,9 +165,12 @@
     setField("heating_choice", controls.heating.value);
   }
 
-  function setStatus(message, error=false) {
+  function setStatus(message, state="live") {
     status.textContent = message;
-    status.classList.toggle("is-error", error);
+    status.classList.toggle("is-error", state === "error");
+    status.classList.toggle("is-calculating", state === "calculating");
+    status.classList.toggle("is-live", state === "live");
+    status.setAttribute("data-live-state", state);
   }
 
   function fmt(value, digits=0) {
@@ -275,22 +279,63 @@
     document.getElementById("labCo2").textContent = fmt(data.co2_kg);
     document.getElementById("labHeatLoss").textContent = fmt(data.heat_loss_w_k,1);
     renderDashboard(data);
-    setStatus(tr("ready"));
+    setStatus(tr("ready"), "live");
+  }
+
+  const wait = ms => new Promise(resolve => window.setTimeout(resolve, ms));
+
+  async function fetchCalculation(signal) {
+    const response = await fetch(calculateUrl, {
+      method:"POST",
+      body:new FormData(form),
+      headers:{"X-LaCurent-Embed-Lab":"1","Accept":"application/json"},
+      signal
+    });
+
+    const contentType=(response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("application/json")) {
+      const transient = response.status >= 500 || response.status === 429 || response.status === 404;
+      const error = new Error("non-json-response");
+      error.transient = transient;
+      throw error;
+    }
+
+    const data = await response.json();
+    if (!response.ok) {
+      const error = new Error(data.error || "Calculation failed");
+      error.transient = response.status >= 500 || response.status === 429;
+      throw error;
+    }
+    return data;
   }
 
   async function calculateNow() {
     syncGeometry();
     const token = ++requestToken;
-    setStatus(tr("calculating"));
+
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+    const {signal} = activeController;
+
+    setStatus(tr("calculating"), "calculating");
+
     try {
-      const response = await fetch(calculateUrl, {method:"POST", body:new FormData(form), headers:{"X-LaCurent-Embed-Lab":"1"}});
-      const data = await response.json();
-      if (token !== requestToken) return;
-      if (!response.ok) throw new Error(data.error || "Calculation failed");
+      let data;
+      try {
+        data = await fetchCalculation(signal);
+      } catch (error) {
+        if (signal.aborted) return;
+        if (!error?.transient) throw error;
+        await wait(450);
+        if (signal.aborted || token !== requestToken) return;
+        data = await fetchCalculation(signal);
+      }
+
+      if (signal.aborted || token !== requestToken) return;
       renderResult(data);
     } catch (error) {
-      if (token !== requestToken) return;
-      setStatus(`${tr("error")} ${error?.message || ""}`.trim(), true);
+      if (signal.aborted || token !== requestToken) return;
+      setStatus(tr("error"), "error");
     }
   }
 
