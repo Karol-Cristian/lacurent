@@ -23,6 +23,9 @@ def test_calculator_autosave_is_loaded_before_main_app() -> None:
 def test_calculator_autosave_keeps_local_draft_for_30_days() -> None:
     script = (COMMERCIAL_DIR / "static" / "calculator-autosave.js").read_text(encoding="utf-8")
     assert 'lacurent-calculator-draft-v1' in script
+    assert "data?.embedPartner" not in script
+    assert "dataset?.embedPartner" in script
+    assert "partnerId" in script
     assert "30 * 24 * 60 * 60 * 1000" in script
     assert "window.localStorage.setItem" in script
     assert "window.localStorage.getItem" in script
