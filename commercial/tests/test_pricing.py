@@ -7,7 +7,7 @@ import pytest
 
 from commercial.app.engine import calculate
 from commercial.app.main import build_input_from_form
-from commercial.app.pricing import _price_reference_status, estimate_energy_cost
+from commercial.app.pricing import _delivery_cost, _firewood_reference, _price_reference_status, estimate_energy_cost
 
 
 def simple_form(heating_choice: str) -> dict[str, str]:
@@ -83,6 +83,25 @@ def test_firewood_cost_uses_huedin_pallet_price_and_delivery_per_four_pallets() 
     monthly_total = sum(float(row["priced_total_lei"]) for row in estimate["monthly_rows"])
     assert service_total == pytest.approx(estimate["priced_total_lei"], abs=0.01)
     assert monthly_total == pytest.approx(estimate["priced_total_lei"], abs=0.01)
+
+def test_firewood_delivery_cost_steps_after_each_four_pallets() -> None:
+    reference = _firewood_reference()
+    pallet_kwh = float(reference["energy_kwh_per_package"])
+
+    four = _delivery_cost(reference, 4 * pallet_kwh)
+    over_four = _delivery_cost(reference, 4.001 * pallet_kwh)
+    eight = _delivery_cost(reference, 8 * pallet_kwh)
+    over_eight = _delivery_cost(reference, 8.001 * pallet_kwh)
+
+    assert four["delivery_batches"] == 1
+    assert four["delivery_cost_lei"] == pytest.approx(200.0)
+    assert over_four["delivery_batches"] == 2
+    assert over_four["delivery_cost_lei"] == pytest.approx(400.0)
+    assert eight["delivery_batches"] == 2
+    assert eight["delivery_cost_lei"] == pytest.approx(400.0)
+    assert over_eight["delivery_batches"] == 3
+    assert over_eight["delivery_cost_lei"] == pytest.approx(600.0)
+
 
 def test_pellet_profile_uses_dated_retail_market_reference() -> None:
     building = build_input_from_form(simple_form("pellet_boiler"))
