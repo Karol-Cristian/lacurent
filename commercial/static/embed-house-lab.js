@@ -54,7 +54,8 @@
       systemsTitle:"3. Sisteme de încălzire și apă caldă", systemsSubtitle:"Alege sursa principală",
       ventilationTitle:"4. Ventilație și răcire", ventilationSubtitle:"Schimbul de aer și confortul de vară",
       ventilation:"Sistem ventilație", cooling:"Răcire", otherHeating:"Alte sisteme",
-      compareScenarios:"Compară scenarii", tabOverview:"Prezentare", tabCosts:"Costuri", tabEnergy:"Energie", tabLosses:"Pierderi", tabComparison:"Comparație",
+      compareScenarios:"Compară cu casa actuală", tabOverview:"Prezentare", tabCosts:"Costuri", tabEnergy:"Energie", tabLosses:"Pierderi", tabComparison:"Comparație",
+      overviewBaselineTitle:"Față de casa ta actuală", overviewBaselineSubtitle:"baseline real salvat de tine", overviewBaselineEmptyTitle:"Salvează casa actuală", overviewBaselineEmptyText:"După aceea, orice modificare devine un scenariu comparat cu situația reală de azi.", details:"Detalii",
       heroMessage:"O casă bine configurată înseamnă costuri mai mici și mai mult confort.",
       energyClass:"Clasă energetică", lossSubtitle:"% din pierderile totale", yourHouse:"Casa ta", referenceHouse:"Casă de referință",
       saveConfig:"Salvează configurația", exportReport:"Exportă raport", summaryPromise:"Case eficiente pentru oameni, comunități și un mediu mai curat.", summaryLearn:"Rezultatele folosesc motorul energetic LaCurent.",
@@ -97,7 +98,8 @@
       systemsTitle:"3. Heating and hot water", systemsSubtitle:"Choose the main heat source",
       ventilationTitle:"4. Ventilation and cooling", ventilationSubtitle:"Air change and summer comfort",
       ventilation:"Ventilation system", cooling:"Cooling", otherHeating:"Other systems",
-      compareScenarios:"Compare scenarios", tabOverview:"Overview", tabCosts:"Costs", tabEnergy:"Energy", tabLosses:"Losses", tabComparison:"Comparison",
+      compareScenarios:"Compare with current home", tabOverview:"Overview", tabCosts:"Costs", tabEnergy:"Energy", tabLosses:"Losses", tabComparison:"Comparison",
+      overviewBaselineTitle:"Compared with your current home", overviewBaselineSubtitle:"your saved real-home baseline", overviewBaselineEmptyTitle:"Save the current home", overviewBaselineEmptyText:"After that, every change becomes a scenario compared with the real situation today.", details:"Details",
       heroMessage:"A well-configured home means lower costs and better comfort.",
       energyClass:"Energy class", lossSubtitle:"% of total losses", yourHouse:"Your home", referenceHouse:"Reference home",
       saveConfig:"Save configuration", exportReport:"Export report", summaryPromise:"Efficient homes for people, communities and a cleaner environment.", summaryLearn:"Results use the LaCurent energy engine.",
@@ -355,27 +357,6 @@
     }).join("");
   }
 
-  function renderReference(data) {
-    const card=document.getElementById("labReferenceCard");
-    if (!card) return;
-    if (!data.reference) {
-      card.hidden=true;
-      return;
-    }
-    card.hidden=false;
-    const actual=Number(data.reference.actual_specific_primary_kwh_m2)||0;
-    const reference=Number(data.reference.reference_specific_primary_kwh_m2)||0;
-    const difference=Number(data.reference.difference_percent)||0;
-    const deltaText=`${difference>0?"+":""}${fmt(difference,1)}%`;
-    const detail=`${fmt(actual,1)} vs ${fmt(reference,1)} kWh/m²/an · ${Math.abs(difference).toLocaleString(lang()==="en"?"en-US":"ro-RO",{maximumFractionDigits:1})}% ${difference<=0?tr("referenceBetter"):tr("referenceWorse")}`;
-    document.getElementById("labReferenceDelta").textContent = deltaText;
-    document.getElementById("labReferenceActual").textContent = fmt(actual,0);
-    document.getElementById("labReferenceTarget").textContent = fmt(reference,0);
-    document.getElementById("labReferenceText").textContent = detail;
-    const ratio = reference > 0 ? Math.min(100, 100*actual/reference) : 0;
-    document.getElementById("labReferenceBar").style.width = `${Math.max(2,ratio)}%`;
-  }
-
   function renderServiceDonut(data) {
     const services=data.final_energy_by_service || {};
     const rows=[
@@ -490,7 +471,12 @@
     const title=document.getElementById("labBaselineTitle");
     const summary=document.getElementById("labBaselineSummary");
 
+    const overviewEmpty=document.getElementById("labOverviewBaselineEmpty");
+    const overviewData=document.getElementById("labOverviewBaselineData");
+
     if (!baselineSnapshot) {
+      if (overviewEmpty) overviewEmpty.hidden=false;
+      if (overviewData) overviewData.hidden=true;
       if (empty) empty.hidden=false;
       if (comparison) comparison.hidden=true;
       if (rail) rail.hidden=true;
@@ -504,6 +490,8 @@
 
     const base=baselineSnapshot.result || {};
     const current=lastResult ? snapshotResult(lastResult) : base;
+    if (overviewEmpty) overviewEmpty.hidden=true;
+    if (overviewData) overviewData.hidden=false;
     if (empty) empty.hidden=true;
     if (comparison) comparison.hidden=false;
     if (rail) rail.hidden=false;
@@ -540,6 +528,36 @@
 
     const savings=(Number(base.annual_cost_lei)||0)-(Number(current.annual_cost_lei)||0);
     const baseCost=Number(base.annual_cost_lei)||0;
+
+    const overviewCost=document.getElementById("labOverviewBaselineCost");
+    const overviewEnergy=document.getElementById("labOverviewBaselineEnergy");
+    const overviewPower=document.getElementById("labOverviewBaselinePower");
+
+    const costDelta=Number(current.annual_cost_lei||0)-Number(base.annual_cost_lei||0);
+    const energyDelta=Number(current.final_energy_kwh||0)-Number(base.final_energy_kwh||0);
+    const powerDelta=Number(current.design_heat_load_kw||0)-Number(base.design_heat_load_kw||0);
+
+    const deltaText=(value,unit,digits=0) => {
+      if (Math.abs(value) < (digits ? 0.05 : 0.5)) return tr("noChange");
+      const sign=value>0?"+":"−";
+      return `${sign}${fmt(Math.abs(value),digits)} ${unit}`;
+    };
+
+    if (overviewCost) {
+      overviewCost.textContent=deltaText(costDelta,"lei/an",0);
+      overviewCost.classList.toggle("is-good",costDelta < -0.5);
+      overviewCost.classList.toggle("is-bad",costDelta > 0.5);
+    }
+    if (overviewEnergy) {
+      overviewEnergy.textContent=deltaText(energyDelta,"kWh/an",0);
+      overviewEnergy.classList.toggle("is-good",energyDelta < -0.5);
+      overviewEnergy.classList.toggle("is-bad",energyDelta > 0.5);
+    }
+    if (overviewPower) {
+      overviewPower.textContent=deltaText(powerDelta,"kW",1);
+      overviewPower.classList.toggle("is-good",powerDelta < -0.05);
+      overviewPower.classList.toggle("is-bad",powerDelta > 0.05);
+    }
     const savingsPct=baseCost ? 100*savings/baseCost : 0;
     const savingsNode=document.getElementById("labBaselineSavings");
     const noteNode=document.getElementById("labBaselineSavingsNote");
@@ -589,7 +607,6 @@
     }));
     renderHorizontalChart("labLossChart",lossRows,6);
     renderHorizontalChart("labLossChartMirror",lossRows,6);
-    renderReference(data);
   }
 
   function renderResult(data) {
