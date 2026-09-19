@@ -11,6 +11,8 @@ from .models import (
     Contribution,
     Co2Result,
     EnergyServiceResult,
+    EnvelopeGeometryResult,
+    EnvelopeUValuesResult,
     HeatingSystemType,
     IndicatorResult,
 )
@@ -21,6 +23,53 @@ GAMMA_EQUALITY_TOLERANCE = 1e-12
 
 def _round(value: float, digits: int = 3) -> float:
     return round(float(value), digits)
+
+
+def _envelope_items(building: BuildingInput, kind: str):
+    return [item for item in building.envelope if item.type.value == kind]
+
+
+def _area_sum(building: BuildingInput, kind: str) -> float:
+    return sum(float(item.area_m2) for item in _envelope_items(building, kind))
+
+
+def _area_weighted_u(building: BuildingInput, kind: str) -> float | None:
+    items = _envelope_items(building, kind)
+    area = sum(float(item.area_m2) for item in items)
+    if area <= 0:
+        return None
+    return _round(sum(float(item.area_m2) * float(item.u_value_w_m2k) for item in items) / area, 4)
+
+
+def envelope_geometry(building: BuildingInput) -> EnvelopeGeometryResult:
+    """Return the geometry actually used by the energy engine.
+
+    net_wall_area_m2 is the opaque exterior-wall area represented in the
+    envelope. gross_wall_area_m2 adds modeled windows and exterior doors.
+    No commercial waste or purchase allowance is included.
+    """
+    net_wall = _area_sum(building, "exterior_wall")
+    windows = _area_sum(building, "window")
+    doors = _area_sum(building, "exterior_door")
+    return EnvelopeGeometryResult(
+        gross_wall_area_m2=_round(net_wall + windows + doors),
+        window_area_m2=_round(windows),
+        exterior_door_area_m2=_round(doors),
+        net_wall_area_m2=_round(net_wall),
+        roof_area_m2=_round(_area_sum(building, "roof")),
+        floor_area_m2=_round(_area_sum(building, "floor")),
+    )
+
+
+def envelope_u_values(building: BuildingInput) -> EnvelopeUValuesResult:
+    """Return area-weighted U-values for the modeled envelope groups."""
+    return EnvelopeUValuesResult(
+        wall_u_value_w_m2k=_area_weighted_u(building, "exterior_wall"),
+        roof_u_value_w_m2k=_area_weighted_u(building, "roof"),
+        floor_u_value_w_m2k=_area_weighted_u(building, "floor"),
+        window_u_value_w_m2k=_area_weighted_u(building, "window"),
+        exterior_door_u_value_w_m2k=_area_weighted_u(building, "exterior_door"),
+    )
 
 
 def transmission_heat_transfer(building: BuildingInput) -> tuple[float, list[Contribution], list[Contribution]]:
@@ -462,6 +511,8 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         h_tr_w_k=h_tr,
         h_ve_w_k=h_ve,
         heat_loss_w_k=_round(h_tr + h_ve),
+        envelope_geometry=envelope_geometry(building),
+        envelope_u_values=envelope_u_values(building),
         envelope_contributions=envelope_contributions,
         thermal_bridge_contributions=bridge_contributions,
         monthly=monthly,
