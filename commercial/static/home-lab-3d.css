@@ -359,7 +359,8 @@
   display: none;
 }
 
-.hln-3d-variant-switcher button {
+.hln-3d-variant-switcher button,
+.hln-3d-variant-switcher a {
   flex: 0 0 auto;
   min-height: 34px;
   border: 1px solid rgba(28,36,33,.10);
@@ -374,7 +375,8 @@
   cursor: pointer;
 }
 
-.hln-3d-variant-switcher button.is-active {
+.hln-3d-variant-switcher button,
+.hln-3d-variant-switcher a.is-active {
   color: #315b4a;
   background: rgba(223,233,226,.94);
   border-color: rgba(63,116,92,.30);
@@ -387,7 +389,8 @@
     max-width: calc(100% - 154px);
   }
 
-  .hln-3d-variant-switcher button {
+  .hln-3d-variant-switcher button,
+.hln-3d-variant-switcher a {
     min-height: 32px;
     padding: 6px 9px;
     font-size: 9px;
