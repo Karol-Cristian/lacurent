@@ -332,7 +332,7 @@ def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     assert 'data-lacurent-embed data-partner="demo-store" data-path="next"' in response.text
     assert "https://lacurent.com/static/embed-loader.js?v=embed8" in response.text
     assert "Home Lab Next este experiența recomandată" in response.text
-    assert 'href="/embed/demo-store"' in response.text
+    assert 'href="/embed/demo-store/next"' in response.text
 
 
 def test_home_lab_next_route_exposes_four_screen_product_flow() -> None:
