@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/26895/v1/model.glb";
-const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/paranormal-investigation-house-investiga-30208f4c-starter-scene";
+const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/32485/v1/model.glb";
+const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene";
 
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c },
@@ -176,16 +176,16 @@ class HomeLabHouse3D {
 
   classifyPart(name) {
     const n = String(name || "").toLowerCase();
-    if (/roof|shingle|slate|attic|gable/.test(n)) return "roof";
+    if (/roof|thatch|ridge|rafter|attic|gable/.test(n)) return "roof";
     if (/window|glass|sash|bay.?window/.test(n)) return "windows";
-    if (/floor|slab|foundation|plinth|basement.?floor/.test(n)) return "floor";
-    if (/wall|clapboard|siding|facade|façade|exterior/.test(n)) return "wall";
+    if (/floor|flagstone|slab|foundation|plinth|basement.?floor/.test(n)) return "floor";
+    if (/wall|cob|plaster|timber.?frame|facade|façade|exterior/.test(n)) return "wall";
     return null;
   }
 
   shouldHideModelObject(name) {
     const n = String(name || "").toLowerCase();
-    return /investigation.?van|\bvan\b|emf|spirit.?box|thermometer|flashlight|motion.?sensor|sound.?sensor|point.?projector|parabolic|laptop|monitor.?rack|tripod|head.?camera|evidence|tarot|crucifix|incense|rag.?doll|porcelain.?doll|salt.?pile|ghost.?writing|mausoleum|grave.?marker|cable.?reel/.test(n);
+    return /investigation.?van|\bvan\b|emf|spirit.?box|thermometer|flashlight|motion.?sensor|sound.?sensor|point.?projector|parabolic|laptop|monitor.?rack|tripod|head.?camera|evidence|tarot|crucifix|incense|rag.?doll|porcelain.?doll|salt.?pile|ghost.?writing|mausoleum|grave.?marker|cable.?reel|cauldron|apothecary|mortar|pestle|still|bottle|flask|loom|spinning.?wheel|rocking.?chair|armchair|stool|dresser|rug|tea.?set|crate|writing.?desk|herb.?press|scales/.test(n);
   }
 
   tuneClassicMaterial(obj, source) {
@@ -195,13 +195,15 @@ class HomeLabHouse3D {
     if ("roughness" in mat) mat.roughness = Math.max(0.52, mat.roughness ?? 0.72);
     if ("metalness" in mat) mat.metalness = Math.min(0.08, mat.metalness ?? 0);
 
-    if (/roof|shingle|slate/.test(key) && mat.color) {
-      mat.color.setHex(0x4a4f50);
-      if ("roughness" in mat) mat.roughness = 0.82;
-    } else if (/door/.test(key) && mat.color) {
+    const hasAuthoredTexture = Boolean(mat.map);
+
+    if (!hasAuthoredTexture && /roof|thatch|shingle|slate/.test(key) && mat.color) {
+      mat.color.setHex(/thatch/.test(key) ? 0x8d7b58 : 0x4a4f50);
+      if ("roughness" in mat) mat.roughness = 0.88;
+    } else if (!hasAuthoredTexture && /door/.test(key) && mat.color) {
       mat.color.setHex(0x17372f);
       if ("roughness" in mat) mat.roughness = 0.72;
-    } else if (/window|sash|frame|trim|cornice|mould|porch|column/.test(key) && mat.color && !/glass/.test(key)) {
+    } else if (!hasAuthoredTexture && /window|sash|frame|trim|cornice|mould|porch|column/.test(key) && mat.color && !/glass/.test(key)) {
       mat.color.setHex(0xe8e2d4);
       if ("roughness" in mat) mat.roughness = 0.68;
     } else if (/glass/.test(key) && mat.color) {
@@ -210,16 +212,19 @@ class HomeLabHouse3D {
       mat.opacity = Math.min(mat.opacity ?? 1, 0.72);
       mat.depthWrite = false;
       if ("roughness" in mat) mat.roughness = 0.16;
-    } else if (/wall|clapboard|siding|facade|exterior/.test(key) && mat.color) {
-      mat.color.setHex(0xc9bba7);
-      if ("roughness" in mat) mat.roughness = 0.9;
-    } else if (/stone|foundation|plinth|step|kerb|curb/.test(key) && mat.color) {
+    } else if (!hasAuthoredTexture && /wall|cob|plaster|facade|exterior/.test(key) && mat.color) {
+      mat.color.setHex(0xd4c8b5);
+      if ("roughness" in mat) mat.roughness = 0.93;
+    } else if (!hasAuthoredTexture && /timber|beam|oak|wood/.test(key) && mat.color) {
+      mat.color.setHex(0x5f4937);
+      if ("roughness" in mat) mat.roughness = 0.88;
+    } else if (!hasAuthoredTexture && /stone|foundation|plinth|step|kerb|curb/.test(key) && mat.color) {
       mat.color.setHex(0xaaa397);
       if ("roughness" in mat) mat.roughness = 0.95;
     } else if (mat.color) {
       const hsl = {};
       mat.color.getHSL(hsl);
-      mat.color.setHSL(hsl.h, clamp(hsl.s * 0.68, 0, 1), clamp(hsl.l * 1.025, 0.06, 0.92));
+      mat.color.setHSL(hsl.h, clamp(hsl.s * 0.82, 0, 1), clamp(hsl.l * 1.015, 0.06, 0.94));
     }
 
     return mat;
