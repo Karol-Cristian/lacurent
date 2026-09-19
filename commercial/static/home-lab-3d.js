@@ -1,49 +1,16 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-const HOUSE_MODELS = {
-  current: {
-    label: "English cottage",
-    url: "https://cdn.3dassets.dev/assets/32485/v1/model.glb",
-    source: "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene",
-    license: "CC0",
-  },
-  final: {
-    label: "Final House",
-    url: "https://raw.githubusercontent.com/Koushik6692/3d-portfolio/main/public/house-transformed.glb",
-    source: "https://sketchfab.com/3d-models/final-house-20ea8edb2b7043b1a98a0b6ae18684bb",
-    author: "Anton Revutsky",
-    license: "CC-BY-4.0",
-  },
-  dower: {
-    label: "Dower House",
-    url: "https://raw.githubusercontent.com/Dhruvisgoat/deploy3dgamebuild/main/models/house-transformed.glb",
-    source: "https://sketchfab.com/3d-models/preceptory-and-dower-house-game-asset-50d31c70e44b4000b17d81ff0fbcdf98",
-    author: "Andy Woodhead",
-    license: "CC-BY-4.0",
-    keepMaterial: /(^|\s)house($|\s)/i,
-  },
-};
-
-const HOUSE_VARIANT_KEY = new URLSearchParams(window.location.search).get("house") || "current";
-const HOUSE_MODEL = HOUSE_MODELS[HOUSE_VARIANT_KEY] || HOUSE_MODELS.current;
-const HOUSE_MODEL_URL = HOUSE_MODEL.url;
-const HOUSE_MODEL_SOURCE = HOUSE_MODEL.source;
+const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/32485/v1/model.glb";
+const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene";
 
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c },
   roof: { label: "Pod / acoperiș", editor: "envelope", measure: "roof", color: 0x3f745c },
   windows: { label: "Ferestre", editor: "envelope", measure: "windows", color: 0x41697a },
   floor: { label: "Pardoseală", editor: "envelope", measure: "floor", color: 0x3f745c },
-};
-
-const HOTSPOTS = {
-  wall: { label: "Fațadă", targetPart: "wall" },
-  windows: { label: "Fereastră", targetPart: "windows" },
-  roof: { label: "Acoperiș", targetPart: "roof" },
-  floor: { label: "Pardoseală", targetPart: "floor" },
-  insulation: { label: "Izolație", targetPart: "wall" },
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -57,8 +24,6 @@ class HomeLabHouse3D {
   constructor(mount) {
     this.mount = mount;
     this.mode = mount.dataset.hln3dStage || "home";
-    this.houseVariant = HOUSE_VARIANT_KEY in HOUSE_MODELS ? HOUSE_VARIANT_KEY : "current";
-    this.houseModel = HOUSE_MODELS[this.houseVariant];
     this.renderer = null;
     this.scene = null;
     this.camera = null;
@@ -81,18 +46,15 @@ class HomeLabHouse3D {
     this.dragged = false;
     this.pointerDown = null;
     this.isMobile = window.matchMedia?.("(max-width: 760px)").matches ?? false;
+    this.environmentTarget = null;
     this.microTexture = null;
-    this.renderPipeline = null;
-    this.beautyEnabled = false;
-    this.hotspotAnchors = new Map();
-    this.hotspotElements = new Map();
-    this.hotspotRoot = null;
-    this.initialMotionTimer = null;
-    this.beautyTimer = null;
   }
 
   async init() {
-    if (!this.mount) return;
+    if (!this.mount || !window.WebGL2RenderingContext) {
+      this.fail("WebGL indisponibil");
+      return;
+    }
 
     this.mount.classList.add("is-loading");
     this.mount.innerHTML = `
@@ -104,9 +66,7 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-reset aria-label="Resetează vederea">Reset</button>
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
-      <div class="hln-3d-variant-switcher" data-hln-3d-variants hidden></div>
       <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
-      <div class="hln-3d-hotspots" data-hln-3d-hotspots aria-label="Elemente selectabile ale casei"></div>
       <canvas class="hln-3d-canvas" aria-label="Model 3D interactiv al casei"></canvas>
     `;
 
@@ -123,7 +83,7 @@ class HomeLabHouse3D {
       return;
     }
 
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.5 : 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.7 : 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -132,6 +92,7 @@ class HomeLabHouse3D {
     this.renderer.setClearColor(0x000000, 0);
 
     this.scene = new THREE.Scene();
+    this.addEnvironment();
     this.camera = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
     this.camera.position.set(9.5, 6.2, 10.5);
 
@@ -151,23 +112,29 @@ class HomeLabHouse3D {
 
     try {
       await this.loadModel();
+      this.addEnglishGarden();
       this.addHitZones();
       this.addRenovationLayer();
-      this.createSemanticHotspots();
-      this.setupBeautyPipeline();
-      this.createVariantSwitcher();
       this.bindEvents();
       this.resize();
       this.mount.classList.remove("is-loading");
       this.mount.classList.add("is-ready");
-      const visual = this.mount.closest(".hln-house-visual");
-      visual?.classList.add("hln-house-visual-3d-ready");
-      visual?.closest(".hln-house-board")?.classList.add("hln-house-board-3d-ready");
-      this.startRenderLoop();
+      this.mount.closest(".hln-house-visual")?.classList.add("hln-house-visual-3d-ready");
+      this.animate();
     } catch (error) {
       console.error("[Home Lab 3D] model load failed", error);
-      this.fail("Modelul 3D nu a putut fi încărcat", error);
+      this.fail("Modelul 3D nu a putut fi încărcat");
     }
+  }
+
+  addEnvironment() {
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const environmentScene = new RoomEnvironment();
+    this.environmentTarget = pmrem.fromScene(environmentScene, 0.04);
+    this.scene.environment = this.environmentTarget.texture;
+    if ("environmentIntensity" in this.scene) this.scene.environmentIntensity = 0.72;
+    environmentScene.dispose();
+    pmrem.dispose();
   }
 
   addLighting() {
@@ -297,11 +264,6 @@ class HomeLabHouse3D {
     return null;
   }
 
-  shouldHideForVariant(obj) {
-    if (!this.houseModel?.keepMaterial || !obj?.isMesh) return false;
-    return !this.houseModel.keepMaterial.test(this.materialNamesForObject(obj));
-  }
-
   shouldHideModelObject(name) {
     const n = String(name || "").toLowerCase();
     return /investigation.?van|\bvan\b|emf|spirit.?box|thermometer|flashlight|motion.?sensor|sound.?sensor|point.?projector|parabolic|laptop|monitor.?rack|tripod|head.?camera|evidence|tarot|crucifix|incense|rag.?doll|porcelain.?doll|salt.?pile|ghost.?writing|mausoleum|grave.?marker|cable.?reel|cauldron|apothecary|mortar|pestle|still|bottle|flask|loom|spinning.?wheel|rocking.?chair|armchair|stool|dresser|rug|tea.?set|crate|writing.?desk|herb.?press|scales/.test(n);
@@ -315,7 +277,7 @@ class HomeLabHouse3D {
     if ("metalness" in mat) mat.metalness = clamp(mat.metalness ?? 0, 0, 0.12);
     if ("envMapIntensity" in mat) mat.envMapIntensity = 0.68;
 
-    const maxAnisotropy = this.renderer.capabilities?.getMaxAnisotropy?.() ?? 8;
+    const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
     [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.aoMap].forEach((texture) => {
       if (!texture) return;
       texture.anisotropy = maxAnisotropy;
@@ -386,7 +348,7 @@ class HomeLabHouse3D {
     const loader = new GLTFLoader();
     const gltf = await loader.loadAsync(HOUSE_MODEL_URL);
     this.modelRoot = gltf.scene;
-    this.modelRoot.name = `LaCurentHouse_${this.houseVariant}`;
+    this.modelRoot.name = "LaCurentEnglishHouse";
 
     const toRemove = [];
     this.modelRoot.traverse((obj) => {
@@ -395,10 +357,6 @@ class HomeLabHouse3D {
         return;
       }
       if (!obj.isMesh) return;
-      if (this.shouldHideForVariant(obj)) {
-        toRemove.push(obj);
-        return;
-      }
 
       obj.castShadow = true;
       obj.receiveShadow = true;
@@ -543,100 +501,6 @@ class HomeLabHouse3D {
     this.scene.add(garden);
   }
 
-  setupBeautyPipeline() {
-    // Mobile-safe production baseline.
-    // WebGPU/path-tracing stays an optional enhancement; semantic picking and
-    // hotspot interaction must never depend on it.
-    this.renderPipeline = null;
-    this.beautyEnabled = false;
-    this.mount.dataset.hln3dRenderer = "webgl";
-  }
-
-  createSemanticHotspots() {
-    this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
-    if (!this.hotspotRoot) return;
-
-    const min = this.modelBox.min;
-    const max = this.modelBox.max;
-    const size = this.modelSize;
-    const cx = (min.x + max.x) * 0.5;
-    const cz = (min.z + max.z) * 0.5;
-
-    const points = {
-      wall: new THREE.Vector3(cx - size.x * 0.19, min.y + size.y * 0.42, max.z + size.z * 0.018),
-      windows: new THREE.Vector3(cx + size.x * 0.22, min.y + size.y * 0.43, max.z + size.z * 0.022),
-      roof: new THREE.Vector3(cx + size.x * 0.06, min.y + size.y * 0.84, cz + size.z * 0.13),
-      floor: new THREE.Vector3(cx - size.x * 0.28, min.y + size.y * 0.12, max.z + size.z * 0.01),
-      insulation: new THREE.Vector3(cx - size.x * 0.40, min.y + size.y * 0.48, max.z + size.z * 0.032),
-    };
-
-    Object.entries(points).forEach(([key, position]) => {
-      this.hotspotAnchors.set(key, position);
-      const config = HOTSPOTS[key];
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "hln-3d-hotspot";
-      button.dataset.hln3dHotspot = key;
-      button.setAttribute("aria-label", config.label);
-      button.innerHTML = `<span class="hln-3d-hotspot-dot" aria-hidden="true"></span><span class="hln-3d-hotspot-label">${config.label}</span>`;
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        this.setFastInteractionMode();
-        this.selectPart(config.targetPart, true);
-        button.classList.add("is-selected");
-        this.hotspotElements.forEach((other, otherKey) => {
-          if (otherKey !== key) other.classList.remove("is-selected");
-        });
-      });
-      this.hotspotRoot.appendChild(button);
-      this.hotspotElements.set(key, button);
-    });
-  }
-
-  updateSemanticHotspots() {
-    if (!this.hotspotRoot || !this.camera || !this.hotspotAnchors.size) return;
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-
-    this.hotspotAnchors.forEach((worldPoint, key) => {
-      const element = this.hotspotElements.get(key);
-      if (!element) return;
-
-      const projected = worldPoint.clone().project(this.camera);
-      const visible = projected.z > -1 && projected.z < 1 &&
-        projected.x > -1.12 && projected.x < 1.12 &&
-        projected.y > -1.12 && projected.y < 1.12;
-
-      element.hidden = !visible;
-      if (!visible) return;
-
-      const x = (projected.x * 0.5 + 0.5) * rect.width;
-      const y = (-projected.y * 0.5 + 0.5) * rect.height;
-      element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
-    });
-
-    const insulation = this.hotspotElements.get("insulation");
-    if (insulation) {
-      const showInsulation = this.selectedPart === "wall" || this.renovationLayer.visible;
-      insulation.classList.toggle("is-contextual", !showInsulation);
-    }
-  }
-
-  setFastInteractionMode() {
-    this.beautyEnabled = false;
-    window.clearTimeout(this.beautyTimer);
-    this.mount.classList.add("is-interacting");
-  }
-
-  scheduleBeautyMode(delay = 260) {
-    window.clearTimeout(this.beautyTimer);
-    this.beautyTimer = window.setTimeout(() => {
-      this.beautyEnabled = true;
-      this.mount.classList.remove("is-interacting");
-      this.mount.classList.add("is-beauty");
-    }, delay);
-  }
-
   makeHitBox(part, size, position) {
     const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
     const material = new THREE.MeshBasicMaterial({
@@ -764,30 +628,19 @@ class HomeLabHouse3D {
     this.controls.addEventListener("start", () => {
       this.controls.autoRotate = false;
       this.autoRotateAllowed = false;
-      window.clearTimeout(this.initialMotionTimer);
-      this.setFastInteractionMode();
     });
     this.controls.addEventListener("end", () => {
-      this.scheduleBeautyMode(220);
+      window.clearTimeout(this.resumeTimer);
+      this.resumeTimer = window.setTimeout(() => {
+        this.autoRotateAllowed = true;
+        this.controls.autoRotate = true;
+      }, 4500);
     });
-
-    window.clearTimeout(this.initialMotionTimer);
-    this.initialMotionTimer = window.setTimeout(() => {
-      this.autoRotateAllowed = false;
-      this.controls.autoRotate = false;
-      this.scheduleBeautyMode(120);
-    }, 3600);
 
     canvas.addEventListener("pointerdown", (event) => {
       this.pointerDown = { x: event.clientX, y: event.clientY };
       this.dragged = false;
-      this.setFastInteractionMode();
     });
-
-    canvas.addEventListener("wheel", () => {
-      this.setFastInteractionMode();
-      this.scheduleBeautyMode(280);
-    }, { passive: true });
 
     canvas.addEventListener("pointermove", (event) => {
       if (this.pointerDown) {
@@ -850,13 +703,8 @@ class HomeLabHouse3D {
     if (!PARTS[part]) return;
     this.selectedPart = part;
     this.mount.dataset.hln3dSelected = part;
-    this.hotspotElements.forEach((element, key) => {
-      element.classList.toggle("is-selected", HOTSPOTS[key]?.targetPart === part);
-    });
     this.rebuildRenovationLayer(part);
-    this.setFastInteractionMode();
     this.focusPart(part, false);
-    this.scheduleBeautyMode(620);
 
     if (!dispatch) return;
 
@@ -901,7 +749,6 @@ class HomeLabHouse3D {
     const start = performance.now();
     const duration = 520;
     this.controls.autoRotate = false;
-    this.setFastInteractionMode();
 
     const tick = (now) => {
       const p = Math.min(1, (now - start) / duration);
@@ -910,7 +757,6 @@ class HomeLabHouse3D {
       this.controls.target.lerpVectors(startTarget, endTarget, e);
       this.controls.update();
       if (p < 1) requestAnimationFrame(tick);
-      else this.scheduleBeautyMode(180);
     };
     requestAnimationFrame(tick);
   }
@@ -935,41 +781,24 @@ class HomeLabHouse3D {
     this.camera.updateProjectionMatrix();
   }
 
-  startRenderLoop() {
-    this.beautyEnabled = false;
-    this.renderer.setAnimationLoop(() => this.renderFrame());
-  }
-
-  renderFrame() {
+  animate() {
     if (this.destroyed) return;
-
     const dt = Math.min(0.033, this.clock.getDelta());
     if (this.controls) {
       if (this.autoRotateAllowed) this.controls.autoRotate = true;
       this.controls.update(dt);
     }
-
-    this.updateSemanticHotspots();
-
-    if (this.beautyEnabled && this.renderPipeline) {
-      this.renderPipeline.render();
-    } else {
-      this.renderer.render(this.scene, this.camera);
-    }
+    this.renderer.render(this.scene, this.camera);
+    this.frame = requestAnimationFrame(() => this.animate());
   }
 
-  fail(message, error = null) {
+  fail(message) {
     this.mount.classList.remove("is-loading");
     this.mount.classList.add("is-fallback");
-    const debug = new URLSearchParams(window.location.search).get("debug3d") === "1";
-    const detail = debug && error
-      ? `<code>${String(error?.message || error).replace(/[<>]/g, "")}</code>`
-      : "";
     this.mount.innerHTML = `
       <div class="hln-3d-fallback-note" role="status">
         <span>Vizualizare 3D indisponibilă</span>
         <small>${message}. Poți continua folosind modelul schematic.</small>
-        ${detail}
       </div>
     `;
   }
@@ -987,7 +816,7 @@ async function boot() {
       await scene.init();
     } catch (error) {
       console.error("[Home Lab 3D] init failed", error);
-      scene.fail("Inițializare eșuată", error);
+      scene.fail("Inițializare eșuată");
     }
   }
 }
@@ -998,4 +827,4 @@ if (document.readyState === "loading") {
   boot();
 }
 
-export { HomeLabHouse3D, HOUSE_MODELS, HOUSE_MODEL_URL, HOUSE_MODEL_SOURCE };
+export { HomeLabHouse3D, HOUSE_MODEL_URL, HOUSE_MODEL_SOURCE };
