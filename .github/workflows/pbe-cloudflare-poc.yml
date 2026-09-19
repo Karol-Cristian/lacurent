@@ -49,6 +49,7 @@ jobs:
       - name: Prepare Worker bundle
         run: |
           node scripts/prepare-commercial-cloudflare-worker.mjs
+          cp commercial/cloudflare-worker/wrangler-pbe-poc.toml .wrangler/commercial-v2-worker/wrangler.toml
           echo "Prepared source bytes: $(du -sb .wrangler/commercial-v2-worker | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install current Wrangler
@@ -142,3 +143,58 @@ jobs:
           if [ -f pbe-worker.log ]; then
             tail -n 120 pbe-worker.log
           fi
+
+      - name: Deploy isolated PBE Worker
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler deploy
+
+      - name: Measure deployed PBE Worker
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          python - <<'PY'
+          import json
+          import statistics
+          import time
+          import urllib.request
+
+          base = "https://lacurent-pbe-poc.lemnarukarol.workers.dev"
+
+          def timed(path):
+              started = time.perf_counter()
+              with urllib.request.urlopen(base + path, timeout=60) as response:
+                  body = response.read().decode("utf-8")
+                  status = response.status
+              return (time.perf_counter() - started) * 1000.0, status, json.loads(body)
+
+          first_ms, status, health = timed("/api/experimental/pbe-health")
+          assert status == 200, (status, health)
+          assert health["status"] == "ok", health
+
+          warm = []
+          for _ in range(5):
+              ms, status, payload = timed("/api/experimental/pbe-demo")
+              assert status == 200, (status, payload)
+              assert payload["comparison"]["matches_current_accounting"] is True, payload
+              warm.append(ms)
+
+          result = {
+              "workers_dev_url": base,
+              "first_health_http_ms": round(first_ms, 1),
+              "pbe_probe_compute_ms": health["probe_elapsed_ms"],
+              "warm_demo_http_ms": [round(x, 1) for x in warm],
+              "warm_demo_median_ms": round(statistics.median(warm), 1),
+              "numpy_version": health["numpy_version"],
+              "pandas_version": health["pandas_version"],
+              "pbe_upstream_version": health["pbe_upstream_version"],
+          }
+          print(json.dumps(result, indent=2))
+          with open("deployed-pbe-metrics.json", "w", encoding="utf-8") as handle:
+              json.dump(result, handle, indent=2)
+          PY
+          echo "Deployed PBE Worker metrics:" >> "$GITHUB_STEP_SUMMARY"
+          cat deployed-pbe-metrics.json >> "$GITHUB_STEP_SUMMARY"
