@@ -12,7 +12,6 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from .engine import calculate, demo_building
-from .engine_pbe import compare_calculation_result, runtime_probe
 from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
@@ -767,6 +766,7 @@ async def wall_insulation_product_scenario_api(
 @app.get("/api/experimental/pbe-health")
 async def pbe_health_api() -> JSONResponse:
     try:
+        from .engine_pbe import runtime_probe
         return JSONResponse(runtime_probe())
     except Exception as exc:
         return JSONResponse(
@@ -778,6 +778,7 @@ async def pbe_health_api() -> JSONResponse:
 @app.get("/api/experimental/pbe-demo")
 async def pbe_demo_api() -> JSONResponse:
     try:
+        from .engine_pbe import compare_calculation_result
         result = calculate(demo_building(), include_reference=False)
         return JSONResponse(compare_calculation_result(result))
     except Exception as exc:
@@ -791,6 +792,7 @@ async def pbe_demo_api() -> JSONResponse:
 async def pbe_calculate_api(request: Request) -> JSONResponse:
     form = dict(await request.form())
     try:
+        from .engine_pbe import compare_calculation_result
         building = build_input_from_form(form)
         result = calculate(building, include_reference=False)
         payload = compare_calculation_result(result)
