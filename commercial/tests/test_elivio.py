@@ -13,11 +13,15 @@ def test_elivio_page_is_standalone_and_transparent() -> None:
     assert "Violeta Munteanu" in response.text
     assert "Consilier ICL" in response.text
     assert "Asistent social" in response.text
-    assert "MAXWELL" in response.text
+    assert "Maxwell Leadership Certified Team" in response.text
     assert "EQUIP" in response.text
     assert "Spune ce ai pe minte." in response.text
     assert "Vreau o programare" in response.text
-    assert "1 / 4" in response.text
+    assert "1 / 4" not in response.text
+    assert "data-chat-launcher" in response.text
+    assert "data-chat-panel" in response.text
+    assert "data-contact-form" in response.text
+    assert "ICL-Logo-weiss-R.svg" in response.text
     assert "ec-mark" not in response.text
     assert "Exemplu compozit" in response.text
     assert "Nu sunt mărturii reale" in response.text
