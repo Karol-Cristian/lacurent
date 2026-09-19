@@ -11,8 +11,8 @@
 <body>
   <header class="ec-header">
     <a class="ec-brand" href="/elivio-consilio" aria-label="Elivio Consilio">
-      <span class="ec-mark">E</span>
-      <span><strong>ELIVIO</strong><small>CONSILIO</small></span>
+      <span class="ec-wordmark">elivio</span>
+      <span class="ec-wordmark-sub">CONSILIO</span>
     </a>
     <nav aria-label="Navigație principală">
       <a href="#despre">Despre</a>
@@ -45,7 +45,7 @@
         {% endif %}
         <div class="ec-profile-card">
           <strong>Violeta Munteanu</strong>
-          <span>Consilier ICL</span>
+          <span>Asistent social · Consilier ICL</span>
         </div>
       </div>
     </section>
@@ -65,7 +65,7 @@
         <h2>Violeta Munteanu</h2>
       </div>
       <div class="ec-prose">
-        <p>Violeta Munteanu este Consilier ICL și Certified Coach, Trainer & Speaker în cadrul Maxwell Leadership România. Este implicată în programele EQUIP Leadership România și are experiență de consiliere pentru viață și familie.</p>
+        <p>Violeta Munteanu este asistent social și Consilier ICL, precum și Certified Coach, Trainer & Speaker în cadrul Maxwell Leadership România. Este implicată în programele EQUIP Leadership România și are experiență de consiliere pentru viață și familie.</p>
         <p>Abordarea Elivio Consilio pune accent pe ascultare, clarificarea contextului și identificarea unor pași realiști. Nu este nevoie să formulezi „perfect” problema înainte de prima conversație.</p>
       </div>
     </section>
@@ -123,21 +123,34 @@
     <section class="ec-section ec-ai" id="orientare">
       <div class="ec-ai-intro">
         <p class="ec-eyebrow">Orientare inițială</p>
-        <h2>Nu știi dacă ai nevoie de consiliere?</h2>
-        <p>Poți începe aici. Asistentul virtual îți pune câteva întrebări simple și te ajută să clarifici ce tip de sprijin cauți înainte de o conversație cu un om.</p>
+        <h2>Un chat cu un scop clar.</h2>
+        <p>În câteva schimburi scurte, asistentul te ajută să clarifici de ce ai venit, ce ai vrea să se schimbe și dacă o conversație cu Violeta este un pas potrivit.</p>
+        <div class="ec-chat-purpose">
+          <strong>La final:</strong>
+          <span>ai o formulare mai clară a situației și un următor pas concret.</span>
+        </div>
         <ul>
-          <li>Nu pune diagnostice și nu face terapie.</li>
-          <li>Nu este Violeta și nu înlocuiește un consilier.</li>
-          <li>Nu introduce date pe care nu vrei să le proceseze un sistem AI.</li>
+          <li>Nu face terapie și nu pune diagnostice.</li>
+          <li>Nu este Violeta și nu ia decizii în locul tău.</li>
+          <li>Se oprește din întrebări când orientarea este suficientă.</li>
         </ul>
       </div>
       <div class="ec-chat" data-elivio-chat>
         <div class="ec-chat-head">
-          <span class="ec-status-dot"></span>
-          <div><strong>Asistent Elivio</strong><small>AI pentru orientare, nu consiliere</small></div>
+          <div class="ec-chat-title">
+            <span class="ec-status-dot"></span>
+            <div><strong>Asistent de orientare</strong><small>3–5 minute · nu este terapie</small></div>
+          </div>
+          <span class="ec-stage-badge" data-stage-badge>1 / 4</span>
+        </div>
+        <div class="ec-progress" aria-label="Etapele orientării">
+          <span class="active" data-stage-step="1">Ce te aduce aici</span>
+          <span data-stage-step="2">Ce vrei să se schimbe</span>
+          <span data-stage-step="3">Ce sprijin se potrivește</span>
+          <span data-stage-step="4">Următorul pas</span>
         </div>
         <div class="ec-chat-log" data-chat-log aria-live="polite">
-          <div class="ec-message assistant">Bun venit. Sunt asistentul virtual Elivio Consilio. Te pot ajuta să clarifici, fără detalii sensibile, ce fel de sprijin cauți. Ce ai vrea să fie diferit după o discuție bună cu un consilier?</div>
+          <div class="ec-message assistant">Bun venit. Scopul meu este să te ajut să formulezi pe scurt ce te aduce aici și să vedem dacă o discuție cu Violeta ar putea avea sens. Ce se întâmplă acum și ai vrea să fie diferit?</div>
         </div>
         <form class="ec-chat-form" data-chat-form>
           <label class="sr-only" for="ec-chat-input">Mesaj</label>
@@ -173,7 +186,7 @@
   </main>
 
   <footer class="ec-footer">
-    <div class="ec-brand compact"><span class="ec-mark">E</span><span><strong>ELIVIO</strong><small>CONSILIO</small></span></div>
+    <div class="ec-brand compact"><span class="ec-wordmark">elivio</span><span class="ec-wordmark-sub">CONSILIO</span></div>
     <p>Consiliere pentru viață, familie și claritate personală.</p>
     <a href="/elivio-consilio/confidentialitate">Confidențialitate & utilizarea AI</a>
     <span>© 2026 Elivio Consilio</span>
