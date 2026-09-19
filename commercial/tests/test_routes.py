@@ -339,7 +339,7 @@ def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     assert 'href="/embed/demo-store/next"' in response.text
 
 
-def test_home_lab_next_route_exposes_four_screen_product_flow() -> None:
+def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
     assert 'data-home-lab-next' in response.text
@@ -348,11 +348,17 @@ def test_home_lab_next_route_exposes_four_screen_product_flow() -> None:
     assert 'data-hln-screen="intervention"' in response.text
     assert 'data-hln-screen="scenario"' in response.text
     assert "Salvează Casa mea și începe renovarea" in response.text
-    assert "Ce vrei să îmbunătățești?" in response.text
-    assert "Păstrează această intervenție" in response.text
-    assert "Scenariul meu" in response.text
-    assert "/static/home-lab-next.css?v=next1" in response.text
-    assert "/static/home-lab-next.js?v=next1" in response.text
+    assert "Construiește punctul de plecare." in response.text
+    assert "Ce vrei să schimbi?" in response.text
+    assert "Păstrează intervenția" in response.text
+    assert "Vezi renovarea ca un singur proiect." in response.text
+    assert 'class="hln-house-board"' in response.text
+    assert 'class="hln-house-visual hln-house-visual-home"' in response.text
+    assert 'class="hln-impact-panel"' in response.text
+    assert 'id="hln-i-wall"' in response.text
+    assert 'id="hln-i-money"' in response.text
+    assert "/static/home-lab-next.css?v=next2" in response.text
+    assert "/static/home-lab-next.js?v=next2" in response.text
 
 
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
@@ -392,8 +398,11 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function openMeasure" in response.text
     assert "function keepIntervention" in response.text
     assert "function benefitText" in response.text
+    assert "function signedSavingText" in response.text
+    assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
     assert 'fetch(calcUrl' in response.text
+    assert 'href="#hln-i-' in response.text
 
 
 def test_embed_loader_supports_deferred_next_mounts() -> None:

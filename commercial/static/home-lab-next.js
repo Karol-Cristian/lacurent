@@ -226,11 +226,49 @@
     };
   }
 
+  function signedSavingText(current, baseline, unit = "") {
+    const now = Number(current);
+    const base = Number(baseline);
+    if (!Number.isFinite(now) || !Number.isFinite(base)) return {text: "—", good: null};
+    const saving = base - now;
+    if (Math.abs(saving) < 0.05) return {text: `0${unit}`, good: null};
+    return {
+      text: `${saving > 0 ? "+" : "−"}${fmt(Math.abs(saving), unit === " kW" ? 1 : 0)}${unit}`,
+      good: saving > 0
+    };
+  }
+
+  function renderImpactPanel() {
+    if (!homeResult || !scenarioResult) return;
+
+    const cost = signedSavingText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei, " lei/an");
+    const energy = benefitText(scenarioResult.final_energy_kwh, homeResult.final_energy_kwh);
+    const co2 = benefitText(scenarioResult.co2_kg, homeResult.co2_kg);
+    const loadNode = $("#hlnImpactLoad");
+
+    [
+      ["#hlnImpactCost", cost],
+      ["#hlnImpactEnergy", energy],
+      ["#hlnImpactCo2", co2]
+    ].forEach(([selector, item]) => {
+      const node = $(selector);
+      if (!node) return;
+      node.textContent = item.text;
+      node.classList.toggle("is-bad", item.good === false);
+    });
+
+    if (loadNode) {
+      loadNode.textContent = `${fmt(homeResult.design_heat_load_kw, 1)} → ${fmt(scenarioResult.design_heat_load_kw, 1)} kW`;
+      loadNode.classList.toggle("is-bad", Number(scenarioResult.design_heat_load_kw) > Number(homeResult.design_heat_load_kw));
+    }
+  }
+
   function renderDock() {
     const dock = $(".hln-dock");
     const metrics = $(".hln-dock-metrics");
     const benefits = $(".hln-dock-benefits");
     const cta = $("#hlnDockCta");
+    const ctaLabel = cta?.querySelector("span") || cta;
     const result = screen === "home" ? (baselineSaved ? homeResult : currentResult || homeResult) : scenarioResult || currentResult || homeResult;
 
     $("#hlnDockClass").textContent = result?.energy_class || "—";
@@ -256,21 +294,22 @@
       });
     }
 
+    renderImpactPanel();
     dock.dataset.hlnDock = screen;
     cta.classList.toggle("is-home", screen === "home");
 
     if (screen === "home") {
       cta.hidden = false;
-      cta.textContent = baselineSaved ? "Șantierul meu →" : "Salvează Casa mea și începe renovarea";
+      ctaLabel.textContent = baselineSaved ? "Mergi la renovare" : "Salvează Casa mea și începe renovarea";
     } else if (screen === "site") {
       cta.hidden = measures.length === 0;
-      cta.textContent = "Vezi Scenariul meu →";
+      ctaLabel.textContent = "Vezi Scenariul meu";
     } else if (screen === "intervention") {
       cta.hidden = false;
-      cta.textContent = "Păstrează această intervenție";
+      ctaLabel.textContent = "Păstrează intervenția";
     } else {
       cta.hidden = false;
-      cta.textContent = "Salvează scenariul";
+      ctaLabel.textContent = "Salvează scenariul";
     }
   }
 
@@ -310,7 +349,15 @@
   }
 
   function measureIcon(type) {
-    return {wall:"▦",roof:"⌂",floor:"▰",windows:"▣",heating:"♨",ventilation:"≋"}[type] || "◆";
+    const icon = {
+      wall: "wall",
+      roof: "roof",
+      floor: "floor",
+      windows: "window",
+      heating: "flame",
+      ventilation: "air"
+    }[type] || "layers";
+    return `<svg aria-hidden="true"><use href="#hln-i-${icon}"></use></svg>`;
   }
 
   function interventionValue(type, state) {
@@ -363,7 +410,7 @@
       return;
     }
     list.innerHTML = measures.map(type => `
-      <article class="hln-measure-row">
+      <article class="hln-selected-row">
         <span>${measureIcon(type)}</span>
         <div><strong>${measureTitle(type)}</strong><small>${measureSummary(type)}</small></div>
         <button type="button" data-hln-measure-edit="${type}">Editează</button>
@@ -670,15 +717,19 @@
     if (screen === "scenario") {
       persist();
       const button = $("#hlnDockCta");
-      button.textContent = "Scenariu salvat ✓";
+      const label = button?.querySelector("span") || button;
+      label.textContent = "Scenariu salvat ✓";
       window.setTimeout(renderDock, 1200);
     }
   });
 
   $("[data-hln-save-scenario]").addEventListener("click", event => {
     persist();
-    event.currentTarget.textContent = "Scenariu salvat ✓";
-    window.setTimeout(() => event.currentTarget.textContent = "Salvează scenariul", 1200);
+    const label = event.currentTarget.querySelector("span") || event.currentTarget;
+    label.textContent = "Scenariu salvat ✓";
+    window.setTimeout(() => {
+      label.textContent = "Salvează scenariul";
+    }, 1200);
   });
 
   fetch("/api/location-data")
