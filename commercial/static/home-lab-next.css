@@ -855,3 +855,38 @@ svg{display:block}
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Renovation cockpit: house + instant controls, without a second navigation list. */
+.hln-screen[data-hln-screen="site"] .hln-measure-sheet {
+  display: none;
+}
+
+.hln-screen[data-hln-screen="site"] .hln-live-configurator {
+  margin-top: 0;
+  min-width: 0;
+  align-self: stretch;
+}
+
+@media (min-width: 981px) {
+  .hln-screen[data-hln-screen="site"] .hln-site-layout {
+    grid-template-columns: minmax(0, 1.05fr) minmax(390px, .95fr);
+    align-items: start;
+  }
+
+  .hln-screen[data-hln-screen="site"] .hln-tune-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hln-screen[data-hln-screen="site"] .hln-live-selects {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hln-screen[data-hln-screen="site"] .hln-configurator-result {
+    grid-template-columns: 1fr;
+  }
+
+  .hln-screen[data-hln-screen="site"] .hln-configurator-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
