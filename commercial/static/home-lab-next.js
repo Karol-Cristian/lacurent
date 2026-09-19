@@ -383,54 +383,64 @@
       double_low_e_face_3: 1.6,
       triple_low_e_faces_2_and_5: 0.9
     };
-    const isReferenceScenario = referenceMode && state === scenarioState;
-    const reference = homeResult?.reference_parameters || currentResult?.reference_parameters || null;
+    const overrides = state === scenarioState ? (scenarioOverrides || {}) : {};
+    const finiteOverride = (key) => Number.isFinite(Number(overrides[key])) ? Number(overrides[key]) : null;
 
-    if (isReferenceScenario && reference) {
-      const u = reference.u_values_w_m2k || {};
-      formSet("wall_u_value", u.exterior_wall);
-      formSet("roof_u_value", u.roof);
-      formSet("floor_u_value", u.floor);
-      formSet("window_u_value", u.window);
-      formSet("door_u_value", u.exterior_door);
+    const wallU = finiteOverride("wallU");
+    const roofU = finiteOverride("roofU");
+    const floorU = finiteOverride("floorU");
+    const windowU = finiteOverride("windowU");
+    const doorU = finiteOverride("doorU");
+
+    formSet("wall_u_value", wallU ?? insulationU(1.30, state.wallIns).toFixed(4));
+    formSet("roof_u_value", roofU ?? insulationU(1.00, state.roofIns).toFixed(4));
+    formSet("floor_u_value", floorU ?? insulationU(0.90, state.floorIns).toFixed(4));
+    formSet("window_u_value", windowU ?? (glazingU[state.glazing] || 1.6));
+    formSet("door_u_value", doorU ?? 1.8);
+
+    if (overrides.thermalBridgesOff) {
       formSet("thermal_bridge_length_m", 0);
       formSet("thermal_bridge_psi_w_mk", 0);
-      formSet("air_changes_per_hour", reference.air_changes_per_hour);
-      formSet("heat_recovery_efficiency", reference.heat_recovery_efficiency);
-      formSet("expert_heating_override", "on");
-      formSet("heating_system_type", "condensing_gas_boiler");
-      formSet("heating_carrier", "natural_gas");
-      formSet("heating_efficiency", reference.heating_efficiency);
-      formSet("heating_scop", "");
-      formSet("heating_cost_profile", "natural_gas");
-      formSet("heating_choice", "condensing_gas_boiler");
-      formSet("cooling_seer", reference.cooling_seer);
-      formSet("dhw_efficiency", reference.dhw_efficiency);
     } else {
-      formSet("wall_u_value", insulationU(1.30, state.wallIns).toFixed(4));
-      formSet("roof_u_value", insulationU(1.00, state.roofIns).toFixed(4));
-      formSet("floor_u_value", insulationU(0.90, state.floorIns).toFixed(4));
-      formSet("window_u_value", glazingU[state.glazing] || 1.6);
-      formSet("door_u_value", 1.8);
       formSet("thermal_bridge_length_m", (perimeter * levels).toFixed(3));
       formSet("thermal_bridge_psi_w_mk", 0.08);
+    }
+
+    const overrideAch = finiteOverride("airChanges");
+    const overrideRecovery = finiteOverride("heatRecovery");
+    if (overrideAch != null || overrideRecovery != null) {
+      formSet("air_changes_per_hour", overrideAch ?? 0.5);
+      formSet("heat_recovery_efficiency", overrideRecovery ?? 0);
+    } else if (state.ventilation === "hrv") {
+      formSet("air_changes_per_hour", 0.5);
+      formSet("heat_recovery_efficiency", 0.75);
+    } else if (state.ventilation === "mechanical") {
+      formSet("air_changes_per_hour", 0.65);
+      formSet("heat_recovery_efficiency", 0);
+    } else {
+      formSet("air_changes_per_hour", 0.5);
+      formSet("heat_recovery_efficiency", 0);
+    }
+
+    const overrideHeatingEfficiency = finiteOverride("heatingEfficiency");
+    if (overrideHeatingEfficiency != null) {
+      formSet("expert_heating_override", "on");
+      formSet("heating_system_type", overrides.heatingSystemType || "condensing_gas_boiler");
+      formSet("heating_carrier", overrides.heatingCarrier || "natural_gas");
+      formSet("heating_efficiency", overrideHeatingEfficiency);
+      formSet("heating_scop", "");
+      formSet("heating_cost_profile", overrides.heatingCostProfile || "natural_gas");
+      formSet("heating_choice", overrides.heatingSystemType || "condensing_gas_boiler");
+    } else {
       formSet("expert_heating_override", "");
       formSet("heating_choice", state.heating);
-      formSet("dhw_efficiency", 0.86);
-
-      if (state.ventilation === "hrv") {
-        formSet("air_changes_per_hour", 0.5);
-        formSet("heat_recovery_efficiency", 0.75);
-      } else if (state.ventilation === "mechanical") {
-        formSet("air_changes_per_hour", 0.65);
-        formSet("heat_recovery_efficiency", 0);
-      } else {
-        formSet("air_changes_per_hour", 0.5);
-        formSet("heat_recovery_efficiency", 0);
-      }
-
-      formSet("cooling_seer", state.cooling === "split" ? 4.2 : 4.0);
     }
+
+    const overrideCoolingSeer = finiteOverride("coolingSeer");
+    formSet("cooling_seer", overrideCoolingSeer ?? (state.cooling === "split" ? 4.2 : 4.0));
+
+    const overrideDhwEfficiency = finiteOverride("dhwEfficiency");
+    formSet("dhw_efficiency", overrideDhwEfficiency ?? 0.86);
 
     formSet("solar_glazing_type_id", state.glazing);
     formSet("solar_orientation", state.orientation);
@@ -751,6 +761,7 @@
     homeResult = currentResult || homeResult;
     baselineSaved = true;
     referenceMode = false;
+    scenarioOverrides = {};
     scenarioState = {...homeState};
     scenarioResult = homeResult;
     measures = [];
@@ -814,6 +825,7 @@
     renderHome();
     baselineSaved = false;
     referenceMode = false;
+    scenarioOverrides = {};
     measures = [];
     scenarioState = {...homeState};
     const focus =
@@ -863,6 +875,7 @@
 
   function resetMeasure(type) {
     referenceMode = false;
+    clearScenarioOverrideForMeasure(type);
     if (type === "wall") scenarioState.wallIns = homeState.wallIns;
     if (type === "roof") scenarioState.roofIns = homeState.roofIns;
     if (type === "floor") scenarioState.floorIns = homeState.floorIns;
@@ -884,6 +897,7 @@
   function syncInterventionFromControls() {
     if (!activeMeasure) return;
     referenceMode = false;
+    clearScenarioOverrideForMeasure(activeMeasure);
     if (activeMeasure === "wall") scenarioState.wallIns = Number($("#hlnWallIns").value);
     if (activeMeasure === "roof") scenarioState.roofIns = Number($("#hlnRoofIns").value);
     if (activeMeasure === "floor") scenarioState.floorIns = Number($("#hlnFloorIns").value);
@@ -903,6 +917,7 @@
   function applyLiveScenarioChange(key, value, focus = null) {
     if (!baselineSaved) return;
     referenceMode = false;
+    clearScenarioOverrideForKey(key);
     scenarioState[key] = value;
     syncMeasuresFromScenario();
     renderAll();
