@@ -357,7 +357,7 @@ def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     assert response.headers["content-security-policy"] == "frame-ancestors *"
     assert 'data-partner-id="demo-store"' in response.text
     assert 'data-calculate-url="/embed/demo-store/next/calculate"' in response.text
-    assert "Partner Demo" in response.text
+    assert "Partener Demo" in response.text
     assert "/static/embed-runtime.js?v=embed2" in response.text
 
 
