@@ -656,7 +656,7 @@ def test_partner_embed_exposes_six_mc001_chapter_cockpit_and_product_scope() -> 
 def test_home_lab_runtime_wires_mobile_chapter_editor_and_live_summary() -> None:
     response = client.get("/static/embed-house-lab.js")
     assert response.status_code == 200
-    assert "function openChapter(chapter)" in response.text
+    assert 'function openChapter(chapter,editorTitle="")' in response.text
     assert "function closeChapter()" in response.text
     assert "function updateChapterSummaries" in response.text
     assert "is-mobile-results-view" in response.text
