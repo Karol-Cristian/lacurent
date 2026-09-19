@@ -48,6 +48,7 @@ jobs:
         run: |
           git diff --check
           node --check commercial/static/app.js
+          node --check commercial/static/elivio.js
           node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
@@ -661,6 +662,35 @@ jobs:
           if booking_payload.get("action", {}).get("target") != "#contact":
               raise AssertionError("Elivio booking intent did not expose the contact CTA.")
           print("/elivio-consilio/api/chat booking", status, booking_payload.get("mode"))
+
+          summary_request = json.dumps({
+              "messages": [
+                  {
+                      "role": "user",
+                      "content": "Am o decizie dificilă în familie.",
+                  },
+                  {
+                      "role": "assistant",
+                      "content": "Ce ai vrea să clarifici?",
+                  },
+                  {
+                      "role": "user",
+                      "content": "Aș vrea să fiu mai sigur asupra următorului pas.",
+                  },
+              ]
+          }).encode("utf-8")
+          status, _, summary_body = open_url(
+              apex + "/elivio-consilio/api/chat-summary",
+              data=summary_request,
+              headers={"Content-Type": "application/json"},
+              timeout=60,
+          )
+          if status != 200:
+              raise AssertionError(f"Elivio chat summary returned HTTP {status}")
+          summary_payload = json.loads(summary_body)
+          if not str(summary_payload.get("summary") or "").strip():
+              raise AssertionError("Elivio chat summary did not return contact context.")
+          print("/elivio-consilio/api/chat-summary", status, summary_payload.get("mode"))
 
           for path in (
               "/home-lab-assets/house-fireplace.webp?v=2",
