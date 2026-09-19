@@ -113,6 +113,7 @@ class HomeLabHouse3D {
     this.authorPanel = null;
     this.authorStatusTimer = null;
     this.authorDraggingPart = null;
+    this.inspectableMeshes = [];
   }
 
   async init() {
@@ -443,6 +444,11 @@ class HomeLabHouse3D {
       }
       if (!obj.isMesh) return;
 
+      if (HOUSE_VARIANT === "final") {
+        obj.userData.authorMeshIndex = this.inspectableMeshes.length;
+        this.inspectableMeshes.push(obj);
+      }
+
       obj.castShadow = true;
       obj.receiveShadow = true;
 
@@ -737,6 +743,14 @@ class HomeLabHouse3D {
         <div><strong>3D Authoring</strong><small>Final House semantic map</small></div>
         <button type="button" class="hln-3d-author-toggle" data-author-toggle aria-expanded="${this.isMobile ? "false" : "true"}">${this.isMobile ? "Reglaje" : "Restrânge"}</button>
       </header>
+      <section class="hln-3d-mesh-inspector" data-author-mesh-inspector>
+        <div class="hln-3d-mesh-inspector-head">
+          <strong>Mesh-uri model</strong>
+          <button type="button" data-author-mesh-all>Toate ON</button>
+        </div>
+        <div class="hln-3d-mesh-buttons" data-author-mesh-buttons></div>
+        <small data-author-mesh-name>Atinge M1–M5 și spune-mi ce dispare.</small>
+      </section>
       <span class="hln-3d-author-status" data-author-status>Modificările sunt păstrate local</span>
       <div class="hln-3d-author-parts" data-author-parts></div>
       <div class="hln-3d-author-controls" data-author-controls></div>
@@ -750,6 +764,7 @@ class HomeLabHouse3D {
     `;
     this.mount.appendChild(panel);
     this.authorPanel = panel;
+    this.renderMeshInspector();
 
     const partsRoot = panel.querySelector("[data-author-parts]");
     Object.entries(this.semanticConfig.parts || {}).forEach(([part, config]) => {
@@ -772,6 +787,25 @@ class HomeLabHouse3D {
     });
 
     panel.addEventListener("click", async (event) => {
+      const meshButton = event.target.closest("[data-author-mesh]");
+      if (meshButton) {
+        const index = Number(meshButton.dataset.authorMesh);
+        const mesh = this.inspectableMeshes[index];
+        if (mesh) {
+          mesh.visible = !mesh.visible;
+          this.renderMeshInspector(index);
+          this.setAuthorStatus(`M${index + 1} ${mesh.visible ? "vizibil" : "ascuns"}`);
+        }
+        return;
+      }
+
+      if (event.target.closest("[data-author-mesh-all]")) {
+        this.inspectableMeshes.forEach((mesh) => { mesh.visible = true; });
+        this.renderMeshInspector();
+        this.setAuthorStatus("Toate mesh-urile sunt vizibile");
+        return;
+      }
+
       const toggle = event.target.closest("[data-author-toggle]");
       if (toggle) {
         const collapsed = panel.classList.toggle("is-collapsed");
@@ -815,6 +849,37 @@ class HomeLabHouse3D {
 
     this.selectPart(this.authorPart, false);
     this.renderAuthorPanel();
+  }
+
+  renderMeshInspector(selectedIndex = null) {
+    if (!this.authorPanel) return;
+    const root = this.authorPanel.querySelector("[data-author-mesh-buttons]");
+    const name = this.authorPanel.querySelector("[data-author-mesh-name]");
+    if (!root || !name) return;
+
+    root.innerHTML = "";
+    this.inspectableMeshes.forEach((mesh, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.authorMesh = String(index);
+      button.className = mesh.visible ? "" : "is-off";
+      button.setAttribute("aria-pressed", mesh.visible ? "true" : "false");
+      button.textContent = `M${index + 1}`;
+      root.appendChild(button);
+    });
+
+    if (selectedIndex == null) {
+      name.textContent = `${this.inspectableMeshes.length} mesh-uri · dezactivează-le pe rând`;
+      return;
+    }
+
+    const mesh = this.inspectableMeshes[selectedIndex];
+    if (!mesh) return;
+    const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material])
+      .map((material) => material?.name)
+      .filter(Boolean)
+      .join(" · ");
+    name.textContent = `M${selectedIndex + 1} · ${mesh.name || "(fără nume)"}${materials ? " · " + materials : ""}`;
   }
 
   renderAuthorPanel() {
