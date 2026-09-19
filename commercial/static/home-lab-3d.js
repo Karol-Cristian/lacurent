@@ -1,7 +1,9 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
+import { pass, mrt, output, normalView, diffuseColor, add, vec4, packNormalToRGB, unpackRGBToNormal, sample } from "three/tsl";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { ssgi } from "three/addons/tsl/display/SSGINode.js";
 
 const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/32485/v1/model.glb";
 const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene";
@@ -11,6 +13,14 @@ const PARTS = {
   roof: { label: "Pod / acoperiș", editor: "envelope", measure: "roof", color: 0x3f745c },
   windows: { label: "Ferestre", editor: "envelope", measure: "windows", color: 0x41697a },
   floor: { label: "Pardoseală", editor: "envelope", measure: "floor", color: 0x3f745c },
+};
+
+const HOTSPOTS = {
+  wall: { label: "Fațadă", targetPart: "wall" },
+  windows: { label: "Fereastră", targetPart: "windows" },
+  roof: { label: "Acoperiș", targetPart: "roof" },
+  floor: { label: "Pardoseală", targetPart: "floor" },
+  insulation: { label: "Izolație", targetPart: "wall" },
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -48,13 +58,17 @@ class HomeLabHouse3D {
     this.isMobile = window.matchMedia?.("(max-width: 760px)").matches ?? false;
     this.environmentTarget = null;
     this.microTexture = null;
+    this.renderPipeline = null;
+    this.beautyEnabled = false;
+    this.hotspotAnchors = new Map();
+    this.hotspotElements = new Map();
+    this.hotspotRoot = null;
+    this.initialMotionTimer = null;
+    this.beautyTimer = null;
   }
 
   async init() {
-    if (!this.mount || !window.WebGL2RenderingContext) {
-      this.fail("WebGL indisponibil");
-      return;
-    }
+    if (!this.mount) return;
 
     this.mount.classList.add("is-loading");
     this.mount.innerHTML = `
@@ -67,23 +81,25 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
       <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
+      <div class="hln-3d-hotspots" data-hln-3d-hotspots aria-label="Elemente selectabile ale casei"></div>
       <canvas class="hln-3d-canvas" aria-label="Model 3D interactiv al casei"></canvas>
     `;
 
     const canvas = this.mount.querySelector("canvas");
     try {
-      this.renderer = new THREE.WebGLRenderer({
+      this.renderer = new THREE.WebGPURenderer({
         canvas,
         antialias: true,
         alpha: true,
         powerPreference: "high-performance",
       });
+      await this.renderer.init();
     } catch (error) {
       this.fail("Renderer 3D indisponibil");
       return;
     }
 
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.7 : 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.22 : 1.75));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -115,12 +131,14 @@ class HomeLabHouse3D {
       this.addEnglishGarden();
       this.addHitZones();
       this.addRenovationLayer();
+      this.createSemanticHotspots();
+      this.setupBeautyPipeline();
       this.bindEvents();
       this.resize();
       this.mount.classList.remove("is-loading");
       this.mount.classList.add("is-ready");
       this.mount.closest(".hln-house-visual")?.classList.add("hln-house-visual-3d-ready");
-      this.animate();
+      this.startRenderLoop();
     } catch (error) {
       console.error("[Home Lab 3D] model load failed", error);
       this.fail("Modelul 3D nu a putut fi încărcat");
@@ -277,7 +295,7 @@ class HomeLabHouse3D {
     if ("metalness" in mat) mat.metalness = clamp(mat.metalness ?? 0, 0, 0.12);
     if ("envMapIntensity" in mat) mat.envMapIntensity = 0.68;
 
-    const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    const maxAnisotropy = this.renderer.capabilities?.getMaxAnisotropy?.() ?? 8;
     [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.aoMap].forEach((texture) => {
       if (!texture) return;
       texture.anisotropy = maxAnisotropy;
@@ -501,6 +519,138 @@ class HomeLabHouse3D {
     this.scene.add(garden);
   }
 
+  setupBeautyPipeline() {
+    try {
+      const pipeline = new THREE.RenderPipeline(this.renderer);
+      const scenePass = pass(this.scene, this.camera);
+
+      scenePass.setMRT(mrt({
+        output,
+        diffuseColor,
+        normal: packNormalToRGB(normalView),
+      }));
+
+      const sceneColor = scenePass.getTextureNode("output");
+      const sceneDiffuse = scenePass.getTextureNode("diffuseColor");
+      const sceneDepth = scenePass.getTextureNode("depth");
+      const packedNormal = scenePass.getTextureNode("normal");
+
+      const diffuseTexture = scenePass.getTexture("diffuseColor");
+      if (diffuseTexture) diffuseTexture.type = THREE.UnsignedByteType;
+      const normalTexture = scenePass.getTexture("normal");
+      if (normalTexture) normalTexture.type = THREE.UnsignedByteType;
+
+      const sceneNormal = sample((uv) => unpackRGBToNormal(packedNormal.sample(uv)));
+      const giPass = ssgi(sceneColor, sceneDepth, sceneNormal, this.camera);
+      giPass.useTemporalFiltering = false;
+      giPass.sliceCount.value = this.isMobile ? 1 : 2;
+      giPass.stepCount.value = this.isMobile ? 5 : 8;
+      giPass.radius.value = 7.5;
+      giPass.thickness.value = 0.65;
+      giPass.aoIntensity.value = 1.2;
+      giPass.giIntensity.value = this.isMobile ? 6.5 : 8.5;
+
+      const ao = giPass.getAONode();
+      const gi = giPass.getGINode();
+      pipeline.outputNode = vec4(
+        add(sceneColor.rgb.mul(ao), sceneDiffuse.rgb.mul(gi.rgb)),
+        sceneColor.a
+      );
+
+      this.renderPipeline = pipeline;
+      this.mount.dataset.hln3dRenderer = "webgpu";
+    } catch (error) {
+      console.warn("[Home Lab 3D] WebGPU beauty pipeline unavailable; using direct renderer", error);
+      this.renderPipeline = null;
+      this.mount.dataset.hln3dRenderer = "direct";
+    }
+  }
+
+  createSemanticHotspots() {
+    this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
+    if (!this.hotspotRoot) return;
+
+    const min = this.modelBox.min;
+    const max = this.modelBox.max;
+    const size = this.modelSize;
+    const cx = (min.x + max.x) * 0.5;
+    const cz = (min.z + max.z) * 0.5;
+
+    const points = {
+      wall: new THREE.Vector3(cx - size.x * 0.19, min.y + size.y * 0.42, max.z + size.z * 0.018),
+      windows: new THREE.Vector3(cx + size.x * 0.22, min.y + size.y * 0.43, max.z + size.z * 0.022),
+      roof: new THREE.Vector3(cx + size.x * 0.06, min.y + size.y * 0.84, cz + size.z * 0.13),
+      floor: new THREE.Vector3(cx - size.x * 0.28, min.y + size.y * 0.12, max.z + size.z * 0.01),
+      insulation: new THREE.Vector3(cx - size.x * 0.40, min.y + size.y * 0.48, max.z + size.z * 0.032),
+    };
+
+    Object.entries(points).forEach(([key, position]) => {
+      this.hotspotAnchors.set(key, position);
+      const config = HOTSPOTS[key];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "hln-3d-hotspot";
+      button.dataset.hln3dHotspot = key;
+      button.setAttribute("aria-label", config.label);
+      button.innerHTML = `<span class="hln-3d-hotspot-dot" aria-hidden="true"></span><span class="hln-3d-hotspot-label">${config.label}</span>`;
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setFastInteractionMode();
+        this.selectPart(config.targetPart, true);
+        button.classList.add("is-selected");
+        this.hotspotElements.forEach((other, otherKey) => {
+          if (otherKey !== key) other.classList.remove("is-selected");
+        });
+      });
+      this.hotspotRoot.appendChild(button);
+      this.hotspotElements.set(key, button);
+    });
+  }
+
+  updateSemanticHotspots() {
+    if (!this.hotspotRoot || !this.camera || !this.hotspotAnchors.size) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    this.hotspotAnchors.forEach((worldPoint, key) => {
+      const element = this.hotspotElements.get(key);
+      if (!element) return;
+
+      const projected = worldPoint.clone().project(this.camera);
+      const visible = projected.z > -1 && projected.z < 1 &&
+        projected.x > -1.12 && projected.x < 1.12 &&
+        projected.y > -1.12 && projected.y < 1.12;
+
+      element.hidden = !visible;
+      if (!visible) return;
+
+      const x = (projected.x * 0.5 + 0.5) * rect.width;
+      const y = (-projected.y * 0.5 + 0.5) * rect.height;
+      element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    });
+
+    const insulation = this.hotspotElements.get("insulation");
+    if (insulation) {
+      const showInsulation = this.selectedPart === "wall" || this.renovationLayer.visible;
+      insulation.classList.toggle("is-contextual", !showInsulation);
+    }
+  }
+
+  setFastInteractionMode() {
+    this.beautyEnabled = false;
+    window.clearTimeout(this.beautyTimer);
+    this.mount.classList.add("is-interacting");
+  }
+
+  scheduleBeautyMode(delay = 260) {
+    window.clearTimeout(this.beautyTimer);
+    this.beautyTimer = window.setTimeout(() => {
+      this.beautyEnabled = true;
+      this.mount.classList.remove("is-interacting");
+      this.mount.classList.add("is-beauty");
+    }, delay);
+  }
+
   makeHitBox(part, size, position) {
     const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
     const material = new THREE.MeshBasicMaterial({
@@ -628,19 +778,30 @@ class HomeLabHouse3D {
     this.controls.addEventListener("start", () => {
       this.controls.autoRotate = false;
       this.autoRotateAllowed = false;
+      window.clearTimeout(this.initialMotionTimer);
+      this.setFastInteractionMode();
     });
     this.controls.addEventListener("end", () => {
-      window.clearTimeout(this.resumeTimer);
-      this.resumeTimer = window.setTimeout(() => {
-        this.autoRotateAllowed = true;
-        this.controls.autoRotate = true;
-      }, 4500);
+      this.scheduleBeautyMode(220);
     });
+
+    window.clearTimeout(this.initialMotionTimer);
+    this.initialMotionTimer = window.setTimeout(() => {
+      this.autoRotateAllowed = false;
+      this.controls.autoRotate = false;
+      this.scheduleBeautyMode(120);
+    }, 3600);
 
     canvas.addEventListener("pointerdown", (event) => {
       this.pointerDown = { x: event.clientX, y: event.clientY };
       this.dragged = false;
+      this.setFastInteractionMode();
     });
+
+    canvas.addEventListener("wheel", () => {
+      this.setFastInteractionMode();
+      this.scheduleBeautyMode(280);
+    }, { passive: true });
 
     canvas.addEventListener("pointermove", (event) => {
       if (this.pointerDown) {
@@ -703,8 +864,13 @@ class HomeLabHouse3D {
     if (!PARTS[part]) return;
     this.selectedPart = part;
     this.mount.dataset.hln3dSelected = part;
+    this.hotspotElements.forEach((element, key) => {
+      element.classList.toggle("is-selected", HOTSPOTS[key]?.targetPart === part);
+    });
     this.rebuildRenovationLayer(part);
+    this.setFastInteractionMode();
     this.focusPart(part, false);
+    this.scheduleBeautyMode(620);
 
     if (!dispatch) return;
 
@@ -749,6 +915,7 @@ class HomeLabHouse3D {
     const start = performance.now();
     const duration = 520;
     this.controls.autoRotate = false;
+    this.setFastInteractionMode();
 
     const tick = (now) => {
       const p = Math.min(1, (now - start) / duration);
@@ -757,6 +924,7 @@ class HomeLabHouse3D {
       this.controls.target.lerpVectors(startTarget, endTarget, e);
       this.controls.update();
       if (p < 1) requestAnimationFrame(tick);
+      else this.scheduleBeautyMode(180);
     };
     requestAnimationFrame(tick);
   }
@@ -781,15 +949,27 @@ class HomeLabHouse3D {
     this.camera.updateProjectionMatrix();
   }
 
-  animate() {
+  startRenderLoop() {
+    this.beautyEnabled = false;
+    this.renderer.setAnimationLoop(() => this.renderFrame());
+  }
+
+  renderFrame() {
     if (this.destroyed) return;
+
     const dt = Math.min(0.033, this.clock.getDelta());
     if (this.controls) {
       if (this.autoRotateAllowed) this.controls.autoRotate = true;
       this.controls.update(dt);
     }
-    this.renderer.render(this.scene, this.camera);
-    this.frame = requestAnimationFrame(() => this.animate());
+
+    this.updateSemanticHotspots();
+
+    if (this.beautyEnabled && this.renderPipeline) {
+      this.renderPipeline.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   fail(message) {
