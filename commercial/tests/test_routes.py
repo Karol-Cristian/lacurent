@@ -624,7 +624,7 @@ def test_embed_focus_css_removes_partner_chrome_on_mobile() -> None:
 def test_embed_integration_documents_mobile_focus_opt_out() -> None:
     response = client.get("/embed")
     assert response.status_code == 200
-    assert "embed-loader.js?v=embed7" in response.text
+    assert "embed-loader.js?v=embed8" in response.text
     assert 'data-focus-mode="off"' in response.text
     assert "prima interacțiune" in response.text
 
