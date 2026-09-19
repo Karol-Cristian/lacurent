@@ -996,10 +996,30 @@ class HomeLabHouse3D {
     return mesh;
   }
 
+  rebuildHitZones() {
+    this.hitZones.forEach((mesh) => {
+      this.scene.remove(mesh);
+      mesh.geometry?.dispose?.();
+      mesh.material?.dispose?.();
+    });
+    this.hitZones = [];
+    this.addHitZones();
+  }
+
   addHitZones() {
     const s = this.modelSize;
-    const c = this.modelCenter.clone();
-    c.set(0, s.y * 0.5, 0);
+
+    if (HOUSE_VARIANT === "final" && this.semanticConfig?.parts) {
+      Object.entries(this.semanticConfig.parts).forEach(([part, config]) => {
+        if (!config?.hitbox) return;
+        this.makeHitBox(
+          part,
+          this.normalizedSize(config.hitbox.size),
+          this.normalizedToWorld(config.hitbox.position)
+        );
+      });
+      return;
+    }
 
     this.makeHitBox(
       "wall",
@@ -1108,6 +1128,7 @@ class HomeLabHouse3D {
       this.autoRotateAllowed = false;
     });
     this.controls.addEventListener("end", () => {
+      if (this.authorMode) return;
       window.clearTimeout(this.resumeTimer);
       this.resumeTimer = window.setTimeout(() => {
         this.autoRotateAllowed = true;
@@ -1174,7 +1195,9 @@ class HomeLabHouse3D {
     if (hoverOnly || !hit) return;
 
     const part = hit.object.userData.part;
-    this.selectPart(part, true);
+    if (this.authorMode) this.authorPart = part;
+    this.selectPart(part, !this.authorMode);
+    if (this.authorMode) this.renderAuthorPanel();
   }
 
   selectPart(part, dispatch) {
@@ -1198,6 +1221,20 @@ class HomeLabHouse3D {
   }
 
   focusPart(part, exploded) {
+    if (HOUSE_VARIANT === "final") {
+      const preset = this.semanticConfig?.parts?.[part]?.camera;
+      if (preset?.position && preset?.target) {
+        const pos = this.normalizedToWorld(preset.position);
+        const target = this.normalizedToWorld(preset.target);
+        if (exploded) {
+          const offset = pos.clone().sub(target).multiplyScalar(1.08);
+          pos.copy(target).add(offset);
+        }
+        this.animateCamera(pos, target);
+        return;
+      }
+    }
+
     const s = this.modelSize;
     const targets = {
       wall: {
@@ -1249,7 +1286,8 @@ class HomeLabHouse3D {
     this.selectedPart = null;
     this.setHotspotSelection(null);
     this.renovationLayer.visible = false;
-    this.autoRotateAllowed = true;
+    this.autoRotateAllowed = !this.authorMode;
+    this.controls.autoRotate = !this.authorMode;
     this.animateCamera(
       new THREE.Vector3(distance * 0.78, distance * 0.52, distance),
       new THREE.Vector3(0, s.y * 0.42, 0)
@@ -1269,7 +1307,7 @@ class HomeLabHouse3D {
     if (this.destroyed) return;
     const dt = Math.min(0.033, this.clock.getDelta());
     if (this.controls) {
-      if (this.autoRotateAllowed) this.controls.autoRotate = true;
+      if (this.autoRotateAllowed && !this.authorMode) this.controls.autoRotate = true;
       this.controls.update(dt);
     }
     this.updateHotspotPositions();
