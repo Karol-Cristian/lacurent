@@ -357,14 +357,17 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next4" in response.text
-    assert "/static/home-lab-next.js?v=next4" in response.text
+    assert "/static/home-lab-next.css?v=next5" in response.text
+    assert "/static/home-lab-next.js?v=next5" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d24" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-reset-home' in response.text
     assert 'data-hln-reference-house' in response.text
     assert 'id="hlnEnergyScale"' in response.text
+    assert 'id="hlnReferenceSpec"' in response.text
+    assert "Ce înseamnă „Casa de referință” în MC001?" in response.text
+    assert response.text.count('value="reference_mc001" disabled') == 4
 
 
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
@@ -414,6 +417,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function resetScenarioToHome" in response.text
     assert "function renderLiveConfigurator" in response.text
     assert "scenarioOverrides" in response.text
+    assert "reference_mc001" in response.text
+    assert "hlnReferenceSpec" in response.text
+    assert 'root.querySelectorAll("[data-hln-reference-house]")' in response.text
     assert "hln:visual-state" in response.text
     assert 'fetch(calcUrl' in response.text
     assert 'href="#hln-i-' in response.text
