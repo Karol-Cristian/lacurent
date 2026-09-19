@@ -105,7 +105,7 @@ class HomeLabHouse3D {
     this.hotspotElements = new Map();
     this.hotspotRoot = null;
     this.authorMode = new URLSearchParams(window.location.search).get("author3d") === "1";
-    this.debugHitZones = this.authorMode || new URLSearchParams(window.location.search).get("hotspotDebug") === "1";
+    this.debugHitZones = new URLSearchParams(window.location.search).get("hotspotDebug") === "1";
     this.semanticConfig = JSON.parse(JSON.stringify(DEFAULT_FINAL_HOUSE_CONFIG));
     this.baseSemanticConfig = JSON.parse(JSON.stringify(DEFAULT_FINAL_HOUSE_CONFIG));
     this.authorStorageKey = "lacurent.final-house.semantic.v1";
@@ -698,12 +698,12 @@ class HomeLabHouse3D {
     this.createRoofArray({
       key: "pv",
       type: "pv",
-      cols: 3,
+      cols: 2,
       rows: 2,
-      anchor: [0.17, 0.79, 0.13],
+      anchor: [0.31, 0.70, 0.29],
       panelWidth: s.x * 0.092,
       panelDepth: s.z * 0.16,
-      slope: 0.54,
+      slope: 0.60,
     });
 
     this.createRoofArray({
@@ -711,10 +711,10 @@ class HomeLabHouse3D {
       type: "thermal",
       cols: 2,
       rows: 1,
-      anchor: [-0.25, 0.80, 0.10],
+      anchor: [-0.30, 0.72, 0.25],
       panelWidth: s.x * 0.105,
       panelDepth: s.z * 0.19,
-      slope: 0.54,
+      slope: 0.60,
     });
 
     this.createHeatPumpLayer();
