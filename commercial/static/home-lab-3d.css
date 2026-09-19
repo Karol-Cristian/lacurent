@@ -877,3 +877,50 @@
     display: none;
   }
 }
+
+
+.hln-3d-compass {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 7;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(31,45,38,.10);
+  border-radius: 50%;
+  background: rgba(251,250,246,.82);
+  box-shadow: 0 7px 22px rgba(27,37,32,.07);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+  color: #5c6962;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.hln-3d-compass b,
+.hln-3d-compass span,
+.hln-3d-compass i,
+.hln-3d-compass em {
+  position: absolute;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.hln-3d-compass b { left: 50%; top: 4px; transform: translateX(-50%); color: #315d49; }
+.hln-3d-compass i { left: 50%; bottom: 4px; transform: translateX(-50%); }
+.hln-3d-compass span { right: 5px; top: 50%; transform: translateY(-50%); }
+.hln-3d-compass em { left: 5px; top: 50%; transform: translateY(-50%); }
+
+@media (max-width: 760px) {
+  .hln-3d-compass {
+    left: 10px;
+    bottom: 10px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .hln-3d-stage.is-authoring .hln-3d-compass {
+    bottom: 164px;
+  }
+}
