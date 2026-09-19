@@ -531,8 +531,8 @@ def test_embed_runtime_requests_mobile_focus_and_reflects_focus_state() -> None:
     assert response.status_code == 200
     assert "lacurent:embed-focus-request" in response.text
     assert "lacurent:embed-focus-state" in response.text
-    assert 'document.addEventListener("pointerdown", requestMobileFocus' in response.text
-    assert 'document.addEventListener("focusin", requestMobileFocus' in response.text
+    assert 'document.addEventListener("click", requestMobileFocus' in response.text
+    assert 'document.addEventListener("pointerdown", requestMobileFocus' not in response.text
     assert 'classList.toggle("embed-focus-active"' in response.text
 
 
