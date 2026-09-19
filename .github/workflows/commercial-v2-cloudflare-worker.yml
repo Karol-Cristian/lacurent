@@ -208,6 +208,12 @@ jobs:
               'id="labConfirmCurrentHome"',
               "Asta este casa mea acum",
               'id="labContextImage"',
+              'id="labRenovationChooser"',
+              "Ce vrei să îmbunătățești?",
+              'id="labMobilePrimaryAction"',
+              'id="labMobileCo2"',
+              'data-renovation-action="wall"',
+              'data-renovation-action="heating"',
           ):
               if marker not in home_lab_html:
                   raise AssertionError(f"Home Lab house-first flow missing {marker!r}")
@@ -223,6 +229,9 @@ jobs:
           ):
               if marker not in loader_html:
                   raise AssertionError(f"Embed loader missing mobile focus-mode marker {marker!r}.")
+          lab_css = get("/static/embed-house-lab.css")
+          if "lab-mobile-livebar-metrics" not in lab_css or "lab-renovation-grid" not in lab_css:
+              raise AssertionError("Home Lab CSS missing guided renovation mobile cockpit.")
           runtime_html = get("/static/embed-runtime.js")
           if "requestMobileFocus" not in runtime_html or "embed-focus-active" not in runtime_html:
               raise AssertionError("Embed runtime did not request/reflect mobile focus mode.")
@@ -617,6 +626,12 @@ jobs:
               'id="labConfirmCurrentHome"',
               "Asta este casa mea acum",
               'id="labContextImage"',
+              'id="labRenovationChooser"',
+              "Ce vrei să îmbunătățești?",
+              'id="labMobilePrimaryAction"',
+              'id="labMobileCo2"',
+              'data-renovation-action="wall"',
+              'data-renovation-action="heating"',
           ):
               if marker not in home_lab_html:
                   raise AssertionError(f"Production Home Lab house-first flow missing {marker!r}")
@@ -634,6 +649,9 @@ jobs:
           ):
               if marker not in loader_html:
                   raise AssertionError(f"Production embed loader missing mobile focus-mode marker {marker!r}.")
+          status, _, lab_css = open_url(apex + "/static/embed-house-lab.css")
+          if status != 200 or "lab-mobile-livebar-metrics" not in lab_css or "lab-renovation-grid" not in lab_css:
+              raise AssertionError("Production Home Lab CSS missing guided renovation cockpit.")
           status, _, runtime_html = open_url(apex + "/static/embed-runtime.js")
           if status != 200 or "requestMobileFocus" not in runtime_html or "embed-focus-active" not in runtime_html:
               raise AssertionError("Production embed runtime did not include the mobile focus-mode contract.")
