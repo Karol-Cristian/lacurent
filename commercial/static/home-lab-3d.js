@@ -16,7 +16,7 @@ const HOUSE_MODELS = {
     source: "https://sketchfab.com/3d-models/final-house-20ea8edb2b7043b1a98a0b6ae18684bb",
   },
   dower: {
-    label: "Dower House",
+    label: "Heritage House",
     url: "https://cdn.jsdelivr.net/gh/Dhruvisgoat/deploy3dgamebuild@main/models/house-transformed.glb",
     source: "https://sketchfab.com/3d-models/preceptory-and-dower-house-game-asset-50d31c70e44b4000b17d81ff0fbcdf98",
   },
