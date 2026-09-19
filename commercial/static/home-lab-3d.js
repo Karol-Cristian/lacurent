@@ -1903,9 +1903,20 @@ async function boot() {
   const scenes = mounts.map((mount) => new HomeLabHouse3D(mount));
   window.__homeLab3D = scenes;
 
+  const applyState = (detail) => {
+    scenes.forEach((scene) => {
+      try { scene.applyVisualState(detail || {}); } catch (error) {
+        console.warn("[Home Lab 3D] visual state failed", error);
+      }
+    });
+  };
+
+  window.addEventListener("hln:visual-state", (event) => applyState(event.detail));
+
   for (const scene of scenes) {
     try {
       await scene.init();
+      if (window.__homeLabVisualState) scene.applyVisualState(window.__homeLabVisualState);
     } catch (error) {
       console.error("[Home Lab 3D] init failed", error);
       scene.fail("Inițializare eșuată");
