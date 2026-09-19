@@ -12,12 +12,14 @@
 
   const labels = {
     glazing: {
+      reference_mc001: "Fereastră de referință MC001",
       single_clear_glazing: "Geam simplu",
       double_clear_glazing: "Geam dublu clar",
       double_low_e_face_3: "Geam dublu Low-E",
       triple_low_e_faces_2_and_5: "Tripan Low-E"
     },
     heating: {
+      reference_mc001: "Încălzire de referință MC001",
       condensing_gas_boiler: "Centrală gaz",
       gas_boiler: "Centrală gaz convențională",
       heat_pump: "Pompă de căldură",
@@ -28,11 +30,13 @@
       pellet_boiler: "Centrală pe peleți"
     },
     ventilation: {
+      reference_mc001: "Ventilație de referință MC001",
       natural: "Ventilație naturală",
       mechanical: "Ventilație mecanică",
       hrv: "Recuperare de căldură"
     },
     cooling: {
+      reference_mc001: "Răcire de referință MC001",
       none: "Fără răcire",
       split: "Aer condiționat",
       heat_pump: "Pompă reversibilă"
@@ -125,10 +129,10 @@
       roofIns: insulationCmForU(1.00, u.roof),
       floorIns: insulationCmForU(0.90, u.floor),
       windows: Number(homeState.windows),
-      glazing: homeState.glazing,
-      heating: "condensing_gas_boiler",
-      ventilation: "natural",
-      cooling: homeState.cooling,
+      glazing: "reference_mc001",
+      heating: "reference_mc001",
+      ventilation: "reference_mc001",
+      cooling: homeState.cooling === "none" ? "none" : "reference_mc001",
     };
   }
 
@@ -368,6 +372,25 @@
       }
     });
 
+    const referenceSpec = $("#hlnReferenceSpec");
+    const reference = homeResult?.reference_parameters || currentResult?.reference_parameters;
+    if (referenceSpec) {
+      referenceSpec.hidden = !referenceDerived;
+      if (referenceDerived && reference?.u_values_w_m2k) {
+        const u = reference.u_values_w_m2k;
+        $("#hlnReferenceEnvelope").textContent =
+          `U perete ${fmt(u.exterior_wall,2)} · pod ${fmt(u.roof,2)} · pardoseală ${fmt(u.floor,2)} · ferestre ${fmt(u.window,2)} · uși ${fmt(u.exterior_door,2)} W/m²K · punți termice 0`;
+        $("#hlnReferenceAir").textContent =
+          `n = ${fmt(reference.air_changes_per_hour,2)} h⁻¹ · recuperare ${fmt(100 * Number(reference.heat_recovery_efficiency || 0),0)}%`;
+        $("#hlnReferenceHeating").textContent =
+          `centrală gaz de referință · η ${fmt(100 * Number(reference.heating_efficiency || 0),0)}%`;
+        $("#hlnReferenceServices").textContent =
+          homeState.cooling === "none"
+            ? `fără răcire, ca în Casa mea · ACM η ${fmt(100 * Number(reference.dhw_efficiency || 0),0)}%`
+            : `răcire SEER ${fmt(reference.cooling_seer,1)} · ACM η ${fmt(100 * Number(reference.dhw_efficiency || 0),0)}%`;
+      }
+    }
+
     live.classList.toggle("is-reference", referenceMode);
     live.classList.toggle("is-reference-derived", !referenceMode && referenceDerived);
   }
@@ -469,7 +492,7 @@
     const overrideDhwEfficiency = finiteOverride("dhwEfficiency");
     formSet("dhw_efficiency", overrideDhwEfficiency ?? 0.86);
 
-    formSet("solar_glazing_type_id", state.glazing);
+    formSet("solar_glazing_type_id", state.glazing === "reference_mc001" ? homeState.glazing : state.glazing);
     formSet("solar_orientation", state.orientation);
     formSet("indoor_design_temperature_c", state.temperature);
     formSet("dhw_occupants", state.occupants);
