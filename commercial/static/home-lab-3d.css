@@ -924,3 +924,9 @@
     bottom: 164px;
   }
 }
+
+
+/* In the product the house is visual feedback, not a CAD toolbar. */
+.hln-3d-stage:not(.is-authoring) [data-hln-3d-explode] {
+  display: none;
+}
