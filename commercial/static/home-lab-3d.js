@@ -1205,8 +1205,12 @@ class HomeLabHouse3D {
     this.selectedPart = part;
     this.mount.dataset.hln3dSelected = part;
     this.setHotspotSelection(part);
-    this.rebuildRenovationLayer(part);
-    this.focusPart(part, false);
+    if (this.authorMode) {
+      this.renovationLayer.visible = false;
+    } else {
+      this.rebuildRenovationLayer(part);
+      this.focusPart(part, false);
+    }
     this.autoRotateAllowed = false;
     this.controls.autoRotate = false;
 
