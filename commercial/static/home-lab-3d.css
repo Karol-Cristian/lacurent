@@ -731,3 +731,87 @@
     gap: 8px;
   }
 }
+
+
+.hln-3d-mesh-inspector {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 9px;
+  padding: 9px;
+  border: 1px solid rgba(38,51,45,.08);
+  border-radius: 13px;
+  background: rgba(255,255,255,.58);
+}
+
+.hln-3d-mesh-inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hln-3d-mesh-inspector-head strong {
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #59645e;
+}
+
+.hln-3d-mesh-inspector-head button,
+.hln-3d-mesh-buttons button {
+  border: 1px solid rgba(38,51,45,.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,.78);
+  color: #3f4d46;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.hln-3d-mesh-buttons {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hln-3d-mesh-buttons::-webkit-scrollbar {
+  display: none;
+}
+
+.hln-3d-mesh-buttons button {
+  min-width: 42px;
+  font-weight: 700;
+}
+
+.hln-3d-mesh-buttons button.is-off {
+  opacity: .45;
+  text-decoration: line-through;
+  background: rgba(235,232,226,.72);
+}
+
+.hln-3d-mesh-inspector small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6c756f;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+@media (max-width: 760px) {
+  .hln-3d-author-panel.is-collapsed {
+    max-height: 156px;
+  }
+
+  .hln-3d-author-panel.is-collapsed .hln-3d-author-parts {
+    display: none;
+  }
+
+  .hln-3d-author-panel.is-collapsed .hln-3d-mesh-inspector {
+    margin-bottom: 0;
+  }
+}
