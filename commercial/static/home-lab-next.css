@@ -890,3 +890,10 @@ svg{display:block}
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+.hln-reference-button.is-derived {
+  border-style: dashed;
+  background: rgba(248, 243, 232, .94);
+  color: #755d3d;
+}
