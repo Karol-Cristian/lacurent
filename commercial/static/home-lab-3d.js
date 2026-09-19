@@ -485,7 +485,8 @@ class HomeLabHouse3D {
 
     const target = new THREE.Vector3(0, this.modelSize.y * 0.43, 0);
     this.controls.target.copy(target);
-    const distance = Math.max(this.modelSize.x, this.modelSize.z) * (this.mode === "home" ? 1.72 : 1.58);
+    let distance = Math.max(this.modelSize.x, this.modelSize.z) * (this.mode === "home" ? 1.72 : 1.58);
+    if (this.authorMode && this.isMobile && HOUSE_VARIANT === "final") distance *= 1.34;
     this.camera.position.set(distance * 0.76, distance * 0.48, distance);
     this.controls.update();
 
@@ -726,14 +727,17 @@ class HomeLabHouse3D {
     this.autoRotateAllowed = false;
     this.controls.autoRotate = false;
     this.mount.classList.add("is-authoring");
+    this.mount.closest(".hln-house-visual")?.classList.add("is-authoring-3d");
 
     const panel = document.createElement("aside");
     panel.className = "hln-3d-author-panel";
+    if (this.isMobile) panel.classList.add("is-collapsed");
     panel.innerHTML = `
       <header>
         <div><strong>3D Authoring</strong><small>Final House semantic map</small></div>
-        <span data-author-status>Modificările sunt păstrate local</span>
+        <button type="button" class="hln-3d-author-toggle" data-author-toggle aria-expanded="${this.isMobile ? "false" : "true"}">${this.isMobile ? "Reglaje" : "Restrânge"}</button>
       </header>
+      <span class="hln-3d-author-status" data-author-status>Modificările sunt păstrate local</span>
       <div class="hln-3d-author-parts" data-author-parts></div>
       <div class="hln-3d-author-controls" data-author-controls></div>
       <div class="hln-3d-author-actions">
@@ -768,6 +772,14 @@ class HomeLabHouse3D {
     });
 
     panel.addEventListener("click", async (event) => {
+      const toggle = event.target.closest("[data-author-toggle]");
+      if (toggle) {
+        const collapsed = panel.classList.toggle("is-collapsed");
+        toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        toggle.textContent = collapsed ? "Reglaje" : "Închide";
+        return;
+      }
+
       const action = event.target.closest("[data-author-action]")?.dataset.authorAction;
       if (!action) return;
 
