@@ -179,7 +179,7 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/elivio-consilio": "Un chat cu un scop clar.",
+              "/elivio-consilio": "Spune ce ai pe minte.",
               "/elivio-consilio/confidentialitate": "Confidențialitate & AI",
               "/static/elivio.css": ".ec-hero",
               "/static/elivio.js": "data-elivio-chat",
@@ -601,7 +601,7 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/elivio-consilio": "Un chat cu un scop clar.",
+              "/elivio-consilio": "Spune ce ai pe minte.",
               "/elivio-consilio/confidentialitate": "Confidențialitate & AI",
               "/static/elivio.css": ".ec-hero",
               "/static/elivio.js": "data-elivio-chat",
@@ -638,6 +638,29 @@ jobs:
                   f"Production Elivio AI chat did not use Workers AI: {chat_payload.get('mode')!r}"
               )
           print("/elivio-consilio/api/chat", status, chat_payload.get("mode"))
+
+          booking_request = json.dumps({
+              "messages": [
+                  {
+                      "role": "user",
+                      "content": "Vreau să mă programez.",
+                  }
+              ]
+          }).encode("utf-8")
+          status, _, booking_body = open_url(
+              apex + "/elivio-consilio/api/chat",
+              data=booking_request,
+              headers={"Content-Type": "application/json"},
+              timeout=30,
+          )
+          if status != 200:
+              raise AssertionError(f"Elivio booking shortcut returned HTTP {status}")
+          booking_payload = json.loads(booking_body)
+          if booking_payload.get("mode") != "booking":
+              raise AssertionError("Elivio booking intent did not skip the intake flow.")
+          if booking_payload.get("action", {}).get("target") != "#contact":
+              raise AssertionError("Elivio booking intent did not expose the contact CTA.")
+          print("/elivio-consilio/api/chat booking", status, booking_payload.get("mode"))
 
           for path in (
               "/home-lab-assets/house-fireplace.webp?v=2",

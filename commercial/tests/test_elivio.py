@@ -15,7 +15,8 @@ def test_elivio_page_is_standalone_and_transparent() -> None:
     assert "Asistent social" in response.text
     assert "MAXWELL" in response.text
     assert "EQUIP" in response.text
-    assert "Un chat cu un scop clar." in response.text
+    assert "Spune ce ai pe minte." in response.text
+    assert "Vreau o programare" in response.text
     assert "1 / 4" in response.text
     assert "ec-mark" not in response.text
     assert "Exemplu compozit" in response.text
@@ -75,3 +76,38 @@ def test_elivio_fallback_advances_instead_of_repeating() -> None:
     assert payload["stage"] == 3
     assert payload["stage_label"] == "Ce sprijin se potrivește"
     assert "tema este" in payload["reply"]
+
+
+def test_elivio_chat_booking_intent_skips_intake() -> None:
+    response = client.post(
+        "/elivio-consilio/api/chat",
+        json={"messages": [{"role": "user", "content": "Vreau să mă programez."}]},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "booking"
+    assert payload["stage"] == 4
+    assert payload["action"]["type"] == "booking"
+    assert payload["action"]["target"] == "#contact"
+
+
+def test_elivio_chat_rejects_cnp_before_ai() -> None:
+    response = client.post(
+        "/elivio-consilio/api/chat",
+        json={"messages": [{"role": "user", "content": "CNP-ul meu este 1960528123456 și vreau să vorbim."}]},
+    )
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["code"] == "sensitive_data"
+    assert payload["sensitive_kind"] == "cnp"
+
+
+def test_elivio_chat_rejects_payment_card_before_ai() -> None:
+    response = client.post(
+        "/elivio-consilio/api/chat",
+        json={"messages": [{"role": "user", "content": "Cardul meu este 4111 1111 1111 1111."}]},
+    )
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["code"] == "sensitive_data"
+    assert payload["sensitive_kind"] == "card"
