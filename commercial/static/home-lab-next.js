@@ -412,6 +412,7 @@
       currentResult = payload;
       setStatus("Calcul actualizat", "ok");
       renderAll();
+      emitVisualState();
       return payload;
     } catch (error) {
       if (token !== calculateToken) return null;
@@ -836,6 +837,29 @@
     scheduleCalculate("scenario");
   }
 
+  function applyLiveScenarioChange(key, value, focus = null) {
+    if (!baselineSaved) return;
+    referenceMode = false;
+    scenarioState[key] = value;
+    syncMeasuresFromScenario();
+    renderAll();
+    persist();
+    emitVisualState(focus);
+    scheduleCalculate("scenario", 90);
+  }
+
+  function nudgeLiveRange(row, delta) {
+    const input = row?.querySelector('input[type="range"]');
+    if (!input) return;
+    const key = row.dataset.hlnTune;
+    const min = Number(input.min || -Infinity);
+    const max = Number(input.max || Infinity);
+    const step = Math.abs(Number(delta)) || Number(input.step || 1);
+    const next = clamp(Number(input.value || 0) + Number(delta || step), min, max);
+    input.value = String(next);
+    applyLiveScenarioChange(key, next);
+  }
+
   function normalized(text) {
     return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
@@ -895,6 +919,55 @@
     scenarioState = {...homeState};
     renderHome();
     scheduleCalculate("home", 20);
+  });
+
+  const liveRangeBindings = [
+    ["#hlnLiveWallIns", "wallIns"],
+    ["#hlnLiveRoofIns", "roofIns"],
+    ["#hlnLiveFloorIns", "floorIns"],
+    ["#hlnLiveWindows", "windows"],
+  ];
+
+  liveRangeBindings.forEach(([selector, key]) => {
+    const input = $(selector);
+    if (!input) return;
+    input.addEventListener("input", () => {
+      applyLiveScenarioChange(key, Number(input.value));
+    });
+    input.addEventListener("wheel", event => {
+      if (Math.abs(event.deltaY) < 1) return;
+      event.preventDefault();
+      const step = Number(input.step || 1);
+      const delta = event.deltaY < 0 ? step : -step;
+      const row = input.closest("[data-hln-tune]");
+      nudgeLiveRange(row, delta);
+    }, { passive: false });
+  });
+
+  [
+    ["#hlnLiveGlazing", "glazing", "windows"],
+    ["#hlnLiveHeating", "heating", "heating"],
+    ["#hlnLiveVentilation", "ventilation", "ventilation"],
+    ["#hlnLiveCooling", "cooling", "cooling"],
+  ].forEach(([selector, key, focus]) => {
+    const input = $(selector);
+    if (!input) return;
+    input.addEventListener("change", () => applyLiveScenarioChange(key, input.value, focus));
+  });
+
+  $$("[data-hln-reference-house]").forEach(button => {
+    button.addEventListener("click", setReferenceHouse);
+  });
+
+  $$("[data-hln-reset-home]").forEach(button => {
+    button.addEventListener("click", resetScenarioToHome);
+  });
+
+  $$("#hlnLiveConfigurator [data-hln-tune-step]").forEach(button => {
+    button.addEventListener("click", () => {
+      const row = button.closest("[data-hln-tune]");
+      nudgeLiveRange(row, Number(button.dataset.hlnTuneStep));
+    });
   });
 
   $$("[data-hln-measure]").forEach(button => button.addEventListener("click", () => openMeasure(button.dataset.hlnMeasure)));
