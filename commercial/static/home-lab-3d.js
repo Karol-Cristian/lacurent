@@ -961,8 +961,8 @@ class HomeLabHouse3D {
     if (detail.focus === "cooling" && detail.cooling === "split") {
       this.focusEquipment("ac");
     } else if (
-      detail.focus === "heating" &&
-      (detail.heating === "heat_pump" || detail.cooling === "heat_pump")
+      (detail.focus === "heating" && detail.heating === "heat_pump") ||
+      (detail.focus === "cooling" && detail.cooling === "heat_pump")
     ) {
       this.focusEquipment("heatPump");
     } else if (detail.focus === "home") {
