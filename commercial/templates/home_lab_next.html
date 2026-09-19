@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next4">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next5">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -254,6 +254,20 @@
             <small>● Casa mea &nbsp; ◆ Casa de referință</small>
           </div>
           <button type="button" class="hln-reference-button" data-hln-reference-house>Casa de referință</button>
+        </div>
+
+        <div class="hln-reference-note">
+          <strong>Ce înseamnă „Casa de referință” în MC001?</strong>
+          <span>Este o clădire virtuală de comparație: păstrează geometria, orientarea, amplasarea și condițiile de utilizare ale Casei mele, dar înlocuiește performanțele relevante ale anvelopei și instalațiilor cu valori de referință. Nu este o altă casă și nici o recomandare de renovare.</span>
+          <small>LaCurent aplică aici setul de parametri de referință deja implementat; unele reguli normative ale clădirii de referință MC001 sunt încă în curs de integrare.</small>
+        </div>
+
+        <div class="hln-reference-spec" id="hlnReferenceSpec" hidden>
+          <div><span>ANVELOPĂ</span><strong id="hlnReferenceEnvelope">—</strong></div>
+          <div><span>AER</span><strong id="hlnReferenceAir">—</strong></div>
+          <div><span>ÎNCĂLZIRE</span><strong id="hlnReferenceHeating">—</strong></div>
+          <div><span>RĂCIRE / ACM</span><strong id="hlnReferenceServices">—</strong></div>
+          <p>Geometria, suprafețele, orientarea și localitatea rămân cele ale Casei mele.</p>
         </div>
 
         <div class="hln-tune-grid">
@@ -674,7 +688,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d24"></script>
-  <script src="/static/home-lab-next.js?v=next4"></script>
+  <script src="/static/home-lab-next.js?v=next5"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
