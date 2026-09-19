@@ -185,6 +185,7 @@ jobs:
               "/static/home-lab-next.js": "function openMeasure",
               "/static/home-lab-next.css": ".hln-before-after",
               "/static/home-lab-product.js": "data-hlp-demo-shell",
+              "/static/home-lab-product.css": ".hlp-product-stage",
               "/elivio-consilio": "data-chat-launcher",
               "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
               "/static/elivio.css": ".ec-hero",
