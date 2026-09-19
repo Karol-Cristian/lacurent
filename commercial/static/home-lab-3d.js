@@ -1033,7 +1033,7 @@ class HomeLabHouse3D {
   }
 
   createSemanticHotspots() {
-    if (HOUSE_VARIANT !== "final") return;
+    if (HOUSE_VARIANT !== "final" || !this.authorMode) return;
 
     this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
     if (!this.hotspotRoot) return;
