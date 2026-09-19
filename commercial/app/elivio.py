@@ -23,6 +23,27 @@ INTAKE_STAGE_LABELS = (
     "Următorul pas",
 )
 
+CONTACT_SUMMARY_PROMPT = """
+Rezumă conversația pentru câmpul „Cu ce te putem ajuta?” dintr-un formular de contact.
+Scrie în română, la persoana întâi, ca și cum utilizatorul și-ar descrie singur motivul.
+Folosește cel mult 2 propoziții și aproximativ 400 de caractere.
+
+Păstrează doar:
+- tema principală pe care utilizatorul vrea să o discute;
+- ce ar vrea să clarifice sau să schimbe;
+- faptul că dorește o discuție/programare, dacă este relevant.
+
+Nu include:
+- nume, adrese, CNP, date de contact, date bancare sau parole;
+- detalii medicale, diagnostice sau presupuneri;
+- detalii despre autovătămare, suicid ori alte situații de criză;
+- interpretări pe care utilizatorul nu le-a spus;
+- replicile asistentului ca informații despre utilizator.
+
+Dacă nu există suficient context, scrie simplu:
+„Aș dori să discut cu Violeta și să clarific dacă acest tip de consiliere mi se potrivește.”
+""".strip()
+
 SYSTEM_PROMPT = """
 Ești asistentul virtual de orientare al Elivio Consilio. Vorbești în română dacă
 utilizatorul nu alege explicit altă limbă. Nu ești Violeta Munteanu și nu ești
@@ -207,6 +228,27 @@ def _sensitive_kind(text: str) -> str:
     return ""
 
 
+def _contact_summary_fallback(history: list[dict[str, str]]) -> str:
+    user_messages = []
+    for item in history:
+        if item["role"] != "user":
+            continue
+        content = item["content"].strip()
+        if not content or _contains_crisis(content) or _sensitive_kind(content):
+            continue
+        if _wants_booking(content) and len(content) < 80:
+            continue
+        user_messages.append(content)
+
+    if not user_messages:
+        return "Aș dori să discut cu Violeta și să clarific dacă acest tip de consiliere mi se potrivește."
+
+    combined = " ".join(user_messages[-3:])
+    if len(combined) > 650:
+        combined = combined[:647].rstrip() + "…"
+    return f"Aș dori să discut despre următoarea situație: {combined}"
+
+
 def _fallback_reply(text: str, user_turn_count: int) -> str:
     lowered = text.casefold()
     if any(word in lowered for word in ("program", "programare", "ședință", "sedinta", "contact")):
@@ -283,6 +325,73 @@ async def elivio_home(request: Request) -> HTMLResponse:
 @router.get("/elivio-consilio/confidentialitate", response_class=HTMLResponse)
 async def elivio_privacy(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "elivio_privacy.html", _page_context(request))
+
+
+
+
+@router.post("/elivio-consilio/api/chat-summary")
+async def elivio_chat_summary(request: Request) -> JSONResponse:
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Mesaj invalid."}, status_code=400)
+
+    raw_messages = payload.get("messages") if isinstance(payload, dict) else None
+    if not isinstance(raw_messages, list):
+        return JSONResponse({"error": "Lipsește conversația."}, status_code=422)
+
+    history: list[dict[str, str]] = []
+    for item in raw_messages[-MAX_HISTORY_MESSAGES:]:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip()
+        content = str(item.get("content") or "").strip()[:MAX_MESSAGE_CHARS]
+        if role not in {"user", "assistant"} or not content:
+            continue
+        if role == "user" and (_sensitive_kind(content) or _contains_crisis(content)):
+            continue
+        history.append({"role": role, "content": content})
+
+    if not any(item["role"] == "user" for item in history):
+        return JSONResponse(
+            {"summary": _contact_summary_fallback(history), "mode": "fallback"},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    env = request.scope.get("env")
+    ai = getattr(env, "AI", None) if env is not None else None
+    if ai is None:
+        return JSONResponse(
+            {"summary": _contact_summary_fallback(history), "mode": "fallback"},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    try:
+        response = await ai.run(
+            AI_MODEL,
+            {
+                "messages": [
+                    {"role": "system", "content": CONTACT_SUMMARY_PROMPT},
+                    *history,
+                ],
+                "max_tokens": 160,
+                "temperature": 0.15,
+            },
+        )
+        summary = _extract_ai_text(response).strip()
+    except Exception:
+        summary = ""
+
+    if not summary:
+        summary = _contact_summary_fallback(history)
+        mode = "fallback"
+    else:
+        mode = "ai"
+
+    return JSONResponse(
+        {"summary": summary[:1000], "mode": mode},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/elivio-consilio/api/chat")
