@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/32485/v1/model.glb";
 const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene";
@@ -44,6 +45,9 @@ class HomeLabHouse3D {
     this.resizeObserver = null;
     this.dragged = false;
     this.pointerDown = null;
+    this.isMobile = window.matchMedia?.("(max-width: 760px)").matches ?? false;
+    this.environmentTarget = null;
+    this.microTexture = null;
   }
 
   async init() {
@@ -79,16 +83,17 @@ class HomeLabHouse3D {
       return;
     }
 
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.7 : 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.02;
+    this.renderer.toneMappingExposure = 0.9;
     this.renderer.setClearColor(0x000000, 0);
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(34, 1, 0.05, 100);
+    this.addEnvironment();
+    this.camera = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
     this.camera.position.set(9.5, 6.2, 10.5);
 
     this.controls = new OrbitControls(this.camera, canvas);
@@ -122,56 +127,132 @@ class HomeLabHouse3D {
     }
   }
 
+  addEnvironment() {
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const environmentScene = new RoomEnvironment();
+    this.environmentTarget = pmrem.fromScene(environmentScene, 0.04);
+    this.scene.environment = this.environmentTarget.texture;
+    if ("environmentIntensity" in this.scene) this.scene.environmentIntensity = 0.72;
+    environmentScene.dispose();
+    pmrem.dispose();
+  }
+
   addLighting() {
-    const hemi = new THREE.HemisphereLight(0xfffcf4, 0x8d9691, 2.4);
+    const hemi = new THREE.HemisphereLight(0xfffbef, 0x6c756f, 0.72);
     this.scene.add(hemi);
 
-    const key = new THREE.DirectionalLight(0xfff5e8, 4.2);
-    key.position.set(7, 10, 8);
+    const key = new THREE.DirectionalLight(0xfff1dd, 2.55);
+    key.position.set(7.5, 10.5, 8.5);
     key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
-    key.shadow.camera.left = -10;
-    key.shadow.camera.right = 10;
-    key.shadow.camera.top = 10;
-    key.shadow.camera.bottom = -10;
-    key.shadow.bias = -0.0006;
+    const shadowSize = this.isMobile ? 1024 : 2048;
+    key.shadow.mapSize.set(shadowSize, shadowSize);
+    key.shadow.camera.left = -9;
+    key.shadow.camera.right = 9;
+    key.shadow.camera.top = 9;
+    key.shadow.camera.bottom = -9;
+    key.shadow.camera.near = 0.5;
+    key.shadow.camera.far = 30;
+    key.shadow.bias = -0.00025;
+    key.shadow.normalBias = 0.025;
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xd4e3e8, 1.35);
-    fill.position.set(-7, 5, -5);
+    const fill = new THREE.DirectionalLight(0xcbdde5, 0.42);
+    fill.position.set(-7, 4.5, -5);
     this.scene.add(fill);
 
-    const rim = new THREE.DirectionalLight(0xdde9df, 0.9);
-    rim.position.set(-2, 4, 8);
+    const rim = new THREE.DirectionalLight(0xe3eadf, 0.28);
+    rim.position.set(-3, 4, 8);
     this.scene.add(rim);
+  }
+
+  createContactShadowTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(128, 128, 8, 128, 128, 120);
+    gradient.addColorStop(0, "rgba(35,42,38,.34)");
+    gradient.addColorStop(0.35, "rgba(35,42,38,.20)");
+    gradient.addColorStop(0.72, "rgba(35,42,38,.065)");
+    gradient.addColorStop(1, "rgba(35,42,38,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 256, 256);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  getMicroTexture() {
+    if (this.microTexture) return this.microTexture;
+    const canvas = document.createElement("canvas");
+    canvas.width = 192;
+    canvas.height = 192;
+    const ctx = canvas.getContext("2d");
+    const image = ctx.createImageData(canvas.width, canvas.height);
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        const i = (y * canvas.width + x) * 4;
+        const wave = Math.sin(x * 0.41) * 5 + Math.sin(y * 0.29) * 4 + Math.sin((x + y) * 0.13) * 3;
+        const grain = ((x * 17 + y * 31 + x * y * 7) % 23) - 11;
+        const value = Math.round(clamp(128 + wave + grain * 0.72, 92, 164));
+        image.data[i] = value;
+        image.data[i + 1] = value;
+        image.data[i + 2] = value;
+        image.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(image, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(5, 5);
+    texture.needsUpdate = true;
+    this.microTexture = texture;
+    return texture;
   }
 
   addGround() {
     const ground = new THREE.Mesh(
       new THREE.CircleGeometry(10.8, 96),
       new THREE.MeshStandardMaterial({
-        color: 0xe8e9df,
-        roughness: 1,
+        color: 0xe7e4dc,
+        roughness: 0.98,
         metalness: 0,
       })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.04;
+    ground.position.y = -0.05;
     ground.receiveShadow = true;
     this.scene.add(ground);
 
     const lawn = new THREE.Mesh(
       new THREE.CircleGeometry(8.6, 96),
       new THREE.MeshStandardMaterial({
-        color: 0xcfd8c4,
+        color: 0xbecab5,
         roughness: 1,
         metalness: 0,
       })
     );
     lawn.rotation.x = -Math.PI / 2;
-    lawn.position.y = -0.028;
+    lawn.position.y = -0.036;
     lawn.receiveShadow = true;
     this.scene.add(lawn);
+
+    const contact = new THREE.Mesh(
+      new THREE.PlaneGeometry(8.8, 6.8),
+      new THREE.MeshBasicMaterial({
+        map: this.createContactShadowTexture(),
+        transparent: true,
+        opacity: 0.82,
+        depthWrite: false,
+        toneMapped: false,
+      })
+    );
+    contact.rotation.x = -Math.PI / 2;
+    contact.position.y = -0.018;
+    contact.renderOrder = 2;
+    this.scene.add(contact);
   }
 
   classifyPart(name) {
@@ -192,41 +273,74 @@ class HomeLabHouse3D {
     const mat = source.clone();
     const key = `${obj.name || ""} ${source?.name || ""}`.toLowerCase();
 
-    if ("roughness" in mat) mat.roughness = Math.max(0.52, mat.roughness ?? 0.72);
-    if ("metalness" in mat) mat.metalness = Math.min(0.08, mat.metalness ?? 0);
+    if ("roughness" in mat) mat.roughness = clamp(mat.roughness ?? 0.72, 0.46, 0.96);
+    if ("metalness" in mat) mat.metalness = clamp(mat.metalness ?? 0, 0, 0.12);
+    if ("envMapIntensity" in mat) mat.envMapIntensity = 0.68;
+
+    const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.aoMap].forEach((texture) => {
+      if (!texture) return;
+      texture.anisotropy = maxAnisotropy;
+      if (texture === mat.map) texture.colorSpace = THREE.SRGBColorSpace;
+      texture.needsUpdate = true;
+    });
 
     const hasAuthoredTexture = Boolean(mat.map);
+    const micro = this.getMicroTexture();
 
     if (!hasAuthoredTexture && /roof|thatch|shingle|slate/.test(key) && mat.color) {
-      mat.color.setHex(/thatch/.test(key) ? 0x8d7b58 : 0x4a4f50);
-      if ("roughness" in mat) mat.roughness = 0.88;
+      mat.color.setHex(/thatch/.test(key) ? 0x75664c : 0x44494b);
+      if ("roughness" in mat) mat.roughness = 0.9;
+      if ("bumpMap" in mat) {
+        mat.bumpMap = micro;
+        mat.bumpScale = 0.045;
+      }
     } else if (!hasAuthoredTexture && /door/.test(key) && mat.color) {
-      mat.color.setHex(0x17372f);
-      if ("roughness" in mat) mat.roughness = 0.72;
-    } else if (!hasAuthoredTexture && /window|sash|frame|trim|cornice|mould|porch|column/.test(key) && mat.color && !/glass/.test(key)) {
-      mat.color.setHex(0xe8e2d4);
+      mat.color.setHex(0x18382f);
       if ("roughness" in mat) mat.roughness = 0.68;
+      if ("bumpMap" in mat) {
+        mat.bumpMap = micro;
+        mat.bumpScale = 0.018;
+      }
+    } else if (!hasAuthoredTexture && /window|sash|frame|trim|cornice|mould|porch|column/.test(key) && mat.color && !/glass/.test(key)) {
+      mat.color.setHex(0xe5dfd2);
+      if ("roughness" in mat) mat.roughness = 0.64;
     } else if (/glass/.test(key) && mat.color) {
-      mat.color.setHex(0xb9cbd0);
+      mat.color.setHex(0x9fb7be);
       mat.transparent = true;
-      mat.opacity = Math.min(mat.opacity ?? 1, 0.72);
+      mat.opacity = Math.min(mat.opacity ?? 1, 0.64);
       mat.depthWrite = false;
-      if ("roughness" in mat) mat.roughness = 0.16;
+      if ("roughness" in mat) mat.roughness = 0.12;
+      if ("metalness" in mat) mat.metalness = 0;
+      if ("envMapIntensity" in mat) mat.envMapIntensity = 1.05;
     } else if (!hasAuthoredTexture && /wall|cob|plaster|facade|exterior/.test(key) && mat.color) {
-      mat.color.setHex(0xd4c8b5);
-      if ("roughness" in mat) mat.roughness = 0.93;
+      mat.color.setHex(0xc8baa5);
+      if ("roughness" in mat) mat.roughness = 0.92;
+      if ("bumpMap" in mat) {
+        mat.bumpMap = micro;
+        mat.bumpScale = 0.026;
+      }
     } else if (!hasAuthoredTexture && /timber|beam|oak|wood/.test(key) && mat.color) {
-      mat.color.setHex(0x5f4937);
-      if ("roughness" in mat) mat.roughness = 0.88;
+      mat.color.setHex(0x554233);
+      if ("roughness" in mat) mat.roughness = 0.84;
+      if ("bumpMap" in mat) {
+        mat.bumpMap = micro;
+        mat.bumpScale = 0.02;
+      }
     } else if (!hasAuthoredTexture && /stone|foundation|plinth|step|kerb|curb/.test(key) && mat.color) {
-      mat.color.setHex(0xaaa397);
-      if ("roughness" in mat) mat.roughness = 0.95;
+      mat.color.setHex(0x9d978c);
+      if ("roughness" in mat) mat.roughness = 0.96;
+      if ("bumpMap" in mat) {
+        mat.bumpMap = micro;
+        mat.bumpScale = 0.032;
+      }
     } else if (mat.color) {
       const hsl = {};
       mat.color.getHSL(hsl);
-      mat.color.setHSL(hsl.h, clamp(hsl.s * 0.82, 0, 1), clamp(hsl.l * 1.015, 0.06, 0.94));
+      mat.color.setHSL(hsl.h, clamp(hsl.s * 0.76, 0, 1), clamp(hsl.l * 0.985, 0.05, 0.9));
     }
 
+    mat.needsUpdate = true;
     return mat;
   }
 
@@ -277,7 +391,7 @@ class HomeLabHouse3D {
     const minY = this.modelBox.min.y;
     this.modelRoot.position.y -= minY;
 
-    this.modelRoot.rotation.y = -0.18;
+    this.modelRoot.rotation.y = -0.26;
     this.scene.add(this.modelRoot);
 
     this.modelBox.setFromObject(this.modelRoot);
@@ -290,7 +404,7 @@ class HomeLabHouse3D {
     this.camera.position.set(distance * 0.76, distance * 0.48, distance);
     this.controls.update();
 
-    const warmLeft = new THREE.PointLight(0xffd7a4, 1.25, Math.max(this.modelSize.x, this.modelSize.z) * 1.2, 2);
+    const warmLeft = new THREE.PointLight(0xffc98f, 0.34, Math.max(this.modelSize.x, this.modelSize.z) * 1.0, 2);
     warmLeft.position.set(-this.modelSize.x * 0.22, this.modelSize.y * 0.34, this.modelSize.z * 0.54);
     this.scene.add(warmLeft);
 
