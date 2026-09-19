@@ -301,7 +301,7 @@ def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
     assert "Servicii pentru proiectul tău" in response.text
     assert "Înainte să cumperi, estimează necesarul energetic al casei." in response.text
     assert 'data-lacurent-embed data-partner="demo-store"' in response.text
-    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed6"' in response.text
+    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed7"' in response.text
     assert "app.css" not in response.text
     assert "base.html" not in response.text
 
@@ -313,7 +313,7 @@ def test_store_demo_forces_full_width_embed_container() -> None:
     assert "width:100%;" in response.text
     assert ".embed-card{" in response.text
     assert "min-width:0;" in response.text
-    assert "embed-loader.js?v=embed6" in response.text
+    assert "embed-loader.js?v=embed7" in response.text
 
 
 def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
@@ -330,6 +330,8 @@ def test_partner_embed_uses_current_house_lab_assets() -> None:
     assert response.status_code == 200
     assert "embed-house-lab.css?v=lab15" in response.text
     assert "embed-house-lab.js?v=lab15" in response.text
+    assert "app.css?v=v2eng4" in response.text
+    assert "embed-runtime.js?v=embed2" in response.text
 
 
 def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
@@ -514,6 +516,41 @@ def test_embed_loader_validates_message_origin_source_and_full_width() -> None:
     assert "mobileViewportHeight" in response.text
     assert "window.visualViewport?.addEventListener(\"resize\", syncFrameHeight" in response.text
     assert 'host.dataset.lacurentMobileCockpit = "true"' in response.text
+    assert "lacurent:embed-focus-request" in response.text
+    assert "lacurent:embed-focus-state" in response.text
+    assert "data-lacurent-focus-bar" in response.text
+    assert "Înapoi la magazin" in response.text
+    assert 'host.style.position = "fixed"' in response.text
+    assert 'document.documentElement.style.overflow = "hidden"' in response.text
+    assert 'document.body.style.overflow = "hidden"' in response.text
+    assert 'host.dataset.focusMode !== "off"' in response.text
+    assert "window.scrollTo(0, focusScrollY)" in response.text
+
+def test_embed_runtime_requests_mobile_focus_and_reflects_focus_state() -> None:
+    response = client.get("/static/embed-runtime.js")
+    assert response.status_code == 200
+    assert "lacurent:embed-focus-request" in response.text
+    assert "lacurent:embed-focus-state" in response.text
+    assert 'document.addEventListener("click", requestMobileFocus' in response.text
+    assert 'document.addEventListener("pointerdown", requestMobileFocus' not in response.text
+    assert 'classList.toggle("embed-focus-active"' in response.text
+
+
+def test_embed_focus_css_removes_partner_chrome_on_mobile() -> None:
+    response = client.get("/static/app.css")
+    assert response.status_code == 200
+    assert ".embed-body.embed-focus-active .embed-partner-bar" in response.text
+    assert "display: none;" in response.text
+    assert ".embed-body.embed-focus-active .workspace" in response.text
+
+
+def test_embed_integration_documents_mobile_focus_opt_out() -> None:
+    response = client.get("/embed")
+    assert response.status_code == 200
+    assert "embed-loader.js?v=embed7" in response.text
+    assert 'data-focus-mode="off"' in response.text
+    assert "prima interacțiune" in response.text
+
 
 def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
     response = client.get("/instalatii/calculator")

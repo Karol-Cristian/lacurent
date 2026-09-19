@@ -1518,4 +1518,28 @@ td {
   .partner-cta {
     width: 100%;
   }
+
+  .embed-body.embed-focus-active {
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+  }
+
+  .embed-body.embed-focus-active .workspace {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .embed-body.embed-focus-active .embed-partner-bar {
+    display: none;
+  }
+
+  .embed-body.embed-focus-active .embed-shell {
+    height: 100%;
+    min-height: 100%;
+  }
 }
