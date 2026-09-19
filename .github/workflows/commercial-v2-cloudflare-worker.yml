@@ -206,14 +206,21 @@ jobs:
               'data-lab-product-action="heat_pump"',
               'class="lab-house-mode-bar"',
               'id="labConfirmCurrentHome"',
-              "Asta este casa mea acum",
+              "Salvează casa mea → renovări",
               'id="labContextImage"',
               'id="labRenovationChooser"',
               "Ce vrei să îmbunătățești?",
               'id="labMobilePrimaryAction"',
+              'id="labMobileHomeAction"',
+              'id="labRenovationValueStrip"',
               'id="labMobileCo2"',
               'data-renovation-action="wall"',
+              'data-renovation-action="floor"',
               'data-renovation-action="heating"',
+              'data-renovation-scope="wall"',
+              'data-renovation-scope="heating"',
+              "<strong>Anvelopă</strong>",
+              "<strong>Instalații</strong>",
           ):
               if marker not in home_lab_html:
                   raise AssertionError(f"Home Lab house-first flow missing {marker!r}")
@@ -230,7 +237,7 @@ jobs:
               if marker not in loader_html:
                   raise AssertionError(f"Embed loader missing mobile focus-mode marker {marker!r}.")
           lab_css = get("/static/embed-house-lab.css")
-          if "lab-mobile-livebar-metrics" not in lab_css or "lab-renovation-grid" not in lab_css:
+          if ("lab-mobile-livebar-metrics" not in lab_css or "lab-renovation-grid" not in lab_css or "lab-renovation-value-strip" not in lab_css or 'min-height:144px!important' not in lab_css):
               raise AssertionError("Home Lab CSS missing guided renovation mobile cockpit.")
           runtime_html = get("/static/embed-runtime.js")
           if "requestMobileFocus" not in runtime_html or "embed-focus-active" not in runtime_html:
@@ -624,14 +631,21 @@ jobs:
               'data-lab-product-action="heat_pump"',
               'class="lab-house-mode-bar"',
               'id="labConfirmCurrentHome"',
-              "Asta este casa mea acum",
+              "Salvează casa mea → renovări",
               'id="labContextImage"',
               'id="labRenovationChooser"',
               "Ce vrei să îmbunătățești?",
               'id="labMobilePrimaryAction"',
+              'id="labMobileHomeAction"',
+              'id="labRenovationValueStrip"',
               'id="labMobileCo2"',
               'data-renovation-action="wall"',
+              'data-renovation-action="floor"',
               'data-renovation-action="heating"',
+              'data-renovation-scope="wall"',
+              'data-renovation-scope="heating"',
+              "<strong>Anvelopă</strong>",
+              "<strong>Instalații</strong>",
           ):
               if marker not in home_lab_html:
                   raise AssertionError(f"Production Home Lab house-first flow missing {marker!r}")
