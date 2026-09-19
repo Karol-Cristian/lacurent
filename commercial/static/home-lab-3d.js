@@ -3,8 +3,34 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/32485/v1/model.glb";
-const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene";
+const HOUSE_MODELS = {
+  current: {
+    label: "English cottage",
+    url: "https://cdn.3dassets.dev/assets/32485/v1/model.glb",
+    source: "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene",
+    license: "CC0",
+  },
+  final: {
+    label: "Final House",
+    url: "https://raw.githubusercontent.com/Koushik6692/3d-portfolio/main/public/house-transformed.glb",
+    source: "https://sketchfab.com/3d-models/final-house-20ea8edb2b7043b1a98a0b6ae18684bb",
+    author: "Anton Revutsky",
+    license: "CC-BY-4.0",
+  },
+  dower: {
+    label: "Dower House",
+    url: "https://raw.githubusercontent.com/Dhruvisgoat/deploy3dgamebuild/main/models/house-transformed.glb",
+    source: "https://sketchfab.com/3d-models/preceptory-and-dower-house-game-asset-50d31c70e44b4000b17d81ff0fbcdf98",
+    author: "Andy Woodhead",
+    license: "CC-BY-4.0",
+    keepMaterial: /(^|\s)house($|\s)/i,
+  },
+};
+
+const HOUSE_VARIANT_KEY = new URLSearchParams(window.location.search).get("house") || "current";
+const HOUSE_MODEL = HOUSE_MODELS[HOUSE_VARIANT_KEY] || HOUSE_MODELS.current;
+const HOUSE_MODEL_URL = HOUSE_MODEL.url;
+const HOUSE_MODEL_SOURCE = HOUSE_MODEL.source;
 
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c },
@@ -32,6 +58,8 @@ class HomeLabHouse3D {
   constructor(mount) {
     this.mount = mount;
     this.mode = mount.dataset.hln3dStage || "home";
+    this.houseVariant = HOUSE_VARIANT_KEY in HOUSE_MODELS ? HOUSE_VARIANT_KEY : "current";
+    this.houseModel = HOUSE_MODELS[this.houseVariant];
     this.renderer = null;
     this.scene = null;
     this.camera = null;
@@ -78,6 +106,7 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-reset aria-label="Resetează vederea">Reset</button>
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
+      <div class="hln-3d-variant-switcher" data-hln-3d-variants hidden></div>
       <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
       <div class="hln-3d-hotspots" data-hln-3d-hotspots aria-label="Elemente selectabile ale casei"></div>
       <canvas class="hln-3d-canvas" aria-label="Model 3D interactiv al casei"></canvas>
@@ -130,6 +159,7 @@ class HomeLabHouse3D {
       this.addRenovationLayer();
       this.createSemanticHotspots();
       this.setupBeautyPipeline();
+      this.createVariantSwitcher();
       this.bindEvents();
       this.resize();
       this.mount.classList.remove("is-loading");
@@ -279,6 +309,11 @@ class HomeLabHouse3D {
     return null;
   }
 
+  shouldHideForVariant(obj) {
+    if (!this.houseModel?.keepMaterial || !obj?.isMesh) return false;
+    return !this.houseModel.keepMaterial.test(this.materialNamesForObject(obj));
+  }
+
   shouldHideModelObject(name) {
     const n = String(name || "").toLowerCase();
     return /investigation.?van|\bvan\b|emf|spirit.?box|thermometer|flashlight|motion.?sensor|sound.?sensor|point.?projector|parabolic|laptop|monitor.?rack|tripod|head.?camera|evidence|tarot|crucifix|incense|rag.?doll|porcelain.?doll|salt.?pile|ghost.?writing|mausoleum|grave.?marker|cable.?reel|cauldron|apothecary|mortar|pestle|still|bottle|flask|loom|spinning.?wheel|rocking.?chair|armchair|stool|dresser|rug|tea.?set|crate|writing.?desk|herb.?press|scales/.test(n);
@@ -363,7 +398,7 @@ class HomeLabHouse3D {
     const loader = new GLTFLoader();
     const gltf = await loader.loadAsync(HOUSE_MODEL_URL);
     this.modelRoot = gltf.scene;
-    this.modelRoot.name = "LaCurentEnglishHouse";
+    this.modelRoot.name = `LaCurentHouse_${this.houseVariant}`;
 
     const toRemove = [];
     this.modelRoot.traverse((obj) => {
@@ -372,6 +407,10 @@ class HomeLabHouse3D {
         return;
       }
       if (!obj.isMesh) return;
+      if (this.shouldHideForVariant(obj)) {
+        toRemove.push(obj);
+        return;
+      }
 
       obj.castShadow = true;
       obj.receiveShadow = true;
@@ -966,4 +1005,4 @@ if (document.readyState === "loading") {
   boot();
 }
 
-export { HomeLabHouse3D, HOUSE_MODEL_URL, HOUSE_MODEL_SOURCE };
+export { HomeLabHouse3D, HOUSE_MODELS, HOUSE_MODEL_URL, HOUSE_MODEL_SOURCE };
