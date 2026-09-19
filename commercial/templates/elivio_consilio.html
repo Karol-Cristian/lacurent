@@ -53,9 +53,15 @@
     <section class="ec-trust" aria-label="Formare și implicare profesională">
       <p>Formare & implicare profesională</p>
       <div class="ec-trust-row">
-        <div><strong>MAXWELL</strong><span>Leadership România</span></div>
-        <div><strong>EQUIP</strong><span>Leadership România</span></div>
-        <div><strong>ICL</strong><span>ADES ORA</span></div>
+        <a class="ec-trust-logo ec-trust-maxwell" href="https://www.maxwellleadership.ro/" target="_blank" rel="noopener" aria-label="Maxwell Leadership">
+          <img src="https://maxwellleadership.widen.net/content/stavynwnxq/jpeg/ML%20Certified%20Team%20Logo.png?color=ffffffff&amp;position=c&amp;quality=80&amp;u=lkczxl" alt="Maxwell Leadership Certified Team">
+        </a>
+        <a class="ec-trust-logo ec-trust-icl" href="https://icl-institut.org/" target="_blank" rel="noopener" aria-label="ICL Institut">
+          <span class="ec-icl-logo">
+            <img src="https://icl-institut.org/wp-content/themes/icl/assets/ICL-Logo-weiss-R.svg" alt="ICL Institut">
+          </span>
+        </a>
+        <div class="ec-trust-equip"><strong>EQUIP</strong><span>Leadership România</span></div>
       </div>
     </section>
 
@@ -120,32 +126,106 @@
       </div>
     </section>
 
-    <section class="ec-section ec-ai" id="orientare">
+    <section class="ec-section ec-ai ec-ai-invite" id="orientare">
       <div class="ec-ai-intro">
         <p class="ec-eyebrow">Poți începe chiar aici</p>
-        <h2>Spune ce ai pe minte. De restul ne ocupăm pas cu pas.</h2>
-        <p>Asistentul Elivio te ajută să vezi dacă o discuție cu Violeta ți s-ar potrivi sau te duce direct la programare dacă asta vrei deja.</p>
-        <div class="ec-chat-purpose">
-          <strong>Rapid și simplu</strong>
-          <span>Poți porni de la o propoziție. Nu trebuie să știi ce „categorie” are problema ta.</span>
+        <h2>Spune ce ai pe minte. Chatul Elivio e mereu la îndemână.</h2>
+        <p>Îl poți folosi pentru o întrebare scurtă, ca să vezi dacă ți se potrivește consilierea sau ca să ajungi direct la programare.</p>
+        <button class="ec-button primary" type="button" data-chat-open>Deschide chatul</button>
+      </div>
+      <div class="ec-ai-bubbles" aria-hidden="true">
+        <span>„Nu știu dacă e pentru mine.”</span>
+        <span>„Aș vrea doar să vorbesc cu cineva.”</span>
+        <span>„Vreau o programare.”</span>
+      </div>
+    </section>
+
+    <section class="ec-section ec-contact" id="contact">
+      <div class="ec-contact-copy">
+        <p class="ec-eyebrow">Contact și programări</p>
+        <h2>Scrie-ne simplu. Te contactăm pentru următorul pas.</h2>
+        <p>Poți lăsa doar informațiile necesare ca să putem reveni către tine. Nu trebuie să explici toată situația în formular.</p>
+
+        <div class="ec-contact-direct">
+          {% if contact_phone %}
+            <a href="tel:{{ contact_phone|replace(' ', '') }}"><small>Telefon</small><strong>{{ contact_phone }}</strong></a>
+          {% endif %}
+          {% if contact_email %}
+            <a href="mailto:{{ contact_email }}"><small>E-mail</small><strong>{{ contact_email }}</strong></a>
+          {% endif %}
+          {% if contact_location %}
+            <div><small>Locație</small><strong>{{ contact_location }}</strong></div>
+          {% endif %}
         </div>
       </div>
-      <div class="ec-chat" data-elivio-chat>
-        <div class="ec-chat-head">
-          <div class="ec-chat-title">
-            <span class="ec-status-dot"></span>
-            <div><strong>Asistent Elivio</strong><small>te ajută să ajungi la pasul potrivit</small></div>
-          </div>
-          <span class="ec-stage-badge" data-stage-badge>1 / 4</span>
+
+      <form class="ec-contact-form" data-contact-form data-contact-email="{{ contact_email }}">
+        <div class="ec-form-row">
+          <label>
+            <span>Nume</span>
+            <input type="text" name="name" autocomplete="name" maxlength="100" placeholder="Cum să îți spunem?" required>
+          </label>
+          <label>
+            <span>Cum vrei să te contactăm?</span>
+            <select name="method" data-contact-method>
+              <option value="phone">Telefon</option>
+              <option value="email">E-mail</option>
+            </select>
+          </label>
         </div>
-        <div class="ec-progress" aria-label="Etapele orientării">
-          <span class="active" data-stage-step="1">Ce te aduce aici</span>
-          <span data-stage-step="2">Ce vrei să se schimbe</span>
-          <span data-stage-step="3">Ce sprijin se potrivește</span>
-          <span data-stage-step="4">Următorul pas</span>
+        <div class="ec-form-row">
+          <label data-phone-field>
+            <span>Telefon</span>
+            <input type="tel" name="phone" autocomplete="tel" maxlength="30" placeholder="07…">
+          </label>
+          <label data-email-field hidden>
+            <span>E-mail</span>
+            <input type="email" name="email" autocomplete="email" maxlength="160" placeholder="nume@email.ro">
+          </label>
+          <label>
+            <span>Când îți este mai ușor?</span>
+            <select name="time">
+              <option value="oricand">Oricând</option>
+              <option value="dimineata">Dimineața</option>
+              <option value="dupa-amiaza">După-amiaza</option>
+              <option value="seara">Seara</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          <span>Cu ce te putem ajuta?</span>
+          <textarea name="message" rows="4" maxlength="1000" placeholder="Câteva cuvinte sunt suficiente."></textarea>
+        </label>
+        <div class="ec-form-submit">
+          <button class="ec-button primary" type="submit">Trimite cererea</button>
+          <span data-contact-status aria-live="polite"></span>
+        </div>
+        <p class="ec-form-note">Formularul nu cere CNP, date medicale, date bancare sau alte informații sensibile.</p>
+      </form>
+    </section>
+
+    <div class="ec-chat-shell" data-elivio-chat>
+      <button class="ec-chat-launcher" type="button" data-chat-launcher aria-expanded="false" aria-controls="ec-chat-panel">
+        <span class="ec-chat-launcher-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" role="img">
+            <path d="M7.5 8.5h17a3 3 0 0 1 3 3v8.2a3 3 0 0 1-3 3H15l-5.7 4v-4H7.5a3 3 0 0 1-3-3v-8.2a3 3 0 0 1 3-3Z"/>
+            <path d="M11 14h10M11 18h7"/>
+          </svg>
+        </span>
+        <span class="ec-chat-launcher-label">Întreabă Elivio</span>
+      </button>
+
+      <aside class="ec-chat-panel" id="ec-chat-panel" data-chat-panel hidden aria-label="Chat Elivio">
+        <div class="ec-chat-head">
+          <div class="ec-chat-avatar">e</div>
+          <div class="ec-chat-title">
+            <strong>Asistent Elivio</strong>
+            <small>Îți răspund pe scurt și te pot duce direct la programare.</small>
+          </div>
+          <button class="ec-chat-close" type="button" data-chat-close aria-label="Închide chatul">×</button>
         </div>
         <div class="ec-chat-log" data-chat-log aria-live="polite">
-          <div class="ec-message assistant">Bună. Cu ce te pot ajuta azi? Dacă vrei doar o programare, putem merge direct acolo.</div>
+          <div class="ec-message assistant">Bună. Cu ce te pot ajuta azi?</div>
           <div class="ec-chat-quick" data-chat-quick>
             <button type="button" data-quick-message="Vreau să mă programez.">Vreau o programare</button>
             <button type="button" data-quick-message="Nu știu dacă mi se potrivește consilierea.">Nu știu dacă mi se potrivește</button>
@@ -154,36 +234,15 @@
         </div>
         <form class="ec-chat-form" data-chat-form>
           <label class="sr-only" for="ec-chat-input">Mesaj</label>
-          <textarea id="ec-chat-input" data-chat-input rows="2" maxlength="1800" placeholder="Scrie pe scurt ce te preocupă..." required></textarea>
-          <button type="submit">Trimite</button>
+          <textarea id="ec-chat-input" data-chat-input rows="2" maxlength="1800" placeholder="Scrie aici…" required></textarea>
+          <button type="submit" aria-label="Trimite mesajul">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8Zm3.7 7h7.8L7 6.8 7.7 11Zm-.7 6.2 8.5-4.2H7.7L7 17.2Z"/></svg>
+          </button>
         </form>
         <div class="ec-chat-actions" data-chat-actions hidden></div>
-        <p class="ec-chat-note" data-chat-note>Dacă există un pericol imediat pentru tine sau altcineva, sună la 112.</p>
-      </div>
-    </section>
-
-    <section class="ec-section ec-contact" id="contact">
-      <div>
-        <p class="ec-eyebrow">Programări</p>
-        <h2>Vrei să vorbim? Alegi varianta care îți este mai la îndemână.</h2>
-        <p>Nu trebuie să pregătești nimic special înainte. O primă discuție începe pur și simplu de la ce contează pentru tine acum.</p>
-      </div>
-      <div class="ec-contact-card">
-        {% if contact_phone %}
-          <a href="tel:{{ contact_phone|replace(' ', '') }}"><small>Telefon</small><strong>{{ contact_phone }}</strong></a>
-        {% endif %}
-        {% if contact_email %}
-          <a href="mailto:{{ contact_email }}"><small>E-mail</small><strong>{{ contact_email }}</strong></a>
-        {% endif %}
-        {% if contact_location %}
-          <div><small>Locație</small><strong>{{ contact_location }}</strong></div>
-        {% endif %}
-        {% if not contact_phone and not contact_email and not contact_location %}
-          <div class="ec-contact-pending"><small>Programări</small><strong>Opțiunile de contact vor apărea aici</strong><span>Până atunci poți folosi asistentul Elivio pentru orientarea inițială.</span></div>
-        {% endif %}
-        <a class="ec-button secondary" href="#orientare">Înapoi la asistent</a>
-      </div>
-    </section>
+        <p class="ec-chat-note">Dacă există un pericol imediat pentru tine sau altcineva, sună la 112.</p>
+      </aside>
+    </div>
   </main>
 
   <footer class="ec-footer">
