@@ -50,7 +50,19 @@ utilizatorul nu alege explicit altă limbă. Nu ești Violeta Munteanu și nu e�
 consilier, psiholog, psihoterapeut sau medic.
 
 SCOPUL TĂU ESTE FOARTE CONCRET:
-în 3-5 schimburi scurte, ajuți persoana să clarifice:
+Nu ești un asistent generalist. Răspunzi numai la întrebări despre Elivio Consilio,
+despre serviciile și programarea Elivio sau la subiecte personale care pot fi
+explorate prin consiliere pentru viață, familie, relații, claritate personală,
+dezvoltare personală ori leadership.
+
+Dacă utilizatorul cere informații factuale fără legătură cu acest scop — de exemplu
+despre încălzirea locuinței, prețuri la energie, tehnologie, programare, rețete,
+vreme, produse sau alte subiecte generale — nu răspunde la întrebarea respectivă.
+Spune într-o singură propoziție că asistentul este dedicat orientării Elivio și invită
+utilizatorul să spună dacă întrebarea are legătură cu o situație personală pe care
+vrea să o discute. Nu improviza un răspuns general doar pentru că îl cunoști.
+
+În 3-5 schimburi scurte, ajuți persoana să clarifice:
 1) ce o aduce aici;
 2) ce ar vrea să fie diferit;
 3) ce tip de sprijin caută și dacă o conversație cu Violeta pare relevantă;
@@ -155,6 +167,27 @@ SENSITIVE_REPLY = (
     "contextul de care ai nevoie pentru conversație."
 )
 
+OUT_OF_SCOPE_REPLY = (
+    "Asistentul Elivio este dedicat orientării pentru consiliere și programare, nu "
+    "întrebărilor generale. Dacă întrebarea are legătură cu o situație personală "
+    "pe care vrei să o discuți, spune-mi pe scurt ce te preocupă."
+)
+
+OUT_OF_SCOPE_PATTERNS = (
+    re.compile(
+        r"\b(gaz|lemne|lemn|central[ăa]|încălzire|incalzire|pomp[ăa] de c[ăa]ldur[ăa]|"
+        r"energie electric[ăa]|curent electric)\b.*\b(mai ieftin|mai ieftin[ăa]|cost[ăa]?|"
+        r"preț|pret|consum|randament|factur[ăa])\b",
+        flags=re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(mai ieftin|mai ieftin[ăa]|cost[ăa]?|preț|pret|consum|randament|factur[ăa])\b.*"
+        r"\b(gaz|lemne|lemn|central[ăa]|încălzire|incalzire|pomp[ăa] de c[ăa]ldur[ăa]|"
+        r"energie electric[ăa]|curent electric)\b",
+        flags=re.IGNORECASE,
+    ),
+)
+
 
 def _env_value(request: Request, name: str) -> str:
     env = request.scope.get("env")
@@ -182,6 +215,10 @@ def _contains_crisis(text: str) -> bool:
 def _wants_booking(text: str) -> bool:
     lowered = text.casefold()
     return any(term in lowered for term in BOOKING_TERMS)
+
+
+def _is_obviously_out_of_scope(text: str) -> bool:
+    return any(pattern.search(text) for pattern in OUT_OF_SCOPE_PATTERNS)
 
 
 def _luhn_valid(number: str) -> bool:
@@ -234,7 +271,12 @@ def _contact_summary_fallback(history: list[dict[str, str]]) -> str:
         if item["role"] != "user":
             continue
         content = item["content"].strip()
-        if not content or _contains_crisis(content) or _sensitive_kind(content):
+        if (
+            not content
+            or _contains_crisis(content)
+            or _sensitive_kind(content)
+            or _is_obviously_out_of_scope(content)
+        ):
             continue
         if _wants_booking(content) and len(content) < 80:
             continue
@@ -452,6 +494,19 @@ async def elivio_chat(request: Request) -> JSONResponse:
                     "label": "Mergi la programări",
                     "target": "#contact",
                 },
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
+    if _is_obviously_out_of_scope(latest):
+        return JSONResponse(
+            {
+                "reply": OUT_OF_SCOPE_REPLY,
+                "mode": "out_of_scope",
+                "crisis": False,
+                "stage": current_stage,
+                "stage_label": INTAKE_STAGE_LABELS[current_stage - 1],
+                "action": None,
             },
             headers={"Cache-Control": "no-store"},
         )
