@@ -359,7 +359,7 @@
     });
 
     const referenceDerived = Object.keys(scenarioOverrides || {}).length > 0;
-    $("[data-hln-reference-house]").forEach(button => {
+    root.querySelectorAll("[data-hln-reference-house]").forEach(button => {
       button.classList.toggle("is-active", referenceMode);
       button.classList.toggle("is-derived", !referenceMode && referenceDerived);
       button.setAttribute("aria-pressed", referenceMode ? "true" : "false");
