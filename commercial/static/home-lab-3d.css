@@ -9,7 +9,7 @@
   overflow: hidden;
   border-radius: inherit;
   background:
-    radial-gradient(circle at 50% 35%, rgba(255,255,255,.98), rgba(246,244,238,.78) 48%, rgba(233,231,223,.76) 100%);
+    radial-gradient(circle at 50% 18%, rgba(255,253,246,.98), rgba(246,242,232,.82) 42%, rgba(226,232,219,.84) 100%);
   opacity: 0;
   pointer-events: none;
   transition: opacity .32s ease;
@@ -207,4 +207,19 @@
     transition: none !important;
     animation: none !important;
   }
+}
+
+.hln-house-visual-3d-ready > .hln-3d-stage::before {
+  content: "";
+  position: absolute;
+  inset: auto 8% 0;
+  height: 28%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(90,110,82,.10), rgba(90,110,82,0) 68%);
+  filter: blur(10px);
+}
+
+.hln-3d-stage.is-ready .hln-3d-canvas {
+  filter: saturate(.96) contrast(1.015);
 }
