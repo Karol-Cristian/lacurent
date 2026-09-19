@@ -636,3 +636,10 @@ body{
     border-radius:22px;
   }
 }
+
+.ec-form-context-note{
+  color:#777080;
+  font-size:.72rem;
+  line-height:1.4;
+  margin-top:2px;
+}

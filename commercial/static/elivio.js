@@ -1,6 +1,8 @@
 (() => {
   const root = document.querySelector("[data-elivio-chat]");
   const contactForm = document.querySelector("[data-contact-form]");
+  const conversationMessages = [];
+  let contextSummaryRequest = null;
 
   const luhnValid = (raw) => {
     const digits = raw.replace(/\D/g, "");
@@ -28,6 +30,72 @@
     return "";
   };
 
+  const fillContactFromConversation = async () => {
+    if (!contactForm) return;
+
+    const userMessages = conversationMessages.filter((item) => item.role === "user");
+    if (!userMessages.length) return;
+
+    const messageField = contactForm.querySelector('textarea[name="message"]');
+    const note = contactForm.querySelector("[data-chat-context-note]");
+    if (!messageField) return;
+
+    if (messageField.value.trim() && messageField.dataset.chatGenerated !== "true") {
+      return;
+    }
+
+    if (contextSummaryRequest) {
+      await contextSummaryRequest;
+      return;
+    }
+
+    const fallback = () => {
+      const useful = userMessages
+        .map((item) => item.content.trim())
+        .filter((text) => text && !/^vreau (să mă programez|o programare)/i.test(text))
+        .slice(-3);
+      if (!useful.length) return "";
+      const combined = useful.join(" ").slice(0, 850);
+      return "Aș dori să discut despre următoarea situație: " + combined;
+    };
+
+    contextSummaryRequest = (async () => {
+      try {
+        const response = await fetch("/elivio-consilio/api/chat-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ messages: conversationMessages })
+        });
+        const data = await response.json();
+        const summary = response.ok ? String(data.summary || "").trim() : "";
+        const value = summary || fallback();
+        if (value && (!messageField.value.trim() || messageField.dataset.chatGenerated === "true")) {
+          messageField.value = value.slice(0, 1000);
+          messageField.dataset.chatGenerated = "true";
+          if (note) {
+            note.hidden = false;
+            note.textContent = "Am completat acest câmp pe baza conversației din chat. Îl poți modifica înainte de trimitere.";
+          }
+        }
+      } catch (error) {
+        const value = fallback();
+        if (value && (!messageField.value.trim() || messageField.dataset.chatGenerated === "true")) {
+          messageField.value = value;
+          messageField.dataset.chatGenerated = "true";
+          if (note) {
+            note.hidden = false;
+            note.textContent = "Am completat acest câmp pe baza conversației din chat. Îl poți modifica înainte de trimitere.";
+          }
+        }
+      } finally {
+        contextSummaryRequest = null;
+      }
+    })();
+
+    await contextSummaryRequest;
+  };
+
   if (root) {
     const form = root.querySelector("[data-chat-form]");
     const input = root.querySelector("[data-chat-input]");
@@ -37,7 +105,7 @@
     const panel = root.querySelector("[data-chat-panel]");
     const launcher = root.querySelector("[data-chat-launcher]");
     const closeButton = root.querySelector("[data-chat-close]");
-    const messages = [];
+    const messages = conversationMessages;
 
     const setOpen = (open) => {
       panel.hidden = !open;
@@ -64,9 +132,10 @@
       button.className = "ec-chat-action";
       button.href = action.target || "#contact";
       button.textContent = action.label || "Mergi la programări";
-      button.addEventListener("click", (event) => {
+      button.addEventListener("click", async (event) => {
         event.preventDefault();
         setOpen(false);
+        await fillContactFromConversation();
         const target = document.querySelector(button.getAttribute("href"));
         if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -164,6 +233,35 @@
     const emailField = contactForm.querySelector("[data-email-field]");
     const status = contactForm.querySelector("[data-contact-status]");
     const destination = (contactForm.dataset.contactEmail || "").trim();
+    const messageField = contactForm.querySelector('textarea[name="message"]');
+    const contextNote = contactForm.querySelector("[data-chat-context-note]");
+
+    if (messageField) {
+      messageField.addEventListener("input", () => {
+        if (messageField.dataset.chatGenerated === "true") {
+          messageField.dataset.chatGenerated = "false";
+          if (contextNote) {
+            contextNote.textContent = "Textul a fost modificat de tine.";
+          }
+        }
+      });
+    }
+
+    document.querySelectorAll('a[href="#contact"]').forEach((link) => {
+      link.addEventListener("click", () => {
+        fillContactFromConversation();
+      });
+    });
+
+    const contactSection = document.querySelector("#contact");
+    if (contactSection && "IntersectionObserver" in window) {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          fillContactFromConversation();
+        }
+      }, { threshold: 0.18 });
+      observer.observe(contactSection);
+    }
 
     const syncMethod = () => {
       const wantsEmail = method.value === "email";
