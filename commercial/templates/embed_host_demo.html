@@ -373,6 +373,44 @@
     }
     .embed-card-head strong{font-size:14px}
     .embed-card-head span{color:#667085;font-size:11px}
+    .calculator-launcher{
+      display:grid;
+      grid-template-columns:1.05fr .95fr;
+      gap:34px;
+      align-items:center;
+      padding:34px;
+      border:1px solid #cfe8dd;
+      border-radius:20px;
+      background:linear-gradient(135deg,#edf9f4,#ffffff);
+      box-shadow:0 18px 48px rgba(16,24,40,.08);
+    }
+    .calculator-launch-copy{display:grid;justify-items:start}
+    .calculator-launch-copy h2{margin:11px 0 8px;font-size:36px;letter-spacing:-.035em}
+    .calculator-launch-copy p{max-width:610px;margin:0;color:#526270;font-size:15px;line-height:1.55}
+    .calculator-launch-benefits{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+    .calculator-launch-benefits span{padding:7px 10px;border:1px solid #d5e7dd;border-radius:999px;background:#fff;color:#3d5c4f;font-size:10px;font-weight:800}
+    .calculator-launch-copy>small{margin-top:9px;color:#758078;font-size:9px}
+    .calculator-launch-preview{
+      position:relative;
+      display:grid;
+      grid-template-columns:1fr 24px 1fr;
+      gap:8px;
+      align-items:center;
+      padding:22px;
+      border:1px solid #dbe7e1;
+      border-radius:18px;
+      background:#fff;
+    }
+    .calculator-launch-preview>div{display:grid;padding:14px;border:1px solid;border-radius:13px}
+    .calculator-launch-preview>div:first-child{border-color:#bfd2df;background:#edf4fa;color:#214f6d}
+    .calculator-launch-preview>div:nth-child(3){border-color:#b8d9c4;background:#edf8f1;color:#176c4b}
+    .calculator-launch-preview span{font-size:7px;font-weight:850;letter-spacing:.1em}
+    .calculator-launch-preview strong{margin-top:4px;font-size:17px}
+    .calculator-launch-preview>b{color:#7e8b84;text-align:center}
+    .calculator-launch-preview>em{grid-column:1/-1;padding:10px;border-radius:11px;background:#173b31;color:#fff;font-size:13px;font-style:normal;font-weight:850;text-align:center}
+    .next-embed-card{border-radius:20px}
+    .next-embed-card .embed-card-head>div{display:grid}
+    .next-embed-card .embed-card-head button{min-height:34px;padding:6px 10px;border:1px solid #d3ddd8;border-radius:9px;background:#fff;color:#506057;font-size:10px;font-weight:800}
     [data-lacurent-embed]{display:block;width:100%;max-width:none;min-width:0;min-height:760px;box-sizing:border-box}
     [data-lacurent-embed] iframe{display:block;width:100%!important;max-width:none!important;min-width:0!important}
     .project-grid{
@@ -469,6 +507,10 @@
       .calculator-section{padding:0 8px;margin-top:36px}
       .calculator-intro{padding:22px 16px}
       .calculator-points{grid-template-columns:1fr}
+      .calculator-launcher{grid-template-columns:1fr;padding:24px 18px}
+      .calculator-launch-copy h2{font-size:30px}
+      .calculator-launch-preview{padding:14px}
+      .next-embed-card .embed-card-head{align-items:center;flex-direction:row}
       .embed-card-head{align-items:flex-start;flex-direction:column;gap:4px}
       .trust-strip{grid-template-columns:1fr 1fr}
       .newsletter-inner{align-items:flex-start;flex-direction:column}
@@ -620,24 +662,30 @@
     </section>
 
     <section class="calculator-section" id="calculator">
-      <div class="calculator-intro">
-        <div>
-          <span class="tag">Instrument gratuit pentru clienți</span>
-          <h2>Înainte să cumperi, estimează necesarul energetic al casei.</h2>
-          <p>Calculatorul LaCurent rulează în interiorul site-ului magazinului, folosește același motor de calcul ca produsul principal și poate conduce clientul de la estimare către o ofertă relevantă.</p>
+      <div class="calculator-launcher" data-next-launcher>
+        <div class="calculator-launch-copy">
+          <span class="tag">Home Lab · integrat în magazin</span>
+          <h2>Ce se schimbă dacă renovezi casa?</h2>
+          <p>Modelează locuința actuală și testează investiția înainte să alegi produsele.</p>
+          <div class="calculator-launch-benefits">
+            <span>⌂ Casa ta</span><span>▦ Renovare</span><span>◉ Impact în lei</span>
+          </div>
+          <button type="button" class="btn btn-primary" data-next-launch>Începe simularea</button>
+          <small>Calcul oferit de LaCurent · fără ieșire din magazin</small>
         </div>
-        <div class="calculator-points">
-          <div class="calculator-point"><strong>1. Completezi casa</strong>Localitate, geometrie și anvelopă.</div>
-          <div class="calculator-point"><strong>2. Compari scenarii</strong>Necesar și opțiuni energetice.</div>
-          <div class="calculator-point"><strong>3. Ceri ofertă</strong>CTA-ul aparține partenerului.</div>
+        <div class="calculator-launch-preview" aria-hidden="true">
+          <div><span>CASA MEA</span><strong>6.420 lei/an</strong></div>
+          <b>→</b>
+          <div><span>RENOVARE</span><strong>4.380 lei/an</strong></div>
+          <em>+32% economie</em>
         </div>
       </div>
-      <div class="embed-card">
+      <div class="embed-card next-embed-card" data-next-shell hidden>
         <div class="embed-card-head">
-          <strong>Calculator energetic integrat</strong>
-          <span>Tehnologie LaCurent · integrată în site-ul partenerului</span>
+          <div><strong>Home Lab</strong><span>Casa mea → Șantier → Scenariul meu</span></div>
+          <button type="button" data-next-close>Închide demo-ul</button>
         </div>
-        <div data-lacurent-embed data-partner="demo-store" data-initial-height="1050px"></div>
+        <div data-lacurent-embed data-partner="demo-store" data-path="next" data-deferred="true" data-initial-height="900px"></div>
       </div>
     </section>
 
@@ -680,6 +728,25 @@
     <div class="legal">Demo vizual. Produsele, prețurile, datele de contact și promisiunile comerciale de pe această pagină sunt fictive. Calculatorul integrat este LaCurent Embed.</div>
   </footer>
 
-  <script async src="https://lacurent.com/static/embed-loader.js?v=embed7"></script>
+  <script src="https://lacurent.com/static/embed-loader.js?v=embed8"></script>
+  <script>
+    (() => {
+      const launcher = document.querySelector("[data-next-launcher]");
+      const shell = document.querySelector("[data-next-shell]");
+      const host = shell?.querySelector("[data-lacurent-embed]");
+      document.querySelector("[data-next-launch]")?.addEventListener("click", () => {
+        if (!launcher || !shell || !host) return;
+        launcher.hidden = true;
+        shell.hidden = false;
+        window.LaCurentEmbed?.mount(host);
+        shell.scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      document.querySelector("[data-next-close]")?.addEventListener("click", () => {
+        shell.hidden = true;
+        launcher.hidden = false;
+        launcher.scrollIntoView({behavior:"smooth",block:"center"});
+      });
+    })();
+  </script>
 </body>
 </html>
