@@ -25,14 +25,14 @@
   <main>
     <section class="ec-hero">
       <div class="ec-hero-copy">
-        <p class="ec-eyebrow">Consiliere pentru viață și familie</p>
-        <h1>Un loc în care poți pune lucrurile în ordine, cu claritate și fără grabă.</h1>
-        <p class="ec-lead">Conversații individuale orientate spre înțelegere, decizii mai limpezi și pași concreți — într-un cadru atent, respectuos și discret.</p>
+        <p class="ec-eyebrow">Consiliere pentru viață, familie și claritate</p>
+        <h1>E în regulă să vorbești cu cineva. Nu trebuie să fie complicat.</h1>
+        <p class="ec-lead">Nu ai nevoie de o criză sau de o problemă „mare”. Poți veni cu o decizie, o relație, o schimbare sau pur și simplu cu lucrurile pe care vrei să le pui puțin în ordine.</p>
         <div class="ec-actions">
-          <a class="ec-button primary" href="#orientare">Începe cu o discuție de orientare</a>
-          <a class="ec-button secondary" href="#contact">Vezi opțiunile de programare</a>
+          <a class="ec-button primary" href="#contact">Vreau să mă programez</a>
+          <a class="ec-button secondary" href="#orientare">Nu știu încă. Întreb asistentul</a>
         </div>
-        <p class="ec-micro">Nu trebuie să știi exact de unde să începi. Poți veni doar cu întrebarea care te preocupă acum.</p>
+        <p class="ec-micro">Consilierea poate fi pur și simplu un check-in bun cu tine și cu ce contează acum.</p>
       </div>
       <div class="ec-portrait-wrap" aria-label="Violeta Munteanu">
         {% if portrait_url %}
@@ -72,8 +72,8 @@
 
     <section class="ec-section" id="sprijin">
       <div class="ec-section-head">
-        <p class="ec-eyebrow">Cum poate arăta sprijinul</p>
-        <h2>Uneori ai nevoie de un spațiu bun pentru a vedea mai clar.</h2>
+        <p class="ec-eyebrow">Cu ce poți veni</p>
+        <h2>Nu trebuie să aștepți până când totul devine prea mult.</h2>
       </div>
       <div class="ec-cards">
         <article>
@@ -92,13 +92,13 @@
           <p>Claritate în obiective, asumarea responsabilității, comunicare, leadership și construirea unor obiceiuri mai sănătoase.</p>
         </article>
       </div>
-      <p class="ec-scope-note">Consilierea oferită aici nu este psihoterapie, evaluare psihologică, diagnostic sau serviciu medical. Atunci când situația o cere, este importantă orientarea către profesionistul potrivit.</p>
+      <p class="ec-scope-note">Dacă situația are nevoie de psihoterapie, evaluare psihologică sau sprijin medical, vei fi orientat către profesionistul potrivit.</p>
     </section>
 
     <section class="ec-section ec-method">
       <div class="ec-section-head">
         <p class="ec-eyebrow">Cum decurge</p>
-        <h2>Un proces simplu, fără promisiuni spectaculoase.</h2>
+        <h2>O conversație normală. Un pas la un moment dat.</h2>
       </div>
       <ol class="ec-steps">
         <li><strong>Spui ce te aduce aici.</strong><span>Atât cât îți este confortabil la început.</span></li>
@@ -122,24 +122,19 @@
 
     <section class="ec-section ec-ai" id="orientare">
       <div class="ec-ai-intro">
-        <p class="ec-eyebrow">Orientare inițială</p>
-        <h2>Un chat cu un scop clar.</h2>
-        <p>În câteva schimburi scurte, asistentul te ajută să clarifici de ce ai venit, ce ai vrea să se schimbe și dacă o conversație cu Violeta este un pas potrivit.</p>
+        <p class="ec-eyebrow">Poți începe chiar aici</p>
+        <h2>Spune ce ai pe minte. De restul ne ocupăm pas cu pas.</h2>
+        <p>Asistentul Elivio te ajută să vezi dacă o discuție cu Violeta ți s-ar potrivi sau te duce direct la programare dacă asta vrei deja.</p>
         <div class="ec-chat-purpose">
-          <strong>La final:</strong>
-          <span>ai o formulare mai clară a situației și un următor pas concret.</span>
+          <strong>Rapid și simplu</strong>
+          <span>Poți porni de la o propoziție. Nu trebuie să știi ce „categorie” are problema ta.</span>
         </div>
-        <ul>
-          <li>Nu face terapie și nu pune diagnostice.</li>
-          <li>Nu este Violeta și nu ia decizii în locul tău.</li>
-          <li>Se oprește din întrebări când orientarea este suficientă.</li>
-        </ul>
       </div>
       <div class="ec-chat" data-elivio-chat>
         <div class="ec-chat-head">
           <div class="ec-chat-title">
             <span class="ec-status-dot"></span>
-            <div><strong>Asistent de orientare</strong><small>3–5 minute · nu este terapie</small></div>
+            <div><strong>Asistent Elivio</strong><small>te ajută să ajungi la pasul potrivit</small></div>
           </div>
           <span class="ec-stage-badge" data-stage-badge>1 / 4</span>
         </div>
@@ -150,22 +145,28 @@
           <span data-stage-step="4">Următorul pas</span>
         </div>
         <div class="ec-chat-log" data-chat-log aria-live="polite">
-          <div class="ec-message assistant">Bun venit. Scopul meu este să te ajut să formulezi pe scurt ce te aduce aici și să vedem dacă o discuție cu Violeta ar putea avea sens. Ce se întâmplă acum și ai vrea să fie diferit?</div>
+          <div class="ec-message assistant">Bună. Cu ce te pot ajuta azi? Dacă vrei doar o programare, putem merge direct acolo.</div>
+          <div class="ec-chat-quick" data-chat-quick>
+            <button type="button" data-quick-message="Vreau să mă programez.">Vreau o programare</button>
+            <button type="button" data-quick-message="Nu știu dacă mi se potrivește consilierea.">Nu știu dacă mi se potrivește</button>
+            <button type="button" data-quick-message="Aș vrea să vorbesc despre ceva care mă preocupă.">Vreau să vorbesc despre ceva</button>
+          </div>
         </div>
         <form class="ec-chat-form" data-chat-form>
           <label class="sr-only" for="ec-chat-input">Mesaj</label>
           <textarea id="ec-chat-input" data-chat-input rows="2" maxlength="1800" placeholder="Scrie pe scurt ce te preocupă..." required></textarea>
           <button type="submit">Trimite</button>
         </form>
-        <p class="ec-chat-note">Dacă există un pericol imediat pentru tine sau altcineva, sună la 112. Chatul nu este serviciu de urgență.</p>
+        <div class="ec-chat-actions" data-chat-actions hidden></div>
+        <p class="ec-chat-note" data-chat-note>Dacă există un pericol imediat pentru tine sau altcineva, sună la 112.</p>
       </div>
     </section>
 
     <section class="ec-section ec-contact" id="contact">
       <div>
-        <p class="ec-eyebrow">Contact și programări</p>
-        <h2>Primul pas poate fi foarte simplu.</h2>
-        <p>Pentru moment poți începe prin asistentul de orientare. Datele directe de contact sunt afișate numai după ce sunt confirmate pentru publicare.</p>
+        <p class="ec-eyebrow">Programări</p>
+        <h2>Vrei să vorbim? Alegi varianta care îți este mai la îndemână.</h2>
+        <p>Nu trebuie să pregătești nimic special înainte. O primă discuție începe pur și simplu de la ce contează pentru tine acum.</p>
       </div>
       <div class="ec-contact-card">
         {% if contact_phone %}
@@ -178,9 +179,9 @@
           <div><small>Locație</small><strong>{{ contact_location }}</strong></div>
         {% endif %}
         {% if not contact_phone and not contact_email and not contact_location %}
-          <div class="ec-contact-pending"><small>Programări</small><strong>Date directe în curs de confirmare</strong><span>Folosește chatul pentru orientarea inițială.</span></div>
+          <div class="ec-contact-pending"><small>Programări</small><strong>Opțiunile de contact vor apărea aici</strong><span>Până atunci poți folosi asistentul Elivio pentru orientarea inițială.</span></div>
         {% endif %}
-        <a class="ec-button primary" href="#orientare">Deschide orientarea AI</a>
+        <a class="ec-button secondary" href="#orientare">Înapoi la asistent</a>
       </div>
     </section>
   </main>
