@@ -65,6 +65,7 @@
   let currentResult = null;
   let baselineSaved = false;
   let measures = [];
+  let referenceMode = false;
   let activeMeasure = null;
   let interventionOriginal = null;
   let screen = "home";
@@ -82,6 +83,7 @@
       scenarioResult = saved.scenarioResult || null;
       measures = Array.isArray(saved.measures) ? saved.measures : [];
       baselineSaved = Boolean(saved.baselineSaved);
+      referenceMode = Boolean(saved.referenceMode);
     }
   } catch (_) {}
 
@@ -451,7 +453,8 @@
         scenarioState,
         homeResult,
         scenarioResult,
-        measures
+        measures,
+        referenceMode
       }));
     } catch (_) {}
   }
