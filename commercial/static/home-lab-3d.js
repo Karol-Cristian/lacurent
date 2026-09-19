@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const HOUSE_MODELS = {
@@ -11,12 +12,12 @@ const HOUSE_MODELS = {
   },
   final: {
     label: "Final House",
-    url: "https://raw.githubusercontent.com/Koushik6692/3d-portfolio/main/public/house-transformed.glb",
+    url: "https://cdn.jsdelivr.net/gh/Koushik6692/3d-portfolio@main/public/house-transformed.glb",
     source: "https://sketchfab.com/3d-models/final-house-20ea8edb2b7043b1a98a0b6ae18684bb",
   },
   dower: {
     label: "Dower House",
-    url: "https://raw.githubusercontent.com/Dhruvisgoat/deploy3dgamebuild/main/models/house-transformed.glb",
+    url: "https://cdn.jsdelivr.net/gh/Dhruvisgoat/deploy3dgamebuild@main/models/house-transformed.glb",
     source: "https://sketchfab.com/3d-models/preceptory-and-dower-house-game-asset-50d31c70e44b4000b17d81ff0fbcdf98",
   },
 };
@@ -368,7 +369,21 @@ class HomeLabHouse3D {
 
   async loadModel() {
     const loader = new GLTFLoader();
-    const gltf = await loader.loadAsync(HOUSE_MODEL_URL);
+    let dracoLoader = null;
+
+    if (HOUSE_VARIANT !== "current") {
+      dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
+      dracoLoader.setDecoderConfig({ type: "wasm" });
+      loader.setDRACOLoader(dracoLoader);
+    }
+
+    let gltf;
+    try {
+      gltf = await loader.loadAsync(HOUSE_MODEL_URL);
+    } finally {
+      dracoLoader?.dispose();
+    }
     this.modelRoot = gltf.scene;
     this.modelRoot.name = "LaCurentEnglishHouse";
 
