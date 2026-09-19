@@ -44,8 +44,7 @@
   window.addEventListener("load", publishHeight);
   window.addEventListener("resize", publishHeight);
   window.addEventListener("lacurent:languagechange", () => setTimeout(publishHeight, 0));
-  document.addEventListener("pointerdown", requestMobileFocus, {capture:true, passive:true});
-  document.addEventListener("focusin", requestMobileFocus, {capture:true});
+  document.addEventListener("click", requestMobileFocus, {capture:true});
 
   window.addEventListener("message", event => {
     const data = event.data;
