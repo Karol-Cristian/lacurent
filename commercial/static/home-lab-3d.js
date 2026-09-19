@@ -597,11 +597,67 @@ class HomeLabHouse3D {
     return unit;
   }
 
-  createRoofArray({ key, type, cols, rows, anchor, panelWidth, panelDepth, slope = 0.54 }) {
+  mountLayerOnRoof(group, anchor, fallbackSlope = 0.60) {
+    const baseMesh = this.inspectableMeshes[0];
+    if (!baseMesh) {
+      group.position.copy(this.localPointFromNormalized(anchor));
+      group.rotation.x = fallbackSlope;
+      return false;
+    }
+
+    this.modelRoot.updateMatrixWorld(true);
+
+    const x = this.modelCenter.x + this.modelSize.x * anchor[0];
+    const z = this.modelCenter.z + this.modelSize.z * anchor[2];
+    const origin = new THREE.Vector3(
+      x,
+      this.modelBox.max.y + this.modelSize.y * 0.45,
+      z
+    );
+
+    const ray = new THREE.Raycaster(
+      origin,
+      new THREE.Vector3(0, -1, 0),
+      0,
+      this.modelSize.y * 2.2
+    );
+    const hit = ray.intersectObject(baseMesh, true)[0];
+
+    if (!hit?.face) {
+      group.position.copy(this.localPointFromNormalized(anchor));
+      group.rotation.x = fallbackSlope;
+      return false;
+    }
+
+    const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
+    const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+    if (worldNormal.y < 0) worldNormal.negate();
+
+    const worldQuaternion = new THREE.Quaternion();
+    this.modelRoot.getWorldQuaternion(worldQuaternion);
+    const localNormal = worldNormal
+      .clone()
+      .applyQuaternion(worldQuaternion.clone().invert())
+      .normalize();
+
+    const localPoint = this.modelRoot.worldToLocal(hit.point.clone());
+    const clearance = this.localLength(Math.max(0.018, this.modelSize.y * 0.003));
+
+    group.position.copy(localPoint).addScaledVector(localNormal, clearance);
+    group.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      localNormal
+    );
+    group.userData.roofMount = {
+      anchor: [...anchor],
+      worldNormal: worldNormal.toArray(),
+    };
+    return true;
+  }
+
+  createRoofArray({ key, type, cols, rows, anchor, panelWidth, panelDepth, slope = 0.60 }) {
     const group = new THREE.Group();
     group.name = `LaCurentLayer_${key}`;
-    group.position.copy(this.localPointFromNormalized(anchor));
-    group.rotation.x = slope;
 
     const gapX = this.localLength(this.modelSize.x * 0.012);
     const gapZ = this.localLength(this.modelSize.z * 0.014);
@@ -622,6 +678,7 @@ class HomeLabHouse3D {
       }
     }
 
+    this.mountLayerOnRoof(group, anchor, slope);
     group.visible = false;
     this.modelRoot.add(group);
     this.experimentLayers.set(key, group);
