@@ -93,17 +93,78 @@
         </div>
       </section>
 
+      <section class="lab-renovation-chooser" id="labRenovationChooser" hidden>
+        <header>
+          <span>RENOVARE</span>
+          <strong>Ce vrei să îmbunătățești?</strong>
+          <small>Alege o intervenție. Casa actuală rămâne salvată și fiecare schimbare este comparată cu ea.</small>
+        </header>
+        <div class="lab-renovation-grid">
+          <button type="button" data-renovation-action="wall" data-renovation-chapter="2" data-renovation-target="labWallInsNumber">
+            <span class="lab-renovation-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 7h20v18H6Z"/><path d="M11 7v18M21 7v18M6 13h20M6 19h20"/><path class="leaf" d="M22 4c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
+            <span><strong>Izolează fațada</strong><small>Pereți exteriori</small></span>
+          </button>
+          <button type="button" data-renovation-action="roof" data-renovation-chapter="2" data-renovation-target="labRoofInsNumber">
+            <span class="lab-renovation-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 17 16 7l12 10"/><path d="M8 16v10h16V16"/><path class="leaf" d="M21 5c4 0 6 2 6 6-4 0-6-2-6-6Z"/></svg></span>
+            <span><strong>Izolează podul</strong><small>Acoperiș / planșeu</small></span>
+          </button>
+          <button type="button" data-renovation-action="windows" data-renovation-chapter="2" data-renovation-target="labGlazing">
+            <span class="lab-renovation-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 6h20v20H6Z"/><path d="M16 6v20M6 16h20"/><path class="leaf" d="M22 3c3 0 6 2 6 6-4 0-6-2-6-6Z"/></svg></span>
+            <span><strong>Schimbă ferestrele</strong><small>Vitraj și orientare</small></span>
+          </button>
+          <button type="button" data-renovation-action="heating" data-renovation-chapter="3" data-renovation-target="labHeating">
+            <span class="lab-renovation-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 23V12h16v11"/><path d="M11 12c0-4 2-7 5-7s5 3 5 7"/><path d="M11 18h10M11 22h10"/><path class="leaf" d="M22 4c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
+            <span><strong>Schimbă încălzirea</strong><small>Centrală, pompă, lemn</small></span>
+          </button>
+          <button type="button" data-renovation-action="ventilation" data-renovation-chapter="3" data-renovation-target="labVentilation">
+            <span class="lab-renovation-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 11h14c4 0 4-6 0-6-2 0-3 1-3 2"/><path d="M5 16h20c4 0 4 6 0 6-2 0-3-1-3-2"/><path d="M5 21h10"/><path class="leaf" d="M22 5c3 0 6 2 6 6-4 0-6-2-6-6Z"/></svg></span>
+            <span><strong>Ventilație & răcire</strong><small>Recuperare și confort</small></span>
+          </button>
+          <button type="button" class="is-disabled" disabled aria-disabled="true">
+            <span class="lab-renovation-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="13" r="5"/><path d="M16 2v4M16 20v4M5 13h4M23 13h4M8 5l3 3M21 18l3 3M24 5l-3 3"/><path d="M7 27h18"/><path class="leaf" d="M21 20c4 0 7 2 7 6-4 0-7-2-7-6Z"/></svg></span>
+            <span><strong>Adaugă solar / PV</strong><small>Calcul în curs de integrare</small></span>
+          </button>
+        </div>
+      </section>
+
       <div class="lab-mobile-editor-toolbar" hidden>
         <button type="button" data-lab-chapter-close aria-label="Înapoi">←</button>
         <strong id="labMobileEditorTitle">Capitol</strong>
         <button type="button" data-lab-reset aria-label="Revino la preset">↺</button>
       </div>
 
-      <section class="lab-mobile-livebar" aria-live="polite">
-        <div><span>Clasă</span><strong id="labMobileClass">—</strong><small id="labMobileClassDelta"></small></div>
-        <div><span>Cost/an</span><strong id="labMobileCost">—</strong><small id="labMobileCostDelta"></small></div>
-        <div><span>Energie</span><strong id="labMobileEnergy">—</strong><small id="labMobileEnergyDelta"></small></div>
-        <button type="button" data-mobile-results>Rezultat ›</button>
+      <section class="lab-mobile-livebar" data-mobile-flow="current" aria-live="polite">
+        <div class="lab-mobile-livebar-head">
+          <div class="lab-mobile-mode">
+            <span id="labMobileModeKicker">CASA ACTUALĂ</span>
+            <strong id="labMobileModeTitle">Configurează locuința reală</strong>
+          </div>
+          <button type="button" class="lab-mobile-result-link" data-mobile-results>Rezultat ›</button>
+        </div>
+
+        <div class="lab-mobile-livebar-metrics">
+          <div class="lab-mobile-metric">
+            <span class="lab-mobile-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4Z"/><path d="M8 18v-7l4-3 4 3v7"/><path class="leaf" d="M15 5c3 0 5 2 5 5-3 0-5-2-5-5Z"/></svg></span>
+            <span><small>Clasă</small><strong id="labMobileClass">—</strong><em id="labMobileClassDelta"></em></span>
+          </div>
+          <div class="lab-mobile-metric">
+            <span class="lab-mobile-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9h6M9 12h5M9 15h6"/></svg></span>
+            <span><small>Cost/an</small><strong id="labMobileCost">—</strong><em id="labMobileCostDelta"></em></span>
+          </div>
+          <div class="lab-mobile-metric">
+            <span class="lab-mobile-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m13 2-7 11h6l-1 9 7-12h-6Z"/></svg></span>
+            <span><small>Energie</small><strong id="labMobileEnergy">—</strong><em id="labMobileEnergyDelta"></em></span>
+          </div>
+          <div class="lab-mobile-metric">
+            <span class="lab-mobile-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="leaf" d="M5 14C5 7 11 4 19 4c0 8-4 14-11 14"/><path d="M7 19c2-5 5-8 10-11"/></svg></span>
+            <span><small>CO₂</small><strong id="labMobileCo2">—</strong><em id="labMobileCo2Delta"></em></span>
+          </div>
+        </div>
+
+        <div class="lab-mobile-livebar-actions">
+          <button type="button" id="labMobilePrimaryAction">Asta este casa mea acum</button>
+          <button type="button" id="labMobileSecondaryAction" hidden>Alege îmbunătățire</button>
+        </div>
       </section>
 
       <section class="lab-baseline-card" data-baseline-card data-lab-chapter-panel="6">
