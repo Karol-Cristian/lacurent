@@ -1,0 +1,210 @@
+.hln-house-visual {
+  position: relative;
+}
+
+.hln-3d-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255,255,255,.98), rgba(246,244,238,.78) 48%, rgba(233,231,223,.76) 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .32s ease;
+}
+
+.hln-house-visual-3d-ready > .hln-3d-stage {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hln-house-visual-3d-ready > svg {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hln-house-visual-3d-ready > .hln-hotspot,
+.hln-house-visual-3d-ready > .hln-zone {
+  z-index: 6;
+}
+
+.hln-3d-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.hln-3d-canvas:active {
+  cursor: grabbing;
+}
+
+.hln-3d-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: #66706a;
+  font-size: 12px;
+  letter-spacing: .01em;
+  background: linear-gradient(180deg, rgba(249,248,244,.86), rgba(243,241,235,.78));
+}
+
+.hln-3d-stage.is-ready .hln-3d-loading {
+  display: none;
+}
+
+.hln-3d-spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgba(65,105,122,.16);
+  border-top-color: #41697a;
+  border-radius: 50%;
+  animation: hln3dSpin .8s linear infinite;
+}
+
+@keyframes hln3dSpin {
+  to { transform: rotate(360deg); }
+}
+
+.hln-3d-toolbar {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 7;
+  display: flex;
+  gap: 6px;
+}
+
+.hln-3d-toolbar button {
+  min-height: 36px;
+  border: 1px solid rgba(28,36,33,.10);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #56615b;
+  background: rgba(251,250,246,.86);
+  box-shadow: 0 5px 18px rgba(28,34,31,.06);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+.hln-3d-toolbar button:hover,
+.hln-3d-toolbar button.is-active {
+  color: #315b4a;
+  border-color: rgba(63,116,92,.26);
+  background: rgba(223,233,226,.92);
+}
+
+.hln-3d-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  z-index: 7;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 28px);
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #737b76;
+  background: rgba(251,250,246,.78);
+  border: 1px solid rgba(28,36,33,.08);
+  backdrop-filter: blur(10px);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.hln-3d-fallback-note {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 7;
+  max-width: 220px;
+  padding: 10px 12px;
+  border: 1px solid rgba(28,36,33,.09);
+  border-radius: 12px;
+  background: rgba(251,250,246,.92);
+  color: #66706a;
+  box-shadow: 0 6px 18px rgba(28,34,31,.05);
+}
+
+.hln-3d-fallback-note span,
+.hln-3d-fallback-note small {
+  display: block;
+}
+
+.hln-3d-fallback-note span {
+  color: #2f3834;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.hln-3d-fallback-note small {
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.hln-house-visual-home.hln-house-visual-3d-ready .hln-hotspot {
+  background: rgba(251,250,246,.90);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 26px rgba(28,34,31,.08);
+}
+
+.hln-house-visual-renovation.hln-house-visual-3d-ready .hln-zone {
+  background: rgba(251,250,246,.91);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 26px rgba(28,34,31,.08);
+}
+
+.hln-3d-stage[data-hln-3d-selected="wall"]::after,
+.hln-3d-stage[data-hln-3d-selected="roof"]::after,
+.hln-3d-stage[data-hln-3d-selected="windows"]::after,
+.hln-3d-stage[data-hln-3d-selected="floor"]::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(63,116,92,.14);
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .hln-3d-toolbar {
+    top: 10px;
+    right: 10px;
+  }
+
+  .hln-3d-toolbar button {
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 10px;
+  }
+
+  .hln-3d-hint {
+    bottom: 9px;
+    font-size: 9px;
+  }
+
+  .hln-house-visual-3d-ready > .hln-hotspot,
+  .hln-house-visual-3d-ready > .hln-zone {
+    z-index: 7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hln-3d-stage,
+  .hln-3d-spinner {
+    transition: none !important;
+    animation: none !important;
+  }
+}
