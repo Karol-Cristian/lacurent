@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const HOUSE_MODELS = {
@@ -23,16 +22,22 @@ const HOUSE_MODELS = {
   },
 };
 
-const HOUSE_VARIANT = new URLSearchParams(window.location.search).get("house") || "current";
+const HOUSE_VARIANT = new URLSearchParams(window.location.search).get("house") || "final";
 const HOUSE_MODEL = HOUSE_MODELS[HOUSE_VARIANT] || HOUSE_MODELS.current;
 const HOUSE_MODEL_URL = HOUSE_MODEL.url;
 const HOUSE_MODEL_SOURCE = HOUSE_MODEL.source;
 
 const PARTS = {
-  wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c },
-  roof: { label: "Pod / acoperiș", editor: "envelope", measure: "roof", color: 0x3f745c },
-  windows: { label: "Ferestre", editor: "envelope", measure: "windows", color: 0x41697a },
-  floor: { label: "Pardoseală", editor: "envelope", measure: "floor", color: 0x3f745c },
+  wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c, field: "#hlnHomeWallIns" },
+  roof: { label: "Pod / acoperiș", editor: "envelope", measure: "roof", color: 0x3f745c, field: "#hlnHomeRoofIns" },
+  windows: { label: "Ferestre", editor: "envelope", measure: "windows", color: 0x41697a, field: "#hlnHomeWindows" },
+  floor: { label: "Pardoseală", editor: "envelope", measure: "floor", color: 0x3f745c, field: "#hlnHomeFloorIns" },
+};
+
+const HOTSPOTS = {
+  wall: { label: "Fațadă", anchor: [0.00, 0.43, 0.49] },
+  windows: { label: "Ferestre", anchor: [0.21, 0.43, 0.505] },
+  roof: { label: "Acoperiș", anchor: [-0.08, 0.79, 0.22] },
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -70,6 +75,10 @@ class HomeLabHouse3D {
     this.isMobile = window.matchMedia?.("(max-width: 760px)").matches ?? false;
     this.environmentTarget = null;
     this.microTexture = null;
+    this.hotspotAnchors = new Map();
+    this.hotspotElements = new Map();
+    this.hotspotRoot = null;
+    this.debugHitZones = new URLSearchParams(window.location.search).get("hotspotDebug") === "1";
   }
 
   async init() {
@@ -89,6 +98,7 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
       <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
+      <div class="hln-3d-hotspots" data-hln-3d-hotspots aria-label="Elemente selectabile ale casei"></div>
       <canvas class="hln-3d-canvas" aria-label="Model 3D interactiv al casei"></canvas>
     `;
 
@@ -136,6 +146,7 @@ class HomeLabHouse3D {
       await this.loadModel();
       this.addHitZones();
       this.addRenovationLayer();
+      this.createSemanticHotspots();
       this.bindEvents();
       this.resize();
       this.mount.classList.remove("is-loading");
@@ -377,7 +388,6 @@ class HomeLabHouse3D {
       dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
       dracoLoader.setDecoderConfig({ type: "wasm" });
       loader.setDRACOLoader(dracoLoader);
-      loader.setMeshoptDecoder(MeshoptDecoder);
     }
 
     let gltf;
@@ -387,7 +397,7 @@ class HomeLabHouse3D {
       dracoLoader?.dispose();
     }
     this.modelRoot = gltf.scene;
-    this.modelRoot.name = "LaCurentEnglishHouse";
+    this.modelRoot.name = `LaCurentHouse_${HOUSE_VARIANT}`;
 
     const toRemove = [];
     this.modelRoot.traverse((obj) => {
@@ -450,6 +460,92 @@ class HomeLabHouse3D {
     const warmRight = warmLeft.clone();
     warmRight.position.x = this.modelSize.x * 0.22;
     this.scene.add(warmRight);
+  }
+
+  createSemanticHotspots() {
+    if (HOUSE_VARIANT !== "final") return;
+
+    this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
+    if (!this.hotspotRoot) return;
+
+    const box = this.modelBox;
+    const size = this.modelSize;
+    const center = this.modelCenter;
+
+    Object.entries(HOTSPOTS).forEach(([part, config]) => {
+      const [nx, ny, nz] = config.anchor;
+      const anchor = new THREE.Vector3(
+        center.x + size.x * nx,
+        box.min.y + size.y * ny,
+        center.z + size.z * nz
+      );
+      this.hotspotAnchors.set(part, anchor);
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "hln-3d-hotspot";
+      button.dataset.hln3dHotspot = part;
+      button.setAttribute("aria-label", config.label);
+      button.innerHTML = `
+        <span class="hln-3d-hotspot-dot" aria-hidden="true"></span>
+        <span class="hln-3d-hotspot-label">${config.label}</span>
+      `;
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.selectPart(part, true);
+      });
+      this.hotspotRoot.appendChild(button);
+      this.hotspotElements.set(part, button);
+    });
+
+    this.updateHotspotPositions();
+  }
+
+  updateHotspotPositions() {
+    if (!this.hotspotRoot || !this.camera || !this.hotspotAnchors.size) return;
+
+    const width = Math.max(1, this.mount.clientWidth);
+    const height = Math.max(1, this.mount.clientHeight);
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+
+    this.hotspotAnchors.forEach((anchor, part) => {
+      const button = this.hotspotElements.get(part);
+      if (!button) return;
+
+      const towardAnchor = anchor.clone().sub(this.camera.position);
+      const isInFront = cameraDirection.dot(towardAnchor) > 0;
+      const projected = anchor.clone().project(this.camera);
+      const x = (projected.x * 0.5 + 0.5) * width;
+      const y = (-projected.y * 0.5 + 0.5) * height;
+      const visible =
+        isInFront &&
+        projected.z > -1 &&
+        projected.z < 1 &&
+        x > -24 && x < width + 24 &&
+        y > -24 && y < height + 24;
+
+      button.hidden = !visible;
+      if (!visible) return;
+      button.style.transform = `translate3d(${x - 22}px, ${y - 22}px, 0)`;
+    });
+  }
+
+  setHotspotSelection(part) {
+    this.hotspotElements.forEach((button, key) => {
+      button.classList.toggle("is-selected", key === part);
+    });
+  }
+
+  focusEditorField(part) {
+    const selector = PARTS[part]?.field;
+    if (!selector) return;
+    window.setTimeout(() => {
+      const field = document.querySelector(selector);
+      if (!(field instanceof HTMLElement)) return;
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+      field.focus({ preventScroll: true });
+    }, 80);
   }
 
   createModelSwitcher() {
@@ -572,7 +668,14 @@ class HomeLabHouse3D {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.copy(position);
     mesh.userData.part = part;
+    mesh.userData.hitZone = true;
     mesh.renderOrder = 20;
+    if (this.debugHitZones) {
+      mesh.material.opacity = 0.16;
+      mesh.material.wireframe = true;
+      mesh.material.depthTest = false;
+      mesh.material.color.setHex(PARTS[part]?.color || 0x8b8f8c);
+    }
     this.scene.add(mesh);
     this.hitZones.push(mesh);
     return mesh;
@@ -763,8 +866,11 @@ class HomeLabHouse3D {
     if (!PARTS[part]) return;
     this.selectedPart = part;
     this.mount.dataset.hln3dSelected = part;
+    this.setHotspotSelection(part);
     this.rebuildRenovationLayer(part);
     this.focusPart(part, false);
+    this.autoRotateAllowed = false;
+    this.controls.autoRotate = false;
 
     if (!dispatch) return;
 
@@ -772,6 +878,7 @@ class HomeLabHouse3D {
       triggerExistingControl(`[data-hln-measure="${PARTS[part].measure}"]`);
     } else {
       triggerExistingControl(`[data-hln-editor-open="${PARTS[part].editor}"]`);
+      this.focusEditorField(part);
     }
   }
 
@@ -825,7 +932,9 @@ class HomeLabHouse3D {
     const s = this.modelSize;
     const distance = Math.max(s.x, s.z) * (this.mode === "home" ? 1.75 : 1.58);
     this.selectedPart = null;
+    this.setHotspotSelection(null);
     this.renovationLayer.visible = false;
+    this.autoRotateAllowed = true;
     this.animateCamera(
       new THREE.Vector3(distance * 0.78, distance * 0.52, distance),
       new THREE.Vector3(0, s.y * 0.42, 0)
@@ -848,6 +957,7 @@ class HomeLabHouse3D {
       if (this.autoRotateAllowed) this.controls.autoRotate = true;
       this.controls.update(dt);
     }
+    this.updateHotspotPositions();
     this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame(() => this.animate());
   }
