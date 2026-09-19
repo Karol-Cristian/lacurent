@@ -271,6 +271,47 @@ jobs:
           if energy_delta is None or float(energy_delta) >= 0:
               raise AssertionError("Wall-insulation scenario did not reduce modeled final energy.")
 
+          product = {
+              "partner_id": "demo-store",
+              "product_id": "worker-smoke-insulation",
+              "sku": "SMOKE-100",
+              "name": "Worker smoke facade insulation",
+              "manufacturer": "LaCurent test fixture",
+              "category": "facade_insulation",
+              "application": "external_wall",
+              "thickness_mm": 100,
+              "lambda_w_mk": 0.032,
+              "package_area_m2": 4.0,
+              "price_per_package_lei": 125.0,
+              "stock_status": "in_stock",
+              "catalog_version": "worker-smoke-v1",
+          }
+          match_payload = json.loads(post_json(
+              "/api/products/wall-insulation/match",
+              {"requirement": requirement, "products": [product]},
+          ))
+          if match_payload.get("compatible_count") != 1:
+              raise AssertionError("Worker product matcher did not identify the compatible facade product.")
+          match = match_payload.get("matches", [{}])[0]
+          if match.get("compatibility", {}).get("status") != "exceeds_requirement":
+              raise AssertionError("Worker product matcher returned an unexpected compatibility status.")
+          if int(match.get("quantity", {}).get("minimum_packages_no_waste") or 0) <= 0:
+              raise AssertionError("Worker product matcher did not calculate package quantity.")
+
+          product_scenario = json.loads(post_json(
+              "/api/scenarios/wall-insulation/product",
+              {
+                  "baseline": json.loads(model_to_json(demo_building())),
+                  "requirement": requirement,
+                  "product": product,
+              },
+          ))
+          selected_measure = product_scenario.get("scenario_bundle", {}).get("measure", {})
+          if selected_measure.get("material_source") != "partner_product":
+              raise AssertionError("Worker product scenario did not retain partner-product provenance.")
+          if selected_measure.get("product_reference", {}).get("product_id") != product["product_id"]:
+              raise AssertionError("Worker product scenario lost the selected product reference.")
+
           with urllib.request.urlopen(base + "/embed/demo-store", timeout=20) as response:
               frame_policy = response.headers.get("Content-Security-Policy")
               if frame_policy != "frame-ancestors *":
@@ -659,8 +700,62 @@ jobs:
           energy_delta = scenario_payload.get("scenario", {}).get("delta_vs_baseline", {}).get("final_energy", {}).get("delta")
           if energy_delta is None or float(energy_delta) >= 0:
               raise AssertionError("Production wall-insulation scenario did not reduce modeled final energy.")
-          print("/api/scenarios/wall-insulation", status)
-          print("/embed/demo-store/lab-calculate", status)
+
+          product = {
+              "partner_id": "demo-store",
+              "product_id": "production-smoke-insulation",
+              "sku": "SMOKE-100",
+              "name": "Production smoke facade insulation",
+              "manufacturer": "LaCurent test fixture",
+              "category": "facade_insulation",
+              "application": "external_wall",
+              "thickness_mm": 100,
+              "lambda_w_mk": 0.032,
+              "package_area_m2": 4.0,
+              "price_per_package_lei": 125.0,
+              "stock_status": "in_stock",
+              "catalog_version": "production-smoke-v1",
+          }
+          match_encoded = json.dumps({
+              "requirement": scenario_payload["technical_requirement"],
+              "products": [product],
+          }).encode("utf-8")
+          status, _, match_body = open_url(
+              apex + "/api/products/wall-insulation/match",
+              data=match_encoded,
+              headers={"Content-Type": "application/json"},
+          )
+          if status != 200:
+              raise AssertionError(f"/api/products/wall-insulation/match failed with HTTP {status}")
+          match_payload = json.loads(match_body)
+          if match_payload.get("compatible_count") != 1:
+              raise AssertionError("Production product matcher did not identify the compatible facade product.")
+          if match_payload.get("matches", [{}])[0].get("compatibility", {}).get("status") != "exceeds_requirement":
+              raise AssertionError("Production product matcher returned an unexpected compatibility status.")
+
+          product_scenario_encoded = json.dumps({
+              "baseline": json.loads(model_to_json(demo_building())),
+              "requirement": scenario_payload["technical_requirement"],
+              "product": product,
+          }).encode("utf-8")
+          status, _, product_scenario_body = open_url(
+              apex + "/api/scenarios/wall-insulation/product",
+              data=product_scenario_encoded,
+              headers={"Content-Type": "application/json"},
+          )
+          if status != 200:
+              raise AssertionError(f"/api/scenarios/wall-insulation/product failed with HTTP {status}")
+          product_scenario = json.loads(product_scenario_body)
+          selected_measure = product_scenario.get("scenario_bundle", {}).get("measure", {})
+          if selected_measure.get("material_source") != "partner_product":
+              raise AssertionError("Production product scenario did not retain partner-product provenance.")
+          if selected_measure.get("product_reference", {}).get("product_id") != product["product_id"]:
+              raise AssertionError("Production product scenario lost the selected product reference.")
+
+          print("/api/scenarios/wall-insulation", 200)
+          print("/api/products/wall-insulation/match", 200)
+          print("/api/scenarios/wall-insulation/product", 200)
+          print("/embed/demo-store/lab-calculate", 200)
 
           status, _, _ = open_url(apex + "/embed/not-a-real-partner")
           if status != 404:
