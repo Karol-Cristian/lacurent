@@ -66,6 +66,7 @@
   let baselineSaved = false;
   let measures = [];
   let referenceMode = false;
+  let scenarioOverrides = {};
   let activeMeasure = null;
   let interventionOriginal = null;
   let screen = "home";
@@ -84,6 +85,7 @@
       measures = Array.isArray(saved.measures) ? saved.measures : [];
       baselineSaved = Boolean(saved.baselineSaved);
       referenceMode = Boolean(saved.referenceMode);
+      scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
     }
   } catch (_) {}
 
@@ -128,6 +130,38 @@
       ventilation: "natural",
       cooling: homeState.cooling,
     };
+  }
+
+  function clearScenarioOverrideForKey(key) {
+    const next = { ...scenarioOverrides };
+    if (key === "wallIns") delete next.wallU;
+    if (key === "roofIns") delete next.roofU;
+    if (key === "floorIns") delete next.floorU;
+    if (key === "glazing") delete next.windowU;
+    if (key === "heating") {
+      delete next.heatingEfficiency;
+      delete next.heatingSystemType;
+      delete next.heatingCarrier;
+      delete next.heatingCostProfile;
+    }
+    if (key === "ventilation") {
+      delete next.airChanges;
+      delete next.heatRecovery;
+    }
+    if (key === "cooling") delete next.coolingSeer;
+    scenarioOverrides = next;
+  }
+
+  function clearScenarioOverrideForMeasure(type) {
+    if (type === "wall") clearScenarioOverrideForKey("wallIns");
+    if (type === "roof") clearScenarioOverrideForKey("roofIns");
+    if (type === "floor") clearScenarioOverrideForKey("floorIns");
+    if (type === "windows") clearScenarioOverrideForKey("glazing");
+    if (type === "heating") clearScenarioOverrideForKey("heating");
+    if (type === "ventilation") {
+      clearScenarioOverrideForKey("ventilation");
+      clearScenarioOverrideForKey("cooling");
+    }
   }
 
   function syncMeasuresFromScenario() {
@@ -180,6 +214,24 @@
       localityId: homeState.localityId,
       locality: homeState.locality,
     };
+    const ref = homeResult?.reference_parameters || currentResult?.reference_parameters;
+    const u = ref?.u_values_w_m2k || {};
+    scenarioOverrides = {
+      wallU: Number(u.exterior_wall),
+      roofU: Number(u.roof),
+      floorU: Number(u.floor),
+      windowU: Number(u.window),
+      doorU: Number(u.exterior_door),
+      thermalBridgesOff: true,
+      airChanges: Number(ref?.air_changes_per_hour),
+      heatRecovery: Number(ref?.heat_recovery_efficiency),
+      heatingEfficiency: Number(ref?.heating_efficiency),
+      heatingSystemType: "condensing_gas_boiler",
+      heatingCarrier: "natural_gas",
+      heatingCostProfile: "natural_gas",
+      coolingSeer: Number(ref?.cooling_seer),
+      dhwEfficiency: Number(ref?.dhw_efficiency),
+    };
     referenceMode = true;
     syncMeasuresFromScenario();
     renderAll();
@@ -191,6 +243,7 @@
   function resetScenarioToHome() {
     if (!baselineSaved) return;
     referenceMode = false;
+    scenarioOverrides = {};
     scenarioState = { ...homeState };
     scenarioResult = homeResult;
     currentResult = homeResult;
@@ -687,7 +740,8 @@
         homeResult,
         scenarioResult,
         measures,
-        referenceMode
+        referenceMode,
+        scenarioOverrides
       }));
     } catch (_) {}
   }
