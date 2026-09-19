@@ -460,3 +460,184 @@
     min-height: 390px;
   }
 }
+
+
+/* Final House semantic authoring mode (?author3d=1) */
+.hln-3d-stage.is-authoring .hln-3d-hint {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hln-3d-hotspot.is-authoring {
+  touch-action: none;
+  cursor: grab;
+}
+
+.hln-3d-hotspot.is-authoring:active {
+  cursor: grabbing;
+}
+
+.hln-3d-author-panel {
+  position: absolute;
+  right: 14px;
+  top: 64px;
+  z-index: 12;
+  width: min(324px, calc(100% - 28px));
+  max-height: calc(100% - 78px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid rgba(35, 48, 42, .12);
+  border-radius: 18px;
+  background: rgba(250, 249, 245, .94);
+  box-shadow: 0 18px 54px rgba(24, 34, 29, .14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: #26332d;
+}
+
+.hln-3d-author-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.hln-3d-author-panel > header div {
+  display: grid;
+  gap: 2px;
+}
+
+.hln-3d-author-panel > header strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.hln-3d-author-panel > header small,
+.hln-3d-author-panel > header > span,
+.hln-3d-author-panel > p {
+  font-size: 9px;
+  line-height: 1.35;
+  color: #6b756f;
+}
+
+.hln-3d-author-panel > header > span {
+  max-width: 112px;
+  text-align: right;
+}
+
+.hln-3d-author-parts {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.hln-3d-author-parts::-webkit-scrollbar {
+  display: none;
+}
+
+.hln-3d-author-parts button,
+.hln-3d-author-actions button {
+  border: 1px solid rgba(38, 51, 45, .12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .72);
+  color: #45514b;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.hln-3d-author-parts button.is-active {
+  background: #315d49;
+  color: #fff;
+  border-color: #315d49;
+}
+
+.hln-3d-author-controls {
+  display: grid;
+  gap: 8px;
+}
+
+.hln-3d-author-controls section {
+  display: grid;
+  gap: 5px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .56);
+  border: 1px solid rgba(38, 51, 45, .07);
+}
+
+.hln-3d-author-controls h4 {
+  margin: 0 0 2px;
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #66716b;
+}
+
+.hln-3d-author-controls label {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.hln-3d-author-controls label > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  font-size: 9px;
+  color: #505c56;
+}
+
+.hln-3d-author-controls output {
+  font-variant-numeric: tabular-nums;
+  color: #26332d;
+}
+
+.hln-3d-author-controls input[type="range"] {
+  width: 100%;
+  accent-color: #315d49;
+}
+
+.hln-3d-author-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.hln-3d-author-panel > p {
+  margin: 8px 2px 0;
+}
+
+@media (max-width: 760px) {
+  .hln-3d-author-panel {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    width: auto;
+    max-height: 49%;
+    border-radius: 16px;
+  }
+
+  .hln-3d-author-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .hln-3d-author-controls label {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .hln-3d-author-controls section {
+    padding: 7px;
+  }
+}
