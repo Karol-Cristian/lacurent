@@ -159,7 +159,7 @@ jobs:
               "/": 'data-page="testing-home"',
               "/software-testing": 'data-page="software-testing"',
               "/instalatii": 'data-page="energy-home"',
-              "/instalatii/calculator": "romaniaLocationMap",
+              "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
               "/magazin": "Depozitul Constructorului",
@@ -611,7 +611,7 @@ jobs:
           checks = {
               "/software-testing": 'data-page="software-testing"',
               "/instalatii": 'data-page="energy-home"',
-              "/instalatii/calculator": "romaniaLocationMap",
+              "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
               "/magazin": "Depozitul Constructorului",
