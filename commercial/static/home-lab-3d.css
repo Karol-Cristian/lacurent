@@ -223,3 +223,117 @@
 .hln-3d-stage.is-ready .hln-3d-canvas {
   filter: saturate(.96) contrast(1.015);
 }
+
+.hln-3d-hotspots {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.hln-3d-hotspot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #274a3c;
+  transition: opacity .18s ease;
+}
+
+.hln-3d-hotspot-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(251,250,246,.96);
+  border: 2px solid rgba(63,116,92,.88);
+  box-shadow:
+    0 0 0 5px rgba(251,250,246,.70),
+    0 3px 12px rgba(25,35,30,.20);
+  transition: transform .18s ease, background .18s ease, border-color .18s ease;
+}
+
+.hln-3d-hotspot-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 1px);
+  transform: translateX(-50%) translateY(-2px);
+  width: max-content;
+  max-width: 112px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(28,36,33,.10);
+  background: rgba(251,250,246,.92);
+  color: #45514b;
+  box-shadow: 0 6px 18px rgba(28,34,31,.08);
+  backdrop-filter: blur(10px);
+  font-size: 10px;
+  line-height: 1.1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.hln-3d-hotspot:focus-visible {
+  outline: 2px solid rgba(65,105,122,.62);
+  outline-offset: 2px;
+}
+
+.hln-3d-hotspot:focus-visible .hln-3d-hotspot-label,
+.hln-3d-hotspot.is-selected .hln-3d-hotspot-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(2px);
+}
+
+.hln-3d-hotspot.is-selected .hln-3d-hotspot-dot {
+  transform: scale(1.18);
+  background: #3f745c;
+  border-color: #f7f5ef;
+}
+
+.hln-3d-hotspot.is-contextual {
+  opacity: .58;
+}
+
+.hln-3d-stage.is-interacting .hln-3d-hotspot-label {
+  opacity: 0;
+}
+
+.hln-3d-stage.is-beauty .hln-3d-hint {
+  opacity: .82;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hln-3d-hotspot:hover .hln-3d-hotspot-label {
+    opacity: 1;
+    transform: translateX(-50%) translateY(2px);
+  }
+
+  .hln-3d-hotspot:hover .hln-3d-hotspot-dot {
+    transform: scale(1.16);
+  }
+}
+
+@media (max-width: 760px) {
+  .hln-3d-hotspot-label {
+    font-size: 9px;
+    max-width: 96px;
+  }
+
+  .hln-3d-hotspot-dot {
+    width: 10px;
+    height: 10px;
+    box-shadow:
+      0 0 0 4px rgba(251,250,246,.72),
+      0 3px 10px rgba(25,35,30,.18);
+  }
+}
