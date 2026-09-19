@@ -1,0 +1,701 @@
+(() => {
+  "use strict";
+
+  const root = document.querySelector("[data-home-lab-next]");
+  if (!root) return;
+
+  const $ = selector => root.querySelector(selector);
+  const $$ = selector => Array.from(root.querySelectorAll(selector));
+  const form = $("#hlnTechnicalForm");
+  const calcUrl = root.dataset.calculateUrl;
+  const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
+
+  const labels = {
+    glazing: {
+      single_clear_glazing: "Geam simplu",
+      double_clear_glazing: "Geam dublu clar",
+      double_low_e_face_3: "Geam dublu Low-E",
+      triple_low_e_faces_2_and_5: "Tripan Low-E"
+    },
+    heating: {
+      condensing_gas_boiler: "Centrală gaz",
+      gas_boiler: "Centrală gaz convențională",
+      heat_pump: "Pompă de căldură",
+      district_heat: "Termoficare",
+      wood_stove: "Șemineu / sobă",
+      electric_resistance: "Încălzire electrică",
+      wood_boiler: "Centrală pe lemne",
+      pellet_boiler: "Centrală pe peleți"
+    },
+    ventilation: {
+      natural: "Ventilație naturală",
+      mechanical: "Ventilație mecanică",
+      hrv: "Recuperare de căldură"
+    },
+    cooling: {
+      none: "Fără răcire",
+      split: "Aer condiționat",
+      heat_pump: "Pompă reversibilă"
+    }
+  };
+
+  const defaultState = {
+    localityId: form.elements.locality_id.value,
+    locality: form.elements.locality.value,
+    area: 120,
+    levels: 2,
+    height: 2.7,
+    temperature: 21,
+    occupants: 4,
+    windows: 18,
+    wallIns: 5,
+    roofIns: 10,
+    floorIns: 5,
+    glazing: "triple_low_e_faces_2_and_5",
+    orientation: "south",
+    heating: "condensing_gas_boiler",
+    ventilation: "natural",
+    cooling: "none"
+  };
+
+  let homeState = {...defaultState};
+  let scenarioState = {...defaultState};
+  let homeResult = null;
+  let scenarioResult = null;
+  let currentResult = null;
+  let baselineSaved = false;
+  let measures = [];
+  let activeMeasure = null;
+  let interventionOriginal = null;
+  let screen = "home";
+  let localities = [];
+  let localityMap = new Map();
+  let calculateToken = 0;
+  let calculateTimer = 0;
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+    if (saved?.homeState) {
+      homeState = {...defaultState, ...saved.homeState};
+      scenarioState = {...homeState, ...(saved.scenarioState || {})};
+      homeResult = saved.homeResult || null;
+      scenarioResult = saved.scenarioResult || null;
+      measures = Array.isArray(saved.measures) ? saved.measures : [];
+      baselineSaved = Boolean(saved.baselineSaved);
+    }
+  } catch (_) {}
+
+  function fmt(value, digits = 0) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "—";
+    return number.toLocaleString("ro-RO", {maximumFractionDigits: digits, minimumFractionDigits: digits});
+  }
+
+  function formSet(name, value) {
+    const field = form.elements[name];
+    if (field) field.value = value == null ? "" : String(value);
+  }
+
+  function insulationU(baseU, centimetres) {
+    const lambda = 0.040;
+    const baseR = 1 / baseU;
+    const addedR = Math.max(0, Number(centimetres) || 0) / 100 / lambda;
+    return 1 / (baseR + addedR);
+  }
+
+  function populateTechnicalForm(state) {
+    const area = Number(state.area);
+    const levels = Math.max(1, Number(state.levels));
+    const height = Number(state.height);
+    const windows = Number(state.windows);
+    const doors = 2.2;
+    const footprint = area / levels;
+    const aspect = 1.25;
+    const width = Math.sqrt(footprint / aspect);
+    const length = width * aspect;
+    const perimeter = 2 * (length + width);
+    const grossWalls = perimeter * height * levels;
+    const wallArea = Math.max(1, grossWalls - windows - doors);
+
+    formSet("locality_id", state.localityId);
+    formSet("locality", state.locality);
+    formSet("building_length_m", length.toFixed(3));
+    formSet("building_width_m", width.toFixed(3));
+    formSet("heated_levels", levels);
+    formSet("average_height_m", height);
+    formSet("house_window_area_m2", windows);
+    formSet("heated_floor_area_m2", area);
+    formSet("heated_volume_m3", (area * height).toFixed(3));
+    formSet("wall_area_m2", wallArea.toFixed(3));
+    formSet("roof_area_m2", footprint.toFixed(3));
+    formSet("floor_area_m2", footprint.toFixed(3));
+    formSet("window_area_m2", windows);
+    formSet("thermal_bridge_length_m", (perimeter * levels).toFixed(3));
+
+    formSet("wall_u_value", insulationU(1.30, state.wallIns).toFixed(4));
+    formSet("roof_u_value", insulationU(1.00, state.roofIns).toFixed(4));
+    formSet("floor_u_value", insulationU(0.90, state.floorIns).toFixed(4));
+    const glazingU = {
+      single_clear_glazing: 5.0,
+      double_clear_glazing: 2.8,
+      double_low_e_face_3: 1.6,
+      triple_low_e_faces_2_and_5: 0.9
+    };
+    formSet("window_u_value", glazingU[state.glazing] || 1.6);
+    formSet("solar_glazing_type_id", state.glazing);
+    formSet("solar_orientation", state.orientation);
+    formSet("indoor_design_temperature_c", state.temperature);
+    formSet("dhw_occupants", state.occupants);
+    formSet("heating_choice", state.heating);
+
+    if (state.ventilation === "hrv") {
+      formSet("air_changes_per_hour", 0.5);
+      formSet("heat_recovery_efficiency", 0.75);
+    } else if (state.ventilation === "mechanical") {
+      formSet("air_changes_per_hour", 0.65);
+      formSet("heat_recovery_efficiency", 0);
+    } else {
+      formSet("air_changes_per_hour", 0.5);
+      formSet("heat_recovery_efficiency", 0);
+    }
+
+    formSet("cooling_enabled", state.cooling === "none" ? "" : "on");
+    formSet("cooling_seer", state.cooling === "split" ? 4.2 : 4.0);
+  }
+
+  function setStatus(message, kind = "") {
+    const node = $("#hlnStatus");
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle("is-error", kind === "error");
+    node.classList.toggle("is-ok", kind === "ok");
+  }
+
+  async function calculateState(state, target) {
+    const token = ++calculateToken;
+    populateTechnicalForm(state);
+    const body = new FormData(form);
+    setStatus("Recalculare live…");
+    try {
+      const response = await fetch(calcUrl, {method: "POST", body});
+      const contentType = response.headers.get("content-type") || "";
+      const payload = contentType.includes("application/json") ? await response.json() : null;
+      if (!response.ok || !payload || payload.error) {
+        throw new Error(payload?.error || "Calculul nu a putut fi actualizat.");
+      }
+      if (token !== calculateToken) return null;
+      if (target === "home") homeResult = payload;
+      if (target === "scenario") scenarioResult = payload;
+      currentResult = payload;
+      setStatus("Calcul actualizat", "ok");
+      renderAll();
+      return payload;
+    } catch (error) {
+      if (token !== calculateToken) return null;
+      setStatus(error?.message || "Calcul indisponibil momentan.", "error");
+      return null;
+    }
+  }
+
+  function scheduleCalculate(target = baselineSaved && screen !== "home" ? "scenario" : "home", delay = 180) {
+    clearTimeout(calculateTimer);
+    calculateTimer = window.setTimeout(() => {
+      const state = target === "home" ? homeState : scenarioState;
+      calculateState(state, target);
+    }, delay);
+  }
+
+  function activeState() {
+    return screen === "home" && !baselineSaved ? homeState : scenarioState;
+  }
+
+  function benefit(current, baseline) {
+    const now = Number(current);
+    const base = Number(baseline);
+    if (!Number.isFinite(now) || !Number.isFinite(base) || Math.abs(base) < 1e-9) return null;
+    return 100 * (base - now) / Math.abs(base);
+  }
+
+  function benefitText(current, baseline, suffix = "%") {
+    const value = benefit(current, baseline);
+    if (value == null) return {text: "—", good: null};
+    if (Math.abs(value) < 0.05) return {text: "0" + suffix, good: null};
+    return {
+      text: `${value > 0 ? "+" : "−"}${fmt(Math.abs(value), 0)}${suffix}`,
+      good: value > 0
+    };
+  }
+
+  function renderDock() {
+    const dock = $(".hln-dock");
+    const metrics = $(".hln-dock-metrics");
+    const benefits = $(".hln-dock-benefits");
+    const cta = $("#hlnDockCta");
+    const result = screen === "home" ? (baselineSaved ? homeResult : currentResult || homeResult) : scenarioResult || currentResult || homeResult;
+
+    $("#hlnDockClass").textContent = result?.energy_class || "—";
+    $("#hlnDockCost").textContent = result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei`;
+    $("#hlnDockEnergy").textContent = result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh`;
+
+    const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
+    metrics.hidden = scenarioMode;
+    benefits.hidden = !scenarioMode;
+
+    if (scenarioMode && homeResult && scenarioResult) {
+      const cost = benefitText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei);
+      const energy = benefitText(scenarioResult.final_energy_kwh, homeResult.final_energy_kwh);
+      const co2 = benefitText(scenarioResult.co2_kg, homeResult.co2_kg);
+      [
+        ["#hlnDockCostBenefit", cost],
+        ["#hlnDockEnergyBenefit", energy],
+        ["#hlnDockCo2Benefit", co2]
+      ].forEach(([selector, item]) => {
+        const node = $(selector);
+        node.textContent = item.text;
+        node.classList.toggle("is-bad", item.good === false);
+      });
+    }
+
+    dock.dataset.hlnDock = screen;
+    cta.classList.toggle("is-home", screen === "home");
+
+    if (screen === "home") {
+      cta.hidden = false;
+      cta.textContent = baselineSaved ? "Șantierul meu →" : "Salvează Casa mea și începe renovarea";
+    } else if (screen === "site") {
+      cta.hidden = measures.length === 0;
+      cta.textContent = "Vezi Scenariul meu →";
+    } else if (screen === "intervention") {
+      cta.hidden = false;
+      cta.textContent = "Păstrează această intervenție";
+    } else {
+      cta.hidden = false;
+      cta.textContent = "Salvează scenariul";
+    }
+  }
+
+  function renderHome() {
+    const state = baselineSaved ? homeState : homeState;
+    $("#hlnLocationSummary").textContent = state.locality || "—";
+    $("#hlnHouseSummary").textContent = `${fmt(state.area)} m² · ${state.levels} nivel${Number(state.levels) === 1 ? "" : "uri"}`;
+    $("#hlnHouseMeta").textContent = `${fmt(state.height, 1)} m · ${fmt(state.temperature, 1)}°C`;
+    $("#hlnEnvelopeSummary").textContent = `${state.wallIns} cm pereți · ${state.roofIns} cm pod`;
+    $("#hlnEnvelopeMeta").textContent = `${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
+    $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
+    $("#hlnSystemsMeta").textContent = labels.ventilation[state.ventilation] || state.ventilation;
+    $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "8";
+  }
+
+  function measureSummary(type) {
+    const base = homeState;
+    const now = scenarioState;
+    if (type === "wall") return `${base.wallIns} → ${now.wallIns} cm pereți`;
+    if (type === "roof") return `${base.roofIns} → ${now.roofIns} cm pod`;
+    if (type === "floor") return `${base.floorIns} → ${now.floorIns} cm pardoseală`;
+    if (type === "windows") return `${labels.glazing[base.glazing]} → ${labels.glazing[now.glazing]}`;
+    if (type === "heating") return `${labels.heating[base.heating]} → ${labels.heating[now.heating]}`;
+    if (type === "ventilation") return `${labels.ventilation[base.ventilation]} → ${labels.ventilation[now.ventilation]}`;
+    return "";
+  }
+
+  function measureTitle(type) {
+    return {
+      wall: "Izolează fațada",
+      roof: "Izolează podul",
+      floor: "Izolează pardoseala",
+      windows: "Schimbă ferestrele",
+      heating: "Schimbă încălzirea",
+      ventilation: "Ventilație & răcire"
+    }[type] || "Intervenție";
+  }
+
+  function measureIcon(type) {
+    return {wall:"▦",roof:"⌂",floor:"▰",windows:"▣",heating:"♨",ventilation:"≋"}[type] || "◆";
+  }
+
+  function interventionValue(type, state) {
+    if (type === "wall") return `${state.wallIns} cm`;
+    if (type === "roof") return `${state.roofIns} cm`;
+    if (type === "floor") return `${state.floorIns} cm`;
+    if (type === "windows") return `${labels.glazing[state.glazing]} · ${fmt(state.windows,1)} m²`;
+    if (type === "heating") return labels.heating[state.heating] || state.heating;
+    if (type === "ventilation") return `${labels.ventilation[state.ventilation]} · ${labels.cooling[state.cooling]}`;
+    return "—";
+  }
+
+  function renderIntervention() {
+    if (!activeMeasure) return;
+    $("#hlnInterventionTitle").textContent = measureTitle(activeMeasure);
+    $("#hlnBeforeValue").textContent = interventionValue(activeMeasure, homeState);
+    $("#hlnAfterValue").textContent = interventionValue(activeMeasure, scenarioState);
+    $$("[data-hln-intervention-panel]").forEach(panel => {
+      panel.hidden = panel.dataset.hlnInterventionPanel !== activeMeasure;
+    });
+
+    $("#hlnWallIns").value = scenarioState.wallIns;
+    $("#hlnRoofIns").value = scenarioState.roofIns;
+    $("#hlnFloorIns").value = scenarioState.floorIns;
+    $("#hlnScenarioGlazing").value = scenarioState.glazing;
+    $("#hlnScenarioWindows").value = scenarioState.windows;
+    $("#hlnScenarioHeating").value = scenarioState.heating;
+    $("#hlnScenarioVentilation").value = scenarioState.ventilation;
+    $("#hlnScenarioCooling").value = scenarioState.cooling;
+  }
+
+  function renderScenario() {
+    if (!homeResult || !scenarioResult) return;
+    $("#hlnScenarioHomeCost").textContent = homeResult.annual_cost_lei == null ? "—" : `${fmt(homeResult.annual_cost_lei)} lei`;
+    $("#hlnScenarioNewCost").textContent = scenarioResult.annual_cost_lei == null ? "—" : `${fmt(scenarioResult.annual_cost_lei)} lei`;
+
+    const costBenefit = benefitText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei);
+    const benefitNode = $("#hlnScenarioBenefit");
+    benefitNode.textContent = costBenefit.text;
+    benefitNode.parentElement.classList.toggle("is-bad", costBenefit.good === false);
+
+    $("#hlnScenarioCostCompare").textContent = `${fmt(homeResult.annual_cost_lei)} → ${fmt(scenarioResult.annual_cost_lei)} lei/an`;
+    $("#hlnScenarioEnergyCompare").textContent = `${fmt(homeResult.final_energy_kwh)} → ${fmt(scenarioResult.final_energy_kwh)} kWh/an`;
+    $("#hlnScenarioCo2Compare").textContent = `${fmt(homeResult.co2_kg)} → ${fmt(scenarioResult.co2_kg)} kg/an`;
+    $("#hlnScenarioPowerCompare").textContent = `${fmt(homeResult.design_heat_load_kw,1)} → ${fmt(scenarioResult.design_heat_load_kw,1)} kW`;
+
+    const list = $("#hlnSelectedMeasures");
+    if (!measures.length) {
+      list.innerHTML = '<div class="hln-home-note"><span>i</span><p>Nu ai păstrat încă nicio intervenție. Revino în Șantier și testează una.</p></div>';
+      return;
+    }
+    list.innerHTML = measures.map(type => `
+      <article class="hln-measure-row">
+        <span>${measureIcon(type)}</span>
+        <div><strong>${measureTitle(type)}</strong><small>${measureSummary(type)}</small></div>
+        <button type="button" data-hln-measure-edit="${type}">Editează</button>
+        <button type="button" data-hln-measure-remove="${type}" aria-label="Elimină">×</button>
+      </article>
+    `).join("");
+  }
+
+  function renderProgress() {
+    const stage = screen === "home" ? "home" : screen === "site" || screen === "intervention" ? "site" : "scenario";
+    $$("[data-hln-go]").forEach(button => {
+      button.classList.toggle("is-active", button.dataset.hlnGo === stage);
+    });
+  }
+
+  function renderAll() {
+    renderHome();
+    renderProgress();
+    renderDock();
+    if (screen === "intervention") renderIntervention();
+    if (screen === "scenario") renderScenario();
+  }
+
+  function showScreen(next) {
+    if (next === "site" && !baselineSaved) return;
+    if (next === "scenario" && !baselineSaved) return;
+    screen = next;
+    $$("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
+    renderAll();
+    window.scrollTo({top: 0, behavior: "smooth"});
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        baselineSaved,
+        homeState,
+        scenarioState,
+        homeResult,
+        scenarioResult,
+        measures
+      }));
+    } catch (_) {}
+  }
+
+  function saveHomeAndOpenSite() {
+    if (!currentResult && !homeResult) return;
+    homeResult = currentResult || homeResult;
+    baselineSaved = true;
+    scenarioState = {...homeState};
+    scenarioResult = homeResult;
+    measures = [];
+    persist();
+    showScreen("site");
+  }
+
+  function openEditor(name) {
+    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile"};
+    $("#hlnEditorTitle").textContent = titles[name] || "Editează";
+    $$("[data-hln-editor]").forEach(section => section.hidden = section.dataset.hlnEditor !== name);
+    $("#hlnEditor").hidden = false;
+    document.body.style.overflow = "hidden";
+    syncHomeEditorControls();
+  }
+
+  function closeEditor() {
+    $("#hlnEditor").hidden = true;
+    document.body.style.overflow = "";
+    renderHome();
+    scheduleCalculate("home", 20);
+  }
+
+  function syncHomeEditorControls() {
+    $("#hlnLocalitySearch").value = homeState.locality;
+    $("#hlnArea").value = homeState.area;
+    $("#hlnHeight").value = homeState.height;
+    $("#hlnTemperature").value = homeState.temperature;
+    $("#hlnOccupants").value = homeState.occupants;
+    $("#hlnHomeWallIns").value = homeState.wallIns;
+    $("#hlnHomeRoofIns").value = homeState.roofIns;
+    $("#hlnHomeFloorIns").value = homeState.floorIns;
+    $("#hlnHomeWindows").value = homeState.windows;
+    $("#hlnHomeGlazing").value = homeState.glazing;
+    $("#hlnOrientation").value = homeState.orientation;
+    $("#hlnHomeHeating").value = homeState.heating;
+    $("#hlnHomeVentilation").value = homeState.ventilation;
+    $("#hlnHomeCooling").value = homeState.cooling;
+    $$("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
+  }
+
+  function updateHomeFromEditors() {
+    homeState.area = Number($("#hlnArea").value);
+    homeState.height = Number($("#hlnHeight").value);
+    homeState.temperature = Number($("#hlnTemperature").value);
+    homeState.occupants = Number($("#hlnOccupants").value);
+    homeState.wallIns = Number($("#hlnHomeWallIns").value);
+    homeState.roofIns = Number($("#hlnHomeRoofIns").value);
+    homeState.floorIns = Number($("#hlnHomeFloorIns").value);
+    homeState.windows = Number($("#hlnHomeWindows").value);
+    homeState.glazing = $("#hlnHomeGlazing").value;
+    homeState.orientation = $("#hlnOrientation").value;
+    homeState.heating = $("#hlnHomeHeating").value;
+    homeState.ventilation = $("#hlnHomeVentilation").value;
+    homeState.cooling = $("#hlnHomeCooling").value;
+    renderHome();
+    baselineSaved = false;
+    measures = [];
+    scenarioState = {...homeState};
+    scheduleCalculate("home");
+  }
+
+  function openMeasure(type) {
+    if (!baselineSaved) return;
+    interventionOriginal = {...scenarioState};
+    activeMeasure = type;
+
+    if (!measures.includes(type)) {
+      if (type === "wall") scenarioState.wallIns = Math.min(30, Number(homeState.wallIns) + 10);
+      if (type === "roof") scenarioState.roofIns = Math.min(40, Number(homeState.roofIns) + 10);
+      if (type === "floor") scenarioState.floorIns = Math.min(25, Number(homeState.floorIns) + 5);
+      if (type === "windows" && homeState.glazing !== "triple_low_e_faces_2_and_5") scenarioState.glazing = "triple_low_e_faces_2_and_5";
+      if (type === "heating" && homeState.heating !== "heat_pump") scenarioState.heating = "heat_pump";
+      if (type === "ventilation" && homeState.ventilation !== "hrv") scenarioState.ventilation = "hrv";
+    }
+
+    showScreen("intervention");
+    renderIntervention();
+    scheduleCalculate("scenario", 20);
+  }
+
+  function cancelIntervention() {
+    if (interventionOriginal) scenarioState = {...interventionOriginal};
+    activeMeasure = null;
+    interventionOriginal = null;
+    scheduleCalculate("scenario", 20);
+    showScreen("site");
+  }
+
+  function keepIntervention() {
+    if (!activeMeasure) return;
+    if (!measures.includes(activeMeasure)) measures.push(activeMeasure);
+    activeMeasure = null;
+    interventionOriginal = null;
+    persist();
+    showScreen("scenario");
+  }
+
+  function resetMeasure(type) {
+    if (type === "wall") scenarioState.wallIns = homeState.wallIns;
+    if (type === "roof") scenarioState.roofIns = homeState.roofIns;
+    if (type === "floor") scenarioState.floorIns = homeState.floorIns;
+    if (type === "windows") {
+      scenarioState.glazing = homeState.glazing;
+      scenarioState.windows = homeState.windows;
+    }
+    if (type === "heating") scenarioState.heating = homeState.heating;
+    if (type === "ventilation") {
+      scenarioState.ventilation = homeState.ventilation;
+      scenarioState.cooling = homeState.cooling;
+    }
+    measures = measures.filter(item => item !== type);
+    scheduleCalculate("scenario", 20);
+    persist();
+    renderScenario();
+  }
+
+  function syncInterventionFromControls() {
+    if (!activeMeasure) return;
+    if (activeMeasure === "wall") scenarioState.wallIns = Number($("#hlnWallIns").value);
+    if (activeMeasure === "roof") scenarioState.roofIns = Number($("#hlnRoofIns").value);
+    if (activeMeasure === "floor") scenarioState.floorIns = Number($("#hlnFloorIns").value);
+    if (activeMeasure === "windows") {
+      scenarioState.glazing = $("#hlnScenarioGlazing").value;
+      scenarioState.windows = Number($("#hlnScenarioWindows").value);
+    }
+    if (activeMeasure === "heating") scenarioState.heating = $("#hlnScenarioHeating").value;
+    if (activeMeasure === "ventilation") {
+      scenarioState.ventilation = $("#hlnScenarioVentilation").value;
+      scenarioState.cooling = $("#hlnScenarioCooling").value;
+    }
+    renderIntervention();
+    scheduleCalculate("scenario");
+  }
+
+  function normalized(text) {
+    return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
+  function renderLocalities(query) {
+    const target = $("#hlnLocalityResults");
+    const q = normalized(query).trim();
+    if (q.length < 2 || !localities.length) {
+      target.hidden = true;
+      return;
+    }
+    const hits = localities
+      .filter(item => normalized(item.search || `${item.name} ${item.county}`).includes(q))
+      .slice(0, 8);
+    target.innerHTML = hits.map(item => `
+      <button type="button" data-locality-id="${item.id}">
+        <strong>${item.name}</strong>
+        <small>${item.county || ""}${item.uatName && item.uatName !== item.name ? " · " + item.uatName : ""}</small>
+      </button>
+    `).join("");
+    target.hidden = !hits.length;
+  }
+
+  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => openEditor(button.dataset.hlnEditorOpen)));
+  $$("[data-hln-editor-close]").forEach(button => button.addEventListener("click", closeEditor));
+  $("#hlnEditor").addEventListener("click", event => {
+    if (event.target === $("#hlnEditor")) closeEditor();
+  });
+
+  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeVentilation","#hlnHomeCooling"]
+    .forEach(selector => $(selector).addEventListener("change", updateHomeFromEditors));
+
+  $$("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
+    homeState.levels = Number(button.dataset.value);
+    $$("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
+    baselineSaved = false;
+    measures = [];
+    scenarioState = {...homeState};
+    renderHome();
+    scheduleCalculate("home");
+  }));
+
+  $("#hlnLocalitySearch").addEventListener("input", event => renderLocalities(event.target.value));
+  $("#hlnLocalityResults").addEventListener("click", event => {
+    const button = event.target.closest("[data-locality-id]");
+    if (!button) return;
+    const locality = localityMap.get(button.dataset.localityId);
+    if (!locality) return;
+    homeState.localityId = locality.id;
+    homeState.locality = locality.name;
+    $("#hlnLocalitySearch").value = locality.name;
+    $("#hlnEditorClimate").textContent = `${locality.county || ""} · profil climatic automat`;
+    $("#hlnClimateSummary").textContent = `${locality.county || ""} · profil climatic automat`;
+    $("#hlnLocalityResults").hidden = true;
+    baselineSaved = false;
+    measures = [];
+    scenarioState = {...homeState};
+    renderHome();
+    scheduleCalculate("home", 20);
+  });
+
+  $$("[data-hln-measure]").forEach(button => button.addEventListener("click", () => openMeasure(button.dataset.hlnMeasure)));
+  $$("[data-hln-intervention-cancel]").forEach(button => button.addEventListener("click", cancelIntervention));
+  $("[data-hln-intervention-keep]").addEventListener("click", keepIntervention);
+
+  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling"]
+    .forEach(selector => $(selector).addEventListener("change", syncInterventionFromControls));
+
+  $$(".hln-stepper [data-step]").forEach(button => button.addEventListener("click", () => {
+    const input = button.parentElement.querySelector("input");
+    const next = Math.max(Number(input.min || -Infinity), Math.min(Number(input.max || Infinity), Number(input.value || 0) + Number(button.dataset.step)));
+    input.value = String(next);
+    syncInterventionFromControls();
+  }));
+
+  $$(".hln-quick-values [data-quick-add]").forEach(button => button.addEventListener("click", () => {
+    if (!activeMeasure) return;
+    const baseValue = activeMeasure === "wall" ? homeState.wallIns : activeMeasure === "roof" ? homeState.roofIns : homeState.floorIns;
+    const input = activeMeasure === "wall" ? $("#hlnWallIns") : activeMeasure === "roof" ? $("#hlnRoofIns") : $("#hlnFloorIns");
+    input.value = String(Number(baseValue) + Number(button.dataset.quickAdd));
+    syncInterventionFromControls();
+  }));
+
+  root.addEventListener("click", event => {
+    const go = event.target.closest("[data-hln-go]");
+    if (go) {
+      const target = go.dataset.hlnGo;
+      if (target === "home") {
+        screen = "home";
+        $$("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
+        renderAll();
+        return;
+      }
+      if (target === "site" && baselineSaved) showScreen("site");
+      if (target === "scenario" && baselineSaved) showScreen("scenario");
+      return;
+    }
+
+    const edit = event.target.closest("[data-hln-measure-edit]");
+    if (edit) openMeasure(edit.dataset.hlnMeasureEdit);
+
+    const remove = event.target.closest("[data-hln-measure-remove]");
+    if (remove) resetMeasure(remove.dataset.hlnMeasureRemove);
+  });
+
+  $("#hlnDockCta").addEventListener("click", () => {
+    if (screen === "home") {
+      if (!baselineSaved) saveHomeAndOpenSite();
+      else showScreen("site");
+      return;
+    }
+    if (screen === "site") {
+      if (measures.length) showScreen("scenario");
+      return;
+    }
+    if (screen === "intervention") {
+      keepIntervention();
+      return;
+    }
+    if (screen === "scenario") {
+      persist();
+      const button = $("#hlnDockCta");
+      button.textContent = "Scenariu salvat ✓";
+      window.setTimeout(renderDock, 1200);
+    }
+  });
+
+  $("[data-hln-save-scenario]").addEventListener("click", event => {
+    persist();
+    event.currentTarget.textContent = "Scenariu salvat ✓";
+    window.setTimeout(() => event.currentTarget.textContent = "Salvează scenariul", 1200);
+  });
+
+  fetch("/api/location-data")
+    .then(response => response.ok ? response.json() : Promise.reject(new Error("Localități indisponibile")))
+    .then(data => {
+      localities = data.localities || [];
+      localityMap = new Map(localities.map(item => [item.id, item]));
+    })
+    .catch(() => {});
+
+  syncHomeEditorControls();
+  renderAll();
+
+  if (baselineSaved && homeResult) {
+    currentResult = homeResult;
+    calculateState(scenarioState, "scenario");
+  } else {
+    calculateState(homeState, "home");
+  }
+})();
