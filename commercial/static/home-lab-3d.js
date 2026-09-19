@@ -685,6 +685,79 @@ class HomeLabHouse3D {
     return group;
   }
 
+  createRoofCluster({ type, cols, rows, anchor, panelWidth, panelDepth, slope = 0.60 }) {
+    const group = new THREE.Group();
+
+    const gapX = this.localLength(this.modelSize.x * 0.012);
+    const gapZ = this.localLength(this.modelSize.z * 0.014);
+    const panelWidthLocal = this.localLength(panelWidth);
+    const panelDepthLocal = this.localLength(panelDepth);
+    const totalWidth = cols * panelWidthLocal + (cols - 1) * gapX;
+    const totalDepth = rows * panelDepthLocal + (rows - 1) * gapZ;
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const panel = this.createPanelUnit(panelWidth, panelDepth, type);
+        panel.position.set(
+          -totalWidth / 2 + panelWidthLocal / 2 + col * (panelWidthLocal + gapX),
+          0,
+          -totalDepth / 2 + panelDepthLocal / 2 + row * (panelDepthLocal + gapZ)
+        );
+        group.add(panel);
+      }
+    }
+
+    this.mountLayerOnRoof(group, anchor, slope);
+    return group;
+  }
+
+  createSplitPVLayer() {
+    const s = this.modelSize;
+    const layer = new THREE.Group();
+    layer.name = "LaCurentLayer_pv";
+
+    const left = this.createRoofCluster({
+      type: "pv",
+      cols: 2,
+      rows: 1,
+      anchor: [-0.22, 0.78, 0.22],
+      panelWidth: s.x * 0.090,
+      panelDepth: s.z * 0.155,
+    });
+    left.name = "PV_left_upper";
+
+    const right = this.createRoofCluster({
+      type: "pv",
+      cols: 2,
+      rows: 1,
+      anchor: [0.27, 0.77, 0.22],
+      panelWidth: s.x * 0.090,
+      panelDepth: s.z * 0.155,
+    });
+    right.name = "PV_right_upper";
+
+    layer.add(left, right);
+    layer.visible = false;
+    this.modelRoot.add(layer);
+    this.experimentLayers.set("pv", layer);
+  }
+
+  createSingleSolarThermalLayer() {
+    const s = this.modelSize;
+    const layer = this.createRoofCluster({
+      type: "thermal",
+      cols: 1,
+      rows: 1,
+      anchor: [-0.29, 0.64, 0.34],
+      panelWidth: s.x * 0.105,
+      panelDepth: s.z * 0.19,
+    });
+    layer.name = "LaCurentLayer_solarThermal";
+    layer.visible = false;
+    this.modelRoot.add(layer);
+    this.experimentLayers.set("solarThermal", layer);
+  }
+
   createHeatPumpLayer() {
     const group = new THREE.Group();
     group.name = "LaCurentLayer_heatPump";
@@ -751,29 +824,8 @@ class HomeLabHouse3D {
   createExperimentLayers() {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
-    const s = this.modelSize;
-    this.createRoofArray({
-      key: "pv",
-      type: "pv",
-      cols: 2,
-      rows: 2,
-      anchor: [0.31, 0.70, 0.29],
-      panelWidth: s.x * 0.092,
-      panelDepth: s.z * 0.16,
-      slope: 0.60,
-    });
-
-    this.createRoofArray({
-      key: "solarThermal",
-      type: "thermal",
-      cols: 2,
-      rows: 1,
-      anchor: [-0.30, 0.72, 0.25],
-      panelWidth: s.x * 0.105,
-      panelDepth: s.z * 0.19,
-      slope: 0.60,
-    });
-
+    this.createSplitPVLayer();
+    this.createSingleSolarThermalLayer();
     this.createHeatPumpLayer();
   }
 
