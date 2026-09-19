@@ -210,7 +210,7 @@
       publishFocusState(false);
       syncFrameWidth();
       syncFrameHeight();
-      window.requestAnimationFrame(() => window.scrollTo({top: focusScrollY, left: 0, behavior: "instant"}));
+      window.requestAnimationFrame(() => window.scrollTo(0, focusScrollY));
     };
 
     focusBack.addEventListener("click", exitFocus);
