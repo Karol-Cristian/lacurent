@@ -10,7 +10,11 @@
     if (!frame.src) frame.src = "/home-lab-next";
     launcher.hidden = true;
     shell.hidden = false;
-    shell.scrollIntoView({behavior:"smooth", block:"start"});
+    if (window.matchMedia("(max-width: 600px)").matches) {
+      document.body.classList.add("hlp-demo-focus");
+    } else {
+      shell.scrollIntoView({behavior:"smooth", block:"start"});
+    }
   };
 
   document.querySelectorAll("[data-hlp-launch]").forEach(button => {
@@ -22,6 +26,7 @@
 
   document.querySelector("[data-hlp-close-demo]")?.addEventListener("click", () => {
     shell.hidden = true;
+    document.body.classList.remove("hlp-demo-focus");
     launcher.hidden = false;
     launcher.scrollIntoView({behavior:"smooth", block:"center"});
   });
