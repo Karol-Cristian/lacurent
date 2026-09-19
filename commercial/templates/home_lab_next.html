@@ -6,6 +6,7 @@
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
   <link rel="stylesheet" href="/static/home-lab-next.css?v=next2">
+  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d1">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
   <svg class="hln-icon-sprite" aria-hidden="true">
@@ -81,6 +82,7 @@
         <div class="hln-house-board">
           <div class="hln-board-label"><span>MODELUL CASEI</span><strong>Casa mea</strong></div>
           <div class="hln-house-visual hln-house-visual-home">
+            <div class="hln-3d-stage" data-hln-3d-stage="home" aria-label="Model 3D interactiv Casa mea"></div>
             <svg viewBox="0 0 620 420" role="img" aria-label="Schiță conceptuală a casei">
               <path class="hln-house-ground" d="M70 350h480"/>
               <path class="hln-house-shell" d="M155 175 310 70l155 105v170H155Z"/>
@@ -163,6 +165,7 @@
         <div class="hln-house-board hln-renovation-board">
           <div class="hln-board-label"><span>ALEGE DE PE CASĂ</span><strong>Unde intervii?</strong></div>
           <div class="hln-house-visual hln-house-visual-renovation">
+            <div class="hln-3d-stage" data-hln-3d-stage="site" aria-label="Model 3D interactiv pentru renovare"></div>
             <svg viewBox="0 0 620 420" role="img" aria-label="Casă cu zone de renovare">
               <path class="hln-house-ground" d="M70 350h480"/>
               <path class="hln-house-shell" d="M155 175 310 70l155 105v170H155Z"/>
@@ -532,6 +535,15 @@
     </form>
   </main>
 
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="/static/home-lab-3d.js?v=3d1"></script>
   <script src="/static/home-lab-next.js?v=next2"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
