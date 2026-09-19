@@ -9,7 +9,7 @@ client = TestClient(app)
 def test_elivio_page_is_standalone_and_transparent() -> None:
     response = client.get("/elivio-consilio")
     assert response.status_code == 200
-    assert "ELIVIO" in response.text
+    assert 'class="ec-wordmark">elivio' in response.text
     assert "Violeta Munteanu" in response.text
     assert "Consilier ICL" in response.text
     assert "Asistent social" in response.text
