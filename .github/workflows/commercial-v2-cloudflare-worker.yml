@@ -180,12 +180,12 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/instalatii/calculator": "Înțelege casa înainte să investești în ea.",
+              "/instalatii/calculator": "Planifică renovarea înainte să înceapă șantierul.",
               "/home-lab-next": "data-home-lab-next",
               "/static/home-lab-next.js": "function openMeasure",
               "/static/home-lab-next.css": ".hln-before-after",
               "/static/home-lab-product.js": "data-hlp-demo-shell",
-              "/static/home-lab-product.css": ".hlp-product-stage",
+              "/static/home-lab-product.css": ".hlp-house-stage",
               "/elivio-consilio": "data-chat-launcher",
               "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
               "/static/elivio.css": ".ec-hero",
@@ -883,7 +883,7 @@ jobs:
               raise AssertionError("Production house lab did not return design heat load.")
 
           status, _, product_page = open_url(apex + "/instalatii/calculator")
-          if status != 200 or "Înțelege casa înainte să investești în ea." not in product_page:
+          if status != 200 or "Planifică renovarea înainte să înceapă șantierul." not in product_page:
               raise AssertionError("Production Home Lab product page is unavailable.")
 
           status, _, next_html = open_url(apex + "/home-lab-next")
