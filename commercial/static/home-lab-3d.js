@@ -498,43 +498,161 @@ class HomeLabHouse3D {
     this.scene.add(warmRight);
   }
 
+  cloneSemanticConfig(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  async loadSemanticConfig() {
+    if (HOUSE_VARIANT !== "final") return;
+
+    let config = this.cloneSemanticConfig(DEFAULT_FINAL_HOUSE_CONFIG);
+    try {
+      const response = await fetch("/static/final-house-semantic.json?v=1");
+      if (response.ok) {
+        const loaded = await response.json();
+        if (loaded?.model === "final" && loaded?.parts) config = loaded;
+      }
+    } catch (error) {
+      console.warn("[Home Lab 3D] semantic config fallback", error);
+    }
+
+    this.baseSemanticConfig = this.cloneSemanticConfig(config);
+    this.semanticConfig = this.cloneSemanticConfig(config);
+
+    if (!this.authorMode) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.authorStorageKey) || "null");
+      if (saved?.model === "final" && saved?.parts) {
+        this.semanticConfig = saved;
+      }
+    } catch (_) {}
+  }
+
+  normalizedToWorld(values) {
+    const [nx, ny, nz] = values;
+    return new THREE.Vector3(
+      this.modelCenter.x + this.modelSize.x * nx,
+      this.modelBox.min.y + this.modelSize.y * ny,
+      this.modelCenter.z + this.modelSize.z * nz
+    );
+  }
+
+  worldToNormalized(point) {
+    return [
+      (point.x - this.modelCenter.x) / Math.max(this.modelSize.x, 0.001),
+      (point.y - this.modelBox.min.y) / Math.max(this.modelSize.y, 0.001),
+      (point.z - this.modelCenter.z) / Math.max(this.modelSize.z, 0.001),
+    ];
+  }
+
+  normalizedSize(values) {
+    const [nx, ny, nz] = values;
+    return new THREE.Vector3(
+      Math.max(0.04, this.modelSize.x * nx),
+      Math.max(0.04, this.modelSize.y * ny),
+      Math.max(0.04, this.modelSize.z * nz)
+    );
+  }
+
+  refreshHotspotAnchor(part) {
+    const config = this.semanticConfig?.parts?.[part];
+    if (!config?.anchor) return;
+    this.hotspotAnchors.set(part, this.normalizedToWorld(config.anchor));
+  }
+
   createSemanticHotspots() {
     if (HOUSE_VARIANT !== "final") return;
 
     this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
     if (!this.hotspotRoot) return;
 
-    const box = this.modelBox;
-    const size = this.modelSize;
-    const center = this.modelCenter;
+    this.hotspotRoot.innerHTML = "";
+    this.hotspotAnchors.clear();
+    this.hotspotElements.clear();
 
-    Object.entries(HOTSPOTS).forEach(([part, config]) => {
-      const [nx, ny, nz] = config.anchor;
-      const anchor = new THREE.Vector3(
-        center.x + size.x * nx,
-        box.min.y + size.y * ny,
-        center.z + size.z * nz
-      );
-      this.hotspotAnchors.set(part, anchor);
+    const normalParts = new Set(["wall", "windows", "roof"]);
+
+    Object.entries(this.semanticConfig.parts || {}).forEach(([part, config]) => {
+      if (!this.authorMode && !normalParts.has(part)) return;
 
       const button = document.createElement("button");
       button.type = "button";
       button.className = "hln-3d-hotspot";
       button.dataset.hln3dHotspot = part;
-      button.setAttribute("aria-label", config.label);
+      button.setAttribute("aria-label", config.label || PARTS[part]?.label || part);
       button.innerHTML = `
         <span class="hln-3d-hotspot-dot" aria-hidden="true"></span>
-        <span class="hln-3d-hotspot-label">${config.label}</span>
+        <span class="hln-3d-hotspot-label">${config.label || PARTS[part]?.label || part}</span>
       `;
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        this.selectPart(part, true);
-      });
+
+      if (this.authorMode) {
+        button.classList.add("is-authoring");
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this.authorPart = part;
+          this.authorDraggingPart = part;
+          this.controls.enabled = false;
+          button.setPointerCapture?.(event.pointerId);
+          this.selectPart(part, false);
+          this.renderAuthorPanel();
+        });
+        button.addEventListener("pointermove", (event) => {
+          if (this.authorDraggingPart !== part) return;
+          event.preventDefault();
+          this.dragHotspotToPointer(event, part);
+        });
+        const finishDrag = (event) => {
+          if (this.authorDraggingPart !== part) return;
+          button.releasePointerCapture?.(event.pointerId);
+          this.authorDraggingPart = null;
+          this.controls.enabled = true;
+          this.persistAuthorConfig();
+          this.setAuthorStatus("Hotspot salvat local");
+        };
+        button.addEventListener("pointerup", finishDrag);
+        button.addEventListener("pointercancel", finishDrag);
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this.authorPart = part;
+          this.selectPart(part, false);
+          this.renderAuthorPanel();
+        });
+      } else {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          this.selectPart(part, true);
+        });
+      }
+
       this.hotspotRoot.appendChild(button);
       this.hotspotElements.set(part, button);
+      this.refreshHotspotAnchor(part);
     });
 
     this.updateHotspotPositions();
+  }
+
+  dragHotspotToPointer(event, part) {
+    if (!this.modelRoot || !this.renderer || !this.camera) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+
+    const hit = this.raycaster.intersectObject(this.modelRoot, true).find((entry) => entry.object?.isMesh);
+    if (!hit) return;
+
+    const next = this.worldToNormalized(hit.point);
+    next[0] = clamp(next[0], -0.65, 0.65);
+    next[1] = clamp(next[1], 0, 1.05);
+    next[2] = clamp(next[2], -0.65, 0.65);
+    this.semanticConfig.parts[part].anchor = next.map((value) => Number(value.toFixed(4)));
+    this.refreshHotspotAnchor(part);
+    this.renderAuthorControls();
   }
 
   updateHotspotPositions() {
@@ -582,6 +700,167 @@ class HomeLabHouse3D {
       field.scrollIntoView({ behavior: "smooth", block: "center" });
       field.focus({ preventScroll: true });
     }, 80);
+  }
+
+  persistAuthorConfig() {
+    if (!this.authorMode) return;
+    try {
+      localStorage.setItem(this.authorStorageKey, JSON.stringify(this.semanticConfig));
+    } catch (_) {}
+  }
+
+  setAuthorStatus(message) {
+    if (!this.authorPanel) return;
+    const status = this.authorPanel.querySelector("[data-author-status]");
+    if (!status) return;
+    status.textContent = message;
+    window.clearTimeout(this.authorStatusTimer);
+    this.authorStatusTimer = window.setTimeout(() => {
+      status.textContent = "Modificările sunt păstrate local";
+    }, 1800);
+  }
+
+  createAuthorPanel() {
+    if (!this.authorMode || HOUSE_VARIANT !== "final" || this.mode !== "home") return;
+
+    this.autoRotateAllowed = false;
+    this.controls.autoRotate = false;
+    this.mount.classList.add("is-authoring");
+
+    const panel = document.createElement("aside");
+    panel.className = "hln-3d-author-panel";
+    panel.innerHTML = `
+      <header>
+        <div><strong>3D Authoring</strong><small>Final House semantic map</small></div>
+        <span data-author-status>Modificările sunt păstrate local</span>
+      </header>
+      <div class="hln-3d-author-parts" data-author-parts></div>
+      <div class="hln-3d-author-controls" data-author-controls></div>
+      <div class="hln-3d-author-actions">
+        <button type="button" data-author-action="camera">Salvează camera</button>
+        <button type="button" data-author-action="preview">Preview focus</button>
+        <button type="button" data-author-action="copy">Copy config</button>
+        <button type="button" data-author-action="reset">Reset local</button>
+      </div>
+      <p>Trage hotspot-ul direct pe suprafața casei. Pentru hit-box folosește sliderele.</p>
+    `;
+    this.mount.appendChild(panel);
+    this.authorPanel = panel;
+
+    const partsRoot = panel.querySelector("[data-author-parts]");
+    Object.entries(this.semanticConfig.parts || {}).forEach(([part, config]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.authorPart = part;
+      button.textContent = config.label || PARTS[part]?.label || part;
+      button.addEventListener("click", () => {
+        this.authorPart = part;
+        this.selectPart(part, false);
+        this.renderAuthorPanel();
+      });
+      partsRoot.appendChild(button);
+    });
+
+    panel.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-author-path]");
+      if (!input) return;
+      this.updateAuthorValue(input.dataset.authorPath, Number(input.value));
+    });
+
+    panel.addEventListener("click", async (event) => {
+      const action = event.target.closest("[data-author-action]")?.dataset.authorAction;
+      if (!action) return;
+
+      if (action === "camera") {
+        const part = this.semanticConfig.parts[this.authorPart];
+        if (!part) return;
+        part.camera = {
+          position: this.worldToNormalized(this.camera.position).map((v) => Number(v.toFixed(4))),
+          target: this.worldToNormalized(this.controls.target).map((v) => Number(v.toFixed(4))),
+        };
+        this.persistAuthorConfig();
+        this.setAuthorStatus("Camera salvată");
+      } else if (action === "preview") {
+        this.focusPart(this.authorPart, false);
+      } else if (action === "copy") {
+        const payload = JSON.stringify(this.semanticConfig, null, 2);
+        try {
+          await navigator.clipboard.writeText(payload);
+          this.setAuthorStatus("Config copiat");
+        } catch (_) {
+          window.prompt("Copiază configurația:", payload);
+        }
+      } else if (action === "reset") {
+        try { localStorage.removeItem(this.authorStorageKey); } catch (_) {}
+        this.semanticConfig = this.cloneSemanticConfig(this.baseSemanticConfig);
+        this.rebuildHitZones();
+        this.createSemanticHotspots();
+        this.authorPart = "wall";
+        this.renderAuthorPanel();
+        this.setAuthorStatus("Config local resetat");
+      }
+    });
+
+    this.selectPart(this.authorPart, false);
+    this.renderAuthorPanel();
+  }
+
+  renderAuthorPanel() {
+    if (!this.authorPanel) return;
+    this.authorPanel.querySelectorAll("[data-author-part]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.authorPart === this.authorPart);
+    });
+    this.renderAuthorControls();
+  }
+
+  renderAuthorControls() {
+    if (!this.authorPanel) return;
+    const part = this.semanticConfig.parts?.[this.authorPart];
+    const root = this.authorPanel.querySelector("[data-author-controls]");
+    if (!part || !root) return;
+
+    const axes = ["X", "Y", "Z"];
+    const rows = [];
+    const pushGroup = (title, key, values, min, max, step) => {
+      rows.push(`<section><h4>${title}</h4>`);
+      values.forEach((value, index) => {
+        rows.push(`
+          <label>
+            <span>${axes[index]} <output>${Number(value).toFixed(3)}</output></span>
+            <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-author-path="${key}.${index}">
+          </label>
+        `);
+      });
+      rows.push("</section>");
+    };
+
+    pushGroup("Hotspot", "anchor", part.anchor, -0.65, 1.45, 0.005);
+    pushGroup("Hit-box · poziție", "hitpos", part.hitbox.position, -0.65, 1.05, 0.005);
+    pushGroup("Hit-box · mărime", "hitsize", part.hitbox.size, 0.02, 1.50, 0.005);
+    root.innerHTML = rows.join("");
+  }
+
+  updateAuthorValue(path, value) {
+    const part = this.semanticConfig.parts?.[this.authorPart];
+    if (!part) return;
+    const [kind, rawIndex] = path.split(".");
+    const index = Number(rawIndex);
+
+    if (kind === "anchor") {
+      part.anchor[index] = value;
+      this.refreshHotspotAnchor(this.authorPart);
+    } else if (kind === "hitpos") {
+      part.hitbox.position[index] = value;
+      this.rebuildHitZones();
+    } else if (kind === "hitsize") {
+      part.hitbox.size[index] = Math.max(0.02, value);
+      this.rebuildHitZones();
+    }
+
+    this.persistAuthorConfig();
+    const input = this.authorPanel?.querySelector(`[data-author-path="${path}"]`);
+    const output = input?.closest("label")?.querySelector("output");
+    if (output) output.textContent = Number(value).toFixed(3);
   }
 
   createModelSwitcher() {
