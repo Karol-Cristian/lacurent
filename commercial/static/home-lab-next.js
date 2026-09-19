@@ -717,15 +717,19 @@
     if (screen === "scenario") {
       persist();
       const button = $("#hlnDockCta");
-      button.textContent = "Scenariu salvat ✓";
+      const label = button?.querySelector("span") || button;
+      label.textContent = "Scenariu salvat ✓";
       window.setTimeout(renderDock, 1200);
     }
   });
 
   $("[data-hln-save-scenario]").addEventListener("click", event => {
     persist();
-    event.currentTarget.textContent = "Scenariu salvat ✓";
-    window.setTimeout(() => event.currentTarget.textContent = "Salvează scenariul", 1200);
+    const label = event.currentTarget.querySelector("span") || event.currentTarget;
+    label.textContent = "Scenariu salvat ✓";
+    window.setTimeout(() => {
+      label.textContent = "Salvează scenariul";
+    }, 1200);
   });
 
   fetch("/api/location-data")
