@@ -384,7 +384,10 @@
       triple_low_e_faces_2_and_5: 0.9
     };
     const overrides = state === scenarioState ? (scenarioOverrides || {}) : {};
-    const finiteOverride = (key) => Number.isFinite(Number(overrides[key])) ? Number(overrides[key]) : null;
+    const finiteOverride = (key) => {
+      const raw = overrides[key];
+      return raw != null && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
+    };
 
     const wallU = finiteOverride("wallU");
     const roofU = finiteOverride("roofU");
@@ -975,6 +978,7 @@
     $$("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
     baselineSaved = false;
     referenceMode = false;
+    scenarioOverrides = {};
     measures = [];
     scenarioState = {...homeState};
     renderHome();
@@ -996,6 +1000,7 @@
     $("#hlnLocalityResults").hidden = true;
     baselineSaved = false;
     referenceMode = false;
+    scenarioOverrides = {};
     measures = [];
     scenarioState = {...homeState};
     renderHome();
