@@ -3,8 +3,28 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/32485/v1/model.glb";
-const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene";
+const HOUSE_MODELS = {
+  current: {
+    label: "English cottage",
+    url: "https://cdn.3dassets.dev/assets/32485/v1/model.glb",
+    source: "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene",
+  },
+  final: {
+    label: "Final House",
+    url: "https://raw.githubusercontent.com/Koushik6692/3d-portfolio/main/public/house-transformed.glb",
+    source: "https://sketchfab.com/3d-models/final-house-20ea8edb2b7043b1a98a0b6ae18684bb",
+  },
+  dower: {
+    label: "Dower House",
+    url: "https://raw.githubusercontent.com/Dhruvisgoat/deploy3dgamebuild/main/models/house-transformed.glb",
+    source: "https://sketchfab.com/3d-models/preceptory-and-dower-house-game-asset-50d31c70e44b4000b17d81ff0fbcdf98",
+  },
+};
+
+const HOUSE_VARIANT = new URLSearchParams(window.location.search).get("house") || "current";
+const HOUSE_MODEL = HOUSE_MODELS[HOUSE_VARIANT] || HOUSE_MODELS.current;
+const HOUSE_MODEL_URL = HOUSE_MODEL.url;
+const HOUSE_MODEL_SOURCE = HOUSE_MODEL.source;
 
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c },
@@ -112,7 +132,6 @@ class HomeLabHouse3D {
 
     try {
       await this.loadModel();
-      this.addEnglishGarden();
       this.addHitZones();
       this.addRenovationLayer();
       this.bindEvents();
@@ -120,6 +139,7 @@ class HomeLabHouse3D {
       this.mount.classList.remove("is-loading");
       this.mount.classList.add("is-ready");
       this.mount.closest(".hln-house-visual")?.classList.add("hln-house-visual-3d-ready");
+      this.createModelSwitcher();
       this.animate();
     } catch (error) {
       console.error("[Home Lab 3D] model load failed", error);
@@ -411,6 +431,27 @@ class HomeLabHouse3D {
     const warmRight = warmLeft.clone();
     warmRight.position.x = this.modelSize.x * 0.22;
     this.scene.add(warmRight);
+  }
+
+  createModelSwitcher() {
+    if (new URLSearchParams(window.location.search).get("houseTest") !== "1") return;
+
+    const switcher = document.createElement("div");
+    switcher.className = "hln-3d-variant-switcher";
+    switcher.setAttribute("aria-label", "Modele casă");
+
+    Object.entries(HOUSE_MODELS).forEach(([key, model]) => {
+      const link = document.createElement("a");
+      const url = new URL(window.location.href);
+      url.searchParams.set("houseTest", "1");
+      url.searchParams.set("house", key);
+      link.href = url.toString();
+      link.textContent = model.label;
+      link.className = key === HOUSE_VARIANT ? "is-active" : "";
+      switcher.appendChild(link);
+    });
+
+    this.mount.appendChild(switcher);
   }
 
   addEnglishGarden() {
@@ -827,4 +868,4 @@ if (document.readyState === "loading") {
   boot();
 }
 
-export { HomeLabHouse3D, HOUSE_MODEL_URL, HOUSE_MODEL_SOURCE };
+export { HomeLabHouse3D, HOUSE_MODELS, HOUSE_MODEL_URL, HOUSE_MODEL_SOURCE };
