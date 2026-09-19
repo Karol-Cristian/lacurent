@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/24766/v1/model.glb";
-const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/voxel-city-districts-split-level-home-688923df";
+const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/26895/v1/model.glb";
+const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/paranormal-investigation-house-investiga-30208f4c-starter-scene";
 
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c },
@@ -32,6 +32,8 @@ class HomeLabHouse3D {
     this.modelSize = new THREE.Vector3();
     this.modelCenter = new THREE.Vector3();
     this.hitZones = [];
+    this.semanticMeshes = [];
+    this.gardenRoot = new THREE.Group();
     this.selectedPart = null;
     this.pointer = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -105,6 +107,7 @@ class HomeLabHouse3D {
 
     try {
       await this.loadModel();
+      this.addEnglishGarden();
       this.addHitZones();
       this.addRenovationLayer();
       this.bindEvents();
@@ -145,65 +148,120 @@ class HomeLabHouse3D {
 
   addGround() {
     const ground = new THREE.Mesh(
-      new THREE.CircleGeometry(9.5, 80),
+      new THREE.CircleGeometry(10.8, 96),
       new THREE.MeshStandardMaterial({
-        color: 0xe9e5dc,
+        color: 0xe8e9df,
         roughness: 1,
         metalness: 0,
       })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.035;
+    ground.position.y = -0.04;
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(6.2, 9.2, 80),
-      new THREE.MeshBasicMaterial({
-        color: 0xdedbd2,
-        transparent: true,
-        opacity: 0.18,
-        side: THREE.DoubleSide,
+    const lawn = new THREE.Mesh(
+      new THREE.CircleGeometry(8.6, 96),
+      new THREE.MeshStandardMaterial({
+        color: 0xcfd8c4,
+        roughness: 1,
+        metalness: 0,
       })
     );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = -0.028;
-    this.scene.add(ring);
+    lawn.rotation.x = -Math.PI / 2;
+    lawn.position.y = -0.028;
+    lawn.receiveShadow = true;
+    this.scene.add(lawn);
+  }
+
+  classifyPart(name) {
+    const n = String(name || "").toLowerCase();
+    if (/roof|shingle|slate|attic|gable/.test(n)) return "roof";
+    if (/window|glass|sash|bay.?window/.test(n)) return "windows";
+    if (/floor|slab|foundation|plinth|basement.?floor/.test(n)) return "floor";
+    if (/wall|clapboard|siding|facade|façade|exterior/.test(n)) return "wall";
+    return null;
+  }
+
+  shouldHideModelObject(name) {
+    const n = String(name || "").toLowerCase();
+    return /investigation.?van|\bvan\b|emf|spirit.?box|thermometer|flashlight|motion.?sensor|sound.?sensor|point.?projector|parabolic|laptop|monitor.?rack|tripod|head.?camera|evidence|tarot|crucifix|incense|rag.?doll|porcelain.?doll|salt.?pile|ghost.?writing|mausoleum|grave.?marker|cable.?reel/.test(n);
+  }
+
+  tuneClassicMaterial(obj, source) {
+    const mat = source.clone();
+    const key = `${obj.name || ""} ${source?.name || ""}`.toLowerCase();
+
+    if ("roughness" in mat) mat.roughness = Math.max(0.52, mat.roughness ?? 0.72);
+    if ("metalness" in mat) mat.metalness = Math.min(0.08, mat.metalness ?? 0);
+
+    if (/roof|shingle|slate/.test(key) && mat.color) {
+      mat.color.setHex(0x4a4f50);
+      if ("roughness" in mat) mat.roughness = 0.82;
+    } else if (/door/.test(key) && mat.color) {
+      mat.color.setHex(0x17372f);
+      if ("roughness" in mat) mat.roughness = 0.72;
+    } else if (/window|sash|frame|trim|cornice|mould|porch|column/.test(key) && mat.color && !/glass/.test(key)) {
+      mat.color.setHex(0xe8e2d4);
+      if ("roughness" in mat) mat.roughness = 0.68;
+    } else if (/glass/.test(key) && mat.color) {
+      mat.color.setHex(0xb9cbd0);
+      mat.transparent = true;
+      mat.opacity = Math.min(mat.opacity ?? 1, 0.72);
+      mat.depthWrite = false;
+      if ("roughness" in mat) mat.roughness = 0.16;
+    } else if (/wall|clapboard|siding|facade|exterior/.test(key) && mat.color) {
+      mat.color.setHex(0xc9bba7);
+      if ("roughness" in mat) mat.roughness = 0.9;
+    } else if (/stone|foundation|plinth|step|kerb|curb/.test(key) && mat.color) {
+      mat.color.setHex(0xaaa397);
+      if ("roughness" in mat) mat.roughness = 0.95;
+    } else if (mat.color) {
+      const hsl = {};
+      mat.color.getHSL(hsl);
+      mat.color.setHSL(hsl.h, clamp(hsl.s * 0.68, 0, 1), clamp(hsl.l * 1.025, 0.06, 0.92));
+    }
+
+    return mat;
   }
 
   async loadModel() {
     const loader = new GLTFLoader();
     const gltf = await loader.loadAsync(HOUSE_MODEL_URL);
     this.modelRoot = gltf.scene;
-    this.modelRoot.name = "LaCurentHouse";
+    this.modelRoot.name = "LaCurentEnglishHouse";
 
+    const toRemove = [];
     this.modelRoot.traverse((obj) => {
+      if (obj !== this.modelRoot && this.shouldHideModelObject(obj.name)) {
+        toRemove.push(obj);
+        return;
+      }
       if (!obj.isMesh) return;
+
       obj.castShadow = true;
       obj.receiveShadow = true;
 
+      const semantic = this.classifyPart(obj.name);
+      if (semantic) {
+        obj.userData.part = semantic;
+        this.semanticMeshes.push(obj);
+      }
+
       const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
-      const tuned = materials.map((source) => {
-        const mat = source.clone();
-        if ("roughness" in mat) mat.roughness = Math.max(0.58, mat.roughness ?? 0.75);
-        if ("metalness" in mat) mat.metalness = Math.min(0.08, mat.metalness ?? 0);
-        if (mat.color) {
-          const hsl = {};
-          mat.color.getHSL(hsl);
-          mat.color.setHSL(hsl.h, clamp(hsl.s * 0.62, 0, 1), clamp(hsl.l * 1.04, 0, 0.92));
-        }
-        return mat;
-      });
+      const tuned = materials.map((source) => this.tuneClassicMaterial(obj, source));
       obj.material = Array.isArray(obj.material) ? tuned : tuned[0];
     });
+
+    toRemove.forEach((obj) => obj.parent?.remove(obj));
 
     this.modelBox.setFromObject(this.modelRoot);
     this.modelBox.getSize(this.modelSize);
     this.modelBox.getCenter(this.modelCenter);
 
     const maxDim = Math.max(this.modelSize.x, this.modelSize.y, this.modelSize.z);
-    const desired = this.mode === "home" ? 7.4 : 8.1;
-    const scale = desired / maxDim;
+    const desired = this.mode === "home" ? 7.55 : 8.25;
+    const scale = desired / Math.max(maxDim, 0.001);
     this.modelRoot.scale.setScalar(scale);
 
     this.modelBox.setFromObject(this.modelRoot);
@@ -214,18 +272,114 @@ class HomeLabHouse3D {
     const minY = this.modelBox.min.y;
     this.modelRoot.position.y -= minY;
 
-    this.modelRoot.rotation.y = -0.35;
+    this.modelRoot.rotation.y = -0.18;
     this.scene.add(this.modelRoot);
 
     this.modelBox.setFromObject(this.modelRoot);
     this.modelBox.getSize(this.modelSize);
     this.modelBox.getCenter(this.modelCenter);
 
-    const target = new THREE.Vector3(0, this.modelSize.y * 0.42, 0);
+    const target = new THREE.Vector3(0, this.modelSize.y * 0.43, 0);
     this.controls.target.copy(target);
-    const distance = Math.max(this.modelSize.x, this.modelSize.z) * (this.mode === "home" ? 1.75 : 1.58);
-    this.camera.position.set(distance * 0.78, distance * 0.52, distance);
+    const distance = Math.max(this.modelSize.x, this.modelSize.z) * (this.mode === "home" ? 1.72 : 1.58);
+    this.camera.position.set(distance * 0.76, distance * 0.48, distance);
     this.controls.update();
+
+    const warmLeft = new THREE.PointLight(0xffd7a4, 1.25, Math.max(this.modelSize.x, this.modelSize.z) * 1.2, 2);
+    warmLeft.position.set(-this.modelSize.x * 0.22, this.modelSize.y * 0.34, this.modelSize.z * 0.54);
+    this.scene.add(warmLeft);
+
+    const warmRight = warmLeft.clone();
+    warmRight.position.x = this.modelSize.x * 0.22;
+    this.scene.add(warmRight);
+  }
+
+  addEnglishGarden() {
+    const s = this.modelSize;
+    const garden = this.gardenRoot;
+    garden.clear();
+
+    const hedgeMat = new THREE.MeshStandardMaterial({ color: 0x5f765f, roughness: 1 });
+    const hedgeMat2 = new THREE.MeshStandardMaterial({ color: 0x73866f, roughness: 1 });
+    const gravelMat = new THREE.MeshStandardMaterial({ color: 0xd1c6b2, roughness: 1 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0xaaa394, roughness: 1 });
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6e5b4b, roughness: 1 });
+
+    const path = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.max(1.15, s.x * 0.18), 0.045, Math.max(2.8, s.z * 0.72)),
+      gravelMat
+    );
+    path.position.set(0, 0.006, s.z * 0.61);
+    path.receiveShadow = true;
+    garden.add(path);
+
+    const sidePath = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.max(2.6, s.x * 0.48), 0.038, Math.max(0.9, s.z * 0.15)),
+      gravelMat
+    );
+    sidePath.position.set(s.x * 0.22, 0.004, s.z * 0.35);
+    sidePath.receiveShadow = true;
+    garden.add(sidePath);
+
+    const makeHedge = (x, z, w, d, h, material = hedgeMat) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d, 2, 2, 2), material);
+      mesh.position.set(x, h * 0.5, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      garden.add(mesh);
+      return mesh;
+    };
+
+    makeHedge(-s.x * 0.55, s.z * 0.30, Math.max(0.34, s.x * 0.08), Math.max(1.8, s.z * 0.72), 0.52);
+    makeHedge(s.x * 0.55, s.z * 0.30, Math.max(0.34, s.x * 0.08), Math.max(1.8, s.z * 0.72), 0.52);
+
+    const frontGap = Math.max(1.55, s.x * 0.28);
+    const frontHedgeWidth = Math.max(1.2, (s.x - frontGap) * 0.5);
+    makeHedge(-(frontGap + frontHedgeWidth) * 0.5, s.z * 0.78, frontHedgeWidth, 0.34, 0.46, hedgeMat2);
+    makeHedge((frontGap + frontHedgeWidth) * 0.5, s.z * 0.78, frontHedgeWidth, 0.34, 0.46, hedgeMat2);
+
+    const shrubGeometry = new THREE.IcosahedronGeometry(0.36, 2);
+    [
+      [-s.x * 0.33, s.z * 0.44, 1.0],
+      [ s.x * 0.34, s.z * 0.43, 0.9],
+      [-s.x * 0.40, s.z * 0.60, 0.75],
+      [ s.x * 0.41, s.z * 0.60, 0.78],
+    ].forEach(([x, z, k], idx) => {
+      const shrub = new THREE.Mesh(shrubGeometry, idx % 2 ? hedgeMat2 : hedgeMat);
+      shrub.scale.setScalar(k);
+      shrub.position.set(x, 0.28 * k, z);
+      shrub.castShadow = true;
+      garden.add(shrub);
+    });
+
+    const makeTopiary = (x, z) => {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.56, 10), trunkMat);
+      trunk.position.set(x, 0.28, z);
+      trunk.castShadow = true;
+      garden.add(trunk);
+
+      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 2), hedgeMat2);
+      crown.position.set(x, 0.70, z);
+      crown.castShadow = true;
+      garden.add(crown);
+    };
+    makeTopiary(-s.x * 0.16, s.z * 0.50);
+    makeTopiary(s.x * 0.16, s.z * 0.50);
+
+    const postGeometry = new THREE.BoxGeometry(0.24, 0.82, 0.24);
+    [-frontGap * 0.54, frontGap * 0.54].forEach((x) => {
+      const post = new THREE.Mesh(postGeometry, stoneMat);
+      post.position.set(x, 0.41, s.z * 0.80);
+      post.castShadow = true;
+      garden.add(post);
+
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.11, 0.31), stoneMat);
+      cap.position.set(x, 0.87, s.z * 0.80);
+      cap.castShadow = true;
+      garden.add(cap);
+    });
+
+    this.scene.add(garden);
   }
 
   makeHitBox(part, size, position) {
@@ -417,7 +571,8 @@ class HomeLabHouse3D {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
-    const hit = this.raycaster.intersectObjects(this.hitZones, false)[0];
+    const semanticHit = this.semanticMeshes.length ? this.raycaster.intersectObjects(this.semanticMeshes, true)[0] : null;
+    const hit = semanticHit || this.raycaster.intersectObjects(this.hitZones, false)[0];
     this.renderer.domElement.style.cursor = hit ? "pointer" : "grab";
     if (hoverOnly || !hit) return;
 
