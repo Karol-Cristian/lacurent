@@ -81,7 +81,7 @@
       if (blocked) {
         addMessage(
           "assistant",
-          "Am oprit mesajul înainte să fie trimis: pare să conțină " + blocked + ". Șterge acea informație și păstrează doar contextul relevant."
+          "Mesajul nu a fost trimis, deoarece pare să conțină " + blocked + ". Elimină această informație și păstrează doar contextul relevant."
         );
         input.value = clean;
         input.focus();
@@ -110,7 +110,7 @@
           pending.remove();
           if (data.code === "sensitive_data") {
             messages.pop();
-            addMessage("assistant", data.error || "Mesajul conține date pe care nu este nevoie să le trimiți aici.");
+            addMessage("assistant", data.error || "Mesajul conține date pe care nu este necesar să le trimiți aici.");
             input.value = clean;
             return;
           }
@@ -202,7 +202,7 @@
       const subject = "Cerere de contact Elivio Consilio";
       const body = [
         "Nume: " + name,
-        "Prefer contact prin: " + (preferredMethod === "email" ? "e-mail" : "telefon"),
+        "Metodă de contact preferată: " + (preferredMethod === "email" ? "e-mail" : "telefon"),
         phone ? "Telefon: " + phone : "",
         email ? "E-mail: " + email : "",
         "Interval preferat: " + preferredTime,
