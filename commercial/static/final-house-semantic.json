@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "model": "final",
+  "coordinate_space": "normalized_model_bounds",
+  "parts": {
+    "wall": {
+      "label": "Fațadă",
+      "anchor": [
+        0,
+        0.43,
+        0.49
+      ],
+      "hitbox": {
+        "position": [
+          0,
+          0.38,
+          0.47
+        ],
+        "size": [
+          0.96,
+          0.63,
+          0.1
+        ]
+      },
+      "camera": {
+        "position": [
+          0.92,
+          0.68,
+          1.42
+        ],
+        "target": [
+          0,
+          0.42,
+          0.22
+        ]
+      }
+    },
+    "windows": {
+      "label": "Ferestre",
+      "anchor": [
+        0.21,
+        0.43,
+        0.505
+      ],
+      "hitbox": {
+        "position": [
+          0,
+          0.42,
+          0.5
+        ],
+        "size": [
+          0.72,
+          0.34,
+          0.11
+        ]
+      },
+      "camera": {
+        "position": [
+          0.66,
+          0.55,
+          1.18
+        ],
+        "target": [
+          0,
+          0.42,
+          0.28
+        ]
+      }
+    },
+    "roof": {
+      "label": "Acoperiș",
+      "anchor": [
+        -0.08,
+        0.79,
+        0.22
+      ],
+      "hitbox": {
+        "position": [
+          0,
+          0.82,
+          0
+        ],
+        "size": [
+          0.98,
+          0.28,
+          0.92
+        ]
+      },
+      "camera": {
+        "position": [
+          0.9,
+          1.25,
+          1.18
+        ],
+        "target": [
+          0,
+          0.73,
+          0
+        ]
+      }
+    },
+    "floor": {
+      "label": "Pardoseală",
+      "anchor": [
+        0,
+        0.1,
+        0.05
+      ],
+      "hitbox": {
+        "position": [
+          0,
+          0.08,
+          0
+        ],
+        "size": [
+          0.94,
+          0.1,
+          0.88
+        ]
+      },
+      "camera": {
+        "position": [
+          1,
+          0.52,
+          1.25
+        ],
+        "target": [
+          0,
+          0.18,
+          0
+        ]
+      }
+    }
+  }
+}
