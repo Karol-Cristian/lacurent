@@ -114,6 +114,7 @@ class HomeLabHouse3D {
     this.authorStatusTimer = null;
     this.authorDraggingPart = null;
     this.inspectableMeshes = [];
+    this.experimentLayers = new Map();
   }
 
   async init() {
@@ -180,6 +181,7 @@ class HomeLabHouse3D {
     try {
       await this.loadSemanticConfig();
       await this.loadModel();
+      this.createExperimentLayers();
       this.addHitZones();
       this.addRenovationLayer();
       this.createSemanticHotspots();
@@ -505,6 +507,242 @@ class HomeLabHouse3D {
     this.scene.add(warmRight);
   }
 
+  localLength(worldLength) {
+    const scale = Math.abs(this.modelRoot?.scale?.x || 1);
+    return worldLength / Math.max(scale, 0.0001);
+  }
+
+  localPointFromNormalized(values) {
+    const world = this.normalizedToWorld(values);
+    this.modelRoot.updateMatrixWorld(true);
+    return this.modelRoot.worldToLocal(world.clone());
+  }
+
+  createPanelUnit(widthWorld, depthWorld, type = "pv") {
+    const width = this.localLength(widthWorld);
+    const depth = this.localLength(depthWorld);
+    const thickness = this.localLength(Math.max(0.025, this.modelSize.y * 0.006));
+
+    const unit = new THREE.Group();
+
+    const frameMaterial = new THREE.MeshStandardMaterial({
+      color: type === "pv" ? 0x30383b : 0x7d6048,
+      roughness: 0.38,
+      metalness: 0.42,
+    });
+    const faceMaterial = new THREE.MeshPhysicalMaterial({
+      color: type === "pv" ? 0x163445 : 0x24474d,
+      roughness: type === "pv" ? 0.24 : 0.34,
+      metalness: type === "pv" ? 0.16 : 0.08,
+      clearcoat: 0.34,
+      clearcoatRoughness: 0.22,
+    });
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(width, thickness, depth),
+      frameMaterial
+    );
+    body.castShadow = true;
+    body.receiveShadow = true;
+    unit.add(body);
+
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(width * 0.91, depth * 0.91),
+      faceMaterial
+    );
+    face.rotation.x = -Math.PI / 2;
+    face.position.y = thickness * 0.56;
+    face.renderOrder = 4;
+    unit.add(face);
+
+    if (type === "pv") {
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0x90a8b1,
+        transparent: true,
+        opacity: 0.36,
+      });
+      for (let i = 1; i < 4; i += 1) {
+        const x = -width * 0.455 + (width * 0.91 * i) / 4;
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x, thickness * 0.58, -depth * 0.455),
+          new THREE.Vector3(x, thickness * 0.58, depth * 0.455),
+        ]);
+        unit.add(new THREE.Line(geometry, lineMaterial));
+      }
+      for (let i = 1; i < 6; i += 1) {
+        const z = -depth * 0.455 + (depth * 0.91 * i) / 6;
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(-width * 0.455, thickness * 0.58, z),
+          new THREE.Vector3(width * 0.455, thickness * 0.58, z),
+        ]);
+        unit.add(new THREE.Line(geometry, lineMaterial));
+      }
+    } else {
+      const tubeMaterial = new THREE.MeshStandardMaterial({
+        color: 0x9a6c45,
+        roughness: 0.42,
+        metalness: 0.34,
+      });
+      for (let i = -2; i <= 2; i += 1) {
+        const tube = new THREE.Mesh(
+          new THREE.CylinderGeometry(this.localLength(0.012), this.localLength(0.012), depth * 0.78, 8),
+          tubeMaterial
+        );
+        tube.rotation.x = Math.PI / 2;
+        tube.position.set((width * 0.68 * i) / 5, thickness * 0.62, 0);
+        unit.add(tube);
+      }
+    }
+
+    return unit;
+  }
+
+  createRoofArray({ key, type, cols, rows, anchor, panelWidth, panelDepth, slope = 0.54 }) {
+    const group = new THREE.Group();
+    group.name = `LaCurentLayer_${key}`;
+    group.position.copy(this.localPointFromNormalized(anchor));
+    group.rotation.x = slope;
+
+    const gapX = this.localLength(this.modelSize.x * 0.012);
+    const gapZ = this.localLength(this.modelSize.z * 0.014);
+    const panelWidthLocal = this.localLength(panelWidth);
+    const panelDepthLocal = this.localLength(panelDepth);
+    const totalWidth = cols * panelWidthLocal + (cols - 1) * gapX;
+    const totalDepth = rows * panelDepthLocal + (rows - 1) * gapZ;
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const panel = this.createPanelUnit(panelWidth, panelDepth, type);
+        panel.position.set(
+          -totalWidth / 2 + panelWidthLocal / 2 + col * (panelWidthLocal + gapX),
+          0,
+          -totalDepth / 2 + panelDepthLocal / 2 + row * (panelDepthLocal + gapZ)
+        );
+        group.add(panel);
+      }
+    }
+
+    group.visible = false;
+    this.modelRoot.add(group);
+    this.experimentLayers.set(key, group);
+    return group;
+  }
+
+  createHeatPumpLayer() {
+    const group = new THREE.Group();
+    group.name = "LaCurentLayer_heatPump";
+    group.position.copy(this.localPointFromNormalized([0.54, 0.11, 0.30]));
+
+    const w = this.localLength(this.modelSize.x * 0.14);
+    const h = this.localLength(this.modelSize.y * 0.20);
+    const d = this.localLength(this.modelSize.z * 0.12);
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({
+        color: 0xe5e5df,
+        roughness: 0.62,
+        metalness: 0.08,
+      })
+    );
+    body.position.y = h * 0.52;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    const grille = new THREE.Mesh(
+      new THREE.CircleGeometry(Math.min(w, h) * 0.28, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0x4d5553,
+        roughness: 0.78,
+        metalness: 0.24,
+      })
+    );
+    grille.position.set(0, h * 0.55, d * 0.505);
+    group.add(grille);
+
+    const hub = new THREE.Mesh(
+      new THREE.CircleGeometry(Math.min(w, h) * 0.055, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0x242b29,
+        roughness: 0.68,
+        metalness: 0.12,
+      })
+    );
+    hub.position.set(0, h * 0.55, d * 0.51);
+    group.add(hub);
+
+    const footMaterial = new THREE.MeshStandardMaterial({
+      color: 0x676d69,
+      roughness: 0.82,
+      metalness: 0.16,
+    });
+    [-1, 1].forEach((side) => {
+      const foot = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.28, h * 0.08, d * 0.55),
+        footMaterial
+      );
+      foot.position.set(side * w * 0.27, h * 0.04, 0);
+      group.add(foot);
+    });
+
+    group.visible = false;
+    this.modelRoot.add(group);
+    this.experimentLayers.set("heatPump", group);
+  }
+
+  createExperimentLayers() {
+    if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
+
+    const s = this.modelSize;
+    this.createRoofArray({
+      key: "pv",
+      type: "pv",
+      cols: 3,
+      rows: 2,
+      anchor: [0.17, 0.79, 0.13],
+      panelWidth: s.x * 0.092,
+      panelDepth: s.z * 0.16,
+      slope: 0.54,
+    });
+
+    this.createRoofArray({
+      key: "solarThermal",
+      type: "thermal",
+      cols: 2,
+      rows: 1,
+      anchor: [-0.25, 0.80, 0.10],
+      panelWidth: s.x * 0.105,
+      panelDepth: s.z * 0.19,
+      slope: 0.54,
+    });
+
+    this.createHeatPumpLayer();
+  }
+
+  renderExperimentLayers() {
+    if (!this.authorPanel) return;
+    const root = this.authorPanel.querySelector("[data-author-layer-buttons]");
+    if (!root) return;
+
+    const labels = {
+      pv: "PV",
+      solarThermal: "Solar termic",
+      heatPump: "Pompă căldură",
+    };
+
+    root.innerHTML = "";
+    this.experimentLayers.forEach((layer, key) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.authorLayer = key;
+      button.className = layer.visible ? "is-on" : "";
+      button.setAttribute("aria-pressed", layer.visible ? "true" : "false");
+      button.textContent = labels[key] || key;
+      root.appendChild(button);
+    });
+  }
+
   cloneSemanticConfig(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -751,6 +989,14 @@ class HomeLabHouse3D {
         <div class="hln-3d-mesh-buttons" data-author-mesh-buttons></div>
         <small data-author-mesh-name>Atinge M1–M5 și spune-mi ce dispare.</small>
       </section>
+      <section class="hln-3d-layer-inspector">
+        <div class="hln-3d-mesh-inspector-head">
+          <strong>Layere experiment</strong>
+          <button type="button" data-author-layer-all-off>Toate OFF</button>
+        </div>
+        <div class="hln-3d-layer-buttons" data-author-layer-buttons></div>
+        <small>Obiecte 3D atașate de Final House.</small>
+      </section>
       <span class="hln-3d-author-status" data-author-status>Modificările sunt păstrate local</span>
       <div class="hln-3d-author-parts" data-author-parts></div>
       <div class="hln-3d-author-controls" data-author-controls></div>
@@ -765,6 +1011,7 @@ class HomeLabHouse3D {
     this.mount.appendChild(panel);
     this.authorPanel = panel;
     this.renderMeshInspector();
+    this.renderExperimentLayers();
 
     const partsRoot = panel.querySelector("[data-author-parts]");
     Object.entries(this.semanticConfig.parts || {}).forEach(([part, config]) => {
@@ -787,6 +1034,25 @@ class HomeLabHouse3D {
     });
 
     panel.addEventListener("click", async (event) => {
+      const layerButton = event.target.closest("[data-author-layer]");
+      if (layerButton) {
+        const key = layerButton.dataset.authorLayer;
+        const layer = this.experimentLayers.get(key);
+        if (layer) {
+          layer.visible = !layer.visible;
+          this.renderExperimentLayers();
+          this.setAuthorStatus(`${layerButton.textContent} ${layer.visible ? "ON" : "OFF"}`);
+        }
+        return;
+      }
+
+      if (event.target.closest("[data-author-layer-all-off]")) {
+        this.experimentLayers.forEach((layer) => { layer.visible = false; });
+        this.renderExperimentLayers();
+        this.setAuthorStatus("Layere experiment oprite");
+        return;
+      }
+
       const meshButton = event.target.closest("[data-author-mesh]");
       if (meshButton) {
         const index = Number(meshButton.dataset.authorMesh);
