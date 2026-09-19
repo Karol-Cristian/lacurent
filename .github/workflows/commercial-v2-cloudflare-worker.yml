@@ -220,7 +220,7 @@ jobs:
               "Salvează casa mea → renovări",
               'id="labContextImage"',
               'id="labRenovationChooser"',
-              "Ce vrei să îmbunătățești?",
+              "Ce vrei să schimbi?",
               'id="labMobilePrimaryAction"',
               'id="labMobileHomeAction"',
               'id="labRenovationValueStrip"',
@@ -303,7 +303,10 @@ jobs:
               'data-hln-screen="intervention"',
               'data-hln-screen="scenario"',
               "Salvează Casa mea și începe renovarea",
-              "Păstrează această intervenție",
+              "Păstrează intervenția",
+              'class="hln-house-board"',
+              'class="hln-impact-panel"',
+              'id="hln-i-wall"',
           ):
               if marker not in next_html:
                   raise AssertionError(f"Home Lab Next missing {marker!r}")
@@ -775,7 +778,7 @@ jobs:
               "Salvează casa mea → renovări",
               'id="labContextImage"',
               'id="labRenovationChooser"',
-              "Ce vrei să îmbunătățești?",
+              "Ce vrei să schimbi?",
               'id="labMobilePrimaryAction"',
               'id="labMobileHomeAction"',
               'id="labRenovationValueStrip"',
@@ -895,7 +898,10 @@ jobs:
               'data-hln-screen="intervention"',
               'data-hln-screen="scenario"',
               "Salvează Casa mea și începe renovarea",
-              "Păstrează această intervenție",
+              "Păstrează intervenția",
+              'class="hln-house-board"',
+              'class="hln-impact-panel"',
+              'id="hln-i-wall"',
           ):
               if marker not in next_html:
                   raise AssertionError(f"Production Home Lab Next missing {marker!r}")
