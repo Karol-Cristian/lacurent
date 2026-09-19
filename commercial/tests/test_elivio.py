@@ -21,6 +21,7 @@ def test_elivio_page_is_standalone_and_transparent() -> None:
     assert "data-chat-launcher" in response.text
     assert "data-chat-panel" in response.text
     assert "data-contact-form" in response.text
+    assert "data-chat-context-note" in response.text
     assert "ICL-Logo-weiss-R.svg" in response.text
     assert "ec-mark" not in response.text
     assert "check-in bun" not in response.text
@@ -117,3 +118,37 @@ def test_elivio_chat_rejects_payment_card_before_ai() -> None:
     payload = response.json()
     assert payload["code"] == "sensitive_data"
     assert payload["sensitive_kind"] == "card"
+
+
+def test_elivio_chat_summary_prefills_contact_context_without_ai() -> None:
+    response = client.post(
+        "/elivio-consilio/api/chat-summary",
+        json={
+            "messages": [
+                {"role": "user", "content": "Am o decizie grea în familie."},
+                {"role": "assistant", "content": "Ce ai vrea să fie diferit?"},
+                {"role": "user", "content": "Aș vrea să mă simt mai clar și mai puțin blocat."},
+            ]
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "fallback"
+    assert "decizie grea în familie" in payload["summary"]
+    assert "mai puțin blocat" in payload["summary"]
+    assert "Ce ai vrea să fie diferit?" not in payload["summary"]
+
+
+def test_elivio_chat_summary_does_not_copy_crisis_details() -> None:
+    response = client.post(
+        "/elivio-consilio/api/chat-summary",
+        json={
+            "messages": [
+                {"role": "user", "content": "Vreau să mă sinucid."},
+            ]
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert "sinucid" not in payload["summary"].casefold()
+    assert "Aș dori să discut cu Violeta" in payload["summary"]
