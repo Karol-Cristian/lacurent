@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const HOUSE_MODELS = {
@@ -11,7 +12,7 @@ const HOUSE_MODELS = {
     source: "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene",
   },
   final: {
-    label: "Final House",
+    label: "Baseline 3D",
     url: "https://cdn.jsdelivr.net/gh/Koushik6692/3d-portfolio@main/public/house-transformed.glb",
     source: "https://sketchfab.com/3d-models/final-house-20ea8edb2b7043b1a98a0b6ae18684bb",
   },
@@ -376,6 +377,7 @@ class HomeLabHouse3D {
       dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
       dracoLoader.setDecoderConfig({ type: "wasm" });
       loader.setDRACOLoader(dracoLoader);
+      loader.setMeshoptDecoder(MeshoptDecoder);
     }
 
     let gltf;
