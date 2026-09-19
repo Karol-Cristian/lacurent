@@ -141,6 +141,19 @@ jobs:
                       raise AssertionError(f"{path} returned {response.status}")
                   return text
 
+          def post_json(path, data):
+              body = json.dumps(data).encode("utf-8")
+              request = urllib.request.Request(
+                  base + path,
+                  data=body,
+                  headers={"Content-Type": "application/json"},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  text = response.read().decode("utf-8")
+                  if response.status != 200:
+                      raise AssertionError(f"{path} returned {response.status}")
+                  return text
+
           checks = {
               "/": 'data-page="testing-home"',
               "/software-testing": 'data-page="software-testing"',
@@ -240,6 +253,23 @@ jobs:
               raise AssertionError("Embedded house lab did not return final energy.")
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Embedded house lab did not return design heat load.")
+
+          scenario_payload = json.loads(post_json(
+              "/api/scenarios/wall-insulation",
+              {
+                  "baseline": json.loads(model_to_json(demo_building())),
+                  "added_insulation_thickness_mm": 100,
+                  "insulation_lambda_w_mk": 0.040,
+              },
+          ))
+          if scenario_payload.get("schema_version") != "1.0":
+              raise AssertionError("Wall-insulation scenario API did not return schema version 1.0.")
+          requirement = scenario_payload.get("technical_requirement", {})
+          if float(requirement.get("affected_area_m2", 0)) <= 0:
+              raise AssertionError("Wall-insulation scenario did not expose affected wall area.")
+          energy_delta = scenario_payload.get("scenario", {}).get("delta_vs_baseline", {}).get("final_energy", {}).get("delta")
+          if energy_delta is None or float(energy_delta) >= 0:
+              raise AssertionError("Wall-insulation scenario did not reduce modeled final energy.")
 
           with urllib.request.urlopen(base + "/embed/demo-store", timeout=20) as response:
               frame_policy = response.headers.get("Content-Security-Policy")
@@ -608,6 +638,28 @@ jobs:
               raise AssertionError("Production house lab did not return final energy.")
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Production house lab did not return design heat load.")
+
+          scenario_encoded = json.dumps({
+              "baseline": json.loads(model_to_json(demo_building())),
+              "added_insulation_thickness_mm": 100,
+              "insulation_lambda_w_mk": 0.040,
+          }).encode("utf-8")
+          status, _, scenario_body = open_url(
+              apex + "/api/scenarios/wall-insulation",
+              data=scenario_encoded,
+              headers={"Content-Type": "application/json"},
+          )
+          if status != 200:
+              raise AssertionError(f"/api/scenarios/wall-insulation failed with HTTP {status}")
+          scenario_payload = json.loads(scenario_body)
+          if scenario_payload.get("schema_version") != "1.0":
+              raise AssertionError("Production wall-insulation scenario API returned the wrong schema version.")
+          if float(scenario_payload.get("technical_requirement", {}).get("affected_area_m2", 0)) <= 0:
+              raise AssertionError("Production wall-insulation scenario did not expose affected wall area.")
+          energy_delta = scenario_payload.get("scenario", {}).get("delta_vs_baseline", {}).get("final_energy", {}).get("delta")
+          if energy_delta is None or float(energy_delta) >= 0:
+              raise AssertionError("Production wall-insulation scenario did not reduce modeled final energy.")
+          print("/api/scenarios/wall-insulation", status)
           print("/embed/demo-store/lab-calculate", status)
 
           status, _, _ = open_url(apex + "/embed/not-a-real-partner")

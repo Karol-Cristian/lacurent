@@ -16,6 +16,7 @@ from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .pricing import energy_prices, estimate_energy_cost
+from .renovation import WallInsulationScenarioRequestV1, build_wall_insulation_scenario
 from .software_resources import router as software_resources_router
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -698,6 +699,19 @@ async def location_data_api() -> JSONResponse:
 @app.get("/api/energy-prices")
 async def energy_prices_api() -> JSONResponse:
     return JSONResponse(energy_prices())
+
+
+@app.post("/api/scenarios/wall-insulation")
+async def wall_insulation_scenario_api(payload: WallInsulationScenarioRequestV1) -> JSONResponse:
+    try:
+        bundle = build_wall_insulation_scenario(
+            payload.baseline,
+            added_insulation_thickness_mm=payload.added_insulation_thickness_mm,
+            insulation_lambda_w_mk=payload.insulation_lambda_w_mk,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(bundle))
 
 
 @app.get("/health")

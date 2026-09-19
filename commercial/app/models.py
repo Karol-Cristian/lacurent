@@ -228,12 +228,31 @@ class ComparisonResult(BaseModel):
     difference_percent: float
 
 
+class EnvelopeGeometryResult(BaseModel):
+    gross_wall_area_m2: float
+    window_area_m2: float
+    exterior_door_area_m2: float
+    net_wall_area_m2: float
+    roof_area_m2: float
+    floor_area_m2: float
+
+
+class EnvelopeUValuesResult(BaseModel):
+    wall_u_value_w_m2k: float | None = None
+    roof_u_value_w_m2k: float | None = None
+    floor_u_value_w_m2k: float | None = None
+    window_u_value_w_m2k: float | None = None
+    exterior_door_u_value_w_m2k: float | None = None
+
+
 class CalculationResult(BaseModel):
     input: BuildingInput
     climate: dict
     h_tr_w_k: float
     h_ve_w_k: float
     heat_loss_w_k: float
+    envelope_geometry: EnvelopeGeometryResult
+    envelope_u_values: EnvelopeUValuesResult
     envelope_contributions: list[Contribution]
     thermal_bridge_contributions: list[Contribution]
     monthly: list[MonthlyBalance]
