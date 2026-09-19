@@ -393,3 +393,67 @@
     font-size: 9px;
   }
 }
+
+/* The 3D house is the primary object, not an illustration trapped inside a card. */
+.hln-house-board-3d-ready {
+  overflow: visible;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.hln-house-board-3d-ready .hln-board-label {
+  border-bottom: 0 !important;
+  padding-left: 4px;
+  padding-right: 4px;
+  background: transparent;
+}
+
+.hln-house-board-3d-ready .hln-board-foot {
+  border-top-color: transparent;
+  background: transparent;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.hln-house-board-3d-ready .hln-house-visual {
+  min-height: 500px;
+  padding: 0;
+  overflow: visible;
+}
+
+.hln-house-board-3d-ready .hln-3d-stage {
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse at 50% 64%, rgba(210,207,197,.18), rgba(247,245,239,0) 48%),
+    transparent;
+}
+
+@media (max-width: 980px) {
+  .hln-house-board-3d-ready .hln-house-visual {
+    min-height: 430px;
+  }
+}
+
+@media (max-width: 760px) {
+  .hln-house-board-3d-ready {
+    margin-left: -14px;
+    margin-right: -14px;
+  }
+
+  .hln-house-board-3d-ready .hln-board-label,
+  .hln-house-board-3d-ready .hln-board-foot {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .hln-house-board-3d-ready .hln-house-visual {
+    min-height: 410px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hln-house-board-3d-ready .hln-house-visual {
+    min-height: 390px;
+  }
+}
