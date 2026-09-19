@@ -179,8 +179,8 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/elivio-consilio": "Spune ce ai pe minte.",
-              "/elivio-consilio/confidentialitate": "Confidențialitate & AI",
+              "/elivio-consilio": "data-chat-launcher",
+              "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
               "/static/elivio.css": ".ec-hero",
               "/static/elivio.js": "data-elivio-chat",
           }
@@ -601,8 +601,8 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/elivio-consilio": "Spune ce ai pe minte.",
-              "/elivio-consilio/confidentialitate": "Confidențialitate & AI",
+              "/elivio-consilio": "data-chat-launcher",
+              "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
               "/static/elivio.css": ".ec-hero",
               "/static/elivio.js": "data-elivio-chat",
           }
