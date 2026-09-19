@@ -5,7 +5,19 @@
   const form = root.querySelector("[data-chat-form]");
   const input = root.querySelector("[data-chat-input]");
   const log = root.querySelector("[data-chat-log]");
+  const badge = root.querySelector("[data-stage-badge]");
+  const stageSteps = [...root.querySelectorAll("[data-stage-step]")];
   const messages = [];
+
+  const setStage = (stage) => {
+    const value = Math.min(Math.max(Number(stage) || 1, 1), 4);
+    if (badge) badge.textContent = value + " / 4";
+    stageSteps.forEach((step) => {
+      const stepNo = Number(step.dataset.stageStep);
+      step.classList.toggle("active", stepNo === value);
+      step.classList.toggle("done", stepNo < value);
+    });
+  };
 
   const addMessage = (role, text, pending = false) => {
     const el = document.createElement("div");
@@ -15,6 +27,8 @@
     log.scrollTop = log.scrollHeight;
     return el;
   };
+
+  setStage(1);
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -27,7 +41,7 @@
 
     messages.push({ role: "user", content: text });
     addMessage("user", text);
-    const pending = addMessage("assistant", "Scriu…", true);
+    const pending = addMessage("assistant", "Mă uit la ce ai spus…", true);
 
     try {
       const response = await fetch("/elivio-consilio/api/chat", {
@@ -43,9 +57,14 @@
       pending.remove();
       addMessage("assistant", reply);
       messages.push({ role: "assistant", content: reply });
+      setStage(data.stage || 1);
+
+      if (Number(data.stage) >= 4 && !data.crisis) {
+        input.placeholder = "Poți pune o ultimă întrebare sau merge la programare…";
+      }
     } catch (error) {
       pending.remove();
-      addMessage("assistant", "Conexiunea nu este disponibilă momentan. Poți reveni puțin mai târziu sau folosi secțiunea de contact.");
+      addMessage("assistant", "Conexiunea nu este disponibilă momentan. Poți continua direct din secțiunea de contact.");
     } finally {
       input.disabled = false;
       form.querySelector("button").disabled = false;
