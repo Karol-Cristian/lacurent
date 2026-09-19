@@ -34,10 +34,36 @@ const PARTS = {
   floor: { label: "Pardoseală", editor: "envelope", measure: "floor", color: 0x3f745c, field: "#hlnHomeFloorIns" },
 };
 
-const HOTSPOTS = {
-  wall: { label: "Fațadă", anchor: [0.00, 0.43, 0.49] },
-  windows: { label: "Ferestre", anchor: [0.21, 0.43, 0.505] },
-  roof: { label: "Acoperiș", anchor: [-0.08, 0.79, 0.22] },
+const DEFAULT_FINAL_HOUSE_CONFIG = {
+  version: 1,
+  model: "final",
+  coordinate_space: "normalized_model_bounds",
+  parts: {
+    wall: {
+      label: "Fațadă",
+      anchor: [0.00, 0.43, 0.49],
+      hitbox: { position: [0.00, 0.38, 0.47], size: [0.96, 0.63, 0.10] },
+      camera: { position: [0.92, 0.68, 1.42], target: [0.00, 0.42, 0.22] },
+    },
+    windows: {
+      label: "Ferestre",
+      anchor: [0.21, 0.43, 0.505],
+      hitbox: { position: [0.00, 0.42, 0.50], size: [0.72, 0.34, 0.11] },
+      camera: { position: [0.66, 0.55, 1.18], target: [0.00, 0.42, 0.28] },
+    },
+    roof: {
+      label: "Acoperiș",
+      anchor: [-0.08, 0.79, 0.22],
+      hitbox: { position: [0.00, 0.82, 0.00], size: [0.98, 0.28, 0.92] },
+      camera: { position: [0.90, 1.25, 1.18], target: [0.00, 0.73, 0.00] },
+    },
+    floor: {
+      label: "Pardoseală",
+      anchor: [0.00, 0.10, 0.05],
+      hitbox: { position: [0.00, 0.08, 0.00], size: [0.94, 0.10, 0.88] },
+      camera: { position: [1.00, 0.52, 1.25], target: [0.00, 0.18, 0.00] },
+    },
+  },
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -78,7 +104,15 @@ class HomeLabHouse3D {
     this.hotspotAnchors = new Map();
     this.hotspotElements = new Map();
     this.hotspotRoot = null;
-    this.debugHitZones = new URLSearchParams(window.location.search).get("hotspotDebug") === "1";
+    this.authorMode = new URLSearchParams(window.location.search).get("author3d") === "1";
+    this.debugHitZones = this.authorMode || new URLSearchParams(window.location.search).get("hotspotDebug") === "1";
+    this.semanticConfig = JSON.parse(JSON.stringify(DEFAULT_FINAL_HOUSE_CONFIG));
+    this.baseSemanticConfig = JSON.parse(JSON.stringify(DEFAULT_FINAL_HOUSE_CONFIG));
+    this.authorStorageKey = "lacurent.final-house.semantic.v1";
+    this.authorPart = "wall";
+    this.authorPanel = null;
+    this.authorStatusTimer = null;
+    this.authorDraggingPart = null;
   }
 
   async init() {
@@ -143,10 +177,12 @@ class HomeLabHouse3D {
     this.addGround();
 
     try {
+      await this.loadSemanticConfig();
       await this.loadModel();
       this.addHitZones();
       this.addRenovationLayer();
       this.createSemanticHotspots();
+      this.createAuthorPanel();
       this.bindEvents();
       this.resize();
       this.mount.classList.remove("is-loading");
