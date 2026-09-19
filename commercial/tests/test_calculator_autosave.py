@@ -12,7 +12,7 @@ COMMERCIAL_DIR = Path(__file__).resolve().parents[1]
 
 
 def test_calculator_autosave_is_loaded_before_main_app() -> None:
-    response = client.get("/instalatii/calculator")
+    response = client.get("/instalatii/calculator/legacy")
     assert response.status_code == 200
     autosave = "calculator-autosave.js?v=draft1"
     app_script = "app.js') }}?v=v2eng3"

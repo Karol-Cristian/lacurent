@@ -21,7 +21,10 @@
     host.style.boxSizing = "border-box";
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${embedOrigin}/embed/${encodeURIComponent(partner)}`;
+    const path = (host.dataset.path || "").trim();
+    iframe.src = path === "next"
+      ? `${embedOrigin}/embed/${encodeURIComponent(partner)}/next`
+      : `${embedOrigin}/embed/${encodeURIComponent(partner)}`;
     iframe.title = host.dataset.title || "Calculator energetic";
     iframe.loading = host.dataset.loading || "lazy";
     iframe.referrerPolicy = "strict-origin-when-cross-origin";
@@ -290,5 +293,15 @@
     });
   }
 
-  document.querySelectorAll("[data-lacurent-embed]").forEach(mount);
+  const publicApi = window.LaCurentEmbed || {};
+  publicApi.mount = target => {
+    const host = typeof target === "string" ? document.querySelector(target) : target;
+    if (host) mount(host);
+  };
+  window.LaCurentEmbed = publicApi;
+
+  document.querySelectorAll("[data-lacurent-embed]").forEach(host => {
+    if (host.dataset.deferred === "true") return;
+    mount(host);
+  });
 })();

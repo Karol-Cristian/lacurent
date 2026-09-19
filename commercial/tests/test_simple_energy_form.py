@@ -84,7 +84,7 @@ def test_simple_apartment_only_adds_exposed_roof_or_floor() -> None:
 
 
 def test_calculator_exposes_friendly_romanian_defaults_and_advanced_escape_hatch() -> None:
-    response = client.get("/instalatii/calculator")
+    response = client.get("/instalatii/calculator/legacy")
     assert response.status_code == 200
     assert "rotița pentru zoom" in response.text
     assert "Ventilație naturală" in response.text

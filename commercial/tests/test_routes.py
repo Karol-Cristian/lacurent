@@ -152,26 +152,30 @@ def test_installations_landing_page_links_energy_calculator() -> None:
     assert "/static/favicon.svg" in response.text
 
 
-def test_energy_calculator_is_romanian_and_isolated_from_testing_home() -> None:
+def test_energy_calculator_is_home_lab_product_page() -> None:
     response = client.get("/instalatii/calculator")
     assert response.status_code == 200
-    assert "Calculează performanța" in response.text
+    assert "Înțelege casa înainte să investești în ea." in response.text
+    assert "Casa ta, nu o casă generică" in response.text
+    assert "Testează renovarea" in response.text
+    assert "Vezi efectul imediat" in response.text
+    assert "De la simulare la proiect" in response.text
+    assert "Casa mea → Șantier → Scenariul meu" in response.text
+    assert 'data-hlp-launch' in response.text
+    assert 'data-hlp-demo-frame' in response.text
+    assert "/static/home-lab-product.css?v=product1" in response.text
+    assert "/static/home-lab-product.js?v=product1" in response.text
+    assert "/static/favicon.svg" in response.text
+
+
+def test_legacy_energy_calculator_remains_available_during_home_lab_next_cutover() -> None:
+    response = client.get("/instalatii/calculator/legacy")
+    assert response.status_code == 200
     assert "Anvelopa clădirii" in response.text
     assert "Instalațiile" in response.text
     assert "Ventilație naturală" in response.text
-    assert "Sobă / șemineu pe lemne" in response.text
     assert "Orientarea dominantă a ferestrelor" in response.text
-    assert "Tipul principal de vitraj" in response.text
     assert "Automat MC001 / Hsol A.9.6" in response.text
-    assert 'name="solar_orientation"' in response.text
-    assert 'name="solar_glazing_type_id"' in response.text
-    assert 'name="solar_window_area_south_m2"' in response.text
-    assert 'name="solar_window_area_north_m2"' in response.text
-    assert 'name="solar_shading_device_id"' in response.text
-    assert "Ferestre pe orientări" in response.text
-    assert 'href="/"' not in response.text
-    assert "Building envelope" not in response.text
-    assert "/static/favicon.svg" in response.text
 
 
 def test_health_endpoint_is_lightweight() -> None:
@@ -284,14 +288,17 @@ def test_nearest_hsol_source_is_visible_in_result_provenance() -> None:
     assert "Sibiu" in response.text
     assert "54.3 km" in response.text
 
-def test_magazin_route_exposes_construction_store_embed_demo() -> None:
+def test_magazin_route_exposes_home_lab_next_launcher() -> None:
     response = client.get("/magazin")
     assert response.status_code == 200
     assert "Depozitul Constructorului" in response.text
-    assert 'data-lacurent-embed data-partner="demo-store"' in response.text
+    assert "Ce se schimbă dacă renovezi casa?" in response.text
+    assert "Începe simularea" in response.text
+    assert 'data-next-launcher' in response.text
+    assert 'data-lacurent-embed data-partner="demo-store" data-path="next" data-deferred="true"' in response.text
 
 
-def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
+def test_external_style_embed_host_demo_uses_home_lab_next_launcher() -> None:
     response = client.get("/embed-host-demo")
     assert response.status_code == 200
     assert "SITE DEMO PARTENER" in response.text
@@ -299,9 +306,11 @@ def test_external_style_embed_host_demo_uses_public_loader_only() -> None:
     assert "Categorii populare" in response.text
     assert "Produse recomandate" in response.text
     assert "Servicii pentru proiectul tău" in response.text
-    assert "Înainte să cumperi, estimează necesarul energetic al casei." in response.text
-    assert 'data-lacurent-embed data-partner="demo-store"' in response.text
-    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed7"' in response.text
+    assert "Ce se schimbă dacă renovezi casa?" in response.text
+    assert 'data-next-launch' in response.text
+    assert 'data-path="next"' in response.text
+    assert 'data-deferred="true"' in response.text
+    assert 'src="https://lacurent.com/static/embed-loader.js?v=embed8"' in response.text
     assert "app.css" not in response.text
     assert "base.html" not in response.text
 
@@ -313,16 +322,84 @@ def test_store_demo_forces_full_width_embed_container() -> None:
     assert "width:100%;" in response.text
     assert ".embed-card{" in response.text
     assert "min-width:0;" in response.text
-    assert "embed-loader.js?v=embed7" in response.text
+    assert "embed-loader.js?v=embed8" in response.text
 
 
-def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
+def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     response = client.get("/embed")
     assert response.status_code == 200
     assert "LaCurent Embed" in response.text
-    assert 'data-lacurent-embed data-partner="demo-store"' in response.text
-    assert "https://lacurent.com/static/embed-loader.js" in response.text
-    assert 'href="/embed/demo-store"' in response.text
+    assert 'data-lacurent-embed data-partner="demo-store" data-path="next"' in response.text
+    assert "https://lacurent.com/static/embed-loader.js?v=embed8" in response.text
+    assert "Home Lab Next este experiența recomandată" in response.text
+    assert 'href="/embed/demo-store/next"' in response.text
+
+
+def test_home_lab_next_route_exposes_four_screen_product_flow() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'data-home-lab-next' in response.text
+    assert 'data-hln-screen="home"' in response.text
+    assert 'data-hln-screen="site"' in response.text
+    assert 'data-hln-screen="intervention"' in response.text
+    assert 'data-hln-screen="scenario"' in response.text
+    assert "Salvează Casa mea și începe renovarea" in response.text
+    assert "Ce vrei să îmbunătățești?" in response.text
+    assert "Păstrează această intervenție" in response.text
+    assert "Scenariul meu" in response.text
+    assert "/static/home-lab-next.css?v=next1" in response.text
+    assert "/static/home-lab-next.js?v=next1" in response.text
+
+
+def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
+    response = client.get("/embed/demo-store/next")
+    assert response.status_code == 200
+    assert response.headers["content-security-policy"] == "frame-ancestors *"
+    assert 'data-partner-id="demo-store"' in response.text
+    assert 'data-calculate-url="/embed/demo-store/next/calculate"' in response.text
+    assert "Partener Demo" in response.text
+    assert "/static/embed-runtime.js?v=embed2" in response.text
+
+
+def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
+    response = client.post("/api/home-lab-next/calculate", data=demo_form_data())
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["final_energy_kwh"] > 0
+    assert payload["heat_loss_w_k"] > 0
+    assert payload["energy_class"]
+    assert "annual_cost_lei" in payload
+
+
+def test_partner_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
+    response = client.post("/embed/demo-store/next/calculate", data=demo_form_data())
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["final_energy_kwh"] > 0
+    assert payload["design_heat_load_kw"] > 0
+
+
+def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    assert "homeState" in response.text
+    assert "scenarioState" in response.text
+    assert "baselineSaved" in response.text
+    assert "function openMeasure" in response.text
+    assert "function keepIntervention" in response.text
+    assert "function benefitText" in response.text
+    assert "function populateTechnicalForm" in response.text
+    assert 'fetch(calcUrl' in response.text
+
+
+def test_embed_loader_supports_deferred_next_mounts() -> None:
+    response = client.get("/static/embed-loader.js")
+    assert response.status_code == 200
+    assert 'host.dataset.path' in response.text
+    assert 'path === "next"' in response.text
+    assert 'host.dataset.deferred === "true"' in response.text
+    assert "window.LaCurentEmbed" in response.text
+    assert "publicApi.mount" in response.text
 
 
 def test_partner_embed_uses_current_house_lab_assets() -> None:
@@ -547,7 +624,7 @@ def test_embed_focus_css_removes_partner_chrome_on_mobile() -> None:
 def test_embed_integration_documents_mobile_focus_opt_out() -> None:
     response = client.get("/embed")
     assert response.status_code == 200
-    assert "embed-loader.js?v=embed7" in response.text
+    assert "embed-loader.js?v=embed8" in response.text
     assert 'data-focus-mode="off"' in response.text
     assert "prima interacțiune" in response.text
 

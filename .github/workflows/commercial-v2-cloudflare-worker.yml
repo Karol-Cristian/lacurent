@@ -180,6 +180,11 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
+              "/instalatii/calculator": "Înțelege casa înainte să investești în ea.",
+              "/home-lab-next": "data-home-lab-next",
+              "/static/home-lab-next.js": "function openMeasure",
+              "/static/home-lab-next.css": ".hln-before-after",
+              "/static/home-lab-product.js": "data-hlp-demo-shell",
               "/elivio-consilio": "data-chat-launcher",
               "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
               "/static/elivio.css": ".ec-hero",
@@ -238,6 +243,9 @@ jobs:
               "data-lacurent-focus-bar",
               "Înapoi la magazin",
               'host.style.position = "fixed"',
+              'host.dataset.path',
+              'host.dataset.deferred === "true"',
+              "window.LaCurentEmbed",
           ):
               if marker not in loader_html:
                   raise AssertionError(f"Embed loader missing mobile focus-mode marker {marker!r}.")
@@ -286,6 +294,29 @@ jobs:
               raise AssertionError("Embedded house lab did not return final energy.")
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Embedded house lab did not return design heat load.")
+
+          next_html = get("/home-lab-next")
+          for marker in (
+              'data-hln-screen="home"',
+              'data-hln-screen="site"',
+              'data-hln-screen="intervention"',
+              'data-hln-screen="scenario"',
+              "Salvează Casa mea și începe renovarea",
+              "Păstrează această intervenție",
+          ):
+              if marker not in next_html:
+                  raise AssertionError(f"Home Lab Next missing {marker!r}")
+
+          partner_next_html = get("/embed/demo-store/next")
+          if 'data-partner-id="demo-store"' not in partner_next_html:
+              raise AssertionError("Partner Home Lab Next lost partner scope.")
+
+          next_payload = json.loads(post("/api/home-lab-next/calculate", lab_form))
+          if float(next_payload.get("final_energy_kwh", 0)) <= 0:
+              raise AssertionError("Home Lab Next API did not return final energy.")
+          partner_next_payload = json.loads(post("/embed/demo-store/next/calculate", lab_form))
+          if float(partner_next_payload.get("design_heat_load_kw", 0)) <= 0:
+              raise AssertionError("Partner Home Lab Next API did not return design heat load.")
 
           scenario_payload = json.loads(post_json(
               "/api/scenarios/wall-insulation",
@@ -769,6 +800,9 @@ jobs:
               "data-lacurent-focus-bar",
               "Înapoi la magazin",
               'host.style.position = "fixed"',
+              'host.dataset.path',
+              'host.dataset.deferred === "true"',
+              "window.LaCurentEmbed",
           ):
               if marker not in loader_html:
                   raise AssertionError(f"Production embed loader missing mobile focus-mode marker {marker!r}.")
@@ -846,6 +880,48 @@ jobs:
               raise AssertionError("Production house lab did not return final energy.")
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Production house lab did not return design heat load.")
+
+          status, _, product_page = open_url(apex + "/instalatii/calculator")
+          if status != 200 or "Înțelege casa înainte să investești în ea." not in product_page:
+              raise AssertionError("Production Home Lab product page is unavailable.")
+
+          status, _, next_html = open_url(apex + "/home-lab-next")
+          if status != 200:
+              raise AssertionError(f"/home-lab-next returned HTTP {status}")
+          for marker in (
+              'data-hln-screen="home"',
+              'data-hln-screen="site"',
+              'data-hln-screen="intervention"',
+              'data-hln-screen="scenario"',
+              "Salvează Casa mea și începe renovarea",
+              "Păstrează această intervenție",
+          ):
+              if marker not in next_html:
+                  raise AssertionError(f"Production Home Lab Next missing {marker!r}")
+
+          status, _, partner_next_html = open_url(apex + "/embed/demo-store/next")
+          if status != 200 or 'data-partner-id="demo-store"' not in partner_next_html:
+              raise AssertionError("Production partner Home Lab Next is unavailable.")
+
+          status, _, next_body = open_url(
+              apex + "/api/home-lab-next/calculate",
+              data=lab_encoded,
+              headers={"Content-Type": "application/x-www-form-urlencoded"},
+          )
+          if status != 200 or float(json.loads(next_body).get("final_energy_kwh", 0)) <= 0:
+              raise AssertionError("Production Home Lab Next calculation failed.")
+
+          status, _, partner_next_body = open_url(
+              apex + "/embed/demo-store/next/calculate",
+              data=lab_encoded,
+              headers={"Content-Type": "application/x-www-form-urlencoded"},
+          )
+          if status != 200 or float(json.loads(partner_next_body).get("design_heat_load_kw", 0)) <= 0:
+              raise AssertionError("Production partner Home Lab Next calculation failed.")
+
+          print("/instalatii/calculator Home Lab product", 200)
+          print("/home-lab-next", 200)
+          print("/embed/demo-store/next", 200)
 
           scenario_encoded = json.dumps({
               "baseline": json.loads(model_to_json(demo_building())),

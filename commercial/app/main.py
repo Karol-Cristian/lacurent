@@ -778,7 +778,42 @@ async def installations(request: Request) -> HTMLResponse:
 
 @app.get("/instalatii/calculator", response_class=HTMLResponse)
 async def energy_calculator(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "home_lab_product.html", {"request": request})
+
+
+@app.get("/instalatii/calculator/legacy", response_class=HTMLResponse)
+async def energy_calculator_legacy(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "calculator.html", {"request": request, **calculator_context()})
+
+
+@app.get("/home-lab-next", response_class=HTMLResponse)
+async def home_lab_next(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "home_lab_next.html",
+        {
+            "request": request,
+            **calculator_context(),
+            "partner": None,
+            "embed_mode": False,
+            "calculate_url": "/api/home-lab-next/calculate",
+        },
+    )
+
+
+async def home_lab_next_calculation(request: Request) -> JSONResponse:
+    form = dict(await request.form())
+    try:
+        building = build_input_from_form(form)
+        result = calculate(building)
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
+    return JSONResponse(embed_lab_result_payload(result))
+
+
+@app.post("/api/home-lab-next/calculate")
+async def home_lab_next_calculate_api(request: Request) -> JSONResponse:
+    return await home_lab_next_calculation(request)
 
 
 @app.post("/calculate", response_class=HTMLResponse)
@@ -802,6 +837,28 @@ async def embed_integration(request: Request) -> HTMLResponse:
             "demo_partner": embed_partner("demo-store"),
         },
     )
+
+
+@app.get("/embed/{partner_id}/next", response_class=HTMLResponse)
+async def partner_embed_home_lab_next(request: Request, partner_id: str) -> HTMLResponse:
+    partner = embed_partner(partner_id)
+    return templates.TemplateResponse(
+        request,
+        "home_lab_next.html",
+        {
+            "request": request,
+            **calculator_context(),
+            "partner": partner,
+            "embed_mode": True,
+            "calculate_url": f"/embed/{partner_id}/next/calculate",
+        },
+    )
+
+
+@app.post("/embed/{partner_id}/next/calculate")
+async def partner_embed_home_lab_next_calculate(request: Request, partner_id: str) -> JSONResponse:
+    embed_partner(partner_id)
+    return await home_lab_next_calculation(request)
 
 
 @app.get("/embed/{partner_id}", response_class=HTMLResponse)
