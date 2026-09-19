@@ -716,27 +716,26 @@ class HomeLabHouse3D {
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_pv";
 
-    const left = this.createRoofCluster({
-      type: "pv",
-      cols: 2,
-      rows: 1,
-      anchor: [-0.22, 0.78, 0.22],
-      panelWidth: s.x * 0.090,
-      panelDepth: s.z * 0.155,
-    });
-    left.name = "PV_left_upper";
+    const panels = [
+      { name: "PV_left_upper", anchor: [-0.36, 0.78, 0.18] },
+      { name: "PV_left_lower", anchor: [-0.34, 0.64, 0.31] },
+      { name: "PV_right_upper", anchor: [0.12, 0.80, 0.17] },
+      { name: "PV_right_outer", anchor: [0.34, 0.72, 0.29] },
+    ];
 
-    const right = this.createRoofCluster({
-      type: "pv",
-      cols: 2,
-      rows: 1,
-      anchor: [0.27, 0.77, 0.22],
-      panelWidth: s.x * 0.090,
-      panelDepth: s.z * 0.155,
+    panels.forEach(({ name, anchor }) => {
+      const panel = this.createRoofCluster({
+        type: "pv",
+        cols: 1,
+        rows: 1,
+        anchor,
+        panelWidth: s.x * 0.080,
+        panelDepth: s.z * 0.135,
+      });
+      panel.name = name;
+      layer.add(panel);
     });
-    right.name = "PV_right_upper";
 
-    layer.add(left, right);
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);
@@ -748,9 +747,9 @@ class HomeLabHouse3D {
       type: "thermal",
       cols: 1,
       rows: 1,
-      anchor: [-0.29, 0.64, 0.34],
-      panelWidth: s.x * 0.105,
-      panelDepth: s.z * 0.19,
+      anchor: [-0.40, 0.58, 0.38],
+      panelWidth: s.x * 0.095,
+      panelDepth: s.z * 0.175,
     });
     layer.name = "LaCurentLayer_solarThermal";
     layer.visible = false;
