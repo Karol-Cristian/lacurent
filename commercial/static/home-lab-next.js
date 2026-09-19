@@ -105,6 +105,196 @@
     return 1 / (baseR + addedR);
   }
 
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  function insulationCmForU(baseU, targetU) {
+    const target = Number(targetU);
+    if (!Number.isFinite(target) || target <= 0) return 0;
+    const addedR = Math.max(0, 1 / target - 1 / baseU);
+    return Math.round(addedR * 0.040 * 1000) / 10;
+  }
+
+  function referenceTargets() {
+    const reference = homeResult?.reference_parameters || currentResult?.reference_parameters;
+    if (!reference?.u_values_w_m2k) return null;
+    const u = reference.u_values_w_m2k;
+    return {
+      wallIns: insulationCmForU(1.30, u.exterior_wall),
+      roofIns: insulationCmForU(1.00, u.roof),
+      floorIns: insulationCmForU(0.90, u.floor),
+      windows: Number(homeState.windows),
+      glazing: "double_low_e_face_3",
+      heating: "condensing_gas_boiler",
+      ventilation: "natural",
+      cooling: homeState.cooling,
+    };
+  }
+
+  function syncMeasuresFromScenario() {
+    const next = [];
+    if (Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01) next.push("wall");
+    if (Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01) next.push("roof");
+    if (Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01) next.push("floor");
+    if (
+      scenarioState.glazing !== homeState.glazing ||
+      Math.abs(Number(scenarioState.windows) - Number(homeState.windows)) > 0.01 ||
+      referenceMode
+    ) next.push("windows");
+    if (scenarioState.heating !== homeState.heating || referenceMode) next.push("heating");
+    if (
+      scenarioState.ventilation !== homeState.ventilation ||
+      scenarioState.cooling !== homeState.cooling ||
+      referenceMode
+    ) next.push("ventilation");
+    measures = next;
+  }
+
+  function emitVisualState(focus = null) {
+    const state = screen === "home" ? homeState : scenarioState;
+    const detail = {
+      orientation: state.orientation,
+      cooling: state.cooling,
+      heating: state.heating,
+      baselineSaved,
+      screen,
+      referenceMode,
+      focus,
+    };
+    window.__homeLabVisualState = detail;
+    window.dispatchEvent(new CustomEvent("hln:visual-state", { detail }));
+  }
+
+  function setReferenceHouse() {
+    if (!baselineSaved) return;
+    const target = referenceTargets();
+    if (!target) return;
+    scenarioState = {
+      ...scenarioState,
+      ...target,
+      orientation: homeState.orientation,
+      area: homeState.area,
+      levels: homeState.levels,
+      height: homeState.height,
+      temperature: homeState.temperature,
+      occupants: homeState.occupants,
+      localityId: homeState.localityId,
+      locality: homeState.locality,
+    };
+    referenceMode = true;
+    syncMeasuresFromScenario();
+    renderAll();
+    persist();
+    emitVisualState("reference");
+    scheduleCalculate("scenario", 20);
+  }
+
+  function resetScenarioToHome() {
+    if (!baselineSaved) return;
+    referenceMode = false;
+    scenarioState = { ...homeState };
+    scenarioResult = homeResult;
+    currentResult = homeResult;
+    measures = [];
+    renderAll();
+    persist();
+    emitVisualState("home");
+  }
+
+  function liveRangePercent(value, input) {
+    if (!input) return 0;
+    const min = Number(input.min || 0);
+    const max = Number(input.max || 100);
+    if (!Number.isFinite(value) || max <= min) return 0;
+    return clamp(100 * (Number(value) - min) / (max - min), 0, 100);
+  }
+
+  function renderLiveConfigurator() {
+    const live = $("#hlnLiveConfigurator");
+    if (!live) return;
+
+    const targets = referenceTargets();
+    const rows = {
+      wallIns: { selector: "#hlnLiveWallIns", unit: "cm", reference: targets?.wallIns },
+      roofIns: { selector: "#hlnLiveRoofIns", unit: "cm", reference: targets?.roofIns },
+      floorIns: { selector: "#hlnLiveFloorIns", unit: "cm", reference: targets?.floorIns },
+      windows: { selector: "#hlnLiveWindows", unit: "m²", reference: Number(homeState.windows) },
+    };
+
+    Object.entries(rows).forEach(([key, config]) => {
+      const row = live.querySelector(`[data-hln-tune="${key}"]`);
+      const input = $(config.selector);
+      if (!row || !input) return;
+      const value = Number(scenarioState[key]);
+      input.value = String(value);
+      const valueNode = row.querySelector("[data-hln-tune-value]");
+      if (valueNode) valueNode.textContent = `${fmt(value, key === "windows" ? 1 : (value % 1 ? 1 : 0))} ${config.unit}`;
+
+      const homeMarker = row.querySelector("[data-hln-home-marker]");
+      const referenceMarker = row.querySelector("[data-hln-reference-marker]");
+      if (homeMarker) homeMarker.style.left = `${liveRangePercent(Number(homeState[key]), input)}%`;
+      if (referenceMarker) {
+        const referenceValue = Number(config.reference);
+        referenceMarker.style.left = `${liveRangePercent(referenceValue, input)}%`;
+        referenceMarker.hidden = !Number.isFinite(referenceValue);
+      }
+      const caption = row.querySelector("[data-hln-tune-caption]");
+      if (caption) {
+        if (key === "windows") {
+          caption.textContent = `Casa mea: ${fmt(homeState.windows, 1)} m² · referința păstrează aceeași geometrie`;
+        } else if (Number.isFinite(Number(config.reference))) {
+          caption.textContent = `Casa mea: ${fmt(homeState[key], 1)} cm · Referință: ${fmt(config.reference, 1)} cm`;
+        } else {
+          caption.textContent = `Casa mea: ${fmt(homeState[key], 1)} cm`;
+        }
+      }
+    });
+
+    [
+      ["#hlnLiveGlazing", "glazing"],
+      ["#hlnLiveHeating", "heating"],
+      ["#hlnLiveVentilation", "ventilation"],
+      ["#hlnLiveCooling", "cooling"],
+    ].forEach(([selector, key]) => {
+      const node = $(selector);
+      if (node) node.value = scenarioState[key];
+    });
+
+    const result = scenarioResult || homeResult;
+    const costNode = $("#hlnLiveCost");
+    const savingNode = $("#hlnLiveSaving");
+    const classNode = $("#hlnLiveClass");
+    if (costNode) costNode.textContent = result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`;
+    if (classNode) classNode.textContent = result?.energy_class || "—";
+
+    if (savingNode) {
+      const base = Number(homeResult?.annual_cost_lei);
+      const now = Number(result?.annual_cost_lei);
+      if (Number.isFinite(base) && Number.isFinite(now)) {
+        const delta = base - now;
+        if (Math.abs(delta) < 0.5) savingNode.textContent = "La nivelul Casei mele";
+        else savingNode.textContent = `${delta > 0 ? "−" : "+"}${fmt(Math.abs(delta))} lei/an față de Casa mea`;
+        savingNode.classList.toggle("is-bad", delta < 0);
+      } else {
+        savingNode.textContent = "față de Casa mea";
+        savingNode.classList.remove("is-bad");
+      }
+    }
+
+    $$("#hlnEnergyScale [data-energy-class]").forEach(node => {
+      node.classList.toggle("is-active", node.dataset.energyClass === result?.energy_class);
+    });
+
+    $$("[data-hln-reference-house]").forEach(button => {
+      button.classList.toggle("is-active", referenceMode);
+      button.setAttribute("aria-pressed", referenceMode ? "true" : "false");
+      if (button.classList.contains("hln-reference-button")) {
+        button.textContent = referenceMode ? "Referință activă ✓" : "Casa de referință";
+      }
+    });
+
+    live.classList.toggle("is-reference", referenceMode);
+  }
+
   function populateTechnicalForm(state) {
     const area = Number(state.area);
     const levels = Math.max(1, Number(state.levels));
