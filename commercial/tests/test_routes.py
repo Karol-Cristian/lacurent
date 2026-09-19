@@ -152,21 +152,22 @@ def test_installations_landing_page_links_energy_calculator() -> None:
     assert "/static/favicon.svg" in response.text
 
 
-def test_energy_calculator_is_minimal_home_lab_product_page() -> None:
+def test_energy_calculator_is_house_first_home_lab_product_page() -> None:
     response = client.get("/instalatii/calculator")
     assert response.status_code == 200
-    assert "Înțelege casa înainte să investești în ea." in response.text
-    assert "Modelează locuința actuală. Testează o renovare. Vezi ce se schimbă." in response.text
-    assert "De la casa de azi la scenariul de renovare." in response.text
-    assert "Testează Home Lab." in response.text
+    assert "Planifică renovarea înainte să înceapă șantierul." in response.text
+    assert "Pornești de la casa reală. Testezi o schimbare." in response.text
+    assert "Casa rămâne punctul de plecare." in response.text
+    assert "Vezi exact ce schimbi și ce obții." in response.text
+    assert "Acum încearcă pe o casă." in response.text
     assert 'data-hlp-launch' in response.text
     assert 'data-hlp-demo-frame' in response.text
-    assert 'class="hlp-product-stage"' in response.text
-    assert 'class="hlp-flow-line"' in response.text
-    assert "/static/home-lab-product.css?v=product2" in response.text
-    assert "/static/home-lab-product.js?v=product2" in response.text
-    assert "Casa ta, nu o casă generică" not in response.text
-    assert "De la simulare la proiect" not in response.text
+    assert 'class="hlp-house-stage"' in response.text
+    assert 'class="hlp-house-visual"' in response.text
+    assert "/static/home-lab/home-envelope.svg" in response.text
+    assert "/static/home-lab-product.css?v=product3" in response.text
+    assert "/static/home-lab-product.js?v=product3" in response.text
+    assert "EXEMPLU ILUSTRATIV" in response.text
     assert "METODOLOGIE" not in response.text
     assert "/static/favicon.svg" in response.text
 
