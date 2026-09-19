@@ -653,6 +653,7 @@
     renderHome();
     renderProgress();
     renderDock();
+    renderLiveConfigurator();
     if (screen === "intervention") renderIntervention();
     if (screen === "scenario") renderScenario();
   }
@@ -663,6 +664,7 @@
     screen = next;
     $$("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
+    emitVisualState();
     window.scrollTo({top: 0, behavior: "smooth"});
   }
 
@@ -684,6 +686,7 @@
     if (!currentResult && !homeResult) return;
     homeResult = currentResult || homeResult;
     baselineSaved = true;
+    referenceMode = false;
     scenarioState = {...homeState};
     scenarioResult = homeResult;
     measures = [];
@@ -726,6 +729,11 @@
   }
 
   function updateHomeFromEditors() {
+    const previous = {
+      orientation: homeState.orientation,
+      cooling: homeState.cooling,
+      heating: homeState.heating,
+    };
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
     homeState.temperature = Number($("#hlnTemperature").value);
@@ -741,13 +749,20 @@
     homeState.cooling = $("#hlnHomeCooling").value;
     renderHome();
     baselineSaved = false;
+    referenceMode = false;
     measures = [];
     scenarioState = {...homeState};
+    const focus =
+      previous.cooling !== homeState.cooling ? "cooling" :
+      previous.heating !== homeState.heating ? "heating" :
+      previous.orientation !== homeState.orientation ? "orientation" : null;
+    emitVisualState(focus);
     scheduleCalculate("home");
   }
 
   function openMeasure(type) {
     if (!baselineSaved) return;
+    referenceMode = false;
     interventionOriginal = {...scenarioState};
     activeMeasure = type;
 
@@ -783,6 +798,7 @@
   }
 
   function resetMeasure(type) {
+    referenceMode = false;
     if (type === "wall") scenarioState.wallIns = homeState.wallIns;
     if (type === "roof") scenarioState.roofIns = homeState.roofIns;
     if (type === "floor") scenarioState.floorIns = homeState.floorIns;
@@ -803,6 +819,7 @@
 
   function syncInterventionFromControls() {
     if (!activeMeasure) return;
+    referenceMode = false;
     if (activeMeasure === "wall") scenarioState.wallIns = Number($("#hlnWallIns").value);
     if (activeMeasure === "roof") scenarioState.roofIns = Number($("#hlnRoofIns").value);
     if (activeMeasure === "floor") scenarioState.floorIns = Number($("#hlnFloorIns").value);
