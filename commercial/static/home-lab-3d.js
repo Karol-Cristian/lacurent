@@ -966,7 +966,7 @@ class HomeLabHouse3D {
     ) {
       this.focusEquipment("heatPump");
     } else if (detail.focus === "home") {
-      this.resetCamera();
+      this.focusOrientation(detail.orientation || "south");
     }
   }
 
