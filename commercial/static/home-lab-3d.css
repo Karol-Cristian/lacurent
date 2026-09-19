@@ -815,3 +815,65 @@
     margin-bottom: 0;
   }
 }
+
+
+.hln-3d-layer-inspector {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 9px;
+  padding: 9px;
+  border: 1px solid rgba(38,51,45,.08);
+  border-radius: 13px;
+  background: rgba(246,249,246,.72);
+}
+
+.hln-3d-layer-inspector small {
+  color: #6c756f;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.hln-3d-layer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.hln-3d-layer-buttons button,
+.hln-3d-layer-inspector [data-author-layer-all-off] {
+  border: 1px solid rgba(38,51,45,.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,.80);
+  color: #3f4d46;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.hln-3d-layer-buttons button.is-on {
+  color: #fff;
+  background: #315d49;
+  border-color: #315d49;
+  box-shadow: 0 5px 14px rgba(49,93,73,.18);
+}
+
+@media (max-width: 760px) {
+  .hln-3d-author-panel.is-collapsed {
+    max-height: 150px;
+  }
+
+  .hln-3d-author-panel.is-collapsed .hln-3d-mesh-inspector {
+    display: none;
+  }
+
+  .hln-3d-author-panel.is-collapsed .hln-3d-layer-inspector {
+    margin-bottom: 0;
+    padding: 7px 8px;
+  }
+
+  .hln-3d-author-panel.is-collapsed .hln-3d-layer-inspector small {
+    display: none;
+  }
+}
