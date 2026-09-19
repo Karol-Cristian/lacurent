@@ -3,6 +3,26 @@
   if (window.parent === window) return;
 
   let lastHeight = 0;
+  let focusRequested = false;
+
+  function requestMobileFocus() {
+    if (focusRequested) return;
+    if ((window.innerWidth || document.documentElement.clientWidth || 9999) > 760) return;
+    focusRequested = true;
+    window.parent.postMessage({
+      type: "lacurent:embed-focus-request",
+      partner: document.body?.dataset?.embedPartner || ""
+    }, "*");
+  }
+
+  function applyFocusState(active) {
+    document.body?.classList.toggle("embed-focus-active", Boolean(active));
+    document.documentElement?.classList.toggle("embed-focus-active", Boolean(active));
+    window.dispatchEvent(new CustomEvent("lacurent:embedfocuschange", {
+      detail: {active: Boolean(active)}
+    }));
+    window.setTimeout(publishHeight, 0);
+  }
   function publishHeight() {
     const root = document.documentElement;
     const body = document.body;
@@ -24,6 +44,15 @@
   window.addEventListener("load", publishHeight);
   window.addEventListener("resize", publishHeight);
   window.addEventListener("lacurent:languagechange", () => setTimeout(publishHeight, 0));
+  document.addEventListener("pointerdown", requestMobileFocus, {capture:true, passive:true});
+  document.addEventListener("focusin", requestMobileFocus, {capture:true});
+
+  window.addEventListener("message", event => {
+    const data = event.data;
+    if (!data || data.type !== "lacurent:embed-focus-state") return;
+    applyFocusState(Boolean(data.active));
+    if (!data.active) focusRequested = false;
+  });
 
   if ("ResizeObserver" in window) {
     const observer = new ResizeObserver(() => publishHeight());
