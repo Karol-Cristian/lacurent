@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next2">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next3">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d19">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -244,6 +244,130 @@
               <span><strong>Solar / PV</strong><small>Calcul în curs de integrare</small></span>
               <span class="hln-coming">CURÂND</span>
             </button>
+          </div>
+        </div>
+      </div>
+      <div class="hln-live-configurator" id="hlnLiveConfigurator">
+        <div class="hln-configurator-head">
+          <div>
+            <span>CONFIGURATOR RAPID</span>
+            <strong>Modifică și vezi impactul instant.</strong>
+            <small>● Casa mea &nbsp; ◆ Casa de referință</small>
+          </div>
+          <button type="button" class="hln-reference-button" data-hln-reference-house>Casa de referință</button>
+        </div>
+
+        <div class="hln-tune-grid">
+          <article class="hln-tune-row" data-hln-tune="wallIns">
+            <header><span>Izolație pereți</span><strong data-hln-tune-value>—</strong></header>
+            <div class="hln-slider-control">
+              <button type="button" data-hln-tune-step="-1" aria-label="Scade izolația pereților">−</button>
+              <div class="hln-range-wrap">
+                <input id="hlnLiveWallIns" type="range" min="0" max="30" step="1">
+                <i class="hln-range-marker is-home" data-hln-home-marker></i>
+                <i class="hln-range-marker is-reference" data-hln-reference-marker></i>
+              </div>
+              <button type="button" data-hln-tune-step="1" aria-label="Crește izolația pereților">+</button>
+            </div>
+            <small data-hln-tune-caption>—</small>
+          </article>
+
+          <article class="hln-tune-row" data-hln-tune="roofIns">
+            <header><span>Izolație pod</span><strong data-hln-tune-value>—</strong></header>
+            <div class="hln-slider-control">
+              <button type="button" data-hln-tune-step="-1" aria-label="Scade izolația podului">−</button>
+              <div class="hln-range-wrap">
+                <input id="hlnLiveRoofIns" type="range" min="0" max="40" step="1">
+                <i class="hln-range-marker is-home" data-hln-home-marker></i>
+                <i class="hln-range-marker is-reference" data-hln-reference-marker></i>
+              </div>
+              <button type="button" data-hln-tune-step="1" aria-label="Crește izolația podului">+</button>
+            </div>
+            <small data-hln-tune-caption>—</small>
+          </article>
+
+          <article class="hln-tune-row" data-hln-tune="floorIns">
+            <header><span>Izolație pardoseală</span><strong data-hln-tune-value>—</strong></header>
+            <div class="hln-slider-control">
+              <button type="button" data-hln-tune-step="-1" aria-label="Scade izolația pardoselii">−</button>
+              <div class="hln-range-wrap">
+                <input id="hlnLiveFloorIns" type="range" min="0" max="25" step="1">
+                <i class="hln-range-marker is-home" data-hln-home-marker></i>
+                <i class="hln-range-marker is-reference" data-hln-reference-marker></i>
+              </div>
+              <button type="button" data-hln-tune-step="1" aria-label="Crește izolația pardoselii">+</button>
+            </div>
+            <small data-hln-tune-caption>—</small>
+          </article>
+
+          <article class="hln-tune-row" data-hln-tune="windows">
+            <header><span>Suprafață ferestre</span><strong data-hln-tune-value>—</strong></header>
+            <div class="hln-slider-control">
+              <button type="button" data-hln-tune-step="-0.5" aria-label="Scade suprafața ferestrelor">−</button>
+              <div class="hln-range-wrap">
+                <input id="hlnLiveWindows" type="range" min="2" max="60" step="0.5">
+                <i class="hln-range-marker is-home" data-hln-home-marker></i>
+                <i class="hln-range-marker is-reference" data-hln-reference-marker></i>
+              </div>
+              <button type="button" data-hln-tune-step="0.5" aria-label="Crește suprafața ferestrelor">+</button>
+            </div>
+            <small data-hln-tune-caption>—</small>
+          </article>
+        </div>
+
+        <div class="hln-live-selects">
+          <label>Ferestre
+            <select id="hlnLiveGlazing">
+              <option value="single_clear_glazing">Geam simplu</option>
+              <option value="double_clear_glazing">Geam dublu clar</option>
+              <option value="double_low_e_face_3">Geam dublu Low-E</option>
+              <option value="triple_low_e_faces_2_and_5">Tripan Low-E</option>
+            </select>
+          </label>
+          <label>Încălzire
+            <select id="hlnLiveHeating">
+              <option value="condensing_gas_boiler">Centrală gaz în condensare</option>
+              <option value="gas_boiler">Centrală gaz convențională</option>
+              <option value="heat_pump">Pompă de căldură</option>
+              <option value="district_heat">Termoficare</option>
+              <option value="wood_stove">Șemineu / sobă</option>
+              <option value="electric_resistance">Electrică directă</option>
+              <option value="wood_boiler">Centrală pe lemne</option>
+              <option value="pellet_boiler">Centrală pe peleți</option>
+            </select>
+          </label>
+          <label>Ventilație
+            <select id="hlnLiveVentilation">
+              <option value="natural">Naturală</option>
+              <option value="mechanical">Mecanică</option>
+              <option value="hrv">Cu recuperare</option>
+            </select>
+          </label>
+          <label>Răcire
+            <select id="hlnLiveCooling">
+              <option value="none">Fără răcire</option>
+              <option value="split">Aer condiționat</option>
+              <option value="heat_pump">Pompă reversibilă</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="hln-configurator-result">
+          <div class="hln-result-price">
+            <small>COST ANUAL ESTIMAT</small>
+            <strong id="hlnLiveCost">—</strong>
+            <em id="hlnLiveSaving">față de Casa mea</em>
+          </div>
+          <div class="hln-energy-class-block">
+            <small>CLASĂ ENERGETICĂ ESTIMATĂ</small>
+            <div class="hln-energy-scale" id="hlnEnergyScale" aria-label="Clasă energetică">
+              <span data-energy-class="A+">A+</span><span data-energy-class="A">A</span><span data-energy-class="B">B</span><span data-energy-class="C">C</span><span data-energy-class="D">D</span><span data-energy-class="E">E</span><span data-energy-class="F">F</span><span data-energy-class="G">G</span>
+            </div>
+            <strong id="hlnLiveClass">—</strong>
+          </div>
+          <div class="hln-configurator-actions">
+            <button type="button" class="hln-secondary" data-hln-reset-home>Reset la Casa mea</button>
+            <button type="button" class="hln-primary" data-hln-reference-house>Setează casa de referință</button>
           </div>
         </div>
       </div>
@@ -525,6 +649,12 @@
       <input name="air_changes_per_hour" value="0.5">
       <input name="heat_recovery_efficiency" value="0">
       <input name="heating_choice" value="condensing_gas_boiler">
+      <input name="expert_heating_override" value="">
+      <input name="heating_system_type" value="condensing_gas_boiler">
+      <input name="heating_carrier" value="natural_gas">
+      <input name="heating_efficiency" value="0.94">
+      <input name="heating_scop" value="3.2">
+      <input name="heating_cost_profile" value="natural_gas">
       <input name="cooling_enabled" value="">
       <input name="cooling_seer" value="4.0">
       <input name="cooling_setpoint_c" value="26">
@@ -544,7 +674,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d23"></script>
-  <script src="/static/home-lab-next.js?v=next2"></script>
+  <script src="/static/home-lab-next.js?v=next3"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
