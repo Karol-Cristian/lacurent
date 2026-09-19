@@ -6,90 +6,111 @@
   <title>Home Lab | Calculator energetic și renovare | LaCurent</title>
   <meta name="description" content="Modelează casa actuală, testează renovări și vezi impactul asupra consumului, costului și necesarului termic.">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-product.css?v=product1">
+  <link rel="stylesheet" href="/static/home-lab-product.css?v=product2">
 </head>
 <body>
   <header class="hlp-nav">
-    <a href="/instalatii" class="hlp-logo"><span>LC</span><strong>LaCurent</strong></a>
-    <nav><a href="#cum-functioneaza">Cum funcționează</a><a href="#demo">Demo</a><a href="/instalatii">Instalații & Energie</a></nav>
-    <a class="hlp-nav-cta" href="#demo" data-hlp-launch>Încearcă demo-ul</a>
+    <a href="/instalatii" class="hlp-logo" aria-label="LaCurent">
+      <span>LC</span><strong>LaCurent</strong>
+    </a>
+    <div class="hlp-nav-actions">
+      <a href="#cum-functioneaza">Cum funcționează</a>
+      <button type="button" data-hlp-launch>Încearcă Home Lab</button>
+    </div>
   </header>
 
   <main>
     <section class="hlp-hero">
       <div class="hlp-hero-copy">
-        <span class="hlp-kicker">HOME LAB · LA CURENT</span>
+        <span class="hlp-kicker">HOME LAB</span>
         <h1>Înțelege casa înainte să investești în ea.</h1>
-        <p>Modelează locuința actuală, testează renovări și vezi ce se schimbă în consum, cost și necesarul termic — înainte să cumperi.</p>
-        <div class="hlp-actions">
-          <button type="button" class="hlp-primary" data-hlp-launch>Încearcă demo-ul</button>
-          <a href="#cum-functioneaza" class="hlp-secondary">Vezi cum funcționează</a>
-        </div>
-        <div class="hlp-proof"><span>13.622 localități</span><span>Motor energetic Python</span><span>Scenarii comparate cu Casa mea</span></div>
+        <p>Modelează locuința actuală. Testează o renovare. Vezi ce se schimbă.</p>
+        <button type="button" class="hlp-primary" data-hlp-launch>Încearcă Home Lab <span>→</span></button>
       </div>
 
-      <div class="hlp-product-visual" aria-label="Previzualizare Home Lab">
-        <div class="hlp-preview-top"><span class="hlp-mini-logo">LC</span><strong>Home Lab</strong><em>Demo</em></div>
-        <div class="hlp-preview-body">
-          <div class="hlp-preview-copy"><small>SCENARIUL MEU</small><strong>Casa ta, după renovare.</strong></div>
-          <div class="hlp-preview-compare">
-            <article class="is-home"><span>CASA MEA</span><strong>6.420 lei</strong><small>/ an</small></article>
-            <b>→</b>
-            <article class="is-reno"><span>SCENARIU</span><strong>4.380 lei</strong><small>/ an</small></article>
+      <div class="hlp-product-stage" aria-label="Previzualizare Home Lab">
+        <div class="hlp-window">
+          <div class="hlp-window-bar">
+            <div><i></i><i></i><i></i></div>
+            <span>Home Lab</span>
+            <small>LaCurent</small>
           </div>
-          <div class="hlp-preview-benefit"><strong>+32%</strong><span>economie estimată</span></div>
-          <div class="hlp-preview-measures"><span>Fațadă +10 cm</span><span>Ferestre Low-E</span><span>Pompă de căldură</span></div>
+          <div class="hlp-window-body">
+            <div class="hlp-window-title">
+              <small>SCENARIUL MEU</small>
+              <strong>Casa ta, după renovare.</strong>
+            </div>
+            <div class="hlp-result-line">
+              <div class="is-home">
+                <span>CASA MEA</span>
+                <strong>6.420</strong>
+                <small>lei/an</small>
+              </div>
+              <b>→</b>
+              <div class="is-reno">
+                <span>SCENARIU</span>
+                <strong>4.380</strong>
+                <small>lei/an</small>
+              </div>
+            </div>
+            <div class="hlp-result-bottom">
+              <strong>+32%</strong>
+              <span>economie estimată</span>
+              <em>Fațadă +10 cm · Ferestre · Pompă de căldură</em>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="hlp-features" id="cum-functioneaza">
-      <article><span>01</span><div><strong>Casa ta, nu o casă generică</strong><p>Localitatea, dimensiunile, anvelopa și instalațiile devin punctul real de plecare.</p></div></article>
-      <article><span>02</span><div><strong>Testează renovarea</strong><p>Fațadă, pod, pardoseală, ferestre, încălzire și ventilație — fiecare separat.</p></div></article>
-      <article><span>03</span><div><strong>Vezi efectul imediat</strong><p>Cost, energie, CO₂ și necesar termic sunt recalculate de motorul energetic.</p></div></article>
-      <article><span>04</span><div><strong>De la simulare la proiect</strong><p>Scenariile pot deveni necesar tehnic, produse compatibile și cerere de ofertă.</p></div></article>
-    </section>
-
-    <section class="hlp-story">
-      <div class="hlp-story-copy">
-        <span class="hlp-kicker">UN SINGUR FLUX</span>
-        <h2>Casa mea → Șantier → Scenariul meu</h2>
-        <p>Metodologia rămâne în spate. În interfață vezi doar ce trebuie să decizi.</p>
+    <section class="hlp-flow" id="cum-functioneaza">
+      <div class="hlp-flow-heading">
+        <span>UN SINGUR FLUX</span>
+        <h2>De la casa de azi la scenariul de renovare.</h2>
       </div>
-      <div class="hlp-story-steps">
-        <article class="is-home"><span>⌂</span><strong>Casa mea</strong><small>Salvezi situația reală.</small></article>
-        <b>→</b>
-        <article><span>▦</span><strong>Șantier</strong><small>Alegi ce vrei să schimbi.</small></article>
-        <b>→</b>
-        <article class="is-reno"><span>✓</span><strong>Scenariul meu</strong><small>Vezi impactul combinat.</small></article>
+      <div class="hlp-flow-line">
+        <article>
+          <span>01</span>
+          <strong>Casa mea</strong>
+          <p>Salvezi situația reală.</p>
+        </article>
+        <i>→</i>
+        <article>
+          <span>02</span>
+          <strong>Șantier</strong>
+          <p>Alegi ce vrei să schimbi.</p>
+        </article>
+        <i>→</i>
+        <article>
+          <span>03</span>
+          <strong>Scenariul meu</strong>
+          <p>Vezi impactul în cost și energie.</p>
+        </article>
       </div>
     </section>
 
     <section class="hlp-demo" id="demo">
       <div class="hlp-demo-intro" data-hlp-launcher>
-        <span class="hlp-kicker">DEMO INTERACTIV</span>
-        <h2>Construiește Casa mea în aproximativ un minut.</h2>
-        <p>Demo-ul se deschide aici, în aceeași pagină. Pe telefon intră într-un spațiu de lucru dedicat.</p>
-        <button type="button" class="hlp-primary" data-hlp-launch>Deschide Home Lab</button>
+        <span>DEMO INTERACTIV</span>
+        <h2>Testează Home Lab.</h2>
+        <p>Construiește casa, schimbă o intervenție și vezi rezultatul.</p>
+        <button type="button" class="hlp-primary" data-hlp-launch>Deschide demo-ul <span>→</span></button>
       </div>
       <div class="hlp-demo-shell" data-hlp-demo-shell hidden>
-        <div class="hlp-demo-head"><div><span>HOME LAB</span><strong>Demo interactiv</strong></div><button type="button" data-hlp-close-demo>Închide</button></div>
+        <div class="hlp-demo-head">
+          <strong>Home Lab</strong>
+          <button type="button" data-hlp-close-demo>Închide</button>
+        </div>
         <iframe data-hlp-demo-frame title="Home Lab demo" loading="lazy"></iframe>
-      </div>
-    </section>
-
-    <section class="hlp-trust">
-      <div><span>METODOLOGIE</span><strong>Fizica înaintea recomandării.</strong><p>Calculul energetic rămâne determinist. Interfața doar îl face mai ușor de folosit.</p></div>
-      <div class="hlp-trust-grid">
-        <article><strong>Climat local</strong><small>Profil selectat din localitatea casei.</small></article>
-        <article><strong>Baseline real</strong><small>Scenariile nu modifică Casa mea.</small></article>
-        <article><strong>Prețuri separate</strong><small>Costul este calculat distinct de fizică.</small></article>
-        <article><strong>Trasabilitate</strong><small>Motor, scenariu și produse pot fi versionate.</small></article>
       </div>
     </section>
   </main>
 
-  <footer><strong>LaCurent Home Lab</strong><span>Instalații & Energie · România</span><a href="/instalatii">Înapoi la LaCurent</a></footer>
-  <script src="/static/home-lab-product.js?v=product1"></script>
+  <footer>
+    <span>Home Lab by LaCurent</span>
+    <a href="/instalatii">Instalații & Energie</a>
+  </footer>
+
+  <script src="/static/home-lab-product.js?v=product2"></script>
 </body>
 </html>
