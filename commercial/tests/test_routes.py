@@ -666,7 +666,7 @@ def test_partner_embed_exposes_six_mc001_chapter_cockpit_and_product_scope() -> 
     assert "<strong>Instalații</strong>" in response.text
     assert "<strong>Regenerabile</strong>" in response.text
     assert 'id="labMobileCo2"' in response.text
-    assert "Asta este casa mea acum" in response.text
+    assert "Salvează casa mea → renovări" in response.text
 
 
 def test_home_lab_runtime_wires_mobile_chapter_editor_and_live_summary() -> None:
