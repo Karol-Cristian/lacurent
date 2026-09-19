@@ -36,7 +36,7 @@ def test_elivio_privacy_page_is_available() -> None:
     response = client.get("/elivio-consilio/confidentialitate")
     assert response.status_code == 200
     assert "Confidențialitate și AI" in response.text
-    assert "nu oferă diagnostic" in response.text
+    assert "nu stabilește diagnostice" in response.text
 
 
 def test_elivio_chat_has_safe_local_orientation_fallback() -> None:
@@ -81,7 +81,7 @@ def test_elivio_fallback_advances_instead_of_repeating() -> None:
     payload = response.json()
     assert payload["stage"] == 3
     assert payload["stage_label"] == "Ce sprijin se potrivește"
-    assert "tema este" in payload["reply"]
+    assert "tema ține" in payload["reply"]
 
 
 def test_elivio_chat_booking_intent_skips_intake() -> None:
