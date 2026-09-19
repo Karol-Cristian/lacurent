@@ -166,18 +166,35 @@
 
   function syncMeasuresFromScenario() {
     const next = [];
-    if (Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01) next.push("wall");
-    if (Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01) next.push("roof");
-    if (Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01) next.push("floor");
+    if (
+      Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01 ||
+      Number.isFinite(Number(scenarioOverrides.wallU))
+    ) next.push("wall");
+    if (
+      Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01 ||
+      Number.isFinite(Number(scenarioOverrides.roofU))
+    ) next.push("roof");
+    if (
+      Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01 ||
+      Number.isFinite(Number(scenarioOverrides.floorU))
+    ) next.push("floor");
     if (
       scenarioState.glazing !== homeState.glazing ||
       Math.abs(Number(scenarioState.windows) - Number(homeState.windows)) > 0.01 ||
+      Number.isFinite(Number(scenarioOverrides.windowU)) ||
       referenceMode
     ) next.push("windows");
-    if (scenarioState.heating !== homeState.heating || referenceMode) next.push("heating");
+    if (
+      scenarioState.heating !== homeState.heating ||
+      Number.isFinite(Number(scenarioOverrides.heatingEfficiency)) ||
+      referenceMode
+    ) next.push("heating");
     if (
       scenarioState.ventilation !== homeState.ventilation ||
       scenarioState.cooling !== homeState.cooling ||
+      Number.isFinite(Number(scenarioOverrides.airChanges)) ||
+      Number.isFinite(Number(scenarioOverrides.heatRecovery)) ||
+      Number.isFinite(Number(scenarioOverrides.coolingSeer)) ||
       referenceMode
     ) next.push("ventilation");
     measures = next;
@@ -337,15 +354,22 @@
       node.classList.toggle("is-active", node.dataset.energyClass === result?.energy_class);
     });
 
-    $$("[data-hln-reference-house]").forEach(button => {
+    const referenceDerived = Object.keys(scenarioOverrides || {}).length > 0;
+    $("[data-hln-reference-house]").forEach(button => {
       button.classList.toggle("is-active", referenceMode);
+      button.classList.toggle("is-derived", !referenceMode && referenceDerived);
       button.setAttribute("aria-pressed", referenceMode ? "true" : "false");
       if (button.classList.contains("hln-reference-button")) {
-        button.textContent = referenceMode ? "Referință activă ✓" : "Casa de referință";
+        button.textContent = referenceMode
+          ? "Referință activă ✓"
+          : referenceDerived
+            ? "Referință modificată"
+            : "Casa de referință";
       }
     });
 
     live.classList.toggle("is-reference", referenceMode);
+    live.classList.toggle("is-reference-derived", !referenceMode && referenceDerived);
   }
 
   function populateTechnicalForm(state) {
