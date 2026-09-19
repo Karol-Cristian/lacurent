@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const HOUSE_MODELS = {
   current: {
@@ -82,7 +81,6 @@ class HomeLabHouse3D {
     this.dragged = false;
     this.pointerDown = null;
     this.isMobile = window.matchMedia?.("(max-width: 760px)").matches ?? false;
-    this.environmentTarget = null;
     this.microTexture = null;
     this.renderPipeline = null;
     this.beautyEnabled = false;
@@ -125,7 +123,7 @@ class HomeLabHouse3D {
       return;
     }
 
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.22 : 1.75));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.5 : 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -134,7 +132,6 @@ class HomeLabHouse3D {
     this.renderer.setClearColor(0x000000, 0);
 
     this.scene = new THREE.Scene();
-    this.addEnvironment();
     this.camera = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
     this.camera.position.set(9.5, 6.2, 10.5);
 
@@ -171,16 +168,6 @@ class HomeLabHouse3D {
       console.error("[Home Lab 3D] model load failed", error);
       this.fail("Modelul 3D nu a putut fi încărcat");
     }
-  }
-
-  addEnvironment() {
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    const environmentScene = new RoomEnvironment();
-    this.environmentTarget = pmrem.fromScene(environmentScene, 0.04);
-    this.scene.environment = this.environmentTarget.texture;
-    if ("environmentIntensity" in this.scene) this.scene.environmentIntensity = 0.72;
-    environmentScene.dispose();
-    pmrem.dispose();
   }
 
   addLighting() {
