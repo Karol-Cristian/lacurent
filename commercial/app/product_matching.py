@@ -24,8 +24,8 @@ class WallInsulationProductV1(BaseModel):
     sku: str | None = Field(default=None, max_length=160)
     name: str = Field(min_length=1, max_length=240)
     manufacturer: str | None = Field(default=None, max_length=160)
-    category: Literal["facade_insulation"] = "facade_insulation"
-    application: Literal["external_wall"] = "external_wall"
+    category: str = Field(default="facade_insulation", min_length=1, max_length=120)
+    application: str = Field(default="external_wall", min_length=1, max_length=120)
     thickness_mm: float = Field(gt=0, le=500)
     lambda_w_mk: float = Field(ge=0.020, le=0.080)
     package_area_m2: float | None = Field(default=None, gt=0)
