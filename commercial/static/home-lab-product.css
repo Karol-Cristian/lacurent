@@ -120,6 +120,18 @@ footer a{color:var(--reno);font-weight:800}
   .hlp-demo-intro h2{font-size:31px}
   .hlp-demo-shell{border-radius:16px}
   .hlp-demo-shell iframe{height:100svh}
+  body.hlp-demo-focus{overflow:hidden}
+  body.hlp-demo-focus .hlp-demo-shell{
+    position:fixed;
+    z-index:1000;
+    inset:0;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    border:0;
+    border-radius:0;
+  }
+  body.hlp-demo-focus .hlp-demo-shell iframe{height:100%}
+  body.hlp-demo-focus .hlp-demo-head{min-height:48px}
   .hlp-trust{padding:36px 16px;margin-bottom:40px}
   .hlp-trust-grid{grid-template-columns:1fr}
   footer{flex-direction:column;gap:6px}
