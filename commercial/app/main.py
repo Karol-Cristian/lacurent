@@ -612,6 +612,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     loss_rows.sort(key=lambda row: row["value_w_k"], reverse=True)
 
     reference = result.reference
+    reference_rules = methodology()["reference_building"]
     return {
         "energy_class": result.energy_class,
         "final_energy_kwh": float(result.total_final_energy_kwh),
@@ -662,6 +663,17 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             if reference is not None
             else None
         ),
+        "reference_parameters": {
+            "u_values_w_m2k": {
+                key: float(value)
+                for key, value in reference_rules["u_values_w_m2k"].items()
+            },
+            "air_changes_per_hour": float(reference_rules["air_changes_per_hour"]),
+            "heat_recovery_efficiency": float(reference_rules["heat_recovery_efficiency"]),
+            "heating_efficiency": float(reference_rules["heating_efficiency"]),
+            "cooling_seer": float(reference_rules["cooling_seer"]),
+            "dhw_efficiency": float(reference_rules["dhw_efficiency"]),
+        },
         "price_references_current": bool(cost.get("price_references_current")),
         "price_retrieved_on": cost.get("retrieved_on"),
     }
