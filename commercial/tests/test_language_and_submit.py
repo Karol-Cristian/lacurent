@@ -12,7 +12,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
 
 def test_energy_calculator_loads_unified_language_switch_and_submit_safeguard() -> None:
-    response = client.get("/instalatii/calculator")
+    response = client.get("/instalatii/calculator/legacy")
     assert response.status_code == 200
     assert "energy-i18n.js?v=i18n1" in response.text
     assert "calculator-submit-fix.js?v=submit2" in response.text
