@@ -36,12 +36,20 @@ class HouseStateV1(BaseModel):
     provenance: dict[str, str]
 
 
+class ProductReferenceV1(BaseModel):
+    partner_id: str = Field(min_length=1, max_length=120)
+    product_id: str = Field(min_length=1, max_length=160)
+    sku: str | None = Field(default=None, max_length=160)
+    name: str | None = Field(default=None, max_length=240)
+
+
 class WallInsulationMeasureV1(BaseModel):
     schema_version: Literal["1.0"] = SCHEMA_VERSION
     measure_id: str
     type: Literal["wall_insulation"] = "wall_insulation"
     target: Literal["external_wall"] = "external_wall"
-    material_source: Literal["generic"] = "generic"
+    material_source: Literal["generic", "partner_product"] = "generic"
+    product_reference: ProductReferenceV1 | None = None
     baseline_wall_u_value_w_m2k: float
     added_insulation_thickness_mm: float
     insulation_lambda_w_mk: float
@@ -229,11 +237,17 @@ def build_wall_insulation_scenario(
     *,
     added_insulation_thickness_mm: float,
     insulation_lambda_w_mk: float = 0.040,
+    material_source: Literal["generic", "partner_product"] = "generic",
+    product_reference: ProductReferenceV1 | None = None,
 ) -> WallInsulationScenarioBundleV1:
     if added_insulation_thickness_mm <= 0:
         raise ValueError("Added wall-insulation thickness must be greater than zero.")
     if insulation_lambda_w_mk <= 0:
         raise ValueError("Insulation thermal conductivity must be greater than zero.")
+    if material_source == "partner_product" and product_reference is None:
+        raise ValueError("A partner-product wall-insulation scenario requires a product reference.")
+    if material_source == "generic" and product_reference is not None:
+        raise ValueError("A generic wall-insulation scenario cannot carry a product reference.")
 
     baseline_result = calculate(baseline)
     baseline_wall_u = baseline_result.envelope_u_values.wall_u_value_w_m2k
@@ -255,6 +269,8 @@ def build_wall_insulation_scenario(
         "house_id": house_state.house_id,
         "type": "wall_insulation",
         "target": "external_wall",
+        "material_source": material_source,
+        "product_reference": model_to_dict(product_reference) if product_reference is not None else None,
         "added_insulation_thickness_mm": float(added_insulation_thickness_mm),
         "insulation_lambda_w_mk": float(insulation_lambda_w_mk),
     }
@@ -262,13 +278,19 @@ def build_wall_insulation_scenario(
 
     measure = WallInsulationMeasureV1(
         measure_id=measure_id,
+        material_source=material_source,
+        product_reference=product_reference,
         baseline_wall_u_value_w_m2k=_round(baseline_wall_u, 4),
         added_insulation_thickness_mm=_round(added_insulation_thickness_mm, 1),
         insulation_lambda_w_mk=_round(insulation_lambda_w_mk, 4),
         added_thermal_resistance_m2k_w=_round(added_r, 4),
         proposed_wall_u_value_w_m2k=_round(proposed_wall_u, 4),
         assumptions=[
-            "Generic insulation layer applied to every modeled exterior-wall component.",
+            (
+                "Selected partner product layer applied to every modeled exterior-wall component."
+                if material_source == "partner_product"
+                else "Generic insulation layer applied to every modeled exterior-wall component."
+            ),
             "The existing assembly is represented by its current whole-wall U-value.",
             "Thermal bridges are kept unchanged in this V1 measure.",
         ],

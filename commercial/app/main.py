@@ -16,6 +16,12 @@ from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .pricing import energy_prices, estimate_energy_cost
+from .product_matching import (
+    WallInsulationProductMatchRequestV1,
+    WallInsulationProductScenarioRequestV1,
+    build_product_wall_insulation_scenario,
+    match_wall_insulation_products,
+)
 from .renovation import WallInsulationScenarioRequestV1, build_wall_insulation_scenario
 from .software_resources import router as software_resources_router
 
@@ -712,6 +718,35 @@ async def wall_insulation_scenario_api(payload: WallInsulationScenarioRequestV1)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return JSONResponse(model_to_dict(bundle))
+
+
+@app.post("/api/products/wall-insulation/match")
+async def wall_insulation_product_match_api(
+    payload: WallInsulationProductMatchRequestV1,
+) -> JSONResponse:
+    return JSONResponse(
+        model_to_dict(
+            match_wall_insulation_products(
+                payload.requirement,
+                payload.products,
+            )
+        )
+    )
+
+
+@app.post("/api/scenarios/wall-insulation/product")
+async def wall_insulation_product_scenario_api(
+    payload: WallInsulationProductScenarioRequestV1,
+) -> JSONResponse:
+    try:
+        response = build_product_wall_insulation_scenario(
+            payload.baseline,
+            payload.requirement,
+            payload.product,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(response))
 
 
 @app.get("/health")
