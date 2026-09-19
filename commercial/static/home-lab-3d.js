@@ -154,7 +154,6 @@ class HomeLabHouse3D {
 
     try {
       await this.loadModel();
-      this.addEnglishGarden();
       this.addHitZones();
       this.addRenovationLayer();
       this.createSemanticHotspots();
@@ -164,7 +163,9 @@ class HomeLabHouse3D {
       this.resize();
       this.mount.classList.remove("is-loading");
       this.mount.classList.add("is-ready");
-      this.mount.closest(".hln-house-visual")?.classList.add("hln-house-visual-3d-ready");
+      const visual = this.mount.closest(".hln-house-visual");
+      visual?.classList.add("hln-house-visual-3d-ready");
+      visual?.closest(".hln-house-board")?.classList.add("hln-house-board-3d-ready");
       this.startRenderLoop();
     } catch (error) {
       console.error("[Home Lab 3D] model load failed", error);
