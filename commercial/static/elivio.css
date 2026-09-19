@@ -297,3 +297,342 @@ body{
   .ec-chat{border-radius:20px}
   .ec-hero::before{width:120px;height:120px;left:-55px}
 }
+
+
+/* Elivio v4: branded trust strip, floating messenger, clear contact form */
+.ec-trust{
+  padding-block:30px;
+  gap:34px;
+}
+.ec-trust-row{
+  gap:22px;
+  flex-wrap:wrap;
+}
+.ec-trust-logo,
+.ec-trust-equip{
+  height:72px;
+  min-width:170px;
+  padding:11px 18px;
+  border-radius:18px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  border:1px solid rgba(75,67,92,.08);
+  box-shadow:0 7px 20px rgba(71,62,57,.045);
+}
+.ec-trust-logo img{
+  display:block;
+  max-width:150px;
+  max-height:48px;
+  object-fit:contain;
+}
+.ec-trust-maxwell{min-width:220px}
+.ec-trust-maxwell img{max-width:190px;max-height:54px}
+.ec-trust-icl{
+  background:#1263a6;
+  min-width:180px;
+}
+.ec-trust-icl img{max-width:145px;max-height:43px}
+.ec-trust-equip{flex-direction:column;line-height:1.15}
+.ec-trust-equip strong{font-size:1rem;letter-spacing:.16em}
+.ec-trust-equip span{font-size:.68rem;color:var(--muted);margin-top:5px}
+
+.ec-ai-invite{
+  grid-template-columns:1.05fr .95fr;
+  align-items:center;
+}
+.ec-ai-bubbles{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-items:flex-start;
+}
+.ec-ai-bubbles span{
+  display:inline-flex;
+  padding:13px 17px;
+  border-radius:18px 18px 18px 5px;
+  background:rgba(255,255,255,.8);
+  box-shadow:0 8px 20px rgba(67,57,82,.05);
+  font-size:.92rem;
+}
+.ec-ai-bubbles span:nth-child(2){margin-left:42px;background:#fff5ea}
+.ec-ai-bubbles span:nth-child(3){margin-left:14px;background:#eef8f4}
+
+.ec-contact{
+  align-items:start;
+}
+.ec-contact-copy>p:last-of-type{
+  color:var(--muted);
+  max-width:540px;
+}
+.ec-contact-direct{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:28px;
+}
+.ec-contact-direct>a,
+.ec-contact-direct>div{
+  display:flex;
+  flex-direction:column;
+  text-decoration:none;
+  color:var(--ink);
+  padding:12px 0;
+  border-bottom:1px solid rgba(111,102,168,.11);
+}
+.ec-contact-direct small{
+  color:var(--muted);
+  font-size:.68rem;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+.ec-contact-direct strong{font-size:1rem}
+.ec-contact-form{
+  background:#fff;
+  border-radius:26px;
+  padding:28px;
+  box-shadow:0 18px 42px rgba(68,58,80,.08);
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.ec-form-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.ec-contact-form label{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+.ec-contact-form label>span{
+  font-size:.78rem;
+  font-weight:700;
+  color:#4b4657;
+}
+.ec-contact-form input,
+.ec-contact-form select,
+.ec-contact-form textarea{
+  width:100%;
+  border:1px solid #e6dfe9;
+  border-radius:14px;
+  background:#fffdfa;
+  color:var(--ink);
+  font:inherit;
+  padding:12px 13px;
+  outline:none;
+}
+.ec-contact-form input:focus,
+.ec-contact-form select:focus,
+.ec-contact-form textarea:focus{
+  border-color:#aaa1d5;
+  box-shadow:0 0 0 3px rgba(111,102,168,.08);
+}
+.ec-contact-form textarea{resize:vertical;min-height:112px}
+.ec-form-submit{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.ec-form-submit [data-contact-status]{
+  color:var(--muted);
+  font-size:.82rem;
+}
+.ec-form-note{
+  margin:0;
+  color:var(--muted);
+  font-size:.72rem;
+}
+
+/* persistent chat */
+.ec-chat-shell{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  z-index:1000;
+}
+.ec-chat-launcher{
+  margin-left:auto;
+  min-height:58px;
+  border:0;
+  border-radius:999px;
+  background:linear-gradient(135deg,#766db4,#62579f);
+  color:#fff;
+  padding:8px 18px 8px 10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  box-shadow:0 18px 45px rgba(76,66,135,.28);
+  cursor:pointer;
+  font:750 .88rem var(--sans);
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.ec-chat-launcher:hover{
+  transform:translateY(-2px);
+  box-shadow:0 20px 52px rgba(76,66,135,.34);
+}
+.ec-chat-launcher-icon{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.16);
+}
+.ec-chat-launcher-icon svg{
+  width:25px;
+  height:25px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.ec-chat-launcher::after{
+  content:"";
+  position:absolute;
+  right:7px;
+  top:5px;
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#8be0b7;
+  border:2px solid #fff;
+}
+
+.ec-chat-panel{
+  width:min(390px,calc(100vw - 28px));
+  height:min(620px,calc(100vh - 110px));
+  margin-bottom:12px;
+  background:#fff;
+  border-radius:26px;
+  box-shadow:0 28px 80px rgba(42,35,65,.22);
+  overflow:hidden;
+  display:grid;
+  grid-template-rows:auto 1fr auto auto auto;
+  border:1px solid rgba(111,102,168,.10);
+  transform-origin:bottom right;
+}
+.ec-chat-panel[hidden]{display:none}
+.ec-chat-head{
+  padding:18px;
+  border-bottom:1px solid #efeaf3;
+  background:linear-gradient(135deg,#fbf9ff,#fffaf6);
+  justify-content:flex-start;
+  align-items:center;
+}
+.ec-chat-avatar{
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:grid!important;
+  place-items:center;
+  background:var(--deep);
+  color:#fff;
+  font-weight:850;
+  font-size:1.2rem;
+}
+.ec-chat-title{
+  display:flex!important;
+  flex:1;
+  min-width:0;
+  flex-direction:column;
+  gap:1px;
+}
+.ec-chat-title strong{font-size:.95rem}
+.ec-chat-title small{
+  font-size:.69rem;
+  line-height:1.35;
+  color:var(--muted);
+}
+.ec-chat-close{
+  margin-left:auto;
+  width:34px;
+  height:34px;
+  border:0;
+  border-radius:50%;
+  background:#f1edf6;
+  color:#625b73;
+  font-size:1.35rem;
+  line-height:1;
+  cursor:pointer;
+}
+.ec-chat-log{
+  min-height:0;
+  max-height:none;
+  padding:18px;
+  background:#fff;
+}
+.ec-chat-quick{
+  margin-top:2px;
+  max-width:100%;
+}
+.ec-chat-quick button{
+  text-align:left;
+  font-size:.78rem;
+  padding:9px 11px;
+}
+.ec-message{font-size:.9rem;line-height:1.45}
+.ec-chat-form{
+  background:#fff;
+  padding:12px;
+  grid-template-columns:1fr 44px;
+  align-items:end;
+}
+.ec-chat-form textarea{
+  min-height:45px;
+  max-height:110px;
+  border-radius:16px;
+  padding:11px 12px;
+}
+.ec-chat-form button{
+  min-width:44px;
+  width:44px;
+  height:44px;
+  padding:0;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+}
+.ec-chat-form button svg{
+  width:21px;
+  height:21px;
+  fill:currentColor;
+}
+.ec-chat-actions{
+  padding:10px 12px 0;
+  border-top:0;
+}
+.ec-chat-action{width:100%;min-height:42px}
+.ec-chat-note{
+  padding:8px 14px 12px;
+  margin:0;
+  font-size:.62rem;
+  text-align:center;
+  color:#8a8491;
+}
+
+@media(max-width:900px){
+  .ec-ai-invite{grid-template-columns:1fr;gap:32px}
+  .ec-ai-bubbles span:nth-child(2),.ec-ai-bubbles span:nth-child(3){margin-left:0}
+}
+@media(max-width:600px){
+  .ec-trust-row{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .ec-trust-logo,.ec-trust-equip{min-width:0;height:64px;padding:9px 12px}
+  .ec-trust-maxwell{grid-column:1/-1}
+  .ec-form-row{grid-template-columns:1fr}
+  .ec-contact-form{padding:20px;border-radius:20px}
+  .ec-chat-shell{right:12px;bottom:12px;left:12px}
+  .ec-chat-launcher{margin-left:auto;padding-right:14px}
+  .ec-chat-launcher-label{display:none}
+  .ec-chat-panel{
+    width:100%;
+    height:min(620px,calc(100vh - 90px));
+    border-radius:22px;
+  }
+}

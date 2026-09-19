@@ -1,34 +1,6 @@
 (() => {
   const root = document.querySelector("[data-elivio-chat]");
-  if (!root) return;
-
-  const form = root.querySelector("[data-chat-form]");
-  const input = root.querySelector("[data-chat-input]");
-  const log = root.querySelector("[data-chat-log]");
-  const badge = root.querySelector("[data-stage-badge]");
-  const stageSteps = [...root.querySelectorAll("[data-stage-step]")];
-  const quick = root.querySelector("[data-chat-quick]");
-  const actions = root.querySelector("[data-chat-actions]");
-  const messages = [];
-
-  const setStage = (stage) => {
-    const value = Math.min(Math.max(Number(stage) || 1, 1), 4);
-    if (badge) badge.textContent = value + " / 4";
-    stageSteps.forEach((step) => {
-      const stepNo = Number(step.dataset.stageStep);
-      step.classList.toggle("active", stepNo === value);
-      step.classList.toggle("done", stepNo < value);
-    });
-  };
-
-  const addMessage = (role, text, pending = false) => {
-    const el = document.createElement("div");
-    el.className = "ec-message " + role + (pending ? " pending" : "");
-    el.textContent = text;
-    log.appendChild(el);
-    log.scrollTop = log.scrollHeight;
-    return el;
-  };
+  const contactForm = document.querySelector("[data-contact-form]");
 
   const luhnValid = (raw) => {
     const digits = raw.replace(/\D/g, "");
@@ -56,96 +28,193 @@
     return "";
   };
 
-  const showBookingAction = (action) => {
-    if (!actions || !action || action.type !== "booking") return;
-    actions.hidden = false;
-    actions.innerHTML = "";
-    const button = document.createElement("a");
-    button.className = "ec-chat-action";
-    button.href = action.target || "#contact";
-    button.textContent = action.label || "Mergi la programări";
-    button.addEventListener("click", () => {
-      const target = document.querySelector(button.getAttribute("href"));
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (root) {
+    const form = root.querySelector("[data-chat-form]");
+    const input = root.querySelector("[data-chat-input]");
+    const log = root.querySelector("[data-chat-log]");
+    const quick = root.querySelector("[data-chat-quick]");
+    const actions = root.querySelector("[data-chat-actions]");
+    const panel = root.querySelector("[data-chat-panel]");
+    const launcher = root.querySelector("[data-chat-launcher]");
+    const closeButton = root.querySelector("[data-chat-close]");
+    const messages = [];
+
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      launcher.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) {
+        setTimeout(() => input.focus(), 40);
       }
-    });
-    actions.appendChild(button);
-  };
+    };
 
-  const submitText = async (text) => {
-    const clean = text.trim();
-    if (!clean) return;
+    const addMessage = (role, text, pending = false) => {
+      const el = document.createElement("div");
+      el.className = "ec-message " + role + (pending ? " pending" : "");
+      el.textContent = text;
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+      return el;
+    };
 
-    const blocked = sensitiveKind(clean);
-    if (blocked) {
-      addMessage(
-        "assistant",
-        "Am oprit mesajul înainte să fie trimis: pare să conțină " + blocked + ". Șterge acea informație și spune-mi doar contextul de care ai nevoie."
-      );
-      input.value = clean;
-      input.focus();
-      return;
-    }
-
-    input.value = "";
-    input.disabled = true;
-    form.querySelector("button").disabled = true;
-    if (quick) quick.hidden = true;
-
-    messages.push({ role: "user", content: clean });
-    addMessage("user", clean);
-    const pending = addMessage("assistant", "Un moment…", true);
-
-    try {
-      const response = await fetch("/elivio-consilio/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({ messages })
+    const showBookingAction = (action) => {
+      if (!actions || !action || action.type !== "booking") return;
+      actions.hidden = false;
+      actions.innerHTML = "";
+      const button = document.createElement("a");
+      button.className = "ec-chat-action";
+      button.href = action.target || "#contact";
+      button.textContent = action.label || "Mergi la programări";
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        setOpen(false);
+        const target = document.querySelector(button.getAttribute("href"));
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
       });
-      const data = await response.json();
+      actions.appendChild(button);
+    };
 
-      if (!response.ok) {
-        pending.remove();
-        if (data.code === "sensitive_data") {
-          messages.pop();
-          addMessage("assistant", data.error || "Mesajul conține date pe care nu este nevoie să le trimiți aici.");
-          input.value = clean;
-          return;
+    const submitText = async (text) => {
+      const clean = text.trim();
+      if (!clean) return;
+
+      const blocked = sensitiveKind(clean);
+      if (blocked) {
+        addMessage(
+          "assistant",
+          "Am oprit mesajul înainte să fie trimis: pare să conțină " + blocked + ". Șterge acea informație și păstrează doar contextul relevant."
+        );
+        input.value = clean;
+        input.focus();
+        return;
+      }
+
+      input.value = "";
+      input.disabled = true;
+      form.querySelector("button").disabled = true;
+      if (quick) quick.hidden = true;
+
+      messages.push({ role: "user", content: clean });
+      addMessage("user", clean);
+      const pending = addMessage("assistant", "Un moment…", true);
+
+      try {
+        const response = await fetch("/elivio-consilio/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ messages })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          pending.remove();
+          if (data.code === "sensitive_data") {
+            messages.pop();
+            addMessage("assistant", data.error || "Mesajul conține date pe care nu este nevoie să le trimiți aici.");
+            input.value = clean;
+            return;
+          }
+          throw new Error(data.error || "Nu am putut continua conversația.");
         }
-        throw new Error(data.error || "Nu am putut continua conversația.");
+
+        const reply = String(data.reply || "Nu am putut genera un răspuns acum.");
+        pending.remove();
+        addMessage("assistant", reply);
+        messages.push({ role: "assistant", content: reply });
+        showBookingAction(data.action);
+
+        if (Number(data.stage) >= 4 && !data.crisis) {
+          input.placeholder = "Poți întreba ceva sau poți merge la programare…";
+        }
+      } catch (error) {
+        if (pending.isConnected) pending.remove();
+        addMessage("assistant", "Nu pot continua chatul chiar acum. Poți merge direct la secțiunea de programări.");
+        showBookingAction({ type: "booking", label: "Mergi la programări", target: "#contact" });
+      } finally {
+        input.disabled = false;
+        form.querySelector("button").disabled = false;
+        input.focus();
+      }
+    };
+
+    launcher.addEventListener("click", () => setOpen(panel.hidden));
+    closeButton.addEventListener("click", () => setOpen(false));
+
+    document.querySelectorAll("[data-chat-open]").forEach((button) => {
+      button.addEventListener("click", () => setOpen(true));
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitText(input.value);
+    });
+
+    root.querySelectorAll("[data-quick-message]").forEach((button) => {
+      button.addEventListener("click", () => submitText(button.dataset.quickMessage || ""));
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !panel.hidden) setOpen(false);
+    });
+  }
+
+  if (contactForm) {
+    const method = contactForm.querySelector("[data-contact-method]");
+    const phoneField = contactForm.querySelector("[data-phone-field]");
+    const emailField = contactForm.querySelector("[data-email-field]");
+    const status = contactForm.querySelector("[data-contact-status]");
+    const destination = (contactForm.dataset.contactEmail || "").trim();
+
+    const syncMethod = () => {
+      const wantsEmail = method.value === "email";
+      phoneField.hidden = wantsEmail;
+      emailField.hidden = !wantsEmail;
+      phoneField.querySelector("input").required = !wantsEmail;
+      emailField.querySelector("input").required = wantsEmail;
+    };
+
+    method.addEventListener("change", syncMethod);
+    syncMethod();
+
+    contactForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      status.textContent = "";
+
+      const data = new FormData(contactForm);
+      const name = String(data.get("name") || "").trim();
+      const preferredMethod = String(data.get("method") || "").trim();
+      const phone = String(data.get("phone") || "").trim();
+      const email = String(data.get("email") || "").trim();
+      const preferredTime = String(data.get("time") || "").trim();
+      const message = String(data.get("message") || "").trim();
+
+      const blocked = sensitiveKind(message);
+      if (blocked) {
+        status.textContent = "Mesajul pare să conțină " + blocked + ". Elimină acea informație și încearcă din nou.";
+        return;
       }
 
-      const reply = String(data.reply || "Nu am putut genera un răspuns acum.");
-      pending.remove();
-      addMessage("assistant", reply);
-      messages.push({ role: "assistant", content: reply });
-      setStage(data.stage || 1);
-      showBookingAction(data.action);
-
-      if (Number(data.stage) >= 4 && !data.crisis) {
-        input.placeholder = "Poți întreba ceva sau poți merge direct la programare…";
+      if (!destination) {
+        status.textContent = "Formularul este pregătit, dar adresa de contact Elivio nu este încă configurată.";
+        return;
       }
-    } catch (error) {
-      if (pending.isConnected) pending.remove();
-      addMessage("assistant", "Nu pot continua chatul chiar acum. Poți merge direct la secțiunea de programări.");
-      showBookingAction({ type: "booking", label: "Mergi la programări", target: "#contact" });
-    } finally {
-      input.disabled = false;
-      form.querySelector("button").disabled = false;
-      input.focus();
-    }
-  };
 
-  setStage(1);
+      const subject = "Cerere de contact Elivio Consilio";
+      const body = [
+        "Nume: " + name,
+        "Prefer contact prin: " + (preferredMethod === "email" ? "e-mail" : "telefon"),
+        phone ? "Telefon: " + phone : "",
+        email ? "E-mail: " + email : "",
+        "Interval preferat: " + preferredTime,
+        "",
+        "Mesaj:",
+        message || "—"
+      ].filter(Boolean).join("\n");
 
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    submitText(input.value);
-  });
-
-  root.querySelectorAll("[data-quick-message]").forEach((button) => {
-    button.addEventListener("click", () => submitText(button.dataset.quickMessage || ""));
-  });
+      status.textContent = "Se deschide aplicația ta de e-mail cu cererea completată.";
+      window.location.href = "mailto:" + encodeURIComponent(destination) +
+        "?subject=" + encodeURIComponent(subject) +
+        "&body=" + encodeURIComponent(body);
+    });
+  }
 })();
