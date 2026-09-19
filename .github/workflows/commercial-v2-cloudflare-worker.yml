@@ -663,6 +663,29 @@ jobs:
               raise AssertionError("Elivio booking intent did not expose the contact CTA.")
           print("/elivio-consilio/api/chat booking", status, booking_payload.get("mode"))
 
+          out_of_scope_request = json.dumps({
+              "messages": [
+                  {
+                      "role": "user",
+                      "content": "Îmi poți spune cum e mai ieftin să te încălzești? Cu gaz sau lemne?",
+                  }
+              ]
+          }).encode("utf-8")
+          status, _, out_of_scope_body = open_url(
+              apex + "/elivio-consilio/api/chat",
+              data=out_of_scope_request,
+              headers={"Content-Type": "application/json"},
+              timeout=30,
+          )
+          if status != 200:
+              raise AssertionError(f"Elivio scope guard returned HTTP {status}")
+          out_of_scope_payload = json.loads(out_of_scope_body)
+          if out_of_scope_payload.get("mode") != "out_of_scope":
+              raise AssertionError(
+                  "Elivio answered a clearly unrelated heating question instead of applying the scope guard."
+              )
+          print("/elivio-consilio/api/chat scope guard", status, out_of_scope_payload.get("mode"))
+
           summary_request = json.dumps({
               "messages": [
                   {

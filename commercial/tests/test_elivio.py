@@ -152,3 +152,43 @@ def test_elivio_chat_summary_does_not_copy_crisis_details() -> None:
     payload = response.json()
     assert "sinucid" not in payload["summary"].casefold()
     assert "Aș dori să discut cu Violeta" in payload["summary"]
+
+
+def test_elivio_chat_does_not_answer_general_heating_question() -> None:
+    response = client.post(
+        "/elivio-consilio/api/chat",
+        json={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Îmi poți spune cum e mai ieftin să te încălzești? Cu gaz sau lemne?",
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "out_of_scope"
+    assert payload["crisis"] is False
+    assert "orientării pentru consiliere" in payload["reply"]
+    assert "lemne poate fi mai ieftină" not in payload["reply"]
+    assert payload["action"] is None
+
+
+def test_elivio_contact_summary_ignores_out_of_scope_heating_question() -> None:
+    response = client.post(
+        "/elivio-consilio/api/chat-summary",
+        json={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Îmi poți spune cum e mai ieftin să te încălzești? Cu gaz sau lemne?",
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert "gaz" not in payload["summary"].casefold()
+    assert "lemne" not in payload["summary"].casefold()
+    assert "Aș dori să discut cu Violeta" in payload["summary"]
