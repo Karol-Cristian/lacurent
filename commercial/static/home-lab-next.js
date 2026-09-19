@@ -552,6 +552,15 @@
   function measureSummary(type) {
     const base = homeState;
     const now = scenarioState;
+    const ref = homeResult?.reference_parameters;
+    if (referenceMode) {
+      if (type === "wall") return `${fmt(base.wallIns,1)} → ${fmt(now.wallIns,1)} cm · U ref. ${fmt(ref?.u_values_w_m2k?.exterior_wall,2)}`;
+      if (type === "roof") return `${fmt(base.roofIns,1)} → ${fmt(now.roofIns,1)} cm · U ref. ${fmt(ref?.u_values_w_m2k?.roof,2)}`;
+      if (type === "floor") return `${fmt(base.floorIns,1)} → ${fmt(now.floorIns,1)} cm · U ref. ${fmt(ref?.u_values_w_m2k?.floor,2)}`;
+      if (type === "windows") return `Uw de referință ${fmt(ref?.u_values_w_m2k?.window,2)} W/m²K`;
+      if (type === "heating") return `Centrală în condensare · η ${fmt(100 * Number(ref?.heating_efficiency || 0),0)}%`;
+      if (type === "ventilation") return `ACH ${fmt(ref?.air_changes_per_hour,2)} · fără recuperare`;
+    }
     if (type === "wall") return `${base.wallIns} → ${now.wallIns} cm pereți`;
     if (type === "roof") return `${base.roofIns} → ${now.roofIns} cm pod`;
     if (type === "floor") return `${base.floorIns} → ${now.floorIns} cm pardoseală`;
@@ -896,9 +905,11 @@
     homeState.levels = Number(button.dataset.value);
     $$("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
     baselineSaved = false;
+    referenceMode = false;
     measures = [];
     scenarioState = {...homeState};
     renderHome();
+    emitVisualState();
     scheduleCalculate("home");
   }));
 
@@ -915,9 +926,11 @@
     $("#hlnClimateSummary").textContent = `${locality.county || ""} · profil climatic automat`;
     $("#hlnLocalityResults").hidden = true;
     baselineSaved = false;
+    referenceMode = false;
     measures = [];
     scenarioState = {...homeState};
     renderHome();
+    emitVisualState();
     scheduleCalculate("home", 20);
   });
 
@@ -1056,6 +1069,7 @@
 
   syncHomeEditorControls();
   renderAll();
+  emitVisualState();
 
   if (baselineSaved && homeResult) {
     currentResult = homeResult;
