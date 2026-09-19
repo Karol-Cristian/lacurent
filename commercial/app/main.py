@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from .engine import calculate, demo_building
+from .engine_pbe import compare_calculation_result, runtime_probe
 from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
@@ -761,6 +762,50 @@ async def wall_insulation_product_scenario_api(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return JSONResponse(model_to_dict(response))
+
+
+@app.get("/api/experimental/pbe-health")
+async def pbe_health_api() -> JSONResponse:
+    try:
+        return JSONResponse(runtime_probe())
+    except Exception as exc:
+        return JSONResponse(
+            {"status": "error", "error": str(exc)},
+            status_code=500,
+        )
+
+
+@app.get("/api/experimental/pbe-demo")
+async def pbe_demo_api() -> JSONResponse:
+    try:
+        result = calculate(demo_building(), include_reference=False)
+        return JSONResponse(compare_calculation_result(result))
+    except Exception as exc:
+        return JSONResponse(
+            {"status": "error", "error": str(exc)},
+            status_code=500,
+        )
+
+
+@app.post("/api/experimental/pbe-calculate")
+async def pbe_calculate_api(request: Request) -> JSONResponse:
+    form = dict(await request.form())
+    try:
+        building = build_input_from_form(form)
+        result = calculate(building, include_reference=False)
+        payload = compare_calculation_result(result)
+        payload["input"] = {
+            "project_name": building.project_name,
+            "locality": building.locality,
+            "heated_floor_area_m2": float(building.heated_floor_area_m2),
+            "construction_year": int(building.construction_year),
+        }
+        return JSONResponse(payload)
+    except Exception as exc:
+        return JSONResponse(
+            {"status": "error", "error": user_error(exc)},
+            status_code=422,
+        )
 
 
 @app.get("/health")
