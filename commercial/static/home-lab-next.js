@@ -1011,8 +1011,9 @@
       const target = go.dataset.hlnGo;
       if (target === "home") {
         screen = "home";
-        $$("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
+        $("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
         renderAll();
+        emitVisualState();
         return;
       }
       if (target === "site" && baselineSaved) showScreen("site");
