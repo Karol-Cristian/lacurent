@@ -123,7 +123,7 @@
       roofIns: insulationCmForU(1.00, u.roof),
       floorIns: insulationCmForU(0.90, u.floor),
       windows: Number(homeState.windows),
-      glazing: "double_low_e_face_3",
+      glazing: homeState.glazing,
       heating: "condensing_gas_boiler",
       ventilation: "natural",
       cooling: homeState.cooling,
