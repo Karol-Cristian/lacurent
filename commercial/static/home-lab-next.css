@@ -844,3 +844,14 @@ svg{display:block}
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+@media (max-width: 620px) {
+  .hln-screen[data-hln-screen="site"] .hln-measure-sheet {
+    display: none;
+  }
+
+  .hln-screen[data-hln-screen="site"] .hln-site-layout {
+    grid-template-columns: 1fr;
+  }
+}
