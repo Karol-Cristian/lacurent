@@ -166,7 +166,7 @@ class HomeLabHouse3D {
       this.startRenderLoop();
     } catch (error) {
       console.error("[Home Lab 3D] model load failed", error);
-      this.fail("Modelul 3D nu a putut fi încărcat");
+      this.fail("Modelul 3D nu a putut fi încărcat", error);
     }
   }
 
@@ -958,13 +958,18 @@ class HomeLabHouse3D {
     }
   }
 
-  fail(message) {
+  fail(message, error = null) {
     this.mount.classList.remove("is-loading");
     this.mount.classList.add("is-fallback");
+    const debug = new URLSearchParams(window.location.search).get("debug3d") === "1";
+    const detail = debug && error
+      ? `<code>${String(error?.message || error).replace(/[<>]/g, "")}</code>`
+      : "";
     this.mount.innerHTML = `
       <div class="hln-3d-fallback-note" role="status">
         <span>Vizualizare 3D indisponibilă</span>
         <small>${message}. Poți continua folosind modelul schematic.</small>
+        ${detail}
       </div>
     `;
   }
@@ -982,7 +987,7 @@ async function boot() {
       await scene.init();
     } catch (error) {
       console.error("[Home Lab 3D] init failed", error);
-      scene.fail("Inițializare eșuată");
+      scene.fail("Inițializare eșuată", error);
     }
   }
 }
