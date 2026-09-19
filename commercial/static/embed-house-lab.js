@@ -29,6 +29,12 @@
   const configPanel = root.querySelector(".lab-config-panel");
   const mobileEditorToolbar = root.querySelector(".lab-mobile-editor-toolbar");
   const mobileEditorTitle = document.getElementById("labMobileEditorTitle");
+  const renovationChooser = document.getElementById("labRenovationChooser");
+  const mobilePrimaryAction = document.getElementById("labMobilePrimaryAction");
+  const mobileSecondaryAction = document.getElementById("labMobileSecondaryAction");
+  const mobileModeKicker = document.getElementById("labMobileModeKicker");
+  const mobileModeTitle = document.getElementById("labMobileModeTitle");
+  const mobileLivebar = root.querySelector(".lab-mobile-livebar");
   const CHAPTER_TITLES = {
     "1":"Casa",
     "2":"Anvelopa",
@@ -44,6 +50,13 @@
     "4":{src:"/home-lab-assets/house-pv.webp?v=2",ro:["Regenerabilele reduc energia cumpărată","Pompa de căldură este calculată acum; PV și solar termic urmează."],en:["Renewables reduce purchased energy","Heat pumps are calculated now; PV and solar thermal are next."]},
     "5":{src:"/home-lab-assets/house-orientation.webp?v=2",ro:["Performanța este rezultatul casei","Clasa, costul și energia se recalculează din configurația ta."],en:["Performance is the result of the house","Class, cost and energy are recalculated from your configuration."]},
     "6":{src:"/home-lab-assets/house-pv.webp?v=2",ro:["Renovarea începe de la casa reală","Fixează baseline-ul, apoi testează intervenții fără să-l pierzi."],en:["Renovation starts from the real home","Lock the baseline, then test interventions without losing it."]}
+  };
+  const RENOVATION_ACTIONS = {
+    wall:{chapter:"2",title:{ro:"Izolează fațada",en:"Insulate the facade"},target:"labWallInsNumber"},
+    roof:{chapter:"2",title:{ro:"Izolează podul",en:"Insulate the roof / attic"},target:"labRoofInsNumber"},
+    windows:{chapter:"2",title:{ro:"Schimbă ferestrele",en:"Replace the windows"},target:"labGlazing"},
+    heating:{chapter:"3",title:{ro:"Schimbă încălzirea",en:"Change the heating system"},target:"labHeating"},
+    ventilation:{chapter:"3",title:{ro:"Ventilație & răcire",en:"Ventilation & cooling"},target:"labVentilation"}
   };
 
   const PRESET = {
@@ -185,6 +198,43 @@
     };
   }
 
+  function compactPercentDelta(current,baseline) {
+    const now=Number(current), base=Number(baseline);
+    if (!Number.isFinite(now) || !Number.isFinite(base) || Math.abs(base)<1e-9) return {text:"",tone:""};
+    const pct=100*(now-base)/Math.abs(base);
+    if (Math.abs(pct)<0.05) return {text:lang()==="en"?"same":"la fel",tone:""};
+    return {
+      text:`${pct>0?"+":"−"}${fmt(Math.abs(pct),0)}%`,
+      tone:pct<0?"good":"bad"
+    };
+  }
+
+  function updateMobileFlow() {
+    const currentMode=!baselineSnapshot || editingCurrentHome;
+    mobileLivebar?.setAttribute("data-mobile-flow",currentMode?"current":"scenario");
+    if (mobileModeKicker) {
+      mobileModeKicker.textContent=currentMode
+        ? (lang()==="en"?"CURRENT HOME":"CASA ACTUALĂ")
+        : (lang()==="en"?"CURRENT SCENARIO":"SCENARIUL CURENT");
+    }
+    if (mobileModeTitle) {
+      mobileModeTitle.textContent=currentMode
+        ? (lang()==="en"?"Configure the real home":"Configurează locuința reală")
+        : (lang()==="en"?"Compared with your saved home":"Comparat cu casa actuală");
+    }
+    if (mobilePrimaryAction) {
+      mobilePrimaryAction.textContent=currentMode
+        ? (baselineSnapshot
+          ? (lang()==="en"?"Update current home":"Actualizează casa actuală")
+          : (lang()==="en"?"This is my home now":"Asta este casa mea acum"))
+        : (lang()==="en"?"Save scenario":"Salvează scenariul");
+    }
+    if (mobileSecondaryAction) {
+      mobileSecondaryAction.hidden=currentMode;
+      mobileSecondaryAction.textContent=lang()==="en"?"Choose improvement":"Alege îmbunătățire";
+    }
+  }
+
   function updateChapterSummaries(data=lastResult) {
     setText("labChapter1Summary",`${controls.area.value} m² · ${controls.levels.value} niveluri · ${controls.temperature.value}°C`);
     setText("labChapter2Summary",`${controls.wallIns.value} cm pereți · ${controls.roofIns.value} cm pod · ${optionLabel(controls.glazing)}`);
@@ -196,6 +246,7 @@
       setText("labMobileClass",data.energy_class || "—");
       setText("labMobileCost",data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei`);
       setText("labMobileEnergy",`${fmt(data.final_energy_kwh)} kWh`);
+      setText("labMobileCo2",`${fmt(data.co2_kg)} kg`);
       setText("labChapterClass",data.energy_class || "—");
       setText("labChapterCost",data.annual_cost_lei == null ? "—" : `${fmt(data.annual_cost_lei)} lei/an`);
       setText("labChapterPrimary",`${fmt(data.primary_specific_kwh_m2,1)} kWh/m²/an`);
@@ -203,12 +254,14 @@
 
       const base=baselineSnapshot?.result;
       if (base && !editingCurrentHome) {
-        const costDelta=compactDelta(data.annual_cost_lei,base.annual_cost_lei,"lei",0);
-        const energyDelta=compactDelta(data.final_energy_kwh,base.final_energy_kwh,"kWh",0);
+        const costDelta=compactPercentDelta(data.annual_cost_lei,base.annual_cost_lei);
+        const energyDelta=compactPercentDelta(data.final_energy_kwh,base.final_energy_kwh);
+        const co2Delta=compactPercentDelta(data.co2_kg,base.co2_kg);
         setDeltaNode("labMobileCostDelta",costDelta.text,costDelta.tone);
         setDeltaNode("labMobileEnergyDelta",energyDelta.text,energyDelta.tone);
+        setDeltaNode("labMobileCo2Delta",co2Delta.text,co2Delta.tone);
         const baseClass=base.energy_class || "—";
-        setDeltaNode("labMobileClassDelta",baseClass===data.energy_class?"fără schimbare":`${baseClass} → ${data.energy_class || "—"}`,baseClass===data.energy_class?"":"good");
+        setDeltaNode("labMobileClassDelta",baseClass===data.energy_class?(lang()==="en"?"same":"la fel"):`${baseClass} → ${data.energy_class || "—"}`,baseClass===data.energy_class?"":"good");
         const saving=Number(base.annual_cost_lei)-Number(data.annual_cost_lei);
         setText("labChapter6Summary",Number.isFinite(saving) && Math.abs(saving)>.5
           ? `${saving>0?"Economisești":"Cost suplimentar"} ${fmt(Math.abs(saving))} lei/an`
@@ -216,6 +269,7 @@
       } else {
         setDeltaNode("labMobileCostDelta","");
         setDeltaNode("labMobileEnergyDelta","");
+        setDeltaNode("labMobileCo2Delta","");
         setDeltaNode("labMobileClassDelta","");
         setText("labChapter6Summary",baselineSnapshot ? "Editezi casa actuală" : "Fixează mai întâi casa actuală");
       }
@@ -233,19 +287,31 @@
     if (text) text.textContent=copy[1];
   }
 
-  function openChapter(chapter) {
+  function openChapter(chapter,editorTitle="") {
     const panels=Array.from(root.querySelectorAll("[data-lab-chapter-panel]"));
+    renovationChooser?.setAttribute("hidden","");
+    configPanel?.classList.remove("is-renovation-choosing");
     panels.forEach(panel => panel.classList.toggle("is-mobile-open",panel.dataset.labChapterPanel===chapter));
     root.querySelectorAll("[data-lab-chapter-open]").forEach(button => button.classList.toggle("is-active",button.dataset.labChapterOpen===chapter));
     setChapterContext(chapter);
     if (isMobileCockpit()) {
       configPanel?.classList.add("is-chapter-editing");
       if (mobileEditorToolbar) mobileEditorToolbar.hidden=false;
-      if (mobileEditorTitle) mobileEditorTitle.textContent=CHAPTER_TITLES[chapter] || "Capitol";
+      if (mobileEditorTitle) mobileEditorTitle.textContent=editorTitle || CHAPTER_TITLES[chapter] || "Capitol";
     } else {
       const first=panels.find(panel => panel.dataset.labChapterPanel===chapter);
       first?.scrollIntoView({behavior:"smooth",block:"start"});
     }
+  }
+
+  function openRenovationChooser() {
+    if (!baselineSnapshot || editingCurrentHome) return;
+    configPanel?.classList.remove("is-chapter-editing");
+    configPanel?.classList.add("is-renovation-choosing");
+    root.querySelectorAll("[data-lab-chapter-panel]").forEach(panel => panel.classList.remove("is-mobile-open"));
+    root.querySelectorAll("[data-lab-chapter-open]").forEach(button => button.classList.remove("is-active"));
+    if (mobileEditorToolbar) mobileEditorToolbar.hidden=true;
+    if (renovationChooser) renovationChooser.hidden=false;
   }
 
   function closeChapter() {
@@ -253,6 +319,21 @@
     root.querySelectorAll("[data-lab-chapter-panel]").forEach(panel => panel.classList.remove("is-mobile-open"));
     root.querySelectorAll("[data-lab-chapter-open]").forEach(button => button.classList.remove("is-active"));
     if (mobileEditorToolbar) mobileEditorToolbar.hidden=true;
+    if (baselineSnapshot && !editingCurrentHome && isMobileCockpit()) {
+      openRenovationChooser();
+    }
+  }
+
+  function openRenovationAction(actionName) {
+    const action=RENOVATION_ACTIONS[actionName];
+    if (!action) return;
+    openChapter(action.chapter,action.title[lang()] || action.title.ro);
+    const target=document.getElementById(action.target);
+    const field=target?.closest(".lab-range-control,.lab-select-field");
+    if (field) {
+      field.classList.add("is-renovation-target");
+      window.setTimeout(()=>field.classList.remove("is-renovation-target"),1600);
+    }
   }
 
 
@@ -391,6 +472,14 @@
       }
     }
     updateChapterSummaries(data);
+    updateMobileFlow();
+    if (renovationChooser && baselineSnapshot && !editingCurrentHome && isMobileCockpit() && !configPanel?.classList.contains("is-chapter-editing")) {
+      renovationChooser.hidden=false;
+      configPanel?.classList.add("is-renovation-choosing");
+    } else if (renovationChooser && (!baselineSnapshot || editingCurrentHome)) {
+      renovationChooser.hidden=true;
+      configPanel?.classList.remove("is-renovation-choosing");
+    }
   }
 
   function insulationU(baseU, centimetres) {
@@ -992,6 +1081,7 @@
     renderBaselineComparison();
     updateHouseFlow(lastResult);
     setChapterContext("1");
+    updateMobileFlow();
   }
 
   Object.values(controls).forEach(control => {
@@ -1100,6 +1190,10 @@
     button.addEventListener("click", () => openChapter(button.dataset.labChapterOpen));
   });
   root.querySelector("[data-lab-chapter-close]")?.addEventListener("click", closeChapter);
+  root.querySelectorAll("[data-renovation-action]").forEach(button => {
+    button.addEventListener("click", () => openRenovationAction(button.dataset.renovationAction));
+  });
+  mobileSecondaryAction?.addEventListener("click", openRenovationChooser);
 
   root.querySelectorAll("[data-mobile-results]").forEach(button => {
     button.addEventListener("click", () => {
@@ -1146,7 +1240,7 @@
     persistScenarioState();
     renderBaselineComparison();
     updateHouseFlow(lastResult);
-    if (isMobileCockpit()) closeChapter();
+    if (isMobileCockpit()) openRenovationChooser();
   }
 
   saveBaselineButton?.addEventListener("click", saveBaseline);
@@ -1156,13 +1250,15 @@
   document.getElementById("labEditCurrentHome")?.addEventListener("click", () => {
     if (!baselineSnapshot) return;
     editingCurrentHome=true;
+    if (renovationChooser) renovationChooser.hidden=true;
+    configPanel?.classList.remove("is-renovation-choosing");
     restoreSnapshot(baselineSnapshot);
     updateHouseFlow();
     if (isMobileCockpit()) closeChapter();
   });
   restoreBaselineButton?.addEventListener("click", () => restoreSnapshot(baselineSnapshot));
 
-  saveScenarioButton?.addEventListener("click", async () => {
+  async function saveCurrentScenario() {
     if (!baselineSnapshot) return;
     const index=savedScenarios.length+1;
     const scenario=await captureFreshSnapshot(`${lang()==="en"?"Scenario":"Scenariul"} ${index}`);
@@ -1171,8 +1267,23 @@
     savedScenarios=[scenario,...savedScenarios].slice(0,6);
     persistScenarioState();
     renderSavedScenarios();
-    saveScenarioButton.textContent=tr("scenarioSaved");
-    window.setTimeout(()=>{ saveScenarioButton.textContent=tr("saveScenario"); },1200);
+    if (saveScenarioButton) {
+      saveScenarioButton.textContent=tr("scenarioSaved");
+      window.setTimeout(()=>{ saveScenarioButton.textContent=tr("saveScenario"); },1200);
+    }
+    if (mobilePrimaryAction) {
+      mobilePrimaryAction.textContent=lang()==="en"?"Saved ✓":"Salvat ✓";
+      window.setTimeout(updateMobileFlow,1200);
+    }
+  }
+
+  saveScenarioButton?.addEventListener("click", saveCurrentScenario);
+  mobilePrimaryAction?.addEventListener("click", async () => {
+    if (!baselineSnapshot || editingCurrentHome) {
+      await saveBaseline();
+      return;
+    }
+    await saveCurrentScenario();
   });
 
   clearScenariosButton?.addEventListener("click", () => {
