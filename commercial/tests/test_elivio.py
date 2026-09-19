@@ -15,7 +15,7 @@ def test_elivio_page_is_standalone_and_transparent() -> None:
     assert "Asistent social" in response.text
     assert "Maxwell Leadership Certified Team" in response.text
     assert "EQUIP" in response.text
-    assert "Spune ce ai pe minte." in response.text
+    assert "Spune ce ai în minte." in response.text
     assert "Vreau o programare" in response.text
     assert "1 / 4" not in response.text
     assert "data-chat-launcher" in response.text
@@ -23,6 +23,8 @@ def test_elivio_page_is_standalone_and_transparent() -> None:
     assert "data-contact-form" in response.text
     assert "ICL-Logo-weiss-R.svg" in response.text
     assert "ec-mark" not in response.text
+    assert "check-in bun" not in response.text
+    assert "reveni către tine" not in response.text
     assert "Exemplu compozit" in response.text
     assert "Nu sunt mărturii reale" in response.text
     assert "LaCurent" not in response.text
@@ -33,7 +35,7 @@ def test_elivio_page_is_standalone_and_transparent() -> None:
 def test_elivio_privacy_page_is_available() -> None:
     response = client.get("/elivio-consilio/confidentialitate")
     assert response.status_code == 200
-    assert "Confidențialitate & AI" in response.text
+    assert "Confidențialitate și AI" in response.text
     assert "nu oferă diagnostic" in response.text
 
 
