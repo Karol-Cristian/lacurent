@@ -179,6 +179,10 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
+              "/elivio-consilio": "ELIVIO",
+              "/elivio-consilio/confidentialitate": "Confidențialitate & AI",
+              "/static/elivio.css": ".ec-hero",
+              "/static/elivio.js": "data-elivio-chat",
           }
 
           for path, expected in checks.items():
@@ -597,6 +601,10 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
+              "/elivio-consilio": "ELIVIO",
+              "/elivio-consilio/confidentialitate": "Confidențialitate & AI",
+              "/static/elivio.css": ".ec-hero",
+              "/static/elivio.js": "data-elivio-chat",
           }
           for path, expected in checks.items():
               status, _, body = open_url(apex + path)
@@ -605,6 +613,31 @@ jobs:
               if expected not in body and expected not in body.replace(" ", ""):
                   raise AssertionError(f"{path} did not contain {expected!r}")
               print(path, status)
+
+          chat_request = json.dumps({
+              "messages": [
+                  {
+                      "role": "user",
+                      "content": "Bună. Caut orientare pentru o decizie personală dificilă.",
+                  }
+              ]
+          }).encode("utf-8")
+          status, _, chat_body = open_url(
+              apex + "/elivio-consilio/api/chat",
+              data=chat_request,
+              headers={"Content-Type": "application/json"},
+              timeout=60,
+          )
+          if status != 200:
+              raise AssertionError(f"/elivio-consilio/api/chat returned HTTP {status}")
+          chat_payload = json.loads(chat_body)
+          if not str(chat_payload.get("reply") or "").strip():
+              raise AssertionError("Production Elivio AI chat did not return a reply.")
+          if chat_payload.get("mode") != "ai":
+              raise AssertionError(
+                  f"Production Elivio AI chat did not use Workers AI: {chat_payload.get('mode')!r}"
+              )
+          print("/elivio-consilio/api/chat", status, chat_payload.get("mode"))
 
           for path in (
               "/home-lab-assets/house-fireplace.webp?v=2",
