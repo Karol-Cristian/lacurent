@@ -93,7 +93,7 @@ class HomeLabHouse3D {
     this.raycaster = new THREE.Raycaster();
     this.renovationLayer = new THREE.Group();
     this.clock = new THREE.Clock();
-    this.autoRotateAllowed = true;
+    this.autoRotateAllowed = false;
     this.destroyed = false;
     this.resizeObserver = null;
     this.dragged = false;
@@ -115,6 +115,9 @@ class HomeLabHouse3D {
     this.authorDraggingPart = null;
     this.inspectableMeshes = [];
     this.experimentLayers = new Map();
+    this.equipmentLayers = new Map();
+    this.visualState = null;
+    this.lastVisualOrientation = null;
   }
 
   async init() {
@@ -134,6 +137,7 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
       <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
+      <div class="hln-3d-compass" aria-hidden="true"><b>N</b><span>E</span><i>S</i><em>V</em></div>
       <div class="hln-3d-hotspots" data-hln-3d-hotspots aria-label="Elemente selectabile ale casei"></div>
       <canvas class="hln-3d-canvas" aria-label="Model 3D interactiv al casei"></canvas>
     `;
@@ -172,7 +176,7 @@ class HomeLabHouse3D {
     this.controls.maxDistance = 18;
     this.controls.minPolarAngle = Math.PI * 0.16;
     this.controls.maxPolarAngle = Math.PI * 0.48;
-    this.controls.autoRotate = true;
+    this.controls.autoRotate = false;
     this.controls.autoRotateSpeed = 0.32;
 
     this.addLighting();
@@ -182,6 +186,7 @@ class HomeLabHouse3D {
       await this.loadSemanticConfig();
       await this.loadModel();
       this.createExperimentLayers();
+      this.createVisualEquipment();
       this.addHitZones();
       this.addRenovationLayer();
       this.createSemanticHotspots();
@@ -849,6 +854,120 @@ class HomeLabHouse3D {
       button.textContent = labels[key] || key;
       root.appendChild(button);
     });
+  }
+
+  createVisualEquipment() {
+    if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
+
+    const ac = new THREE.Group();
+    ac.name = "LaCurentVisual_AC";
+    ac.position.copy(this.localPointFromNormalized([0.38, 0.34, 0.51]));
+
+    const w = this.localLength(this.modelSize.x * 0.13);
+    const h = this.localLength(this.modelSize.y * 0.11);
+    const d = this.localLength(this.modelSize.z * 0.065);
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({
+        color: 0xf0f0eb,
+        roughness: 0.48,
+        metalness: 0.04,
+      })
+    );
+    body.castShadow = true;
+    body.receiveShadow = true;
+    ac.add(body);
+
+    const slotMaterial = new THREE.MeshStandardMaterial({
+      color: 0x454b49,
+      roughness: 0.78,
+      metalness: 0.1,
+    });
+    for (let i = -2; i <= 2; i += 1) {
+      const slot = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.12, h * 0.08, this.localLength(0.012)),
+        slotMaterial
+      );
+      slot.position.set(i * w * 0.15, -h * 0.18, d * 0.51);
+      ac.add(slot);
+    }
+
+    ac.visible = false;
+    this.modelRoot.add(ac);
+    this.equipmentLayers.set("ac", ac);
+  }
+
+  focusOrientation(orientation) {
+    if (!this.camera || !this.controls || !this.modelSize) return;
+    const offsets = {
+      south: 0,
+      south_west: Math.PI / 4,
+      west: Math.PI / 2,
+      north_west: 3 * Math.PI / 4,
+      north: Math.PI,
+      north_east: -3 * Math.PI / 4,
+      east: -Math.PI / 2,
+      south_east: -Math.PI / 4,
+    };
+    const offset = offsets[orientation] ?? 0;
+    const target = new THREE.Vector3(0, this.modelSize.y * 0.42, 0);
+    const radius = Math.max(this.modelSize.x, this.modelSize.z) * (this.mode === "home" ? 1.72 : 1.58);
+    const baseAngle = Math.atan2(0.76, 1);
+    const angle = baseAngle + offset;
+    const position = new THREE.Vector3(
+      Math.sin(angle) * radius,
+      radius * 0.50,
+      Math.cos(angle) * radius
+    );
+    this.animateCamera(position, target);
+  }
+
+  focusEquipment(kind) {
+    if (!this.modelSize) return;
+    const s = this.modelSize;
+    if (kind === "ac") {
+      this.animateCamera(
+        new THREE.Vector3(s.x * 0.95, s.y * 0.58, s.z * 1.24),
+        new THREE.Vector3(s.x * 0.24, s.y * 0.35, s.z * 0.30)
+      );
+      return;
+    }
+    if (kind === "heatPump") {
+      this.animateCamera(
+        new THREE.Vector3(s.x * 1.28, s.y * 0.48, s.z * 0.82),
+        new THREE.Vector3(s.x * 0.34, s.y * 0.20, s.z * 0.18)
+      );
+    }
+  }
+
+  applyVisualState(detail = {}) {
+    if (!this.modelRoot) return;
+    this.visualState = detail;
+
+    const ac = this.equipmentLayers.get("ac");
+    if (ac) ac.visible = detail.cooling === "split";
+
+    const heatPump = this.experimentLayers.get("heatPump");
+    if (heatPump) {
+      heatPump.visible = detail.heating === "heat_pump" || detail.cooling === "heat_pump";
+    }
+
+    if (detail.orientation && detail.orientation !== this.lastVisualOrientation) {
+      this.lastVisualOrientation = detail.orientation;
+      this.focusOrientation(detail.orientation);
+    }
+
+    if (detail.focus === "cooling" && detail.cooling === "split") {
+      this.focusEquipment("ac");
+    } else if (
+      detail.focus === "heating" &&
+      (detail.heating === "heat_pump" || detail.cooling === "heat_pump")
+    ) {
+      this.focusEquipment("heatPump");
+    } else if (detail.focus === "home") {
+      this.resetCamera();
+    }
   }
 
   cloneSemanticConfig(value) {
@@ -1579,12 +1698,7 @@ class HomeLabHouse3D {
       this.autoRotateAllowed = false;
     });
     this.controls.addEventListener("end", () => {
-      if (this.authorMode) return;
-      window.clearTimeout(this.resumeTimer);
-      this.resumeTimer = window.setTimeout(() => {
-        this.autoRotateAllowed = true;
-        this.controls.autoRotate = true;
-      }, 4500);
+      return;
     });
 
     canvas.addEventListener("pointerdown", (event) => {
@@ -1741,8 +1855,8 @@ class HomeLabHouse3D {
     this.selectedPart = null;
     this.setHotspotSelection(null);
     this.renovationLayer.visible = false;
-    this.autoRotateAllowed = !this.authorMode;
-    this.controls.autoRotate = !this.authorMode;
+    this.autoRotateAllowed = false;
+    this.controls.autoRotate = false;
     this.animateCamera(
       new THREE.Vector3(distance * 0.78, distance * 0.52, distance),
       new THREE.Vector3(0, s.y * 0.42, 0)
@@ -1762,7 +1876,7 @@ class HomeLabHouse3D {
     if (this.destroyed) return;
     const dt = Math.min(0.033, this.clock.getDelta());
     if (this.controls) {
-      if (this.autoRotateAllowed && !this.authorMode) this.controls.autoRotate = true;
+      this.controls.autoRotate = false;
       this.controls.update(dt);
     }
     this.updateHotspotPositions();
