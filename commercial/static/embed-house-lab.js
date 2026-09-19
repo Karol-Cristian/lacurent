@@ -30,11 +30,19 @@
   const mobileEditorToolbar = root.querySelector(".lab-mobile-editor-toolbar");
   const mobileEditorTitle = document.getElementById("labMobileEditorTitle");
   const renovationChooser = document.getElementById("labRenovationChooser");
+  const renovationValueStrip = document.getElementById("labRenovationValueStrip");
+  const renovationBaseValue = document.getElementById("labRenovationBaseValue");
+  const renovationScenarioValue = document.getElementById("labRenovationScenarioValue");
+  const renovationBaseLabel = document.getElementById("labRenovationBaseLabel");
+  const renovationScenarioLabel = document.getElementById("labRenovationScenarioLabel");
   const mobilePrimaryAction = document.getElementById("labMobilePrimaryAction");
   const mobileSecondaryAction = document.getElementById("labMobileSecondaryAction");
+  const mobileHomeAction = document.getElementById("labMobileHomeAction");
+  const mobileSecondaryActions = document.getElementById("labMobileSecondaryActions");
   const mobileModeKicker = document.getElementById("labMobileModeKicker");
   const mobileModeTitle = document.getElementById("labMobileModeTitle");
   const mobileLivebar = root.querySelector(".lab-mobile-livebar");
+  let activeRenovationAction = null;
   const CHAPTER_TITLES = {
     "1":"Casa",
     "2":"Anvelopa",
@@ -54,6 +62,7 @@
   const RENOVATION_ACTIONS = {
     wall:{chapter:"2",title:{ro:"Izolează fațada",en:"Insulate the facade"},target:"labWallInsNumber"},
     roof:{chapter:"2",title:{ro:"Izolează podul",en:"Insulate the roof / attic"},target:"labRoofInsNumber"},
+    floor:{chapter:"2",title:{ro:"Izolează pardoseala",en:"Insulate the floor"},target:"labFloorInsNumber"},
     windows:{chapter:"2",title:{ro:"Schimbă ferestrele",en:"Replace the windows"},target:"labGlazing"},
     heating:{chapter:"3",title:{ro:"Schimbă încălzirea",en:"Change the heating system"},target:"labHeating"},
     ventilation:{chapter:"3",title:{ro:"Ventilație & răcire",en:"Ventilation & cooling"},target:"labVentilation"}
@@ -92,10 +101,10 @@
       heroMessage:"O casă bine configurată înseamnă costuri mai mici și mai mult confort.",
       energyClass:"Clasă energetică", lossSubtitle:"% din pierderile totale", yourHouse:"Casa ta", referenceHouse:"Casă de referință",
       saveConfig:"Salvează configurația", exportReport:"Exportă raport", summaryPromise:"Case eficiente pentru oameni, comunități și un mediu mai curat.", summaryLearn:"Rezultatele folosesc motorul energetic LaCurent.",
-      baselineStep:"Punct de plecare", baselineTitle:"Casa actuală", baselinePrompt:"Configurează locuința așa cum este astăzi, apoi salveaz-o ca baseline.",
-      saveBaseline:"Salvează casa curentă", updateBaseline:"Actualizează casa curentă", restoreBaseline:"Revino la casa actuală",
+      baselineStep:"Punct de plecare", baselineTitle:"Casa mea", baselinePrompt:"Configurează locuința așa cum este astăzi, apoi salveaz-o ca punct de plecare.",
+      saveBaseline:"Salvează casa mea", updateBaseline:"Actualizează casa mea", restoreBaseline:"Revino la casa mea",
       comparisonNeedsBaseline:"Salvează mai întâi casa actuală", comparisonNeedsBaselineText:"Apoi modifică izolația, ferestrele sau sistemele și vei vedea exact diferența față de situația de azi.",
-      baselineComparisonKicker:"Comparație reală", baselineComparisonTitle:"Casa actuală vs scenariul curent", baselineCurrentHouse:"Casa actuală", baselineScenario:"Scenariul curent", liveScenario:"recalculat live",
+      baselineComparisonKicker:"Comparație reală", baselineComparisonTitle:"Casa mea vs scenariul curent", baselineCurrentHouse:"Casa mea", baselineScenario:"Scenariul curent", liveScenario:"recalculat live",
       saveScenario:"Salvează scenariul", savedScenarios:"Casa actuală și scenarii", clearScenarios:"Șterge scenariile", versusBaseline:"Față de casa actuală",
       metricAnnualCost:"Cost anual", metricFinalEnergy:"Energie finală", metricPrimary:"Energie primară specifică", metricCo2:"Emisii CO₂", metricPower:"Putere termică", metricClass:"Clasă energetică",
       noSavedScenarios:"Nu ai salvat încă variante.", savedNow:"salvată acum", scenarioSaved:"Scenariu salvat", savings:"economie", extraCost:"cost suplimentar", noChange:"fără diferență",
@@ -137,10 +146,10 @@
       heroMessage:"A well-configured home means lower costs and better comfort.",
       energyClass:"Energy class", lossSubtitle:"% of total losses", yourHouse:"Your home", referenceHouse:"Reference home",
       saveConfig:"Save configuration", exportReport:"Export report", summaryPromise:"Efficient homes for people, communities and a cleaner environment.", summaryLearn:"Results use the LaCurent energy engine.",
-      baselineStep:"Starting point", baselineTitle:"Current home", baselinePrompt:"Configure the home as it is today, then save it as the baseline.",
-      saveBaseline:"Save current home", updateBaseline:"Update current home", restoreBaseline:"Return to current home",
+      baselineStep:"Starting point", baselineTitle:"My home", baselinePrompt:"Configure the home as it is today, then save it as the starting point.",
+      saveBaseline:"Save my home", updateBaseline:"Update my home", restoreBaseline:"Return to my home",
       comparisonNeedsBaseline:"Save the current home first", comparisonNeedsBaselineText:"Then change insulation, windows or systems and see the exact difference versus today.",
-      baselineComparisonKicker:"Real comparison", baselineComparisonTitle:"Current home vs current scenario", baselineCurrentHouse:"Current home", baselineScenario:"Current scenario", liveScenario:"recalculated live",
+      baselineComparisonKicker:"Real comparison", baselineComparisonTitle:"My home vs current scenario", baselineCurrentHouse:"My home", baselineScenario:"Current scenario", liveScenario:"recalculated live",
       saveScenario:"Save scenario", savedScenarios:"Current home and scenarios", clearScenarios:"Clear scenarios", versusBaseline:"Compared with current home",
       metricAnnualCost:"Annual cost", metricFinalEnergy:"Final energy", metricPrimary:"Specific primary energy", metricCo2:"CO₂ emissions", metricPower:"Heat load", metricClass:"Energy class",
       noSavedScenarios:"No saved variants yet.", savedNow:"saved now", scenarioSaved:"Scenario saved", savings:"saving", extraCost:"extra cost", noChange:"no difference",
@@ -198,14 +207,14 @@
     };
   }
 
-  function compactPercentDelta(current,baseline) {
+  function benefitPercentDelta(current,baseline) {
     const now=Number(current), base=Number(baseline);
     if (!Number.isFinite(now) || !Number.isFinite(base) || Math.abs(base)<1e-9) return {text:"",tone:""};
-    const pct=100*(now-base)/Math.abs(base);
-    if (Math.abs(pct)<0.05) return {text:lang()==="en"?"same":"la fel",tone:""};
+    const benefitPct=100*(base-now)/Math.abs(base);
+    if (Math.abs(benefitPct)<0.05) return {text:lang()==="en"?"same":"la fel",tone:""};
     return {
-      text:`${pct>0?"+":"−"}${fmt(Math.abs(pct),0)}%`,
-      tone:pct<0?"good":"bad"
+      text:`${benefitPct>0?"+":"−"}${fmt(Math.abs(benefitPct),0)}%`,
+      tone:benefitPct>0?"good":"bad"
     };
   }
 
@@ -214,25 +223,58 @@
     mobileLivebar?.setAttribute("data-mobile-flow",currentMode?"current":"scenario");
     if (mobileModeKicker) {
       mobileModeKicker.textContent=currentMode
-        ? (lang()==="en"?"CURRENT HOME":"CASA ACTUALĂ")
+        ? (lang()==="en"?"MY HOME":"CASA MEA")
         : (lang()==="en"?"CURRENT SCENARIO":"SCENARIUL CURENT");
     }
     if (mobileModeTitle) {
       mobileModeTitle.textContent=currentMode
-        ? (lang()==="en"?"Configure the real home":"Configurează locuința reală")
-        : (lang()==="en"?"Compared with your saved home":"Comparat cu casa actuală");
+        ? (baselineSnapshot
+          ? (lang()==="en"?"Edit the saved starting point":"Editează punctul de plecare salvat")
+          : (lang()==="en"?"Configure the real home":"Configurează locuința reală"))
+        : (lang()==="en"?"Compared with My home":"Comparat cu Casa mea");
     }
     if (mobilePrimaryAction) {
       mobilePrimaryAction.textContent=currentMode
         ? (baselineSnapshot
-          ? (lang()==="en"?"Update current home":"Actualizează casa actuală")
-          : (lang()==="en"?"This is my home now":"Asta este casa mea acum"))
+          ? (lang()==="en"?"Update my home → renovation site":"Actualizează casa mea → renovări")
+          : (lang()==="en"?"Save my home → renovation site":"Salvează casa mea → renovări"))
         : (lang()==="en"?"Save scenario":"Salvează scenariul");
     }
-    if (mobileSecondaryAction) {
-      mobileSecondaryAction.hidden=currentMode;
-      mobileSecondaryAction.textContent=lang()==="en"?"Choose improvement":"Alege îmbunătățire";
+    if (mobileSecondaryActions) mobileSecondaryActions.hidden=currentMode || !baselineSnapshot;
+    if (mobileSecondaryAction) mobileSecondaryAction.textContent=lang()==="en"?"Renovation site":"Șantier renovări";
+    if (mobileHomeAction) mobileHomeAction.textContent=lang()==="en"?"⌂ My home":"⌂ Casa mea";
+  }
+
+  function renovationDisplayValue(actionName, values) {
+    if (!values) return "—";
+    if (actionName==="wall") return `${values.wallIns ?? "—"} cm`;
+    if (actionName==="roof") return `${values.roofIns ?? "—"} cm`;
+    if (actionName==="floor") return `${values.floorIns ?? "—"} cm`;
+    if (actionName==="windows") {
+      const glazing=optionText(controls.glazing,values.glazing) || "—";
+      return `${glazing} · ${values.windows ?? "—"} m²`;
     }
+    if (actionName==="heating") return optionText(controls.heating,values.heating) || "—";
+    if (actionName==="ventilation") {
+      const ventilation=optionText(controls.ventilation,values.ventilation) || "—";
+      const cooling=optionText(controls.cooling,values.cooling) || "—";
+      return `${ventilation} · ${cooling}`;
+    }
+    return "—";
+  }
+
+  function updateRenovationComparison() {
+    if (!renovationValueStrip || !activeRenovationAction || !baselineSnapshot || editingCurrentHome) {
+      if (renovationValueStrip) renovationValueStrip.hidden=true;
+      return;
+    }
+    const current=captureControlState();
+    renovationValueStrip.hidden=false;
+    renovationValueStrip.dataset.renovationAction=activeRenovationAction;
+    if (renovationBaseValue) renovationBaseValue.textContent=renovationDisplayValue(activeRenovationAction,baselineSnapshot.controls || {});
+    if (renovationScenarioValue) renovationScenarioValue.textContent=renovationDisplayValue(activeRenovationAction,current);
+    if (renovationBaseLabel) renovationBaseLabel.textContent=lang()==="en"?"saved value":"valoare salvată";
+    if (renovationScenarioLabel) renovationScenarioLabel.textContent=lang()==="en"?"value being tested":"valoare testată";
   }
 
   function updateChapterSummaries(data=lastResult) {
@@ -254,14 +296,18 @@
 
       const base=baselineSnapshot?.result;
       if (base && !editingCurrentHome) {
-        const costDelta=compactPercentDelta(data.annual_cost_lei,base.annual_cost_lei);
-        const energyDelta=compactPercentDelta(data.final_energy_kwh,base.final_energy_kwh);
-        const co2Delta=compactPercentDelta(data.co2_kg,base.co2_kg);
+        const costDelta=benefitPercentDelta(data.annual_cost_lei,base.annual_cost_lei);
+        const energyDelta=benefitPercentDelta(data.final_energy_kwh,base.final_energy_kwh);
+        const co2Delta=benefitPercentDelta(data.co2_kg,base.co2_kg);
         setDeltaNode("labMobileCostDelta",costDelta.text,costDelta.tone);
         setDeltaNode("labMobileEnergyDelta",energyDelta.text,energyDelta.tone);
         setDeltaNode("labMobileCo2Delta",co2Delta.text,co2Delta.tone);
         const baseClass=base.energy_class || "—";
-        setDeltaNode("labMobileClassDelta",baseClass===data.energy_class?(lang()==="en"?"same":"la fel"):`${baseClass} → ${data.energy_class || "—"}`,baseClass===data.energy_class?"":"good");
+        const classRank={A:1,B:2,C:3,D:4,E:5,F:6,G:7};
+        const baseRank=classRank[String(baseClass).toUpperCase()];
+        const nowRank=classRank[String(data.energy_class || "").toUpperCase()];
+        const classTone=baseRank && nowRank && baseRank!==nowRank ? (nowRank<baseRank?"good":"bad") : "";
+        setDeltaNode("labMobileClassDelta",baseClass===data.energy_class?(lang()==="en"?"same":"la fel"):`${baseClass} → ${data.energy_class || "—"}`,classTone);
         const saving=Number(base.annual_cost_lei)-Number(data.annual_cost_lei);
         setText("labChapter6Summary",Number.isFinite(saving) && Math.abs(saving)>.5
           ? `${saving>0?"Economisești":"Cost suplimentar"} ${fmt(Math.abs(saving))} lei/an`
@@ -274,6 +320,7 @@
         setText("labChapter6Summary",baselineSnapshot ? "Editezi casa actuală" : "Fixează mai întâi casa actuală");
       }
     }
+    updateRenovationComparison();
   }
 
   function setChapterContext(chapter) {
@@ -287,8 +334,13 @@
     if (text) text.textContent=copy[1];
   }
 
-  function openChapter(chapter,editorTitle="") {
+  function openChapter(chapter,editorTitle="",preserveRenovation=false) {
     const panels=Array.from(root.querySelectorAll("[data-lab-chapter-panel]"));
+    if (!preserveRenovation) {
+      activeRenovationAction=null;
+      configPanel?.removeAttribute("data-active-renovation");
+      if (renovationValueStrip) renovationValueStrip.hidden=true;
+    }
     renovationChooser?.setAttribute("hidden","");
     configPanel?.classList.remove("is-renovation-choosing");
     panels.forEach(panel => panel.classList.toggle("is-mobile-open",panel.dataset.labChapterPanel===chapter));
@@ -306,6 +358,9 @@
 
   function openRenovationChooser() {
     if (!baselineSnapshot || editingCurrentHome) return;
+    activeRenovationAction=null;
+    configPanel?.removeAttribute("data-active-renovation");
+    if (renovationValueStrip) renovationValueStrip.hidden=true;
     configPanel?.classList.remove("is-chapter-editing");
     configPanel?.classList.add("is-renovation-choosing");
     root.querySelectorAll("[data-lab-chapter-panel]").forEach(panel => panel.classList.remove("is-mobile-open"));
@@ -327,7 +382,10 @@
   function openRenovationAction(actionName) {
     const action=RENOVATION_ACTIONS[actionName];
     if (!action) return;
-    openChapter(action.chapter,action.title[lang()] || action.title.ro);
+    activeRenovationAction=actionName;
+    configPanel?.setAttribute("data-active-renovation",actionName);
+    openChapter(action.chapter,action.title[lang()] || action.title.ro,true);
+    updateRenovationComparison();
     const target=document.getElementById(action.target);
     const field=target?.closest(".lab-range-control,.lab-select-field");
     if (field) {
@@ -443,8 +501,8 @@
     if (!baselineSnapshot || editingCurrentHome) {
       modeBar?.setAttribute("data-house-mode","current");
       if (kicker) kicker.textContent=baselineSnapshot
-        ? (english?"CURRENT HOME · EDITING":"CASA ACTUALĂ · EDITARE")
-        : (english?"CURRENT HOME":"CASA ACTUALĂ");
+        ? (english?"MY HOME · EDITING":"CASA MEA · EDITARE")
+        : (english?"MY HOME":"CASA MEA");
       if (title) title.textContent=baselineSnapshot
         ? (english?"You are editing the starting point":"Editezi punctul de plecare")
         : (english?"This is my home today":"Așa este locuința mea acum");
@@ -454,8 +512,8 @@
       if (confirm) {
         confirm.hidden=false;
         confirm.textContent=baselineSnapshot
-          ? (english?"Update current home":"Actualizează casa actuală")
-          : (english?"This is my home now":"Asta este casa mea acum");
+          ? (english?"Update my home → renovation site":"Actualizează casa mea → renovări")
+          : (english?"Save my home → renovation site":"Salvează casa mea → renovări");
       }
       if (edit) edit.hidden=true;
     } else {
@@ -1247,15 +1305,21 @@
   comparisonBaselineButton?.addEventListener("click", saveBaseline);
   root.querySelector("[data-audit-save-baseline]")?.addEventListener("click", saveBaseline);
   document.getElementById("labConfirmCurrentHome")?.addEventListener("click", saveBaseline);
-  document.getElementById("labEditCurrentHome")?.addEventListener("click", () => {
+  function openMyHome() {
     if (!baselineSnapshot) return;
     editingCurrentHome=true;
+    activeRenovationAction=null;
+    configPanel?.removeAttribute("data-active-renovation");
     if (renovationChooser) renovationChooser.hidden=true;
+    if (renovationValueStrip) renovationValueStrip.hidden=true;
     configPanel?.classList.remove("is-renovation-choosing");
     restoreSnapshot(baselineSnapshot);
     updateHouseFlow();
     if (isMobileCockpit()) closeChapter();
-  });
+  }
+
+  document.getElementById("labEditCurrentHome")?.addEventListener("click", openMyHome);
+  mobileHomeAction?.addEventListener("click", openMyHome);
   restoreBaselineButton?.addEventListener("click", () => restoreSnapshot(baselineSnapshot));
 
   async function saveCurrentScenario() {

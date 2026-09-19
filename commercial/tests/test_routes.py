@@ -328,8 +328,8 @@ def test_partner_embed_integration_page_exposes_two_line_loader() -> None:
 def test_partner_embed_uses_current_house_lab_assets() -> None:
     response = client.get("/embed/demo-store")
     assert response.status_code == 200
-    assert "embed-house-lab.css?v=lab16" in response.text
-    assert "embed-house-lab.js?v=lab16" in response.text
+    assert "embed-house-lab.css?v=lab17" in response.text
+    assert "embed-house-lab.js?v=lab17" in response.text
     assert "app.css?v=v2eng4" in response.text
     assert "embed-runtime.js?v=embed2" in response.text
 
@@ -593,7 +593,11 @@ def test_embed_house_lab_uses_three_column_product_layout() -> None:
     assert ".lab-renovation-grid" in response.text
     assert ".lab-mobile-livebar-metrics" in response.text
     assert ".lab-mobile-metric-icon" in response.text
-    assert 'min-height:116px!important' in response.text
+    assert 'min-height:144px!important' in response.text
+    assert ".lab-renovation-value-strip" in response.text
+    assert ".lab-renovation-group-title" in response.text
+    assert '[data-active-renovation="wall"]' in response.text
+    assert ".lab-mobile-secondary-actions" in response.text
     assert ".is-renovation-target" in response.text
 
 
@@ -637,26 +641,38 @@ def test_partner_embed_exposes_six_mc001_chapter_cockpit_and_product_scope() -> 
     assert 'data-mobile-results' in response.text
     assert 'class="lab-house-mode-bar"' in response.text
     assert 'id="labConfirmCurrentHome"' in response.text
-    assert "Asta este casa mea acum" in response.text
+    assert "Salvează casa mea → renovări" in response.text
     assert 'id="labContextImage"' in response.text
     assert "MC001 · 6" in response.text
     assert 'id="labRenovationChooser"' in response.text
     assert "Ce vrei să îmbunătățești?" in response.text
     assert 'data-renovation-action="wall"' in response.text
     assert 'data-renovation-action="roof"' in response.text
+    assert 'data-renovation-action="floor"' in response.text
     assert 'data-renovation-action="windows"' in response.text
     assert 'data-renovation-action="heating"' in response.text
     assert 'data-renovation-action="ventilation"' in response.text
     assert 'id="labMobilePrimaryAction"' in response.text
     assert 'id="labMobileSecondaryAction"' in response.text
+    assert 'id="labMobileHomeAction"' in response.text
+    assert 'id="labMobileSecondaryActions"' in response.text
+    assert 'id="labRenovationValueStrip"' in response.text
+    assert 'id="labRenovationBaseValue"' in response.text
+    assert 'id="labRenovationScenarioValue"' in response.text
+    assert 'data-renovation-scope="wall"' in response.text
+    assert 'data-renovation-scope="heating"' in response.text
+    assert 'data-renovation-scope="ventilation"' in response.text
+    assert "<strong>Anvelopă</strong>" in response.text
+    assert "<strong>Instalații</strong>" in response.text
+    assert "<strong>Regenerabile</strong>" in response.text
     assert 'id="labMobileCo2"' in response.text
-    assert "Asta este casa mea acum" in response.text
+    assert "Salvează casa mea → renovări" in response.text
 
 
 def test_home_lab_runtime_wires_mobile_chapter_editor_and_live_summary() -> None:
     response = client.get("/static/embed-house-lab.js")
     assert response.status_code == 200
-    assert 'function openChapter(chapter,editorTitle="")' in response.text
+    assert 'function openChapter(chapter,editorTitle="",preserveRenovation=false)' in response.text
     assert "function closeChapter()" in response.text
     assert "function updateChapterSummaries" in response.text
     assert "is-mobile-results-view" in response.text
@@ -674,8 +690,12 @@ def test_home_lab_runtime_wires_mobile_chapter_editor_and_live_summary() -> None
     assert "lab-number-control" in response.text
     assert "function openRenovationChooser" in response.text
     assert "function openRenovationAction" in response.text
+    assert "function updateRenovationComparison" in response.text
+    assert "function renovationDisplayValue" in response.text
+    assert 'configPanel?.setAttribute("data-active-renovation",actionName)' in response.text
     assert "function updateMobileFlow" in response.text
-    assert "compactPercentDelta" in response.text
+    assert "mobileHomeAction?.addEventListener" in response.text
+    assert "benefitPercentDelta" in response.text
     assert "labMobileCo2Delta" in response.text
     assert "mobilePrimaryAction?.addEventListener" in response.text
     assert "saveCurrentScenario" in response.text
