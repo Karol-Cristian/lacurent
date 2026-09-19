@@ -1,9 +1,7 @@
-import * as THREE from "three/webgpu";
-import { pass, mrt, output, normalView, diffuseColor, add, vec4, packNormalToRGB, unpackRGBToNormal, sample } from "three/tsl";
+import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { ssgi } from "three/addons/tsl/display/SSGINode.js";
 
 const HOUSE_MODEL_URL = "https://cdn.3dassets.dev/assets/32485/v1/model.glb";
 const HOUSE_MODEL_SOURCE = "https://3dassets.dev/assets/witch-cottage-and-apothecary-hedge-witch-25562947-starter-scene";
@@ -87,13 +85,12 @@ class HomeLabHouse3D {
 
     const canvas = this.mount.querySelector("canvas");
     try {
-      this.renderer = new THREE.WebGPURenderer({
+      this.renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
         alpha: true,
         powerPreference: "high-performance",
       });
-      await this.renderer.init();
     } catch (error) {
       this.fail("Renderer 3D indisponibil");
       return;
@@ -520,50 +517,12 @@ class HomeLabHouse3D {
   }
 
   setupBeautyPipeline() {
-    try {
-      const pipeline = new THREE.RenderPipeline(this.renderer);
-      const scenePass = pass(this.scene, this.camera);
-
-      scenePass.setMRT(mrt({
-        output,
-        diffuseColor,
-        normal: packNormalToRGB(normalView),
-      }));
-
-      const sceneColor = scenePass.getTextureNode("output");
-      const sceneDiffuse = scenePass.getTextureNode("diffuseColor");
-      const sceneDepth = scenePass.getTextureNode("depth");
-      const packedNormal = scenePass.getTextureNode("normal");
-
-      const diffuseTexture = scenePass.getTexture("diffuseColor");
-      if (diffuseTexture) diffuseTexture.type = THREE.UnsignedByteType;
-      const normalTexture = scenePass.getTexture("normal");
-      if (normalTexture) normalTexture.type = THREE.UnsignedByteType;
-
-      const sceneNormal = sample((uv) => unpackRGBToNormal(packedNormal.sample(uv)));
-      const giPass = ssgi(sceneColor, sceneDepth, sceneNormal, this.camera);
-      giPass.useTemporalFiltering = false;
-      giPass.sliceCount.value = this.isMobile ? 1 : 2;
-      giPass.stepCount.value = this.isMobile ? 5 : 8;
-      giPass.radius.value = 7.5;
-      giPass.thickness.value = 0.65;
-      giPass.aoIntensity.value = 1.2;
-      giPass.giIntensity.value = this.isMobile ? 6.5 : 8.5;
-
-      const ao = giPass.getAONode();
-      const gi = giPass.getGINode();
-      pipeline.outputNode = vec4(
-        add(sceneColor.rgb.mul(ao), sceneDiffuse.rgb.mul(gi.rgb)),
-        sceneColor.a
-      );
-
-      this.renderPipeline = pipeline;
-      this.mount.dataset.hln3dRenderer = "webgpu";
-    } catch (error) {
-      console.warn("[Home Lab 3D] WebGPU beauty pipeline unavailable; using direct renderer", error);
-      this.renderPipeline = null;
-      this.mount.dataset.hln3dRenderer = "direct";
-    }
+    // Mobile-safe production baseline.
+    // WebGPU/path-tracing stays an optional enhancement; semantic picking and
+    // hotspot interaction must never depend on it.
+    this.renderPipeline = null;
+    this.beautyEnabled = false;
+    this.mount.dataset.hln3dRenderer = "webgl";
   }
 
   createSemanticHotspots() {
