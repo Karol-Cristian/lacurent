@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 router = APIRouter()
 
-AI_MODEL = "@cf/openai/gpt-oss-120b"
+AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 MAX_HISTORY_MESSAGES = 10
 MAX_MESSAGE_CHARS = 1800
 
