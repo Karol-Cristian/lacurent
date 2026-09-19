@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -104,6 +105,24 @@ CRISIS_REPLY = (
     "Siguranța imediată este prioritatea."
 )
 
+BOOKING_TERMS = (
+    "vreau să mă programez",
+    "vreau sa ma programez",
+    "vreau o programare",
+    "aș vrea o programare",
+    "as vrea o programare",
+    "programare",
+    "vreau o ședință",
+    "vreau o sedinta",
+    "appointment",
+)
+
+SENSITIVE_REPLY = (
+    "Mesajul pare să conțină date pe care nu este nevoie să le trimiți în chat. "
+    "Șterge CNP-ul, datele de card, parola sau adresa completă și păstrează doar "
+    "contextul de care ai nevoie pentru conversație."
+)
+
 
 def _env_value(request: Request, name: str) -> str:
     env = request.scope.get("env")
@@ -126,6 +145,55 @@ def _page_context(request: Request) -> dict[str, Any]:
 def _contains_crisis(text: str) -> bool:
     lowered = text.casefold()
     return any(term in lowered for term in CRISIS_TERMS)
+
+
+def _wants_booking(text: str) -> bool:
+    lowered = text.casefold()
+    return any(term in lowered for term in BOOKING_TERMS)
+
+
+def _luhn_valid(number: str) -> bool:
+    digits = [int(char) for char in number if char.isdigit()]
+    if len(digits) < 13 or len(digits) > 19:
+        return False
+    checksum = 0
+    parity = len(digits) % 2
+    for index, digit in enumerate(digits):
+        if index % 2 == parity:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        checksum += digit
+    return checksum % 10 == 0
+
+
+def _sensitive_kind(text: str) -> str:
+    if re.search(r"(?<!\d)[1-8]\d{12}(?!\d)", text):
+        return "cnp"
+
+    for match in re.finditer(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)", text):
+        candidate = re.sub(r"\D", "", match.group(0))
+        if _luhn_valid(candidate):
+            return "card"
+
+    if re.search(r"\bRO\d{2}[A-Z0-9]{20}\b", text, flags=re.IGNORECASE):
+        return "iban"
+
+    if re.search(
+        r"\b(parol[ăa]|password|pin)\b\s*(?:este|e|:|=)\s*\S{4,}",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        return "secret"
+
+    if re.search(
+        r"\b(adresa mea|locuiesc|stau)\b.{0,40}\b(strada|str\.|calea|bulevardul|bd\.)\b.{0,50}\b(?:nr\.?\s*)?\d+\b",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        return "address"
+
+    return ""
 
 
 def _fallback_reply(text: str, user_turn_count: int) -> str:
@@ -239,6 +307,35 @@ async def elivio_chat(request: Request) -> JSONResponse:
             headers={"Cache-Control": "no-store"},
         )
 
+    sensitive_kind = _sensitive_kind(latest)
+    if sensitive_kind:
+        return JSONResponse(
+            {
+                "error": SENSITIVE_REPLY,
+                "code": "sensitive_data",
+                "sensitive_kind": sensitive_kind,
+            },
+            status_code=422,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    if _wants_booking(latest):
+        return JSONResponse(
+            {
+                "reply": "Sigur. Nu e nevoie să trecem prin toate întrebările. Te duc direct la opțiunile de programare.",
+                "mode": "booking",
+                "crisis": False,
+                "stage": 4,
+                "stage_label": "Următorul pas",
+                "action": {
+                    "type": "booking",
+                    "label": "Mergi la programări",
+                    "target": "#contact",
+                },
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
     env = request.scope.get("env")
     ai = getattr(env, "AI", None) if env is not None else None
     if ai is None:
@@ -249,6 +346,15 @@ async def elivio_chat(request: Request) -> JSONResponse:
                 "crisis": False,
                 "stage": next_stage,
                 "stage_label": INTAKE_STAGE_LABELS[next_stage - 1],
+                "action": (
+                    {
+                        "type": "booking",
+                        "label": "Mergi la programări",
+                        "target": "#contact",
+                    }
+                    if next_stage >= 4
+                    else None
+                ),
             },
             headers={"Cache-Control": "no-store"},
         )
@@ -289,6 +395,15 @@ async def elivio_chat(request: Request) -> JSONResponse:
             "crisis": False,
             "stage": next_stage,
             "stage_label": INTAKE_STAGE_LABELS[next_stage - 1],
+            "action": (
+                {
+                    "type": "booking",
+                    "label": "Mergi la programări",
+                    "target": "#contact",
+                }
+                if next_stage >= 4
+                else None
+            ),
         },
         headers={"Cache-Control": "no-store"},
     )
