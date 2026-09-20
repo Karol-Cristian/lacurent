@@ -359,7 +359,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next11" in response.text
-    assert "/static/home-lab-next.js?v=next18" in response.text
+    assert "/static/home-lab-next.js?v=next19" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -694,6 +694,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'await calculateState(homeState, "home")' in response.text
     assert 'showScreen("site")' in response.text
     assert "function createHomeLocationProjection" in response.text
+    assert "$root" not in response.text
+    assert 'root.querySelectorAll("#hlnLevels [data-value]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-screen]")' in response.text
     assert "if (!locationProjection) throw new Error" in response.text
     assert 'locationMapData = data' in response.text
     assert 'localityMap = new Map(localities.map(item => [String(item.id), item]))' in response.text
