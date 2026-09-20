@@ -358,8 +358,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next8" in response.text
-    assert "/static/home-lab-next.js?v=next15" in response.text
+    assert "/static/home-lab-next.css?v=next9" in response.text
+    assert "/static/home-lab-next.js?v=next16" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
