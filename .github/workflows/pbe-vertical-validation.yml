@@ -38,6 +38,7 @@ jobs:
         env:
           VALIDATION_OUT: validation-results
           MPLBACKEND: Agg
+          PYTHONPATH: .
         run: |
           python validation/pbe_vertical_compare.py
 
