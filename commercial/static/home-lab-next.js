@@ -1100,6 +1100,7 @@
   }
 
   async function configureNzeb() {
+    clearTimeout(calculateTimer);
     if (!baselineSaved || !homeResult?.nzeb_target) {
       setOptimizationNote("<strong>Ținta nZEB nu este disponibilă.</strong><span>Lipsește zona climatică sau lookup-ul MC001 2.10a.</span>", "warn");
       return;
@@ -1239,6 +1240,7 @@
   ];
 
   async function configureBestRoi() {
+    clearTimeout(calculateTimer);
     if (!baselineSaved || !homeResult) return;
     const buttons = $("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
@@ -2437,6 +2439,8 @@
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
+    optimizationMeta = null;
+    setOptimizationNote("");
     measures = [];
     scenarioState = {...homeState};
     renderHomeLocationMap();
