@@ -67,8 +67,18 @@ def _weighted_u(building: BuildingInput, component_type: str) -> tuple[float, fl
     return area, h / area
 
 
-def pbe_building_from_lacurent(building: BuildingInput) -> dict[str, Any]:
-    """Map the controlled LaCurent geometry to pyBuildingEnergy's BUI schema."""
+def pbe_building_from_lacurent(
+    building: BuildingInput,
+    *,
+    ventilation_h_w_k: float = 0.0,
+    thermal_bridge_h_w_k: float = 0.0,
+) -> dict[str, Any]:
+    """Map the controlled LaCurent geometry to pyBuildingEnergy's BUI schema.
+
+    For staged comparisons, LaCurent's already-resolved H_ve and H_tb values can
+    be injected directly.  That isolates the dynamic ISO 52016 solver from
+    differences in national pre-processing assumptions.
+    """
 
     area = float(building.heated_floor_area_m2)
     volume = float(building.heated_volume_m3)
@@ -204,15 +214,15 @@ def pbe_building_from_lacurent(building: BuildingInput) -> dict[str, Any]:
                 "units": "W",
             },
             "ventilation": {
-                "ventilation_type": "none",
+                "ventilation_type": "custom" if ventilation_h_w_k > 0.0 else "none",
                 "flow_rate_per_person": 0.0,
-                "custom_heat_transfer_coefficient_ventilation": 0.0,
-                "units": "l/(s m2)",
+                "custom_heat_transfer_coefficient_ventilation": float(ventilation_h_w_k),
+                "units": "W/K (custom resolved conductance)",
             },
             "internal_gains": [],
             "construction": {
                 "wall_thickness": 0.30,
-                "thermal_bridges": 0.0,
+                "thermal_bridge_heat_W_K": float(thermal_bridge_h_w_k),
                 "units": "m / W/K",
             },
         },
@@ -334,6 +344,124 @@ def run_controlled_iso52016_comparison() -> dict[str, Any]:
         "lacurent": {
             "heating_need_kwh": round(current_heating_kwh, 3),
             "heat_loss_coefficient_w_k": round(float(current.heat_loss_w_k), 6),
+        },
+        "pbe_iso52016": {
+            "heating_need_kwh": round(pbe_heating_kwh, 3),
+            "peak_heating_w": round(float(q_h_w.max()), 3),
+        },
+        "comparison": {
+            "delta_kwh": round(delta_kwh, 3),
+            "relative_delta_percent": round(rel_pct, 3),
+        },
+    }
+
+
+def controlled_demo_with_air_losses() -> BuildingInput:
+    """Controlled case 2: transmission + ventilation + thermal bridges.
+
+    Floor/ground, solar, internal gains, cooling and DHW remain disabled so the
+    only newly introduced terms are H_ve and H_tb.
+    """
+
+    payload = model_to_dict(demo_building())
+    payload["project_name"] = "PBE ISO52016 controlled demo + air losses"
+    payload["internal_gains_w_m2"] = 0.0
+    payload["solar_gains_kwh_m2_month"] = 0.0
+    payload["cooling"] = {
+        "enabled": False,
+        "seer": None,
+        "setpoint_c": 26.0,
+    }
+    payload["dhw"] = {
+        "enabled": False,
+        "occupants": 0,
+        "efficiency": 0.86,
+        "carrier": "natural_gas",
+    }
+    payload["envelope"] = [
+        item for item in payload["envelope"]
+        if item["type"] != "floor"
+    ]
+    return BuildingInput(**payload)
+
+
+def _thermal_bridge_total_w_k(building: BuildingInput) -> float:
+    return float(
+        sum(
+            float(item.length_m) * float(item.psi_w_mk)
+            for item in building.thermal_bridges
+        )
+    )
+
+
+def run_controlled_air_losses_comparison() -> dict[str, Any]:
+    """Stage 2: compare transmission + ventilation + thermal bridges."""
+
+    building = controlled_demo_with_air_losses()
+    current = calculate(building, include_reference=False)
+    h_ve = float(current.h_ve_w_k)
+    h_tb = _thermal_bridge_total_w_k(building)
+    pbe_bui = pbe_building_from_lacurent(
+        building,
+        ventilation_h_w_k=h_ve,
+        thermal_bridge_h_w_k=h_tb,
+    )
+    weather = synthetic_weather_from_lacurent(current)
+    _LaCurentSyntheticISO52016.set_weather(weather)
+
+    started = perf_counter()
+    hourly = _LaCurentSyntheticISO52016.simulate_envelope_multizone_free_floating(
+        building_object=pbe_bui,
+        weather_source="lacurent_monthly",
+        include_solar=False,
+        warmup_hours=744,
+        use_profiles=False,
+        include_internal_gains=False,
+        include_ventilation=True,
+        include_thermal_bridges=True,
+        hvac_control_variable="air",
+        internal_convection_model="table",
+        external_convection_model="table",
+        external_radiation_model="table",
+    )
+    elapsed_ms = (perf_counter() - started) * 1000.0
+    hourly_active = hourly.iloc[-8760:].copy() if len(hourly) > 8760 else hourly.copy()
+
+    q_h_w = (
+        pd.to_numeric(hourly_active["Q_HVAC_main"], errors="coerce")
+        .fillna(0.0)
+        .clip(lower=0.0)
+    )
+    pbe_heating_kwh = float(q_h_w.sum() / 1000.0)
+    current_heating_kwh = float(current.annual_heating_demand_kwh)
+    delta_kwh = pbe_heating_kwh - current_heating_kwh
+    rel_pct = 100.0 * delta_kwh / current_heating_kwh if current_heating_kwh > 0 else 0.0
+
+    pbe_h_ve_mean = None
+    if "H_ve_main" in hourly_active.columns:
+        pbe_h_ve_mean = float(
+            pd.to_numeric(hourly_active["H_ve_main"], errors="coerce")
+            .fillna(0.0)
+            .mean()
+        )
+
+    return {
+        "status": "ok",
+        "scope": "controlled_envelope_plus_ventilation_and_thermal_bridges",
+        "upstream": PBE_ISO52016_UPSTREAM,
+        "hours_simulated": int(len(hourly)),
+        "hours_compared": int(len(hourly_active)),
+        "runtime_ms": round(elapsed_ms, 1),
+        "resolved_coefficients": {
+            "lacurent_h_ve_w_k": round(h_ve, 6),
+            "pbe_mean_h_ve_w_k": (
+                None if pbe_h_ve_mean is None else round(pbe_h_ve_mean, 6)
+            ),
+            "thermal_bridge_h_w_k": round(h_tb, 6),
+            "lacurent_total_heat_loss_w_k": round(float(current.heat_loss_w_k), 6),
+        },
+        "lacurent": {
+            "heating_need_kwh": round(current_heating_kwh, 3),
         },
         "pbe_iso52016": {
             "heating_need_kwh": round(pbe_heating_kwh, 3),
