@@ -1068,7 +1068,7 @@
     }
     if (currentEnvelopeU(state, "windowU", overrides) > targetWindow) {
       state.glazing = "triple_low_e_faces_2_and_5";
-      overrides.windowU = targetWindow;
+      overrides.windowU = Math.min(0.9, targetWindow);
     }
     if (currentEnvelopeU(state, "doorU", overrides) > targetDoor) overrides.doorU = targetDoor;
 
@@ -1100,6 +1100,15 @@
     node.classList.toggle("is-warn", kind === "warn");
   }
 
+  function beginOptimizerRun() {
+    clearTimeout(calculateTimer);
+    if (calculateAbortController) {
+      calculateAbortController.abort();
+      calculateAbortController = null;
+    }
+    calculateToken += 1;
+  }
+
   function applyOptimizerResult(state, result, overrides, meta) {
     scenarioState = migrateStoredHeatingState(state, homeState);
     scenarioOverrides = {...overrides};
@@ -1114,7 +1123,7 @@
   }
 
   async function configureNzeb() {
-    clearTimeout(calculateTimer);
+    beginOptimizerRun();
     if (!baselineSaved || !homeResult?.nzeb_target) {
       setOptimizationNote("<strong>Ținta nZEB nu este disponibilă.</strong><span>Lipsește zona climatică sau lookup-ul MC001 2.10a.</span>", "warn");
       return;
@@ -1272,7 +1281,7 @@
   ];
 
   async function configureBestRoi() {
-    clearTimeout(calculateTimer);
+    beginOptimizerRun();
     if (!baselineSaved || !homeResult) return;
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
