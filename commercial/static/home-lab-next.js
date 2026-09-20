@@ -82,6 +82,8 @@
   let scenarioOverrides = {};
   let activeMeasure = null;
   let interventionOriginal = null;
+  let quickEditType = null;
+  let quickEditOriginal = null;
   let screen = "home";
   let localities = [];
   let localityMap = new Map();
@@ -873,6 +875,134 @@
     return `<svg aria-hidden="true"><use href="#hln-i-${icon}"></use></svg>`;
   }
 
+  const renewableOrientationLabel = value => ({
+    south: "Sud",
+    south_west: "Sud-vest",
+    west: "Vest",
+    north_west: "Nord-vest",
+    north: "Nord",
+    north_east: "Nord-est",
+    east: "Est",
+    south_east: "Sud-est",
+  }[value] || value || "—");
+
+  function quickEditConfig(type) {
+    if (type === "pv") {
+      return {
+        title: "Panouri fotovoltaice",
+        unit: "kWp",
+        min: 0,
+        max: 30,
+        step: 0.5,
+        value: scenarioState.pvEnabled ? Number(scenarioState.pvKwp) : 0,
+        meta: `${renewableOrientationLabel(scenarioState.pvOrientation)} · ${fmt(scenarioState.pvTilt)}°`,
+      };
+    }
+    if (type === "solar_thermal") {
+      return {
+        title: "Panouri solare termice",
+        unit: "kWth",
+        min: 0,
+        max: 30,
+        step: 0.5,
+        value: scenarioState.solarThermalEnabled ? solarThermalKwFromArea(scenarioState.solarThermalArea) : 0,
+        meta: `${renewableOrientationLabel(scenarioState.solarThermalOrientation)} · ${fmt(scenarioState.solarThermalTilt)}°`,
+      };
+    }
+    return null;
+  }
+
+  function renderQuickMeasureEditor() {
+    if (!quickEditType) return;
+    const config = quickEditConfig(quickEditType);
+    if (!config) return;
+    const range = $("#hlnQuickEditRange");
+    $("#hlnQuickEditTitle").textContent = config.title;
+    $("#hlnQuickEditValue").textContent = `${fmt(config.value, 1)} ${config.unit}`;
+    $("#hlnQuickEditMeta").textContent = config.meta;
+    $("#hlnQuickEditMaxLabel").textContent = `${fmt(config.max)} ${config.unit}`;
+    range.min = String(config.min);
+    range.max = String(config.max);
+    range.step = String(config.step);
+    range.value = String(config.value);
+    range.setAttribute("aria-label", `${config.title} · ${config.unit}`);
+  }
+
+  function openQuickMeasureEditor(type) {
+    const config = quickEditConfig(type);
+    if (!config) return false;
+    quickEditType = type;
+    quickEditOriginal = {...scenarioState};
+    renderQuickMeasureEditor();
+    const overlay = $("#hlnQuickEditOverlay");
+    overlay.hidden = false;
+    overlay.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() => $("#hlnQuickEditRange")?.focus());
+    return true;
+  }
+
+  function applyQuickMeasureValue(rawValue) {
+    if (!quickEditType) return;
+    const value = clamp(Number(rawValue) || 0, 0, 30);
+    referenceMode = false;
+
+    if (quickEditType === "pv") {
+      scenarioState.pvKwp = value;
+      scenarioState.pvEnabled = value > 0;
+    } else if (quickEditType === "solar_thermal") {
+      scenarioState.solarThermalArea = solarThermalAreaFromKw(value);
+      scenarioState.solarThermalEnabled = value > 0;
+    }
+
+    syncMeasuresFromScenario();
+    renderQuickMeasureEditor();
+    renderScenario();
+    renderDock();
+    emitVisualState(quickEditType === "solar_thermal" ? "solarThermal" : quickEditType);
+    scheduleCalculate("scenario", 90);
+  }
+
+  function hideQuickMeasureEditor() {
+    const overlay = $("#hlnQuickEditOverlay");
+    overlay.hidden = true;
+    overlay.setAttribute("aria-hidden", "true");
+  }
+
+  function commitQuickMeasureEditor() {
+    if (!quickEditType) return;
+    scheduleCalculate("scenario", 20);
+    syncMeasuresFromScenario();
+    quickEditType = null;
+    quickEditOriginal = null;
+    hideQuickMeasureEditor();
+    persist();
+    renderScenario();
+    renderDock();
+  }
+
+  function cancelQuickMeasureEditor() {
+    if (!quickEditType) return;
+    if (quickEditOriginal) scenarioState = {...quickEditOriginal};
+    const focus = quickEditType === "solar_thermal" ? "solarThermal" : quickEditType;
+    quickEditType = null;
+    quickEditOriginal = null;
+    hideQuickMeasureEditor();
+    syncMeasuresFromScenario();
+    scheduleCalculate("scenario", 20);
+    renderScenario();
+    renderDock();
+    emitVisualState(focus);
+  }
+
+  function openQuickMeasureDetails() {
+    if (!quickEditType) return;
+    const type = quickEditType;
+    quickEditType = null;
+    quickEditOriginal = null;
+    hideQuickMeasureEditor();
+    openMeasure(type);
+  }
+
   function interventionValue(type, state) {
     if (type === "wall") return `${state.wallIns} cm`;
     if (type === "roof") return `${state.roofIns} cm`;
@@ -1403,11 +1533,36 @@
     }
 
     const edit = event.target.closest("[data-hln-measure-edit]");
-    if (edit) openMeasure(edit.dataset.hlnMeasureEdit);
+    if (edit) {
+      const type = edit.dataset.hlnMeasureEdit;
+      if (!openQuickMeasureEditor(type)) openMeasure(type);
+      return;
+    }
 
     const remove = event.target.closest("[data-hln-measure-remove]");
     if (remove) resetMeasure(remove.dataset.hlnMeasureRemove);
   });
+
+  const quickEditRange = $("#hlnQuickEditRange");
+  quickEditRange.addEventListener("input", event => {
+    applyQuickMeasureValue(event.target.value);
+  });
+  quickEditRange.addEventListener("change", event => {
+    applyQuickMeasureValue(event.target.value);
+    commitQuickMeasureEditor();
+  });
+  quickEditRange.addEventListener("pointerup", () => {
+    if (quickEditType) commitQuickMeasureEditor();
+  });
+  quickEditRange.addEventListener("touchend", () => {
+    if (quickEditType) commitQuickMeasureEditor();
+  }, { passive: true });
+
+  $("#hlnQuickEditOverlay").addEventListener("click", event => {
+    if (event.target === $("#hlnQuickEditOverlay")) cancelQuickMeasureEditor();
+  });
+  $("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
+  $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
 
   $("#hlnDockCta").addEventListener("click", () => {
     if (screen === "home") {
