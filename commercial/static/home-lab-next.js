@@ -151,11 +151,51 @@
   });
   window.addEventListener("pageshow", () => syncMobileViewportBottomInset(true));
 
+  function migrateStoredHeatingState(rawState, fallbackState) {
+    const raw = rawState && typeof rawState === "object" ? rawState : {};
+    const state = {...fallbackState, ...raw};
+    const chainKeys = [
+      "heatPumpSource",
+      "heatingEmitter",
+      "heatingDistribution",
+      "heatingStorage",
+      "heatingControl",
+    ];
+    const hasCompleteStoredChain = chainKeys.every(key =>
+      Object.prototype.hasOwnProperty.call(raw, key)
+    );
+
+    // States saved before the structured-heating release only contained the
+    // generator choice. Build the new chain from that generator instead of
+    // combining it with the default gas/radiator chain.
+    if (!hasCompleteStoredChain) {
+      Object.assign(state, heatingChainDefaults(state.heating));
+    }
+
+    // Repair stale/partial combinations left by older UI builds. This keeps
+    // persisted houses usable without forcing the user to press Reset.
+    if (state.heating === "wood_stove" || state.heating === "electric_resistance") {
+      state.heatingEmitter = "local";
+      state.heatingDistribution = "local";
+      state.heatingStorage = "none";
+    }
+    if (state.heating === "heat_pump" && state.heatPumpSource === "heat_pump_air_air") {
+      state.heatingEmitter = "air";
+      state.heatingDistribution = "air";
+      state.heatingStorage = "none";
+    }
+    if (state.heatingEmitter === "local") state.heatingDistribution = "local";
+    if (state.heatingEmitter === "air") state.heatingDistribution = "air";
+    if (state.heatingEmitter === "underfloor") state.heatingDistribution = "underfloor";
+
+    return state;
+  }
+
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
     if (saved?.homeState) {
-      homeState = {...defaultState, ...saved.homeState};
-      scenarioState = {...homeState, ...(saved.scenarioState || {})};
+      homeState = migrateStoredHeatingState(saved.homeState, defaultState);
+      scenarioState = migrateStoredHeatingState(saved.scenarioState || {}, homeState);
       homeResult = saved.homeResult || null;
       scenarioResult = saved.scenarioResult || null;
       measures = Array.isArray(saved.measures) ? saved.measures : [];
