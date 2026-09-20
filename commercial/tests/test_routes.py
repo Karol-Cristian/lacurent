@@ -360,8 +360,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next15" in response.text
-    assert "/static/home-lab-next.js?v=next23" in response.text
+    assert "/static/home-lab-next.css?v=next16" in response.text
+    assert "/static/home-lab-next.js?v=next24" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -372,6 +372,11 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnReportBars"' in response.text
     assert 'id="hlnReportNzebStatus"' in response.text
     assert 'id="hlnReportStrategy"' in response.text
+    assert 'data-hln-3d-stage="report"' in response.text
+    assert 'id="hlnReportMonthlyCostChart"' in response.text
+    assert 'id="hlnReportPvGeneration"' in response.text
+    assert 'id="hlnReportHeatingSystem"' in response.text
+    assert 'id="hlnReportAssumptions"' in response.text
     assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
     assert 'id="hlnScenarioBenefitLabel"' in response.text
@@ -678,10 +683,19 @@ def test_home_lab_next_exposes_source_backed_nzeb_target() -> None:
     assert payload["climate_zone"] == "III"
     assert target["primary_energy_kwh_m2_year"] == 133.3
     assert target["co2_kg_m2_year"] == 17.1
+    assert target["building_type"] == "residential_individual"
+    assert target["climate_zone"] == "III"
+    assert target["energy_unit"] == "kWh/(m²·an)"
     assert "Tabel 2.10a" in target["source"]
+    assert "Tabel 2.4" in target["envelope_source"]
     assert target["envelope_u_max_w_m2k"]["exterior_wall"] == 0.25
     assert target["envelope_u_max_w_m2k"]["roof"] == 0.15
     assert payload["co2_specific_kg_m2"] >= 0
+    assert payload["methodology_version"]
+    assert payload["methodology_source"]
+    assert isinstance(payload["assumptions"], list)
+    assert len(payload["monthly_costs"]) == 12
+    assert all(row["final_energy_kwh"] >= 0 for row in payload["monthly_costs"])
 
 
 def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> None:
@@ -721,7 +735,12 @@ def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     assert ".hln-report-grid" in response.text
     assert ".hln-report-strategy" in response.text
     assert ".hln-strategy-list" in response.text
+    assert ".hln-report-visual" in response.text
+    assert ".hln-report-3d" in response.text
     assert ".hln-monthly-bars" in response.text
+    assert ".hln-monthly-cost-chart" in response.text
+    assert ".hln-report-provenance" in response.text
+    assert ".hln-report-stat-grid" in response.text
     assert "@media print" in response.text
 
 
@@ -789,15 +808,26 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert '\n  $("[data-hln-reference-house]").forEach' not in response.text
     assert '"heat_pump_air_air"' in nzeb_section
     assert "hasHydronicDistribution" in nzeb_section
+    assert "let state = migrateStoredHeatingState({...homeState}, defaultState);" in nzeb_section
+    assert "scenarioState" not in nzeb_section
+    assert "nzebEnvelopeActions" in response.text
+    assert "nzebEnvelopeStatus" in response.text
     assert "function renderReport" in response.text
     assert 'const strategy = $("#hlnReportStrategy")' in response.text
-    assert "Best ROI relativ" in response.text
-    assert "nu creează un racord nou la gaz" in response.text
+    assert "Best ROI estimativ" in response.text
+    assert "Nu se creează un racord nou la gaz" in response.text
+    assert "while (remaining.length)" in response.text
+    assert "round < 3" not in response.text
     assert 'dock.hidden = screen === "report"' in response.text
     assert "function nzebMeetsTarget" in response.text
     assert "ROI_ACTIONS" in response.text
     assert 'showScreen("report")' in response.text
     assert "window.print()" in response.text
+    assert "hlnReportMonthlyCostChart" in response.text
+    assert "hlnReportPvGeneration" in response.text
+    assert "hlnReportHeatingPerformance" in response.text
+    assert "hlnReportMethodologySource" in response.text
+    assert "Țintă nZEB atinsă pentru energie primară și CO₂" in response.text
     assert "const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);" in response.text
     assert "const good = lowerIsBetter ? delta < 0 : delta > 0;" in response.text
     assert 'label: good ? "Economie" : "Cost suplimentar"' in response.text
