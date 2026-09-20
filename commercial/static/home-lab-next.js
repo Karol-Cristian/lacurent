@@ -1142,14 +1142,32 @@
       normalizeHeatingState(keep);
       systemCandidates.push({label:"Păstrează generatorul existent", state:keep, overrides:{...base.overrides}, systemEffort:0});
 
-      const hp = {...base.state, heating:"heat_pump", heatPumpSource:"heat_pump_air_water"};
-      Object.assign(hp, {
-        heatingEmitter: "radiators_low_temp",
-        heatingDistribution: "hydronic_insulated",
-        heatingStorage: "none",
-        heatingControl: "zoned",
+      const hasHydronicDistribution = !["local", "air"].includes(base.state.heatingDistribution)
+        && !["local", "air"].includes(base.state.heatingEmitter);
+      const hp = {...base.state, heating:"heat_pump"};
+      if (hasHydronicDistribution) {
+        Object.assign(hp, {
+          heatPumpSource: "heat_pump_air_water",
+          heatingEmitter: base.state.heatingEmitter === "underfloor" ? "underfloor" : "radiators_low_temp",
+          heatingDistribution: base.state.heatingEmitter === "underfloor" ? "underfloor" : "hydronic_insulated",
+          heatingStorage: "none",
+          heatingControl: "zoned",
+        });
+      } else {
+        Object.assign(hp, {
+          heatPumpSource: "heat_pump_air_air",
+          heatingEmitter: "air",
+          heatingDistribution: "air",
+          heatingStorage: "none",
+          heatingControl: "zoned",
+        });
+      }
+      systemCandidates.push({
+        label: hasHydronicDistribution ? "Pompă de căldură aer-apă" : "Pompă de căldură aer-aer",
+        state:hp,
+        overrides:{...base.overrides},
+        systemEffort:hasHydronicDistribution ? 4 : 3,
       });
-      systemCandidates.push({label:"Pompă de căldură aer-apă", state:hp, overrides:{...base.overrides}, systemEffort:4});
 
       const pvSizes = [0, 3, 5, 7, 10, 12, 15];
       let best = null;
