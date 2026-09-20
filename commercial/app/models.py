@@ -271,8 +271,13 @@ class BuildingInput(BaseModel):
         dhw = values.get("dhw")
         if cooling and cooling.enabled and cooling.seer is None:
             raise ValueError("Active cooling requires SEER.")
-        if heating and heating.system_type == HeatingSystemType.heat_pump and heating.scop is None:
-            raise ValueError("A heat pump heating system requires SCOP.")
+        if (
+            heating
+            and heating.system_type == HeatingSystemType.heat_pump
+            and heating.scop is None
+            and heating.details is None
+        ):
+            raise ValueError("A heat pump heating system requires SCOP or structured heating-system details.")
         if heating and heating.system_type == HeatingSystemType.custom and heating.efficiency is None:
             raise ValueError("A custom heating system requires seasonal efficiency.")
         if dhw and dhw.enabled and dhw.occupants <= 0:
