@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.6",
+  "version": "lacurent-commercial-v2.7",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -63,6 +63,58 @@
       "efficiency": 0.85,
       "carrier": "natural_gas",
       "status": "Fallback only; explicit value preferred"
+    }
+  },
+  "heating_system_chain_light": {
+    "status": "LaCurent Light product estimates. The subsystem structure follows MC001-2022 Chapter 3, but these preset factors and heat-pump SCOP mappings are not presented as normative MC001 table values.",
+    "mc001_structure_reference": "MC001-2022 Chapter 3.1: emission, distribution, generation, auxiliary energy; storage where applicable.",
+    "emitters": {
+      "local": {"label": "Sursă locală / sobă", "flow_c": 60, "return_c": 45, "efficiency": 1.0},
+      "radiators_high_temp": {"label": "Calorifere clasice", "flow_c": 60, "return_c": 45, "efficiency": 0.94},
+      "radiators_low_temp": {"label": "Calorifere joasă temperatură", "flow_c": 45, "return_c": 35, "efficiency": 0.97},
+      "underfloor": {"label": "Încălzire în pardoseală", "flow_c": 35, "return_c": 30, "efficiency": 0.98},
+      "fan_coils": {"label": "Ventiloconvectoare", "flow_c": 45, "return_c": 40, "efficiency": 0.96},
+      "air": {"label": "Încălzire cu aer", "flow_c": 40, "return_c": 30, "efficiency": 0.95}
+    },
+    "distribution": {
+      "local": {"label": "Fără rețea de distribuție", "efficiency": 1.0},
+      "hydronic_insulated": {"label": "Conducte hidraulice izolate", "efficiency": 0.96},
+      "hydronic_uninsulated": {"label": "Conducte hidraulice neizolate", "efficiency": 0.90},
+      "underfloor": {"label": "Distribuție pardoseală", "efficiency": 0.97},
+      "air": {"label": "Distribuție prin aer", "efficiency": 0.94}
+    },
+    "storage": {
+      "none": {"label": "Fără stocare termică", "efficiency": 1.0},
+      "buffer_small": {"label": "Puffer / buffer mic", "efficiency": 0.97},
+      "buffer_large": {"label": "Puffer / acumulare mare", "efficiency": 0.94}
+    },
+    "control": {
+      "manual": {"label": "Reglaj manual", "efficiency": 0.92},
+      "room_thermostat": {"label": "Termostat de ambient", "efficiency": 0.96},
+      "thermostatic_valves": {"label": "Robineți termostatici", "efficiency": 0.97},
+      "zoned": {"label": "Control pe zone", "efficiency": 0.98},
+      "weather_compensated": {"label": "Compensare climatică", "efficiency": 0.99}
+    },
+    "heat_pump_scop_by_emitter": {
+      "local": 3.0,
+      "radiators_high_temp": 2.3,
+      "radiators_low_temp": 2.8,
+      "underfloor": 3.2,
+      "fan_coils": 2.8,
+      "air": 3.0
+    },
+    "heat_pump_scop_source": "Legacy LaCurent internal estimates retained only as Light Engine defaults; confidence low. MC001-2022 Chapter 4.1 requires source/sink temperatures, COP/capacity behaviour, auxiliaries and backup for normative heat-pump calculation.",
+    "auxiliary_electricity_kwh_year": {
+      "local": 0,
+      "gas_boiler": 120,
+      "condensing_gas_boiler": 120,
+      "electric_resistance": 0,
+      "heat_pump": 220,
+      "district_heat": 120,
+      "wood_stove": 0,
+      "wood_boiler": 120,
+      "pellet_boiler": 180,
+      "custom": 0
     }
   },
   "carriers": {
@@ -132,6 +184,7 @@
     "dhw_efficiency": 0.85
   },
   "assumptions": [
+    "Lanțul simplificat de încălzire separă emisia, distribuția, stocarea, reglajul, generatorul și energia auxiliară. Structura urmează MC001-2022 Capitolul 3, dar presetările Light pentru factori și SCOP sunt estimări LaCurent și nu valori normative MC001.",
     "Transferul termic prin transmisie folosește forma directă MC001: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul simplificat al versiunii comerciale.",
     "Transferul prin ventilare folosește Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
     "Necesarul lunar de încălzire folosește structura Mc 001-2022 Figura 2.18: QH,nd = QH,ht − ηH,gn × QH,gn, cu factorul de utilizare al aporturilor și inerția termică.",
