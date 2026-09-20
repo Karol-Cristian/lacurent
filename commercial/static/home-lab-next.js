@@ -1028,6 +1028,31 @@
     };
   }
 
+  function costOutcomeText(current, baseline, options = {}) {
+    const now = Number(current);
+    const base = Number(baseline);
+    const percent = Boolean(options.percent);
+    const unit = options.unit || "";
+    if (!Number.isFinite(now) || !Number.isFinite(base)) {
+      return {text:"—", good:null, label:"Diferență", value:null};
+    }
+    if (percent && Math.abs(base) < 1e-9) {
+      return {text:"—", good:null, label:"Diferență", value:null};
+    }
+    const rawSaving = base - now;
+    const magnitude = percent ? 100 * Math.abs(rawSaving) / Math.abs(base) : Math.abs(rawSaving);
+    if (magnitude < (percent ? 0.05 : 0.0005)) {
+      return {text:`0${unit}`, good:null, label:"Fără diferență", value:0};
+    }
+    const good = rawSaving > 0;
+    return {
+      text: `+${fmt(magnitude, percent ? 0 : 0)}${unit}`,
+      good,
+      label: good ? "Economie" : "Cost suplimentar",
+      value: rawSaving
+    };
+  }
+
   function directChangeText(current, baseline, options = {}) {
     const now = Number(current);
     const base = Number(baseline);
@@ -1123,18 +1148,16 @@
       $("#hlnDockScenarioCost").textContent =
         scenarioResult.annual_cost_lei == null ? "—" : `${fmt(scenarioResult.annual_cost_lei)} lei/an`;
 
-      const saving = signedSavingText(
+      const saving = costOutcomeText(
         scenarioResult.annual_cost_lei,
         homeResult.annual_cost_lei,
-        " lei/an"
+        {unit:" lei/an"}
       );
       const savingNode = $("#hlnDockCostBenefit");
       const savingLabel = $("#hlnDockSavingLabel");
       savingNode.textContent = saving.text;
       applyDeltaState(savingNode, saving);
-      if (savingLabel) {
-        savingLabel.textContent = saving.good === false ? "Pierdere" : saving.good === true ? "Economie" : "Diferență";
-      }
+      if (savingLabel) savingLabel.textContent = saving.label;
 
       const baseClassRank = energyClassRank(homeResult.energy_class);
       const scenarioClassRank = energyClassRank(scenarioResult.energy_class);
@@ -1470,15 +1493,17 @@
     $("#hlnScenarioHomeCost").textContent = homeResult.annual_cost_lei == null ? "—" : `${fmt(homeResult.annual_cost_lei)} lei`;
     $("#hlnScenarioNewCost").textContent = scenarioResult.annual_cost_lei == null ? "—" : `${fmt(scenarioResult.annual_cost_lei)} lei`;
 
-    const costBenefit = benefitText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei);
+    const costBenefit = costOutcomeText(
+      scenarioResult.annual_cost_lei,
+      homeResult.annual_cost_lei,
+      {unit:"%", percent:true}
+    );
     const benefitNode = $("#hlnScenarioBenefit");
     const benefitLabel = $("#hlnScenarioBenefitLabel");
     benefitNode.textContent = costBenefit.text;
     benefitNode.parentElement.classList.toggle("is-bad", costBenefit.good === false);
     benefitNode.parentElement.classList.toggle("is-good", costBenefit.good === true);
-    if (benefitLabel) {
-      benefitLabel.textContent = costBenefit.good === false ? "pierdere estimată" : costBenefit.good === true ? "economie estimată" : "fără diferență";
-    }
+    if (benefitLabel) benefitLabel.textContent = costBenefit.label.toLowerCase() + " estimat";
 
     const costChange = directChangeText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei, {unit:" lei/an"});
     const energyChange = directChangeText(scenarioResult.final_energy_kwh, homeResult.final_energy_kwh, {unit:"%", percent:true});
