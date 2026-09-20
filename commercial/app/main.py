@@ -882,6 +882,12 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     method = methodology()
     reference_rules = method["reference_building"]
     climate_zone = str(climate.get("climate_zone") or "")
+    if not climate_zone:
+        try:
+            locality_meta = resolve_locality(result.input.locality)
+            climate_zone = str(locality_meta.get("climateZone") or "")
+        except Exception:
+            climate_zone = ""
     building_type = result.input.building_type.value
     nzeb_registry = method.get("nzeb_targets", {})
     nzeb_target = (
@@ -902,7 +908,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "design_heat_load_kw": design_heat_load_kw,
         "locality": selected.get("display_name") or result.input.locality,
         "climate_station": climate.get("station") or "",
-        "climate_zone": climate.get("climate_zone"),
+        "climate_zone": climate_zone or None,
         "nzeb_target": (
             {
                 "primary_energy_kwh_m2_year": float(nzeb_target["primary_energy_kwh_m2_year"]),
