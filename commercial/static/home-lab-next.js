@@ -1254,7 +1254,9 @@
       id:"heating", label:"Pompă de căldură", effort:6,
       apply: state => {
         const next = {...state, heating:"heat_pump"};
-        if (["local"].includes(state.heatingEmitter)) {
+        const hasHydronicDistribution = !["local", "air"].includes(state.heatingDistribution)
+          && !["local", "air"].includes(state.heatingEmitter);
+        if (!hasHydronicDistribution) {
           next.heatPumpSource = "heat_pump_air_air";
           next.heatingEmitter = "air";
           next.heatingDistribution = "air";
@@ -1262,8 +1264,8 @@
           next.heatingControl = "zoned";
         } else {
           next.heatPumpSource = "heat_pump_air_water";
-          next.heatingEmitter = "radiators_low_temp";
-          next.heatingDistribution = "hydronic_insulated";
+          next.heatingEmitter = state.heatingEmitter === "underfloor" ? "underfloor" : "radiators_low_temp";
+          next.heatingDistribution = state.heatingEmitter === "underfloor" ? "underfloor" : "hydronic_insulated";
           next.heatingStorage = "none";
           next.heatingControl = "zoned";
         }
