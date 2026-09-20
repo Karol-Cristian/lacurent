@@ -358,8 +358,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next9" in response.text
-    assert "/static/home-lab-next.js?v=next16" in response.text
+    assert "/static/home-lab-next.css?v=next10" in response.text
+    assert "/static/home-lab-next.js?v=next17" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -371,6 +371,14 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-measure="pv"' in response.text
     assert 'data-hln-measure="solar_thermal"' in response.text
     assert 'id="hlnHomePvKwp"' in response.text
+    assert "5 categorii" in response.text
+    assert 'data-hln-editor-open="renewables"' in response.text
+    assert 'data-hln-editor="renewables"' in response.text
+    assert 'id="hlnRenewablesSummary"' in response.text
+    assert 'id="hlnHomeLocationMap"' in response.text
+    assert 'id="hlnMapLocalityResults"' in response.text
+    assert 'id="hlnBuildingType"' in response.text
+    assert 'id="hlnConstructionYear"' in response.text
     assert 'id="hlnHomeSolarThermalArea"' in response.text
     assert 'id="hlnHomeHeatingEmitter"' in response.text
     assert response.text.count('data-hln-home-heating-chain') == 4
@@ -676,6 +684,15 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function signedSavingText" in response.text
     assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
+    assert "async function saveHomeAndOpenSite" in response.text
+    assert 'await calculateState(homeState, "home")' in response.text
+    assert 'showScreen("site")' in response.text
+    assert "function createHomeLocationProjection" in response.text
+    assert "function renderHomeLocationMap" in response.text
+    assert "function selectHomeLocality" in response.text
+    assert "nearestHomeMapLocalities" in response.text
+    assert 'formSet("building_type"' in response.text
+    assert 'formSet("construction_year"' in response.text
     assert "function migrateStoredHeatingState" in response.text
     assert '["wood_stove", "electric_resistance"].includes(homeState.heating)' in response.text
     assert '["wood_stove", "electric_resistance"].includes(scenarioState.heating)' in response.text
