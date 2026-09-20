@@ -27,6 +27,7 @@
       district_heat: "Termoficare",
       wood_stove: "Șemineu / sobă",
       electric_resistance: "Încălzire electrică",
+      electric_boiler: "Centrală electrică",
       wood_boiler: "Centrală pe lemne",
       pellet_boiler: "Centrală pe peleți"
     },
@@ -41,6 +42,26 @@
       none: "Fără răcire",
       split: "Aer condiționat",
       heat_pump: "Pompă reversibilă"
+    },
+    heatingEmitter: {
+      local: "Sursă locală",
+      radiators_high_temp: "Calorifere clasice",
+      radiators_low_temp: "Calorifere joasă temperatură",
+      underfloor: "Pardoseală",
+      fan_coils: "Ventiloconvectoare",
+      air: "Aer"
+    },
+    heatingStorage: {
+      none: "fără puffer",
+      buffer_small: "puffer mic",
+      buffer_large: "puffer mare"
+    },
+    heatingControl: {
+      manual: "manual",
+      room_thermostat: "termostat",
+      thermostatic_valves: "robineți termostatici",
+      zoned: "control pe zone",
+      weather_compensated: "compensare climatică"
     }
   };
 
@@ -59,6 +80,11 @@
     glazing: "triple_low_e_faces_2_and_5",
     orientation: "south",
     heating: "condensing_gas_boiler",
+    heatPumpSource: "heat_pump_air_water",
+    heatingEmitter: "radiators_high_temp",
+    heatingDistribution: "hydronic_insulated",
+    heatingStorage: "none",
+    heatingControl: "room_thermostat",
     ventilation: "natural",
     cooling: "none",
     pvEnabled: false,
@@ -158,6 +184,72 @@
   }
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  function heatingChainDefaults(type) {
+    if (type === "heat_pump") return {
+      heatPumpSource: "heat_pump_air_water",
+      heatingEmitter: "underfloor",
+      heatingDistribution: "underfloor",
+      heatingStorage: "none",
+      heatingControl: "zoned",
+    };
+    if (type === "wood_stove") return {
+      heatingEmitter: "local",
+      heatingDistribution: "local",
+      heatingStorage: "none",
+      heatingControl: "manual",
+    };
+    if (type === "electric_resistance") return {
+      heatingEmitter: "local",
+      heatingDistribution: "local",
+      heatingStorage: "none",
+      heatingControl: "room_thermostat",
+    };
+    if (type === "pellet_boiler") return {
+      heatingEmitter: "radiators_high_temp",
+      heatingDistribution: "hydronic_insulated",
+      heatingStorage: "buffer_small",
+      heatingControl: "room_thermostat",
+    };
+    if (type === "district_heat") return {
+      heatingEmitter: "radiators_high_temp",
+      heatingDistribution: "hydronic_insulated",
+      heatingStorage: "none",
+      heatingControl: "thermostatic_valves",
+    };
+    return {
+      heatingEmitter: "radiators_high_temp",
+      heatingDistribution: "hydronic_insulated",
+      heatingStorage: "none",
+      heatingControl: "room_thermostat",
+    };
+  }
+
+  function heatingGeneratorType(state) {
+    if (state.heating === "heat_pump") return state.heatPumpSource || "heat_pump_air_water";
+    return {
+      condensing_gas_boiler: "condensing_gas_boiler",
+      gas_boiler: "gas_boiler",
+      electric_resistance: "electric_direct",
+      electric_boiler: "electric_boiler",
+      district_heat: "district_heat",
+      wood_stove: "wood_stove",
+      wood_boiler: "wood_boiler",
+      pellet_boiler: "pellet_boiler",
+    }[state.heating] || "custom";
+  }
+
+  function applyHeatingDefaults(state, type) {
+    const defaults = heatingChainDefaults(type);
+    Object.assign(state, defaults);
+  }
+
+  function toggleHeatPumpSourceControls() {
+    const home = $("[data-hln-home-heat-pump-source]");
+    const scenario = $("[data-hln-scenario-heat-pump-source]");
+    if (home) home.hidden = homeState.heating !== "heat_pump";
+    if (scenario) scenario.hidden = scenarioState.heating !== "heat_pump";
+  }
 
   function solarThermalKwFromArea(areaM2) {
     return Math.max(0, Number(areaM2) || 0) * SOLAR_THERMAL_NOMINAL_KW_PER_M2;
