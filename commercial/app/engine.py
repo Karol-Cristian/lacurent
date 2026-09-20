@@ -593,6 +593,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
     heating = heating_final_energy(building, annual_heating)
     cooling = cooling_final_energy(building, annual_cooling)
     dhw_gross = dhw_energy(building)
+    pre_renewable_by_carrier = final_energy_by_carrier(heating, cooling, dhw_gross)
     dhw, solar_thermal_useful, solar_thermal_source = _apply_solar_thermal(building, dhw_gross)
     by_service = final_energy_by_service(heating, cooling, dhw)
     gross_by_carrier = final_energy_by_carrier(heating, cooling, dhw)
@@ -602,7 +603,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
     )
     renewables = renewable_result(
         building,
-        gross_carrier_totals=gross_by_carrier,
+        gross_carrier_totals=pre_renewable_by_carrier,
         net_carrier_totals=by_carrier,
         pv_generation_kwh=pv_generation,
         pv_self_consumed_kwh=pv_self_consumed,
