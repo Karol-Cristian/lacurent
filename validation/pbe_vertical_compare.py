@@ -281,7 +281,17 @@ def pbe_bui(light_result, building_input) -> dict:
     wall_quarter = float(wall.area_m2) / 4.0
     ones = [1.0] * 24
     zeros = [0.0] * 24
+    internal_gains = [
+        {"name": "occupants", "full_load": 2.4, "weekday": ones, "weekend": ones},
+        {"name": "appliances", "full_load": 0.0, "weekday": zeros, "weekend": zeros},
+        {"name": "lighting", "full_load": 0.0, "weekday": zeros, "weekend": zeros},
+    ]
     return {
+        # PBE 2.0.3's ISO52016 path reads gain schedules from
+        # building_parameters.internal_gains but full-load overrides from the
+        # top-level internal_gains key. Keep the same definition in both places
+        # so the adapter really matches LaCurent's constant 2.4 W/m².
+        "internal_gains": deepcopy(internal_gains),
         "building": {
             "name": building_input.project_name,
             "azimuth_relative_to_true_north": 0.0,
@@ -339,11 +349,7 @@ def pbe_bui(light_result, building_input) -> dict:
                 "custom_heat_transfer_coefficient_ventilation": float(light_result.h_ve_w_k),
                 "units": "W/K",
             },
-            "internal_gains": [
-                {"name": "occupants", "full_load": 2.4, "weekday": ones, "weekend": ones},
-                {"name": "appliances", "full_load": 0.0, "weekday": zeros, "weekend": zeros},
-                {"name": "lighting", "full_load": 0.0, "weekday": zeros, "weekend": zeros},
-            ],
+            "internal_gains": deepcopy(internal_gains),
             "construction": {
                 "wall_thickness": 0.30,
                 "thermal_bridge_heat_W_K": float(htb),
