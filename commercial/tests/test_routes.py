@@ -783,8 +783,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'const buttons = $$("[data-hln-smart-config]")' in response.text
     assert '$$("[data-hln-smart-config]").forEach' in response.text
     assert '$$("[data-hln-reference-house]").forEach' in response.text
-    assert '$("[data-hln-smart-config]").forEach' not in response.text
-    assert '$("[data-hln-reference-house]").forEach' not in response.text
+    assert '\n  $("[data-hln-smart-config]").forEach' not in response.text
+    assert '\n  $("[data-hln-reference-house]").forEach' not in response.text
     assert '"heat_pump_air_air"' in nzeb_section
     assert "hasHydronicDistribution" in nzeb_section
     assert "function renderReport" in response.text
