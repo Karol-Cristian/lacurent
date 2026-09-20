@@ -358,8 +358,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next14" in response.text
-    assert "/static/home-lab-next.js?v=next22" in response.text
+    assert "/static/home-lab-next.css?v=next15" in response.text
+    assert "/static/home-lab-next.js?v=next23" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -369,6 +369,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-go="report"' in response.text
     assert 'id="hlnReportBars"' in response.text
     assert 'id="hlnReportNzebStatus"' in response.text
+    assert 'id="hlnReportStrategy"' in response.text
     assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
     assert 'id="hlnScenarioBenefitLabel"' in response.text
@@ -716,6 +717,8 @@ def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     assert ".hln-smart-configs" in response.text
     assert ".hln-report-hero" in response.text
     assert ".hln-report-grid" in response.text
+    assert ".hln-report-strategy" in response.text
+    assert ".hln-strategy-list" in response.text
     assert ".hln-monthly-bars" in response.text
     assert "@media print" in response.text
 
@@ -777,7 +780,18 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert '"heat_pump_air_water"' in nzeb_section
     assert '"natural_gas"' not in nzeb_section
     assert "async function configureBestRoi" in response.text
+    assert 'const buttons = $("[data-hln-smart-config]")' in response.text
+    assert '$("[data-hln-smart-config]").forEach' in response.text
+    assert '$("[data-hln-reference-house]").forEach' in response.text
+    assert '$("[data-hln-smart-config]").forEach' not in response.text
+    assert '$("[data-hln-reference-house]").forEach' not in response.text
+    assert '"heat_pump_air_air"' in nzeb_section
+    assert "hasHydronicDistribution" in nzeb_section
     assert "function renderReport" in response.text
+    assert 'const strategy = $("#hlnReportStrategy")' in response.text
+    assert "Best ROI relativ" in response.text
+    assert "nu creează un racord nou la gaz" in response.text
+    assert 'dock.hidden = screen === "report"' in response.text
     assert "function nzebMeetsTarget" in response.text
     assert "ROI_ACTIONS" in response.text
     assert 'showScreen("report")' in response.text
