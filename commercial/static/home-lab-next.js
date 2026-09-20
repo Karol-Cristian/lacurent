@@ -1015,19 +1015,6 @@
     };
   }
 
-  function signedSavingText(current, baseline, unit = "") {
-    const now = Number(current);
-    const base = Number(baseline);
-    if (!Number.isFinite(now) || !Number.isFinite(base)) return {text: "—", good: null, value: null};
-    const saving = base - now;
-    if (Math.abs(saving) < 0.05) return {text: `0${unit}`, good: null, value: 0};
-    return {
-      text: `${saving > 0 ? "+" : "−"}${fmt(Math.abs(saving), unit === " kW" ? 1 : 0)}${unit}`,
-      good: saving > 0,
-      value: saving
-    };
-  }
-
   function costOutcomeText(current, baseline, options = {}) {
     const now = Number(current);
     const base = Number(baseline);
