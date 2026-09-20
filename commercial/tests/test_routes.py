@@ -359,7 +359,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next8" in response.text
-    assert "/static/home-lab-next.js?v=next12" in response.text
+    assert "/static/home-lab-next.js?v=next13" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -462,6 +462,35 @@ def test_home_lab_next_direct_electric_heating_pv_changes_live_result() -> None:
     assert with_payload["annual_cost_lei"] < without_payload["annual_cost_lei"]
 
 
+def test_home_lab_next_hides_internal_heating_validation_path() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "heating_system_type": "custom",
+            "heating_carrier": "biomass",
+            "heating_efficiency": "0.75",
+            "heating_cost_profile": "firewood",
+            "heating_chain_enabled": "on",
+            "heating_generator_type": "wood_stove",
+            "heating_emitter_type": "radiators_high_temp",
+            "heating_distribution_type": "hydronic_insulated",
+            "heating_storage_type": "none",
+            "heating_control_type": "manual",
+        }
+    )
+
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["error"] == (
+        "Configurația instalației de încălzire nu este compatibilă. "
+        "Verifică generatorul, emisia și distribuția."
+    )
+    assert "__root__" not in payload["error"]
+    assert "heating / details" not in payload["error"]
+
+
 def test_home_lab_next_heat_pump_emitter_changes_light_engine_performance() -> None:
     base = demo_form_data()
     base.update(
@@ -555,6 +584,12 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function signedSavingText" in response.text
     assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
+    assert "function migrateStoredHeatingState" in response.text
+    assert "hasCompleteStoredChain" in response.text
+    assert 'Object.assign(state, heatingChainDefaults(state.heating))' in response.text
+    assert 'state.heating === "wood_stove" || state.heating === "electric_resistance"' in response.text
+    assert 'state.heatPumpSource === "heat_pump_air_air"' in response.text
+    assert "persist();" in response.text
     assert "function setReferenceHouse" in response.text
     assert "function resetScenarioToHome" in response.text
     assert "function renderLiveConfigurator" in response.text
