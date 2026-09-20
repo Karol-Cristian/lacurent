@@ -1127,7 +1127,10 @@ class HomeLabHouse3D {
     const selectedMeasures = new Set(Array.isArray(detail.measures) ? detail.measures : []);
     ["wall", "roof", "floor", "windows"].forEach((part) => {
       const layer = this.selectionProofLayers.get(part);
-      if (layer) layer.visible = selectedMeasures.has(part);
+      // These translucent proof volumes are useful only while authoring the
+      // 3D semantic mapping. In the product they read as detached boxes/planes
+      // around the house and obscure the model.
+      if (layer) layer.visible = this.authorMode && selectedMeasures.has(part);
     });
 
     const windowProof = this.selectionProofLayers.get("windows");
