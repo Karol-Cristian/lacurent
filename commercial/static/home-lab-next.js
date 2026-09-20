@@ -87,6 +87,7 @@
   let localityMap = new Map();
   let calculateToken = 0;
   let calculateTimer = 0;
+  let calculateAbortController = null;
 
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
@@ -619,17 +620,46 @@
 
   async function calculateState(state, target) {
     const token = ++calculateToken;
+    if (calculateAbortController) calculateAbortController.abort();
+    const controller = new AbortController();
+    calculateAbortController = controller;
+
     populateTechnicalForm(state);
     const body = new FormData(form);
     setStatus("Recalculare live…");
-    try {
-      const response = await fetch(calcUrl, {method: "POST", body});
+
+    const request = async (attempt = 1) => {
+      const response = await fetch(calcUrl, {
+        method: "POST",
+        body,
+        signal: controller.signal,
+      });
       const contentType = response.headers.get("content-type") || "";
-      const payload = contentType.includes("application/json") ? await response.json() : null;
-      if (!response.ok || !payload || payload.error) {
-        throw new Error(payload?.error || "Calculul nu a putut fi actualizat.");
+      let payload = null;
+      if (contentType.includes("application/json")) {
+        payload = await response.json();
+      } else {
+        // Consume the body so transient edge responses do not leave the
+        // connection hanging; the text is intentionally not surfaced raw.
+        await response.text();
       }
-      if (token !== calculateToken) return null;
+
+      if (!response.ok || !payload || payload.error) {
+        const retryable = response.status === 429 || response.status >= 500;
+        if (retryable && attempt < 2 && token === calculateToken) {
+          await new Promise(resolve => window.setTimeout(resolve, 220));
+          if (token !== calculateToken || controller.signal.aborted) return null;
+          return request(attempt + 1);
+        }
+        if (payload?.error) throw new Error(payload.error);
+        throw new Error(`Calcul indisponibil momentan (HTTP ${response.status || "?"}).`);
+      }
+      return payload;
+    };
+
+    try {
+      const payload = await request();
+      if (!payload || token !== calculateToken) return null;
       if (target === "home") homeResult = payload;
       if (target === "scenario") scenarioResult = payload;
       currentResult = payload;
@@ -638,9 +668,11 @@
       emitVisualState();
       return payload;
     } catch (error) {
-      if (token !== calculateToken) return null;
+      if (error?.name === "AbortError" || token !== calculateToken) return null;
       setStatus(error?.message || "Calcul indisponibil momentan.", "error");
       return null;
+    } finally {
+      if (calculateAbortController === controller) calculateAbortController = null;
     }
   }
 
