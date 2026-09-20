@@ -734,6 +734,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function normalizeHeatingState" in response.text
     assert "function syncHeatingControlAvailability" in response.text
     assert "function setHeatingFieldDisabled" in response.text
+    assert 'root.querySelectorAll("#hlnLevels [data-value]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-screen]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-quick-edit-close]")' in response.text
     assert '$("[data-hln-home-heating-chain]")' in response.text
     assert '$("[data-hln-scenario-heating-chain]")' in response.text
     assert 'control.disabled = disabled' in response.text
