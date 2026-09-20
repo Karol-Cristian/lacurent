@@ -176,6 +176,13 @@ HEATING_CHAIN_PROFILES: dict[str, dict[str, str]] = {
         "storage_type": "none",
         "control_type": "room_thermostat",
     },
+    "electric_boiler": {
+        "generator_type": "electric_boiler",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "storage_type": "none",
+        "control_type": "room_thermostat",
+    },
     "heat_pump": {
         "generator_type": "heat_pump_air_water",
         "emitter_type": "underfloor",
@@ -218,6 +225,7 @@ HEATING_PROFILES: dict[str, dict[str, Any]] = {
     "condensing_gas_boiler": _heating_profile("condensing_gas_boiler", "natural_gas"),
     "gas_boiler": _heating_profile("gas_boiler", "natural_gas"),
     "electric_resistance": _heating_profile("electric_resistance", "electricity"),
+    "electric_boiler": _heating_profile("custom", "electricity", efficiency=0.98, carrier="electricity"),
     "heat_pump": _heating_profile("heat_pump", "electricity"),
     "wood_stove": _heating_profile("custom", "firewood", efficiency=0.75, carrier="biomass"),
     "wood_boiler": _heating_profile("custom", "firewood", efficiency=0.80, carrier="biomass"),
@@ -291,6 +299,7 @@ def default_form_values() -> dict[str, Any]:
         "heating_scop": 3.2,
         "heating_carrier": "natural_gas",
         "heating_cost_profile": "natural_gas",
+        "heating_chain_enabled": False,
         "heating_generator_type": "condensing_gas_boiler",
         "heating_emitter_type": "radiators_high_temp",
         "heating_distribution_type": "hydronic_insulated",
@@ -550,7 +559,7 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
         "design_return_temperature_c": parse_optional_float(form.get("heating_design_return_temperature_c")),
         "auxiliary_electricity_kwh_year": parse_optional_float(form.get("heating_auxiliary_electricity_kwh_year")),
     }
-    structured_heating_present = simple or any(
+    structured_heating_present = _checked(form, "heating_chain_enabled") or (not simple and any(
         form.get(name) not in (None, "")
         for name in (
             "heating_generator_type",
@@ -562,7 +571,7 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
             "heating_design_return_temperature_c",
             "heating_auxiliary_electricity_kwh_year",
         )
-    )
+    ))
     if structured_heating_present:
         heating["details"] = chain_details
 
@@ -790,6 +799,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             for key, value in result.final_energy_by_carrier.items()
         },
         "renewables": model_to_dict(result.renewables),
+        "heating_system": model_to_dict(result.heating_system),
         "monthly": [
             {
                 "month": row.month,
