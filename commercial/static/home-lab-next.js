@@ -43,6 +43,32 @@
     }
   };
 
+  const heatingDefaults = {
+    condensing_gas_boiler: {efficiency: 94, scop: 3.2, carrier: "natural_gas", systemType: "condensing_gas_boiler", costProfile: "natural_gas"},
+    gas_boiler: {efficiency: 86, scop: 3.2, carrier: "natural_gas", systemType: "gas_boiler", costProfile: "natural_gas"},
+    heat_pump: {efficiency: null, scop: 3.2, carrier: "electricity", systemType: "heat_pump", costProfile: "electricity"},
+    district_heat: {efficiency: 98, scop: 3.2, carrier: "district_heat", systemType: "district_heat", costProfile: "district_heat"},
+    wood_stove: {efficiency: 75, scop: 3.2, carrier: "biomass", systemType: "custom", costProfile: "firewood"},
+    electric_resistance: {efficiency: 100, scop: 3.2, carrier: "electricity", systemType: "electric_resistance", costProfile: "electricity"},
+    wood_boiler: {efficiency: 80, scop: 3.2, carrier: "biomass", systemType: "custom", costProfile: "firewood"},
+    pellet_boiler: {efficiency: 88, scop: 3.2, carrier: "biomass", systemType: "custom", costProfile: "pellets"}
+  };
+
+  function heatingTechnical(state) {
+    const base = heatingDefaults[state.heating] || heatingDefaults.condensing_gas_boiler;
+    return {
+      ...base,
+      efficiency: state.heating === "heat_pump" ? null : clamp(Number(state.heatingEfficiency ?? base.efficiency) / 100, 0.2, 1.0),
+      scop: state.heating === "heat_pump" ? Math.max(1, Number(state.heatingScop || base.scop)) : null,
+    };
+  }
+
+  function carrierForDhw(state) {
+    if (state.dhwMode === "disabled") return null;
+    if (state.dhwMode && state.dhwMode !== "same_as_heating") return state.dhwMode;
+    return heatingTechnical(state).carrier;
+  }
+
   const defaultState = {
     localityId: form.elements.locality_id.value,
     locality: form.elements.locality.value,
@@ -51,6 +77,8 @@
     height: 2.7,
     temperature: 21,
     occupants: 4,
+    constructionYear: 1990,
+    buildingStatus: "existing",
     windows: 18,
     wallIns: 5,
     roofIns: 10,
@@ -58,8 +86,21 @@
     glazing: "triple_low_e_faces_2_and_5",
     orientation: "south",
     heating: "condensing_gas_boiler",
+    heatingEfficiency: 94,
+    heatingScop: 3.2,
+    dhwMode: "same_as_heating",
+    dhwEfficiency: 86,
     ventilation: "natural",
-    cooling: "none"
+    heatRecovery: 75,
+    cooling: "none",
+    coolingSeer: 4.0,
+    pvEnabled: false,
+    pvKwp: 5,
+    pvOrientation: "south",
+    pvSelfConsumption: 55,
+    solarThermalEnabled: false,
+    solarThermalArea: 4,
+    solarThermalOrientation: "south"
   };
 
   let homeState = {...defaultState};
@@ -133,6 +174,8 @@
       heating: "reference_mc001",
       ventilation: "reference_mc001",
       cooling: homeState.cooling === "none" ? "none" : "reference_mc001",
+      pvEnabled: false,
+      solarThermalEnabled: false,
     };
   }
 
@@ -170,37 +213,20 @@
 
   function syncMeasuresFromScenario() {
     const next = [];
+    if (Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01 || Number.isFinite(Number(scenarioOverrides.wallU))) next.push("wall");
+    if (Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01 || Number.isFinite(Number(scenarioOverrides.roofU))) next.push("roof");
+    if (Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01 || Number.isFinite(Number(scenarioOverrides.floorU))) next.push("floor");
+    if (scenarioState.glazing !== homeState.glazing || Math.abs(Number(scenarioState.windows) - Number(homeState.windows)) > 0.01 || Number.isFinite(Number(scenarioOverrides.windowU)) || referenceMode) next.push("windows");
+    if (scenarioState.heating !== homeState.heating || Number.isFinite(Number(scenarioOverrides.heatingEfficiency)) || referenceMode) next.push("heating");
+    if (scenarioState.ventilation !== homeState.ventilation || scenarioState.cooling !== homeState.cooling || Number.isFinite(Number(scenarioOverrides.airChanges)) || Number.isFinite(Number(scenarioOverrides.heatRecovery)) || Number.isFinite(Number(scenarioOverrides.coolingSeer)) || referenceMode) next.push("ventilation");
     if (
-      Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01 ||
-      Number.isFinite(Number(scenarioOverrides.wallU))
-    ) next.push("wall");
-    if (
-      Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01 ||
-      Number.isFinite(Number(scenarioOverrides.roofU))
-    ) next.push("roof");
-    if (
-      Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01 ||
-      Number.isFinite(Number(scenarioOverrides.floorU))
-    ) next.push("floor");
-    if (
-      scenarioState.glazing !== homeState.glazing ||
-      Math.abs(Number(scenarioState.windows) - Number(homeState.windows)) > 0.01 ||
-      Number.isFinite(Number(scenarioOverrides.windowU)) ||
-      referenceMode
-    ) next.push("windows");
-    if (
-      scenarioState.heating !== homeState.heating ||
-      Number.isFinite(Number(scenarioOverrides.heatingEfficiency)) ||
-      referenceMode
-    ) next.push("heating");
-    if (
-      scenarioState.ventilation !== homeState.ventilation ||
-      scenarioState.cooling !== homeState.cooling ||
-      Number.isFinite(Number(scenarioOverrides.airChanges)) ||
-      Number.isFinite(Number(scenarioOverrides.heatRecovery)) ||
-      Number.isFinite(Number(scenarioOverrides.coolingSeer)) ||
-      referenceMode
-    ) next.push("ventilation");
+      scenarioState.pvEnabled !== homeState.pvEnabled ||
+      Math.abs(Number(scenarioState.pvKwp) - Number(homeState.pvKwp)) > 0.01 ||
+      scenarioState.pvOrientation !== homeState.pvOrientation ||
+      scenarioState.solarThermalEnabled !== homeState.solarThermalEnabled ||
+      Math.abs(Number(scenarioState.solarThermalArea) - Number(homeState.solarThermalArea)) > 0.01 ||
+      scenarioState.solarThermalOrientation !== homeState.solarThermalOrientation
+    ) next.push("renewables");
     measures = next;
   }
 
@@ -210,6 +236,8 @@
       orientation: state.orientation,
       cooling: state.cooling,
       heating: state.heating,
+      pvEnabled: Boolean(state.pvEnabled),
+      pvKwp: Number(state.pvKwp || 0),
       baselineSaved,
       screen,
       referenceMode,
@@ -411,6 +439,8 @@
 
     formSet("locality_id", state.localityId);
     formSet("locality", state.locality);
+    formSet("building_status", state.buildingStatus || "existing");
+    formSet("construction_year", state.constructionYear || "");
     formSet("building_length_m", length.toFixed(3));
     formSet("building_width_m", width.toFixed(3));
     formSet("heated_levels", levels);
@@ -431,7 +461,7 @@
       triple_low_e_faces_2_and_5: 0.9
     };
     const overrides = state === scenarioState ? (scenarioOverrides || {}) : {};
-    const finiteOverride = (key) => {
+    const finiteOverride = key => {
       const raw = overrides[key];
       return raw != null && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
     };
@@ -441,7 +471,6 @@
     const floorU = finiteOverride("floorU");
     const windowU = finiteOverride("windowU");
     const doorU = finiteOverride("doorU");
-
     formSet("wall_u_value", wallU ?? insulationU(1.30, state.wallIns).toFixed(4));
     formSet("roof_u_value", roofU ?? insulationU(1.00, state.roofIns).toFixed(4));
     formSet("floor_u_value", floorU ?? insulationU(0.90, state.floorIns).toFixed(4));
@@ -463,7 +492,7 @@
       formSet("heat_recovery_efficiency", overrideRecovery ?? 0);
     } else if (state.ventilation === "hrv") {
       formSet("air_changes_per_hour", 0.5);
-      formSet("heat_recovery_efficiency", 0.75);
+      formSet("heat_recovery_efficiency", clamp(Number(state.heatRecovery || 75) / 100, 0, 0.95));
     } else if (state.ventilation === "mechanical") {
       formSet("air_changes_per_hour", 0.65);
       formSet("heat_recovery_efficiency", 0);
@@ -482,21 +511,40 @@
       formSet("heating_cost_profile", overrides.heatingCostProfile || "natural_gas");
       formSet("heating_choice", overrides.heatingSystemType || "condensing_gas_boiler");
     } else {
-      formSet("expert_heating_override", "");
+      const heating = heatingTechnical(state);
+      formSet("expert_heating_override", "on");
       formSet("heating_choice", state.heating);
+      formSet("heating_system_type", heating.systemType);
+      formSet("heating_carrier", heating.carrier);
+      formSet("heating_efficiency", heating.efficiency ?? "");
+      formSet("heating_scop", heating.scop ?? "");
+      formSet("heating_cost_profile", heating.costProfile);
     }
 
     const overrideCoolingSeer = finiteOverride("coolingSeer");
-    formSet("cooling_seer", overrideCoolingSeer ?? (state.cooling === "split" ? 4.2 : 4.0));
+    formSet("cooling_seer", overrideCoolingSeer ?? Number(state.coolingSeer || 4.0));
+    formSet("cooling_enabled", state.cooling === "none" ? "" : "on");
 
     const overrideDhwEfficiency = finiteOverride("dhwEfficiency");
-    formSet("dhw_efficiency", overrideDhwEfficiency ?? 0.86);
+    formSet("expert_dhw_override", "on");
+    formSet("dhw_enabled", state.dhwMode === "disabled" ? "" : "on");
+    formSet("dhw_carrier", carrierForDhw(state) || "natural_gas");
+    formSet("dhw_efficiency", overrideDhwEfficiency ?? clamp(Number(state.dhwEfficiency || 86) / 100, 0.2, 1));
+    formSet("dhw_occupants", state.occupants);
 
     formSet("solar_glazing_type_id", state.glazing === "reference_mc001" ? homeState.glazing : state.glazing);
     formSet("solar_orientation", state.orientation);
     formSet("indoor_design_temperature_c", state.temperature);
-    formSet("dhw_occupants", state.occupants);
-    formSet("cooling_enabled", state.cooling === "none" ? "" : "on");
+
+    formSet("pv_enabled", state.pvEnabled ? "on" : "");
+    formSet("pv_peak_power_kwp", state.pvEnabled ? Number(state.pvKwp || 0) : 0);
+    formSet("pv_orientation", state.pvOrientation || "south");
+    formSet("pv_system_efficiency", 0.80);
+    formSet("pv_self_consumption_fraction", clamp(Number(state.pvSelfConsumption ?? 55) / 100, 0, 1));
+    formSet("solar_thermal_enabled", state.solarThermalEnabled ? "on" : "");
+    formSet("solar_thermal_collector_area_m2", state.solarThermalEnabled ? Number(state.solarThermalArea || 0) : 0);
+    formSet("solar_thermal_orientation", state.solarThermalOrientation || "south");
+    formSet("solar_thermal_useful_efficiency", 0.42);
   }
 
   function setStatus(message, kind = "") {
@@ -651,15 +699,23 @@
   }
 
   function renderHome() {
-    const state = baselineSaved ? homeState : homeState;
+    const state = homeState;
     $("#hlnLocationSummary").textContent = state.locality || "—";
     $("#hlnHouseSummary").textContent = `${fmt(state.area)} m² · ${state.levels} nivel${Number(state.levels) === 1 ? "" : "uri"}`;
-    $("#hlnHouseMeta").textContent = `${fmt(state.height, 1)} m · ${fmt(state.temperature, 1)}°C`;
+    $("#hlnHouseMeta").textContent = `${state.constructionYear || "an necunoscut"} · ${state.buildingStatus === "new_project" ? "nouă / proiect" : "existentă"} · ${fmt(state.temperature, 1)}°C`;
     $("#hlnEnvelopeSummary").textContent = `${state.wallIns} cm pereți · ${state.roofIns} cm pod`;
     $("#hlnEnvelopeMeta").textContent = `${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
-    $("#hlnSystemsMeta").textContent = labels.ventilation[state.ventilation] || state.ventilation;
-    $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "8";
+    const dhwText = state.dhwMode === "disabled" ? "fără ACM" : "ACM inclus";
+    $("#hlnSystemsMeta").textContent = `${labels.ventilation[state.ventilation] || state.ventilation} · ${dhwText}`;
+    const renewableBits = [];
+    if (state.pvEnabled) renewableBits.push(`PV ${fmt(state.pvKwp,1)} kWp`);
+    if (state.solarThermalEnabled) renewableBits.push(`solar termic ${fmt(state.solarThermalArea,1)} m²`);
+    $("#hlnRenewablesSummary").textContent = renewableBits.length ? renewableBits.join(" · ") : "Fără producție locală";
+    $("#hlnRenewablesMeta").textContent = currentResult?.renewables?.renewable_share_percent
+      ? `${fmt(currentResult.renewables.renewable_share_percent,1)}% regenerabil estimat`
+      : "PV · solar termic";
+    $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "12";
   }
 
   function measureSummary(type) {
@@ -672,7 +728,7 @@
       if (type === "floor") return `${fmt(base.floorIns,1)} → ${fmt(now.floorIns,1)} cm · U ref. ${fmt(ref?.u_values_w_m2k?.floor,2)}`;
       if (type === "windows") return `Uw de referință ${fmt(ref?.u_values_w_m2k?.window,2)} W/m²K`;
       if (type === "heating") return `Centrală în condensare · η ${fmt(100 * Number(ref?.heating_efficiency || 0),0)}%`;
-      if (type === "ventilation") return `ACH ${fmt(ref?.air_changes_per_hour,2)} · fără recuperare`;
+      if (type === "ventilation") return `ACH ${fmt(ref?.air_changes_per_hour,2)} · recuperare ${fmt(100 * Number(ref?.heat_recovery_efficiency || 0),0)}%`;
     }
     if (type === "wall") return `${base.wallIns} → ${now.wallIns} cm pereți`;
     if (type === "roof") return `${base.roofIns} → ${now.roofIns} cm pod`;
@@ -680,6 +736,11 @@
     if (type === "windows") return `${labels.glazing[base.glazing]} → ${labels.glazing[now.glazing]}`;
     if (type === "heating") return `${labels.heating[base.heating]} → ${labels.heating[now.heating]}`;
     if (type === "ventilation") return `${labels.ventilation[base.ventilation]} → ${labels.ventilation[now.ventilation]}`;
+    if (type === "renewables") {
+      const pv = now.pvEnabled ? `PV ${fmt(now.pvKwp,1)} kWp` : "fără PV";
+      const st = now.solarThermalEnabled ? `solar termic ${fmt(now.solarThermalArea,1)} m²` : "fără solar termic";
+      return `${pv} · ${st}`;
+    }
     return "";
   }
 
@@ -690,7 +751,8 @@
       floor: "Izolează pardoseala",
       windows: "Schimbă ferestrele",
       heating: "Schimbă încălzirea",
-      ventilation: "Ventilație & răcire"
+      ventilation: "Ventilație & răcire",
+      renewables: "Regenerabile"
     }[type] || "Intervenție";
   }
 
@@ -701,7 +763,8 @@
       floor: "floor",
       windows: "window",
       heating: "flame",
-      ventilation: "air"
+      ventilation: "air",
+      renewables: "sun"
     }[type] || "layers";
     return `<svg aria-hidden="true"><use href="#hln-i-${icon}"></use></svg>`;
   }
@@ -713,6 +776,12 @@
     if (type === "windows") return `${labels.glazing[state.glazing]} · ${fmt(state.windows,1)} m²`;
     if (type === "heating") return labels.heating[state.heating] || state.heating;
     if (type === "ventilation") return `${labels.ventilation[state.ventilation]} · ${labels.cooling[state.cooling]}`;
+    if (type === "renewables") {
+      const parts = [];
+      if (state.pvEnabled) parts.push(`PV ${fmt(state.pvKwp,1)} kWp`);
+      if (state.solarThermalEnabled) parts.push(`solar termic ${fmt(state.solarThermalArea,1)} m²`);
+      return parts.length ? parts.join(" · ") : "Fără regenerabile";
+    }
     return "—";
   }
 
@@ -733,6 +802,12 @@
     $("#hlnScenarioHeating").value = scenarioState.heating;
     $("#hlnScenarioVentilation").value = scenarioState.ventilation;
     $("#hlnScenarioCooling").value = scenarioState.cooling;
+    $("#hlnScenarioPvEnabled").checked = Boolean(scenarioState.pvEnabled);
+    $("#hlnScenarioPvKwp").value = scenarioState.pvKwp;
+    $("#hlnScenarioPvOrientation").value = scenarioState.pvOrientation;
+    $("#hlnScenarioSolarThermalEnabled").checked = Boolean(scenarioState.solarThermalEnabled);
+    $("#hlnScenarioSolarThermalArea").value = scenarioState.solarThermalArea;
+    $("#hlnScenarioSolarThermalOrientation").value = scenarioState.solarThermalOrientation;
   }
 
   function renderScenario() {
@@ -820,7 +895,7 @@
   }
 
   function openEditor(name) {
-    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile"};
+    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile",renewables:"Regenerabile"};
     $("#hlnEditorTitle").textContent = titles[name] || "Editează";
     $$("[data-hln-editor]").forEach(section => section.hidden = section.dataset.hlnEditor !== name);
     $("#hlnEditor").hidden = false;
@@ -841,6 +916,8 @@
     $("#hlnHeight").value = homeState.height;
     $("#hlnTemperature").value = homeState.temperature;
     $("#hlnOccupants").value = homeState.occupants;
+    $("#hlnConstructionYear").value = homeState.constructionYear;
+    $("#hlnBuildingStatus").value = homeState.buildingStatus;
     $("#hlnHomeWallIns").value = homeState.wallIns;
     $("#hlnHomeRoofIns").value = homeState.roofIns;
     $("#hlnHomeFloorIns").value = homeState.floorIns;
@@ -848,37 +925,83 @@
     $("#hlnHomeGlazing").value = homeState.glazing;
     $("#hlnOrientation").value = homeState.orientation;
     $("#hlnHomeHeating").value = homeState.heating;
+    $("#hlnHomeHeatingEfficiency").value = homeState.heatingEfficiency;
+    $("#hlnHomeHeatingScop").value = homeState.heatingScop;
+    $("#hlnHomeDhw").value = homeState.dhwMode;
+    $("#hlnHomeDhwEfficiency").value = homeState.dhwEfficiency;
     $("#hlnHomeVentilation").value = homeState.ventilation;
+    $("#hlnHomeHeatRecovery").value = homeState.heatRecovery;
     $("#hlnHomeCooling").value = homeState.cooling;
+    $("#hlnHomeCoolingSeer").value = homeState.coolingSeer;
+    $("#hlnHomePvEnabled").checked = Boolean(homeState.pvEnabled);
+    $("#hlnHomePvKwp").value = homeState.pvKwp;
+    $("#hlnHomePvOrientation").value = homeState.pvOrientation;
+    $("#hlnHomePvSelfConsumption").value = homeState.pvSelfConsumption;
+    $("#hlnHomeSolarThermalEnabled").checked = Boolean(homeState.solarThermalEnabled);
+    $("#hlnHomeSolarThermalArea").value = homeState.solarThermalArea;
+    $("#hlnHomeSolarThermalOrientation").value = homeState.solarThermalOrientation;
+    const isHp = homeState.heating === "heat_pump";
+    $("#hlnHeatingEfficiencyWrap").hidden = isHp;
+    $("#hlnHeatingScopWrap").hidden = !isHp;
+    $("#hlnHeatRecoveryWrap").hidden = homeState.ventilation !== "hrv";
+    $("#hlnCoolingSeerWrap").hidden = homeState.cooling === "none";
+    $("#hlnPvFields").hidden = !homeState.pvEnabled;
+    $("#hlnSolarThermalFields").hidden = !homeState.solarThermalEnabled;
+    const source = currentResult?.monthly?.find(row => row.solar_station_name);
+    $("#hlnSolarSourceSummary").textContent = source?.solar_station_name
+      ? `${source.solar_station_name} · ${source.solar_station_resolution || "direct"}`
+      : "Se determină după localitate";
     $$("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
   }
 
-  function updateHomeFromEditors() {
-    const previous = {
-      orientation: homeState.orientation,
-      cooling: homeState.cooling,
-      heating: homeState.heating,
-    };
+  function updateHomeFromEditors(event) {
+    const previous = {orientation: homeState.orientation, cooling: homeState.cooling, heating: homeState.heating, pvEnabled: homeState.pvEnabled};
+    const changedId = event?.target?.id || "";
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
     homeState.temperature = Number($("#hlnTemperature").value);
     homeState.occupants = Number($("#hlnOccupants").value);
+    homeState.constructionYear = Number($("#hlnConstructionYear").value) || 1990;
+    homeState.buildingStatus = $("#hlnBuildingStatus").value;
     homeState.wallIns = Number($("#hlnHomeWallIns").value);
     homeState.roofIns = Number($("#hlnHomeRoofIns").value);
     homeState.floorIns = Number($("#hlnHomeFloorIns").value);
     homeState.windows = Number($("#hlnHomeWindows").value);
     homeState.glazing = $("#hlnHomeGlazing").value;
     homeState.orientation = $("#hlnOrientation").value;
-    homeState.heating = $("#hlnHomeHeating").value;
+
+    const newHeating = $("#hlnHomeHeating").value;
+    if (changedId === "hlnHomeHeating" && newHeating !== homeState.heating) {
+      const defaults = heatingDefaults[newHeating] || heatingDefaults.condensing_gas_boiler;
+      homeState.heatingEfficiency = defaults.efficiency ?? homeState.heatingEfficiency;
+      homeState.heatingScop = defaults.scop ?? homeState.heatingScop;
+    }
+    homeState.heating = newHeating;
+    homeState.heatingEfficiency = Number($("#hlnHomeHeatingEfficiency").value) || homeState.heatingEfficiency;
+    homeState.heatingScop = Number($("#hlnHomeHeatingScop").value) || homeState.heatingScop;
+    homeState.dhwMode = $("#hlnHomeDhw").value;
+    homeState.dhwEfficiency = Number($("#hlnHomeDhwEfficiency").value) || 86;
     homeState.ventilation = $("#hlnHomeVentilation").value;
+    homeState.heatRecovery = Number($("#hlnHomeHeatRecovery").value) || 75;
     homeState.cooling = $("#hlnHomeCooling").value;
-    renderHome();
+    homeState.coolingSeer = Number($("#hlnHomeCoolingSeer").value) || 4.0;
+    homeState.pvEnabled = $("#hlnHomePvEnabled").checked;
+    homeState.pvKwp = Number($("#hlnHomePvKwp").value) || 0;
+    homeState.pvOrientation = $("#hlnHomePvOrientation").value;
+    homeState.pvSelfConsumption = Number($("#hlnHomePvSelfConsumption").value) || 0;
+    homeState.solarThermalEnabled = $("#hlnHomeSolarThermalEnabled").checked;
+    homeState.solarThermalArea = Number($("#hlnHomeSolarThermalArea").value) || 0;
+    homeState.solarThermalOrientation = $("#hlnHomeSolarThermalOrientation").value;
+
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
     measures = [];
     scenarioState = {...homeState};
+    syncHomeEditorControls();
+    renderHome();
     const focus =
+      previous.pvEnabled !== homeState.pvEnabled ? "renewables" :
       previous.cooling !== homeState.cooling ? "cooling" :
       previous.heating !== homeState.heating ? "heating" :
       previous.orientation !== homeState.orientation ? "orientation" : null;
@@ -897,8 +1020,16 @@
       if (type === "roof") scenarioState.roofIns = Math.min(40, Number(homeState.roofIns) + 10);
       if (type === "floor") scenarioState.floorIns = Math.min(25, Number(homeState.floorIns) + 5);
       if (type === "windows" && homeState.glazing !== "triple_low_e_faces_2_and_5") scenarioState.glazing = "triple_low_e_faces_2_and_5";
-      if (type === "heating" && homeState.heating !== "heat_pump") scenarioState.heating = "heat_pump";
+      if (type === "heating" && homeState.heating !== "heat_pump") {
+        scenarioState.heating = "heat_pump";
+        scenarioState.heatingScop = 3.2;
+      }
       if (type === "ventilation" && homeState.ventilation !== "hrv") scenarioState.ventilation = "hrv";
+      if (type === "renewables" && !homeState.pvEnabled) {
+        scenarioState.pvEnabled = true;
+        scenarioState.pvKwp = Math.max(5, Number(homeState.pvKwp || 0));
+        scenarioState.pvOrientation = homeState.orientation || "south";
+      }
     }
 
     showScreen("intervention");
@@ -933,10 +1064,22 @@
       scenarioState.glazing = homeState.glazing;
       scenarioState.windows = homeState.windows;
     }
-    if (type === "heating") scenarioState.heating = homeState.heating;
+    if (type === "heating") {
+      scenarioState.heating = homeState.heating;
+      scenarioState.heatingEfficiency = homeState.heatingEfficiency;
+      scenarioState.heatingScop = homeState.heatingScop;
+    }
     if (type === "ventilation") {
       scenarioState.ventilation = homeState.ventilation;
       scenarioState.cooling = homeState.cooling;
+    }
+    if (type === "renewables") {
+      scenarioState.pvEnabled = homeState.pvEnabled;
+      scenarioState.pvKwp = homeState.pvKwp;
+      scenarioState.pvOrientation = homeState.pvOrientation;
+      scenarioState.solarThermalEnabled = homeState.solarThermalEnabled;
+      scenarioState.solarThermalArea = homeState.solarThermalArea;
+      scenarioState.solarThermalOrientation = homeState.solarThermalOrientation;
     }
     measures = measures.filter(item => item !== type);
     scheduleCalculate("scenario", 20);
@@ -959,6 +1102,14 @@
     if (activeMeasure === "ventilation") {
       scenarioState.ventilation = $("#hlnScenarioVentilation").value;
       scenarioState.cooling = $("#hlnScenarioCooling").value;
+    }
+    if (activeMeasure === "renewables") {
+      scenarioState.pvEnabled = $("#hlnScenarioPvEnabled").checked;
+      scenarioState.pvKwp = Number($("#hlnScenarioPvKwp").value) || 0;
+      scenarioState.pvOrientation = $("#hlnScenarioPvOrientation").value;
+      scenarioState.solarThermalEnabled = $("#hlnScenarioSolarThermalEnabled").checked;
+      scenarioState.solarThermalArea = Number($("#hlnScenarioSolarThermalArea").value) || 0;
+      scenarioState.solarThermalOrientation = $("#hlnScenarioSolarThermalOrientation").value;
     }
     renderIntervention();
     scheduleCalculate("scenario");
@@ -1017,8 +1168,11 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeVentilation","#hlnHomeCooling"]
-    .forEach(selector => $(selector).addEventListener("change", updateHomeFromEditors));
+  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnConstructionYear","#hlnBuildingStatus","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatingEfficiency","#hlnHomeHeatingScop","#hlnHomeDhw","#hlnHomeDhwEfficiency","#hlnHomeVentilation","#hlnHomeHeatRecovery","#hlnHomeCooling","#hlnHomeCoolingSeer","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvSelfConsumption","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation"]
+    .forEach(selector => {
+      const node = $(selector);
+      if (node) node.addEventListener("change", updateHomeFromEditors);
+    });
 
   $$("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
@@ -1108,8 +1262,11 @@
   $$("[data-hln-intervention-cancel]").forEach(button => button.addEventListener("click", cancelIntervention));
   $("[data-hln-intervention-keep]").addEventListener("click", keepIntervention);
 
-  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling"]
-    .forEach(selector => $(selector).addEventListener("change", syncInterventionFromControls));
+  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling","#hlnScenarioPvEnabled","#hlnScenarioPvKwp","#hlnScenarioPvOrientation","#hlnScenarioSolarThermalEnabled","#hlnScenarioSolarThermalArea","#hlnScenarioSolarThermalOrientation"]
+    .forEach(selector => {
+      const node = $(selector);
+      if (node) node.addEventListener("change", syncInterventionFromControls);
+    });
 
   $$(".hln-stepper [data-step]").forEach(button => button.addEventListener("click", () => {
     const input = button.parentElement.querySelector("input");
