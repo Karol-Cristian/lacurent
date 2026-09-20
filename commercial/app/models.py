@@ -90,14 +90,29 @@ class HeatingSystemDetails(BaseModel):
 
         if flow is not None and ret is not None and ret >= flow:
             raise ValueError("Heating return temperature must be lower than flow temperature.")
+
+        hydronic_pipe_emitters = {
+            HeatingEmitterType.radiators_high_temp,
+            HeatingEmitterType.radiators_low_temp,
+            HeatingEmitterType.fan_coils,
+        }
+        hydronic_pipe_distributions = {
+            HeatingDistributionType.hydronic_insulated,
+            HeatingDistributionType.hydronic_uninsulated,
+        }
+
         if emitter == HeatingEmitterType.local and distribution != HeatingDistributionType.local:
             raise ValueError("A local heat emitter requires local/no-pipe distribution.")
         if emitter == HeatingEmitterType.air and distribution != HeatingDistributionType.air:
             raise ValueError("Air heating requires air distribution.")
         if emitter == HeatingEmitterType.underfloor and distribution != HeatingDistributionType.underfloor:
             raise ValueError("Underfloor heating requires underfloor distribution.")
-        if generator == HeatingGeneratorType.heat_pump_air_air and emitter != HeatingEmitterType.air:
-            raise ValueError("An air-to-air heat pump requires air emission.")
+        if emitter in hydronic_pipe_emitters and distribution not in hydronic_pipe_distributions:
+            raise ValueError("Radiators and fan coils require hydronic pipe distribution.")
+
+        if generator == HeatingGeneratorType.heat_pump_air_air:
+            if emitter != HeatingEmitterType.air or distribution != HeatingDistributionType.air:
+                raise ValueError("An air-to-air heat pump requires air emission and air distribution.")
         if generator in {HeatingGeneratorType.wood_stove, HeatingGeneratorType.electric_direct}:
             if emitter != HeatingEmitterType.local or distribution != HeatingDistributionType.local:
                 raise ValueError("A local stove/direct-electric generator requires local emission and distribution.")
@@ -149,6 +164,30 @@ class HeatingInput(BaseModel):
         "district_heat",
         "other",
     ] | None = None
+
+    @root_validator(skip_on_failure=True)
+    def validate_generator_family(cls, values: dict) -> dict:
+        system_type = values.get("system_type")
+        details = values.get("details")
+        if details is None or details.generator_type is None:
+            return values
+
+        generator = details.generator_type
+        expected = {
+            HeatingSystemType.gas_boiler: {HeatingGeneratorType.gas_boiler},
+            HeatingSystemType.condensing_gas_boiler: {HeatingGeneratorType.condensing_gas_boiler},
+            HeatingSystemType.electric_resistance: {HeatingGeneratorType.electric_direct},
+            HeatingSystemType.heat_pump: {
+                HeatingGeneratorType.heat_pump_air_water,
+                HeatingGeneratorType.heat_pump_ground_water,
+                HeatingGeneratorType.heat_pump_air_air,
+            },
+            HeatingSystemType.district_heat: {HeatingGeneratorType.district_heat},
+        }
+        allowed = expected.get(system_type)
+        if allowed is not None and generator not in allowed:
+            raise ValueError("Heating generator type is inconsistent with the selected heating system.")
+        return values
 
 
 class CoolingInput(BaseModel):
@@ -337,8 +376,8 @@ class HeatingSystemPerformanceResult(BaseModel):
     distribution_type: HeatingDistributionType
     storage_type: HeatingStorageType
     control_type: HeatingControlType
-    design_flow_temperature_c: float
-    design_return_temperature_c: float
+    design_flow_temperature_c: float | None
+    design_return_temperature_c: float | None
     emission_efficiency: float
     distribution_efficiency: float
     storage_efficiency: float

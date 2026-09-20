@@ -221,6 +221,107 @@ HEATING_CHAIN_PROFILES: dict[str, dict[str, str]] = {
 }
 
 
+HYDRONIC_HEATING_EMITTERS = {
+    "radiators_high_temp",
+    "radiators_low_temp",
+    "underfloor",
+    "fan_coils",
+}
+HYDRONIC_PIPE_DISTRIBUTIONS = {
+    "hydronic_insulated",
+    "hydronic_uninsulated",
+}
+HEAT_PUMP_GENERATORS = {
+    "heat_pump_air_water",
+    "heat_pump_ground_water",
+    "heat_pump_air_air",
+}
+
+
+def _normalize_home_lab_heating_chain(
+    heating_choice: str,
+    raw: dict[str, Any],
+) -> dict[str, Any]:
+    """Return a physically coherent Home Lab chain for the selected generator.
+
+    UI state can contain stale values from a previously selected generator.
+    Those values must never change the calculation after the generator changes.
+    """
+
+    defaults = HEATING_CHAIN_PROFILES.get(
+        heating_choice,
+        HEATING_CHAIN_PROFILES["condensing_gas_boiler"],
+    )
+    details = {**defaults, **raw}
+
+    if heating_choice == "electric_resistance":
+        details.update(
+            {
+                "generator_type": "electric_direct",
+                "emitter_type": "local",
+                "distribution_type": "local",
+                "storage_type": "none",
+                "control_type": "room_thermostat",
+                "design_flow_temperature_c": None,
+                "design_return_temperature_c": None,
+            }
+        )
+        return details
+
+    if heating_choice == "wood_stove":
+        details.update(
+            {
+                "generator_type": "wood_stove",
+                "emitter_type": "local",
+                "distribution_type": "local",
+                "storage_type": "none",
+                "control_type": "manual",
+                "design_flow_temperature_c": None,
+                "design_return_temperature_c": None,
+            }
+        )
+        return details
+
+    if heating_choice == "heat_pump":
+        generator = str(details.get("generator_type") or "heat_pump_air_water")
+        if generator not in HEAT_PUMP_GENERATORS:
+            generator = "heat_pump_air_water"
+        details["generator_type"] = generator
+
+        if generator == "heat_pump_air_air":
+            details.update(
+                {
+                    "emitter_type": "air",
+                    "distribution_type": "air",
+                    "storage_type": "none",
+                    "design_flow_temperature_c": None,
+                    "design_return_temperature_c": None,
+                }
+            )
+            return details
+    else:
+        # For every non-heat-pump Home Lab choice the generator subtype is
+        # determined by the selected generator, never by stale heat-pump state.
+        details["generator_type"] = defaults["generator_type"]
+
+    emitter = str(details.get("emitter_type") or defaults["emitter_type"])
+    if emitter not in HYDRONIC_HEATING_EMITTERS:
+        emitter = defaults["emitter_type"]
+        if emitter not in HYDRONIC_HEATING_EMITTERS:
+            emitter = "radiators_high_temp"
+    details["emitter_type"] = emitter
+
+    if emitter == "underfloor":
+        details["distribution_type"] = "underfloor"
+    else:
+        distribution = str(details.get("distribution_type") or defaults["distribution_type"])
+        if distribution not in HYDRONIC_PIPE_DISTRIBUTIONS:
+            distribution = "hydronic_insulated"
+        details["distribution_type"] = distribution
+
+    return details
+
+
 HEATING_PROFILES: dict[str, dict[str, Any]] = {
     "condensing_gas_boiler": _heating_profile("condensing_gas_boiler", "natural_gas"),
     "gas_boiler": _heating_profile("gas_boiler", "natural_gas"),
@@ -549,16 +650,19 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
 
     heating_choice = str(form.get("heating_choice") or "condensing_gas_boiler")
     chain_defaults = HEATING_CHAIN_PROFILES.get(heating_choice, HEATING_CHAIN_PROFILES["condensing_gas_boiler"])
-    chain_details = {
-        "generator_type": form.get("heating_generator_type") or chain_defaults["generator_type"],
-        "emitter_type": form.get("heating_emitter_type") or chain_defaults["emitter_type"],
-        "distribution_type": form.get("heating_distribution_type") or chain_defaults["distribution_type"],
-        "storage_type": form.get("heating_storage_type") or chain_defaults["storage_type"],
-        "control_type": form.get("heating_control_type") or chain_defaults["control_type"],
-        "design_flow_temperature_c": parse_optional_float(form.get("heating_design_flow_temperature_c")),
-        "design_return_temperature_c": parse_optional_float(form.get("heating_design_return_temperature_c")),
-        "auxiliary_electricity_kwh_year": parse_optional_float(form.get("heating_auxiliary_electricity_kwh_year")),
-    }
+    chain_details = _normalize_home_lab_heating_chain(
+        heating_choice,
+        {
+            "generator_type": form.get("heating_generator_type") or chain_defaults["generator_type"],
+            "emitter_type": form.get("heating_emitter_type") or chain_defaults["emitter_type"],
+            "distribution_type": form.get("heating_distribution_type") or chain_defaults["distribution_type"],
+            "storage_type": form.get("heating_storage_type") or chain_defaults["storage_type"],
+            "control_type": form.get("heating_control_type") or chain_defaults["control_type"],
+            "design_flow_temperature_c": parse_optional_float(form.get("heating_design_flow_temperature_c")),
+            "design_return_temperature_c": parse_optional_float(form.get("heating_design_return_temperature_c")),
+            "auxiliary_electricity_kwh_year": parse_optional_float(form.get("heating_auxiliary_electricity_kwh_year")),
+        },
+    )
     structured_heating_present = _checked(form, "heating_chain_enabled") or (not simple and any(
         form.get(name) not in (None, "")
         for name in (

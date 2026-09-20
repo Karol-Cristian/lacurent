@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from commercial.app.engine import (
     _cooling_heat_transfer_utilization_factor,
     _monthly_cooling_need,
@@ -192,6 +194,252 @@ def test_structured_condensing_boiler_reflects_emitter_temperature() -> None:
     assert high_system.design_flow_temperature_c == 60
     assert low_system.design_flow_temperature_c == 45
     assert low_service.final_kwh < high_service.final_kwh
+
+
+def _structured_heating_building(
+    *,
+    system_type: str,
+    carrier: str,
+    generator_type: str,
+    emitter_type: str,
+    distribution_type: str,
+    storage_type: str = "none",
+    control_type: str = "room_thermostat",
+    efficiency: float | None = None,
+    cost_profile: str | None = None,
+) -> BuildingInput:
+    heating = {
+        "system_type": system_type,
+        "carrier": carrier,
+        "details": {
+            "generator_type": generator_type,
+            "emitter_type": emitter_type,
+            "distribution_type": distribution_type,
+            "storage_type": storage_type,
+            "control_type": control_type,
+        },
+    }
+    if efficiency is not None:
+        heating["efficiency"] = efficiency
+    if cost_profile is not None:
+        heating["cost_profile"] = cost_profile
+    return simple_building(heating=heating)
+
+
+def test_all_supported_hydronic_heating_chain_combinations_resolve() -> None:
+    generators = [
+        ("condensing_gas_boiler", "natural_gas", "condensing_gas_boiler", None, "natural_gas"),
+        ("gas_boiler", "natural_gas", "gas_boiler", None, "natural_gas"),
+        ("custom", "electricity", "electric_boiler", 0.98, "electricity"),
+        ("heat_pump", "electricity", "heat_pump_air_water", None, "electricity"),
+        ("heat_pump", "electricity", "heat_pump_ground_water", None, "electricity"),
+        ("district_heat", "district_heat", "district_heat", None, "district_heat"),
+        ("custom", "biomass", "wood_boiler", 0.80, "firewood"),
+        ("custom", "biomass", "pellet_boiler", 0.88, "pellets"),
+    ]
+    emitter_distributions = [
+        ("radiators_high_temp", "hydronic_insulated"),
+        ("radiators_high_temp", "hydronic_uninsulated"),
+        ("radiators_low_temp", "hydronic_insulated"),
+        ("radiators_low_temp", "hydronic_uninsulated"),
+        ("underfloor", "underfloor"),
+        ("fan_coils", "hydronic_insulated"),
+        ("fan_coils", "hydronic_uninsulated"),
+    ]
+    storages = ["none", "buffer_small", "buffer_large"]
+    controls = ["manual", "room_thermostat", "thermostatic_valves", "zoned", "weather_compensated"]
+
+    checked = 0
+    for system_type, carrier, generator, efficiency, cost_profile in generators:
+        for emitter, distribution in emitter_distributions:
+            for storage in storages:
+                for control in controls:
+                    building = _structured_heating_building(
+                        system_type=system_type,
+                        carrier=carrier,
+                        generator_type=generator,
+                        emitter_type=emitter,
+                        distribution_type=distribution,
+                        storage_type=storage,
+                        control_type=control,
+                        efficiency=efficiency,
+                        cost_profile=cost_profile,
+                    )
+                    service, performance = heating_system_performance(building, 10000)
+                    assert math.isfinite(service.final_kwh)
+                    assert service.final_kwh > 0
+                    assert math.isfinite(performance.effective_system_performance)
+                    assert performance.effective_system_performance > 0
+                    assert performance.generator_type.value == generator
+                    checked += 1
+
+    assert checked == 840
+
+
+@pytest.mark.parametrize(
+    ("emitter", "distribution", "valid"),
+    [
+        (emitter, distribution, (emitter, distribution) in {
+            ("local", "local"),
+            ("air", "air"),
+            ("underfloor", "underfloor"),
+            ("radiators_high_temp", "hydronic_insulated"),
+            ("radiators_high_temp", "hydronic_uninsulated"),
+            ("radiators_low_temp", "hydronic_insulated"),
+            ("radiators_low_temp", "hydronic_uninsulated"),
+            ("fan_coils", "hydronic_insulated"),
+            ("fan_coils", "hydronic_uninsulated"),
+        })
+        for emitter in [
+            "local",
+            "radiators_high_temp",
+            "radiators_low_temp",
+            "underfloor",
+            "fan_coils",
+            "air",
+        ]
+        for distribution in [
+            "local",
+            "hydronic_insulated",
+            "hydronic_uninsulated",
+            "underfloor",
+            "air",
+        ]
+    ],
+)
+def test_emitter_distribution_compatibility_matrix(
+    emitter: str,
+    distribution: str,
+    valid: bool,
+) -> None:
+    payload = {
+        "system_type": "custom",
+        "carrier": "electricity",
+        "efficiency": 0.98,
+        "details": {
+            "generator_type": "electric_boiler",
+            "emitter_type": emitter,
+            "distribution_type": distribution,
+            "storage_type": "none",
+            "control_type": "room_thermostat",
+        },
+    }
+    if valid:
+        building = simple_building(heating=payload)
+        assert building.heating.details is not None
+    else:
+        with pytest.raises(Exception):
+            simple_building(heating=payload)
+
+
+def test_heat_pump_source_and_emitter_matrix_has_expected_ordering() -> None:
+    def result(generator: str, emitter: str, distribution: str) -> tuple[float, float]:
+        building = _structured_heating_building(
+            system_type="heat_pump",
+            carrier="electricity",
+            generator_type=generator,
+            emitter_type=emitter,
+            distribution_type=distribution,
+        )
+        service, performance = heating_system_performance(building, 10000)
+        return service.final_kwh, performance.generator_performance
+
+    air_water_high, aw_high_scop = result("heat_pump_air_water", "radiators_high_temp", "hydronic_insulated")
+    air_water_low, aw_low_scop = result("heat_pump_air_water", "radiators_low_temp", "hydronic_insulated")
+    air_water_floor, aw_floor_scop = result("heat_pump_air_water", "underfloor", "underfloor")
+    air_water_fan, aw_fan_scop = result("heat_pump_air_water", "fan_coils", "hydronic_insulated")
+
+    ground_high, gw_high_scop = result("heat_pump_ground_water", "radiators_high_temp", "hydronic_insulated")
+    ground_low, gw_low_scop = result("heat_pump_ground_water", "radiators_low_temp", "hydronic_insulated")
+    ground_floor, gw_floor_scop = result("heat_pump_ground_water", "underfloor", "underfloor")
+    ground_fan, gw_fan_scop = result("heat_pump_ground_water", "fan_coils", "hydronic_insulated")
+
+    assert_close(aw_high_scop, 2.3)
+    assert_close(aw_low_scop, 2.8)
+    assert_close(aw_floor_scop, 3.2)
+    assert_close(aw_fan_scop, 2.8)
+    assert air_water_floor < air_water_low < air_water_high
+    assert air_water_floor < air_water_fan < air_water_high
+
+    assert_close(gw_high_scop, 2.76)
+    assert_close(gw_low_scop, 3.36)
+    assert_close(gw_floor_scop, 3.84)
+    assert_close(gw_fan_scop, 3.36)
+    assert ground_floor < ground_low < ground_high
+    assert ground_floor < ground_fan < ground_high
+
+    assert ground_high < air_water_high
+    assert ground_low < air_water_low
+    assert ground_floor < air_water_floor
+    assert ground_fan < air_water_fan
+
+
+def test_hydronic_distribution_storage_and_control_penalties_are_monotonic() -> None:
+    base = dict(
+        system_type="heat_pump",
+        carrier="electricity",
+        generator_type="heat_pump_air_water",
+        emitter_type="radiators_low_temp",
+    )
+
+    insulated = heating_system_performance(
+        _structured_heating_building(**base, distribution_type="hydronic_insulated"),
+        10000,
+    )[0].final_kwh
+    uninsulated = heating_system_performance(
+        _structured_heating_building(**base, distribution_type="hydronic_uninsulated"),
+        10000,
+    )[0].final_kwh
+    assert insulated < uninsulated
+
+    no_buffer = heating_system_performance(
+        _structured_heating_building(**base, distribution_type="hydronic_insulated", storage_type="none"),
+        10000,
+    )[0].final_kwh
+    small_buffer = heating_system_performance(
+        _structured_heating_building(**base, distribution_type="hydronic_insulated", storage_type="buffer_small"),
+        10000,
+    )[0].final_kwh
+    large_buffer = heating_system_performance(
+        _structured_heating_building(**base, distribution_type="hydronic_insulated", storage_type="buffer_large"),
+        10000,
+    )[0].final_kwh
+    assert no_buffer < small_buffer < large_buffer
+
+    controls = {}
+    for control in ["manual", "room_thermostat", "thermostatic_valves", "zoned", "weather_compensated"]:
+        controls[control] = heating_system_performance(
+            _structured_heating_building(
+                **base,
+                distribution_type="hydronic_insulated",
+                control_type=control,
+            ),
+            10000,
+        )[0].final_kwh
+    assert (
+        controls["weather_compensated"]
+        < controls["zoned"]
+        < controls["thermostatic_valves"]
+        < controls["room_thermostat"]
+        < controls["manual"]
+    )
+
+
+def test_air_to_air_heat_pump_is_fixed_air_system_without_hydronic_temperatures() -> None:
+    building = _structured_heating_building(
+        system_type="heat_pump",
+        carrier="electricity",
+        generator_type="heat_pump_air_air",
+        emitter_type="air",
+        distribution_type="air",
+    )
+    service, performance = heating_system_performance(building, 10000)
+
+    assert service.carrier.value == "electricity"
+    assert_close(performance.generator_performance, 3.0)
+    assert performance.design_flow_temperature_c is None
+    assert performance.design_return_temperature_c is None
+    assert performance.auxiliary_electricity_kwh == 30
 
 
 def test_primary_energy_aggregation_uses_methodology_factors() -> None:
