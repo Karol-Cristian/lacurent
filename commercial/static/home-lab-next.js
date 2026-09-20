@@ -291,15 +291,55 @@
     Object.assign(state, defaults);
   }
 
-  function toggleHeatPumpSourceControls() {
-    const home = $("[data-hln-home-heat-pump-source]");
-    const scenario = $("[data-hln-scenario-heat-pump-source]");
-    if (home) home.hidden = homeState.heating !== "heat_pump";
-    if (scenario) scenario.hidden = scenarioState.heating !== "heat_pump";
+  function normalizeHeatingState(state) {
+    if (["wood_stove", "electric_resistance"].includes(state.heating)) {
+      const fixed = heatingChainDefaults(state.heating);
+      Object.assign(state, fixed);
+      return;
+    }
 
-    // Local heat sources already imply local emission, no distribution network,
-    // no thermal buffer and their fixed control preset. Do not expose selectors
-    // that cannot change the resolved system.
+    if (state.heating === "heat_pump" && state.heatPumpSource === "heat_pump_air_air") {
+      state.heatingEmitter = "air";
+      state.heatingDistribution = "air";
+      state.heatingStorage = "none";
+      return;
+    }
+
+    const hydronicEmitters = new Set([
+      "radiators_high_temp",
+      "radiators_low_temp",
+      "underfloor",
+      "fan_coils",
+    ]);
+    if (!hydronicEmitters.has(state.heatingEmitter)) {
+      state.heatingEmitter = heatingChainDefaults(state.heating).heatingEmitter;
+      if (!hydronicEmitters.has(state.heatingEmitter)) state.heatingEmitter = "radiators_high_temp";
+    }
+
+    if (state.heatingEmitter === "underfloor") {
+      state.heatingDistribution = "underfloor";
+    } else if (!["hydronic_insulated", "hydronic_uninsulated"].includes(state.heatingDistribution)) {
+      state.heatingDistribution = "hydronic_insulated";
+    }
+  }
+
+  function setHeatingFieldDisabled(label, disabled) {
+    if (!label) return;
+    label.classList.toggle("is-disabled", disabled);
+    label.setAttribute("aria-disabled", disabled ? "true" : "false");
+    const control = label.querySelector("select, input");
+    if (control) control.disabled = disabled;
+  }
+
+  function syncHeatingControlAvailability() {
+    normalizeHeatingState(homeState);
+    normalizeHeatingState(scenarioState);
+
+    const homePump = $("[data-hln-home-heat-pump-source]");
+    const scenarioPump = $("[data-hln-scenario-heat-pump-source]");
+    setHeatingFieldDisabled(homePump, homeState.heating !== "heat_pump");
+    setHeatingFieldDisabled(scenarioPump, scenarioState.heating !== "heat_pump");
+
     const homeLocalFixed = ["wood_stove", "electric_resistance"].includes(homeState.heating);
     const scenarioLocalFixed = ["wood_stove", "electric_resistance"].includes(scenarioState.heating);
     $("[data-hln-home-heating-chain]").forEach(node => {
@@ -308,6 +348,44 @@
     $("[data-hln-scenario-heating-chain]").forEach(node => {
       node.hidden = scenarioLocalFixed;
     });
+
+    const configureHydronicFields = (state, prefix, localFixed) => {
+      if (localFixed) return;
+      const emitter = $("#" + prefix + "HeatingEmitter");
+      const distribution = $("#" + prefix + "HeatingDistribution");
+      const storage = $("#" + prefix + "HeatingStorage");
+      const isAirToAir = state.heating === "heat_pump" && state.heatPumpSource === "heat_pump_air_air";
+
+      setHeatingFieldDisabled(emitter ? emitter.closest("label") : null, isAirToAir);
+      setHeatingFieldDisabled(storage ? storage.closest("label") : null, isAirToAir);
+
+      if (distribution) {
+        Array.from(distribution.options).forEach(option => {
+          if (isAirToAir) {
+            option.disabled = option.value !== "air";
+          } else if (state.heatingEmitter === "underfloor") {
+            option.disabled = option.value !== "underfloor";
+          } else {
+            option.disabled = !["hydronic_insulated", "hydronic_uninsulated"].includes(option.value);
+          }
+        });
+        distribution.value = state.heatingDistribution;
+        setHeatingFieldDisabled(
+          distribution.closest("label"),
+          isAirToAir || state.heatingEmitter === "underfloor"
+        );
+      }
+      if (emitter) emitter.value = state.heatingEmitter;
+      if (storage) storage.value = state.heatingStorage;
+    };
+
+    configureHydronicFields(homeState, "hlnHome", homeLocalFixed);
+    configureHydronicFields(scenarioState, "hlnScenario", scenarioLocalFixed);
+  }
+
+  // Backward-compatible name used by existing render paths.
+  function toggleHeatPumpSourceControls() {
+    syncHeatingControlAvailability();
   }
 
   function solarThermalKwFromArea(areaM2) {
@@ -1280,8 +1358,14 @@
         const shown = performance.generator_performance_kind === "scop"
           ? fmt(generatorValue, 2)
           : `${fmt(generatorValue * 100, 0)}%`;
+        const hydronicTemperatures =
+          Number.isFinite(Number(performance.design_flow_temperature_c)) &&
+          Number.isFinite(Number(performance.design_return_temperature_c));
+        const temperatureText = hydronicTemperatures
+          ? `Tur/retur ${fmt(performance.design_flow_temperature_c,0)}/${fmt(performance.design_return_temperature_c,0)}°C · `
+          : "";
         performanceNode.textContent =
-          `Tur/retur ${fmt(performance.design_flow_temperature_c,0)}/${fmt(performance.design_return_temperature_c,0)}°C · ${kind} ${shown} · auxiliare ${fmt(performance.auxiliary_electricity_kwh)} kWh/an`;
+          `${temperatureText}${kind} ${shown} · auxiliare ${fmt(performance.auxiliary_electricity_kwh)} kWh/an`;
       } else {
         performanceNode.textContent = "Motorul Light va deriva temperatura de tur și performanța din configurația selectată.";
       }
