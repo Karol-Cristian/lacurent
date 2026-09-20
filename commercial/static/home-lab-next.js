@@ -1068,18 +1068,21 @@
     benefits.hidden = !scenarioMode;
 
     if (scenarioMode && homeResult && scenarioResult) {
-      const cost = benefitText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei);
-      const energy = benefitText(scenarioResult.final_energy_kwh, homeResult.final_energy_kwh);
-      const co2 = benefitText(scenarioResult.co2_kg, homeResult.co2_kg);
-      [
-        ["#hlnDockCostBenefit", cost],
-        ["#hlnDockEnergyBenefit", energy],
-        ["#hlnDockCo2Benefit", co2]
-      ].forEach(([selector, item]) => {
-        const node = $(selector);
-        node.textContent = item.text;
-        node.classList.toggle("is-bad", item.good === false);
-      });
+      $("#hlnDockHomeClass").textContent = homeResult.energy_class || "—";
+      $("#hlnDockHomeCost").textContent =
+        homeResult.annual_cost_lei == null ? "—" : `${fmt(homeResult.annual_cost_lei)} lei/an`;
+      $("#hlnDockScenarioClass").textContent = scenarioResult.energy_class || "—";
+      $("#hlnDockScenarioCost").textContent =
+        scenarioResult.annual_cost_lei == null ? "—" : `${fmt(scenarioResult.annual_cost_lei)} lei/an`;
+
+      const saving = signedSavingText(
+        scenarioResult.annual_cost_lei,
+        homeResult.annual_cost_lei,
+        " lei/an"
+      );
+      const savingNode = $("#hlnDockCostBenefit");
+      savingNode.textContent = saving.text;
+      savingNode.classList.toggle("is-bad", saving.good === false);
     }
 
     renderImpactPanel();
@@ -1892,6 +1895,63 @@
     scheduleCalculate("home", 20);
   }
 
+  function homeMapLocalityTier(locality) {
+    const population = Number(locality.population2002) || 0;
+    const rank = String(locality.rank ?? "");
+    if (rank === "0" || rank === "I" || population >= 200000) return 1;
+    if (rank === "II" || population >= 55000) return 2;
+    if (rank === "III" || population >= 12000) return 3;
+    return 4;
+  }
+
+  function homeMapLabelWidth(name, fontSize) {
+    return Math.min(150, Math.max(34, (String(name || "").length * fontSize * 0.58) + 12));
+  }
+
+  function homeMapLabels(items, projection, selectedId) {
+    const accepted = [];
+    const labels = new Map();
+    const sorted = [...items].sort((a, b) => {
+      if (a.item.id === selectedId) return -1;
+      if (b.item.id === selectedId) return 1;
+      return a.tier - b.tier || Number(b.item.importance || 0) - Number(a.item.importance || 0);
+    });
+    const limit = window.innerWidth <= 760 ? 18 : 30;
+
+    for (const marker of sorted) {
+      const selected = marker.item.id === selectedId;
+      if (!selected && labels.size >= limit) continue;
+      const fontSize = selected ? 12 : marker.tier === 1 ? 10.5 : marker.tier === 2 ? 9.5 : 8.5;
+      const width = homeMapLabelWidth(marker.item.name, fontSize);
+      const radius = selected ? 5.8 : marker.tier === 1 ? 4.2 : marker.tier === 2 ? 3.4 : 2.6;
+      const x = marker.x + radius + 5;
+      const y = marker.y - 2;
+      const box = {x1:x, x2:x+width, y1:y-fontSize, y2:y+4};
+      if (!selected && accepted.some(other => !(box.x2 + 4 < other.x1 || box.x1 - 4 > other.x2 || box.y2 + 3 < other.y1 || box.y1 - 3 > other.y2))) {
+        continue;
+      }
+      accepted.push(box);
+      labels.set(marker.item.id, {x:radius+5,y:-2,fontSize});
+    }
+    return labels;
+  }
+
+  function homeMapVisibleLocalities(projection, selectedId) {
+    const candidates = localities
+      .filter(item => Number.isFinite(item.lon) && Number.isFinite(item.lat))
+      .map(item => {
+        const [x,y] = projection.project(item.lon,item.lat);
+        return {item,x,y,tier:homeMapLocalityTier(item)};
+      })
+      .filter(entry => entry.tier <= 3 || entry.item.id === selectedId)
+      .sort((a,b) => {
+        if (a.item.id === selectedId) return -1;
+        if (b.item.id === selectedId) return 1;
+        return a.tier - b.tier || Number(b.item.importance || 0) - Number(a.item.importance || 0);
+      });
+    return candidates.slice(0, window.innerWidth <= 760 ? 70 : 120);
+  }
+
   function renderHomeLocationMap() {
     const target = $("#hlnHomeLocationMap");
     if (!target) return;
@@ -1900,25 +1960,45 @@
       return;
     }
     const projection = locationProjection;
+    const selected = localityMap.get(String(homeState.localityId));
+    const selectedZone = String(selected?.climateZone || "");
+    const selectedId = selected?.id;
+
     const zonePaths = (locationMapData.climateZones?.features || []).map(feature => {
       const zone = String(feature.properties?.zone || "");
-      return `<path class="hln-map-zone zone-${escapeHtml(zone)}" d="${mapGeometryPath(feature.geometry, projection)}"></path>`;
+      return `<path class="hln-map-zone zone-${escapeHtml(zone)}${zone === selectedZone ? " is-selected" : ""}" d="${mapGeometryPath(feature.geometry, projection)}"></path>`;
     }).join("");
     const boundary = (locationMapData.romaniaBoundary?.features || []).map(feature =>
       `<path class="hln-map-boundary" d="${mapGeometryPath(feature.geometry, projection)}"></path>`
     ).join("");
-    const selected = localityMap.get(String(homeState.localityId));
-    let marker = "";
-    if (selected && Number.isFinite(selected.lon) && Number.isFinite(selected.lat)) {
-      const [x, y] = projection.project(selected.lon, selected.lat);
-      marker = `<g class="hln-map-selected" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="7"></circle><circle r="2.5"></circle></g>`;
-    }
+
+    const markers = homeMapVisibleLocalities(projection, selectedId);
+    const labels = homeMapLabels(markers, projection, selectedId);
+    const localityMarkup = markers.map(marker => {
+      const isSelected = marker.item.id === selectedId;
+      const label = labels.get(marker.item.id);
+      const radius = isSelected ? 5.8 : marker.tier === 1 ? 4.2 : marker.tier === 2 ? 3.4 : 2.6;
+      return `
+        <g class="hln-map-locality tier-${marker.tier}${isSelected ? " is-selected" : ""}" data-map-locality-id="${escapeHtml(marker.item.id)}" transform="translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)})">
+          <circle r="${radius}"></circle>
+          ${label ? `<text x="${label.x}" y="${label.y}" style="font-size:${label.fontSize}px">${escapeHtml(marker.item.name)}</text>` : ""}
+        </g>
+      `;
+    }).join("");
+
+    const temperatureByZone = {I:"−12°C",II:"−15°C",III:"−18°C",IV:"−21°C",V:"−24°C"};
+    const legend = ["I","II","III","IV","V"].map(zone =>
+      `<span class="${zone === selectedZone ? "is-selected" : ""}"><i class="zone-${zone}"></i>Zona ${zone} · ${temperatureByZone[zone]}</span>`
+    ).join("");
+
     target.innerHTML = `
-      <svg class="hln-location-map-svg" viewBox="0 0 ${projection.width} ${projection.height}" preserveAspectRatio="xMidYMid meet" aria-label="Hartă climatică România">
-        <g>${zonePaths}</g>
-        <g>${boundary}</g>
-        ${marker}
+      <svg class="hln-location-map-svg" viewBox="0 0 ${projection.width} ${projection.height}" preserveAspectRatio="xMidYMid meet" aria-label="Hartă climatică și localități din România">
+        <rect class="hln-map-sea" x="0" y="0" width="${projection.width}" height="${projection.height}"></rect>
+        <g class="hln-map-zones">${zonePaths}</g>
+        <g class="hln-map-boundaries">${boundary}</g>
+        <g class="hln-map-localities">${localityMarkup}</g>
       </svg>
+      <div class="hln-map-legend" aria-label="Legendă zone climatice">${legend}</div>
       <span class="hln-map-hint">Atinge harta pentru localitățile din apropiere</span>
     `;
   }
@@ -2005,6 +2085,11 @@
   });
 
   $("#hlnHomeLocationMap").addEventListener("click", event => {
+    const localityNode = event.target.closest("[data-map-locality-id]");
+    if (localityNode) {
+      selectHomeLocality(localityMap.get(String(localityNode.dataset.mapLocalityId)));
+      return;
+    }
     if (!event.target.closest("svg.hln-location-map-svg")) return;
     renderHomeMapCandidates(nearestHomeMapLocalities(event));
   });

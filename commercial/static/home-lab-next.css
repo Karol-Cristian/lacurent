@@ -387,24 +387,47 @@ svg{display:block}
 .hln-locality-results strong{font-size:11px}
 .hln-locality-results small{color:var(--hln-muted);font-size:8px}
 .hln-location-map{
-  position:relative;min-height:280px;overflow:hidden;border:1px solid #d8d3ca;border-radius:16px;background:#eef2ef
+  position:relative;min-height:280px;overflow:hidden;border:1px solid #d8d3ca;border-radius:16px;background:#edf5f8
 }
 .hln-location-map>p{
   margin:0;padding:28px;color:var(--hln-muted);font-size:10px;text-align:center
 }
 .hln-location-map-svg{display:block;width:100%;height:auto;touch-action:manipulation}
-.hln-map-zone{stroke:rgba(255,255,255,.7);stroke-width:1.2}
-.hln-map-zone.zone-I{fill:#e7efe9}
-.hln-map-zone.zone-II{fill:#dfe9e2}
-.hln-map-zone.zone-III{fill:#d6e2da}
-.hln-map-zone.zone-IV{fill:#ccd9d1}
-.hln-map-zone.zone-V{fill:#c3d0c8}
-.hln-map-boundary{fill:none;stroke:#65736c;stroke-width:2.2;pointer-events:none}
-.hln-map-selected circle:first-child{fill:#315f49;stroke:#fff;stroke-width:3}
-.hln-map-selected circle:last-child{fill:#fff}
+.hln-map-sea{fill:#edf5f8}
+.hln-map-zone{
+  stroke:rgba(66,88,112,.48);stroke-width:.7;vector-effect:non-scaling-stroke;
+  transition:fill 160ms ease,stroke 160ms ease,opacity 160ms ease
+}
+.hln-map-zone.zone-I{fill:rgba(244,187,94,.72)}
+.hln-map-zone.zone-II{fill:rgba(237,149,96,.72)}
+.hln-map-zone.zone-III{fill:rgba(126,177,128,.76)}
+.hln-map-zone.zone-IV{fill:rgba(104,162,184,.76)}
+.hln-map-zone.zone-V{fill:rgba(107,124,165,.78)}
+.hln-map-zone.is-selected{stroke:#102846;stroke-width:1.8;opacity:1}
+.hln-map-boundary{fill:none;stroke:#18283e;stroke-width:1.7;vector-effect:non-scaling-stroke;pointer-events:none}
+.hln-map-locality{cursor:pointer}
+.hln-map-locality circle{fill:#172033;stroke:#fff;stroke-width:1.2;vector-effect:non-scaling-stroke}
+.hln-map-locality text{
+  fill:#172033;paint-order:stroke;stroke:rgba(255,255,255,.9);stroke-width:3px;
+  vector-effect:non-scaling-stroke;font-weight:800;pointer-events:none
+}
+.hln-map-locality.is-selected circle{fill:#315f49;stroke:#fff;stroke-width:2.5}
+.hln-map-locality.is-selected text{fill:#234b39;stroke-width:4px;font-weight:900}
+.hln-map-legend{
+  display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px 12px 34px;background:#fff;
+  color:#66736c;font-size:8px;font-weight:760;border-top:1px solid rgba(24,40,62,.08)
+}
+.hln-map-legend span{display:inline-flex;gap:4px;align-items:center}
+.hln-map-legend span.is-selected{color:#1d3b2f;font-weight:900}
+.hln-map-legend i{width:12px;height:7px;border:1px solid rgba(23,32,51,.18);border-radius:999px}
+.hln-map-legend i.zone-I{background:rgba(244,187,94,.72)}
+.hln-map-legend i.zone-II{background:rgba(237,149,96,.72)}
+.hln-map-legend i.zone-III{background:rgba(126,177,128,.76)}
+.hln-map-legend i.zone-IV{background:rgba(104,162,184,.76)}
+.hln-map-legend i.zone-V{background:rgba(107,124,165,.78)}
 .hln-map-hint{
-  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);padding:7px 10px;border-radius:999px;
-  background:rgba(255,255,255,.9);color:#68736d;font-size:8px;white-space:nowrap;box-shadow:0 5px 16px rgba(31,45,38,.08)
+  position:absolute;left:50%;bottom:8px;transform:translateX(-50%);padding:6px 9px;border-radius:999px;
+  background:rgba(255,255,255,.94);color:#68736d;font-size:7px;white-space:nowrap;box-shadow:0 5px 16px rgba(31,45,38,.08)
 }
 .hln-map-locality-results{
   display:grid;grid-template-columns:1fr 1fr;gap:6px
@@ -428,19 +451,28 @@ svg{display:block}
 }
 .hln-dock-metrics,.hln-dock-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .hln-dock-metrics article,.hln-dock-benefits article{
-  display:grid;grid-template-columns:32px minmax(0,1fr);gap:7px;align-items:center;min-width:0;padding:8px 9px;border-radius:12px;background:rgba(255,255,255,.055)
+  display:grid;align-items:center;min-width:0;padding:8px 9px;border-radius:12px;background:rgba(255,255,255,.055)
 }
-.hln-dock-icon,.hln-dock-benefits article>svg{
+.hln-dock-icon{
   display:grid;width:32px;height:32px;place-items:center;border-radius:9px;background:rgba(255,255,255,.08);color:#d9e4de
 }
-.hln-dock-icon svg,.hln-dock-benefits article>svg{
+.hln-dock-icon svg{
   width:16px;height:16px;padding:0;background:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round
 }
+.hln-dock-metrics article{grid-template-columns:32px minmax(0,1fr);gap:7px}
 .hln-dock-metrics article>span:last-child,.hln-dock-benefits article>span{display:grid;min-width:0}
 .hln-dock small{color:#aebbb5;font-size:7px}
 .hln-dock strong{overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
-.hln-dock-benefits strong{color:#c4e5d2}
-.hln-dock-benefits strong.is-bad{color:#efb8b1}
+.hln-dock-compare article{border:1px solid rgba(255,255,255,.05)}
+.hln-dock-compare article.is-home{background:rgba(65,105,122,.18)}
+.hln-dock-compare article.is-renovation{background:rgba(66,126,94,.20)}
+.hln-dock-compare article.is-saving{background:rgba(255,255,255,.075)}
+.hln-dock-compare strong{display:flex;gap:6px;align-items:baseline;color:#fff}
+.hln-dock-compare strong b{font-size:15px;line-height:1;color:#fff}
+.hln-dock-compare strong em{overflow:hidden;color:#dce7e1;font-size:10px;font-style:normal;text-overflow:ellipsis;white-space:nowrap}
+.hln-dock-compare .is-renovation strong b{color:#cce7d7}
+.hln-dock-compare .is-saving strong{color:#c4e5d2}
+.hln-dock-compare .is-saving strong.is-bad{color:#efb8b1}
 .hln-dock-cta{
   display:flex;gap:10px;align-items:center;justify-content:center;min-height:54px;max-width:330px;padding:10px 16px;
   border:1px solid #4a735f;border-radius:14px;background:#315f49;color:#fff;font-size:10px;font-weight:850
@@ -505,6 +537,11 @@ svg{display:block}
     box-shadow:0 7px 20px rgba(14,28,21,.22)
   }
   .hln-dock-metrics,.hln-dock-benefits{gap:4px}
+  .hln-dock-compare article{padding:7px 8px}
+  .hln-dock-compare strong{display:grid;gap:1px}
+  .hln-dock-compare strong b{font-size:14px}
+  .hln-dock-compare strong em{font-size:8px}
+  .hln-dock-compare .is-saving strong{font-size:10px}
   .hln-dock-metrics article,.hln-dock-benefits article{grid-template-columns:1fr;justify-items:center;gap:2px;padding:6px 4px;text-align:center}
   .hln-dock-icon,.hln-dock-benefits article>svg{display:none}
   .hln-dock small{font-size:7px}
