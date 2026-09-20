@@ -667,9 +667,9 @@ def test_home_lab_next_exposes_source_backed_nzeb_target() -> None:
     payload = response.json()
     target = payload["nzeb_target"]
     assert target is not None
-    assert payload["climate_zone"] in {"I", "II", "III", "IV", "V"}
-    assert target["primary_energy_kwh_m2_year"] > 0
-    assert target["co2_kg_m2_year"] > 0
+    assert payload["climate_zone"] == "III"
+    assert target["primary_energy_kwh_m2_year"] == 133.3
+    assert target["co2_kg_m2_year"] == 17.1
     assert "Tabel 2.10a" in target["source"]
     assert target["envelope_u_max_w_m2k"]["exterior_wall"] == 0.25
     assert target["envelope_u_max_w_m2k"]["roof"] == 0.15
@@ -767,6 +767,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function costOutcomeText" in response.text
     assert "async function calculateCandidate" in response.text
     assert "async function configureNzeb" in response.text
+    nzeb_section = response.text.split("async function configureNzeb", 1)[1].split("const ROI_ACTIONS", 1)[0]
+    assert '"heat_pump"' in nzeb_section
+    assert '"heat_pump_air_water"' in nzeb_section
+    assert '"natural_gas"' not in nzeb_section
     assert "async function configureBestRoi" in response.text
     assert "function renderReport" in response.text
     assert "function nzebMeetsTarget" in response.text
