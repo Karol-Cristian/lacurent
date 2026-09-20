@@ -1907,7 +1907,7 @@
     const boundary = (locationMapData.romaniaBoundary?.features || []).map(feature =>
       `<path class="hln-map-boundary" d="${mapGeometryPath(feature.geometry, projection)}"></path>`
     ).join("");
-    const selected = localityMap.get(homeState.localityId);
+    const selected = localityMap.get(String(homeState.localityId));
     let marker = "";
     if (selected && Number.isFinite(selected.lon) && Number.isFinite(selected.lat)) {
       const [x, y] = projection.project(selected.lon, selected.lat);
@@ -2001,7 +2001,7 @@
   $("#hlnLocalityResults").addEventListener("click", event => {
     const button = event.target.closest("[data-locality-id]");
     if (!button) return;
-    selectHomeLocality(localityMap.get(button.dataset.localityId));
+    selectHomeLocality(localityMap.get(String(button.dataset.localityId)));
   });
 
   $("#hlnHomeLocationMap").addEventListener("click", event => {
@@ -2012,7 +2012,7 @@
   $("#hlnMapLocalityResults").addEventListener("click", event => {
     const button = event.target.closest("[data-map-locality-id]");
     if (!button) return;
-    selectHomeLocality(localityMap.get(button.dataset.mapLocalityId));
+    selectHomeLocality(localityMap.get(String(button.dataset.mapLocalityId)));
   });
 
   const liveRangeBindings = [
@@ -2182,14 +2182,18 @@
     .then(response => response.ok ? response.json() : Promise.reject(new Error("Localități indisponibile")))
     .then(data => {
       locationMapData = data;
-      localities = data.localities || [];
-      localityMap = new Map(localities.map(item => [item.id, item]));
+      localities = Array.isArray(data.localities) ? data.localities : [];
+      localityMap = new Map(localities.map(item => [String(item.id), item]));
       locationProjection = createHomeLocationProjection(data);
+      if (!locationProjection) throw new Error("Geometria hărții nu este disponibilă.");
       renderHomeLocationMap();
     })
-    .catch(() => {
+    .catch(error => {
       const map = $("#hlnHomeLocationMap");
-      if (map) map.innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea localității rămâne disponibilă.</p>";
+      if (map) {
+        map.innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea localității rămâne disponibilă.</p>";
+        map.dataset.mapError = error?.message || "location-map-error";
+      }
     });
 
   syncHomeEditorControls();
