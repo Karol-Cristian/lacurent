@@ -357,8 +357,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next5" in response.text
-    assert "/static/home-lab-next.js?v=next6" in response.text
+    assert "/static/home-lab-next.css?v=next6" in response.text
+    assert "/static/home-lab-next.js?v=next7" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d25" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -371,6 +371,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-measure="solar_thermal"' in response.text
     assert 'id="hlnHomePvKwp"' in response.text
     assert 'id="hlnHomeSolarThermalArea"' in response.text
+    assert 'id="hlnLivePvKwp" type="range" min="0" max="30" step="0.5"' in response.text
+    assert 'id="hlnLiveSolarThermalKw" type="range" min="0" max="30" step="0.5"' in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
@@ -452,6 +454,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "scenarioOverrides" in response.text
     assert "pvEnabled" in response.text
     assert "solarThermalEnabled" in response.text
+    assert "SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70" in response.text
+    assert 'key === "pvKwp"' in response.text
+    assert 'key === "solarThermalKw"' in response.text
     assert 'formSet("pv_installed_power_kwp"' in response.text
     assert 'formSet("solar_thermal_collector_area_m2"' in response.text
     assert "reference_mc001" in response.text
