@@ -115,6 +115,8 @@
   let screen = "home";
   let localities = [];
   let localityMap = new Map();
+  let locationMapData = null;
+  let locationProjection = null;
   let calculateToken = 0;
   let calculateTimer = 0;
   let calculateAbortController = null;
@@ -1499,6 +1501,7 @@
     $("#hlnEditor").hidden = false;
     document.body.style.overflow = "hidden";
     syncHomeEditorControls();
+    if (name === "location") renderHomeLocationMap();
   }
 
   function closeEditor() {
@@ -1799,6 +1802,157 @@
     return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  function walkMapCoordinates(value, visit) {
+    if (Array.isArray(value) && value.length >= 2 && Number.isFinite(value[0]) && Number.isFinite(value[1])) {
+      visit(value);
+      return;
+    }
+    if (Array.isArray(value)) value.forEach(item => walkMapCoordinates(item, visit));
+  }
+
+  function createHomeLocationProjection(data) {
+    const bounds = {minLon:Infinity,maxLon:-Infinity,minLat:Infinity,maxLat:-Infinity};
+    [data?.climateZones, data?.romaniaBoundary].forEach(collection => {
+      (collection?.features || []).forEach(feature => {
+        walkMapCoordinates(feature.geometry?.coordinates, ([lon, lat]) => {
+          bounds.minLon = Math.min(bounds.minLon, lon);
+          bounds.maxLon = Math.max(bounds.maxLon, lon);
+          bounds.minLat = Math.min(bounds.minLat, lat);
+          bounds.maxLat = Math.max(bounds.maxLat, lat);
+        });
+      });
+    });
+    if (!Number.isFinite(bounds.minLon)) return null;
+    const width = 760;
+    const height = 470;
+    const pad = 18;
+    const midLat = (bounds.minLat + bounds.maxLat) / 2;
+    const lonScale = Math.cos(midLat * Math.PI / 180);
+    const spanX = Math.max((bounds.maxLon - bounds.minLon) * lonScale, 0.01);
+    const spanY = Math.max(bounds.maxLat - bounds.minLat, 0.01);
+    const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
+    return {
+      width,
+      height,
+      project(lon, lat) {
+        return [
+          pad + (lon - bounds.minLon) * lonScale * scale,
+          pad + (bounds.maxLat - lat) * scale
+        ];
+      }
+    };
+  }
+
+  function mapGeometryPath(geometry, projection) {
+    const polygons = geometry?.type === "Polygon"
+      ? [geometry.coordinates || []]
+      : geometry?.type === "MultiPolygon"
+        ? geometry.coordinates || []
+        : [];
+    const parts = [];
+    polygons.forEach(polygon => {
+      polygon.forEach(ring => {
+        if (!ring.length) return;
+        parts.push(ring.map((point, index) => {
+          const [x, y] = projection.project(point[0], point[1]);
+          return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+        }).join(" ") + " Z");
+      });
+    });
+    return parts.join(" ");
+  }
+
+  function selectHomeLocality(locality) {
+    if (!locality) return;
+    homeState.localityId = locality.id;
+    homeState.locality = locality.name;
+    $("#hlnLocalitySearch").value = locality.name;
+    $("#hlnEditorClimate").textContent =
+      `${locality.county || ""}${locality.climateZone ? " · zona " + locality.climateZone : ""} · ${locality.stationName || "profil climatic automat"}`;
+    $("#hlnClimateSummary").textContent =
+      `${locality.county || ""} · ${locality.stationName || "profil climatic automat"}`;
+    $("#hlnLocalityResults").hidden = true;
+    $("#hlnMapLocalityResults").hidden = true;
+    baselineSaved = false;
+    referenceMode = false;
+    scenarioOverrides = {};
+    measures = [];
+    scenarioState = {...homeState};
+    renderHomeLocationMap();
+    renderHome();
+    emitVisualState();
+    scheduleCalculate("home", 20);
+  }
+
+  function renderHomeLocationMap() {
+    const target = $("#hlnHomeLocationMap");
+    if (!target) return;
+    if (!locationMapData || !locationProjection) {
+      target.innerHTML = "<p>Se încarcă harta României…</p>";
+      return;
+    }
+    const projection = locationProjection;
+    const zonePaths = (locationMapData.climateZones?.features || []).map(feature => {
+      const zone = String(feature.properties?.zone || "");
+      return `<path class="hln-map-zone zone-${escapeHtml(zone)}" d="${mapGeometryPath(feature.geometry, projection)}"></path>`;
+    }).join("");
+    const boundary = (locationMapData.romaniaBoundary?.features || []).map(feature =>
+      `<path class="hln-map-boundary" d="${mapGeometryPath(feature.geometry, projection)}"></path>`
+    ).join("");
+    const selected = localityMap.get(homeState.localityId);
+    let marker = "";
+    if (selected && Number.isFinite(selected.lon) && Number.isFinite(selected.lat)) {
+      const [x, y] = projection.project(selected.lon, selected.lat);
+      marker = `<g class="hln-map-selected" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="7"></circle><circle r="2.5"></circle></g>`;
+    }
+    target.innerHTML = `
+      <svg class="hln-location-map-svg" viewBox="0 0 ${projection.width} ${projection.height}" preserveAspectRatio="xMidYMid meet" aria-label="Hartă climatică România">
+        <g>${zonePaths}</g>
+        <g>${boundary}</g>
+        ${marker}
+      </svg>
+      <span class="hln-map-hint">Atinge harta pentru localitățile din apropiere</span>
+    `;
+  }
+
+  function nearestHomeMapLocalities(event, limit = 6) {
+    const svg = event.target.closest("svg.hln-location-map-svg");
+    if (!svg || !locationProjection || !localities.length) return [];
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return [];
+    const x = ((event.clientX - rect.left) / rect.width) * locationProjection.width;
+    const y = ((event.clientY - rect.top) / rect.height) * locationProjection.height;
+    return localities
+      .filter(item => Number.isFinite(item.lon) && Number.isFinite(item.lat))
+      .map(item => {
+        const [px, py] = locationProjection.project(item.lon, item.lat);
+        return {item, distance:Math.hypot(px - x, py - y)};
+      })
+      .sort((a,b) => a.distance - b.distance || Number(b.item.importance || 0) - Number(a.item.importance || 0))
+      .slice(0, limit)
+      .map(entry => entry.item);
+  }
+
+  function renderHomeMapCandidates(items) {
+    const target = $("#hlnMapLocalityResults");
+    if (!target) return;
+    target.innerHTML = items.map(item => `
+      <button type="button" data-map-locality-id="${escapeHtml(item.id)}">
+        <strong>${escapeHtml(item.name)}</strong>
+        <small>${escapeHtml(item.county || "")}${item.uatName && item.uatName !== item.name ? " · " + escapeHtml(item.uatName) : ""}</small>
+      </button>
+    `).join("");
+    target.hidden = !items.length;
+  }
+
   function renderLocalities(query) {
     const target = $("#hlnLocalityResults");
     const q = normalized(query).trim();
@@ -1847,22 +2001,18 @@
   $("#hlnLocalityResults").addEventListener("click", event => {
     const button = event.target.closest("[data-locality-id]");
     if (!button) return;
-    const locality = localityMap.get(button.dataset.localityId);
-    if (!locality) return;
-    homeState.localityId = locality.id;
-    homeState.locality = locality.name;
-    $("#hlnLocalitySearch").value = locality.name;
-    $("#hlnEditorClimate").textContent = `${locality.county || ""} · profil climatic automat`;
-    $("#hlnClimateSummary").textContent = `${locality.county || ""} · profil climatic automat`;
-    $("#hlnLocalityResults").hidden = true;
-    baselineSaved = false;
-    referenceMode = false;
-    scenarioOverrides = {};
-    measures = [];
-    scenarioState = {...homeState};
-    renderHome();
-    emitVisualState();
-    scheduleCalculate("home", 20);
+    selectHomeLocality(localityMap.get(button.dataset.localityId));
+  });
+
+  $("#hlnHomeLocationMap").addEventListener("click", event => {
+    if (!event.target.closest("svg.hln-location-map-svg")) return;
+    renderHomeMapCandidates(nearestHomeMapLocalities(event));
+  });
+
+  $("#hlnMapLocalityResults").addEventListener("click", event => {
+    const button = event.target.closest("[data-map-locality-id]");
+    if (!button) return;
+    selectHomeLocality(localityMap.get(button.dataset.mapLocalityId));
   });
 
   const liveRangeBindings = [
@@ -2031,10 +2181,16 @@
   fetch("/api/location-data")
     .then(response => response.ok ? response.json() : Promise.reject(new Error("Localități indisponibile")))
     .then(data => {
+      locationMapData = data;
       localities = data.localities || [];
       localityMap = new Map(localities.map(item => [item.id, item]));
+      locationProjection = createHomeLocationProjection(data);
+      renderHomeLocationMap();
     })
-    .catch(() => {});
+    .catch(() => {
+      const map = $("#hlnHomeLocationMap");
+      if (map) map.innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea localității rămâne disponibilă.</p>";
+    });
 
   syncHomeEditorControls();
   renderAll();
