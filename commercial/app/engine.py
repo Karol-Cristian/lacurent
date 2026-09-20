@@ -15,6 +15,7 @@ from .models import (
     EnvelopeUValuesResult,
     HeatingSystemType,
     IndicatorResult,
+    RenewableResult,
 )
 
 
@@ -440,6 +441,113 @@ def dhw_energy(building: BuildingInput) -> EnergyServiceResult:
     )
 
 
+def _annual_hsol_kwh_m2(building: BuildingInput, orientation: str) -> tuple[float, dict | None]:
+    climate = resolve_climate(building.locality)
+    hsol = resolve_monthly_hsol(climate, orientation)
+    if hsol is None:
+        return 0.0, None
+    return sum(float(value) for value in hsol["values_kwh_m2_month"]), hsol
+
+
+def _apply_solar_thermal(
+    building: BuildingInput,
+    dhw: EnergyServiceResult,
+) -> tuple[EnergyServiceResult, float, dict | None]:
+    solar_thermal = building.renewables.solar_thermal
+    if not solar_thermal.enabled or solar_thermal.collector_area_m2 <= 0 or dhw.useful_kwh <= 0:
+        return dhw, 0.0, None
+
+    annual_hsol, source = _annual_hsol_kwh_m2(building, solar_thermal.orientation)
+    potential_useful = (
+        annual_hsol
+        * float(solar_thermal.collector_area_m2)
+        * float(solar_thermal.useful_efficiency)
+    )
+    useful_offset = min(float(dhw.useful_kwh), max(0.0, potential_useful))
+    remaining_useful = max(0.0, float(dhw.useful_kwh) - useful_offset)
+    remaining_final = remaining_useful / float(building.dhw.efficiency)
+    return (
+        EnergyServiceResult(
+            useful_kwh=_round(remaining_useful),
+            final_kwh=_round(remaining_final),
+            carrier=dhw.carrier if remaining_final > 0 else None,
+        ),
+        _round(useful_offset),
+        source,
+    )
+
+
+def _apply_photovoltaic(
+    building: BuildingInput,
+    carrier_totals: dict[str, float],
+) -> tuple[dict[str, float], float, float, float, dict | None]:
+    photovoltaic = building.renewables.photovoltaic
+    if not photovoltaic.enabled or photovoltaic.peak_power_kwp <= 0:
+        return dict(carrier_totals), 0.0, 0.0, 0.0, None
+
+    annual_hsol, source = _annual_hsol_kwh_m2(building, photovoltaic.orientation)
+    generation = max(
+        0.0,
+        annual_hsol
+        * float(photovoltaic.peak_power_kwp)
+        * float(photovoltaic.system_efficiency),
+    )
+    gross_electricity = float(carrier_totals.get(Carrier.electricity.value, 0.0))
+    self_consumption_target = generation * float(photovoltaic.self_consumption_fraction)
+    self_consumed = min(gross_electricity, max(0.0, self_consumption_target))
+    exported = max(0.0, generation - self_consumed)
+
+    net = dict(carrier_totals)
+    if gross_electricity > 0:
+        remaining = max(0.0, gross_electricity - self_consumed)
+        if remaining > 1e-9:
+            net[Carrier.electricity.value] = _round(remaining)
+        else:
+            net.pop(Carrier.electricity.value, None)
+    return net, _round(generation), _round(self_consumed), _round(exported), source
+
+
+def renewable_result(
+    building: BuildingInput,
+    *,
+    gross_carrier_totals: dict[str, float],
+    net_carrier_totals: dict[str, float],
+    pv_generation_kwh: float,
+    pv_self_consumed_kwh: float,
+    pv_exported_kwh: float,
+    solar_thermal_useful_kwh: float,
+    pv_source: dict | None,
+    solar_thermal_source: dict | None,
+) -> RenewableResult:
+    biomass = float(gross_carrier_totals.get(Carrier.biomass.value, 0.0))
+    effective_renewable = float(pv_self_consumed_kwh) + float(solar_thermal_useful_kwh) + biomass
+    gross_final = sum(float(value) for value in gross_carrier_totals.values()) + float(solar_thermal_useful_kwh)
+    share = 100.0 * effective_renewable / gross_final if gross_final > 0 else 0.0
+
+    source_bits = []
+    for label, source in (("PV", pv_source), ("solar termic", solar_thermal_source)):
+        if source:
+            resolution = source.get("station_resolution") or "direct"
+            station = source.get("solar_locality_name") or source.get("locality_name")
+            source_bits.append(f"{label}: A.9.6 {station} ({resolution})")
+    note = (
+        "LaCurent Light: producția regenerabilă este o estimare de bilanț, nu un calcul RER/CPE final. "
+        + "; ".join(source_bits)
+        if source_bits
+        else "LaCurent Light: fără producție regenerabilă activă."
+    )
+
+    return RenewableResult(
+        photovoltaic_generation_kwh=_round(pv_generation_kwh),
+        photovoltaic_self_consumed_kwh=_round(pv_self_consumed_kwh),
+        photovoltaic_exported_kwh=_round(pv_exported_kwh),
+        solar_thermal_useful_kwh=_round(solar_thermal_useful_kwh),
+        total_renewable_energy_kwh=_round(effective_renewable),
+        renewable_share_percent=_round(share, 1),
+        source_note=note,
+    )
+
+
 def final_energy_by_service(heating: EnergyServiceResult, cooling: EnergyServiceResult, dhw: EnergyServiceResult) -> dict[str, float]:
     return {
         "heating": heating.final_kwh,
@@ -484,9 +592,25 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
 
     heating = heating_final_energy(building, annual_heating)
     cooling = cooling_final_energy(building, annual_cooling)
-    dhw = dhw_energy(building)
+    dhw_gross = dhw_energy(building)
+    dhw, solar_thermal_useful, solar_thermal_source = _apply_solar_thermal(building, dhw_gross)
     by_service = final_energy_by_service(heating, cooling, dhw)
-    by_carrier = final_energy_by_carrier(heating, cooling, dhw)
+    gross_by_carrier = final_energy_by_carrier(heating, cooling, dhw)
+    by_carrier, pv_generation, pv_self_consumed, pv_exported, pv_source = _apply_photovoltaic(
+        building,
+        gross_by_carrier,
+    )
+    renewables = renewable_result(
+        building,
+        gross_carrier_totals=gross_by_carrier,
+        net_carrier_totals=by_carrier,
+        pv_generation_kwh=pv_generation,
+        pv_self_consumed_kwh=pv_self_consumed,
+        pv_exported_kwh=pv_exported,
+        solar_thermal_useful_kwh=solar_thermal_useful,
+        pv_source=pv_source,
+        solar_thermal_source=solar_thermal_source,
+    )
     primary = primary_energy(by_carrier, building.heated_floor_area_m2)
     co2 = co2_emissions(by_carrier, building.heated_floor_area_m2)
     energy_class = classify_energy(building, primary.specific_kwh_m2)
@@ -521,9 +645,10 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         heating=heating,
         cooling=cooling,
         dhw=dhw,
+        renewables=renewables,
         final_energy_by_service=by_service,
         final_energy_by_carrier=by_carrier,
-        total_final_energy_kwh=_round(sum(by_service.values())),
+        total_final_energy_kwh=_round(sum(by_carrier.values())),
         primary_energy=primary,
         co2=co2,
         energy_class=energy_class,
