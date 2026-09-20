@@ -990,3 +990,48 @@ svg{display:block}
     grid-column: auto;
   }
 }
+
+
+/* Light engine: detailed systems + renewables */
+.hln-check-row{
+  display:flex!important;
+  align-items:center;
+  gap:12px;
+  min-height:46px;
+  padding:11px 12px;
+  border:1px solid var(--hln-line,rgba(15,23,42,.12));
+  border-radius:12px;
+  background:rgba(248,250,252,.72);
+}
+.hln-check-row input[type="checkbox"]{
+  width:19px;
+  height:19px;
+  margin:0;
+  flex:0 0 auto;
+}
+.hln-check-row span{
+  font-weight:700;
+}
+.hln-editor-subgrid{
+  display:grid;
+  gap:12px;
+  padding:12px;
+  border-radius:12px;
+  background:rgba(15,23,42,.035);
+  border:1px solid rgba(15,23,42,.08);
+}
+.hln-editor-subgrid[hidden]{
+  display:none!important;
+}
+.hln-config-row[data-hln-editor-open="renewables"] .hln-row-icon,
+.hln-measure-row[data-hln-measure="renewables"] .hln-row-icon{
+  background:rgba(245,158,11,.10);
+}
+@media (min-width:760px){
+  .hln-editor-subgrid{
+    grid-template-columns:1fr 1fr;
+  }
+  .hln-editor-subgrid label:last-child:nth-child(odd){
+    grid-column:1/-1;
+  }
+}
