@@ -68,6 +68,8 @@
   const defaultState = {
     localityId: form.elements.locality_id.value,
     locality: form.elements.locality.value,
+    buildingType: "residential_individual",
+    constructionYear: 2005,
     area: 120,
     levels: 2,
     height: 2.7,
@@ -804,6 +806,8 @@
 
     formSet("locality_id", state.localityId);
     formSet("locality", state.locality);
+    formSet("building_type", state.buildingType || "residential_individual");
+    formSet("construction_year", state.constructionYear || 2005);
     formSet("building_length_m", length.toFixed(3));
     formSet("building_width_m", width.toFixed(3));
     formSet("heated_levels", levels);
@@ -1099,7 +1103,8 @@
     const state = baselineSaved ? homeState : homeState;
     $("#hlnLocationSummary").textContent = state.locality || "—";
     $("#hlnHouseSummary").textContent = `${fmt(state.area)} m² · ${state.levels} nivel${Number(state.levels) === 1 ? "" : "uri"}`;
-    $("#hlnHouseMeta").textContent = `${fmt(state.height, 1)} m · ${fmt(state.temperature, 1)}°C`;
+    const buildingTypeLabel = state.buildingType === "residential_collective" ? "Apartament / colectiv" : "Casă individuală";
+    $("#hlnHouseMeta").textContent = `${buildingTypeLabel} · ${state.constructionYear || "an necunoscut"} · ${fmt(state.height, 1)} m`;
     $("#hlnEnvelopeSummary").textContent = `${state.wallIns} cm pereți · ${state.roofIns} cm pod`;
     $("#hlnEnvelopeMeta").textContent = `${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
@@ -1111,14 +1116,20 @@
     if (performance?.generator_performance_kind === "scop") {
       heatingParts.push(`SCOP ${fmt(performance.generator_performance,2)}`);
     }
-    const renewableParts = [];
-    if (state.pvEnabled) renewableParts.push(`PV ${fmt(state.pvKwp,1)} kWp`);
-    if (state.solarThermalEnabled) renewableParts.push(`solar termic ${fmt(state.solarThermalArea,1)} m²`);
     $("#hlnSystemsMeta").textContent = [
       ...heatingParts,
       labels.ventilation[state.ventilation] || state.ventilation,
-      ...renewableParts
+      labels.cooling[state.cooling] || state.cooling
     ].join(" · ");
+
+    const renewableParts = [];
+    if (state.pvEnabled) renewableParts.push(`PV ${fmt(state.pvKwp,1)} kWp`);
+    if (state.solarThermalEnabled) renewableParts.push(`solar termic ${fmt(state.solarThermalArea,1)} m²`);
+    $("#hlnRenewablesSummary").textContent = renewableParts.length ? renewableParts.join(" · ") : "Fără regenerabile";
+    $("#hlnRenewablesMeta").textContent = state.pvEnabled || state.solarThermalEnabled
+      ? [state.pvEnabled ? `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°` : null,
+         state.solarThermalEnabled ? `solar termic ${renewableOrientationLabel(state.solarThermalOrientation)}` : null].filter(Boolean).join(" · ")
+      : "PV · solar termic";
     $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "8";
   }
 
@@ -1458,9 +1469,18 @@
     } catch (_) {}
   }
 
-  function saveHomeAndOpenSite() {
-    if (!currentResult && !homeResult) return;
-    homeResult = currentResult || homeResult;
+  async function saveHomeAndOpenSite() {
+    let result = currentResult || homeResult;
+    if (!result) {
+      setStatus("Calculez Casa mea înainte de renovare…");
+      result = await calculateState(homeState, "home");
+    }
+    if (!result) {
+      setStatus("Casa nu a putut fi salvată încă. Verifică valorile introduse.", "error");
+      return false;
+    }
+    homeResult = result;
+    currentResult = result;
     baselineSaved = true;
     referenceMode = false;
     scenarioOverrides = {};
@@ -1469,10 +1489,11 @@
     measures = [];
     persist();
     showScreen("site");
+    return true;
   }
 
   function openEditor(name) {
-    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile"};
+    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile",renewables:"Regenerabile"};
     $("#hlnEditorTitle").textContent = titles[name] || "Editează";
     $$("[data-hln-editor]").forEach(section => section.hidden = section.dataset.hlnEditor !== name);
     $("#hlnEditor").hidden = false;
@@ -1489,6 +1510,8 @@
 
   function syncHomeEditorControls() {
     $("#hlnLocalitySearch").value = homeState.locality;
+    $("#hlnBuildingType").value = homeState.buildingType || "residential_individual";
+    $("#hlnConstructionYear").value = homeState.constructionYear || 2005;
     $("#hlnArea").value = homeState.area;
     $("#hlnHeight").value = homeState.height;
     $("#hlnTemperature").value = homeState.temperature;
@@ -1529,6 +1552,8 @@
       solarThermalEnabled: Boolean(homeState.solarThermalEnabled),
       solarThermalOrientation: homeState.solarThermalOrientation,
     };
+    homeState.buildingType = $("#hlnBuildingType").value;
+    homeState.constructionYear = Number($("#hlnConstructionYear").value) || 2005;
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
     homeState.temperature = Number($("#hlnTemperature").value);
@@ -1799,8 +1824,11 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
-    .forEach(selector => $(selector).addEventListener("change", updateHomeFromEditors));
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+    .forEach(selector => {
+      const node = $(selector);
+      if (node) node.addEventListener("change", updateHomeFromEditors);
+    });
 
   $$("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
@@ -1962,10 +1990,16 @@
   $("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
 
-  $("#hlnDockCta").addEventListener("click", () => {
+  $("#hlnDockCta").addEventListener("click", async () => {
     if (screen === "home") {
-      if (!baselineSaved) saveHomeAndOpenSite();
-      else showScreen("site");
+      const button = $("#hlnDockCta");
+      if (button) button.disabled = true;
+      try {
+        if (!baselineSaved) await saveHomeAndOpenSite();
+        else showScreen("site");
+      } finally {
+        if (button) button.disabled = false;
+      }
       return;
     }
     if (screen === "site") {
