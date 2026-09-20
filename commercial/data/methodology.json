@@ -190,6 +190,43 @@
     "cooling_seer": 3.2,
     "dhw_efficiency": 0.85
   },
+  "nzeb_targets": {
+    "source": "MC001-2022, Tabel 2.10a, pagini PDF text 73-74; valori replicate din src/climate-platform/romanianClimateZones.mjs pentru runtime-ul Python comercial.",
+    "source_status": "source_backed_lookup_only_not_certificate_engine",
+    "energy_unit": "kWh/(m²·an)",
+    "co2_unit": "kgCO₂/(m²·an)",
+    "values": {
+      "I": {
+        "residential_collective": {"primary_energy_kwh_m2_year": 99.1, "co2_kg_m2_year": 12.0},
+        "residential_individual": {"primary_energy_kwh_m2_year": 120.1, "co2_kg_m2_year": 14.7}
+      },
+      "II": {
+        "residential_collective": {"primary_energy_kwh_m2_year": 103.7, "co2_kg_m2_year": 12.8},
+        "residential_individual": {"primary_energy_kwh_m2_year": 127.9, "co2_kg_m2_year": 16.0}
+      },
+      "III": {
+        "residential_collective": {"primary_energy_kwh_m2_year": 105.9, "co2_kg_m2_year": 13.5},
+        "residential_individual": {"primary_energy_kwh_m2_year": 133.3, "co2_kg_m2_year": 17.1}
+      },
+      "IV": {
+        "residential_collective": {"primary_energy_kwh_m2_year": 109.5, "co2_kg_m2_year": 14.3},
+        "residential_individual": {"primary_energy_kwh_m2_year": 140.6, "co2_kg_m2_year": 18.5}
+      },
+      "V": {
+        "residential_collective": {"primary_energy_kwh_m2_year": 113.1, "co2_kg_m2_year": 15.1},
+        "residential_individual": {"primary_energy_kwh_m2_year": 147.9, "co2_kg_m2_year": 19.9}
+      }
+    },
+    "residential_envelope_u_max_w_m2k": {
+      "exterior_wall": 0.25,
+      "roof": 0.15,
+      "floor_generic_conservative": 0.20,
+      "window": 1.11,
+      "exterior_door": 1.30
+    },
+    "envelope_source": "MC001-2022, Tabel 2.4; pragul generic de pardoseală 0,20 W/(m²K) este alegerea conservatoare Light pentru placa spre exterior/sol când tipul exact al planșeului nu este încă modelat.",
+    "renewable_requirement_status": "RER contribution is not yet fully verified by the Light Engine; nZEB optimizer must not claim legal compliance solely from primary-energy and CO2 thresholds."
+  },
   "assumptions": [
     "Lanțul simplificat de încălzire separă emisia, distribuția, stocarea, reglajul, generatorul și energia auxiliară. Structura urmează MC001-2022 Capitolul 3, dar presetările Light pentru factori și SCOP sunt estimări LaCurent și nu valori normative MC001.",
     "Transferul termic prin transmisie folosește forma directă MC001: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul simplificat al versiunii comerciale.",
