@@ -879,13 +879,23 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     loss_rows.sort(key=lambda row: row["value_w_k"], reverse=True)
 
     reference = result.reference
-    reference_rules = methodology()["reference_building"]
+    method = methodology()
+    reference_rules = method["reference_building"]
+    climate_zone = str(climate.get("climate_zone") or "")
+    building_type = result.input.building_type.value
+    nzeb_registry = method.get("nzeb_targets", {})
+    nzeb_target = (
+        nzeb_registry.get("values", {}).get(climate_zone, {}).get(building_type)
+        if climate_zone
+        else None
+    )
     return {
         "energy_class": result.energy_class,
         "final_energy_kwh": float(result.total_final_energy_kwh),
         "gross_service_final_energy_kwh": float(result.total_service_final_energy_kwh),
         "primary_specific_kwh_m2": float(result.primary_energy.specific_kwh_m2),
         "co2_kg": float(result.co2.total_kg),
+        "co2_specific_kg_m2": float(result.co2.specific_kg_m2),
         "heat_loss_w_k": float(result.heat_loss_w_k),
         "annual_cost_lei": float(cost["priced_total_lei"]) if cost.get("complete") else None,
         "average_monthly_cost_lei": float(cost["average_monthly_priced_lei"]) if cost.get("complete") else None,
@@ -893,6 +903,18 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "locality": selected.get("display_name") or result.input.locality,
         "climate_station": climate.get("station") or "",
         "climate_zone": climate.get("climate_zone"),
+        "nzeb_target": (
+            {
+                "primary_energy_kwh_m2_year": float(nzeb_target["primary_energy_kwh_m2_year"]),
+                "co2_kg_m2_year": float(nzeb_target["co2_kg_m2_year"]),
+                "source": nzeb_registry.get("source"),
+                "source_status": nzeb_registry.get("source_status"),
+                "renewable_requirement_status": nzeb_registry.get("renewable_requirement_status"),
+                "envelope_u_max_w_m2k": nzeb_registry.get("residential_envelope_u_max_w_m2k", {}),
+            }
+            if nzeb_target
+            else None
+        ),
         "winter_design_temperature_c": design_temperature,
         "solar_orientation": result.input.solar.orientation,
         "solar_glazing_type_id": result.input.solar.glazing_type_id,
