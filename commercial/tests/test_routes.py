@@ -728,7 +728,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert '["#hlnImpactEfficiency", efficiency]' in response.text
     assert '["#hlnImpactCo2", co2]' in response.text
     assert '["#hlnImpactLoad", load]' in response.text
-    assert 'benefitText(scenarioResult.final_energy_kwh' in response.text
+    assert "const efficiency = benefitText(" in response.text
+    assert "scenarioResult.final_energy_kwh" in response.text
     assert 'directChangeText(scenarioResult.final_energy_kwh' in response.text
     assert "function costOutcomeText" in response.text
     assert "const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);" in response.text
