@@ -358,8 +358,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next10" in response.text
-    assert "/static/home-lab-next.js?v=next17" in response.text
+    assert "/static/home-lab-next.css?v=next11" in response.text
+    assert "/static/home-lab-next.js?v=next18" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -672,6 +672,12 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_home_lab_next_hidden_sections_cannot_be_overridden_by_layout_css() -> None:
+    response = client.get("/static/home-lab-next.css")
+    assert response.status_code == 200
+    assert ".hln-app [hidden]{display:none!important}" in response.text
+
+
 def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -688,6 +694,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'await calculateState(homeState, "home")' in response.text
     assert 'showScreen("site")' in response.text
     assert "function createHomeLocationProjection" in response.text
+    assert "if (!locationProjection) throw new Error" in response.text
+    assert 'locationMapData = data' in response.text
+    assert 'localityMap = new Map(localities.map(item => [String(item.id), item]))' in response.text
     assert "function renderHomeLocationMap" in response.text
     assert "function selectHomeLocality" in response.text
     assert "nearestHomeMapLocalities" in response.text
@@ -696,8 +705,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function migrateStoredHeatingState" in response.text
     assert '["wood_stove", "electric_resistance"].includes(homeState.heating)' in response.text
     assert '["wood_stove", "electric_resistance"].includes(scenarioState.heating)' in response.text
-    assert '$("[data-hln-home-heating-chain]")' in response.text
-    assert '$("[data-hln-scenario-heating-chain]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-home-heating-chain]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-scenario-heating-chain]")' in response.text
     assert "hasCompleteStoredChain" in response.text
     assert 'Object.assign(state, heatingChainDefaults(state.heating))' in response.text
     assert 'state.heating === "wood_stove" || state.heating === "electric_resistance"' in response.text
@@ -725,8 +734,11 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function normalizeHeatingState" in response.text
     assert "function syncHeatingControlAvailability" in response.text
     assert "function setHeatingFieldDisabled" in response.text
-    assert '$("[data-hln-home-heating-chain]")' in response.text
-    assert '$("[data-hln-scenario-heating-chain]")' in response.text
+    assert 'root.querySelectorAll("#hlnLevels [data-value]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-screen]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-quick-edit-close]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-home-heating-chain]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-scenario-heating-chain]")' in response.text
     assert 'control.disabled = disabled' in response.text
     assert 'state.heatPumpSource === "heat_pump_air_air"' in response.text
     assert 'formSet("heating_generator_type"' in response.text

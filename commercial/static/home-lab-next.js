@@ -346,10 +346,10 @@
 
     const homeLocalFixed = ["wood_stove", "electric_resistance"].includes(homeState.heating);
     const scenarioLocalFixed = ["wood_stove", "electric_resistance"].includes(scenarioState.heating);
-    $("[data-hln-home-heating-chain]").forEach(node => {
+    root.querySelectorAll("[data-hln-home-heating-chain]").forEach(node => {
       node.hidden = homeLocalFixed;
     });
-    $("[data-hln-scenario-heating-chain]").forEach(node => {
+    root.querySelectorAll("[data-hln-scenario-heating-chain]").forEach(node => {
       node.hidden = scenarioLocalFixed;
     });
 
@@ -1450,7 +1450,7 @@
     if (next === "site" && !baselineSaved) return;
     if (next === "scenario" && !baselineSaved) return;
     screen = next;
-    $$("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
+    $root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
     emitVisualState();
     window.scrollTo({top: 0, behavior: "smooth"});
@@ -1542,7 +1542,7 @@
     $("#hlnHomeSolarThermalArea").value = homeState.solarThermalArea;
     $("#hlnHomeSolarThermalOrientation").value = homeState.solarThermalOrientation;
     $("#hlnHomeSolarThermalTilt").value = homeState.solarThermalTilt;
-    $("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
+    root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
   }
 
   function updateHomeFromEditors() {
@@ -1907,7 +1907,7 @@
     const boundary = (locationMapData.romaniaBoundary?.features || []).map(feature =>
       `<path class="hln-map-boundary" d="${mapGeometryPath(feature.geometry, projection)}"></path>`
     ).join("");
-    const selected = localityMap.get(homeState.localityId);
+    const selected = localityMap.get(String(homeState.localityId));
     let marker = "";
     if (selected && Number.isFinite(selected.lon) && Number.isFinite(selected.lat)) {
       const [x, y] = projection.project(selected.lon, selected.lat);
@@ -1984,9 +1984,9 @@
       if (node) node.addEventListener("change", updateHomeFromEditors);
     });
 
-  $$("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
+  $root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
-    $$("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
+    $root.querySelectorAll("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
@@ -2001,7 +2001,7 @@
   $("#hlnLocalityResults").addEventListener("click", event => {
     const button = event.target.closest("[data-locality-id]");
     if (!button) return;
-    selectHomeLocality(localityMap.get(button.dataset.localityId));
+    selectHomeLocality(localityMap.get(String(button.dataset.localityId)));
   });
 
   $("#hlnHomeLocationMap").addEventListener("click", event => {
@@ -2012,7 +2012,7 @@
   $("#hlnMapLocalityResults").addEventListener("click", event => {
     const button = event.target.closest("[data-map-locality-id]");
     if (!button) return;
-    selectHomeLocality(localityMap.get(button.dataset.mapLocalityId));
+    selectHomeLocality(localityMap.get(String(button.dataset.mapLocalityId)));
   });
 
   const liveRangeBindings = [
@@ -2098,7 +2098,7 @@
       const target = go.dataset.hlnGo;
       if (target === "home") {
         screen = "home";
-        $("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
+        root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
         renderAll();
         emitVisualState();
         return;
@@ -2137,7 +2137,7 @@
   $("#hlnQuickEditOverlay").addEventListener("click", event => {
     if (event.target === $("#hlnQuickEditOverlay")) cancelQuickMeasureEditor();
   });
-  $("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
+  root.querySelectorAll("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
 
   $("#hlnDockCta").addEventListener("click", async () => {
@@ -2182,14 +2182,18 @@
     .then(response => response.ok ? response.json() : Promise.reject(new Error("Localități indisponibile")))
     .then(data => {
       locationMapData = data;
-      localities = data.localities || [];
-      localityMap = new Map(localities.map(item => [item.id, item]));
+      localities = Array.isArray(data.localities) ? data.localities : [];
+      localityMap = new Map(localities.map(item => [String(item.id), item]));
       locationProjection = createHomeLocationProjection(data);
+      if (!locationProjection) throw new Error("Geometria hărții nu este disponibilă.");
       renderHomeLocationMap();
     })
-    .catch(() => {
+    .catch(error => {
       const map = $("#hlnHomeLocationMap");
-      if (map) map.innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea localității rămâne disponibilă.</p>";
+      if (map) {
+        map.innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea localității rămâne disponibilă.</p>";
+        map.dataset.mapError = error?.message || "location-map-error";
+      }
     });
 
   syncHomeEditorControls();
