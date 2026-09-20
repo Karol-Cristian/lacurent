@@ -2046,6 +2046,7 @@
     $("#hlnReportBars").innerHTML = [
       reportComparisonRow("Cost anual", homeResult.annual_cost_lei, scenarioResult.annual_cost_lei, "lei/an"),
       reportComparisonRow("Energie finală", homeResult.final_energy_kwh, scenarioResult.final_energy_kwh, "kWh/an"),
+      reportComparisonRow("Energie primară specifică", homeResult.primary_specific_kwh_m2, scenarioResult.primary_specific_kwh_m2, "kWh/m²·an", 1),
       reportComparisonRow("CO₂", homeResult.co2_kg, scenarioResult.co2_kg, "kg/an"),
       reportComparisonRow("Necesar termic", homeResult.design_heat_load_kw, scenarioResult.design_heat_load_kw, "kW", 1),
     ].join("");
@@ -2064,25 +2065,53 @@
     nzebStatus.textContent = !targetKnown
       ? "Ținta nZEB nu este disponibilă pentru această selecție."
       : primaryOk && co2Ok
-        ? "Limitele de energie primară și CO₂ din Tabelul 2.10a sunt atinse."
-        : "Scenariul este încă peste cel puțin una dintre limitele Tabelului 2.10a.";
+        ? "Țintă nZEB atinsă pentru energie primară și CO₂ · verificarea completă RER este necesară."
+        : "Scenariul este încă peste cel puțin una dintre limitele MC001 Tabel 2.10a.";
 
     $("#hlnReportPrimary").textContent = Number.isFinite(primary) ? `${fmt(primary,1)} kWh/m²·an` : "—";
     $("#hlnReportPrimaryTarget").textContent = Number.isFinite(primaryLimit) ? `limită ≤ ${fmt(primaryLimit,1)}` : "limită indisponibilă";
     $("#hlnReportCo2Specific").textContent = Number.isFinite(co2Specific) ? `${fmt(co2Specific,1)} kg/m²·an` : "—";
     $("#hlnReportCo2Target").textContent = Number.isFinite(co2Limit) ? `limită ≤ ${fmt(co2Limit,1)}` : "limită indisponibilă";
+
+    const envelopeStatus = target ? nzebEnvelopeStatus(scenarioState, scenarioOverrides, target) : {checks:[], meets:false};
+    const envelopeNode = $("#hlnReportEnvelopeStatus");
+    if (envelopeNode) {
+      const failed = envelopeStatus.checks.filter(item => !item.ok);
+      envelopeNode.classList.toggle("is-good", targetKnown && envelopeStatus.meets);
+      envelopeNode.classList.toggle("is-warn", targetKnown && !envelopeStatus.meets);
+      envelopeNode.textContent = !targetKnown
+        ? "Pragurile de anvelopă nu sunt disponibile."
+        : envelopeStatus.meets
+          ? "Anvelopă: pragurile rezidențiale MC001 Tabel 2.4 sunt în limitele modelate."
+          : `Anvelopă: peste prag la ${failed.map(item => item.label.toLowerCase()).join(", ")}.`;
+    }
     $("#hlnReportNzebNote").textContent =
-      "Verificarea de mai sus acoperă pragurile energetice și CO₂ disponibile în MC001 2.10a. Ponderea regenerabilă RER și conformitatea legală completă nu sunt încă certificate de motorul Light.";
+      "Verificarea nZEB de aici separă explicit ce poate verifica Light: energie primară, CO₂ și pragurile de anvelopă modelate. Ponderea regenerabilă RER și conformitatea legală completă rămân neverificate.";
+
+    $("#hlnReportVisualTitle").textContent = `${scenarioResult.locality || homeState.locality || "Locuință"} · scenariul final`;
+    $("#hlnReportVisualMeta").textContent =
+      `Clasa ${scenarioResult.energy_class || "—"} · ${labels.heating[scenarioState.heating] || scenarioState.heating} · ${optimizationMeta?.label || "configurare manuală"}`;
 
     const reportMeasures = $("#hlnReportMeasures");
     const activeMeasures = measures.length ? measures : [];
-    reportMeasures.innerHTML = activeMeasures.length
-      ? activeMeasures.map(type => `
-          <article>
-            <span>${measureIcon(type)}</span>
-            <div><strong>${escapeHtml(measureTitle(type))}</strong><small>${escapeHtml(measureSummary(type))}</small></div>
-          </article>`
-        ).join("")
+    const activeIds = new Set(activeMeasures);
+    const extraOptimizerMeasures = Array.isArray(optimizationMeta?.selected)
+      ? optimizationMeta.selected.filter(item => item?.id && !activeIds.has(item.id))
+      : [];
+    const measureRows = [
+      ...activeMeasures.map(type => `
+        <article>
+          <span>${measureIcon(type)}</span>
+          <div><strong>${escapeHtml(measureTitle(type))}</strong><small>${escapeHtml(measureSummary(type))}</small></div>
+        </article>`),
+      ...extraOptimizerMeasures.map(item => `
+        <article>
+          <span><svg><use href="#hln-i-check"></use></svg></span>
+          <div><strong>${escapeHtml(item.label || item.id)}</strong><small>${item.kind === "mc001-envelope" ? "Prag MC001 aplicat condițional" : "Măsură selectată de optimizer"}</small></div>
+        </article>`)
+    ];
+    reportMeasures.innerHTML = measureRows.length
+      ? measureRows.join("")
       : '<p class="hln-report-empty">Scenariul nu conține intervenții față de Casa mea.</p>';
 
     const losses = Array.isArray(scenarioResult.heat_loss_breakdown) ? scenarioResult.heat_loss_breakdown.slice(0,6) : [];
@@ -2117,20 +2146,88 @@
         </div>`;
     }).join("");
 
+    const scenarioCosts = Array.isArray(scenarioResult.monthly_costs) ? scenarioResult.monthly_costs : [];
+    const homeCosts = new Map((homeResult.monthly_costs || []).map(row => [row.month,row]));
+    const maxMonthlyCost = Math.max(...scenarioCosts.flatMap(row => [
+      Number(homeCosts.get(row.month)?.cost_lei || 0),
+      Number(row.cost_lei || 0),
+    ]),1);
+    $("#hlnReportMonthlyCostChart").innerHTML = scenarioCosts.map(row => {
+      const baseline = homeCosts.get(row.month) || {};
+      const homeCost = Number(baseline.cost_lei || 0);
+      const scenarioCost = Number(row.cost_lei || 0);
+      const energy = Number(row.final_energy_kwh || 0);
+      return `
+        <div class="hln-month-cost-column" title="${escapeHtml(row.month)} · Casa mea ${fmt(homeCost)} lei · Renovare ${fmt(scenarioCost)} lei · ${fmt(energy)} kWh finali">
+          <div class="hln-month-cost-bars">
+            <i class="is-home" style="height:${Math.max(homeCost ? 3 : 0,100*homeCost/maxMonthlyCost)}%"></i>
+            <i class="is-after" style="height:${Math.max(scenarioCost ? 3 : 0,100*scenarioCost/maxMonthlyCost)}%"></i>
+          </div>
+          <small>${escapeHtml(String(row.month).slice(0,3))}</small>
+          <strong>${fmt(scenarioCost)} lei</strong>
+          <em>${fmt(energy)} kWh</em>
+        </div>`;
+    }).join("");
+
+    const pv = scenarioResult.renewables?.pv || {};
+    const solarThermal = scenarioResult.renewables?.solar_thermal || {};
+    $("#hlnReportPvGeneration").textContent = pv.enabled ? `${fmt(pv.annual_generation_kwh)} kWh/an` : "Fără PV";
+    $("#hlnReportPvSelf").textContent = pv.enabled ? `${fmt(pv.self_consumed_kwh)} kWh · ${fmt(pv.self_consumption_percent,0)}%` : "—";
+    $("#hlnReportPvExport").textContent = pv.enabled ? `${fmt(pv.exported_kwh)} kWh/an` : "—";
+    $("#hlnReportSolarThermal").textContent = solarThermal.enabled
+      ? `${fmt(solarThermal.used_for_dhw_kwh)} kWh/an · ${fmt(solarThermal.dhw_solar_fraction_percent,0)}% ACM`
+      : "Fără solar termic";
+    $("#hlnReportRenewablesNote").textContent = [
+      pv.enabled ? `PV ${fmt(pv.installed_power_kwp,1)} kWp · ${renewableOrientationLabel(pv.orientation)} · ${fmt(pv.tilt_degrees,0)}°` : null,
+      solarThermal.enabled ? `solar termic ${fmt(solarThermal.collector_area_m2,1)} m² · ${renewableOrientationLabel(solarThermal.orientation)}` : null,
+      scenarioResult.renewables?.plane_model ? `model radiație: ${scenarioResult.renewables.plane_model}` : null,
+    ].filter(Boolean).join(" · ") || "Scenariul nu include surse regenerabile locale.";
+
+    const heating = scenarioResult.heating_system || {};
+    const distributionLabels = {
+      hydronic_insulated:"conducte izolate",
+      hydronic_uninsulated:"conducte neizolate",
+      underfloor:"pardoseală",
+      air:"aer",
+      local:"fără rețea",
+    };
+    $("#hlnReportHeatingSystem").textContent = labels.heating[scenarioState.heating] || String(heating.generator_type || scenarioState.heating || "—").replaceAll("_"," ");
+    $("#hlnReportHeatingPerformance").textContent = heating.generator_performance_kind === "scop"
+      ? `SCOP ${fmt(heating.generator_performance,2)} · performanță efectivă ${fmt(heating.effective_system_performance,2)}`
+      : `η generator ${fmt(100*Number(heating.generator_performance||0),0)}% · sistem efectiv ${fmt(100*Number(heating.effective_system_performance||0),0)}%`;
+    $("#hlnReportHeatingChain").textContent = [
+      labels.heatingEmitter[scenarioState.heatingEmitter] || scenarioState.heatingEmitter,
+      distributionLabels[scenarioState.heatingDistribution] || scenarioState.heatingDistribution,
+      labels.heatingStorage[scenarioState.heatingStorage] || scenarioState.heatingStorage,
+      labels.heatingControl[scenarioState.heatingControl] || scenarioState.heatingControl,
+    ].join(" · ");
+    $("#hlnReportHeatingSource").textContent =
+      `LaCurent Light · ${heating.confidence || "—"} confidence · ${String(heating.performance_source || "model intern").replaceAll("_"," ")}`;
+
     $("#hlnReportLocation").textContent = scenarioResult.locality || homeState.locality || "—";
     $("#hlnReportClimate").textContent =
       `Zona ${scenarioResult.climate_zone || "—"} · ${scenarioResult.climate_station || "stație climatică"}`;
     $("#hlnReportOptimizer").textContent = optimizationMeta?.label || "Scenariu configurat manual";
     $("#hlnReportPriceDate").textContent =
       scenarioResult.price_retrieved_on ? `referințe ${scenarioResult.price_retrieved_on}` : "referințe de preț curente";
+    $("#hlnReportNzebSource").textContent = target?.source || "Prag nZEB indisponibil pentru selecția curentă.";
+    $("#hlnReportEnvelopeSource").textContent = target?.envelope_source || "Pragurile de anvelopă nu sunt disponibile.";
+    $("#hlnReportMethodologySource").textContent =
+      scenarioResult.methodology_source || "Datele climatice și metoda lunară sunt documentate în metodologia aplicației.";
+    $("#hlnReportMethodologyVersion").textContent =
+      scenarioResult.methodology_version ? `Motor ${scenarioResult.methodology_version}` : "LaCurent Light";
+    const assumptions = Array.isArray(scenarioResult.assumptions) ? scenarioResult.assumptions : [];
+    $("#hlnReportAssumptions").innerHTML = assumptions.length
+      ? assumptions.slice(0,8).map(item => `<li>${escapeHtml(item)}</li>`).join("")
+      : "<li>Nu sunt declarate ipoteze suplimentare pentru acest scenariu.</li>";
 
     const strategy = $("#hlnReportStrategy");
     if (strategy) {
       if (optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)) {
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Best ROI relativ</strong>
-            <span>Ordinea măsurilor a fost aleasă după economia anuală calculată raportată la un indice relativ de efort investițional.</span>
+            <strong>Best ROI estimativ</strong>
+            <span>După fiecare măsură păstrată, toate măsurile rămase au fost recalculate prin motorul real și comparate după economie anuală / indice de efort.</span>
           </div>
           <div class="hln-strategy-list">
             ${optimizationMeta.selected.map((item,index) => `
@@ -2140,21 +2237,25 @@
               </article>
             `).join("")}
           </div>
-          <p>Scorul este comparativ, nu CAPEX și nu perioadă de recuperare contractuală. Pentru ROI financiar în ani trebuie conectat registrul de costuri reale de investiție.</p>
+          <p>Indicele de efort investițional 1–6 este o estimare LaCurent, separată de MC001. Nu este CAPEX și nu produce un payback financiar oficial.</p>
         `;
       } else if (optimizationMeta?.mode === "nzeb") {
+        const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Țintă nZEB</strong>
-            <span>${escapeHtml(optimizationMeta.selectedSystem || "Configurație optimizată")} · verificare energetică și CO₂ față de MC001 Tabel 2.10a.</span>
+            <strong>Țintă nZEB · energie primară + CO₂</strong>
+            <span>Optimizerul a pornit din Casa mea; a aplicat condițional pragurile de anvelopă și a reevaluat apoi opțiunile de instalații/regenerabile.</span>
           </div>
-          <p>Optimizerul nu creează un racord nou la gaz. Păstrează sistemul existent dacă ținta poate fi atinsă sau propune pompă de căldură compatibilă cu infrastructura de distribuție existentă.</p>
+          ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
+            <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label)}</strong><small>${item.kind === "mc001-envelope" ? "MC001 Tabel 2.4" : "opțiune LaCurent evaluată prin motor"}</small></div></article>
+          `).join("")}</div>` : ""}
+          <p>Nu se creează un racord nou la gaz. O schimbare de generator, când este utilă, folosește pompă de căldură compatibilă cu distribuția modelată. RER rămâne de verificat separat.</p>
         `;
       } else {
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
             <strong>Scenariu configurat manual</strong>
-            <span>Intervențiile au fost selectate și ajustate direct în Home Lab.</span>
+            <span>Intervențiile au fost selectate și ajustate direct în Home Lab; rezultatele sunt recalculate de motorul Python.</span>
           </div>
         `;
       }
@@ -2190,6 +2291,9 @@
     root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
     emitVisualState();
+    if (next === "report") {
+      window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    }
     window.scrollTo({top: 0, behavior: "smooth"});
   }
 
