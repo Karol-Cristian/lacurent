@@ -1111,7 +1111,16 @@
 
     try {
       const target = homeResult.nzeb_target;
-      const base = nzebEnvelopeCandidate(scenarioState, scenarioOverrides, target);
+      const cleanOverrides = {...scenarioOverrides};
+      [
+        "heatingEfficiency",
+        "heatingSystemType",
+        "heatingCarrier",
+        "heatingCostProfile",
+        "coolingSeer",
+        "dhwEfficiency",
+      ].forEach(key => delete cleanOverrides[key]);
+      const base = nzebEnvelopeCandidate(scenarioState, cleanOverrides, target);
       const systemCandidates = [];
 
       const keep = {...base.state};
