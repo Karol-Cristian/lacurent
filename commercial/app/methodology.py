@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -55,19 +56,103 @@ _HSOL_ORIENTATION_KEYS = {
 }
 
 
-def resolve_monthly_hsol(climate: dict[str, Any], orientation: str) -> dict[str, Any] | None:
-    """Resolve source-backed vertical Hsol for the selected MC001 climate station.
+def _temperature_profile(station: dict[str, Any]) -> list[float]:
+    return [
+        float(item["temperature_c"])
+        for item in station.get("monthly_temperatures", [])
+        if item.get("temperature_c") is not None
+    ]
 
-    Direct Annex A.9.6 rows are preferred. Otherwise the compact dataset provides a
-    precomputed nearest source station. Hsol values are selected from one normative
-    source row and are never numerically interpolated between stations.
+
+def _haversine_km(a: dict[str, Any], b: dict[str, Any]) -> float | None:
+    try:
+        lat1, lon1 = math.radians(float(a["lat"])), math.radians(float(a["lon"]))
+        lat2, lon2 = math.radians(float(b["lat"])), math.radians(float(b["lon"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return 6371.0 * 2 * math.asin(min(1.0, math.sqrt(h)))
+
+
+@lru_cache(maxsize=64)
+def _climate_profile_solar_coverage(station_id: str) -> dict[str, Any] | None:
+    """Map a climate station without A.9.6 data to the closest *climate profile*.
+
+    We intentionally do not interpolate solar values. One normative A.9.6 row is
+    selected from a station that also has MC001/6-2013 monthly temperatures.
+    Monthly-temperature RMSE is the primary similarity metric; winter design
+    temperature and distance are secondary tie breakers.
+    """
+
+    target = _station_index().get(station_id)
+    if target is None:
+        return None
+
+    direct = _solar_hsol_coverage_by_climate_station().get(station_id)
+    if direct and direct.get("resolution") in {"direct", "coincident_source_station"}:
+        return dict(direct)
+
+    target_profile = _temperature_profile(target)
+    if len(target_profile) != 12:
+        return dict(direct) if direct else None
+
+    candidates: list[tuple[float, float, float, dict[str, Any], dict[str, Any]]] = []
+    solar_rows = solar_hsol_data().get("rows", [])
+    stations = _station_index()
+    for row in solar_rows:
+        candidate_station_id = row.get("climateStationId")
+        if not candidate_station_id:
+            continue
+        candidate = stations.get(str(candidate_station_id))
+        if candidate is None:
+            continue
+        profile = _temperature_profile(candidate)
+        if len(profile) != 12:
+            continue
+
+        rmse = math.sqrt(sum((a - b) ** 2 for a, b in zip(target_profile, profile)) / 12.0)
+        winter_diff = abs(
+            float(target.get("winter_design_mean_daily_temperature_c") or 0.0)
+            - float(candidate.get("winter_design_mean_daily_temperature_c") or 0.0)
+        )
+        distance = _haversine_km(target, candidate)
+        distance_for_score = distance if distance is not None else 1000.0
+        score = rmse + 0.15 * winter_diff + 0.0005 * distance_for_score
+        candidates.append((score, rmse, distance_for_score, row, candidate))
+
+    if not candidates:
+        return dict(direct) if direct else None
+
+    candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+    score, rmse, distance, row, candidate = candidates[0]
+    return {
+        "climateStationId": station_id,
+        "climateStationName": target.get("name"),
+        "solarStationId": row.get("solarStationId"),
+        "solarLocalityName": row.get("localityName"),
+        "resolution": "climate_profile_analog",
+        "distanceKm": round(distance, 1),
+        "climateSimilarityRmseC": round(rmse, 3),
+        "climateSimilarityScore": round(score, 3),
+        "analogClimateStationId": candidate.get("id"),
+        "analogClimateStationName": candidate.get("name"),
+    }
+
+
+def resolve_monthly_hsol(climate: dict[str, Any], orientation: str) -> dict[str, Any] | None:
+    """Resolve source-backed Annex A.9.6 Hsol without numerical interpolation.
+
+    Direct normative rows are preferred. Where the selected MC001/6-2013 climate
+    station has no A.9.6 row, LaCurent Light selects one existing normative row
+    from the station with the most similar 12-month temperature profile.
     """
 
     source_key = _HSOL_ORIENTATION_KEYS.get(str(orientation))
     if source_key is None:
         return None
     station_id = str(climate.get("station_id") or climate.get("id") or "")
-    coverage = _solar_hsol_coverage_by_climate_station().get(station_id)
+    coverage = _climate_profile_solar_coverage(station_id)
     if coverage is None:
         return None
     row = _solar_hsol_by_solar_station().get(str(coverage.get("solarStationId")))
@@ -87,6 +172,8 @@ def resolve_monthly_hsol(climate: dict[str, Any], orientation: str) -> dict[str,
         "climate_station_id": station_id,
         "station_resolution": coverage.get("resolution"),
         "station_distance_km": coverage.get("distanceKm"),
+        "climate_similarity_rmse_c": coverage.get("climateSimilarityRmseC"),
+        "analog_climate_station_name": coverage.get("analogClimateStationName"),
         "source_pdf_page": row.get("sourcePdfPage"),
         "dataset_version": dataset.get("datasetVersion"),
         "source_reference": dataset.get("sourceReference"),
