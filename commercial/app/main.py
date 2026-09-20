@@ -550,11 +550,25 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
         "design_return_temperature_c": parse_optional_float(form.get("heating_design_return_temperature_c")),
         "auxiliary_electricity_kwh_year": parse_optional_float(form.get("heating_auxiliary_electricity_kwh_year")),
     }
-    heating["details"] = chain_details
+    structured_heating_present = simple or any(
+        form.get(name) not in (None, "")
+        for name in (
+            "heating_generator_type",
+            "heating_emitter_type",
+            "heating_distribution_type",
+            "heating_storage_type",
+            "heating_control_type",
+            "heating_design_flow_temperature_c",
+            "heating_design_return_temperature_c",
+            "heating_auxiliary_electricity_kwh_year",
+        )
+    )
+    if structured_heating_present:
+        heating["details"] = chain_details
 
     # In the simple Home Lab path the generator performance is resolved from
     # the selected system chain. Expert overrides remain authoritative.
-    if not heating_override:
+    if not heating_override and structured_heating_present:
         if heating.get("system_type") == "heat_pump":
             heating["scop"] = None
         elif heating.get("system_type") in {"gas_boiler", "condensing_gas_boiler", "district_heat", "electric_resistance"}:
