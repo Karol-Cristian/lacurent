@@ -359,7 +359,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next8" in response.text
-    assert "/static/home-lab-next.js?v=next14" in response.text
+    assert "/static/home-lab-next.js?v=next15" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -634,6 +634,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "syncMobileViewportBottomInset" in response.text
     assert "window.visualViewport" in response.text
     assert '--hln-mobile-bottom-occlusion' in response.text
+    assert "const rawOcclusion" in response.text
+    assert "Math.min(rawOcclusion, 48)" in response.text
     assert 'orientationchange' in response.text
     assert "new AbortController()" in response.text
     assert "response.status === 429 || response.status >= 500" in response.text
