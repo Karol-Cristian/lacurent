@@ -359,7 +359,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next8" in response.text
-    assert "/static/home-lab-next.js?v=next13" in response.text
+    assert "/static/home-lab-next.js?v=next14" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -373,6 +373,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnHomePvKwp"' in response.text
     assert 'id="hlnHomeSolarThermalArea"' in response.text
     assert 'id="hlnHomeHeatingEmitter"' in response.text
+    assert response.text.count('data-hln-home-heating-chain') == 4
+    assert response.text.count('data-hln-scenario-heating-chain') == 4
     assert 'id="hlnHomeHeatingDistribution"' in response.text
     assert 'id="hlnHomeHeatingStorage"' in response.text
     assert 'id="hlnHomeHeatingControl"' in response.text
@@ -585,6 +587,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
     assert "function migrateStoredHeatingState" in response.text
+    assert '["wood_stove", "electric_resistance"].includes(homeState.heating)' in response.text
+    assert '["wood_stove", "electric_resistance"].includes(scenarioState.heating)' in response.text
+    assert '$("[data-hln-home-heating-chain]")' in response.text
+    assert '$("[data-hln-scenario-heating-chain]")' in response.text
     assert "hasCompleteStoredChain" in response.text
     assert 'Object.assign(state, heatingChainDefaults(state.heating))' in response.text
     assert 'state.heating === "wood_stove" || state.heating === "electric_resistance"' in response.text
