@@ -358,11 +358,18 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next13" in response.text
-    assert "/static/home-lab-next.js?v=next21" in response.text
+    assert "/static/home-lab-next.css?v=next14" in response.text
+    assert "/static/home-lab-next.js?v=next22" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
+    assert 'data-hln-smart-config="nzeb"' in response.text
+    assert 'data-hln-smart-config="roi"' in response.text
+    assert 'data-hln-screen="report"' in response.text
+    assert 'data-hln-go="report"' in response.text
+    assert 'id="hlnReportBars"' in response.text
+    assert 'id="hlnReportNzebStatus"' in response.text
+    assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
     assert 'id="hlnScenarioBenefitLabel"' in response.text
     assert 'id="hlnDockSavingLabel"' in response.text
@@ -653,6 +660,22 @@ def test_home_lab_next_heat_pump_emitter_changes_light_engine_performance() -> N
     assert floor_payload["heating_system"]["auxiliary_electricity_kwh"] == 220
 
 
+def test_home_lab_next_exposes_source_backed_nzeb_target() -> None:
+    response = client.post("/api/home-lab-next/calculate", data=demo_form_data())
+
+    assert response.status_code == 200
+    payload = response.json()
+    target = payload["nzeb_target"]
+    assert target is not None
+    assert payload["climate_zone"] in {"I", "II", "III", "IV", "V"}
+    assert target["primary_energy_kwh_m2_year"] > 0
+    assert target["co2_kg_m2_year"] > 0
+    assert "Tabel 2.10a" in target["source"]
+    assert target["envelope_u_max_w_m2k"]["exterior_wall"] == 0.25
+    assert target["envelope_u_max_w_m2k"]["roof"] == 0.15
+    assert payload["co2_specific_kg_m2"] >= 0
+
+
 def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> None:
     data = demo_form_data()
     data.update(
@@ -680,6 +703,16 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["renewables"]["solar_thermal"]["used_for_dhw_kwh"] > 0
     assert len(payload["renewables"]["monthly"]) == 12
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
+
+
+def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
+    response = client.get("/static/home-lab-next.css")
+    assert response.status_code == 200
+    assert ".hln-smart-configs" in response.text
+    assert ".hln-report-hero" in response.text
+    assert ".hln-report-grid" in response.text
+    assert ".hln-monthly-bars" in response.text
+    assert "@media print" in response.text
 
 
 def test_home_lab_next_semantic_delta_colors_are_present() -> None:
@@ -732,6 +765,14 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "scenarioResult.final_energy_kwh" in response.text
     assert 'directChangeText(scenarioResult.final_energy_kwh' in response.text
     assert "function costOutcomeText" in response.text
+    assert "async function calculateCandidate" in response.text
+    assert "async function configureNzeb" in response.text
+    assert "async function configureBestRoi" in response.text
+    assert "function renderReport" in response.text
+    assert "function nzebMeetsTarget" in response.text
+    assert "ROI_ACTIONS" in response.text
+    assert 'showScreen("report")' in response.text
+    assert "window.print()" in response.text
     assert "const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);" in response.text
     assert "const good = lowerIsBetter ? delta < 0 : delta > 0;" in response.text
     assert 'label: good ? "Economie" : "Cost suplimentar"' in response.text
