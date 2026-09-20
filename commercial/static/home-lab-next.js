@@ -1450,7 +1450,7 @@
     if (next === "site" && !baselineSaved) return;
     if (next === "scenario" && !baselineSaved) return;
     screen = next;
-    $root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
+    root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
     emitVisualState();
     window.scrollTo({top: 0, behavior: "smooth"});
@@ -1984,9 +1984,9 @@
       if (node) node.addEventListener("change", updateHomeFromEditors);
     });
 
-  $root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
+  root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
-    $root.querySelectorAll("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
+    root.querySelectorAll("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
