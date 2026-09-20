@@ -24,6 +24,21 @@ class HeatingSystemType(str, Enum):
     custom = "custom"
 
 
+class HeatingGeneratorType(str, Enum):
+    gas_boiler = "gas_boiler"
+    condensing_gas_boiler = "condensing_gas_boiler"
+    electric_direct = "electric_direct"
+    electric_boiler = "electric_boiler"
+    heat_pump_air_water = "heat_pump_air_water"
+    heat_pump_ground_water = "heat_pump_ground_water"
+    heat_pump_air_air = "heat_pump_air_air"
+    district_heat = "district_heat"
+    wood_stove = "wood_stove"
+    wood_boiler = "wood_boiler"
+    pellet_boiler = "pellet_boiler"
+    custom = "custom"
+
+
 class HeatingEmitterType(str, Enum):
     local = "local"
     radiators_high_temp = "radiators_high_temp"
@@ -56,6 +71,7 @@ class HeatingControlType(str, Enum):
 
 
 class HeatingSystemDetails(BaseModel):
+    generator_type: HeatingGeneratorType | None = None
     emitter_type: HeatingEmitterType = HeatingEmitterType.radiators_high_temp
     distribution_type: HeatingDistributionType = HeatingDistributionType.hydronic_insulated
     storage_type: HeatingStorageType = HeatingStorageType.none
@@ -296,6 +312,7 @@ class EnergyServiceResult(BaseModel):
 
 
 class HeatingSystemPerformanceResult(BaseModel):
+    generator_type: HeatingGeneratorType
     emitter_type: HeatingEmitterType
     distribution_type: HeatingDistributionType
     storage_type: HeatingStorageType
