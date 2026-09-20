@@ -1,0 +1,5 @@
+# Extra dependencies needed only by the exact upstream ISO 52016 audit slice.
+# The production Worker dependency set is intentionally not expanded yet.
+requests>=2.32,<3
+pytz>=2025.2
+tqdm>=4.67,<5
