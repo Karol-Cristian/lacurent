@@ -358,7 +358,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next6" in response.text
-    assert "/static/home-lab-next.js?v=next8" in response.text
+    assert "/static/home-lab-next.js?v=next9" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d25" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -499,6 +499,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'key === "pvKwp"' in response.text
     assert 'key === "solarThermalKw"' in response.text
     assert 'input.addEventListener("change", commitRangeValue)' in response.text
+    assert "calculateAbortController" in response.text
+    assert "new AbortController()" in response.text
+    assert "response.status === 429 || response.status >= 500" in response.text
+    assert "attempt < 2" in response.text
     assert "annual_generation_kwh" in response.text
     assert "self_consumed_kwh" in response.text
     assert "exported_kwh" in response.text
