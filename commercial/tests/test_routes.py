@@ -705,8 +705,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function migrateStoredHeatingState" in response.text
     assert '["wood_stove", "electric_resistance"].includes(homeState.heating)' in response.text
     assert '["wood_stove", "electric_resistance"].includes(scenarioState.heating)' in response.text
-    assert '$("[data-hln-home-heating-chain]")' in response.text
-    assert '$("[data-hln-scenario-heating-chain]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-home-heating-chain]")' in response.text
+    assert 'root.querySelectorAll("[data-hln-scenario-heating-chain]")' in response.text
     assert "hasCompleteStoredChain" in response.text
     assert 'Object.assign(state, heatingChainDefaults(state.heating))' in response.text
     assert 'state.heating === "wood_stove" || state.heating === "electric_resistance"' in response.text
