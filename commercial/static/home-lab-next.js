@@ -1119,7 +1119,7 @@
       setOptimizationNote("<strong>Ținta nZEB nu este disponibilă.</strong><span>Lipsește zona climatică sau lookup-ul MC001 2.10a.</span>", "warn");
       return;
     }
-    const buttons = $("[data-hln-smart-config]");
+    const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setStatus("Caut o configurație spre nZEB…");
     setOptimizationNote("<strong>Optimizer nZEB în lucru…</strong><span>Testez anvelopa, instalația și niveluri PV prin același motor Light.</span>");
@@ -1274,7 +1274,7 @@
   async function configureBestRoi() {
     clearTimeout(calculateTimer);
     if (!baselineSaved || !homeResult) return;
-    const buttons = $("[data-hln-smart-config]");
+    const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setStatus("Calculez Best ROI…");
     setOptimizationNote("<strong>Best ROI în lucru…</strong><span>Recalculez măsurile și compar economia anuală cu indicele relativ de efort investițional.</span>");
@@ -2729,11 +2729,11 @@
     input.addEventListener("change", () => applyLiveScenarioChange(key, input.value, focus));
   });
 
-  $("[data-hln-reference-house]").forEach(button => {
+  $$("[data-hln-reference-house]").forEach(button => {
     button.addEventListener("click", setReferenceHouse);
   });
 
-  $("[data-hln-smart-config]").forEach(button => {
+  $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
       if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi();
