@@ -136,13 +136,13 @@ jobs:
 
       - name: Stop local Worker
         if: always()
-        working-directory: .wrangler/commercial-v2-worker
         run: |
-          if [ -f pbe-worker.pid ]; then
-            kill "$(cat pbe-worker.pid)" 2>/dev/null || true
+          workdir=".wrangler/commercial-v2-worker"
+          if [ -f "$workdir/pbe-worker.pid" ]; then
+            kill "$(cat "$workdir/pbe-worker.pid")" 2>/dev/null || true
           fi
-          if [ -f pbe-worker.log ]; then
-            tail -n 120 pbe-worker.log
+          if [ -f "$workdir/pbe-worker.log" ]; then
+            tail -n 120 "$workdir/pbe-worker.log"
           fi
 
       - name: Deploy isolated PBE Worker
