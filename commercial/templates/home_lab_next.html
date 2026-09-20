@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next5">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next6">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -330,6 +330,34 @@
               <button type="button" data-hln-tune-step="0.5" aria-label="Crește suprafața ferestrelor">+</button>
             </div>
             <small data-hln-tune-caption>—</small>
+          </article>
+
+          <article class="hln-tune-row hln-tune-renewable" data-hln-tune="pvKwp">
+            <header><span>Fotovoltaice</span><strong data-hln-tune-value>—</strong></header>
+            <div class="hln-slider-control">
+              <button type="button" data-hln-tune-step="-0.5" aria-label="Scade puterea fotovoltaică">−</button>
+              <div class="hln-range-wrap">
+                <input id="hlnLivePvKwp" type="range" min="0" max="30" step="0.5" aria-label="Putere fotovoltaică instalată">
+                <i class="hln-range-marker is-home" data-hln-home-marker></i>
+                <i class="hln-range-marker is-reference" data-hln-reference-marker></i>
+              </div>
+              <button type="button" data-hln-tune-step="0.5" aria-label="Crește puterea fotovoltaică">+</button>
+            </div>
+            <small data-hln-tune-caption>0 = fără PV</small>
+          </article>
+
+          <article class="hln-tune-row hln-tune-renewable" data-hln-tune="solarThermalKw">
+            <header><span>Solar termic</span><strong data-hln-tune-value>—</strong></header>
+            <div class="hln-slider-control">
+              <button type="button" data-hln-tune-step="-0.5" aria-label="Scade puterea solară termică">−</button>
+              <div class="hln-range-wrap">
+                <input id="hlnLiveSolarThermalKw" type="range" min="0" max="30" step="0.5" aria-label="Putere solară termică nominală">
+                <i class="hln-range-marker is-home" data-hln-home-marker></i>
+                <i class="hln-range-marker is-reference" data-hln-reference-marker></i>
+              </div>
+              <button type="button" data-hln-tune-step="0.5" aria-label="Crește puterea solară termică">+</button>
+            </div>
+            <small data-hln-tune-caption>0 = fără solar termic</small>
           </article>
         </div>
 
@@ -739,7 +767,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d25"></script>
-  <script src="/static/home-lab-next.js?v=next6"></script>
+  <script src="/static/home-lab-next.js?v=next7"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
