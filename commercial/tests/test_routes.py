@@ -357,8 +357,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next5" in response.text
-    assert "/static/home-lab-next.js?v=next5" in response.text
+    assert "/static/home-lab-next.css?v=next6" in response.text
+    assert "/static/home-lab-next.js?v=next6" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d24" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -368,6 +368,142 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnReferenceSpec"' in response.text
     assert "Ce înseamnă „Casa de referință” în MC001?" in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
+
+
+def test_home_lab_next_exposes_year_systems_and_renewables_controls() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    for control_id in (
+        "hlnConstructionYear",
+        "hlnBuildingStatus",
+        "hlnHomeHeatingEfficiency",
+        "hlnHomeHeatingScop",
+        "hlnHomeDhw",
+        "hlnHomeDhwEfficiency",
+        "hlnHomeHeatRecovery",
+        "hlnHomeCoolingSeer",
+        "hlnHomePvEnabled",
+        "hlnHomePvKwp",
+        "hlnHomePvOrientation",
+        "hlnHomeSolarThermalEnabled",
+        "hlnHomeSolarThermalArea",
+    ):
+        assert f'id="{control_id}"' in response.text
+    assert 'data-hln-editor-open="renewables"' in response.text
+    assert 'data-hln-measure="renewables"' in response.text
+    assert 'data-hln-intervention-panel="renewables"' in response.text
+    assert "Nu este o altă casă și nici o recomandare de renovare." not in response.text
+
+
+def test_home_lab_next_payload_keeps_building_context_and_renewables() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "building_status": "existing",
+            "construction_year": "1978",
+            "heating_choice": "heat_pump",
+            "pv_enabled": "on",
+            "pv_peak_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_system_efficiency": "0.80",
+            "pv_self_consumption_fraction": "0.55",
+            "solar_thermal_enabled": "on",
+            "solar_thermal_collector_area_m2": "4",
+            "solar_thermal_orientation": "south",
+            "solar_thermal_useful_efficiency": "0.42",
+        }
+    )
+    response = client.post("/api/home-lab-next/calculate", data=data)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["building_status"] == "existing"
+    assert payload["construction_year"] == 1978
+    assert payload["renewables"]["photovoltaic_generation_kwh"] > 0
+    assert payload["renewables"]["photovoltaic_self_consumed_kwh"] >= 0
+    assert payload["renewables"]["solar_thermal_useful_kwh"] > 0
+    assert payload["renewables"]["renewable_share_percent"] > 0
+    assert len(payload["monthly"]) == 12
+    assert all("solar_station_resolution" in row for row in payload["monthly"])
+
+
+def test_light_pv_reduces_purchased_electricity_for_heat_pump_house() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "heating_choice": "heat_pump",
+            "dhw_carrier": "electricity",
+            "expert_dhw_override": "on",
+            "pv_enabled": "",
+        }
+    )
+    without_pv = client.post("/api/home-lab-next/calculate", data=base)
+    assert without_pv.status_code == 200
+    with_pv_data = dict(base)
+    with_pv_data.update(
+        {
+            "pv_enabled": "on",
+            "pv_peak_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_system_efficiency": "0.80",
+            "pv_self_consumption_fraction": "0.55",
+        }
+    )
+    with_pv = client.post("/api/home-lab-next/calculate", data=with_pv_data)
+    assert with_pv.status_code == 200
+    gross = without_pv.json()
+    net = with_pv.json()
+    assert net["renewables"]["photovoltaic_generation_kwh"] > 0
+    assert net["final_energy_by_carrier"].get("electricity", 0) < gross["final_energy_by_carrier"].get("electricity", 0)
+    assert net["primary_specific_kwh_m2"] < gross["primary_specific_kwh_m2"]
+    assert net["co2_kg"] < gross["co2_kg"]
+
+
+def test_light_solar_thermal_reduces_dhw_final_energy() -> None:
+    base = demo_form_data()
+    base.update({"solar_thermal_enabled": ""})
+    without = client.post("/api/home-lab-next/calculate", data=base)
+    assert without.status_code == 200
+    with_data = dict(base)
+    with_data.update(
+        {
+            "solar_thermal_enabled": "on",
+            "solar_thermal_collector_area_m2": "4",
+            "solar_thermal_orientation": "south",
+            "solar_thermal_useful_efficiency": "0.42",
+        }
+    )
+    with_solar = client.post("/api/home-lab-next/calculate", data=with_data)
+    assert with_solar.status_code == 200
+    assert with_solar.json()["renewables"]["solar_thermal_useful_kwh"] > 0
+    assert with_solar.json()["final_energy_by_service"]["dhw"] < without.json()["final_energy_by_service"]["dhw"]
+
+
+def test_solar_fallback_uses_climate_profile_analog_not_nearest_geography() -> None:
+    from commercial.app.methodology import resolve_climate, resolve_monthly_hsol
+
+    climate = resolve_climate("mc001_6_2013_alba_iulia")
+    south = resolve_monthly_hsol(climate, "south")
+    horizontal = resolve_monthly_hsol(climate, "horizontal")
+    assert south is not None
+    assert horizontal is not None
+    assert south["station_resolution"] == "climate_profile_analog"
+    assert south["climate_similarity_rmse_c"] is not None
+    assert len(south["values_kwh_m2_month"]) == 12
+    assert len(horizontal["values_kwh_m2_month"]) == 12
+
+
+def test_reference_case_does_not_inherit_actual_pv_before_normative_rule_is_implemented() -> None:
+    from commercial.app.engine import demo_building
+    from commercial.app.reference import build_reference_input
+
+    actual = demo_building()
+    actual.renewables.photovoltaic.enabled = True
+    actual.renewables.photovoltaic.peak_power_kwp = 8
+    actual.renewables.solar_thermal.enabled = True
+    actual.renewables.solar_thermal.collector_area_m2 = 6
+    reference = build_reference_input(actual)
+    assert reference.renewables.photovoltaic.enabled is False
+    assert reference.renewables.solar_thermal.enabled is False
 
 
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
