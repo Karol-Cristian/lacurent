@@ -1833,8 +1833,128 @@
     `).join("");
   }
 
+  function reportComparisonRow(label, homeValue, scenarioValue, unit, digits = 0) {
+    const base = Number(homeValue);
+    const now = Number(scenarioValue);
+    const max = Math.max(Math.abs(base), Math.abs(now), 1);
+    const change = directChangeText(now, base, {unit:"%", percent:true});
+    return `
+      <div class="hln-report-bar-row">
+        <div class="hln-report-bar-copy">
+          <strong>${escapeHtml(label)}</strong>
+          <span>${fmt(base,digits)} → ${fmt(now,digits)} ${escapeHtml(unit)}</span>
+          <em class="${change.good === true ? "is-good" : change.good === false ? "is-bad" : ""}">${change.text}</em>
+        </div>
+        <div class="hln-report-bar-track">
+          <i class="is-home" style="width:${Math.max(2,100*Math.abs(base)/max)}%"></i>
+          <i class="is-after" style="width:${Math.max(2,100*Math.abs(now)/max)}%"></i>
+        </div>
+      </div>`;
+  }
+
+  function renderReport() {
+    if (!homeResult || !scenarioResult) return;
+
+    $("#hlnReportHomeClass").textContent = homeResult.energy_class || "—";
+    $("#hlnReportScenarioClass").textContent = scenarioResult.energy_class || "—";
+    $("#hlnReportHomeCost").textContent =
+      homeResult.annual_cost_lei == null ? "—" : `${fmt(homeResult.annual_cost_lei)} lei/an`;
+    $("#hlnReportScenarioCost").textContent =
+      scenarioResult.annual_cost_lei == null ? "—" : `${fmt(scenarioResult.annual_cost_lei)} lei/an`;
+
+    const outcome = costOutcomeText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei, {unit:" lei/an"});
+    $("#hlnReportSaving").textContent = outcome.text;
+    $("#hlnReportSavingLabel").textContent = outcome.label;
+    applyDeltaState($("#hlnReportSaving"), outcome);
+
+    $("#hlnReportBars").innerHTML = [
+      reportComparisonRow("Cost anual", homeResult.annual_cost_lei, scenarioResult.annual_cost_lei, "lei/an"),
+      reportComparisonRow("Energie finală", homeResult.final_energy_kwh, scenarioResult.final_energy_kwh, "kWh/an"),
+      reportComparisonRow("CO₂", homeResult.co2_kg, scenarioResult.co2_kg, "kg/an"),
+      reportComparisonRow("Necesar termic", homeResult.design_heat_load_kw, scenarioResult.design_heat_load_kw, "kW", 1),
+    ].join("");
+
+    const target = scenarioResult.nzeb_target || homeResult.nzeb_target;
+    const primary = Number(scenarioResult.primary_specific_kwh_m2);
+    const co2Specific = Number(scenarioResult.co2_specific_kg_m2);
+    const primaryLimit = Number(target?.primary_energy_kwh_m2_year);
+    const co2Limit = Number(target?.co2_kg_m2_year);
+    const primaryOk = Number.isFinite(primary) && Number.isFinite(primaryLimit) && primary <= primaryLimit;
+    const co2Ok = Number.isFinite(co2Specific) && Number.isFinite(co2Limit) && co2Specific <= co2Limit;
+    const targetKnown = Number.isFinite(primaryLimit) && Number.isFinite(co2Limit);
+    const nzebStatus = $("#hlnReportNzebStatus");
+    nzebStatus.classList.toggle("is-good", targetKnown && primaryOk && co2Ok);
+    nzebStatus.classList.toggle("is-warn", targetKnown && !(primaryOk && co2Ok));
+    nzebStatus.textContent = !targetKnown
+      ? "Ținta nZEB nu este disponibilă pentru această selecție."
+      : primaryOk && co2Ok
+        ? "Limitele de energie primară și CO₂ din Tabelul 2.10a sunt atinse."
+        : "Scenariul este încă peste cel puțin una dintre limitele Tabelului 2.10a.";
+
+    $("#hlnReportPrimary").textContent = Number.isFinite(primary) ? `${fmt(primary,1)} kWh/m²·an` : "—";
+    $("#hlnReportPrimaryTarget").textContent = Number.isFinite(primaryLimit) ? `limită ≤ ${fmt(primaryLimit,1)}` : "limită indisponibilă";
+    $("#hlnReportCo2Specific").textContent = Number.isFinite(co2Specific) ? `${fmt(co2Specific,1)} kg/m²·an` : "—";
+    $("#hlnReportCo2Target").textContent = Number.isFinite(co2Limit) ? `limită ≤ ${fmt(co2Limit,1)}` : "limită indisponibilă";
+    $("#hlnReportNzebNote").textContent =
+      "Verificarea de mai sus acoperă pragurile energetice și CO₂ disponibile în MC001 2.10a. Ponderea regenerabilă RER și conformitatea legală completă nu sunt încă certificate de motorul Light.";
+
+    const reportMeasures = $("#hlnReportMeasures");
+    const activeMeasures = measures.length ? measures : [];
+    reportMeasures.innerHTML = activeMeasures.length
+      ? activeMeasures.map(type => `
+          <article>
+            <span>${measureIcon(type)}</span>
+            <div><strong>${escapeHtml(measureTitle(type))}</strong><small>${escapeHtml(measureSummary(type))}</small></div>
+          </article>`
+        ).join("")
+      : '<p class="hln-report-empty">Scenariul nu conține intervenții față de Casa mea.</p>';
+
+    const losses = Array.isArray(scenarioResult.heat_loss_breakdown) ? scenarioResult.heat_loss_breakdown.slice(0,6) : [];
+    const lossMax = Math.max(...losses.map(item => Number(item.percent) || 0),1);
+    $("#hlnReportLosses").innerHTML = losses.map(item => `
+      <div class="hln-loss-row">
+        <span><strong>${escapeHtml(item.name)}</strong><em>${fmt(item.percent,0)}%</em></span>
+        <i><b style="width:${100*(Number(item.percent)||0)/lossMax}%"></b></i>
+      </div>`
+    ).join("");
+
+    const months = Array.isArray(scenarioResult.monthly) ? scenarioResult.monthly : [];
+    const homeMonths = new Map((homeResult.monthly || []).map(row => [row.month,row]));
+    const maxMonthly = Math.max(...months.flatMap(row => {
+      const baseline = homeMonths.get(row.month) || {};
+      return [
+        Number(baseline.useful_heating_kwh || 0) + Number(baseline.useful_cooling_kwh || 0),
+        Number(row.useful_heating_kwh || 0) + Number(row.useful_cooling_kwh || 0),
+      ];
+    }),1);
+    $("#hlnReportMonthlyChart").innerHTML = months.map(row => {
+      const baseline = homeMonths.get(row.month) || {};
+      const homeKwh = Number(baseline.useful_heating_kwh || 0) + Number(baseline.useful_cooling_kwh || 0);
+      const scenarioKwh = Number(row.useful_heating_kwh || 0) + Number(row.useful_cooling_kwh || 0);
+      return `
+        <div class="hln-month-column" title="${escapeHtml(row.month)} · Casa mea ${fmt(homeKwh)} kWh · Renovare ${fmt(scenarioKwh)} kWh">
+          <div class="hln-month-bars">
+            <i class="is-home" style="height:${Math.max(homeKwh ? 3 : 0,100*homeKwh/maxMonthly)}%"></i>
+            <i class="is-after" style="height:${Math.max(scenarioKwh ? 3 : 0,100*scenarioKwh/maxMonthly)}%"></i>
+          </div>
+          <small>${escapeHtml(String(row.month).slice(0,3))}</small>
+        </div>`;
+    }).join("");
+
+    $("#hlnReportLocation").textContent = scenarioResult.locality || homeState.locality || "—";
+    $("#hlnReportClimate").textContent =
+      `Zona ${scenarioResult.climate_zone || "—"} · ${scenarioResult.climate_station || "stație climatică"}`;
+    $("#hlnReportOptimizer").textContent = optimizationMeta?.label || "Scenariu configurat manual";
+    $("#hlnReportPriceDate").textContent =
+      scenarioResult.price_retrieved_on ? `referințe ${scenarioResult.price_retrieved_on}` : "referințe de preț curente";
+
+    const report = $("[data-hln-screen='report']");
+    report?.classList.toggle("is-nzeb-target", optimizationMeta?.mode === "nzeb");
+    report?.classList.toggle("is-roi-target", optimizationMeta?.mode === "roi");
+  }
+
   function renderProgress() {
-    const stage = screen === "home" ? "home" : screen === "site" || screen === "intervention" ? "site" : "scenario";
+    const stage = screen === "home" ? "home" : screen === "site" || screen === "intervention" ? "site" : screen === "report" ? "report" : "scenario";
     $$("[data-hln-go]").forEach(button => {
       button.classList.toggle("is-active", button.dataset.hlnGo === stage);
     });
@@ -1847,11 +1967,13 @@
     renderLiveConfigurator();
     if (screen === "intervention") renderIntervention();
     if (screen === "scenario") renderScenario();
+    if (screen === "report") renderReport();
   }
 
   function showScreen(next) {
     if (next === "site" && !baselineSaved) return;
     if (next === "scenario" && !baselineSaved) return;
+    if (next === "report" && (!baselineSaved || !scenarioResult)) return;
     screen = next;
     root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
