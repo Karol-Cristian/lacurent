@@ -356,6 +356,14 @@
       const storage = $("#" + prefix + "HeatingStorage");
       const isAirToAir = state.heating === "heat_pump" && state.heatPumpSource === "heat_pump_air_air";
 
+      if (emitter) {
+        Array.from(emitter.options).forEach(option => {
+          option.disabled = isAirToAir
+            ? option.value !== "air"
+            : !["radiators_high_temp", "radiators_low_temp", "underfloor", "fan_coils"].includes(option.value);
+        });
+        emitter.value = state.heatingEmitter;
+      }
       setHeatingFieldDisabled(emitter ? emitter.closest("label") : null, isAirToAir);
       setHeatingFieldDisabled(storage ? storage.closest("label") : null, isAirToAir);
 
@@ -375,7 +383,6 @@
           isAirToAir || state.heatingEmitter === "underfloor"
         );
       }
-      if (emitter) emitter.value = state.heatingEmitter;
       if (storage) storage.value = state.heatingStorage;
     };
 
