@@ -254,8 +254,22 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
                 row["annual_cost_lei"] += allocation
     return rows
 
-def _monthly_cost_rows(result: Any, service_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _monthly_cost_rows(
+    result: Any,
+    service_rows: list[dict[str, Any]],
+    county: str | None,
+) -> list[dict[str, Any]]:
     service_map = {row["service"]: row for row in service_rows}
+    pv_monthly = {
+        str(row.month): float(row.pv_self_consumed_kwh)
+        for row in getattr(getattr(result, "renewables", None), "monthly", [])
+    }
+    electricity_reference = _electricity_reference(county) if pv_monthly else None
+    electricity_price = (
+        float(electricity_reference["unit_price_lei_per_kwh"])
+        if electricity_reference
+        else 0.0
+    )
     heating_useful_total = sum(float(row.useful_heating_kwh) for row in result.monthly)
     cooling_useful_total = sum(float(row.useful_cooling_kwh) for row in result.monthly)
     heating_final_total = service_map["heating"]["final_kwh"]
@@ -300,11 +314,16 @@ def _monthly_cost_rows(result: Any, service_rows: list[dict[str, Any]]) -> list[
                     cost += allocated_delivery * final_kwh / annual_service_kwh
                 service_costs[service] = cost
                 priced_total += cost
+        pv_offset_kwh = min(float(pv_monthly.get(month, 0.0)), sum(service_final.values()))
+        pv_offset_lei = pv_offset_kwh * electricity_price
+        priced_total = max(priced_total - pv_offset_lei, 0.0)
         rows.append(
             {
                 "month": month,
                 "final_kwh_by_service": service_final,
                 "cost_lei_by_service": service_costs,
+                "pv_self_consumed_kwh": pv_offset_kwh,
+                "pv_cost_offset_lei": pv_offset_lei,
                 "priced_total_lei": priced_total,
                 "complete": complete,
             }
@@ -350,7 +369,7 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
             rows.append(row)
 
     service_rows = _service_cost_rows(result, county)
-    monthly_rows = _monthly_cost_rows(result, service_rows)
+    monthly_rows = _monthly_cost_rows(result, service_rows, county)
     service_unpriced = [
         row["unpriced_note"]
         for row in service_rows
