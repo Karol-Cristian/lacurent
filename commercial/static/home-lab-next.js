@@ -727,12 +727,19 @@
     if (type === "windows") return `${labels.glazing[base.glazing]} → ${labels.glazing[now.glazing]}`;
     if (type === "heating") return `${labels.heating[base.heating]} → ${labels.heating[now.heating]}`;
     if (type === "ventilation") return `${labels.ventilation[base.ventilation]} → ${labels.ventilation[now.ventilation]}`;
-    if (type === "pv") return now.pvEnabled
-      ? `${base.pvEnabled ? fmt(base.pvKwp,1) + " → " : ""}${fmt(now.pvKwp,1)} kWp · ${now.pvOrientation} · ${fmt(now.pvTilt)}°`
-      : "PV dezactivat";
-    if (type === "solar_thermal") return now.solarThermalEnabled
-      ? `${base.solarThermalEnabled ? fmt(base.solarThermalArea,1) + " → " : ""}${fmt(now.solarThermalArea,1)} m² · ${now.solarThermalOrientation} · ${fmt(now.solarThermalTilt)}°`
-      : "Solar termic dezactivat";
+    if (type === "pv") {
+      if (!now.pvEnabled) return "PV dezactivat";
+      const pv = scenarioResult?.renewables?.pv;
+      const production = pv?.annual_generation_kwh == null ? "" : ` · producție ${fmt(pv.annual_generation_kwh)} kWh/an`;
+      const selfUse = pv?.self_consumed_kwh == null ? "" : ` · autoconsum ${fmt(pv.self_consumed_kwh)} kWh`;
+      return `${base.pvEnabled ? fmt(base.pvKwp,1) + " → " : ""}${fmt(now.pvKwp,1)} kWp · ${now.pvOrientation} · ${fmt(now.pvTilt)}°${production}${selfUse}`;
+    }
+    if (type === "solar_thermal") {
+      if (!now.solarThermalEnabled) return "Solar termic dezactivat";
+      const solarThermal = scenarioResult?.renewables?.solar_thermal;
+      const used = solarThermal?.used_for_dhw_kwh == null ? "" : ` · ACM solar ${fmt(solarThermal.used_for_dhw_kwh)} kWh/an`;
+      return `${base.solarThermalEnabled ? fmt(base.solarThermalArea,1) + " → " : ""}${fmt(now.solarThermalArea,1)} m² · ${now.solarThermalOrientation} · ${fmt(now.solarThermalTilt)}°${used}`;
+    }
     return "";
   }
 
