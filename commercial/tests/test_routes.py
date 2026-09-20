@@ -556,6 +556,33 @@ def test_non_heat_pump_generator_ignores_stale_heat_pump_subtype() -> None:
     assert system["emitter_type"] == "radiators_low_temp"
 
 
+def test_home_lab_next_air_to_air_heat_pump_normalizes_stale_hydronic_chain() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "heating_choice": "heat_pump",
+            "expert_heating_override": "",
+            "heating_chain_enabled": "on",
+            "heating_generator_type": "heat_pump_air_air",
+            "heating_emitter_type": "underfloor",
+            "heating_distribution_type": "underfloor",
+            "heating_storage_type": "buffer_large",
+            "heating_control_type": "zoned",
+        }
+    )
+
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    system = response.json()["heating_system"]
+    assert system["generator_type"] == "heat_pump_air_air"
+    assert system["emitter_type"] == "air"
+    assert system["distribution_type"] == "air"
+    assert system["storage_type"] == "none"
+    assert system["design_flow_temperature_c"] is None
+    assert system["design_return_temperature_c"] is None
+
+
 def test_home_lab_next_heat_pump_emitter_changes_light_engine_performance() -> None:
     base = demo_form_data()
     base.update(
