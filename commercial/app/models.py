@@ -24,6 +24,55 @@ class HeatingSystemType(str, Enum):
     custom = "custom"
 
 
+class HeatingEmitterType(str, Enum):
+    local = "local"
+    radiators_high_temp = "radiators_high_temp"
+    radiators_low_temp = "radiators_low_temp"
+    underfloor = "underfloor"
+    fan_coils = "fan_coils"
+    air = "air"
+
+
+class HeatingDistributionType(str, Enum):
+    local = "local"
+    hydronic_insulated = "hydronic_insulated"
+    hydronic_uninsulated = "hydronic_uninsulated"
+    underfloor = "underfloor"
+    air = "air"
+
+
+class HeatingStorageType(str, Enum):
+    none = "none"
+    buffer_small = "buffer_small"
+    buffer_large = "buffer_large"
+
+
+class HeatingControlType(str, Enum):
+    manual = "manual"
+    room_thermostat = "room_thermostat"
+    thermostatic_valves = "thermostatic_valves"
+    zoned = "zoned"
+    weather_compensated = "weather_compensated"
+
+
+class HeatingSystemDetails(BaseModel):
+    emitter_type: HeatingEmitterType = HeatingEmitterType.radiators_high_temp
+    distribution_type: HeatingDistributionType = HeatingDistributionType.hydronic_insulated
+    storage_type: HeatingStorageType = HeatingStorageType.none
+    control_type: HeatingControlType = HeatingControlType.room_thermostat
+    design_flow_temperature_c: float | None = Field(default=None, ge=20, le=90)
+    design_return_temperature_c: float | None = Field(default=None, ge=15, le=80)
+    auxiliary_electricity_kwh_year: float | None = Field(default=None, ge=0)
+
+    @root_validator(skip_on_failure=True)
+    def validate_temperatures(cls, values: dict) -> dict:
+        flow = values.get("design_flow_temperature_c")
+        ret = values.get("design_return_temperature_c")
+        if flow is not None and ret is not None and ret >= flow:
+            raise ValueError("Heating return temperature must be lower than flow temperature.")
+        return values
+
+
 class Carrier(str, Enum):
     electricity = "electricity"
     natural_gas = "natural_gas"
@@ -60,6 +109,7 @@ class HeatingInput(BaseModel):
     carrier: Carrier = Carrier.natural_gas
     efficiency: float | None = Field(default=None, gt=0, le=1)
     scop: float | None = Field(default=None, gt=0)
+    details: HeatingSystemDetails | None = None
     cost_profile: Literal[
         "electricity",
         "natural_gas",
@@ -245,6 +295,28 @@ class EnergyServiceResult(BaseModel):
     carrier: Carrier | None = None
 
 
+class HeatingSystemPerformanceResult(BaseModel):
+    emitter_type: HeatingEmitterType
+    distribution_type: HeatingDistributionType
+    storage_type: HeatingStorageType
+    control_type: HeatingControlType
+    design_flow_temperature_c: float
+    design_return_temperature_c: float
+    emission_efficiency: float
+    distribution_efficiency: float
+    storage_efficiency: float
+    control_efficiency: float
+    generator_performance: float
+    generator_performance_kind: Literal["efficiency", "scop"]
+    effective_system_performance: float
+    auxiliary_electricity_kwh: float
+    main_carrier_final_kwh: float
+    total_heating_final_kwh: float
+    performance_source: str
+    confidence: Literal["low", "medium", "high"]
+    assumptions: list[str] = Field(default_factory=list)
+
+
 class IndicatorResult(BaseModel):
     total_kwh: float
     specific_kwh_m2: float
@@ -336,6 +408,7 @@ class CalculationResult(BaseModel):
     annual_heating_demand_kwh: float
     annual_cooling_demand_kwh: float
     heating: EnergyServiceResult
+    heating_system: HeatingSystemPerformanceResult
     cooling: EnergyServiceResult
     dhw: EnergyServiceResult
     final_energy_by_service: dict[str, float]
