@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from .methodology import carrier_factors, default_heating_performance, methodology, resolve_climate, resolve_monthly_hsol
+from .methodology import (
+    carrier_factors,
+    default_heating_performance,
+    methodology,
+    resolve_climate,
+    resolve_monthly_hsol,
+    resolve_monthly_plane_hsol,
+)
 from .models import (
     BuildingInput,
     CalculationResult,
@@ -15,6 +22,10 @@ from .models import (
     EnvelopeUValuesResult,
     HeatingSystemType,
     IndicatorResult,
+    MonthlyRenewableBalance,
+    PhotovoltaicResult,
+    RenewableEnergyResult,
+    SolarThermalResult,
 )
 
 
@@ -417,27 +428,231 @@ def cooling_final_energy(building: BuildingInput, useful_kwh: float) -> EnergySe
     )
 
 
-def dhw_energy(building: BuildingInput) -> EnergyServiceResult:
+def _dhw_useful_for_days(building: BuildingInput, days: int) -> float:
     if not building.dhw.enabled:
-        return EnergyServiceResult(useful_kwh=0, final_kwh=0, carrier=None)
-
+        return 0.0
     data = methodology()
     litres = (
         building.dhw.litres_per_person_day_at_60c
         if building.dhw.litres_per_person_day_at_60c is not None
         else data["dhw"]["litres_per_person_day_at_60c"]
     )
-    useful = (
+    return (
         building.dhw.occupants
         * litres
-        * 365
+        * days
         * data["dhw"]["kwh_per_litre_10_to_60c"]
+    )
+
+
+def dhw_energy(building: BuildingInput, useful_kwh: float | None = None) -> EnergyServiceResult:
+    if not building.dhw.enabled:
+        return EnergyServiceResult(useful_kwh=0, final_kwh=0, carrier=None)
+
+    useful = (
+        _dhw_useful_for_days(building, 365)
+        if useful_kwh is None
+        else max(float(useful_kwh), 0.0)
     )
     return EnergyServiceResult(
         useful_kwh=_round(useful),
         final_kwh=_round(useful / building.dhw.efficiency),
         carrier=building.dhw.carrier,
     )
+
+
+def _renewable_resource_rows(building: BuildingInput, climate: dict) -> tuple[list[dict], float, float]:
+    cfg = methodology()["renewables"]
+    pv = building.renewables.pv
+    solar_thermal = building.renewables.solar_thermal
+
+    pv_pr = (
+        float(pv.performance_ratio)
+        if pv.performance_ratio is not None
+        else float(cfg["photovoltaic"]["default_performance_ratio"])
+    )
+    thermal_efficiency = (
+        float(solar_thermal.system_efficiency)
+        if solar_thermal.system_efficiency is not None
+        else float(cfg["solar_thermal"]["default_system_efficiency"])
+    )
+
+    pv_plane = None
+    if pv.enabled:
+        pv_plane = resolve_monthly_plane_hsol(climate, pv.orientation, pv.tilt_degrees)
+        if pv_plane is None:
+            raise ValueError("Nu există date Hsol pentru orientarea fotovoltaică selectată.")
+
+    thermal_plane = None
+    if solar_thermal.enabled:
+        thermal_plane = resolve_monthly_plane_hsol(
+            climate,
+            solar_thermal.orientation,
+            solar_thermal.tilt_degrees,
+        )
+        if thermal_plane is None:
+            raise ValueError("Nu există date Hsol pentru orientarea solarului termic selectată.")
+
+    rows: list[dict] = []
+    for index, month in enumerate(climate["monthly_temperatures"]):
+        days = int(month["days"])
+        dhw_useful = _dhw_useful_for_days(building, days)
+
+        pv_hsol = (
+            float(pv_plane["values_kwh_m2_month"][index])
+            if pv_plane is not None
+            else 0.0
+        )
+        pv_generation = (
+            pv_hsol * float(pv.installed_power_kwp) * pv_pr
+            if pv.enabled
+            else 0.0
+        )
+
+        thermal_hsol = (
+            float(thermal_plane["values_kwh_m2_month"][index])
+            if thermal_plane is not None
+            else 0.0
+        )
+        thermal_available = (
+            thermal_hsol
+            * float(solar_thermal.collector_area_m2)
+            * thermal_efficiency
+            if solar_thermal.enabled
+            else 0.0
+        )
+        thermal_used = min(thermal_available, dhw_useful) if building.dhw.enabled else 0.0
+
+        rows.append(
+            {
+                "month": month["id"],
+                "pv_plane_hsol_kwh_m2": pv_hsol,
+                "pv_generation_kwh": pv_generation,
+                "pv_self_consumed_kwh": 0.0,
+                "pv_exported_kwh": pv_generation,
+                "solar_thermal_plane_hsol_kwh_m2": thermal_hsol,
+                "solar_thermal_available_kwh": thermal_available,
+                "solar_thermal_used_dhw_kwh": thermal_used,
+                "dhw_backup_useful_kwh": max(dhw_useful - thermal_used, 0.0),
+            }
+        )
+
+    return rows, pv_pr, thermal_efficiency
+
+
+def _service_final_per_useful(service: EnergyServiceResult) -> float:
+    if service.useful_kwh <= 0:
+        return 0.0
+    return float(service.final_kwh) / float(service.useful_kwh)
+
+
+def renewable_energy_result(
+    building: BuildingInput,
+    climate: dict,
+    monthly_balance: list[dict],
+    heating: EnergyServiceResult,
+    cooling: EnergyServiceResult,
+    dhw: EnergyServiceResult,
+    renewable_rows: list[dict],
+    pv_pr: float,
+    thermal_efficiency: float,
+) -> RenewableEnergyResult:
+    pv = building.renewables.pv
+    solar_thermal = building.renewables.solar_thermal
+    heating_ratio = _service_final_per_useful(heating)
+    cooling_ratio = _service_final_per_useful(cooling)
+    dhw_ratio = _service_final_per_useful(dhw)
+
+    for balance, renewable in zip(monthly_balance, renewable_rows):
+        electric_load = 0.0
+        if heating.carrier == Carrier.electricity:
+            electric_load += float(balance["useful_heating_kwh"]) * heating_ratio
+        if cooling.carrier == Carrier.electricity:
+            electric_load += float(balance["useful_cooling_kwh"]) * cooling_ratio
+        if dhw.carrier == Carrier.electricity:
+            electric_load += float(renewable["dhw_backup_useful_kwh"]) * dhw_ratio
+
+        generation = float(renewable["pv_generation_kwh"])
+        self_consumed = min(generation, electric_load) if pv.enabled else 0.0
+        renewable["pv_self_consumed_kwh"] = self_consumed
+        renewable["pv_exported_kwh"] = max(generation - self_consumed, 0.0)
+
+    pv_generation = sum(float(row["pv_generation_kwh"]) for row in renewable_rows)
+    pv_self_consumed = sum(float(row["pv_self_consumed_kwh"]) for row in renewable_rows)
+    pv_exported = sum(float(row["pv_exported_kwh"]) for row in renewable_rows)
+    pv_plane_hsol = sum(float(row["pv_plane_hsol_kwh_m2"]) for row in renewable_rows)
+
+    thermal_available = sum(float(row["solar_thermal_available_kwh"]) for row in renewable_rows)
+    thermal_used = sum(float(row["solar_thermal_used_dhw_kwh"]) for row in renewable_rows)
+    thermal_plane_hsol = sum(float(row["solar_thermal_plane_hsol_kwh_m2"]) for row in renewable_rows)
+    total_dhw_useful = sum(
+        float(row["solar_thermal_used_dhw_kwh"]) + float(row["dhw_backup_useful_kwh"])
+        for row in renewable_rows
+    )
+
+    return RenewableEnergyResult(
+        pv=PhotovoltaicResult(
+            enabled=pv.enabled,
+            installed_power_kwp=_round(pv.installed_power_kwp, 3),
+            orientation=pv.orientation,
+            tilt_degrees=_round(pv.tilt_degrees, 1),
+            performance_ratio=_round(pv_pr, 3),
+            annual_plane_hsol_kwh_m2=_round(pv_plane_hsol),
+            annual_generation_kwh=_round(pv_generation),
+            self_consumed_kwh=_round(pv_self_consumed),
+            exported_kwh=_round(pv_exported),
+            self_consumption_percent=_round(
+                100.0 * pv_self_consumed / pv_generation if pv_generation else 0.0,
+                1,
+            ),
+        ),
+        solar_thermal=SolarThermalResult(
+            enabled=solar_thermal.enabled,
+            collector_area_m2=_round(solar_thermal.collector_area_m2, 2),
+            orientation=solar_thermal.orientation,
+            tilt_degrees=_round(solar_thermal.tilt_degrees, 1),
+            system_efficiency=_round(thermal_efficiency, 3),
+            annual_plane_hsol_kwh_m2=_round(thermal_plane_hsol),
+            annual_available_kwh=_round(thermal_available),
+            used_for_dhw_kwh=_round(thermal_used),
+            dhw_solar_fraction_percent=_round(
+                100.0 * thermal_used / total_dhw_useful if total_dhw_useful else 0.0,
+                1,
+            ),
+        ),
+        monthly=[
+            MonthlyRenewableBalance(
+                month=str(row["month"]),
+                pv_plane_hsol_kwh_m2=_round(row["pv_plane_hsol_kwh_m2"]),
+                pv_generation_kwh=_round(row["pv_generation_kwh"]),
+                pv_self_consumed_kwh=_round(row["pv_self_consumed_kwh"]),
+                pv_exported_kwh=_round(row["pv_exported_kwh"]),
+                solar_thermal_plane_hsol_kwh_m2=_round(row["solar_thermal_plane_hsol_kwh_m2"]),
+                solar_thermal_available_kwh=_round(row["solar_thermal_available_kwh"]),
+                solar_thermal_used_dhw_kwh=_round(row["solar_thermal_used_dhw_kwh"]),
+            )
+            for row in renewable_rows
+        ],
+        plane_model=methodology()["renewables"]["plane_model"]["id"],
+    )
+
+
+def net_final_energy_by_carrier(
+    gross_totals: dict[str, float],
+    renewables: RenewableEnergyResult,
+) -> dict[str, float]:
+    totals = dict(gross_totals)
+    if renewables.pv.enabled:
+        electricity = float(totals.get(Carrier.electricity.value, 0.0))
+        totals[Carrier.electricity.value] = max(
+            electricity - float(renewables.pv.self_consumed_kwh),
+            0.0,
+        )
+    return {
+        carrier: _round(value)
+        for carrier, value in totals.items()
+        if value > 1e-9
+    }
 
 
 def final_energy_by_service(heating: EnergyServiceResult, cooling: EnergyServiceResult, dhw: EnergyServiceResult) -> dict[str, float]:
@@ -478,15 +693,31 @@ def classify_energy(building: BuildingInput, specific_primary_kwh_m2: float) -> 
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:
     h_tr, envelope_contributions, bridge_contributions = transmission_heat_transfer(building)
     h_ve = ventilation_heat_transfer(building)
+    climate = resolve_climate(building.locality)
     monthly = monthly_energy_balance(building, h_tr, h_ve)
     annual_heating = sum(row["useful_heating_kwh"] for row in monthly)
     annual_cooling = sum(row["useful_cooling_kwh"] for row in monthly)
 
+    renewable_rows, pv_pr, thermal_efficiency = _renewable_resource_rows(building, climate)
     heating = heating_final_energy(building, annual_heating)
     cooling = cooling_final_energy(building, annual_cooling)
-    dhw = dhw_energy(building)
+    dhw_backup_useful = sum(float(row["dhw_backup_useful_kwh"]) for row in renewable_rows)
+    dhw = dhw_energy(building, dhw_backup_useful)
+    renewables = renewable_energy_result(
+        building,
+        climate,
+        monthly,
+        heating,
+        cooling,
+        dhw,
+        renewable_rows,
+        pv_pr,
+        thermal_efficiency,
+    )
+
     by_service = final_energy_by_service(heating, cooling, dhw)
-    by_carrier = final_energy_by_carrier(heating, cooling, dhw)
+    gross_by_carrier = final_energy_by_carrier(heating, cooling, dhw)
+    by_carrier = net_final_energy_by_carrier(gross_by_carrier, renewables)
     primary = primary_energy(by_carrier, building.heated_floor_area_m2)
     co2 = co2_emissions(by_carrier, building.heated_floor_area_m2)
     energy_class = classify_energy(building, primary.specific_kwh_m2)
@@ -507,7 +738,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
 
     return CalculationResult(
         input=building,
-        climate=resolve_climate(building.locality),
+        climate=climate,
         h_tr_w_k=h_tr,
         h_ve_w_k=h_ve,
         heat_loss_w_k=_round(h_tr + h_ve),
@@ -522,8 +753,11 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         cooling=cooling,
         dhw=dhw,
         final_energy_by_service=by_service,
+        gross_final_energy_by_carrier=gross_by_carrier,
         final_energy_by_carrier=by_carrier,
-        total_final_energy_kwh=_round(sum(by_service.values())),
+        total_service_final_energy_kwh=_round(sum(by_service.values())),
+        total_final_energy_kwh=_round(sum(by_carrier.values())),
+        renewables=renewables,
         primary_energy=primary,
         co2=co2,
         energy_class=energy_class,
