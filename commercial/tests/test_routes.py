@@ -361,7 +361,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next8" in response.text
     assert "/static/home-lab-next.js?v=next12" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d26" in response.text
+    assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-reset-home' in response.text
     assert 'data-hln-reference-house' in response.text
@@ -620,7 +620,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert 'this.equipmentLayers.set("districtHeat"' in response.text
     assert 'this.equipmentLayers.set("electricHeat"' in response.text
     assert 'detail.heating === "heat_pump"' in response.text
-    assert 'detail.heating === "electric_resistance"' in response.text
+    assert '"electric_resistance", "electric_boiler"' in response.text
     assert '["wood_stove", "wood_boiler", "pellet_boiler"]' in response.text
     assert 'detail.ventilation === "mechanical" || detail.ventilation === "hrv"' in response.text
     assert "detail.pvKwp" in response.text
