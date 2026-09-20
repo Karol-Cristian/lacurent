@@ -81,11 +81,26 @@ class HeatingSystemDetails(BaseModel):
     auxiliary_electricity_kwh_year: float | None = Field(default=None, ge=0)
 
     @root_validator(skip_on_failure=True)
-    def validate_temperatures(cls, values: dict) -> dict:
+    def validate_system_chain(cls, values: dict) -> dict:
         flow = values.get("design_flow_temperature_c")
         ret = values.get("design_return_temperature_c")
+        generator = values.get("generator_type")
+        emitter = values.get("emitter_type")
+        distribution = values.get("distribution_type")
+
         if flow is not None and ret is not None and ret >= flow:
             raise ValueError("Heating return temperature must be lower than flow temperature.")
+        if emitter == HeatingEmitterType.local and distribution != HeatingDistributionType.local:
+            raise ValueError("A local heat emitter requires local/no-pipe distribution.")
+        if emitter == HeatingEmitterType.air and distribution != HeatingDistributionType.air:
+            raise ValueError("Air heating requires air distribution.")
+        if emitter == HeatingEmitterType.underfloor and distribution != HeatingDistributionType.underfloor:
+            raise ValueError("Underfloor heating requires underfloor distribution.")
+        if generator == HeatingGeneratorType.heat_pump_air_air and emitter != HeatingEmitterType.air:
+            raise ValueError("An air-to-air heat pump requires air emission.")
+        if generator in {HeatingGeneratorType.wood_stove, HeatingGeneratorType.electric_direct}:
+            if emitter != HeatingEmitterType.local or distribution != HeatingDistributionType.local:
+                raise ValueError("A local stove/direct-electric generator requires local emission and distribution.")
         return values
 
 
