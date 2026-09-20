@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next11">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next12">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -761,10 +761,16 @@
         <article><span class="hln-dock-icon"><svg><use href="#hln-i-money"></use></svg></span><span><small>Cost anual</small><strong id="hlnDockCost">—</strong></span></article>
         <article><span class="hln-dock-icon"><svg><use href="#hln-i-bolt"></use></svg></span><span><small>Energie</small><strong id="hlnDockEnergy">—</strong></span></article>
       </div>
-      <div class="hln-dock-benefits" hidden>
-        <article><svg><use href="#hln-i-money"></use></svg><span><small>Economie</small><strong id="hlnDockCostBenefit">—</strong></span></article>
-        <article><svg><use href="#hln-i-bolt"></use></svg><span><small>Energie</small><strong id="hlnDockEnergyBenefit">—</strong></span></article>
-        <article><svg><use href="#hln-i-leaf"></use></svg><span><small>CO₂</small><strong id="hlnDockCo2Benefit">—</strong></span></article>
+      <div class="hln-dock-benefits hln-dock-compare" hidden>
+        <article class="is-home">
+          <span><small>Casa mea</small><strong><b id="hlnDockHomeClass">—</b><em id="hlnDockHomeCost">—</em></strong></span>
+        </article>
+        <article class="is-renovation">
+          <span><small>Renovare</small><strong><b id="hlnDockScenarioClass">—</b><em id="hlnDockScenarioCost">—</em></strong></span>
+        </article>
+        <article class="is-saving">
+          <span><small>Economie</small><strong id="hlnDockCostBenefit">—</strong></span>
+        </article>
       </div>
       <button type="button" class="hln-dock-cta" id="hlnDockCta">
         <span>Salvează Casa mea și începe renovarea</span>
@@ -851,8 +857,8 @@
       }
     }
   </script>
-  <script type="module" src="/static/home-lab-3d.js?v=3d27"></script>
-  <script src="/static/home-lab-next.js?v=next19"></script>
+  <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
+  <script src="/static/home-lab-next.js?v=next20"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
