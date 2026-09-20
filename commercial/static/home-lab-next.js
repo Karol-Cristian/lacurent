@@ -931,6 +931,10 @@
       orientation: homeState.orientation,
       cooling: homeState.cooling,
       heating: homeState.heating,
+      pvEnabled: Boolean(homeState.pvEnabled),
+      pvOrientation: homeState.pvOrientation,
+      solarThermalEnabled: Boolean(homeState.solarThermalEnabled),
+      solarThermalOrientation: homeState.solarThermalOrientation,
     };
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
@@ -963,8 +967,8 @@
       previous.cooling !== homeState.cooling ? "cooling" :
       previous.heating !== homeState.heating ? "heating" :
       previous.orientation !== homeState.orientation ? "orientation" :
-      homeState.pvEnabled ? "pv" :
-      homeState.solarThermalEnabled ? "solarThermal" : null;
+      previous.pvEnabled !== Boolean(homeState.pvEnabled) || previous.pvOrientation !== homeState.pvOrientation ? "pv" :
+      previous.solarThermalEnabled !== Boolean(homeState.solarThermalEnabled) || previous.solarThermalOrientation !== homeState.solarThermalOrientation ? "solarThermal" : null;
     emitVisualState(focus);
     scheduleCalculate("home");
   }
@@ -1084,6 +1088,7 @@
       scenarioState.solarThermalTilt = Number($("#hlnScenarioSolarThermalTilt").value);
     }
     renderIntervention();
+    emitVisualState(activeMeasure === "solar_thermal" ? "solarThermal" : activeMeasure);
     scheduleCalculate("scenario");
   }
 
@@ -1231,7 +1236,7 @@
   $$("[data-hln-intervention-cancel]").forEach(button => button.addEventListener("click", cancelIntervention));
   $("[data-hln-intervention-keep]").addEventListener("click", keepIntervention);
 
-  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling"]
+  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling","#hlnScenarioPvKwp","#hlnScenarioPvOrientation","#hlnScenarioPvTilt","#hlnScenarioSolarThermalArea","#hlnScenarioSolarThermalOrientation","#hlnScenarioSolarThermalTilt"]
     .forEach(selector => $(selector).addEventListener("change", syncInterventionFromControls));
 
   $$(".hln-stepper [data-step]").forEach(button => button.addEventListener("click", () => {
