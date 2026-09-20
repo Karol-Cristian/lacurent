@@ -155,6 +155,7 @@ jobs:
           uvx --from workers-py pywrangler deploy
 
       - name: Measure deployed PBE Worker
+        continue-on-error: true
         working-directory: .wrangler/commercial-v2-worker
         run: |
           python - <<'PY'
