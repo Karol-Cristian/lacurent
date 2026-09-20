@@ -358,11 +358,17 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next12" in response.text
-    assert "/static/home-lab-next.js?v=next20" in response.text
+    assert "/static/home-lab-next.css?v=next13" in response.text
+    assert "/static/home-lab-next.js?v=next21" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
+    assert 'id="hlnImpactEfficiency"' in response.text
+    assert 'id="hlnScenarioBenefitLabel"' in response.text
+    assert 'id="hlnDockSavingLabel"' in response.text
+    assert "Variație cost anual" in response.text
+    assert "Consum energie" in response.text
+    assert "Eficiență energetică" in response.text
     assert 'data-hln-reset-home' in response.text
     assert 'data-hln-reference-house' in response.text
     assert 'id="hlnEnergyScale"' in response.text
@@ -676,6 +682,17 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_home_lab_next_semantic_delta_colors_are_present() -> None:
+    response = client.get("/static/home-lab-next.css")
+    assert response.status_code == 200
+    assert ".hln-impact-panel strong.is-good" in response.text
+    assert ".hln-impact-panel strong.is-bad" in response.text
+    assert ".hln-scenario-metrics strong.is-good" in response.text
+    assert ".hln-scenario-metrics strong.is-bad" in response.text
+    assert ".hln-dock-compare strong b.is-good" in response.text
+    assert ".hln-dock-compare strong b.is-bad" in response.text
+
+
 def test_home_lab_next_map_and_renovation_compare_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -701,9 +718,24 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function openMeasure" in response.text
     assert "function keepIntervention" in response.text
     assert "function benefitText" in response.text
-    assert "function signedSavingText" in response.text
     assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
+    assert "function directChangeText" in response.text
+    assert "function applyDeltaState" in response.text
+    assert "function energyClassRank" in response.text
+    assert '["#hlnImpactCost", cost]' in response.text
+    assert '["#hlnImpactEnergy", energy]' in response.text
+    assert '["#hlnImpactEfficiency", efficiency]' in response.text
+    assert '["#hlnImpactCo2", co2]' in response.text
+    assert '["#hlnImpactLoad", load]' in response.text
+    assert "const efficiency = benefitText(" in response.text
+    assert "scenarioResult.final_energy_kwh" in response.text
+    assert 'directChangeText(scenarioResult.final_energy_kwh' in response.text
+    assert "function costOutcomeText" in response.text
+    assert "const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);" in response.text
+    assert "const good = lowerIsBetter ? delta < 0 : delta > 0;" in response.text
+    assert 'label: good ? "Economie" : "Cost suplimentar"' in response.text
+    assert "savingLabel.textContent = saving.label" in response.text
     assert "async function saveHomeAndOpenSite" in response.text
     assert 'await calculateState(homeState, "home")' in response.text
     assert 'showScreen("site")' in response.text
