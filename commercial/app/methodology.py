@@ -53,6 +53,7 @@ _HSOL_ORIENTATION_KEYS = {
     "north_east": "northEast",
     "east": "east",
     "south_east": "southEast",
+    "horizontal": "horizontal",
 }
 
 
