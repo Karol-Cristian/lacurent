@@ -358,7 +358,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next6" in response.text
-    assert "/static/home-lab-next.js?v=next7" in response.text
+    assert "/static/home-lab-next.js?v=next8" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d25" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -498,6 +498,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70" in response.text
     assert 'key === "pvKwp"' in response.text
     assert 'key === "solarThermalKw"' in response.text
+    assert 'input.addEventListener("change", commitRangeValue)' in response.text
+    assert "annual_generation_kwh" in response.text
+    assert "self_consumed_kwh" in response.text
+    assert "exported_kwh" in response.text
     assert 'formSet("pv_installed_power_kwp"' in response.text
     assert 'formSet("solar_thermal_collector_area_m2"' in response.text
     assert "reference_mc001" in response.text
