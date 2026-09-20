@@ -369,10 +369,15 @@ def pbe_iso_run(bui: dict) -> tuple[pd.DataFrame, dict]:
         weather_source="pvgis",
     )
     row = annual.iloc[0].to_dict()
+    t_ext = pd.to_numeric(hourly["T_ext"], errors="coerce")
+    q_h = pd.to_numeric(hourly["Q_H"], errors="coerce").fillna(0.0).clip(lower=0.0)
     return hourly, {
         "heating_useful_kwh": float(row["Q_H_annual"]) / 1000.0,
         "heating_specific_kwh_m2": float(row["Q_H_annual_per_sqm"]) / 1000.0,
         "cooling_useful_kwh": float(row.get("Q_C_annual", 0.0)) / 1000.0,
+        "outdoor_mean_c": float(t_ext.mean()),
+        "degree_hours_20c": float((20.0 - t_ext).clip(lower=0.0).sum()),
+        "hours_with_heating": int((q_h > 1e-9).sum()),
         "validation_issues": issues,
     }
 
@@ -507,6 +512,22 @@ def main() -> None:
 
         pv = light.renewables.pv
         solar = light.renewables.solar_thermal
+        light_months = list(light.monthly)
+        light_days = sum(int(item.days) for item in light_months) or 365
+        light_outdoor_mean = sum(
+            float(item.outdoor_temperature_c) * int(item.days) for item in light_months
+        ) / light_days
+        light_degree_hours = sum(
+            max(20.0 - float(item.outdoor_temperature_c), 0.0) * int(item.days) * 24.0
+            for item in light_months
+        )
+        light_balance = {
+            "outdoor_mean_c": light_outdoor_mean,
+            "degree_hours_20c": light_degree_hours,
+            "annual_heat_loss_kwh": sum(float(item.heat_loss_kwh) for item in light_months),
+            "annual_internal_gains_kwh": sum(float(item.internal_gains_kwh) for item in light_months),
+            "annual_solar_gains_kwh": sum(float(item.solar_gains_kwh) for item in light_months),
+        }
         row = {
             "id": vertical["id"],
             "label": vertical["label"],
@@ -530,6 +551,7 @@ def main() -> None:
             "lacurent": {
                 "h_tr_w_k": float(light.h_tr_w_k),
                 "h_ve_w_k": float(light.h_ve_w_k),
+                "balance_diagnostics": light_balance,
                 "heating_useful_kwh": float(light.annual_heating_demand_kwh),
                 "heating_specific_kwh_m2": float(light.annual_heating_demand_kwh) / AREA_M2,
                 "heating_main_final_kwh": light_main,
@@ -610,6 +632,18 @@ def main() -> None:
             f"| {row['id']} {row['label']} | {fmt(row['lacurent']['heating_useful_kwh'])} | {fmt(row['pbe']['heating_useful_kwh'])} | "
             f"{fmt(d['heating_useful_pct'])}% | {fmt(row['lacurent']['heating_main_final_kwh'])} | {fmt(row['pbe']['aligned_chain_final_kwh'])} | "
             f"{fmt(d['heating_main_final_aligned_pct'])}% |"
+        )
+    report.append("")
+    report.append("## Climate / balance diagnostics")
+    report.append("")
+    report.append("| Vertical | Light mean T° | PBE mean T° | Light degree-hours @20°C | PBE degree-hours @20°C | Light heat loss | Light internal gains | Light solar gains |")
+    report.append("|---|---:|---:|---:|---:|---:|---:|---:|")
+    for row in rows:
+        lb = row["lacurent"]["balance_diagnostics"]
+        report.append(
+            f"| {row['id']} | {fmt(lb['outdoor_mean_c'],2)}°C | {fmt(row['pbe']['outdoor_mean_c'],2)}°C | "
+            f"{fmt(lb['degree_hours_20c'])} Kh | {fmt(row['pbe']['degree_hours_20c'])} Kh | "
+            f"{fmt(lb['annual_heat_loss_kwh'])} kWh | {fmt(lb['annual_internal_gains_kwh'])} kWh | {fmt(lb['annual_solar_gains_kwh'])} kWh |"
         )
     report.append("")
     report.append("## Incremental intervention effect")
