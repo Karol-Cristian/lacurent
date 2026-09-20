@@ -346,10 +346,10 @@
 
     const homeLocalFixed = ["wood_stove", "electric_resistance"].includes(homeState.heating);
     const scenarioLocalFixed = ["wood_stove", "electric_resistance"].includes(scenarioState.heating);
-    $("[data-hln-home-heating-chain]").forEach(node => {
+    root.querySelectorAll("[data-hln-home-heating-chain]").forEach(node => {
       node.hidden = homeLocalFixed;
     });
-    $("[data-hln-scenario-heating-chain]").forEach(node => {
+    root.querySelectorAll("[data-hln-scenario-heating-chain]").forEach(node => {
       node.hidden = scenarioLocalFixed;
     });
 
@@ -1450,7 +1450,7 @@
     if (next === "site" && !baselineSaved) return;
     if (next === "scenario" && !baselineSaved) return;
     screen = next;
-    $$("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
+    $root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
     emitVisualState();
     window.scrollTo({top: 0, behavior: "smooth"});
@@ -1542,7 +1542,7 @@
     $("#hlnHomeSolarThermalArea").value = homeState.solarThermalArea;
     $("#hlnHomeSolarThermalOrientation").value = homeState.solarThermalOrientation;
     $("#hlnHomeSolarThermalTilt").value = homeState.solarThermalTilt;
-    $("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
+    root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
   }
 
   function updateHomeFromEditors() {
@@ -1984,9 +1984,9 @@
       if (node) node.addEventListener("change", updateHomeFromEditors);
     });
 
-  $$("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
+  $root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
-    $$("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
+    $root.querySelectorAll("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
@@ -2098,7 +2098,7 @@
       const target = go.dataset.hlnGo;
       if (target === "home") {
         screen = "home";
-        $("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
+        root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
         renderAll();
         emitVisualState();
         return;
@@ -2137,7 +2137,7 @@
   $("#hlnQuickEditOverlay").addEventListener("click", event => {
     if (event.target === $("#hlnQuickEditOverlay")) cancelQuickMeasureEditor();
   });
-  $("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
+  root.querySelectorAll("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
 
   $("#hlnDockCta").addEventListener("click", async () => {
