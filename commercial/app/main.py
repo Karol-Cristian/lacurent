@@ -700,7 +700,13 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
 def user_error(exc: Exception) -> str:
     if isinstance(exc, ValidationError):
         first = exc.errors()[0]
-        field = " / ".join(str(item) for item in first.get("loc", []))
+        location = tuple(first.get("loc", []))
+        if location[:2] == ("heating", "details"):
+            return (
+                "Configurația instalației de încălzire nu este compatibilă. "
+                "Verifică generatorul, emisia și distribuția."
+            )
+        field = " / ".join(str(item) for item in location)
         return f"{field}: {first.get('msg', 'valoare invalidă')}"
     return str(exc)
 
