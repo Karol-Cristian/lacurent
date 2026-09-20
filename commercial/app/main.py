@@ -154,10 +154,78 @@ def _heating_profile(system_type: str, cost_profile: str, *, efficiency: float |
     }
 
 
+HEATING_CHAIN_PROFILES: dict[str, dict[str, str]] = {
+    "condensing_gas_boiler": {
+        "generator_type": "condensing_gas_boiler",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "storage_type": "none",
+        "control_type": "room_thermostat",
+    },
+    "gas_boiler": {
+        "generator_type": "gas_boiler",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "storage_type": "none",
+        "control_type": "room_thermostat",
+    },
+    "electric_resistance": {
+        "generator_type": "electric_direct",
+        "emitter_type": "local",
+        "distribution_type": "local",
+        "storage_type": "none",
+        "control_type": "room_thermostat",
+    },
+    "electric_boiler": {
+        "generator_type": "electric_boiler",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "storage_type": "none",
+        "control_type": "room_thermostat",
+    },
+    "heat_pump": {
+        "generator_type": "heat_pump_air_water",
+        "emitter_type": "underfloor",
+        "distribution_type": "underfloor",
+        "storage_type": "none",
+        "control_type": "zoned",
+    },
+    "district_heat": {
+        "generator_type": "district_heat",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "storage_type": "none",
+        "control_type": "thermostatic_valves",
+    },
+    "wood_stove": {
+        "generator_type": "wood_stove",
+        "emitter_type": "local",
+        "distribution_type": "local",
+        "storage_type": "none",
+        "control_type": "manual",
+    },
+    "wood_boiler": {
+        "generator_type": "wood_boiler",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "storage_type": "none",
+        "control_type": "room_thermostat",
+    },
+    "pellet_boiler": {
+        "generator_type": "pellet_boiler",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "storage_type": "buffer_small",
+        "control_type": "room_thermostat",
+    },
+}
+
+
 HEATING_PROFILES: dict[str, dict[str, Any]] = {
     "condensing_gas_boiler": _heating_profile("condensing_gas_boiler", "natural_gas"),
     "gas_boiler": _heating_profile("gas_boiler", "natural_gas"),
     "electric_resistance": _heating_profile("electric_resistance", "electricity"),
+    "electric_boiler": _heating_profile("custom", "electricity", efficiency=0.98, carrier="electricity"),
     "heat_pump": _heating_profile("heat_pump", "electricity"),
     "wood_stove": _heating_profile("custom", "firewood", efficiency=0.75, carrier="biomass"),
     "wood_boiler": _heating_profile("custom", "firewood", efficiency=0.80, carrier="biomass"),
@@ -231,6 +299,15 @@ def default_form_values() -> dict[str, Any]:
         "heating_scop": 3.2,
         "heating_carrier": "natural_gas",
         "heating_cost_profile": "natural_gas",
+        "heating_chain_enabled": False,
+        "heating_generator_type": "condensing_gas_boiler",
+        "heating_emitter_type": "radiators_high_temp",
+        "heating_distribution_type": "hydronic_insulated",
+        "heating_storage_type": "none",
+        "heating_control_type": "room_thermostat",
+        "heating_design_flow_temperature_c": "",
+        "heating_design_return_temperature_c": "",
+        "heating_auxiliary_electricity_kwh_year": "",
         "cooling_enabled": False,
         "cooling_seer": 3.5,
         "cooling_setpoint_c": 26,
@@ -292,6 +369,14 @@ def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
             "heating_scop": building.heating.scop,
             "heating_carrier": building.heating.carrier.value,
             "heating_cost_profile": building.heating.cost_profile,
+            "heating_generator_type": building.heating.details.generator_type.value if building.heating.details and building.heating.details.generator_type else "",
+            "heating_emitter_type": building.heating.details.emitter_type.value if building.heating.details else "radiators_high_temp",
+            "heating_distribution_type": building.heating.details.distribution_type.value if building.heating.details else "hydronic_insulated",
+            "heating_storage_type": building.heating.details.storage_type.value if building.heating.details else "none",
+            "heating_control_type": building.heating.details.control_type.value if building.heating.details else "room_thermostat",
+            "heating_design_flow_temperature_c": building.heating.details.design_flow_temperature_c if building.heating.details else "",
+            "heating_design_return_temperature_c": building.heating.details.design_return_temperature_c if building.heating.details else "",
+            "heating_auxiliary_electricity_kwh_year": building.heating.details.auxiliary_electricity_kwh_year if building.heating.details else "",
             "cooling_enabled": building.cooling.enabled,
             "cooling_seer": building.cooling.seer,
             "cooling_setpoint_c": building.cooling.setpoint_c,
@@ -461,6 +546,42 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
         }
     else:
         heating = dict(HEATING_PROFILES.get(str(form.get("heating_choice") or "condensing_gas_boiler"), HEATING_PROFILES["custom"]))
+
+    heating_choice = str(form.get("heating_choice") or "condensing_gas_boiler")
+    chain_defaults = HEATING_CHAIN_PROFILES.get(heating_choice, HEATING_CHAIN_PROFILES["condensing_gas_boiler"])
+    chain_details = {
+        "generator_type": form.get("heating_generator_type") or chain_defaults["generator_type"],
+        "emitter_type": form.get("heating_emitter_type") or chain_defaults["emitter_type"],
+        "distribution_type": form.get("heating_distribution_type") or chain_defaults["distribution_type"],
+        "storage_type": form.get("heating_storage_type") or chain_defaults["storage_type"],
+        "control_type": form.get("heating_control_type") or chain_defaults["control_type"],
+        "design_flow_temperature_c": parse_optional_float(form.get("heating_design_flow_temperature_c")),
+        "design_return_temperature_c": parse_optional_float(form.get("heating_design_return_temperature_c")),
+        "auxiliary_electricity_kwh_year": parse_optional_float(form.get("heating_auxiliary_electricity_kwh_year")),
+    }
+    structured_heating_present = _checked(form, "heating_chain_enabled") or (not simple and any(
+        form.get(name) not in (None, "")
+        for name in (
+            "heating_generator_type",
+            "heating_emitter_type",
+            "heating_distribution_type",
+            "heating_storage_type",
+            "heating_control_type",
+            "heating_design_flow_temperature_c",
+            "heating_design_return_temperature_c",
+            "heating_auxiliary_electricity_kwh_year",
+        )
+    ))
+    if structured_heating_present:
+        heating["details"] = chain_details
+
+    # In the simple Home Lab path the generator performance is resolved from
+    # the selected system chain. Expert overrides remain authoritative.
+    if not heating_override and structured_heating_present:
+        if heating.get("system_type") == "heat_pump":
+            heating["scop"] = None
+        elif heating.get("system_type") in {"gas_boiler", "condensing_gas_boiler", "district_heat", "electric_resistance"}:
+            heating["efficiency"] = None
 
     return {
         **geometry,
@@ -678,6 +799,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             for key, value in result.final_energy_by_carrier.items()
         },
         "renewables": model_to_dict(result.renewables),
+        "heating_system": model_to_dict(result.heating_system),
         "monthly": [
             {
                 "month": row.month,

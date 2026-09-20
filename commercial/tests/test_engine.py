@@ -11,6 +11,7 @@ from commercial.app.engine import (
     demo_building,
     final_energy_by_carrier,
     heating_final_energy,
+    heating_system_performance,
     primary_energy,
     transmission_heat_transfer,
     ventilation_heat_transfer,
@@ -87,6 +88,110 @@ def test_heat_pump_final_energy_uses_scop() -> None:
 
     assert_close(result.final_kwh, 3000)
     assert result.carrier.value == "electricity"
+
+
+def test_structured_heat_pump_emitter_changes_scop_and_final_energy() -> None:
+    radiators = simple_building(
+        heating={
+            "system_type": "heat_pump",
+            "carrier": "electricity",
+            "details": {
+                "generator_type": "heat_pump_air_water",
+                "emitter_type": "radiators_high_temp",
+                "distribution_type": "hydronic_insulated",
+                "storage_type": "none",
+                "control_type": "room_thermostat",
+            },
+        }
+    )
+    underfloor = simple_building(
+        heating={
+            "system_type": "heat_pump",
+            "carrier": "electricity",
+            "details": {
+                "generator_type": "heat_pump_air_water",
+                "emitter_type": "underfloor",
+                "distribution_type": "underfloor",
+                "storage_type": "none",
+                "control_type": "zoned",
+            },
+        }
+    )
+
+    radiator_service, radiator_system = heating_system_performance(radiators, 9000)
+    floor_service, floor_system = heating_system_performance(underfloor, 9000)
+
+    assert_close(radiator_system.generator_performance, 2.3)
+    assert_close(floor_system.generator_performance, 3.2)
+    assert radiator_system.design_flow_temperature_c == 60
+    assert floor_system.design_flow_temperature_c == 35
+    assert floor_system.effective_system_performance > radiator_system.effective_system_performance
+    assert floor_service.final_kwh < radiator_service.final_kwh
+    assert floor_system.performance_source == "lacurent_light_product_estimate"
+    assert floor_system.confidence == "low"
+
+
+def test_structured_heating_auxiliary_energy_is_separate_electricity_carrier() -> None:
+    building = simple_building(
+        cooling={"enabled": False, "seer": None, "setpoint_c": 26},
+        heating={
+            "system_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "details": {
+                "generator_type": "condensing_gas_boiler",
+                "emitter_type": "radiators_high_temp",
+                "distribution_type": "hydronic_insulated",
+                "storage_type": "none",
+                "control_type": "room_thermostat",
+            },
+        },
+    )
+
+    result = calculate(building, include_reference=False)
+
+    assert result.heating_system.auxiliary_electricity_kwh == 120
+    assert result.gross_final_energy_by_carrier["electricity"] >= 120
+    assert result.final_energy_by_service["heating"] == (
+        result.heating.final_kwh + result.heating_system.auxiliary_electricity_kwh
+    )
+
+
+def test_structured_condensing_boiler_reflects_emitter_temperature() -> None:
+    high_temp = simple_building(
+        heating={
+            "system_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "details": {
+                "generator_type": "condensing_gas_boiler",
+                "emitter_type": "radiators_high_temp",
+                "distribution_type": "hydronic_insulated",
+                "storage_type": "none",
+                "control_type": "room_thermostat",
+            },
+        }
+    )
+    low_temp = simple_building(
+        heating={
+            "system_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "details": {
+                "generator_type": "condensing_gas_boiler",
+                "emitter_type": "radiators_low_temp",
+                "distribution_type": "hydronic_insulated",
+                "storage_type": "none",
+                "control_type": "room_thermostat",
+            },
+        }
+    )
+
+    high_service, high_system = heating_system_performance(high_temp, 9000)
+    low_service, low_system = heating_system_performance(low_temp, 9000)
+
+    assert high_system.generator_performance < low_system.generator_performance
+    assert high_system.design_flow_temperature_c == 60
+    assert low_system.design_flow_temperature_c == 45
+    assert low_service.final_kwh < high_service.final_kwh
 
 
 def test_primary_energy_aggregation_uses_methodology_factors() -> None:
@@ -178,7 +283,7 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.6"
+    assert cfg["version"] == "lacurent-commercial-v2.7"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]

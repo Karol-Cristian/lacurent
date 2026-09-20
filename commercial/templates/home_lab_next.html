@@ -486,7 +486,7 @@
 
             <div data-hln-intervention-panel="heating" hidden>
               <div class="hln-field-heading"><svg><use href="#hln-i-flame"></use></svg><div><strong>Sistem de încălzire</strong><small>Alege sistemul pe care vrei să îl simulezi</small></div></div>
-              <label>Sistem nou de încălzire
+              <label>Generator nou
                 <select id="hlnScenarioHeating">
                   <option value="condensing_gas_boiler">Centrală gaz în condensare</option>
                   <option value="gas_boiler">Centrală gaz convențională</option>
@@ -494,10 +494,27 @@
                   <option value="district_heat">Termoficare</option>
                   <option value="wood_stove">Șemineu / sobă pe lemne</option>
                   <option value="electric_resistance">Încălzire electrică directă</option>
+                  <option value="electric_boiler">Centrală electrică</option>
                   <option value="wood_boiler">Centrală pe lemne</option>
                   <option value="pellet_boiler">Centrală pe peleți</option>
                 </select>
               </label>
+              <label data-hln-scenario-heat-pump-source>Tip pompă
+                <select id="hlnScenarioHeatPumpSource"><option value="heat_pump_air_water">Aer-apă</option><option value="heat_pump_ground_water">Sol-apă</option><option value="heat_pump_air_air">Aer-aer</option></select>
+              </label>
+              <label>Emisie în încăperi
+                <select id="hlnScenarioHeatingEmitter"><option value="radiators_high_temp">Calorifere clasice</option><option value="radiators_low_temp">Calorifere joasă temperatură</option><option value="underfloor">Încălzire în pardoseală</option><option value="fan_coils">Ventiloconvectoare</option><option value="air">Aer</option><option value="local">Sursă locală</option></select>
+              </label>
+              <label>Distribuție
+                <select id="hlnScenarioHeatingDistribution"><option value="hydronic_insulated">Conducte izolate</option><option value="hydronic_uninsulated">Conducte neizolate</option><option value="underfloor">Distribuție pardoseală</option><option value="air">Distribuție prin aer</option><option value="local">Fără rețea</option></select>
+              </label>
+              <label>Stocare termică
+                <select id="hlnScenarioHeatingStorage"><option value="none">Fără puffer</option><option value="buffer_small">Puffer / buffer mic</option><option value="buffer_large">Puffer / acumulare mare</option></select>
+              </label>
+              <label>Reglaj
+                <select id="hlnScenarioHeatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
+              </label>
+              <small id="hlnScenarioHeatingPerformance">Motorul Light va deriva temperatura de tur și performanța din configurația selectată.</small>
             </div>
 
             <div data-hln-intervention-panel="ventilation" hidden>
@@ -676,8 +693,23 @@
 
         <section data-hln-editor="systems" hidden>
           <div class="hln-editor-lead"><span class="hln-row-icon"><svg><use href="#hln-i-flame"></use></svg></span><div><strong>Instalațiile casei</strong><small>Încălzire, ventilație și răcire.</small></div></div>
-          <label>Încălzire
-            <select id="hlnHomeHeating"><option value="condensing_gas_boiler">Centrală gaz în condensare</option><option value="gas_boiler">Centrală gaz convențională</option><option value="heat_pump">Pompă de căldură</option><option value="district_heat">Termoficare</option><option value="wood_stove">Șemineu / sobă pe lemne</option><option value="electric_resistance">Încălzire electrică directă</option><option value="wood_boiler">Centrală pe lemne</option><option value="pellet_boiler">Centrală pe peleți</option></select>
+          <label>Generator de încălzire
+            <select id="hlnHomeHeating"><option value="condensing_gas_boiler">Centrală gaz în condensare</option><option value="gas_boiler">Centrală gaz convențională</option><option value="heat_pump">Pompă de căldură</option><option value="district_heat">Termoficare</option><option value="wood_stove">Șemineu / sobă pe lemne</option><option value="electric_resistance">Încălzire electrică directă</option><option value="electric_boiler">Centrală electrică</option><option value="wood_boiler">Centrală pe lemne</option><option value="pellet_boiler">Centrală pe peleți</option></select>
+          </label>
+          <label data-hln-home-heat-pump-source>Tip pompă de căldură
+            <select id="hlnHomeHeatPumpSource"><option value="heat_pump_air_water">Aer-apă</option><option value="heat_pump_ground_water">Sol-apă</option><option value="heat_pump_air_air">Aer-aer</option></select>
+          </label>
+          <label>Emisie în încăperi
+            <select id="hlnHomeHeatingEmitter"><option value="radiators_high_temp">Calorifere clasice</option><option value="radiators_low_temp">Calorifere joasă temperatură</option><option value="underfloor">Încălzire în pardoseală</option><option value="fan_coils">Ventiloconvectoare</option><option value="air">Aer</option><option value="local">Sursă locală</option></select>
+          </label>
+          <label>Distribuție
+            <select id="hlnHomeHeatingDistribution"><option value="hydronic_insulated">Conducte izolate</option><option value="hydronic_uninsulated">Conducte neizolate</option><option value="underfloor">Distribuție pardoseală</option><option value="air">Distribuție prin aer</option><option value="local">Fără rețea</option></select>
+          </label>
+          <label>Stocare termică
+            <select id="hlnHomeHeatingStorage"><option value="none">Fără puffer</option><option value="buffer_small">Puffer / buffer mic</option><option value="buffer_large">Puffer / acumulare mare</option></select>
+          </label>
+          <label>Reglaj
+            <select id="hlnHomeHeatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
           </label>
           <label>Ventilație
             <select id="hlnHomeVentilation"><option value="natural">Naturală</option><option value="mechanical">Mecanică</option><option value="hrv">Cu recuperare de căldură</option></select>
@@ -760,6 +792,15 @@
       <input name="heating_efficiency" value="0.94">
       <input name="heating_scop" value="3.2">
       <input name="heating_cost_profile" value="natural_gas">
+      <input name="heating_chain_enabled" value="on">
+      <input name="heating_generator_type" value="condensing_gas_boiler">
+      <input name="heating_emitter_type" value="radiators_high_temp">
+      <input name="heating_distribution_type" value="hydronic_insulated">
+      <input name="heating_storage_type" value="none">
+      <input name="heating_control_type" value="room_thermostat">
+      <input name="heating_design_flow_temperature_c" value="">
+      <input name="heating_design_return_temperature_c" value="">
+      <input name="heating_auxiliary_electricity_kwh_year" value="">
       <input name="cooling_enabled" value="">
       <input name="cooling_seer" value="4.0">
       <input name="cooling_setpoint_c" value="26">
@@ -788,8 +829,8 @@
       }
     }
   </script>
-  <script type="module" src="/static/home-lab-3d.js?v=3d26"></script>
-  <script src="/static/home-lab-next.js?v=next11"></script>
+  <script type="module" src="/static/home-lab-3d.js?v=3d27"></script>
+  <script src="/static/home-lab-next.js?v=next12"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

@@ -1185,7 +1185,7 @@ class HomeLabHouse3D {
     if (districtHeat) districtHeat.visible = detail.heating === "district_heat";
 
     const electricHeat = this.equipmentLayers.get("electricHeat");
-    if (electricHeat) electricHeat.visible = detail.heating === "electric_resistance";
+    if (electricHeat) electricHeat.visible = ["electric_resistance", "electric_boiler"].includes(detail.heating);
 
     if (detail.orientation && detail.orientation !== this.lastVisualOrientation) {
       this.lastVisualOrientation = detail.orientation;

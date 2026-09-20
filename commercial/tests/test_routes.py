@@ -359,9 +359,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next8" in response.text
-    assert "/static/home-lab-next.js?v=next11" in response.text
+    assert "/static/home-lab-next.js?v=next12" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d26" in response.text
+    assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-reset-home' in response.text
     assert 'data-hln-reference-house' in response.text
@@ -372,6 +372,16 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-measure="solar_thermal"' in response.text
     assert 'id="hlnHomePvKwp"' in response.text
     assert 'id="hlnHomeSolarThermalArea"' in response.text
+    assert 'id="hlnHomeHeatingEmitter"' in response.text
+    assert 'id="hlnHomeHeatingDistribution"' in response.text
+    assert 'id="hlnHomeHeatingStorage"' in response.text
+    assert 'id="hlnHomeHeatingControl"' in response.text
+    assert 'id="hlnHomeHeatPumpSource"' in response.text
+    assert 'id="hlnScenarioHeatingEmitter"' in response.text
+    assert 'id="hlnScenarioHeatingDistribution"' in response.text
+    assert 'id="hlnScenarioHeatingStorage"' in response.text
+    assert 'id="hlnScenarioHeatingControl"' in response.text
+    assert 'value="electric_boiler"' in response.text
     assert 'id="hlnLivePvKwp" type="range" min="0" max="30" step="0.5"' in response.text
     assert 'id="hlnLiveSolarThermalKw" type="range" min="0" max="30" step="0.5"' in response.text
     assert 'id="hlnQuickEditOverlay"' in response.text
@@ -452,6 +462,58 @@ def test_home_lab_next_direct_electric_heating_pv_changes_live_result() -> None:
     assert with_payload["annual_cost_lei"] < without_payload["annual_cost_lei"]
 
 
+def test_home_lab_next_heat_pump_emitter_changes_light_engine_performance() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "building_length_m": "10",
+            "building_width_m": "8",
+            "heated_levels": "2",
+            "average_height_m": "2.7",
+            "house_window_area_m2": "20",
+            "heating_choice": "heat_pump",
+            "expert_heating_override": "",
+            "heating_chain_enabled": "on",
+            "heating_generator_type": "heat_pump_air_water",
+            "heating_emitter_type": "radiators_high_temp",
+            "heating_distribution_type": "hydronic_insulated",
+            "heating_storage_type": "none",
+            "heating_control_type": "room_thermostat",
+            "heating_design_flow_temperature_c": "",
+            "heating_design_return_temperature_c": "",
+            "heating_auxiliary_electricity_kwh_year": "",
+            "cooling_enabled": "",
+            "pv_enabled": "",
+            "solar_thermal_enabled": "",
+        }
+    )
+
+    radiators = client.post("/api/home-lab-next/calculate", data=base)
+    assert radiators.status_code == 200
+    radiator_payload = radiators.json()
+
+    floor_data = dict(base)
+    floor_data.update(
+        {
+            "heating_emitter_type": "underfloor",
+            "heating_distribution_type": "underfloor",
+            "heating_control_type": "zoned",
+        }
+    )
+    underfloor = client.post("/api/home-lab-next/calculate", data=floor_data)
+    assert underfloor.status_code == 200
+    floor_payload = underfloor.json()
+
+    assert radiator_payload["heating_system"]["generator_performance_kind"] == "scop"
+    assert radiator_payload["heating_system"]["generator_performance"] == 2.3
+    assert floor_payload["heating_system"]["generator_performance"] == 3.2
+    assert radiator_payload["heating_system"]["design_flow_temperature_c"] == 60
+    assert floor_payload["heating_system"]["design_flow_temperature_c"] == 35
+    assert floor_payload["final_energy_kwh"] < radiator_payload["final_energy_kwh"]
+    assert floor_payload["annual_cost_lei"] < radiator_payload["annual_cost_lei"]
+    assert floor_payload["heating_system"]["auxiliary_electricity_kwh"] == 220
+
+
 def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> None:
     data = demo_form_data()
     data.update(
@@ -507,6 +569,16 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "pvKwp" in response.text
     assert "solarThermalEnabled" in response.text
     assert "solarThermalArea" in response.text
+    assert "heatingEmitter" in response.text
+    assert "heatingDistribution" in response.text
+    assert "heatingStorage" in response.text
+    assert "heatingControl" in response.text
+    assert "heatingGeneratorType" in response.text
+    assert 'formSet("heating_generator_type"' in response.text
+    assert 'formSet("heating_emitter_type"' in response.text
+    assert 'formSet("heating_distribution_type"' in response.text
+    assert 'formSet("heating_storage_type"' in response.text
+    assert 'formSet("heating_control_type"' in response.text
     assert "ventilation" in response.text
     assert "wallIns" in response.text
     assert "roofIns" in response.text
@@ -548,7 +620,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert 'this.equipmentLayers.set("districtHeat"' in response.text
     assert 'this.equipmentLayers.set("electricHeat"' in response.text
     assert 'detail.heating === "heat_pump"' in response.text
-    assert 'detail.heating === "electric_resistance"' in response.text
+    assert '"electric_resistance", "electric_boiler"' in response.text
     assert '["wood_stove", "wood_boiler", "pellet_boiler"]' in response.text
     assert 'detail.ventilation === "mechanical" || detail.ventilation === "hrv"' in response.text
     assert "detail.pvKwp" in response.text

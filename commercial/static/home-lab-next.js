@@ -27,6 +27,7 @@
       district_heat: "Termoficare",
       wood_stove: "Șemineu / sobă",
       electric_resistance: "Încălzire electrică",
+      electric_boiler: "Centrală electrică",
       wood_boiler: "Centrală pe lemne",
       pellet_boiler: "Centrală pe peleți"
     },
@@ -41,6 +42,26 @@
       none: "Fără răcire",
       split: "Aer condiționat",
       heat_pump: "Pompă reversibilă"
+    },
+    heatingEmitter: {
+      local: "Sursă locală",
+      radiators_high_temp: "Calorifere clasice",
+      radiators_low_temp: "Calorifere joasă temperatură",
+      underfloor: "Pardoseală",
+      fan_coils: "Ventiloconvectoare",
+      air: "Aer"
+    },
+    heatingStorage: {
+      none: "fără puffer",
+      buffer_small: "puffer mic",
+      buffer_large: "puffer mare"
+    },
+    heatingControl: {
+      manual: "manual",
+      room_thermostat: "termostat",
+      thermostatic_valves: "robineți termostatici",
+      zoned: "control pe zone",
+      weather_compensated: "compensare climatică"
     }
   };
 
@@ -59,6 +80,11 @@
     glazing: "triple_low_e_faces_2_and_5",
     orientation: "south",
     heating: "condensing_gas_boiler",
+    heatPumpSource: "heat_pump_air_water",
+    heatingEmitter: "radiators_high_temp",
+    heatingDistribution: "hydronic_insulated",
+    heatingStorage: "none",
+    heatingControl: "room_thermostat",
     ventilation: "natural",
     cooling: "none",
     pvEnabled: false,
@@ -159,6 +185,72 @@
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+  function heatingChainDefaults(type) {
+    if (type === "heat_pump") return {
+      heatPumpSource: "heat_pump_air_water",
+      heatingEmitter: "underfloor",
+      heatingDistribution: "underfloor",
+      heatingStorage: "none",
+      heatingControl: "zoned",
+    };
+    if (type === "wood_stove") return {
+      heatingEmitter: "local",
+      heatingDistribution: "local",
+      heatingStorage: "none",
+      heatingControl: "manual",
+    };
+    if (type === "electric_resistance") return {
+      heatingEmitter: "local",
+      heatingDistribution: "local",
+      heatingStorage: "none",
+      heatingControl: "room_thermostat",
+    };
+    if (type === "pellet_boiler") return {
+      heatingEmitter: "radiators_high_temp",
+      heatingDistribution: "hydronic_insulated",
+      heatingStorage: "buffer_small",
+      heatingControl: "room_thermostat",
+    };
+    if (type === "district_heat") return {
+      heatingEmitter: "radiators_high_temp",
+      heatingDistribution: "hydronic_insulated",
+      heatingStorage: "none",
+      heatingControl: "thermostatic_valves",
+    };
+    return {
+      heatingEmitter: "radiators_high_temp",
+      heatingDistribution: "hydronic_insulated",
+      heatingStorage: "none",
+      heatingControl: "room_thermostat",
+    };
+  }
+
+  function heatingGeneratorType(state) {
+    if (state.heating === "heat_pump") return state.heatPumpSource || "heat_pump_air_water";
+    return {
+      condensing_gas_boiler: "condensing_gas_boiler",
+      gas_boiler: "gas_boiler",
+      electric_resistance: "electric_direct",
+      electric_boiler: "electric_boiler",
+      district_heat: "district_heat",
+      wood_stove: "wood_stove",
+      wood_boiler: "wood_boiler",
+      pellet_boiler: "pellet_boiler",
+    }[state.heating] || "custom";
+  }
+
+  function applyHeatingDefaults(state, type) {
+    const defaults = heatingChainDefaults(type);
+    Object.assign(state, defaults);
+  }
+
+  function toggleHeatPumpSourceControls() {
+    const home = $("[data-hln-home-heat-pump-source]");
+    const scenario = $("[data-hln-scenario-heat-pump-source]");
+    if (home) home.hidden = homeState.heating !== "heat_pump";
+    if (scenario) scenario.hidden = scenarioState.heating !== "heat_pump";
+  }
+
   function solarThermalKwFromArea(areaM2) {
     return Math.max(0, Number(areaM2) || 0) * SOLAR_THERMAL_NOMINAL_KW_PER_M2;
   }
@@ -246,6 +338,11 @@
     ) next.push("windows");
     if (
       scenarioState.heating !== homeState.heating ||
+      scenarioState.heatPumpSource !== homeState.heatPumpSource ||
+      scenarioState.heatingEmitter !== homeState.heatingEmitter ||
+      scenarioState.heatingDistribution !== homeState.heatingDistribution ||
+      scenarioState.heatingStorage !== homeState.heatingStorage ||
+      scenarioState.heatingControl !== homeState.heatingControl ||
       Number.isFinite(Number(scenarioOverrides.heatingEfficiency)) ||
       referenceMode
     ) next.push("heating");
@@ -291,6 +388,11 @@
       ventilation: state.ventilation,
       cooling: state.cooling,
       heating: state.heating,
+      heatPumpSource: state.heatPumpSource,
+      heatingEmitter: state.heatingEmitter,
+      heatingDistribution: state.heatingDistribution,
+      heatingStorage: state.heatingStorage,
+      heatingControl: state.heatingControl,
       pvEnabled: Boolean(state.pvEnabled),
       pvKwp: Number(state.pvKwp || 0),
       pvTilt: Number(state.pvTilt || 0),
@@ -622,6 +724,7 @@
     const overrideHeatingEfficiency = finiteOverride("heatingEfficiency");
     if (overrideHeatingEfficiency != null) {
       formSet("expert_heating_override", "on");
+      formSet("heating_chain_enabled", "");
       formSet("heating_system_type", overrides.heatingSystemType || "condensing_gas_boiler");
       formSet("heating_carrier", overrides.heatingCarrier || "natural_gas");
       formSet("heating_efficiency", overrideHeatingEfficiency);
@@ -630,7 +733,16 @@
       formSet("heating_choice", overrides.heatingSystemType || "condensing_gas_boiler");
     } else {
       formSet("expert_heating_override", "");
+      formSet("heating_chain_enabled", "on");
       formSet("heating_choice", state.heating);
+      formSet("heating_generator_type", heatingGeneratorType(state));
+      formSet("heating_emitter_type", state.heatingEmitter);
+      formSet("heating_distribution_type", state.heatingDistribution);
+      formSet("heating_storage_type", state.heatingStorage);
+      formSet("heating_control_type", state.heatingControl);
+      formSet("heating_design_flow_temperature_c", "");
+      formSet("heating_design_return_temperature_c", "");
+      formSet("heating_auxiliary_electricity_kwh_year", "");
     }
 
     const overrideCoolingSeer = finiteOverride("coolingSeer");
@@ -847,10 +959,19 @@
     $("#hlnEnvelopeSummary").textContent = `${state.wallIns} cm pereți · ${state.roofIns} cm pod`;
     $("#hlnEnvelopeMeta").textContent = `${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
+    const heatingParts = [
+      labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter,
+      labels.heatingStorage[state.heatingStorage] || state.heatingStorage
+    ];
+    const performance = homeResult?.heating_system;
+    if (performance?.generator_performance_kind === "scop") {
+      heatingParts.push(`SCOP ${fmt(performance.generator_performance,2)}`);
+    }
     const renewableParts = [];
     if (state.pvEnabled) renewableParts.push(`PV ${fmt(state.pvKwp,1)} kWp`);
     if (state.solarThermalEnabled) renewableParts.push(`solar termic ${fmt(state.solarThermalArea,1)} m²`);
     $("#hlnSystemsMeta").textContent = [
+      ...heatingParts,
       labels.ventilation[state.ventilation] || state.ventilation,
       ...renewableParts
     ].join(" · ");
@@ -875,7 +996,13 @@
     if (type === "roof") return `${base.roofIns} → ${now.roofIns} cm pod`;
     if (type === "floor") return `${base.floorIns} → ${now.floorIns} cm pardoseală`;
     if (type === "windows") return `${labels.glazing[base.glazing]} → ${labels.glazing[now.glazing]}`;
-    if (type === "heating") return `${labels.heating[base.heating]} → ${labels.heating[now.heating]}`;
+    if (type === "heating") {
+      const perf = scenarioResult?.heating_system;
+      const detail = perf
+        ? ` · ${labels.heatingEmitter[now.heatingEmitter] || now.heatingEmitter} · ${fmt(perf.design_flow_temperature_c,0)}/${fmt(perf.design_return_temperature_c,0)}°C · ${perf.generator_performance_kind === "scop" ? "SCOP " + fmt(perf.generator_performance,2) : "η " + fmt(100 * Number(perf.generator_performance),0) + "%"}`
+        : ` · ${labels.heatingEmitter[now.heatingEmitter] || now.heatingEmitter}`;
+      return `${labels.heating[base.heating]} → ${labels.heating[now.heating]}${detail}`;
+    }
     if (type === "ventilation") return `${labels.ventilation[base.ventilation]} → ${labels.ventilation[now.ventilation]}`;
     if (type === "pv") {
       if (!now.pvEnabled) return "PV dezactivat";
@@ -1053,7 +1180,11 @@
     if (type === "roof") return `${state.roofIns} cm`;
     if (type === "floor") return `${state.floorIns} cm`;
     if (type === "windows") return `${labels.glazing[state.glazing]} · ${fmt(state.windows,1)} m²`;
-    if (type === "heating") return labels.heating[state.heating] || state.heating;
+    if (type === "heating") {
+      const generator = labels.heating[state.heating] || state.heating;
+      const emitter = labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter;
+      return `${generator} · ${emitter}`;
+    }
     if (type === "ventilation") return `${labels.ventilation[state.ventilation]} · ${labels.cooling[state.cooling]}`;
     if (type === "pv") return state.pvEnabled ? `${fmt(state.pvKwp,1)} kWp · ${state.pvOrientation} · ${fmt(state.pvTilt)}°` : "Fără PV";
     if (type === "solar_thermal") return state.solarThermalEnabled ? `${fmt(state.solarThermalArea,1)} m² · ${state.solarThermalOrientation} · ${fmt(state.solarThermalTilt)}°` : "Fără solar termic";
@@ -1075,6 +1206,27 @@
     $("#hlnScenarioGlazing").value = scenarioState.glazing;
     $("#hlnScenarioWindows").value = scenarioState.windows;
     $("#hlnScenarioHeating").value = scenarioState.heating;
+    $("#hlnScenarioHeatPumpSource").value = scenarioState.heatPumpSource || "heat_pump_air_water";
+    $("#hlnScenarioHeatingEmitter").value = scenarioState.heatingEmitter;
+    $("#hlnScenarioHeatingDistribution").value = scenarioState.heatingDistribution;
+    $("#hlnScenarioHeatingStorage").value = scenarioState.heatingStorage;
+    $("#hlnScenarioHeatingControl").value = scenarioState.heatingControl;
+    toggleHeatPumpSourceControls();
+    const performance = scenarioResult?.heating_system;
+    const performanceNode = $("#hlnScenarioHeatingPerformance");
+    if (performanceNode && activeMeasure === "heating") {
+      if (performance) {
+        const generatorValue = Number(performance.generator_performance);
+        const kind = performance.generator_performance_kind === "scop" ? "SCOP" : "η generator";
+        const shown = performance.generator_performance_kind === "scop"
+          ? fmt(generatorValue, 2)
+          : `${fmt(generatorValue * 100, 0)}%`;
+        performanceNode.textContent =
+          `Tur/retur ${fmt(performance.design_flow_temperature_c,0)}/${fmt(performance.design_return_temperature_c,0)}°C · ${kind} ${shown} · auxiliare ${fmt(performance.auxiliary_electricity_kwh)} kWh/an`;
+      } else {
+        performanceNode.textContent = "Motorul Light va deriva temperatura de tur și performanța din configurația selectată.";
+      }
+    }
     $("#hlnScenarioVentilation").value = scenarioState.ventilation;
     $("#hlnScenarioCooling").value = scenarioState.cooling;
     $("#hlnScenarioPvKwp").value = scenarioState.pvKwp;
@@ -1198,6 +1350,12 @@
     $("#hlnHomeGlazing").value = homeState.glazing;
     $("#hlnOrientation").value = homeState.orientation;
     $("#hlnHomeHeating").value = homeState.heating;
+    $("#hlnHomeHeatPumpSource").value = homeState.heatPumpSource || "heat_pump_air_water";
+    $("#hlnHomeHeatingEmitter").value = homeState.heatingEmitter;
+    $("#hlnHomeHeatingDistribution").value = homeState.heatingDistribution;
+    $("#hlnHomeHeatingStorage").value = homeState.heatingStorage;
+    $("#hlnHomeHeatingControl").value = homeState.heatingControl;
+    toggleHeatPumpSourceControls();
     $("#hlnHomeVentilation").value = homeState.ventilation;
     $("#hlnHomeCooling").value = homeState.cooling;
     $("#hlnHomePvEnabled").checked = Boolean(homeState.pvEnabled);
@@ -1231,7 +1389,26 @@
     homeState.windows = Number($("#hlnHomeWindows").value);
     homeState.glazing = $("#hlnHomeGlazing").value;
     homeState.orientation = $("#hlnOrientation").value;
-    homeState.heating = $("#hlnHomeHeating").value;
+    const selectedHeating = $("#hlnHomeHeating").value;
+    const heatingChanged = selectedHeating !== homeState.heating;
+    homeState.heating = selectedHeating;
+    if (heatingChanged) {
+      applyHeatingDefaults(homeState, selectedHeating);
+    } else {
+      homeState.heatPumpSource = $("#hlnHomeHeatPumpSource").value;
+      homeState.heatingEmitter = $("#hlnHomeHeatingEmitter").value;
+      homeState.heatingDistribution = $("#hlnHomeHeatingDistribution").value;
+      homeState.heatingStorage = $("#hlnHomeHeatingStorage").value;
+      homeState.heatingControl = $("#hlnHomeHeatingControl").value;
+      if (homeState.heating === "heat_pump" && homeState.heatPumpSource === "heat_pump_air_air") {
+        homeState.heatingEmitter = "air";
+        homeState.heatingDistribution = "air";
+        homeState.heatingStorage = "none";
+      }
+      if (homeState.heatingEmitter === "local") homeState.heatingDistribution = "local";
+      if (homeState.heatingEmitter === "air") homeState.heatingDistribution = "air";
+      if (homeState.heatingEmitter === "underfloor") homeState.heatingDistribution = "underfloor";
+    }
     homeState.ventilation = $("#hlnHomeVentilation").value;
     homeState.cooling = $("#hlnHomeCooling").value;
     homeState.pvEnabled = $("#hlnHomePvEnabled").checked;
@@ -1242,6 +1419,7 @@
     homeState.solarThermalArea = Number($("#hlnHomeSolarThermalArea").value);
     homeState.solarThermalOrientation = $("#hlnHomeSolarThermalOrientation").value;
     homeState.solarThermalTilt = Number($("#hlnHomeSolarThermalTilt").value);
+    syncHomeEditorControls();
     renderHome();
     baselineSaved = false;
     referenceMode = false;
@@ -1269,7 +1447,10 @@
       if (type === "roof") scenarioState.roofIns = Math.min(40, Number(homeState.roofIns) + 10);
       if (type === "floor") scenarioState.floorIns = Math.min(25, Number(homeState.floorIns) + 5);
       if (type === "windows" && homeState.glazing !== "triple_low_e_faces_2_and_5") scenarioState.glazing = "triple_low_e_faces_2_and_5";
-      if (type === "heating" && homeState.heating !== "heat_pump") scenarioState.heating = "heat_pump";
+      if (type === "heating" && homeState.heating !== "heat_pump") {
+        scenarioState.heating = "heat_pump";
+        applyHeatingDefaults(scenarioState, "heat_pump");
+      }
       if (type === "ventilation" && homeState.ventilation !== "hrv") scenarioState.ventilation = "hrv";
       if (type === "pv") {
         scenarioState.pvEnabled = true;
@@ -1321,7 +1502,14 @@
       scenarioState.glazing = homeState.glazing;
       scenarioState.windows = homeState.windows;
     }
-    if (type === "heating") scenarioState.heating = homeState.heating;
+    if (type === "heating") {
+      scenarioState.heating = homeState.heating;
+      scenarioState.heatPumpSource = homeState.heatPumpSource;
+      scenarioState.heatingEmitter = homeState.heatingEmitter;
+      scenarioState.heatingDistribution = homeState.heatingDistribution;
+      scenarioState.heatingStorage = homeState.heatingStorage;
+      scenarioState.heatingControl = homeState.heatingControl;
+    }
     if (type === "ventilation") {
       scenarioState.ventilation = homeState.ventilation;
       scenarioState.cooling = homeState.cooling;
@@ -1355,7 +1543,28 @@
       scenarioState.glazing = $("#hlnScenarioGlazing").value;
       scenarioState.windows = Number($("#hlnScenarioWindows").value);
     }
-    if (activeMeasure === "heating") scenarioState.heating = $("#hlnScenarioHeating").value;
+    if (activeMeasure === "heating") {
+      const selected = $("#hlnScenarioHeating").value;
+      const generatorChanged = selected !== scenarioState.heating;
+      scenarioState.heating = selected;
+      if (generatorChanged) {
+        applyHeatingDefaults(scenarioState, selected);
+      } else {
+        scenarioState.heatPumpSource = $("#hlnScenarioHeatPumpSource").value;
+        scenarioState.heatingEmitter = $("#hlnScenarioHeatingEmitter").value;
+        scenarioState.heatingDistribution = $("#hlnScenarioHeatingDistribution").value;
+        scenarioState.heatingStorage = $("#hlnScenarioHeatingStorage").value;
+        scenarioState.heatingControl = $("#hlnScenarioHeatingControl").value;
+        if (scenarioState.heating === "heat_pump" && scenarioState.heatPumpSource === "heat_pump_air_air") {
+          scenarioState.heatingEmitter = "air";
+          scenarioState.heatingDistribution = "air";
+          scenarioState.heatingStorage = "none";
+        }
+        if (scenarioState.heatingEmitter === "local") scenarioState.heatingDistribution = "local";
+        if (scenarioState.heatingEmitter === "air") scenarioState.heatingDistribution = "air";
+        if (scenarioState.heatingEmitter === "underfloor") scenarioState.heatingDistribution = "underfloor";
+      }
+    }
     if (activeMeasure === "ventilation") {
       scenarioState.ventilation = $("#hlnScenarioVentilation").value;
       scenarioState.cooling = $("#hlnScenarioCooling").value;
@@ -1392,6 +1601,10 @@
       scenarioState.solarThermalArea = solarThermalAreaFromKw(power);
       scenarioState.solarThermalEnabled = power > 0;
       focus = "solarThermal";
+    } else if (key === "heating") {
+      scenarioState.heating = value;
+      applyHeatingDefaults(scenarioState, value);
+      focus = "heating";
     } else {
       scenarioState[key] = value;
     }
@@ -1446,7 +1659,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => $(selector).addEventListener("change", updateHomeFromEditors));
 
   $$("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
@@ -1543,7 +1756,7 @@
   $$("[data-hln-intervention-cancel]").forEach(button => button.addEventListener("click", cancelIntervention));
   $("[data-hln-intervention-keep]").addEventListener("click", keepIntervention);
 
-  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling","#hlnScenarioPvKwp","#hlnScenarioPvOrientation","#hlnScenarioPvTilt","#hlnScenarioSolarThermalArea","#hlnScenarioSolarThermalOrientation","#hlnScenarioSolarThermalTilt"]
+  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioHeatPumpSource","#hlnScenarioHeatingEmitter","#hlnScenarioHeatingDistribution","#hlnScenarioHeatingStorage","#hlnScenarioHeatingControl","#hlnScenarioVentilation","#hlnScenarioCooling","#hlnScenarioPvKwp","#hlnScenarioPvOrientation","#hlnScenarioPvTilt","#hlnScenarioSolarThermalArea","#hlnScenarioSolarThermalOrientation","#hlnScenarioSolarThermalTilt"]
     .forEach(selector => $(selector).addEventListener("change", syncInterventionFromControls));
 
   $$(".hln-stepper [data-step]").forEach(button => button.addEventListener("click", () => {
