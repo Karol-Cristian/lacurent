@@ -37,6 +37,11 @@ class BuildingType(str, Enum):
     residential_collective = "residential_collective"
 
 
+class BuildingStatus(str, Enum):
+    existing = "existing"
+    new_project = "new_project"
+
+
 class EnvelopeComponent(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     type: EnvelopeType
@@ -95,10 +100,41 @@ SolarOrientation = Literal[
     "south_east",
 ]
 
+RenewableOrientation = Literal[
+    "south",
+    "south_west",
+    "west",
+    "north_west",
+    "north",
+    "north_east",
+    "east",
+    "south_east",
+    "horizontal",
+]
+
 
 class SolarGlazingGroup(BaseModel):
     orientation: SolarOrientation
     area_m2: float = Field(gt=0)
+
+
+class PhotovoltaicInput(BaseModel):
+    enabled: bool = False
+    peak_power_kwp: float = Field(default=0, ge=0, le=100)
+    orientation: RenewableOrientation = "south"
+    system_efficiency: float = Field(default=0.80, gt=0, le=1)
+
+
+class SolarThermalInput(BaseModel):
+    enabled: bool = False
+    collector_area_m2: float = Field(default=0, ge=0, le=100)
+    orientation: RenewableOrientation = "south"
+    useful_efficiency: float = Field(default=0.42, gt=0, le=1)
+
+
+class RenewablesInput(BaseModel):
+    photovoltaic: PhotovoltaicInput = Field(default_factory=PhotovoltaicInput)
+    solar_thermal: SolarThermalInput = Field(default_factory=SolarThermalInput)
 
 
 class SolarInput(BaseModel):
@@ -149,10 +185,12 @@ class BuildingInput(BaseModel):
     heated_volume_m3: float = Field(gt=0)
     indoor_design_temperature_c: float = Field(default=20, ge=16, le=24)
     building_type: BuildingType = BuildingType.residential_individual
+    building_status: BuildingStatus = BuildingStatus.existing
     construction_year: int | None = Field(default=None, ge=1800, le=2100)
     internal_gains_w_m2: float | None = Field(default=None, ge=0)
     solar_gains_kwh_m2_month: float = Field(default=0, ge=0)
     solar: SolarInput = Field(default_factory=SolarInput)
+    renewables: RenewablesInput = Field(default_factory=RenewablesInput)
     envelope: list[EnvelopeComponent] = Field(min_items=1)
     thermal_bridges: list[ThermalBridge] = Field(default_factory=list)
     ventilation: VentilationInput
@@ -245,6 +283,16 @@ class EnvelopeUValuesResult(BaseModel):
     exterior_door_u_value_w_m2k: float | None = None
 
 
+class RenewableResult(BaseModel):
+    photovoltaic_generation_kwh: float = 0
+    photovoltaic_self_consumed_kwh: float = 0
+    photovoltaic_exported_kwh: float = 0
+    solar_thermal_useful_kwh: float = 0
+    total_renewable_energy_kwh: float = 0
+    renewable_share_percent: float = 0
+    source_note: str | None = None
+
+
 class CalculationResult(BaseModel):
     input: BuildingInput
     climate: dict
@@ -261,6 +309,7 @@ class CalculationResult(BaseModel):
     heating: EnergyServiceResult
     cooling: EnergyServiceResult
     dhw: EnergyServiceResult
+    renewables: RenewableResult = Field(default_factory=RenewableResult)
     final_energy_by_service: dict[str, float]
     final_energy_by_carrier: dict[str, float]
     total_final_energy_kwh: float
