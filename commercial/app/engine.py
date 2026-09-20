@@ -23,6 +23,7 @@ from .models import (
     HeatingControlType,
     HeatingDistributionType,
     HeatingEmitterType,
+    HeatingGeneratorType,
     HeatingStorageType,
     HeatingSystemPerformanceResult,
     HeatingSystemType,
@@ -402,8 +403,28 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
 def _default_heating_chain(building: BuildingInput) -> dict:
     heating = building.heating
     cost_profile = heating.cost_profile or ""
+
+    if heating.system_type == HeatingSystemType.condensing_gas_boiler:
+        generator = HeatingGeneratorType.condensing_gas_boiler
+    elif heating.system_type == HeatingSystemType.gas_boiler:
+        generator = HeatingGeneratorType.gas_boiler
+    elif heating.system_type == HeatingSystemType.electric_resistance:
+        generator = HeatingGeneratorType.electric_direct
+    elif heating.system_type == HeatingSystemType.heat_pump:
+        generator = HeatingGeneratorType.heat_pump_air_water
+    elif heating.system_type == HeatingSystemType.district_heat:
+        generator = HeatingGeneratorType.district_heat
+    elif cost_profile == "pellets":
+        generator = HeatingGeneratorType.pellet_boiler
+    elif cost_profile == "firewood" and heating.efficiency is not None and heating.efficiency <= 0.76:
+        generator = HeatingGeneratorType.wood_stove
+    elif cost_profile == "firewood":
+        generator = HeatingGeneratorType.wood_boiler
+    else:
+        generator = HeatingGeneratorType.custom
     if heating.system_type == HeatingSystemType.heat_pump:
         return {
+            "generator_type": generator,
             "emitter_type": HeatingEmitterType.underfloor,
             "distribution_type": HeatingDistributionType.underfloor,
             "storage_type": HeatingStorageType.none,
@@ -411,6 +432,7 @@ def _default_heating_chain(building: BuildingInput) -> dict:
         }
     if heating.system_type == HeatingSystemType.electric_resistance:
         return {
+            "generator_type": generator,
             "emitter_type": HeatingEmitterType.local,
             "distribution_type": HeatingDistributionType.local,
             "storage_type": HeatingStorageType.none,
@@ -418,12 +440,14 @@ def _default_heating_chain(building: BuildingInput) -> dict:
         }
     if heating.system_type == HeatingSystemType.custom and cost_profile == "firewood" and heating.efficiency is not None and heating.efficiency <= 0.76:
         return {
+            "generator_type": generator,
             "emitter_type": HeatingEmitterType.local,
             "distribution_type": HeatingDistributionType.local,
             "storage_type": HeatingStorageType.none,
             "control_type": HeatingControlType.manual,
         }
     return {
+        "generator_type": generator,
         "emitter_type": HeatingEmitterType.radiators_high_temp,
         "distribution_type": HeatingDistributionType.hydronic_insulated,
         "storage_type": HeatingStorageType.none,
@@ -452,6 +476,7 @@ def heating_system_performance(
     defaults = _default_heating_chain(building)
     details = heating.details
 
+    generator = details.generator_type if details and details.generator_type else defaults["generator_type"]
     emitter = details.emitter_type if details else defaults["emitter_type"]
     distribution = details.distribution_type if details else defaults["distribution_type"]
     storage = details.storage_type if details else defaults["storage_type"]
@@ -495,6 +520,7 @@ def heating_system_performance(
             float(heating.scop)
             if heating.scop is not None
             else float(cfg["heat_pump_scop_by_emitter"][emitter.value])
+            * float(cfg.get("heat_pump_generator_factor", {}).get(generator.value, 1.0))
         )
         generator_kind = "scop"
         carrier = Carrier.electricity
@@ -532,7 +558,7 @@ def heating_system_performance(
     auxiliary = (
         float(details.auxiliary_electricity_kwh_year)
         if details and details.auxiliary_electricity_kwh_year is not None
-        else float(cfg["auxiliary_electricity_kwh_year"].get(heating.cost_profile or heating.system_type.value, cfg["auxiliary_electricity_kwh_year"].get(heating.system_type.value, 0)))
+        else float(cfg["auxiliary_electricity_kwh_year"].get(generator.value, 0))
     )
 
     service = EnergyServiceResult(
@@ -541,6 +567,7 @@ def heating_system_performance(
         carrier=carrier,
     )
     performance = HeatingSystemPerformanceResult(
+        generator_type=generator,
         emitter_type=emitter,
         distribution_type=distribution,
         storage_type=storage,
