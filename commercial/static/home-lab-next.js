@@ -366,7 +366,13 @@
         digits: 1,
         value: () => scenarioState.pvEnabled ? Number(scenarioState.pvKwp) : 0,
         homeValue: () => homeState.pvEnabled ? Number(homeState.pvKwp) : 0,
-        caption: homeValue => `Casa mea: ${fmt(homeValue, 1)} kWp · 0 = fără PV`,
+        caption: homeValue => {
+          const pv = scenarioResult?.renewables?.pv;
+          if (scenarioState.pvEnabled && pv?.enabled) {
+            return `Producție ${fmt(pv.annual_generation_kwh)} kWh/an · autoconsum ${fmt(pv.self_consumed_kwh)} · export ${fmt(pv.exported_kwh)}`;
+          }
+          return `Casa mea: ${fmt(homeValue, 1)} kWp · 0 = fără PV`;
+        },
       },
       solarThermalKw: {
         selector: "#hlnLiveSolarThermalKw",
@@ -1184,10 +1190,12 @@
     }
 
     syncMeasuresFromScenario();
+    // Queue the calculation before repainting the UI so a rendering problem
+    // cannot prevent the changed scenario from reaching the engine.
+    scheduleCalculate("scenario", 90);
     renderAll();
     persist();
     emitVisualState(focus);
-    scheduleCalculate("scenario", 90);
   }
 
   function nudgeLiveRange(row, delta) {
@@ -1281,9 +1289,13 @@
   liveRangeBindings.forEach(([selector, key]) => {
     const input = $(selector);
     if (!input) return;
-    input.addEventListener("input", () => {
+    const commitRangeValue = () => {
       applyLiveScenarioChange(key, Number(input.value));
-    });
+    };
+    input.addEventListener("input", commitRangeValue);
+    // iOS/Safari and embedded contexts are more reliable when the released
+    // range value is also committed on change.
+    input.addEventListener("change", commitRangeValue);
     input.addEventListener("wheel", event => {
       if (Math.abs(event.deltaY) < 1) return;
       event.preventDefault();

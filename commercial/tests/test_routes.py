@@ -358,7 +358,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next6" in response.text
-    assert "/static/home-lab-next.js?v=next7" in response.text
+    assert "/static/home-lab-next.js?v=next8" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d25" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -405,6 +405,47 @@ def test_partner_home_lab_next_calculation_reuses_existing_energy_engine() -> No
     payload = response.json()
     assert payload["final_energy_kwh"] > 0
     assert payload["design_heat_load_kw"] > 0
+
+
+def test_home_lab_next_direct_electric_heating_pv_changes_live_result() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "building_length_m": "10",
+            "building_width_m": "8",
+            "heated_levels": "2",
+            "average_height_m": "2.7",
+            "house_window_area_m2": "20",
+            "heating_choice": "electric_resistance",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+            "pv_enabled": "",
+            "pv_installed_power_kwp": "0",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+        }
+    )
+
+    without_pv = client.post("/api/home-lab-next/calculate", data=base)
+    assert without_pv.status_code == 200
+    without_payload = without_pv.json()
+
+    with_pv_data = dict(base)
+    with_pv_data.update(
+        {
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "10",
+        }
+    )
+    with_pv = client.post("/api/home-lab-next/calculate", data=with_pv_data)
+    assert with_pv.status_code == 200
+    with_payload = with_pv.json()
+
+    assert with_payload["renewables"]["pv"]["annual_generation_kwh"] > 0
+    assert with_payload["renewables"]["pv"]["self_consumed_kwh"] > 0
+    assert with_payload["final_energy_kwh"] < without_payload["final_energy_kwh"]
+    assert with_payload["annual_cost_lei"] < without_payload["annual_cost_lei"]
 
 
 def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> None:
@@ -457,6 +498,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70" in response.text
     assert 'key === "pvKwp"' in response.text
     assert 'key === "solarThermalKw"' in response.text
+    assert 'input.addEventListener("change", commitRangeValue)' in response.text
+    assert "annual_generation_kwh" in response.text
+    assert "self_consumed_kwh" in response.text
+    assert "exported_kwh" in response.text
     assert 'formSet("pv_installed_power_kwp"' in response.text
     assert 'formSet("solar_thermal_collector_area_m2"' in response.text
     assert "reference_mc001" in response.text
