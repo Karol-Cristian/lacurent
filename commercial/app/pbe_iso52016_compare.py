@@ -9,6 +9,7 @@ import pandas as pd
 
 from .engine import calculate, demo_building
 from .models import BuildingInput, model_to_dict
+from .methodology import methodology
 from .vendor.pybuildingenergy_iso52016 import PBE_ISO52016_UPSTREAM
 from .vendor.pybuildingenergy_iso52016.utils import (
     ISO52016,
@@ -73,6 +74,7 @@ def pbe_building_from_lacurent(
     ventilation_h_w_k: float = 0.0,
     thermal_bridge_h_w_k: float = 0.0,
     internal_gain_w_m2: float = 0.0,
+    effective_internal_capacity_j_m2k: float | None = None,
 ) -> dict[str, Any]:
     """Map the controlled LaCurent geometry to pyBuildingEnergy's BUI schema.
 
@@ -92,6 +94,8 @@ def pbe_building_from_lacurent(
     door_area, door_u = _weighted_u(building, "exterior_door")
 
     surfaces: list[dict[str, Any]] = []
+    align_effective_mass = effective_internal_capacity_j_m2k is not None
+    external_opaque_capacity = 0.0 if align_effective_mass else None
     cardinal = [
         ("north", 0.0),
         ("east", 90.0),
@@ -109,7 +113,11 @@ def pbe_building_from_lacurent(
                     "sky_view_factor": 0.5,
                     "u_value": wall_u,
                     "solar_absorptance": 0.6,
-                    "thermal_capacity": 165000.0,
+                    "thermal_capacity": (
+                        external_opaque_capacity
+                        if external_opaque_capacity is not None
+                        else 165000.0
+                    ),
                     "orientation": {"azimuth": azimuth, "tilt": 90.0},
                     "name_adj_zone": None,
                     "zone": "main",
@@ -153,7 +161,11 @@ def pbe_building_from_lacurent(
                 "sky_view_factor": 1.0,
                 "u_value": roof_u,
                 "solar_absorptance": 0.6,
-                "thermal_capacity": 120000.0,
+                "thermal_capacity": (
+                    external_opaque_capacity
+                    if external_opaque_capacity is not None
+                    else 120000.0
+                ),
                 "orientation": {"azimuth": 0.0, "tilt": 0.0},
                 "name_adj_zone": None,
                     "zone": "main",
@@ -171,12 +183,38 @@ def pbe_building_from_lacurent(
                 "sky_view_factor": 0.5,
                 "u_value": door_u,
                 "solar_absorptance": 0.6,
-                "thermal_capacity": 80000.0,
+                "thermal_capacity": (
+                    external_opaque_capacity
+                    if external_opaque_capacity is not None
+                    else 80000.0
+                ),
                 "orientation": {"azimuth": 180.0, "tilt": 90.0},
                 "name_adj_zone": None,
                     "zone": "main",
                 "height": 2.1,
                 "length": max(0.1, door_area / 2.1),
+            }
+        )
+
+    if align_effective_mass:
+        # PBE already assigns 10,000 J/(m² K) to the zone-air node.
+        # Add the remainder as adiabatic internal mass so the total effective
+        # zone capacity equals the MC001 class value exactly.
+        target = float(effective_internal_capacity_j_m2k or 0.0)
+        mass_capacity = max(0.0, target - 10000.0)
+        surfaces.append(
+            {
+                "name": "MC001 effective internal thermal mass",
+                "type": "opaque",
+                "boundary": "ADIABATIC",
+                "ISO52016_type_string": "AD",
+                "area": area,
+                "zone": "main",
+                "sky_view_factor": 0.0,
+                "u_value": 0.0,
+                "thermal_capacity": mass_capacity,
+                "solar_absorptance": 0.0,
+                "orientation": {"azimuth": 0.0, "tilt": 0.0},
             }
         )
 
@@ -497,11 +535,16 @@ def run_controlled_internal_gains_comparison() -> dict[str, Any]:
     h_tb = _thermal_bridge_total_w_k(building)
     gain_w_m2 = float(building.internal_gains_w_m2 or 0.0)
 
+    capacity_class = methodology()["monthly_method"]["default_effective_internal_heat_capacity_class"]
+    capacity_j_m2k = float(
+        methodology()["monthly_method"]["effective_internal_heat_capacity_j_m2k"][capacity_class]
+    )
     pbe_bui = pbe_building_from_lacurent(
         building,
         ventilation_h_w_k=h_ve,
         thermal_bridge_h_w_k=h_tb,
         internal_gain_w_m2=gain_w_m2,
+        effective_internal_capacity_j_m2k=capacity_j_m2k,
     )
     weather = synthetic_weather_from_lacurent(current)
     _LaCurentSyntheticISO52016.set_weather(weather)
@@ -558,6 +601,12 @@ def run_controlled_internal_gains_comparison() -> dict[str, Any]:
             ),
             "lacurent_h_ve_w_k": round(h_ve, 6),
             "thermal_bridge_h_w_k": round(h_tb, 6),
+            "effective_capacity_class": capacity_class,
+            "effective_capacity_j_m2k": round(capacity_j_m2k, 3),
+            "effective_capacity_total_mj_k": round(
+                capacity_j_m2k * float(building.heated_floor_area_m2) / 1_000_000.0,
+                3,
+            ),
         },
         "lacurent": {
             "heating_need_kwh": round(current_heating_kwh, 3),
