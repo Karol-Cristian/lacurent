@@ -104,12 +104,19 @@
       "air": 3.0
     },
     "heat_pump_scop_source": "Legacy LaCurent internal estimates retained only as Light Engine defaults; confidence low. MC001-2022 Chapter 4.1 requires source/sink temperatures, COP/capacity behaviour, auxiliaries and backup for normative heat-pump calculation.",
+    "heat_pump_generator_factor": {
+      "heat_pump_air_water": 1.0,
+      "heat_pump_ground_water": 1.2,
+      "heat_pump_air_air": 1.0
+    },
     "auxiliary_electricity_kwh_year": {
-      "local": 0,
       "gas_boiler": 120,
       "condensing_gas_boiler": 120,
-      "electric_resistance": 0,
-      "heat_pump": 220,
+      "electric_direct": 0,
+      "electric_boiler": 120,
+      "heat_pump_air_water": 220,
+      "heat_pump_ground_water": 220,
+      "heat_pump_air_air": 30,
       "district_heat": 120,
       "wood_stove": 0,
       "wood_boiler": 120,
