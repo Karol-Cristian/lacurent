@@ -1538,20 +1538,15 @@
     if (heatingChanged) {
       applyHeatingDefaults(homeState, selectedHeating);
     } else {
-      homeState.heatPumpSource = $("#hlnHomeHeatPumpSource").value;
+      if (homeState.heating === "heat_pump") {
+        homeState.heatPumpSource = $("#hlnHomeHeatPumpSource").value;
+      }
       homeState.heatingEmitter = $("#hlnHomeHeatingEmitter").value;
       homeState.heatingDistribution = $("#hlnHomeHeatingDistribution").value;
       homeState.heatingStorage = $("#hlnHomeHeatingStorage").value;
       homeState.heatingControl = $("#hlnHomeHeatingControl").value;
-      if (homeState.heating === "heat_pump" && homeState.heatPumpSource === "heat_pump_air_air") {
-        homeState.heatingEmitter = "air";
-        homeState.heatingDistribution = "air";
-        homeState.heatingStorage = "none";
-      }
-      if (homeState.heatingEmitter === "local") homeState.heatingDistribution = "local";
-      if (homeState.heatingEmitter === "air") homeState.heatingDistribution = "air";
-      if (homeState.heatingEmitter === "underfloor") homeState.heatingDistribution = "underfloor";
     }
+    normalizeHeatingState(homeState);
     homeState.ventilation = $("#hlnHomeVentilation").value;
     homeState.cooling = $("#hlnHomeCooling").value;
     homeState.pvEnabled = $("#hlnHomePvEnabled").checked;
@@ -1693,20 +1688,15 @@
       if (generatorChanged) {
         applyHeatingDefaults(scenarioState, selected);
       } else {
-        scenarioState.heatPumpSource = $("#hlnScenarioHeatPumpSource").value;
+        if (scenarioState.heating === "heat_pump") {
+          scenarioState.heatPumpSource = $("#hlnScenarioHeatPumpSource").value;
+        }
         scenarioState.heatingEmitter = $("#hlnScenarioHeatingEmitter").value;
         scenarioState.heatingDistribution = $("#hlnScenarioHeatingDistribution").value;
         scenarioState.heatingStorage = $("#hlnScenarioHeatingStorage").value;
         scenarioState.heatingControl = $("#hlnScenarioHeatingControl").value;
-        if (scenarioState.heating === "heat_pump" && scenarioState.heatPumpSource === "heat_pump_air_air") {
-          scenarioState.heatingEmitter = "air";
-          scenarioState.heatingDistribution = "air";
-          scenarioState.heatingStorage = "none";
-        }
-        if (scenarioState.heatingEmitter === "local") scenarioState.heatingDistribution = "local";
-        if (scenarioState.heatingEmitter === "air") scenarioState.heatingDistribution = "air";
-        if (scenarioState.heatingEmitter === "underfloor") scenarioState.heatingDistribution = "underfloor";
       }
+      normalizeHeatingState(scenarioState);
     }
     if (activeMeasure === "ventilation") {
       scenarioState.ventilation = $("#hlnScenarioVentilation").value;
