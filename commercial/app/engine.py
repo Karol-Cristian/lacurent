@@ -20,6 +20,11 @@ from .models import (
     EnergyServiceResult,
     EnvelopeGeometryResult,
     EnvelopeUValuesResult,
+    HeatingControlType,
+    HeatingDistributionType,
+    HeatingEmitterType,
+    HeatingStorageType,
+    HeatingSystemPerformanceResult,
     HeatingSystemType,
     IndicatorResult,
     MonthlyRenewableBalance,
@@ -394,28 +399,173 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
     return monthly
 
 
-def heating_final_energy(building: BuildingInput, useful_kwh: float) -> EnergyServiceResult:
+def _default_heating_chain(building: BuildingInput) -> dict:
     heating = building.heating
-    defaults = default_heating_performance(heating.system_type.value)
-
+    cost_profile = heating.cost_profile or ""
     if heating.system_type == HeatingSystemType.heat_pump:
-        final = useful_kwh / (heating.scop or defaults["scop"])
-        return EnergyServiceResult(useful_kwh=_round(useful_kwh), final_kwh=_round(final), carrier=Carrier.electricity)
-
-    efficiency = heating.efficiency or defaults["efficiency"]
-    carrier = heating.carrier
+        return {
+            "emitter_type": HeatingEmitterType.underfloor,
+            "distribution_type": HeatingDistributionType.underfloor,
+            "storage_type": HeatingStorageType.none,
+            "control_type": HeatingControlType.zoned,
+        }
     if heating.system_type == HeatingSystemType.electric_resistance:
-        carrier = Carrier.electricity
-    elif heating.system_type == HeatingSystemType.district_heat:
-        carrier = Carrier.district_heat
-    elif heating.system_type in {HeatingSystemType.gas_boiler, HeatingSystemType.condensing_gas_boiler}:
-        carrier = Carrier.natural_gas
+        return {
+            "emitter_type": HeatingEmitterType.local,
+            "distribution_type": HeatingDistributionType.local,
+            "storage_type": HeatingStorageType.none,
+            "control_type": HeatingControlType.room_thermostat,
+        }
+    if heating.system_type == HeatingSystemType.custom and cost_profile == "firewood" and heating.efficiency is not None and heating.efficiency <= 0.76:
+        return {
+            "emitter_type": HeatingEmitterType.local,
+            "distribution_type": HeatingDistributionType.local,
+            "storage_type": HeatingStorageType.none,
+            "control_type": HeatingControlType.manual,
+        }
+    return {
+        "emitter_type": HeatingEmitterType.radiators_high_temp,
+        "distribution_type": HeatingDistributionType.hydronic_insulated,
+        "storage_type": HeatingStorageType.none,
+        "control_type": (
+            HeatingControlType.thermostatic_valves
+            if heating.system_type == HeatingSystemType.district_heat
+            else HeatingControlType.room_thermostat
+        ),
+    }
 
-    return EnergyServiceResult(
+
+def heating_system_performance(
+    building: BuildingInput,
+    useful_kwh: float,
+) -> tuple[EnergyServiceResult, HeatingSystemPerformanceResult]:
+    """Resolve the LaCurent Light heating chain.
+
+    The subsystem topology mirrors MC001-2022 Chapter 3 (emission,
+    distribution, storage, generation and auxiliaries). The automatic factors
+    below come from the explicitly-labelled Light product registry and are not
+    presented as normative MC001 table values.
+    """
+
+    heating = building.heating
+    cfg = methodology()["heating_system_chain_light"]
+    defaults = _default_heating_chain(building)
+    details = heating.details
+
+    emitter = details.emitter_type if details else defaults["emitter_type"]
+    distribution = details.distribution_type if details else defaults["distribution_type"]
+    storage = details.storage_type if details else defaults["storage_type"]
+    control = details.control_type if details else defaults["control_type"]
+
+    emitter_cfg = cfg["emitters"][emitter.value]
+    distribution_cfg = cfg["distribution"][distribution.value]
+    storage_cfg = cfg["storage"][storage.value]
+    control_cfg = cfg["control"][control.value]
+
+    flow_c = (
+        float(details.design_flow_temperature_c)
+        if details and details.design_flow_temperature_c is not None
+        else float(emitter_cfg["flow_c"])
+    )
+    return_c = (
+        float(details.design_return_temperature_c)
+        if details and details.design_return_temperature_c is not None
+        else float(emitter_cfg["return_c"])
+    )
+
+    emission_eff = float(emitter_cfg["efficiency"])
+    distribution_eff = float(distribution_cfg["efficiency"])
+    storage_eff = float(storage_cfg["efficiency"])
+    control_eff = float(control_cfg["efficiency"])
+    downstream_eff = emission_eff * distribution_eff * storage_eff * control_eff
+
+    source = "lacurent_light_product_estimate"
+    confidence = "low"
+    assumptions = [
+        cfg["status"],
+        f"Emitter preset: {emitter_cfg['label']} ({flow_c:.0f}/{return_c:.0f}°C).",
+        f"Distribution preset: {distribution_cfg['label']}.",
+        f"Storage preset: {storage_cfg['label']}.",
+        f"Control preset: {control_cfg['label']}.",
+    ]
+
+    carrier = heating.carrier
+    if heating.system_type == HeatingSystemType.heat_pump:
+        generator_performance = (
+            float(heating.scop)
+            if heating.scop is not None
+            else float(cfg["heat_pump_scop_by_emitter"][emitter.value])
+        )
+        generator_kind = "scop"
+        carrier = Carrier.electricity
+        if heating.scop is None:
+            assumptions.append(cfg["heat_pump_scop_source"])
+        else:
+            source = "explicit_user_scop_plus_light_chain"
+            confidence = "medium"
+    else:
+        defaults_generator = default_heating_performance(heating.system_type.value)
+        generator_performance = float(heating.efficiency or defaults_generator["efficiency"])
+        generator_kind = "efficiency"
+        if heating.system_type == HeatingSystemType.condensing_gas_boiler and heating.efficiency is None:
+            if flow_c <= 45:
+                generator_performance = min(generator_performance + 0.02, 0.98)
+            elif flow_c >= 60:
+                generator_performance = max(generator_performance - 0.03, 0.80)
+            assumptions.append(
+                "Condensing-boiler Light adjustment uses emitter flow temperature; this is a LaCurent product estimate, not an MC001 table value."
+            )
+        if heating.efficiency is not None:
+            source = "explicit_user_efficiency_plus_light_chain"
+            confidence = "medium"
+
+        if heating.system_type == HeatingSystemType.electric_resistance:
+            carrier = Carrier.electricity
+        elif heating.system_type == HeatingSystemType.district_heat:
+            carrier = Carrier.district_heat
+        elif heating.system_type in {HeatingSystemType.gas_boiler, HeatingSystemType.condensing_gas_boiler}:
+            carrier = Carrier.natural_gas
+
+    effective_system_performance = max(generator_performance * downstream_eff, 0.1)
+    main_final = useful_kwh / effective_system_performance
+
+    auxiliary = (
+        float(details.auxiliary_electricity_kwh_year)
+        if details and details.auxiliary_electricity_kwh_year is not None
+        else float(cfg["auxiliary_electricity_kwh_year"].get(heating.cost_profile or heating.system_type.value, cfg["auxiliary_electricity_kwh_year"].get(heating.system_type.value, 0)))
+    )
+
+    service = EnergyServiceResult(
         useful_kwh=_round(useful_kwh),
-        final_kwh=_round(useful_kwh / efficiency),
+        final_kwh=_round(main_final),
         carrier=carrier,
     )
+    performance = HeatingSystemPerformanceResult(
+        emitter_type=emitter,
+        distribution_type=distribution,
+        storage_type=storage,
+        control_type=control,
+        design_flow_temperature_c=_round(flow_c, 1),
+        design_return_temperature_c=_round(return_c, 1),
+        emission_efficiency=_round(emission_eff, 4),
+        distribution_efficiency=_round(distribution_eff, 4),
+        storage_efficiency=_round(storage_eff, 4),
+        control_efficiency=_round(control_eff, 4),
+        generator_performance=_round(generator_performance, 4),
+        generator_performance_kind=generator_kind,
+        effective_system_performance=_round(effective_system_performance, 4),
+        auxiliary_electricity_kwh=_round(auxiliary),
+        main_carrier_final_kwh=_round(main_final),
+        total_heating_final_kwh=_round(main_final + auxiliary),
+        performance_source=source,
+        confidence=confidence,
+        assumptions=assumptions,
+    )
+    return service, performance
+
+
+def heating_final_energy(building: BuildingInput, useful_kwh: float) -> EnergyServiceResult:
+    return heating_system_performance(building, useful_kwh)[0]
 
 
 def cooling_final_energy(building: BuildingInput, useful_kwh: float) -> EnergyServiceResult:
@@ -556,6 +706,7 @@ def renewable_energy_result(
     renewable_rows: list[dict],
     pv_pr: float,
     thermal_efficiency: float,
+    heating_auxiliary_kwh_year: float = 0.0,
 ) -> RenewableEnergyResult:
     pv = building.renewables.pv
     solar_thermal = building.renewables.solar_thermal
@@ -563,8 +714,15 @@ def renewable_energy_result(
     cooling_ratio = _service_final_per_useful(cooling)
     dhw_ratio = _service_final_per_useful(dhw)
 
+    annual_heating_useful = sum(float(row["useful_heating_kwh"]) for row in monthly_balance)
+
     for balance, renewable in zip(monthly_balance, renewable_rows):
         electric_load = 0.0
+        if heating_auxiliary_kwh_year > 0:
+            if annual_heating_useful > 0:
+                electric_load += heating_auxiliary_kwh_year * float(balance["useful_heating_kwh"]) / annual_heating_useful
+            else:
+                electric_load += heating_auxiliary_kwh_year / max(len(monthly_balance), 1)
         if heating.carrier == Carrier.electricity:
             electric_load += float(balance["useful_heating_kwh"]) * heating_ratio
         if cooling.carrier == Carrier.electricity:
@@ -655,16 +813,26 @@ def net_final_energy_by_carrier(
     }
 
 
-def final_energy_by_service(heating: EnergyServiceResult, cooling: EnergyServiceResult, dhw: EnergyServiceResult) -> dict[str, float]:
+def final_energy_by_service(
+    heating: EnergyServiceResult,
+    cooling: EnergyServiceResult,
+    dhw: EnergyServiceResult,
+    heating_auxiliary_kwh: float = 0.0,
+) -> dict[str, float]:
     return {
-        "heating": heating.final_kwh,
+        "heating": _round(heating.final_kwh + heating_auxiliary_kwh),
         "cooling": cooling.final_kwh,
         "dhw": dhw.final_kwh,
     }
 
 
-def final_energy_by_carrier(*services: EnergyServiceResult) -> dict[str, float]:
+def final_energy_by_carrier(
+    *services: EnergyServiceResult,
+    additional_electricity_kwh: float = 0.0,
+) -> dict[str, float]:
     totals: dict[str, float] = defaultdict(float)
+    if additional_electricity_kwh > 0:
+        totals[Carrier.electricity.value] += additional_electricity_kwh
     for service in services:
         if service.carrier and service.final_kwh:
             totals[service.carrier.value] += service.final_kwh
@@ -699,7 +867,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
     annual_cooling = sum(row["useful_cooling_kwh"] for row in monthly)
 
     renewable_rows, pv_pr, thermal_efficiency = _renewable_resource_rows(building, climate)
-    heating = heating_final_energy(building, annual_heating)
+    heating, heating_system = heating_system_performance(building, annual_heating)
     cooling = cooling_final_energy(building, annual_cooling)
     dhw_backup_useful = sum(float(row["dhw_backup_useful_kwh"]) for row in renewable_rows)
     dhw = dhw_energy(building, dhw_backup_useful)
@@ -713,10 +881,21 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         renewable_rows,
         pv_pr,
         thermal_efficiency,
+        heating_auxiliary_kwh_year=heating_system.auxiliary_electricity_kwh,
     )
 
-    by_service = final_energy_by_service(heating, cooling, dhw)
-    gross_by_carrier = final_energy_by_carrier(heating, cooling, dhw)
+    by_service = final_energy_by_service(
+        heating,
+        cooling,
+        dhw,
+        heating_auxiliary_kwh=heating_system.auxiliary_electricity_kwh,
+    )
+    gross_by_carrier = final_energy_by_carrier(
+        heating,
+        cooling,
+        dhw,
+        additional_electricity_kwh=heating_system.auxiliary_electricity_kwh,
+    )
     by_carrier = net_final_energy_by_carrier(gross_by_carrier, renewables)
     primary = primary_energy(by_carrier, building.heated_floor_area_m2)
     co2 = co2_emissions(by_carrier, building.heated_floor_area_m2)
@@ -750,6 +929,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         annual_heating_demand_kwh=_round(annual_heating),
         annual_cooling_demand_kwh=_round(annual_cooling),
         heating=heating,
+        heating_system=heating_system,
         cooling=cooling,
         dhw=dhw,
         final_energy_by_service=by_service,
