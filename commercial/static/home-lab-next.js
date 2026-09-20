@@ -948,8 +948,13 @@
     $("#hlnPvFields").hidden = !homeState.pvEnabled;
     $("#hlnSolarThermalFields").hidden = !homeState.solarThermalEnabled;
     const source = currentResult?.monthly?.find(row => row.solar_station_name);
+    const sourceMode = source?.solar_station_resolution === "climate_profile_analog"
+      ? "profil climatic analog"
+      : source?.solar_station_resolution === "coincident_source_station"
+        ? "stație-sursă coincidentă"
+        : "corespondent direct";
     $("#hlnSolarSourceSummary").textContent = source?.solar_station_name
-      ? `${source.solar_station_name} · ${source.solar_station_resolution || "direct"}`
+      ? `${source.solar_station_name} · ${sourceMode}`
       : "Se determină după localitate";
     $$("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
   }
@@ -971,14 +976,16 @@
     homeState.orientation = $("#hlnOrientation").value;
 
     const newHeating = $("#hlnHomeHeating").value;
-    if (changedId === "hlnHomeHeating" && newHeating !== homeState.heating) {
+    const heatingChanged = changedId === "hlnHomeHeating" && newHeating !== homeState.heating;
+    if (heatingChanged) {
       const defaults = heatingDefaults[newHeating] || heatingDefaults.condensing_gas_boiler;
-      homeState.heatingEfficiency = defaults.efficiency ?? homeState.heatingEfficiency;
-      homeState.heatingScop = defaults.scop ?? homeState.heatingScop;
+      homeState.heatingEfficiency = defaults.efficiency ?? 94;
+      homeState.heatingScop = defaults.scop ?? 3.2;
+    } else {
+      homeState.heatingEfficiency = Number($("#hlnHomeHeatingEfficiency").value) || homeState.heatingEfficiency;
+      homeState.heatingScop = Number($("#hlnHomeHeatingScop").value) || homeState.heatingScop;
     }
     homeState.heating = newHeating;
-    homeState.heatingEfficiency = Number($("#hlnHomeHeatingEfficiency").value) || homeState.heatingEfficiency;
-    homeState.heatingScop = Number($("#hlnHomeHeatingScop").value) || homeState.heatingScop;
     homeState.dhwMode = $("#hlnHomeDhw").value;
     homeState.dhwEfficiency = Number($("#hlnHomeDhwEfficiency").value) || 86;
     homeState.ventilation = $("#hlnHomeVentilation").value;
@@ -1098,7 +1105,15 @@
       scenarioState.glazing = $("#hlnScenarioGlazing").value;
       scenarioState.windows = Number($("#hlnScenarioWindows").value);
     }
-    if (activeMeasure === "heating") scenarioState.heating = $("#hlnScenarioHeating").value;
+    if (activeMeasure === "heating") {
+      const nextHeating = $("#hlnScenarioHeating").value;
+      if (nextHeating !== scenarioState.heating) {
+        const defaults = heatingDefaults[nextHeating] || heatingDefaults.condensing_gas_boiler;
+        scenarioState.heatingEfficiency = defaults.efficiency ?? 94;
+        scenarioState.heatingScop = defaults.scop ?? 3.2;
+      }
+      scenarioState.heating = nextHeating;
+    }
     if (activeMeasure === "ventilation") {
       scenarioState.ventilation = $("#hlnScenarioVentilation").value;
       scenarioState.cooling = $("#hlnScenarioCooling").value;
@@ -1119,6 +1134,11 @@
     if (!baselineSaved) return;
     referenceMode = false;
     clearScenarioOverrideForKey(key);
+    if (key === "heating" && value !== scenarioState.heating) {
+      const defaults = heatingDefaults[value] || heatingDefaults.condensing_gas_boiler;
+      scenarioState.heatingEfficiency = defaults.efficiency ?? 94;
+      scenarioState.heatingScop = defaults.scop ?? 3.2;
+    }
     scenarioState[key] = value;
     syncMeasuresFromScenario();
     renderAll();
