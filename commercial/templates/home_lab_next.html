@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next6">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next7">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -612,6 +612,28 @@
       </div>
     </section>
 
+    <aside class="hln-quick-edit-overlay" id="hlnQuickEditOverlay" hidden aria-hidden="true">
+      <div class="hln-quick-edit-card" role="dialog" aria-modal="true" aria-labelledby="hlnQuickEditTitle">
+        <header>
+          <div>
+            <span>EDITARE RAPIDĂ</span>
+            <strong id="hlnQuickEditTitle">Panouri fotovoltaice</strong>
+          </div>
+          <button type="button" data-hln-quick-edit-close aria-label="Închide">×</button>
+        </header>
+        <div class="hln-quick-edit-value">
+          <strong id="hlnQuickEditValue">—</strong>
+          <small id="hlnQuickEditMeta">—</small>
+        </div>
+        <div class="hln-quick-edit-range">
+          <input id="hlnQuickEditRange" type="range" min="0" max="30" step="0.5" aria-label="Valoare intervenție">
+          <div><span>0</span><span id="hlnQuickEditMaxLabel">30</span></div>
+        </div>
+        <button type="button" class="hln-quick-edit-details" data-hln-quick-edit-details>Orientare și înclinare</button>
+        <small class="hln-quick-edit-hint">Glisează. La eliberare, valoarea se salvează și editorul dispare.</small>
+      </div>
+    </aside>
+
     <aside class="hln-editor" id="hlnEditor" hidden>
       <div class="hln-editor-card">
         <header>
@@ -767,7 +789,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d25"></script>
-  <script src="/static/home-lab-next.js?v=next9"></script>
+  <script src="/static/home-lab-next.js?v=next10"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
