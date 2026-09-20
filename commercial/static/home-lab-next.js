@@ -338,6 +338,11 @@
     ) next.push("windows");
     if (
       scenarioState.heating !== homeState.heating ||
+      scenarioState.heatPumpSource !== homeState.heatPumpSource ||
+      scenarioState.heatingEmitter !== homeState.heatingEmitter ||
+      scenarioState.heatingDistribution !== homeState.heatingDistribution ||
+      scenarioState.heatingStorage !== homeState.heatingStorage ||
+      scenarioState.heatingControl !== homeState.heatingControl ||
       Number.isFinite(Number(scenarioOverrides.heatingEfficiency)) ||
       referenceMode
     ) next.push("heating");
@@ -383,6 +388,11 @@
       ventilation: state.ventilation,
       cooling: state.cooling,
       heating: state.heating,
+      heatPumpSource: state.heatPumpSource,
+      heatingEmitter: state.heatingEmitter,
+      heatingDistribution: state.heatingDistribution,
+      heatingStorage: state.heatingStorage,
+      heatingControl: state.heatingControl,
       pvEnabled: Boolean(state.pvEnabled),
       pvKwp: Number(state.pvKwp || 0),
       pvTilt: Number(state.pvTilt || 0),
@@ -714,6 +724,7 @@
     const overrideHeatingEfficiency = finiteOverride("heatingEfficiency");
     if (overrideHeatingEfficiency != null) {
       formSet("expert_heating_override", "on");
+      formSet("heating_chain_enabled", "");
       formSet("heating_system_type", overrides.heatingSystemType || "condensing_gas_boiler");
       formSet("heating_carrier", overrides.heatingCarrier || "natural_gas");
       formSet("heating_efficiency", overrideHeatingEfficiency);
@@ -722,7 +733,16 @@
       formSet("heating_choice", overrides.heatingSystemType || "condensing_gas_boiler");
     } else {
       formSet("expert_heating_override", "");
+      formSet("heating_chain_enabled", "on");
       formSet("heating_choice", state.heating);
+      formSet("heating_generator_type", heatingGeneratorType(state));
+      formSet("heating_emitter_type", state.heatingEmitter);
+      formSet("heating_distribution_type", state.heatingDistribution);
+      formSet("heating_storage_type", state.heatingStorage);
+      formSet("heating_control_type", state.heatingControl);
+      formSet("heating_design_flow_temperature_c", "");
+      formSet("heating_design_return_temperature_c", "");
+      formSet("heating_auxiliary_electricity_kwh_year", "");
     }
 
     const overrideCoolingSeer = finiteOverride("coolingSeer");
@@ -1145,7 +1165,11 @@
     if (type === "roof") return `${state.roofIns} cm`;
     if (type === "floor") return `${state.floorIns} cm`;
     if (type === "windows") return `${labels.glazing[state.glazing]} · ${fmt(state.windows,1)} m²`;
-    if (type === "heating") return labels.heating[state.heating] || state.heating;
+    if (type === "heating") {
+      const generator = labels.heating[state.heating] || state.heating;
+      const emitter = labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter;
+      return `${generator} · ${emitter}`;
+    }
     if (type === "ventilation") return `${labels.ventilation[state.ventilation]} · ${labels.cooling[state.cooling]}`;
     if (type === "pv") return state.pvEnabled ? `${fmt(state.pvKwp,1)} kWp · ${state.pvOrientation} · ${fmt(state.pvTilt)}°` : "Fără PV";
     if (type === "solar_thermal") return state.solarThermalEnabled ? `${fmt(state.solarThermalArea,1)} m² · ${state.solarThermalOrientation} · ${fmt(state.solarThermalTilt)}°` : "Fără solar termic";
@@ -1167,6 +1191,27 @@
     $("#hlnScenarioGlazing").value = scenarioState.glazing;
     $("#hlnScenarioWindows").value = scenarioState.windows;
     $("#hlnScenarioHeating").value = scenarioState.heating;
+    $("#hlnScenarioHeatPumpSource").value = scenarioState.heatPumpSource || "heat_pump_air_water";
+    $("#hlnScenarioHeatingEmitter").value = scenarioState.heatingEmitter;
+    $("#hlnScenarioHeatingDistribution").value = scenarioState.heatingDistribution;
+    $("#hlnScenarioHeatingStorage").value = scenarioState.heatingStorage;
+    $("#hlnScenarioHeatingControl").value = scenarioState.heatingControl;
+    toggleHeatPumpSourceControls();
+    const performance = scenarioResult?.heating_system;
+    const performanceNode = $("#hlnScenarioHeatingPerformance");
+    if (performanceNode && activeMeasure === "heating") {
+      if (performance) {
+        const generatorValue = Number(performance.generator_performance);
+        const kind = performance.generator_performance_kind === "scop" ? "SCOP" : "η generator";
+        const shown = performance.generator_performance_kind === "scop"
+          ? fmt(generatorValue, 2)
+          : `${fmt(generatorValue * 100, 0)}%`;
+        performanceNode.textContent =
+          `Tur/retur ${fmt(performance.design_flow_temperature_c,0)}/${fmt(performance.design_return_temperature_c,0)}°C · ${kind} ${shown} · auxiliare ${fmt(performance.auxiliary_electricity_kwh)} kWh/an`;
+      } else {
+        performanceNode.textContent = "Motorul Light va deriva temperatura de tur și performanța din configurația selectată.";
+      }
+    }
     $("#hlnScenarioVentilation").value = scenarioState.ventilation;
     $("#hlnScenarioCooling").value = scenarioState.cooling;
     $("#hlnScenarioPvKwp").value = scenarioState.pvKwp;
@@ -1413,7 +1458,14 @@
       scenarioState.glazing = homeState.glazing;
       scenarioState.windows = homeState.windows;
     }
-    if (type === "heating") scenarioState.heating = homeState.heating;
+    if (type === "heating") {
+      scenarioState.heating = homeState.heating;
+      scenarioState.heatPumpSource = homeState.heatPumpSource;
+      scenarioState.heatingEmitter = homeState.heatingEmitter;
+      scenarioState.heatingDistribution = homeState.heatingDistribution;
+      scenarioState.heatingStorage = homeState.heatingStorage;
+      scenarioState.heatingControl = homeState.heatingControl;
+    }
     if (type === "ventilation") {
       scenarioState.ventilation = homeState.ventilation;
       scenarioState.cooling = homeState.cooling;
@@ -1447,7 +1499,28 @@
       scenarioState.glazing = $("#hlnScenarioGlazing").value;
       scenarioState.windows = Number($("#hlnScenarioWindows").value);
     }
-    if (activeMeasure === "heating") scenarioState.heating = $("#hlnScenarioHeating").value;
+    if (activeMeasure === "heating") {
+      const selected = $("#hlnScenarioHeating").value;
+      const generatorChanged = selected !== scenarioState.heating;
+      scenarioState.heating = selected;
+      if (generatorChanged) {
+        applyHeatingDefaults(scenarioState, selected);
+      } else {
+        scenarioState.heatPumpSource = $("#hlnScenarioHeatPumpSource").value;
+        scenarioState.heatingEmitter = $("#hlnScenarioHeatingEmitter").value;
+        scenarioState.heatingDistribution = $("#hlnScenarioHeatingDistribution").value;
+        scenarioState.heatingStorage = $("#hlnScenarioHeatingStorage").value;
+        scenarioState.heatingControl = $("#hlnScenarioHeatingControl").value;
+        if (scenarioState.heating === "heat_pump" && scenarioState.heatPumpSource === "heat_pump_air_air") {
+          scenarioState.heatingEmitter = "air";
+          scenarioState.heatingDistribution = "air";
+          scenarioState.heatingStorage = "none";
+        }
+        if (scenarioState.heatingEmitter === "local") scenarioState.heatingDistribution = "local";
+        if (scenarioState.heatingEmitter === "air") scenarioState.heatingDistribution = "air";
+        if (scenarioState.heatingEmitter === "underfloor") scenarioState.heatingDistribution = "underfloor";
+      }
+    }
     if (activeMeasure === "ventilation") {
       scenarioState.ventilation = $("#hlnScenarioVentilation").value;
       scenarioState.cooling = $("#hlnScenarioCooling").value;
@@ -1484,6 +1557,10 @@
       scenarioState.solarThermalArea = solarThermalAreaFromKw(power);
       scenarioState.solarThermalEnabled = power > 0;
       focus = "solarThermal";
+    } else if (key === "heating") {
+      scenarioState.heating = value;
+      applyHeatingDefaults(scenarioState, value);
+      focus = "heating";
     } else {
       scenarioState[key] = value;
     }
