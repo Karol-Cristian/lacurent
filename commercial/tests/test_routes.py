@@ -343,6 +343,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
     assert 'data-home-lab-next' in response.text
+    assert 'viewport-fit=cover' in response.text
     assert 'data-hln-screen="home"' in response.text
     assert 'data-hln-screen="site"' in response.text
     assert 'data-hln-screen="intervention"' in response.text
@@ -357,8 +358,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next7" in response.text
-    assert "/static/home-lab-next.js?v=next10" in response.text
+    assert "/static/home-lab-next.css?v=next8" in response.text
+    assert "/static/home-lab-next.js?v=next11" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d25" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -509,6 +510,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'key === "solarThermalKw"' in response.text
     assert 'input.addEventListener("change", commitRangeValue)' in response.text
     assert "calculateAbortController" in response.text
+    assert "syncMobileViewportBottomInset" in response.text
+    assert "window.visualViewport" in response.text
+    assert '--hln-mobile-bottom-occlusion' in response.text
+    assert 'orientationchange' in response.text
     assert "new AbortController()" in response.text
     assert "response.status === 429 || response.status >= 500" in response.text
     assert "attempt < 2" in response.text

@@ -90,6 +90,40 @@
   let calculateToken = 0;
   let calculateTimer = 0;
   let calculateAbortController = null;
+  let mobileViewportBaseline = 0;
+
+  function syncMobileViewportBottomInset(resetBaseline = false) {
+    const viewport = window.visualViewport;
+    if (!viewport || window.innerWidth > 760 || viewport.scale !== 1) {
+      root.style.setProperty("--hln-mobile-bottom-occlusion", "0px");
+      if (window.innerWidth > 760) mobileViewportBaseline = 0;
+      return;
+    }
+
+    const visibleBottom = viewport.offsetTop + viewport.height;
+    if (resetBaseline || mobileViewportBaseline <= 0) {
+      mobileViewportBaseline = Math.max(visibleBottom, window.innerHeight || 0, document.documentElement.clientHeight || 0);
+    } else {
+      mobileViewportBaseline = Math.max(
+        mobileViewportBaseline,
+        window.innerHeight || 0,
+        document.documentElement.clientHeight || 0
+      );
+    }
+
+    const occlusion = Math.max(0, Math.round(mobileViewportBaseline - visibleBottom));
+    root.style.setProperty("--hln-mobile-bottom-occlusion", `${occlusion}px`);
+  }
+
+  syncMobileViewportBottomInset(true);
+  window.visualViewport?.addEventListener("resize", () => syncMobileViewportBottomInset());
+  window.visualViewport?.addEventListener("scroll", () => syncMobileViewportBottomInset());
+  window.addEventListener("resize", () => syncMobileViewportBottomInset());
+  window.addEventListener("orientationchange", () => {
+    mobileViewportBaseline = 0;
+    window.setTimeout(() => syncMobileViewportBottomInset(true), 120);
+  });
+  window.addEventListener("pageshow", () => syncMobileViewportBottomInset(true));
 
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
