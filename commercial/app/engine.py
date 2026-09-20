@@ -476,7 +476,61 @@ def heating_system_performance(
     defaults = _default_heating_chain(building)
     details = heating.details
 
-    generator = details.generator_type if details and details.generator_type else defaults["generator_type"]
+    if details is None:
+        generator = defaults["generator_type"]
+        emitter = defaults["emitter_type"]
+        distribution = defaults["distribution_type"]
+        storage = defaults["storage_type"]
+        control = defaults["control_type"]
+        emitter_cfg = cfg["emitters"][emitter.value]
+        defaults_generator = default_heating_performance(heating.system_type.value)
+
+        if heating.system_type == HeatingSystemType.heat_pump:
+            generator_performance = float(heating.scop or defaults_generator["scop"])
+            generator_kind = "scop"
+            carrier = Carrier.electricity
+        else:
+            generator_performance = float(heating.efficiency or defaults_generator["efficiency"])
+            generator_kind = "efficiency"
+            carrier = heating.carrier
+            if heating.system_type == HeatingSystemType.electric_resistance:
+                carrier = Carrier.electricity
+            elif heating.system_type == HeatingSystemType.district_heat:
+                carrier = Carrier.district_heat
+            elif heating.system_type in {HeatingSystemType.gas_boiler, HeatingSystemType.condensing_gas_boiler}:
+                carrier = Carrier.natural_gas
+
+        main_final = useful_kwh / max(generator_performance, 0.1)
+        service = EnergyServiceResult(
+            useful_kwh=_round(useful_kwh),
+            final_kwh=_round(main_final),
+            carrier=carrier,
+        )
+        performance = HeatingSystemPerformanceResult(
+            generator_type=generator,
+            emitter_type=emitter,
+            distribution_type=distribution,
+            storage_type=storage,
+            control_type=control,
+            design_flow_temperature_c=_round(emitter_cfg["flow_c"], 1),
+            design_return_temperature_c=_round(emitter_cfg["return_c"], 1),
+            emission_efficiency=1.0,
+            distribution_efficiency=1.0,
+            storage_efficiency=1.0,
+            control_efficiency=1.0,
+            generator_performance=_round(generator_performance, 4),
+            generator_performance_kind=generator_kind,
+            effective_system_performance=_round(generator_performance, 4),
+            auxiliary_electricity_kwh=0.0,
+            main_carrier_final_kwh=_round(main_final),
+            total_heating_final_kwh=_round(main_final),
+            performance_source="legacy_flat_compatibility",
+            confidence="medium",
+            assumptions=["No structured heating-system details were supplied; legacy flat seasonal performance is preserved."],
+        )
+        return service, performance
+
+    generator = details.generator_type if details.generator_type else defaults["generator_type"]
     emitter = details.emitter_type if details else defaults["emitter_type"]
     distribution = details.distribution_type if details else defaults["distribution_type"]
     storage = details.storage_type if details else defaults["storage_type"]
