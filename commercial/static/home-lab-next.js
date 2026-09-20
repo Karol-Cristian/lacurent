@@ -596,6 +596,8 @@
       dhwEfficiency: Number(ref?.dhw_efficiency),
     };
     referenceMode = true;
+    optimizationMeta = {mode:"reference", label:"Casa de referință MC001"};
+    setOptimizationNote("");
     syncMeasuresFromScenario();
     renderAll();
     persist();
@@ -1422,6 +1424,8 @@
 
   function renderDock() {
     const dock = $(".hln-dock");
+    if (dock) dock.hidden = screen === "report";
+    if (screen === "report") return;
     const metrics = $(".hln-dock-metrics");
     const benefits = $(".hln-dock-benefits");
     const cta = $("#hlnDockCta");
@@ -1479,9 +1483,11 @@
     } else if (screen === "intervention") {
       cta.hidden = false;
       ctaLabel.textContent = "Păstrează intervenția";
-    } else {
+    } else if (screen === "scenario") {
       cta.hidden = false;
-      ctaLabel.textContent = "Salvează scenariul";
+      ctaLabel.textContent = "Generează raportul";
+    } else {
+      cta.hidden = true;
     }
   }
 
@@ -2283,6 +2289,8 @@
   function applyLiveScenarioChange(key, value, focus = null) {
     if (!baselineSaved) return;
     referenceMode = false;
+    optimizationMeta = null;
+    setOptimizationNote("");
     clearScenarioOverrideForKey(key);
 
     if (key === "pvKwp") {
@@ -2663,8 +2671,15 @@
     input.addEventListener("change", () => applyLiveScenarioChange(key, input.value, focus));
   });
 
-  $$("[data-hln-reference-house]").forEach(button => {
+  $("[data-hln-reference-house]").forEach(button => {
     button.addEventListener("click", setReferenceHouse);
+  });
+
+  $("[data-hln-smart-config]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
+      if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi();
+    });
   });
 
   $$("[data-hln-reset-home]").forEach(button => {
@@ -2713,6 +2728,7 @@
       }
       if (target === "site" && baselineSaved) showScreen("site");
       if (target === "scenario" && baselineSaved) showScreen("scenario");
+      if (target === "report" && baselineSaved && scenarioResult) showScreen("report");
       return;
     }
 
@@ -2770,21 +2786,17 @@
     }
     if (screen === "scenario") {
       persist();
-      const button = $("#hlnDockCta");
-      const label = button?.querySelector("span") || button;
-      label.textContent = "Scenariu salvat ✓";
-      window.setTimeout(renderDock, 1200);
+      showScreen("report");
     }
   });
 
-  $("[data-hln-save-scenario]").addEventListener("click", event => {
-    persist();
-    const label = event.currentTarget.querySelector("span") || event.currentTarget;
-    label.textContent = "Scenariu salvat ✓";
-    window.setTimeout(() => {
-      label.textContent = "Salvează scenariul";
-    }, 1200);
-  });
+  const printReportButton = $("[data-hln-print-report]");
+  if (printReportButton) {
+    printReportButton.addEventListener("click", () => {
+      renderReport();
+      window.print();
+    });
+  }
 
   fetch("/api/location-data")
     .then(response => response.ok ? response.json() : Promise.reject(new Error("Localități indisponibile")))
