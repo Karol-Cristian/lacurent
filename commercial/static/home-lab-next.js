@@ -9,6 +9,7 @@
   const form = $("#hlnTechnicalForm");
   const calcUrl = root.dataset.calculateUrl;
   const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
+  const SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70;
 
   const labels = {
     glazing: {
@@ -121,6 +122,14 @@
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+  function solarThermalKwFromArea(areaM2) {
+    return Math.max(0, Number(areaM2) || 0) * SOLAR_THERMAL_NOMINAL_KW_PER_M2;
+  }
+
+  function solarThermalAreaFromKw(powerKw) {
+    return Math.max(0, Number(powerKw) || 0) / SOLAR_THERMAL_NOMINAL_KW_PER_M2;
+  }
+
   function insulationCmForU(baseU, targetU) {
     const target = Number(targetU);
     if (!Number.isFinite(target) || target <= 0) return 0;
@@ -211,18 +220,23 @@
       Number.isFinite(Number(scenarioOverrides.coolingSeer)) ||
       referenceMode
     ) next.push("ventilation");
-    if (
-      Boolean(scenarioState.pvEnabled) !== Boolean(homeState.pvEnabled) ||
+    const pvEnabledChanged = Boolean(scenarioState.pvEnabled) !== Boolean(homeState.pvEnabled);
+    const pvConfiguredChanged = (scenarioState.pvEnabled || homeState.pvEnabled) && (
       Math.abs(Number(scenarioState.pvKwp) - Number(homeState.pvKwp)) > 0.01 ||
       scenarioState.pvOrientation !== homeState.pvOrientation ||
-      Math.abs(Number(scenarioState.pvTilt) - Number(homeState.pvTilt)) > 0.01 ||
-      (referenceMode && homeState.pvEnabled)
-    ) next.push("pv");
-    if (
-      Boolean(scenarioState.solarThermalEnabled) !== Boolean(homeState.solarThermalEnabled) ||
+      Math.abs(Number(scenarioState.pvTilt) - Number(homeState.pvTilt)) > 0.01
+    );
+    if (pvEnabledChanged || pvConfiguredChanged || (referenceMode && homeState.pvEnabled)) next.push("pv");
+
+    const solarThermalEnabledChanged = Boolean(scenarioState.solarThermalEnabled) !== Boolean(homeState.solarThermalEnabled);
+    const solarThermalConfiguredChanged = (scenarioState.solarThermalEnabled || homeState.solarThermalEnabled) && (
       Math.abs(Number(scenarioState.solarThermalArea) - Number(homeState.solarThermalArea)) > 0.01 ||
       scenarioState.solarThermalOrientation !== homeState.solarThermalOrientation ||
-      Math.abs(Number(scenarioState.solarThermalTilt) - Number(homeState.solarThermalTilt)) > 0.01 ||
+      Math.abs(Number(scenarioState.solarThermalTilt) - Number(homeState.solarThermalTilt)) > 0.01
+    );
+    if (
+      solarThermalEnabledChanged ||
+      solarThermalConfiguredChanged ||
       (referenceMode && homeState.solarThermalEnabled)
     ) next.push("solar_thermal");
     measures = next;
@@ -316,24 +330,73 @@
 
     const targets = referenceTargets();
     const rows = {
-      wallIns: { selector: "#hlnLiveWallIns", unit: "cm", reference: targets?.wallIns },
-      roofIns: { selector: "#hlnLiveRoofIns", unit: "cm", reference: targets?.roofIns },
-      floorIns: { selector: "#hlnLiveFloorIns", unit: "cm", reference: targets?.floorIns },
-      windows: { selector: "#hlnLiveWindows", unit: "m²", reference: Number(homeState.windows) },
+      wallIns: {
+        selector: "#hlnLiveWallIns",
+        unit: "cm",
+        reference: targets?.wallIns,
+        value: () => Number(scenarioState.wallIns),
+        homeValue: () => Number(homeState.wallIns),
+      },
+      roofIns: {
+        selector: "#hlnLiveRoofIns",
+        unit: "cm",
+        reference: targets?.roofIns,
+        value: () => Number(scenarioState.roofIns),
+        homeValue: () => Number(homeState.roofIns),
+      },
+      floorIns: {
+        selector: "#hlnLiveFloorIns",
+        unit: "cm",
+        reference: targets?.floorIns,
+        value: () => Number(scenarioState.floorIns),
+        homeValue: () => Number(homeState.floorIns),
+      },
+      windows: {
+        selector: "#hlnLiveWindows",
+        unit: "m²",
+        reference: Number(homeState.windows),
+        digits: 1,
+        value: () => Number(scenarioState.windows),
+        homeValue: () => Number(homeState.windows),
+      },
+      pvKwp: {
+        selector: "#hlnLivePvKwp",
+        unit: "kWp",
+        reference: 0,
+        digits: 1,
+        value: () => scenarioState.pvEnabled ? Number(scenarioState.pvKwp) : 0,
+        homeValue: () => homeState.pvEnabled ? Number(homeState.pvKwp) : 0,
+        caption: homeValue => `Casa mea: ${fmt(homeValue, 1)} kWp · 0 = fără PV`,
+      },
+      solarThermalKw: {
+        selector: "#hlnLiveSolarThermalKw",
+        unit: "kWth",
+        reference: 0,
+        digits: 1,
+        value: () => scenarioState.solarThermalEnabled ? solarThermalKwFromArea(scenarioState.solarThermalArea) : 0,
+        homeValue: () => homeState.solarThermalEnabled ? solarThermalKwFromArea(homeState.solarThermalArea) : 0,
+        caption: homeValue => {
+          const currentKw = scenarioState.solarThermalEnabled ? solarThermalKwFromArea(scenarioState.solarThermalArea) : 0;
+          const currentArea = scenarioState.solarThermalEnabled ? Number(scenarioState.solarThermalArea) : 0;
+          return `Casa mea: ${fmt(homeValue, 1)} kWth · ${fmt(currentKw,1)} kWth ≈ ${fmt(currentArea,1)} m² colector`;
+        },
+      },
     };
 
     Object.entries(rows).forEach(([key, config]) => {
       const row = live.querySelector(`[data-hln-tune="${key}"]`);
       const input = $(config.selector);
       if (!row || !input) return;
-      const value = Number(scenarioState[key]);
+      const value = Number(config.value());
+      const homeValue = Number(config.homeValue());
       input.value = String(value);
       const valueNode = row.querySelector("[data-hln-tune-value]");
-      if (valueNode) valueNode.textContent = `${fmt(value, key === "windows" ? 1 : (value % 1 ? 1 : 0))} ${config.unit}`;
+      const digits = config.digits ?? (value % 1 ? 1 : 0);
+      if (valueNode) valueNode.textContent = `${fmt(value, digits)} ${config.unit}`;
 
       const homeMarker = row.querySelector("[data-hln-home-marker]");
       const referenceMarker = row.querySelector("[data-hln-reference-marker]");
-      if (homeMarker) homeMarker.style.left = `${liveRangePercent(Number(homeState[key]), input)}%`;
+      if (homeMarker) homeMarker.style.left = `${liveRangePercent(homeValue, input)}%`;
       if (referenceMarker) {
         const referenceValue = Number(config.reference);
         referenceMarker.style.left = `${liveRangePercent(referenceValue, input)}%`;
@@ -341,12 +404,14 @@
       }
       const caption = row.querySelector("[data-hln-tune-caption]");
       if (caption) {
-        if (key === "windows") {
+        if (typeof config.caption === "function") {
+          caption.textContent = config.caption(homeValue);
+        } else if (key === "windows") {
           caption.textContent = `Casa mea: ${fmt(homeState.windows, 1)} m² · referința păstrează aceeași geometrie`;
         } else if (Number.isFinite(Number(config.reference))) {
-          caption.textContent = `Casa mea: ${fmt(homeState[key], 1)} cm · Referință: ${fmt(config.reference, 1)} cm`;
+          caption.textContent = `Casa mea: ${fmt(homeValue, 1)} cm · Referință: ${fmt(config.reference, 1)} cm`;
         } else {
-          caption.textContent = `Casa mea: ${fmt(homeState[key], 1)} cm`;
+          caption.textContent = `Casa mea: ${fmt(homeValue, 1)} cm`;
         }
       }
     });
@@ -1103,7 +1168,21 @@
     if (!baselineSaved) return;
     referenceMode = false;
     clearScenarioOverrideForKey(key);
-    scenarioState[key] = value;
+
+    if (key === "pvKwp") {
+      const power = clamp(Number(value) || 0, 0, 30);
+      scenarioState.pvKwp = power;
+      scenarioState.pvEnabled = power > 0;
+      focus = "pv";
+    } else if (key === "solarThermalKw") {
+      const power = clamp(Number(value) || 0, 0, 30);
+      scenarioState.solarThermalArea = solarThermalAreaFromKw(power);
+      scenarioState.solarThermalEnabled = power > 0;
+      focus = "solarThermal";
+    } else {
+      scenarioState[key] = value;
+    }
+
     syncMeasuresFromScenario();
     renderAll();
     persist();
@@ -1195,6 +1274,8 @@
     ["#hlnLiveRoofIns", "roofIns"],
     ["#hlnLiveFloorIns", "floorIns"],
     ["#hlnLiveWindows", "windows"],
+    ["#hlnLivePvKwp", "pvKwp"],
+    ["#hlnLiveSolarThermalKw", "solarThermalKw"],
   ];
 
   liveRangeBindings.forEach(([selector, key]) => {

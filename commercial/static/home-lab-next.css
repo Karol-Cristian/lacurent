@@ -540,6 +540,11 @@ svg{display:block}
   background: rgba(249, 249, 246, .76);
 }
 
+.hln-tune-row.hln-tune-renewable {
+  border-color: rgba(169, 130, 79, .24);
+  background: linear-gradient(180deg, rgba(245, 239, 229, .74), rgba(249, 249, 246, .88));
+}
+
 .hln-tune-row header {
   display: flex;
   align-items: baseline;
