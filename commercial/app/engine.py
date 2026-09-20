@@ -483,6 +483,7 @@ def heating_system_performance(
         storage = defaults["storage_type"]
         control = defaults["control_type"]
         emitter_cfg = cfg["emitters"][emitter.value]
+        hydronic_temperatures = emitter not in {HeatingEmitterType.local, HeatingEmitterType.air}
         defaults_generator = default_heating_performance(heating.system_type.value)
 
         if heating.system_type == HeatingSystemType.heat_pump:
@@ -512,8 +513,8 @@ def heating_system_performance(
             distribution_type=distribution,
             storage_type=storage,
             control_type=control,
-            design_flow_temperature_c=_round(emitter_cfg["flow_c"], 1),
-            design_return_temperature_c=_round(emitter_cfg["return_c"], 1),
+            design_flow_temperature_c=(_round(emitter_cfg["flow_c"], 1) if hydronic_temperatures else None),
+            design_return_temperature_c=(_round(emitter_cfg["return_c"], 1) if hydronic_temperatures else None),
             emission_efficiency=1.0,
             distribution_efficiency=1.0,
             storage_efficiency=1.0,
@@ -541,15 +542,16 @@ def heating_system_performance(
     storage_cfg = cfg["storage"][storage.value]
     control_cfg = cfg["control"][control.value]
 
+    hydronic_temperatures = emitter not in {HeatingEmitterType.local, HeatingEmitterType.air}
     flow_c = (
         float(details.design_flow_temperature_c)
-        if details and details.design_flow_temperature_c is not None
-        else float(emitter_cfg["flow_c"])
+        if hydronic_temperatures and details.design_flow_temperature_c is not None
+        else (float(emitter_cfg["flow_c"]) if hydronic_temperatures else None)
     )
     return_c = (
         float(details.design_return_temperature_c)
-        if details and details.design_return_temperature_c is not None
-        else float(emitter_cfg["return_c"])
+        if hydronic_temperatures and details.design_return_temperature_c is not None
+        else (float(emitter_cfg["return_c"]) if hydronic_temperatures else None)
     )
 
     emission_eff = float(emitter_cfg["efficiency"])
@@ -560,9 +562,14 @@ def heating_system_performance(
 
     source = "lacurent_light_product_estimate"
     confidence = "low"
+    emitter_assumption = (
+        f"Emitter preset: {emitter_cfg['label']} ({flow_c:.0f}/{return_c:.0f}°C)."
+        if flow_c is not None and return_c is not None
+        else f"Emitter preset: {emitter_cfg['label']} (no hydronic flow/return temperature)."
+    )
     assumptions = [
         cfg["status"],
-        f"Emitter preset: {emitter_cfg['label']} ({flow_c:.0f}/{return_c:.0f}°C).",
+        emitter_assumption,
         f"Distribution preset: {distribution_cfg['label']}.",
         f"Storage preset: {storage_cfg['label']}.",
         f"Control preset: {control_cfg['label']}.",
@@ -587,7 +594,7 @@ def heating_system_performance(
         defaults_generator = default_heating_performance(heating.system_type.value)
         generator_performance = float(heating.efficiency or defaults_generator["efficiency"])
         generator_kind = "efficiency"
-        if heating.system_type == HeatingSystemType.condensing_gas_boiler and heating.efficiency is None:
+        if heating.system_type == HeatingSystemType.condensing_gas_boiler and heating.efficiency is None and flow_c is not None:
             if flow_c <= 45:
                 generator_performance = min(generator_performance + 0.02, 0.98)
             elif flow_c >= 60:
@@ -626,8 +633,8 @@ def heating_system_performance(
         distribution_type=distribution,
         storage_type=storage,
         control_type=control,
-        design_flow_temperature_c=_round(flow_c, 1),
-        design_return_temperature_c=_round(return_c, 1),
+        design_flow_temperature_c=(None if flow_c is None else _round(flow_c, 1)),
+        design_return_temperature_c=(None if return_c is None else _round(return_c, 1)),
         emission_efficiency=_round(emission_eff, 4),
         distribution_efficiency=_round(distribution_eff, 4),
         storage_efficiency=_round(storage_eff, 4),
