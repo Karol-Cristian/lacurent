@@ -1006,49 +1006,97 @@
 
   function benefitText(current, baseline, suffix = "%") {
     const value = benefit(current, baseline);
-    if (value == null) return {text: "—", good: null};
-    if (Math.abs(value) < 0.05) return {text: "0" + suffix, good: null};
+    if (value == null) return {text: "—", good: null, value: null};
+    if (Math.abs(value) < 0.05) return {text: "0" + suffix, good: null, value: 0};
     return {
       text: `${value > 0 ? "+" : "−"}${fmt(Math.abs(value), 0)}${suffix}`,
-      good: value > 0
+      good: value > 0,
+      value
     };
   }
 
   function signedSavingText(current, baseline, unit = "") {
     const now = Number(current);
     const base = Number(baseline);
-    if (!Number.isFinite(now) || !Number.isFinite(base)) return {text: "—", good: null};
+    if (!Number.isFinite(now) || !Number.isFinite(base)) return {text: "—", good: null, value: null};
     const saving = base - now;
-    if (Math.abs(saving) < 0.05) return {text: `0${unit}`, good: null};
+    if (Math.abs(saving) < 0.05) return {text: `0${unit}`, good: null, value: 0};
     return {
       text: `${saving > 0 ? "+" : "−"}${fmt(Math.abs(saving), unit === " kW" ? 1 : 0)}${unit}`,
-      good: saving > 0
+      good: saving > 0,
+      value: saving
     };
+  }
+
+  function directChangeText(current, baseline, options = {}) {
+    const now = Number(current);
+    const base = Number(baseline);
+    const percent = Boolean(options.percent);
+    const unit = options.unit || "";
+    const digits = options.digits ?? 0;
+    const lowerIsBetter = options.lowerIsBetter !== false;
+    if (!Number.isFinite(now) || !Number.isFinite(base)) return {text: "—", good: null, value: null};
+    if (percent && Math.abs(base) < 1e-9) return {text: "—", good: null, value: null};
+    const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);
+    if (Math.abs(delta) < (percent ? 0.05 : 0.0005)) return {text: `0${unit}`, good: null, value: 0};
+    const good = lowerIsBetter ? delta < 0 : delta > 0;
+    return {
+      text: `${delta > 0 ? "+" : "−"}${fmt(Math.abs(delta), digits)}${unit}`,
+      good,
+      value: delta
+    };
+  }
+
+  function applyDeltaState(node, item) {
+    if (!node) return;
+    node.classList.toggle("is-good", item?.good === true);
+    node.classList.toggle("is-bad", item?.good === false);
+  }
+
+  function energyClassRank(value) {
+    return {"A+":0,A:1,B:2,C:3,D:4,E:5,F:6,G:7}[String(value || "").toUpperCase()] ?? null;
   }
 
   function renderImpactPanel() {
     if (!homeResult || !scenarioResult) return;
 
-    const cost = signedSavingText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei, " lei/an");
-    const energy = benefitText(scenarioResult.final_energy_kwh, homeResult.final_energy_kwh);
-    const co2 = benefitText(scenarioResult.co2_kg, homeResult.co2_kg);
-    const loadNode = $("#hlnImpactLoad");
+    const cost = directChangeText(
+      scenarioResult.annual_cost_lei,
+      homeResult.annual_cost_lei,
+      {unit:" lei/an", digits:0}
+    );
+    const energy = directChangeText(
+      scenarioResult.final_energy_kwh,
+      homeResult.final_energy_kwh,
+      {unit:"%", digits:0, percent:true}
+    );
+    const efficiency = benefitText(
+      scenarioResult.final_energy_kwh,
+      homeResult.final_energy_kwh
+    );
+    const co2 = directChangeText(
+      scenarioResult.co2_kg,
+      homeResult.co2_kg,
+      {unit:"%", digits:0, percent:true}
+    );
+    const load = directChangeText(
+      scenarioResult.design_heat_load_kw,
+      homeResult.design_heat_load_kw,
+      {unit:" kW", digits:1}
+    );
 
     [
       ["#hlnImpactCost", cost],
       ["#hlnImpactEnergy", energy],
-      ["#hlnImpactCo2", co2]
+      ["#hlnImpactEfficiency", efficiency],
+      ["#hlnImpactCo2", co2],
+      ["#hlnImpactLoad", load]
     ].forEach(([selector, item]) => {
       const node = $(selector);
       if (!node) return;
       node.textContent = item.text;
-      node.classList.toggle("is-bad", item.good === false);
+      applyDeltaState(node, item);
     });
-
-    if (loadNode) {
-      loadNode.textContent = `${fmt(homeResult.design_heat_load_kw, 1)} → ${fmt(scenarioResult.design_heat_load_kw, 1)} kW`;
-      loadNode.classList.toggle("is-bad", Number(scenarioResult.design_heat_load_kw) > Number(homeResult.design_heat_load_kw));
-    }
   }
 
   function renderDock() {
@@ -1081,8 +1129,22 @@
         " lei/an"
       );
       const savingNode = $("#hlnDockCostBenefit");
+      const savingLabel = $("#hlnDockSavingLabel");
       savingNode.textContent = saving.text;
-      savingNode.classList.toggle("is-bad", saving.good === false);
+      applyDeltaState(savingNode, saving);
+      if (savingLabel) {
+        savingLabel.textContent = saving.good === false ? "Pierdere" : saving.good === true ? "Economie" : "Diferență";
+      }
+
+      const baseClassRank = energyClassRank(homeResult.energy_class);
+      const scenarioClassRank = energyClassRank(scenarioResult.energy_class);
+      const scenarioClassNode = $("#hlnDockScenarioClass");
+      if (scenarioClassNode) {
+        const classChange = baseClassRank == null || scenarioClassRank == null
+          ? {good:null}
+          : {good:scenarioClassRank < baseClassRank ? true : scenarioClassRank > baseClassRank ? false : null};
+        applyDeltaState(scenarioClassNode, classChange);
+      }
     }
 
     renderImpactPanel();
@@ -1410,13 +1472,30 @@
 
     const costBenefit = benefitText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei);
     const benefitNode = $("#hlnScenarioBenefit");
+    const benefitLabel = $("#hlnScenarioBenefitLabel");
     benefitNode.textContent = costBenefit.text;
     benefitNode.parentElement.classList.toggle("is-bad", costBenefit.good === false);
+    benefitNode.parentElement.classList.toggle("is-good", costBenefit.good === true);
+    if (benefitLabel) {
+      benefitLabel.textContent = costBenefit.good === false ? "pierdere estimată" : costBenefit.good === true ? "economie estimată" : "fără diferență";
+    }
 
-    $("#hlnScenarioCostCompare").textContent = `${fmt(homeResult.annual_cost_lei)} → ${fmt(scenarioResult.annual_cost_lei)} lei/an`;
-    $("#hlnScenarioEnergyCompare").textContent = `${fmt(homeResult.final_energy_kwh)} → ${fmt(scenarioResult.final_energy_kwh)} kWh/an`;
-    $("#hlnScenarioCo2Compare").textContent = `${fmt(homeResult.co2_kg)} → ${fmt(scenarioResult.co2_kg)} kg/an`;
-    $("#hlnScenarioPowerCompare").textContent = `${fmt(homeResult.design_heat_load_kw,1)} → ${fmt(scenarioResult.design_heat_load_kw,1)} kW`;
+    const costChange = directChangeText(scenarioResult.annual_cost_lei, homeResult.annual_cost_lei, {unit:" lei/an"});
+    const energyChange = directChangeText(scenarioResult.final_energy_kwh, homeResult.final_energy_kwh, {unit:"%", percent:true});
+    const co2Change = directChangeText(scenarioResult.co2_kg, homeResult.co2_kg, {unit:"%", percent:true});
+    const loadChange = directChangeText(scenarioResult.design_heat_load_kw, homeResult.design_heat_load_kw, {unit:" kW", digits:1});
+
+    const scenarioMetrics = [
+      ["#hlnScenarioCostCompare", `${fmt(homeResult.annual_cost_lei)} → ${fmt(scenarioResult.annual_cost_lei)} lei/an · ${costChange.text}`, costChange],
+      ["#hlnScenarioEnergyCompare", `${fmt(homeResult.final_energy_kwh)} → ${fmt(scenarioResult.final_energy_kwh)} kWh/an · ${energyChange.text}`, energyChange],
+      ["#hlnScenarioCo2Compare", `${fmt(homeResult.co2_kg)} → ${fmt(scenarioResult.co2_kg)} kg/an · ${co2Change.text}`, co2Change],
+      ["#hlnScenarioPowerCompare", `${fmt(homeResult.design_heat_load_kw,1)} → ${fmt(scenarioResult.design_heat_load_kw,1)} kW · ${loadChange.text}`, loadChange]
+    ];
+    scenarioMetrics.forEach(([selector, text, item]) => {
+      const node = $(selector);
+      node.textContent = text;
+      applyDeltaState(node, item);
+    });
 
     const list = $("#hlnSelectedMeasures");
     if (!measures.length) {
