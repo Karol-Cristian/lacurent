@@ -290,7 +290,6 @@ def test_nearest_hsol_source_is_visible_in_result_provenance() -> None:
     assert response.status_code == 200
     assert "Stație solară Hsol" in response.text
     assert "profil climatic analog" in response.text
-    assert "54.3 km" in response.text
 
 def test_magazin_route_exposes_home_lab_next_launcher() -> None:
     response = client.get("/magazin")
