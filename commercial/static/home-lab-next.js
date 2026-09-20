@@ -202,6 +202,8 @@
       baselineSaved = Boolean(saved.baselineSaved);
       referenceMode = Boolean(saved.referenceMode);
       scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
+      // Rewrite the persisted state once so the migration is permanent.
+      persist();
     }
   } catch (_) {}
 
