@@ -108,6 +108,7 @@
   let measures = [];
   let referenceMode = false;
   let scenarioOverrides = {};
+  let optimizationMeta = null;
   let activeMeasure = null;
   let interventionOriginal = null;
   let quickEditType = null;
@@ -211,6 +212,7 @@
       baselineSaved = Boolean(saved.baselineSaved);
       referenceMode = Boolean(saved.referenceMode);
       scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
+      optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
       // Rewrite the persisted state once so the migration is permanent.
       persist();
     }
@@ -605,6 +607,7 @@
     if (!baselineSaved) return;
     referenceMode = false;
     scenarioOverrides = {};
+    optimizationMeta = null;
     scenarioState = { ...homeState };
     scenarioResult = homeResult;
     currentResult = homeResult;
@@ -792,7 +795,7 @@
     live.classList.toggle("is-reference-derived", !referenceMode && referenceDerived);
   }
 
-  function populateTechnicalForm(state) {
+  function populateTechnicalForm(state, explicitOverrides = null) {
     const area = Number(state.area);
     const levels = Math.max(1, Number(state.levels));
     const height = Number(state.height);
@@ -829,7 +832,7 @@
       double_low_e_face_3: 1.6,
       triple_low_e_faces_2_and_5: 0.9
     };
-    const overrides = state === scenarioState ? (scenarioOverrides || {}) : {};
+    const overrides = explicitOverrides ?? (state === scenarioState ? (scenarioOverrides || {}) : {});
     const finiteOverride = (key) => {
       const raw = overrides[key];
       return raw != null && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
@@ -1560,7 +1563,8 @@
         scenarioResult,
         measures,
         referenceMode,
-        scenarioOverrides
+        scenarioOverrides,
+        optimizationMeta
       }));
     } catch (_) {}
   }
