@@ -913,8 +913,13 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             {
                 "primary_energy_kwh_m2_year": float(nzeb_target["primary_energy_kwh_m2_year"]),
                 "co2_kg_m2_year": float(nzeb_target["co2_kg_m2_year"]),
+                "building_type": building_type,
+                "climate_zone": climate_zone,
+                "energy_unit": nzeb_registry.get("energy_unit"),
+                "co2_unit": nzeb_registry.get("co2_unit"),
                 "source": nzeb_registry.get("source"),
                 "source_status": nzeb_registry.get("source_status"),
+                "envelope_source": nzeb_registry.get("envelope_source"),
                 "renewable_requirement_status": nzeb_registry.get("renewable_requirement_status"),
                 "envelope_u_max_w_m2k": nzeb_registry.get("residential_envelope_u_max_w_m2k", {}),
             }
@@ -951,6 +956,12 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             {
                 "month": row["month"],
                 "cost_lei": float(row["priced_total_lei"]),
+                "final_energy_kwh": max(
+                    sum(float(value) for value in row.get("final_kwh_by_service", {}).values())
+                    - float(row.get("pv_self_consumed_kwh", 0.0)),
+                    0.0,
+                ),
+                "pv_self_consumed_kwh": float(row.get("pv_self_consumed_kwh", 0.0)),
                 "complete": bool(row["complete"]),
             }
             for row in cost.get("monthly_rows", [])
@@ -978,6 +989,10 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         },
         "price_references_current": bool(cost.get("price_references_current")),
         "price_retrieved_on": cost.get("retrieved_on"),
+        "methodology_version": str(result.methodology_version),
+        "methodology_scope": method.get("scope"),
+        "methodology_source": method.get("monthly_method", {}).get("source"),
+        "assumptions": list(result.assumptions or method.get("assumptions", [])),
     }
 
 
