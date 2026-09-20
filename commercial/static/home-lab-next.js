@@ -1999,6 +1999,42 @@
     $("#hlnReportPriceDate").textContent =
       scenarioResult.price_retrieved_on ? `referințe ${scenarioResult.price_retrieved_on}` : "referințe de preț curente";
 
+    const strategy = $("#hlnReportStrategy");
+    if (strategy) {
+      if (optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)) {
+        strategy.innerHTML = `
+          <div class="hln-strategy-lead">
+            <strong>Best ROI relativ</strong>
+            <span>Ordinea măsurilor a fost aleasă după economia anuală calculată raportată la un indice relativ de efort investițional.</span>
+          </div>
+          <div class="hln-strategy-list">
+            ${optimizationMeta.selected.map((item,index) => `
+              <article>
+                <b>${index + 1}</b>
+                <div><strong>${escapeHtml(item.label)}</strong><small>economie marginală +${fmt(Math.max(Number(item.marginalSavingLeiYear)||0,0))} lei/an · efort ${fmt(item.effort,0)}/6</small></div>
+              </article>
+            `).join("")}
+          </div>
+          <p>Scorul este comparativ, nu CAPEX și nu perioadă de recuperare contractuală. Pentru ROI financiar în ani trebuie conectat registrul de costuri reale de investiție.</p>
+        `;
+      } else if (optimizationMeta?.mode === "nzeb") {
+        strategy.innerHTML = `
+          <div class="hln-strategy-lead">
+            <strong>Țintă nZEB</strong>
+            <span>${escapeHtml(optimizationMeta.selectedSystem || "Configurație optimizată")} · verificare energetică și CO₂ față de MC001 Tabel 2.10a.</span>
+          </div>
+          <p>Optimizerul nu creează un racord nou la gaz. Păstrează sistemul existent dacă ținta poate fi atinsă sau propune pompă de căldură compatibilă cu infrastructura de distribuție existentă.</p>
+        `;
+      } else {
+        strategy.innerHTML = `
+          <div class="hln-strategy-lead">
+            <strong>Scenariu configurat manual</strong>
+            <span>Intervențiile au fost selectate și ajustate direct în Home Lab.</span>
+          </div>
+        `;
+      }
+    }
+
     const report = $("[data-hln-screen='report']");
     report?.classList.toggle("is-nzeb-target", optimizationMeta?.mode === "nzeb");
     report?.classList.toggle("is-roi-target", optimizationMeta?.mode === "roi");
