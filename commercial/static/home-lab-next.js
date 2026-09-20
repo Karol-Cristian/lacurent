@@ -68,6 +68,9 @@
   const defaultState = {
     localityId: form.elements.locality_id.value,
     locality: form.elements.locality.value,
+    climateZone: null,
+    climateStationId: null,
+    winterDesignTemperatureC: null,
     buildingType: "residential_individual",
     constructionYear: 2005,
     area: 120,
@@ -797,6 +800,17 @@
     live.classList.toggle("is-reference-derived", !referenceMode && referenceDerived);
   }
 
+  function climateTokenForState(state) {
+    const stationId = String(state.climateStationId || "");
+    const zone = String(state.climateZone || "");
+    if (!stationId || !zone) return String(state.localityId || state.locality || "");
+    const shortStationId = stationId.replace(/^mc001_6_2013_/, "");
+    const temperature = Number.isFinite(Number(state.winterDesignTemperatureC))
+      ? String(Number(state.winterDesignTemperatureC))
+      : "";
+    return `@lc|${shortStationId}|${zone}|${temperature}|${state.locality || ""}`;
+  }
+
   function populateTechnicalForm(state, explicitOverrides = null) {
     const area = Number(state.area);
     const levels = Math.max(1, Number(state.levels));
@@ -811,7 +825,7 @@
     const grossWalls = perimeter * height * levels;
     const wallArea = Math.max(1, grossWalls - windows - doors);
 
-    formSet("locality_id", state.localityId);
+    formSet("locality_id", climateTokenForState(state));
     formSet("locality", state.locality);
     formSet("building_type", state.buildingType || "residential_individual");
     formSet("construction_year", state.constructionYear || 2005);
@@ -2429,6 +2443,9 @@
     if (!locality) return;
     homeState.localityId = locality.id;
     homeState.locality = locality.name;
+    homeState.climateZone = locality.climateZone || null;
+    homeState.climateStationId = locality.stationId || null;
+    homeState.winterDesignTemperatureC = locality.winterDesignTemperatureC ?? null;
     $("#hlnLocalitySearch").value = locality.name;
     $("#hlnEditorClimate").textContent =
       `${locality.county || ""}${locality.climateZone ? " · zona " + locality.climateZone : ""} · ${locality.stationName || "profil climatic automat"}`;
@@ -2829,6 +2846,23 @@
       localityMap = new Map(localities.map(item => [String(item.id), item]));
       locationProjection = createHomeLocationProjection(data);
       if (!locationProjection) throw new Error("Geometria hărții nu este disponibilă.");
+
+      const selected = localityMap.get(String(homeState.localityId));
+      if (selected) {
+        const climateMetadata = {
+          climateZone: selected.climateZone || null,
+          climateStationId: selected.stationId || null,
+          winterDesignTemperatureC: selected.winterDesignTemperatureC ?? null,
+        };
+        Object.assign(homeState, climateMetadata);
+        Object.assign(scenarioState, climateMetadata);
+        if (!homeState.locality) homeState.locality = selected.name;
+        if (!scenarioState.locality) scenarioState.locality = selected.name;
+        window.setTimeout(() => {
+          if (baselineSaved) calculateState(scenarioState, "scenario");
+          else calculateState(homeState, "home");
+        }, 0);
+      }
       renderHomeLocationMap();
     })
     .catch(error => {
