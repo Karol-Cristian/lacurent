@@ -378,6 +378,13 @@ def pbe_iso_run(bui: dict) -> tuple[pd.DataFrame, dict]:
         "outdoor_mean_c": float(t_ext.mean()),
         "degree_hours_20c": float((20.0 - t_ext).clip(lower=0.0).sum()),
         "hours_with_heating": int((q_h > 1e-9).sum()),
+        "transmission_loss_kwh": float(row.get("Q_tr_total_loss_kWh", 0.0)),
+        "transmission_gain_kwh": float(row.get("Q_tr_total_gain_kWh", 0.0)),
+        "ventilation_loss_kwh": float(row.get("Q_ve_loss_kWh", 0.0)),
+        "ventilation_gain_kwh": float(row.get("Q_ve_gain_kWh", 0.0)),
+        "solar_gains_kwh": float(row.get("Q_solar_gains_kWh", 0.0)),
+        "internal_gains_kwh": float(row.get("Q_internal_gains_kWh", 0.0)),
+        "storage_net_kwh": float(row.get("Q_storage_net_kWh", 0.0)),
         "validation_issues": issues,
     }
 
@@ -644,6 +651,17 @@ def main() -> None:
             f"| {row['id']} | {fmt(lb['outdoor_mean_c'],2)}°C | {fmt(row['pbe']['outdoor_mean_c'],2)}°C | "
             f"{fmt(lb['degree_hours_20c'])} Kh | {fmt(row['pbe']['degree_hours_20c'])} Kh | "
             f"{fmt(lb['annual_heat_loss_kwh'])} kWh | {fmt(lb['annual_internal_gains_kwh'])} kWh | {fmt(lb['annual_solar_gains_kwh'])} kWh |"
+        )
+    report.append("")
+    report.append("## PBE annual energy-balance diagnostics")
+    report.append("")
+    report.append("| Vertical | Transmission loss | Ventilation loss | Solar gains | Internal gains | Storage net |")
+    report.append("|---|---:|---:|---:|---:|---:|")
+    for row in rows:
+        p = row["pbe"]
+        report.append(
+            f"| {row['id']} | {fmt(p['transmission_loss_kwh'])} kWh | {fmt(p['ventilation_loss_kwh'])} kWh | "
+            f"{fmt(p['solar_gains_kwh'])} kWh | {fmt(p['internal_gains_kwh'])} kWh | {fmt(p['storage_net_kwh'])} kWh |"
         )
     report.append("")
     report.append("## Incremental intervention effect")
