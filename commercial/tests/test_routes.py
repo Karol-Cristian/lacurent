@@ -464,33 +464,96 @@ def test_home_lab_next_direct_electric_heating_pv_changes_live_result() -> None:
     assert with_payload["annual_cost_lei"] < without_payload["annual_cost_lei"]
 
 
-def test_home_lab_next_hides_internal_heating_validation_path() -> None:
+def test_home_lab_next_normalizes_stale_wood_stove_chain() -> None:
     data = demo_form_data()
     data.update(
         {
-            "heating_system_type": "custom",
-            "heating_carrier": "biomass",
-            "heating_efficiency": "0.75",
-            "heating_cost_profile": "firewood",
+            "heating_choice": "wood_stove",
+            "expert_heating_override": "",
             "heating_chain_enabled": "on",
-            "heating_generator_type": "wood_stove",
+            "heating_generator_type": "heat_pump_ground_water",
             "heating_emitter_type": "radiators_high_temp",
             "heating_distribution_type": "hydronic_insulated",
-            "heating_storage_type": "none",
-            "heating_control_type": "manual",
+            "heating_storage_type": "buffer_large",
+            "heating_control_type": "weather_compensated",
         }
     )
 
     response = client.post("/api/home-lab-next/calculate", data=data)
 
-    assert response.status_code == 422
-    payload = response.json()
-    assert payload["error"] == (
-        "Configurația instalației de încălzire nu este compatibilă. "
-        "Verifică generatorul, emisia și distribuția."
+    assert response.status_code == 200
+    system = response.json()["heating_system"]
+    assert system["generator_type"] == "wood_stove"
+    assert system["emitter_type"] == "local"
+    assert system["distribution_type"] == "local"
+    assert system["storage_type"] == "none"
+    assert system["control_type"] == "manual"
+    assert system["design_flow_temperature_c"] is None
+    assert system["design_return_temperature_c"] is None
+
+
+def test_home_lab_next_direct_electric_is_generic_and_ignores_stale_chain_inputs() -> None:
+    variants = [
+        ("radiators_high_temp", "hydronic_insulated", "buffer_large", "manual"),
+        ("underfloor", "underfloor", "buffer_small", "zoned"),
+        ("fan_coils", "hydronic_uninsulated", "none", "weather_compensated"),
+        ("air", "air", "buffer_large", "thermostatic_valves"),
+    ]
+    results = []
+    for emitter, distribution, storage, control in variants:
+        data = demo_form_data()
+        data.update(
+            {
+                "heating_choice": "electric_resistance",
+                "expert_heating_override": "",
+                "heating_chain_enabled": "on",
+                "heating_generator_type": "heat_pump_ground_water",
+                "heating_emitter_type": emitter,
+                "heating_distribution_type": distribution,
+                "heating_storage_type": storage,
+                "heating_control_type": control,
+                "cooling_enabled": "",
+                "pv_enabled": "",
+                "solar_thermal_enabled": "",
+            }
+        )
+        response = client.post("/api/home-lab-next/calculate", data=data)
+        assert response.status_code == 200
+        payload = response.json()
+        system = payload["heating_system"]
+        assert system["generator_type"] == "electric_direct"
+        assert system["emitter_type"] == "local"
+        assert system["distribution_type"] == "local"
+        assert system["storage_type"] == "none"
+        assert system["control_type"] == "room_thermostat"
+        assert system["design_flow_temperature_c"] is None
+        assert system["design_return_temperature_c"] is None
+        results.append(payload["final_energy_kwh"])
+
+    assert max(results) == min(results)
+
+
+def test_non_heat_pump_generator_ignores_stale_heat_pump_subtype() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "heating_choice": "condensing_gas_boiler",
+            "expert_heating_override": "",
+            "heating_chain_enabled": "on",
+            "heating_generator_type": "heat_pump_ground_water",
+            "heating_emitter_type": "radiators_low_temp",
+            "heating_distribution_type": "hydronic_insulated",
+            "heating_storage_type": "none",
+            "heating_control_type": "room_thermostat",
+        }
     )
-    assert "__root__" not in payload["error"]
-    assert "heating / details" not in payload["error"]
+
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    system = response.json()["heating_system"]
+    assert system["generator_type"] == "condensing_gas_boiler"
+    assert system["emitter_type"] == "radiators_low_temp"
 
 
 def test_home_lab_next_heat_pump_emitter_changes_light_engine_performance() -> None:
@@ -615,6 +678,13 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "heatingStorage" in response.text
     assert "heatingControl" in response.text
     assert "heatingGeneratorType" in response.text
+    assert "function normalizeHeatingState" in response.text
+    assert "function syncHeatingControlAvailability" in response.text
+    assert "function setHeatingFieldDisabled" in response.text
+    assert '$("[data-hln-home-heating-chain]")' in response.text
+    assert '$("[data-hln-scenario-heating-chain]")' in response.text
+    assert 'control.disabled = disabled' in response.text
+    assert 'state.heatPumpSource === "heat_pump_air_air"' in response.text
     assert 'formSet("heating_generator_type"' in response.text
     assert 'formSet("heating_emitter_type"' in response.text
     assert 'formSet("heating_distribution_type"' in response.text
