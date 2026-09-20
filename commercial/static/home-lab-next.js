@@ -137,7 +137,12 @@
       );
     }
 
-    const occlusion = Math.max(0, Math.round(mobileViewportBaseline - visibleBottom));
+    // Browser chrome on iOS can report a large VisualViewport delta even
+    // though only a modest lift is needed to keep the primary CTA tappable.
+    // Cap the correction so the dock stays near the bottom instead of jumping
+    // far up the screen when Chrome/Safari expands its bottom controls.
+    const rawOcclusion = Math.max(0, Math.round(mobileViewportBaseline - visibleBottom));
+    const occlusion = Math.min(rawOcclusion, 48);
     root.style.setProperty("--hln-mobile-bottom-occlusion", `${occlusion}px`);
   }
 
