@@ -661,7 +661,12 @@ def test_home_lab_next_heat_pump_emitter_changes_light_engine_performance() -> N
 
 
 def test_home_lab_next_exposes_source_backed_nzeb_target() -> None:
-    response = client.post("/api/home-lab-next/calculate", data=demo_form_data())
+    data = demo_form_data()
+    # Home Lab posts the selected geographic locality ID, not only the
+    # station/locality display name. The locality record is the source of the
+    # MC001 climate-zone assignment used by Table 2.10a.
+    data["locality_id"] = "siruta-54984"
+    response = client.post("/api/home-lab-next/calculate", data=data)
 
     assert response.status_code == 200
     payload = response.json()
