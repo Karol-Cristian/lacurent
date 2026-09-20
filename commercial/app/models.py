@@ -123,6 +123,7 @@ class PhotovoltaicInput(BaseModel):
     peak_power_kwp: float = Field(default=0, ge=0, le=100)
     orientation: RenewableOrientation = "south"
     system_efficiency: float = Field(default=0.80, gt=0, le=1)
+    self_consumption_fraction: float = Field(default=0.55, ge=0, le=1)
 
 
 class SolarThermalInput(BaseModel):
