@@ -41,6 +41,8 @@ jobs:
           node --check commercial/static/energy-i18n.js
           node --check commercial/static/calculator-submit-fix.js
           node --check commercial/static/scenario-cockpit.js
+          node --check commercial/static/home-lab-next.js
+          node --check commercial/static/home-lab-3d.js
           node --test commercial/tests/intake.test.cjs
           node --test commercial/tests/language-toggle.test.cjs
           node --test commercial/tests/scenario-cockpit.test.cjs
