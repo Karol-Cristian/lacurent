@@ -358,8 +358,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next10" in response.text
-    assert "/static/home-lab-next.js?v=next17" in response.text
+    assert "/static/home-lab-next.css?v=next11" in response.text
+    assert "/static/home-lab-next.js?v=next18" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d27" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -672,6 +672,12 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_home_lab_next_hidden_sections_cannot_be_overridden_by_layout_css() -> None:
+    response = client.get("/static/home-lab-next.css")
+    assert response.status_code == 200
+    assert ".hln-app [hidden]{display:none!important}" in response.text
+
+
 def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -688,6 +694,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'await calculateState(homeState, "home")' in response.text
     assert 'showScreen("site")' in response.text
     assert "function createHomeLocationProjection" in response.text
+    assert "if (!locationProjection) throw new Error" in response.text
+    assert 'locationMapData = data' in response.text
+    assert 'localityMap = new Map(localities.map(item => [String(item.id), item]))' in response.text
     assert "function renderHomeLocationMap" in response.text
     assert "function selectHomeLocality" in response.text
     assert "nearestHomeMapLocalities" in response.text
