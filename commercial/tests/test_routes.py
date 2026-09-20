@@ -361,7 +361,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next8" in response.text
     assert "/static/home-lab-next.js?v=next11" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d25" in response.text
+    assert "/static/home-lab-3d.js?v=3d26" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-reset-home' in response.text
     assert 'data-hln-reference-house' in response.text
@@ -504,7 +504,15 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'quickEditRange.addEventListener("touchend"' in response.text
     assert "scenarioOverrides" in response.text
     assert "pvEnabled" in response.text
+    assert "pvKwp" in response.text
     assert "solarThermalEnabled" in response.text
+    assert "solarThermalArea" in response.text
+    assert "ventilation" in response.text
+    assert "wallIns" in response.text
+    assert "roofIns" in response.text
+    assert "floorIns" in response.text
+    assert "glazing" in response.text
+    assert "measures" in response.text
     assert "SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70" in response.text
     assert 'key === "pvKwp"' in response.text
     assert 'key === "solarThermalKw"' in response.text
@@ -528,6 +536,25 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "hln:visual-state" in response.text
     assert 'fetch(calcUrl' in response.text
     assert 'href="#hln-i-' in response.text
+
+
+def test_home_lab_3d_reflects_selected_house_systems() -> None:
+    response = client.get("/static/home-lab-3d.js")
+    assert response.status_code == 200
+    assert "createSelectionProofLayers" in response.text
+    assert 'this.equipmentLayers.set("ventilation"' in response.text
+    assert 'this.equipmentLayers.set("gasFlue"' in response.text
+    assert 'this.equipmentLayers.set("woodHeat"' in response.text
+    assert 'this.equipmentLayers.set("districtHeat"' in response.text
+    assert 'this.equipmentLayers.set("electricHeat"' in response.text
+    assert 'detail.heating === "heat_pump"' in response.text
+    assert 'detail.heating === "electric_resistance"' in response.text
+    assert '["wood_stove", "wood_boiler", "pellet_boiler"]' in response.text
+    assert 'detail.ventilation === "mechanical" || detail.ventilation === "hrv"' in response.text
+    assert "detail.pvKwp" in response.text
+    assert "detail.solarThermalArea" in response.text
+    assert "selectedMeasures" in response.text
+    assert "glazingGlassColors" in response.text
 
 
 def test_embed_loader_supports_deferred_next_mounts() -> None:

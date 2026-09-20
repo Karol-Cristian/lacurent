@@ -116,6 +116,7 @@ class HomeLabHouse3D {
     this.inspectableMeshes = [];
     this.experimentLayers = new Map();
     this.equipmentLayers = new Map();
+    this.selectionProofLayers = new Map();
     this.visualState = null;
     this.lastVisualOrientation = null;
   }
@@ -187,6 +188,7 @@ class HomeLabHouse3D {
       await this.loadModel();
       this.createExperimentLayers();
       this.createVisualEquipment();
+      this.createSelectionProofLayers();
       this.addHitZones();
       this.addRenovationLayer();
       this.createSemanticHotspots();
@@ -898,6 +900,157 @@ class HomeLabHouse3D {
     this.equipmentLayers.set("ac", ac);
   }
 
+  createSelectionProofLayers() {
+    if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
+    const s = this.modelSize;
+
+    const addProofBox = (key, normalizedPosition, worldSize, color, opacity = 0.15) => {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          this.localLength(worldSize[0]),
+          this.localLength(worldSize[1]),
+          this.localLength(worldSize[2])
+        ),
+        new THREE.MeshPhysicalMaterial({
+          color,
+          transparent: true,
+          opacity,
+          roughness: 0.62,
+          metalness: 0,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
+      );
+      mesh.name = `LaCurentProof_${key}`;
+      mesh.position.copy(this.localPointFromNormalized(normalizedPosition));
+      mesh.visible = false;
+      mesh.renderOrder = 5;
+      this.modelRoot.add(mesh);
+      this.selectionProofLayers.set(key, mesh);
+      return mesh;
+    };
+
+    addProofBox("wall", [0.00, 0.41, 0.505], [s.x * 0.93, s.y * 0.56, Math.max(0.05, s.z * 0.018)], 0x4f8a69, 0.13);
+    addProofBox("roof", [0.00, 0.88, 0.00], [s.x * 0.91, Math.max(0.05, s.y * 0.018), s.z * 0.82], 0x4f8a69, 0.11);
+    addProofBox("floor", [0.00, 0.09, 0.00], [s.x * 0.90, Math.max(0.05, s.y * 0.018), s.z * 0.82], 0x4f8a69, 0.10);
+    addProofBox("windows", [0.00, 0.42, 0.515], [s.x * 0.66, s.y * 0.31, Math.max(0.05, s.z * 0.016)], 0x5f91aa, 0.14);
+
+    const ventilation = new THREE.Group();
+    ventilation.name = "LaCurentVisual_ventilation";
+    ventilation.position.copy(this.localPointFromNormalized([0.36, 0.58, 0.515]));
+    const ventMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd8dedb,
+      roughness: 0.42,
+      metalness: 0.44,
+    });
+    const ventRadius = this.localLength(Math.max(s.x, s.y) * 0.024);
+    const ventDepth = this.localLength(Math.max(0.035, s.z * 0.012));
+    [-1, 1].forEach((side, index) => {
+      const vent = new THREE.Mesh(
+        new THREE.CylinderGeometry(ventRadius, ventRadius, ventDepth, 24),
+        ventMaterial
+      );
+      vent.rotation.x = Math.PI / 2;
+      vent.position.x = side * ventRadius * 1.45;
+      vent.userData.hrvSecond = index === 1;
+      ventilation.add(vent);
+    });
+    ventilation.visible = false;
+    this.modelRoot.add(ventilation);
+    this.equipmentLayers.set("ventilation", ventilation);
+
+    const gasFlue = new THREE.Group();
+    gasFlue.name = "LaCurentVisual_gasFlue";
+    gasFlue.position.copy(this.localPointFromNormalized([0.44, 0.60, 0.515]));
+    const flue = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        this.localLength(s.x * 0.014),
+        this.localLength(s.x * 0.014),
+        this.localLength(s.z * 0.075),
+        20
+      ),
+      new THREE.MeshStandardMaterial({ color: 0xd8dbd8, roughness: 0.36, metalness: 0.58 })
+    );
+    flue.rotation.x = Math.PI / 2;
+    gasFlue.add(flue);
+    gasFlue.visible = false;
+    this.modelRoot.add(gasFlue);
+    this.equipmentLayers.set("gasFlue", gasFlue);
+
+    const woodHeat = new THREE.Group();
+    woodHeat.name = "LaCurentVisual_woodHeat";
+    woodHeat.position.copy(this.localPointFromNormalized([-0.22, 0.84, 0.12]));
+    const chimneyMaterial = new THREE.MeshStandardMaterial({ color: 0x444846, roughness: 0.72, metalness: 0.18 });
+    const chimney = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        this.localLength(s.x * 0.018),
+        this.localLength(s.x * 0.020),
+        this.localLength(s.y * 0.22),
+        18
+      ),
+      chimneyMaterial
+    );
+    chimney.position.y = this.localLength(s.y * 0.10);
+    woodHeat.add(chimney);
+    const cap = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        this.localLength(s.x * 0.030),
+        this.localLength(s.x * 0.030),
+        this.localLength(s.y * 0.018),
+        18
+      ),
+      chimneyMaterial
+    );
+    cap.position.y = this.localLength(s.y * 0.22);
+    woodHeat.add(cap);
+    woodHeat.visible = false;
+    this.modelRoot.add(woodHeat);
+    this.equipmentLayers.set("woodHeat", woodHeat);
+
+    const district = new THREE.Group();
+    district.name = "LaCurentVisual_districtHeat";
+    district.position.copy(this.localPointFromNormalized([-0.45, 0.18, 0.50]));
+    const districtMaterial = new THREE.MeshStandardMaterial({ color: 0x9b7655, roughness: 0.55, metalness: 0.32 });
+    [-1, 1].forEach((side) => {
+      const pipe = new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          this.localLength(s.x * 0.012),
+          this.localLength(s.x * 0.012),
+          this.localLength(s.y * 0.22),
+          16
+        ),
+        districtMaterial
+      );
+      pipe.position.x = side * this.localLength(s.x * 0.028);
+      pipe.position.y = this.localLength(s.y * 0.08);
+      district.add(pipe);
+    });
+    district.visible = false;
+    this.modelRoot.add(district);
+    this.equipmentLayers.set("districtHeat", district);
+
+    const electric = new THREE.Group();
+    electric.name = "LaCurentVisual_electricHeat";
+    electric.position.copy(this.localPointFromNormalized([-0.42, 0.35, 0.515]));
+    const ew = this.localLength(s.x * 0.10);
+    const eh = this.localLength(s.y * 0.15);
+    const ed = this.localLength(Math.max(0.035, s.z * 0.018));
+    const ebox = new THREE.Mesh(
+      new THREE.BoxGeometry(ew, eh, ed),
+      new THREE.MeshStandardMaterial({ color: 0xe8e2cf, roughness: 0.58, metalness: 0.08 })
+    );
+    electric.add(ebox);
+    const indicator = new THREE.Mesh(
+      new THREE.CircleGeometry(Math.min(ew, eh) * 0.10, 20),
+      new THREE.MeshBasicMaterial({ color: 0xe4b54d, toneMapped: false })
+    );
+    indicator.position.z = ed * 0.51;
+    electric.add(indicator);
+    electric.visible = false;
+    this.modelRoot.add(electric);
+    this.equipmentLayers.set("electricHeat", electric);
+  }
+
   focusOrientation(orientation) {
     if (!this.camera || !this.controls || !this.modelSize) return;
     const offsets = {
@@ -954,10 +1107,85 @@ class HomeLabHouse3D {
     }
 
     const pv = this.experimentLayers.get("pv");
-    if (pv) pv.visible = Boolean(detail.pvEnabled);
+    if (pv) {
+      pv.visible = Boolean(detail.pvEnabled);
+      const panelCount = detail.pvEnabled
+        ? Math.max(1, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 7.5)))
+        : 0;
+      pv.children.forEach((panel, index) => {
+        panel.visible = index < panelCount;
+      });
+    }
 
     const solarThermal = this.experimentLayers.get("solarThermal");
-    if (solarThermal) solarThermal.visible = Boolean(detail.solarThermalEnabled);
+    if (solarThermal) {
+      solarThermal.visible = Boolean(detail.solarThermalEnabled);
+      const thermalScale = clamp(0.82 + Number(detail.solarThermalArea || 0) * 0.045, 0.82, 1.40);
+      solarThermal.scale.setScalar(thermalScale);
+    }
+
+    const selectedMeasures = new Set(Array.isArray(detail.measures) ? detail.measures : []);
+    ["wall", "roof", "floor", "windows"].forEach((part) => {
+      const layer = this.selectionProofLayers.get(part);
+      if (layer) layer.visible = selectedMeasures.has(part);
+    });
+
+    const windowProof = this.selectionProofLayers.get("windows");
+    if (windowProof?.material?.color) {
+      const glazingColors = {
+        single_clear_glazing: 0x9bb1b7,
+        double_clear_glazing: 0x789eaa,
+        double_low_e_face_3: 0x5b8798,
+        triple_low_e_faces_2_and_5: 0x416f82,
+        reference_mc001: 0x6c8790,
+      };
+      windowProof.material.color.setHex(glazingColors[detail.glazing] || 0x5f91aa);
+    }
+
+    const glazingGlassColors = {
+      single_clear_glazing: 0xa9bcc1,
+      double_clear_glazing: 0x91acb4,
+      double_low_e_face_3: 0x6f98a5,
+      triple_low_e_faces_2_and_5: 0x507f90,
+      reference_mc001: 0x78959d,
+    };
+    const glazingColor = glazingGlassColors[detail.glazing] || 0x91acb4;
+    this.semanticMeshes
+      .filter((mesh) => mesh.userData.part === "windows")
+      .forEach((mesh) => {
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        materials.forEach((material) => {
+          const key = `${mesh.name || ""} ${material?.name || ""}`.toLowerCase();
+          if (!material?.color || !/glass/.test(key)) return;
+          material.color.setHex(glazingColor);
+          material.transparent = true;
+          material.opacity = detail.glazing === "single_clear_glazing" ? 0.50 : 0.62;
+          if ("roughness" in material) {
+            material.roughness = detail.glazing === "triple_low_e_faces_2_and_5" ? 0.08 : 0.14;
+          }
+          material.needsUpdate = true;
+        });
+      });
+
+    const ventilation = this.equipmentLayers.get("ventilation");
+    if (ventilation) {
+      ventilation.visible = detail.ventilation === "mechanical" || detail.ventilation === "hrv";
+      ventilation.children.forEach((vent) => {
+        if (vent.userData.hrvSecond) vent.visible = detail.ventilation === "hrv";
+      });
+    }
+
+    const gasFlue = this.equipmentLayers.get("gasFlue");
+    if (gasFlue) gasFlue.visible = detail.heating === "condensing_gas_boiler" || detail.heating === "gas_boiler";
+
+    const woodHeat = this.equipmentLayers.get("woodHeat");
+    if (woodHeat) woodHeat.visible = ["wood_stove", "wood_boiler", "pellet_boiler"].includes(detail.heating);
+
+    const districtHeat = this.equipmentLayers.get("districtHeat");
+    if (districtHeat) districtHeat.visible = detail.heating === "district_heat";
+
+    const electricHeat = this.equipmentLayers.get("electricHeat");
+    if (electricHeat) electricHeat.visible = detail.heating === "electric_resistance";
 
     if (detail.orientation && detail.orientation !== this.lastVisualOrientation) {
       this.lastVisualOrientation = detail.orientation;

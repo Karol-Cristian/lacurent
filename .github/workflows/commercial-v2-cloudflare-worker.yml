@@ -49,6 +49,8 @@ jobs:
           git diff --check
           node --check commercial/static/app.js
           node --check commercial/static/elivio.js
+          node --check commercial/static/home-lab-next.js
+          node --check commercial/static/home-lab-3d.js
           node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
