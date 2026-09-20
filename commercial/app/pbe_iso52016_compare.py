@@ -573,10 +573,47 @@ def run_controlled_internal_gains_comparison() -> dict[str, Any]:
         .clip(lower=0.0)
     )
     pbe_heating_kwh = float(q_h_w.sum() / 1000.0)
+
+    # Diagnostic: force all internal gains directly into the air node.
+    # The primary audit run keeps PBE default f_int_c=0.4.
+    sensitivity_started = perf_counter()
+    hourly_convective = _LaCurentSyntheticISO52016.simulate_envelope_multizone_free_floating(
+        building_object=pbe_bui,
+        weather_source="lacurent_monthly",
+        include_solar=False,
+        warmup_hours=744,
+        use_profiles=False,
+        include_internal_gains=True,
+        include_ventilation=True,
+        include_thermal_bridges=True,
+        f_int_c=1.0,
+        hvac_control_variable="air",
+        internal_convection_model="table",
+        external_convection_model="table",
+        external_radiation_model="table",
+    )
+    sensitivity_ms = (perf_counter() - sensitivity_started) * 1000.0
+    hourly_convective_active = (
+        hourly_convective.iloc[-8760:].copy()
+        if len(hourly_convective) > 8760
+        else hourly_convective.copy()
+    )
+    q_h_convective_w = (
+        pd.to_numeric(hourly_convective_active["Q_HVAC_main"], errors="coerce")
+        .fillna(0.0)
+        .clip(lower=0.0)
+    )
+    pbe_all_convective_kwh = float(q_h_convective_w.sum() / 1000.0)
+
     current_heating_kwh = float(current.annual_heating_demand_kwh)
     delta_kwh = pbe_heating_kwh - current_heating_kwh
     rel_pct = 100.0 * delta_kwh / current_heating_kwh if current_heating_kwh > 0 else 0.0
-
+    convective_delta_kwh = pbe_all_convective_kwh - current_heating_kwh
+    convective_rel_pct = (
+        100.0 * convective_delta_kwh / current_heating_kwh
+        if current_heating_kwh > 0
+        else 0.0
+    )
     pbe_phi_mean = None
     if "Phi_int_main" in hourly_active.columns:
         pbe_phi_mean = float(
@@ -614,6 +651,13 @@ def run_controlled_internal_gains_comparison() -> dict[str, Any]:
         "pbe_iso52016": {
             "heating_need_kwh": round(pbe_heating_kwh, 3),
             "peak_heating_w": round(float(q_h_w.max()), 3),
+            "internal_gain_convective_fraction": 0.4,
+        },
+        "gain_split_sensitivity": {
+            "all_convective_heating_need_kwh": round(pbe_all_convective_kwh, 3),
+            "all_convective_runtime_ms": round(sensitivity_ms, 1),
+            "all_convective_delta_kwh": round(convective_delta_kwh, 3),
+            "all_convective_relative_delta_percent": round(convective_rel_pct, 3),
         },
         "comparison": {
             "delta_kwh": round(delta_kwh, 3),
