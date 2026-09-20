@@ -173,6 +173,7 @@ def default_form_values() -> dict[str, Any]:
         "locality_id": "siruta-54984",
         "locality": "Cluj-Napoca",
         "building_type": "residential_individual",
+        "building_status": "existing",
         "building_length_m": 10,
         "building_width_m": 8,
         "heated_levels": 2,
@@ -189,6 +190,15 @@ def default_form_values() -> dict[str, Any]:
         "heated_volume_m3": 432,
         "indoor_design_temperature_c": 20,
         "construction_year": 2005,
+        "pv_enabled": False,
+        "pv_peak_power_kwp": 0,
+        "pv_orientation": "south",
+        "pv_system_efficiency": 0.80,
+        "pv_self_consumption_fraction": 0.55,
+        "solar_thermal_enabled": False,
+        "solar_thermal_collector_area_m2": 0,
+        "solar_thermal_orientation": "south",
+        "solar_thermal_useful_efficiency": 0.42,
         "insulation_profile": "average",
         "solar_gains_kwh_m2_month": 0,
         "solar_mode": "normative_hsol",
@@ -262,7 +272,17 @@ def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
             "heated_volume_m3": building.heated_volume_m3,
             "indoor_design_temperature_c": building.indoor_design_temperature_c,
             "building_type": building.building_type.value,
+            "building_status": building.building_status.value,
             "construction_year": building.construction_year,
+            "pv_enabled": building.renewables.photovoltaic.enabled,
+            "pv_peak_power_kwp": building.renewables.photovoltaic.peak_power_kwp,
+            "pv_orientation": building.renewables.photovoltaic.orientation,
+            "pv_system_efficiency": building.renewables.photovoltaic.system_efficiency,
+            "pv_self_consumption_fraction": building.renewables.photovoltaic.self_consumption_fraction,
+            "solar_thermal_enabled": building.renewables.solar_thermal.enabled,
+            "solar_thermal_collector_area_m2": building.renewables.solar_thermal.collector_area_m2,
+            "solar_thermal_orientation": building.renewables.solar_thermal.orientation,
+            "solar_thermal_useful_efficiency": building.renewables.solar_thermal.useful_efficiency,
             "solar_gains_kwh_m2_month": building.solar_gains_kwh_m2_month,
             "solar_mode": building.solar.mode,
             "solar_orientation": building.solar.orientation,
@@ -502,6 +522,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
         heated_volume_m3=technical.get("heated_volume_m3"),
         indoor_design_temperature_c=parse_optional_float(form.get("indoor_design_temperature_c")) or 20,
         building_type=form.get("building_type") or "residential_individual",
+        building_status=form.get("building_status") or "existing",
         construction_year=parse_optional_int(form.get("construction_year")),
         solar_gains_kwh_m2_month=parse_optional_float(form.get("solar_gains_kwh_m2_month")) or 0,
         solar={
@@ -517,6 +538,33 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             "exterior_surface_resistance_m2k_w": parse_optional_float(form.get("solar_exterior_surface_resistance_m2k_w")) if form.get("solar_exterior_surface_resistance_m2k_w") not in (None, "") else 0.04,
             "longwave_radiation_coefficient_w_m2k": parse_optional_float(form.get("solar_longwave_radiation_coefficient_w_m2k")) if form.get("solar_longwave_radiation_coefficient_w_m2k") not in (None, "") else 5.0,
             "sky_temperature_difference_k": parse_optional_float(form.get("solar_sky_temperature_difference_k")) if form.get("solar_sky_temperature_difference_k") not in (None, "") else 11.0,
+        },
+        renewables={
+            "photovoltaic": {
+                "enabled": _checked(form, "pv_enabled"),
+                "peak_power_kwp": parse_optional_float(form.get("pv_peak_power_kwp")) or 0,
+                "orientation": form.get("pv_orientation") or "south",
+                "system_efficiency": (
+                    parse_optional_float(form.get("pv_system_efficiency"))
+                    if form.get("pv_system_efficiency") not in (None, "")
+                    else 0.80
+                ),
+                "self_consumption_fraction": (
+                    parse_optional_float(form.get("pv_self_consumption_fraction"))
+                    if form.get("pv_self_consumption_fraction") not in (None, "")
+                    else 0.55
+                ),
+            },
+            "solar_thermal": {
+                "enabled": _checked(form, "solar_thermal_enabled"),
+                "collector_area_m2": parse_optional_float(form.get("solar_thermal_collector_area_m2")) or 0,
+                "orientation": form.get("solar_thermal_orientation") or "south",
+                "useful_efficiency": (
+                    parse_optional_float(form.get("solar_thermal_useful_efficiency"))
+                    if form.get("solar_thermal_useful_efficiency") not in (None, "")
+                    else 0.42
+                ),
+            },
         },
         envelope=components,
         thermal_bridges=thermal_bridges,
@@ -626,8 +674,19 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "climate_station": climate.get("station") or "",
         "climate_zone": climate.get("climate_zone"),
         "winter_design_temperature_c": design_temperature,
+        "building_status": result.input.building_status.value,
+        "construction_year": result.input.construction_year,
         "solar_orientation": result.input.solar.orientation,
         "solar_glazing_type_id": result.input.solar.glazing_type_id,
+        "renewables": {
+            "photovoltaic_generation_kwh": float(result.renewables.photovoltaic_generation_kwh),
+            "photovoltaic_self_consumed_kwh": float(result.renewables.photovoltaic_self_consumed_kwh),
+            "photovoltaic_exported_kwh": float(result.renewables.photovoltaic_exported_kwh),
+            "solar_thermal_useful_kwh": float(result.renewables.solar_thermal_useful_kwh),
+            "total_renewable_energy_kwh": float(result.renewables.total_renewable_energy_kwh),
+            "renewable_share_percent": float(result.renewables.renewable_share_percent),
+            "source_note": result.renewables.source_note,
+        },
         "final_energy_by_service": {
             key: float(value)
             for key, value in result.final_energy_by_service.items()
@@ -642,6 +701,10 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 "useful_heating_kwh": float(row.useful_heating_kwh),
                 "useful_cooling_kwh": float(row.useful_cooling_kwh),
                 "outdoor_temperature_c": float(row.outdoor_temperature_c),
+                "solar_gains_kwh": float(row.solar_gains_kwh),
+                "solar_station_name": row.solar_station_name,
+                "solar_station_resolution": row.solar_station_resolution,
+                "solar_station_distance_km": row.solar_station_distance_km,
             }
             for row in result.monthly
         ],
