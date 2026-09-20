@@ -220,18 +220,23 @@
       Number.isFinite(Number(scenarioOverrides.coolingSeer)) ||
       referenceMode
     ) next.push("ventilation");
-    if (
-      Boolean(scenarioState.pvEnabled) !== Boolean(homeState.pvEnabled) ||
+    const pvEnabledChanged = Boolean(scenarioState.pvEnabled) !== Boolean(homeState.pvEnabled);
+    const pvConfiguredChanged = (scenarioState.pvEnabled || homeState.pvEnabled) && (
       Math.abs(Number(scenarioState.pvKwp) - Number(homeState.pvKwp)) > 0.01 ||
       scenarioState.pvOrientation !== homeState.pvOrientation ||
-      Math.abs(Number(scenarioState.pvTilt) - Number(homeState.pvTilt)) > 0.01 ||
-      (referenceMode && homeState.pvEnabled)
-    ) next.push("pv");
-    if (
-      Boolean(scenarioState.solarThermalEnabled) !== Boolean(homeState.solarThermalEnabled) ||
+      Math.abs(Number(scenarioState.pvTilt) - Number(homeState.pvTilt)) > 0.01
+    );
+    if (pvEnabledChanged || pvConfiguredChanged || (referenceMode && homeState.pvEnabled)) next.push("pv");
+
+    const solarThermalEnabledChanged = Boolean(scenarioState.solarThermalEnabled) !== Boolean(homeState.solarThermalEnabled);
+    const solarThermalConfiguredChanged = (scenarioState.solarThermalEnabled || homeState.solarThermalEnabled) && (
       Math.abs(Number(scenarioState.solarThermalArea) - Number(homeState.solarThermalArea)) > 0.01 ||
       scenarioState.solarThermalOrientation !== homeState.solarThermalOrientation ||
-      Math.abs(Number(scenarioState.solarThermalTilt) - Number(homeState.solarThermalTilt)) > 0.01 ||
+      Math.abs(Number(scenarioState.solarThermalTilt) - Number(homeState.solarThermalTilt)) > 0.01
+    );
+    if (
+      solarThermalEnabledChanged ||
+      solarThermalConfiguredChanged ||
       (referenceMode && homeState.solarThermalEnabled)
     ) next.push("solar_thermal");
     measures = next;
