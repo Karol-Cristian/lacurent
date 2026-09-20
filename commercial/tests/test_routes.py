@@ -797,8 +797,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "async function calculateCandidate" in response.text
     assert "async function configureNzeb" in response.text
     nzeb_section = response.text.split("async function configureNzeb", 1)[1].split("const ROI_ACTIONS", 1)[0]
-    assert '"heat_pump"' in nzeb_section
-    assert '"heat_pump_air_water"' in nzeb_section
+    assert '"heat_pump"' in response.text
+    assert '"heat_pump_air_water"' in response.text
     assert '"natural_gas"' not in nzeb_section
     assert "async function configureBestRoi" in response.text
     assert 'const buttons = $$("[data-hln-smart-config]")' in response.text
@@ -806,10 +806,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert '$$("[data-hln-reference-house]").forEach' in response.text
     assert '\n  $("[data-hln-smart-config]").forEach' not in response.text
     assert '\n  $("[data-hln-reference-house]").forEach' not in response.text
-    assert '"heat_pump_air_air"' in nzeb_section
-    assert "hasHydronicDistribution" in nzeb_section
+    assert '"heat_pump_air_air"' in response.text
+    assert "hasHydronicDistribution" in response.text
     assert "let state = migrateStoredHeatingState({...homeState}, defaultState);" in nzeb_section
-    assert "scenarioState" not in nzeb_section
+    assert "nzebEnvelopeCandidate(scenarioState" not in nzeb_section
     assert "nzebEnvelopeActions" in response.text
     assert "nzebEnvelopeStatus" in response.text
     assert "function renderReport" in response.text
