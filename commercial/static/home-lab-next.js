@@ -1673,6 +1673,8 @@
     if (!quickEditType) return;
     const value = clamp(Number(rawValue) || 0, 0, 30);
     referenceMode = false;
+    optimizationMeta = null;
+    setOptimizationNote("");
 
     if (quickEditType === "pv") {
       scenarioState.pvKwp = value;
@@ -2027,6 +2029,8 @@
     baselineSaved = true;
     referenceMode = false;
     scenarioOverrides = {};
+    optimizationMeta = null;
+    setOptimizationNote("");
     scenarioState = {...homeState};
     scenarioResult = homeResult;
     measures = [];
@@ -2138,6 +2142,8 @@
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
+    optimizationMeta = null;
+    setOptimizationNote("");
     measures = [];
     scenarioState = {...homeState};
     const focus =
@@ -2208,6 +2214,8 @@
 
   function resetMeasure(type) {
     referenceMode = false;
+    optimizationMeta = null;
+    setOptimizationNote("");
     clearScenarioOverrideForMeasure(type);
     if (type === "wall") scenarioState.wallIns = homeState.wallIns;
     if (type === "roof") scenarioState.roofIns = homeState.roofIns;
@@ -2249,6 +2257,8 @@
   function syncInterventionFromControls() {
     if (!activeMeasure) return;
     referenceMode = false;
+    optimizationMeta = null;
+    setOptimizationNote("");
     clearScenarioOverrideForMeasure(activeMeasure);
     if (activeMeasure === "wall") scenarioState.wallIns = Number($("#hlnWallIns").value);
     if (activeMeasure === "roof") scenarioState.roofIns = Number($("#hlnRoofIns").value);
