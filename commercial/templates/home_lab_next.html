@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next5">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next6">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -119,7 +119,7 @@
         <div class="hln-config-sheet">
           <div class="hln-config-sheet-head">
             <span>DATELE CASEI</span>
-            <small>4 categorii</small>
+            <small>5 categorii</small>
           </div>
 
           <button type="button" class="hln-config-row" data-hln-editor-open="location">
@@ -143,6 +143,12 @@
           <button type="button" class="hln-config-row" data-hln-editor-open="systems">
             <span class="hln-row-icon"><svg><use href="#hln-i-flame"></use></svg></span>
             <span class="hln-row-copy"><small>INSTALAȚII</small><strong id="hlnSystemsSummary">Centrală gaz</strong><em id="hlnSystemsMeta">Ventilație naturală</em></span>
+            <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
+          </button>
+
+          <button type="button" class="hln-config-row" data-hln-editor-open="renewables">
+            <span class="hln-row-icon"><svg><use href="#hln-i-sun"></use></svg></span>
+            <span class="hln-row-copy"><small>REGENERABILE</small><strong id="hlnRenewablesSummary">Fără producție locală</strong><em id="hlnRenewablesMeta">PV · solar termic</em></span>
             <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
           </button>
         </div>
@@ -238,11 +244,11 @@
           </div>
 
           <div class="hln-measure-section">
-            <header><span>ENERGIE</span><small>în curând</small></header>
-            <button type="button" class="hln-measure-row is-disabled" disabled>
+            <header><span>ENERGIE</span><small>1 intervenție</small></header>
+            <button type="button" class="hln-measure-row" data-hln-measure="renewables">
               <span class="hln-row-icon"><svg><use href="#hln-i-sun"></use></svg></span>
-              <span><strong>Solar / PV</strong><small>Calcul în curs de integrare</small></span>
-              <span class="hln-coming">CURÂND</span>
+              <span><strong>Solar / PV</strong><small>Fotovoltaic și solar termic</small></span>
+              <svg><use href="#hln-i-chevron"></use></svg>
             </button>
           </div>
         </div>
@@ -258,8 +264,8 @@
 
         <div class="hln-reference-note">
           <strong>Ce înseamnă „Casa de referință” în MC001?</strong>
-          <span>Este o clădire virtuală de comparație: păstrează geometria, orientarea, amplasarea și condițiile de utilizare ale Casei mele, dar înlocuiește performanțele relevante ale anvelopei și instalațiilor cu valori de referință. Nu este o altă casă și nici o recomandare de renovare.</span>
-          <small>LaCurent aplică aici setul de parametri de referință deja implementat; unele reguli normative ale clădirii de referință MC001 sunt încă în curs de integrare.</small>
+          <span>Este o clădire virtuală de comparație: păstrează geometria, orientarea și amplasarea Casei mele, dar înlocuiește caracteristicile energetice relevante cu valorile de referință prevăzute de metodologie. Îți arată unde se situează Casa ta față de acest etalon.</span>
+          <small>Casa de referință este un benchmark metodologic; nu reprezintă automat configurația optimă de renovare. LaCurent aplică aici setul de parametri de referință deja implementat; unele reguli normative MC001 sunt încă în curs de integrare.</small>
         </div>
 
         <div class="hln-reference-spec" id="hlnReferenceSpec" hidden>
@@ -476,6 +482,20 @@
                 <select id="hlnScenarioCooling"><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
               </label>
             </div>
+
+            <div data-hln-intervention-panel="renewables" hidden>
+              <div class="hln-field-heading"><svg><use href="#hln-i-sun"></use></svg><div><strong>Regenerabile</strong><small>PV și solar termic pe profilul solar al localității</small></div></div>
+              <label class="hln-check-row"><input id="hlnScenarioPvEnabled" type="checkbox"><span>Adaugă fotovoltaic</span></label>
+              <label>Putere PV <div class="hln-inline-input"><input id="hlnScenarioPvKwp" type="number" min="0.5" max="100" step="0.5"><span>kWp</span></div></label>
+              <label>Orientare PV
+                <select id="hlnScenarioPvOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option><option value="horizontal">Orizontal</option></select>
+              </label>
+              <label class="hln-check-row"><input id="hlnScenarioSolarThermalEnabled" type="checkbox"><span>Adaugă solar termic</span></label>
+              <label>Suprafață solar termic <div class="hln-inline-input"><input id="hlnScenarioSolarThermalArea" type="number" min="1" max="100" step="0.5"><span>m²</span></div></label>
+              <label>Orientare solar termic
+                <select id="hlnScenarioSolarThermalOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option><option value="horizontal">Orizontal</option></select>
+              </label>
+            </div>
           </div>
 
           <div class="hln-intervention-actions">
@@ -583,6 +603,13 @@
           <label>Înălțime interioară <div class="hln-inline-input"><input id="hlnHeight" type="number" min="2.2" max="3.5" step="0.1" value="2.7"><span>m</span></div></label>
           <label>Temperatură iarna <div class="hln-inline-input"><input id="hlnTemperature" type="number" min="18" max="24" step="0.5" value="21"><span>°C</span></div></label>
           <label>Persoane în locuință <input id="hlnOccupants" type="number" min="1" max="8" step="1" value="4"></label>
+          <label>Anul construcției <input id="hlnConstructionYear" type="number" min="1800" max="2100" step="1" value="1990"></label>
+          <label>Situația clădirii
+            <select id="hlnBuildingStatus">
+              <option value="existing">Casă existentă</option>
+              <option value="new_project">Clădire nouă / proiect</option>
+            </select>
+          </label>
         </section>
 
         <section data-hln-editor="envelope" hidden>
@@ -600,16 +627,44 @@
         </section>
 
         <section data-hln-editor="systems" hidden>
-          <div class="hln-editor-lead"><span class="hln-row-icon"><svg><use href="#hln-i-flame"></use></svg></span><div><strong>Instalațiile casei</strong><small>Încălzire, ventilație și răcire.</small></div></div>
+          <div class="hln-editor-lead"><span class="hln-row-icon"><svg><use href="#hln-i-flame"></use></svg></span><div><strong>Instalațiile casei</strong><small>Încălzire, ACM, ventilație și răcire. Performanțele introduse intră direct în calcul.</small></div></div>
           <label>Încălzire
             <select id="hlnHomeHeating"><option value="condensing_gas_boiler">Centrală gaz în condensare</option><option value="gas_boiler">Centrală gaz convențională</option><option value="heat_pump">Pompă de căldură</option><option value="district_heat">Termoficare</option><option value="wood_stove">Șemineu / sobă pe lemne</option><option value="electric_resistance">Încălzire electrică directă</option><option value="wood_boiler">Centrală pe lemne</option><option value="pellet_boiler">Centrală pe peleți</option></select>
           </label>
+          <label id="hlnHeatingEfficiencyWrap">Randament sezonier <div class="hln-inline-input"><input id="hlnHomeHeatingEfficiency" type="number" min="20" max="110" step="1" value="94"><span>%</span></div></label>
+          <label id="hlnHeatingScopWrap" hidden>SCOP pompă de căldură <input id="hlnHomeHeatingScop" type="number" min="1" max="8" step="0.1" value="3.2"></label>
+          <label>Apă caldă menajeră
+            <select id="hlnHomeDhw"><option value="same_as_heating">Același sistem / combustibil ca încălzirea</option><option value="natural_gas">Gaz natural</option><option value="electricity">Electricitate</option><option value="biomass">Biomasă</option><option value="district_heat">Termoficare</option><option value="disabled">Fără ACM în calcul</option></select>
+          </label>
+          <label>Randament ACM <div class="hln-inline-input"><input id="hlnHomeDhwEfficiency" type="number" min="20" max="100" step="1" value="86"><span>%</span></div></label>
           <label>Ventilație
             <select id="hlnHomeVentilation"><option value="natural">Naturală</option><option value="mechanical">Mecanică</option><option value="hrv">Cu recuperare de căldură</option></select>
           </label>
+          <label id="hlnHeatRecoveryWrap" hidden>Recuperare căldură <div class="hln-inline-input"><input id="hlnHomeHeatRecovery" type="number" min="0" max="95" step="1" value="75"><span>%</span></div></label>
           <label>Răcire
             <select id="hlnHomeCooling"><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
           </label>
+          <label id="hlnCoolingSeerWrap" hidden>SEER răcire <input id="hlnHomeCoolingSeer" type="number" min="1" max="12" step="0.1" value="4.0"></label>
+        </section>
+
+        <section data-hln-editor="renewables" hidden>
+          <div class="hln-editor-lead"><span class="hln-row-icon"><svg><use href="#hln-i-sun"></use></svg></span><div><strong>Regenerabile</strong><small>Producție locală folosită în bilanțul Light. Radiația este luată din A.9.6 sau dintr-o stație normativă cu profil climatic analog.</small></div></div>
+          <label class="hln-check-row"><input id="hlnHomePvEnabled" type="checkbox"><span>Panouri fotovoltaice</span></label>
+          <div class="hln-editor-subgrid" id="hlnPvFields" hidden>
+            <label>Putere instalată <div class="hln-inline-input"><input id="hlnHomePvKwp" type="number" min="0.5" max="100" step="0.5" value="5"><span>kWp</span></div></label>
+            <label>Orientare
+              <select id="hlnHomePvOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option><option value="horizontal">Orizontal</option></select>
+            </label>
+            <label>Autoconsum estimat <div class="hln-inline-input"><input id="hlnHomePvSelfConsumption" type="number" min="0" max="100" step="5" value="55"><span>%</span></div></label>
+          </div>
+          <label class="hln-check-row"><input id="hlnHomeSolarThermalEnabled" type="checkbox"><span>Panouri solare termice pentru ACM</span></label>
+          <div class="hln-editor-subgrid" id="hlnSolarThermalFields" hidden>
+            <label>Suprafață colectori <div class="hln-inline-input"><input id="hlnHomeSolarThermalArea" type="number" min="1" max="100" step="0.5" value="4"><span>m²</span></div></label>
+            <label>Orientare
+              <select id="hlnHomeSolarThermalOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option><option value="horizontal">Orizontal</option></select>
+            </label>
+          </div>
+          <div class="hln-editor-info"><span>Sursa radiației</span><strong id="hlnSolarSourceSummary">Se determină după localitate</strong></div>
         </section>
       </div>
     </aside>
@@ -636,6 +691,7 @@
       <input name="locality_id" value="{{ values.locality_id }}">
       <input name="locality" value="{{ values.locality }}">
       <input name="building_type" value="residential_individual">
+      <input name="building_status" value="existing">
       <input name="building_length_m" value="8">
       <input name="building_width_m" value="7.5">
       <input name="heated_levels" value="2">
@@ -660,6 +716,15 @@
       <input name="thermal_bridge_psi_w_mk" value="0.08">
       <input name="indoor_design_temperature_c" value="21">
       <input name="construction_year" value="1990">
+      <input name="pv_enabled" value="">
+      <input name="pv_peak_power_kwp" value="0">
+      <input name="pv_orientation" value="south">
+      <input name="pv_system_efficiency" value="0.80">
+      <input name="pv_self_consumption_fraction" value="0.55">
+      <input name="solar_thermal_enabled" value="">
+      <input name="solar_thermal_collector_area_m2" value="0">
+      <input name="solar_thermal_orientation" value="south">
+      <input name="solar_thermal_useful_efficiency" value="0.42">
       <input name="solar_mode" value="normative_hsol">
       <input name="solar_orientation" value="south">
       <input name="solar_glazing_type_id" value="triple_low_e_faces_2_and_5">
@@ -692,7 +757,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d24"></script>
-  <script src="/static/home-lab-next.js?v=next5"></script>
+  <script src="/static/home-lab-next.js?v=next6"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
