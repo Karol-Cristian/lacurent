@@ -101,6 +101,7 @@ def pbe_building_from_lacurent(building: BuildingInput) -> dict[str, Any]:
                     "thermal_capacity": 165000.0,
                     "orientation": {"azimuth": azimuth, "tilt": 90.0},
                     "name_adj_zone": None,
+                    "zone": "main",
                     "height": height,
                     "length": max(0.1, wall_area / 4.0 / height),
                 }
@@ -119,6 +120,7 @@ def pbe_building_from_lacurent(building: BuildingInput) -> dict[str, Any]:
                     "thermal_capacity": 0.0,
                     "orientation": {"azimuth": azimuth, "tilt": 90.0},
                     "name_adj_zone": None,
+                    "zone": "main",
                     "height": 1.5,
                     "width": max(0.1, win_area / 1.5),
                     "parapet": 0.9,
@@ -143,6 +145,7 @@ def pbe_building_from_lacurent(building: BuildingInput) -> dict[str, Any]:
                 "thermal_capacity": 120000.0,
                 "orientation": {"azimuth": 0.0, "tilt": 0.0},
                 "name_adj_zone": None,
+                    "zone": "main",
                 "height": max(1.0, sqrt(roof_area)),
                 "length": max(1.0, sqrt(roof_area)),
             }
@@ -160,6 +163,7 @@ def pbe_building_from_lacurent(building: BuildingInput) -> dict[str, Any]:
                 "thermal_capacity": 80000.0,
                 "orientation": {"azimuth": 180.0, "tilt": 90.0},
                 "name_adj_zone": None,
+                    "zone": "main",
                 "height": 2.1,
                 "length": max(0.1, door_area / 2.1),
             }
