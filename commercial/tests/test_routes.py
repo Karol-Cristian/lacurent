@@ -358,10 +358,10 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next11" in response.text
-    assert "/static/home-lab-next.js?v=next19" in response.text
+    assert "/static/home-lab-next.css?v=next12" in response.text
+    assert "/static/home-lab-next.js?v=next20" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d27" in response.text
+    assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-reset-home' in response.text
     assert 'data-hln-reference-house' in response.text
@@ -376,6 +376,10 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-editor="renewables"' in response.text
     assert 'id="hlnRenewablesSummary"' in response.text
     assert 'id="hlnHomeLocationMap"' in response.text
+    assert 'id="hlnDockHomeClass"' in response.text
+    assert 'id="hlnDockHomeCost"' in response.text
+    assert 'id="hlnDockScenarioClass"' in response.text
+    assert 'id="hlnDockScenarioCost"' in response.text
     assert 'id="hlnMapLocalityResults"' in response.text
     assert 'id="hlnBuildingType"' in response.text
     assert 'id="hlnConstructionYear"' in response.text
@@ -672,6 +676,16 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_home_lab_next_map_and_renovation_compare_styles_are_present() -> None:
+    response = client.get("/static/home-lab-next.css")
+    assert response.status_code == 200
+    assert ".hln-map-locality" in response.text
+    assert ".hln-map-legend" in response.text
+    assert "rgba(244,187,94,.72)" in response.text
+    assert ".hln-dock-compare" in response.text
+    assert ".hln-dock-compare article.is-renovation" in response.text
+
+
 def test_home_lab_next_hidden_sections_cannot_be_overridden_by_layout_css() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -694,6 +708,14 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'await calculateState(homeState, "home")' in response.text
     assert 'showScreen("site")' in response.text
     assert "function createHomeLocationProjection" in response.text
+    assert "function homeMapVisibleLocalities" in response.text
+    assert "function homeMapLabels" in response.text
+    assert "hln-map-legend" in response.text
+    assert 'Zona ${zone} · ${temperatureByZone[zone]}' in response.text
+    assert '$("#hlnDockHomeClass").textContent' in response.text
+    assert '$("#hlnDockScenarioClass").textContent' in response.text
+    assert '$("#hlnDockHomeCost").textContent' in response.text
+    assert '$("#hlnDockScenarioCost").textContent' in response.text
     assert "$root" not in response.text
     assert 'root.querySelectorAll("#hlnLevels [data-value]")' in response.text
     assert 'root.querySelectorAll("[data-hln-screen]")' in response.text
@@ -798,6 +820,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
     assert "selectedMeasures" in response.text
+    assert "this.authorMode && selectedMeasures.has(part)" in response.text
     assert "glazingGlassColors" in response.text
 
 
