@@ -502,16 +502,16 @@
               <label data-hln-scenario-heat-pump-source>Tip pompă
                 <select id="hlnScenarioHeatPumpSource"><option value="heat_pump_air_water">Aer-apă</option><option value="heat_pump_ground_water">Sol-apă</option><option value="heat_pump_air_air">Aer-aer</option></select>
               </label>
-              <label>Emisie în încăperi
+              <label data-hln-scenario-heating-chain>Emisie în încăperi
                 <select id="hlnScenarioHeatingEmitter"><option value="radiators_high_temp">Calorifere clasice</option><option value="radiators_low_temp">Calorifere joasă temperatură</option><option value="underfloor">Încălzire în pardoseală</option><option value="fan_coils">Ventiloconvectoare</option><option value="air">Aer</option><option value="local">Sursă locală</option></select>
               </label>
-              <label>Distribuție
+              <label data-hln-scenario-heating-chain>Distribuție
                 <select id="hlnScenarioHeatingDistribution"><option value="hydronic_insulated">Conducte izolate</option><option value="hydronic_uninsulated">Conducte neizolate</option><option value="underfloor">Distribuție pardoseală</option><option value="air">Distribuție prin aer</option><option value="local">Fără rețea</option></select>
               </label>
-              <label>Stocare termică
+              <label data-hln-scenario-heating-chain>Stocare termică
                 <select id="hlnScenarioHeatingStorage"><option value="none">Fără puffer</option><option value="buffer_small">Puffer / buffer mic</option><option value="buffer_large">Puffer / acumulare mare</option></select>
               </label>
-              <label>Reglaj
+              <label data-hln-scenario-heating-chain>Reglaj
                 <select id="hlnScenarioHeatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
               </label>
               <small id="hlnScenarioHeatingPerformance">Motorul Light va deriva temperatura de tur și performanța din configurația selectată.</small>
@@ -699,16 +699,16 @@
           <label data-hln-home-heat-pump-source>Tip pompă de căldură
             <select id="hlnHomeHeatPumpSource"><option value="heat_pump_air_water">Aer-apă</option><option value="heat_pump_ground_water">Sol-apă</option><option value="heat_pump_air_air">Aer-aer</option></select>
           </label>
-          <label>Emisie în încăperi
+          <label data-hln-home-heating-chain>Emisie în încăperi
             <select id="hlnHomeHeatingEmitter"><option value="radiators_high_temp">Calorifere clasice</option><option value="radiators_low_temp">Calorifere joasă temperatură</option><option value="underfloor">Încălzire în pardoseală</option><option value="fan_coils">Ventiloconvectoare</option><option value="air">Aer</option><option value="local">Sursă locală</option></select>
           </label>
-          <label>Distribuție
+          <label data-hln-home-heating-chain>Distribuție
             <select id="hlnHomeHeatingDistribution"><option value="hydronic_insulated">Conducte izolate</option><option value="hydronic_uninsulated">Conducte neizolate</option><option value="underfloor">Distribuție pardoseală</option><option value="air">Distribuție prin aer</option><option value="local">Fără rețea</option></select>
           </label>
-          <label>Stocare termică
+          <label data-hln-home-heating-chain>Stocare termică
             <select id="hlnHomeHeatingStorage"><option value="none">Fără puffer</option><option value="buffer_small">Puffer / buffer mic</option><option value="buffer_large">Puffer / acumulare mare</option></select>
           </label>
-          <label>Reglaj
+          <label data-hln-home-heating-chain>Reglaj
             <select id="hlnHomeHeatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
           </label>
           <label>Ventilație
@@ -830,7 +830,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d27"></script>
-  <script src="/static/home-lab-next.js?v=next13"></script>
+  <script src="/static/home-lab-next.js?v=next14"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

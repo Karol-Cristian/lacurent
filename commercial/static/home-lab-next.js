@@ -291,6 +291,18 @@
     const scenario = $("[data-hln-scenario-heat-pump-source]");
     if (home) home.hidden = homeState.heating !== "heat_pump";
     if (scenario) scenario.hidden = scenarioState.heating !== "heat_pump";
+
+    // Local heat sources already imply local emission, no distribution network,
+    // no thermal buffer and their fixed control preset. Do not expose selectors
+    // that cannot change the resolved system.
+    const homeLocalFixed = ["wood_stove", "electric_resistance"].includes(homeState.heating);
+    const scenarioLocalFixed = ["wood_stove", "electric_resistance"].includes(scenarioState.heating);
+    $("[data-hln-home-heating-chain]").forEach(node => {
+      node.hidden = homeLocalFixed;
+    });
+    $("[data-hln-scenario-heating-chain]").forEach(node => {
+      node.hidden = scenarioLocalFixed;
+    });
   }
 
   function solarThermalKwFromArea(areaM2) {
