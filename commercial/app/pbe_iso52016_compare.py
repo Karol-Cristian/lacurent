@@ -72,6 +72,7 @@ def pbe_building_from_lacurent(
     *,
     ventilation_h_w_k: float = 0.0,
     thermal_bridge_h_w_k: float = 0.0,
+    internal_gain_w_m2: float = 0.0,
 ) -> dict[str, Any]:
     """Map the controlled LaCurent geometry to pyBuildingEnergy's BUI schema.
 
@@ -219,7 +220,11 @@ def pbe_building_from_lacurent(
                 "custom_heat_transfer_coefficient_ventilation": float(ventilation_h_w_k),
                 "units": "W/K (custom resolved conductance)",
             },
-            "internal_gains": [],
+            "internal_gains": [
+                {"name": "occupants", "full_load": float(internal_gain_w_m2)},
+                {"name": "appliances", "full_load": 0.0},
+                {"name": "lighting", "full_load": 0.0},
+            ],
             "construction": {
                 "wall_thickness": 0.30,
                 "thermal_bridge_heat_W_K": float(thermal_bridge_h_w_k),
@@ -459,6 +464,100 @@ def run_controlled_air_losses_comparison() -> dict[str, Any]:
             ),
             "thermal_bridge_h_w_k": round(h_tb, 6),
             "lacurent_total_heat_loss_w_k": round(float(current.heat_loss_w_k), 6),
+        },
+        "lacurent": {
+            "heating_need_kwh": round(current_heating_kwh, 3),
+        },
+        "pbe_iso52016": {
+            "heating_need_kwh": round(pbe_heating_kwh, 3),
+            "peak_heating_w": round(float(q_h_w.max()), 3),
+        },
+        "comparison": {
+            "delta_kwh": round(delta_kwh, 3),
+            "relative_delta_percent": round(rel_pct, 3),
+        },
+    }
+
+
+def controlled_demo_with_internal_gains() -> BuildingInput:
+    """Controlled case 3: add a constant internal-gain term to stage 2."""
+
+    payload = model_to_dict(controlled_demo_with_air_losses())
+    payload["project_name"] = "PBE ISO52016 controlled demo + internal gains"
+    payload["internal_gains_w_m2"] = 4.0
+    return BuildingInput(**payload)
+
+
+def run_controlled_internal_gains_comparison() -> dict[str, Any]:
+    """Stage 3: compare envelope + air losses + constant internal gains."""
+
+    building = controlled_demo_with_internal_gains()
+    current = calculate(building, include_reference=False)
+    h_ve = float(current.h_ve_w_k)
+    h_tb = _thermal_bridge_total_w_k(building)
+    gain_w_m2 = float(building.internal_gains_w_m2 or 0.0)
+
+    pbe_bui = pbe_building_from_lacurent(
+        building,
+        ventilation_h_w_k=h_ve,
+        thermal_bridge_h_w_k=h_tb,
+        internal_gain_w_m2=gain_w_m2,
+    )
+    weather = synthetic_weather_from_lacurent(current)
+    _LaCurentSyntheticISO52016.set_weather(weather)
+
+    started = perf_counter()
+    hourly = _LaCurentSyntheticISO52016.simulate_envelope_multizone_free_floating(
+        building_object=pbe_bui,
+        weather_source="lacurent_monthly",
+        include_solar=False,
+        warmup_hours=744,
+        use_profiles=False,
+        include_internal_gains=True,
+        include_ventilation=True,
+        include_thermal_bridges=True,
+        hvac_control_variable="air",
+        internal_convection_model="table",
+        external_convection_model="table",
+        external_radiation_model="table",
+    )
+    elapsed_ms = (perf_counter() - started) * 1000.0
+    hourly_active = hourly.iloc[-8760:].copy() if len(hourly) > 8760 else hourly.copy()
+
+    q_h_w = (
+        pd.to_numeric(hourly_active["Q_HVAC_main"], errors="coerce")
+        .fillna(0.0)
+        .clip(lower=0.0)
+    )
+    pbe_heating_kwh = float(q_h_w.sum() / 1000.0)
+    current_heating_kwh = float(current.annual_heating_demand_kwh)
+    delta_kwh = pbe_heating_kwh - current_heating_kwh
+    rel_pct = 100.0 * delta_kwh / current_heating_kwh if current_heating_kwh > 0 else 0.0
+
+    pbe_phi_mean = None
+    if "Phi_int_main" in hourly_active.columns:
+        pbe_phi_mean = float(
+            pd.to_numeric(hourly_active["Phi_int_main"], errors="coerce")
+            .fillna(0.0)
+            .mean()
+        )
+
+    expected_gain_w = gain_w_m2 * float(building.heated_floor_area_m2)
+    return {
+        "status": "ok",
+        "scope": "controlled_envelope_air_losses_plus_constant_internal_gains",
+        "upstream": PBE_ISO52016_UPSTREAM,
+        "hours_simulated": int(len(hourly)),
+        "hours_compared": int(len(hourly_active)),
+        "runtime_ms": round(elapsed_ms, 1),
+        "resolved_inputs": {
+            "internal_gain_w_m2": round(gain_w_m2, 6),
+            "expected_internal_gain_w": round(expected_gain_w, 6),
+            "pbe_mean_internal_gain_w": (
+                None if pbe_phi_mean is None else round(pbe_phi_mean, 6)
+            ),
+            "lacurent_h_ve_w_k": round(h_ve, 6),
+            "thermal_bridge_h_w_k": round(h_tb, 6),
         },
         "lacurent": {
             "heating_need_kwh": round(current_heating_kwh, 3),
