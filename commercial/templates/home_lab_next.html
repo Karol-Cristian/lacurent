@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Home Lab | LaCurent</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next13">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next14">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -59,6 +59,10 @@
         <i></i>
         <button type="button" data-hln-go="scenario">
           <span>03</span><b>Scenariu</b>
+        </button>
+        <i></i>
+        <button type="button" data-hln-go="report">
+          <span>04</span><b>Raport</b>
         </button>
       </nav>
 
@@ -272,6 +276,20 @@
           <span>Este o clădire virtuală de comparație: păstrează geometria, orientarea, amplasarea și condițiile de utilizare ale Casei mele, dar înlocuiește performanțele relevante ale anvelopei și instalațiilor cu valori de referință. Nu este o altă casă și nici o recomandare de renovare.</span>
           <small>LaCurent aplică aici setul de parametri de referință deja implementat; unele reguli normative ale clădirii de referință MC001 sunt încă în curs de integrare.</small>
         </div>
+
+        <div class="hln-smart-configs">
+          <button type="button" data-hln-smart-config="nzeb">
+            <span>ȚINTĂ nZEB</span>
+            <strong>Configurează automat spre nZEB</strong>
+            <small>MC001 2.10a · fără să inventeze racord la gaz</small>
+          </button>
+          <button type="button" data-hln-smart-config="roi">
+            <span>BEST ROI</span>
+            <strong>Impact maxim · investiție minimă</strong>
+            <small>Ranking pe economii reale + efort investițional relativ</small>
+          </button>
+        </div>
+        <div class="hln-optimization-note" id="hlnOptimizationNote" hidden></div>
 
         <div class="hln-reference-spec" id="hlnReferenceSpec" hidden>
           <div><span>ANVELOPĂ</span><strong id="hlnReferenceEnvelope">—</strong></div>
@@ -630,9 +648,85 @@
 
       <div class="hln-scenario-actions">
         <button type="button" class="hln-secondary" data-hln-go="site">+ Adaugă intervenție</button>
-        <button type="button" class="hln-primary" data-hln-save-scenario>
-          <svg><use href="#hln-i-check"></use></svg><span>Salvează scenariul</span>
+        <button type="button" class="hln-primary" data-hln-go="report">
+          <svg><use href="#hln-i-arrow-right"></use></svg><span>Generează raportul</span>
         </button>
+      </div>
+    </section>
+
+    <section class="hln-screen hln-report-screen" data-hln-screen="report">
+      <div class="hln-screen-heading hln-report-heading">
+        <div>
+          <span>RAPORTUL MEU</span>
+          <h1>Casa, scenariul și impactul — într-o singură vedere.</h1>
+          <p>Raport tehnic estimativ LaCurent Light. Nu înlocuiește un CPE sau audit energetic emis de un specialist autorizat.</p>
+        </div>
+        <div class="hln-report-actions">
+          <button type="button" class="hln-secondary" data-hln-go="scenario">Editează scenariul</button>
+          <button type="button" class="hln-primary" data-hln-print-report>Print / PDF</button>
+        </div>
+      </div>
+
+      <div class="hln-report-hero">
+        <article>
+          <small>CASA MEA</small>
+          <strong id="hlnReportHomeClass">—</strong>
+          <span id="hlnReportHomeCost">—</span>
+        </article>
+        <div class="hln-report-arrow">→</div>
+        <article class="is-after">
+          <small>DUPĂ RENOVARE</small>
+          <strong id="hlnReportScenarioClass">—</strong>
+          <span id="hlnReportScenarioCost">—</span>
+        </article>
+        <article class="is-saving">
+          <small>IMPACT FINANCIAR</small>
+          <strong id="hlnReportSaving">—</strong>
+          <span id="hlnReportSavingLabel">—</span>
+        </article>
+      </div>
+
+      <div class="hln-report-grid">
+        <section class="hln-report-card hln-report-comparison">
+          <header><span>ÎNAINTE VS DUPĂ</span><strong>Indicatorii principali</strong></header>
+          <div id="hlnReportBars" class="hln-report-bars"></div>
+        </section>
+
+        <section class="hln-report-card hln-report-nzeb">
+          <header><span>ȚINTĂ nZEB</span><strong>MC001 Tabel 2.10a</strong></header>
+          <div id="hlnReportNzebStatus" class="hln-report-nzeb-status">—</div>
+          <div class="hln-report-nzeb-metrics">
+            <div><small>Energie primară</small><strong id="hlnReportPrimary">—</strong><span id="hlnReportPrimaryTarget">—</span></div>
+            <div><small>CO₂ specific</small><strong id="hlnReportCo2Specific">—</strong><span id="hlnReportCo2Target">—</span></div>
+          </div>
+          <p id="hlnReportNzebNote">—</p>
+        </section>
+
+        <section class="hln-report-card hln-report-measures">
+          <header><span>SCENARIU</span><strong>Intervențiile selectate</strong></header>
+          <div id="hlnReportMeasures"></div>
+        </section>
+
+        <section class="hln-report-card hln-report-losses">
+          <header><span>PIERDERI TERMICE</span><strong>Unde se pierde căldura</strong></header>
+          <div id="hlnReportLosses"></div>
+        </section>
+
+        <section class="hln-report-card hln-report-monthly">
+          <header><span>PROFIL ANUAL</span><strong>Consum util lunar încălzire + răcire</strong></header>
+          <div id="hlnReportMonthlyChart" class="hln-monthly-bars"></div>
+        </section>
+
+        <section class="hln-report-card hln-report-method">
+          <header><span>TRASABILITATE</span><strong>Ce stă în spatele rezultatului</strong></header>
+          <div class="hln-report-method-grid">
+            <div><small>Locație</small><strong id="hlnReportLocation">—</strong></div>
+            <div><small>Climat</small><strong id="hlnReportClimate">—</strong></div>
+            <div><small>Optimizer</small><strong id="hlnReportOptimizer">Manual</strong></div>
+            <div><small>Prețuri energie</small><strong id="hlnReportPriceDate">—</strong></div>
+          </div>
+          <p>Calculul folosește motorul LaCurent Light, bilanț lunar, factori de energie primară și CO₂, Hsol sursă și ipotezele declarate în metodologia aplicației. Verificarea nZEB afișată aici acoperă limitele energetice/CO₂ disponibile în Tabelul 2.10a; contribuția regenerabilă RER și conformitatea legală completă necesită verificare suplimentară.</p>
+        </section>
       </div>
     </section>
 
@@ -859,7 +953,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next21"></script>
+  <script src="/static/home-lab-next.js?v=next22"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
