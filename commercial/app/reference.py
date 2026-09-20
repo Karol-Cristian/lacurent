@@ -19,6 +19,13 @@ def build_reference_input(actual: BuildingInput) -> BuildingInput:
             element["u_value_w_m2k"] = reference_u
 
     data["thermal_bridges"] = []
+    # Do not copy the real building's renewable systems into the reference case.
+    # The Romanian reference-building renewable rule is still being completed,
+    # so inheriting actual PV/solar thermal would silently corrupt the benchmark.
+    data["renewables"] = {
+        "photovoltaic": {"enabled": False},
+        "solar_thermal": {"enabled": False},
+    }
     data["ventilation"] = {
         "air_changes_per_hour": rules["air_changes_per_hour"],
         "heat_recovery_efficiency": rules["heat_recovery_efficiency"],
