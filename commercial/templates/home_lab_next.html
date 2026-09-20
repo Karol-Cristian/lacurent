@@ -238,11 +238,16 @@
           </div>
 
           <div class="hln-measure-section">
-            <header><span>ENERGIE</span><small>în curând</small></header>
-            <button type="button" class="hln-measure-row is-disabled" disabled>
+            <header><span>ENERGIE</span><small>2 intervenții</small></header>
+            <button type="button" class="hln-measure-row" data-hln-measure="pv">
               <span class="hln-row-icon"><svg><use href="#hln-i-sun"></use></svg></span>
-              <span><strong>Solar / PV</strong><small>Calcul în curs de integrare</small></span>
-              <span class="hln-coming">CURÂND</span>
+              <span><strong>Panouri fotovoltaice</strong><small>Putere, orientare și înclinare</small></span>
+              <svg><use href="#hln-i-chevron"></use></svg>
+            </button>
+            <button type="button" class="hln-measure-row" data-hln-measure="solar_thermal">
+              <span class="hln-row-icon"><svg><use href="#hln-i-sun"></use></svg></span>
+              <span><strong>Panouri solare termice</strong><small>Contribuție lunară la ACM</small></span>
+              <svg><use href="#hln-i-chevron"></use></svg>
             </button>
           </div>
         </div>
@@ -476,6 +481,26 @@
                 <select id="hlnScenarioCooling"><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
               </label>
             </div>
+
+            <div data-hln-intervention-panel="pv" hidden>
+              <div class="hln-field-heading"><svg><use href="#hln-i-sun"></use></svg><div><strong>Panouri fotovoltaice</strong><small>Producție lunară din Hsol-ul zonei și orientarea panourilor</small></div></div>
+              <label>Putere instalată <div class="hln-inline-input"><input id="hlnScenarioPvKwp" type="number" min="0.5" max="50" step="0.5"><span>kWp</span></div></label>
+              <label>Orientare
+                <select id="hlnScenarioPvOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
+              </label>
+              <label>Înclinare <div class="hln-inline-input"><input id="hlnScenarioPvTilt" type="number" min="0" max="90" step="5"><span>°</span></div></label>
+              <small>Light Engine interpolează lunar între Hsol orizontal și Hsol vertical pe orientarea aleasă; surplusul PV este raportat separat.</small>
+            </div>
+
+            <div data-hln-intervention-panel="solar_thermal" hidden>
+              <div class="hln-field-heading"><svg><use href="#hln-i-sun"></use></svg><div><strong>Panouri solare termice</strong><small>Contribuție la apa caldă menajeră</small></div></div>
+              <label>Suprafață colectoare <div class="hln-inline-input"><input id="hlnScenarioSolarThermalArea" type="number" min="1" max="30" step="0.5"><span>m²</span></div></label>
+              <label>Orientare
+                <select id="hlnScenarioSolarThermalOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
+              </label>
+              <label>Înclinare <div class="hln-inline-input"><input id="hlnScenarioSolarThermalTilt" type="number" min="0" max="90" step="5"><span>°</span></div></label>
+              <small>Energia termică este limitată lunar la necesarul de ACM; nu se presupune stocare între luni.</small>
+            </div>
           </div>
 
           <div class="hln-intervention-actions">
@@ -610,6 +635,18 @@
           <label>Răcire
             <select id="hlnHomeCooling"><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
           </label>
+          <label><input id="hlnHomePvEnabled" type="checkbox"> Panouri fotovoltaice existente</label>
+          <label>Putere PV <div class="hln-inline-input"><input id="hlnHomePvKwp" type="number" min="0.5" max="50" step="0.5" value="5"><span>kWp</span></div></label>
+          <label>Orientare PV
+            <select id="hlnHomePvOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
+          </label>
+          <label>Înclinare PV <div class="hln-inline-input"><input id="hlnHomePvTilt" type="number" min="0" max="90" step="5" value="30"><span>°</span></div></label>
+          <label><input id="hlnHomeSolarThermalEnabled" type="checkbox"> Panouri solare termice existente</label>
+          <label>Suprafață solar termic <div class="hln-inline-input"><input id="hlnHomeSolarThermalArea" type="number" min="1" max="30" step="0.5" value="4"><span>m²</span></div></label>
+          <label>Orientare solar termic
+            <select id="hlnHomeSolarThermalOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
+          </label>
+          <label>Înclinare solar termic <div class="hln-inline-input"><input id="hlnHomeSolarThermalTilt" type="number" min="0" max="90" step="5" value="45"><span>°</span></div></label>
         </section>
       </div>
     </aside>
@@ -680,6 +717,16 @@
       <input name="dhw_occupants" value="4">
       <input name="dhw_litres_per_person_day_at_60c" value="50">
       <input name="dhw_efficiency" value="0.86">
+      <input name="pv_enabled" value="">
+      <input name="pv_installed_power_kwp" value="5.0">
+      <input name="pv_orientation" value="south">
+      <input name="pv_tilt_degrees" value="30">
+      <input name="pv_performance_ratio" value="0.82">
+      <input name="solar_thermal_enabled" value="">
+      <input name="solar_thermal_collector_area_m2" value="4.0">
+      <input name="solar_thermal_orientation" value="south">
+      <input name="solar_thermal_tilt_degrees" value="45">
+      <input name="solar_thermal_system_efficiency" value="0.45">
     </form>
   </main>
 
@@ -691,8 +738,8 @@
       }
     }
   </script>
-  <script type="module" src="/static/home-lab-3d.js?v=3d24"></script>
-  <script src="/static/home-lab-next.js?v=next5"></script>
+  <script type="module" src="/static/home-lab-3d.js?v=3d25"></script>
+  <script src="/static/home-lab-next.js?v=next6"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

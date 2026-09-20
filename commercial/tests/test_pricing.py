@@ -180,3 +180,32 @@ def test_current_cost_estimate_exposes_commercial_price_freshness() -> None:
     assert estimate["commercially_current"] is True
     assert estimate["stale_price_labels"] == []
     assert estimate["future_price_labels"] == []
+
+def test_pv_self_consumption_reduces_purchased_electricity_cost_and_monthly_totals_reconcile() -> None:
+    baseline_building = build_input_from_form(simple_form("heat_pump"))
+    baseline_result = calculate(baseline_building)
+    baseline_estimate = estimate_energy_cost(baseline_result)
+
+    form = simple_form("heat_pump")
+    form.update(
+        {
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+        }
+    )
+    pv_building = build_input_from_form(form)
+    pv_result = calculate(pv_building)
+    pv_estimate = estimate_energy_cost(pv_result)
+
+    assert pv_result.renewables.pv.annual_generation_kwh > 0
+    assert pv_result.renewables.pv.self_consumed_kwh > 0
+    assert pv_result.final_energy_by_carrier["electricity"] < pv_result.gross_final_energy_by_carrier["electricity"]
+    assert pv_estimate["priced_total_lei"] < baseline_estimate["priced_total_lei"]
+
+    monthly_total = sum(float(row["priced_total_lei"]) for row in pv_estimate["monthly_rows"])
+    assert monthly_total == pytest.approx(pv_estimate["priced_total_lei"], abs=0.05)
+    assert sum(float(row["pv_self_consumed_kwh"]) for row in pv_estimate["monthly_rows"]) > 0
+

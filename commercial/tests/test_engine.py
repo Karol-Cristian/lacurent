@@ -15,8 +15,9 @@ from commercial.app.engine import (
     transmission_heat_transfer,
     ventilation_heat_transfer,
 )
-from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol
+from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol, resolve_monthly_plane_hsol
 from commercial.app.models import BuildingInput, EnergyServiceResult
+from commercial.app.reference import build_reference_input
 
 
 def simple_building(**overrides) -> BuildingInput:
@@ -177,7 +178,7 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.5"
+    assert cfg["version"] == "lacurent-commercial-v2.6"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]
@@ -370,4 +371,125 @@ def test_explicit_solar_mode_preserves_legacy_equivalent_monthly_gain() -> None:
     assert all(row.solar_gains_source == "explicit_equivalent_monthly_gain" for row in result.monthly)
     assert all(row.solar_hsol_kwh_m2 is None for row in result.monthly)
     assert all(math.isclose(row.solar_gains_kwh, 120.0, rel_tol=1e-9) for row in result.monthly)
+
+def test_tilted_solar_plane_uses_source_horizontal_and_vertical_endpoints() -> None:
+    station = next(item for item in climate_data()["localities"] if item["name"] == "Cluj-Napoca")
+    climate = {"station_id": station["id"]}
+
+    horizontal = resolve_monthly_plane_hsol(climate, "south", 0)
+    vertical = resolve_monthly_plane_hsol(climate, "south", 90)
+
+    assert horizontal is not None
+    assert vertical is not None
+    assert horizontal["values_kwh_m2_month"] == horizontal["horizontal_values_kwh_m2_month"]
+    assert vertical["values_kwh_m2_month"] == vertical["vertical_values_kwh_m2_month"]
+    assert horizontal["plane_model"] == "linear_horizontal_to_vertical_source_interpolation"
+
+
+def test_photovoltaic_generation_uses_zone_orientation_and_reduces_grid_electricity() -> None:
+    common = {
+        "heating": {"system_type": "heat_pump", "scop": 3.2, "carrier": "electricity"},
+        "renewables": {
+            "pv": {
+                "enabled": True,
+                "installed_power_kwp": 5.0,
+                "tilt_degrees": 30,
+                "performance_ratio": 0.82,
+                "orientation": "south",
+            }
+        },
+    }
+    south = calculate(simple_building(**common), include_reference=False)
+    north_payload = dict(common)
+    north_payload["renewables"] = {
+        "pv": {
+            **common["renewables"]["pv"],
+            "orientation": "north",
+        }
+    }
+    north = calculate(simple_building(**north_payload), include_reference=False)
+
+    assert south.renewables.pv.annual_generation_kwh > 0
+    assert south.renewables.pv.annual_generation_kwh > north.renewables.pv.annual_generation_kwh
+    assert 0 < south.renewables.pv.self_consumed_kwh <= south.renewables.pv.annual_generation_kwh
+    assert south.renewables.pv.exported_kwh >= 0
+    assert south.final_energy_by_carrier["electricity"] < south.gross_final_energy_by_carrier["electricity"]
+    assert len(south.renewables.monthly) == 12
+
+
+def test_photovoltaic_resource_changes_with_climate_station() -> None:
+    renewables = {
+        "pv": {
+            "enabled": True,
+            "installed_power_kwp": 5.0,
+            "orientation": "south",
+            "tilt_degrees": 30,
+        }
+    }
+    cluj = calculate(
+        simple_building(
+            locality="Cluj-Napoca",
+            heating={"system_type": "heat_pump", "scop": 3.2, "carrier": "electricity"},
+            renewables=renewables,
+        ),
+        include_reference=False,
+    )
+    constanta = calculate(
+        simple_building(
+            locality="Constanța",
+            heating={"system_type": "heat_pump", "scop": 3.2, "carrier": "electricity"},
+            renewables=renewables,
+        ),
+        include_reference=False,
+    )
+
+    assert cluj.renewables.pv.annual_generation_kwh != constanta.renewables.pv.annual_generation_kwh
+
+
+def test_solar_thermal_uses_monthly_resource_and_offsets_dhw_useful_energy() -> None:
+    baseline = calculate(simple_building(), include_reference=False)
+    solar = calculate(
+        simple_building(
+            renewables={
+                "solar_thermal": {
+                    "enabled": True,
+                    "collector_area_m2": 4.0,
+                    "orientation": "south",
+                    "tilt_degrees": 45,
+                    "system_efficiency": 0.45,
+                }
+            }
+        ),
+        include_reference=False,
+    )
+
+    assert solar.renewables.solar_thermal.annual_available_kwh > 0
+    assert solar.renewables.solar_thermal.used_for_dhw_kwh > 0
+    assert 0 < solar.renewables.solar_thermal.dhw_solar_fraction_percent <= 100
+    assert solar.dhw.useful_kwh < baseline.dhw.useful_kwh
+    assert solar.dhw.final_kwh < baseline.dhw.final_kwh
+
+
+def test_reference_building_does_not_implicitly_copy_actual_renewables() -> None:
+    actual = simple_building(
+        renewables={
+            "pv": {
+                "enabled": True,
+                "installed_power_kwp": 6.0,
+                "orientation": "south",
+                "tilt_degrees": 30,
+            },
+            "solar_thermal": {
+                "enabled": True,
+                "collector_area_m2": 4.0,
+                "orientation": "south",
+                "tilt_degrees": 45,
+            },
+        }
+    )
+
+    reference = build_reference_input(actual)
+
+    assert reference.renewables.pv.enabled is False
+    assert reference.renewables.solar_thermal.enabled is False
 

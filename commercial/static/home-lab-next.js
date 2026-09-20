@@ -59,7 +59,15 @@
     orientation: "south",
     heating: "condensing_gas_boiler",
     ventilation: "natural",
-    cooling: "none"
+    cooling: "none",
+    pvEnabled: false,
+    pvKwp: 5,
+    pvOrientation: "south",
+    pvTilt: 30,
+    solarThermalEnabled: false,
+    solarThermalArea: 4,
+    solarThermalOrientation: "south",
+    solarThermalTilt: 45
   };
 
   let homeState = {...defaultState};
@@ -133,6 +141,8 @@
       heating: "reference_mc001",
       ventilation: "reference_mc001",
       cooling: homeState.cooling === "none" ? "none" : "reference_mc001",
+      pvEnabled: false,
+      solarThermalEnabled: false,
     };
   }
 
@@ -201,6 +211,20 @@
       Number.isFinite(Number(scenarioOverrides.coolingSeer)) ||
       referenceMode
     ) next.push("ventilation");
+    if (
+      Boolean(scenarioState.pvEnabled) !== Boolean(homeState.pvEnabled) ||
+      Math.abs(Number(scenarioState.pvKwp) - Number(homeState.pvKwp)) > 0.01 ||
+      scenarioState.pvOrientation !== homeState.pvOrientation ||
+      Math.abs(Number(scenarioState.pvTilt) - Number(homeState.pvTilt)) > 0.01 ||
+      (referenceMode && homeState.pvEnabled)
+    ) next.push("pv");
+    if (
+      Boolean(scenarioState.solarThermalEnabled) !== Boolean(homeState.solarThermalEnabled) ||
+      Math.abs(Number(scenarioState.solarThermalArea) - Number(homeState.solarThermalArea)) > 0.01 ||
+      scenarioState.solarThermalOrientation !== homeState.solarThermalOrientation ||
+      Math.abs(Number(scenarioState.solarThermalTilt) - Number(homeState.solarThermalTilt)) > 0.01 ||
+      (referenceMode && homeState.solarThermalEnabled)
+    ) next.push("solar_thermal");
     measures = next;
   }
 
@@ -210,6 +234,10 @@
       orientation: state.orientation,
       cooling: state.cooling,
       heating: state.heating,
+      pvEnabled: Boolean(state.pvEnabled),
+      solarThermalEnabled: Boolean(state.solarThermalEnabled),
+      pvOrientation: state.pvOrientation,
+      solarThermalOrientation: state.solarThermalOrientation,
       baselineSaved,
       screen,
       referenceMode,
@@ -492,6 +520,17 @@
     const overrideDhwEfficiency = finiteOverride("dhwEfficiency");
     formSet("dhw_efficiency", overrideDhwEfficiency ?? 0.86);
 
+    formSet("pv_enabled", state.pvEnabled ? "on" : "");
+    formSet("pv_installed_power_kwp", state.pvKwp);
+    formSet("pv_orientation", state.pvOrientation);
+    formSet("pv_tilt_degrees", state.pvTilt);
+    formSet("pv_performance_ratio", 0.82);
+    formSet("solar_thermal_enabled", state.solarThermalEnabled ? "on" : "");
+    formSet("solar_thermal_collector_area_m2", state.solarThermalArea);
+    formSet("solar_thermal_orientation", state.solarThermalOrientation);
+    formSet("solar_thermal_tilt_degrees", state.solarThermalTilt);
+    formSet("solar_thermal_system_efficiency", 0.45);
+
     formSet("solar_glazing_type_id", state.glazing === "reference_mc001" ? homeState.glazing : state.glazing);
     formSet("solar_orientation", state.orientation);
     formSet("indoor_design_temperature_c", state.temperature);
@@ -658,7 +697,13 @@
     $("#hlnEnvelopeSummary").textContent = `${state.wallIns} cm pereți · ${state.roofIns} cm pod`;
     $("#hlnEnvelopeMeta").textContent = `${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
-    $("#hlnSystemsMeta").textContent = labels.ventilation[state.ventilation] || state.ventilation;
+    const renewableParts = [];
+    if (state.pvEnabled) renewableParts.push(`PV ${fmt(state.pvKwp,1)} kWp`);
+    if (state.solarThermalEnabled) renewableParts.push(`solar termic ${fmt(state.solarThermalArea,1)} m²`);
+    $("#hlnSystemsMeta").textContent = [
+      labels.ventilation[state.ventilation] || state.ventilation,
+      ...renewableParts
+    ].join(" · ");
     $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "8";
   }
 
@@ -673,6 +718,8 @@
       if (type === "windows") return `Uw de referință ${fmt(ref?.u_values_w_m2k?.window,2)} W/m²K`;
       if (type === "heating") return `Centrală în condensare · η ${fmt(100 * Number(ref?.heating_efficiency || 0),0)}%`;
       if (type === "ventilation") return `ACH ${fmt(ref?.air_changes_per_hour,2)} · fără recuperare`;
+      if (type === "pv") return homeState.pvEnabled ? "PV dezactivat în referința simplificată" : "Fără PV";
+      if (type === "solar_thermal") return homeState.solarThermalEnabled ? "Solar termic dezactivat în referința simplificată" : "Fără solar termic";
     }
     if (type === "wall") return `${base.wallIns} → ${now.wallIns} cm pereți`;
     if (type === "roof") return `${base.roofIns} → ${now.roofIns} cm pod`;
@@ -680,6 +727,19 @@
     if (type === "windows") return `${labels.glazing[base.glazing]} → ${labels.glazing[now.glazing]}`;
     if (type === "heating") return `${labels.heating[base.heating]} → ${labels.heating[now.heating]}`;
     if (type === "ventilation") return `${labels.ventilation[base.ventilation]} → ${labels.ventilation[now.ventilation]}`;
+    if (type === "pv") {
+      if (!now.pvEnabled) return "PV dezactivat";
+      const pv = scenarioResult?.renewables?.pv;
+      const production = pv?.annual_generation_kwh == null ? "" : ` · producție ${fmt(pv.annual_generation_kwh)} kWh/an`;
+      const selfUse = pv?.self_consumed_kwh == null ? "" : ` · autoconsum ${fmt(pv.self_consumed_kwh)} kWh`;
+      return `${base.pvEnabled ? fmt(base.pvKwp,1) + " → " : ""}${fmt(now.pvKwp,1)} kWp · ${now.pvOrientation} · ${fmt(now.pvTilt)}°${production}${selfUse}`;
+    }
+    if (type === "solar_thermal") {
+      if (!now.solarThermalEnabled) return "Solar termic dezactivat";
+      const solarThermal = scenarioResult?.renewables?.solar_thermal;
+      const used = solarThermal?.used_for_dhw_kwh == null ? "" : ` · ACM solar ${fmt(solarThermal.used_for_dhw_kwh)} kWh/an`;
+      return `${base.solarThermalEnabled ? fmt(base.solarThermalArea,1) + " → " : ""}${fmt(now.solarThermalArea,1)} m² · ${now.solarThermalOrientation} · ${fmt(now.solarThermalTilt)}°${used}`;
+    }
     return "";
   }
 
@@ -690,7 +750,9 @@
       floor: "Izolează pardoseala",
       windows: "Schimbă ferestrele",
       heating: "Schimbă încălzirea",
-      ventilation: "Ventilație & răcire"
+      ventilation: "Ventilație & răcire",
+      pv: "Panouri fotovoltaice",
+      solar_thermal: "Panouri solare termice"
     }[type] || "Intervenție";
   }
 
@@ -701,7 +763,9 @@
       floor: "floor",
       windows: "window",
       heating: "flame",
-      ventilation: "air"
+      ventilation: "air",
+      pv: "sun",
+      solar_thermal: "sun"
     }[type] || "layers";
     return `<svg aria-hidden="true"><use href="#hln-i-${icon}"></use></svg>`;
   }
@@ -713,6 +777,8 @@
     if (type === "windows") return `${labels.glazing[state.glazing]} · ${fmt(state.windows,1)} m²`;
     if (type === "heating") return labels.heating[state.heating] || state.heating;
     if (type === "ventilation") return `${labels.ventilation[state.ventilation]} · ${labels.cooling[state.cooling]}`;
+    if (type === "pv") return state.pvEnabled ? `${fmt(state.pvKwp,1)} kWp · ${state.pvOrientation} · ${fmt(state.pvTilt)}°` : "Fără PV";
+    if (type === "solar_thermal") return state.solarThermalEnabled ? `${fmt(state.solarThermalArea,1)} m² · ${state.solarThermalOrientation} · ${fmt(state.solarThermalTilt)}°` : "Fără solar termic";
     return "—";
   }
 
@@ -733,6 +799,12 @@
     $("#hlnScenarioHeating").value = scenarioState.heating;
     $("#hlnScenarioVentilation").value = scenarioState.ventilation;
     $("#hlnScenarioCooling").value = scenarioState.cooling;
+    $("#hlnScenarioPvKwp").value = scenarioState.pvKwp;
+    $("#hlnScenarioPvOrientation").value = scenarioState.pvOrientation;
+    $("#hlnScenarioPvTilt").value = scenarioState.pvTilt;
+    $("#hlnScenarioSolarThermalArea").value = scenarioState.solarThermalArea;
+    $("#hlnScenarioSolarThermalOrientation").value = scenarioState.solarThermalOrientation;
+    $("#hlnScenarioSolarThermalTilt").value = scenarioState.solarThermalTilt;
   }
 
   function renderScenario() {
@@ -850,7 +922,15 @@
     $("#hlnHomeHeating").value = homeState.heating;
     $("#hlnHomeVentilation").value = homeState.ventilation;
     $("#hlnHomeCooling").value = homeState.cooling;
-    $$("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
+    $("#hlnHomePvEnabled").checked = Boolean(homeState.pvEnabled);
+    $("#hlnHomePvKwp").value = homeState.pvKwp;
+    $("#hlnHomePvOrientation").value = homeState.pvOrientation;
+    $("#hlnHomePvTilt").value = homeState.pvTilt;
+    $("#hlnHomeSolarThermalEnabled").checked = Boolean(homeState.solarThermalEnabled);
+    $("#hlnHomeSolarThermalArea").value = homeState.solarThermalArea;
+    $("#hlnHomeSolarThermalOrientation").value = homeState.solarThermalOrientation;
+    $("#hlnHomeSolarThermalTilt").value = homeState.solarThermalTilt;
+    $("#hlnLevels [data-value]").forEach(button => button.classList.toggle("is-active", Number(button.dataset.value) === Number(homeState.levels)));
   }
 
   function updateHomeFromEditors() {
@@ -858,6 +938,10 @@
       orientation: homeState.orientation,
       cooling: homeState.cooling,
       heating: homeState.heating,
+      pvEnabled: Boolean(homeState.pvEnabled),
+      pvOrientation: homeState.pvOrientation,
+      solarThermalEnabled: Boolean(homeState.solarThermalEnabled),
+      solarThermalOrientation: homeState.solarThermalOrientation,
     };
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
@@ -872,6 +956,14 @@
     homeState.heating = $("#hlnHomeHeating").value;
     homeState.ventilation = $("#hlnHomeVentilation").value;
     homeState.cooling = $("#hlnHomeCooling").value;
+    homeState.pvEnabled = $("#hlnHomePvEnabled").checked;
+    homeState.pvKwp = Number($("#hlnHomePvKwp").value);
+    homeState.pvOrientation = $("#hlnHomePvOrientation").value;
+    homeState.pvTilt = Number($("#hlnHomePvTilt").value);
+    homeState.solarThermalEnabled = $("#hlnHomeSolarThermalEnabled").checked;
+    homeState.solarThermalArea = Number($("#hlnHomeSolarThermalArea").value);
+    homeState.solarThermalOrientation = $("#hlnHomeSolarThermalOrientation").value;
+    homeState.solarThermalTilt = Number($("#hlnHomeSolarThermalTilt").value);
     renderHome();
     baselineSaved = false;
     referenceMode = false;
@@ -881,7 +973,9 @@
     const focus =
       previous.cooling !== homeState.cooling ? "cooling" :
       previous.heating !== homeState.heating ? "heating" :
-      previous.orientation !== homeState.orientation ? "orientation" : null;
+      previous.orientation !== homeState.orientation ? "orientation" :
+      previous.pvEnabled !== Boolean(homeState.pvEnabled) || previous.pvOrientation !== homeState.pvOrientation ? "pv" :
+      previous.solarThermalEnabled !== Boolean(homeState.solarThermalEnabled) || previous.solarThermalOrientation !== homeState.solarThermalOrientation ? "solarThermal" : null;
     emitVisualState(focus);
     scheduleCalculate("home");
   }
@@ -899,6 +993,22 @@
       if (type === "windows" && homeState.glazing !== "triple_low_e_faces_2_and_5") scenarioState.glazing = "triple_low_e_faces_2_and_5";
       if (type === "heating" && homeState.heating !== "heat_pump") scenarioState.heating = "heat_pump";
       if (type === "ventilation" && homeState.ventilation !== "hrv") scenarioState.ventilation = "hrv";
+      if (type === "pv") {
+        scenarioState.pvEnabled = true;
+        if (!homeState.pvEnabled) {
+          scenarioState.pvKwp = 5;
+          scenarioState.pvOrientation = "south";
+          scenarioState.pvTilt = 30;
+        }
+      }
+      if (type === "solar_thermal") {
+        scenarioState.solarThermalEnabled = true;
+        if (!homeState.solarThermalEnabled) {
+          scenarioState.solarThermalArea = 4;
+          scenarioState.solarThermalOrientation = "south";
+          scenarioState.solarThermalTilt = 45;
+        }
+      }
     }
 
     showScreen("intervention");
@@ -938,6 +1048,18 @@
       scenarioState.ventilation = homeState.ventilation;
       scenarioState.cooling = homeState.cooling;
     }
+    if (type === "pv") {
+      scenarioState.pvEnabled = homeState.pvEnabled;
+      scenarioState.pvKwp = homeState.pvKwp;
+      scenarioState.pvOrientation = homeState.pvOrientation;
+      scenarioState.pvTilt = homeState.pvTilt;
+    }
+    if (type === "solar_thermal") {
+      scenarioState.solarThermalEnabled = homeState.solarThermalEnabled;
+      scenarioState.solarThermalArea = homeState.solarThermalArea;
+      scenarioState.solarThermalOrientation = homeState.solarThermalOrientation;
+      scenarioState.solarThermalTilt = homeState.solarThermalTilt;
+    }
     measures = measures.filter(item => item !== type);
     scheduleCalculate("scenario", 20);
     persist();
@@ -960,7 +1082,20 @@
       scenarioState.ventilation = $("#hlnScenarioVentilation").value;
       scenarioState.cooling = $("#hlnScenarioCooling").value;
     }
+    if (activeMeasure === "pv") {
+      scenarioState.pvEnabled = true;
+      scenarioState.pvKwp = Number($("#hlnScenarioPvKwp").value);
+      scenarioState.pvOrientation = $("#hlnScenarioPvOrientation").value;
+      scenarioState.pvTilt = Number($("#hlnScenarioPvTilt").value);
+    }
+    if (activeMeasure === "solar_thermal") {
+      scenarioState.solarThermalEnabled = true;
+      scenarioState.solarThermalArea = Number($("#hlnScenarioSolarThermalArea").value);
+      scenarioState.solarThermalOrientation = $("#hlnScenarioSolarThermalOrientation").value;
+      scenarioState.solarThermalTilt = Number($("#hlnScenarioSolarThermalTilt").value);
+    }
     renderIntervention();
+    emitVisualState(activeMeasure === "solar_thermal" ? "solarThermal" : activeMeasure);
     scheduleCalculate("scenario");
   }
 
@@ -1017,7 +1152,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeVentilation","#hlnHomeCooling"]
+  ["#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => $(selector).addEventListener("change", updateHomeFromEditors));
 
   $$("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
@@ -1108,7 +1243,7 @@
   $$("[data-hln-intervention-cancel]").forEach(button => button.addEventListener("click", cancelIntervention));
   $("[data-hln-intervention-keep]").addEventListener("click", keepIntervention);
 
-  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling"]
+  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioVentilation","#hlnScenarioCooling","#hlnScenarioPvKwp","#hlnScenarioPvOrientation","#hlnScenarioPvTilt","#hlnScenarioSolarThermalArea","#hlnScenarioSolarThermalOrientation","#hlnScenarioSolarThermalTilt"]
     .forEach(selector => $(selector).addEventListener("change", syncInterventionFromControls));
 
   $$(".hln-stepper [data-step]").forEach(button => button.addEventListener("click", () => {

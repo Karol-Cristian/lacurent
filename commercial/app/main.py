@@ -239,6 +239,16 @@ def default_form_values() -> dict[str, Any]:
         "dhw_litres_per_person_day_at_60c": 50,
         "dhw_efficiency": 0.86,
         "dhw_carrier": "natural_gas",
+        "pv_enabled": False,
+        "pv_installed_power_kwp": 5.0,
+        "pv_orientation": "south",
+        "pv_tilt_degrees": 30,
+        "pv_performance_ratio": 0.82,
+        "solar_thermal_enabled": False,
+        "solar_thermal_collector_area_m2": 4.0,
+        "solar_thermal_orientation": "south",
+        "solar_thermal_tilt_degrees": 45,
+        "solar_thermal_system_efficiency": 0.45,
         "expert_geometry_override": "",
         "expert_envelope_override": "",
         "expert_ventilation_override": "",
@@ -290,6 +300,16 @@ def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
             "dhw_litres_per_person_day_at_60c": building.dhw.litres_per_person_day_at_60c,
             "dhw_efficiency": building.dhw.efficiency,
             "dhw_carrier": building.dhw.carrier.value,
+            "pv_enabled": building.renewables.pv.enabled,
+            "pv_installed_power_kwp": building.renewables.pv.installed_power_kwp,
+            "pv_orientation": building.renewables.pv.orientation,
+            "pv_tilt_degrees": building.renewables.pv.tilt_degrees,
+            "pv_performance_ratio": building.renewables.pv.performance_ratio,
+            "solar_thermal_enabled": building.renewables.solar_thermal.enabled,
+            "solar_thermal_collector_area_m2": building.renewables.solar_thermal.collector_area_m2,
+            "solar_thermal_orientation": building.renewables.solar_thermal.orientation,
+            "solar_thermal_tilt_degrees": building.renewables.solar_thermal.tilt_degrees,
+            "solar_thermal_system_efficiency": building.renewables.solar_thermal.system_efficiency,
         }
     )
     for group in building.solar.glazing_groups:
@@ -537,6 +557,22 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             "efficiency": parse_optional_float(form.get("dhw_efficiency")) or 0.85,
             "carrier": dhw_carrier or "natural_gas",
         },
+        renewables={
+            "pv": {
+                "enabled": _checked(form, "pv_enabled"),
+                "installed_power_kwp": parse_optional_float(form.get("pv_installed_power_kwp")) or 0,
+                "orientation": form.get("pv_orientation") or "south",
+                "tilt_degrees": parse_optional_float(form.get("pv_tilt_degrees")) if form.get("pv_tilt_degrees") not in (None, "") else 30,
+                "performance_ratio": parse_optional_float(form.get("pv_performance_ratio")),
+            },
+            "solar_thermal": {
+                "enabled": _checked(form, "solar_thermal_enabled"),
+                "collector_area_m2": parse_optional_float(form.get("solar_thermal_collector_area_m2")) or 0,
+                "orientation": form.get("solar_thermal_orientation") or "south",
+                "tilt_degrees": parse_optional_float(form.get("solar_thermal_tilt_degrees")) if form.get("solar_thermal_tilt_degrees") not in (None, "") else 45,
+                "system_efficiency": parse_optional_float(form.get("solar_thermal_system_efficiency")),
+            },
+        },
     )
 
 
@@ -616,6 +652,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     return {
         "energy_class": result.energy_class,
         "final_energy_kwh": float(result.total_final_energy_kwh),
+        "gross_service_final_energy_kwh": float(result.total_service_final_energy_kwh),
         "primary_specific_kwh_m2": float(result.primary_energy.specific_kwh_m2),
         "co2_kg": float(result.co2.total_kg),
         "heat_loss_w_k": float(result.heat_loss_w_k),
@@ -632,10 +669,15 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             key: float(value)
             for key, value in result.final_energy_by_service.items()
         },
+        "gross_final_energy_by_carrier": {
+            str(key): float(value)
+            for key, value in result.gross_final_energy_by_carrier.items()
+        },
         "final_energy_by_carrier": {
             str(key): float(value)
             for key, value in result.final_energy_by_carrier.items()
         },
+        "renewables": model_to_dict(result.renewables),
         "monthly": [
             {
                 "month": row.month,

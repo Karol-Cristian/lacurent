@@ -142,6 +142,39 @@ class SolarInput(BaseModel):
         return values
 
 
+class PhotovoltaicInput(BaseModel):
+    enabled: bool = False
+    installed_power_kwp: float = Field(default=0, ge=0, le=200)
+    orientation: SolarOrientation = "south"
+    tilt_degrees: float = Field(default=30, ge=0, le=90)
+    performance_ratio: float | None = Field(default=None, gt=0, le=1)
+
+    @root_validator(skip_on_failure=True)
+    def validate_enabled_system(cls, values: dict) -> dict:
+        if values.get("enabled") and float(values.get("installed_power_kwp") or 0) <= 0:
+            raise ValueError("Photovoltaic production requires installed power greater than zero.")
+        return values
+
+
+class SolarThermalInput(BaseModel):
+    enabled: bool = False
+    collector_area_m2: float = Field(default=0, ge=0, le=200)
+    orientation: SolarOrientation = "south"
+    tilt_degrees: float = Field(default=45, ge=0, le=90)
+    system_efficiency: float | None = Field(default=None, gt=0, le=1)
+
+    @root_validator(skip_on_failure=True)
+    def validate_enabled_system(cls, values: dict) -> dict:
+        if values.get("enabled") and float(values.get("collector_area_m2") or 0) <= 0:
+            raise ValueError("Solar thermal production requires collector area greater than zero.")
+        return values
+
+
+class RenewablesInput(BaseModel):
+    pv: PhotovoltaicInput = Field(default_factory=PhotovoltaicInput)
+    solar_thermal: SolarThermalInput = Field(default_factory=SolarThermalInput)
+
+
 class BuildingInput(BaseModel):
     project_name: str = Field(min_length=1, max_length=120)
     locality: str = Field(min_length=1, max_length=80)
@@ -153,6 +186,7 @@ class BuildingInput(BaseModel):
     internal_gains_w_m2: float | None = Field(default=None, ge=0)
     solar_gains_kwh_m2_month: float = Field(default=0, ge=0)
     solar: SolarInput = Field(default_factory=SolarInput)
+    renewables: RenewablesInput = Field(default_factory=RenewablesInput)
     envelope: list[EnvelopeComponent] = Field(min_items=1)
     thermal_bridges: list[ThermalBridge] = Field(default_factory=list)
     ventilation: VentilationInput
@@ -245,6 +279,49 @@ class EnvelopeUValuesResult(BaseModel):
     exterior_door_u_value_w_m2k: float | None = None
 
 
+class MonthlyRenewableBalance(BaseModel):
+    month: str
+    pv_plane_hsol_kwh_m2: float = 0
+    pv_generation_kwh: float = 0
+    pv_self_consumed_kwh: float = 0
+    pv_exported_kwh: float = 0
+    solar_thermal_plane_hsol_kwh_m2: float = 0
+    solar_thermal_available_kwh: float = 0
+    solar_thermal_used_dhw_kwh: float = 0
+
+
+class PhotovoltaicResult(BaseModel):
+    enabled: bool = False
+    installed_power_kwp: float = 0
+    orientation: SolarOrientation = "south"
+    tilt_degrees: float = 30
+    performance_ratio: float = 0
+    annual_plane_hsol_kwh_m2: float = 0
+    annual_generation_kwh: float = 0
+    self_consumed_kwh: float = 0
+    exported_kwh: float = 0
+    self_consumption_percent: float = 0
+
+
+class SolarThermalResult(BaseModel):
+    enabled: bool = False
+    collector_area_m2: float = 0
+    orientation: SolarOrientation = "south"
+    tilt_degrees: float = 45
+    system_efficiency: float = 0
+    annual_plane_hsol_kwh_m2: float = 0
+    annual_available_kwh: float = 0
+    used_for_dhw_kwh: float = 0
+    dhw_solar_fraction_percent: float = 0
+
+
+class RenewableEnergyResult(BaseModel):
+    pv: PhotovoltaicResult = Field(default_factory=PhotovoltaicResult)
+    solar_thermal: SolarThermalResult = Field(default_factory=SolarThermalResult)
+    monthly: list[MonthlyRenewableBalance] = Field(default_factory=list)
+    plane_model: str
+
+
 class CalculationResult(BaseModel):
     input: BuildingInput
     climate: dict
@@ -262,8 +339,11 @@ class CalculationResult(BaseModel):
     cooling: EnergyServiceResult
     dhw: EnergyServiceResult
     final_energy_by_service: dict[str, float]
+    gross_final_energy_by_carrier: dict[str, float]
     final_energy_by_carrier: dict[str, float]
+    total_service_final_energy_kwh: float
     total_final_energy_kwh: float
+    renewables: RenewableEnergyResult
     primary_energy: IndicatorResult
     co2: Co2Result
     energy_class: Literal["A+", "A", "B", "C", "D", "E", "F", "G"]

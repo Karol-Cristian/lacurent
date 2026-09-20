@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 from .methodology import methodology
-from .models import BuildingInput, CoolingInput, DhwInput, HeatingInput, HeatingSystemType, model_to_dict
+from .models import BuildingInput, CoolingInput, DhwInput, HeatingInput, HeatingSystemType, RenewablesInput, model_to_dict
 
 
 def build_reference_input(actual: BuildingInput) -> BuildingInput:
@@ -41,5 +41,10 @@ def build_reference_input(actual: BuildingInput) -> BuildingInput:
         efficiency=rules["dhw_efficiency"],
     )
     data["dhw"] = model_to_dict(data["dhw"])
+
+    # The current simplified reference-building registry has no validated
+    # renewable-system rule. Do not copy the evaluated house's PV/solar thermal
+    # systems into the reference case implicitly.
+    data["renewables"] = model_to_dict(RenewablesInput())
 
     return BuildingInput(**deepcopy(data))

@@ -953,6 +953,12 @@ class HomeLabHouse3D {
       heatPump.visible = detail.heating === "heat_pump" || detail.cooling === "heat_pump";
     }
 
+    const pv = this.experimentLayers.get("pv");
+    if (pv) pv.visible = Boolean(detail.pvEnabled);
+
+    const solarThermal = this.experimentLayers.get("solarThermal");
+    if (solarThermal) solarThermal.visible = Boolean(detail.solarThermalEnabled);
+
     if (detail.orientation && detail.orientation !== this.lastVisualOrientation) {
       this.lastVisualOrientation = detail.orientation;
       this.focusOrientation(detail.orientation);
@@ -965,6 +971,10 @@ class HomeLabHouse3D {
       (detail.focus === "cooling" && detail.cooling === "heat_pump")
     ) {
       this.focusEquipment("heatPump");
+    } else if (detail.focus === "pv") {
+      this.focusOrientation(detail.pvOrientation || "south");
+    } else if (detail.focus === "solarThermal") {
+      this.focusOrientation(detail.solarThermalOrientation || "south");
     } else if (detail.focus === "home") {
       this.focusOrientation(detail.orientation || "south");
     }

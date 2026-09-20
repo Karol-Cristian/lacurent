@@ -358,15 +358,19 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next5" in response.text
-    assert "/static/home-lab-next.js?v=next5" in response.text
+    assert "/static/home-lab-next.js?v=next6" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d24" in response.text
+    assert "/static/home-lab-3d.js?v=3d25" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-reset-home' in response.text
     assert 'data-hln-reference-house' in response.text
     assert 'id="hlnEnergyScale"' in response.text
     assert 'id="hlnReferenceSpec"' in response.text
     assert "Ce înseamnă „Casa de referință” în MC001?" in response.text
+    assert 'data-hln-measure="pv"' in response.text
+    assert 'data-hln-measure="solar_thermal"' in response.text
+    assert 'id="hlnHomePvKwp"' in response.text
+    assert 'id="hlnHomeSolarThermalArea"' in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
@@ -401,6 +405,35 @@ def test_partner_home_lab_next_calculation_reuses_existing_energy_engine() -> No
     assert payload["design_heat_load_kw"] > 0
 
 
+def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+            "solar_thermal_enabled": "on",
+            "solar_thermal_collector_area_m2": "4",
+            "solar_thermal_orientation": "south",
+            "solar_thermal_tilt_degrees": "45",
+            "solar_thermal_system_efficiency": "0.45",
+        }
+    )
+
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["renewables"]["pv"]["annual_generation_kwh"] > 0
+    assert payload["renewables"]["pv"]["annual_plane_hsol_kwh_m2"] > 0
+    assert payload["renewables"]["solar_thermal"]["annual_available_kwh"] > 0
+    assert payload["renewables"]["solar_thermal"]["used_for_dhw_kwh"] > 0
+    assert len(payload["renewables"]["monthly"]) == 12
+    assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
+
+
 def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -417,6 +450,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function resetScenarioToHome" in response.text
     assert "function renderLiveConfigurator" in response.text
     assert "scenarioOverrides" in response.text
+    assert "pvEnabled" in response.text
+    assert "solarThermalEnabled" in response.text
+    assert 'formSet("pv_installed_power_kwp"' in response.text
+    assert 'formSet("solar_thermal_collector_area_m2"' in response.text
     assert "reference_mc001" in response.text
     assert "hlnReferenceSpec" in response.text
     assert 'root.querySelectorAll("[data-hln-reference-house]")' in response.text

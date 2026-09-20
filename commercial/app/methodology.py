@@ -94,6 +94,55 @@ def resolve_monthly_hsol(climate: dict[str, Any], orientation: str) -> dict[str,
     }
 
 
+def resolve_monthly_plane_hsol(
+    climate: dict[str, Any],
+    orientation: str,
+    tilt_degrees: float,
+) -> dict[str, Any] | None:
+    """Resolve monthly solar irradiation for a tilted plane in the Light Engine.
+
+    The source dataset contains horizontal irradiation plus eight vertical
+    cardinal/inter-cardinal planes. For 0..90 degree tilts the Light Engine
+    linearly interpolates between the source-backed horizontal row and the
+    source-backed vertical row for the selected orientation. This deliberately
+    avoids inventing an hourly/direct-diffuse transposition model; advanced
+    plane-of-array modelling belongs to the future PBE path.
+    """
+
+    vertical = resolve_monthly_hsol(climate, orientation)
+    if vertical is None:
+        return None
+
+    station_id = str(climate.get("station_id") or climate.get("id") or "")
+    coverage = _solar_hsol_coverage_by_climate_station().get(station_id)
+    if coverage is None:
+        return None
+    row = _solar_hsol_by_solar_station().get(str(coverage.get("solarStationId")))
+    if row is None:
+        return None
+    horizontal = row.get("hsolKwhPerM2ByOrientation", {}).get("horizontal")
+    if not isinstance(horizontal, list) or len(horizontal) != 12:
+        return None
+
+    tilt = max(0.0, min(float(tilt_degrees), 90.0))
+    vertical_weight = tilt / 90.0
+    horizontal_weight = 1.0 - vertical_weight
+    values = [
+        horizontal_weight * float(h) + vertical_weight * float(v)
+        for h, v in zip(horizontal, vertical["values_kwh_m2_month"])
+    ]
+    return {
+        **vertical,
+        "tilt_degrees": tilt,
+        "values_kwh_m2_month": values,
+        "horizontal_values_kwh_m2_month": [float(value) for value in horizontal],
+        "vertical_values_kwh_m2_month": [
+            float(value) for value in vertical["values_kwh_m2_month"]
+        ],
+        "plane_model": "linear_horizontal_to_vertical_source_interpolation",
+    }
+
+
 def locality_data() -> dict[str, Any]:
     # The locality registry is ~6.5 MB. Do not keep it in the Python Worker
     # isolate after the map payload has been returned: Cloudflare isolates have
