@@ -357,8 +357,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next6" in response.text
-    assert "/static/home-lab-next.js?v=next9" in response.text
+    assert "/static/home-lab-next.css?v=next7" in response.text
+    assert "/static/home-lab-next.js?v=next10" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d25" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -373,6 +373,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnHomeSolarThermalArea"' in response.text
     assert 'id="hlnLivePvKwp" type="range" min="0" max="30" step="0.5"' in response.text
     assert 'id="hlnLiveSolarThermalKw" type="range" min="0" max="30" step="0.5"' in response.text
+    assert 'id="hlnQuickEditOverlay"' in response.text
+    assert 'id="hlnQuickEditRange" type="range"' in response.text
+    assert "Glisează. La eliberare, valoarea se salvează și editorul dispare." in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
@@ -492,6 +495,12 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function setReferenceHouse" in response.text
     assert "function resetScenarioToHome" in response.text
     assert "function renderLiveConfigurator" in response.text
+    assert "function openQuickMeasureEditor" in response.text
+    assert "function applyQuickMeasureValue" in response.text
+    assert "function commitQuickMeasureEditor" in response.text
+    assert "function cancelQuickMeasureEditor" in response.text
+    assert 'quickEditRange.addEventListener("pointerup"' in response.text
+    assert 'quickEditRange.addEventListener("touchend"' in response.text
     assert "scenarioOverrides" in response.text
     assert "pvEnabled" in response.text
     assert "solarThermalEnabled" in response.text
