@@ -623,6 +623,31 @@ def run_controlled_internal_gains_comparison() -> dict[str, Any]:
         )
 
     expected_gain_w = gain_w_m2 * float(building.heated_floor_area_m2)
+    monthly_current = {row.month: float(row.useful_heating_kwh) for row in current.monthly}
+    monthly_standard = (
+        pd.DataFrame({"q_w": q_h_w, "month": hourly_active.index.month})
+        .groupby("month")["q_w"]
+        .sum()
+        .div(1000.0)
+        .to_dict()
+    )
+    monthly_convective = (
+        pd.DataFrame({"q_w": q_h_convective_w, "month": hourly_convective_active.index.month})
+        .groupby("month")["q_w"]
+        .sum()
+        .div(1000.0)
+        .to_dict()
+    )
+    month_ids = [row.month for row in current.monthly]
+    monthly_comparison = [
+        {
+            "month": month_id,
+            "lacurent_kwh": round(monthly_current.get(month_id, 0.0), 3),
+            "pbe_standard_kwh": round(float(monthly_standard.get(index + 1, 0.0)), 3),
+            "pbe_all_convective_kwh": round(float(monthly_convective.get(index + 1, 0.0)), 3),
+        }
+        for index, month_id in enumerate(month_ids)
+    ]
     return {
         "status": "ok",
         "scope": "controlled_envelope_air_losses_plus_constant_internal_gains",
@@ -663,4 +688,5 @@ def run_controlled_internal_gains_comparison() -> dict[str, Any]:
             "delta_kwh": round(delta_kwh, 3),
             "relative_delta_percent": round(rel_pct, 3),
         },
+        "monthly_comparison": monthly_comparison,
     }
