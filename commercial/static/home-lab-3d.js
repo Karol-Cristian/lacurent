@@ -1142,6 +1142,31 @@ class HomeLabHouse3D {
       windowProof.material.color.setHex(glazingColors[detail.glazing] || 0x5f91aa);
     }
 
+    const glazingGlassColors = {
+      single_clear_glazing: 0xa9bcc1,
+      double_clear_glazing: 0x91acb4,
+      double_low_e_face_3: 0x6f98a5,
+      triple_low_e_faces_2_and_5: 0x507f90,
+      reference_mc001: 0x78959d,
+    };
+    const glazingColor = glazingGlassColors[detail.glazing] || 0x91acb4;
+    this.semanticMeshes
+      .filter((mesh) => mesh.userData.part === "windows")
+      .forEach((mesh) => {
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        materials.forEach((material) => {
+          const key = `${mesh.name || ""} ${material?.name || ""}`.toLowerCase();
+          if (!material?.color || !/glass/.test(key)) return;
+          material.color.setHex(glazingColor);
+          material.transparent = true;
+          material.opacity = detail.glazing === "single_clear_glazing" ? 0.50 : 0.62;
+          if ("roughness" in material) {
+            material.roughness = detail.glazing === "triple_low_e_faces_2_and_5" ? 0.08 : 0.14;
+          }
+          material.needsUpdate = true;
+        });
+      });
+
     const ventilation = this.equipmentLayers.get("ventilation");
     if (ventilation) {
       ventilation.visible = detail.ventilation === "mechanical" || detail.ventilation === "hrv";
