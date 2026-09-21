@@ -102,7 +102,7 @@ def override_pbe_variant(bui: dict, variant: dict) -> None:
         # absorption term, so both transparent g-value and opaque absorptance must be zero.
         for surface in bui["building_surface"]:
             if surface.get("type") == "transparent":
-                surface["g_value"] = 0.0
+                surface["g_value"] = 1e-9
             else:
                 surface["solar_absorptance"] = 0.0
 
