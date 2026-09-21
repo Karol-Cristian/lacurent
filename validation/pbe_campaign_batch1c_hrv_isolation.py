@@ -54,6 +54,13 @@ VARIANTS = {
         "zero_solar": False,
         "neutral_floor": True,
     },
+    "opaque_solar_off": {
+        "label": "Light-scope alignment: PBE opaque-surface solar absorptance = 0",
+        "zero_internal": False,
+        "zero_solar": False,
+        "neutral_floor": False,
+        "pbe_opaque_solar_off": True,
+    },
 }
 
 
@@ -91,9 +98,20 @@ def override_pbe_variant(bui: dict, variant: dict) -> None:
         bui["building_parameters"]["internal_gains"] = deepcopy(internal)
 
     if variant["zero_solar"]:
+        # Zero all solar coupling in PBE. Light explicit-zero solar has no opaque-surface
+        # absorption term, so both transparent g-value and opaque absorptance must be zero.
         for surface in bui["building_surface"]:
             if surface.get("type") == "transparent":
                 surface["g_value"] = 0.0
+            else:
+                surface["solar_absorptance"] = 0.0
+
+    if variant.get("pbe_opaque_solar_off", False):
+        # Light's current monthly solar model explicitly covers transparent elements.
+        # This diagnostic retains window solar while removing PBE-only opaque absorption.
+        for surface in bui["building_surface"]:
+            if surface.get("type") == "opaque":
+                surface["solar_absorptance"] = 0.0
 
 
 def light_balance(light) -> dict:
@@ -202,7 +220,7 @@ def main() -> None:
 
         # Residual-cause isolation at the problematic high-efficiency HRV point.
         for loc in TEST_LOCATIONS:
-            for variant_id in ["no_internal", "no_solar", "no_gains", "neutral_floor"]:
+            for variant_id in ["no_internal", "no_solar", "no_gains", "neutral_floor", "opaque_solar_off"]:
                 rows.append(run_case(loc, 0.80, variant_id))
     finally:
         pbe_utils.ISO52010.get_tmy_data_pvgis = climate_norm._ORIGINAL_GET_PVGIS
@@ -241,7 +259,7 @@ def main() -> None:
         ]
         by_variant = {r["variant"]: r for r in loc_rows}
         base_delta = float(by_variant["baseline"]["difference"]["useful_pct"])
-        for variant_id in ["no_internal", "no_solar", "no_gains", "neutral_floor"]:
+        for variant_id in ["no_internal", "no_solar", "no_gains", "neutral_floor", "opaque_solar_off"]:
             r = by_variant[variant_id]
             delta = float(r["difference"]["useful_pct"])
             isolation.append(
@@ -280,7 +298,7 @@ def main() -> None:
             ),
             "scope": (
                 "Renovated envelope; Bucuresti, Cluj-Napoca and Brasov; HRV sensitivity "
-                "0/50/80/90%; controlled internal-gain, solar-gain and floor-transmission diagnostics."
+                "0/50/80/90%; controlled internal-gain, transparent/opaque-solar and floor-transmission diagnostics."
             ),
             "warning": (
                 "Zero-gain and near-zero-floor variants are diagnostic boundary tests, not user-facing "
@@ -384,6 +402,7 @@ def main() -> None:
         "- If the residual grows monotonically as Hve falls, the remaining disagreement is a low-load/gain-utilization/dynamics effect rather than an HRV heat-transfer arithmetic error.",
         "- If removing internal gains collapses the residual, internal-gain utilization is dominant.",
         "- If removing solar collapses it, solar timing/utilization is dominant.",
+        "- If removing only PBE opaque-surface solar absorption collapses the residual, the engines differ materially because PBE models opaque solar absorption while Light currently models transparent solar gains only.",
         "- If removing both gains collapses it substantially more, the monthly-vs-hourly gain-utilization interaction is dominant.",
         "- If the near-zero-floor test materially changes the residual, floor/ground treatment needs a dedicated follow-up.",
         "- Concentration of annual residual in shoulder months supports a monthly-utilization versus hourly on/off dynamics explanation.",
