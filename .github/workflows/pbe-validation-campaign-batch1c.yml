@@ -1,0 +1,54 @@
+name: PBE Validation Campaign Batch 1c
+
+on:
+  push:
+    branches:
+      - analysis/pbe-vertical-validation-20260920
+    paths:
+      - validation/pbe_campaign_batch1c_hrv_isolation.py
+      - validation/pbe_campaign_batch1b_climate_normalized.py
+      - validation/pbe_vertical_compare.py
+      - validation/pbe_campaign_batch1.py
+      - .github/workflows/pbe-validation-campaign-batch1c.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hrv-residual-isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out analysis branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install LaCurent dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Install pinned PyBuildingEnergy
+        run: |
+          python -m pip install "git+https://github.com/EURAC-EEBgroup/pyBuildingEnergy.git@32ff8648312fc4cd0ac4e963464ee956a7c47d2d"
+
+      - name: Run HRV residual isolation
+        env:
+          VALIDATION_OUT: validation-campaign-results-1c
+          MPLBACKEND: Agg
+          PYTHONPATH: .
+        run: |
+          python validation/pbe_campaign_batch1c_hrv_isolation.py
+
+      - name: Upload diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbe-validation-campaign-batch1c
+          path: validation-campaign-results-1c/
+          if-no-files-found: warn
