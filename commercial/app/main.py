@@ -12,6 +12,10 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from .engine import calculate, demo_building
+from .engineering_requirements import (
+    EngineeringRequirementsRequestV1,
+    build_engineering_requirements,
+)
 from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
@@ -23,6 +27,10 @@ from .pv_catalog import (
     build_pv_product_scenario,
     pv_catalog,
     size_pv_modules,
+)
+from .widget_recommendations import (
+    WidgetRecommendationRequestV1,
+    build_widget_recommendations,
 )
 from .product_matching import (
     WallInsulationProductMatchRequestV1,
@@ -1043,6 +1051,28 @@ async def location_data_api() -> JSONResponse:
 @app.get("/api/energy-prices")
 async def energy_prices_api() -> JSONResponse:
     return JSONResponse(energy_prices())
+
+
+@app.post("/api/engineering/requirements")
+async def engineering_requirements_api(
+    payload: EngineeringRequirementsRequestV1,
+) -> JSONResponse:
+    try:
+        result = build_engineering_requirements(payload.baseline)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/widget/product-recommendations")
+async def widget_product_recommendations_api(
+    payload: WidgetRecommendationRequestV1,
+) -> JSONResponse:
+    try:
+        result = build_widget_recommendations(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(result))
 
 
 @app.get("/api/products/pv-modules")
