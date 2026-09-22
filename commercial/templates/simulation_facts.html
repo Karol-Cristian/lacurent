@@ -74,7 +74,7 @@
           {% if fact.fact_kind == "comparison" %}
           <div class="fact-result">
             <strong>{{ "%.1f"|format(fact.comparison_ratio) }}×</strong>
-            <span>impact mai mare pentru {{ fact.comparison_left_label|lower }} în exemplul calculat</span>
+            <span>mai multă reducere a pierderii prin element — nu de {{ "%.1f"|format(fact.comparison_ratio) }}× mai puțin consum total al casei</span>
           </div>
           {% else %}
           <div class="fact-result">
