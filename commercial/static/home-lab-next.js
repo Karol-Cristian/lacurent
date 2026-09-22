@@ -124,8 +124,27 @@
   let calculateToken = 0;
   let calculateTimer = 0;
   let calculateAbortController = null;
+  let optimizerAbortController = null;
+  let optimizerRunToken = 0;
+  let optimizerEvaluationCount = 0;
+  const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
   const optimizerCandidateCache = new Map();
   const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
+  let homeResultState = homeResult ? "stale" : "empty";
+  let scenarioResultState = scenarioResult ? "stale" : "empty";
+  let projectMode = "existing_standard";
+  const DEFAULT_ROI_COST_BASIS = Object.freeze({
+    wall: null,
+    roof: null,
+    floor: null,
+    windows: null,
+    ventilation: null,
+    heating_control: null,
+    heating: null,
+    pv: null,
+    solar_thermal: null,
+  });
+  let roiCostBasis = {...DEFAULT_ROI_COST_BASIS};
   let mobileViewportBaseline = 0;
 
   function syncMobileViewportBottomInset(resetBaseline = false) {
@@ -218,6 +237,15 @@
       referenceMode = Boolean(saved.referenceMode);
       scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
       optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
+      projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
+        ? saved.projectMode
+        : "existing_standard";
+      roiCostBasis = {
+        ...DEFAULT_ROI_COST_BASIS,
+        ...(saved.roiCostBasis && typeof saved.roiCostBasis === "object" ? saved.roiCostBasis : {}),
+      };
+      homeResultState = homeResult ? "stale" : "empty";
+      scenarioResultState = scenarioResult ? "stale" : "empty";
       // Rewrite the persisted state once so the migration is permanent.
       persist();
     }
@@ -2594,7 +2622,9 @@
         measures,
         referenceMode,
         scenarioOverrides,
-        optimizationMeta
+        optimizationMeta,
+        projectMode,
+        roiCostBasis
       }));
     } catch (_) {}
   }
