@@ -662,6 +662,50 @@
     return clamp(100 * (Number(value) - min) / (max - min), 0, 100);
   }
 
+  const ROI_COST_INPUTS = Object.freeze({
+    wall:"#hlnRoiCostWall",
+    roof:"#hlnRoiCostRoof",
+    floor:"#hlnRoiCostFloor",
+    windows:"#hlnRoiCostWindows",
+    door:"#hlnRoiCostDoor",
+    ventilation:"#hlnRoiCostVentilation",
+    heating_control:"#hlnRoiCostHeatingControl",
+    heating:"#hlnRoiCostHeating",
+    pv:"#hlnRoiCostPv",
+    solar_thermal:"#hlnRoiCostSolarThermal",
+  });
+
+  function syncOptimizerInputs() {
+    const project = $("#hlnProjectMode");
+    if (project) project.value = projectMode;
+    Object.entries(ROI_COST_INPUTS).forEach(([family, selector]) => {
+      const input = $(selector);
+      if (!input) return;
+      const value = Number(roiCostBasis[family]);
+      input.value = Number.isFinite(value) && value > 0 ? String(value) : "";
+    });
+  }
+
+  function renderProjectGuardrailSummary() {
+    const node = $("#hlnProjectGuardrailSummary");
+    if (!node) return;
+    const target = regulatoryTargetForProjectMode();
+    if (projectMode === "existing_standard") {
+      node.textContent = "Renovare obișnuită: Best ROI optimizează financiar fără a inventa un prag global 2.10a/2.10b. Cerințele punctuale aplicabile intervențiilor se verifică separat.";
+      return;
+    }
+    if (!target) {
+      node.textContent = `${projectModeLabel()}: pragul metodologic nu este disponibil încă pentru această configurație.`;
+      return;
+    }
+    const table = projectMode === "new_nzeb" ? "MC001 Tabel 2.10a" : "MC001 Tabel 2.10b";
+    const suffix = projectMode === "new_nzeb"
+      ? " · plus anvelopa modelată; RER rămâne de verificat separat"
+      : "";
+    node.textContent =
+      `${table}: EP ≤ ${fmt(target.primary_energy_kwh_m2_year,1)} kWh/m²·an · CO₂ ≤ ${fmt(target.co2_kg_m2_year,1)} kg/m²·an${suffix}.`;
+  }
+
   function renderLiveConfigurator() {
     const live = $("#hlnLiveConfigurator");
     if (!live) return;
@@ -2947,6 +2991,7 @@
     renderProgress();
     renderDock();
     renderLiveConfigurator();
+    renderProjectGuardrailSummary();
     if (screen === "intervention") renderIntervention();
     if (screen === "scenario") renderScenario();
     if (screen === "report") renderReport();
@@ -3667,11 +3712,35 @@
     input.addEventListener("change", () => applyLiveScenarioChange(key, input.value, focus));
   });
 
-  $$("[data-hln-reference-house]").forEach(button => {
+  $("[data-hln-reference-house]").forEach(button => {
     button.addEventListener("click", setReferenceHouse);
   });
 
-  $$("[data-hln-smart-config]").forEach(button => {
+  const projectModeInput = $("#hlnProjectMode");
+  if (projectModeInput) {
+    projectModeInput.addEventListener("change", () => {
+      projectMode = projectModeInput.value;
+      cancelOptimizerRun();
+      optimizationMeta = null;
+      setOptimizationNote("");
+      persist();
+      renderProjectGuardrailSummary();
+    });
+  }
+
+  Object.entries(ROI_COST_INPUTS).forEach(([family, selector]) => {
+    const input = $(selector);
+    if (!input) return;
+    input.addEventListener("input", () => {
+      const value = Number(input.value);
+      roiCostBasis[family] = Number.isFinite(value) && value > 0 ? value : null;
+      cancelOptimizerRun();
+      optimizationMeta = null;
+      persist();
+    });
+  });
+
+  $("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
       if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi();
@@ -3830,6 +3899,7 @@
     });
 
   syncHomeEditorControls();
+  syncOptimizerInputs();
   renderAll();
   emitVisualState();
 
