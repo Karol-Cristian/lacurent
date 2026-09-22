@@ -36,15 +36,10 @@ def test_energy_calculator_loads_unified_language_switch_and_submit_safeguard() 
     assert "Calculate performance" in submit
 
 
-def test_energy_landing_uses_same_unified_language_runtime() -> None:
-    response = client.get("/instalatii")
-    assert response.status_code == 200
-    assert "language-switch.css?v=lang2" in response.text
-    assert "energy-i18n.js?v=i18n1" in response.text
-    assert "language-switch-runtime.js" not in response.text
-    assert "energy-home-language-toggle.js" not in response.text
-    assert 'class="site-language-switch header-language-switch"' in response.text
-    assert "Limbă" in response.text
+def test_retired_energy_landing_redirects_to_home_lab() -> None:
+    response = client.get("/instalatii", follow_redirects=False)
+    assert response.status_code == 308
+    assert response.headers["location"] == "/instalatii/calculator"
 
 
 def test_language_dictionary_covers_landing_calculator_and_results() -> None:
