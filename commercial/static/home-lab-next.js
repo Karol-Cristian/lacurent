@@ -2133,6 +2133,17 @@
   async function configureBestRoi() {
     if (!baselineSaved || !homeResult) return;
 
+    try {
+      await loadRoiCostBasis();
+    } catch (error) {
+      setOptimizationNote(
+        "<strong>Catalogul de costuri nu este disponibil momentan.</strong><span>Best ROI are nevoie de CAPEX, dar nu cer utilizatorului să întrețină aceste date. Încearcă din nou după ce catalogul revine.</span>",
+        "warn"
+      );
+      setStatus("Catalog costuri indisponibil", "error");
+      return;
+    }
+
     const target = regulatoryTargetForProjectMode();
     if (projectMode !== "existing_standard" && !target) {
       setOptimizationNote("<strong>Best ROI nu poate aplica guardrail-ul selectat.</strong><span>Lipsește pragul metodologic pentru zona climatică / tipul clădirii.</span>", "warn");
@@ -2147,7 +2158,7 @@
     );
     const mandatoryFamilies = new Set(
       projectMode === "new_nzeb"
-        ? nzebEnvelopeActions(homeState, {}, target).map(action => action.id)
+        ? nzebEnvelopeActions(homeState, {}, target).map(action => action.family || action.id)
         : []
     );
 
@@ -2163,7 +2174,7 @@
       const details = $("#hlnRoiCostDetails");
       if (details) details.open = true;
       setOptimizationNote(
-        `<strong>CAPEX incomplet pentru Best ROI nZEB.</strong><span>Lipsesc costuri pentru: ${escapeHtml(missingMandatoryCosts.join(", "))}. Nu inventez aceste costuri și nu pot calcula un ROI nZEB corect fără ele.</span>`,
+        `<strong>Catalogul D1 nu are încă toate familiile obligatorii.</strong><span>Lipsesc: ${escapeHtml(missingMandatoryCosts.join(", "))}. Nu cer aceste valori utilizatorului și nu inventez CAPEX.</span>`,
         "warn"
       );
       return;
@@ -2172,7 +2183,7 @@
       const details = $("#hlnRoiCostDetails");
       if (details) details.open = true;
       setOptimizationNote(
-        "<strong>Introdu costurile investiției pentru Best ROI.</strong><span>ROI-ul real are nevoie de CAPEX. Câmpurile goale sunt excluse, nu estimate automat.</span>",
+        "<strong>Catalogul de costuri nu are încă un candidat utilizabil.</strong><span>Best ROI va reveni automat când baza comercială este completă; utilizatorul nu trebuie să introducă prețuri.</span>",
         "warn"
       );
       return;
@@ -2205,7 +2216,7 @@
 
       if (!rankedOpportunities.length) {
         setOptimizationNote(
-          "<strong>Nu există încă o soluție cu ROI calculabil.</strong><span>Costurile introduse există, dar economia anuală nu poate fi evaluată pozitiv pentru candidații disponibili.</span>",
+          "<strong>Nu există încă o soluție cu ROI calculabil.</strong><span>Catalogul furnizează CAPEX-ul, dar economia anuală nu este pozitivă pentru candidații disponibili.</span>",
           "warn"
         );
         setStatus("Best ROI fără candidat financiar pozitiv");
@@ -2340,7 +2351,9 @@
         roiPercentPerYear:economics.roiPercentPerYear,
         paybackYears:economics.paybackYears,
         evaluatedCandidates:optimizerEvaluationCount,
-        costSource:"user_input",
+        costSource:roiCostBasisMeta?.source || "catalog",
+        costCatalogVersion:roiCostBasisMeta?.catalog_version || null,
+        costObservedOn:roiCostBasisMeta?.observed_on || null,
         excludedCostFamilies:missingFamilies,
         note:regulatoryNote,
       });
@@ -2352,7 +2365,7 @@
       setOptimizationNote(
         `<strong>Best ROI: ${roiText} · recuperare ${paybackText}</strong>
          <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length} intervenții în pachet.</span>
-         <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
+         <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. CAPEX: ${escapeHtml(roiCostBasisMeta?.source === "d1" ? "catalog D1" : "catalog de rezervă")} · ${escapeHtml(roiCostBasisMeta?.catalog_version || "versiune n/a")}. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
         guardrailPass && economics.positive ? "good" : "warn"
       );
       setStatus("Best ROI calculat", "ok");
@@ -3184,7 +3197,7 @@
             `).join("")}
           </div>
           ${ranked.length ? `<p>Oportunități individuale evaluate: ${ranked.map(item => `${escapeHtml(item.label)} (${fmt(item.roiPercentPerYear,1)}%/an)`).join(" · ")}.</p>` : ""}
-          <p>${escapeHtml(optimizationMeta.note || "")} Costurile de investiție folosite în această versiune provin din intrările explicite ale utilizatorului; câmpurile fără CAPEX nu sunt inventate.</p>
+          <p>${escapeHtml(optimizationMeta.note || "")} CAPEX-ul este preluat automat din ${escapeHtml(optimizationMeta.costSource === "d1" ? "catalogul D1" : "catalogul de rezervă")} (${escapeHtml(optimizationMeta.costCatalogVersion || "versiune n/a")}); reperele comerciale nu modifică motorul energetic.</p>
         `;
       } else if (optimizationMeta?.mode === "nzeb") {
         const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
