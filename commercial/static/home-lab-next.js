@@ -3641,7 +3641,7 @@
     syncMeasuresFromScenario();
     // Queue the calculation before repainting the UI so a rendering problem
     // cannot prevent the changed scenario from reaching the engine.
-    scheduleCalculate("scenario", 90);
+    scheduleCalculate("scenario", 280);
     renderAll();
     persist();
     emitVisualState(focus);
