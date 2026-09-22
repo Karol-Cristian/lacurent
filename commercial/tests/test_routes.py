@@ -1075,6 +1075,15 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "wallIns" in response.text
     assert "roofIns" in response.text
     assert "floorIns" in response.text
+    assert "wallStructure" in response.text
+    assert "wallStructureThickness" in response.text
+    assert "wallInsulationMaterial" in response.text
+    assert "roofInsulationMaterial" in response.text
+    assert "floorInsulationMaterial" in response.text
+    assert "WALL_STRUCTURE_PRESETS" in response.text
+    assert "INSULATION_LAMBDA_W_MK" in response.text
+    assert "wallBaseU(state)" in response.text
+    assert "insulationLambda(state.wallInsulationMaterial)" in response.text
     assert "glazing" in response.text
     assert "measures" in response.text
     assert "SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70" in response.text
@@ -1104,6 +1113,27 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "hln:visual-state" in response.text
     assert 'fetchWithTimeout(' in response.text
     assert 'href="#hln-i-' in response.text
+
+
+def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    html = response.text
+    assert 'id="hlnHomeWallStructure"' in html
+    assert 'id="hlnHomeWallStructureThickness"' in html
+    assert 'id="hlnHomeWallInsulationMaterial"' in html
+    assert 'id="hlnHomeRoofInsulationMaterial"' in html
+    assert 'id="hlnHomeFloorInsulationMaterial"' in html
+    assert 'value="solid_brick"' in html
+    assert 'value="efficient_brick"' in html
+    assert 'value="bca"' in html
+    assert 'value="concrete"' in html
+    assert 'value="wood"' in html
+    assert 'value="eps"' in html
+    assert 'value="xps"' in html
+    assert 'value="mineral_wool"' in html
+    assert 'value="cellulose"' in html
+    assert 'value="wood_fiber"' in html
 
 
 def test_home_lab_3d_reflects_selected_house_systems() -> None:
