@@ -162,8 +162,8 @@ def optimize_pv_plane(building: BuildingInput) -> PvPlaneOptimizationV1:
 
 def envelope_upgrade_requirements(building: BuildingInput) -> list[EnvelopeUpgradeRequirementV1]:
     result = calculate(building, include_reference=False)
-    targets = methodology()["nzeb"]["residential_envelope_u_max_w_m2k"]
-    source = methodology()["nzeb"]["envelope_source"]
+    targets = methodology()["nzeb_targets"]["residential_envelope_u_max_w_m2k"]
+    source = methodology()["nzeb_targets"]["envelope_source"]
 
     rows = [
         (
