@@ -355,7 +355,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "Construiește punctul de plecare." in response.text
     assert "Ce vrei să schimbi?" in response.text
     assert "Păstrează intervenția" in response.text
-    assert "Vezi renovarea ca un singur proiect." in response.text
+    assert "Vezi îmbunătățirile ca un singur proiect." in response.text
     assert 'class="hln-house-board"' in response.text
     assert 'class="hln-house-visual hln-house-visual-home"' in response.text
     assert 'class="hln-impact-panel"' in response.text
