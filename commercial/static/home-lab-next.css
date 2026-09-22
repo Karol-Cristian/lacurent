@@ -1139,24 +1139,21 @@ svg{display:block}
 }
 .hln-roi-costs>p{margin:0 0 12px;color:#647169;font-size:9px;line-height:1.55}
 .hln-roi-costs>small{display:block;margin:10px 0 13px;color:#7a827e;font-size:8px;line-height:1.45}
-.hln-roi-cost-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.hln-roi-cost-grid label{
-  display:grid;grid-template-columns:1fr auto;gap:3px 6px;align-items:end;padding:9px;border-radius:10px;background:#f3f5f2;color:#36473f;font-size:9px;font-weight:800
+.hln-roi-cost-list{display:grid;gap:6px;margin-bottom:10px}
+.hln-roi-cost-list article{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;
+  padding:9px 10px;border-radius:10px;background:#f3f5f2
 }
-.hln-roi-cost-grid label span{color:#7a8580;font-size:7px;font-weight:600}
-.hln-roi-cost-grid input{
-  grid-column:1/-1;width:100%;min-width:0;padding:8px 9px;border:1px solid #d7ddd9;border-radius:8px;background:#fff;color:#26342e;font:inherit;font-size:10px
-}
+.hln-roi-cost-list article div{display:grid;gap:2px;min-width:0}
+.hln-roi-cost-list article strong{font-size:9px;color:#36473f}
+.hln-roi-cost-list article small{font-size:7px;color:#7a8580;overflow-wrap:anywhere}
+.hln-roi-cost-list article b{font-size:9px;color:#36584a;white-space:nowrap}
 .hln-live-configurator.is-calculating .hln-configurator-result{
   border-color:#d8ddd9;background:linear-gradient(145deg,#fafbf9,#f5f7f4)
 }
 .hln-calculating-value{color:#78837d!important;font-size:10px!important;font-weight:750!important}
 @media (max-width:720px){
   .hln-project-guardrail{grid-template-columns:1fr}
-  .hln-roi-cost-grid{grid-template-columns:1fr 1fr}
-}
-@media (max-width:460px){
-  .hln-roi-cost-grid{grid-template-columns:1fr}
 }
 
 .hln-smart-configs{
