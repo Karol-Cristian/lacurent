@@ -119,15 +119,15 @@ def test_calculator_javascript_resets_submit_state_and_syncs_typed_locality() ->
     assert 'button.disabled = false' in response.text
 
 
-def test_installations_offer_uses_registry_ready_locality_picker() -> None:
-    response = client.get("/instalatii")
-    assert response.status_code == 200
-    assert "Instalații electrice" in response.text
-    assert "Pompe de căldură" in response.text
-    assert "Ventilație" in response.text
-    assert 'id="energy-locality-results"' in response.text
-    assert "Începe să scrii localitatea" in response.text
-    assert "scop de proiect" in response.text
+def test_retired_installations_offer_no_longer_serves_a_separate_landing() -> None:
+    response = client.get("/instalatii", follow_redirects=False)
+    assert response.status_code == 308
+    assert response.headers["location"] == "/instalatii/calculator"
+
+    calculator = client.get("/instalatii/calculator")
+    assert calculator.status_code == 200
+    assert "Home Lab" in calculator.text
+    assert 'href="/home-lab/facts"' in calculator.text
 
 
 def test_ui_heating_profiles_use_canonical_methodology_defaults() -> None:
