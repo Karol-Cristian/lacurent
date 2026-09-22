@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Lab Facts | Simulări energetice pentru locuințe | LaCurent</title>
+  <meta name="description" content="Rezultate publice generate de motorul energetic LaCurent Home Lab: comparații de izolație, ferestre, ventilație, temperatură și sisteme de încălzire pentru localități din România.">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
+  <link rel="stylesheet" href="/static/simulation-facts.css?v=facts1">
+  <meta property="og:title" content="Home Lab Facts | LaCurent">
+  <meta property="og:description" content="Rezultate publice, verificabile, generate din simulările energetice LaCurent Home Lab.">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:type" content="website">
+</head>
+<body>
+  <header class="facts-nav">
+    <a class="facts-brand" href="/instalatii/calculator">
+      <span>LC</span>
+      <strong>LaCurent</strong>
+      <em>Home Lab</em>
+    </a>
+    <nav>
+      <a href="/instalatii/calculator">Calculator</a>
+      <a class="is-active" href="/home-lab/facts">Facts</a>
+    </nav>
+  </header>
+
+  <main class="facts-shell">
+    <section class="facts-hero">
+      <p class="facts-eyebrow">HOME LAB · SIMULĂRI PUBLICE</p>
+      <h1>Ce aflăm când schimbăm un singur lucru la o casă.</h1>
+      <p class="facts-lead">Fiecare rezultat de mai jos pornește din motorul energetic LaCurent. Păstrăm aceeași casă de bază, schimbăm controlat un parametru și publicăm diferența calculată — cu localitate, ipoteze și versiunea metodologiei.</p>
+      <div class="facts-hero-actions">
+        <a class="facts-primary" href="/instalatii/calculator">Testează pe casa ta</a>
+        <span>Nu sunt reguli universale. Sunt rezultate ale unor simulări explicit definite.</span>
+      </div>
+    </section>
+
+    <section class="facts-method">
+      <article>
+        <b>01</b>
+        <div><strong>Motorul calculează</strong><p>Valorile numerice provin din engine, nu din modelul AI.</p></div>
+      </article>
+      <article>
+        <b>02</b>
+        <div><strong>AI-ul explică</strong><p>Asistentul formulează contextul editorial fără să aibă voie să modifice cifrele calculate.</p></div>
+      </article>
+      <article>
+        <b>03</b>
+        <div><strong>Pagina păstrează proveniența</strong><p>Fiecare fact include ipoteza, localitatea, metricile și versiunea metodologiei.</p></div>
+      </article>
+    </section>
+
+    <section class="facts-list-section">
+      <div class="facts-heading">
+        <p>REZULTATE PUBLICATE</p>
+        <h2>Facts din simulările Home Lab</h2>
+      </div>
+
+      {% if facts %}
+      <div class="facts-grid">
+        {% for fact in facts %}
+        <article class="fact-card">
+          <div class="fact-card-meta">
+            <span>{{ fact.locality }}</span>
+            <time datetime="{{ fact.published_at }}">{{ fact.published_at[:10] }}</time>
+          </div>
+          <h3><a href="/home-lab/facts/{{ fact.slug }}">{{ fact.title }}</a></h3>
+          <p class="fact-question">{{ fact.search_question }}</p>
+          <p class="fact-claim">{{ fact.claim }}</p>
+          <div class="fact-change {% if fact.change_percent < 0 %}is-down{% elif fact.change_percent > 0 %}is-up{% endif %}">
+            <strong>{% if fact.change_percent > 0 %}+{% endif %}{{ "%.1f"|format(fact.change_percent) }}%</strong>
+            <span>{{ fact.metric_label }}</span>
+          </div>
+          <a class="fact-link" href="/home-lab/facts/{{ fact.slug }}">Vezi simularea și ipotezele →</a>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="facts-empty">
+        <strong>Primele simulări sunt în curs de publicare.</strong>
+        <p>Publisherul Home Lab adaugă gradual rezultate calculate, nu pagini generate în masă.</p>
+      </div>
+      {% endif %}
+    </section>
+  </main>
+
+  <footer class="facts-footer">
+    <span>Home Lab by LaCurent</span>
+    <a href="/instalatii/calculator">Calculator energetic</a>
+  </footer>
+</body>
+</html>

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from commercial.app.engine import demo_building
 from commercial.app.main import app
 from commercial.app.pricing import _firewood_reference
+from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
 
 
 client = TestClient(app)
@@ -140,19 +141,51 @@ def test_favicon_route_and_asset_are_available() -> None:
     assert "LaCurent" in asset.text
 
 
-def test_installations_landing_page_links_energy_calculator() -> None:
-    response = client.get("/instalatii")
+def test_installations_landing_is_retired_and_redirects_to_home_lab() -> None:
+    response = client.get("/instalatii", follow_redirects=False)
+    assert response.status_code == 308
+    assert response.headers["location"] == "/instalatii/calculator"
+
+
+def test_simulation_facts_index_is_public_and_indexable() -> None:
+    response = client.get("/home-lab/facts")
     assert response.status_code == 200
-    assert "Fotovoltaice" in response.text
-    assert 'data-page="energy-home"' in response.text
-    assert "Înțelege consumul casei înainte să investești." in response.text
-    assert "/instalatii/calculator" in response.text
-    assert "Pregătește cererea" in response.text
-    assert "energy-brief-preview" in response.text
-    assert "Eficiență energetică" in response.text
-    assert "Cost energetic estimat în lei" in response.text
-    assert 'href="/"' not in response.text
-    assert "/static/favicon.svg" in response.text
+    assert "Home Lab Facts" in response.text
+    assert "SIMULĂRI PUBLICE" in response.text
+    assert 'rel="canonical" href="https://lacurent.com/home-lab/facts"' in response.text
+    assert "Motorul calculează" in response.text
+    assert "AI-ul explică" in response.text
+    assert "/static/simulation-facts.css?v=facts1" in response.text
+
+    shortcut = client.get("/facts", follow_redirects=False)
+    assert shortcut.status_code == 308
+    assert shortcut.headers["location"] == "/home-lab/facts"
+
+
+def test_robots_and_sitemap_expose_home_lab_facts() -> None:
+    robots = client.get("/robots.txt")
+    assert robots.status_code == 200
+    assert "Sitemap: https://lacurent.com/sitemap.xml" in robots.text
+    assert "Disallow: /api/" in robots.text
+
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200
+    assert "https://lacurent.com/instalatii/calculator" in sitemap.text
+    assert "https://lacurent.com/home-lab/facts" in sitemap.text
+    assert "http://www.sitemaps.org/schemas/sitemap/0.9" in sitemap.text
+
+
+def test_simulation_fact_is_derived_from_real_engine_runs() -> None:
+    fact = _build_fact("Brașov", FACT_SCENARIOS[0])
+    assert fact["locality"] == "Brașov"
+    assert fact["scenario_id"] == "wall-u-025"
+    assert fact["baseline_value"] > 0
+    assert fact["scenario_value"] > 0
+    assert fact["scenario_value"] < fact["baseline_value"]
+    assert fact["change_percent"] < 0
+    assert "160 m²" in fact["claim"]
+    assert "Brașov" in fact["claim"]
+    assert fact["methodology_version"]
 
 
 def test_energy_calculator_is_house_first_home_lab_product_page() -> None:
@@ -170,6 +203,8 @@ def test_energy_calculator_is_house_first_home_lab_product_page() -> None:
     assert "/static/home-lab/home-envelope.svg" in response.text
     assert "/static/home-lab-product.css?v=product3" in response.text
     assert "/static/home-lab-product.js?v=product3" in response.text
+    assert 'href="/home-lab/facts"' in response.text
+    assert 'rel="canonical" href="https://lacurent.com/instalatii/calculator"' in response.text
     assert "EXEMPLU ILUSTRATIV" in response.text
     assert "METODOLOGIE" not in response.text
     assert "/static/favicon.svg" in response.text
@@ -1341,7 +1376,7 @@ def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None
     assert "Commercial test house" in response.text
     assert "Transformă scenariul ales într-o ofertă concretă." in response.text
     assert "Cere ofertă pentru casa configurată" in response.text
-    assert 'href="https://lacurent.com/instalatii#evaluare"' in response.text
+    assert 'href="mailto:karol@lacurent.com?subject=Evaluare%20tehnica%20locuinta"' in response.text
     assert 'href="/embed/demo-store"' in response.text
     assert "embed-runtime.js" in response.text
 
