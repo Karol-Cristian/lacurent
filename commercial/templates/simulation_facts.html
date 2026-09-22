@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Home Lab Facts | Simulări energetice pentru locuințe | LaCurent</title>
-  <meta name="description" content="Rezultate publice generate de motorul energetic LaCurent Home Lab: comparații de izolație, ferestre, ventilație, temperatură și sisteme de încălzire pentru localități din România.">
+  <title>Home Lab Facts | Răspunsuri calculate pentru casa ta | LaCurent</title>
+  <meta name="description" content="Ce izolezi prima dată? Cât merită încă 5 cm de izolație? Merită pompa de căldură? Home Lab Facts răspunde prin calcule, nu prin reguli generale.">
   <link rel="canonical" href="{{ canonical_url }}">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/simulation-facts.css?v=facts1">
-  <meta property="og:title" content="Home Lab Facts | LaCurent">
-  <meta property="og:description" content="Rezultate publice, verificabile, generate din simulările energetice LaCurent Home Lab.">
+  <link rel="stylesheet" href="/static/simulation-facts.css?v=facts2">
+  <meta property="og:title" content="Home Lab Facts | Răspunsuri calculate pentru casa ta">
+  <meta property="og:description" content="Întrebări care îți pot schimba investiția. Răspunsuri scurte, susținute de calcule.">
   <meta property="og:url" content="{{ canonical_url }}">
   <meta property="og:type" content="website">
 </head>
@@ -28,68 +28,78 @@
 
   <main class="facts-shell">
     <section class="facts-hero">
-      <p class="facts-eyebrow">HOME LAB · SIMULĂRI PUBLICE</p>
-      <h1>Întrebări reale. Răspunsuri calculate.</h1>
-      <p class="facts-lead">Luăm întrebări pe care oamenii chiar le pun despre case și energie, apoi le testăm prin calcule. AI-ul poate explica rezultatul, dar nu inventează cifrele.</p>
+      <p class="facts-eyebrow">HOME LAB FACTS</p>
+      <h1>Înainte să cheltuiești, vezi ce spun calculele.</h1>
+      <p class="facts-lead">Ce izolezi prima dată? Cât merită încă 5 cm? Când are sens o pompă de căldură? Testăm întrebările care pot schimba bugetul unei case și publicăm răspunsul pe scurt.</p>
       <div class="facts-hero-actions">
-        <a class="facts-primary" href="/home-lab-next">Testează pe casa ta</a>
-        <span>Nu sunt reguli universale. Sunt rezultate ale unor simulări explicit definite.</span>
+        <a class="facts-primary" href="/home-lab-next">Calculează pentru casa ta <span>→</span></a>
+        <span>Fără reguli universale. Vezi rezultatul și ipotezele din spatele lui.</span>
       </div>
     </section>
 
-    <section class="facts-method">
+    <section class="facts-value-strip" aria-label="Cum te ajută Home Lab Facts">
       <article>
-        <b>01</b>
-        <div><strong>Motorul calculează</strong><p>Valorile numerice provin din engine, nu din modelul AI.</p></div>
+        <span>01</span>
+        <div><strong>Întrebări care costă bani</strong><p>Izolație, încălzire, ferestre, ventilație și investiții.</p></div>
       </article>
       <article>
-        <b>02</b>
-        <div><strong>AI-ul explică</strong><p>Asistentul formulează contextul editorial fără să aibă voie să modifice cifrele calculate.</p></div>
+        <span>02</span>
+        <div><strong>Răspunsul întâi</strong><p>Vezi concluzia imediat, fără să treci printr-un articol lung.</p></div>
       </article>
       <article>
-        <b>03</b>
-        <div><strong>Pagina păstrează proveniența</strong><p>Fiecare fact include ipoteza, localitatea, metricile și versiunea metodologiei.</p></div>
+        <span>03</span>
+        <div><strong>Calculul rămâne la vedere</strong><p>Poți vedea ce am comparat și când rezultatul se poate schimba.</p></div>
       </article>
     </section>
 
     <section class="facts-list-section">
       <div class="facts-heading">
-        <p>REZULTATE PUBLICATE</p>
-        <h2>Facts din simulările Home Lab</h2>
+        <div>
+          <p>DE ȘTIUT ÎNAINTE SĂ INVESTEȘTI</p>
+          <h2>Răspunsuri care pot schimba ordinea lucrărilor.</h2>
+        </div>
+        <a class="facts-heading-link" href="/home-lab-next">Testează un scenariu pe casa ta →</a>
       </div>
 
       {% if facts %}
       <div class="facts-grid">
         {% for fact in facts %}
-        <article class="fact-card">
-          <div class="fact-card-meta">
-            <span>{{ fact.locality }}</span>
-            <time datetime="{{ fact.published_at }}">{{ fact.published_at[:10] }}</time>
+        <article class="fact-card{% if loop.first %} is-featured{% endif %}">
+          <div class="fact-card-top">
+            <span class="fact-tag">{% if fact.fact_kind == "comparison" %}Izolație{% else %}Calcul Home Lab{% endif %}</span>
+            {% if fact.locality and fact.locality != "Exemplu calculat" %}<span>{{ fact.locality }}</span>{% endif %}
           </div>
           <h3><a href="/home-lab/facts/{{ fact.slug }}">{{ fact.title }}</a></h3>
-          <p class="fact-question">{{ fact.search_question }}</p>
           <p class="fact-claim">{{ fact.claim }}</p>
           {% if fact.fact_kind == "comparison" %}
-          <div class="fact-change is-down">
+          <div class="fact-result">
             <strong>{{ "%.1f"|format(fact.comparison_ratio) }}×</strong>
-            <span>impact {{ fact.comparison_left_label|lower }} vs {{ fact.comparison_right_label|lower }}</span>
+            <span>mai multă reducere a pierderii prin element — nu de {{ "%.1f"|format(fact.comparison_ratio) }}× mai puțin consum total al casei</span>
           </div>
           {% else %}
-          <div class="fact-change {% if fact.change_percent < 0 %}is-down{% elif fact.change_percent > 0 %}is-up{% endif %}">
+          <div class="fact-result">
             <strong>{% if fact.change_percent > 0 %}+{% endif %}{{ "%.1f"|format(fact.change_percent) }}%</strong>
             <span>{{ fact.metric_label }}</span>
           </div>
           {% endif %}
-          <a class="fact-link" href="/home-lab/facts/{{ fact.slug }}">Vezi simularea și ipotezele →</a>
+          <a class="fact-link" href="/home-lab/facts/{{ fact.slug }}">Vezi de ce →</a>
         </article>
         {% endfor %}
       </div>
       {% else %}
       <div class="facts-empty">
-        <strong>Primele simulări sunt în curs de publicare.</strong>
-        <p>Publisherul Home Lab adaugă gradual rezultate calculate, nu pagini generate în masă.</p>
+        <strong>Pregătim următorul calcul.</strong>
+        <p>Publicăm doar răspunsuri pentru care putem arăta clar ce am comparat și de ce rezultatul contează.</p>
       </div>
       {% endif %}
+    </section>
+
+    <section class="facts-final-cta">
+      <div>
+        <p>EXEMPLUL E UTIL. CASA TA E MAI IMPORTANTĂ.</p>
+        <h2>Introdu casa ta și vezi ce intervenție are cel mai mare impact în cazul tău.</h2>
+      </div>
+      <a href="/home-lab-next">Deschide Home Lab <span>→</span></a>
     </section>
   </main>
 
