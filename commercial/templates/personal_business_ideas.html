@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Idei personale despre afaceri, tehnologie, produse, AI, energie și bani — Lemnaru Karol Cristian.">
+  <meta name="robots" content="noindex,follow">
+  <title>Afaceri, tehnologie & bani — Lemnaru Karol Cristian</title>
+  <link rel="stylesheet" href="/static/personal_blog.css">
+</head>
+<body>
+  <header class="kc-header">
+    <a class="kc-brand" href="/lemnaru-karol-cristian">
+      <strong>Lemnaru Karol Cristian</strong>
+      <span>NOTE</span>
+    </a>
+    <nav>
+      <a href="/lemnaru-karol-cristian">Reflecții</a>
+      <a href="#idei">Idei</a>
+      <a href="#scurt">Scurt</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="kc-business-hero">
+      <p class="kc-kicker">Afaceri · tehnologie · bani</p>
+      <h1>Idei pe care le-am tot construit, abandonat, reluat sau combinat.</h1>
+      <p>Nu este o listă de startup-uri validate și nici o declarație că toate merită executate. Este o arhivă a ideilor mele: produse, modele de business, principii de engineering și observații despre leverage, bani și distribuție.</p>
+      <div class="kc-principle">
+        <span>fir recurent</span>
+        <strong>expertiză → automatizare → distribuție → leverage</strong>
+      </div>
+    </section>
+
+    <section class="kc-section kc-business-section" id="idei">
+      <div class="kc-section-head">
+        <p class="kc-kicker">Idei dezvoltate</p>
+        <h2>Concepte de produs și business recuperate din conversații</h2>
+        <p>Textele de mai jos sunt reconstrucții editoriale ale ideilor formulate de mine în conversații. Nu sunt transcrieri literale și nu includ idei propuse doar de asistent.</p>
+      </div>
+
+      <div class="kc-business-grid">
+        {% for idea in business_ideas %}
+        <article class="kc-business-card">
+          <div class="kc-business-card-head">
+            <p class="kc-meta">{{ idea.theme }} · {{ idea.date }}</p>
+            <h3>{{ idea.title }}</h3>
+            <p class="kc-business-summary">{{ idea.summary }}</p>
+          </div>
+          <div class="kc-business-body">
+            {% for paragraph in idea.body %}
+              <p>{{ paragraph }}</p>
+            {% endfor %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="kc-section kc-fragments" id="scurt">
+      <div class="kc-section-head">
+        <p class="kc-kicker">Idei scurte</p>
+        <h2>Principii, propoziții și intuiții comerciale</h2>
+        <p>Sunt condensări editoriale ale ideilor mele. Le păstrez scurte acolo unde ideea nu are nevoie de încă un articol ca să rămână memorabilă.</p>
+      </div>
+
+      <div class="kc-fragment-grid">
+        {% for note in business_fragments %}
+        <article class="kc-fragment kc-business-fragment">
+          <p class="kc-meta">{{ note.theme }}</p>
+          <blockquote>{{ note.text }}</blockquote>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="kc-section kc-about">
+      <p class="kc-kicker">Notă editorială</p>
+      <div>
+        <h2>Arhivă de gândire, nu pitch deck.</h2>
+        <p>Unele idei au devenit produse reale, altele au rămas ipoteze, iar unele se contrazic. Le public tocmai pentru a păstra evoluția gândirii, nu pentru a rescrie retrospectiv toate încercările ca și cum ar fi fost un singur plan coerent.</p>
+        <p>Pagina rămâne temporar găzduită pe LaCurent și este noindex până la separarea blogului personal pe domeniu propriu.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="kc-footer">
+    <strong>Lemnaru Karol Cristian</strong>
+    <span>Afaceri, tehnologie, produse și bani.</span>
+    <span>© 2026</span>
+  </footer>
+</body>
+</html>
