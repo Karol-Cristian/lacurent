@@ -35,10 +35,11 @@ def test_personal_blog_unknown_article_is_404() -> None:
 def test_personal_business_technology_money_archive() -> None:
     response = client.get("/lemnaru-karol-cristian/afaceri-tehnologie-bani")
     assert response.status_code == 200
-    assert "Afaceri · tehnologie · bani" in response.text
-    assert "Energie direct de la producător la consumator" in response.text
-    assert "Antivirus pentru om, nu pentru malware" in response.text
-    assert "Automatizează ASPICE fără să distrugi disciplina" in response.text
-    assert "Manual first. AI scale later." in response.text
-    assert "Produsele mici pot finanța produsul mare." in response.text
+    assert "Principii de construcție" in response.text
+    assert "Adevărul tehnic nu poate avea comision." in response.text
+    assert "AI-ul poate multiplica ingineria. Nu poate deține adevărul ei." in response.text
+    assert "Automatizează birocrația, nu disciplina." in response.text
+    assert "Reutilizează înainte să reconstruiești." in response.text
+    assert "notițele personale" in response.text
+    assert "conversații" not in response.text
     assert 'name="robots" content="noindex,follow"' in response.text
