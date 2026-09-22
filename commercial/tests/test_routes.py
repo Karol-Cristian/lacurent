@@ -1376,7 +1376,7 @@ def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None
     assert "Commercial test house" in response.text
     assert "Transformă scenariul ales într-o ofertă concretă." in response.text
     assert "Cere ofertă pentru casa configurată" in response.text
-    assert 'href="https://lacurent.com/instalatii#evaluare"' in response.text
+    assert 'href="mailto:karol@lacurent.com?subject=Evaluare%20tehnica%20locuinta"' in response.text
     assert 'href="/embed/demo-store"' in response.text
     assert "embed-runtime.js" in response.text
 
