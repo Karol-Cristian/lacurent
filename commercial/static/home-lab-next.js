@@ -1473,7 +1473,7 @@
     const actions = [];
     const envelopeLimits = target?.envelope_u_max_w_m2k || {};
 
-    if (mode === "roi") {
+    if (mode === "roi" || mode === "energy") {
       const envelopeVariants = [
         {family:"roof", baseU:1.00, stateKey:"roofIns", targetU:Number(envelopeLimits.roof), step:10, label:"Izolație suplimentară pod"},
         {family:"wall", baseU:1.30, stateKey:"wallIns", targetU:Number(envelopeLimits.exterior_wall), step:10, label:"Izolație suplimentară fațadă"},
@@ -1593,7 +1593,7 @@
     }
 
     const currentPv = state.pvEnabled ? Math.max(Number(state.pvKwp || 0), 0) : 0;
-    const pvLevels = mode === "nzeb" ? [5, 15] : [3, 5];
+    const pvLevels = mode === "nzeb" || mode === "energy" ? [5] : [3, 5];
     for (const level of pvLevels.filter(value => value > currentPv + 0.01)) {
       actions.push(optimizerAction({
         id:`pv_${level}`,
@@ -1616,7 +1616,7 @@
     }
 
     const currentSolar = state.solarThermalEnabled ? Math.max(Number(state.solarThermalArea || 0), 0) : 0;
-    const solarLevels = mode === "nzeb" ? [4, 8] : [4];
+    const solarLevels = [4];
     for (const level of solarLevels.filter(value => value > currentSolar + 0.01)) {
       actions.push(optimizerAction({
         id:`solar_thermal_${level}`,
@@ -1738,6 +1738,18 @@
           objective:improvement,
           meetsTarget:regulatoryMeetsTarget(result, target, candidate.state, candidate.overrides),
         });
+      } else if (mode === "energy") {
+        const before = Number(baseResult?.primary_specific_kwh_m2);
+        const after = Number(result?.primary_specific_kwh_m2);
+        const improvement = Number.isFinite(before) && Number.isFinite(after) ? before - after : -Infinity;
+        rows.push({
+          action,
+          ...candidate,
+          result,
+          improvement,
+          objective:improvement,
+          meetsTarget:false,
+        });
       } else {
         const capexLei = roiCapexForAction(action, baseState, candidate.state);
         const economics = roiEconomics(baseResult, result, capexLei);
@@ -1774,6 +1786,12 @@
             Math.abs(row.improvement - previous.improvement) <= 1e-9
               && row.action.magnitude < previous.action.magnitude
           )
+        ) families.set(row.action.family, row);
+      } else if (mode === "energy") {
+        if (
+          row.objective > previous.objective + 1e-9 ||
+          Math.abs(row.objective - previous.objective) <= 1e-9
+            && row.action.magnitude < previous.action.magnitude
         ) families.set(row.action.family, row);
       } else if (
         row.objective > previous.objective + 1e-9 ||
