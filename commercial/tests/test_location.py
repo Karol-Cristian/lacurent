@@ -118,6 +118,25 @@ def test_location_data_endpoint_exposes_map_and_search_payload() -> None:
     assert payload["romaniaBoundary"]["type"] == "FeatureCollection"
 
 
+def test_location_data_endpoint_streams_registry_without_parsing_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_if_loaded() -> dict:
+        raise AssertionError("location endpoint must stream the large registry, not parse it")
+
+    monkeypatch.setattr(methodology_module, "locality_data", fail_if_loaded)
+    client = TestClient(app)
+    response = client.get("/api/location-data")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["stats"]["localities"] == 13622
+    assert len(payload["localities"]) == 13622
+    assert payload["climateZones"]["type"] == "FeatureCollection"
+    assert payload["romaniaBoundary"]["type"] == "FeatureCollection"
+    assert response.headers["cache-control"] == "public, max-age=3600"
+
+
 def test_calculate_form_accepts_stable_locality_id() -> None:
     client = TestClient(app)
     response = client.post(

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from .engine import calculate, demo_building
 from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
-from .methodology import climate_data, location_payload, methodology, resolve_locality
+from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .pricing import energy_prices, estimate_energy_cost
 from .personal_blog import router as personal_blog_router
@@ -28,7 +28,12 @@ from .renovation import WallInsulationScenarioRequestV1, build_wall_insulation_s
 from .software_resources import router as software_resources_router
 
 BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = BASE_DIR / "data"
 HOME_LAB_IMAGE_NAMES = frozenset(HOME_LAB_IMAGE_BYTES)
+LOCATION_REGISTRY_PATH = DATA_DIR / "localities.json"
+CLIMATE_ZONES_PATH = DATA_DIR / "winter-climate-zones.geojson"
+ROMANIA_BOUNDARY_PATH = DATA_DIR / "romania-boundary.geojson"
+LOCATION_STREAM_CHUNK_BYTES = 64 * 1024
 
 @lru_cache(maxsize=1)
 def embed_partner_registry() -> dict[str, Any]:
@@ -88,6 +93,57 @@ def fmt(value: float | int | None, unit: str = "", digits: int = 1) -> str:
 
 
 templates.env.filters["fmt"] = fmt
+
+
+def _stream_file_prefix_without_final_object_brace(path: Path):
+    """Stream one JSON object without its final closing brace.
+
+    The locality registry is ~6.5 MB. Keeping it as bytes on disk and streaming
+    it avoids materializing a much larger Python object graph inside the
+    128 MB Cloudflare Worker isolate.
+    """
+    with path.open("rb") as handle:
+        handle.seek(0, 2)
+        cursor = handle.tell() - 1
+        last = b""
+        while cursor >= 0:
+            handle.seek(cursor)
+            last = handle.read(1)
+            if last not in b" \t\r\n":
+                break
+            cursor -= 1
+        if last != b"}":
+            raise RuntimeError(f"{path.name} is not a JSON object.")
+
+        handle.seek(0)
+        remaining = cursor
+        while remaining > 0:
+            chunk = handle.read(min(LOCATION_STREAM_CHUNK_BYTES, remaining))
+            if not chunk:
+                raise RuntimeError(f"Unexpected EOF while streaming {path.name}.")
+            remaining -= len(chunk)
+            yield chunk
+
+
+def _stream_file(path: Path):
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(LOCATION_STREAM_CHUNK_BYTES)
+            if not chunk:
+                break
+            yield chunk
+
+
+def _location_payload_stream():
+    # localities.json already contains every top-level field used by the
+    # browser except the two map geometries. Append those raw JSON documents
+    # without parsing or reserializing the 13,622-locality registry.
+    yield from _stream_file_prefix_without_final_object_brace(LOCATION_REGISTRY_PATH)
+    yield b',"climateZones":'
+    yield from _stream_file(CLIMATE_ZONES_PATH)
+    yield b',"romaniaBoundary":'
+    yield from _stream_file(ROMANIA_BOUNDARY_PATH)
+    yield b"}"
 
 
 @app.middleware("http")
@@ -1031,8 +1087,12 @@ async def render_calculation_from_form(
 
 
 @app.get("/api/location-data")
-async def location_data_api() -> JSONResponse:
-    return JSONResponse(location_payload())
+async def location_data_api() -> StreamingResponse:
+    return StreamingResponse(
+        _location_payload_stream(),
+        media_type="application/json",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @app.get("/api/energy-prices")
@@ -1222,7 +1282,9 @@ async def partner_embed_lab_calculate(request: Request, partner_id: str) -> JSON
     form = dict(await request.form())
     try:
         building = build_input_from_form(form)
-        result = calculate(building)
+        # The legacy embedded live dashboard does not consume the computed
+        # reference-building comparison. Avoid a second full engine pass.
+        result = calculate(building, include_reference=False)
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
     return JSONResponse(embed_lab_result_payload(result))
