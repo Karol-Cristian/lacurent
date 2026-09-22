@@ -22,4 +22,4 @@ jobs:
         run: |
           git diff --check
           python -m compileall -q commercial
-          python -m pytest commercial/tests/test_engineering_requirements.py commercial/tests/test_pv_catalog.py commercial/tests/test_product_matching.py -q
+          python -m pytest commercial/tests -q
