@@ -964,11 +964,50 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             climate_zone = ""
     building_type = result.input.building_type.value
     nzeb_registry = method.get("nzeb_targets", {})
+    renovation_registry = method.get("renovation_targets", {})
     nzeb_target = (
         nzeb_registry.get("values", {}).get(climate_zone, {}).get(building_type)
         if climate_zone
         else None
     )
+    renovation_target = (
+        renovation_registry.get("values", {}).get(climate_zone, {}).get(building_type)
+        if climate_zone
+        else None
+    )
+
+    def _threshold_payload(
+        target: dict[str, Any] | None,
+        registry: dict[str, Any],
+        *,
+        target_kind: str,
+    ) -> dict[str, Any] | None:
+        if not target:
+            return None
+        payload = {
+            "target_kind": target_kind,
+            "primary_energy_kwh_m2_year": float(target["primary_energy_kwh_m2_year"]),
+            "co2_kg_m2_year": float(target["co2_kg_m2_year"]),
+            "building_type": building_type,
+            "climate_zone": climate_zone,
+            "energy_unit": registry.get("energy_unit"),
+            "co2_unit": registry.get("co2_unit"),
+            "source": registry.get("source"),
+            "source_status": registry.get("source_status"),
+            "note": registry.get("note"),
+        }
+        if target_kind == "new_nzeb":
+            payload.update(
+                {
+                    "envelope_source": registry.get("envelope_source"),
+                    "renewable_requirement_status": registry.get("renewable_requirement_status"),
+                    "envelope_u_max_w_m2k": registry.get(
+                        "residential_envelope_u_max_w_m2k", {}
+                    ),
+                }
+            )
+        return payload
+
     return {
         "energy_class": result.energy_class,
         "final_energy_kwh": float(result.total_final_energy_kwh),
@@ -983,22 +1022,15 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "locality": selected.get("display_name") or result.input.locality,
         "climate_station": climate.get("station") or "",
         "climate_zone": climate_zone or None,
-        "nzeb_target": (
-            {
-                "primary_energy_kwh_m2_year": float(nzeb_target["primary_energy_kwh_m2_year"]),
-                "co2_kg_m2_year": float(nzeb_target["co2_kg_m2_year"]),
-                "building_type": building_type,
-                "climate_zone": climate_zone,
-                "energy_unit": nzeb_registry.get("energy_unit"),
-                "co2_unit": nzeb_registry.get("co2_unit"),
-                "source": nzeb_registry.get("source"),
-                "source_status": nzeb_registry.get("source_status"),
-                "envelope_source": nzeb_registry.get("envelope_source"),
-                "renewable_requirement_status": nzeb_registry.get("renewable_requirement_status"),
-                "envelope_u_max_w_m2k": nzeb_registry.get("residential_envelope_u_max_w_m2k", {}),
-            }
-            if nzeb_target
-            else None
+        "nzeb_target": _threshold_payload(
+            nzeb_target,
+            nzeb_registry,
+            target_kind="new_nzeb",
+        ),
+        "renovation_target": _threshold_payload(
+            renovation_target,
+            renovation_registry,
+            target_kind="existing_major",
         ),
         "winter_design_temperature_c": design_temperature,
         "solar_orientation": result.input.solar.orientation,
