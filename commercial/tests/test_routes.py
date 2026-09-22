@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -778,6 +779,15 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["renewables"]["solar_thermal"]["used_for_dhw_kwh"] > 0
     assert len(payload["renewables"]["monthly"]) == 12
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
+
+
+def test_home_lab_next_calculation_is_single_pass_without_reference_engine_recursion() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split("async def home_lab_next_calculation", 1)[1].split(
+        '@app.post("/api/home-lab-next/calculate")', 1
+    )[0]
+    assert "calculate(building, include_reference=False)" in section
+    assert "include_reference=not (skip_reference or optimizer_candidate)" not in section
 
 
 def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:

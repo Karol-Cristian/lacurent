@@ -1426,10 +1426,11 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
     }
     try:
         building = build_input_from_form(form)
-        result = calculate(
-            building,
-            include_reference=not (skip_reference or optimizer_candidate),
-        )
+        # Home Lab already exposes the MC001 reference parameters separately
+        # through embed_lab_result_payload(). Its interactive UI never consumes
+        # result.reference, while computing it recursively runs the full engine
+        # a second time. Keep every Home Lab request single-pass.
+        result = calculate(building, include_reference=False)
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
     if optimizer_candidate:
