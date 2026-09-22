@@ -124,8 +124,28 @@
   let calculateToken = 0;
   let calculateTimer = 0;
   let calculateAbortController = null;
+  let optimizerAbortController = null;
+  let optimizerRunToken = 0;
+  let optimizerEvaluationCount = 0;
+  const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
   const optimizerCandidateCache = new Map();
   const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
+  let homeResultState = homeResult ? "stale" : "empty";
+  let scenarioResultState = scenarioResult ? "stale" : "empty";
+  let projectMode = "existing_standard";
+  const DEFAULT_ROI_COST_BASIS = Object.freeze({
+    wall: null,
+    roof: null,
+    floor: null,
+    windows: null,
+    door: null,
+    ventilation: null,
+    heating_control: null,
+    heating: null,
+    pv: null,
+    solar_thermal: null,
+  });
+  let roiCostBasis = {...DEFAULT_ROI_COST_BASIS};
   let mobileViewportBaseline = 0;
 
   function syncMobileViewportBottomInset(resetBaseline = false) {
@@ -218,6 +238,15 @@
       referenceMode = Boolean(saved.referenceMode);
       scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
       optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
+      projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
+        ? saved.projectMode
+        : "existing_standard";
+      roiCostBasis = {
+        ...DEFAULT_ROI_COST_BASIS,
+        ...(saved.roiCostBasis && typeof saved.roiCostBasis === "object" ? saved.roiCostBasis : {}),
+      };
+      homeResultState = homeResult ? "stale" : "empty";
+      scenarioResultState = scenarioResult ? "stale" : "empty";
       // Rewrite the persisted state once so the migration is permanent.
       persist();
     }
@@ -618,6 +647,7 @@
     scenarioState = { ...homeState };
     scenarioResult = homeResult;
     currentResult = homeResult;
+    scenarioResultState = homeResultState === "fresh" ? "fresh" : "stale";
     measures = [];
     renderAll();
     persist();
@@ -630,6 +660,50 @@
     const max = Number(input.max || 100);
     if (!Number.isFinite(value) || max <= min) return 0;
     return clamp(100 * (Number(value) - min) / (max - min), 0, 100);
+  }
+
+  const ROI_COST_INPUTS = Object.freeze({
+    wall:"#hlnRoiCostWall",
+    roof:"#hlnRoiCostRoof",
+    floor:"#hlnRoiCostFloor",
+    windows:"#hlnRoiCostWindows",
+    door:"#hlnRoiCostDoor",
+    ventilation:"#hlnRoiCostVentilation",
+    heating_control:"#hlnRoiCostHeatingControl",
+    heating:"#hlnRoiCostHeating",
+    pv:"#hlnRoiCostPv",
+    solar_thermal:"#hlnRoiCostSolarThermal",
+  });
+
+  function syncOptimizerInputs() {
+    const project = $("#hlnProjectMode");
+    if (project) project.value = projectMode;
+    Object.entries(ROI_COST_INPUTS).forEach(([family, selector]) => {
+      const input = $(selector);
+      if (!input) return;
+      const value = Number(roiCostBasis[family]);
+      input.value = Number.isFinite(value) && value > 0 ? String(value) : "";
+    });
+  }
+
+  function renderProjectGuardrailSummary() {
+    const node = $("#hlnProjectGuardrailSummary");
+    if (!node) return;
+    const target = regulatoryTargetForProjectMode();
+    if (projectMode === "existing_standard") {
+      node.textContent = "Renovare obișnuită: Best ROI optimizează financiar fără a inventa un prag global 2.10a/2.10b. Cerințele punctuale aplicabile intervențiilor se verifică separat.";
+      return;
+    }
+    if (!target) {
+      node.textContent = `${projectModeLabel()}: pragul metodologic nu este disponibil încă pentru această configurație.`;
+      return;
+    }
+    const table = projectMode === "new_nzeb" ? "MC001 Tabel 2.10a" : "MC001 Tabel 2.10b";
+    const suffix = projectMode === "new_nzeb"
+      ? " · plus anvelopa modelată; RER rămâne de verificat separat"
+      : "";
+    node.textContent =
+      `${table}: EP ≤ ${fmt(target.primary_energy_kwh_m2_year,1)} kWh/m²·an · CO₂ ≤ ${fmt(target.co2_kg_m2_year,1)} kg/m²·an${suffix}.`;
   }
 
   function renderLiveConfigurator() {
@@ -948,16 +1022,133 @@
     node.classList.toggle("is-ok", kind === "ok");
   }
 
+  function resultStateFor(target) {
+    return target === "home" ? homeResultState : scenarioResultState;
+  }
+
+  function setResultState(target, state) {
+    if (target === "home") homeResultState = state;
+    else scenarioResultState = state;
+  }
+
+  function cancelOptimizerRun() {
+    optimizerRunToken += 1;
+    if (optimizerAbortController) {
+      optimizerAbortController.abort();
+      optimizerAbortController = null;
+    }
+  }
+
+  function invalidateCalculation(target, message = "Se recalculează…") {
+    clearTimeout(calculateTimer);
+    calculateTimer = 0;
+    calculateToken += 1;
+    if (calculateAbortController) {
+      calculateAbortController.abort();
+      calculateAbortController = null;
+    }
+    cancelOptimizerRun();
+    setResultState(target, "pending");
+    setStatus(message);
+    renderAll();
+  }
+
+  function pendingTextFor(target) {
+    const state = resultStateFor(target);
+    if (state === "error") return "Rezultat indisponibil";
+    if (state === "stale") return "Actualizare necesară";
+    return "Se recalculează…";
+  }
+
+  function renderResultFreshness() {
+    const target = screen === "home" ? "home" : "scenario";
+    const state = resultStateFor(target);
+    const live = $("#hlnLiveConfigurator");
+    if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
+
+    const allCalculatedSelectors = [
+      "#hlnDockClass",
+      "#hlnDockCost",
+      "#hlnDockEnergy",
+      "#hlnLiveCost",
+      "#hlnLiveClass",
+      "#hlnDockScenarioClass",
+      "#hlnDockScenarioCost",
+      "#hlnDockCostBenefit",
+      "#hlnScenarioNewCost",
+      "#hlnScenarioBenefit",
+      "#hlnScenarioCostCompare",
+      "#hlnScenarioEnergyCompare",
+      "#hlnScenarioCo2Compare",
+      "#hlnScenarioPowerCompare",
+      "#hlnImpactCost",
+      "#hlnImpactEnergy",
+      "#hlnImpactEfficiency",
+      "#hlnImpactCo2",
+      "#hlnImpactLoad",
+    ];
+    if (state === "fresh") {
+      allCalculatedSelectors.forEach(selector => $(selector)?.classList.remove("hln-calculating-value"));
+      const cta = $("#hlnDockCta");
+      if (cta) cta.disabled = false;
+      return;
+    }
+
+    const pending = pendingTextFor(target);
+    if (target === "home") {
+      ["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].forEach(selector => {
+        const node = $(selector);
+        if (!node) return;
+        node.textContent = pending;
+        node.classList.remove("is-good", "is-bad");
+        node.classList.add("hln-calculating-value");
+      });
+      const cta = $("#hlnDockCta");
+      if (cta && screen === "home") cta.disabled = true;
+      return;
+    }
+
+    const valueSelectors = allCalculatedSelectors.filter(selector =>
+      !["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].includes(selector)
+    );
+    valueSelectors.forEach(selector => {
+      const node = $(selector);
+      if (!node) return;
+      node.textContent = pending;
+      node.classList.remove("is-good", "is-bad");
+      node.classList.add("hln-calculating-value");
+    });
+
+    const saving = $("#hlnLiveSaving");
+    if (saving) {
+      saving.textContent = "Valorile vor fi actualizate pentru configurația curentă";
+      saving.classList.remove("is-bad");
+    }
+    const dockLabel = $("#hlnDockSavingLabel");
+    if (dockLabel) dockLabel.textContent = "Recalculare";
+    const scenarioLabel = $("#hlnScenarioBenefitLabel");
+    if (scenarioLabel) scenarioLabel.textContent = "rezultat în curs";
+
+    $$("#hlnEnergyScale [data-energy-class]").forEach(node => node.classList.remove("is-active"));
+    const pvCaption = live?.querySelector('[data-hln-tune="pvKwp"] [data-hln-tune-caption]');
+    if (pvCaption && scenarioState.pvEnabled) pvCaption.textContent = "Se recalculează producția și autoconsumul…";
+
+    const cta = $("#hlnDockCta");
+    if (cta && screen === "scenario") cta.disabled = true;
+  }
+
   async function calculateState(state, target) {
     const token = ++calculateToken;
     if (calculateAbortController) calculateAbortController.abort();
     const controller = new AbortController();
     calculateAbortController = controller;
+    setResultState(target, "pending");
 
     populateTechnicalForm(state);
     const body = new FormData(form);
     if (target === "scenario") body.set("_skip_reference", "1");
     setStatus("Recalculare live…");
+    renderAll();
 
     const request = async (attempt = 1) => {
       const response = await fetch(calcUrl, {
@@ -970,15 +1161,16 @@
       if (contentType.includes("application/json")) {
         payload = await response.json();
       } else {
-        // Consume the body so transient edge responses do not leave the
-        // connection hanging; the text is intentionally not surfaced raw.
         await response.text();
       }
 
       if (!response.ok || !payload || payload.error) {
-        const retryable = response.status === 429 || response.status >= 500;
+        // Do not immediately retry generic HTTP 500 responses: a Cloudflare
+        // 1102 resource-limit failure can surface as 500 and retrying it would
+        // create more pressure. Retry only clearly transient edge statuses.
+        const retryable = [429, 502, 503, 504].includes(response.status);
         if (retryable && attempt < 2 && token === calculateToken) {
-          await new Promise(resolve => window.setTimeout(resolve, 220));
+          await new Promise(resolve => window.setTimeout(resolve, 420));
           if (token !== calculateToken || controller.signal.aborted) return null;
           return request(attempt + 1);
         }
@@ -990,17 +1182,20 @@
 
     try {
       const payload = await request();
-      if (!payload || token !== calculateToken) return null;
+      if (!payload || token !== calculateToken || controller.signal.aborted) return null;
       if (target === "home") homeResult = payload;
       if (target === "scenario") scenarioResult = payload;
       currentResult = payload;
+      setResultState(target, "fresh");
       setStatus("Calcul actualizat", "ok");
       renderAll();
       emitVisualState();
       return payload;
     } catch (error) {
       if (error?.name === "AbortError" || token !== calculateToken) return null;
+      setResultState(target, "error");
       setStatus(error?.message || "Calcul indisponibil momentan.", "error");
+      renderAll();
       return null;
     } finally {
       if (calculateAbortController === controller) calculateAbortController = null;
@@ -1040,9 +1235,15 @@
       return optimizerCandidateCache.get(cacheKey);
     }
 
+    if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS) {
+      throw new Error(`Bugetul de calcul al optimizerului a fost atins (${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări). Ajustează datele sau costurile și încearcă din nou.`);
+    }
+    optimizerEvaluationCount += 1;
+
     const response = await fetch(calcUrl, {
       method: "POST",
       body,
+      signal: optimizerAbortController?.signal,
     });
     const contentType = response.headers.get("content-type") || "";
     const payload = contentType.includes("application/json") ? await response.json() : null;
@@ -1126,7 +1327,8 @@
     }));
   }
 
-  function nzebResultScore(result, target) {
+  function regulatoryResultScore(result, target) {
+    if (!target) return 0;
     const primaryLimit = Number(target?.primary_energy_kwh_m2_year);
     const co2Limit = Number(target?.co2_kg_m2_year);
     const primary = Number(result?.primary_specific_kwh_m2);
@@ -1135,8 +1337,35 @@
     return Math.max(primary / primaryLimit, co2 / co2Limit);
   }
 
+  function regulatoryMeetsTarget(result, target, state = null, overrides = {}) {
+    if (!target) return true;
+    if (regulatoryResultScore(result, target) > 1.000001) return false;
+    if (target.target_kind === "new_nzeb" && target.envelope_u_max_w_m2k && state) {
+      return nzebEnvelopeStatus(state, overrides, target).meets;
+    }
+    return true;
+  }
+
+  function regulatoryTargetForProjectMode() {
+    if (projectMode === "new_nzeb") return homeResult?.nzeb_target || null;
+    if (projectMode === "existing_major") return homeResult?.renovation_target || null;
+    return null;
+  }
+
+  function projectModeLabel() {
+    return {
+      existing_standard:"Clădire existentă · renovare obișnuită",
+      existing_major:"Clădire existentă · renovare majoră",
+      new_nzeb:"Clădire nouă · nZEB",
+    }[projectMode] || "Clădire existentă";
+  }
+
+  function nzebResultScore(result, target) {
+    return regulatoryResultScore(result, target);
+  }
+
   function nzebMeetsTarget(result, target) {
-    return nzebResultScore(result, target) <= 1.000001;
+    return regulatoryMeetsTarget(result, target);
   }
 
   function optimizerHeatPumpState(baseState) {
@@ -1181,35 +1410,10 @@
 
     if (mode === "roi") {
       const envelopeVariants = [
-        {
-          family:"roof",
-          baseU:1.00,
-          stateKey:"roofIns",
-          targetU:Number(envelopeLimits.roof),
-          modestStep:8,
-          complexity:2,
-          label:"Izolație suplimentară pod",
-        },
-        {
-          family:"wall",
-          baseU:1.30,
-          stateKey:"wallIns",
-          targetU:Number(envelopeLimits.exterior_wall),
-          modestStep:5,
-          complexity:5,
-          label:"Izolație suplimentară fațadă",
-        },
-        {
-          family:"floor",
-          baseU:0.90,
-          stateKey:"floorIns",
-          targetU:Number(envelopeLimits.floor_generic_conservative),
-          modestStep:5,
-          complexity:4,
-          label:"Izolație suplimentară pardoseală",
-        },
+        {family:"roof", baseU:1.00, stateKey:"roofIns", targetU:Number(envelopeLimits.roof), step:10, label:"Izolație suplimentară pod"},
+        {family:"wall", baseU:1.30, stateKey:"wallIns", targetU:Number(envelopeLimits.exterior_wall), step:10, label:"Izolație suplimentară fațadă"},
+        {family:"floor", baseU:0.90, stateKey:"floorIns", targetU:Number(envelopeLimits.floor_generic_conservative), step:5, label:"Izolație suplimentară pardoseală"},
       ];
-
       for (const item of envelopeVariants) {
         const currentCm = Math.max(Number(state[item.stateKey] || 0), 0);
         const actualU = Number(currentEnvelopeU(state, {
@@ -1223,32 +1427,25 @@
           && actualU <= item.targetU + 1e-9;
         if (alreadyStrong) continue;
 
-        const targetCm = Number.isFinite(item.targetU) && item.targetU > 0
-          ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU))
-          : currentCm + 10;
-        const levels = [
-          Math.max(currentCm + item.modestStep, Math.min(targetCm, currentCm + item.modestStep)),
-          Math.max(currentCm + item.modestStep, targetCm),
-        ]
-          .map(value => Math.ceil(value))
-          .filter((value, index, list) => value > currentCm + 0.1 && list.indexOf(value) === index);
-
-        for (const level of levels) {
-          actions.push(optimizerAction({
-            id:`${item.family}_${level}`,
-            family:item.family,
-            label:`${item.label} la ${fmt(level)} cm`,
-            kind:"envelope",
-            complexity:item.complexity * (1 + Math.max(level - currentCm, 0) / 20),
-            magnitude:level,
-            apply(baseState, baseOverrides) {
-              return {
-                state:{...baseState, [item.stateKey]:Math.max(Number(baseState[item.stateKey] || 0), level)},
-                overrides:{...baseOverrides},
-              };
-            },
-          }));
-        }
+        const level = Math.ceil(
+          Number.isFinite(item.targetU) && item.targetU > 0
+            ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU))
+            : currentCm + item.step
+        );
+        if (level <= currentCm + 0.1) continue;
+        actions.push(optimizerAction({
+          id:`${item.family}_${level}`,
+          family:item.family,
+          label:`${item.label} la ${fmt(level)} cm`,
+          kind:"envelope",
+          magnitude:level,
+          apply(baseState, baseOverrides) {
+            return {
+              state:{...baseState, [item.stateKey]:Math.max(Number(baseState[item.stateKey] || 0), level)},
+              overrides:{...baseOverrides},
+            };
+          },
+        }));
       }
 
       if (state.glazing !== "triple_low_e_faces_2_and_5") {
@@ -1257,11 +1454,29 @@
           family:"windows",
           label:"Ferestre tripan Low-E",
           kind:"envelope",
-          complexity:5,
           apply(baseState, baseOverrides) {
             return {
               state:{...baseState, glazing:"triple_low_e_faces_2_and_5"},
               overrides:{...baseOverrides},
+            };
+          },
+        }));
+      }
+
+      if (
+        target?.target_kind === "new_nzeb" &&
+        Number(envelopeLimits.exterior_door) > 0 &&
+        Number(currentEnvelopeU(state, "doorU", overrides)) > Number(envelopeLimits.exterior_door) + 1e-9
+      ) {
+        actions.push(optimizerAction({
+          id:"door_nzeb",
+          family:"door",
+          label:`Ușă exterioară · U ≤ ${fmt(envelopeLimits.exterior_door,2)} W/m²K`,
+          kind:"mc001-envelope",
+          apply(baseState, baseOverrides) {
+            return {
+              state:{...baseState},
+              overrides:{...baseOverrides, doorU:Number(envelopeLimits.exterior_door)},
             };
           },
         }));
@@ -1273,7 +1488,6 @@
         id:"ventilation_hrv",
         family:"ventilation",
         label:"Ventilație cu recuperare",
-        complexity:4,
         apply(baseState, baseOverrides) {
           const nextOverrides = {...baseOverrides};
           delete nextOverrides.airChanges;
@@ -1290,7 +1504,6 @@
         id:"heating_control_weather",
         family:"heating_control",
         label:"Control cu compensare climatică",
-        complexity:1.5,
         apply(baseState, baseOverrides) {
           return {
             state:{...baseState, heatingControl:"weather_compensated"},
@@ -1305,7 +1518,6 @@
         id:"heating_heat_pump",
         family:"heating",
         label:"Pompă de căldură compatibilă cu distribuția existentă",
-        complexity:6,
         apply(baseState, baseOverrides) {
           return {
             state:optimizerHeatPumpState(baseState),
@@ -1316,15 +1528,12 @@
     }
 
     const currentPv = state.pvEnabled ? Math.max(Number(state.pvKwp || 0), 0) : 0;
-    const pvLevels = mode === "nzeb"
-      ? [3, 5, 7, 10, 15]
-      : [3, 5, 7, 10];
+    const pvLevels = mode === "nzeb" ? [5, 15] : [3, 5];
     for (const level of pvLevels.filter(value => value > currentPv + 0.01)) {
       actions.push(optimizerAction({
         id:`pv_${level}`,
         family:"pv",
         label:`${state.pvEnabled ? "Extinde" : "Adaugă"} PV la ${fmt(level,1)} kWp`,
-        complexity:1.5 + level / 2.5,
         magnitude:level,
         apply(baseState, baseOverrides) {
           return {
@@ -1342,13 +1551,12 @@
     }
 
     const currentSolar = state.solarThermalEnabled ? Math.max(Number(state.solarThermalArea || 0), 0) : 0;
-    const solarLevels = mode === "nzeb" ? [4, 6, 8] : [4, 6];
+    const solarLevels = mode === "nzeb" ? [4, 8] : [4];
     for (const level of solarLevels.filter(value => value > currentSolar + 0.01)) {
       actions.push(optimizerAction({
         id:`solar_thermal_${level}`,
         family:"solar_thermal",
         label:`${state.solarThermalEnabled ? "Extinde" : "Adaugă"} solar termic la ${fmt(level,1)} m²`,
-        complexity:2 + level / 4,
         magnitude:level,
         apply(baseState, baseOverrides) {
           return {
@@ -1368,18 +1576,84 @@
     return actions;
   }
 
-  function optimizerNoRegression(result, baseline) {
-    const baseEnergy = Number(baseline?.final_energy_kwh);
-    const baseCo2 = Number(baseline?.co2_specific_kg_m2);
-    const energy = Number(result?.final_energy_kwh);
-    const co2 = Number(result?.co2_specific_kg_m2);
-    const energyOk = !Number.isFinite(baseEnergy) || baseEnergy <= 0 || !Number.isFinite(energy)
-      ? true
-      : energy <= baseEnergy * 1.03;
-    const co2Ok = !Number.isFinite(baseCo2) || baseCo2 <= 0 || !Number.isFinite(co2)
-      ? true
-      : co2 <= baseCo2 * 1.03;
-    return energyOk && co2Ok;
+  function roiGeometry(state) {
+    const area = Math.max(Number(state.area) || 0, 1);
+    const levels = Math.max(Number(state.levels) || 1, 1);
+    const height = Math.max(Number(state.height) || 0, 0.1);
+    const windows = Math.max(Number(state.windows) || 0, 0);
+    const doors = 2.2;
+    const footprint = area / levels;
+    const aspect = 1.25;
+    const width = Math.sqrt(footprint / aspect);
+    const length = width * aspect;
+    const perimeter = 2 * (length + width);
+    const wallArea = Math.max(1, perimeter * height * levels - windows - doors);
+    return {area, levels, height, windows, doors, footprint, wallArea};
+  }
+
+  function positiveRoiCost(family) {
+    const value = Number(roiCostBasis?.[family]);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function roiCapexForAction(action, baseState, candidateState) {
+    const family = action.family || action.id;
+    const rate = positiveRoiCost(family);
+    if (rate == null) return null;
+    const geometry = roiGeometry(baseState);
+
+    if (family === "wall") {
+      const deltaCm = Math.max(Number(candidateState.wallIns || 0) - Number(baseState.wallIns || 0), 0);
+      return deltaCm > 0 ? geometry.wallArea * deltaCm * rate : null;
+    }
+    if (family === "roof") {
+      const deltaCm = Math.max(Number(candidateState.roofIns || 0) - Number(baseState.roofIns || 0), 0);
+      return deltaCm > 0 ? geometry.footprint * deltaCm * rate : null;
+    }
+    if (family === "floor") {
+      const deltaCm = Math.max(Number(candidateState.floorIns || 0) - Number(baseState.floorIns || 0), 0);
+      return deltaCm > 0 ? geometry.footprint * deltaCm * rate : null;
+    }
+    if (family === "windows") return geometry.windows * rate;
+    if (family === "door") return rate;
+    if (family === "ventilation") return rate;
+    if (family === "heating_control") return rate;
+    if (family === "heating") return rate;
+    if (family === "pv") {
+      const before = baseState.pvEnabled ? Math.max(Number(baseState.pvKwp || 0), 0) : 0;
+      const after = candidateState.pvEnabled ? Math.max(Number(candidateState.pvKwp || 0), 0) : 0;
+      const delta = Math.max(after - before, 0);
+      return delta > 0 ? delta * rate : null;
+    }
+    if (family === "solar_thermal") {
+      const before = baseState.solarThermalEnabled ? Math.max(Number(baseState.solarThermalArea || 0), 0) : 0;
+      const after = candidateState.solarThermalEnabled ? Math.max(Number(candidateState.solarThermalArea || 0), 0) : 0;
+      const delta = Math.max(after - before, 0);
+      return delta > 0 ? delta * rate : null;
+    }
+    return null;
+  }
+
+  function roiEconomics(baselineResult, result, capexLei) {
+    const baselineCost = Number(baselineResult?.annual_cost_lei);
+    const newCost = Number(result?.annual_cost_lei);
+    const capex = Number(capexLei);
+    const annualSavingLei = Number.isFinite(baselineCost) && Number.isFinite(newCost)
+      ? baselineCost - newCost
+      : NaN;
+    const roiPercentPerYear = Number.isFinite(annualSavingLei) && Number.isFinite(capex) && capex > 0
+      ? 100 * annualSavingLei / capex
+      : NaN;
+    const paybackYears = Number.isFinite(annualSavingLei) && annualSavingLei > 0 && capex > 0
+      ? capex / annualSavingLei
+      : null;
+    return {
+      capexLei:capex,
+      annualSavingLei,
+      roiPercentPerYear,
+      paybackYears,
+      positive:Number.isFinite(roiPercentPerYear) && roiPercentPerYear > 0,
+    };
   }
 
   async function evaluateActionVariants(baseState, baseOverrides, baseResult, actions, mode, target) {
@@ -1388,30 +1662,31 @@
       const candidate = action.apply(baseState, baseOverrides);
       const result = await calculateCandidate(candidate.state, candidate.overrides);
       if (mode === "nzeb") {
-        const before = nzebResultScore(baseResult, target);
-        const after = nzebResultScore(result, target);
+        const before = regulatoryResultScore(baseResult, target);
+        const after = regulatoryResultScore(result, target);
         const improvement = before - after;
         rows.push({
           action,
           ...candidate,
           result,
           improvement,
-          objective:improvement / Math.max(action.complexity, 0.25),
-          meetsTarget:nzebMeetsTarget(result, target),
+          objective:improvement,
+          meetsTarget:regulatoryMeetsTarget(result, target, candidate.state, candidate.overrides),
         });
       } else {
-        const saving = Number(baseResult?.annual_cost_lei) - Number(result?.annual_cost_lei);
-        const energySaving = Number(baseResult?.final_energy_kwh) - Number(result?.final_energy_kwh);
-        const co2Saving = Number(baseResult?.co2_specific_kg_m2) - Number(result?.co2_specific_kg_m2);
-        if (!Number.isFinite(saving) || saving <= 0 || !optimizerNoRegression(result, baseResult)) continue;
+        const capexLei = roiCapexForAction(action, baseState, candidate.state);
+        const economics = roiEconomics(baseResult, result, capexLei);
+        const before = regulatoryResultScore(baseResult, target);
+        const after = regulatoryResultScore(result, target);
         rows.push({
           action,
           ...candidate,
           result,
-          saving,
-          energySaving,
-          co2Saving,
-          objective:saving / Math.max(action.complexity, 0.25),
+          ...economics,
+          regulatoryImprovement:target ? before - after : 0,
+          meetsTarget:regulatoryMeetsTarget(result, target, candidate.state, candidate.overrides),
+          costKnown:Number.isFinite(capexLei) && capexLei > 0,
+          objective:Number.isFinite(economics.roiPercentPerYear) ? economics.roiPercentPerYear : -Infinity,
         });
       }
     }
@@ -1427,20 +1702,18 @@
         continue;
       }
       if (mode === "nzeb") {
-        const rowMeets = Boolean(row.meetsTarget);
-        const prevMeets = Boolean(previous.meetsTarget);
         if (
-          rowMeets && !prevMeets ||
-          rowMeets === prevMeets && (
-            row.objective > previous.objective + 1e-9 ||
-            Math.abs(row.objective - previous.objective) <= 1e-9
+          row.meetsTarget && !previous.meetsTarget ||
+          row.meetsTarget === previous.meetsTarget && (
+            row.improvement > previous.improvement + 1e-9 ||
+            Math.abs(row.improvement - previous.improvement) <= 1e-9
               && row.action.magnitude < previous.action.magnitude
           )
         ) families.set(row.action.family, row);
       } else if (
         row.objective > previous.objective + 1e-9 ||
         Math.abs(row.objective - previous.objective) <= 1e-9
-          && row.energySaving > previous.energySaving
+          && row.annualSavingLei > previous.annualSavingLei
       ) {
         families.set(row.action.family, row);
       }
@@ -1459,11 +1732,18 @@
 
   function beginOptimizerRun() {
     clearTimeout(calculateTimer);
+    calculateTimer = 0;
     if (calculateAbortController) {
       calculateAbortController.abort();
       calculateAbortController = null;
     }
     calculateToken += 1;
+    cancelOptimizerRun();
+    optimizerEvaluationCount = 0;
+    optimizerAbortController = new AbortController();
+    scenarioResultState = "pending";
+    renderAll();
+    return optimizerRunToken;
   }
 
   function applyOptimizerResult(state, result, overrides, meta) {
@@ -1471,6 +1751,7 @@
     scenarioOverrides = {...overrides};
     scenarioResult = result;
     currentResult = result;
+    scenarioResultState = "fresh";
     referenceMode = false;
     optimizationMeta = meta;
     syncMeasuresFromScenario();
@@ -1479,12 +1760,37 @@
     emitVisualState(meta?.mode || "optimizer");
   }
 
+  function roiRowSummary(row) {
+    return {
+      id:row.action.id,
+      family:row.action.family,
+      label:row.action.label,
+      kind:row.action.kind,
+      capexLei:row.capexLei,
+      annualSavingLei:row.annualSavingLei,
+      roiPercentPerYear:row.roiPercentPerYear,
+      paybackYears:row.paybackYears,
+      regulatoryImprovement:row.regulatoryImprovement,
+    };
+  }
+
+  function applyOptimizerRows(rows) {
+    let state = migrateStoredHeatingState({...homeState}, defaultState);
+    let overrides = {};
+    for (const row of rows) {
+      const candidate = row.action.apply(state, overrides);
+      state = candidate.state;
+      overrides = candidate.overrides;
+    }
+    return {state, overrides};
+  }
+
   async function configureNzeb() {
-    beginOptimizerRun();
     if (!baselineSaved || !homeResult?.nzeb_target) {
       setOptimizationNote("<strong>Ținta nZEB nu este disponibilă.</strong><span>Lipsește zona climatică sau lookup-ul MC001 2.10a.</span>", "warn");
       return;
     }
+    const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setStatus("Caut o configurație fezabilă spre nZEB…");
@@ -1625,7 +1931,7 @@
         envelopeSource:target.envelope_source,
         note:target.renewable_requirement_status,
         selected,
-        evaluatedCandidates,
+        evaluatedCandidates:optimizerEvaluationCount,
       });
 
       const resultHeadline = meetsEnergyCo2
@@ -1634,125 +1940,266 @@
       setOptimizationNote(
         `<strong>${escapeHtml(resultHeadline)}</strong>
          <span>${selected.length} intervenții în pachet · EP ${fmt(current.primary_specific_kwh_m2,1)}/${fmt(target.primary_energy_kwh_m2_year,1)} kWh/m²·an · CO₂ ${fmt(current.co2_specific_kg_m2,1)}/${fmt(target.co2_kg_m2_year,1)} kg/m²·an.</span>
-         <small>Optimizer bounded: ${evaluatedCandidates} evaluări, fără limită artificială la numărul de intervenții. Anvelopa urmează pragurile metodologice; instalațiile și regenerabilele sunt selectate numai dacă îmbunătățesc ținta.</small>`,
+         <small>Optimizer bounded: ${optimizerEvaluationCount} evaluări ale motorului, fără limită artificială la numărul de intervenții. Anvelopa urmează pragurile metodologice; instalațiile și regenerabilele sunt selectate numai dacă îmbunătățesc ținta.</small>`,
         meetsEnergyCo2 && envelopeStatus.meets ? "good" : "warn"
       );
       setStatus("Configurație nZEB calculată", meetsEnergyCo2 ? "ok" : "");
     } catch (error) {
+      if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(`<strong>Optimizer nZEB indisponibil.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
       setStatus(error?.message || "Optimizer nZEB indisponibil.", "error");
+      renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
       populateTechnicalForm(scenarioState, scenarioOverrides);
+      if (runToken === optimizerRunToken) optimizerAbortController = null;
     }
   }
 
   async function configureBestRoi() {
-    beginOptimizerRun();
     if (!baselineSaved || !homeResult) return;
+
+    const target = regulatoryTargetForProjectMode();
+    if (projectMode !== "existing_standard" && !target) {
+      setOptimizationNote("<strong>Best ROI nu poate aplica guardrail-ul selectat.</strong><span>Lipsește pragul metodologic pentru zona climatică / tipul clădirii.</span>", "warn");
+      return;
+    }
+
+    const actions = adaptiveOptimizerActions(
+      migrateStoredHeatingState({...homeState}, defaultState),
+      {},
+      target,
+      "roi"
+    );
+    const mandatoryFamilies = new Set(
+      projectMode === "new_nzeb"
+        ? nzebEnvelopeActions(homeState, {}, target).map(action => action.id)
+        : []
+    );
+
+    const missingMandatoryCosts = [...mandatoryFamilies].filter(family => positiveRoiCost(family) == null);
+    const knownActions = actions.filter(action => positiveRoiCost(action.family) != null);
+    const missingFamilies = [...new Set(
+      actions
+        .filter(action => positiveRoiCost(action.family) == null)
+        .map(action => action.family)
+    )];
+
+    if (missingMandatoryCosts.length) {
+      const details = $("#hlnRoiCostDetails");
+      if (details) details.open = true;
+      setOptimizationNote(
+        `<strong>CAPEX incomplet pentru Best ROI nZEB.</strong><span>Lipsesc costuri pentru: ${escapeHtml(missingMandatoryCosts.join(", "))}. Nu inventez aceste costuri și nu pot calcula un ROI nZEB corect fără ele.</span>`,
+        "warn"
+      );
+      return;
+    }
+    if (!knownActions.length) {
+      const details = $("#hlnRoiCostDetails");
+      if (details) details.open = true;
+      setOptimizationNote(
+        "<strong>Introdu costurile investiției pentru Best ROI.</strong><span>ROI-ul real are nevoie de CAPEX. Câmpurile goale sunt excluse, nu estimate automat.</span>",
+        "warn"
+      );
+      return;
+    }
+
+    const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
-    setStatus("Calculez Best ROI estimativ…");
-    setOptimizationNote("<strong>Best ROI estimativ în lucru…</strong><span>Compar niveluri alternative pe fiecare familie de intervenție, apoi construiesc un pachet cumulativ fără limită de 3 măsuri.</span>");
+    setStatus("Calculez Best ROI…");
+    setOptimizationNote(
+      `<strong>Best ROI în lucru…</strong><span>Recalculez soluțiile tehnice cu CAPEX cunoscut și caut randamentul maxim sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
+    );
 
     try {
-      const target = homeResult.nzeb_target || null;
-      let state = migrateStoredHeatingState({...homeState}, defaultState);
-      let overrides = {};
-      let current = homeResult;
-      const selected = [];
-      let evaluatedCandidates = 0;
-
-      const actions = adaptiveOptimizerActions(state, overrides, target, "roi");
+      const baseState = migrateStoredHeatingState({...homeState}, defaultState);
       const evaluated = await evaluateActionVariants(
-        state,
-        overrides,
-        current,
-        actions,
+        baseState,
+        {},
+        homeResult,
+        knownActions,
         "roi",
         target
       );
-      evaluatedCandidates += actions.length;
+      if (runToken !== optimizerRunToken) return;
 
-      // First choose the best depth/size inside each intervention family. This
-      // avoids selecting both 5 cm and 15 cm wall insulation as separate measures.
-      const familyWinners = bestVariantPerFamily(evaluated, "roi")
-        .sort((a, b) => {
-          if (Math.abs(b.objective - a.objective) > 1e-9) return b.objective - a.objective;
-          if (Math.abs(b.saving - a.saving) > 1e-9) return b.saving - a.saving;
-          return b.energySaving - a.energySaving;
-        });
+      const familyWinners = bestVariantPerFamily(evaluated, "roi");
+      const rankedOpportunities = familyWinners
+        .filter(row => row.costKnown && Number.isFinite(row.roiPercentPerYear))
+        .sort((a, b) => b.roiPercentPerYear - a.roiPercentPerYear);
 
-      // Build the package cumulatively. Every family remains eligible; there is
-      // no top-3 cap. A measure is retained only if it still saves money after
-      // interactions with measures already selected and does not materially
-      // worsen final energy or CO2.
-      for (const row of familyWinners) {
-        const candidate = row.action.apply(state, overrides);
-        const result = await calculateCandidate(candidate.state, candidate.overrides);
-        evaluatedCandidates += 1;
-        const marginalSaving = Number(current.annual_cost_lei) - Number(result.annual_cost_lei);
-        const marginalEnergy = Number(current.final_energy_kwh) - Number(result.final_energy_kwh);
-        const marginalCo2 = Number(current.co2_specific_kg_m2) - Number(result.co2_specific_kg_m2);
-        if (
-          !Number.isFinite(marginalSaving) ||
-          marginalSaving <= 0 ||
-          !optimizerNoRegression(result, current)
-        ) continue;
-
-        state = candidate.state;
-        overrides = candidate.overrides;
-        current = result;
-        selected.push({
-          id:row.action.id,
-          label:row.action.label,
-          kind:row.action.kind,
-          effort:row.action.complexity,
-          marginalSavingLeiYear:marginalSaving,
-          marginalEnergySavingKwhYear:marginalEnergy,
-          marginalCo2SavingKgM2Year:marginalCo2,
-          score:marginalSaving / Math.max(row.action.complexity, 0.25),
-        });
-      }
-
-      if (!selected.length) {
-        setOptimizationNote("<strong>Nu am găsit o intervenție cu economie financiară pozitivă și fără regresie energetică/CO₂ semnificativă.</strong><span>Cu configurația și prețurile curente, nu forțez o recomandare.</span>", "warn");
-        setStatus("Best ROI fără recomandare pozitivă");
+      if (!rankedOpportunities.length) {
+        setOptimizationNote(
+          "<strong>Nu există încă o soluție cu ROI calculabil.</strong><span>Costurile introduse există, dar economia anuală nu poate fi evaluată pozitiv pentru candidații disponibili.</span>",
+          "warn"
+        );
+        setStatus("Best ROI fără candidat financiar pozitiv");
+        scenarioResultState = scenarioResult ? "stale" : "empty";
+        renderAll();
         return;
       }
 
+      let selectedRows = [];
+      let state = baseState;
+      let overrides = {};
+      let current = null;
+      let economics = null;
+
+      if (!target) {
+        const positive = rankedOpportunities.filter(row => row.positive);
+        if (!positive.length) {
+          setOptimizationNote(
+            "<strong>Nicio intervenție nu are ROI pozitiv cu datele curente.</strong><span>Nu forțez o recomandare doar pentru a produce un rezultat.</span>",
+            "warn"
+          );
+          setStatus("Best ROI fără investiție cu randament pozitiv");
+          scenarioResultState = scenarioResult ? "stale" : "empty";
+          renderAll();
+          return;
+        }
+
+        selectedRows = [positive[0]];
+        state = selectedRows[0].state;
+        overrides = selectedRows[0].overrides;
+        current = selectedRows[0].result;
+        economics = roiEconomics(homeResult, current, selectedRows[0].capexLei);
+
+        // Testează sinergiile cumulativ, dar numai cât timp rămâne un slot
+        // rezervat pentru rezultatul final complet. Nu există limită pe numărul
+        // de măsuri; limita este exclusiv numărul de evaluări ale motorului.
+        for (const row of positive.slice(1)) {
+          if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+          const candidate = row.action.apply(state, overrides);
+          const result = await calculateCandidate(candidate.state, candidate.overrides);
+          const packageCapex = selectedRows.reduce((sum, item) => sum + item.capexLei, 0) + row.capexLei;
+          const packageEconomics = roiEconomics(homeResult, result, packageCapex);
+          if (
+            packageEconomics.positive &&
+            packageEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6
+          ) {
+            selectedRows.push(row);
+            state = candidate.state;
+            overrides = candidate.overrides;
+            current = result;
+            economics = packageEconomics;
+          }
+        }
+      } else {
+        // Pentru un proiect cu prag global, pornește de la toate familiile cu
+        // CAPEX cunoscut. Apoi elimină măsuri dacă pachetul rămâne conform și
+        // ROI-ul pachetului crește. Astfel numărul de intervenții nu este plafonat.
+        selectedRows = [...familyWinners].filter(row => row.costKnown);
+        const mandatoryMissingFromPackage = [...mandatoryFamilies].filter(
+          family => !selectedRows.some(row => row.action.family === family)
+        );
+        if (mandatoryMissingFromPackage.length) {
+          throw new Error(`Nu pot construi pachetul obligatoriu: lipsesc familiile ${mandatoryMissingFromPackage.join(", ")}.`);
+        }
+
+        ({state, overrides} = applyOptimizerRows(selectedRows));
+        current = await calculateCandidate(state, overrides);
+        let packageCapex = selectedRows.reduce((sum, row) => sum + row.capexLei, 0);
+        economics = roiEconomics(homeResult, current, packageCapex);
+
+        if (!regulatoryMeetsTarget(current, target, state, overrides)) {
+          setOptimizationNote(
+            `<strong>Nu am găsit un pachet care să treacă guardrail-ul „${escapeHtml(projectModeLabel())}”.</strong><span>Am testat toate familiile cu CAPEX cunoscut în bugetul bounded. Nu declar conformitate dacă pragurile nu sunt atinse.</span><small>Evaluări motor: ${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS}.</small>`,
+            "warn"
+          );
+          setStatus("Best ROI: guardrail neîndeplinit");
+          scenarioResultState = scenarioResult ? "stale" : "empty";
+          renderAll();
+          return;
+        }
+
+        const removalOrder = [...selectedRows]
+          .filter(row => !mandatoryFamilies.has(row.action.family))
+          .sort((a, b) => a.roiPercentPerYear - b.roiPercentPerYear);
+
+        for (const row of removalOrder) {
+          if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+          const trialRows = selectedRows.filter(item => item !== row);
+          const trialPackage = applyOptimizerRows(trialRows);
+          const trialResult = await calculateCandidate(trialPackage.state, trialPackage.overrides);
+          if (!regulatoryMeetsTarget(trialResult, target, trialPackage.state, trialPackage.overrides)) continue;
+          const trialCapex = trialRows.reduce((sum, item) => sum + item.capexLei, 0);
+          const trialEconomics = roiEconomics(homeResult, trialResult, trialCapex);
+          if (
+            Number.isFinite(trialEconomics.roiPercentPerYear) &&
+            (!Number.isFinite(economics.roiPercentPerYear) ||
+              trialEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6)
+          ) {
+            selectedRows = trialRows;
+            state = trialPackage.state;
+            overrides = trialPackage.overrides;
+            current = trialResult;
+            economics = trialEconomics;
+            packageCapex = trialCapex;
+          }
+        }
+      }
+
       current = await calculateCandidate(state, overrides, {compact:false});
-      evaluatedCandidates += 1;
-      const totalSaving = Number(homeResult.annual_cost_lei) - Number(current.annual_cost_lei);
-      const totalEnergySaving = Number(homeResult.final_energy_kwh) - Number(current.final_energy_kwh);
-      const totalCo2Saving = Number(homeResult.co2_specific_kg_m2) - Number(current.co2_specific_kg_m2);
+      if (runToken !== optimizerRunToken) return;
+      const capexLei = selectedRows.reduce((sum, row) => sum + row.capexLei, 0);
+      economics = roiEconomics(homeResult, current, capexLei);
+      const guardrailPass = regulatoryMeetsTarget(current, target, state, overrides);
+      const selected = selectedRows.map(roiRowSummary);
+      const regulatoryNote = !target
+        ? "Renovare obișnuită: nu aplic un prag global 2.10a/2.10b; cerințele punctuale aplicabile intervențiilor rămân separate."
+        : projectMode === "new_nzeb"
+          ? "Pragurile modelate nZEB pentru energie primară, CO₂ și anvelopă sunt respectate; RER și verificarea completă de conformitate rămân de verificat."
+          : "Pachetul respectă pragurile energetice/CO₂ modelate din MC001 Tabel 2.10b pentru renovare majoră; verificarea completă a proiectului rămâne separată.";
 
       applyOptimizerResult(state, current, overrides, {
         mode:"roi",
-        label:"Best ROI estimativ · pachet adaptiv",
+        label:"Best ROI",
+        projectMode,
+        projectModeLabel:projectModeLabel(),
+        regulatoryTarget:target,
+        guardrailPass,
         selected,
-        evaluatedCandidates,
-        note:"Ranking economic bazat pe economia anuală calculată / indice de efort, cu guardrail de energie și CO₂. CAPEX/payback real vor folosi ulterior costurile trasabile din catalogul D1.",
+        rankedOpportunities:rankedOpportunities.map(roiRowSummary),
+        capexLei:economics.capexLei,
+        annualSavingLei:economics.annualSavingLei,
+        roiPercentPerYear:economics.roiPercentPerYear,
+        paybackYears:economics.paybackYears,
+        evaluatedCandidates:optimizerEvaluationCount,
+        costSource:"user_input",
+        excludedCostFamilies:missingFamilies,
+        note:regulatoryNote,
       });
+
+      const roiText = Number.isFinite(economics.roiPercentPerYear)
+        ? `${fmt(economics.roiPercentPerYear,1)}%/an`
+        : "n/a";
+      const paybackText = economics.paybackYears == null ? "n/a" : `${fmt(economics.paybackYears,1)} ani`;
       setOptimizationNote(
-        `<strong>Best ROI estimativ: ${selected.length} intervenții compatibile</strong>
-         <span>Economie combinată: +${fmt(Math.max(totalSaving,0))} lei/an · energie ${totalEnergySaving >= 0 ? "−" : "+"}${fmt(Math.abs(totalEnergySaving))} kWh/an · CO₂ ${totalCo2Saving >= 0 ? "−" : "+"}${fmt(Math.abs(totalCo2Saving),1)} kg/m²·an.</span>
-         <small>${evaluatedCandidates} evaluări bounded. Nu există limită artificială la 3 măsuri. „ROI” rămâne estimativ până când CAPEX-ul provine din produse/prețuri D1; motorul nu inventează costuri de investiție.</small>`,
-        "good"
+        `<strong>Best ROI: ${roiText} · recuperare ${paybackText}</strong>
+         <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length} intervenții în pachet.</span>
+         <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
+        guardrailPass && economics.positive ? "good" : "warn"
       );
-      setStatus("Best ROI estimativ calculat", "ok");
+      setStatus("Best ROI calculat", "ok");
     } catch (error) {
+      if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(`<strong>Best ROI indisponibil.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
       setStatus(error?.message || "Best ROI indisponibil.", "error");
+      renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
       populateTechnicalForm(scenarioState, scenarioOverrides);
+      if (runToken === optimizerRunToken) optimizerAbortController = null;
     }
   }
 
   function scheduleCalculate(target = baselineSaved && screen !== "home" ? "scenario" : "home", delay = 180) {
-    clearTimeout(calculateTimer);
+    invalidateCalculation(target);
     calculateTimer = window.setTimeout(() => {
+      calculateTimer = 0;
       const state = target === "home" ? homeState : scenarioState;
       calculateState(state, target);
     }, delay);
@@ -2337,42 +2784,72 @@
       reportComparisonRow("Necesar termic", homeResult.design_heat_load_kw, scenarioResult.design_heat_load_kw, "kW", 1),
     ].join("");
 
-    const target = scenarioResult.nzeb_target || homeResult.nzeb_target;
+    const target = regulatoryTargetForProjectMode();
     const primary = Number(scenarioResult.primary_specific_kwh_m2);
     const co2Specific = Number(scenarioResult.co2_specific_kg_m2);
     const primaryLimit = Number(target?.primary_energy_kwh_m2_year);
     const co2Limit = Number(target?.co2_kg_m2_year);
-    const primaryOk = Number.isFinite(primary) && Number.isFinite(primaryLimit) && primary <= primaryLimit;
-    const co2Ok = Number.isFinite(co2Specific) && Number.isFinite(co2Limit) && co2Specific <= co2Limit;
-    const targetKnown = Number.isFinite(primaryLimit) && Number.isFinite(co2Limit);
+    const targetKnown = target != null && Number.isFinite(primaryLimit) && Number.isFinite(co2Limit);
+    const primaryOk = targetKnown && Number.isFinite(primary) && primary <= primaryLimit;
+    const co2Ok = targetKnown && Number.isFinite(co2Specific) && co2Specific <= co2Limit;
+    const envelopeStatus = projectMode === "new_nzeb" && target
+      ? nzebEnvelopeStatus(scenarioState, scenarioOverrides, target)
+      : {checks:[], meets:true};
+    const guardrailPass = targetKnown
+      ? primaryOk && co2Ok && envelopeStatus.meets
+      : projectMode === "existing_standard";
+
     const nzebStatus = $("#hlnReportNzebStatus");
-    nzebStatus.classList.toggle("is-good", targetKnown && primaryOk && co2Ok);
-    nzebStatus.classList.toggle("is-warn", targetKnown && !(primaryOk && co2Ok));
-    nzebStatus.textContent = !targetKnown
-      ? "Ținta nZEB nu este disponibilă pentru această selecție."
-      : primaryOk && co2Ok
-        ? "Țintă nZEB atinsă pentru energie primară și CO₂ · verificarea completă RER este necesară."
-        : "Scenariul este încă peste cel puțin una dintre limitele MC001 Tabel 2.10a.";
+    nzebStatus.classList.toggle("is-good", guardrailPass);
+    nzebStatus.classList.toggle("is-warn", !guardrailPass && projectMode !== "existing_standard");
+    if (projectMode === "existing_standard") {
+      nzebStatus.textContent =
+        "Renovare obișnuită: nu se aplică aici un prag global MC001 Tabel 2.10a/2.10b. Cerințele punctuale ale intervențiilor se verifică separat.";
+    } else if (!targetKnown) {
+      nzebStatus.textContent = "Pragul metodologic selectat nu este disponibil pentru această configurație.";
+    } else if (guardrailPass && projectMode === "new_nzeb") {
+      nzebStatus.textContent =
+        "Pragurile modelate nZEB pentru energie primară, CO₂ și anvelopă sunt atinse · RER și conformitatea completă rămân de verificat.";
+    } else if (guardrailPass) {
+      nzebStatus.textContent =
+        "Pragurile energetice/CO₂ modelate pentru renovare majoră (MC001 Tabel 2.10b) sunt atinse.";
+    } else {
+      nzebStatus.textContent =
+        projectMode === "new_nzeb"
+          ? "Scenariul este peste cel puțin una dintre limitele modelate nZEB."
+          : "Scenariul este peste cel puțin una dintre limitele modelate pentru renovare majoră.";
+    }
 
     $("#hlnReportPrimary").textContent = Number.isFinite(primary) ? `${fmt(primary,1)} kWh/m²·an` : "—";
-    $("#hlnReportPrimaryTarget").textContent = Number.isFinite(primaryLimit) ? `limită ≤ ${fmt(primaryLimit,1)}` : "limită indisponibilă";
+    $("#hlnReportPrimaryTarget").textContent = targetKnown ? `limită ≤ ${fmt(primaryLimit,1)}` : "fără prag global selectat";
     $("#hlnReportCo2Specific").textContent = Number.isFinite(co2Specific) ? `${fmt(co2Specific,1)} kg/m²·an` : "—";
-    $("#hlnReportCo2Target").textContent = Number.isFinite(co2Limit) ? `limită ≤ ${fmt(co2Limit,1)}` : "limită indisponibilă";
+    $("#hlnReportCo2Target").textContent = targetKnown ? `limită ≤ ${fmt(co2Limit,1)}` : "fără prag global selectat";
 
-    const envelopeStatus = target ? nzebEnvelopeStatus(scenarioState, scenarioOverrides, target) : {checks:[], meets:false};
     const envelopeNode = $("#hlnReportEnvelopeStatus");
     if (envelopeNode) {
-      const failed = envelopeStatus.checks.filter(item => !item.ok);
-      envelopeNode.classList.toggle("is-good", targetKnown && envelopeStatus.meets);
-      envelopeNode.classList.toggle("is-warn", targetKnown && !envelopeStatus.meets);
-      envelopeNode.textContent = !targetKnown
-        ? "Pragurile de anvelopă nu sunt disponibile."
-        : envelopeStatus.meets
-          ? "Anvelopă: pragurile rezidențiale MC001 Tabel 2.4 sunt în limitele modelate."
-          : `Anvelopă: peste prag la ${failed.map(item => item.label.toLowerCase()).join(", ")}.`;
+      if (projectMode !== "new_nzeb") {
+        envelopeNode.classList.remove("is-good", "is-warn");
+        envelopeNode.textContent =
+          projectMode === "existing_major"
+            ? "Anvelopa este raportată separat; guardrail-ul global curent pentru renovare majoră folosește energia primară și CO₂ din Tabelul 2.10b."
+            : "Cerințele elementelor renovate se verifică separat de acest rezumat economic.";
+      } else {
+        const failed = envelopeStatus.checks.filter(item => !item.ok);
+        envelopeNode.classList.toggle("is-good", targetKnown && envelopeStatus.meets);
+        envelopeNode.classList.toggle("is-warn", targetKnown && !envelopeStatus.meets);
+        envelopeNode.textContent = !targetKnown
+          ? "Pragurile de anvelopă nu sunt disponibile."
+          : envelopeStatus.meets
+            ? "Anvelopă: pragurile rezidențiale MC001 modelate sunt în limite."
+            : `Anvelopă: peste prag la ${failed.map(item => item.label.toLowerCase()).join(", ")}.`;
+      }
     }
     $("#hlnReportNzebNote").textContent =
-      "Verificarea nZEB de aici separă explicit ce poate verifica Light: energie primară, CO₂ și pragurile de anvelopă modelate. Ponderea regenerabilă RER și conformitatea legală completă rămân neverificate.";
+      projectMode === "new_nzeb"
+        ? "Verificarea nZEB Light separă energia primară, CO₂ și anvelopa modelată. Ponderea regenerabilă RER și conformitatea legală completă rămân neverificate."
+        : projectMode === "existing_major"
+          ? "Tabelul 2.10b este folosit ca guardrail energetic/CO₂ al optimizării. Raportul nu substituie verificarea completă a cerințelor proiectului."
+          : "Best ROI pentru renovare obișnuită nu inventează o obligație nZEB sau 2.10b doar din anul construcției.";
 
     $("#hlnReportVisualTitle").textContent = `${scenarioResult.locality || homeState.locality || "Locuință"} · scenariul final`;
     $("#hlnReportVisualMeta").textContent =
@@ -2496,8 +2973,11 @@
     $("#hlnReportOptimizer").textContent = optimizationMeta?.label || "Scenariu configurat manual";
     $("#hlnReportPriceDate").textContent =
       scenarioResult.price_retrieved_on ? `referințe ${scenarioResult.price_retrieved_on}` : "referințe de preț curente";
-    $("#hlnReportNzebSource").textContent = target?.source || "Prag nZEB indisponibil pentru selecția curentă.";
-    $("#hlnReportEnvelopeSource").textContent = target?.envelope_source || "Pragurile de anvelopă nu sunt disponibile.";
+    $("#hlnReportNzebSource").textContent = target?.source || "Nu este selectat un prag global pentru regimul curent.";
+    $("#hlnReportEnvelopeSource").textContent =
+      projectMode === "new_nzeb"
+        ? (target?.envelope_source || "Pragurile de anvelopă nu sunt disponibile.")
+        : "Anvelopa se verifică separat pentru regimul proiectului.";
     $("#hlnReportMethodologySource").textContent =
       scenarioResult.methodology_source || "Datele climatice și metoda lunară sunt documentate în metodologia aplicației.";
     $("#hlnReportMethodologyVersion").textContent =
@@ -2510,20 +2990,28 @@
     const strategy = $("#hlnReportStrategy");
     if (strategy) {
       if (optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)) {
+        const selected = optimizationMeta.selected;
+        const ranked = Array.isArray(optimizationMeta.rankedOpportunities)
+          ? optimizationMeta.rankedOpportunities
+          : [];
+        const payback = optimizationMeta.paybackYears == null
+          ? "n/a"
+          : `${fmt(optimizationMeta.paybackYears,1)} ani`;
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Best ROI estimativ</strong>
-            <span>După fiecare măsură păstrată, toate măsurile rămase au fost recalculate prin motorul real și comparate după economie anuală / indice de efort.</span>
+            <strong>Best ROI · ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an</strong>
+            <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · recuperare simplă ${payback}. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
           </div>
           <div class="hln-strategy-list">
-            ${optimizationMeta.selected.map((item,index) => `
+            ${selected.map((item,index) => `
               <article>
                 <b>${index + 1}</b>
-                <div><strong>${escapeHtml(item.label)}</strong><small>economie marginală +${fmt(Math.max(Number(item.marginalSavingLeiYear)||0,0))} lei/an · efort ${fmt(item.effort,0)}/6</small></div>
+                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei · ROI individual ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără payback pozitiv" : "payback " + fmt(item.paybackYears,1) + " ani"}</small></div>
               </article>
             `).join("")}
           </div>
-          <p>Indicele de efort investițional 1–6 este o estimare LaCurent, separată de MC001. Nu este CAPEX și nu produce un payback financiar oficial.</p>
+          ${ranked.length ? `<p>Oportunități individuale evaluate: ${ranked.map(item => `${escapeHtml(item.label)} (${fmt(item.roiPercentPerYear,1)}%/an)`).join(" · ")}.</p>` : ""}
+          <p>${escapeHtml(optimizationMeta.note || "")} Costurile de investiție folosite în această versiune provin din intrările explicite ale utilizatorului; câmpurile fără CAPEX nu sunt inventate.</p>
         `;
       } else if (optimizationMeta?.mode === "nzeb") {
         const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
@@ -2564,15 +3052,17 @@
     renderProgress();
     renderDock();
     renderLiveConfigurator();
+    renderProjectGuardrailSummary();
     if (screen === "intervention") renderIntervention();
     if (screen === "scenario") renderScenario();
     if (screen === "report") renderReport();
+    renderResultFreshness();
   }
 
   function showScreen(next) {
     if (next === "site" && !baselineSaved) return;
     if (next === "scenario" && !baselineSaved) return;
-    if (next === "report" && (!baselineSaved || !scenarioResult)) return;
+    if (next === "report" && (!baselineSaved || !scenarioResult || scenarioResultState !== "fresh")) return;
     screen = next;
     root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
@@ -2594,13 +3084,15 @@
         measures,
         referenceMode,
         scenarioOverrides,
-        optimizationMeta
+        optimizationMeta,
+        projectMode,
+        roiCostBasis
       }));
     } catch (_) {}
   }
 
   async function saveHomeAndOpenSite() {
-    let result = currentResult || homeResult;
+    let result = homeResultState === "fresh" ? homeResult : null;
     if (!result) {
       setStatus("Calculez Casa mea înainte de renovare…");
       result = await calculateState(homeState, "home");
@@ -2618,6 +3110,7 @@
     setOptimizationNote("");
     scenarioState = {...homeState};
     scenarioResult = homeResult;
+    scenarioResultState = "fresh";
     measures = [];
     persist();
     showScreen("site");
@@ -3284,6 +3777,30 @@
     button.addEventListener("click", setReferenceHouse);
   });
 
+  const projectModeInput = $("#hlnProjectMode");
+  if (projectModeInput) {
+    projectModeInput.addEventListener("change", () => {
+      projectMode = projectModeInput.value;
+      cancelOptimizerRun();
+      optimizationMeta = null;
+      setOptimizationNote("");
+      persist();
+      renderProjectGuardrailSummary();
+    });
+  }
+
+  Object.entries(ROI_COST_INPUTS).forEach(([family, selector]) => {
+    const input = $(selector);
+    if (!input) return;
+    input.addEventListener("input", () => {
+      const value = Number(input.value);
+      roiCostBasis[family] = Number.isFinite(value) && value > 0 ? value : null;
+      cancelOptimizerRun();
+      optimizationMeta = null;
+      persist();
+    });
+  });
+
   $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
@@ -3443,12 +3960,18 @@
     });
 
   syncHomeEditorControls();
+  syncOptimizerInputs();
   renderAll();
   emitVisualState();
 
   if (baselineSaved && homeResult) {
     currentResult = homeResult;
-    calculateState(scenarioState, "scenario");
+    (async () => {
+      const refreshedHome = await calculateState(homeState, "home");
+      if (!refreshedHome || !baselineSaved) return;
+      homeResult = refreshedHome;
+      await calculateState(scenarioState, "scenario");
+    })();
   } else {
     calculateState(homeState, "home");
   }

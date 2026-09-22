@@ -734,6 +734,23 @@ def test_home_lab_next_exposes_source_backed_nzeb_target() -> None:
     assert all(row["final_energy_kwh"] >= 0 for row in payload["monthly_costs"])
 
 
+def test_home_lab_next_exposes_source_backed_major_renovation_target() -> None:
+    data = demo_form_data()
+    data["locality_id"] = "siruta-54984"
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    payload = response.json()
+    target = payload["renovation_target"]
+    assert target is not None
+    assert target["target_kind"] == "existing_major"
+    assert target["building_type"] == "residential_individual"
+    assert target["climate_zone"] == "III"
+    assert target["primary_energy_kwh_m2_year"] == 156.8
+    assert target["co2_kg_m2_year"] == 25.5
+    assert "Tabel 2.10b" in target["source"]
+
+
 def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> None:
     data = demo_form_data()
     data.update(
@@ -769,7 +786,27 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert 'body.set("_optimizer_candidate", "1")' in response.text
     assert "optimizerCandidateCache = new Map()" in response.text
     assert "OPTIMIZER_CANDIDATE_CACHE_MAX = 192" in response.text
+    assert "OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16" in response.text
+    assert "optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS" in response.text
+    assert "signal: optimizerAbortController?.signal" in response.text
     assert "calculateCandidate(state, overrides, {compact:false})" in response.text
+    assert "function roiEconomics" in response.text
+    assert "function roiCapexForAction" in response.text
+
+
+def test_home_lab_next_true_roi_controls_are_explicit_and_not_effort_based() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'id="hlnProjectMode"' in response.text
+    assert 'value="existing_standard"' in response.text
+    assert 'value="existing_major"' in response.text
+    assert 'value="new_nzeb"' in response.text
+    assert 'id="hlnRoiCostWall"' in response.text
+    assert 'id="hlnRoiCostDoor"' in response.text
+    assert 'id="hlnRoiCostHeating"' in response.text
+    assert 'id="hlnRoiCostPv"' in response.text
+    assert "ROI = economie anuală / CAPEX" in response.text
+    assert "efort investițional relativ" not in response.text
 
 
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
@@ -859,15 +896,21 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "nzebEnvelopeStatus" in response.text
     assert "function renderReport" in response.text
     assert 'const strategy = $("#hlnReportStrategy")' in response.text
-    assert "Best ROI estimativ" in response.text
+    assert "Best ROI estimativ" not in response.text
+    assert "function roiEconomics" in response.text
+    assert "function roiCapexForAction" in response.text
+    assert "function regulatoryTargetForProjectMode" in response.text
+    assert "function renderResultFreshness" in response.text
+    assert "scenarioResultState" in response.text
+    assert "OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16" in response.text
     assert "Nu se creează un racord nou la gaz" in response.text
     assert "function adaptiveOptimizerActions" in response.text
     assert "function evaluateActionVariants" in response.text
     assert "function bestVariantPerFamily" in response.text
-    assert "function optimizerNoRegression" in response.text
+    assert "function optimizerNoRegression" not in response.text
     assert "familyWinners" in response.text
     assert "selected.length" in response.text
-    assert "fără limită de 3 măsuri" in response.text
+    assert "fără limită artificială la numărul de intervenții" in response.text
     assert "round < 3" not in response.text
     assert 'dock.hidden = screen === "report"' in response.text
     assert "function nzebMeetsTarget" in response.text
@@ -970,7 +1013,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "Math.min(rawOcclusion, 48)" in response.text
     assert 'orientationchange' in response.text
     assert "new AbortController()" in response.text
-    assert "response.status === 429 || response.status >= 500" in response.text
+    assert "[429, 502, 503, 504].includes(response.status)" in response.text
+    assert "response.status >= 500" not in response.text
     assert "attempt < 2" in response.text
     assert "annual_generation_kwh" in response.text
     assert "self_consumed_kwh" in response.text
