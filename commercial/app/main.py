@@ -26,6 +26,10 @@ from .product_matching import (
 )
 from .renovation import WallInsulationScenarioRequestV1, build_wall_insulation_scenario
 from .software_resources import router as software_resources_router
+from .simulation_facts import (
+    get_published_simulation_fact,
+    list_published_simulation_facts,
+)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
@@ -1377,9 +1381,11 @@ async def software_testing(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "software_testing.html", {"request": request})
 
 
-@app.get("/instalatii", response_class=HTMLResponse)
-async def installations(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "instalatii.html", {"request": request})
+@app.get("/instalatii")
+async def installations() -> RedirectResponse:
+    # The former services landing page is retired. Keep the old URL as a
+    # permanent redirect so existing links and search signals converge on Home Lab.
+    return RedirectResponse("/instalatii/calculator", status_code=308)
 
 
 @app.get("/instalatii/calculator", response_class=HTMLResponse)
@@ -1390,6 +1396,93 @@ async def energy_calculator(request: Request) -> HTMLResponse:
 @app.get("/instalatii/calculator/legacy", response_class=HTMLResponse)
 async def energy_calculator_legacy(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "calculator.html", {"request": request, **calculator_context()})
+
+
+def _request_db(request: Request) -> Any:
+    env = request.scope.get("env")
+    return getattr(env, "DB", None) if env is not None else None
+
+
+@app.get("/facts")
+async def facts_shortcut() -> RedirectResponse:
+    return RedirectResponse("/home-lab/facts", status_code=308)
+
+
+@app.get("/home-lab/facts", response_class=HTMLResponse)
+async def simulation_facts_index(request: Request) -> HTMLResponse:
+    db = _request_db(request)
+    try:
+        facts = await list_published_simulation_facts(db, limit=60)
+    except Exception:
+        facts = []
+    return templates.TemplateResponse(
+        request,
+        "simulation_facts.html",
+        {
+            "request": request,
+            "facts": facts,
+            "canonical_url": "https://lacurent.com/home-lab/facts",
+        },
+    )
+
+
+@app.get("/home-lab/facts/{slug}", response_class=HTMLResponse)
+async def simulation_fact_detail(request: Request, slug: str) -> HTMLResponse:
+    db = _request_db(request)
+    try:
+        fact = await get_published_simulation_fact(db, slug)
+    except Exception:
+        fact = None
+    if fact is None:
+        raise HTTPException(status_code=404, detail="Simulation fact not found.")
+    return templates.TemplateResponse(
+        request,
+        "simulation_fact_detail.html",
+        {
+            "request": request,
+            "fact": fact,
+            "canonical_url": f"https://lacurent.com/home-lab/facts/{fact['slug']}",
+        },
+    )
+
+
+@app.get("/robots.txt", response_class=Response)
+async def robots_txt() -> Response:
+    return Response(
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/\n"
+        "Disallow: /internal/\n"
+        "Sitemap: https://lacurent.com/sitemap.xml\n",
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+@app.get("/sitemap.xml", response_class=Response)
+async def sitemap_xml(request: Request) -> Response:
+    urls = [
+        "https://lacurent.com/",
+        "https://lacurent.com/software-testing",
+        "https://lacurent.com/instalatii/calculator",
+        "https://lacurent.com/home-lab/facts",
+    ]
+    db = _request_db(request)
+    try:
+        facts = await list_published_simulation_facts(db, limit=100)
+    except Exception:
+        facts = []
+    urls.extend(f"https://lacurent.com/home-lab/facts/{item['slug']}" for item in facts)
+    body = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    body += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for url in urls:
+        body += f"  <url><loc>{url}</loc></url>\n"
+    body += "</urlset>\n"
+    return Response(
+        body,
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=900"},
+    )
 
 
 @app.get("/home-lab-next", response_class=HTMLResponse)
