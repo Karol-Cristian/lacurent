@@ -1129,7 +1129,8 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert payload["final_energy_by_service"]["heating"] >= 0
     assert payload["heat_loss_breakdown"]
     assert sum(row["value_w_k"] for row in payload["heat_loss_breakdown"]) > 0
-    assert payload["reference"] is not None
+    assert payload["reference"] is None
+    assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
 
 
 def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None:
