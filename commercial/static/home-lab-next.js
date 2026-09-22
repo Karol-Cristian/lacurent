@@ -954,6 +954,7 @@
 
     populateTechnicalForm(state);
     const body = new FormData(form);
+    if (target === "scenario") body.set("_skip_reference", "1");
     setStatus("Recalculare live…");
 
     const request = async (attempt = 1) => {
@@ -1006,9 +1007,11 @@
 
   async function calculateCandidate(state, overrides = {}) {
     populateTechnicalForm(state, overrides);
+    const body = new FormData(form);
+    body.set("_skip_reference", "1");
     const response = await fetch(calcUrl, {
       method: "POST",
-      body: new FormData(form),
+      body,
     });
     const contentType = response.headers.get("content-type") || "";
     const payload = contentType.includes("application/json") ? await response.json() : null;
