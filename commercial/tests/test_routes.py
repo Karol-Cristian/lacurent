@@ -158,6 +158,7 @@ def test_simulation_facts_index_is_public_indexable_and_customer_facing() -> Non
     assert 'rel="canonical" href="https://lacurent.com/home-lab/facts"' in response.text
     assert "Podul primul? Nu întotdeauna." in response.text
     assert "3.7×" in response.text
+    assert "nu de 3.7× mai puțin consum total al casei" in response.text
     assert "/static/simulation-facts.css?v=facts2" in response.text
     assert "AI-ul explică" not in response.text
     assert "Publisherul Home Lab" not in response.text
@@ -172,6 +173,7 @@ def test_simulation_facts_index_is_public_indexable_and_customer_facing() -> Non
     assert "100 m² de pereți" in featured.text
     assert "65 m² de tavan" in featured.text
     assert "3.7" in featured.text
+    assert "Nu înseamnă că întreaga casă va consuma de 3.7× mai puțin." in featured.text
     assert "Nu ghici ce merită primul." in featured.text
     assert "AI" not in featured.text
 
