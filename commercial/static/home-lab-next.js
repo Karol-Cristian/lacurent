@@ -1868,170 +1868,260 @@
     return {state, overrides};
   }
 
+  function automaticRenovationCopy() {
+    if (projectMode === "new_nzeb") {
+      return {
+        eyebrow:"ȚINTĂ nZEB",
+        title:"Configurează automat spre nZEB",
+        hint:"MC001 2.10a · energie primară, CO₂ și anvelopă modelată",
+        working:"Caut o configurație fezabilă spre nZEB…",
+      };
+    }
+    if (projectMode === "existing_major") {
+      return {
+        eyebrow:"RENOVARE MAJORĂ",
+        title:"Configurează automat renovarea majoră",
+        hint:"MC001 2.10b · energie primară și CO₂",
+        working:"Caut un pachet pentru renovarea majoră…",
+      };
+    }
+    return {
+      eyebrow:"RENOVARE EFICIENTĂ",
+      title:"Configurează automat renovarea",
+      hint:"Reduce energia primară fără să impună artificial un prag nZEB",
+      working:"Caut un pachet eficient de renovare…",
+    };
+  }
+
+  function renderAutomaticRenovationCopy() {
+    const copy = automaticRenovationCopy();
+    const eyebrow = $("#hlnAutoRenovationEyebrow");
+    const title = $("#hlnAutoRenovationTitle");
+    const hint = $("#hlnAutoRenovationHint");
+    if (eyebrow) eyebrow.textContent = copy.eyebrow;
+    if (title) title.textContent = copy.title;
+    if (hint) hint.textContent = copy.hint;
+  }
+
   async function configureNzeb() {
-    if (!baselineSaved || !homeResult?.nzeb_target) {
-      setOptimizationNote("<strong>Ținta nZEB nu este disponibilă.</strong><span>Lipsește zona climatică sau lookup-ul MC001 2.10a.</span>", "warn");
+    if (!baselineSaved || !homeResult) return;
+
+    const target = regulatoryTargetForProjectMode();
+    const constrained = projectMode !== "existing_standard";
+    if (constrained && !target) {
+      setOptimizationNote(
+        `<strong>Pragul pentru ${escapeHtml(projectModeLabel())} nu este disponibil.</strong><span>Lipsește zona climatică sau lookup-ul metodologic.</span>`,
+        "warn"
+      );
       return;
     }
+
     const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
-    setStatus("Caut o configurație fezabilă spre nZEB…");
-    setOptimizationNote("<strong>Optimizer nZEB în lucru…</strong><span>Aplic cerințele de anvelopă împreună, apoi evaluez doar familiile de instalații/regenerabile care pot îmbunătăți ținta.</span>");
+    const copy = automaticRenovationCopy();
+    setStatus(copy.working);
+    setOptimizationNote(
+      `<strong>${escapeHtml(copy.title)}…</strong><span>LaCurent testează un set bounded de intervenții și păstrează numai măsurile care îmbunătățesc obiectivul energetic al regimului selectat.</span>`
+    );
 
     try {
-      const target = homeResult.nzeb_target;
       let state = migrateStoredHeatingState({...homeState}, defaultState);
       let overrides = {};
       let current = homeResult;
       const selected = [];
-      let evaluatedCandidates = 0;
 
-      // MC001 envelope limits are mandatory constraints, not competing commercial
-      // options. Apply all missing envelope requirements in one deterministic
-      // package instead of spending one Worker request per element.
-      const envelopeActions = nzebEnvelopeActions(state, overrides, target);
-      for (const action of envelopeActions) {
-        const candidate = action.apply(state, overrides);
+      // Pentru clădire nouă nZEB, limitele de anvelopă modelate sunt
+      // constrângeri, nu "opțiuni" care concurează între ele.
+      if (projectMode === "new_nzeb") {
+        const envelopeActions = nzebEnvelopeActions(state, overrides, target);
+        for (const action of envelopeActions) {
+          const candidate = action.apply(state, overrides);
+          state = candidate.state;
+          overrides = candidate.overrides;
+          selected.push({id:action.id, family:action.family, label:action.label, kind:action.kind});
+        }
+        if (envelopeActions.length) {
+          current = await calculateCandidate(state, overrides);
+        }
+      }
+
+      const actionMode = projectMode === "new_nzeb" ? "nzeb" : "energy";
+      const evaluationMode = constrained ? "nzeb" : "energy";
+      const actions = adaptiveOptimizerActions(state, overrides, target, actionMode);
+      const evaluated = await evaluateActionVariants(
+        state,
+        overrides,
+        current,
+        actions,
+        evaluationMode,
+        target
+      );
+      if (runToken !== optimizerRunToken) return;
+
+      const winners = bestVariantPerFamily(evaluated, evaluationMode)
+        .filter(row => Number.isFinite(row.objective) && row.objective > 1e-6)
+        .sort((a, b) => b.objective - a.objective);
+
+      // Aplică un singur câștigător per familie. Rezultatul cumulat este
+      // verificat într-o singură evaluare, nu printr-un arbore combinatorial.
+      for (const row of winners) {
+        const candidate = row.action.apply(state, overrides);
         state = candidate.state;
         overrides = candidate.overrides;
-        selected.push({id:action.id, label:action.label, kind:action.kind});
+        selected.push({
+          id:row.action.id,
+          family:row.action.family,
+          label:row.action.label,
+          kind:row.action.kind,
+        });
       }
-      if (envelopeActions.length) {
+      if (winners.length) {
         current = await calculateCandidate(state, overrides);
-        evaluatedCandidates += 1;
       }
 
-      if (!nzebMeetsTarget(current, target)) {
-        const actions = adaptiveOptimizerActions(state, overrides, target, "nzeb");
-        const evaluated = await evaluateActionVariants(
-          state,
-          overrides,
-          current,
-          actions,
-          "nzeb",
-          target
-        );
-        evaluatedCandidates += actions.length;
+      // Dacă un regim cu prag global încă nu este atins, avem o singură
+      // treaptă de intensificare pentru regenerabile. Nu redeschidem căutarea.
+      if (constrained && !regulatoryMeetsTarget(current, target, state, overrides)) {
+        const intensifiers = [
+          optimizerAction({
+            id:"pv_15_intensify",
+            family:"pv",
+            label:"PV până la 15 kWp",
+            kind:"renewable-intensification",
+            magnitude:15,
+            apply(baseState, baseOverrides) {
+              return {
+                state:{
+                  ...baseState,
+                  pvEnabled:true,
+                  pvKwp:Math.max(Number(baseState.pvKwp || 0), 15),
+                  pvOrientation:baseState.pvEnabled ? baseState.pvOrientation : "south",
+                  pvTilt:baseState.pvEnabled ? baseState.pvTilt : 30,
+                },
+                overrides:{...baseOverrides},
+              };
+            },
+          }),
+          optimizerAction({
+            id:"solar_thermal_8_intensify",
+            family:"solar_thermal",
+            label:"Solar termic până la 8 m²",
+            kind:"renewable-intensification",
+            magnitude:8,
+            apply(baseState, baseOverrides) {
+              return {
+                state:{
+                  ...baseState,
+                  solarThermalEnabled:true,
+                  solarThermalArea:Math.max(Number(baseState.solarThermalArea || 0), 8),
+                  solarThermalOrientation:baseState.solarThermalEnabled ? baseState.solarThermalOrientation : "south",
+                  solarThermalTilt:baseState.solarThermalEnabled ? baseState.solarThermalTilt : 45,
+                },
+                overrides:{...baseOverrides},
+              };
+            },
+          }),
+        ];
 
-        const familyWinners = bestVariantPerFamily(evaluated, "nzeb")
-          .filter(item => item.improvement > 1e-6 || item.meetsTarget)
-          .sort((a, b) => {
-            if (a.meetsTarget !== b.meetsTarget) return a.meetsTarget ? -1 : 1;
-            if (Math.abs(b.objective - a.objective) > 1e-9) return b.objective - a.objective;
-            return a.action.complexity - b.action.complexity;
-          });
+        for (const action of intensifiers) {
+          if (regulatoryMeetsTarget(current, target, state, overrides)) break;
+          const candidate = action.apply(state, overrides);
+          if (
+            JSON.stringify(candidate.state) === JSON.stringify(state) &&
+            JSON.stringify(candidate.overrides) === JSON.stringify(overrides)
+          ) continue;
 
-        for (const row of familyWinners) {
-          if (nzebMeetsTarget(current, target)) break;
-          const candidate = row.action.apply(state, overrides);
           const result = await calculateCandidate(candidate.state, candidate.overrides);
-          evaluatedCandidates += 1;
-          const before = nzebResultScore(current, target);
-          const after = nzebResultScore(result, target);
-          if (!(after < before - 1e-6 || nzebMeetsTarget(result, target))) continue;
+          const before = regulatoryResultScore(current, target);
+          const after = regulatoryResultScore(result, target);
+          if (!(after < before - 1e-6 || regulatoryMeetsTarget(result, target, candidate.state, candidate.overrides))) {
+            continue;
+          }
           state = candidate.state;
           overrides = candidate.overrides;
           current = result;
-          selected.push({
-            id:row.action.id,
-            label:row.action.label,
-            kind:row.action.kind,
-          });
-        }
-
-        // One bounded intensification pass. This handles cases where a modest PV
-        // or solar variant ranked best alone but the combined package still needs
-        // more renewable contribution. It does not reopen the full search tree.
-        if (!nzebMeetsTarget(current, target)) {
-          const intensifiers = [
-            optimizerAction({
-              id:"pv_15_intensify",
-              family:"pv",
-              label:"PV până la 15 kWp",
-              complexity:8,
-              magnitude:15,
-              apply(baseState, baseOverrides) {
-                return {
-                  state:{
-                    ...baseState,
-                    pvEnabled:true,
-                    pvKwp:Math.max(Number(baseState.pvKwp || 0), 15),
-                    pvOrientation:baseState.pvEnabled ? baseState.pvOrientation : "south",
-                    pvTilt:baseState.pvEnabled ? baseState.pvTilt : 30,
-                  },
-                  overrides:{...baseOverrides},
-                };
-              },
-            }),
-            optimizerAction({
-              id:"solar_thermal_8_intensify",
-              family:"solar_thermal",
-              label:"Solar termic până la 8 m²",
-              complexity:4,
-              magnitude:8,
-              apply(baseState, baseOverrides) {
-                return {
-                  state:{
-                    ...baseState,
-                    solarThermalEnabled:true,
-                    solarThermalArea:Math.max(Number(baseState.solarThermalArea || 0), 8),
-                    solarThermalOrientation:baseState.solarThermalEnabled ? baseState.solarThermalOrientation : "south",
-                    solarThermalTilt:baseState.solarThermalEnabled ? baseState.solarThermalTilt : 45,
-                  },
-                  overrides:{...baseOverrides},
-                };
-              },
-            }),
-          ];
-
-          for (const action of intensifiers) {
-            if (nzebMeetsTarget(current, target)) break;
-            const candidate = action.apply(state, overrides);
-            const unchanged = JSON.stringify(candidate.state) === JSON.stringify(state);
-            if (unchanged) continue;
-            const result = await calculateCandidate(candidate.state, candidate.overrides);
-            evaluatedCandidates += 1;
-            if (nzebResultScore(result, target) >= nzebResultScore(current, target) - 1e-6) continue;
-            state = candidate.state;
-            overrides = candidate.overrides;
-            current = result;
-            selected.push({id:action.id, label:action.label, kind:action.kind});
-          }
+          const existingIndex = selected.findIndex(item => item.family === action.family);
+          const summary = {id:action.id, family:action.family, label:action.label, kind:action.kind};
+          if (existingIndex >= 0) selected[existingIndex] = summary;
+          else selected.push(summary);
         }
       }
 
-      const envelopeStatus = nzebEnvelopeStatus(state, overrides, target);
       current = await calculateCandidate(state, overrides, {compact:false});
-      evaluatedCandidates += 1;
-      const meetsEnergyCo2 = nzebMeetsTarget(current, target);
+      if (runToken !== optimizerRunToken) return;
+
+      const guardrailPass = constrained
+        ? regulatoryMeetsTarget(current, target, state, overrides)
+        : true;
+      const envelopeStatus = projectMode === "new_nzeb"
+        ? nzebEnvelopeStatus(state, overrides, target)
+        : {meets:true, checks:[]};
+
+      const mode = projectMode === "new_nzeb" ? "nzeb" : "renovation";
+      const label = projectMode === "new_nzeb"
+        ? "Țintă nZEB · configurație automată"
+        : projectMode === "existing_major"
+          ? "Renovare majoră · configurație automată"
+          : "Renovare eficientă · configurație automată";
+
       applyOptimizerResult(state, current, overrides, {
-        mode:"nzeb",
-        label:"Țintă nZEB · configurație adaptivă",
-        meetsEnergyCo2,
+        mode,
+        label,
+        projectMode,
+        projectModeLabel:projectModeLabel(),
+        regulatoryTarget:target,
+        guardrailPass,
+        meetsEnergyCo2:guardrailPass,
         envelopeMeets:envelopeStatus.meets,
-        source:target.source,
-        envelopeSource:target.envelope_source,
-        note:target.renewable_requirement_status,
+        source:target?.source || null,
+        envelopeSource:target?.envelope_source || null,
+        note:target?.renewable_requirement_status || null,
         selected,
         evaluatedCandidates:optimizerEvaluationCount,
       });
 
-      const resultHeadline = meetsEnergyCo2
-        ? "Țintă nZEB atinsă pentru energie primară și CO₂ · verificarea completă RER este necesară."
-        : "Configurația fezabilă testată rămâne peste ținta energetică/CO₂ din Tabelul 2.10a.";
+      let headline;
+      let details;
+      if (projectMode === "new_nzeb") {
+        headline = guardrailPass && envelopeStatus.meets
+          ? "Ținta modelată nZEB este atinsă; RER și conformitatea completă rămân de verificat."
+          : "Pachetul testat rămâne peste cel puțin una dintre limitele modelate nZEB.";
+        details = `EP ${fmt(current.primary_specific_kwh_m2,1)}/${fmt(target.primary_energy_kwh_m2_year,1)} kWh/m²·an · CO₂ ${fmt(current.co2_specific_kg_m2,1)}/${fmt(target.co2_kg_m2_year,1)} kg/m²·an.`;
+      } else if (projectMode === "existing_major") {
+        headline = guardrailPass
+          ? "Pragurile energetice/CO₂ modelate pentru renovare majoră sunt atinse."
+          : "Pachetul testat rămâne peste pragul energetic sau CO₂ pentru renovare majoră.";
+        details = `EP ${fmt(current.primary_specific_kwh_m2,1)}/${fmt(target.primary_energy_kwh_m2_year,1)} kWh/m²·an · CO₂ ${fmt(current.co2_specific_kg_m2,1)}/${fmt(target.co2_kg_m2_year,1)} kg/m²·an.`;
+      } else {
+        const before = Number(homeResult.primary_specific_kwh_m2);
+        const after = Number(current.primary_specific_kwh_m2);
+        const reduction = Number.isFinite(before) && before > 0 && Number.isFinite(after)
+          ? 100 * (before - after) / before
+          : null;
+        headline = selected.length
+          ? "Pachet automat de renovare energetică calculat."
+          : "Casa nu are o intervenție automată cu îmbunătățire energetică pozitivă în setul testat.";
+        details = Number.isFinite(reduction)
+          ? `Energia primară scade cu ${fmt(reduction,1)}% față de Casa mea.`
+          : "Rezultatul a fost recalculat față de Casa mea.";
+      }
+
       setOptimizationNote(
-        `<strong>${escapeHtml(resultHeadline)}</strong>
-         <span>${selected.length} intervenții în pachet · EP ${fmt(current.primary_specific_kwh_m2,1)}/${fmt(target.primary_energy_kwh_m2_year,1)} kWh/m²·an · CO₂ ${fmt(current.co2_specific_kg_m2,1)}/${fmt(target.co2_kg_m2_year,1)} kg/m²·an.</span>
-         <small>Optimizer bounded: ${optimizerEvaluationCount} evaluări ale motorului, fără limită artificială la numărul de intervenții. Anvelopa urmează pragurile metodologice; instalațiile și regenerabilele sunt selectate numai dacă îmbunătățesc ținta.</small>`,
-        meetsEnergyCo2 && envelopeStatus.meets ? "good" : "warn"
+        `<strong>${escapeHtml(headline)}</strong>
+         <span>${selected.length} intervenții în pachet · ${escapeHtml(details)}</span>
+         <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări ale motorului. Fără căutare combinatorială și fără limită artificială la numărul de intervenții.</small>`,
+        guardrailPass && selected.length ? "good" : "warn"
       );
-      setStatus("Configurație nZEB calculată", meetsEnergyCo2 ? "ok" : "");
+      setStatus("Renovare automată calculată", guardrailPass ? "ok" : "");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
       scenarioResultState = scenarioResult ? "stale" : "empty";
-      setOptimizationNote(`<strong>Optimizer nZEB indisponibil.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
-      setStatus(error?.message || "Optimizer nZEB indisponibil.", "error");
+      setOptimizationNote(
+        `<strong>Renovarea automată nu a putut fi calculată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
+        "warn"
+      );
+      setStatus(error?.message || "Renovarea automată este indisponibilă.", "error");
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
@@ -3136,6 +3226,7 @@
     renderDock();
     renderLiveConfigurator();
     renderProjectGuardrailSummary();
+    renderAutomaticRenovationCopy();
     if (screen === "intervention") renderIntervention();
     if (screen === "scenario") renderScenario();
     if (screen === "report") renderReport();
@@ -3868,6 +3959,7 @@
       setOptimizationNote("");
       persist();
       renderProjectGuardrailSummary();
+      renderAutomaticRenovationCopy();
     });
   }
 
