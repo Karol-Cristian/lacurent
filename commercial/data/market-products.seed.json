@@ -1,0 +1,306 @@
+{
+  "schema_version": "1.0",
+  "catalog_version": "ro-market-seed-2026-09-22",
+  "observed_on": "2026-09-22",
+  "products": [
+    {
+      "product_id": "baudeman-eps80-graphite-100",
+      "category": "facade_insulation",
+      "manufacturer": "Baudeman",
+      "model": "EPS 80 Grafitat 100 mm",
+      "specs": {
+        "material": "graphite_eps",
+        "lambda_w_mk": 0.032,
+        "thickness_mm": 100,
+        "package_area_m2": 2.5
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/polistiren-expandat-pentru-fatada-baudeman-eps-80-grafitat-10-cm/p/6017029"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 43.9,
+          "price_unit": "m2",
+          "product_url": "https://www.dedeman.ro/ro/polistiren-expandat-pentru-fatada-baudeman-eps-80-grafitat-10-cm/p/6017029",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "knauf-expert-cfb035-100",
+      "category": "facade_insulation",
+      "manufacturer": "Knauf Insulation",
+      "model": "Expert CFB 035 100 mm",
+      "specs": {
+        "material": "mineral_wool",
+        "lambda_w_mk": 0.035,
+        "thickness_mm": 100,
+        "package_area_m2": 1.8
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/vata-minerala-bazaltica-pentru-fatada-knauf-expert-cfb-035-1000-x-600-x-100-mm/p/6031193"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 135.01,
+          "price_unit": "package",
+          "product_url": "https://www.dedeman.ro/ro/vata-minerala-bazaltica-pentru-fatada-knauf-expert-cfb-035-1000-x-600-x-100-mm/p/6031193",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "knauf-expert-cfb035-150",
+      "category": "facade_insulation",
+      "manufacturer": "Knauf Insulation",
+      "model": "Expert CFB 035 150 mm",
+      "specs": {
+        "material": "mineral_wool",
+        "lambda_w_mk": 0.035,
+        "thickness_mm": 150,
+        "package_area_m2": 1.2
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/vata-minerala-bazaltica-pentru-fatada-knauf-expert-cfb-035-1000-x-600-x-150-mm/p/6031194"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 135.01,
+          "price_unit": "package",
+          "product_url": "https://www.dedeman.ro/ro/vata-minerala-bazaltica-pentru-fatada-knauf-expert-cfb-035-1000-x-600-x-150-mm/p/6031194",
+          "observed_on": "2026-09-22",
+          "stock_status": "out_of_stock"
+        }
+      ]
+    },
+    {
+      "product_id": "rockwool-acoustic-casa-100",
+      "category": "roof_insulation",
+      "manufacturer": "Rockwool",
+      "model": "Acoustic Casa 100 mm",
+      "specs": {
+        "material": "mineral_wool",
+        "lambda_w_mk": 0.035,
+        "thickness_mm": 100,
+        "package_area_m2": 3.6
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/vata-minerala-bazaltica-rockwool-acoustic-casa-100-1200-x-600-x-100-mm/p/6065841"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 174.47,
+          "price_unit": "package",
+          "product_url": "https://www.dedeman.ro/ro/vata-minerala-bazaltica-rockwool-acoustic-casa-100-1200-x-600-x-100-mm/p/6065841",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "fibrostir-xps-gbt-100",
+      "category": "floor_insulation",
+      "manufacturer": "Fibrotermica",
+      "model": "Fibrostir XPS G/BT 100 mm",
+      "specs": {
+        "material": "xps",
+        "lambda_w_mk": 0.035,
+        "thickness_mm": 100,
+        "package_area_m2": 3
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/polistiren-extrudat-xps-fibrostir-g/bt-interior/-exterior-cant-falt-10-x-60-x-125-cm/p/6051523"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": null,
+          "price_unit": null,
+          "product_url": "https://www.dedeman.ro/ro/polistiren-extrudat-xps-fibrostir-g/bt-interior/-exterior-cant-falt-10-x-60-x-125-cm/p/6051523",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "daikin-altherma3m-edla06ev3",
+      "category": "heat_pump_air_water",
+      "manufacturer": "Daikin",
+      "model": "Altherma 3 M EDLA06EV3 6 kW",
+      "specs": {
+        "thermal_capacity_kw": 6,
+        "system_type": "monobloc",
+        "phase": "single"
+      },
+      "technical_source_urls": [
+        "https://www.artbuilding.ro/pompe-de-caldura-daikin-6-kw"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Art Building",
+          "price_lei": 20463,
+          "price_unit": "piece",
+          "product_url": "https://www.artbuilding.ro/pompe-de-caldura-daikin-6-kw",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "daikin-altherma3m-edla08e3v3",
+      "category": "heat_pump_air_water",
+      "manufacturer": "Daikin",
+      "model": "Altherma 3 M EDLA08E3V3 8 kW",
+      "specs": {
+        "thermal_capacity_kw": 8,
+        "system_type": "monobloc",
+        "phase": "single"
+      },
+      "technical_source_urls": [
+        "https://www.climatico.ro/pompa-de-caldura-monobloc-pentru-incalzire-daikin-altherma-3-m-edla08ev3-8kw.html"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Termix",
+          "price_lei": 23119.59,
+          "price_unit": "piece",
+          "product_url": "https://www.termix.ro/cumpara/pompa-de-caldura-daikin-altherma-3-m-8kw-monobloc-r32-termix-33866",
+          "observed_on": "2026-09-22",
+          "stock_status": "limited"
+        }
+      ]
+    },
+    {
+      "product_id": "vaillant-arotherm-vwl105-5as",
+      "category": "heat_pump_air_water",
+      "manufacturer": "Vaillant",
+      "model": "aroTHERM VWL 105/5 AS 10 kW",
+      "specs": {
+        "thermal_capacity_kw": 10,
+        "system_type": "split",
+        "phase": "three"
+      },
+      "technical_source_urls": [
+        "https://valtherm.ro/pompa-de-caldura-unitate-exterioara-vaillant-arotherm-vwl-105-5-as-380v-10-kw-p642"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Valtherm",
+          "price_lei": 24470,
+          "price_unit": "piece",
+          "product_url": "https://valtherm.ro/pompa-de-caldura-unitate-exterioara-vaillant-arotherm-vwl-105-5-as-380v-10-kw-p642",
+          "observed_on": "2026-09-22",
+          "stock_status": "in_stock"
+        }
+      ]
+    },
+    {
+      "product_id": "termet-eco-compact-combi-25-30",
+      "category": "condensing_gas_boiler",
+      "manufacturer": "Termet",
+      "model": "Eco Compact Combi 25/30",
+      "specs": {
+        "thermal_capacity_kw": 24,
+        "fuel": "natural_gas",
+        "system_type": "condensing"
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-termet-eco-compact-combi-25/30-murala-afisaj-digital-ipx4-fara-kit-evacuare/p/2036449"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 2819.41,
+          "price_unit": "piece",
+          "product_url": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-termet-eco-compact-combi-25/30-murala-afisaj-digital-ipx4-fara-kit-evacuare/p/2036449",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "henco-pexal-16x2",
+      "category": "hydronic_pipe",
+      "manufacturer": "Henco",
+      "model": "PEX-Al 16 x 2 mm",
+      "specs": {
+        "material": "pexal",
+        "outer_diameter_mm": 16,
+        "wall_thickness_mm": 2,
+        "inner_diameter_mm": 12,
+        "roll_length_m": 200
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/teava-pex-al-henco-16-x-2-0-2-mm/p/2002714"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 7.07,
+          "price_unit": "m",
+          "product_url": "https://www.dedeman.ro/ro/teava-pex-al-henco-16-x-2-0-2-mm/p/2002714",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "henco-pexal-20x2",
+      "category": "hydronic_pipe",
+      "manufacturer": "Henco",
+      "model": "PEX-Al 20 x 2 mm",
+      "specs": {
+        "material": "pexal",
+        "outer_diameter_mm": 20,
+        "wall_thickness_mm": 2,
+        "inner_diameter_mm": 16,
+        "roll_length_m": 100
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/teava-pex-al-henco-20-x-2-mm/p/2002718"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 19.18,
+          "price_unit": "m",
+          "product_url": "https://www.dedeman.ro/ro/teava-pex-al-henco-20-x-2-mm/p/2002718",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    },
+    {
+      "product_id": "henco-pexal-26x3",
+      "category": "hydronic_pipe",
+      "manufacturer": "Henco",
+      "model": "PEX-Al 26 x 3 mm",
+      "specs": {
+        "material": "pexal",
+        "outer_diameter_mm": 26,
+        "wall_thickness_mm": 3,
+        "inner_diameter_mm": 20,
+        "roll_length_m": 50
+      },
+      "technical_source_urls": [
+        "https://www.dedeman.ro/ro/teava-pex-al-henco-26-x-3-mm/p/2002793"
+      ],
+      "offers": [
+        {
+          "supplier_name": "Dedeman",
+          "price_lei": 31.59,
+          "price_unit": "m",
+          "product_url": "https://www.dedeman.ro/ro/teava-pex-al-henco-26-x-3-mm/p/2002793",
+          "observed_on": "2026-09-22",
+          "stock_status": "unknown"
+        }
+      ]
+    }
+  ]
+}
