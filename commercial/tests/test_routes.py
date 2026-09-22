@@ -163,6 +163,13 @@ def test_simulation_facts_index_is_public_and_indexable() -> None:
     assert shortcut.status_code == 308
     assert shortcut.headers["location"] == "/home-lab/facts"
 
+    featured = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
+    assert featured.status_code == 200
+    assert "100 m² de pereți" in featured.text
+    assert "65 m² de tavan" in featured.text
+    assert "3.7" in featured.text
+    assert "Regula utilă este A × ΔU" in featured.text
+
 
 def test_robots_and_sitemap_expose_home_lab_facts() -> None:
     robots = client.get("/robots.txt")
