@@ -788,7 +788,9 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert "OPTIMIZER_CANDIDATE_CACHE_MAX = 192" in response.text
     assert "OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16" in response.text
     assert "optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS" in response.text
-    assert "signal: optimizerAbortController?.signal" in response.text
+    assert "OPTIMIZER_REQUEST_TIMEOUT_MS = 12000" in response.text
+    assert "fetchWithTimeout(" in response.text
+    assert "optimizerAbortController?.signal || null" in response.text
     assert "calculateCandidate(state, overrides, {compact:false})" in response.text
     assert "function roiEconomics" in response.text
     assert "function roiCapexForAction" in response.text
@@ -796,6 +798,22 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert 'roiCostBasisMeta?.source || "catalog"' in response.text
     assert 'const actionMode = projectMode === "new_nzeb" ? "nzeb" : "energy"' in response.text
     assert "alreadyAtTarget" in response.text
+
+
+def test_home_lab_next_live_calculation_avoids_startup_request_storms_and_hangs() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    js = response.text
+    assert "LIVE_REQUEST_TIMEOUT_MS = 8000" in js
+    assert "async function fetchWithTimeout" in js
+    assert "Calculul a durat prea mult. Reîncearcă." in js
+    assert "const retryable =" not in js
+    assert 'scheduleCalculate("scenario", 280)' in js
+    assert 'homeResultState = homeResult ? "fresh" : "empty"' in js
+    assert 'scenarioResultState = scenarioResult ? "fresh" : "empty"' in js
+    assert 'refreshedHome = await calculateState' not in js
+    assert 'if (baselineSaved) calculateState(scenarioState, "scenario")' not in js
+    assert 'cta.disabled = state !== "error"' in js
 
 
 def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
