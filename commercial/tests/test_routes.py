@@ -147,17 +147,20 @@ def test_installations_landing_is_retired_and_redirects_to_home_lab() -> None:
     assert response.headers["location"] == "/home-lab-next"
 
 
-def test_simulation_facts_index_is_public_and_indexable() -> None:
+def test_simulation_facts_index_is_public_indexable_and_customer_facing() -> None:
     response = client.get("/home-lab/facts")
     assert response.status_code == 200
     assert "Home Lab Facts" in response.text
-    assert "SIMULĂRI PUBLICE" in response.text
+    assert "Înainte să cheltuiești, vezi ce spun calculele." in response.text
+    assert "Întrebări care costă bani" in response.text
+    assert "Răspunsul întâi" in response.text
+    assert "Calculul rămâne la vedere" in response.text
     assert 'rel="canonical" href="https://lacurent.com/home-lab/facts"' in response.text
-    assert "Motorul calculează" in response.text
-    assert "AI-ul explică" in response.text
-    assert "Podul trebuie izolat întotdeauna primul? Nu." in response.text
+    assert "Podul primul? Nu întotdeauna." in response.text
     assert "3.7×" in response.text
-    assert "/static/simulation-facts.css?v=facts1" in response.text
+    assert "/static/simulation-facts.css?v=facts2" in response.text
+    assert "AI-ul explică" not in response.text
+    assert "Publisherul Home Lab" not in response.text
 
     shortcut = client.get("/facts", follow_redirects=False)
     assert shortcut.status_code == 308
@@ -165,10 +168,12 @@ def test_simulation_facts_index_is_public_and_indexable() -> None:
 
     featured = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
     assert featured.status_code == 200
+    assert "RĂSPUNSUL SCURT" in featured.text
     assert "100 m² de pereți" in featured.text
     assert "65 m² de tavan" in featured.text
     assert "3.7" in featured.text
-    assert "Regula utilă este A × ΔU" in featured.text
+    assert "Nu ghici ce merită primul." in featured.text
+    assert "AI" not in featured.text
 
 
 def test_robots_and_sitemap_expose_home_lab_facts() -> None:
