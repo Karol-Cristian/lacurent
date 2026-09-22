@@ -1948,15 +1948,18 @@
 
       const actionMode = projectMode === "new_nzeb" ? "nzeb" : "energy";
       const evaluationMode = constrained ? "nzeb" : "energy";
-      const actions = adaptiveOptimizerActions(state, overrides, target, actionMode);
-      const evaluated = await evaluateActionVariants(
-        state,
-        overrides,
-        current,
-        actions,
-        evaluationMode,
-        target
-      );
+      const alreadyAtTarget = constrained && regulatoryMeetsTarget(current, target, state, overrides);
+      const actions = alreadyAtTarget ? [] : adaptiveOptimizerActions(state, overrides, target, actionMode);
+      const evaluated = actions.length
+        ? await evaluateActionVariants(
+            state,
+            overrides,
+            current,
+            actions,
+            evaluationMode,
+            target
+          )
+        : [];
       if (runToken !== optimizerRunToken) return;
 
       const winners = bestVariantPerFamily(evaluated, evaluationMode)
