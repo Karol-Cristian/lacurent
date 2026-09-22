@@ -134,7 +134,11 @@
         {% else %}
         <p>Este rezultatul unei simulări LaCurent pentru modelul demonstrativ de locuință individuală cu suprafață încălzită de 160 m². Localitatea este {{ fact.locality }}, iar intervenția testată este: {{ fact.scenario_label }}.</p>
         {% endif %}
+        {% if fact.fact_kind == "comparison" %}
+        <p>Cifrele sunt calculate determinist din relațiile de transfer termic, nu generate de AI. Exemplul arată că „podul primul” nu este o regulă universală; pentru altă suprafață sau alt U inițial, rezultatul se poate inversa.</p>
+        {% else %}
         <p>Valorile numerice sunt produse de motorul energetic. Textul explicativ poate fi formulat de asistentul AI, dar acesta nu stabilește și nu modifică rezultatele numerice. Rezultatul este orientativ și nu înlocuiește un audit energetic sau un certificat de performanță energetică.</p>
+        {% endif %}
         <p class="fact-version">Versiune metodologie: <strong>{{ fact.methodology_version }}</strong>{% if fact.ai_model %} · asistent editorial: <strong>{{ fact.ai_model }}</strong>{% endif %}</p>
       </section>
 
