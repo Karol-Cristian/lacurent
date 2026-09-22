@@ -463,6 +463,27 @@ def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
 
 
+def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> None:
+    data = demo_form_data()
+    data["_skip_reference"] = "1"
+    data["_optimizer_candidate"] = "1"
+
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload) == {
+        "final_energy_kwh",
+        "primary_specific_kwh_m2",
+        "co2_specific_kg_m2",
+        "annual_cost_lei",
+    }
+    assert payload["final_energy_kwh"] > 0
+    assert payload["primary_specific_kwh_m2"] > 0
+    assert payload["co2_specific_kg_m2"] >= 0
+    assert payload["annual_cost_lei"] is not None
+
+
 def test_partner_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     response = client.post("/embed/demo-store/next/calculate", data=demo_form_data())
     assert response.status_code == 200
@@ -740,6 +761,15 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["renewables"]["solar_thermal"]["used_for_dhw_kwh"] > 0
     assert len(payload["renewables"]["monthly"]) == 12
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
+
+
+def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    assert 'body.set("_optimizer_candidate", "1")' in response.text
+    assert "optimizerCandidateCache = new Map()" in response.text
+    assert "OPTIMIZER_CANDIDATE_CACHE_MAX = 192" in response.text
+    assert "calculateCandidate(state, overrides, {compact:false})" in response.text
 
 
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:

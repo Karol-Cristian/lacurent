@@ -124,6 +124,8 @@
   let calculateToken = 0;
   let calculateTimer = 0;
   let calculateAbortController = null;
+  const optimizerCandidateCache = new Map();
+  const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
   let mobileViewportBaseline = 0;
 
   function syncMobileViewportBottomInset(resetBaseline = false) {
@@ -1005,10 +1007,39 @@
     }
   }
 
-  async function calculateCandidate(state, overrides = {}) {
+  function optimizerCandidateCacheKey(body, compact) {
+    const entries = [];
+    for (const [key, rawValue] of body.entries()) {
+      const value = typeof rawValue === "string"
+        ? rawValue
+        : `${rawValue?.name || "file"}:${rawValue?.size || 0}:${rawValue?.type || ""}`;
+      entries.push(`${key}=${value}`);
+    }
+    entries.sort();
+    return `${compact ? "compact" : "full"}|${entries.join("&")}`;
+  }
+
+  function rememberOptimizerCandidate(key, payload) {
+    if (optimizerCandidateCache.has(key)) optimizerCandidateCache.delete(key);
+    optimizerCandidateCache.set(key, payload);
+    while (optimizerCandidateCache.size > OPTIMIZER_CANDIDATE_CACHE_MAX) {
+      const oldest = optimizerCandidateCache.keys().next().value;
+      optimizerCandidateCache.delete(oldest);
+    }
+  }
+
+  async function calculateCandidate(state, overrides = {}, options = {}) {
+    const compact = options.compact !== false;
     populateTechnicalForm(state, overrides);
     const body = new FormData(form);
     body.set("_skip_reference", "1");
+    if (compact) body.set("_optimizer_candidate", "1");
+
+    const cacheKey = optimizerCandidateCacheKey(body, compact);
+    if (optimizerCandidateCache.has(cacheKey)) {
+      return optimizerCandidateCache.get(cacheKey);
+    }
+
     const response = await fetch(calcUrl, {
       method: "POST",
       body,
@@ -1018,6 +1049,7 @@
     if (!response.ok || !payload || payload.error) {
       throw new Error(payload?.error || `Calcul candidat indisponibil (HTTP ${response.status || "?"}).`);
     }
+    rememberOptimizerCandidate(cacheKey, payload);
     return payload;
   }
 
@@ -1303,7 +1335,9 @@
       }
 
       const envelopeStatus = nzebEnvelopeStatus(state, overrides, target);
-      const meetsEnergyCo2 = nzebMeetsTarget(current, target);
+      const finalResult = await calculateCandidate(state, overrides, {compact:false});
+      const meetsEnergyCo2 = nzebMeetsTarget(finalResult, target);
+      current = finalResult;
       applyOptimizerResult(state, current, overrides, {
         mode:"nzeb",
         label:"Țintă nZEB · energie primară + CO₂",
@@ -1439,6 +1473,7 @@
       }
 
       const totalSaving = Number(homeResult.annual_cost_lei) - Number(current.annual_cost_lei);
+      current = await calculateCandidate(state, overrides, {compact:false});
       applyOptimizerResult(state, current, overrides, {
         mode:"roi",
         label:"Best ROI estimativ",

@@ -898,6 +898,22 @@ def calculator_context(error: str | None = None, values: dict[str, Any] | None =
     }
 
 
+def optimizer_candidate_payload(result: Any) -> dict[str, Any]:
+    """Minimal payload used while ranking optimizer candidates.
+
+    Candidate ranking needs only four metrics. Avoid building the full dashboard
+    payload (monthly charts, losses, renewables, reference metadata, etc.) for
+    every trial request.
+    """
+    cost = estimate_energy_cost(result)
+    return {
+        "final_energy_kwh": float(result.total_final_energy_kwh),
+        "primary_specific_kwh_m2": float(result.primary_energy.specific_kwh_m2),
+        "co2_specific_kg_m2": float(result.co2.specific_kg_m2),
+        "annual_cost_lei": float(cost["priced_total_lei"]) if cost.get("complete") else None,
+    }
+
+
 def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     cost = estimate_energy_cost(result)
     climate = result.climate or {}
@@ -1203,11 +1219,22 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
         "yes",
         "on",
     }
+    optimizer_candidate = str(form.pop("_optimizer_candidate", "")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     try:
         building = build_input_from_form(form)
-        result = calculate(building, include_reference=not skip_reference)
+        result = calculate(
+            building,
+            include_reference=not (skip_reference or optimizer_candidate),
+        )
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
+    if optimizer_candidate:
+        return JSONResponse(optimizer_candidate_payload(result))
     return JSONResponse(embed_lab_result_payload(result))
 
 
