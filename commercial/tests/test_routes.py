@@ -448,6 +448,21 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["reference_parameters"]["heating_efficiency"] > 0
 
 
+def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None:
+    data = demo_form_data()
+    data["_skip_reference"] = "1"
+
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["final_energy_kwh"] > 0
+    assert payload["reference"] is None
+    # Methodological reference parameters remain available to the UI from the
+    # registry even when the expensive reference-building calculation is skipped.
+    assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
+
+
 def test_partner_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     response = client.post("/embed/demo-store/next/calculate", data=demo_form_data())
     assert response.status_code == 200
