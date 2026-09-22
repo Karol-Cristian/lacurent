@@ -1171,9 +1171,15 @@
       return optimizerCandidateCache.get(cacheKey);
     }
 
+    if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS) {
+      throw new Error(`Bugetul de calcul al optimizerului a fost atins (${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări). Ajustează datele sau costurile și încearcă din nou.`);
+    }
+    optimizerEvaluationCount += 1;
+
     const response = await fetch(calcUrl, {
       method: "POST",
       body,
+      signal: optimizerAbortController?.signal,
     });
     const contentType = response.headers.get("content-type") || "";
     const payload = contentType.includes("application/json") ? await response.json() : null;
@@ -1257,7 +1263,8 @@
     }));
   }
 
-  function nzebResultScore(result, target) {
+  function regulatoryResultScore(result, target) {
+    if (!target) return 0;
     const primaryLimit = Number(target?.primary_energy_kwh_m2_year);
     const co2Limit = Number(target?.co2_kg_m2_year);
     const primary = Number(result?.primary_specific_kwh_m2);
@@ -1266,8 +1273,35 @@
     return Math.max(primary / primaryLimit, co2 / co2Limit);
   }
 
+  function regulatoryMeetsTarget(result, target, state = null, overrides = {}) {
+    if (!target) return true;
+    if (regulatoryResultScore(result, target) > 1.000001) return false;
+    if (target.target_kind === "new_nzeb" && target.envelope_u_max_w_m2k && state) {
+      return nzebEnvelopeStatus(state, overrides, target).meets;
+    }
+    return true;
+  }
+
+  function regulatoryTargetForProjectMode() {
+    if (projectMode === "new_nzeb") return homeResult?.nzeb_target || null;
+    if (projectMode === "existing_major") return homeResult?.renovation_target || null;
+    return null;
+  }
+
+  function projectModeLabel() {
+    return {
+      existing_standard:"Clădire existentă · renovare obișnuită",
+      existing_major:"Clădire existentă · renovare majoră",
+      new_nzeb:"Clădire nouă · nZEB",
+    }[projectMode] || "Clădire existentă";
+  }
+
+  function nzebResultScore(result, target) {
+    return regulatoryResultScore(result, target);
+  }
+
   function nzebMeetsTarget(result, target) {
-    return nzebResultScore(result, target) <= 1.000001;
+    return regulatoryMeetsTarget(result, target);
   }
 
   function optimizerHeatPumpState(baseState) {
@@ -1312,35 +1346,10 @@
 
     if (mode === "roi") {
       const envelopeVariants = [
-        {
-          family:"roof",
-          baseU:1.00,
-          stateKey:"roofIns",
-          targetU:Number(envelopeLimits.roof),
-          modestStep:8,
-          complexity:2,
-          label:"Izolație suplimentară pod",
-        },
-        {
-          family:"wall",
-          baseU:1.30,
-          stateKey:"wallIns",
-          targetU:Number(envelopeLimits.exterior_wall),
-          modestStep:5,
-          complexity:5,
-          label:"Izolație suplimentară fațadă",
-        },
-        {
-          family:"floor",
-          baseU:0.90,
-          stateKey:"floorIns",
-          targetU:Number(envelopeLimits.floor_generic_conservative),
-          modestStep:5,
-          complexity:4,
-          label:"Izolație suplimentară pardoseală",
-        },
+        {family:"roof", baseU:1.00, stateKey:"roofIns", targetU:Number(envelopeLimits.roof), step:10, label:"Izolație suplimentară pod"},
+        {family:"wall", baseU:1.30, stateKey:"wallIns", targetU:Number(envelopeLimits.exterior_wall), step:10, label:"Izolație suplimentară fațadă"},
+        {family:"floor", baseU:0.90, stateKey:"floorIns", targetU:Number(envelopeLimits.floor_generic_conservative), step:5, label:"Izolație suplimentară pardoseală"},
       ];
-
       for (const item of envelopeVariants) {
         const currentCm = Math.max(Number(state[item.stateKey] || 0), 0);
         const actualU = Number(currentEnvelopeU(state, {
@@ -1354,32 +1363,25 @@
           && actualU <= item.targetU + 1e-9;
         if (alreadyStrong) continue;
 
-        const targetCm = Number.isFinite(item.targetU) && item.targetU > 0
-          ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU))
-          : currentCm + 10;
-        const levels = [
-          Math.max(currentCm + item.modestStep, Math.min(targetCm, currentCm + item.modestStep)),
-          Math.max(currentCm + item.modestStep, targetCm),
-        ]
-          .map(value => Math.ceil(value))
-          .filter((value, index, list) => value > currentCm + 0.1 && list.indexOf(value) === index);
-
-        for (const level of levels) {
-          actions.push(optimizerAction({
-            id:`${item.family}_${level}`,
-            family:item.family,
-            label:`${item.label} la ${fmt(level)} cm`,
-            kind:"envelope",
-            complexity:item.complexity * (1 + Math.max(level - currentCm, 0) / 20),
-            magnitude:level,
-            apply(baseState, baseOverrides) {
-              return {
-                state:{...baseState, [item.stateKey]:Math.max(Number(baseState[item.stateKey] || 0), level)},
-                overrides:{...baseOverrides},
-              };
-            },
-          }));
-        }
+        const level = Math.ceil(
+          Number.isFinite(item.targetU) && item.targetU > 0
+            ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU))
+            : currentCm + item.step
+        );
+        if (level <= currentCm + 0.1) continue;
+        actions.push(optimizerAction({
+          id:`${item.family}_${level}`,
+          family:item.family,
+          label:`${item.label} la ${fmt(level)} cm`,
+          kind:"envelope",
+          magnitude:level,
+          apply(baseState, baseOverrides) {
+            return {
+              state:{...baseState, [item.stateKey]:Math.max(Number(baseState[item.stateKey] || 0), level)},
+              overrides:{...baseOverrides},
+            };
+          },
+        }));
       }
 
       if (state.glazing !== "triple_low_e_faces_2_and_5") {
@@ -1388,11 +1390,29 @@
           family:"windows",
           label:"Ferestre tripan Low-E",
           kind:"envelope",
-          complexity:5,
           apply(baseState, baseOverrides) {
             return {
               state:{...baseState, glazing:"triple_low_e_faces_2_and_5"},
               overrides:{...baseOverrides},
+            };
+          },
+        }));
+      }
+
+      if (
+        target?.target_kind === "new_nzeb" &&
+        Number(envelopeLimits.exterior_door) > 0 &&
+        Number(currentEnvelopeU(state, "doorU", overrides)) > Number(envelopeLimits.exterior_door) + 1e-9
+      ) {
+        actions.push(optimizerAction({
+          id:"door_nzeb",
+          family:"door",
+          label:`Ușă exterioară · U ≤ ${fmt(envelopeLimits.exterior_door,2)} W/m²K`,
+          kind:"mc001-envelope",
+          apply(baseState, baseOverrides) {
+            return {
+              state:{...baseState},
+              overrides:{...baseOverrides, doorU:Number(envelopeLimits.exterior_door)},
             };
           },
         }));
@@ -1404,7 +1424,6 @@
         id:"ventilation_hrv",
         family:"ventilation",
         label:"Ventilație cu recuperare",
-        complexity:4,
         apply(baseState, baseOverrides) {
           const nextOverrides = {...baseOverrides};
           delete nextOverrides.airChanges;
@@ -1421,7 +1440,6 @@
         id:"heating_control_weather",
         family:"heating_control",
         label:"Control cu compensare climatică",
-        complexity:1.5,
         apply(baseState, baseOverrides) {
           return {
             state:{...baseState, heatingControl:"weather_compensated"},
@@ -1436,7 +1454,6 @@
         id:"heating_heat_pump",
         family:"heating",
         label:"Pompă de căldură compatibilă cu distribuția existentă",
-        complexity:6,
         apply(baseState, baseOverrides) {
           return {
             state:optimizerHeatPumpState(baseState),
@@ -1447,15 +1464,12 @@
     }
 
     const currentPv = state.pvEnabled ? Math.max(Number(state.pvKwp || 0), 0) : 0;
-    const pvLevels = mode === "nzeb"
-      ? [3, 5, 7, 10, 15]
-      : [3, 5, 7, 10];
+    const pvLevels = mode === "nzeb" ? [5, 15] : [3, 5];
     for (const level of pvLevels.filter(value => value > currentPv + 0.01)) {
       actions.push(optimizerAction({
         id:`pv_${level}`,
         family:"pv",
         label:`${state.pvEnabled ? "Extinde" : "Adaugă"} PV la ${fmt(level,1)} kWp`,
-        complexity:1.5 + level / 2.5,
         magnitude:level,
         apply(baseState, baseOverrides) {
           return {
@@ -1473,13 +1487,12 @@
     }
 
     const currentSolar = state.solarThermalEnabled ? Math.max(Number(state.solarThermalArea || 0), 0) : 0;
-    const solarLevels = mode === "nzeb" ? [4, 6, 8] : [4, 6];
+    const solarLevels = mode === "nzeb" ? [4, 8] : [4];
     for (const level of solarLevels.filter(value => value > currentSolar + 0.01)) {
       actions.push(optimizerAction({
         id:`solar_thermal_${level}`,
         family:"solar_thermal",
         label:`${state.solarThermalEnabled ? "Extinde" : "Adaugă"} solar termic la ${fmt(level,1)} m²`,
-        complexity:2 + level / 4,
         magnitude:level,
         apply(baseState, baseOverrides) {
           return {
@@ -1499,18 +1512,84 @@
     return actions;
   }
 
-  function optimizerNoRegression(result, baseline) {
-    const baseEnergy = Number(baseline?.final_energy_kwh);
-    const baseCo2 = Number(baseline?.co2_specific_kg_m2);
-    const energy = Number(result?.final_energy_kwh);
-    const co2 = Number(result?.co2_specific_kg_m2);
-    const energyOk = !Number.isFinite(baseEnergy) || baseEnergy <= 0 || !Number.isFinite(energy)
-      ? true
-      : energy <= baseEnergy * 1.03;
-    const co2Ok = !Number.isFinite(baseCo2) || baseCo2 <= 0 || !Number.isFinite(co2)
-      ? true
-      : co2 <= baseCo2 * 1.03;
-    return energyOk && co2Ok;
+  function roiGeometry(state) {
+    const area = Math.max(Number(state.area) || 0, 1);
+    const levels = Math.max(Number(state.levels) || 1, 1);
+    const height = Math.max(Number(state.height) || 0, 0.1);
+    const windows = Math.max(Number(state.windows) || 0, 0);
+    const doors = 2.2;
+    const footprint = area / levels;
+    const aspect = 1.25;
+    const width = Math.sqrt(footprint / aspect);
+    const length = width * aspect;
+    const perimeter = 2 * (length + width);
+    const wallArea = Math.max(1, perimeter * height * levels - windows - doors);
+    return {area, levels, height, windows, doors, footprint, wallArea};
+  }
+
+  function positiveRoiCost(family) {
+    const value = Number(roiCostBasis?.[family]);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function roiCapexForAction(action, baseState, candidateState) {
+    const family = action.family || action.id;
+    const rate = positiveRoiCost(family);
+    if (rate == null) return null;
+    const geometry = roiGeometry(baseState);
+
+    if (family === "wall") {
+      const deltaCm = Math.max(Number(candidateState.wallIns || 0) - Number(baseState.wallIns || 0), 0);
+      return deltaCm > 0 ? geometry.wallArea * deltaCm * rate : null;
+    }
+    if (family === "roof") {
+      const deltaCm = Math.max(Number(candidateState.roofIns || 0) - Number(baseState.roofIns || 0), 0);
+      return deltaCm > 0 ? geometry.footprint * deltaCm * rate : null;
+    }
+    if (family === "floor") {
+      const deltaCm = Math.max(Number(candidateState.floorIns || 0) - Number(baseState.floorIns || 0), 0);
+      return deltaCm > 0 ? geometry.footprint * deltaCm * rate : null;
+    }
+    if (family === "windows") return geometry.windows * rate;
+    if (family === "door") return rate;
+    if (family === "ventilation") return rate;
+    if (family === "heating_control") return rate;
+    if (family === "heating") return rate;
+    if (family === "pv") {
+      const before = baseState.pvEnabled ? Math.max(Number(baseState.pvKwp || 0), 0) : 0;
+      const after = candidateState.pvEnabled ? Math.max(Number(candidateState.pvKwp || 0), 0) : 0;
+      const delta = Math.max(after - before, 0);
+      return delta > 0 ? delta * rate : null;
+    }
+    if (family === "solar_thermal") {
+      const before = baseState.solarThermalEnabled ? Math.max(Number(baseState.solarThermalArea || 0), 0) : 0;
+      const after = candidateState.solarThermalEnabled ? Math.max(Number(candidateState.solarThermalArea || 0), 0) : 0;
+      const delta = Math.max(after - before, 0);
+      return delta > 0 ? delta * rate : null;
+    }
+    return null;
+  }
+
+  function roiEconomics(baselineResult, result, capexLei) {
+    const baselineCost = Number(baselineResult?.annual_cost_lei);
+    const newCost = Number(result?.annual_cost_lei);
+    const capex = Number(capexLei);
+    const annualSavingLei = Number.isFinite(baselineCost) && Number.isFinite(newCost)
+      ? baselineCost - newCost
+      : NaN;
+    const roiPercentPerYear = Number.isFinite(annualSavingLei) && Number.isFinite(capex) && capex > 0
+      ? 100 * annualSavingLei / capex
+      : NaN;
+    const paybackYears = Number.isFinite(annualSavingLei) && annualSavingLei > 0 && capex > 0
+      ? capex / annualSavingLei
+      : null;
+    return {
+      capexLei:capex,
+      annualSavingLei,
+      roiPercentPerYear,
+      paybackYears,
+      positive:Number.isFinite(roiPercentPerYear) && roiPercentPerYear > 0,
+    };
   }
 
   async function evaluateActionVariants(baseState, baseOverrides, baseResult, actions, mode, target) {
@@ -1519,30 +1598,31 @@
       const candidate = action.apply(baseState, baseOverrides);
       const result = await calculateCandidate(candidate.state, candidate.overrides);
       if (mode === "nzeb") {
-        const before = nzebResultScore(baseResult, target);
-        const after = nzebResultScore(result, target);
+        const before = regulatoryResultScore(baseResult, target);
+        const after = regulatoryResultScore(result, target);
         const improvement = before - after;
         rows.push({
           action,
           ...candidate,
           result,
           improvement,
-          objective:improvement / Math.max(action.complexity, 0.25),
-          meetsTarget:nzebMeetsTarget(result, target),
+          objective:improvement,
+          meetsTarget:regulatoryMeetsTarget(result, target, candidate.state, candidate.overrides),
         });
       } else {
-        const saving = Number(baseResult?.annual_cost_lei) - Number(result?.annual_cost_lei);
-        const energySaving = Number(baseResult?.final_energy_kwh) - Number(result?.final_energy_kwh);
-        const co2Saving = Number(baseResult?.co2_specific_kg_m2) - Number(result?.co2_specific_kg_m2);
-        if (!Number.isFinite(saving) || saving <= 0 || !optimizerNoRegression(result, baseResult)) continue;
+        const capexLei = roiCapexForAction(action, baseState, candidate.state);
+        const economics = roiEconomics(baseResult, result, capexLei);
+        const before = regulatoryResultScore(baseResult, target);
+        const after = regulatoryResultScore(result, target);
         rows.push({
           action,
           ...candidate,
           result,
-          saving,
-          energySaving,
-          co2Saving,
-          objective:saving / Math.max(action.complexity, 0.25),
+          ...economics,
+          regulatoryImprovement:target ? before - after : 0,
+          meetsTarget:regulatoryMeetsTarget(result, target, candidate.state, candidate.overrides),
+          costKnown:Number.isFinite(capexLei) && capexLei > 0,
+          objective:Number.isFinite(economics.roiPercentPerYear) ? economics.roiPercentPerYear : -Infinity,
         });
       }
     }
@@ -1558,20 +1638,18 @@
         continue;
       }
       if (mode === "nzeb") {
-        const rowMeets = Boolean(row.meetsTarget);
-        const prevMeets = Boolean(previous.meetsTarget);
         if (
-          rowMeets && !prevMeets ||
-          rowMeets === prevMeets && (
-            row.objective > previous.objective + 1e-9 ||
-            Math.abs(row.objective - previous.objective) <= 1e-9
+          row.meetsTarget && !previous.meetsTarget ||
+          row.meetsTarget === previous.meetsTarget && (
+            row.improvement > previous.improvement + 1e-9 ||
+            Math.abs(row.improvement - previous.improvement) <= 1e-9
               && row.action.magnitude < previous.action.magnitude
           )
         ) families.set(row.action.family, row);
       } else if (
         row.objective > previous.objective + 1e-9 ||
         Math.abs(row.objective - previous.objective) <= 1e-9
-          && row.energySaving > previous.energySaving
+          && row.annualSavingLei > previous.annualSavingLei
       ) {
         families.set(row.action.family, row);
       }
