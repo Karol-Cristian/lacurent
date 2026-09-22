@@ -138,6 +138,7 @@
     roof: null,
     floor: null,
     windows: null,
+    door: null,
     ventilation: null,
     heating_control: null,
     heating: null,
