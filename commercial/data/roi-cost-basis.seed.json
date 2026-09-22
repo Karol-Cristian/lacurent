@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "catalog_version": "ro-market-planning-2026-09-22",
+  "observed_on": "2026-09-22",
+  "costs": {
+    "wall": {
+      "label": "Fațadă termoizolată",
+      "cost_lei": 16,
+      "unit": "lei_per_m2_per_cm",
+      "source_kind": "retail_reference_plus_installation_allowance",
+      "source_url": "https://www.dedeman.ro/ro/polistiren-expandat-pentru-fatada-baudeman-eps-80-grafitat-10-cm/p/6017029",
+      "confidence": "medium",
+      "note": "Bază de planificare: material termoizolant de piață plus adezivi, plasă, dibluri, finisaj și montaj; nu este ofertă comercială."
+    },
+    "roof": {
+      "label": "Izolație pod / acoperiș",
+      "cost_lei": 8,
+      "unit": "lei_per_m2_per_cm",
+      "source_kind": "retail_reference_plus_installation_allowance",
+      "source_url": "https://www.dedeman.ro/ro/vata-minerala-bazaltica-rockwool-acoustic-casa-100-1200-x-600-x-100-mm/p/6065841",
+      "confidence": "medium",
+      "note": "Bază de planificare pentru izolație la nivelul podului, derivată din reper de material + montaj simplificat."
+    },
+    "floor": {
+      "label": "Izolație pardoseală",
+      "cost_lei": 11,
+      "unit": "lei_per_m2_per_cm",
+      "source_kind": "market_planning_allowance",
+      "source_url": "https://www.dedeman.ro/ro/polistiren-extrudat/c/157",
+      "confidence": "medium",
+      "note": "Bază de planificare XPS + montaj; detaliile de stratificație pot schimba semnificativ costul."
+    },
+    "windows": {
+      "label": "Ferestre tripan Low-E",
+      "cost_lei": 1000,
+      "unit": "lei_per_m2",
+      "source_kind": "retail_reference_plus_installation_allowance",
+      "source_url": "https://www.dedeman.ro/ro/fereastra-pvc-tripan-gealan-6-camere-alb-116-x-114-cm-fixa-dubla-deschidere-dreapta/p/6046484",
+      "confidence": "medium",
+      "note": "Reper de fereastră PVC tripan plus rezervă de montaj; geometria și profilul pot schimba costul."
+    },
+    "door": {
+      "label": "Ușă exterioară termoizolată",
+      "cost_lei": 2300,
+      "unit": "lei_total",
+      "source_kind": "retail_reference_plus_installation_allowance",
+      "source_url": "https://www.dedeman.ro/ro/usa-metalica-pentru-exterior-tracia-atlas-dreapta-maro-sidefat-88-x-205-cm-accesorii/p/6030107",
+      "confidence": "medium",
+      "note": "Reper pentru o ușă exterioară izolată standard, cu rezervă de montaj."
+    },
+    "ventilation": {
+      "label": "Ventilație cu recuperare",
+      "cost_lei": 8000,
+      "unit": "lei_total",
+      "source_kind": "equipment_reference_plus_system_allowance",
+      "source_url": "https://unitate-de-recuperare-caldura.compari.ro/reventon/recuperator-de-caldura-reventon-inspiro-basic-300-m-h-inspiro-basic300-2023-p1182105250/",
+      "confidence": "low",
+      "note": "Unitate HRV + alocație pentru tubulatură, accesorii și instalare. Configurația casei influențează mult costul."
+    },
+    "heating_control": {
+      "label": "Control cu compensare climatică",
+      "cost_lei": 1200,
+      "unit": "lei_total",
+      "source_kind": "market_planning_allowance",
+      "source_url": "https://www.vaillant.com.ro/",
+      "confidence": "low",
+      "note": "Alocație de planificare pentru regulator, senzor exterior și montaj; nu este preț de produs."
+    },
+    "heating": {
+      "label": "Pompă de căldură aer-apă",
+      "cost_lei": 30000,
+      "unit": "lei_total",
+      "source_kind": "equipment_reference_plus_installation_allowance",
+      "source_url": "https://www.termix.ro/cumpara/pompa-de-caldura-daikin-altherma-3-m-8kw-monobloc-r32-termix-33866",
+      "confidence": "medium",
+      "note": "Reper echipament aer-apă 8 kW plus alocație pentru montaj și accesorii uzuale. Dimensionarea tehnică rămâne separată."
+    },
+    "pv": {
+      "label": "Sistem fotovoltaic",
+      "cost_lei": 4000,
+      "unit": "lei_per_kwp",
+      "source_kind": "installed_market_reference",
+      "source_url": "https://www.greenlead.ro/blog/sistem-fotovoltaic-5kw-pret-complet-productie-amortizare-2026",
+      "confidence": "medium",
+      "note": "Bază de planificare la cheie fără stocare, normalizată pe kWp; ofertele reale variază cu invertorul, acoperișul și serviciile incluse."
+    },
+    "solar_thermal": {
+      "label": "Solar termic ACM",
+      "cost_lei": 2650,
+      "unit": "lei_per_m2",
+      "source_kind": "retail_system_reference",
+      "source_url": "https://www.dedeman.ro/ro/kit-panou-solar-presurizat-apa-calda-ecotube-2-x-20-boiler-ecounit-f-300-2c-grup-pompare-pumpfix-dn20-vas-expansiune-vfn-pro-50/p/2028157-2022880-2010030-2037502-2007022-2037373-2029327",
+      "confidence": "medium",
+      "note": "Cost echivalent normalizat pe suprafața de colector dintr-un kit rezidențial complet de referință."
+    }
+  }
+}
