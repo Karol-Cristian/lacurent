@@ -11,7 +11,45 @@
   const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
   const SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70;
 
+  // Material values mirror the existing LaCurent energy material presets.
+  // They are engineering estimates, not hidden normative defaults.
+  const WALL_STRUCTURE_PRESETS = Object.freeze({
+    unknown: {lambda:null, defaultThicknessCm:30, fallbackU:1.30},
+    solid_brick: {lambda:0.72, defaultThicknessCm:30},
+    efficient_brick: {lambda:0.32, defaultThicknessCm:30},
+    bca: {lambda:0.18, defaultThicknessCm:30},
+    concrete: {lambda:1.70, defaultThicknessCm:20},
+    wood: {lambda:0.18, defaultThicknessCm:20},
+    stone: {lambda:1.80, defaultThicknessCm:45},
+  });
+  const INSULATION_LAMBDA_W_MK = Object.freeze({
+    generic_040: 0.040,
+    eps: 0.040,
+    xps: 0.035,
+    mineral_wool: 0.039,
+    cellulose: 0.040,
+    wood_fiber: 0.045,
+  });
+  const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
+
   const labels = {
+    structure: {
+      unknown: "Structură necunoscută",
+      solid_brick: "Cărămidă plină",
+      efficient_brick: "Cărămidă eficientă",
+      bca: "BCA / AAC",
+      concrete: "Beton armat",
+      wood: "Lemn",
+      stone: "Piatră"
+    },
+    insulation: {
+      generic_040: "Izolație necunoscută",
+      eps: "Polistiren EPS",
+      xps: "Polistiren XPS",
+      mineral_wool: "Vată minerală",
+      cellulose: "Celuloză",
+      wood_fiber: "Fibră lemnoasă"
+    },
     glazing: {
       reference_mc001: "Fereastră de referință MC001",
       single_clear_glazing: "Geam simplu",
@@ -79,6 +117,11 @@
     temperature: 21,
     occupants: 4,
     windows: 18,
+    wallStructure: "unknown",
+    wallStructureThickness: 30,
+    wallInsulationMaterial: "generic_040",
+    roofInsulationMaterial: "generic_040",
+    floorInsulationMaterial: "generic_040",
     wallIns: 5,
     roofIns: 10,
     floorIns: 5,
@@ -263,10 +306,25 @@
     if (field) field.value = value == null ? "" : String(value);
   }
 
-  function insulationU(baseU, centimetres) {
-    const lambda = 0.040;
+  function insulationLambda(materialId) {
+    return INSULATION_LAMBDA_W_MK[materialId] || INSULATION_LAMBDA_W_MK.generic_040;
+  }
+
+  function wallBaseU(state) {
+    const preset = WALL_STRUCTURE_PRESETS[state?.wallStructure] || WALL_STRUCTURE_PRESETS.unknown;
+    if (!preset.lambda) return preset.fallbackU;
+    const rawThickness = Number(state?.wallStructureThickness);
+    const thicknessCm = Number.isFinite(rawThickness) && rawThickness > 0
+      ? Math.max(5, Math.min(80, rawThickness))
+      : preset.defaultThicknessCm;
+    const structureR = (thicknessCm / 100) / preset.lambda;
+    return 1 / (WALL_SURFACE_RESISTANCE_M2K_W + structureR);
+  }
+
+  function insulationU(baseU, centimetres, lambda = 0.040) {
+    const safeLambda = Number(lambda) > 0 ? Number(lambda) : 0.040;
     const baseR = 1 / baseU;
-    const addedR = Math.max(0, Number(centimetres) || 0) / 100 / lambda;
+    const addedR = Math.max(0, Number(centimetres) || 0) / 100 / safeLambda;
     return 1 / (baseR + addedR);
   }
 
@@ -443,11 +501,12 @@
     return Math.max(0, Number(powerKw) || 0) / SOLAR_THERMAL_NOMINAL_KW_PER_M2;
   }
 
-  function insulationCmForU(baseU, targetU) {
+  function insulationCmForU(baseU, targetU, lambda = 0.040) {
     const target = Number(targetU);
     if (!Number.isFinite(target) || target <= 0) return 0;
+    const safeLambda = Number(lambda) > 0 ? Number(lambda) : 0.040;
     const addedR = Math.max(0, 1 / target - 1 / baseU);
-    return Math.round(addedR * 0.040 * 1000) / 10;
+    return Math.round(addedR * safeLambda * 1000) / 10;
   }
 
   function referenceTargets() {
@@ -455,9 +514,21 @@
     if (!reference?.u_values_w_m2k) return null;
     const u = reference.u_values_w_m2k;
     return {
-      wallIns: insulationCmForU(1.30, u.exterior_wall),
-      roofIns: insulationCmForU(1.00, u.roof),
-      floorIns: insulationCmForU(0.90, u.floor),
+      wallIns: insulationCmForU(
+        wallBaseU(homeState),
+        u.exterior_wall,
+        insulationLambda(homeState.wallInsulationMaterial)
+      ),
+      roofIns: insulationCmForU(
+        1.00,
+        u.roof,
+        insulationLambda(homeState.roofInsulationMaterial)
+      ),
+      floorIns: insulationCmForU(
+        0.90,
+        u.floor,
+        insulationLambda(homeState.floorInsulationMaterial)
+      ),
       windows: Number(homeState.windows),
       glazing: "reference_mc001",
       heating: "reference_mc001",
@@ -1003,9 +1074,30 @@
     const windowU = finiteOverride("windowU");
     const doorU = finiteOverride("doorU");
 
-    formSet("wall_u_value", wallU ?? insulationU(1.30, state.wallIns).toFixed(4));
-    formSet("roof_u_value", roofU ?? insulationU(1.00, state.roofIns).toFixed(4));
-    formSet("floor_u_value", floorU ?? insulationU(0.90, state.floorIns).toFixed(4));
+    formSet(
+      "wall_u_value",
+      wallU ?? insulationU(
+        wallBaseU(state),
+        state.wallIns,
+        insulationLambda(state.wallInsulationMaterial)
+      ).toFixed(4)
+    );
+    formSet(
+      "roof_u_value",
+      roofU ?? insulationU(
+        1.00,
+        state.roofIns,
+        insulationLambda(state.roofInsulationMaterial)
+      ).toFixed(4)
+    );
+    formSet(
+      "floor_u_value",
+      floorU ?? insulationU(
+        0.90,
+        state.floorIns,
+        insulationLambda(state.floorInsulationMaterial)
+      ).toFixed(4)
+    );
     formSet("window_u_value", windowU ?? (glazingU[state.glazing] || 1.6));
     formSet("door_u_value", doorU ?? 1.8);
 
@@ -1346,20 +1438,32 @@
     return payload;
   }
 
-  function equivalentInsulationCm(baseU, targetU) {
-    const lambda = 0.040;
+  function equivalentInsulationCm(baseU, targetU, lambda = 0.040) {
+    const safeLambda = Number(lambda) > 0 ? Number(lambda) : 0.040;
     const target = Number(targetU);
     if (!Number.isFinite(target) || target <= 0) return 0;
-    const centimetres = Math.max(0, (1 / target - 1 / baseU) * lambda * 100);
+    const centimetres = Math.max(0, (1 / target - 1 / baseU) * safeLambda * 100);
     return Math.ceil(centimetres);
   }
 
   function currentEnvelopeU(state, key, overrides = {}) {
     const explicit = Number(overrides?.[key]);
     if (Number.isFinite(explicit) && explicit > 0) return explicit;
-    if (key === "wallU") return insulationU(1.30, state.wallIns);
-    if (key === "roofU") return insulationU(1.00, state.roofIns);
-    if (key === "floorU") return insulationU(0.90, state.floorIns);
+    if (key === "wallU") return insulationU(
+      wallBaseU(state),
+      state.wallIns,
+      insulationLambda(state.wallInsulationMaterial)
+    );
+    if (key === "roofU") return insulationU(
+      1.00,
+      state.roofIns,
+      insulationLambda(state.roofInsulationMaterial)
+    );
+    if (key === "floorU") return insulationU(
+      0.90,
+      state.floorIns,
+      insulationLambda(state.floorInsulationMaterial)
+    );
     if (key === "windowU") {
       return {
         single_clear_glazing: 5.0,
@@ -1398,15 +1502,36 @@
         const nextState = {...baseState};
         const nextOverrides = {...baseOverrides};
         if (item.id === "wall") {
-          nextState.wallIns = Math.max(Number(nextState.wallIns || 0), equivalentInsulationCm(1.30, item.limit));
+          nextState.wallIns = Math.max(
+            Number(nextState.wallIns || 0),
+            equivalentInsulationCm(
+              wallBaseU(nextState),
+              item.limit,
+              insulationLambda(nextState.wallInsulationMaterial)
+            )
+          );
           nextOverrides.wallU = item.limit;
         }
         if (item.id === "roof") {
-          nextState.roofIns = Math.max(Number(nextState.roofIns || 0), equivalentInsulationCm(1.00, item.limit));
+          nextState.roofIns = Math.max(
+            Number(nextState.roofIns || 0),
+            equivalentInsulationCm(
+              1.00,
+              item.limit,
+              insulationLambda(nextState.roofInsulationMaterial)
+            )
+          );
           nextOverrides.roofU = item.limit;
         }
         if (item.id === "floor") {
-          nextState.floorIns = Math.max(Number(nextState.floorIns || 0), equivalentInsulationCm(0.90, item.limit));
+          nextState.floorIns = Math.max(
+            Number(nextState.floorIns || 0),
+            equivalentInsulationCm(
+              0.90,
+              item.limit,
+              insulationLambda(nextState.floorInsulationMaterial)
+            )
+          );
           nextOverrides.floorU = item.limit;
         }
         if (item.id === "windows") {
@@ -1502,9 +1627,33 @@
 
     if (mode === "roi" || mode === "energy") {
       const envelopeVariants = [
-        {family:"roof", baseU:1.00, stateKey:"roofIns", targetU:Number(envelopeLimits.roof), step:10, label:"Izolație suplimentară pod"},
-        {family:"wall", baseU:1.30, stateKey:"wallIns", targetU:Number(envelopeLimits.exterior_wall), step:10, label:"Izolație suplimentară fațadă"},
-        {family:"floor", baseU:0.90, stateKey:"floorIns", targetU:Number(envelopeLimits.floor_generic_conservative), step:5, label:"Izolație suplimentară pardoseală"},
+        {
+          family:"roof",
+          baseU:1.00,
+          lambda:insulationLambda(state.roofInsulationMaterial),
+          stateKey:"roofIns",
+          targetU:Number(envelopeLimits.roof),
+          step:10,
+          label:"Izolație suplimentară pod"
+        },
+        {
+          family:"wall",
+          baseU:wallBaseU(state),
+          lambda:insulationLambda(state.wallInsulationMaterial),
+          stateKey:"wallIns",
+          targetU:Number(envelopeLimits.exterior_wall),
+          step:10,
+          label:"Izolație suplimentară fațadă"
+        },
+        {
+          family:"floor",
+          baseU:0.90,
+          lambda:insulationLambda(state.floorInsulationMaterial),
+          stateKey:"floorIns",
+          targetU:Number(envelopeLimits.floor_generic_conservative),
+          step:5,
+          label:"Izolație suplimentară pardoseală"
+        },
       ];
       for (const item of envelopeVariants) {
         const currentCm = Math.max(Number(state[item.stateKey] || 0), 0);
@@ -1521,7 +1670,7 @@
 
         const level = Math.ceil(
           Number.isFinite(item.targetU) && item.targetU > 0
-            ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU))
+            ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU, item.lambda))
             : currentCm + item.step
         );
         if (level <= currentCm + 0.1) continue;
@@ -2614,8 +2763,11 @@
     $("#hlnHouseSummary").textContent = `${fmt(state.area)} m² · ${state.levels} nivel${Number(state.levels) === 1 ? "" : "uri"}`;
     const buildingTypeLabel = state.buildingType === "residential_collective" ? "Apartament / colectiv" : "Casă individuală";
     $("#hlnHouseMeta").textContent = `${buildingTypeLabel} · ${state.constructionYear || "an necunoscut"} · ${fmt(state.height, 1)} m`;
-    $("#hlnEnvelopeSummary").textContent = `${state.wallIns} cm pereți · ${state.roofIns} cm pod`;
-    $("#hlnEnvelopeMeta").textContent = `${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
+    const structureLabel = labels.structure[state.wallStructure] || labels.structure.unknown;
+    const wallInsulationLabel = labels.insulation[state.wallInsulationMaterial] || labels.insulation.generic_040;
+    const roofInsulationLabel = labels.insulation[state.roofInsulationMaterial] || labels.insulation.generic_040;
+    $("#hlnEnvelopeSummary").textContent = `${structureLabel} · ${state.wallIns} cm ${wallInsulationLabel}`;
+    $("#hlnEnvelopeMeta").textContent = `pod ${state.roofIns} cm ${roofInsulationLabel} · ${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
     const heatingParts = [
       labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter,
@@ -2639,7 +2791,7 @@
       ? [state.pvEnabled ? `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°` : null,
          state.solarThermalEnabled ? `solar termic ${renewableOrientationLabel(state.solarThermalOrientation)}` : null].filter(Boolean).join(" · ")
       : "PV · solar termic";
-    $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "8";
+    $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "13";
   }
 
   function measureSummary(type) {
@@ -3372,6 +3524,11 @@
     $("#hlnHeight").value = homeState.height;
     $("#hlnTemperature").value = homeState.temperature;
     $("#hlnOccupants").value = homeState.occupants;
+    $("#hlnHomeWallStructure").value = homeState.wallStructure || "unknown";
+    $("#hlnHomeWallStructureThickness").value = homeState.wallStructureThickness || 30;
+    $("#hlnHomeWallInsulationMaterial").value = homeState.wallInsulationMaterial || "generic_040";
+    $("#hlnHomeRoofInsulationMaterial").value = homeState.roofInsulationMaterial || "generic_040";
+    $("#hlnHomeFloorInsulationMaterial").value = homeState.floorInsulationMaterial || "generic_040";
     $("#hlnHomeWallIns").value = homeState.wallIns;
     $("#hlnHomeRoofIns").value = homeState.roofIns;
     $("#hlnHomeFloorIns").value = homeState.floorIns;
@@ -3414,6 +3571,11 @@
     homeState.height = Number($("#hlnHeight").value);
     homeState.temperature = Number($("#hlnTemperature").value);
     homeState.occupants = Number($("#hlnOccupants").value);
+    homeState.wallStructure = $("#hlnHomeWallStructure").value;
+    homeState.wallStructureThickness = Number($("#hlnHomeWallStructureThickness").value) || 30;
+    homeState.wallInsulationMaterial = $("#hlnHomeWallInsulationMaterial").value;
+    homeState.roofInsulationMaterial = $("#hlnHomeRoofInsulationMaterial").value;
+    homeState.floorInsulationMaterial = $("#hlnHomeFloorInsulationMaterial").value;
     homeState.wallIns = Number($("#hlnHomeWallIns").value);
     homeState.roofIns = Number($("#hlnHomeRoofIns").value);
     homeState.floorIns = Number($("#hlnHomeFloorIns").value);
@@ -3921,7 +4083,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
