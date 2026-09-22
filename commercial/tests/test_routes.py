@@ -835,6 +835,22 @@ def test_market_cost_basis_fallback_is_complete_and_versioned() -> None:
         assert item["confidence"] in {"low", "medium", "high"}
 
 
+def test_roi_cost_basis_bootstraps_through_worker_binding_not_deploy_token() -> None:
+    from pathlib import Path
+
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    workflow = Path(".github/workflows/commercial-v2-cloudflare-worker.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "async def _ensure_roi_cost_basis_d1" in source
+    assert "CREATE TABLE IF NOT EXISTS roi_cost_basis" in source
+    assert "INSERT OR REPLACE INTO roi_cost_basis" in source
+    assert "await _ensure_roi_cost_basis_d1(db)" in source
+    assert "wrangler d1 execute lacurent-db --remote" not in workflow
+    assert 'market_cost_payload.get("source") != "d1"' in workflow
+
+
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
