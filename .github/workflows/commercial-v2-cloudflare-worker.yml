@@ -67,11 +67,6 @@ jobs:
           npm install --save-dev wrangler@latest
           npx wrangler --version
 
-      - name: Sync ROI market cost basis to production D1
-        working-directory: .wrangler/commercial-v2-worker
-        run: |
-          npx wrangler d1 execute lacurent-db --remote --file=../../commercial/migrations/0001_roi_cost_basis.sql
-
       - name: Sync Python Worker dependencies
         working-directory: .wrangler/commercial-v2-worker
         run: |
@@ -848,6 +843,32 @@ jobs:
           if len(localities) != 13622:
               raise AssertionError(f"Expected 13622 localities, got {len(localities)}")
           print("/api/location-data", status, len(localities))
+
+          status, _, market_cost_body = open_url(apex + "/api/market-cost-basis")
+          if status != 200:
+              raise AssertionError(f"/api/market-cost-basis returned HTTP {status}")
+          market_cost_payload = json.loads(market_cost_body)
+          market_costs = market_cost_payload.get("costs") or {}
+          if market_cost_payload.get("source") != "d1":
+              raise AssertionError(
+                  "Production ROI cost basis did not come from D1: "
+                  f"{market_cost_payload.get('source')!r}"
+              )
+          expected_cost_families = {
+              "wall", "roof", "floor", "windows", "door",
+              "ventilation", "heating_control", "heating", "pv", "solar_thermal",
+          }
+          if set(market_costs) != expected_cost_families:
+              raise AssertionError(
+                  f"Production D1 ROI catalog families mismatch: {sorted(market_costs)}"
+              )
+          print(
+              "/api/market-cost-basis",
+              status,
+              market_cost_payload.get("source"),
+              market_cost_payload.get("catalog_version"),
+              len(market_costs),
+          )
 
           form = default_form_values()
           form["dhw_enabled"] = "on"
