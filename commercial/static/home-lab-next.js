@@ -2764,42 +2764,72 @@
       reportComparisonRow("Necesar termic", homeResult.design_heat_load_kw, scenarioResult.design_heat_load_kw, "kW", 1),
     ].join("");
 
-    const target = scenarioResult.nzeb_target || homeResult.nzeb_target;
+    const target = regulatoryTargetForProjectMode();
     const primary = Number(scenarioResult.primary_specific_kwh_m2);
     const co2Specific = Number(scenarioResult.co2_specific_kg_m2);
     const primaryLimit = Number(target?.primary_energy_kwh_m2_year);
     const co2Limit = Number(target?.co2_kg_m2_year);
-    const primaryOk = Number.isFinite(primary) && Number.isFinite(primaryLimit) && primary <= primaryLimit;
-    const co2Ok = Number.isFinite(co2Specific) && Number.isFinite(co2Limit) && co2Specific <= co2Limit;
-    const targetKnown = Number.isFinite(primaryLimit) && Number.isFinite(co2Limit);
+    const targetKnown = target != null && Number.isFinite(primaryLimit) && Number.isFinite(co2Limit);
+    const primaryOk = targetKnown && Number.isFinite(primary) && primary <= primaryLimit;
+    const co2Ok = targetKnown && Number.isFinite(co2Specific) && co2Specific <= co2Limit;
+    const envelopeStatus = projectMode === "new_nzeb" && target
+      ? nzebEnvelopeStatus(scenarioState, scenarioOverrides, target)
+      : {checks:[], meets:true};
+    const guardrailPass = targetKnown
+      ? primaryOk && co2Ok && envelopeStatus.meets
+      : projectMode === "existing_standard";
+
     const nzebStatus = $("#hlnReportNzebStatus");
-    nzebStatus.classList.toggle("is-good", targetKnown && primaryOk && co2Ok);
-    nzebStatus.classList.toggle("is-warn", targetKnown && !(primaryOk && co2Ok));
-    nzebStatus.textContent = !targetKnown
-      ? "Ținta nZEB nu este disponibilă pentru această selecție."
-      : primaryOk && co2Ok
-        ? "Țintă nZEB atinsă pentru energie primară și CO₂ · verificarea completă RER este necesară."
-        : "Scenariul este încă peste cel puțin una dintre limitele MC001 Tabel 2.10a.";
+    nzebStatus.classList.toggle("is-good", guardrailPass);
+    nzebStatus.classList.toggle("is-warn", !guardrailPass && projectMode !== "existing_standard");
+    if (projectMode === "existing_standard") {
+      nzebStatus.textContent =
+        "Renovare obișnuită: nu se aplică aici un prag global MC001 Tabel 2.10a/2.10b. Cerințele punctuale ale intervențiilor se verifică separat.";
+    } else if (!targetKnown) {
+      nzebStatus.textContent = "Pragul metodologic selectat nu este disponibil pentru această configurație.";
+    } else if (guardrailPass && projectMode === "new_nzeb") {
+      nzebStatus.textContent =
+        "Pragurile modelate nZEB pentru energie primară, CO₂ și anvelopă sunt atinse · RER și conformitatea completă rămân de verificat.";
+    } else if (guardrailPass) {
+      nzebStatus.textContent =
+        "Pragurile energetice/CO₂ modelate pentru renovare majoră (MC001 Tabel 2.10b) sunt atinse.";
+    } else {
+      nzebStatus.textContent =
+        projectMode === "new_nzeb"
+          ? "Scenariul este peste cel puțin una dintre limitele modelate nZEB."
+          : "Scenariul este peste cel puțin una dintre limitele modelate pentru renovare majoră.";
+    }
 
     $("#hlnReportPrimary").textContent = Number.isFinite(primary) ? `${fmt(primary,1)} kWh/m²·an` : "—";
-    $("#hlnReportPrimaryTarget").textContent = Number.isFinite(primaryLimit) ? `limită ≤ ${fmt(primaryLimit,1)}` : "limită indisponibilă";
+    $("#hlnReportPrimaryTarget").textContent = targetKnown ? `limită ≤ ${fmt(primaryLimit,1)}` : "fără prag global selectat";
     $("#hlnReportCo2Specific").textContent = Number.isFinite(co2Specific) ? `${fmt(co2Specific,1)} kg/m²·an` : "—";
-    $("#hlnReportCo2Target").textContent = Number.isFinite(co2Limit) ? `limită ≤ ${fmt(co2Limit,1)}` : "limită indisponibilă";
+    $("#hlnReportCo2Target").textContent = targetKnown ? `limită ≤ ${fmt(co2Limit,1)}` : "fără prag global selectat";
 
-    const envelopeStatus = target ? nzebEnvelopeStatus(scenarioState, scenarioOverrides, target) : {checks:[], meets:false};
     const envelopeNode = $("#hlnReportEnvelopeStatus");
     if (envelopeNode) {
-      const failed = envelopeStatus.checks.filter(item => !item.ok);
-      envelopeNode.classList.toggle("is-good", targetKnown && envelopeStatus.meets);
-      envelopeNode.classList.toggle("is-warn", targetKnown && !envelopeStatus.meets);
-      envelopeNode.textContent = !targetKnown
-        ? "Pragurile de anvelopă nu sunt disponibile."
-        : envelopeStatus.meets
-          ? "Anvelopă: pragurile rezidențiale MC001 Tabel 2.4 sunt în limitele modelate."
-          : `Anvelopă: peste prag la ${failed.map(item => item.label.toLowerCase()).join(", ")}.`;
+      if (projectMode !== "new_nzeb") {
+        envelopeNode.classList.remove("is-good", "is-warn");
+        envelopeNode.textContent =
+          projectMode === "existing_major"
+            ? "Anvelopa este raportată separat; guardrail-ul global curent pentru renovare majoră folosește energia primară și CO₂ din Tabelul 2.10b."
+            : "Cerințele elementelor renovate se verifică separat de acest rezumat economic.";
+      } else {
+        const failed = envelopeStatus.checks.filter(item => !item.ok);
+        envelopeNode.classList.toggle("is-good", targetKnown && envelopeStatus.meets);
+        envelopeNode.classList.toggle("is-warn", targetKnown && !envelopeStatus.meets);
+        envelopeNode.textContent = !targetKnown
+          ? "Pragurile de anvelopă nu sunt disponibile."
+          : envelopeStatus.meets
+            ? "Anvelopă: pragurile rezidențiale MC001 modelate sunt în limite."
+            : `Anvelopă: peste prag la ${failed.map(item => item.label.toLowerCase()).join(", ")}.`;
+      }
     }
     $("#hlnReportNzebNote").textContent =
-      "Verificarea nZEB de aici separă explicit ce poate verifica Light: energie primară, CO₂ și pragurile de anvelopă modelate. Ponderea regenerabilă RER și conformitatea legală completă rămân neverificate.";
+      projectMode === "new_nzeb"
+        ? "Verificarea nZEB Light separă energia primară, CO₂ și anvelopa modelată. Ponderea regenerabilă RER și conformitatea legală completă rămân neverificate."
+        : projectMode === "existing_major"
+          ? "Tabelul 2.10b este folosit ca guardrail energetic/CO₂ al optimizării. Raportul nu substituie verificarea completă a cerințelor proiectului."
+          : "Best ROI pentru renovare obișnuită nu inventează o obligație nZEB sau 2.10b doar din anul construcției.";
 
     $("#hlnReportVisualTitle").textContent = `${scenarioResult.locality || homeState.locality || "Locuință"} · scenariul final`;
     $("#hlnReportVisualMeta").textContent =
@@ -2923,8 +2953,11 @@
     $("#hlnReportOptimizer").textContent = optimizationMeta?.label || "Scenariu configurat manual";
     $("#hlnReportPriceDate").textContent =
       scenarioResult.price_retrieved_on ? `referințe ${scenarioResult.price_retrieved_on}` : "referințe de preț curente";
-    $("#hlnReportNzebSource").textContent = target?.source || "Prag nZEB indisponibil pentru selecția curentă.";
-    $("#hlnReportEnvelopeSource").textContent = target?.envelope_source || "Pragurile de anvelopă nu sunt disponibile.";
+    $("#hlnReportNzebSource").textContent = target?.source || "Nu este selectat un prag global pentru regimul curent.";
+    $("#hlnReportEnvelopeSource").textContent =
+      projectMode === "new_nzeb"
+        ? (target?.envelope_source || "Pragurile de anvelopă nu sunt disponibile.")
+        : "Anvelopa se verifică separat pentru regimul proiectului.";
     $("#hlnReportMethodologySource").textContent =
       scenarioResult.methodology_source || "Datele climatice și metoda lunară sunt documentate în metodologia aplicației.";
     $("#hlnReportMethodologyVersion").textContent =
@@ -2937,20 +2970,28 @@
     const strategy = $("#hlnReportStrategy");
     if (strategy) {
       if (optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)) {
+        const selected = optimizationMeta.selected;
+        const ranked = Array.isArray(optimizationMeta.rankedOpportunities)
+          ? optimizationMeta.rankedOpportunities
+          : [];
+        const payback = optimizationMeta.paybackYears == null
+          ? "n/a"
+          : `${fmt(optimizationMeta.paybackYears,1)} ani`;
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Best ROI estimativ</strong>
-            <span>După fiecare măsură păstrată, toate măsurile rămase au fost recalculate prin motorul real și comparate după economie anuală / indice de efort.</span>
+            <strong>Best ROI · ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an</strong>
+            <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · recuperare simplă ${payback}. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
           </div>
           <div class="hln-strategy-list">
-            ${optimizationMeta.selected.map((item,index) => `
+            ${selected.map((item,index) => `
               <article>
                 <b>${index + 1}</b>
-                <div><strong>${escapeHtml(item.label)}</strong><small>economie marginală +${fmt(Math.max(Number(item.marginalSavingLeiYear)||0,0))} lei/an · efort ${fmt(item.effort,0)}/6</small></div>
+                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei · ROI individual ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără payback pozitiv" : "payback " + fmt(item.paybackYears,1) + " ani"}</small></div>
               </article>
             `).join("")}
           </div>
-          <p>Indicele de efort investițional 1–6 este o estimare LaCurent, separată de MC001. Nu este CAPEX și nu produce un payback financiar oficial.</p>
+          ${ranked.length ? `<p>Oportunități individuale evaluate: ${ranked.map(item => `${escapeHtml(item.label)} (${fmt(item.roiPercentPerYear,1)}%/an)`).join(" · ")}.</p>` : ""}
+          <p>${escapeHtml(optimizationMeta.note || "")} Costurile de investiție folosite în această versiune provin din intrările explicite ale utilizatorului; câmpurile fără CAPEX nu sunt inventate.</p>
         `;
       } else if (optimizationMeta?.mode === "nzeb") {
         const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
