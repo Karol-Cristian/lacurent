@@ -1064,16 +1064,12 @@
     const target = screen === "home" && !baselineSaved ? "home" : "scenario";
     const state = resultStateFor(target);
     const live = $("#hlnLiveConfigurator");
-    if (live) live.classList.toggle("is-calculating", state !== "fresh");
+    if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
 
-    if (target === "home" || state === "fresh") {
-      const cta = $("#hlnDockCta");
-      if (cta && screen !== "scenario") cta.disabled = false;
-      return;
-    }
-
-    const pending = pendingTextFor("scenario");
-    const valueSelectors = [
+    const allCalculatedSelectors = [
+      "#hlnDockClass",
+      "#hlnDockCost",
+      "#hlnDockEnergy",
       "#hlnLiveCost",
       "#hlnLiveClass",
       "#hlnDockScenarioClass",
@@ -1091,6 +1087,30 @@
       "#hlnImpactCo2",
       "#hlnImpactLoad",
     ];
+    if (state === "fresh") {
+      allCalculatedSelectors.forEach(selector => $(selector)?.classList.remove("hln-calculating-value"));
+      const cta = $("#hlnDockCta");
+      if (cta) cta.disabled = false;
+      return;
+    }
+
+    const pending = pendingTextFor(target);
+    if (target === "home") {
+      ["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].forEach(selector => {
+        const node = $(selector);
+        if (!node) return;
+        node.textContent = pending;
+        node.classList.remove("is-good", "is-bad");
+        node.classList.add("hln-calculating-value");
+      });
+      const cta = $("#hlnDockCta");
+      if (cta && screen === "home") cta.disabled = true;
+      return;
+    }
+
+    const valueSelectors = allCalculatedSelectors.filter(selector =>
+      !["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].includes(selector)
+    );
     valueSelectors.forEach(selector => {
       const node = $(selector);
       if (!node) return;
@@ -1109,7 +1129,7 @@
     const scenarioLabel = $("#hlnScenarioBenefitLabel");
     if (scenarioLabel) scenarioLabel.textContent = "rezultat în curs";
 
-    $("#hlnEnergyScale [data-energy-class]").forEach(node => node.classList.remove("is-active"));
+    $$("#hlnEnergyScale [data-energy-class]").forEach(node => node.classList.remove("is-active"));
     const pvCaption = live?.querySelector('[data-hln-tune="pvKwp"] [data-hln-tune-caption]');
     if (pvCaption && scenarioState.pvEnabled) pvCaption.textContent = "Se recalculează producția și autoconsumul…";
 
@@ -3072,7 +3092,7 @@
   }
 
   async function saveHomeAndOpenSite() {
-    let result = currentResult || homeResult;
+    let result = homeResultState === "fresh" ? homeResult : null;
     if (!result) {
       setStatus("Calculez Casa mea înainte de renovare…");
       result = await calculateState(homeState, "home");
@@ -3946,7 +3966,12 @@
 
   if (baselineSaved && homeResult) {
     currentResult = homeResult;
-    calculateState(scenarioState, "scenario");
+    (async () => {
+      const refreshedHome = await calculateState(homeState, "home");
+      if (!refreshedHome || !baselineSaved) return;
+      homeResult = refreshedHome;
+      await calculateState(scenarioState, "scenario");
+    })();
   } else {
     calculateState(homeState, "home");
   }
