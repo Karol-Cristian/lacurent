@@ -179,7 +179,7 @@ ESSAYS = [
 ESSAYS_BY_SLUG = {essay["slug"]: essay for essay in ESSAYS}
 
 
-@router.get("/karol-cristian-lemnaru", response_class=HTMLResponse)
+@router.get("/lemnaru-karol-cristian", response_class=HTMLResponse)
 def personal_blog(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request=request,
@@ -191,7 +191,7 @@ def personal_blog(request: Request) -> HTMLResponse:
     )
 
 
-@router.get("/karol-cristian-lemnaru/{slug}", response_class=HTMLResponse)
+@router.get("/lemnaru-karol-cristian/{slug}", response_class=HTMLResponse)
 def personal_blog_article(request: Request, slug: str) -> HTMLResponse:
     article = ESSAYS_BY_SLUG.get(slug)
     if article is None:
