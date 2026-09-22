@@ -160,7 +160,7 @@ jobs:
           checks = {
               "/": 'data-page="testing-home"',
               "/software-testing": 'data-page="software-testing"',
-              "/instalatii": "Planifică renovarea înainte să înceapă șantierul.",
+              "/instalatii": "data-home-lab-next",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -183,8 +183,8 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/instalatii/calculator": "Planifică renovarea înainte să înceapă șantierul.",
-              "/home-lab/facts": "SIMULĂRI PUBLICE",
+              "/instalatii/calculator": "data-home-lab-next",
+              "/home-lab/facts": "Podul trebuie izolat întotdeauna primul? Nu.",
               "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
@@ -270,8 +270,8 @@ jobs:
           assert 'data-page="software-testing"' not in home_html
           assert 'data-page="testing-home"' not in sales_html
           energy_html = get("/instalatii")
-          assert "Planifică renovarea înainte să înceapă șantierul." in energy_html
-          assert 'href="/home-lab/facts"' in energy_html
+          assert "data-home-lab-next" in energy_html
+          assert "Construiește punctul de plecare." in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
@@ -621,7 +621,7 @@ jobs:
 
           checks = {
               "/software-testing": 'data-page="software-testing"',
-              "/instalatii": "Planifică renovarea înainte să înceapă șantierul.",
+              "/instalatii": "data-home-lab-next",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -642,7 +642,7 @@ jobs:
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
-              "/home-lab/facts": "SIMULĂRI PUBLICE",
+              "/home-lab/facts": "Podul trebuie izolat întotdeauna primul? Nu.",
               "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
@@ -838,8 +838,8 @@ jobs:
           assert 'data-page="testing-home"' not in sales_html
           energy_status, _, energy_html = open_url(apex + "/instalatii")
           assert energy_status == 200
-          assert "Planifică renovarea înainte să înceapă șantierul." in energy_html
-          assert 'href="/home-lab/facts"' in energy_html
+          assert "data-home-lab-next" in energy_html
+          assert "Construiește punctul de plecare." in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
@@ -922,9 +922,9 @@ jobs:
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Production house lab did not return design heat load.")
 
-          status, _, product_page = open_url(apex + "/instalatii/calculator")
-          if status != 200 or "Planifică renovarea înainte să înceapă șantierul." not in product_page:
-              raise AssertionError("Production Home Lab product page is unavailable.")
+          status, _, calculator_alias = open_url(apex + "/instalatii/calculator")
+          if status != 200 or "data-home-lab-next" not in calculator_alias:
+              raise AssertionError("Production calculator alias did not resolve directly to Home Lab.")
 
           status, _, next_html = open_url(apex + "/home-lab-next")
           if status != 200:
@@ -1004,7 +1004,7 @@ jobs:
                   f"HTTP {partner_next_status}, body={partner_next_body[:500]!r}"
               )
 
-          print("/instalatii/calculator Home Lab product", 200)
+          print("/instalatii/calculator -> Home Lab", 200)
           print("/home-lab-next", 200)
           print("/embed/demo-store/next", 200)
 
@@ -1099,7 +1099,7 @@ jobs:
               if frame_policy != "frame-ancestors *":
                   raise AssertionError(f"Unexpected production embed frame policy: {frame_policy!r}")
           public_request = urllib.request.Request(
-              apex + "/instalatii/calculator",
+              apex + "/home-lab-next",
               headers={"User-Agent": "LaCurent-cutover-smoke/1.0"},
           )
           with urllib.request.urlopen(public_request, timeout=30) as response:
