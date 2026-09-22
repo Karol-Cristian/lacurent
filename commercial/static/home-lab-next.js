@@ -128,6 +128,8 @@
   let optimizerRunToken = 0;
   let optimizerEvaluationCount = 0;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
+  const LIVE_REQUEST_TIMEOUT_MS = 8000;
+  const OPTIMIZER_REQUEST_TIMEOUT_MS = 12000;
   const optimizerCandidateCache = new Map();
   const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
   let homeResultState = homeResult ? "stale" : "empty";
@@ -243,8 +245,8 @@
       projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
         ? saved.projectMode
         : "existing_standard";
-      homeResultState = homeResult ? "stale" : "empty";
-      scenarioResultState = scenarioResult ? "stale" : "empty";
+      homeResultState = homeResult ? "fresh" : "empty";
+      scenarioResultState = scenarioResult ? "fresh" : "empty";
       // Rewrite the persisted state once so the migration is permanent.
       persist();
     }
@@ -1169,7 +1171,7 @@
         node.classList.add("hln-calculating-value");
       });
       const cta = $("#hlnDockCta");
-      if (cta && screen === "home") cta.disabled = true;
+      if (cta && screen === "home") cta.disabled = state !== "error";
       return;
     }
 
@@ -1202,6 +1204,36 @@
     if (cta && screen === "scenario") cta.disabled = true;
   }
 
+  async function fetchWithTimeout(url, options = {}, parentSignal = null, timeoutMs = LIVE_REQUEST_TIMEOUT_MS) {
+    const controller = new AbortController();
+    let timedOut = false;
+    const relayAbort = () => controller.abort();
+
+    if (parentSignal) {
+      if (parentSignal.aborted) controller.abort();
+      else parentSignal.addEventListener("abort", relayAbort, {once:true});
+    }
+
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      return await fetch(url, {...options, signal:controller.signal});
+    } catch (error) {
+      if (timedOut && !parentSignal?.aborted) {
+        const timeoutError = new Error("Calculul a durat prea mult. Reîncearcă.");
+        timeoutError.name = "TimeoutError";
+        throw timeoutError;
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timer);
+      if (parentSignal) parentSignal.removeEventListener("abort", relayAbort);
+    }
+  }
+
   async function calculateState(state, target) {
     const token = ++calculateToken;
     if (calculateAbortController) calculateAbortController.abort();
@@ -1215,12 +1247,13 @@
     setStatus("Recalculare live…");
     renderAll();
 
-    const request = async (attempt = 1) => {
-      const response = await fetch(calcUrl, {
-        method: "POST",
-        body,
-        signal: controller.signal,
-      });
+    const request = async () => {
+      const response = await fetchWithTimeout(
+        calcUrl,
+        {method:"POST", body},
+        controller.signal,
+        LIVE_REQUEST_TIMEOUT_MS
+      );
       const contentType = response.headers.get("content-type") || "";
       let payload = null;
       if (contentType.includes("application/json")) {
@@ -1229,16 +1262,9 @@
         await response.text();
       }
 
+      // Live interaction must never amplify an overloaded Worker with an
+      // automatic retry. The next user action or explicit CTA retry is enough.
       if (!response.ok || !payload || payload.error) {
-        // Do not immediately retry generic HTTP 500 responses: a Cloudflare
-        // 1102 resource-limit failure can surface as 500 and retrying it would
-        // create more pressure. Retry only clearly transient edge statuses.
-        const retryable = [429, 502, 503, 504].includes(response.status);
-        if (retryable && attempt < 2 && token === calculateToken) {
-          await new Promise(resolve => window.setTimeout(resolve, 420));
-          if (token !== calculateToken || controller.signal.aborted) return null;
-          return request(attempt + 1);
-        }
         if (payload?.error) throw new Error(payload.error);
         throw new Error(`Calcul indisponibil momentan (HTTP ${response.status || "?"}).`);
       }
@@ -1305,11 +1331,12 @@
     }
     optimizerEvaluationCount += 1;
 
-    const response = await fetch(calcUrl, {
-      method: "POST",
-      body,
-      signal: optimizerAbortController?.signal,
-    });
+    const response = await fetchWithTimeout(
+      calcUrl,
+      {method:"POST", body},
+      optimizerAbortController?.signal || null,
+      OPTIMIZER_REQUEST_TIMEOUT_MS
+    );
     const contentType = response.headers.get("content-type") || "";
     const payload = contentType.includes("application/json") ? await response.json() : null;
     if (!response.ok || !payload || payload.error) {
@@ -2385,7 +2412,7 @@
     }
   }
 
-  function scheduleCalculate(target = baselineSaved && screen !== "home" ? "scenario" : "home", delay = 180) {
+  function scheduleCalculate(target = baselineSaved && screen !== "home" ? "scenario" : "home", delay = 260) {
     invalidateCalculation(target);
     calculateTimer = window.setTimeout(() => {
       calculateTimer = 0;
@@ -2770,7 +2797,7 @@
     renderScenario();
     renderDock();
     emitVisualState(quickEditType === "solar_thermal" ? "solarThermal" : quickEditType);
-    scheduleCalculate("scenario", 90);
+    scheduleCalculate("scenario", 280);
   }
 
   function hideQuickMeasureEditor() {
@@ -3614,7 +3641,7 @@
     syncMeasuresFromScenario();
     // Queue the calculation before repainting the UI so a rendering problem
     // cannot prevent the changed scenario from reaching the engine.
-    scheduleCalculate("scenario", 90);
+    scheduleCalculate("scenario", 280);
     renderAll();
     persist();
     emitVisualState(focus);
@@ -4136,10 +4163,6 @@
         Object.assign(scenarioState, climateMetadata);
         if (!homeState.locality) homeState.locality = selected.name;
         if (!scenarioState.locality) scenarioState.locality = selected.name;
-        window.setTimeout(() => {
-          if (baselineSaved) calculateState(scenarioState, "scenario");
-          else calculateState(homeState, "home");
-        }, 0);
       }
       renderHomeLocationMap();
     })
@@ -4159,12 +4182,10 @@
 
   if (baselineSaved && homeResult) {
     currentResult = homeResult;
-    (async () => {
-      const refreshedHome = await calculateState(homeState, "home");
-      if (!refreshedHome || !baselineSaved) return;
-      homeResult = refreshedHome;
-      await calculateState(scenarioState, "scenario");
-    })();
+    homeResultState = "fresh";
+    scenarioResultState = scenarioResult ? "fresh" : "empty";
+    setStatus("Calcul încărcat", "ok");
+    renderAll();
   } else {
     calculateState(homeState, "home");
   }

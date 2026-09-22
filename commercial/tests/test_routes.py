@@ -788,7 +788,9 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert "OPTIMIZER_CANDIDATE_CACHE_MAX = 192" in response.text
     assert "OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16" in response.text
     assert "optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS" in response.text
-    assert "signal: optimizerAbortController?.signal" in response.text
+    assert "OPTIMIZER_REQUEST_TIMEOUT_MS = 12000" in response.text
+    assert "fetchWithTimeout(" in response.text
+    assert "optimizerAbortController?.signal || null" in response.text
     assert "calculateCandidate(state, overrides, {compact:false})" in response.text
     assert "function roiEconomics" in response.text
     assert "function roiCapexForAction" in response.text
@@ -796,6 +798,22 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert 'roiCostBasisMeta?.source || "catalog"' in response.text
     assert 'const actionMode = projectMode === "new_nzeb" ? "nzeb" : "energy"' in response.text
     assert "alreadyAtTarget" in response.text
+
+
+def test_home_lab_next_live_calculation_avoids_startup_request_storms_and_hangs() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    js = response.text
+    assert "LIVE_REQUEST_TIMEOUT_MS = 8000" in js
+    assert "async function fetchWithTimeout" in js
+    assert "Calculul a durat prea mult. Reîncearcă." in js
+    assert "const retryable =" not in js
+    assert 'scheduleCalculate("scenario", 280)' in js
+    assert 'homeResultState = homeResult ? "fresh" : "empty"' in js
+    assert 'scenarioResultState = scenarioResult ? "fresh" : "empty"' in js
+    assert 'refreshedHome = await calculateState' not in js
+    assert 'if (baselineSaved) calculateState(scenarioState, "scenario")' not in js
+    assert 'cta.disabled = state !== "error"' in js
 
 
 def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
@@ -1061,9 +1079,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "Math.min(rawOcclusion, 48)" in response.text
     assert 'orientationchange' in response.text
     assert "new AbortController()" in response.text
-    assert "[429, 502, 503, 504].includes(response.status)" in response.text
+    assert "[429, 502, 503, 504].includes(response.status)" not in response.text
     assert "response.status >= 500" not in response.text
-    assert "attempt < 2" in response.text
+    assert "Live interaction must never amplify an overloaded Worker" in response.text
+    assert "attempt < 2" not in response.text
     assert "annual_generation_kwh" in response.text
     assert "self_consumed_kwh" in response.text
     assert "exported_kwh" in response.text
@@ -1073,7 +1092,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "hlnReferenceSpec" in response.text
     assert 'root.querySelectorAll("[data-hln-reference-house]")' in response.text
     assert "hln:visual-state" in response.text
-    assert 'fetch(calcUrl' in response.text
+    assert 'fetchWithTimeout(' in response.text
     assert 'href="#hln-i-' in response.text
 
 
