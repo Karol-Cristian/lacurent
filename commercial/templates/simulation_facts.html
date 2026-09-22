@@ -15,13 +15,13 @@
 </head>
 <body>
   <header class="facts-nav">
-    <a class="facts-brand" href="/instalatii/calculator">
+    <a class="facts-brand" href="/home-lab-next">
       <span>LC</span>
       <strong>LaCurent</strong>
       <em>Home Lab</em>
     </a>
     <nav>
-      <a href="/instalatii/calculator">Calculator</a>
+      <a href="/home-lab-next">Calculator</a>
       <a class="is-active" href="/home-lab/facts">Facts</a>
     </nav>
   </header>
@@ -29,10 +29,10 @@
   <main class="facts-shell">
     <section class="facts-hero">
       <p class="facts-eyebrow">HOME LAB · SIMULĂRI PUBLICE</p>
-      <h1>Ce aflăm când schimbăm un singur lucru la o casă.</h1>
-      <p class="facts-lead">Fiecare rezultat de mai jos pornește din motorul energetic LaCurent. Păstrăm aceeași casă de bază, schimbăm controlat un parametru și publicăm diferența calculată — cu localitate, ipoteze și versiunea metodologiei.</p>
+      <h1>Întrebări reale. Răspunsuri calculate.</h1>
+      <p class="facts-lead">Luăm întrebări pe care oamenii chiar le pun despre case și energie, apoi le testăm prin calcule. AI-ul poate explica rezultatul, dar nu inventează cifrele.</p>
       <div class="facts-hero-actions">
-        <a class="facts-primary" href="/instalatii/calculator">Testează pe casa ta</a>
+        <a class="facts-primary" href="/home-lab-next">Testează pe casa ta</a>
         <span>Nu sunt reguli universale. Sunt rezultate ale unor simulări explicit definite.</span>
       </div>
     </section>
@@ -69,10 +69,17 @@
           <h3><a href="/home-lab/facts/{{ fact.slug }}">{{ fact.title }}</a></h3>
           <p class="fact-question">{{ fact.search_question }}</p>
           <p class="fact-claim">{{ fact.claim }}</p>
+          {% if fact.fact_kind == "comparison" %}
+          <div class="fact-change is-down">
+            <strong>{{ "%.1f"|format(fact.comparison_ratio) }}×</strong>
+            <span>impact {{ fact.comparison_left_label|lower }} vs {{ fact.comparison_right_label|lower }}</span>
+          </div>
+          {% else %}
           <div class="fact-change {% if fact.change_percent < 0 %}is-down{% elif fact.change_percent > 0 %}is-up{% endif %}">
             <strong>{% if fact.change_percent > 0 %}+{% endif %}{{ "%.1f"|format(fact.change_percent) }}%</strong>
             <span>{{ fact.metric_label }}</span>
           </div>
+          {% endif %}
           <a class="fact-link" href="/home-lab/facts/{{ fact.slug }}">Vezi simularea și ipotezele →</a>
         </article>
         {% endfor %}
@@ -88,7 +95,7 @@
 
   <footer class="facts-footer">
     <span>Home Lab by LaCurent</span>
-    <a href="/instalatii/calculator">Calculator energetic</a>
+    <a href="/home-lab-next">Calculator energetic</a>
   </footer>
 </body>
 </html>

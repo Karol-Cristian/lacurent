@@ -39,7 +39,7 @@ def test_energy_calculator_loads_unified_language_switch_and_submit_safeguard() 
 def test_retired_energy_landing_redirects_to_home_lab() -> None:
     response = client.get("/instalatii", follow_redirects=False)
     assert response.status_code == 308
-    assert response.headers["location"] == "/instalatii/calculator"
+    assert response.headers["location"] == "/home-lab-next"
 
 
 def test_language_dictionary_covers_landing_calculator_and_results() -> None:

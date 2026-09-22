@@ -29,13 +29,13 @@
 </head>
 <body>
   <header class="facts-nav">
-    <a class="facts-brand" href="/instalatii/calculator">
+    <a class="facts-brand" href="/home-lab-next">
       <span>LC</span>
       <strong>LaCurent</strong>
       <em>Home Lab</em>
     </a>
     <nav>
-      <a href="/instalatii/calculator">Calculator</a>
+      <a href="/home-lab-next">Calculator</a>
       <a class="is-active" href="/home-lab/facts">Facts</a>
     </nav>
   </header>
@@ -63,9 +63,31 @@
       <section class="fact-compare">
         <div class="fact-compare-head">
           <p>COMPARAȚIE CONTROLATĂ</p>
+          {% if fact.fact_kind == "comparison" %}
+          <h2>Aceeași izolație suplimentară, aplicată în două locuri diferite.</h2>
+          {% else %}
           <h2>Același model de casă, un singur parametru schimbat.</h2>
+          {% endif %}
         </div>
         <div class="fact-compare-grid">
+          {% if fact.fact_kind == "comparison" %}
+          <article>
+            <small>{{ fact.comparison_left_label|upper }}</small>
+            <strong>{{ "%.1f"|format(fact.baseline_value) }} {{ fact.metric_unit }}</strong>
+            <span>{{ "%.0f"|format(fact.comparison_left_area_m2) }} m² · U {{ "%.3f"|format(fact.comparison_left_u_before) }} → {{ "%.3f"|format(fact.comparison_left_u_after) }}</span>
+          </article>
+          <b>vs</b>
+          <article class="is-scenario">
+            <small>{{ fact.comparison_right_label|upper }}</small>
+            <strong>{{ "%.1f"|format(fact.scenario_value) }} {{ fact.metric_unit }}</strong>
+            <span>{{ "%.0f"|format(fact.comparison_right_area_m2) }} m² · U {{ "%.3f"|format(fact.comparison_right_u_before) }} → {{ "%.3f"|format(fact.comparison_right_u_after) }}</span>
+          </article>
+          <article class="is-delta">
+            <small>REZULTAT</small>
+            <strong>{{ "%.1f"|format(fact.comparison_ratio) }}×</strong>
+            <span>impact mai mare pentru {{ fact.comparison_left_label|lower }} în acest exemplu</span>
+          </article>
+          {% else %}
           <article>
             <small>CASA DE BAZĂ</small>
             <strong>{{ "%.0f"|format(fact.baseline_value) }} {{ fact.metric_unit }}</strong>
@@ -82,9 +104,11 @@
             <strong>{% if fact.change_percent > 0 %}+{% endif %}{{ "%.1f"|format(fact.change_percent) }}%</strong>
             <span>față de modelul de bază</span>
           </article>
+          {% endif %}
         </div>
       </section>
 
+      {% if fact.fact_kind != "comparison" %}
       {% set base = fact.metrics.get("baseline", {}) %}
       {% set scenario = fact.metrics.get("scenario", {}) %}
       <section class="fact-metrics">
@@ -101,11 +125,20 @@
           <div><span>Clasă energetică modelată</span><strong>{{ base.get("energy_class", "—") }}</strong><strong>{{ scenario.get("energy_class", "—") }}</strong></div>
         </div>
       </section>
+      {% endif %}
 
       <section class="fact-provenance">
         <h2>Ce înseamnă acest fact</h2>
+        {% if fact.fact_kind == "comparison" %}
+        <p>Exemplul folosește relațiile H = U × A și R = d / λ. Am comparat 100 m² de pereți cu U 0,42 și 65 m² de tavan cu U 0,24, adăugând în ambele cazuri 10 cm de izolație cu λ 0,040 W/mK.</p>
+        {% else %}
         <p>Este rezultatul unei simulări LaCurent pentru modelul demonstrativ de locuință individuală cu suprafață încălzită de 160 m². Localitatea este {{ fact.locality }}, iar intervenția testată este: {{ fact.scenario_label }}.</p>
+        {% endif %}
+        {% if fact.fact_kind == "comparison" %}
+        <p>Cifrele sunt calculate determinist din relațiile de transfer termic, nu generate de AI. Exemplul arată că „podul primul” nu este o regulă universală; pentru altă suprafață sau alt U inițial, rezultatul se poate inversa.</p>
+        {% else %}
         <p>Valorile numerice sunt produse de motorul energetic. Textul explicativ poate fi formulat de asistentul AI, dar acesta nu stabilește și nu modifică rezultatele numerice. Rezultatul este orientativ și nu înlocuiește un audit energetic sau un certificat de performanță energetică.</p>
+        {% endif %}
         <p class="fact-version">Versiune metodologie: <strong>{{ fact.methodology_version }}</strong>{% if fact.ai_model %} · asistent editorial: <strong>{{ fact.ai_model }}</strong>{% endif %}</p>
       </section>
 
@@ -114,7 +147,7 @@
           <p>ACUM PE CASA TA</p>
           <h2>Schimbă aceiași parametri în Home Lab și vezi rezultatul pentru locuința ta.</h2>
         </div>
-        <a href="/instalatii/calculator">Deschide calculatorul →</a>
+        <a href="/home-lab-next">Deschide calculatorul →</a>
       </section>
     </article>
   </main>

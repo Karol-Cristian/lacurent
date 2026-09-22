@@ -144,7 +144,7 @@ def test_favicon_route_and_asset_are_available() -> None:
 def test_installations_landing_is_retired_and_redirects_to_home_lab() -> None:
     response = client.get("/instalatii", follow_redirects=False)
     assert response.status_code == 308
-    assert response.headers["location"] == "/instalatii/calculator"
+    assert response.headers["location"] == "/home-lab-next"
 
 
 def test_simulation_facts_index_is_public_and_indexable() -> None:
@@ -155,11 +155,20 @@ def test_simulation_facts_index_is_public_and_indexable() -> None:
     assert 'rel="canonical" href="https://lacurent.com/home-lab/facts"' in response.text
     assert "Motorul calculează" in response.text
     assert "AI-ul explică" in response.text
+    assert "Podul trebuie izolat întotdeauna primul? Nu." in response.text
+    assert "3.7×" in response.text
     assert "/static/simulation-facts.css?v=facts1" in response.text
 
     shortcut = client.get("/facts", follow_redirects=False)
     assert shortcut.status_code == 308
     assert shortcut.headers["location"] == "/home-lab/facts"
+
+    featured = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
+    assert featured.status_code == 200
+    assert "100 m² de pereți" in featured.text
+    assert "65 m² de tavan" in featured.text
+    assert "3.7" in featured.text
+    assert "Regula utilă este A × ΔU" in featured.text
 
 
 def test_robots_and_sitemap_expose_home_lab_facts() -> None:
@@ -170,7 +179,7 @@ def test_robots_and_sitemap_expose_home_lab_facts() -> None:
 
     sitemap = client.get("/sitemap.xml")
     assert sitemap.status_code == 200
-    assert "https://lacurent.com/instalatii/calculator" in sitemap.text
+    assert "https://lacurent.com/home-lab-next" in sitemap.text
     assert "https://lacurent.com/home-lab/facts" in sitemap.text
     assert "http://www.sitemaps.org/schemas/sitemap/0.9" in sitemap.text
 
@@ -188,26 +197,16 @@ def test_simulation_fact_is_derived_from_real_engine_runs() -> None:
     assert fact["methodology_version"]
 
 
-def test_energy_calculator_is_house_first_home_lab_product_page() -> None:
-    response = client.get("/instalatii/calculator")
-    assert response.status_code == 200
-    assert "Planifică renovarea înainte să înceapă șantierul." in response.text
-    assert "Pornești de la casa reală. Testezi o schimbare." in response.text
-    assert "Casa rămâne punctul de plecare." in response.text
-    assert "Vezi exact ce schimbi și ce obții." in response.text
-    assert "Acum încearcă pe o casă." in response.text
-    assert 'data-hlp-launch' in response.text
-    assert 'data-hlp-demo-frame' in response.text
-    assert 'class="hlp-house-stage"' in response.text
-    assert 'class="hlp-house-visual"' in response.text
-    assert "/static/home-lab/home-envelope.svg" in response.text
-    assert "/static/home-lab-product.css?v=product3" in response.text
-    assert "/static/home-lab-product.js?v=product3" in response.text
-    assert 'href="/home-lab/facts"' in response.text
-    assert 'rel="canonical" href="https://lacurent.com/instalatii/calculator"' in response.text
-    assert "EXEMPLU ILUSTRATIV" in response.text
-    assert "METODOLOGIE" not in response.text
-    assert "/static/favicon.svg" in response.text
+def test_energy_calculator_alias_goes_straight_to_home_lab() -> None:
+    response = client.get("/instalatii/calculator", follow_redirects=False)
+    assert response.status_code == 308
+    assert response.headers["location"] == "/home-lab-next"
+
+    home_lab = client.get("/home-lab-next")
+    assert home_lab.status_code == 200
+    assert 'data-home-lab-next' in home_lab.text
+    assert 'data-hln-screen="home"' in home_lab.text
+    assert "Construiește punctul de plecare." in home_lab.text
 
 
 def test_legacy_energy_calculator_remains_available_during_home_lab_next_cutover() -> None:
@@ -1442,7 +1441,7 @@ def test_embed_integration_documents_mobile_focus_opt_out() -> None:
 
 
 def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
-    response = client.get("/instalatii/calculator")
+    response = client.get("/home-lab-next")
     assert response.status_code == 200
     assert "content-security-policy" not in response.headers
 

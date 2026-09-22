@@ -122,12 +122,12 @@ def test_calculator_javascript_resets_submit_state_and_syncs_typed_locality() ->
 def test_retired_installations_offer_no_longer_serves_a_separate_landing() -> None:
     response = client.get("/instalatii", follow_redirects=False)
     assert response.status_code == 308
-    assert response.headers["location"] == "/instalatii/calculator"
+    assert response.headers["location"] == "/home-lab-next"
 
-    calculator = client.get("/instalatii/calculator")
+    calculator = client.get("/home-lab-next")
     assert calculator.status_code == 200
     assert "Home Lab" in calculator.text
-    assert 'href="/home-lab/facts"' in calculator.text
+    assert 'data-home-lab-next' in calculator.text
 
 
 def test_ui_heating_profiles_use_canonical_methodology_defaults() -> None:

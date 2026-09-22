@@ -1383,14 +1383,14 @@ async def software_testing(request: Request) -> HTMLResponse:
 
 @app.get("/instalatii")
 async def installations() -> RedirectResponse:
-    # The former services landing page is retired. Keep the old URL as a
-    # permanent redirect so existing links and search signals converge on Home Lab.
-    return RedirectResponse("/instalatii/calculator", status_code=308)
+    # Retired public energy landing: go straight to the actual Home Lab app.
+    return RedirectResponse("/home-lab-next", status_code=308)
 
 
-@app.get("/instalatii/calculator", response_class=HTMLResponse)
-async def energy_calculator(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "home_lab_product.html", {"request": request})
+@app.get("/instalatii/calculator")
+async def energy_calculator() -> RedirectResponse:
+    # Keep the old calculator URL as an SEO/backward-compatible alias only.
+    return RedirectResponse("/home-lab-next", status_code=308)
 
 
 @app.get("/instalatii/calculator/legacy", response_class=HTMLResponse)
@@ -1464,7 +1464,7 @@ async def sitemap_xml(request: Request) -> Response:
     urls = [
         "https://lacurent.com/",
         "https://lacurent.com/software-testing",
-        "https://lacurent.com/instalatii/calculator",
+        "https://lacurent.com/home-lab-next",
         "https://lacurent.com/home-lab/facts",
     ]
     db = _request_db(request)
