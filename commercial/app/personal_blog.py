@@ -236,6 +236,298 @@ SHORT_NOTES = [
     {"theme": "Credință", "text": "«N-am făcut noi...?» este poate una dintre cele mai periculoase propoziții religioase."},
 ]
 
+
+BUSINESS_IDEAS = [
+    {
+        "date": "august 2025",
+        "theme": "Energie",
+        "title": "Energie direct de la producător la consumator",
+        "summary": "O platformă software în care consumatorul cumpără energie direct de la producător, cu posibilitatea unui model pre-pay.",
+        "body": [
+            "Ideea pornește de la eliminarea unei părți din distanța comercială dintre producător și consumator. Software-ul nu ar fi doar un comparator de oferte, ci infrastructura prin care energia poate fi contractată mai direct.",
+            "Ulterior am adăugat ideea de energie pre-pay: consumatorul cumpără în avans o anumită cantitate sau valoare, iar platforma urmărește consumul și relația comercială."
+        ],
+    },
+    {
+        "date": "2026",
+        "theme": "LaCurent",
+        "title": "Un strat independent de decizie înainte de investiția energetică",
+        "summary": "LaCurent nu trebuie să fie în primul rând un vânzător de produse, ci locul în care investiția este evaluată înainte de cumpărare.",
+        "body": [
+            "Motorul trebuie să răspundă întâi la întrebarea tehnică și economică: ce se întâmplă dacă schimb izolația, ferestrele, generatorul, instalația, ventilarea sau producția locală?",
+            "Abia după verdict pot apărea produse, furnizori sau instalatori. Recomandarea comercială nu trebuie să schimbe concluzia fizică."
+        ],
+    },
+    {
+        "date": "iunie 2026",
+        "theme": "LaCurent",
+        "title": "80% din investițiile energetice evaluate înainte de cumpărare",
+        "summary": "Ținta pe termen lung: decizia energetică rezidențială să fie verificată digital înainte ca banii să fie cheltuiți.",
+        "body": [
+            "Ambiția nu este doar să existe un calculator bun. Ideea este ca evaluarea înainte de cumpărare să devină comportament normal: utilizatorul verifică impactul, costul și alternativa înainte să comande lucrarea.",
+            "Asta mută valoarea platformei din zona de «calculator» în zona de infrastructură de decizie."
+        ],
+    },
+    {
+        "date": "2026",
+        "theme": "Produs",
+        "title": "Casa reală ca baseline, apoi scenarii",
+        "summary": "Modelul de referință util nu este o casă generică, ci casa reală a utilizatorului salvată ca baseline.",
+        "body": [
+            "Utilizatorul își modelează situația actuală, o salvează, apoi construiește scenarii de îmbunătățire peste ea.",
+            "Comparația trebuie să arate clar ce se schimbă față de realitatea lui: energie, cost, emisii, investiție, ROI și eventual conformarea la o țintă precum nZEB."
+        ],
+    },
+    {
+        "date": "2026",
+        "theme": "Monetizare",
+        "title": "Raport plătit cu investiții, prioritizare și ROI",
+        "summary": "Calculul gratuit poate duce la un raport personalizat care spune unde merită investiți banii și în ce ordine.",
+        "body": [
+            "Raportul nu trebuie să fie doar o listă de rezultate tehnice. Trebuie să transforme calculul într-o decizie: ce intervenție are impact, cât costă, cât economisește și care este ordinea logică a investițiilor.",
+            "Valoarea comercială vine din reducerea incertitudinii înainte de o cheltuială reală."
+        ],
+    },
+    {
+        "date": "mai–iunie 2026",
+        "theme": "Piață",
+        "title": "Economii împărțite, furnizori parteneri, utilizatori agregați",
+        "summary": "Platforma poate lega economia tehnică de o piață: furnizori parteneri și gruparea cererii pentru a obține condiții mai bune.",
+        "body": [
+            "Am explorat ideea ca economiile și investițiile să aibă un baseline transparent, iar furnizorii să intre ca parteneri după calcul.",
+            "Dacă suficienți utilizatori au aceeași nevoie, cererea poate fi agregată și folosită pentru a influența prețul sau oferta."
+        ],
+    },
+    {
+        "date": "iulie 2026",
+        "theme": "BIM",
+        "title": "Motorul energetic în Archicad, Revit și IFC",
+        "summary": "În loc ca utilizatorul să reintroducă datele, modelul clădirii poate veni direct din instrumentele de proiectare.",
+        "body": [
+            "IFC poate conține geometrie, materiale, grosimi, anvelopă și informații despre instalații. Ideea este ca motorul fizic să consume aceste date și să întoarcă impactul energetic.",
+            "Asta transformă LaCurent din aplicație izolată într-un motor reutilizabil în fluxurile existente ale proiectanților."
+        ],
+    },
+    {
+        "date": "iulie 2026",
+        "theme": "Date",
+        "title": "Calcule precise la scară mare pentru a descoperi pattern-uri",
+        "summary": "Dacă poți calcula clădiri corect în multe puncte și configurații, poți descoperi schimbări mici de parametri care produc impact mare.",
+        "body": [
+            "Valoarea nu este doar rezultatul pentru o singură casă. O bază mare de simulări poate arăta ce combinații de climă, anvelopă, instalații și utilizare schimbă cel mai mult rezultatul.",
+            "Ideea poate produce insight-uri utile dincolo de România, dacă motorul și datele sunt suficient de generalizabile."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "AI",
+        "title": "AI care explică rezultatul, nu doar îl afișează",
+        "summary": "Dacă rezultatul energetic pare contraintuitiv, utilizatorul trebuie să poată întreba direct de ce.",
+        "body": [
+            "Un rezultat corect poate fi greu de crezut fără explicație. De aici ideea unui chat care primește contextul calculului și explică de ce un scenariu costă mai mult, consumă mai mult sau produce alte emisii.",
+            "AI-ul trebuie să stea peste rezultatul calculat, nu să inventeze calculul."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "Distribuție",
+        "title": "Calculatorul ca widget distribuit în site-urile altora",
+        "summary": "Același motor poate fi pus în site-uri partenere, păstrând logica baseline → scenariu → decizie.",
+        "body": [
+            "În loc să obligi fiecare client să vină pe un singur site, produsul poate merge acolo unde există deja trafic: parteneri, furnizori sau alte platforme.",
+            "Important este ca widgetul să nu devină doar un formular de lead-uri, ci să păstreze comparația dintre casa actuală și scenariul dorit."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "Date",
+        "title": "Prețurile reale trebuie să intre în calcul",
+        "summary": "Gazul, lemnul, electricitatea și ceilalți purtători trebuie legați de surse actualizabile, astfel încât rezultatul tehnic să devină cost în lei.",
+        "body": [
+            "Energia utilă nu este suficientă pentru decizie. În funcție de sistemul care o produce, consumul trebuie înmulțit cu prețul aferent și explicată sursa.",
+            "Pentru combustibili precum lemnul, inclusiv unitatea de vânzare, umiditatea și transportul pot schimba comparația."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "AI & Business",
+        "title": "Un AI ca angajat care conduce operațional afacerea",
+        "summary": "Nu doar un chatbot care răspunde, ci un operator care caută, execută taskuri, vorbește cu oameni și promovează produsul.",
+        "body": [
+            "Ideea este ca AI-ul să preia cât mai mult din munca de operator: cercetare, identificare de oportunități, pregătirea contactelor, mesaje și urmărirea fluxului.",
+            "Omul păstrează deciziile importante și limitele, dar nu trebuie să execute manual fiecare pas repetitiv."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "Business",
+        "title": "Căutarea de bani trebuie să iasă din canalul curent",
+        "summary": "Dacă email outreach-ul nu produce suficient, căutarea recurentă trebuie să exploreze alte oportunități și alte modele, nu doar mai multe emailuri.",
+        "body": [
+            "Am cerut explicit ca activitatea recurentă să fie orientată spre bani și să gândească în afara canalului curent.",
+            "Principiul este simplu: nu optimiza la infinit un canal slab doar pentru că ai automatizat deja acel canal."
+        ],
+    },
+    {
+        "date": "ianuarie–septembrie 2025",
+        "theme": "Automatizare",
+        "title": "Firmă de automatizare a proceselor",
+        "summary": "O firmă care intră în procesele altor companii și automatizează activitățile repetitive cu unelte software și AI.",
+        "body": [
+            "Interesul meu inițial a fost mai larg decât automotive: procese administrative și operaționale care pot fi simplificate prin automatizare.",
+            "Mai târziu ideea s-a rafinat spre un sistem care nu doar execută procesul, ci caută și varianta mai eficientă."
+        ],
+    },
+    {
+        "date": "septembrie 2025",
+        "theme": "AI",
+        "title": "AI Process Optimizer",
+        "summary": "O aplicație AI care primește pașii, costurile, timpii și dependențele unui proces și caută o structură mai eficientă.",
+        "body": [
+            "Nu doar automatizare a procesului existent, ci analiză a procesului înainte de automatizare.",
+            "Produsul ar trebui să răspundă la întrebarea: care este cea mai eficientă soluție sau succesiune, și ce economie ar produce schimbarea?"
+        ],
+    },
+    {
+        "date": "august 2025",
+        "theme": "Engineering SaaS",
+        "title": "Smart Engineer Toolkit",
+        "summary": "Un produs pentru ingineri care automatizează calcule, rapoarte și template-uri repetitive.",
+        "body": [
+            "Ideea a venit din dorința de produs scalabil bazat pe muncă inginerească reală, nu din content generic.",
+            "Valoarea este în comprimarea muncii repetitive pe care inginerii o fac deja în Excel, documente și tool-uri separate."
+        ],
+    },
+    {
+        "date": "iulie 2026",
+        "theme": "Micro-SaaS",
+        "title": "Produse mici pentru a finanța produsul mare",
+        "summary": "Generatoare de trasabilitate, requirements și test cases ca produse rapide, în paralel cu construcția LaCurent.",
+        "body": [
+            "Ideea nu era să abandonez proiectul central, ci să folosesc produse mai simple și mai ușor vandabile ca sursă de cash.",
+            "Un micro-produs poate avea rol strategic: finanțează timpul necesar pentru un produs mai ambițios."
+        ],
+    },
+    {
+        "date": "octombrie 2025",
+        "theme": "Engineering",
+        "title": "Automatizează ASPICE fără să distrugi disciplina",
+        "summary": "Documentația, trasabilitatea, configurarea și auditul repetitiv trebuie automatizate astfel încât inginerii să nu devină data clerks.",
+        "body": [
+            "Problema nu este procesul în sine, ci cantitatea de muncă mecanică pe care procesul o poate împinge asupra inginerului.",
+            "Parametrizarea, configurarea, generarea, implementarea, copierea, redenumirea și reformularea sunt candidați naturali la automatizare. Structura rămâne; energia cognitivă se mută înapoi spre inginerie."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "AI & Verification",
+        "title": "Manual first, AI scale later",
+        "summary": "În testare, întâi înțelegi manual un fault simplu și reacția sistemului; apoi AI-ul scalează pattern-ul.",
+        "body": [
+            "Un test punctual, făcut manual, poate arăta cadența software, latențele și reacția reală. După ce mecanismul este înțeles, automatizarea poate multiplica acoperirea.",
+            "AI-ul poate genera și reutiliza implementări, dar nu trebuie să decidă singur dacă rezultatul tehnic este adevărat sau fals."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "Human Safety",
+        "title": "Antivirus pentru om, nu pentru malware",
+        "summary": "Un sistem care te protejează de propriile erori de decizie și de manipularea psihologică înainte de acțiuni cu risc.",
+        "body": [
+            "Ideea pornește de la faptul că multe pierderi nu vin dintr-un calculator compromis, ci dintr-un om convins să facă pasul greșit.",
+            "Produsul ar observa contextul unei decizii și ar introduce fricțiune sau avertizare când apar semne de manipulare, scam, grabă, presiune sau incoerență."
+        ],
+    },
+    {
+        "date": "februarie 2026",
+        "theme": "Hardware",
+        "title": "Controller modular pentru instalații",
+        "summary": "O cutie de comandă cu intrări analogice și ieșiri pentru electrovane, pompe și comandă de centrală, construită întâi într-o variantă 1-in/1-out.",
+        "body": [
+            "Principiul de dezvoltare este important: faci o singură intrare și o singură ieșire, validezi arhitectura, apoi multiplici.",
+            "Aceeași bază poate servi protecției anti-îngheț, degivrării și altor automatizări termice simple."
+        ],
+    },
+    {
+        "date": "februarie 2025",
+        "theme": "Agricultură",
+        "title": "Automatizarea utilajelor agricole existente",
+        "summary": "În loc să înlocuiești flota, automatizezi tractoarele și utilajele deja existente pentru a crește mecanizarea și productivitatea.",
+        "body": [
+            "Ideea este una de leverage național: hardware și control adăugate peste capitalul mecanic existent.",
+            "Valoarea vine din multiplicarea productivității fără ca fiecare fermă să cumpere de la zero utilaje autonome noi."
+        ],
+    },
+    {
+        "date": "martie 2025",
+        "theme": "Media & AI",
+        "title": "Muzică originală generată cu AI ca micro-business media",
+        "summary": "Producție rapidă de piese originale cu AI și distribuție multi-platformă pentru monetizare.",
+        "body": [
+            "Modelul explorat a fost să produci conținut muzical original și să îl distribui pe YouTube, TikTok și platforme de streaming.",
+            "Este o idee de producție digitală în care costul marginal al unei noi piese scade mult, iar distribuția poate fi aproape complet online."
+        ],
+    },
+    {
+        "date": "septembrie 2026",
+        "theme": "Servicii",
+        "title": "Expertiza inginerească transformată în business B2B",
+        "summary": "Embedded Verification & Test Automation ca serviciu global focalizat, separat de linia locală de instalații și energie.",
+        "body": [
+            "Strategia este să monetizezi expertiza existentă înainte ca produsul software să ajungă la scară: probleme concrete de testare, diagnostic, automatizare și HIL pentru companii care deja au buget.",
+            "În paralel, energia și instalațiile rămân o linie separată pentru piața din România. Două piețe, două landing-uri, aceeași infrastructură la început."
+        ],
+    },
+    {
+        "date": "decembrie 2025",
+        "theme": "Capital",
+        "title": "Renovarea ca generator de equity",
+        "summary": "Cumperi cu finanțare, creezi valoare prin renovare, apoi reevaluezi și încerci să folosești valoarea nou creată ca garanție pentru capital suplimentar.",
+        "body": [
+            "Intuiția este că banii investiți în renovare nu dispar dacă transformă activul într-unul mai valoros.",
+            "Întrebarea de business este cum poate fi capturată acea diferență de valoare prin reevaluare și refinanțare, în loc să rămână blocată complet în proprietate."
+        ],
+    },
+    {
+        "date": "decembrie 2024",
+        "theme": "Economie",
+        "title": "IT-ul ca infrastructură de reindustrializare",
+        "summary": "România poate folosi competența software nu doar ca industrie de servicii, ci ca strat care modernizează medicina, agricultura, comerțul, turismul și energia.",
+        "body": [
+            "Ideea este un hub regional IT legat de industrii reale, nu o economie separată de ele.",
+            "Software-ul, AI-ul, agricultura de precizie, telemedicina, marketplace-urile, ghidajul digital, smart grid-ul și regenerabilele pot fi tratate ca părți ale unei noi economii industriale."
+        ],
+    },
+]
+
+BUSINESS_FRAGMENTS = [
+    {"theme": "LaCurent", "text": "Fizica înaintea comisionului."},
+    {"theme": "LaCurent", "text": "Verdictul tehnic trebuie să vină înaintea marketplace-ului."},
+    {"theme": "Produs", "text": "Casa reală este baseline-ul. Restul sunt scenarii."},
+    {"theme": "AI", "text": "AI-ul scalează testarea; nu decide adevărul testului."},
+    {"theme": "Engineering", "text": "Manual first. AI scale later."},
+    {"theme": "Engineering", "text": "Nu transforma inginerul în data clerk."},
+    {"theme": "Engineering", "text": "Automatizează ce e repetitiv ca să eliberezi ce e creativ."},
+    {"theme": "Hardware", "text": "Începe cu o intrare și o ieșire. Multiplică după ce funcționează."},
+    {"theme": "Platformă", "text": "Fă motorul o dată. Distribuie-l prin mai multe canale."},
+    {"theme": "Business", "text": "Caută leverage, nu muncă locală greu de multiplicat."},
+    {"theme": "Business", "text": "Research înainte de build."},
+    {"theme": "Business", "text": "Dacă avantajul e marginal și piața e deja rezolvată, nu merită."},
+    {"theme": "AI & Business", "text": "Un AI ar trebui să poată conduce operațional o afacere ca un angajat."},
+    {"theme": "Business", "text": "Dacă emailul nu produce, caută bani și în afara emailului."},
+    {"theme": "Business", "text": "Software fără capital, scalabil, construit pe expertiză."},
+    {"theme": "Energie", "text": "Direct de la producător la consumator. Eventual pre-pay."},
+    {"theme": "Human Safety", "text": "Antivirus pentru om, nu pentru calculator."},
+    {"theme": "Produs", "text": "Raportul nu trebuie doar să calculeze; trebuie să spună ce investiție merită."},
+    {"theme": "Micro-SaaS", "text": "Produsele mici pot finanța produsul mare."},
+    {"theme": "LaCurent", "text": "Investiția energetică ar trebui evaluată înainte să fie cumpărată."},
+    {"theme": "Distribuție", "text": "Distribuția altora poate avea mai mult leverage decât propria implementare locală."},
+    {"theme": "Date", "text": "Prețurile reale trebuie să intre direct în decizie."},
+    {"theme": "ASPICE", "text": "Păstrează disciplina procesului; elimină munca mecanică a procesului."},
+    {"theme": "Automatizare", "text": "Nu automatiza doar procesul. Întâi întreabă dacă procesul poate fi mai bun."},
+    {"theme": "Business", "text": "Cu buget zero și timp puțin, tot ce nu are leverage mare devine secundar."},
+]
+
 ESSAYS_BY_SLUG = {essay["slug"]: essay for essay in ESSAYS}
 
 
@@ -251,6 +543,18 @@ def personal_blog(request: Request) -> HTMLResponse:
         },
     )
 
+
+
+@router.get("/lemnaru-karol-cristian/afaceri-tehnologie-bani", response_class=HTMLResponse)
+def personal_business_ideas(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="personal_business_ideas.html",
+        context={
+            "business_ideas": BUSINESS_IDEAS,
+            "business_fragments": BUSINESS_FRAGMENTS,
+        },
+    )
 
 @router.get("/lemnaru-karol-cristian/{slug}", response_class=HTMLResponse)
 def personal_blog_article(request: Request, slug: str) -> HTMLResponse:
