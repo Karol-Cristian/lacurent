@@ -277,18 +277,48 @@
           <small>LaCurent aplică aici setul de parametri de referință deja implementat; unele reguli normative ale clădirii de referință MC001 sunt încă în curs de integrare.</small>
         </div>
 
+        <div class="hln-project-guardrail">
+          <label>
+            <span>REGIM PROIECT</span>
+            <select id="hlnProjectMode">
+              <option value="existing_standard">Clădire existentă · renovare obișnuită</option>
+              <option value="existing_major">Clădire existentă · renovare majoră</option>
+              <option value="new_nzeb">Clădire nouă · nZEB</option>
+            </select>
+          </label>
+          <small id="hlnProjectGuardrailSummary">Best ROI folosește numai guardrail-urile aplicabile regimului selectat; anul construcției nu stabilește singur regimul juridic.</small>
+        </div>
+
         <div class="hln-smart-configs">
           <button type="button" data-hln-smart-config="nzeb">
             <span>ȚINTĂ nZEB</span>
             <strong>Configurează automat spre nZEB</strong>
-            <small>MC001 2.10a · fără să inventeze racord la gaz</small>
+            <small>MC001 2.10a · optimizare energetică bounded</small>
           </button>
           <button type="button" data-hln-smart-config="roi">
             <span>BEST ROI</span>
-            <strong>Impact maxim · investiție minimă</strong>
-            <small>Ranking pe economii reale + efort investițional relativ</small>
+            <strong>Randament maxim al investiției</strong>
+            <small>ROI = economie anuală / CAPEX · fără limită artificială de măsuri</small>
           </button>
         </div>
+
+        <details class="hln-roi-costs" id="hlnRoiCostDetails">
+          <summary>Cum calculează Best ROI și ce costuri folosește</summary>
+          <p><strong>Best ROI nu folosește un „indice de efort”.</strong> Pentru fiecare soluție, LaCurent recalculează consumul și costul anual, apoi aplică ROI simplu = economie anuală / CAPEX × 100 și payback = CAPEX / economie anuală. Până când catalogul D1 furnizează un CAPEX instalat complet, poți introduce costurile tale/oferta instalatorului; câmpurile goale nu sunt inventate și acea familie nu intră în ranking.</p>
+          <div class="hln-roi-cost-grid">
+            <label>Fațadă <span>lei/m²/cm adăugat</span><input id="hlnRoiCostWall" type="number" min="0" step="0.1" inputmode="decimal" placeholder="—"></label>
+            <label>Pod / acoperiș <span>lei/m²/cm adăugat</span><input id="hlnRoiCostRoof" type="number" min="0" step="0.1" inputmode="decimal" placeholder="—"></label>
+            <label>Pardoseală <span>lei/m²/cm adăugat</span><input id="hlnRoiCostFloor" type="number" min="0" step="0.1" inputmode="decimal" placeholder="—"></label>
+            <label>Ferestre <span>lei/m² înlocuit</span><input id="hlnRoiCostWindows" type="number" min="0" step="1" inputmode="decimal" placeholder="—"></label>
+            <label>Ventilație HRV <span>lei total instalat</span><input id="hlnRoiCostVentilation" type="number" min="0" step="10" inputmode="decimal" placeholder="—"></label>
+            <label>Control climatic <span>lei total instalat</span><input id="hlnRoiCostHeatingControl" type="number" min="0" step="10" inputmode="decimal" placeholder="—"></label>
+            <label>Pompă de căldură <span>lei total instalat</span><input id="hlnRoiCostHeating" type="number" min="0" step="10" inputmode="decimal" placeholder="—"></label>
+            <label>Fotovoltaice <span>lei/kWp instalat</span><input id="hlnRoiCostPv" type="number" min="0" step="10" inputmode="decimal" placeholder="—"></label>
+            <label>Solar termic <span>lei/m² colector instalat</span><input id="hlnRoiCostSolarThermal" type="number" min="0" step="10" inputmode="decimal" placeholder="—"></label>
+          </div>
+          <small>Costurile introduse sunt ipoteze economice explicite și se păstrează local în browser. D1 va putea completa aceleași intrări din produse, cantități și oferte trasabile.</small>
+        </details>
+
         <div class="hln-optimization-note" id="hlnOptimizationNote" hidden></div>
 
         <div class="hln-reference-spec" id="hlnReferenceSpec" hidden>
