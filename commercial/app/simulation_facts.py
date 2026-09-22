@@ -145,16 +145,15 @@ def _featured_roof_first_fact() -> dict[str, Any]:
     return {
         "fact_kind": "comparison",
         "slug": "podul-trebuie-izolat-intotdeauna-primul",
-        "title": "Podul trebuie izolat întotdeauna primul? Nu.",
-        "search_question": "„Căldura se ridică, deci podul trebuie izolat primul.” Este mereu adevărat?",
+        "title": "Podul primul? Nu întotdeauna.",
+        "search_question": "Dacă „se ridică” căldura, trebuie să izolezi automat podul înaintea pereților?",
         "claim": (
-            f"Nu. În exemplul calculat cu {wall_area:.0f} m² de pereți și {roof_area:.0f} m² de tavan, "
-            f"aceeași izolație suplimentară de 10 cm reduce pierderea prin pereți de aproximativ "
-            f"{ratio:.1f} ori mai mult."
+            f"Nu neapărat. În exemplul calculat cu {wall_area:.0f} m² de pereți și {roof_area:.0f} m² de tavan, "
+            f"aceeași izolație suplimentară de 10 cm are un impact de aproximativ {ratio:.1f} ori mai mare pe pereți."
         ),
         "context": (
-            "Motivul este simplu: pierderea depinde de suprafață și de cât de slab este elementul înainte de intervenție. "
-            "Regula utilă este A × ΔU, nu «podul primul». În alte case rezultatul se poate inversa."
+            "În cazul acesta, pereții au suprafață mai mare și pornesc mai slab izolați. "
+            "De aceea aceeași investiție în izolație poate produce mai mult acolo decât în pod."
         ),
         "locality": "Exemplu calculat",
         "scenario_id": "walls-vs-roof-extra-10cm",
@@ -257,9 +256,8 @@ def _fact_claim(
 
 def _fallback_context() -> str:
     return (
-        "Simularea schimbă un singur parametru important și păstrează restul casei neschimbat, "
-        "astfel încât efectul comparat să fie ușor de urmărit. Rezultatul este orientativ și depinde "
-        "de ipotezele clădirii și de datele climatice folosite de motor."
+        "Am schimbat un singur lucru și am păstrat restul casei identic, ca să vedem efectul intervenției. "
+        "Rezultatul este orientativ și se poate schimba pentru o altă casă, altă climă sau alte instalații."
     )
 
 
@@ -362,7 +360,7 @@ def _build_fact(locality: str, scenario_spec: dict[str, str]) -> dict[str, Any]:
     return {
         "fact_key": fact_key,
         "slug": slug,
-        "title": f"{scenario_spec['title']} în {locality}: rezultat din simularea LaCurent",
+        "title": f"{scenario_spec['question']} în {locality}?",
         "search_question": f"{scenario_spec['question']} în {locality}?",
         "claim": claim,
         "context": _fallback_context(),
