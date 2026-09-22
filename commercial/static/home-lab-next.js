@@ -575,14 +575,17 @@
     const next = [];
     if (
       Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01 ||
+      scenarioState.wallInsulationMaterial !== homeState.wallInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.wallU))
     ) next.push("wall");
     if (
       Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01 ||
+      scenarioState.roofInsulationMaterial !== homeState.roofInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.roofU))
     ) next.push("roof");
     if (
       Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01 ||
+      scenarioState.floorInsulationMaterial !== homeState.floorInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.floorU))
     ) next.push("floor");
     if (
@@ -2062,10 +2065,10 @@
       };
     }
     return {
-      eyebrow:"RENOVARE EFICIENTĂ",
-      title:"Configurează automat renovarea",
+      eyebrow:"OPTIMIZARE EFICIENTĂ",
+      title:"Configurează automat îmbunătățirile",
       hint:"Reduce energia primară fără să impună artificial un prag nZEB",
-      working:"Caut un pachet eficient de renovare…",
+      working:"Caut un pachet eficient de îmbunătățiri…",
     };
   }
 
@@ -2242,7 +2245,7 @@
         ? "Țintă nZEB · configurație automată"
         : projectMode === "existing_major"
           ? "Renovare majoră · configurație automată"
-          : "Renovare eficientă · configurație automată";
+          : "Îmbunătățiri eficiente · configurație automată";
 
       applyOptimizerResult(state, current, overrides, {
         mode,
@@ -2279,7 +2282,7 @@
           ? 100 * (before - after) / before
           : null;
         headline = selected.length
-          ? "Pachet automat de renovare energetică calculat."
+          ? "Pachet automat de îmbunătățiri energetice calculat."
           : "Casa nu are o intervenție automată cu îmbunătățire energetică pozitivă în setul testat.";
         details = Number.isFinite(reduction)
           ? `Energia primară scade cu ${fmt(reduction,1)}% față de Casa mea.`
@@ -2292,15 +2295,15 @@
          <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări ale motorului. Fără căutare combinatorială și fără limită artificială la numărul de intervenții.</small>`,
         guardrailPass && selected.length ? "good" : "warn"
       );
-      setStatus("Renovare automată calculată", guardrailPass ? "ok" : "");
+      setStatus("Optimizare automată calculată", guardrailPass ? "ok" : "");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
       scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(
-        `<strong>Renovarea automată nu a putut fi calculată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
+        `<strong>Optimizarea automată nu a putut fi calculată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
         "warn"
       );
-      setStatus(error?.message || "Renovarea automată este indisponibilă.", "error");
+      setStatus(error?.message || "Optimizarea automată este indisponibilă.", "error");
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
@@ -2742,7 +2745,7 @@
 
     if (screen === "home") {
       cta.hidden = false;
-      ctaLabel.textContent = baselineSaved ? "Mergi la renovare" : "Salvează Casa mea și începe renovarea";
+      ctaLabel.textContent = baselineSaved ? "Vezi îmbunătățirile" : "Salvează Casa mea și vezi îmbunătățirile";
     } else if (screen === "site") {
       cta.hidden = measures.length === 0;
       ctaLabel.textContent = "Vezi Scenariul meu";
@@ -2808,9 +2811,21 @@
       if (type === "pv") return homeState.pvEnabled ? "PV dezactivat în referința simplificată" : "Fără PV";
       if (type === "solar_thermal") return homeState.solarThermalEnabled ? "Solar termic dezactivat în referința simplificată" : "Fără solar termic";
     }
-    if (type === "wall") return `${base.wallIns} → ${now.wallIns} cm pereți`;
-    if (type === "roof") return `${base.roofIns} → ${now.roofIns} cm pod`;
-    if (type === "floor") return `${base.floorIns} → ${now.floorIns} cm pardoseală`;
+    if (type === "wall") {
+      const beforeMaterial = labels.insulation[base.wallInsulationMaterial] || labels.insulation.generic_040;
+      const afterMaterial = labels.insulation[now.wallInsulationMaterial] || labels.insulation.generic_040;
+      return `${base.wallIns} cm ${beforeMaterial} → ${now.wallIns} cm ${afterMaterial} · U ${fmt(currentEnvelopeU(now,"wallU",scenarioOverrides),2)}`;
+    }
+    if (type === "roof") {
+      const beforeMaterial = labels.insulation[base.roofInsulationMaterial] || labels.insulation.generic_040;
+      const afterMaterial = labels.insulation[now.roofInsulationMaterial] || labels.insulation.generic_040;
+      return `${base.roofIns} cm ${beforeMaterial} → ${now.roofIns} cm ${afterMaterial} · U ${fmt(currentEnvelopeU(now,"roofU",scenarioOverrides),2)}`;
+    }
+    if (type === "floor") {
+      const beforeMaterial = labels.insulation[base.floorInsulationMaterial] || labels.insulation.generic_040;
+      const afterMaterial = labels.insulation[now.floorInsulationMaterial] || labels.insulation.generic_040;
+      return `${base.floorIns} cm ${beforeMaterial} → ${now.floorIns} cm ${afterMaterial} · U ${fmt(currentEnvelopeU(now,"floorU",scenarioOverrides),2)}`;
+    }
     if (type === "windows") return `${labels.glazing[base.glazing]} → ${labels.glazing[now.glazing]}`;
     if (type === "heating") {
       const perf = scenarioResult?.heating_system;
@@ -2994,9 +3009,18 @@
   }
 
   function interventionValue(type, state) {
-    if (type === "wall") return `${state.wallIns} cm`;
-    if (type === "roof") return `${state.roofIns} cm`;
-    if (type === "floor") return `${state.floorIns} cm`;
+    if (type === "wall") {
+      const material = labels.insulation[state.wallInsulationMaterial] || labels.insulation.generic_040;
+      return `${state.wallIns} cm ${material} · U ${fmt(currentEnvelopeU(state,"wallU"),2)}`;
+    }
+    if (type === "roof") {
+      const material = labels.insulation[state.roofInsulationMaterial] || labels.insulation.generic_040;
+      return `${state.roofIns} cm ${material} · U ${fmt(currentEnvelopeU(state,"roofU"),2)}`;
+    }
+    if (type === "floor") {
+      const material = labels.insulation[state.floorInsulationMaterial] || labels.insulation.generic_040;
+      return `${state.floorIns} cm ${material} · U ${fmt(currentEnvelopeU(state,"floorU"),2)}`;
+    }
     if (type === "windows") return `${labels.glazing[state.glazing]} · ${fmt(state.windows,1)} m²`;
     if (type === "heating") {
       const generator = labels.heating[state.heating] || state.heating;
@@ -3018,9 +3042,15 @@
       panel.hidden = panel.dataset.hlnInterventionPanel !== activeMeasure;
     });
 
+    $("#hlnWallInsulationMaterial").value = scenarioState.wallInsulationMaterial || "generic_040";
+    $("#hlnRoofInsulationMaterial").value = scenarioState.roofInsulationMaterial || "generic_040";
+    $("#hlnFloorInsulationMaterial").value = scenarioState.floorInsulationMaterial || "generic_040";
     $("#hlnWallIns").value = scenarioState.wallIns;
     $("#hlnRoofIns").value = scenarioState.roofIns;
     $("#hlnFloorIns").value = scenarioState.floorIns;
+    $("#hlnWallInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.wallInsulationMaterial),3)} W/mK · grosimea totală simulată`;
+    $("#hlnRoofInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.roofInsulationMaterial),3)} W/mK · grosimea totală simulată`;
+    $("#hlnFloorInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.floorInsulationMaterial),3)} W/mK · grosimea totală simulată`;
     $("#hlnScenarioGlazing").value = scenarioState.glazing;
     $("#hlnScenarioWindows").value = scenarioState.windows;
     $("#hlnScenarioHeating").value = scenarioState.heating;
@@ -3268,7 +3298,7 @@
       const homeKwh = Number(baseline.useful_heating_kwh || 0) + Number(baseline.useful_cooling_kwh || 0);
       const scenarioKwh = Number(row.useful_heating_kwh || 0) + Number(row.useful_cooling_kwh || 0);
       return `
-        <div class="hln-month-column" title="${escapeHtml(row.month)} · Casa mea ${fmt(homeKwh)} kWh · Renovare ${fmt(scenarioKwh)} kWh">
+        <div class="hln-month-column" title="${escapeHtml(row.month)} · Casa mea ${fmt(homeKwh)} kWh · Îmbunătățiri ${fmt(scenarioKwh)} kWh">
           <div class="hln-month-bars">
             <i class="is-home" style="height:${Math.max(homeKwh ? 3 : 0,100*homeKwh/maxMonthly)}%"></i>
             <i class="is-after" style="height:${Math.max(scenarioKwh ? 3 : 0,100*scenarioKwh/maxMonthly)}%"></i>
@@ -3289,7 +3319,7 @@
       const scenarioCost = Number(row.cost_lei || 0);
       const energy = Number(row.final_energy_kwh || 0);
       return `
-        <div class="hln-month-cost-column" title="${escapeHtml(row.month)} · Casa mea ${fmt(homeCost)} lei · Renovare ${fmt(scenarioCost)} lei · ${fmt(energy)} kWh finali">
+        <div class="hln-month-cost-column" title="${escapeHtml(row.month)} · Casa mea ${fmt(homeCost)} lei · Îmbunătățiri ${fmt(scenarioCost)} lei · ${fmt(energy)} kWh finali">
           <div class="hln-month-cost-bars">
             <i class="is-home" style="height:${Math.max(homeCost ? 3 : 0,100*homeCost/maxMonthlyCost)}%"></i>
             <i class="is-after" style="height:${Math.max(scenarioCost ? 3 : 0,100*scenarioCost/maxMonthlyCost)}%"></i>
@@ -3385,7 +3415,7 @@
         const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>${escapeHtml(optimizationMeta.label || "Renovare automată")}</strong>
+            <strong>${escapeHtml(optimizationMeta.label || "Optimizare automată")}</strong>
             <span>Intervențiile au fost evaluate față de Casa mea cu motorul energetic și combinate într-un singur pachet bounded.</span>
           </div>
           ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
@@ -3476,7 +3506,7 @@
   async function saveHomeAndOpenSite() {
     let result = homeResultState === "fresh" ? homeResult : null;
     if (!result) {
-      setStatus("Calculez Casa mea înainte de renovare…");
+      setStatus("Calculez Casa mea înainte de îmbunătățiri…");
       result = await calculateState(homeState, "home");
     }
     if (!result) {
@@ -3687,9 +3717,18 @@
     optimizationMeta = null;
     setOptimizationNote("");
     clearScenarioOverrideForMeasure(type);
-    if (type === "wall") scenarioState.wallIns = homeState.wallIns;
-    if (type === "roof") scenarioState.roofIns = homeState.roofIns;
-    if (type === "floor") scenarioState.floorIns = homeState.floorIns;
+    if (type === "wall") {
+      scenarioState.wallIns = homeState.wallIns;
+      scenarioState.wallInsulationMaterial = homeState.wallInsulationMaterial;
+    }
+    if (type === "roof") {
+      scenarioState.roofIns = homeState.roofIns;
+      scenarioState.roofInsulationMaterial = homeState.roofInsulationMaterial;
+    }
+    if (type === "floor") {
+      scenarioState.floorIns = homeState.floorIns;
+      scenarioState.floorInsulationMaterial = homeState.floorInsulationMaterial;
+    }
     if (type === "windows") {
       scenarioState.glazing = homeState.glazing;
       scenarioState.windows = homeState.windows;
@@ -3730,9 +3769,18 @@
     optimizationMeta = null;
     setOptimizationNote("");
     clearScenarioOverrideForMeasure(activeMeasure);
-    if (activeMeasure === "wall") scenarioState.wallIns = Number($("#hlnWallIns").value);
-    if (activeMeasure === "roof") scenarioState.roofIns = Number($("#hlnRoofIns").value);
-    if (activeMeasure === "floor") scenarioState.floorIns = Number($("#hlnFloorIns").value);
+    if (activeMeasure === "wall") {
+      scenarioState.wallIns = Number($("#hlnWallIns").value);
+      scenarioState.wallInsulationMaterial = $("#hlnWallInsulationMaterial").value;
+    }
+    if (activeMeasure === "roof") {
+      scenarioState.roofIns = Number($("#hlnRoofIns").value);
+      scenarioState.roofInsulationMaterial = $("#hlnRoofInsulationMaterial").value;
+    }
+    if (activeMeasure === "floor") {
+      scenarioState.floorIns = Number($("#hlnFloorIns").value);
+      scenarioState.floorInsulationMaterial = $("#hlnFloorInsulationMaterial").value;
+    }
     if (activeMeasure === "windows") {
       scenarioState.glazing = $("#hlnScenarioGlazing").value;
       scenarioState.windows = Number($("#hlnScenarioWindows").value);
@@ -4204,7 +4252,7 @@
   $$("[data-hln-intervention-cancel]").forEach(button => button.addEventListener("click", cancelIntervention));
   $("[data-hln-intervention-keep]").addEventListener("click", keepIntervention);
 
-  ["#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioHeatPumpSource","#hlnScenarioHeatingEmitter","#hlnScenarioHeatingDistribution","#hlnScenarioHeatingStorage","#hlnScenarioHeatingControl","#hlnScenarioVentilation","#hlnScenarioCooling","#hlnScenarioPvKwp","#hlnScenarioPvOrientation","#hlnScenarioPvTilt","#hlnScenarioSolarThermalArea","#hlnScenarioSolarThermalOrientation","#hlnScenarioSolarThermalTilt"]
+  ["#hlnWallInsulationMaterial","#hlnRoofInsulationMaterial","#hlnFloorInsulationMaterial","#hlnWallIns","#hlnRoofIns","#hlnFloorIns","#hlnScenarioGlazing","#hlnScenarioWindows","#hlnScenarioHeating","#hlnScenarioHeatPumpSource","#hlnScenarioHeatingEmitter","#hlnScenarioHeatingDistribution","#hlnScenarioHeatingStorage","#hlnScenarioHeatingControl","#hlnScenarioVentilation","#hlnScenarioCooling","#hlnScenarioPvKwp","#hlnScenarioPvOrientation","#hlnScenarioPvTilt","#hlnScenarioSolarThermalArea","#hlnScenarioSolarThermalOrientation","#hlnScenarioSolarThermalTilt"]
     .forEach(selector => $(selector).addEventListener("change", syncInterventionFromControls));
 
   $$(".hln-stepper [data-step]").forEach(button => button.addEventListener("click", () => {

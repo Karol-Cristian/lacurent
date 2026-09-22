@@ -362,7 +362,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next17" in response.text
-    assert "/static/home-lab-next.js?v=next26" in response.text
+    assert "/static/home-lab-next.js?v=next27" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -1084,6 +1084,12 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "INSULATION_LAMBDA_W_MK" in response.text
     assert "wallBaseU(state)" in response.text
     assert "insulationLambda(state.wallInsulationMaterial)" in response.text
+    assert 'scenarioState.wallInsulationMaterial = $("#hlnWallInsulationMaterial").value' in response.text
+    assert 'scenarioState.roofInsulationMaterial = $("#hlnRoofInsulationMaterial").value' in response.text
+    assert 'scenarioState.floorInsulationMaterial = $("#hlnFloorInsulationMaterial").value' in response.text
+    assert 'scenarioState.wallInsulationMaterial !== homeState.wallInsulationMaterial' in response.text
+    assert 'labels.insulation[state.wallInsulationMaterial]' in response.text
+    assert "Vezi îmbunătățirile" in response.text
     assert "glazing" in response.text
     assert "measures" in response.text
     assert "SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70" in response.text
@@ -1124,6 +1130,12 @@ def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> Non
     assert 'id="hlnHomeWallInsulationMaterial"' in html
     assert 'id="hlnHomeRoofInsulationMaterial"' in html
     assert 'id="hlnHomeFloorInsulationMaterial"' in html
+    assert 'id="hlnWallInsulationMaterial"' in html
+    assert 'id="hlnRoofInsulationMaterial"' in html
+    assert 'id="hlnFloorInsulationMaterial"' in html
+    assert '<span>02</span><b>Îmbunătățiri</b>' in html
+    assert 'VARIANTĂ NOUĂ' in html
+    assert 'DUPĂ ÎMBUNĂTĂȚIRI' in html
     assert 'value="solid_brick"' in html
     assert 'value="efficient_brick"' in html
     assert 'value="bca"' in html
