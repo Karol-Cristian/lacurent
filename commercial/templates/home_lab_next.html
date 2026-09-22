@@ -54,7 +54,7 @@
         </button>
         <i></i>
         <button type="button" data-hln-go="site">
-          <span>02</span><b>Renovare</b>
+          <span>02</span><b>Îmbunătățiri</b>
         </button>
         <i></i>
         <button type="button" data-hln-go="scenario">
@@ -162,7 +162,7 @@
     <section class="hln-screen" data-hln-screen="site">
       <div class="hln-screen-heading">
         <div>
-          <span>RENOVAREA MEA</span>
+          <span>ÎMBUNĂTĂȚIRI</span>
           <h1>Ce vrei să schimbi?</h1>
           <p>Alege direct de pe casă sau din lista de intervenții. Casa mea rămâne neschimbată.</p>
         </div>
@@ -175,8 +175,8 @@
         <div class="hln-house-board hln-renovation-board">
           <div class="hln-board-label"><span>ALEGE DE PE CASĂ</span><strong>Unde intervii?</strong></div>
           <div class="hln-house-visual hln-house-visual-renovation">
-            <div class="hln-3d-stage" data-hln-3d-stage="site" aria-label="Model 3D interactiv pentru renovare"></div>
-            <svg viewBox="0 0 620 420" role="img" aria-label="Casă cu zone de renovare">
+            <div class="hln-3d-stage" data-hln-3d-stage="site" aria-label="Model 3D interactiv pentru îmbunătățiri"></div>
+            <svg viewBox="0 0 620 420" role="img" aria-label="Casă cu zone de îmbunătățire">
               <path class="hln-house-ground" d="M70 350h480"/>
               <path class="hln-house-shell" d="M155 175 310 70l155 105v170H155Z"/>
               <path class="hln-house-roof" d="M120 188 310 55l190 133"/>
@@ -291,8 +291,8 @@
 
         <div class="hln-smart-configs">
           <button type="button" data-hln-smart-config="nzeb">
-            <span id="hlnAutoRenovationEyebrow">RENOVARE AUTOMATĂ</span>
-            <strong id="hlnAutoRenovationTitle">Configurează automat renovarea</strong>
+            <span id="hlnAutoRenovationEyebrow">OPTIMIZARE AUTOMATĂ</span>
+            <strong id="hlnAutoRenovationTitle">Configurează automat îmbunătățirile</strong>
             <small id="hlnAutoRenovationHint">Prioritizează reducerea consumului cu un număr bounded de recalculări</small>
           </button>
           <button type="button" data-hln-smart-config="roi">
@@ -490,7 +490,7 @@
             </article>
             <b><svg><use href="#hln-i-arrow-right"></use></svg></b>
             <article class="is-renovation">
-              <span>RENOVARE</span>
+              <span>VARIANTĂ NOUĂ</span>
               <strong id="hlnAfterValue">—</strong>
               <small>valoare testată</small>
             </article>
@@ -498,20 +498,50 @@
 
           <div class="hln-intervention-editor">
             <div data-hln-intervention-panel="wall">
-              <div class="hln-field-heading"><svg><use href="#hln-i-wall"></use></svg><div><strong>Izolație nouă pereți</strong><small>Simulare generică · λ 0,040 W/mK</small></div></div>
-              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnWallIns" type="number" min="0" max="30" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
+              <div class="hln-field-heading"><svg><use href="#hln-i-wall"></use></svg><div><strong>Izolație pereți</strong><small id="hlnWallInsulationMeta">Material și grosime totală simulate</small></div></div>
+              <label>Tip izolație
+                <select id="hlnWallInsulationMaterial">
+                  <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
+                  <option value="eps">Polistiren EPS</option>
+                  <option value="xps">Polistiren XPS</option>
+                  <option value="mineral_wool">Vată minerală</option>
+                  <option value="cellulose">Celuloză</option>
+                  <option value="wood_fiber">Fibră lemnoasă</option>
+                </select>
+              </label>
+              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnWallIns" type="number" min="0" max="40" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
               <div class="hln-quick-values"><button type="button" data-quick-add="5">+5 cm</button><button type="button" data-quick-add="10">+10 cm</button><button type="button" data-quick-add="15">+15 cm</button></div>
             </div>
 
             <div data-hln-intervention-panel="roof" hidden>
-              <div class="hln-field-heading"><svg><use href="#hln-i-roof"></use></svg><div><strong>Izolație nouă pod / acoperiș</strong><small>Grosimea totală simulată</small></div></div>
-              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnRoofIns" type="number" min="0" max="40" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
+              <div class="hln-field-heading"><svg><use href="#hln-i-roof"></use></svg><div><strong>Izolație pod / acoperiș</strong><small id="hlnRoofInsulationMeta">Material și grosime totală simulate</small></div></div>
+              <label>Tip izolație
+                <select id="hlnRoofInsulationMaterial">
+                  <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
+                  <option value="eps">Polistiren EPS</option>
+                  <option value="xps">Polistiren XPS</option>
+                  <option value="mineral_wool">Vată minerală</option>
+                  <option value="cellulose">Celuloză</option>
+                  <option value="wood_fiber">Fibră lemnoasă</option>
+                </select>
+              </label>
+              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnRoofIns" type="number" min="0" max="50" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
               <div class="hln-quick-values"><button type="button" data-quick-add="5">+5 cm</button><button type="button" data-quick-add="10">+10 cm</button><button type="button" data-quick-add="15">+15 cm</button></div>
             </div>
 
             <div data-hln-intervention-panel="floor" hidden>
-              <div class="hln-field-heading"><svg><use href="#hln-i-floor"></use></svg><div><strong>Izolație nouă pardoseală</strong><small>Planșeul inferior al casei</small></div></div>
-              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnFloorIns" type="number" min="0" max="25" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
+              <div class="hln-field-heading"><svg><use href="#hln-i-floor"></use></svg><div><strong>Izolație pardoseală</strong><small id="hlnFloorInsulationMeta">Material și grosime totală simulate</small></div></div>
+              <label>Tip izolație
+                <select id="hlnFloorInsulationMaterial">
+                  <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
+                  <option value="eps">Polistiren EPS</option>
+                  <option value="xps">Polistiren XPS</option>
+                  <option value="mineral_wool">Vată minerală</option>
+                  <option value="cellulose">Celuloză</option>
+                  <option value="wood_fiber">Fibră lemnoasă</option>
+                </select>
+              </label>
+              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnFloorIns" type="number" min="0" max="30" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
               <div class="hln-quick-values"><button type="button" data-quick-add="5">+5 cm</button><button type="button" data-quick-add="10">+10 cm</button></div>
             </div>
 
@@ -622,7 +652,7 @@
       <div class="hln-screen-heading">
         <div>
           <span>SCENARIUL MEU</span>
-          <h1>Vezi renovarea ca un singur proiect.</h1>
+          <h1>Vezi îmbunătățirile ca un singur proiect.</h1>
           <p>Intervențiile selectate sunt recalculate împreună, față de Casa mea.</p>
         </div>
         <button type="button" class="hln-home-return" data-hln-go="home">
@@ -638,7 +668,7 @@
         </article>
         <b><svg><use href="#hln-i-arrow-right"></use></svg></b>
         <article class="is-renovation">
-          <span>DUPĂ RENOVARE</span>
+          <span>DUPĂ ÎMBUNĂTĂȚIRI</span>
           <strong id="hlnScenarioNewCost">—</strong>
           <small>cost anual</small>
         </article>
@@ -695,7 +725,7 @@
         </article>
         <div class="hln-report-arrow">→</div>
         <article class="is-after">
-          <small>DUPĂ RENOVARE</small>
+          <small>DUPĂ ÎMBUNĂTĂȚIRI</small>
           <strong id="hlnReportScenarioClass">—</strong>
           <span id="hlnReportScenarioCost">—</span>
         </article>
@@ -986,14 +1016,14 @@
           <span><small>Casa mea</small><strong><b id="hlnDockHomeClass">—</b><em id="hlnDockHomeCost">—</em></strong></span>
         </article>
         <article class="is-renovation">
-          <span><small>Renovare</small><strong><b id="hlnDockScenarioClass">—</b><em id="hlnDockScenarioCost">—</em></strong></span>
+          <span><small>Scenariu</small><strong><b id="hlnDockScenarioClass">—</b><em id="hlnDockScenarioCost">—</em></strong></span>
         </article>
         <article class="is-saving">
           <span><small id="hlnDockSavingLabel">Economie</small><strong id="hlnDockCostBenefit">—</strong></span>
         </article>
       </div>
       <button type="button" class="hln-dock-cta" id="hlnDockCta">
-        <span>Salvează Casa mea și începe renovarea</span>
+        <span>Salvează Casa mea și vezi îmbunătățirile</span>
         <svg><use href="#hln-i-arrow-right"></use></svg>
       </button>
     </section>
@@ -1078,7 +1108,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next26"></script>
+  <script src="/static/home-lab-next.js?v=next27"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
