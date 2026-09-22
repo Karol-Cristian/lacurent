@@ -792,21 +792,47 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert "calculateCandidate(state, overrides, {compact:false})" in response.text
     assert "function roiEconomics" in response.text
     assert "function roiCapexForAction" in response.text
+    assert "async function loadRoiCostBasis" in response.text
+    assert 'roiCostBasisMeta?.source || "catalog"' in response.text
+    assert 'const actionMode = projectMode === "new_nzeb" ? "nzeb" : "energy"' in response.text
+    assert "alreadyAtTarget" in response.text
 
 
-def test_home_lab_next_true_roi_controls_are_explicit_and_not_effort_based() -> None:
+def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
     assert 'id="hlnProjectMode"' in response.text
     assert 'value="existing_standard"' in response.text
     assert 'value="existing_major"' in response.text
     assert 'value="new_nzeb"' in response.text
-    assert 'id="hlnRoiCostWall"' in response.text
-    assert 'id="hlnRoiCostDoor"' in response.text
-    assert 'id="hlnRoiCostHeating"' in response.text
-    assert 'id="hlnRoiCostPv"' in response.text
-    assert "ROI = economie anuală / CAPEX" in response.text
+    assert 'id="hlnRoiCostSource"' in response.text
+    assert 'id="hlnRoiCostAssumptions"' in response.text
+    assert "Costuri de piață preluate automat din catalog" in response.text
+    assert 'id="hlnRoiCostWall"' not in response.text
+    assert 'id="hlnRoiCostDoor"' not in response.text
+    assert 'id="hlnRoiCostHeating"' not in response.text
+    assert 'id="hlnRoiCostPv"' not in response.text
+    assert "Nu trebuie să introduci costuri manual" in response.text
     assert "efort investițional relativ" not in response.text
+
+
+def test_market_cost_basis_fallback_is_complete_and_versioned() -> None:
+    response = client.get("/api/market-cost-basis")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "seed_fallback"
+    assert payload["catalog_version"] == "ro-market-planning-2026-09-22"
+    expected = {
+        "wall", "roof", "floor", "windows", "door",
+        "ventilation", "heating_control", "heating", "pv", "solar_thermal",
+    }
+    assert set(payload["costs"]) == expected
+    for item in payload["costs"].values():
+        assert float(item["cost_lei"]) > 0
+        assert item["unit"]
+        assert item["source_kind"]
+        assert item["observed_on"] == "2026-09-22"
+        assert item["confidence"] in {"low", "medium", "high"}
 
 
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
@@ -923,7 +949,13 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "hlnReportPvGeneration" in response.text
     assert "hlnReportHeatingPerformance" in response.text
     assert "hlnReportMethodologySource" in response.text
-    assert "Țintă nZEB atinsă pentru energie primară și CO₂" in response.text
+    assert "function automaticRenovationCopy" in response.text
+    assert 'projectMode === "existing_major"' in response.text
+    assert 'projectMode === "new_nzeb"' in response.text
+    assert "Pachet automat de renovare energetică calculat" in response.text
+    assert 'fetch("/api/market-cost-basis"' in response.text
+    assert "ROI_COST_INPUTS" not in response.text
+    assert "Introdu costurile investiției" not in response.text
     assert "const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);" in response.text
     assert "const good = lowerIsBetter ? delta < 0 : delta > 0;" in response.text
     assert 'label: good ? "Economie" : "Cost suplimentar"' in response.text
