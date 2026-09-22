@@ -79,7 +79,7 @@
           <h1>Construiește punctul de plecare.</h1>
           <p>Spune-ne ce știi despre locuință. Restul îl estimăm și îl poți rafina oricând.</p>
         </div>
-        <div class="hln-confidence"><strong id="hlnConfirmedCount">8</strong><span>valori configurate</span></div>
+        <div class="hln-confidence"><strong id="hlnConfirmedCount">13</strong><span>valori configurate</span></div>
       </div>
 
       <div class="hln-home-layout">
@@ -873,10 +873,52 @@
         </section>
 
         <section data-hln-editor="envelope" hidden>
-          <div class="hln-editor-lead"><span class="hln-row-icon"><svg><use href="#hln-i-layers"></use></svg></span><div><strong>Anvelopa casei</strong><small>Pereți, pod, pardoseală și ferestre.</small></div></div>
-          <label>Izolație pereți <div class="hln-inline-input"><input id="hlnHomeWallIns" type="number" min="0" max="30" step="1" value="5"><span>cm</span></div></label>
-          <label>Izolație pod / acoperiș <div class="hln-inline-input"><input id="hlnHomeRoofIns" type="number" min="0" max="40" step="1" value="10"><span>cm</span></div></label>
-          <label>Izolație pardoseală <div class="hln-inline-input"><input id="hlnHomeFloorIns" type="number" min="0" max="25" step="1" value="5"><span>cm</span></div></label>
+          <div class="hln-editor-lead"><span class="hln-row-icon"><svg><use href="#hln-i-layers"></use></svg></span><div><strong>Anvelopa casei</strong><small>Structura și materialele sunt transformate în rezistențe termice pentru calcul.</small></div></div>
+          <label>Structura pereților exteriori
+            <select id="hlnHomeWallStructure">
+              <option value="unknown">Nu știu — păstrează estimarea implicită</option>
+              <option value="solid_brick">Cărămidă plină</option>
+              <option value="efficient_brick">Cărămidă eficientă / cu goluri</option>
+              <option value="bca">BCA / AAC</option>
+              <option value="concrete">Beton armat</option>
+              <option value="wood">Lemn</option>
+              <option value="stone">Piatră</option>
+            </select>
+          </label>
+          <label>Grosimea structurii peretelui <div class="hln-inline-input"><input id="hlnHomeWallStructureThickness" type="number" min="5" max="80" step="1" value="30"><span>cm</span></div></label>
+          <label>Material izolație pereți
+            <select id="hlnHomeWallInsulationMaterial">
+              <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
+              <option value="eps">Polistiren EPS</option>
+              <option value="xps">Polistiren XPS</option>
+              <option value="mineral_wool">Vată minerală</option>
+              <option value="cellulose">Celuloză</option>
+              <option value="wood_fiber">Fibră lemnoasă</option>
+            </select>
+          </label>
+          <label>Izolație pereți <div class="hln-inline-input"><input id="hlnHomeWallIns" type="number" min="0" max="40" step="1" value="5"><span>cm</span></div></label>
+          <label>Material izolație pod / acoperiș
+            <select id="hlnHomeRoofInsulationMaterial">
+              <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
+              <option value="eps">Polistiren EPS</option>
+              <option value="xps">Polistiren XPS</option>
+              <option value="mineral_wool">Vată minerală</option>
+              <option value="cellulose">Celuloză</option>
+              <option value="wood_fiber">Fibră lemnoasă</option>
+            </select>
+          </label>
+          <label>Izolație pod / acoperiș <div class="hln-inline-input"><input id="hlnHomeRoofIns" type="number" min="0" max="50" step="1" value="10"><span>cm</span></div></label>
+          <label>Material izolație pardoseală
+            <select id="hlnHomeFloorInsulationMaterial">
+              <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
+              <option value="eps">Polistiren EPS</option>
+              <option value="xps">Polistiren XPS</option>
+              <option value="mineral_wool">Vată minerală</option>
+              <option value="cellulose">Celuloză</option>
+              <option value="wood_fiber">Fibră lemnoasă</option>
+            </select>
+          </label>
+          <label>Izolație pardoseală <div class="hln-inline-input"><input id="hlnHomeFloorIns" type="number" min="0" max="30" step="1" value="5"><span>cm</span></div></label>
           <label>Suprafață ferestre <div class="hln-inline-input"><input id="hlnHomeWindows" type="number" min="2" max="60" step="0.5" value="18"><span>m²</span></div></label>
           <label>Tip vitraj
             <select id="hlnHomeGlazing"><option value="single_clear_glazing">Geam simplu</option><option value="double_clear_glazing">Geam dublu clar</option><option value="double_low_e_face_3">Geam dublu Low-E</option><option value="triple_low_e_faces_2_and_5" selected>Tripan Low-E</option></select>
@@ -1036,7 +1078,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next25"></script>
+  <script src="/static/home-lab-next.js?v=next26"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
