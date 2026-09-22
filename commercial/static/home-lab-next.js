@@ -1061,7 +1061,7 @@
   }
 
   function renderResultFreshness() {
-    const target = screen === "home" && !baselineSaved ? "home" : "scenario";
+    const target = screen === "home" ? "home" : "scenario";
     const state = resultStateFor(target);
     const live = $("#hlnLiveConfigurator");
     if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
@@ -1791,7 +1791,7 @@
       return;
     }
     const runToken = beginOptimizerRun();
-    const buttons = $("[data-hln-smart-config]");
+    const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setStatus("Caut o configurație fezabilă spre nZEB…");
     setOptimizationNote("<strong>Optimizer nZEB în lucru…</strong><span>Aplic cerințele de anvelopă împreună, apoi evaluez doar familiile de instalații/regenerabile care pot îmbunătăți ținta.</span>");
@@ -3773,7 +3773,7 @@
     input.addEventListener("change", () => applyLiveScenarioChange(key, input.value, focus));
   });
 
-  $("[data-hln-reference-house]").forEach(button => {
+  $$("[data-hln-reference-house]").forEach(button => {
     button.addEventListener("click", setReferenceHouse);
   });
 
@@ -3801,7 +3801,7 @@
     });
   });
 
-  $("[data-hln-smart-config]").forEach(button => {
+  $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
       if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi();
