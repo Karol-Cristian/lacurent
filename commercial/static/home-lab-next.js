@@ -2245,7 +2245,7 @@
         ? "Țintă nZEB · configurație automată"
         : projectMode === "existing_major"
           ? "Renovare majoră · configurație automată"
-          : "Renovare eficientă · configurație automată";
+          : "Îmbunătățiri eficiente · configurație automată";
 
       applyOptimizerResult(state, current, overrides, {
         mode,
@@ -2282,7 +2282,7 @@
           ? 100 * (before - after) / before
           : null;
         headline = selected.length
-          ? "Pachet automat de renovare energetică calculat."
+          ? "Pachet automat de îmbunătățiri energetice calculat."
           : "Casa nu are o intervenție automată cu îmbunătățire energetică pozitivă în setul testat.";
         details = Number.isFinite(reduction)
           ? `Energia primară scade cu ${fmt(reduction,1)}% față de Casa mea.`
@@ -2295,15 +2295,15 @@
          <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări ale motorului. Fără căutare combinatorială și fără limită artificială la numărul de intervenții.</small>`,
         guardrailPass && selected.length ? "good" : "warn"
       );
-      setStatus("Renovare automată calculată", guardrailPass ? "ok" : "");
+      setStatus("Optimizare automată calculată", guardrailPass ? "ok" : "");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
       scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(
-        `<strong>Renovarea automată nu a putut fi calculată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
+        `<strong>Optimizarea automată nu a putut fi calculată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
         "warn"
       );
-      setStatus(error?.message || "Renovarea automată este indisponibilă.", "error");
+      setStatus(error?.message || "Optimizarea automată este indisponibilă.", "error");
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
