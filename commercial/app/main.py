@@ -33,6 +33,7 @@ HOME_LAB_IMAGE_NAMES = frozenset(HOME_LAB_IMAGE_BYTES)
 LOCATION_REGISTRY_PATH = DATA_DIR / "localities.json"
 CLIMATE_ZONES_PATH = DATA_DIR / "winter-climate-zones.geojson"
 ROMANIA_BOUNDARY_PATH = DATA_DIR / "romania-boundary.geojson"
+ROI_COST_BASIS_PATH = DATA_DIR / "roi-cost-basis.seed.json"
 LOCATION_STREAM_CHUNK_BYTES = 64 * 1024
 
 @lru_cache(maxsize=1)
@@ -1140,6 +1141,92 @@ async def location_data_api() -> StreamingResponse:
         _location_payload_stream(),
         media_type="application/json",
         headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+@lru_cache(maxsize=1)
+def roi_cost_basis_seed() -> dict[str, Any]:
+    return json.loads(ROI_COST_BASIS_PATH.read_text(encoding="utf-8"))
+
+
+def _roi_cost_payload_from_rows(rows: list[dict[str, Any]], *, source: str) -> dict[str, Any]:
+    costs: dict[str, dict[str, Any]] = {}
+    catalog_versions: set[str] = set()
+    observed_dates: set[str] = set()
+    for row in rows:
+        family = str(row.get("family") or "").strip()
+        cost_lei = row.get("cost_lei")
+        if not family or cost_lei is None:
+            continue
+        item = {
+            "label": row.get("label"),
+            "cost_lei": float(cost_lei),
+            "unit": row.get("unit"),
+            "source_kind": row.get("source_kind"),
+            "source_url": row.get("source_url"),
+            "observed_on": row.get("observed_on"),
+            "catalog_version": row.get("catalog_version"),
+            "confidence": row.get("confidence"),
+            "note": row.get("note"),
+        }
+        costs[family] = item
+        if item["catalog_version"]:
+            catalog_versions.add(str(item["catalog_version"]))
+        if item["observed_on"]:
+            observed_dates.add(str(item["observed_on"]))
+    return {
+        "source": source,
+        "catalog_version": max(catalog_versions) if catalog_versions else None,
+        "observed_on": max(observed_dates) if observed_dates else None,
+        "costs": costs,
+    }
+
+
+@app.get("/api/market-cost-basis")
+async def market_cost_basis_api(request: Request) -> JSONResponse:
+    """Return commercial CAPEX assumptions without coupling them to physics.
+
+    In the Cloudflare runtime the source of truth is D1. Local/test runtimes and
+    a temporarily unavailable D1 table fall back to the versioned seed mirror
+    so the scientific calculator remains usable and Best ROI never asks the
+    homeowner to supply catalog maintenance data.
+    """
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        try:
+            result = await db.prepare(
+                """
+                SELECT family, label, cost_lei, unit, source_kind, source_url,
+                       observed_on, catalog_version, confidence, note
+                FROM roi_cost_basis
+                WHERE active = 1
+                ORDER BY family
+                """
+            ).run()
+            raw_rows = result.results
+            if hasattr(raw_rows, "to_py"):
+                raw_rows = raw_rows.to_py()
+            rows = [dict(row) for row in (raw_rows or [])]
+            payload = _roi_cost_payload_from_rows(rows, source="d1")
+            if payload["costs"]:
+                return JSONResponse(
+                    payload,
+                    headers={"Cache-Control": "public, max-age=900"},
+                )
+        except Exception:
+            # D1 is commercial infrastructure. A catalog outage must not break
+            # the energy model or expose database/runtime details to the client.
+            pass
+
+    seed = roi_cost_basis_seed()
+    payload = {
+        **seed,
+        "source": "seed_fallback",
+    }
+    return JSONResponse(
+        payload,
+        headers={"Cache-Control": "public, max-age=300"},
     )
 
 
