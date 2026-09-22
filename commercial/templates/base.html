@@ -16,21 +16,19 @@
 <body{% if embed_mode %} class="embed-body" data-embed-partner="{{ partner.id }}" style="--partner-accent: {{ partner.accent }}"{% endif %}>
   <div class="app-shell{% if embed_mode %} embed-shell{% endif %}">
     {% if not embed_mode %}
-    <aside class="brand-rail" aria-label="Navigare LaCurent Instalații & Energie">
+    <aside class="brand-rail" aria-label="Navigare LaCurent Home Lab">
       <a class="brand-mark" href="/home-lab-next">
         <span class="brand-symbol">LC</span>
         <span>
           <strong>LaCurent</strong>
-          <small>Instalații & Energie</small>
+          <small>Home Lab</small>
         </span>
       </a>
 
-      <nav class="rail-nav" aria-label="Home Lab · Instalații & Energie">
-        <a href="/instalatii">Instalații & energie</a>
+      <nav class="rail-nav" aria-label="Home Lab">
         <a href="/home-lab-next">Home Lab</a>
-        <a href="/home-lab-next#cum-functioneaza">Cum funcționează</a>
-        <a href="/home-lab-next#demo">Demo interactiv</a>
-        <a href="/home-lab-next/legacy">Calculator clasic</a>
+        <a href="/home-lab/facts">Facts din calcule</a>
+        <a href="/instalatii/calculator/legacy">Calculator clasic</a>
         <a href="/demo">Exemplu calculat</a>
       </nav>
     </aside>
