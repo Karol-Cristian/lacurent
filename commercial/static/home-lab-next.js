@@ -1668,11 +1668,18 @@
 
   function beginOptimizerRun() {
     clearTimeout(calculateTimer);
+    calculateTimer = 0;
     if (calculateAbortController) {
       calculateAbortController.abort();
       calculateAbortController = null;
     }
     calculateToken += 1;
+    cancelOptimizerRun();
+    optimizerEvaluationCount = 0;
+    optimizerAbortController = new AbortController();
+    scenarioResultState = "pending";
+    renderAll();
+    return optimizerRunToken;
   }
 
   function applyOptimizerResult(state, result, overrides, meta) {
@@ -1680,6 +1687,7 @@
     scenarioOverrides = {...overrides};
     scenarioResult = result;
     currentResult = result;
+    scenarioResultState = "fresh";
     referenceMode = false;
     optimizationMeta = meta;
     syncMeasuresFromScenario();
@@ -1688,13 +1696,38 @@
     emitVisualState(meta?.mode || "optimizer");
   }
 
+  function roiRowSummary(row) {
+    return {
+      id:row.action.id,
+      family:row.action.family,
+      label:row.action.label,
+      kind:row.action.kind,
+      capexLei:row.capexLei,
+      annualSavingLei:row.annualSavingLei,
+      roiPercentPerYear:row.roiPercentPerYear,
+      paybackYears:row.paybackYears,
+      regulatoryImprovement:row.regulatoryImprovement,
+    };
+  }
+
+  function applyOptimizerRows(rows) {
+    let state = migrateStoredHeatingState({...homeState}, defaultState);
+    let overrides = {};
+    for (const row of rows) {
+      const candidate = row.action.apply(state, overrides);
+      state = candidate.state;
+      overrides = candidate.overrides;
+    }
+    return {state, overrides};
+  }
+
   async function configureNzeb() {
-    beginOptimizerRun();
     if (!baselineSaved || !homeResult?.nzeb_target) {
       setOptimizationNote("<strong>Ținta nZEB nu este disponibilă.</strong><span>Lipsește zona climatică sau lookup-ul MC001 2.10a.</span>", "warn");
       return;
     }
-    const buttons = $$("[data-hln-smart-config]");
+    const runToken = beginOptimizerRun();
+    const buttons = $("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setStatus("Caut o configurație fezabilă spre nZEB…");
     setOptimizationNote("<strong>Optimizer nZEB în lucru…</strong><span>Aplic cerințele de anvelopă împreună, apoi evaluez doar familiile de instalații/regenerabile care pot îmbunătăți ținta.</span>");
@@ -1834,7 +1867,7 @@
         envelopeSource:target.envelope_source,
         note:target.renewable_requirement_status,
         selected,
-        evaluatedCandidates,
+        evaluatedCandidates:optimizerEvaluationCount,
       });
 
       const resultHeadline = meetsEnergyCo2
@@ -1843,119 +1876,259 @@
       setOptimizationNote(
         `<strong>${escapeHtml(resultHeadline)}</strong>
          <span>${selected.length} intervenții în pachet · EP ${fmt(current.primary_specific_kwh_m2,1)}/${fmt(target.primary_energy_kwh_m2_year,1)} kWh/m²·an · CO₂ ${fmt(current.co2_specific_kg_m2,1)}/${fmt(target.co2_kg_m2_year,1)} kg/m²·an.</span>
-         <small>Optimizer bounded: ${evaluatedCandidates} evaluări, fără limită artificială la numărul de intervenții. Anvelopa urmează pragurile metodologice; instalațiile și regenerabilele sunt selectate numai dacă îmbunătățesc ținta.</small>`,
+         <small>Optimizer bounded: ${optimizerEvaluationCount} evaluări ale motorului, fără limită artificială la numărul de intervenții. Anvelopa urmează pragurile metodologice; instalațiile și regenerabilele sunt selectate numai dacă îmbunătățesc ținta.</small>`,
         meetsEnergyCo2 && envelopeStatus.meets ? "good" : "warn"
       );
       setStatus("Configurație nZEB calculată", meetsEnergyCo2 ? "ok" : "");
     } catch (error) {
+      if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(`<strong>Optimizer nZEB indisponibil.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
       setStatus(error?.message || "Optimizer nZEB indisponibil.", "error");
+      renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
       populateTechnicalForm(scenarioState, scenarioOverrides);
+      if (runToken === optimizerRunToken) optimizerAbortController = null;
     }
   }
 
   async function configureBestRoi() {
-    beginOptimizerRun();
     if (!baselineSaved || !homeResult) return;
+
+    const target = regulatoryTargetForProjectMode();
+    if (projectMode !== "existing_standard" && !target) {
+      setOptimizationNote("<strong>Best ROI nu poate aplica guardrail-ul selectat.</strong><span>Lipsește pragul metodologic pentru zona climatică / tipul clădirii.</span>", "warn");
+      return;
+    }
+
+    const actions = adaptiveOptimizerActions(
+      migrateStoredHeatingState({...homeState}, defaultState),
+      {},
+      target,
+      "roi"
+    );
+    const mandatoryFamilies = new Set(
+      projectMode === "new_nzeb"
+        ? nzebEnvelopeActions(homeState, {}, target).map(action => action.id)
+        : []
+    );
+
+    const missingMandatoryCosts = [...mandatoryFamilies].filter(family => positiveRoiCost(family) == null);
+    const knownActions = actions.filter(action => positiveRoiCost(action.family) != null);
+    const missingFamilies = [...new Set(
+      actions
+        .filter(action => positiveRoiCost(action.family) == null)
+        .map(action => action.family)
+    )];
+
+    if (missingMandatoryCosts.length) {
+      const details = $("#hlnRoiCostDetails");
+      if (details) details.open = true;
+      setOptimizationNote(
+        `<strong>CAPEX incomplet pentru Best ROI nZEB.</strong><span>Lipsesc costuri pentru: ${escapeHtml(missingMandatoryCosts.join(", "))}. Nu inventez aceste costuri și nu pot calcula un ROI nZEB corect fără ele.</span>`,
+        "warn"
+      );
+      return;
+    }
+    if (!knownActions.length) {
+      const details = $("#hlnRoiCostDetails");
+      if (details) details.open = true;
+      setOptimizationNote(
+        "<strong>Introdu costurile investiției pentru Best ROI.</strong><span>ROI-ul real are nevoie de CAPEX. Câmpurile goale sunt excluse, nu estimate automat.</span>",
+        "warn"
+      );
+      return;
+    }
+
+    const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
-    setStatus("Calculez Best ROI estimativ…");
-    setOptimizationNote("<strong>Best ROI estimativ în lucru…</strong><span>Compar niveluri alternative pe fiecare familie de intervenție, apoi construiesc un pachet cumulativ fără limită de 3 măsuri.</span>");
+    setStatus("Calculez Best ROI…");
+    setOptimizationNote(
+      `<strong>Best ROI în lucru…</strong><span>Recalculez soluțiile tehnice cu CAPEX cunoscut și caut randamentul maxim sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
+    );
 
     try {
-      const target = homeResult.nzeb_target || null;
-      let state = migrateStoredHeatingState({...homeState}, defaultState);
-      let overrides = {};
-      let current = homeResult;
-      const selected = [];
-      let evaluatedCandidates = 0;
-
-      const actions = adaptiveOptimizerActions(state, overrides, target, "roi");
+      const baseState = migrateStoredHeatingState({...homeState}, defaultState);
       const evaluated = await evaluateActionVariants(
-        state,
-        overrides,
-        current,
-        actions,
+        baseState,
+        {},
+        homeResult,
+        knownActions,
         "roi",
         target
       );
-      evaluatedCandidates += actions.length;
+      if (runToken !== optimizerRunToken) return;
 
-      // First choose the best depth/size inside each intervention family. This
-      // avoids selecting both 5 cm and 15 cm wall insulation as separate measures.
-      const familyWinners = bestVariantPerFamily(evaluated, "roi")
-        .sort((a, b) => {
-          if (Math.abs(b.objective - a.objective) > 1e-9) return b.objective - a.objective;
-          if (Math.abs(b.saving - a.saving) > 1e-9) return b.saving - a.saving;
-          return b.energySaving - a.energySaving;
-        });
+      const familyWinners = bestVariantPerFamily(evaluated, "roi");
+      const rankedOpportunities = familyWinners
+        .filter(row => row.costKnown && Number.isFinite(row.roiPercentPerYear))
+        .sort((a, b) => b.roiPercentPerYear - a.roiPercentPerYear);
 
-      // Build the package cumulatively. Every family remains eligible; there is
-      // no top-3 cap. A measure is retained only if it still saves money after
-      // interactions with measures already selected and does not materially
-      // worsen final energy or CO2.
-      for (const row of familyWinners) {
-        const candidate = row.action.apply(state, overrides);
-        const result = await calculateCandidate(candidate.state, candidate.overrides);
-        evaluatedCandidates += 1;
-        const marginalSaving = Number(current.annual_cost_lei) - Number(result.annual_cost_lei);
-        const marginalEnergy = Number(current.final_energy_kwh) - Number(result.final_energy_kwh);
-        const marginalCo2 = Number(current.co2_specific_kg_m2) - Number(result.co2_specific_kg_m2);
-        if (
-          !Number.isFinite(marginalSaving) ||
-          marginalSaving <= 0 ||
-          !optimizerNoRegression(result, current)
-        ) continue;
-
-        state = candidate.state;
-        overrides = candidate.overrides;
-        current = result;
-        selected.push({
-          id:row.action.id,
-          label:row.action.label,
-          kind:row.action.kind,
-          effort:row.action.complexity,
-          marginalSavingLeiYear:marginalSaving,
-          marginalEnergySavingKwhYear:marginalEnergy,
-          marginalCo2SavingKgM2Year:marginalCo2,
-          score:marginalSaving / Math.max(row.action.complexity, 0.25),
-        });
-      }
-
-      if (!selected.length) {
-        setOptimizationNote("<strong>Nu am găsit o intervenție cu economie financiară pozitivă și fără regresie energetică/CO₂ semnificativă.</strong><span>Cu configurația și prețurile curente, nu forțez o recomandare.</span>", "warn");
-        setStatus("Best ROI fără recomandare pozitivă");
+      if (!rankedOpportunities.length) {
+        setOptimizationNote(
+          "<strong>Nu există încă o soluție cu ROI calculabil.</strong><span>Costurile introduse există, dar economia anuală nu poate fi evaluată pozitiv pentru candidații disponibili.</span>",
+          "warn"
+        );
+        setStatus("Best ROI fără candidat financiar pozitiv");
+        scenarioResultState = scenarioResult ? "stale" : "empty";
+        renderAll();
         return;
       }
 
+      let selectedRows = [];
+      let state = baseState;
+      let overrides = {};
+      let current = null;
+      let economics = null;
+
+      if (!target) {
+        const positive = rankedOpportunities.filter(row => row.positive);
+        if (!positive.length) {
+          setOptimizationNote(
+            "<strong>Nicio intervenție nu are ROI pozitiv cu datele curente.</strong><span>Nu forțez o recomandare doar pentru a produce un rezultat.</span>",
+            "warn"
+          );
+          setStatus("Best ROI fără investiție cu randament pozitiv");
+          scenarioResultState = scenarioResult ? "stale" : "empty";
+          renderAll();
+          return;
+        }
+
+        selectedRows = [positive[0]];
+        state = selectedRows[0].state;
+        overrides = selectedRows[0].overrides;
+        current = selectedRows[0].result;
+        economics = roiEconomics(homeResult, current, selectedRows[0].capexLei);
+
+        // Testează sinergiile cumulativ, dar numai cât timp rămâne un slot
+        // rezervat pentru rezultatul final complet. Nu există limită pe numărul
+        // de măsuri; limita este exclusiv numărul de evaluări ale motorului.
+        for (const row of positive.slice(1)) {
+          if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+          const candidate = row.action.apply(state, overrides);
+          const result = await calculateCandidate(candidate.state, candidate.overrides);
+          const packageCapex = selectedRows.reduce((sum, item) => sum + item.capexLei, 0) + row.capexLei;
+          const packageEconomics = roiEconomics(homeResult, result, packageCapex);
+          if (
+            packageEconomics.positive &&
+            packageEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6
+          ) {
+            selectedRows.push(row);
+            state = candidate.state;
+            overrides = candidate.overrides;
+            current = result;
+            economics = packageEconomics;
+          }
+        }
+      } else {
+        // Pentru un proiect cu prag global, pornește de la toate familiile cu
+        // CAPEX cunoscut. Apoi elimină măsuri dacă pachetul rămâne conform și
+        // ROI-ul pachetului crește. Astfel numărul de intervenții nu este plafonat.
+        selectedRows = [...familyWinners].filter(row => row.costKnown);
+        const mandatoryMissingFromPackage = [...mandatoryFamilies].filter(
+          family => !selectedRows.some(row => row.action.family === family)
+        );
+        if (mandatoryMissingFromPackage.length) {
+          throw new Error(`Nu pot construi pachetul obligatoriu: lipsesc familiile ${mandatoryMissingFromPackage.join(", ")}.`);
+        }
+
+        ({state, overrides} = applyOptimizerRows(selectedRows));
+        current = await calculateCandidate(state, overrides);
+        let packageCapex = selectedRows.reduce((sum, row) => sum + row.capexLei, 0);
+        economics = roiEconomics(homeResult, current, packageCapex);
+
+        if (!regulatoryMeetsTarget(current, target, state, overrides)) {
+          setOptimizationNote(
+            `<strong>Nu am găsit un pachet care să treacă guardrail-ul „${escapeHtml(projectModeLabel())}”.</strong><span>Am testat toate familiile cu CAPEX cunoscut în bugetul bounded. Nu declar conformitate dacă pragurile nu sunt atinse.</span><small>Evaluări motor: ${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS}.</small>`,
+            "warn"
+          );
+          setStatus("Best ROI: guardrail neîndeplinit");
+          scenarioResultState = scenarioResult ? "stale" : "empty";
+          renderAll();
+          return;
+        }
+
+        const removalOrder = [...selectedRows]
+          .filter(row => !mandatoryFamilies.has(row.action.family))
+          .sort((a, b) => a.roiPercentPerYear - b.roiPercentPerYear);
+
+        for (const row of removalOrder) {
+          if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+          const trialRows = selectedRows.filter(item => item !== row);
+          const trialPackage = applyOptimizerRows(trialRows);
+          const trialResult = await calculateCandidate(trialPackage.state, trialPackage.overrides);
+          if (!regulatoryMeetsTarget(trialResult, target, trialPackage.state, trialPackage.overrides)) continue;
+          const trialCapex = trialRows.reduce((sum, item) => sum + item.capexLei, 0);
+          const trialEconomics = roiEconomics(homeResult, trialResult, trialCapex);
+          if (
+            Number.isFinite(trialEconomics.roiPercentPerYear) &&
+            (!Number.isFinite(economics.roiPercentPerYear) ||
+              trialEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6)
+          ) {
+            selectedRows = trialRows;
+            state = trialPackage.state;
+            overrides = trialPackage.overrides;
+            current = trialResult;
+            economics = trialEconomics;
+            packageCapex = trialCapex;
+          }
+        }
+      }
+
       current = await calculateCandidate(state, overrides, {compact:false});
-      evaluatedCandidates += 1;
-      const totalSaving = Number(homeResult.annual_cost_lei) - Number(current.annual_cost_lei);
-      const totalEnergySaving = Number(homeResult.final_energy_kwh) - Number(current.final_energy_kwh);
-      const totalCo2Saving = Number(homeResult.co2_specific_kg_m2) - Number(current.co2_specific_kg_m2);
+      if (runToken !== optimizerRunToken) return;
+      const capexLei = selectedRows.reduce((sum, row) => sum + row.capexLei, 0);
+      economics = roiEconomics(homeResult, current, capexLei);
+      const guardrailPass = regulatoryMeetsTarget(current, target, state, overrides);
+      const selected = selectedRows.map(roiRowSummary);
+      const regulatoryNote = !target
+        ? "Renovare obișnuită: nu aplic un prag global 2.10a/2.10b; cerințele punctuale aplicabile intervențiilor rămân separate."
+        : projectMode === "new_nzeb"
+          ? "Pragurile modelate nZEB pentru energie primară, CO₂ și anvelopă sunt respectate; RER și verificarea completă de conformitate rămân de verificat."
+          : "Pachetul respectă pragurile energetice/CO₂ modelate din MC001 Tabel 2.10b pentru renovare majoră; verificarea completă a proiectului rămâne separată.";
 
       applyOptimizerResult(state, current, overrides, {
         mode:"roi",
-        label:"Best ROI estimativ · pachet adaptiv",
+        label:"Best ROI",
+        projectMode,
+        projectModeLabel:projectModeLabel(),
+        regulatoryTarget:target,
+        guardrailPass,
         selected,
-        evaluatedCandidates,
-        note:"Ranking economic bazat pe economia anuală calculată / indice de efort, cu guardrail de energie și CO₂. CAPEX/payback real vor folosi ulterior costurile trasabile din catalogul D1.",
+        rankedOpportunities:rankedOpportunities.map(roiRowSummary),
+        capexLei:economics.capexLei,
+        annualSavingLei:economics.annualSavingLei,
+        roiPercentPerYear:economics.roiPercentPerYear,
+        paybackYears:economics.paybackYears,
+        evaluatedCandidates:optimizerEvaluationCount,
+        costSource:"user_input",
+        excludedCostFamilies:missingFamilies,
+        note:regulatoryNote,
       });
+
+      const roiText = Number.isFinite(economics.roiPercentPerYear)
+        ? `${fmt(economics.roiPercentPerYear,1)}%/an`
+        : "n/a";
+      const paybackText = economics.paybackYears == null ? "n/a" : `${fmt(economics.paybackYears,1)} ani`;
       setOptimizationNote(
-        `<strong>Best ROI estimativ: ${selected.length} intervenții compatibile</strong>
-         <span>Economie combinată: +${fmt(Math.max(totalSaving,0))} lei/an · energie ${totalEnergySaving >= 0 ? "−" : "+"}${fmt(Math.abs(totalEnergySaving))} kWh/an · CO₂ ${totalCo2Saving >= 0 ? "−" : "+"}${fmt(Math.abs(totalCo2Saving),1)} kg/m²·an.</span>
-         <small>${evaluatedCandidates} evaluări bounded. Nu există limită artificială la 3 măsuri. „ROI” rămâne estimativ până când CAPEX-ul provine din produse/prețuri D1; motorul nu inventează costuri de investiție.</small>`,
-        "good"
+        `<strong>Best ROI: ${roiText} · recuperare ${paybackText}</strong>
+         <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length} intervenții în pachet.</span>
+         <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
+        guardrailPass && economics.positive ? "good" : "warn"
       );
-      setStatus("Best ROI estimativ calculat", "ok");
+      setStatus("Best ROI calculat", "ok");
     } catch (error) {
+      if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(`<strong>Best ROI indisponibil.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
       setStatus(error?.message || "Best ROI indisponibil.", "error");
+      renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
       populateTechnicalForm(scenarioState, scenarioOverrides);
+      if (runToken === optimizerRunToken) optimizerAbortController = null;
     }
   }
 
