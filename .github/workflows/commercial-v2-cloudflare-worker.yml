@@ -67,6 +67,11 @@ jobs:
           npm install --save-dev wrangler@latest
           npx wrangler --version
 
+      - name: Sync ROI market cost basis to production D1
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          npx wrangler d1 execute lacurent-db --remote --file=../../commercial/migrations/0001_roi_cost_basis.sql
+
       - name: Sync Python Worker dependencies
         working-directory: .wrangler/commercial-v2-worker
         run: |
@@ -179,6 +184,7 @@ jobs:
               "/static/painpoints.css": ".measured-result",
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
+              "/api/market-cost-basis": '"costs"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
