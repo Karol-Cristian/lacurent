@@ -13,6 +13,9 @@ def test_personal_blog_index_is_public_but_temporarily_noindex() -> None:
     assert "limită → identitate → relație → tensiune → suferință" in response.text
     assert "Lucrările sau inima" in response.text
     assert "Fără verdict" in response.text
+    assert 'id="fragmente"' in response.text
+    assert "Existența costă." in response.text
+    assert "Poți da aproape orice fără să te dai pe tine." in response.text
     assert 'name="robots" content="noindex,follow"' in response.text
 
 
