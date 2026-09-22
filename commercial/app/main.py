@@ -1134,9 +1134,18 @@ async def home_lab_next(request: Request) -> HTMLResponse:
 
 async def home_lab_next_calculation(request: Request) -> JSONResponse:
     form = dict(await request.form())
+    # Scenario and optimizer requests reuse the reference configuration already
+    # calculated for the saved baseline. Recomputing it here roughly doubles
+    # the CPU work per live request and is unnecessary for those flows.
+    skip_reference = str(form.pop("_skip_reference", "")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     try:
         building = build_input_from_form(form)
-        result = calculate(building)
+        result = calculate(building, include_reference=not skip_reference)
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
     return JSONResponse(embed_lab_result_payload(result))
