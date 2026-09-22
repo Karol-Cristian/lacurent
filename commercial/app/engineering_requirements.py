@@ -21,7 +21,7 @@ PV_ORIENTATIONS = (
     "east",
     "south_east",
 )
-PV_TILT_GRID_DEGREES = tuple(range(0, 91, 5))
+
 
 
 class EnvelopeUpgradeRequirementV1(BaseModel):
@@ -100,9 +100,17 @@ def _annual_plane_hsol(building: BuildingInput, orientation: str, tilt: float) -
 
 def optimize_pv_plane(building: BuildingInput) -> PvPlaneOptimizationV1:
     climate = resolve_climate(building.locality)
+    sizing_cfg = methodology()["engineering_sizing"]["photovoltaic_plane_search"]
+    tilt_grid = tuple(
+        range(
+            int(sizing_cfg["tilt_min_degrees"]),
+            int(sizing_cfg["tilt_max_degrees"]) + 1,
+            int(sizing_cfg["tilt_step_degrees"]),
+        )
+    )
     candidates: list[tuple[float, str, float, dict]] = []
     for orientation in PV_ORIENTATIONS:
-        for tilt in PV_TILT_GRID_DEGREES:
+        for tilt in tilt_grid:
             plane = resolve_monthly_plane_hsol(climate, orientation, float(tilt))
             if plane is None:
                 continue
@@ -143,7 +151,7 @@ def optimize_pv_plane(building: BuildingInput) -> PvPlaneOptimizationV1:
         ),
         current_loss_vs_optimum_percent=_round(max(100.0 - ratio, 0.0), 2),
         evaluated_orientations=len(PV_ORIENTATIONS),
-        evaluated_tilts=len(PV_TILT_GRID_DEGREES),
+        evaluated_tilts=len(tilt_grid),
         assumptions=[
             "Optimization maximizes annual plane irradiation, independently of any commercial PV module.",
             "The Light Engine uses source-backed monthly Hsol data and its documented horizontal-to-vertical plane interpolation.",
@@ -254,9 +262,10 @@ def heating_design_requirement(building: BuildingInput) -> HeatingDesignRequirem
         )
         water_delta_t = max(flow_c - return_c, 1.0)
 
-        water_cp_j_kgk = 4180.0
-        water_density_kg_m3 = 997.0
-        maximum_design_velocity_m_s = 0.8
+        hydronic_cfg = methodology()["engineering_sizing"]["hydronic"]
+        water_cp_j_kgk = float(hydronic_cfg["water_specific_heat_j_kgk"])
+        water_density_kg_m3 = float(hydronic_cfg["water_density_kg_m3"])
+        maximum_design_velocity_m_s = float(hydronic_cfg["maximum_design_velocity_m_s"])
 
         mass_flow_kg_s = (design_load_kw * 1000.0) / (water_cp_j_kgk * water_delta_t)
         volume_flow_m3_s = mass_flow_kg_s / water_density_kg_m3
