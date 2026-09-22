@@ -1082,7 +1082,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "[429, 502, 503, 504].includes(response.status)" not in response.text
     assert "response.status >= 500" not in response.text
     assert "Live interaction must never amplify an overloaded Worker" in response.text
-    assert "attempt < 2" in response.text
+    assert "attempt < 2" not in response.text
     assert "annual_generation_kwh" in response.text
     assert "self_consumed_kwh" in response.text
     assert "exported_kwh" in response.text
