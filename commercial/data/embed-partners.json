@@ -7,7 +7,7 @@
       "tagline": "Calculator energetic pentru clienții magazinului",
       "accent": "#1f7a4d",
       "cta_label": "Cere ofertă pentru casa configurată",
-      "cta_url": "https://lacurent.com/instalatii#evaluare",
+      "cta_url": "mailto:karol@lacurent.com?subject=Evaluare%20tehnica%20locuinta",
       "show_powered_by": true,
       "frame_ancestors": [
         "*"
