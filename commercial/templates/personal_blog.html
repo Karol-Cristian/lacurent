@@ -21,6 +21,7 @@
     </a>
     <nav>
       <a href="/lemnaru-karol-cristian#texte">Texte</a>
+      <a href="/lemnaru-karol-cristian#fragmente">Fragmente</a>
       <a href="/lemnaru-karol-cristian#despre">Despre</a>
     </nav>
   </header>
@@ -83,6 +84,23 @@
           </div>
           <span class="kc-card-arrow">→</span>
         </a>
+        {% endfor %}
+      </div>
+    </section>
+
+
+    <section class="kc-section kc-fragments" id="fragmente">
+      <div class="kc-section-head">
+        <p class="kc-kicker">Fragmente</p>
+        <h2>Idei scurte, întrebări și propoziții rămase în lucru</h2>
+        <p>Unele păstrează formularea directă din conversații. Altele sunt condensări editoriale ale aceleiași idei. Le păstrez scurte tocmai ca să nu forțez o concluzie mai mare decât gândul inițial.</p>
+      </div>
+      <div class="kc-fragment-grid">
+        {% for note in short_notes %}
+        <article class="kc-fragment">
+          <p class="kc-meta">{{ note.theme }}</p>
+          <blockquote>{{ note.text }}</blockquote>
+        </article>
         {% endfor %}
       </div>
     </section>

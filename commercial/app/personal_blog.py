@@ -176,6 +176,66 @@ ESSAYS = [
     },
 ]
 
+
+SHORT_NOTES = [
+    {"theme": "Ontologie", "text": "Limitele sunt identitate. Fără limite nu există identitate."},
+    {"theme": "Suferință", "text": "Durerea, efectiv, este atingerea limitelor."},
+    {"theme": "Suferință", "text": "Suferința apare exact în acest punct: acolo unde limita este trăită."},
+    {"theme": "Conștiință", "text": "Conștiința nu este un mecanism de compensare care aduce experiența la zero."},
+    {"theme": "Conștiință", "text": "Experiența lasă întotdeauna un rest. O acumulare. O sumă care nu se reduce la neutralitate."},
+    {"theme": "Conștiință", "text": "Dacă conștiința e ceva care costă, care lasă «sumă», atunci Universul însuși nu e un sistem contabil neutru — ci unul cu surplus, cu tensiune, cu istoric."},
+    {"theme": "Relație", "text": "Tensiunea este diferență de potențial și între două identități."},
+    {"theme": "Existență", "text": "Existența costă."},
+    {"theme": "Suferință", "text": "Suferința nu înseamnă neapărat că ceva a mers greșit. Poate însemna că ceva finit a întâlnit propria limită."},
+    {"theme": "Identitate", "text": "Autoconservarea este identitatea care refuză să dispară."},
+    {"theme": "Identitate", "text": "Dacă nu există limită, nu există nici «eu» și «tu»."},
+    {"theme": "Relație", "text": "Dacă diferența dispare, relația dispare odată cu ea."},
+    {"theme": "Iubire", "text": "Iubirea nu trebuie să elimine diferența ca să producă unitate."},
+    {"theme": "Iubire", "text": "Iubirea poartă costul relației fără să-l anuleze pe celălalt."},
+    {"theme": "Iubire", "text": "Poate că iubirea se vede mai clar în lucrurile pe care refuză să le facă."},
+    {"theme": "Viață", "text": "Cum este posibil așa ceva? Un om?"},
+    {"theme": "Timp", "text": "Normalitate inexplicabilă."},
+    {"theme": "Timp", "text": "Înainte de nașterea lui, timpul părea aproape absolut. După aceea, timpul lui s-a amestecat cu al nostru."},
+    {"theme": "Timp", "text": "Un copil apare într-o zi și foarte repede ai impresia că a existat dintotdeauna."},
+    {"theme": "Cunoaștere", "text": "Dar când murim vom înțelege mai mult?"},
+    {"theme": "Cunoaștere", "text": "Când vom ajunge noi oamenii să cunoaștem tot adevărul?"},
+    {"theme": "Cunoaștere", "text": "Avem impresia că suntem incredibili, dar de fapt suntem aproape zero barat."},
+    {"theme": "Credință", "text": "Un sistem complet de gândire tot nu explică suficient și în continuare ai nevoie de credință."},
+    {"theme": "Cunoaștere", "text": "Faptul că o teorie explică foarte mult nu înseamnă că a epuizat realitatea."},
+    {"theme": "Cunoaștere", "text": "Poate că adevărul este mai mare decât capacitatea noastră de a-l transforma într-un sistem."},
+    {"theme": "Credință", "text": "Credința începe poate exact acolo unde explicația nu mai poate pretinde că este totală."},
+    {"theme": "Cunoaștere", "text": "A admite că nu știi nu este același lucru cu a renunța să cauți."},
+    {"theme": "Dumnezeu", "text": "Nu vreau ca Dumnezeu să fie explicația lucrurilor pe care încă nu le înțeleg."},
+    {"theme": "Dumnezeu", "text": "Dumnezeu nu trebuie introdus ca reparație într-o fizică incompletă."},
+    {"theme": "Dumnezeu", "text": "Dacă Dumnezeu există, realitatea nu trebuie falsificată ca să-I facem loc."},
+    {"theme": "Credință", "text": "O credință care se teme de adevăr este deja într-o poziție foarte fragilă."},
+    {"theme": "Credință", "text": "Dacă o variantă de manuscris există, vreau să știu că există. Credința nu trebuie apărată ascunzând-o."},
+    {"theme": "Cunoaștere", "text": "Nu vreau să demonstrez mai mult decât permit dovezile."},
+    {"theme": "Sens", "text": "Oamenii se dezvrăjesc ca să nu mai poată fi manipulați, dar după aceea trebuie să afle pentru ce mai trăiesc."},
+    {"theme": "Sens", "text": "Demontarea unei minciuni nu produce automat un adevăr în care poți locui."},
+    {"theme": "Libertate", "text": "Libertatea fără direcție poate deveni doar absența constrângerii."},
+    {"theme": "Sens", "text": "Idealurile pot fi folosite pentru manipulare; asta nu înseamnă că trebuie să trăim fără idealuri."},
+    {"theme": "Existență", "text": "Echilibrul poate fi uneori un cuvânt prea comod. Viața nu readuce totul la zero."},
+    {"theme": "Existență", "text": "Nu orice lucru trebuie compensat. Unele lucruri rămân în tine."},
+    {"theme": "Timp", "text": "Viața are istoric. Nu te întorci pur și simplu la starea inițială."},
+    {"theme": "Identitate", "text": "Ceea ce ai trăit schimbă sistemul care trăiește mai departe."},
+    {"theme": "Caracter", "text": "Cum să recunoști totuși un om după roade? La ce te uiți? Cum evaluezi?"},
+    {"theme": "Caracter", "text": "Poate că un om nu se vede cel mai bine în ceea ce declară, ci în ceea ce produce repetat în jurul lui."},
+    {"theme": "Credință", "text": "Nu vreau o credință care doar mă consolează. Vreau una care rămâne în picioare și după ce încerc s-o demontez."},
+    {"theme": "Credință", "text": "Nu vreau o lume revrăjită. Vreau să văd dacă Dumnezeu mai rămâne după dezvrăjire."},
+    {"theme": "Adevăr", "text": "Adevărul nu devine mai adevărat pentru că am nevoie de el."},
+    {"theme": "Sens", "text": "Și totuși nevoia noastră de sens este ea însăși un fapt care trebuie explicat."},
+    {"theme": "Voință", "text": "Uneori facem lucruri foarte grele ca să evităm un lucru foarte simplu."},
+    {"theme": "Credință", "text": "Poți da aproape orice fără să te dai pe tine."},
+    {"theme": "Credință", "text": "Poți renunța la avere și să păstrezi proprietatea asupra ta."},
+    {"theme": "Credință", "text": "Poate că ultima proprietate la care renunță omul este el însuși."},
+    {"theme": "Credință", "text": "Vrem viața veșnică, dar vrem să rămână viața noastră."},
+    {"theme": "Dumnezeu", "text": "A-L accepta pe Dumnezeu nu este același lucru cu a-I permite să fie Dumnezeu."},
+    {"theme": "Credință", "text": "Faptele pot deveni inclusiv o metodă de a păstra controlul."},
+    {"theme": "Credință", "text": "Uneori meritul este ultima formă a autonomiei."},
+    {"theme": "Credință", "text": "«N-am făcut noi...?» este poate una dintre cele mai periculoase propoziții religioase."},
+]
+
 ESSAYS_BY_SLUG = {essay["slug"]: essay for essay in ESSAYS}
 
 
@@ -187,6 +247,7 @@ def personal_blog(request: Request) -> HTMLResponse:
         context={
             "essays": ESSAYS,
             "article": None,
+            "short_notes": SHORT_NOTES,
         },
     )
 
@@ -202,5 +263,6 @@ def personal_blog_article(request: Request, slug: str) -> HTMLResponse:
         context={
             "essays": ESSAYS,
             "article": article,
+            "short_notes": SHORT_NOTES,
         },
     )
