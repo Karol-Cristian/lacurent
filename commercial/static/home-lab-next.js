@@ -1213,9 +1213,9 @@
       for (const item of envelopeVariants) {
         const currentCm = Math.max(Number(state[item.stateKey] || 0), 0);
         const actualU = Number(currentEnvelopeU(state, {
-          wallU:"wallU",
-          roofU:"roofU",
-          floorU:"floorU",
+          wallIns:"wallU",
+          roofIns:"roofU",
+          floorIns:"floorU",
         }[item.stateKey] || "", overrides));
         const alreadyStrong = Number.isFinite(item.targetU)
           && item.targetU > 0
