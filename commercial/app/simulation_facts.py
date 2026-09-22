@@ -483,21 +483,26 @@ async def list_published_simulation_facts(db: Any, limit: int = 60) -> list[dict
     featured = _featured_roof_first_fact()
     if db is None:
         return [featured][:limit]
-    await ensure_simulation_facts_schema(db)
-    result = await db.prepare(
-        """
-        SELECT slug, title, search_question, claim, context, locality,
-               scenario_id, scenario_label, metric_label, metric_unit,
-               baseline_value, scenario_value, change_percent,
-               metrics_json, methodology_version, ai_model,
-               generated_at, published_at
-        FROM simulation_facts
-        WHERE status = 'published'
-        ORDER BY published_at DESC, id DESC
-        LIMIT ?
-        """
-    ).bind(int(max(1, min(limit, 100)))).run()
-    dynamic = [_public_fact(row) for row in _d1_rows(result)]
+    try:
+        await ensure_simulation_facts_schema(db)
+        result = await db.prepare(
+            """
+            SELECT slug, title, search_question, claim, context, locality,
+                   scenario_id, scenario_label, metric_label, metric_unit,
+                   baseline_value, scenario_value, change_percent,
+                   metrics_json, methodology_version, ai_model,
+                   generated_at, published_at
+            FROM simulation_facts
+            WHERE status = 'published'
+            ORDER BY published_at DESC, id DESC
+            LIMIT ?
+            """
+        ).bind(int(max(1, min(limit, 100)))).run()
+        dynamic = [_public_fact(row) for row in _d1_rows(result)]
+    except Exception:
+        # The curated calculated fact must remain public even if D1 is
+        # temporarily unavailable or its schema cannot be initialized.
+        dynamic = []
     dynamic = [item for item in dynamic if item.get("slug") != featured["slug"]]
     return [featured, *dynamic][:limit]
 
