@@ -1149,6 +1149,88 @@ def roi_cost_basis_seed() -> dict[str, Any]:
     return json.loads(ROI_COST_BASIS_PATH.read_text(encoding="utf-8"))
 
 
+ROI_COST_BASIS_CREATE_SQL = """
+CREATE TABLE IF NOT EXISTS roi_cost_basis (
+    family TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    cost_lei REAL NOT NULL CHECK(cost_lei > 0),
+    unit TEXT NOT NULL,
+    source_kind TEXT NOT NULL,
+    source_url TEXT,
+    observed_on TEXT NOT NULL,
+    catalog_version TEXT NOT NULL,
+    confidence TEXT NOT NULL,
+    note TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+ROI_COST_BASIS_UPSERT_SQL = """
+INSERT OR REPLACE INTO roi_cost_basis
+(
+    family, label, cost_lei, unit, source_kind, source_url,
+    observed_on, catalog_version, confidence, note, active, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+"""
+
+
+def _d1_rows(result: Any) -> list[dict[str, Any]]:
+    raw_rows = getattr(result, "results", None)
+    if hasattr(raw_rows, "to_py"):
+        raw_rows = raw_rows.to_py()
+    return [dict(row) for row in (raw_rows or [])]
+
+
+async def _ensure_roi_cost_basis_d1(db: Any) -> None:
+    """Create/refresh the small commercial ROI table through the Worker binding.
+
+    The deployment token intentionally does not need D1 write permissions.
+    D1 writes happen through the already-authorized Worker binding, and only
+    when the versioned seed differs from the active database content.
+    """
+    seed = roi_cost_basis_seed()
+    expected_costs = seed.get("costs") or {}
+    expected_version = str(seed.get("catalog_version") or "")
+
+    await db.prepare(ROI_COST_BASIS_CREATE_SQL).run()
+    await db.prepare(
+        "CREATE INDEX IF NOT EXISTS roi_cost_basis_active_idx "
+        "ON roi_cost_basis(active, family)"
+    ).run()
+
+    status_result = await db.prepare(
+        """
+        SELECT COUNT(*) AS row_count,
+               COALESCE(MAX(catalog_version), '') AS catalog_version
+        FROM roi_cost_basis
+        WHERE active = 1
+        """
+    ).run()
+    status_rows = _d1_rows(status_result)
+    status = status_rows[0] if status_rows else {}
+    row_count = int(status.get("row_count") or 0)
+    active_version = str(status.get("catalog_version") or "")
+
+    if row_count == len(expected_costs) and active_version == expected_version:
+        return
+
+    for family, item in expected_costs.items():
+        await db.prepare(ROI_COST_BASIS_UPSERT_SQL).bind(
+            family,
+            item.get("label"),
+            float(item["cost_lei"]),
+            item.get("unit"),
+            item.get("source_kind"),
+            item.get("source_url"),
+            item.get("observed_on") or seed.get("observed_on"),
+            item.get("catalog_version") or seed.get("catalog_version"),
+            item.get("confidence"),
+            item.get("note"),
+        ).run()
+
+
 def _roi_cost_payload_from_rows(rows: list[dict[str, Any]], *, source: str) -> dict[str, Any]:
     costs: dict[str, dict[str, Any]] = {}
     catalog_versions: set[str] = set()
@@ -1195,6 +1277,7 @@ async def market_cost_basis_api(request: Request) -> JSONResponse:
     db = getattr(env, "DB", None) if env is not None else None
     if db is not None:
         try:
+            await _ensure_roi_cost_basis_d1(db)
             result = await db.prepare(
                 """
                 SELECT family, label, cost_lei, unit, source_kind, source_url,
@@ -1204,10 +1287,7 @@ async def market_cost_basis_api(request: Request) -> JSONResponse:
                 ORDER BY family
                 """
             ).run()
-            raw_rows = result.results
-            if hasattr(raw_rows, "to_py"):
-                raw_rows = raw_rows.to_py()
-            rows = [dict(row) for row in (raw_rows or [])]
+            rows = _d1_rows(result)
             payload = _roi_cost_payload_from_rows(rows, source="d1")
             if payload["costs"]:
                 return JSONResponse(
