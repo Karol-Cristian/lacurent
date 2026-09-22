@@ -69,45 +69,114 @@
     "status": "LaCurent Light product estimates. The subsystem structure follows MC001-2022 Chapter 3, but these preset factors and heat-pump SCOP mappings are not presented as normative MC001 table values.",
     "mc001_structure_reference": "MC001-2022 Chapter 3.1: emission, distribution, generation, auxiliary energy; storage where applicable.",
     "emitters": {
-      "local": {"label": "Sursă locală / sobă", "flow_c": 60, "return_c": 45, "efficiency": 1.0},
-      "radiators_high_temp": {"label": "Calorifere clasice", "flow_c": 60, "return_c": 45, "efficiency": 0.94},
-      "radiators_low_temp": {"label": "Calorifere joasă temperatură", "flow_c": 45, "return_c": 35, "efficiency": 0.97},
-      "underfloor": {"label": "Încălzire în pardoseală", "flow_c": 35, "return_c": 30, "efficiency": 0.98},
-      "fan_coils": {"label": "Ventiloconvectoare", "flow_c": 45, "return_c": 40, "efficiency": 0.96},
-      "air": {"label": "Încălzire cu aer", "flow_c": 40, "return_c": 30, "efficiency": 0.95}
+      "local": {
+        "label": "Sursă locală / sobă",
+        "flow_c": 60,
+        "return_c": 45,
+        "efficiency": 1
+      },
+      "radiators_high_temp": {
+        "label": "Calorifere clasice",
+        "flow_c": 60,
+        "return_c": 45,
+        "efficiency": 0.94
+      },
+      "radiators_low_temp": {
+        "label": "Calorifere joasă temperatură",
+        "flow_c": 45,
+        "return_c": 35,
+        "efficiency": 0.97
+      },
+      "underfloor": {
+        "label": "Încălzire în pardoseală",
+        "flow_c": 35,
+        "return_c": 30,
+        "efficiency": 0.98
+      },
+      "fan_coils": {
+        "label": "Ventiloconvectoare",
+        "flow_c": 45,
+        "return_c": 40,
+        "efficiency": 0.96
+      },
+      "air": {
+        "label": "Încălzire cu aer",
+        "flow_c": 40,
+        "return_c": 30,
+        "efficiency": 0.95
+      }
     },
     "distribution": {
-      "local": {"label": "Fără rețea de distribuție", "efficiency": 1.0},
-      "hydronic_insulated": {"label": "Conducte hidraulice izolate", "efficiency": 0.96},
-      "hydronic_uninsulated": {"label": "Conducte hidraulice neizolate", "efficiency": 0.90},
-      "underfloor": {"label": "Distribuție pardoseală", "efficiency": 0.97},
-      "air": {"label": "Distribuție prin aer", "efficiency": 0.94}
+      "local": {
+        "label": "Fără rețea de distribuție",
+        "efficiency": 1
+      },
+      "hydronic_insulated": {
+        "label": "Conducte hidraulice izolate",
+        "efficiency": 0.96
+      },
+      "hydronic_uninsulated": {
+        "label": "Conducte hidraulice neizolate",
+        "efficiency": 0.9
+      },
+      "underfloor": {
+        "label": "Distribuție pardoseală",
+        "efficiency": 0.97
+      },
+      "air": {
+        "label": "Distribuție prin aer",
+        "efficiency": 0.94
+      }
     },
     "storage": {
-      "none": {"label": "Fără stocare termică", "efficiency": 1.0},
-      "buffer_small": {"label": "Puffer / buffer mic", "efficiency": 0.97},
-      "buffer_large": {"label": "Puffer / acumulare mare", "efficiency": 0.94}
+      "none": {
+        "label": "Fără stocare termică",
+        "efficiency": 1
+      },
+      "buffer_small": {
+        "label": "Puffer / buffer mic",
+        "efficiency": 0.97
+      },
+      "buffer_large": {
+        "label": "Puffer / acumulare mare",
+        "efficiency": 0.94
+      }
     },
     "control": {
-      "manual": {"label": "Reglaj manual", "efficiency": 0.92},
-      "room_thermostat": {"label": "Termostat de ambient", "efficiency": 0.96},
-      "thermostatic_valves": {"label": "Robineți termostatici", "efficiency": 0.97},
-      "zoned": {"label": "Control pe zone", "efficiency": 0.98},
-      "weather_compensated": {"label": "Compensare climatică", "efficiency": 0.99}
+      "manual": {
+        "label": "Reglaj manual",
+        "efficiency": 0.92
+      },
+      "room_thermostat": {
+        "label": "Termostat de ambient",
+        "efficiency": 0.96
+      },
+      "thermostatic_valves": {
+        "label": "Robineți termostatici",
+        "efficiency": 0.97
+      },
+      "zoned": {
+        "label": "Control pe zone",
+        "efficiency": 0.98
+      },
+      "weather_compensated": {
+        "label": "Compensare climatică",
+        "efficiency": 0.99
+      }
     },
     "heat_pump_scop_by_emitter": {
-      "local": 3.0,
+      "local": 3,
       "radiators_high_temp": 2.3,
       "radiators_low_temp": 2.8,
       "underfloor": 3.2,
       "fan_coils": 2.8,
-      "air": 3.0
+      "air": 3
     },
     "heat_pump_scop_source": "Legacy LaCurent internal estimates retained only as Light Engine defaults; confidence low. MC001-2022 Chapter 4.1 requires source/sink temperatures, COP/capacity behaviour, auxiliaries and backup for normative heat-pump calculation.",
     "heat_pump_generator_factor": {
-      "heat_pump_air_water": 1.0,
+      "heat_pump_air_water": 1,
       "heat_pump_ground_water": 1.2,
-      "heat_pump_air_air": 1.0
+      "heat_pump_air_air": 1
     },
     "auxiliary_electricity_kwh_year": {
       "gas_boiler": 120,
@@ -197,32 +266,62 @@
     "co2_unit": "kgCO₂/(m²·an)",
     "values": {
       "I": {
-        "residential_collective": {"primary_energy_kwh_m2_year": 99.1, "co2_kg_m2_year": 12.0},
-        "residential_individual": {"primary_energy_kwh_m2_year": 120.1, "co2_kg_m2_year": 14.7}
+        "residential_collective": {
+          "primary_energy_kwh_m2_year": 99.1,
+          "co2_kg_m2_year": 12
+        },
+        "residential_individual": {
+          "primary_energy_kwh_m2_year": 120.1,
+          "co2_kg_m2_year": 14.7
+        }
       },
       "II": {
-        "residential_collective": {"primary_energy_kwh_m2_year": 103.7, "co2_kg_m2_year": 12.8},
-        "residential_individual": {"primary_energy_kwh_m2_year": 127.9, "co2_kg_m2_year": 16.0}
+        "residential_collective": {
+          "primary_energy_kwh_m2_year": 103.7,
+          "co2_kg_m2_year": 12.8
+        },
+        "residential_individual": {
+          "primary_energy_kwh_m2_year": 127.9,
+          "co2_kg_m2_year": 16
+        }
       },
       "III": {
-        "residential_collective": {"primary_energy_kwh_m2_year": 105.9, "co2_kg_m2_year": 13.5},
-        "residential_individual": {"primary_energy_kwh_m2_year": 133.3, "co2_kg_m2_year": 17.1}
+        "residential_collective": {
+          "primary_energy_kwh_m2_year": 105.9,
+          "co2_kg_m2_year": 13.5
+        },
+        "residential_individual": {
+          "primary_energy_kwh_m2_year": 133.3,
+          "co2_kg_m2_year": 17.1
+        }
       },
       "IV": {
-        "residential_collective": {"primary_energy_kwh_m2_year": 109.5, "co2_kg_m2_year": 14.3},
-        "residential_individual": {"primary_energy_kwh_m2_year": 140.6, "co2_kg_m2_year": 18.5}
+        "residential_collective": {
+          "primary_energy_kwh_m2_year": 109.5,
+          "co2_kg_m2_year": 14.3
+        },
+        "residential_individual": {
+          "primary_energy_kwh_m2_year": 140.6,
+          "co2_kg_m2_year": 18.5
+        }
       },
       "V": {
-        "residential_collective": {"primary_energy_kwh_m2_year": 113.1, "co2_kg_m2_year": 15.1},
-        "residential_individual": {"primary_energy_kwh_m2_year": 147.9, "co2_kg_m2_year": 19.9}
+        "residential_collective": {
+          "primary_energy_kwh_m2_year": 113.1,
+          "co2_kg_m2_year": 15.1
+        },
+        "residential_individual": {
+          "primary_energy_kwh_m2_year": 147.9,
+          "co2_kg_m2_year": 19.9
+        }
       }
     },
     "residential_envelope_u_max_w_m2k": {
       "exterior_wall": 0.25,
       "roof": 0.15,
-      "floor_generic_conservative": 0.20,
+      "floor_generic_conservative": 0.2,
       "window": 1.11,
-      "exterior_door": 1.30
+      "exterior_door": 1.3
     },
     "envelope_source": "MC001-2022, Tabel 2.4; pragul generic de pardoseală 0,20 W/(m²K) este alegerea conservatoare Light pentru placa spre exterior/sol când tipul exact al planșeului nu este încă modelat.",
     "renewable_requirement_status": "RER contribution is not yet fully verified by the Light Engine; nZEB optimizer must not claim legal compliance solely from primary-energy and CO2 thresholds."
@@ -349,6 +448,37 @@
       "default_tilt_degrees": 45,
       "target_service": "dhw",
       "status": "LaCurent Light monthly useful-yield assumption; user-overridable"
+    }
+  },
+  "engineering_sizing": {
+    "photovoltaic_plane_search": {
+      "orientations": [
+        "south",
+        "south_west",
+        "west",
+        "north_west",
+        "north",
+        "north_east",
+        "east",
+        "south_east"
+      ],
+      "tilt_min_degrees": 0,
+      "tilt_max_degrees": 90,
+      "tilt_step_degrees": 5,
+      "objective": "maximum_annual_plane_hsol",
+      "status": "LaCurent Light deterministic search over the existing source-backed monthly plane model"
+    },
+    "hydronic": {
+      "water_specific_heat_j_kgk": 4180,
+      "water_density_kg_m3": 997,
+      "maximum_design_velocity_m_s": 0.8,
+      "relation": "Q = m_dot * cp * DeltaT; d_min from volumetric flow and maximum design velocity",
+      "status": "Transparent first-principles Light sizing rule; pipe route length requires explicit layout"
+    },
+    "generator": {
+      "hidden_oversizing_margin_percent": 0,
+      "relation": "minimum generator thermal capacity equals calculated building design heat load",
+      "status": "Scientific requirement only; commercial product matching is performed outside the Home Lab engine"
     }
   }
 }
