@@ -17,6 +17,13 @@ from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .pricing import energy_prices, estimate_energy_cost
+from .pv_catalog import (
+    PvModuleSizingRequestV1,
+    PvProductScenarioRequestV1,
+    build_pv_product_scenario,
+    pv_catalog,
+    size_pv_modules,
+)
 from .product_matching import (
     WallInsulationProductMatchRequestV1,
     WallInsulationProductScenarioRequestV1,
@@ -1036,6 +1043,25 @@ async def location_data_api() -> JSONResponse:
 @app.get("/api/energy-prices")
 async def energy_prices_api() -> JSONResponse:
     return JSONResponse(energy_prices())
+
+
+@app.get("/api/products/pv-modules")
+async def pv_module_catalog_api() -> JSONResponse:
+    return JSONResponse(model_to_dict(pv_catalog()))
+
+
+@app.post("/api/products/pv-modules/size")
+async def pv_module_sizing_api(payload: PvModuleSizingRequestV1) -> JSONResponse:
+    return JSONResponse(model_to_dict(size_pv_modules(payload)))
+
+
+@app.post("/api/scenarios/pv/product")
+async def pv_product_scenario_api(payload: PvProductScenarioRequestV1) -> JSONResponse:
+    try:
+        response = build_pv_product_scenario(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(response))
 
 
 @app.post("/api/scenarios/wall-insulation")

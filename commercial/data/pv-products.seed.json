@@ -1,0 +1,198 @@
+{
+  "schema_version": "1.0",
+  "catalog_version": "pv-ro-seed-2026-09-22",
+  "observed_on": "2026-09-22",
+  "entries": [
+    {
+      "product": {
+        "schema_version": "1.0",
+        "product_id": "canadian-solar-cs6-2-48td-460",
+        "manufacturer": "Canadian Solar",
+        "model": "CS6.2-48TD-460 TOPHiKu6",
+        "technology": "N-type TOPCon, dual-glass module",
+        "pmax_w": 460,
+        "vmp_v": 45.2,
+        "imp_a": 10.18,
+        "voc_v": 53.3,
+        "isc_a": 10.82,
+        "module_efficiency_percent": 23,
+        "length_mm": 1762,
+        "width_mm": 1134,
+        "thickness_mm": 30,
+        "weight_kg": 24.6,
+        "temperature_coefficient_pmax_percent_c": null,
+        "temperature_coefficient_voc_percent_c": null,
+        "temperature_coefficient_isc_percent_c": null,
+        "noct_c": null,
+        "max_system_voltage_v": 1500,
+        "max_series_fuse_a": 20,
+        "bifacial": false,
+        "technical_source_urls": [
+          "https://www.canadiansolar.com/na/wp-content/uploads/sites/3/2026/01/CSA.pdf",
+          "https://depozitsolar.ro/panouri-fotovoltaice/canadian-solar-tophiku6-460w-rama-neagra-cs6-2-48td-460.html"
+        ],
+        "catalog_version": "pv-ro-seed-2026-09-22"
+      },
+      "offers": [
+        {
+          "schema_version": "1.0",
+          "offer_id": "depozit-solar-cs6-2-48td-460-2026-09-22",
+          "product_id": "canadian-solar-cs6-2-48td-460",
+          "supplier_name": "Depozit Solar",
+          "price_lei": 444.07,
+          "vat_included": true,
+          "stock_status": "in_stock",
+          "product_url": "https://depozitsolar.ro/panouri-fotovoltaice/canadian-solar-tophiku6-460w-rama-neagra-cs6-2-48td-460.html",
+          "observed_on": "2026-09-22",
+          "currency": "RON"
+        }
+      ]
+    },
+    {
+      "product": {
+        "schema_version": "1.0",
+        "product_id": "jinko-jkm475n-48ql6-dv",
+        "manufacturer": "Jinko Solar",
+        "model": "JKM475N-48QL6-DV Tiger Neo III",
+        "technology": "N-type TOPCon, monofacial dual-glass module",
+        "pmax_w": 475,
+        "vmp_v": 31.11,
+        "imp_a": 15.27,
+        "voc_v": 36.42,
+        "isc_a": 15.86,
+        "module_efficiency_percent": 23.77,
+        "length_mm": 1762,
+        "width_mm": 1134,
+        "thickness_mm": 30,
+        "weight_kg": 24.4,
+        "temperature_coefficient_pmax_percent_c": -0.26,
+        "temperature_coefficient_voc_percent_c": -0.24,
+        "temperature_coefficient_isc_percent_c": 0.046,
+        "noct_c": 45,
+        "max_system_voltage_v": 1500,
+        "max_series_fuse_a": 30,
+        "bifacial": false,
+        "technical_source_urls": [
+          "https://www.jinkosolar.com/jp/site/dwparametern",
+          "https://zonetecsolar.ro/panou-fotovoltaic-tip-n-475-w-jinko-tiger-neo-n-type-jkm475n-48ql6-dv-dual-glass-eficienta-23-77-monocristalin-rama-argintie/"
+        ],
+        "catalog_version": "pv-ro-seed-2026-09-22"
+      },
+      "offers": [
+        {
+          "schema_version": "1.0",
+          "offer_id": "zonetec-jkm475n-48ql6-dv-2026-09-22",
+          "product_id": "jinko-jkm475n-48ql6-dv",
+          "supplier_name": "Zonetec Solar",
+          "price_lei": 497,
+          "vat_included": true,
+          "stock_status": "in_stock",
+          "product_url": "https://zonetecsolar.ro/panou-fotovoltaic-tip-n-475-w-jinko-tiger-neo-n-type-jkm475n-48ql6-dv-dual-glass-eficienta-23-77-monocristalin-rama-argintie/",
+          "observed_on": "2026-09-22",
+          "currency": "RON"
+        },
+        {
+          "schema_version": "1.0",
+          "offer_id": "depozit-solar-jkm475n-48ql6-dv-2026-09-22",
+          "product_id": "jinko-jkm475n-48ql6-dv",
+          "supplier_name": "Depozit Solar",
+          "price_lei": 459.8,
+          "vat_included": true,
+          "stock_status": "in_stock",
+          "product_url": "https://depozitsolar.ro/panouri-fotovoltaice",
+          "observed_on": "2026-09-22",
+          "currency": "RON"
+        }
+      ]
+    },
+    {
+      "product": {
+        "schema_version": "1.0",
+        "product_id": "longi-lr7-54hvb-475m",
+        "manufacturer": "LONGi",
+        "model": "LR7-54HVB-475M Hi-MO X10 EcoLife",
+        "technology": "HPBC 2.0 / BC-cell, monofacial single-glass module",
+        "pmax_w": 475,
+        "vmp_v": 33.16,
+        "imp_a": 14.33,
+        "voc_v": 40.18,
+        "isc_a": 15.03,
+        "module_efficiency_percent": 23.3,
+        "length_mm": 1800,
+        "width_mm": 1134,
+        "thickness_mm": 30,
+        "weight_kg": 21.6,
+        "temperature_coefficient_pmax_percent_c": -0.26,
+        "temperature_coefficient_voc_percent_c": -0.2,
+        "temperature_coefficient_isc_percent_c": 0.05,
+        "noct_c": 45,
+        "max_system_voltage_v": 1500,
+        "max_series_fuse_a": 25,
+        "bifacial": false,
+        "technical_source_urls": [
+          "https://static.longi.com/LR_7_54_HVB_475_495_M_30_30_and_15_Frame_BGV_02_20250820_EN_1_39b1ccce57.pdf"
+        ],
+        "catalog_version": "pv-ro-seed-2026-09-22"
+      },
+      "offers": [
+        {
+          "schema_version": "1.0",
+          "offer_id": "senetic-longi-lr7-54hvb-475m-2026-09-22",
+          "product_id": "longi-lr7-54hvb-475m",
+          "supplier_name": "Senetic via Compari.ro",
+          "price_lei": 603.09,
+          "vat_included": true,
+          "stock_status": "in_stock",
+          "product_url": "https://modul-solar.compari.ro/longi/lr7-54hvb-475m-modul-fotovoltaic-475-w-hi-mo-x10-ecolife-complet-negru-monocristalin-cu-o-singura-placa-de-sticla-rama-de-30-mm-conector-evo2-cablu-de-1200-mm-lr7-54hvb-475m-p1371051517/",
+          "observed_on": "2026-09-22",
+          "currency": "RON"
+        }
+      ]
+    },
+    {
+      "product": {
+        "schema_version": "1.0",
+        "product_id": "jinko-jkm510n-54hl4m-bdv",
+        "manufacturer": "Jinko Solar",
+        "model": "JKM510N-54HL4M-BDV Tiger Neo",
+        "technology": "N-type TOPCon, bifacial dual-glass module",
+        "pmax_w": 510,
+        "vmp_v": 34.39,
+        "imp_a": 14.83,
+        "voc_v": 40.72,
+        "isc_a": 15.73,
+        "module_efficiency_percent": 22.93,
+        "length_mm": 1961,
+        "width_mm": 1134,
+        "thickness_mm": 30,
+        "weight_kg": 27,
+        "temperature_coefficient_pmax_percent_c": -0.29,
+        "temperature_coefficient_voc_percent_c": -0.25,
+        "temperature_coefficient_isc_percent_c": 0.045,
+        "noct_c": null,
+        "max_system_voltage_v": 1500,
+        "max_series_fuse_a": 35,
+        "bifacial": true,
+        "technical_source_urls": [
+          "https://www.jinkosolar.com/uploads/JKM495-520N-54HL4M-BDV-F2-EN.pdf",
+          "https://depozitsolar.ro/jinko/jinko-tiger-neo-510w-rama-neagra-bdv.html"
+        ],
+        "catalog_version": "pv-ro-seed-2026-09-22"
+      },
+      "offers": [
+        {
+          "schema_version": "1.0",
+          "offer_id": "depozit-solar-jkm510n-54hl4m-bdv-2026-09-22",
+          "product_id": "jinko-jkm510n-54hl4m-bdv",
+          "supplier_name": "Depozit Solar",
+          "price_lei": 477.95,
+          "vat_included": true,
+          "stock_status": "in_stock",
+          "product_url": "https://depozitsolar.ro/jinko/jinko-tiger-neo-510w-rama-neagra-bdv.html",
+          "observed_on": "2026-09-22",
+          "currency": "RON"
+        }
+      ]
+    }
+  ]
+}
