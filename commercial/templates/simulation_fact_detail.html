@@ -60,6 +60,9 @@
         {% endif %}
         <p class="fact-answer-claim">{{ fact.claim }}</p>
         <p>{{ fact.context }}</p>
+        {% if fact.fact_kind == "comparison" %}
+        <p class="fact-answer-note">Important: raportul de {{ "%.1f"|format(fact.comparison_ratio) }}× compară cât scade pierderea prin cele două elemente. Nu înseamnă că întreaga casă va consuma de {{ "%.1f"|format(fact.comparison_ratio) }}× mai puțin.</p>
+        {% endif %}
       </section>
 
       <section class="fact-compare">
@@ -87,7 +90,7 @@
           <article class="is-delta">
             <small>ÎN ACEST CAZ</small>
             <strong>{{ "%.1f"|format(fact.comparison_ratio) }}×</strong>
-            <span>mai multă reducere a pierderilor prin {{ fact.comparison_left_label|lower }}</span>
+            <span>mai multă reducere a pierderii prin elementul comparat</span>
           </article>
           {% else %}
           <article>
