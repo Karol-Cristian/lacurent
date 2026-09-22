@@ -1092,7 +1092,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "hlnReferenceSpec" in response.text
     assert 'root.querySelectorAll("[data-hln-reference-house]")' in response.text
     assert "hln:visual-state" in response.text
-    assert 'fetch(calcUrl' in response.text
+    assert 'fetchWithTimeout(' in response.text
     assert 'href="#hln-i-' in response.text
 
 
