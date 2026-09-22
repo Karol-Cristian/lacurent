@@ -351,7 +351,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-screen="site"' in response.text
     assert 'data-hln-screen="intervention"' in response.text
     assert 'data-hln-screen="scenario"' in response.text
-    assert "Salvează Casa mea și începe renovarea" in response.text
+    assert "Salvează Casa mea și vezi îmbunătățirile" in response.text
     assert "Construiește punctul de plecare." in response.text
     assert "Ce vrei să schimbi?" in response.text
     assert "Păstrează intervenția" in response.text
@@ -996,7 +996,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function automaticRenovationCopy" in response.text
     assert 'projectMode === "existing_major"' in response.text
     assert 'projectMode === "new_nzeb"' in response.text
-    assert "Pachet automat de renovare energetică calculat" in response.text
+    assert "Pachet automat de îmbunătățiri energetice calculat" in response.text
     assert 'fetch("/api/market-cost-basis"' in response.text
     assert "ROI_COST_INPUTS" not in response.text
     assert "Introdu costurile investiției" not in response.text
