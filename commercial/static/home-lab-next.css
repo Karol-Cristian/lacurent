@@ -1121,6 +1121,44 @@ svg{display:block}
 
 
 /* Smart scenario optimizers */
+.hln-project-guardrail{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:10px;align-items:end;
+  margin:14px 0 0;padding:12px;border:1px solid rgba(43,66,54,.12);border-radius:14px;background:#f7f8f5
+}
+.hln-project-guardrail label{display:grid;gap:5px}
+.hln-project-guardrail label>span{font-size:8px;font-weight:900;letter-spacing:.12em;color:#557064}
+.hln-project-guardrail select{
+  min-width:0;padding:10px 11px;border:1px solid #d6ddd8;border-radius:10px;background:#fff;color:#27342e;font:inherit;font-size:10px
+}
+.hln-project-guardrail>small{color:#6d7973;font-size:8px;line-height:1.5}
+.hln-roi-costs{
+  margin:-4px 0 14px;padding:0 13px;border:1px solid #ded9cf;border-radius:14px;background:#fbfaf7
+}
+.hln-roi-costs summary{
+  padding:12px 0;cursor:pointer;color:#4d5d55;font-size:9px;font-weight:850
+}
+.hln-roi-costs>p{margin:0 0 12px;color:#647169;font-size:9px;line-height:1.55}
+.hln-roi-costs>small{display:block;margin:10px 0 13px;color:#7a827e;font-size:8px;line-height:1.45}
+.hln-roi-cost-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hln-roi-cost-grid label{
+  display:grid;grid-template-columns:1fr auto;gap:3px 6px;align-items:end;padding:9px;border-radius:10px;background:#f3f5f2;color:#36473f;font-size:9px;font-weight:800
+}
+.hln-roi-cost-grid label span{color:#7a8580;font-size:7px;font-weight:600}
+.hln-roi-cost-grid input{
+  grid-column:1/-1;width:100%;min-width:0;padding:8px 9px;border:1px solid #d7ddd9;border-radius:8px;background:#fff;color:#26342e;font:inherit;font-size:10px
+}
+.hln-live-configurator.is-calculating .hln-configurator-result{
+  border-color:#d8ddd9;background:linear-gradient(145deg,#fafbf9,#f5f7f4)
+}
+.hln-calculating-value{color:#78837d!important;font-size:10px!important;font-weight:750!important}
+@media (max-width:720px){
+  .hln-project-guardrail{grid-template-columns:1fr}
+  .hln-roi-cost-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:460px){
+  .hln-roi-cost-grid{grid-template-columns:1fr}
+}
+
 .hln-smart-configs{
   display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0
 }
