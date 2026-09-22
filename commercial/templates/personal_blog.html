@@ -5,30 +5,30 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   {% if article %}
     <meta name="description" content="{{ article.dek }}">
-    <title>{{ article.title }} — Karol Cristian Lemnaru</title>
+    <title>{{ article.title }} — Lemnaru Karol Cristian</title>
   {% else %}
-    <meta name="description" content="Note personale despre existență, credință, relație, libertate și sens — Karol Cristian Lemnaru.">
-    <title>Karol Cristian Lemnaru — Note</title>
+    <meta name="description" content="Note personale despre existență, credință, relație, libertate și sens — Lemnaru Karol Cristian.">
+    <title>Lemnaru Karol Cristian — Note</title>
   {% endif %}
   <meta name="robots" content="noindex,follow">
   <link rel="stylesheet" href="/static/personal_blog.css">
 </head>
 <body>
   <header class="kc-header">
-    <a class="kc-brand" href="/karol-cristian-lemnaru">
-      <strong>Karol Cristian Lemnaru</strong>
+    <a class="kc-brand" href="/lemnaru-karol-cristian">
+      <strong>Lemnaru Karol Cristian</strong>
       <span>NOTE</span>
     </a>
     <nav>
-      <a href="/karol-cristian-lemnaru#texte">Texte</a>
-      <a href="/karol-cristian-lemnaru#despre">Despre</a>
+      <a href="/lemnaru-karol-cristian#texte">Texte</a>
+      <a href="/lemnaru-karol-cristian#despre">Despre</a>
     </nav>
   </header>
 
   <main>
   {% if article %}
     <article class="kc-article">
-      <a class="kc-back" href="/karol-cristian-lemnaru">← Toate textele</a>
+      <a class="kc-back" href="/lemnaru-karol-cristian">← Toate textele</a>
       <div class="kc-article-head">
         <p class="kc-meta">{{ article.theme }} · {{ article.date }}</p>
         <h1>{{ article.title }}</h1>
@@ -63,7 +63,7 @@
         <h2>{{ essays[0].title }}</h2>
         <p>{{ essays[0].dek }}</p>
       </div>
-      <a href="/karol-cristian-lemnaru/{{ essays[0].slug }}">Citește nota <span>→</span></a>
+      <a href="/lemnaru-karol-cristian/{{ essays[0].slug }}">Citește nota <span>→</span></a>
     </section>
 
     <section class="kc-section" id="texte">
@@ -75,7 +75,7 @@
 
       <div class="kc-grid">
         {% for essay in essays[1:] %}
-        <a class="kc-card" href="/karol-cristian-lemnaru/{{ essay.slug }}">
+        <a class="kc-card" href="/lemnaru-karol-cristian/{{ essay.slug }}">
           <div>
             <p class="kc-meta">{{ essay.theme }} · {{ essay.date }}</p>
             <h3>{{ essay.title }}</h3>
@@ -99,7 +99,7 @@
   </main>
 
   <footer class="kc-footer">
-    <strong>Karol Cristian Lemnaru</strong>
+    <strong>Lemnaru Karol Cristian</strong>
     <span>Note despre existență, credință și relație.</span>
     <span>© 2026</span>
   </footer>
