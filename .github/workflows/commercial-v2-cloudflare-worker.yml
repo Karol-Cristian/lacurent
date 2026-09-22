@@ -160,7 +160,7 @@ jobs:
           checks = {
               "/": 'data-page="testing-home"',
               "/software-testing": 'data-page="software-testing"',
-              "/instalatii": 'data-page="energy-home"',
+              "/instalatii": "Planifică renovarea înainte să înceapă șantierul.",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -184,6 +184,10 @@ jobs:
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
               "/instalatii/calculator": "Planifică renovarea înainte să înceapă șantierul.",
+              "/home-lab/facts": "SIMULĂRI PUBLICE",
+              "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
+              "/sitemap.xml": "https://lacurent.com/home-lab/facts",
+              "/static/simulation-facts.css": ".facts-grid",
               "/home-lab-next": "data-home-lab-next",
               "/static/home-lab-next.js": "function openMeasure",
               "/static/home-lab-next.css": ".hln-before-after",
@@ -266,8 +270,8 @@ jobs:
           assert 'data-page="software-testing"' not in home_html
           assert 'data-page="testing-home"' not in sales_html
           energy_html = get("/instalatii")
-          assert 'href="/instalatii/calculator"' in energy_html
-          assert 'id="energy-brief-preview"' in energy_html
+          assert "Planifică renovarea înainte să înceapă șantierul." in energy_html
+          assert 'href="/home-lab/facts"' in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
@@ -617,7 +621,7 @@ jobs:
 
           checks = {
               "/software-testing": 'data-page="software-testing"',
-              "/instalatii": 'data-page="energy-home"',
+              "/instalatii": "Planifică renovarea înainte să înceapă șantierul.",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -638,6 +642,10 @@ jobs:
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
+              "/home-lab/facts": "SIMULĂRI PUBLICE",
+              "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
+              "/sitemap.xml": "https://lacurent.com/home-lab/facts",
+              "/static/simulation-facts.css": ".facts-grid",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
               "/elivio-consilio": "data-chat-launcher",
@@ -830,8 +838,8 @@ jobs:
           assert 'data-page="testing-home"' not in sales_html
           energy_status, _, energy_html = open_url(apex + "/instalatii")
           assert energy_status == 200
-          assert 'href="/instalatii/calculator"' in energy_html
-          assert 'id="energy-brief-preview"' in energy_html
+          assert "Planifică renovarea înainte să înceapă șantierul." in energy_html
+          assert 'href="/home-lab/facts"' in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
