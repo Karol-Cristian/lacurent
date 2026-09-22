@@ -17,6 +17,7 @@ from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, location_payload, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .pricing import energy_prices, estimate_energy_cost
+from .personal_blog import router as personal_blog_router
 from .product_matching import (
     WallInsulationProductMatchRequestV1,
     WallInsulationProductScenarioRequestV1,
@@ -61,6 +62,7 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(software_resources_router)
 app.include_router(elivio_router)
+app.include_router(personal_blog_router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
