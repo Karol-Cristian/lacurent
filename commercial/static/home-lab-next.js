@@ -146,6 +146,8 @@
     solar_thermal: null,
   });
   let roiCostBasis = {...DEFAULT_ROI_COST_BASIS};
+  let roiCostBasisMeta = null;
+  let roiCostBasisPromise = null;
   let mobileViewportBaseline = 0;
 
   function syncMobileViewportBottomInset(resetBaseline = false) {
@@ -241,10 +243,6 @@
       projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
         ? saved.projectMode
         : "existing_standard";
-      roiCostBasis = {
-        ...DEFAULT_ROI_COST_BASIS,
-        ...(saved.roiCostBasis && typeof saved.roiCostBasis === "object" ? saved.roiCostBasis : {}),
-      };
       homeResultState = homeResult ? "stale" : "empty";
       scenarioResultState = scenarioResult ? "stale" : "empty";
       // Rewrite the persisted state once so the migration is permanent.
@@ -662,28 +660,95 @@
     return clamp(100 * (Number(value) - min) / (max - min), 0, 100);
   }
 
-  const ROI_COST_INPUTS = Object.freeze({
-    wall:"#hlnRoiCostWall",
-    roof:"#hlnRoiCostRoof",
-    floor:"#hlnRoiCostFloor",
-    windows:"#hlnRoiCostWindows",
-    door:"#hlnRoiCostDoor",
-    ventilation:"#hlnRoiCostVentilation",
-    heating_control:"#hlnRoiCostHeatingControl",
-    heating:"#hlnRoiCostHeating",
-    pv:"#hlnRoiCostPv",
-    solar_thermal:"#hlnRoiCostSolarThermal",
-  });
+  function roiCostUnitLabel(unit) {
+    return {
+      lei_per_m2_per_cm:"lei/m²/cm",
+      lei_per_m2:"lei/m²",
+      lei_total:"lei total",
+      lei_per_kwp:"lei/kWp",
+    }[unit] || unit || "lei";
+  }
+
+  function renderRoiCostSource() {
+    const source = $("#hlnRoiCostSource");
+    const meta = $("#hlnRoiCostSourceMeta");
+    const list = $("#hlnRoiCostAssumptions");
+    if (!source || !meta || !list) return;
+
+    if (!roiCostBasisMeta) {
+      source.textContent = "Se încarcă automat din catalogul LaCurent…";
+      meta.textContent = "Nu trebuie să introduci costuri manual.";
+      list.innerHTML = "";
+      return;
+    }
+
+    const isD1 = roiCostBasisMeta.source === "d1";
+    source.textContent = isD1
+      ? "Catalog D1 · bază de cost activă"
+      : "Catalog local de rezervă · bază de cost activă";
+    meta.textContent = [
+      roiCostBasisMeta.catalog_version || "versiune necunoscută",
+      roiCostBasisMeta.observed_on ? `actualizat ${roiCostBasisMeta.observed_on}` : "",
+    ].filter(Boolean).join(" · ");
+
+    const costs = roiCostBasisMeta.costs || {};
+    list.innerHTML = Object.entries(costs).map(([family, item]) => {
+      const value = Number(item?.cost_lei);
+      if (!Number.isFinite(value) || value <= 0) return "";
+      return `
+        <article>
+          <div><strong>${escapeHtml(item.label || family)}</strong><small>${escapeHtml(item.confidence || "—")} confidence · ${escapeHtml(item.source_kind || "catalog")}</small></div>
+          <b>${fmt(value, value < 100 ? 1 : 0)} ${escapeHtml(roiCostUnitLabel(item.unit))}</b>
+        </article>
+      `;
+    }).join("");
+  }
+
+  async function loadRoiCostBasis() {
+    if (roiCostBasisMeta && Object.values(roiCostBasis).some(value => Number(value) > 0)) {
+      return roiCostBasis;
+    }
+    if (roiCostBasisPromise) return roiCostBasisPromise;
+
+    roiCostBasisPromise = fetch("/api/market-cost-basis", {
+      headers:{Accept:"application/json"},
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const next = {...DEFAULT_ROI_COST_BASIS};
+        Object.entries(payload?.costs || {}).forEach(([family, item]) => {
+          const value = Number(item?.cost_lei);
+          if (Object.prototype.hasOwnProperty.call(next, family) && Number.isFinite(value) && value > 0) {
+            next[family] = value;
+          }
+        });
+        roiCostBasis = next;
+        roiCostBasisMeta = payload;
+        renderRoiCostSource();
+        return roiCostBasis;
+      })
+      .catch(error => {
+        roiCostBasisMeta = {
+          source:"unavailable",
+          catalog_version:null,
+          observed_on:null,
+          costs:{},
+          error:error?.message || "catalog unavailable",
+        };
+        renderRoiCostSource();
+        throw new Error("Catalogul de costuri nu este disponibil momentan.");
+      })
+      .finally(() => {
+        roiCostBasisPromise = null;
+      });
+    return roiCostBasisPromise;
+  }
 
   function syncOptimizerInputs() {
     const project = $("#hlnProjectMode");
     if (project) project.value = projectMode;
-    Object.entries(ROI_COST_INPUTS).forEach(([family, selector]) => {
-      const input = $(selector);
-      if (!input) return;
-      const value = Number(roiCostBasis[family]);
-      input.value = Number.isFinite(value) && value > 0 ? String(value) : "";
-    });
+    renderRoiCostSource();
   }
 
   function renderProjectGuardrailSummary() {
@@ -3085,8 +3150,7 @@
         referenceMode,
         scenarioOverrides,
         optimizationMeta,
-        projectMode,
-        roiCostBasis
+        projectMode
       }));
     } catch (_) {}
   }
@@ -3789,18 +3853,6 @@
     });
   }
 
-  Object.entries(ROI_COST_INPUTS).forEach(([family, selector]) => {
-    const input = $(selector);
-    if (!input) return;
-    input.addEventListener("input", () => {
-      const value = Number(input.value);
-      roiCostBasis[family] = Number.isFinite(value) && value > 0 ? value : null;
-      cancelOptimizerRun();
-      optimizationMeta = null;
-      persist();
-    });
-  });
-
   $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
@@ -3961,6 +4013,7 @@
 
   syncHomeEditorControls();
   syncOptimizerInputs();
+  loadRoiCostBasis().catch(() => {});
   renderAll();
   emitVisualState();
 
