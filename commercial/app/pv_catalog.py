@@ -22,24 +22,10 @@ class PvModuleProductV1(BaseModel):
     product_id: str = Field(min_length=1, max_length=160)
     manufacturer: str = Field(min_length=1, max_length=160)
     model: str = Field(min_length=1, max_length=200)
-    technology: str = Field(min_length=1, max_length=240)
+    technology: str | None = Field(default=None, max_length=240)
     pmax_w: float = Field(gt=0, le=2000)
-    vmp_v: float = Field(gt=0, le=200)
-    imp_a: float = Field(gt=0, le=100)
-    voc_v: float = Field(gt=0, le=250)
-    isc_a: float = Field(gt=0, le=100)
-    module_efficiency_percent: float = Field(gt=0, le=100)
     length_mm: float = Field(gt=0, le=5000)
     width_mm: float = Field(gt=0, le=3000)
-    thickness_mm: float | None = Field(default=None, gt=0, le=200)
-    weight_kg: float | None = Field(default=None, gt=0, le=100)
-    temperature_coefficient_pmax_percent_c: float | None = Field(default=None, ge=-2, le=1)
-    temperature_coefficient_voc_percent_c: float | None = Field(default=None, ge=-2, le=1)
-    temperature_coefficient_isc_percent_c: float | None = Field(default=None, ge=-1, le=2)
-    noct_c: float | None = Field(default=None, ge=20, le=80)
-    max_system_voltage_v: float | None = Field(default=None, gt=0, le=2000)
-    max_series_fuse_a: float | None = Field(default=None, gt=0, le=200)
-    bifacial: bool = False
     technical_source_urls: list[str] = Field(default_factory=list)
     catalog_version: str = Field(min_length=1, max_length=120)
 
@@ -175,7 +161,7 @@ def _candidate(
             "Module count is the minimum whole-panel count that meets or exceeds the target DC installed power.",
             "Array area is module face area only; access paths, fire setbacks, inter-row spacing, roof obstacles and mounting clearances are not included.",
             "Module subtotal uses the lowest currently seeded in-stock module offer only; inverter, mounting, DC/AC protection, cabling, labour, transport and VAT differences are outside this subtotal.",
-            "Electrical values are retained for later inverter, MPPT and string compatibility checks; this V1 sizing step does not yet validate string design.",
+            "Catalog input is deliberately limited to nominal module power and geometry; solar yield remains a methodology-layer calculation.",
         ],
     )
 
