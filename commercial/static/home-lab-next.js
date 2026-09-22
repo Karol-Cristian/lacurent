@@ -647,6 +647,7 @@
     scenarioState = { ...homeState };
     scenarioResult = homeResult;
     currentResult = homeResult;
+    scenarioResultState = homeResultState === "fresh" ? "fresh" : "stale";
     measures = [];
     renderAll();
     persist();
@@ -977,16 +978,113 @@
     node.classList.toggle("is-ok", kind === "ok");
   }
 
+  function resultStateFor(target) {
+    return target === "home" ? homeResultState : scenarioResultState;
+  }
+
+  function setResultState(target, state) {
+    if (target === "home") homeResultState = state;
+    else scenarioResultState = state;
+  }
+
+  function cancelOptimizerRun() {
+    optimizerRunToken += 1;
+    if (optimizerAbortController) {
+      optimizerAbortController.abort();
+      optimizerAbortController = null;
+    }
+  }
+
+  function invalidateCalculation(target, message = "Se recalculează…") {
+    clearTimeout(calculateTimer);
+    calculateTimer = 0;
+    calculateToken += 1;
+    if (calculateAbortController) {
+      calculateAbortController.abort();
+      calculateAbortController = null;
+    }
+    cancelOptimizerRun();
+    setResultState(target, "pending");
+    setStatus(message);
+    renderAll();
+  }
+
+  function pendingTextFor(target) {
+    const state = resultStateFor(target);
+    if (state === "error") return "Rezultat indisponibil";
+    if (state === "stale") return "Actualizare necesară";
+    return "Se recalculează…";
+  }
+
+  function renderResultFreshness() {
+    const target = screen === "home" && !baselineSaved ? "home" : "scenario";
+    const state = resultStateFor(target);
+    const live = $("#hlnLiveConfigurator");
+    if (live) live.classList.toggle("is-calculating", state !== "fresh");
+
+    if (target === "home" || state === "fresh") {
+      const cta = $("#hlnDockCta");
+      if (cta && screen !== "scenario") cta.disabled = false;
+      return;
+    }
+
+    const pending = pendingTextFor("scenario");
+    const valueSelectors = [
+      "#hlnLiveCost",
+      "#hlnLiveClass",
+      "#hlnDockScenarioClass",
+      "#hlnDockScenarioCost",
+      "#hlnDockCostBenefit",
+      "#hlnScenarioNewCost",
+      "#hlnScenarioBenefit",
+      "#hlnScenarioCostCompare",
+      "#hlnScenarioEnergyCompare",
+      "#hlnScenarioCo2Compare",
+      "#hlnScenarioPowerCompare",
+      "#hlnImpactCost",
+      "#hlnImpactEnergy",
+      "#hlnImpactEfficiency",
+      "#hlnImpactCo2",
+      "#hlnImpactLoad",
+    ];
+    valueSelectors.forEach(selector => {
+      const node = $(selector);
+      if (!node) return;
+      node.textContent = pending;
+      node.classList.remove("is-good", "is-bad");
+      node.classList.add("hln-calculating-value");
+    });
+
+    const saving = $("#hlnLiveSaving");
+    if (saving) {
+      saving.textContent = "Valorile vor fi actualizate pentru configurația curentă";
+      saving.classList.remove("is-bad");
+    }
+    const dockLabel = $("#hlnDockSavingLabel");
+    if (dockLabel) dockLabel.textContent = "Recalculare";
+    const scenarioLabel = $("#hlnScenarioBenefitLabel");
+    if (scenarioLabel) scenarioLabel.textContent = "rezultat în curs";
+
+    $("#hlnEnergyScale [data-energy-class]").forEach(node => node.classList.remove("is-active"));
+    const pvCaption = live?.querySelector('[data-hln-tune="pvKwp"] [data-hln-tune-caption]');
+    if (pvCaption && scenarioState.pvEnabled) pvCaption.textContent = "Se recalculează producția și autoconsumul…";
+
+    const cta = $("#hlnDockCta");
+    if (cta && screen === "scenario") cta.disabled = true;
+  }
+
   async function calculateState(state, target) {
     const token = ++calculateToken;
     if (calculateAbortController) calculateAbortController.abort();
     const controller = new AbortController();
     calculateAbortController = controller;
+    setResultState(target, "pending");
 
     populateTechnicalForm(state);
     const body = new FormData(form);
     if (target === "scenario") body.set("_skip_reference", "1");
     setStatus("Recalculare live…");
+    renderAll();
 
     const request = async (attempt = 1) => {
       const response = await fetch(calcUrl, {
@@ -999,15 +1097,16 @@
       if (contentType.includes("application/json")) {
         payload = await response.json();
       } else {
-        // Consume the body so transient edge responses do not leave the
-        // connection hanging; the text is intentionally not surfaced raw.
         await response.text();
       }
 
       if (!response.ok || !payload || payload.error) {
-        const retryable = response.status === 429 || response.status >= 500;
+        // Do not immediately retry generic HTTP 500 responses: a Cloudflare
+        // 1102 resource-limit failure can surface as 500 and retrying it would
+        // create more pressure. Retry only clearly transient edge statuses.
+        const retryable = [429, 502, 503, 504].includes(response.status);
         if (retryable && attempt < 2 && token === calculateToken) {
-          await new Promise(resolve => window.setTimeout(resolve, 220));
+          await new Promise(resolve => window.setTimeout(resolve, 420));
           if (token !== calculateToken || controller.signal.aborted) return null;
           return request(attempt + 1);
         }
@@ -1019,17 +1118,20 @@
 
     try {
       const payload = await request();
-      if (!payload || token !== calculateToken) return null;
+      if (!payload || token !== calculateToken || controller.signal.aborted) return null;
       if (target === "home") homeResult = payload;
       if (target === "scenario") scenarioResult = payload;
       currentResult = payload;
+      setResultState(target, "fresh");
       setStatus("Calcul actualizat", "ok");
       renderAll();
       emitVisualState();
       return payload;
     } catch (error) {
       if (error?.name === "AbortError" || token !== calculateToken) return null;
+      setResultState(target, "error");
       setStatus(error?.message || "Calcul indisponibil momentan.", "error");
+      renderAll();
       return null;
     } finally {
       if (calculateAbortController === controller) calculateAbortController = null;
@@ -1780,8 +1882,9 @@
   }
 
   function scheduleCalculate(target = baselineSaved && screen !== "home" ? "scenario" : "home", delay = 180) {
-    clearTimeout(calculateTimer);
+    invalidateCalculation(target);
     calculateTimer = window.setTimeout(() => {
+      calculateTimer = 0;
       const state = target === "home" ? homeState : scenarioState;
       calculateState(state, target);
     }, delay);
@@ -2596,12 +2699,13 @@
     if (screen === "intervention") renderIntervention();
     if (screen === "scenario") renderScenario();
     if (screen === "report") renderReport();
+    renderResultFreshness();
   }
 
   function showScreen(next) {
     if (next === "site" && !baselineSaved) return;
     if (next === "scenario" && !baselineSaved) return;
-    if (next === "report" && (!baselineSaved || !scenarioResult)) return;
+    if (next === "report" && (!baselineSaved || !scenarioResult || scenarioResultState !== "fresh")) return;
     screen = next;
     root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
@@ -2649,6 +2753,7 @@
     setOptimizationNote("");
     scenarioState = {...homeState};
     scenarioResult = homeResult;
+    scenarioResultState = "fresh";
     measures = [];
     persist();
     showScreen("site");
