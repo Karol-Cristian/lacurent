@@ -841,7 +841,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function costOutcomeText" in response.text
     assert "async function calculateCandidate" in response.text
     assert "async function configureNzeb" in response.text
-    nzeb_section = response.text.split("async function configureNzeb", 1)[1].split("const ROI_ACTIONS", 1)[0]
+    nzeb_section = response.text.split("async function configureNzeb", 1)[1].split("async function configureBestRoi", 1)[0]
     assert '"heat_pump"' in response.text
     assert '"heat_pump_air_water"' in response.text
     assert '"natural_gas"' not in nzeb_section
@@ -861,11 +861,19 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'const strategy = $("#hlnReportStrategy")' in response.text
     assert "Best ROI estimativ" in response.text
     assert "Nu se creează un racord nou la gaz" in response.text
-    assert "while (remaining.length)" in response.text
+    assert "function adaptiveOptimizerActions" in response.text
+    assert "function evaluateActionVariants" in response.text
+    assert "function bestVariantPerFamily" in response.text
+    assert "function optimizerNoRegression" in response.text
+    assert "familyWinners" in response.text
+    assert "selected.length" in response.text
+    assert "fără limită de 3 măsuri" in response.text
     assert "round < 3" not in response.text
     assert 'dock.hidden = screen === "report"' in response.text
     assert "function nzebMeetsTarget" in response.text
-    assert "ROI_ACTIONS" in response.text
+    assert "ROI_ACTIONS" not in response.text
+    assert "weather_compensated" in response.text
+    assert "pv_15_intensify" in response.text
     assert 'showScreen("report")' in response.text
     assert "window.print()" in response.text
     assert "hlnReportMonthlyCostChart" in response.text
