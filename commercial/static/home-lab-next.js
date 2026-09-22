@@ -3199,6 +3199,20 @@
           ${ranked.length ? `<p>Oportunități individuale evaluate: ${ranked.map(item => `${escapeHtml(item.label)} (${fmt(item.roiPercentPerYear,1)}%/an)`).join(" · ")}.</p>` : ""}
           <p>${escapeHtml(optimizationMeta.note || "")} CAPEX-ul este preluat automat din ${escapeHtml(optimizationMeta.costSource === "d1" ? "catalogul D1" : "catalogul de rezervă")} (${escapeHtml(optimizationMeta.costCatalogVersion || "versiune n/a")}); reperele comerciale nu modifică motorul energetic.</p>
         `;
+      } else if (optimizationMeta?.mode === "renovation") {
+        const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
+        strategy.innerHTML = `
+          <div class="hln-strategy-lead">
+            <strong>${escapeHtml(optimizationMeta.label || "Renovare automată")}</strong>
+            <span>Intervențiile au fost evaluate față de Casa mea cu motorul energetic și combinate într-un singur pachet bounded.</span>
+          </div>
+          ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
+            <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label)}</strong><small>intervenție selectată prin impact energetic modelat</small></div></article>
+          `).join("")}</div>` : ""}
+          <p>${optimizationMeta.projectMode === "existing_major"
+            ? "Pachetul este verificat și față de guardrail-ul energetic/CO₂ modelat pentru renovare majoră."
+            : "Pentru renovarea obișnuită nu inventăm un prag global nZEB; pachetul urmărește reducerea energiei primare față de Casa mea."}</p>
+        `;
       } else if (optimizationMeta?.mode === "nzeb") {
         const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
         strategy.innerHTML = `
