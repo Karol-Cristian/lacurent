@@ -1266,7 +1266,11 @@ def demo_building() -> BuildingInput:
                 "area_m2": 80,
                 "u_value_w_m2k": 0.36,
                 "boundary_type": "ground",
-                "boundary_correction_factor": 0.60,
+                "ground_contact": {
+                    "exposed_perimeter_m": 36,
+                    "wall_thickness_m": 0.30,
+                    "ground_conductivity_w_mk": 2.0,
+                },
             },
             {"name": "Ferestre", "type": "window", "area_m2": 24, "u_value_w_m2k": 1.35},
             {"name": "Ușă exterioară", "type": "exterior_door", "area_m2": 3.2, "u_value_w_m2k": 1.7},
