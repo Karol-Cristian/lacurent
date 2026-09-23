@@ -612,8 +612,8 @@ class HomeLabHouse3D {
   }
 
   mountLayerOnRoof(group, anchor, fallbackSlope = 0.60) {
-    const baseMesh = this.inspectableMeshes[0];
-    if (!baseMesh) {
+    const roofCandidates = this.inspectableMeshes.filter(mesh => mesh?.visible !== false);
+    if (!roofCandidates.length) {
       group.position.copy(this.localPointFromNormalized(anchor));
       group.rotation.x = fallbackSlope;
       return false;
@@ -635,11 +635,20 @@ class HomeLabHouse3D {
       0,
       this.modelSize.y * 2.2
     );
-    const hit = ray.intersectObject(baseMesh, true)[0];
+    const hits = ray.intersectObjects(roofCandidates, true);
+    const hit = hits.find(candidate => {
+      if (!candidate?.face) return false;
+      const name = String(candidate.object?.name || "").toLowerCase();
+      if (/chimney|flue|stack/.test(name)) return false;
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(candidate.object.matrixWorld);
+      const normal = candidate.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+      return Math.abs(normal.y) > 0.18;
+    });
 
     if (!hit?.face) {
       group.position.copy(this.localPointFromNormalized(anchor));
       group.rotation.x = fallbackSlope;
+      group.userData.roofMountFallback = true;
       return false;
     }
 
@@ -655,7 +664,7 @@ class HomeLabHouse3D {
       .normalize();
 
     const localPoint = this.modelRoot.worldToLocal(hit.point.clone());
-    const clearance = this.localLength(Math.max(0.018, this.modelSize.y * 0.003));
+    const clearance = this.localLength(Math.max(0.013, this.modelSize.y * 0.0012));
 
     group.position.copy(localPoint).addScaledVector(localNormal, clearance);
     group.quaternion.setFromUnitVectors(
@@ -665,6 +674,7 @@ class HomeLabHouse3D {
     group.userData.roofMount = {
       anchor: [...anchor],
       worldNormal: worldNormal.toArray(),
+      mesh: hit.object?.name || "",
     };
     return true;
   }
