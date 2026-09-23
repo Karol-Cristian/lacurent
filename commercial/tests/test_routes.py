@@ -1449,7 +1449,11 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert 'this.equipmentLayers.set("electricHeat"' in response.text
     assert 'detail.heating === "heat_pump"' in response.text
     assert '"electric_resistance", "electric_boiler"' in response.text
-    assert '["wood_stove", "wood_boiler", "pellet_boiler"]' in response.text
+    assert '"condensing_gas_boiler"' in response.text
+    assert '"gas_boiler"' in response.text
+    assert '"wood_stove"' in response.text
+    assert '"wood_boiler"' in response.text
+    assert '"pellet_boiler"' in response.text
     assert 'detail.ventilation === "mechanical" || detail.ventilation === "hrv"' in response.text
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
