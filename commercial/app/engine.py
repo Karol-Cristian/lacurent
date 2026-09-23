@@ -1226,10 +1226,23 @@ def _boundary_assumptions(building: BuildingInput) -> list[str]:
             EnvelopeBoundaryType.unheated_basement,
             EnvelopeBoundaryType.unheated_space,
         }:
-            assumptions.append(
-                f"Elementele către spațiul neîncălzit folosesc Hu cu factor de corecție explicit {factor:.2f}; "
-                "spațiul tampon nu este tratat ca aer exterior direct."
-            )
+            if item.unheated_zone is not None:
+                _, hztu_exterior, hztu_total = _unheated_zone_balance(item)
+                assumptions.append(
+                    "Elementele către spațiul neîncălzit folosesc Hu cu bztu derivat din balanța explicită "
+                    f"a zonei adiacente: Hztu;e={hztu_exterior:.2f} W/K, "
+                    f"Hztu;tot={hztu_total:.2f} W/K, bztu={factor:.3f}."
+                )
+            elif factor >= 0.999:
+                assumptions.append(
+                    "Elementele către spațiul neîncălzit folosesc Hu, dar fără date explicite/source-backed "
+                    "pentru bztu se aplică conservator factor 1,00: nu se acordă credit termic spațiului tampon."
+                )
+            else:
+                assumptions.append(
+                    f"Elementele către spațiul neîncălzit folosesc Hu cu factor bztu explicit {factor:.3f}; "
+                    "spațiul tampon nu este tratat ca aer exterior direct."
+                )
         elif boundary == EnvelopeBoundaryType.adjacent_heated_space:
             assumptions.append(
                 "Elementele către un spațiu încălzit adiacent sunt excluse din pierderea de anvelopă (factor 0)."
