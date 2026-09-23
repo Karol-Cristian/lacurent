@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -760,22 +759,15 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _ground_slab_correction_factor(
+def _ground_contact_payload(
     form: dict[str, Any],
     *,
     area_m2: float,
-    construction_u_value_w_m2k: float,
-) -> float:
-    """Return U_ground / U_construction using the ISO 13370 slab-on-ground steady-state model.
+) -> dict[str, float]:
+    """Collect geometry/material inputs needed by the engine's ISO 13370 slab model."""
 
-    The incoming floor U is the construction-only equivalent U used by Home Lab.
-    ISO 13370 converts it into a geometry- and soil-dependent effective ground U.
-    Edge-insulation corrections and the seasonal periodic term are intentionally
-    outside this Light path and remain visible as methodology limitations.
-    """
-
-    if area_m2 <= 0 or construction_u_value_w_m2k <= 0:
-        raise ValueError("Calculul pardoselii spre sol necesită aria și U-ul pardoselii.")
+    if area_m2 <= 0:
+        raise ValueError("Calculul pardoselii spre sol necesită o arie pozitivă.")
 
     ground_cfg = methodology()["boundary_conditions_light"]["ground"]
     ground_lambda = (
@@ -786,8 +778,6 @@ def _ground_slab_correction_factor(
         parse_optional_float(form.get("ground_wall_thickness_m"))
         or float(ground_cfg["default_wall_thickness_m"])
     )
-    if ground_lambda <= 0 or wall_thickness < 0:
-        raise ValueError("Datele pentru transferul spre sol trebuie să fie pozitive.")
 
     perimeter = parse_optional_float(form.get("ground_exposed_perimeter_m"))
     if perimeter is None or perimeter <= 0:
@@ -796,28 +786,19 @@ def _ground_slab_correction_factor(
         if length and width and length > 0 and width > 0:
             perimeter = 2.0 * (length + width)
         else:
-            # Last-resort geometry fallback for legacy/expert forms that do not
-            # carry plan dimensions. Home Lab always supplies the perimeter.
-            perimeter = 4.0 * math.sqrt(area_m2)
+            # Legacy/expert forms may not carry plan dimensions. Build a
+            # square-equivalent perimeter and keep this fallback visible in
+            # the resulting methodology assumptions.
+            perimeter = 4.0 * (area_m2 ** 0.5)
 
-    characteristic_dimension = 2.0 * area_m2 / perimeter
-    construction_resistance = 1.0 / construction_u_value_w_m2k
-    equivalent_thickness = wall_thickness + ground_lambda * construction_resistance
+    if ground_lambda <= 0 or wall_thickness < 0 or perimeter <= 0:
+        raise ValueError("Datele pentru transferul spre sol trebuie să fie pozitive.")
 
-    if equivalent_thickness < characteristic_dimension:
-        effective_ground_u = (
-            2.0
-            * ground_lambda
-            / (math.pi * characteristic_dimension + equivalent_thickness)
-            * math.log(math.pi * characteristic_dimension / equivalent_thickness + 1.0)
-        )
-    else:
-        effective_ground_u = ground_lambda / (
-            0.457 * characteristic_dimension + equivalent_thickness
-        )
-
-    factor = effective_ground_u / construction_u_value_w_m2k
-    return max(0.0, min(float(factor), 1.0))
+    return {
+        "exposed_perimeter_m": float(perimeter),
+        "wall_thickness_m": float(wall_thickness),
+        "ground_conductivity_w_mk": float(ground_lambda),
+    }
 
 
 def _boundary_factor(
@@ -825,9 +806,7 @@ def _boundary_factor(
     *,
     boundary_type: str,
     field_name: str,
-    area_m2: float,
-    u_value_w_m2k: float,
-) -> float:
+) -> float | None:
     if boundary_type == "outside_air":
         return 1.0
     if boundary_type == "adjacent_heated_space":
@@ -838,11 +817,7 @@ def _boundary_factor(
         return explicit
 
     if boundary_type == "ground":
-        return _ground_slab_correction_factor(
-            form,
-            area_m2=area_m2,
-            construction_u_value_w_m2k=u_value_w_m2k,
-        )
+        return None
 
     cfg = methodology()["boundary_conditions_light"]
     defaults = {
@@ -889,22 +864,25 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
         u_value = technical.get(u_key)
         if area is None or area <= 0:
             continue
-        components.append(
-            {
-                "name": name,
-                "type": kind,
-                "area_m2": area,
-                "u_value_w_m2k": u_value,
-                "boundary_type": boundary_type,
-                "boundary_correction_factor": _boundary_factor(
-                    form,
-                    boundary_type=boundary_type,
-                    field_name=factor_field,
-                    area_m2=float(area),
-                    u_value_w_m2k=float(u_value),
-                ),
-            }
+        boundary_factor = _boundary_factor(
+            form,
+            boundary_type=boundary_type,
+            field_name=factor_field,
         )
+        component = {
+            "name": name,
+            "type": kind,
+            "area_m2": area,
+            "u_value_w_m2k": u_value,
+            "boundary_type": boundary_type,
+            "boundary_correction_factor": boundary_factor,
+        }
+        if boundary_type == "ground" and boundary_factor is None:
+            component["ground_contact"] = _ground_contact_payload(
+                form,
+                area_m2=float(area),
+            )
+        components.append(component)
 
     thermal_bridges = []
     bridge_length = technical.get("thermal_bridge_length_m")
