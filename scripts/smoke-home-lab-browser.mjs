@@ -109,6 +109,23 @@ try {
     const thermalNormal = new Vector3Ctor(...(solarThermal.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
     const thermalCenter = solarThermalBox.getCenter(new Vector3Ctor());
 
+    const GroupCtor = pv.constructor;
+    const anchorCandidates = [];
+    for (const x of [0.08, 0.12, 0.16, 0.20, 0.24]) {
+      for (const z of [0.18, 0.24, 0.30, 0.36]) {
+        const probe = new GroupCtor();
+        const mounted = scene.mountLayerOnRoof(probe, [x, 0.78, z]);
+        const probeNormal = new Vector3Ctor(...(probe.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
+        const world = scene.modelRoot.localToWorld(probe.position.clone());
+        anchorCandidates.push({
+          x, z, mounted,
+          mesh:String(probe.userData?.roofMount?.objectUuid || ""),
+          normalDot:pvNormal.dot(probeNormal),
+          world:world.toArray(),
+        });
+      }
+    }
+
     return {
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
@@ -119,6 +136,7 @@ try {
       roofNormalDot:pvNormal.dot(thermalNormal),
       thermalCenterX:thermalCenter.x,
       modelCenterX:scene.modelCenter.x,
+      anchorCandidates,
       smokeVisible:smoke.visible,
       smokeWorld:smokeWorld.toArray(),
     };
