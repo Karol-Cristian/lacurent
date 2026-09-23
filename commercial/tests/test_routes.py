@@ -470,7 +470,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'name="floor_boundary_type"' in response.text
     assert "U=3,25 W/m²K" in response.text
     assert "U=2,25 W/m²K" in response.text
-    assert "Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat" in response.text
+    assert "factor bztu Light 0,75" in response.text
     assert "setează 0 cm" in response.text
     assert 'id="hlnHomeTopStructure"' not in response.text
     assert 'id="hlnHomeAirtightness"' not in response.text
