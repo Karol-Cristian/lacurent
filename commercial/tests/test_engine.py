@@ -16,6 +16,7 @@ from commercial.app.engine import (
     heating_system_performance,
     primary_energy,
     transmission_heat_transfer,
+    transmission_heat_transfer_components,
     ventilation_heat_transfer,
 )
 from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol, resolve_monthly_plane_hsol
@@ -62,6 +63,111 @@ def test_transmission_coefficient_uses_area_u_and_thermal_bridges() -> None:
     assert_close(h_tr, 113)
     assert envelope[0].value == 40
     assert bridges[0].value == 2
+
+
+def test_transmission_separates_hd_hg_hu_and_ha() -> None:
+    building = simple_building(
+        envelope=[
+            {"name": "Walls", "type": "exterior_wall", "area_m2": 100, "u_value_w_m2k": 0.4},
+            {
+                "name": "Attic ceiling",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.2,
+                "boundary_type": "unheated_attic",
+                "boundary_correction_factor": 0.75,
+            },
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.3,
+                "boundary_type": "ground",
+                "boundary_correction_factor": 0.6,
+            },
+            {"name": "Windows", "type": "window", "area_m2": 20, "u_value_w_m2k": 1.4},
+            {"name": "Door", "type": "exterior_door", "area_m2": 2, "u_value_w_m2k": 1.5},
+        ],
+    )
+
+    components, envelope, bridges = transmission_heat_transfer_components(building)
+
+    assert_close(components.hd_w_k, 73.0)
+    assert_close(components.hg_w_k, 14.4)
+    assert_close(components.hu_w_k, 12.0)
+    assert_close(components.ha_w_k, 0.0)
+    assert_close(components.htr_w_k, 99.4)
+    attic = next(item for item in envelope if item.name == "Attic ceiling")
+    ground = next(item for item in envelope if item.name == "Ground floor")
+    assert attic.component.value == "Hu"
+    assert attic.boundary_type.value == "unheated_attic"
+    assert attic.boundary_correction_factor == 0.75
+    assert ground.component.value == "Hg"
+    assert ground.boundary_type.value == "ground"
+    assert ground.boundary_correction_factor == 0.6
+    assert bridges[0].component.value == "Hd"
+
+
+def test_ground_monthly_transfer_uses_annual_exterior_temperature() -> None:
+    building = BuildingInput(
+        project_name="Ground boundary",
+        locality="Cluj-Napoca",
+        heated_floor_area_m2=10,
+        heated_volume_m3=30,
+        indoor_design_temperature_c=20,
+        internal_gains_w_m2=0,
+        solar_gains_kwh_m2_month=0,
+        solar={"mode": "explicit"},
+        envelope=[
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 10,
+                "u_value_w_m2k": 1.0,
+                "boundary_type": "ground",
+                "boundary_correction_factor": 1.0,
+            }
+        ],
+        ventilation={"air_changes_per_hour": 0, "heat_recovery_efficiency": 0},
+        heating={"system_type": "condensing_gas_boiler", "efficiency": 0.95},
+        cooling={"enabled": False},
+        dhw={"enabled": False, "occupants": 0, "efficiency": 0.85},
+    )
+
+    result = calculate(building, include_reference=False)
+    annual_outdoor = sum(
+        float(month["temperature_c"]) * float(month["days"])
+        for month in result.climate["monthly_temperatures"]
+    ) / sum(float(month["days"]) for month in result.climate["monthly_temperatures"])
+    january = result.monthly[0]
+    expected_ground = 10.0 * (20.0 - annual_outdoor) * (31 * 24) / 1000
+
+    assert_close(result.transmission_components.hg_w_k, 10.0)
+    assert_close(result.transmission_components.hd_w_k, 0.0)
+    assert_close(january.ground_transmission_kwh, expected_ground, tolerance=1e-3)
+    assert_close(january.transmission_excluding_ground_kwh, 0.0)
+    assert_close(january.ventilation_heat_transfer_kwh, 0.0)
+
+
+def test_adjacent_heated_space_has_zero_transmission() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Floor to heated basement",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.8,
+                "boundary_type": "adjacent_heated_space",
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    components, envelope, _ = transmission_heat_transfer_components(building)
+
+    assert_close(components.ha_w_k, 0.0)
+    assert_close(components.htr_w_k, 0.0)
+    assert envelope[0].boundary_correction_factor == 0.0
 
 
 def test_ventilation_coefficient_uses_air_change_volume_and_recovery() -> None:
