@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from commercial.app.engine import demo_building
-from commercial.app.main import app
+from commercial.app.main import app, build_input_from_form
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
 
@@ -397,7 +397,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next37" in response.text
+    assert "/static/home-lab-next.js?v=next38" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -461,6 +461,13 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "verifică ipotezele înainte de decizie" in response.text
     assert 'id="hlnHomeTopBoundary"' in response.text
     assert "Pod rece / neîncălzit — calculează planșeul" in response.text
+    assert 'id="hlnHomeFloorBoundary"' in response.text
+    assert "Placă / pardoseală pe sol" in response.text
+    assert "Subsol / beci neîncălzit" in response.text
+    assert "Pardoseala pe sol este calculată separat ca Hg" in response.text
+    assert "modelăm planșeul ca Hu" in response.text
+    assert 'name="roof_boundary_type"' in response.text
+    assert 'name="floor_boundary_type"' in response.text
     assert "U=3,25 W/m²K" in response.text
     assert "U=2,25 W/m²K" in response.text
     assert "Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat" in response.text
@@ -512,6 +519,39 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
     assert payload["reference_parameters"]["u_values_w_m2k"]["window"] > 0
     assert payload["reference_parameters"]["heating_efficiency"] > 0
+    assert payload["transmission_components"]["hg_w_k"] > 0
+    assert payload["annual_outdoor_temperature_c"] is not None
+    assert payload["monthly"][0]["ground_transmission_kwh"] > 0
+
+
+def test_form_maps_cold_attic_and_ground_to_hu_and_hg() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "unheated_attic"
+    data["floor_boundary_type"] = "ground"
+
+    building = build_input_from_form(data)
+    roof = next(item for item in building.envelope if item.type.value == "roof")
+    floor = next(item for item in building.envelope if item.type.value == "floor")
+
+    assert roof.boundary_type.value == "unheated_attic"
+    assert roof.boundary_correction_factor == 0.75
+    assert floor.boundary_type.value == "ground"
+    assert floor.boundary_correction_factor == 0.60
+
+
+def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero_loss() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "outside_air"
+    data["floor_boundary_type"] = "adjacent_heated_space"
+
+    building = build_input_from_form(data)
+    roof = next(item for item in building.envelope if item.type.value == "roof")
+    floor = next(item for item in building.envelope if item.type.value == "floor")
+
+    assert roof.boundary_type.value == "outside_air"
+    assert roof.boundary_correction_factor == 1.0
+    assert floor.boundary_type.value == "adjacent_heated_space"
+    assert floor.boundary_correction_factor == 0.0
 
 
 def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None:
