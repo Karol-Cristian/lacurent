@@ -24,7 +24,7 @@
     "effective_internal_heat_capacity_source": "Mc 001-2022 Table 2.20"
   },
   "boundary_conditions_light": {
-    "status": "LaCurent Light boundary model. Hd/Hg/Hu/Ha separation and the monthly ground-temperature path follow the MC001 Chapter 2 transmission structure. Slab-on-ground steady-state coupling uses the ISO 13370 geometry method; its seasonal periodic term is not yet included. Unheated-space bztu values remain explicit low-confidence product fallbacks until the adjacent-zone heat balance is fully described.",
+    "status": "LaCurent Light boundary model. Hd/Hg/Hu/Ha separation and the monthly ground-temperature path follow the MC001 Chapter 2 transmission structure. Slab-on-ground steady-state coupling uses the ISO 13370 geometry method; its seasonal periodic term is not yet included. For unheated spaces, a reduction below bztu=1 is used only when an explicit/source-backed factor or an explicit adjacent-zone heat balance is available.",
     "ground": {
       "model": "ISO 13370 slab-on-ground steady-state U-value for uninsulated/all-over insulated slabs without explicit edge-insulation correction",
       "source": "ISO 13370:2017; MC001-2022 §2.3.3 delegates ground-contact heat transfer to ISO 13370 / C107",
