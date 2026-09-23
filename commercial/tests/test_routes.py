@@ -401,10 +401,10 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next20" in response.text
-    assert "/static/home-lab-next.js?v=next43" in response.text
+    assert "/static/home-lab-next.css?v=next21" in response.text
+    assert "/static/home-lab-next.js?v=next44" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d29" in response.text
+    assert "/static/home-lab-3d.js?v=3d30" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -425,6 +425,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnReportDecisionInvestment"' in response.text
     assert 'id="hlnReportDecisionPayback"' in response.text
     assert 'id="hlnReportDecisionPriority"' in response.text
+    assert 'id="hlnScenarioInvestmentSummary"' in response.text
     assert "Amortizarea este simplă" not in response.text
     assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
@@ -534,6 +535,32 @@ def test_home_lab_3d_pauses_hidden_scenes_and_optimizer_rendering() -> None:
     assert response.status_code == 200
     assert 'this.mount.offsetParent !== null' in response.text
     assert 'classList.contains("is-optimizer-busy")' in response.text
+    assert '"IntersectionObserver" in window' in response.text
+    assert 'this.isViewportVisible' in response.text
+    assert 'this.mode === "report" ? 40 : 30' in response.text
+
+
+def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    source = response.text
+    assert "OPTIMIZER_MIN_REQUEST_GAP_MS = 160" in source
+    assert "roiCostBasisText(action, baseState, candidateState)" in source
+    assert "CAPEX-ul pachetului nu corespunde intervențiilor selectate" in source
+    assert "economia pachetului cu o singură măsură" in source
+    assert "CEA MAI BUNĂ MĂSURĂ ROI" in source
+    assert "lei/lună în medie" in source
+    assert 'window.scrollTo({top: 0, behavior: "auto"})' in source
+
+
+def test_cloudflare_worker_converts_ordinary_asgi_exceptions_to_503() -> None:
+    worker_source = (
+        Path(__file__).resolve().parents[1] / "cloudflare-worker" / "worker.py"
+    ).read_text(encoding="utf-8")
+    assert "except Exception as exc:" in worker_source
+    assert "status=503" in worker_source
+    assert '"retry-after": "2"' in worker_source
+    assert "type(exc).__name__" in worker_source
 
 
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
