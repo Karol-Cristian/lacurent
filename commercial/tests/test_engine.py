@@ -109,6 +109,60 @@ def test_transmission_separates_hd_hg_hu_and_ha() -> None:
     assert bridges[0].component.value == "Hd"
 
 
+def test_unheated_attic_can_derive_bztu_from_explicit_zone_heat_balance() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Ceiling to explicit attic zone",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.5,
+                "boundary_type": "unheated_attic",
+                "unheated_zone": {
+                    "heat_transfer_to_exterior_envelope_w_k": 30,
+                    "exterior_ventilation_coefficient": 0.5,
+                    "conditioned_zone_heat_transfers_w_k": [20],
+                },
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    components, rows, _ = transmission_heat_transfer_components(building)
+    row = rows[0]
+    hztu_exterior = 45.0
+    hztu_total = 65.0
+    bztu = hztu_exterior / hztu_total
+
+    assert components.hd_w_k == 0
+    assert components.hu_w_k == pytest.approx(80 * 0.5 * bztu)
+    assert row.boundary_correction_factor == pytest.approx(bztu, abs=1e-3)
+    assert row.hztu_exterior_w_k == pytest.approx(hztu_exterior)
+    assert row.hztu_total_w_k == pytest.approx(hztu_total)
+    assert row.calculation_method == "mc001_explicit_unheated_zone_balance"
+
+
+def test_unheated_boundary_rejects_ambiguous_factor_and_zone_balance() -> None:
+    with pytest.raises(Exception):
+        simple_building(
+            envelope=[
+                {
+                    "name": "Ambiguous attic",
+                    "type": "roof",
+                    "area_m2": 80,
+                    "u_value_w_m2k": 0.5,
+                    "boundary_type": "unheated_attic",
+                    "boundary_correction_factor": 0.75,
+                    "unheated_zone": {
+                        "heat_transfer_to_exterior_envelope_w_k": 30,
+                        "exterior_ventilation_coefficient": 0.5,
+                        "conditioned_zone_heat_transfers_w_k": [20],
+                    },
+                }
+            ]
+        )
+
+
 def test_iso13370_slab_on_ground_u_uses_floor_geometry() -> None:
     effective_u = slab_on_ground_effective_u(
         construction_u_value_w_m2k=0.36,
