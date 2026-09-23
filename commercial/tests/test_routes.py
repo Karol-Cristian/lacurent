@@ -401,8 +401,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next40" in response.text
+    assert "/static/home-lab-next.css?v=next20" in response.text
+    assert "/static/home-lab-next.js?v=next41" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -456,7 +456,14 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "Apartament / clădire colectivă" not in response.text
     assert 'id="hlnWallAreaOverride"' in response.text
     assert 'id="hlnTopAreaOverride"' in response.text
-    assert "Pereții opaci nu includ ferestrele și ușile." in response.text
+    assert 'id="hlnFloorAreaOverride"' in response.text
+    assert 'id="hlnVolumeOverride"' in response.text
+    assert 'id="hlnDerivedFootprint"' in response.text
+    assert 'id="hlnDerivedPerimeter"' in response.text
+    assert 'id="hlnDerivedGrossWalls"' in response.text
+    assert 'id="hlnDerivedOpenings"' in response.text
+    assert "Precalculat de LaCurent" in response.text
+    assert "Pereții opaci scad ferestrele și 2,2 m² de uși exterioare." in response.text
     assert "Material izolație pereți" in response.text
     assert "Material și grosime finală simulate" in response.text
     assert "Material strat nou" not in response.text
@@ -503,6 +510,23 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnQuickEditRange" type="range"' in response.text
     assert "Glisează. La eliberare, valoarea se salvează și editorul dispare." in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
+
+
+
+def test_home_lab_geometry_and_roi_rounding_share_one_geometry_model() -> None:
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    source = js.text
+    assert "function houseGeometry(state)" in source
+    assert "derivedWallArea = Math.max(1, grossWalls - windows - doors)" in source
+    assert 'formSet("heated_volume_m3", volume.toFixed(3))' in source
+    assert 'formSet("floor_area_m2", floorArea.toFixed(3))' in source
+    assert "return houseGeometry(state);" in source
+    assert "geometry.floorArea * deltaCm * rate" in source
+    assert "const roiCommercialStepCm = 5;" in source
+    assert 'const level = mode === "roi"' in source
+    assert "Math.ceil(addedThicknessCm / roiCommercialStepCm) * roiCommercialStepCm" in source
+
 
 
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
