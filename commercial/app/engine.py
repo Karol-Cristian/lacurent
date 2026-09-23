@@ -1067,11 +1067,43 @@ def classify_energy(building: BuildingInput, specific_primary_kwh_m2: float) -> 
     return "G"
 
 
+def _boundary_assumptions(building: BuildingInput) -> list[str]:
+    assumptions: list[str] = []
+    seen: set[EnvelopeBoundaryType] = set()
+    for item in building.envelope:
+        boundary = item.boundary_type
+        if boundary in seen:
+            continue
+        seen.add(boundary)
+        factor = float(item.boundary_correction_factor or 0)
+        if boundary == EnvelopeBoundaryType.ground:
+            assumptions.append(
+                "Pardoseala spre sol este calculată ca Hg separat de aerul exterior lunar: "
+                f"factor de frontieră explicit {factor:.2f}, iar balanța lunară folosește temperatura exterioară anuală. "
+                "Este o aproximare Light; coeficienții lunari ISO 13370 nu sunt încă modelați."
+            )
+        elif boundary in {
+            EnvelopeBoundaryType.unheated_attic,
+            EnvelopeBoundaryType.unheated_basement,
+            EnvelopeBoundaryType.unheated_space,
+        }:
+            assumptions.append(
+                f"Elementele către spațiul neîncălzit folosesc Hu cu factor de corecție explicit {factor:.2f}; "
+                "spațiul tampon nu este tratat ca aer exterior direct."
+            )
+        elif boundary == EnvelopeBoundaryType.adjacent_heated_space:
+            assumptions.append(
+                "Elementele către un spațiu încălzit adiacent sunt excluse din pierderea de anvelopă (factor 0)."
+            )
+    return assumptions
+
+
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:
-    h_tr, envelope_contributions, bridge_contributions = transmission_heat_transfer(building)
+    transmission, envelope_contributions, bridge_contributions = transmission_heat_transfer_components(building)
+    h_tr = transmission.htr_w_k
     h_ve = ventilation_heat_transfer(building)
     climate = resolve_climate(building.locality)
-    monthly = monthly_energy_balance(building, h_tr, h_ve)
+    monthly = monthly_energy_balance(building, transmission, h_ve)
     annual_heating = sum(row["useful_heating_kwh"] for row in monthly)
     annual_cooling = sum(row["useful_cooling_kwh"] for row in monthly)
 
@@ -1128,6 +1160,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         input=building,
         climate=climate,
         h_tr_w_k=h_tr,
+        transmission_components=transmission,
         h_ve_w_k=h_ve,
         heat_loss_w_k=_round(h_tr + h_ve),
         envelope_geometry=envelope_geometry(building),
@@ -1152,7 +1185,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         energy_class=energy_class,
         reference=comparison,
         methodology_version=methodology()["version"],
-        assumptions=methodology()["assumptions"],
+        assumptions=[*methodology()["assumptions"], *_boundary_assumptions(building)],
     )
 
 
