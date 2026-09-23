@@ -393,6 +393,9 @@ class MonthlyBalance(BaseModel):
     days: int
     outdoor_temperature_c: float
     heat_loss_kwh: float
+    transmission_excluding_ground_kwh: float = 0
+    ground_transmission_kwh: float = 0
+    ventilation_heat_transfer_kwh: float = 0
     internal_gains_kwh: float
     solar_gains_kwh: float
     solar_gains_source: str | None = None
