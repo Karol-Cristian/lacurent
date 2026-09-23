@@ -1182,6 +1182,49 @@ class HomeLabHouse3D {
     this.equipmentLayers.set("electricHeat", electric);
   }
 
+  setCompassOrientation(orientation) {
+    const angles = {
+      north:0,
+      north_east:45,
+      east:90,
+      south_east:135,
+      south:180,
+      south_west:225,
+      west:270,
+      north_west:315,
+    };
+    const labels = {
+      north:"N", north_east:"NE", east:"E", south_east:"SE",
+      south:"S", south_west:"SV", west:"V", north_west:"NV",
+    };
+    const compass = this.mount.querySelector("[data-hln-3d-compass]");
+    if (!compass) return;
+    const value = angles[orientation] == null ? "south" : orientation;
+    compass.style.setProperty("--hln-compass-angle", `${angles[value]}deg`);
+    compass.dataset.orientation = value;
+    compass.setAttribute("aria-label", `Orientarea energetică a casei: ${labels[value]}. Apasă pe cerc pentru modificare.`);
+    const label = compass.querySelector("[data-hln-3d-compass-value]");
+    if (label) label.textContent = labels[value];
+  }
+
+  orientationFromCompassPointer(event, compass) {
+    const rect = compass.getBoundingClientRect();
+    const dx = event.clientX - (rect.left + rect.width / 2);
+    const dy = event.clientY - (rect.top + rect.height / 2);
+    const raw = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+    const step = Math.round(raw / 45) % 8;
+    return ["north","north_east","east","south_east","south","south_west","west","north_west"][step];
+  }
+
+  commitSemanticOrientation(orientation) {
+    if (this.mode !== "home") return;
+    const select = document.querySelector("#hlnOrientation");
+    if (!(select instanceof HTMLSelectElement)) return;
+    if (![...select.options].some(option => option.value === orientation)) return;
+    select.value = orientation;
+    select.dispatchEvent(new Event("change", {bubbles:true}));
+  }
+
   focusOrientation(orientation) {
     if (!this.camera || !this.controls || !this.modelSize) return;
     const offsets = {
@@ -1323,7 +1366,7 @@ class HomeLabHouse3D {
 
     if (detail.orientation && detail.orientation !== this.lastVisualOrientation) {
       this.lastVisualOrientation = detail.orientation;
-      this.focusOrientation(detail.orientation);
+      this.setCompassOrientation(detail.orientation);
     }
 
     if (detail.focus === "cooling" && detail.cooling === "split") {
@@ -1333,12 +1376,10 @@ class HomeLabHouse3D {
       (detail.focus === "cooling" && detail.cooling === "heat_pump")
     ) {
       this.focusEquipment("heatPump");
-    } else if (detail.focus === "pv") {
-      this.focusOrientation(detail.pvOrientation || "south");
-    } else if (detail.focus === "solarThermal") {
-      this.focusOrientation(detail.solarThermalOrientation || "south");
+    } else if (detail.focus === "pv" || detail.focus === "solarThermal") {
+      this.focusPart("roof", false);
     } else if (detail.focus === "home") {
-      this.focusOrientation(detail.orientation || "south");
+      this.resetCamera();
     }
   }
 
