@@ -1458,7 +1458,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
     assert "createSingleSolarThermalLayer()" in response.text
-    assert "anchor: [-0.25, 0.78, 0.25]" in response.text
+    assert "anchor: [-0.25, 0.78, 0.15]" in response.text
     assert "const panelWidthWorld = s.x * 0.075" in response.text
     assert "const panelDepthWorld = s.z * 0.135" in response.text
     assert "panelWidth: panelWidthWorld" in response.text
