@@ -1,0 +1,42 @@
+name: Vendor solar thermal GLB
+
+on:
+  push:
+    branches:
+      - codex/import-3d-solar-thermal-collector
+    paths:
+      - ".github/workflows/vendor-solar-thermal-glb.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/vendor-solar-thermal-glb
+          fetch-depth: 0
+
+      - name: Download and commit CC0 GLB
+        run: |
+          mkdir -p commercial/static/assets
+          curl -fL --retry 3 --connect-timeout 20 \
+            https://cdn.3dassets.dev/assets/2969/v1/model.glb \
+            -o commercial/static/assets/solar-thermal-roof-collector.glb
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path("commercial/static/assets/solar-thermal-roof-collector.glb")
+          data=p.read_bytes()
+          assert data[:4] == b"glTF"
+          print("bytes", len(data))
+          print("sha256", hashlib.sha256(data).hexdigest())
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add commercial/static/assets/solar-thermal-roof-collector.glb
+          git commit -m "Vendor CC0 solar thermal roof collector GLB"
+          git push origin HEAD:codex/vendor-solar-thermal-glb
