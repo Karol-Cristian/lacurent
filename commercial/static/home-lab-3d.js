@@ -776,6 +776,17 @@ class HomeLabHouse3D {
     // One raycast defines the plane for the whole PV field. The anchor sits on
     // the clear left roof face, below the ridge and away from the dormer.
     this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
+
+    // Fine placement from the production view. A full-row translation was
+    // measured in Chromium and would push the field below the eave. Use the
+    // largest conservative visible shift while preserving the roof envelope,
+    // then nudge the whole field toward the chimney.
+    const rowPitch = panelDepth + gapZ;
+    const downslopeShift = rowPitch * 0.18;
+    const chimneyNudge = (panelWidth + gapX) * 0.30;
+    layer.translateZ(downslopeShift);
+    layer.translateX(chimneyNudge);
+
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);

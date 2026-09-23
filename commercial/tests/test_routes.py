@@ -404,7 +404,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
     assert "/static/home-lab-3d.css?v=3d25" in response.text
-    assert "/static/home-lab-3d.js?v=3d35" in response.text
+    assert "/static/home-lab-3d.js?v=3d36" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1480,6 +1480,11 @@ def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimn
     assert 'const panelDepthWorld = s.z * 0.085' in source
     assert 'const gapZ = this.localLength(s.z * 0.006)' in source
     assert 'this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020])' in source
+    assert "const rowPitch = panelDepth + gapZ" in source
+    assert "const downslopeShift = rowPitch * 0.18" in source
+    assert "layer.translateZ(downslopeShift)" in source
+    assert "const chimneyNudge = (panelWidth + gapX) * 0.30" in source
+    assert "layer.translateX(chimneyNudge)" in source
     assert "runtime-calibrated" in source.lower()
     assert "return this.localPointFromNormalized([0.076, 1.005, 0.033])" in source
     assert '"condensing_gas_boiler"' in source
