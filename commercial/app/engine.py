@@ -1078,9 +1078,10 @@ def _boundary_assumptions(building: BuildingInput) -> list[str]:
         factor = float(item.boundary_correction_factor or 0)
         if boundary == EnvelopeBoundaryType.ground:
             assumptions.append(
-                "Pardoseala spre sol este calculată ca Hg separat de aerul exterior lunar: "
-                f"factor de frontieră explicit {factor:.2f}, iar balanța lunară folosește temperatura exterioară anuală. "
-                "Este o aproximare Light; coeficienții lunari ISO 13370 nu sunt încă modelați."
+                "Pardoseala spre sol este calculată separat ca Hg. Coeficientul staționar echivalent "
+                f"rezultă din modelul de placă pe sol ISO 13370 (factor efectiv față de U-ul construcției: {factor:.3f}), "
+                "iar balanța lunară folosește temperatura exterioară anuală. Componenta periodică sezonieră "
+                "și corecțiile explicite de muchie nu sunt încă modelate."
             )
         elif boundary in {
             EnvelopeBoundaryType.unheated_attic,
