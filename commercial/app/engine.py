@@ -473,7 +473,11 @@ def _monthly_solar_gains(
         }
 
     cfg = methodology()["solar"]
-    ggl_n = float(cfg["glazing_table_2_13_ggl_n"][building.solar.glazing_type_id])
+    ggl_n = (
+        float(building.solar.normal_incidence_solar_transmittance)
+        if building.solar.normal_incidence_solar_transmittance is not None
+        else float(cfg["glazing_table_2_13_ggl_n"][building.solar.glazing_type_id])
+    )
     ggl = (
         float(cfg["angle_correction_factor_relation_2_40"])
         * ggl_n
