@@ -469,9 +469,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "Placă / pardoseală pe sol" in response.text
     assert "Subsol / beci neîncălzit" in response.text
     assert "Pardoseala pe sol este calculată separat ca Hg" in response.text
-    assert "modelul de placă pe sol ISO 13370" in response.text
+    assert "ramura staționară ISO 13370" in response.text
     assert "λ=2,0 W/mK" in response.text
-    assert "modelăm planșeul ca Hu" in response.text
+    assert "modelat ca Hu" in response.text
     assert 'name="roof_boundary_type"' in response.text
     assert 'name="floor_boundary_type"' in response.text
     assert "U=3,25 W/m²K" in response.text
