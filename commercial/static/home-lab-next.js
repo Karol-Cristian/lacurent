@@ -3486,17 +3486,22 @@
 
     const investmentSummary = $("#hlnScenarioInvestmentSummary");
     if (investmentSummary) {
-      const selectedInvestments = optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)
+      const selectedInvestments = isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)
         ? optimizationMeta.selected
         : [];
       if (selectedInvestments.length) {
         const annualSaving = Number(optimizationMeta.annualSavingLei);
         const monthlyEquivalent = Number.isFinite(annualSaving) ? annualSaving / 12 : NaN;
         const singular = selectedInvestments.length === 1;
+        const objectiveLabel = optimizationMeta?.mode === "roi_budget"
+          ? `BEST ROI · BUGET ≤ ${fmt(optimizationMeta.budgetLimitLei)} LEI`
+          : optimizationMeta?.mode === "roi_payback"
+            ? `BEST ROI · AMORTIZARE ≤ ${fmt(optimizationMeta.maxPaybackYears,1)} ANI`
+            : singular ? "CEA MAI BUNĂ MĂSURĂ ROI" : "PACHET ROI SELECTAT";
         investmentSummary.hidden = false;
         investmentSummary.innerHTML = `
           <div>
-            <span>${singular ? "CEA MAI BUNĂ MĂSURĂ ROI" : "PACHET ROI SELECTAT"}</span>
+            <span>${objectiveLabel}</span>
             <strong>${singular ? escapeHtml(selectedInvestments[0].label) : selectedInvestments.length + " intervenții selectate"}</strong>
             <small>CAPEX total ${fmt(optimizationMeta.capexLei)} lei · economie ${fmt(annualSaving)} lei/an${Number.isFinite(monthlyEquivalent) ? ` · ≈ ${fmt(monthlyEquivalent)} lei/lună în medie` : ""} · amortizare ${optimizationMeta.paybackYears == null ? "n/a" : fmt(optimizationMeta.paybackYears,1) + " ani"}</small>
           </div>
@@ -3562,7 +3567,7 @@
     $("#hlnReportDecisionSaving").textContent = Number.isFinite(reportAnnualSaving)
       ? `${reportAnnualSaving >= 0 ? "+" : "−"}${fmt(Math.abs(reportAnnualSaving))} lei/an`
       : "—";
-    const financialScenario = optimizationMeta?.mode === "roi";
+    const financialScenario = isFinancialOptimizationMeta();
     const reportCapex = financialScenario ? Number(optimizationMeta.capexLei) : NaN;
     const reportPayback = financialScenario ? Number(optimizationMeta.paybackYears) : NaN;
     $("#hlnReportDecisionInvestment").textContent = Number.isFinite(reportCapex)
@@ -3798,7 +3803,7 @@
 
     const strategy = $("#hlnReportStrategy");
     if (strategy) {
-      if (optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)) {
+      if (isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)) {
         const selected = optimizationMeta.selected;
         const ranked = Array.isArray(optimizationMeta.rankedOpportunities)
           ? optimizationMeta.rankedOpportunities
@@ -3808,7 +3813,7 @@
           : `${fmt(optimizationMeta.paybackYears,1)} ani`;
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Amortizare simplă · ${payback}</strong>
+            <strong>${escapeHtml(optimizationMeta.label || "Best ROI")} · amortizare ${payback}</strong>
             <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · randament anual simplu ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
           </div>
           <div class="hln-strategy-list">
@@ -3860,7 +3865,7 @@
 
     const report = $("[data-hln-screen='report']");
     report?.classList.toggle("is-nzeb-target", optimizationMeta?.mode === "nzeb");
-    report?.classList.toggle("is-roi-target", optimizationMeta?.mode === "roi");
+    report?.classList.toggle("is-roi-target", isFinancialOptimizationMeta());
   }
 
   function renderProgress() {
