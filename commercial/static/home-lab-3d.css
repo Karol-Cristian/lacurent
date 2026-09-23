@@ -10,9 +10,13 @@
   border-radius: inherit;
   background:
     radial-gradient(circle at 50% 18%, rgba(255,253,246,.98), rgba(246,242,232,.82) 42%, rgba(226,232,219,.84) 100%);
-  opacity: 0;
+  /* Show the 3D loading surface from first paint; never flash the old 2D house. */
+  opacity: 1;
   pointer-events: none;
-  transition: opacity .32s ease;
+}
+
+.hln-house-visual > svg {
+  display: none;
 }
 
 .hln-house-visual-3d-ready > .hln-3d-stage {
