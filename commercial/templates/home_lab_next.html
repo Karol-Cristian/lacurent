@@ -288,7 +288,7 @@
               <option value="new_nzeb">Clădire nouă · nZEB</option>
             </select>
           </label>
-          <small id="hlnProjectGuardrailSummary">Best ROI folosește numai guardrail-urile aplicabile regimului selectat; anul construcției nu stabilește singur regimul juridic.</small>
+          <small id="hlnProjectGuardrailSummary">Optimizarea financiară folosește numai guardrail-urile aplicabile regimului selectat; anul construcției nu stabilește singur regimul juridic.</small>
         </div>
 
         <div class="hln-smart-configs">
@@ -298,17 +298,17 @@
             <small id="hlnAutoRenovationHint">Prioritizează reducerea consumului cu un număr bounded de recalculări</small>
           </button>
           <button type="button" data-hln-smart-config="roi">
-            <span>BEST ROI</span>
-            <strong>Randament maxim al investiției</strong>
-            <small>Costuri de piață preluate automat din catalog · fără formular suplimentar</small>
+            <span>AMORTIZARE SIMPLĂ</span>
+            <strong>Cea mai eficientă investiție dintre variantele testate</strong>
+            <small>Compară CAPEX-ul estimat cu economia anuală · fără formular suplimentar</small>
           </button>
         </div>
 
         <details class="hln-roi-costs" id="hlnRoiCostDetails">
-          <summary>Costurile folosite de Best ROI</summary>
+          <summary>Costurile folosite pentru amortizarea simplă</summary>
           <p><strong id="hlnRoiCostSource">Se încarcă automat din catalogul LaCurent…</strong> <span id="hlnRoiCostSourceMeta">Nu trebuie să introduci costuri manual.</span></p>
           <div class="hln-roi-cost-list" id="hlnRoiCostAssumptions"></div>
-          <small>Aceste valori sunt repere comerciale de planificare, cu sursă, dată și nivel de încredere. Ele influențează doar CAPEX/ROI; nu modifică formulele energetice.</small>
+          <small>Aceste valori sunt repere comerciale de planificare, cu sursă, dată și nivel de încredere. Ele influențează doar CAPEX-ul și amortizarea simplă; nu modifică formulele energetice.</small>
         </details>
 
         <div class="hln-optimization-note" id="hlnOptimizationNote" hidden></div>
@@ -1151,7 +1151,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next32"></script>
+  <script src="/static/home-lab-next.js?v=next33"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
