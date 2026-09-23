@@ -202,7 +202,21 @@ try {
   if (quickEditTarget !== "home") throw new Error("3D PV click did not open Casa mea quick edit");
   const quickEditTitle = await page.locator("#hlnQuickEditTitle").innerText();
   if (!/fotovoltaice/i.test(quickEditTitle)) throw new Error("3D PV click opened the wrong quick editor");
-  await page.locator("[data-hln-quick-edit-close]").first().evaluate(button => button.click());
+  const quickRange = page.locator("#hlnQuickEditRange");
+  const beforeQuickValue = Number(await quickRange.inputValue());
+  await quickRange.evaluate((input) => {
+    const next = Math.min(Number(input.max || 50), Number(input.value || 0) + 0.5);
+    input.value = String(next);
+    input.dispatchEvent(new Event("input", {bubbles:true}));
+    input.dispatchEvent(new Event("change", {bubbles:true}));
+  });
+  const afterQuickValue = Number(await quickRange.inputValue());
+  if (!(afterQuickValue > beforeQuickValue)) throw new Error("PV quick editor did not accept the new power");
+  if (await page.locator("#hlnQuickEditOverlay").getAttribute("hidden") !== null) {
+    throw new Error("PV quick editor closed before the user pressed Gata");
+  }
+  await page.locator("[data-hln-quick-edit-commit]").click();
+  await page.waitForFunction(() => document.querySelector("#hlnQuickEditOverlay")?.hidden === true);
 
   const compass = page.locator('[data-hln-3d-stage="home"] [data-hln-3d-compass]');
   await compass.waitFor({state:"visible", timeout:15000});
