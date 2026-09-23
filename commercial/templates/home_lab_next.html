@@ -951,7 +951,7 @@
               <option value="flat_roof">Terasă / acoperiș plat</option>
             </select>
           </label>
-          <small class="hln-field-note">La „Pod rece” modelăm planșeul dintre camere și pod; la „Terasă” modelăm planșeul sub terasă. Pentru elementul neizolat folosim repere caracteristice U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată. Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat; dacă există curenți de aer, rezultatul poate subestima pierderea.</small>
+          <small class="hln-field-note">La „Pod rece” modelăm planșeul ca Hu, adică spre un spațiu neîncălzit, nu direct spre aerul exterior. Home Lab folosește momentan un factor bztu Light 0,75, marcat cu încredere scăzută. La mansardă încălzită sau terasă, limita termică este acoperișul/terasa spre exterior. Pentru elementul neizolat folosim U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată.</small>
           <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -964,6 +964,15 @@
           </label>
           <label>Izolație pod / acoperiș <div class="hln-inline-input"><input id="hlnHomeRoofIns" type="number" min="0" max="50" step="1" value="10"><span>cm</span></div></label>
           <small class="hln-field-note">Dacă între cameră și pod ai doar rigips/scândură fără vată, EPS sau alt termoizolant, setează 0 cm.</small>
+          <label>Ce este sub pardoseala nivelului încălzit?
+            <select id="hlnHomeFloorBoundary">
+              <option value="ground">Placă / pardoseală pe sol</option>
+              <option value="unheated_basement">Subsol / beci neîncălzit</option>
+              <option value="outside_air">Exterior / spațiu deschis</option>
+              <option value="heated_space">Spațiu încălzit</option>
+            </select>
+          </label>
+          <small class="hln-field-note">Pardoseala pe sol este calculată separat ca Hg și folosește temperatura exterioară medie anuală, nu temperatura aerului exterior din fiecare lună. Modelul Light folosește momentan un factor de frontieră 0,60; metoda completă ISO 13370 rămâne o etapă separată.</small>
           <label>Material izolație pardoseală
             <select id="hlnHomeFloorInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -1078,6 +1087,10 @@
       <input name="wall_u_value" value="0.46">
       <input name="roof_u_value" value="0.29">
       <input name="floor_u_value" value="0.42">
+      <input name="roof_boundary_type" value="outside_air">
+      <input name="roof_boundary_correction_factor" value="">
+      <input name="floor_boundary_type" value="ground">
+      <input name="floor_boundary_correction_factor" value="">
       <input name="window_u_value" value="0.9">
       <input name="door_u_value" value="1.8">
       <input name="thermal_bridge_psi_w_mk" value="0.08">
@@ -1134,7 +1147,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next37"></script>
+  <script src="/static/home-lab-next.js?v=next38"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
