@@ -1225,30 +1225,6 @@ class HomeLabHouse3D {
     select.dispatchEvent(new Event("change", {bubbles:true}));
   }
 
-  focusOrientation(orientation) {
-    if (!this.camera || !this.controls || !this.modelSize) return;
-    const offsets = {
-      south: 0,
-      south_west: Math.PI / 4,
-      west: Math.PI / 2,
-      north_west: 3 * Math.PI / 4,
-      north: Math.PI,
-      north_east: -3 * Math.PI / 4,
-      east: -Math.PI / 2,
-      south_east: -Math.PI / 4,
-    };
-    const offset = offsets[orientation] ?? 0;
-    const target = new THREE.Vector3(0, this.modelSize.y * 0.42, 0);
-    const radius = Math.max(this.modelSize.x, this.modelSize.z) * (this.mode === "home" ? 1.72 : 1.58);
-    const baseAngle = Math.atan2(0.76, 1);
-    const angle = baseAngle + offset;
-    const position = new THREE.Vector3(
-      Math.sin(angle) * radius,
-      radius * 0.50,
-      Math.cos(angle) * radius
-    );
-    this.animateCamera(position, target);
-  }
 
   focusEquipment(kind) {
     if (!this.modelSize) return;
@@ -2151,6 +2127,22 @@ class HomeLabHouse3D {
       this.resetCamera();
     });
 
+    const compass = this.mount.querySelector("[data-hln-3d-compass]");
+    if (compass && this.mode === "home") {
+      compass.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.commitSemanticOrientation(this.orientationFromCompassPointer(event, compass));
+      });
+      compass.addEventListener("keydown", (event) => {
+        const keyboardMap = {ArrowUp:"north", ArrowRight:"east", ArrowDown:"south", ArrowLeft:"west"};
+        const orientation = keyboardMap[event.key];
+        if (!orientation) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.commitSemanticOrientation(orientation);
+      });
+    }
+
     this.mount.querySelector("[data-hln-3d-explode]")?.addEventListener("click", (event) => {
       event.stopPropagation();
       const button = event.currentTarget;
@@ -2191,12 +2183,8 @@ class HomeLabHouse3D {
     this.selectedPart = part;
     this.mount.dataset.hln3dSelected = part;
     this.setHotspotSelection(part);
-    if (this.authorMode) {
-      this.renovationLayer.visible = false;
-    } else {
-      this.rebuildRenovationLayer(part);
-      this.focusPart(part, false);
-    }
+    this.renovationLayer.visible = false;
+    if (!this.authorMode) this.focusPart(part, false);
     this.autoRotateAllowed = false;
     this.controls.autoRotate = false;
 
@@ -2310,6 +2298,7 @@ class HomeLabHouse3D {
         this.controls.update(dt);
       }
       this.updateHotspotPositions();
+      this.updateChimneySmoke(now);
       this.renderer.render(this.scene, this.camera);
       this.lastRenderAt = now;
     } else {
