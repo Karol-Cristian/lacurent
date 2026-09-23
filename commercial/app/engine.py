@@ -168,9 +168,7 @@ def transmission_heat_transfer_components(
     slab geometry, in which case the effective factor is calculated here.
     """
 
-    element_rows: list[tuple[str, str, TransmissionComponent, EnvelopeBoundaryType, float, float]] = []
     totals = {component: 0.0 for component in TransmissionComponent}
-
     element_rows: list[dict] = []
     for item in building.envelope:
         component = BOUNDARY_TO_TRANSMISSION_COMPONENT[item.boundary_type]
@@ -193,6 +191,8 @@ def transmission_heat_transfer_components(
                 effective_u * area
                 + float(contact.exposed_perimeter_m) * float(contact.edge_psi_w_mk)
             )
+            if value < 0:
+                raise ValueError("ISO 13370 edge correction produced a negative ground heat-transfer coefficient.")
             factor = effective_u / raw_u
             method = "iso13370_slab_on_ground_steady_state"
         else:
