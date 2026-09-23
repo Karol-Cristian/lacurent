@@ -798,6 +798,14 @@ class HomeLabHouse3D {
     // the clear left roof face, below the ridge and away from the dormer.
     this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
 
+    // Known-good production placement from before the solar-thermal
+    // positioning work.
+    const rowPitch = panelDepth + gapZ;
+    const downslopeShift = rowPitch * 0.18;
+    const chimneyNudge = (panelWidth + gapX) * 0.30;
+    layer.translateZ(downslopeShift);
+    layer.translateX(chimneyNudge);
+
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);
@@ -811,29 +819,12 @@ class HomeLabHouse3D {
       type: "thermal",
       cols: 1,
       rows: 1,
-      // Runtime-probed main-roof point immediately to the right of the dormer.
-      // It resolves to the same GLB roof mesh/plane used by the PV field.
-      anchor: [0.20, 0.78, 0.24],
+      // Runtime-probed lower-left point on the main roof mesh, clear of the roof window.
+      anchor: [-0.25, 0.78, 0.15],
       panelWidth: panelWidthWorld,
       panelDepth: panelDepthWorld,
     });
     layer.name = "LaCurentLayer_solarThermal";
-
-    // The requested visual adjustment applies to the solar-thermal collector,
-    // not to the photovoltaic array. Move it clearly down the real roof slope
-    // and slightly toward the measured taller chimney.
-    const roofMount = layer.userData.roofMount || {};
-    const downslope = new THREE.Vector3(...(roofMount.localDownslope || [0, 0, 1])).normalize();
-    const roofNormal = new THREE.Vector3(...(roofMount.localNormal || [0, 1, 0])).normalize();
-    const solarDownslopeShift = this.localLength(panelDepthWorld) * 0.55;
-    layer.position.addScaledVector(downslope, solarDownslopeShift);
-
-    const crossSlope = new THREE.Vector3().crossVectors(roofNormal, downslope).normalize();
-    const chimneyTarget = this.existingChimneyLocalTop();
-    if (chimneyTarget.clone().sub(layer.position).dot(crossSlope) < 0) crossSlope.negate();
-    const solarChimneyNudge = this.localLength(panelWidthWorld) * 0.22;
-    layer.position.addScaledVector(crossSlope, solarChimneyNudge);
-
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("solarThermal", layer);
