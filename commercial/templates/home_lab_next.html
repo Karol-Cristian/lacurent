@@ -947,6 +947,24 @@
             </select>
           </label>
           <small class="hln-field-note">Structura aleasă stabilește rezistența termică estimată înainte de izolație. Valorile sunt estimări Light Engine; „Nu știu” păstrează comportamentul anterior.</small>
+          <label>Etanșeitatea casei
+            <select id="hlnHomeAirtightness">
+              <option value="unknown">Nu știu — păstrează estimarea actuală</option>
+              <option value="good">Bună — fără curenți perceptibili</option>
+              <option value="average">Medie — etanșeitate obișnuită</option>
+              <option value="drafty">Slabă — curenți perceptibili</option>
+              <option value="very_drafty">Foarte slabă — multe infiltrații</option>
+            </select>
+          </label>
+          <label>Etanșeitatea dintre camere și pod
+            <select id="hlnHomeAtticLeakage">
+              <option value="unknown">Nu știu</option>
+              <option value="sealed">Bine etanșat</option>
+              <option value="some_leaks">Rosturi / scăpări moderate</option>
+              <option value="drafty">Curenți prin trapă, spoturi sau rosturi</option>
+            </select>
+          </label>
+          <small class="hln-field-note">Când selectezi o etanșeitate cunoscută, infiltrația este calculată separat de aerul ventilat. Recuperatorul nu primește credit pentru aerul care intră prin neetanșeități. Etanșeitatea spre pod se aplică doar la „Pod rece / neîncălzit”.</small>
           <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -1083,6 +1101,8 @@
       <input name="expert_ventilation_override" value="on">
       <input name="air_changes_per_hour" value="0.5">
       <input name="heat_recovery_efficiency" value="0">
+      <input name="infiltration_air_changes_per_hour" value="">
+      <input name="ventilation_air_changes_per_hour" value="">
       <input name="heating_choice" value="condensing_gas_boiler">
       <input name="expert_heating_override" value="">
       <input name="heating_system_type" value="condensing_gas_boiler">
@@ -1128,7 +1148,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next28"></script>
+  <script src="/static/home-lab-next.js?v=next29"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
