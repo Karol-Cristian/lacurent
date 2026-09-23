@@ -166,6 +166,8 @@
     area: 120,
     levels: 2,
     height: 2.7,
+    wallAreaOverride: null,
+    topAreaOverride: null,
     temperature: 21,
     occupants: 4,
     windows: 18,
@@ -1132,7 +1134,11 @@
     const length = width * aspect;
     const perimeter = 2 * (length + width);
     const grossWalls = perimeter * height * levels;
-    const wallArea = Math.max(1, grossWalls - windows - doors);
+    const derivedWallArea = Math.max(1, grossWalls - windows - doors);
+    const explicitWallArea = Number(state.wallAreaOverride);
+    const explicitTopArea = Number(state.topAreaOverride);
+    const wallArea = Number.isFinite(explicitWallArea) && explicitWallArea > 0 ? explicitWallArea : derivedWallArea;
+    const topArea = Number.isFinite(explicitTopArea) && explicitTopArea > 0 ? explicitTopArea : footprint;
 
     formSet("locality_id", climateTokenForState(state));
     formSet("locality", state.locality);
@@ -1146,7 +1152,7 @@
     formSet("heated_floor_area_m2", area);
     formSet("heated_volume_m3", (area * height).toFixed(3));
     formSet("wall_area_m2", wallArea.toFixed(3));
-    formSet("roof_area_m2", footprint.toFixed(3));
+    formSet("roof_area_m2", topArea.toFixed(3));
     formSet("floor_area_m2", footprint.toFixed(3));
     formSet("window_area_m2", windows);
     formSet("thermal_bridge_length_m", (perimeter * levels).toFixed(3));
@@ -1940,8 +1946,12 @@
     const width = Math.sqrt(footprint / aspect);
     const length = width * aspect;
     const perimeter = 2 * (length + width);
-    const wallArea = Math.max(1, perimeter * height * levels - windows - doors);
-    return {area, levels, height, windows, doors, footprint, wallArea};
+    const derivedWallArea = Math.max(1, perimeter * height * levels - windows - doors);
+    const explicitWallArea = Number(state.wallAreaOverride);
+    const explicitTopArea = Number(state.topAreaOverride);
+    const wallArea = Number.isFinite(explicitWallArea) && explicitWallArea > 0 ? explicitWallArea : derivedWallArea;
+    const topArea = Number.isFinite(explicitTopArea) && explicitTopArea > 0 ? explicitTopArea : footprint;
+    return {area, levels, height, windows, doors, footprint, wallArea, topArea};
   }
 
   function positiveRoiCost(family) {
@@ -1961,7 +1971,7 @@
     }
     if (family === "roof") {
       const deltaCm = Math.max(Number(candidateState.roofIns || 0) - Number(baseState.roofIns || 0), 0);
-      return deltaCm > 0 ? geometry.footprint * deltaCm * rate : null;
+      return deltaCm > 0 ? geometry.topArea * deltaCm * rate : null;
     }
     if (family === "floor") {
       const deltaCm = Math.max(Number(candidateState.floorIns || 0) - Number(baseState.floorIns || 0), 0);
@@ -3665,6 +3675,8 @@
     $("#hlnConstructionYear").value = homeState.constructionYear || 2005;
     $("#hlnArea").value = homeState.area;
     $("#hlnHeight").value = homeState.height;
+    $("#hlnWallAreaOverride").value = homeState.wallAreaOverride ?? "";
+    $("#hlnTopAreaOverride").value = homeState.topAreaOverride ?? "";
     $("#hlnTemperature").value = homeState.temperature;
     $("#hlnOccupants").value = homeState.occupants;
     $("#hlnHomeWallStructure").value = homeState.wallStructure || "unknown";
@@ -3718,6 +3730,10 @@
     homeState.constructionYear = Number($("#hlnConstructionYear").value) || 2005;
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
+    const wallAreaOverride = Number($("#hlnWallAreaOverride").value);
+    const topAreaOverride = Number($("#hlnTopAreaOverride").value);
+    homeState.wallAreaOverride = Number.isFinite(wallAreaOverride) && wallAreaOverride > 0 ? wallAreaOverride : null;
+    homeState.topAreaOverride = Number.isFinite(topAreaOverride) && topAreaOverride > 0 ? topAreaOverride : null;
     homeState.temperature = Number($("#hlnTemperature").value);
     homeState.occupants = Number($("#hlnOccupants").value);
     homeState.wallStructure = $("#hlnHomeWallStructure").value;
@@ -4256,7 +4272,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeTopStructure","#hlnHomeAirtightness","#hlnHomeAtticLeakage","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeTopStructure","#hlnHomeAirtightness","#hlnHomeAtticLeakage","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
