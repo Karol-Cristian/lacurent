@@ -801,6 +801,36 @@ def _ground_contact_payload(
     }
 
 
+def _unheated_zone_payload(
+    form: dict[str, Any],
+    *,
+    prefix: str,
+) -> dict[str, Any] | None:
+    """Build an explicit adjacent-unheated-zone heat balance when all inputs exist.
+
+    Partial input is rejected rather than silently mixed with a product fallback.
+    """
+
+    htr_ue = parse_optional_float(form.get(f"{prefix}_unheated_exterior_envelope_w_k"))
+    cztu_ve = parse_optional_float(form.get(f"{prefix}_unheated_exterior_ventilation_coefficient"))
+    hztc_ztu = parse_optional_float(form.get(f"{prefix}_unheated_conditioned_zone_heat_transfer_w_k"))
+    supplied = [value is not None for value in (htr_ue, cztu_ve, hztc_ztu)]
+    if not any(supplied):
+        return None
+    if not all(supplied):
+        raise ValueError(
+            "Modelul explicit al spațiului neîncălzit necesită Htr spre exterior, "
+            "coeficientul de ventilare exterior și transferul din zona încălzită."
+        )
+    if htr_ue < 0 or cztu_ve < 0 or hztc_ztu <= 0:
+        raise ValueError("Datele pentru spațiul neîncălzit trebuie să fie nenegative, iar cuplarea cu zona încălzită pozitivă.")
+    return {
+        "heat_transfer_to_exterior_envelope_w_k": float(htr_ue),
+        "exterior_ventilation_coefficient": float(cztu_ve),
+        "conditioned_zone_heat_transfers_w_k": [float(hztc_ztu)],
+    }
+
+
 def _boundary_factor(
     form: dict[str, Any],
     *,
@@ -840,7 +870,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     # If no explicit boundary is supplied, preserve that physical meaning.
     floor_boundary = str(form.get("floor_boundary_type") or "ground")
     component_map = [
-        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value", "outside_air", "wall_boundary_correction_factor"),
+        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value", "outside_air", "wall_boundary_correction_factor", "wall"),
         (
             "Planșeu superior / acoperiș",
             "roof",
@@ -848,6 +878,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             "roof_u_value",
             roof_boundary,
             "roof_boundary_correction_factor",
+            "roof",
         ),
         (
             "Pardoseală inferioară",
@@ -856,20 +887,37 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             "floor_u_value",
             floor_boundary,
             "floor_boundary_correction_factor",
+            "floor",
         ),
-        ("Ferestre", "window", "window_area_m2", "window_u_value", "outside_air", "window_boundary_correction_factor"),
-        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value", "outside_air", "door_boundary_correction_factor"),
+        ("Ferestre", "window", "window_area_m2", "window_u_value", "outside_air", "window_boundary_correction_factor", "window"),
+        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value", "outside_air", "door_boundary_correction_factor", "door"),
     ]
 
-    for name, kind, area_key, u_key, boundary_type, factor_field in component_map:
+    unheated_boundary_types = {
+        "unheated_space",
+        "unheated_attic",
+        "unheated_basement",
+        "adjacent_unheated_space",
+    }
+
+    for name, kind, area_key, u_key, boundary_type, factor_field, prefix in component_map:
         area = technical.get(area_key)
         u_value = technical.get(u_key)
         if area is None or area <= 0:
             continue
-        boundary_factor = _boundary_factor(
-            form,
-            boundary_type=boundary_type,
-            field_name=factor_field,
+        unheated_zone = (
+            _unheated_zone_payload(form, prefix=prefix)
+            if boundary_type in unheated_boundary_types
+            else None
+        )
+        boundary_factor = (
+            None
+            if unheated_zone is not None
+            else _boundary_factor(
+                form,
+                boundary_type=boundary_type,
+                field_name=factor_field,
+            )
         )
         component = {
             "name": name,
@@ -884,6 +932,8 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
                 form,
                 area_m2=float(area),
             )
+        if unheated_zone is not None:
+            component["unheated_zone"] = unheated_zone
         components.append(component)
 
     thermal_bridges = []
