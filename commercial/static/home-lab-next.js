@@ -84,6 +84,12 @@
       heated_attic: "Mansardă încălzită",
       flat_roof: "Terasă / acoperiș plat"
     },
+    floorBoundary: {
+      ground: "Placă / pardoseală pe sol",
+      unheated_basement: "Peste subsol neîncălzit",
+      outside_air: "Peste exterior / spațiu deschis",
+      heated_space: "Peste spațiu încălzit"
+    },
     glazing: {
       reference_mc001: "Fereastră de referință MC001",
       single_clear_glazing: "Geam simplu",
@@ -150,6 +156,8 @@
     height: 2.7,
     wallAreaOverride: null,
     topAreaOverride: null,
+    floorAreaOverride: null,
+    volumeOverride: null,
     temperature: 21,
     occupants: 4,
     windows: 18,
@@ -157,6 +165,7 @@
     wallStructureThickness: 30,
     wallInsulationMaterial: "generic_040",
     topBoundary: "unknown",
+    floorBoundary: "ground",
     roofInsulationMaterial: "generic_040",
     floorInsulationMaterial: "generic_040",
     wallIns: 5,
@@ -1069,11 +1078,16 @@
     return `@lc|${shortStationId}|${zone}|${temperature}|${state.locality || ""}`;
   }
 
-  function populateTechnicalForm(state, explicitOverrides = null) {
-    const area = Number(state.area);
-    const levels = Math.max(1, Number(state.levels));
-    const height = Number(state.height);
-    const windows = Number(state.windows);
+  function positiveManualGeometryValue(value) {
+    const numeric = Number(value);
+    return value != null && value !== "" && Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  }
+
+  function houseGeometry(state) {
+    const area = Math.max(Number(state.area) || 0, 1);
+    const levels = Math.max(1, Number(state.levels) || 1);
+    const height = Math.max(Number(state.height) || 0, 0.1);
+    const windows = Math.max(Number(state.windows) || 0, 0);
     const doors = 2.2;
     const footprint = area / levels;
     const aspect = 1.25;
@@ -1082,10 +1096,40 @@
     const perimeter = 2 * (length + width);
     const grossWalls = perimeter * height * levels;
     const derivedWallArea = Math.max(1, grossWalls - windows - doors);
-    const explicitWallArea = Number(state.wallAreaOverride);
-    const explicitTopArea = Number(state.topAreaOverride);
-    const wallArea = Number.isFinite(explicitWallArea) && explicitWallArea > 0 ? explicitWallArea : derivedWallArea;
-    const topArea = Number.isFinite(explicitTopArea) && explicitTopArea > 0 ? explicitTopArea : footprint;
+    const derivedTopArea = footprint;
+    const derivedFloorArea = footprint;
+    const derivedVolume = area * height;
+    const wallAreaOverride = positiveManualGeometryValue(state.wallAreaOverride);
+    const topAreaOverride = positiveManualGeometryValue(state.topAreaOverride);
+    const floorAreaOverride = positiveManualGeometryValue(state.floorAreaOverride);
+    const volumeOverride = positiveManualGeometryValue(state.volumeOverride);
+
+    return {
+      area,
+      levels,
+      height,
+      windows,
+      doors,
+      footprint,
+      aspect,
+      width,
+      length,
+      perimeter,
+      grossWalls,
+      derivedWallArea,
+      derivedTopArea,
+      derivedFloorArea,
+      derivedVolume,
+      wallArea:wallAreaOverride ?? derivedWallArea,
+      topArea:topAreaOverride ?? derivedTopArea,
+      floorArea:floorAreaOverride ?? derivedFloorArea,
+      volume:volumeOverride ?? derivedVolume,
+    };
+  }
+
+  function populateTechnicalForm(state, explicitOverrides = null) {
+    const geometry = houseGeometry(state);
+    const {area, levels, height, windows, length, width, perimeter, wallArea, topArea, floorArea, volume} = geometry;
 
     formSet("locality_id", climateTokenForState(state));
     formSet("locality", state.locality);
@@ -1097,10 +1141,30 @@
     formSet("average_height_m", height);
     formSet("house_window_area_m2", windows);
     formSet("heated_floor_area_m2", area);
-    formSet("heated_volume_m3", (area * height).toFixed(3));
+    formSet("heated_volume_m3", volume.toFixed(3));
     formSet("wall_area_m2", wallArea.toFixed(3));
     formSet("roof_area_m2", topArea.toFixed(3));
-    formSet("floor_area_m2", footprint.toFixed(3));
+    formSet("floor_area_m2", floorArea.toFixed(3));
+    formSet("ground_exposed_perimeter_m", perimeter.toFixed(3));
+    formSet(
+      "ground_wall_thickness_m",
+      (Math.max(Number(state.wallStructureThickness) || 30, 1) / 100).toFixed(3)
+    );
+    formSet("ground_conductivity_w_mk", "");
+
+    const roofBoundaryType = state.topBoundary === "cold_attic"
+      ? "unheated_attic"
+      : "outside_air";
+    const floorBoundaryType = {
+      ground: "ground",
+      unheated_basement: "unheated_basement",
+      outside_air: "outside_air",
+      heated_space: "adjacent_heated_space",
+    }[state.floorBoundary] || "ground";
+    formSet("roof_boundary_type", roofBoundaryType);
+    formSet("roof_boundary_correction_factor", "");
+    formSet("floor_boundary_type", floorBoundaryType);
+    formSet("floor_boundary_correction_factor", "");
     formSet("window_area_m2", windows);
     formSet("thermal_bridge_length_m", (perimeter * levels).toFixed(3));
 
@@ -1720,16 +1784,21 @@
           && actualU <= item.targetU + 1e-9;
         if (alreadyStrong) continue;
 
-        const level = Math.ceil(
-          Number.isFinite(item.targetU) && item.targetU > 0
-            ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU, item.lambda))
-            : currentCm + item.step
-        );
+        const rawLevel = Number.isFinite(item.targetU) && item.targetU > 0
+          ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU, item.lambda))
+          : currentCm + item.step;
+        const addedThicknessCm = Math.max(rawLevel - currentCm, 0);
+        const roiCommercialStepCm = 5;
+        const level = mode === "roi"
+          ? currentCm + Math.ceil(addedThicknessCm / roiCommercialStepCm) * roiCommercialStepCm
+          : Math.ceil(rawLevel);
         if (level <= currentCm + 0.1) continue;
         actions.push(optimizerAction({
           id:`${item.family}_${level}`,
           family:item.family,
-          label:`${item.label} la ${fmt(level)} cm`,
+          label:mode === "roi"
+            ? `${item.label} +${fmt(level - currentCm)} cm · total ${fmt(level)} cm`
+            : `${item.label} la ${fmt(level)} cm`,
           kind:"envelope",
           magnitude:level,
           apply(baseState, baseOverrides) {
@@ -1870,22 +1939,7 @@
   }
 
   function roiGeometry(state) {
-    const area = Math.max(Number(state.area) || 0, 1);
-    const levels = Math.max(Number(state.levels) || 1, 1);
-    const height = Math.max(Number(state.height) || 0, 0.1);
-    const windows = Math.max(Number(state.windows) || 0, 0);
-    const doors = 2.2;
-    const footprint = area / levels;
-    const aspect = 1.25;
-    const width = Math.sqrt(footprint / aspect);
-    const length = width * aspect;
-    const perimeter = 2 * (length + width);
-    const derivedWallArea = Math.max(1, perimeter * height * levels - windows - doors);
-    const explicitWallArea = Number(state.wallAreaOverride);
-    const explicitTopArea = Number(state.topAreaOverride);
-    const wallArea = Number.isFinite(explicitWallArea) && explicitWallArea > 0 ? explicitWallArea : derivedWallArea;
-    const topArea = Number.isFinite(explicitTopArea) && explicitTopArea > 0 ? explicitTopArea : footprint;
-    return {area, levels, height, windows, doors, footprint, wallArea, topArea};
+    return houseGeometry(state);
   }
 
   function positiveRoiCost(family) {
@@ -1909,7 +1963,7 @@
     }
     if (family === "floor") {
       const deltaCm = Math.max(Number(candidateState.floorIns || 0) - Number(baseState.floorIns || 0), 0);
-      return deltaCm > 0 ? geometry.footprint * deltaCm * rate : null;
+      return deltaCm > 0 ? geometry.floorArea * deltaCm * rate : null;
     }
     if (family === "windows") return geometry.windows * rate;
     if (family === "door") return rate;
@@ -2823,8 +2877,9 @@
     const wallInsulationLabel = labels.insulation[state.wallInsulationMaterial] || labels.insulation.generic_040;
     const roofInsulationLabel = labels.insulation[state.roofInsulationMaterial] || labels.insulation.generic_040;
     const topBoundaryLabel = labels.topBoundary[state.topBoundary] || labels.topBoundary.unknown;
+    const floorBoundaryLabel = labels.floorBoundary[state.floorBoundary] || labels.floorBoundary.ground;
     $("#hlnEnvelopeSummary").textContent = `${structureLabel} · ${state.wallIns} cm ${wallInsulationLabel}`;
-    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${state.roofIns} cm ${roofInsulationLabel} · ${labels.glazing[state.glazing] || state.glazing}`;
+    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${state.roofIns} cm ${roofInsulationLabel} · ${floorBoundaryLabel} · ${labels.glazing[state.glazing] || state.glazing}`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
     const heatingParts = [
       labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter,
@@ -2910,9 +2965,14 @@
       if (homeState.topBoundary === "heated_attic") return "Izolează acoperișul";
       return "Izolează planșeul spre pod";
     }
+    if (type === "floor") {
+      if (homeState.floorBoundary === "unheated_basement") return "Izolează planșeul peste subsol";
+      if (homeState.floorBoundary === "outside_air") return "Izolează planșeul peste exterior";
+      if (homeState.floorBoundary === "heated_space") return "Planșeu peste spațiu încălzit";
+      return "Izolează pardoseala spre sol";
+    }
     return {
       wall: "Izolează fațada",
-      floor: "Izolează pardoseala",
       windows: "Schimbă ferestrele",
       heating: "Schimbă încălzirea",
       ventilation: "Ventilație & răcire",
@@ -3626,20 +3686,52 @@
     scheduleCalculate("home", 20);
   }
 
+  function setGeometryEditorControl(inputSelector, statusSelector, resetSelector, manualValue, derivedValue) {
+    const input = $(inputSelector);
+    if (!input) return;
+    const manual = positiveManualGeometryValue(manualValue);
+    const effective = manual ?? derivedValue;
+    input.value = Number(effective).toFixed(1);
+    input.dataset.geometryMode = manual == null ? "derived" : "manual";
+    const status = $(statusSelector);
+    if (status) {
+      status.textContent = manual == null ? "Precalculat de LaCurent" : "Valoare introdusă manual";
+      status.classList.toggle("is-manual", manual != null);
+    }
+    const reset = $(resetSelector);
+    if (reset) reset.hidden = manual == null;
+  }
+
+  function syncDerivedGeometryControls() {
+    const geometry = houseGeometry(homeState);
+    const setText = (selector, value, unit) => {
+      const node = $(selector);
+      if (node) node.textContent = `${fmt(value, 1)} ${unit}`;
+    };
+    setText("#hlnDerivedFootprint", geometry.footprint, "m²");
+    setText("#hlnDerivedPerimeter", geometry.perimeter, "m");
+    setText("#hlnDerivedGrossWalls", geometry.grossWalls, "m²");
+    setText("#hlnDerivedOpenings", geometry.windows + geometry.doors, "m²");
+    setGeometryEditorControl("#hlnWallAreaOverride", "#hlnWallAreaStatus", '[data-hln-geometry-reset="wallAreaOverride"]', homeState.wallAreaOverride, geometry.derivedWallArea);
+    setGeometryEditorControl("#hlnTopAreaOverride", "#hlnTopAreaStatus", '[data-hln-geometry-reset="topAreaOverride"]', homeState.topAreaOverride, geometry.derivedTopArea);
+    setGeometryEditorControl("#hlnFloorAreaOverride", "#hlnFloorAreaStatus", '[data-hln-geometry-reset="floorAreaOverride"]', homeState.floorAreaOverride, geometry.derivedFloorArea);
+    setGeometryEditorControl("#hlnVolumeOverride", "#hlnVolumeStatus", '[data-hln-geometry-reset="volumeOverride"]', homeState.volumeOverride, geometry.derivedVolume);
+  }
+
   function syncHomeEditorControls() {
     $("#hlnLocalitySearch").value = homeState.locality;
     $("#hlnBuildingType").value = homeState.buildingType || "residential_individual";
     $("#hlnConstructionYear").value = homeState.constructionYear || 2005;
     $("#hlnArea").value = homeState.area;
     $("#hlnHeight").value = homeState.height;
-    $("#hlnWallAreaOverride").value = homeState.wallAreaOverride ?? "";
-    $("#hlnTopAreaOverride").value = homeState.topAreaOverride ?? "";
+    syncDerivedGeometryControls();
     $("#hlnTemperature").value = homeState.temperature;
     $("#hlnOccupants").value = homeState.occupants;
     $("#hlnHomeWallStructure").value = homeState.wallStructure || "unknown";
     $("#hlnHomeWallStructureThickness").value = homeState.wallStructureThickness || 30;
     $("#hlnHomeWallInsulationMaterial").value = homeState.wallInsulationMaterial || "generic_040";
     $("#hlnHomeTopBoundary").value = homeState.topBoundary || "unknown";
+    $("#hlnHomeFloorBoundary").value = homeState.floorBoundary || "ground";
     $("#hlnHomeRoofInsulationMaterial").value = homeState.roofInsulationMaterial || "generic_040";
     $("#hlnHomeFloorInsulationMaterial").value = homeState.floorInsulationMaterial || "generic_040";
     $("#hlnHomeWallIns").value = homeState.wallIns;
@@ -3682,16 +3774,22 @@
     homeState.constructionYear = Number($("#hlnConstructionYear").value) || 2005;
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
-    const wallAreaOverride = Number($("#hlnWallAreaOverride").value);
-    const topAreaOverride = Number($("#hlnTopAreaOverride").value);
-    homeState.wallAreaOverride = Number.isFinite(wallAreaOverride) && wallAreaOverride > 0 ? wallAreaOverride : null;
-    homeState.topAreaOverride = Number.isFinite(topAreaOverride) && topAreaOverride > 0 ? topAreaOverride : null;
+    const manualGeometryValue = (selector) => {
+      const input = $(selector);
+      if (!input || input.dataset.geometryMode !== "manual") return null;
+      return positiveManualGeometryValue(input.value);
+    };
+    homeState.wallAreaOverride = manualGeometryValue("#hlnWallAreaOverride");
+    homeState.topAreaOverride = manualGeometryValue("#hlnTopAreaOverride");
+    homeState.floorAreaOverride = manualGeometryValue("#hlnFloorAreaOverride");
+    homeState.volumeOverride = manualGeometryValue("#hlnVolumeOverride");
     homeState.temperature = Number($("#hlnTemperature").value);
     homeState.occupants = Number($("#hlnOccupants").value);
     homeState.wallStructure = $("#hlnHomeWallStructure").value;
     homeState.wallStructureThickness = Number($("#hlnHomeWallStructureThickness").value) || 30;
     homeState.wallInsulationMaterial = $("#hlnHomeWallInsulationMaterial").value;
     homeState.topBoundary = $("#hlnHomeTopBoundary").value;
+    homeState.floorBoundary = $("#hlnHomeFloorBoundary").value;
     homeState.roofInsulationMaterial = $("#hlnHomeRoofInsulationMaterial").value;
     homeState.floorInsulationMaterial = $("#hlnHomeFloorInsulationMaterial").value;
     homeState.wallIns = Number($("#hlnHomeWallIns").value);
@@ -4221,11 +4319,51 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
     });
+
+  ["#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnFloorAreaOverride","#hlnVolumeOverride"].forEach(selector => {
+    const input = $(selector);
+    if (!input) return;
+    input.addEventListener("input", () => {
+      input.dataset.geometryMode = "manual";
+      const statusMap = {
+        "#hlnWallAreaOverride":"#hlnWallAreaStatus",
+        "#hlnTopAreaOverride":"#hlnTopAreaStatus",
+        "#hlnFloorAreaOverride":"#hlnFloorAreaStatus",
+        "#hlnVolumeOverride":"#hlnVolumeStatus",
+      };
+      const status = $(statusMap[selector]);
+      if (status) {
+        status.textContent = "Valoare introdusă manual";
+        status.classList.add("is-manual");
+      }
+    });
+    input.addEventListener("change", () => {
+      input.dataset.geometryMode = "manual";
+      updateHomeFromEditors();
+    });
+  });
+
+  root.querySelectorAll("[data-hln-geometry-reset]").forEach(button => button.addEventListener("click", () => {
+    const key = button.dataset.hlnGeometryReset;
+    if (!["wallAreaOverride","topAreaOverride","floorAreaOverride","volumeOverride"].includes(key)) return;
+    homeState[key] = null;
+    baselineSaved = false;
+    referenceMode = false;
+    scenarioOverrides = {};
+    optimizationMeta = null;
+    setOptimizationNote("");
+    measures = [];
+    scenarioState = {...homeState};
+    syncHomeEditorControls();
+    renderHome();
+    emitVisualState();
+    scheduleCalculate("home");
+  }));
 
   root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
@@ -4235,6 +4373,7 @@
     scenarioOverrides = {};
     measures = [];
     scenarioState = {...homeState};
+    syncHomeEditorControls();
     renderHome();
     emitVisualState();
     scheduleCalculate("home");

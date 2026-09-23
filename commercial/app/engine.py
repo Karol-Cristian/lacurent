@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import math
 
 from .methodology import (
     carrier_factors,
@@ -18,6 +19,7 @@ from .models import (
     Contribution,
     Co2Result,
     EnergyServiceResult,
+    EnvelopeBoundaryType,
     EnvelopeGeometryResult,
     EnvelopeUValuesResult,
     HeatingControlType,
@@ -32,6 +34,8 @@ from .models import (
     PhotovoltaicResult,
     RenewableEnergyResult,
     SolarThermalResult,
+    TransmissionComponent,
+    TransmissionComponentsResult,
 )
 
 
@@ -89,32 +93,226 @@ def envelope_u_values(building: BuildingInput) -> EnvelopeUValuesResult:
     )
 
 
-def transmission_heat_transfer(building: BuildingInput) -> tuple[float, list[Contribution], list[Contribution]]:
-    """MC001-compatible direct term: Htr = sum(Ui * Ai) + sum(psi_j * L_j). Units: W/K."""
+BOUNDARY_TO_TRANSMISSION_COMPONENT = {
+    EnvelopeBoundaryType.outside_air: TransmissionComponent.Hd,
+    EnvelopeBoundaryType.ground: TransmissionComponent.Hg,
+    EnvelopeBoundaryType.unheated_space: TransmissionComponent.Hu,
+    EnvelopeBoundaryType.unheated_attic: TransmissionComponent.Hu,
+    EnvelopeBoundaryType.unheated_basement: TransmissionComponent.Hu,
+    EnvelopeBoundaryType.adjacent_heated_space: TransmissionComponent.Ha,
+    # An adjacent unheated buffer zone (garage/stairwell/etc.) belongs to Hu.
+    # Ha is retained for the explicit adjacent-heated-space path.
+    EnvelopeBoundaryType.adjacent_unheated_space: TransmissionComponent.Hu,
+}
 
-    element_terms = [
-        (item.name, item.type.value, item.u_value_w_m2k * item.area_m2)
-        for item in building.envelope
-    ]
-    bridge_terms = [
-        (item.name, "thermal_bridge", item.psi_w_mk * item.length_m)
-        for item in building.thermal_bridges
-    ]
-    total = sum(value for _, _, value in [*element_terms, *bridge_terms])
 
-    def contributions(rows: list[tuple[str, str, float]]) -> list[Contribution]:
-        return [
-            Contribution(
-                name=name,
-                type=kind,
-                value=_round(value),
-                unit="W/K",
-                percent=_round(100 * value / total if total else 0, 1),
+def slab_on_ground_effective_u(
+    construction_u_value_w_m2k: float,
+    area_m2: float,
+    exposed_perimeter_m: float,
+    wall_thickness_m: float,
+    ground_conductivity_w_mk: float,
+) -> float:
+    """ISO 13370 steady-state U-value for a slab on ground without edge correction.
+
+    Home Lab's construction U is treated as the equivalent resistance of the
+    floor construction including the surface-resistance convention already
+    embedded in that U. The result is the geometry-dependent ground-coupled U.
+    """
+
+    u = float(construction_u_value_w_m2k)
+    area = float(area_m2)
+    perimeter = float(exposed_perimeter_m)
+    wall_thickness = float(wall_thickness_m)
+    ground_lambda = float(ground_conductivity_w_mk)
+    if min(u, area, perimeter, ground_lambda) <= 0 or wall_thickness < 0:
+        raise ValueError("ISO 13370 slab-on-ground inputs must be positive.")
+
+    characteristic_dimension = 2.0 * area / perimeter
+    construction_resistance = 1.0 / u
+    equivalent_thickness = wall_thickness + ground_lambda * construction_resistance
+
+    if equivalent_thickness < characteristic_dimension:
+        effective_u = (
+            2.0
+            * ground_lambda
+            / (math.pi * characteristic_dimension + equivalent_thickness)
+            * math.log(math.pi * characteristic_dimension / equivalent_thickness + 1.0)
+        )
+    else:
+        effective_u = ground_lambda / (
+            0.457 * characteristic_dimension + equivalent_thickness
+        )
+    return float(effective_u)
+
+
+def _unheated_zone_balance(item) -> tuple[float, float, float]:
+    """Return bztu, Hztu;e and Hztu;tot from explicit MC001 zone-balance inputs."""
+
+    zone = item.unheated_zone
+    if zone is None:
+        raise ValueError("Unheated-zone balance inputs are required.")
+    htr_ue = float(zone.heat_transfer_to_exterior_envelope_w_k)
+    cztu_ve = float(zone.exterior_ventilation_coefficient)
+    conditioned_sum = sum(float(value) for value in zone.conditioned_zone_heat_transfers_w_k)
+    hztu_exterior = (1.0 + cztu_ve) * htr_ue
+    hztu_total = conditioned_sum + hztu_exterior
+    if hztu_total <= 0:
+        raise ValueError("Unheated-zone total heat-transfer coefficient must be positive.")
+    bztu = hztu_exterior / hztu_total
+    if not 0 <= bztu <= 1:
+        raise ValueError("Derived bztu must be within 0..1.")
+    return bztu, hztu_exterior, hztu_total
+
+
+def _element_boundary_factor(item) -> float:
+    if item.boundary_type == EnvelopeBoundaryType.ground and item.ground_contact is not None:
+        contact = item.ground_contact
+        effective_u = slab_on_ground_effective_u(
+            item.u_value_w_m2k,
+            item.area_m2,
+            contact.exposed_perimeter_m,
+            contact.wall_thickness_m,
+            contact.ground_conductivity_w_mk,
+        )
+        return effective_u / float(item.u_value_w_m2k)
+    if item.unheated_zone is not None:
+        factor, _, _ = _unheated_zone_balance(item)
+        return factor
+    return float(item.boundary_correction_factor or 0.0)
+
+
+def transmission_heat_transfer_components(
+    building: BuildingInput,
+) -> tuple[TransmissionComponentsResult, list[Contribution], list[Contribution]]:
+    """Return MC001 relation (2.15) components: Htr = Hd + Hg + Hu + Ha.
+
+    Direct exterior elements use factor 1. Unheated/adjacent elements carry
+    an explicit correction factor. Ground elements may instead carry ISO 13370
+    slab geometry, in which case the effective factor is calculated here.
+    """
+
+    totals = {component: 0.0 for component in TransmissionComponent}
+    element_rows: list[dict] = []
+    for item in building.envelope:
+        component = BOUNDARY_TO_TRANSMISSION_COMPONENT[item.boundary_type]
+        raw_u = float(item.u_value_w_m2k)
+        area = float(item.area_m2)
+        factor = _element_boundary_factor(item)
+        effective_u = raw_u * factor
+        method = "direct_outside_air"
+        hztu_exterior = None
+        hztu_total = None
+
+        if item.boundary_type == EnvelopeBoundaryType.ground and item.ground_contact is not None:
+            contact = item.ground_contact
+            effective_u = slab_on_ground_effective_u(
+                raw_u,
+                area,
+                contact.exposed_perimeter_m,
+                contact.wall_thickness_m,
+                contact.ground_conductivity_w_mk,
             )
-            for name, kind, value in rows
-        ]
+            value = (
+                effective_u * area
+                + float(contact.exposed_perimeter_m) * float(contact.edge_psi_w_mk)
+            )
+            if value < 0:
+                raise ValueError("ISO 13370 edge correction produced a negative ground heat-transfer coefficient.")
+            factor = effective_u / raw_u
+            method = "iso13370_slab_on_ground_steady_state"
+        else:
+            value = effective_u * area
+            if item.boundary_type in {
+                EnvelopeBoundaryType.unheated_space,
+                EnvelopeBoundaryType.unheated_attic,
+                EnvelopeBoundaryType.unheated_basement,
+                EnvelopeBoundaryType.adjacent_unheated_space,
+            }:
+                if item.unheated_zone is not None:
+                    factor, hztu_exterior, hztu_total = _unheated_zone_balance(item)
+                    effective_u = raw_u * factor
+                    value = effective_u * area
+                    method = "mc001_explicit_unheated_zone_balance"
+                else:
+                    method = "explicit_bztu_boundary_factor"
+            elif item.boundary_type == EnvelopeBoundaryType.adjacent_heated_space:
+                method = "adjacent_heated_zero_transfer"
 
-    return _round(total), contributions(element_terms), contributions(bridge_terms)
+        totals[component] += value
+        element_rows.append({
+            "name": item.name,
+            "kind": item.type.value,
+            "component": component,
+            "boundary": item.boundary_type,
+            "factor": factor,
+            "raw_u": raw_u,
+            "effective_u": effective_u,
+            "method": method,
+            "hztu_exterior": hztu_exterior,
+            "hztu_total": hztu_total,
+            "value": value,
+        })
+
+    bridge_rows: list[tuple[str, str, TransmissionComponent, float]] = []
+    for item in building.thermal_bridges:
+        component = item.component
+        value = float(item.psi_w_mk) * float(item.length_m)
+        totals[component] += value
+        bridge_rows.append((item.name, "thermal_bridge", component, value))
+
+    htr = sum(totals.values())
+
+    envelope_contributions = [
+        Contribution(
+            name=row["name"],
+            type=row["kind"],
+            value=_round(row["value"]),
+            unit="W/K",
+            percent=_round(100 * row["value"] / htr if htr else 0, 1),
+            component=row["component"],
+            boundary_type=row["boundary"],
+            boundary_correction_factor=_round(row["factor"], 3),
+            u_value_w_m2k=_round(row["raw_u"], 4),
+            effective_u_value_w_m2k=_round(row["effective_u"], 4),
+            calculation_method=row["method"],
+            hztu_exterior_w_k=(
+                None if row["hztu_exterior"] is None else _round(row["hztu_exterior"])
+            ),
+            hztu_total_w_k=(
+                None if row["hztu_total"] is None else _round(row["hztu_total"])
+            ),
+        )
+        for row in element_rows
+    ]
+    bridge_contributions = [
+        Contribution(
+            name=name,
+            type=kind,
+            value=_round(value),
+            unit="W/K",
+            percent=_round(100 * value / htr if htr else 0, 1),
+            component=component,
+            calculation_method="linear_thermal_bridge",
+        )
+        for name, kind, component, value in bridge_rows
+    ]
+
+    result = TransmissionComponentsResult(
+        hd_w_k=_round(totals[TransmissionComponent.Hd]),
+        hg_w_k=_round(totals[TransmissionComponent.Hg]),
+        hu_w_k=_round(totals[TransmissionComponent.Hu]),
+        ha_w_k=_round(totals[TransmissionComponent.Ha]),
+        htr_w_k=_round(htr),
+    )
+    return result, envelope_contributions, bridge_contributions
+
+
+def transmission_heat_transfer(building: BuildingInput) -> tuple[float, list[Contribution], list[Contribution]]:
+    """Backward-compatible Htr wrapper around the explicit Hd/Hg/Hu/Ha model."""
+
+    components, envelope, bridges = transmission_heat_transfer_components(building)
+    return components.htr_w_k, envelope, bridges
 
 
 def ventilation_heat_transfer(building: BuildingInput) -> float:
@@ -333,8 +531,28 @@ def _monthly_solar_gains(
         "station_distance_km": source_meta.get("station_distance_km") if source_meta else None,
     }
 
-def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: float) -> list[dict]:
-    """Monthly quasi-steady balance following the Mc 001-2022 / SR EN ISO 52016-1 structure."""
+def _annual_outdoor_temperature_c(climate: dict) -> float:
+    """Return the day-weighted annual exterior temperature from the selected climate station."""
+
+    months = climate["monthly_temperatures"]
+    total_days = sum(float(month["days"]) for month in months)
+    if total_days <= 0:
+        raise ValueError("Climate profile must contain a positive annual duration.")
+    return sum(float(month["temperature_c"]) * float(month["days"]) for month in months) / total_days
+
+
+def monthly_energy_balance(
+    building: BuildingInput,
+    transmission: TransmissionComponentsResult,
+    h_ve_w_k: float,
+) -> list[dict]:
+    """Monthly quasi-steady balance with explicit exterior/ground boundary paths.
+
+    MC001 Figure 2.11 keeps ground transfer separate: Hd/Hu/Ha use the monthly
+    exterior temperature while Hg uses the annual exterior temperature. The
+    current Light Engine keeps Hg constant through the year; a future ISO 13370
+    implementation may replace it with monthly Hgr;an,m coefficients.
+    """
 
     data = methodology()
     climate = resolve_climate(building.locality)
@@ -343,10 +561,12 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         if building.internal_gains_w_m2 is not None
         else data["internal_gains_w_m2"][building.building_type.value]
     )
-    total_h = h_tr_w_k + h_ve_w_k
+    total_h = transmission.htr_w_k + h_ve_w_k
     a_h = _monthly_utilization_parameter(building, total_h, "heating")
     a_c = _monthly_utilization_parameter(building, total_h, "cooling")
     a_c_red = float(data["monthly_method"]["cooling_reduction_factor_continuous"])
+    annual_outdoor = _annual_outdoor_temperature_c(climate)
+    h_excluding_ground = transmission.hd_w_k + transmission.hu_w_k + transmission.ha_w_k
 
     monthly = []
     for month in climate["monthly_temperatures"]:
@@ -364,13 +584,51 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         solar_gains = float(solar["gains_kwh"])
         total_gains = internal_gains + solar_gains
 
-        # Mc 001 sign convention: heat transfer is positive when heat leaves the zone.
-        q_h_ht = total_h * (building.indoor_design_temperature_c - outdoor) * hours / 1000
+        # MC001 Figure 2.11 sign convention: heat transfer is positive when it
+        # leaves the conditioned zone. Ground is coupled to the annual exterior
+        # temperature instead of the current month's outside-air temperature.
+        q_h_tr_excl_ground = (
+            h_excluding_ground
+            * (building.indoor_design_temperature_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_h_ground = (
+            transmission.hg_w_k
+            * (building.indoor_design_temperature_c - annual_outdoor)
+            * hours
+            / 1000
+        )
+        q_h_ve = (
+            h_ve_w_k
+            * (building.indoor_design_temperature_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_h_ht = q_h_tr_excl_ground + q_h_ground + q_h_ve
         useful_heating = _monthly_heating_need(q_h_ht, total_gains, a_h)
 
         useful_cooling = 0.0
         if building.cooling.enabled:
-            q_c_ht = total_h * (building.cooling.setpoint_c - outdoor) * hours / 1000
+            q_c_tr_excl_ground = (
+                h_excluding_ground
+                * (building.cooling.setpoint_c - outdoor)
+                * hours
+                / 1000
+            )
+            q_c_ground = (
+                transmission.hg_w_k
+                * (building.cooling.setpoint_c - annual_outdoor)
+                * hours
+                / 1000
+            )
+            q_c_ve = (
+                h_ve_w_k
+                * (building.cooling.setpoint_c - outdoor)
+                * hours
+                / 1000
+            )
+            q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
             useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
 
         monthly.append({
@@ -378,6 +636,9 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
             "days": days,
             "outdoor_temperature_c": outdoor,
             "heat_loss_kwh": _round(max(q_h_ht, 0.0)),
+            "transmission_excluding_ground_kwh": _round(q_h_tr_excl_ground),
+            "ground_transmission_kwh": _round(q_h_ground),
+            "ventilation_heat_transfer_kwh": _round(q_h_ve),
             "internal_gains_kwh": _round(internal_gains),
             "solar_gains_kwh": _round(solar_gains),
             "solar_gains_source": solar["source"],
@@ -946,11 +1207,57 @@ def classify_energy(building: BuildingInput, specific_primary_kwh_m2: float) -> 
     return "G"
 
 
+def _boundary_assumptions(building: BuildingInput) -> list[str]:
+    assumptions: list[str] = []
+    seen: set[EnvelopeBoundaryType] = set()
+    for item in building.envelope:
+        boundary = item.boundary_type
+        if boundary in seen:
+            continue
+        seen.add(boundary)
+        factor = _element_boundary_factor(item)
+        if boundary == EnvelopeBoundaryType.ground:
+            assumptions.append(
+                "Pardoseala spre sol este calculată separat ca Hg. Coeficientul staționar echivalent "
+                f"rezultă din modelul de placă pe sol ISO 13370 (factor efectiv față de U-ul construcției: {factor:.3f}), "
+                "iar balanța lunară folosește temperatura exterioară anuală. Componenta periodică sezonieră "
+                "și corecțiile explicite de muchie nu sunt încă modelate."
+            )
+        elif boundary in {
+            EnvelopeBoundaryType.unheated_attic,
+            EnvelopeBoundaryType.unheated_basement,
+            EnvelopeBoundaryType.unheated_space,
+        }:
+            if item.unheated_zone is not None:
+                _, hztu_exterior, hztu_total = _unheated_zone_balance(item)
+                assumptions.append(
+                    "Elementele către spațiul neîncălzit folosesc Hu cu bztu derivat din balanța explicită "
+                    f"a zonei adiacente: Hztu;e={hztu_exterior:.2f} W/K, "
+                    f"Hztu;tot={hztu_total:.2f} W/K, bztu={factor:.3f}."
+                )
+            elif factor >= 0.999:
+                assumptions.append(
+                    "Elementele către spațiul neîncălzit folosesc Hu, dar fără date explicite/source-backed "
+                    "pentru bztu se aplică conservator factor 1,00: nu se acordă credit termic spațiului tampon."
+                )
+            else:
+                assumptions.append(
+                    f"Elementele către spațiul neîncălzit folosesc Hu cu factor bztu explicit {factor:.3f}; "
+                    "spațiul tampon nu este tratat ca aer exterior direct."
+                )
+        elif boundary == EnvelopeBoundaryType.adjacent_heated_space:
+            assumptions.append(
+                "Elementele către un spațiu încălzit adiacent sunt excluse din pierderea de anvelopă (factor 0)."
+            )
+    return assumptions
+
+
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:
-    h_tr, envelope_contributions, bridge_contributions = transmission_heat_transfer(building)
+    transmission, envelope_contributions, bridge_contributions = transmission_heat_transfer_components(building)
+    h_tr = transmission.htr_w_k
     h_ve = ventilation_heat_transfer(building)
     climate = resolve_climate(building.locality)
-    monthly = monthly_energy_balance(building, h_tr, h_ve)
+    monthly = monthly_energy_balance(building, transmission, h_ve)
     annual_heating = sum(row["useful_heating_kwh"] for row in monthly)
     annual_cooling = sum(row["useful_cooling_kwh"] for row in monthly)
 
@@ -1007,6 +1314,8 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         input=building,
         climate=climate,
         h_tr_w_k=h_tr,
+        transmission_components=transmission,
+        annual_outdoor_temperature_c=_round(_annual_outdoor_temperature_c(climate), 3),
         h_ve_w_k=h_ve,
         heat_loss_w_k=_round(h_tr + h_ve),
         envelope_geometry=envelope_geometry(building),
@@ -1031,7 +1340,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         energy_class=energy_class,
         reference=comparison,
         methodology_version=methodology()["version"],
-        assumptions=methodology()["assumptions"],
+        assumptions=[*methodology()["assumptions"], *_boundary_assumptions(building)],
     )
 
 
@@ -1049,12 +1358,23 @@ def demo_building() -> BuildingInput:
         envelope=[
             {"name": "Pereți exteriori", "type": "exterior_wall", "area_m2": 168, "u_value_w_m2k": 0.42},
             {"name": "Acoperiș", "type": "roof", "area_m2": 92, "u_value_w_m2k": 0.24},
-            {"name": "Pardoseală spre sol", "type": "floor", "area_m2": 80, "u_value_w_m2k": 0.36},
+            {
+                "name": "Pardoseală spre sol",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.36,
+                "boundary_type": "ground",
+                "ground_contact": {
+                    "exposed_perimeter_m": 36,
+                    "wall_thickness_m": 0.30,
+                    "ground_conductivity_w_mk": 2.0,
+                },
+            },
             {"name": "Ferestre", "type": "window", "area_m2": 24, "u_value_w_m2k": 1.35},
             {"name": "Ușă exterioară", "type": "exterior_door", "area_m2": 3.2, "u_value_w_m2k": 1.7},
         ],
         thermal_bridges=[
-            {"name": "Perimetrul pardoselii", "length_m": 42, "psi_w_mk": 0.05},
+            {"name": "Perimetrul pardoselii", "length_m": 42, "psi_w_mk": 0.05, "component": "Hg"},
         ],
         ventilation={"air_changes_per_hour": 0.5, "heat_recovery_efficiency": 0},
         heating={"system_type": "condensing_gas_boiler", "efficiency": 0.94, "cost_profile": "natural_gas"},

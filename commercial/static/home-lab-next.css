@@ -1385,3 +1385,14 @@ svg{display:block}
   .hln-report-screen{background:#fff!important}
   .hln-report-grid{gap:10px}
 }
+
+
+/* Derived house geometry: visible by default, manually overridable when measured data is available. */
+.hln-derived-geometry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:2px 0 6px}
+.hln-derived-geometry article{display:grid;gap:3px;padding:11px 12px;border:1px solid #d9dfda;border-radius:12px;background:#f7faf8}
+.hln-derived-geometry small{color:var(--hln-muted);font-size:8px;font-weight:760}
+.hln-derived-geometry strong{color:var(--hln-ink);font-size:14px}
+.hln-geometry-label-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hln-geometry-status{padding:3px 7px;border-radius:999px;background:#edf5ef;color:#39624d;font-size:8px;font-weight:820;white-space:nowrap}
+.hln-geometry-status.is-manual{background:#f4efe4;color:#735f2f}
+.hln-geometry-reset{justify-self:start;padding:0;border:0;background:transparent;color:var(--hln-reno);font-size:9px;font-weight:820;text-decoration:underline;text-underline-offset:2px;cursor:pointer}

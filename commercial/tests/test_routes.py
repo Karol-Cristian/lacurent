@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from commercial.app.engine import demo_building
-from commercial.app.main import app
+from commercial.app.main import app, build_input_from_form
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
 
@@ -30,6 +31,10 @@ def demo_form_data() -> dict[str, str]:
         "roof_u_value": "0.24",
         "floor_area_m2": "80",
         "floor_u_value": "0.36",
+        "floor_boundary_type": "ground",
+        "ground_exposed_perimeter_m": "36",
+        "ground_wall_thickness_m": "0.30",
+        "ground_conductivity_w_mk": "2.0",
         "window_area_m2": "24",
         "window_u_value": "1.35",
         "door_area_m2": "3.2",
@@ -396,8 +401,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next37" in response.text
+    assert "/static/home-lab-next.css?v=next20" in response.text
+    assert "/static/home-lab-next.js?v=next41" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -451,7 +456,14 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "Apartament / clădire colectivă" not in response.text
     assert 'id="hlnWallAreaOverride"' in response.text
     assert 'id="hlnTopAreaOverride"' in response.text
-    assert "Pereții opaci nu includ ferestrele și ușile." in response.text
+    assert 'id="hlnFloorAreaOverride"' in response.text
+    assert 'id="hlnVolumeOverride"' in response.text
+    assert 'id="hlnDerivedFootprint"' in response.text
+    assert 'id="hlnDerivedPerimeter"' in response.text
+    assert 'id="hlnDerivedGrossWalls"' in response.text
+    assert 'id="hlnDerivedOpenings"' in response.text
+    assert "Precalculat de LaCurent" in response.text
+    assert "Pereții opaci scad ferestrele și 2,2 m² de uși exterioare." in response.text
     assert "Material izolație pereți" in response.text
     assert "Material și grosime finală simulate" in response.text
     assert "Material strat nou" not in response.text
@@ -461,9 +473,18 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "verifică ipotezele înainte de decizie" in response.text
     assert 'id="hlnHomeTopBoundary"' in response.text
     assert "Pod rece / neîncălzit — calculează planșeul" in response.text
+    assert 'id="hlnHomeFloorBoundary"' in response.text
+    assert "Placă / pardoseală pe sol" in response.text
+    assert "Subsol / beci neîncălzit" in response.text
+    assert "Pardoseala pe sol este calculată separat ca Hg" in response.text
+    assert "ISO 13370" in response.text
+    assert "λ=2,0 W/mK" in response.text
+    assert "modelat ca Hu" in response.text
+    assert 'name="roof_boundary_type"' in response.text
+    assert 'name="floor_boundary_type"' in response.text
     assert "U=3,25 W/m²K" in response.text
     assert "U=2,25 W/m²K" in response.text
-    assert "Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat" in response.text
+    assert "folosește conservator bztu=1,00" in response.text
     assert "setează 0 cm" in response.text
     assert 'id="hlnHomeTopStructure"' not in response.text
     assert 'id="hlnHomeAirtightness"' not in response.text
@@ -491,6 +512,23 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
+
+def test_home_lab_geometry_and_roi_rounding_share_one_geometry_model() -> None:
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    source = js.text
+    assert "function houseGeometry(state)" in source
+    assert "derivedWallArea = Math.max(1, grossWalls - windows - doors)" in source
+    assert 'formSet("heated_volume_m3", volume.toFixed(3))' in source
+    assert 'formSet("floor_area_m2", floorArea.toFixed(3))' in source
+    assert "return houseGeometry(state);" in source
+    assert "geometry.floorArea * deltaCm * rate" in source
+    assert "const roiCommercialStepCm = 5;" in source
+    assert 'const level = mode === "roi"' in source
+    assert "Math.ceil(addedThicknessCm / roiCommercialStepCm) * roiCommercialStepCm" in source
+
+
+
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     response = client.get("/embed/demo-store/next")
     assert response.status_code == 200
@@ -512,6 +550,90 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
     assert payload["reference_parameters"]["u_values_w_m2k"]["window"] > 0
     assert payload["reference_parameters"]["heating_efficiency"] > 0
+    assert payload["transmission_components"]["hg_w_k"] > 0
+    assert payload["annual_outdoor_temperature_c"] is not None
+    assert payload["monthly"][0]["ground_transmission_kwh"] > 0
+    ground_loss = next(
+        row for row in payload["heat_loss_breakdown"]
+        if row.get("boundary_type") == "ground"
+    )
+    assert ground_loss["component"] == "Hg"
+    assert ground_loss["calculation_method"] == "iso13370_slab_on_ground_steady_state"
+    assert ground_loss["effective_u_value_w_m2k"] < ground_loss["u_value_w_m2k"]
+
+
+def test_form_maps_cold_attic_and_ground_to_hu_and_hg() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "unheated_attic"
+    data["floor_boundary_type"] = "ground"
+
+    building = build_input_from_form(data)
+    roof = next(item for item in building.envelope if item.type.value == "roof")
+    floor = next(item for item in building.envelope if item.type.value == "floor")
+
+    assert roof.boundary_type.value == "unheated_attic"
+    assert roof.boundary_correction_factor == 1.0
+    assert floor.boundary_type.value == "ground"
+    assert floor.boundary_correction_factor is None
+    assert floor.ground_contact is not None
+    assert floor.ground_contact.exposed_perimeter_m == 36
+    assert floor.ground_contact.wall_thickness_m == 0.30
+    assert floor.ground_contact.ground_conductivity_w_mk == 2.0
+
+
+def test_form_can_supply_explicit_unheated_attic_zone_balance() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "unheated_attic"
+    data["roof_boundary_correction_factor"] = ""
+    data["roof_unheated_exterior_envelope_w_k"] = "30"
+    data["roof_unheated_exterior_ventilation_coefficient"] = "0.5"
+    data["roof_unheated_conditioned_zone_heat_transfer_w_k"] = "20"
+
+    building = build_input_from_form(data)
+    roof = next(item for item in building.envelope if item.type.value == "roof")
+
+    assert roof.boundary_type.value == "unheated_attic"
+    assert roof.boundary_correction_factor is None
+    assert roof.unheated_zone is not None
+    assert roof.unheated_zone.heat_transfer_to_exterior_envelope_w_k == 30
+    assert roof.unheated_zone.exterior_ventilation_coefficient == 0.5
+    assert roof.unheated_zone.conditioned_zone_heat_transfers_w_k == [20]
+
+
+def test_partial_unheated_zone_balance_is_rejected() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "unheated_attic"
+    data["roof_unheated_exterior_envelope_w_k"] = "30"
+
+    with pytest.raises(ValueError):
+        build_input_from_form(data)
+
+
+def test_legacy_form_without_floor_boundary_still_maps_floor_to_ground() -> None:
+    data = demo_form_data()
+    data.pop("floor_boundary_type", None)
+
+    building = build_input_from_form(data)
+    floor = next(item for item in building.envelope if item.type.value == "floor")
+
+    assert floor.boundary_type.value == "ground"
+    assert floor.boundary_correction_factor is None
+    assert floor.ground_contact is not None
+
+
+def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero_loss() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "outside_air"
+    data["floor_boundary_type"] = "adjacent_heated_space"
+
+    building = build_input_from_form(data)
+    roof = next(item for item in building.envelope if item.type.value == "roof")
+    floor = next(item for item in building.envelope if item.type.value == "floor")
+
+    assert roof.boundary_type.value == "outside_air"
+    assert roof.boundary_correction_factor == 1.0
+    assert floor.boundary_type.value == "adjacent_heated_space"
+    assert floor.boundary_correction_factor == 0.0
 
 
 def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None:

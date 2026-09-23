@@ -759,23 +759,182 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _ground_contact_payload(
+    form: dict[str, Any],
+    *,
+    area_m2: float,
+) -> dict[str, float]:
+    """Collect geometry/material inputs needed by the engine's ISO 13370 slab model."""
+
+    if area_m2 <= 0:
+        raise ValueError("Calculul pardoselii spre sol necesită o arie pozitivă.")
+
+    ground_cfg = methodology()["boundary_conditions_light"]["ground"]
+    ground_lambda = (
+        parse_optional_float(form.get("ground_conductivity_w_mk"))
+        or float(ground_cfg["default_ground_conductivity_w_mk"])
+    )
+    wall_thickness = (
+        parse_optional_float(form.get("ground_wall_thickness_m"))
+        or float(ground_cfg["default_wall_thickness_m"])
+    )
+
+    perimeter = parse_optional_float(form.get("ground_exposed_perimeter_m"))
+    if perimeter is None or perimeter <= 0:
+        length = parse_optional_float(form.get("building_length_m"))
+        width = parse_optional_float(form.get("building_width_m"))
+        if length and width and length > 0 and width > 0:
+            perimeter = 2.0 * (length + width)
+        else:
+            # Legacy/expert forms may not carry plan dimensions. Build a
+            # square-equivalent perimeter and keep this fallback visible in
+            # the resulting methodology assumptions.
+            perimeter = 4.0 * (area_m2 ** 0.5)
+
+    if ground_lambda <= 0 or wall_thickness < 0 or perimeter <= 0:
+        raise ValueError("Datele pentru transferul spre sol trebuie să fie pozitive.")
+
+    return {
+        "exposed_perimeter_m": float(perimeter),
+        "wall_thickness_m": float(wall_thickness),
+        "ground_conductivity_w_mk": float(ground_lambda),
+    }
+
+
+def _unheated_zone_payload(
+    form: dict[str, Any],
+    *,
+    prefix: str,
+) -> dict[str, Any] | None:
+    """Build an explicit adjacent-unheated-zone heat balance when all inputs exist.
+
+    Partial input is rejected rather than silently mixed with a product fallback.
+    """
+
+    htr_ue = parse_optional_float(form.get(f"{prefix}_unheated_exterior_envelope_w_k"))
+    cztu_ve = parse_optional_float(form.get(f"{prefix}_unheated_exterior_ventilation_coefficient"))
+    hztc_ztu = parse_optional_float(form.get(f"{prefix}_unheated_conditioned_zone_heat_transfer_w_k"))
+    supplied = [value is not None for value in (htr_ue, cztu_ve, hztc_ztu)]
+    if not any(supplied):
+        return None
+    if not all(supplied):
+        raise ValueError(
+            "Modelul explicit al spațiului neîncălzit necesită Htr spre exterior, "
+            "coeficientul de ventilare exterior și transferul din zona încălzită."
+        )
+    if htr_ue < 0 or cztu_ve < 0 or hztc_ztu <= 0:
+        raise ValueError("Datele pentru spațiul neîncălzit trebuie să fie nenegative, iar cuplarea cu zona încălzită pozitivă.")
+    return {
+        "heat_transfer_to_exterior_envelope_w_k": float(htr_ue),
+        "exterior_ventilation_coefficient": float(cztu_ve),
+        "conditioned_zone_heat_transfers_w_k": [float(hztc_ztu)],
+    }
+
+
+def _boundary_factor(
+    form: dict[str, Any],
+    *,
+    boundary_type: str,
+    field_name: str,
+) -> float | None:
+    if boundary_type == "outside_air":
+        return 1.0
+    if boundary_type == "adjacent_heated_space":
+        return 0.0
+
+    explicit = parse_optional_float(form.get(field_name))
+    if explicit is not None:
+        return explicit
+
+    if boundary_type == "ground":
+        return None
+
+    cfg = methodology()["boundary_conditions_light"]
+    defaults = {
+        "unheated_attic": cfg["unheated_attic"]["default_correction_factor"],
+        "unheated_basement": cfg["unheated_basement"]["default_correction_factor"],
+        "unheated_space": cfg["unheated_basement"]["default_correction_factor"],
+        "adjacent_unheated_space": cfg["unheated_basement"]["default_correction_factor"],
+    }
+    if boundary_type not in defaults:
+        raise ValueError(f"Tip de frontieră termică nesuportat: {boundary_type}")
+    return float(defaults[boundary_type])
+
+
 def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     technical = _technical_values(form)
     components = []
+
+    roof_boundary = str(form.get("roof_boundary_type") or "outside_air")
+    # The legacy commercial form names this element "Pardoseală spre sol".
+    # If no explicit boundary is supplied, preserve that physical meaning.
+    floor_boundary = str(form.get("floor_boundary_type") or "ground")
     component_map = [
-        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value"),
-        ("Acoperiș / tavan", "roof", "roof_area_m2", "roof_u_value"),
-        ("Pardoseală spre sol", "floor", "floor_area_m2", "floor_u_value"),
-        ("Ferestre", "window", "window_area_m2", "window_u_value"),
-        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value"),
+        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value", "outside_air", "wall_boundary_correction_factor", "wall"),
+        (
+            "Planșeu superior / acoperiș",
+            "roof",
+            "roof_area_m2",
+            "roof_u_value",
+            roof_boundary,
+            "roof_boundary_correction_factor",
+            "roof",
+        ),
+        (
+            "Pardoseală inferioară",
+            "floor",
+            "floor_area_m2",
+            "floor_u_value",
+            floor_boundary,
+            "floor_boundary_correction_factor",
+            "floor",
+        ),
+        ("Ferestre", "window", "window_area_m2", "window_u_value", "outside_air", "window_boundary_correction_factor", "window"),
+        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value", "outside_air", "door_boundary_correction_factor", "door"),
     ]
 
-    for name, kind, area_key, u_key in component_map:
+    unheated_boundary_types = {
+        "unheated_space",
+        "unheated_attic",
+        "unheated_basement",
+        "adjacent_unheated_space",
+    }
+
+    for name, kind, area_key, u_key, boundary_type, factor_field, prefix in component_map:
         area = technical.get(area_key)
         u_value = technical.get(u_key)
         if area is None or area <= 0:
             continue
-        components.append({"name": name, "type": kind, "area_m2": area, "u_value_w_m2k": u_value})
+        unheated_zone = (
+            _unheated_zone_payload(form, prefix=prefix)
+            if boundary_type in unheated_boundary_types
+            else None
+        )
+        boundary_factor = (
+            None
+            if unheated_zone is not None
+            else _boundary_factor(
+                form,
+                boundary_type=boundary_type,
+                field_name=factor_field,
+            )
+        )
+        component = {
+            "name": name,
+            "type": kind,
+            "area_m2": area,
+            "u_value_w_m2k": u_value,
+            "boundary_type": boundary_type,
+            "boundary_correction_factor": boundary_factor,
+        }
+        if boundary_type == "ground" and boundary_factor is None:
+            component["ground_contact"] = _ground_contact_payload(
+                form,
+                area_m2=float(area),
+            )
+        if unheated_zone is not None:
+            component["unheated_zone"] = unheated_zone
+        components.append(component)
 
     thermal_bridges = []
     bridge_length = technical.get("thermal_bridge_length_m")
@@ -929,17 +1088,63 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         if design_temperature is not None
         else None
     )
-    design_heat_load_kw = (
-        float(result.heat_loss_w_k) * delta_t / 1000.0
-        if delta_t is not None
-        else None
-    )
+    annual_outdoor_temperature_c = float(result.annual_outdoor_temperature_c)
+
+    design_heat_load_kw = None
+    if delta_t is not None:
+        transmission = result.transmission_components
+        outside_and_buffer_w_k = (
+            float(transmission.hd_w_k)
+            + float(transmission.hu_w_k)
+            + float(transmission.ha_w_k)
+            + float(result.h_ve_w_k)
+        )
+        ground_delta_t = (
+            max(
+                float(result.input.indoor_design_temperature_c) - annual_outdoor_temperature_c,
+                0.0,
+            )
+            if annual_outdoor_temperature_c is not None
+            else delta_t
+        )
+        design_heat_load_kw = (
+            outside_and_buffer_w_k * delta_t
+            + float(transmission.hg_w_k) * ground_delta_t
+        ) / 1000.0
 
     loss_rows = [
         {
             "name": item.name,
             "type": item.type,
             "value_w_k": float(item.value),
+            "component": item.component.value if item.component is not None else None,
+            "boundary_type": item.boundary_type.value if item.boundary_type is not None else None,
+            "u_value_w_m2k": (
+                float(item.u_value_w_m2k)
+                if item.u_value_w_m2k is not None
+                else None
+            ),
+            "effective_u_value_w_m2k": (
+                float(item.effective_u_value_w_m2k)
+                if item.effective_u_value_w_m2k is not None
+                else None
+            ),
+            "calculation_method": item.calculation_method,
+            "boundary_correction_factor": (
+                float(item.boundary_correction_factor)
+                if item.boundary_correction_factor is not None
+                else None
+            ),
+            "hztu_exterior_w_k": (
+                float(item.hztu_exterior_w_k)
+                if item.hztu_exterior_w_k is not None
+                else None
+            ),
+            "hztu_total_w_k": (
+                float(item.hztu_total_w_k)
+                if item.hztu_total_w_k is not None
+                else None
+            ),
         }
         for item in [*result.envelope_contributions, *result.thermal_bridge_contributions]
         if float(item.value) > 0
@@ -950,6 +1155,14 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 "name": "Ventilație / infiltrații",
                 "type": "ventilation",
                 "value_w_k": float(result.h_ve_w_k),
+                "component": "Hve",
+                "boundary_type": "outside_air",
+                "u_value_w_m2k": None,
+                "effective_u_value_w_m2k": None,
+                "calculation_method": "ventilation_heat_transfer",
+                "boundary_correction_factor": None,
+                "hztu_exterior_w_k": None,
+                "hztu_total_w_k": None,
             }
         )
     loss_total = sum(row["value_w_k"] for row in loss_rows) or 1.0
@@ -1021,6 +1234,12 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "co2_kg": float(result.co2.total_kg),
         "co2_specific_kg_m2": float(result.co2.specific_kg_m2),
         "heat_loss_w_k": float(result.heat_loss_w_k),
+        "transmission_components": model_to_dict(result.transmission_components),
+        "annual_outdoor_temperature_c": (
+            float(annual_outdoor_temperature_c)
+            if annual_outdoor_temperature_c is not None
+            else None
+        ),
         "annual_cost_lei": float(cost["priced_total_lei"]) if cost.get("complete") else None,
         "average_monthly_cost_lei": float(cost["average_monthly_priced_lei"]) if cost.get("complete") else None,
         "design_heat_load_kw": design_heat_load_kw,
@@ -1060,6 +1279,9 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 "useful_heating_kwh": float(row.useful_heating_kwh),
                 "useful_cooling_kwh": float(row.useful_cooling_kwh),
                 "outdoor_temperature_c": float(row.outdoor_temperature_c),
+                "transmission_excluding_ground_kwh": float(row.transmission_excluding_ground_kwh),
+                "ground_transmission_kwh": float(row.ground_transmission_kwh),
+                "ventilation_heat_transfer_kwh": float(row.ventilation_heat_transfer_kwh),
             }
             for row in result.monthly
         ],

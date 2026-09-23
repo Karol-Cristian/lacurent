@@ -15,6 +15,48 @@ class EnvelopeType(str, Enum):
     exterior_door = "exterior_door"
 
 
+class EnvelopeBoundaryType(str, Enum):
+    outside_air = "outside_air"
+    ground = "ground"
+    unheated_space = "unheated_space"
+    unheated_attic = "unheated_attic"
+    unheated_basement = "unheated_basement"
+    adjacent_heated_space = "adjacent_heated_space"
+    adjacent_unheated_space = "adjacent_unheated_space"
+
+
+class TransmissionComponent(str, Enum):
+    Hd = "Hd"
+    Hg = "Hg"
+    Hu = "Hu"
+    Ha = "Ha"
+
+
+class GroundContactInput(BaseModel):
+    exposed_perimeter_m: float = Field(gt=0)
+    wall_thickness_m: float = Field(default=0.30, ge=0)
+    ground_conductivity_w_mk: float = Field(default=2.0, gt=0)
+    edge_psi_w_mk: float = Field(default=0.0, ge=-2, le=2)
+
+
+class UnheatedZoneInput(BaseModel):
+    """Explicit MC001 adjacent-unheated-zone heat-balance inputs.
+
+    Hztu;e = (1 + cztu;ve) * Htr;ue
+    bztu = Hztu;e / (sum(Hztc;ztu) + Hztu;e)
+    """
+
+    heat_transfer_to_exterior_envelope_w_k: float = Field(ge=0)
+    exterior_ventilation_coefficient: float = Field(ge=0)
+    conditioned_zone_heat_transfers_w_k: list[float] = Field(min_items=1)
+
+    @validator("conditioned_zone_heat_transfers_w_k")
+    def validate_conditioned_transfers(cls, value: list[float]) -> list[float]:
+        if any(item <= 0 for item in value):
+            raise ValueError("Conditioned-zone heat-transfer coefficients must be positive.")
+        return value
+
+
 class HeatingSystemType(str, Enum):
     gas_boiler = "gas_boiler"
     condensing_gas_boiler = "condensing_gas_boiler"
@@ -137,12 +179,56 @@ class EnvelopeComponent(BaseModel):
     type: EnvelopeType
     area_m2: float = Field(gt=0)
     u_value_w_m2k: float = Field(gt=0)
+    boundary_type: EnvelopeBoundaryType = EnvelopeBoundaryType.outside_air
+    boundary_correction_factor: float | None = Field(default=None, ge=0, le=1)
+    ground_contact: GroundContactInput | None = None
+    unheated_zone: UnheatedZoneInput | None = None
+
+    @root_validator(skip_on_failure=True)
+    def validate_boundary_correction(cls, values: dict) -> dict:
+        boundary = values.get("boundary_type")
+        factor = values.get("boundary_correction_factor")
+        ground_contact = values.get("ground_contact")
+        unheated_zone = values.get("unheated_zone")
+        unheated_boundaries = {
+            EnvelopeBoundaryType.unheated_space,
+            EnvelopeBoundaryType.unheated_attic,
+            EnvelopeBoundaryType.unheated_basement,
+            EnvelopeBoundaryType.adjacent_unheated_space,
+        }
+
+        if boundary == EnvelopeBoundaryType.outside_air:
+            if factor not in (None, 1, 1.0) or ground_contact is not None or unheated_zone is not None:
+                raise ValueError("Direct exterior elements must use factor 1 and no ground/unheated-zone model.")
+            values["boundary_correction_factor"] = 1.0
+        elif boundary == EnvelopeBoundaryType.adjacent_heated_space:
+            if factor not in (None, 0, 0.0) or ground_contact is not None or unheated_zone is not None:
+                raise ValueError("Adjacent heated spaces must use factor 0 and no ground/unheated-zone model.")
+            values["boundary_correction_factor"] = 0.0
+        elif boundary == EnvelopeBoundaryType.ground:
+            if unheated_zone is not None:
+                raise ValueError("Ground boundaries cannot use an unheated-zone balance.")
+            if factor is not None and ground_contact is not None:
+                raise ValueError("Ground boundary must use either an explicit factor or a ground-contact model, not both.")
+            if factor is None and ground_contact is None:
+                raise ValueError("Ground boundary requires an explicit factor or ground-contact geometry.")
+        elif boundary in unheated_boundaries:
+            if ground_contact is not None:
+                raise ValueError("Ground-contact geometry is only valid for ground boundaries.")
+            if factor is not None and unheated_zone is not None:
+                raise ValueError("Unheated boundaries must use either an explicit bztu factor or an explicit zone balance, not both.")
+            if factor is None and unheated_zone is None:
+                raise ValueError("Unheated boundaries require an explicit bztu factor or an explicit zone balance.")
+        elif ground_contact is not None or unheated_zone is not None:
+            raise ValueError("Boundary-specific models do not match the selected boundary type.")
+        return values
 
 
 class ThermalBridge(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     length_m: float = Field(gt=0)
     psi_w_mk: float = Field(ge=0)
+    component: TransmissionComponent = TransmissionComponent.Hd
 
 
 class VentilationInput(BaseModel):
@@ -345,6 +431,14 @@ class Contribution(BaseModel):
     value: float
     unit: str
     percent: float
+    component: TransmissionComponent | None = None
+    boundary_type: EnvelopeBoundaryType | None = None
+    boundary_correction_factor: float | None = None
+    u_value_w_m2k: float | None = None
+    effective_u_value_w_m2k: float | None = None
+    calculation_method: str | None = None
+    hztu_exterior_w_k: float | None = None
+    hztu_total_w_k: float | None = None
 
 
 class MonthlyBalance(BaseModel):
@@ -352,6 +446,9 @@ class MonthlyBalance(BaseModel):
     days: int
     outdoor_temperature_c: float
     heat_loss_kwh: float
+    transmission_excluding_ground_kwh: float = 0
+    ground_transmission_kwh: float = 0
+    ventilation_heat_transfer_kwh: float = 0
     internal_gains_kwh: float
     solar_gains_kwh: float
     solar_gains_source: str | None = None
@@ -401,6 +498,14 @@ class IndicatorResult(BaseModel):
 class Co2Result(BaseModel):
     total_kg: float
     specific_kg_m2: float
+
+
+class TransmissionComponentsResult(BaseModel):
+    hd_w_k: float = 0
+    hg_w_k: float = 0
+    hu_w_k: float = 0
+    ha_w_k: float = 0
+    htr_w_k: float = 0
 
 
 class ComparisonResult(BaseModel):
@@ -474,6 +579,8 @@ class CalculationResult(BaseModel):
     input: BuildingInput
     climate: dict
     h_tr_w_k: float
+    transmission_components: TransmissionComponentsResult
+    annual_outdoor_temperature_c: float
     h_ve_w_k: float
     heat_loss_w_k: float
     envelope_geometry: EnvelopeGeometryResult

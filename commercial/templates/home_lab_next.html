@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next19">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next20">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -904,9 +904,33 @@
           <label>Suprafață încălzită <div class="hln-inline-input"><input id="hlnArea" type="number" min="40" max="300" step="5" value="120"><span>m²</span></div></label>
           <label>Niveluri încălzite <div class="hln-segments" id="hlnLevels"><button type="button" data-value="1">1</button><button type="button" data-value="2" class="is-active">2</button><button type="button" data-value="3">3+</button></div></label>
           <label>Înălțime interioară <div class="hln-inline-input"><input id="hlnHeight" type="number" min="2.2" max="3.5" step="0.1" value="2.7"><span>m</span></div></label>
-          <label>Suprafață opacă pereți exteriori <div class="hln-inline-input"><input id="hlnWallAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
-          <label>Suprafață planșeu superior / acoperiș <div class="hln-inline-input"><input id="hlnTopAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
-          <small class="hln-field-note">Lasă câmpurile goale dacă nu le știi. Atunci estimăm suprafețele din suprafața încălzită, numărul de niveluri și o geometrie dreptunghiulară simplificată. Pereții opaci nu includ ferestrele și ușile.</small>
+          <div class="hln-derived-geometry" aria-label="Geometrie precalculată">
+            <article><small>Amprentă la sol</small><strong id="hlnDerivedFootprint">—</strong></article>
+            <article><small>Perimetru exterior</small><strong id="hlnDerivedPerimeter">—</strong></article>
+            <article><small>Pereți exteriori bruți</small><strong id="hlnDerivedGrossWalls">—</strong></article>
+            <article><small>Ferestre + uși</small><strong id="hlnDerivedOpenings">—</strong></article>
+          </div>
+          <label>
+            <span class="hln-geometry-label-head">Suprafață opacă pereți exteriori <small id="hlnWallAreaStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnWallAreaOverride" type="number" min="1" max="1000" step="0.5"><span>m²</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="wallAreaOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <label>
+            <span class="hln-geometry-label-head">Suprafață planșeu superior / acoperiș <small id="hlnTopAreaStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnTopAreaOverride" type="number" min="1" max="1000" step="0.5"><span>m²</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="topAreaOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <label>
+            <span class="hln-geometry-label-head">Suprafață pardoseală / planșeu inferior <small id="hlnFloorAreaStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnFloorAreaOverride" type="number" min="1" max="1000" step="0.5"><span>m²</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="floorAreaOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <label>
+            <span class="hln-geometry-label-head">Volum încălzit <small id="hlnVolumeStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnVolumeOverride" type="number" min="1" max="5000" step="1"><span>m³</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="volumeOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <small class="hln-field-note">LaCurent precalculează geometria din suprafața încălzită, niveluri și înălțime, cu o amprentă dreptunghiulară estimată. Pereții opaci scad ferestrele și 2,2 m² de uși exterioare. Orice valoare de mai sus poate fi suprascrisă; „Reia valoarea calculată” revine la geometria dedusă.</small>
           <label>Temperatură iarna <div class="hln-inline-input"><input id="hlnTemperature" type="number" min="18" max="24" step="0.5" value="21"><span>°C</span></div></label>
           <label>Tip clădire
             <select id="hlnBuildingType" disabled>
@@ -951,7 +975,7 @@
               <option value="flat_roof">Terasă / acoperiș plat</option>
             </select>
           </label>
-          <small class="hln-field-note">La „Pod rece” modelăm planșeul dintre camere și pod; la „Terasă” modelăm planșeul sub terasă. Pentru elementul neizolat folosim repere caracteristice U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată. Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat; dacă există curenți de aer, rezultatul poate subestima pierderea.</small>
+          <small class="hln-field-note">Pod rece: limita termică este planșeul dintre camere și pod, modelat ca Hu — nu ca acoperiș expus direct. Fără date despre anvelopa și ventilarea podului, Home Lab nu inventează temperatura podului: folosește conservator bztu=1,00 și nu acordă credit termic spațiului tampon. Motorul poate deriva bztu din balanța explicită Hztu;e / Hztu;tot când acele date sunt disponibile. Mansardă încălzită: limita termică devine acoperișul spre exterior (Hd), iar suprafața încălzită introdusă trebuie să includă mansarda. Terasă: limita este direct către exterior (Hd). Pentru elementul neizolat folosim U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată.</small>
           <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -964,6 +988,15 @@
           </label>
           <label>Izolație pod / acoperiș <div class="hln-inline-input"><input id="hlnHomeRoofIns" type="number" min="0" max="50" step="1" value="10"><span>cm</span></div></label>
           <small class="hln-field-note">Dacă între cameră și pod ai doar rigips/scândură fără vată, EPS sau alt termoizolant, setează 0 cm.</small>
+          <label>Ce este sub pardoseala nivelului încălzit?
+            <select id="hlnHomeFloorBoundary">
+              <option value="ground">Placă / pardoseală pe sol</option>
+              <option value="unheated_basement">Subsol / beci neîncălzit</option>
+              <option value="outside_air">Exterior / spațiu deschis</option>
+              <option value="heated_space">Spațiu încălzit</option>
+            </select>
+          </label>
+          <small class="hln-field-note">Pardoseala pe sol este calculată separat ca Hg, din aria și perimetrul casei, nu ca un perete expus aerului exterior. Geometria Hg folosește ramura staționară ISO 13370. Pentru sol necunoscut, Home Lab folosește λ=2,0 W/mK ca fallback Light. În bilanțul lunar, Hg folosește temperatura exterioară medie anuală conform structurii MC001 Figura 2.11. Peste subsol neîncălzit folosim Hu; fără un bztu explicit sau o balanță a subsolului nu acordăm credit de tampon. Peste un spațiu încălzit transferul prin această frontieră este zero. Componenta periodică sezonieră bm și termoizolația explicită de muchie nu sunt încă incluse.</small>
           <label>Material izolație pardoseală
             <select id="hlnHomeFloorInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -1078,6 +1111,19 @@
       <input name="wall_u_value" value="0.46">
       <input name="roof_u_value" value="0.29">
       <input name="floor_u_value" value="0.42">
+      <input name="roof_boundary_type" value="outside_air">
+      <input name="roof_boundary_correction_factor" value="">
+      <input name="roof_unheated_exterior_envelope_w_k" value="">
+      <input name="roof_unheated_exterior_ventilation_coefficient" value="">
+      <input name="roof_unheated_conditioned_zone_heat_transfer_w_k" value="">
+      <input name="floor_boundary_type" value="ground">
+      <input name="floor_boundary_correction_factor" value="">
+      <input name="floor_unheated_exterior_envelope_w_k" value="">
+      <input name="floor_unheated_exterior_ventilation_coefficient" value="">
+      <input name="floor_unheated_conditioned_zone_heat_transfer_w_k" value="">
+      <input name="ground_exposed_perimeter_m" value="">
+      <input name="ground_wall_thickness_m" value="0.30">
+      <input name="ground_conductivity_w_mk" value="">
       <input name="window_u_value" value="0.9">
       <input name="door_u_value" value="1.8">
       <input name="thermal_bridge_psi_w_mk" value="0.08">
@@ -1134,7 +1180,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next37"></script>
+  <script src="/static/home-lab-next.js?v=next41"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

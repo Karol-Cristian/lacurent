@@ -15,7 +15,9 @@ from commercial.app.engine import (
     heating_final_energy,
     heating_system_performance,
     primary_energy,
+    slab_on_ground_effective_u,
     transmission_heat_transfer,
+    transmission_heat_transfer_components,
     ventilation_heat_transfer,
 )
 from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol, resolve_monthly_plane_hsol
@@ -62,6 +64,348 @@ def test_transmission_coefficient_uses_area_u_and_thermal_bridges() -> None:
     assert_close(h_tr, 113)
     assert envelope[0].value == 40
     assert bridges[0].value == 2
+
+
+def test_transmission_separates_hd_hg_hu_and_ha() -> None:
+    building = simple_building(
+        envelope=[
+            {"name": "Walls", "type": "exterior_wall", "area_m2": 100, "u_value_w_m2k": 0.4},
+            {
+                "name": "Attic ceiling",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.2,
+                "boundary_type": "unheated_attic",
+                "boundary_correction_factor": 0.75,
+            },
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.3,
+                "boundary_type": "ground",
+                "boundary_correction_factor": 0.6,
+            },
+            {"name": "Windows", "type": "window", "area_m2": 20, "u_value_w_m2k": 1.4},
+            {"name": "Door", "type": "exterior_door", "area_m2": 2, "u_value_w_m2k": 1.5},
+        ],
+    )
+
+    components, envelope, bridges = transmission_heat_transfer_components(building)
+
+    assert_close(components.hd_w_k, 73.0)
+    assert_close(components.hg_w_k, 14.4)
+    assert_close(components.hu_w_k, 12.0)
+    assert_close(components.ha_w_k, 0.0)
+    assert_close(components.htr_w_k, 99.4)
+    attic = next(item for item in envelope if item.name == "Attic ceiling")
+    ground = next(item for item in envelope if item.name == "Ground floor")
+    assert attic.component.value == "Hu"
+    assert attic.boundary_type.value == "unheated_attic"
+    assert attic.boundary_correction_factor == 0.75
+    assert ground.component.value == "Hg"
+    assert ground.boundary_type.value == "ground"
+    assert ground.boundary_correction_factor == 0.6
+    assert bridges[0].component.value == "Hd"
+
+
+def test_unheated_attic_can_derive_bztu_from_explicit_zone_heat_balance() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Ceiling to explicit attic zone",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.5,
+                "boundary_type": "unheated_attic",
+                "unheated_zone": {
+                    "heat_transfer_to_exterior_envelope_w_k": 30,
+                    "exterior_ventilation_coefficient": 0.5,
+                    "conditioned_zone_heat_transfers_w_k": [20],
+                },
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    components, rows, _ = transmission_heat_transfer_components(building)
+    row = rows[0]
+    hztu_exterior = 45.0
+    hztu_total = 65.0
+    bztu = hztu_exterior / hztu_total
+
+    assert components.hd_w_k == 0
+    assert components.hu_w_k == pytest.approx(80 * 0.5 * bztu, abs=1e-3)
+    assert row.boundary_correction_factor == pytest.approx(bztu, abs=1e-3)
+    assert row.hztu_exterior_w_k == pytest.approx(hztu_exterior)
+    assert row.hztu_total_w_k == pytest.approx(hztu_total)
+    assert row.calculation_method == "mc001_explicit_unheated_zone_balance"
+
+
+def test_unheated_boundary_rejects_ambiguous_factor_and_zone_balance() -> None:
+    with pytest.raises(Exception):
+        simple_building(
+            envelope=[
+                {
+                    "name": "Ambiguous attic",
+                    "type": "roof",
+                    "area_m2": 80,
+                    "u_value_w_m2k": 0.5,
+                    "boundary_type": "unheated_attic",
+                    "boundary_correction_factor": 0.75,
+                    "unheated_zone": {
+                        "heat_transfer_to_exterior_envelope_w_k": 30,
+                        "exterior_ventilation_coefficient": 0.5,
+                        "conditioned_zone_heat_transfers_w_k": [20],
+                    },
+                }
+            ]
+        )
+
+
+def test_iso13370_slab_on_ground_u_uses_floor_geometry() -> None:
+    effective_u = slab_on_ground_effective_u(
+        construction_u_value_w_m2k=0.36,
+        area_m2=80,
+        exposed_perimeter_m=36,
+        wall_thickness_m=0.30,
+        ground_conductivity_w_mk=2.0,
+    )
+
+    assert effective_u == pytest.approx(0.2535925613, abs=1e-9)
+    assert effective_u < 0.36
+
+
+def test_iso13370_ground_is_not_treated_like_outside_air() -> None:
+    ground = simple_building(
+        envelope=[
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.36,
+                "boundary_type": "ground",
+                "ground_contact": {
+                    "exposed_perimeter_m": 36,
+                    "wall_thickness_m": 0.30,
+                    "ground_conductivity_w_mk": 2.0,
+                },
+            }
+        ],
+        thermal_bridges=[],
+    )
+    outside = simple_building(
+        envelope=[
+            {
+                "name": "Exposed floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.36,
+                "boundary_type": "outside_air",
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    ground_components, ground_rows, _ = transmission_heat_transfer_components(ground)
+    outside_components, _, _ = transmission_heat_transfer_components(outside)
+    row = ground_rows[0]
+
+    assert ground_components.hg_w_k > 0
+    assert ground_components.hd_w_k == 0
+    assert outside_components.hd_w_k == pytest.approx(28.8)
+    assert ground_components.hg_w_k < outside_components.hd_w_k
+    assert row.calculation_method == "iso13370_slab_on_ground_steady_state"
+    assert row.effective_u_value_w_m2k == pytest.approx(
+        slab_on_ground_effective_u(0.36, 80, 36, 0.30, 2.0),
+        abs=1e-4,
+    )
+    assert row.effective_u_value_w_m2k < row.u_value_w_m2k
+
+
+def test_cold_attic_uses_hu_while_heated_attic_roof_uses_hd() -> None:
+    cold_attic = simple_building(
+        envelope=[
+            {
+                "name": "Ceiling to cold attic",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.5,
+                "boundary_type": "unheated_attic",
+                "boundary_correction_factor": 0.75,
+            }
+        ],
+        thermal_bridges=[],
+    )
+    heated_attic_roof = simple_building(
+        envelope=[
+            {
+                "name": "Roof over heated attic",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.5,
+                "boundary_type": "outside_air",
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    cold_components, cold_rows, _ = transmission_heat_transfer_components(cold_attic)
+    heated_components, heated_rows, _ = transmission_heat_transfer_components(heated_attic_roof)
+
+    assert cold_components.hu_w_k == pytest.approx(30.0)
+    assert cold_components.hd_w_k == 0
+    assert heated_components.hd_w_k == pytest.approx(40.0)
+    assert heated_components.hu_w_k == 0
+    assert cold_rows[0].calculation_method == "explicit_bztu_boundary_factor"
+    assert heated_rows[0].calculation_method == "direct_outside_air"
+
+
+def test_ground_floor_insulation_saving_is_not_ranked_as_outside_air_saving() -> None:
+    def floor_case(u_value: float, boundary: str) -> BuildingInput:
+        element = {
+            "name": "Floor",
+            "type": "floor",
+            "area_m2": 60,
+            "u_value_w_m2k": u_value,
+            "boundary_type": boundary,
+        }
+        if boundary == "ground":
+            element["ground_contact"] = {
+                "exposed_perimeter_m": 31,
+                "wall_thickness_m": 0.30,
+                "ground_conductivity_w_mk": 2.0,
+            }
+        return BuildingInput(
+            project_name="Floor marginal saving",
+            locality="Cluj-Napoca",
+            heated_floor_area_m2=60,
+            heated_volume_m3=162,
+            indoor_design_temperature_c=20,
+            internal_gains_w_m2=0,
+            solar_gains_kwh_m2_month=0,
+            solar={"mode": "explicit"},
+            envelope=[element],
+            thermal_bridges=[],
+            ventilation={"air_changes_per_hour": 0, "heat_recovery_efficiency": 0},
+            heating={"system_type": "condensing_gas_boiler", "efficiency": 0.95},
+            cooling={"enabled": False},
+            dhw={"enabled": False, "occupants": 0, "efficiency": 0.85},
+        )
+
+    ground_before = calculate(floor_case(0.90, "ground"), include_reference=False)
+    ground_after = calculate(floor_case(0.42, "ground"), include_reference=False)
+    outside_before = calculate(floor_case(0.90, "outside_air"), include_reference=False)
+    outside_after = calculate(floor_case(0.42, "outside_air"), include_reference=False)
+
+    ground_saving = ground_before.annual_heating_demand_kwh - ground_after.annual_heating_demand_kwh
+    outside_saving = outside_before.annual_heating_demand_kwh - outside_after.annual_heating_demand_kwh
+
+    assert ground_saving > 0
+    assert outside_saving > 0
+    assert ground_saving < outside_saving
+
+
+def test_ground_monthly_transfer_uses_annual_exterior_temperature() -> None:
+    building = BuildingInput(
+        project_name="Ground boundary",
+        locality="Cluj-Napoca",
+        heated_floor_area_m2=10,
+        heated_volume_m3=30,
+        indoor_design_temperature_c=20,
+        internal_gains_w_m2=0,
+        solar_gains_kwh_m2_month=0,
+        solar={"mode": "explicit"},
+        envelope=[
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 10,
+                "u_value_w_m2k": 1.0,
+                "boundary_type": "ground",
+                "boundary_correction_factor": 1.0,
+            }
+        ],
+        ventilation={"air_changes_per_hour": 0, "heat_recovery_efficiency": 0},
+        heating={"system_type": "condensing_gas_boiler", "efficiency": 0.95},
+        cooling={"enabled": False},
+        dhw={"enabled": False, "occupants": 0, "efficiency": 0.85},
+    )
+
+    result = calculate(building, include_reference=False)
+    annual_outdoor = sum(
+        float(month["temperature_c"]) * float(month["days"])
+        for month in result.climate["monthly_temperatures"]
+    ) / sum(float(month["days"]) for month in result.climate["monthly_temperatures"])
+    january = result.monthly[0]
+    expected_ground = 10.0 * (20.0 - annual_outdoor) * (31 * 24) / 1000
+
+    assert_close(result.transmission_components.hg_w_k, 10.0)
+    assert_close(result.transmission_components.hd_w_k, 0.0)
+    assert_close(january.ground_transmission_kwh, expected_ground, tolerance=1e-3)
+    assert_close(january.transmission_excluding_ground_kwh, 0.0)
+    assert_close(january.ventilation_heat_transfer_kwh, 0.0)
+
+
+def test_reference_building_recomputes_geometry_dependent_ground_u() -> None:
+    actual = demo_building()
+    reference = build_reference_input(actual)
+    actual_ground = next(item for item in actual.envelope if item.boundary_type.value == "ground")
+    reference_ground = next(item for item in reference.envelope if item.boundary_type.value == "ground")
+
+    assert reference_ground.ground_contact is not None
+    assert reference_ground.ground_contact == actual_ground.ground_contact
+    actual_components, actual_rows, _ = transmission_heat_transfer_components(actual)
+    reference_components, reference_rows, _ = transmission_heat_transfer_components(reference)
+    actual_floor = next(item for item in actual_rows if item.boundary_type and item.boundary_type.value == "ground")
+    reference_floor = next(item for item in reference_rows if item.boundary_type and item.boundary_type.value == "ground")
+
+    assert actual_components.hg_w_k > 0
+    assert reference_components.hg_w_k > 0
+    assert actual_floor.boundary_correction_factor != reference_floor.boundary_correction_factor
+
+
+def test_adjacent_unheated_buffer_is_hu_not_ha() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Wall to unheated garage",
+                "type": "exterior_wall",
+                "area_m2": 20,
+                "u_value_w_m2k": 1.0,
+                "boundary_type": "adjacent_unheated_space",
+                "boundary_correction_factor": 0.5,
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    components, envelope, _ = transmission_heat_transfer_components(building)
+
+    assert components.hu_w_k == pytest.approx(10.0)
+    assert components.ha_w_k == 0
+    assert envelope[0].component.value == "Hu"
+
+
+def test_adjacent_heated_space_has_zero_transmission() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Floor to heated basement",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.8,
+                "boundary_type": "adjacent_heated_space",
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    components, envelope, _ = transmission_heat_transfer_components(building)
+
+    assert_close(components.ha_w_k, 0.0)
+    assert_close(components.htr_w_k, 0.0)
+    assert envelope[0].boundary_correction_factor == 0.0
 
 
 def test_ventilation_coefficient_uses_air_change_volume_and_recovery() -> None:
@@ -531,7 +875,7 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.7"
+    assert cfg["version"] == "lacurent-commercial-v2.8"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]
