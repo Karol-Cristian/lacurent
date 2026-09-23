@@ -43,6 +43,21 @@
     timber_rafter_roof: {baseU:2.00},
   });
 
+  // Approximate natural infiltration at normal operating pressure, used only
+  // after the homeowner explicitly describes airtightness. Unknown keeps the
+  // previous equivalent-ACH calculation untouched.
+  const AIRTIGHTNESS_INFILTRATION_ACH = Object.freeze({
+    good: 0.15,
+    average: 0.30,
+    drafty: 0.60,
+    very_drafty: 0.90,
+  });
+  const ATTIC_LEAKAGE_ACH_ADD = Object.freeze({
+    sealed: 0.00,
+    some_leaks: 0.10,
+    drafty: 0.30,
+  });
+
   const labels = {
     structure: {
       unknown: "Structură necunoscută",
@@ -73,6 +88,19 @@
       timber_ceiling: "Planșeu din lemn",
       concrete_slab: "Placă de beton",
       timber_rafter_roof: "Acoperiș ușor pe căpriori"
+    },
+    airtightness: {
+      unknown: "Etanșeitate necunoscută",
+      good: "Bună",
+      average: "Medie",
+      drafty: "Curenți perceptibili",
+      very_drafty: "Foarte neetanșă"
+    },
+    atticLeakage: {
+      unknown: "Necunoscută",
+      sealed: "Bine etanșat",
+      some_leaks: "Rosturi / scăpări moderate",
+      drafty: "Curenți spre pod"
     },
     glazing: {
       reference_mc001: "Fereastră de referință MC001",
@@ -146,6 +174,8 @@
     wallInsulationMaterial: "generic_040",
     topBoundary: "unknown",
     topStructure: "unknown",
+    airtightness: "unknown",
+    atticLeakage: "unknown",
     roofInsulationMaterial: "generic_040",
     floorInsulationMaterial: "generic_040",
     wallIns: 5,
@@ -357,6 +387,15 @@
   function topBaseU(state) {
     const preset = TOP_STRUCTURE_PRESETS[state?.topStructure] || TOP_STRUCTURE_PRESETS.unknown;
     return Number(preset.baseU) || TOP_STRUCTURE_PRESETS.unknown.baseU;
+  }
+
+  function infiltrationAch(state) {
+    const base = AIRTIGHTNESS_INFILTRATION_ACH[state?.airtightness];
+    if (!Number.isFinite(Number(base))) return null;
+    const atticAdd = state?.topBoundary === "cold_attic"
+      ? Number(ATTIC_LEAKAGE_ACH_ADD[state?.atticLeakage] || 0)
+      : 0;
+    return Number(base) + atticAdd;
   }
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -1145,18 +1184,35 @@
 
     const overrideAch = finiteOverride("airChanges");
     const overrideRecovery = finiteOverride("heatRecovery");
+    const explicitInfiltrationAch = infiltrationAch(state);
     if (overrideAch != null || overrideRecovery != null) {
+      // Optimizer/reference overrides use the legacy equivalent-ACH path.
+      formSet("infiltration_air_changes_per_hour", "");
+      formSet("ventilation_air_changes_per_hour", "");
       formSet("air_changes_per_hour", overrideAch ?? 0.5);
       formSet("heat_recovery_efficiency", overrideRecovery ?? 0);
-    } else if (state.ventilation === "hrv") {
-      formSet("air_changes_per_hour", 0.5);
-      formSet("heat_recovery_efficiency", 0.75);
-    } else if (state.ventilation === "mechanical") {
-      formSet("air_changes_per_hour", 0.65);
-      formSet("heat_recovery_efficiency", 0);
+    } else if (explicitInfiltrationAch != null) {
+      const controlledAch = state.ventilation === "natural" ? 0.30 : 0.50;
+      const recovery = state.ventilation === "hrv" ? 0.75 : 0;
+      formSet("infiltration_air_changes_per_hour", explicitInfiltrationAch.toFixed(3));
+      formSet("ventilation_air_changes_per_hour", controlledAch.toFixed(3));
+      formSet("air_changes_per_hour", (explicitInfiltrationAch + controlledAch).toFixed(3));
+      formSet("heat_recovery_efficiency", recovery);
     } else {
-      formSet("air_changes_per_hour", 0.5);
-      formSet("heat_recovery_efficiency", 0);
+      // Preserve the pre-airtightness Home Lab behaviour until the user
+      // explicitly describes the house.
+      formSet("infiltration_air_changes_per_hour", "");
+      formSet("ventilation_air_changes_per_hour", "");
+      if (state.ventilation === "hrv") {
+        formSet("air_changes_per_hour", 0.5);
+        formSet("heat_recovery_efficiency", 0.75);
+      } else if (state.ventilation === "mechanical") {
+        formSet("air_changes_per_hour", 0.65);
+        formSet("heat_recovery_efficiency", 0);
+      } else {
+        formSet("air_changes_per_hour", 0.5);
+        formSet("heat_recovery_efficiency", 0);
+      }
     }
 
     const overrideHeatingEfficiency = finiteOverride("heatingEfficiency");
@@ -2802,8 +2858,9 @@
     const roofInsulationLabel = labels.insulation[state.roofInsulationMaterial] || labels.insulation.generic_040;
     const topBoundaryLabel = labels.topBoundary[state.topBoundary] || labels.topBoundary.unknown;
     const topStructureLabel = labels.topStructure[state.topStructure] || labels.topStructure.unknown;
+    const airtightnessLabel = labels.airtightness[state.airtightness] || labels.airtightness.unknown;
     $("#hlnEnvelopeSummary").textContent = `${structureLabel} · ${state.wallIns} cm ${wallInsulationLabel}`;
-    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${topStructureLabel} · ${state.roofIns} cm ${roofInsulationLabel} · ${labels.glazing[state.glazing] || state.glazing}`;
+    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${topStructureLabel} · ${state.roofIns} cm ${roofInsulationLabel} · etanșeitate ${airtightnessLabel.toLowerCase()}`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
     const heatingParts = [
       labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter,
@@ -3592,6 +3649,8 @@
     $("#hlnHomeWallInsulationMaterial").value = homeState.wallInsulationMaterial || "generic_040";
     $("#hlnHomeTopBoundary").value = homeState.topBoundary || "unknown";
     $("#hlnHomeTopStructure").value = homeState.topStructure || "unknown";
+    $("#hlnHomeAirtightness").value = homeState.airtightness || "unknown";
+    $("#hlnHomeAtticLeakage").value = homeState.atticLeakage || "unknown";
     $("#hlnHomeRoofInsulationMaterial").value = homeState.roofInsulationMaterial || "generic_040";
     $("#hlnHomeFloorInsulationMaterial").value = homeState.floorInsulationMaterial || "generic_040";
     $("#hlnHomeWallIns").value = homeState.wallIns;
@@ -3641,6 +3700,8 @@
     homeState.wallInsulationMaterial = $("#hlnHomeWallInsulationMaterial").value;
     homeState.topBoundary = $("#hlnHomeTopBoundary").value;
     homeState.topStructure = $("#hlnHomeTopStructure").value;
+    homeState.airtightness = $("#hlnHomeAirtightness").value;
+    homeState.atticLeakage = $("#hlnHomeAtticLeakage").value;
     homeState.roofInsulationMaterial = $("#hlnHomeRoofInsulationMaterial").value;
     homeState.floorInsulationMaterial = $("#hlnHomeFloorInsulationMaterial").value;
     homeState.wallIns = Number($("#hlnHomeWallIns").value);
@@ -4168,7 +4229,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeTopStructure","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeTopStructure","#hlnHomeAirtightness","#hlnHomeAtticLeakage","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
