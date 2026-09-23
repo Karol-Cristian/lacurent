@@ -792,17 +792,37 @@ class HomeLabHouse3D {
     this.experimentLayers.set("pv", layer);
   }
 
-  createSingleSolarThermalLayer() {
+  createSolarThermalLayer() {
     const s = this.modelSize;
-    const layer = this.createRoofCluster({
-      type: "thermal",
-      cols: 1,
-      rows: 1,
-      anchor: [-0.40, 0.58, 0.38],
-      panelWidth: s.x * 0.095,
-      panelDepth: s.z * 0.175,
-    });
+    const layer = new THREE.Group();
     layer.name = "LaCurentLayer_solarThermal";
+
+    // Keep thermal collectors deliberately smaller than the PV representatives.
+    // Capacity is communicated by adding collectors, never by inflating one
+    // collector into an oversized plate.
+    const panelWidthWorld = s.x * 0.052;
+    const panelDepthWorld = s.z * 0.095;
+    const panelWidth = this.localLength(panelWidthWorld);
+    const panelDepth = this.localLength(panelDepthWorld);
+    const gapZ = this.localLength(s.z * 0.007);
+    const rowPitch = panelDepth + gapZ;
+
+    const slots = [
+      { name:"SolarThermal_center", z:0 },
+      { name:"SolarThermal_lower", z:rowPitch },
+      { name:"SolarThermal_upper", z:-rowPitch },
+    ];
+    slots.forEach(({name, z}) => {
+      const panel = this.createPanelUnit(panelWidthWorld, panelDepthWorld, "thermal");
+      panel.name = name;
+      panel.position.set(0, 0, z);
+      layer.add(panel);
+    });
+
+    // Main roof face, to the right of the dormer. This uses the same roof
+    // mounting/raycast logic as the PV field so both layers follow the GLB.
+    this.mountLayerOnRoof(layer, [0.30, 0.78, 0.38]);
+
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("solarThermal", layer);
@@ -932,7 +952,7 @@ class HomeLabHouse3D {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
     this.createSplitPVLayer();
-    this.createSingleSolarThermalLayer();
+    this.createSolarThermalLayer();
     this.createHeatPumpLayer();
   }
 
@@ -1288,8 +1308,13 @@ class HomeLabHouse3D {
     const solarThermal = this.experimentLayers.get("solarThermal");
     if (solarThermal) {
       solarThermal.visible = Boolean(detail.solarThermalEnabled);
-      const thermalScale = clamp(0.82 + Number(detail.solarThermalArea || 0) * 0.045, 0.82, 1.40);
-      solarThermal.scale.setScalar(thermalScale);
+      const thermalPanelCount = detail.solarThermalEnabled
+        ? Math.max(1, Math.min(solarThermal.children.length, Math.ceil(Number(detail.solarThermalArea || 0) / 4)))
+        : 0;
+      solarThermal.scale.setScalar(1);
+      solarThermal.children.forEach((panel, index) => {
+        panel.visible = index < thermalPanelCount;
+      });
     }
 
     const selectedMeasures = new Set(Array.isArray(detail.measures) ? detail.measures : []);
