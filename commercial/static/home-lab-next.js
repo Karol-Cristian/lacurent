@@ -413,6 +413,25 @@
     return Number(preset.baseU) || TOP_STRUCTURE_PRESETS.unknown.baseU;
   }
 
+  function layeredInsulationU(baseU, state, thicknessKey, materialKey) {
+    const totalCm = Math.max(0, Number(state?.[thicknessKey]) || 0);
+    const selectedMaterial = state?.[materialKey] || "generic_040";
+    if (!baselineSaved || state === homeState) {
+      return insulationU(baseU, totalCm, insulationLambda(selectedMaterial));
+    }
+
+    const existingCm = Math.max(0, Number(homeState?.[thicknessKey]) || 0);
+    const existingMaterial = homeState?.[materialKey] || "generic_040";
+    if (totalCm <= existingCm + 1e-9) {
+      return insulationU(baseU, totalCm, insulationLambda(existingMaterial));
+    }
+
+    const baseR = 1 / baseU;
+    const existingR = existingCm / 100 / insulationLambda(existingMaterial);
+    const addedR = (totalCm - existingCm) / 100 / insulationLambda(selectedMaterial);
+    return 1 / (baseR + existingR + addedR);
+  }
+
   function infiltrationAch(state) {
     const base = AIRTIGHTNESS_INFILTRATION_ACH[state?.airtightness];
     if (!Number.isFinite(Number(base))) return null;
@@ -669,17 +688,14 @@
     const next = [];
     if (
       Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01 ||
-      scenarioState.wallInsulationMaterial !== homeState.wallInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.wallU))
     ) next.push("wall");
     if (
       Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01 ||
-      scenarioState.roofInsulationMaterial !== homeState.roofInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.roofU))
     ) next.push("roof");
     if (
       Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01 ||
-      scenarioState.floorInsulationMaterial !== homeState.floorInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.floorU))
     ) next.push("floor");
     if (
@@ -1013,6 +1029,9 @@
       const value = Number(config.value());
       const homeValue = Number(config.homeValue());
       input.value = String(value);
+      if (baselineSaved && ["wallIns","roofIns","floorIns"].includes(key)) {
+        input.min = String(homeValue);
+      }
       const valueNode = row.querySelector("[data-hln-tune-value]");
       const digits = config.digits ?? (value % 1 ? 1 : 0);
       if (valueNode) valueNode.textContent = `${fmt(value, digits)} ${config.unit}`;
@@ -1175,30 +1194,15 @@
     const windowU = finiteOverride("windowU");
     const doorU = finiteOverride("doorU");
 
-    formSet(
-      "wall_u_value",
-      wallU ?? insulationU(
-        wallBaseU(state),
-        state.wallIns,
-        insulationLambda(state.wallInsulationMaterial)
-      ).toFixed(4)
-    );
-    formSet(
-      "roof_u_value",
-      roofU ?? insulationU(
-        topBaseU(state),
-        state.roofIns,
-        insulationLambda(state.roofInsulationMaterial)
-      ).toFixed(4)
-    );
-    formSet(
-      "floor_u_value",
-      floorU ?? insulationU(
-        0.90,
-        state.floorIns,
-        insulationLambda(state.floorInsulationMaterial)
-      ).toFixed(4)
-    );
+    formSet("wall_u_value", wallU ?? layeredInsulationU(
+      wallBaseU(state), state, "wallIns", "wallInsulationMaterial"
+    ).toFixed(4));
+    formSet("roof_u_value", roofU ?? layeredInsulationU(
+      topBaseU(state), state, "roofIns", "roofInsulationMaterial"
+    ).toFixed(4));
+    formSet("floor_u_value", floorU ?? layeredInsulationU(
+      0.90, state, "floorIns", "floorInsulationMaterial"
+    ).toFixed(4));
     formSet("window_u_value", windowU ?? (glazingU[state.glazing] || 1.6));
     formSet("door_u_value", doorU ?? 1.8);
 
@@ -1567,20 +1571,14 @@
   function currentEnvelopeU(state, key, overrides = {}) {
     const explicit = Number(overrides?.[key]);
     if (Number.isFinite(explicit) && explicit > 0) return explicit;
-    if (key === "wallU") return insulationU(
-      wallBaseU(state),
-      state.wallIns,
-      insulationLambda(state.wallInsulationMaterial)
+    if (key === "wallU") return layeredInsulationU(
+      wallBaseU(state), state, "wallIns", "wallInsulationMaterial"
     );
-    if (key === "roofU") return insulationU(
-      topBaseU(state),
-      state.roofIns,
-      insulationLambda(state.roofInsulationMaterial)
+    if (key === "roofU") return layeredInsulationU(
+      topBaseU(state), state, "roofIns", "roofInsulationMaterial"
     );
-    if (key === "floorU") return insulationU(
-      0.90,
-      state.floorIns,
-      insulationLambda(state.floorInsulationMaterial)
+    if (key === "floorU") return layeredInsulationU(
+      0.90, state, "floorIns", "floorInsulationMaterial"
     );
     if (key === "windowU") {
       return {
@@ -3170,9 +3168,12 @@
     $("#hlnWallIns").value = scenarioState.wallIns;
     $("#hlnRoofIns").value = scenarioState.roofIns;
     $("#hlnFloorIns").value = scenarioState.floorIns;
-    $("#hlnWallInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.wallInsulationMaterial),3)} W/mK · grosimea totală simulată`;
-    $("#hlnRoofInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.roofInsulationMaterial),3)} W/mK · grosimea totală simulată`;
-    $("#hlnFloorInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.floorInsulationMaterial),3)} W/mK · grosimea totală simulată`;
+    $("#hlnWallIns").min = String(Number(homeState.wallIns) || 0);
+    $("#hlnRoofIns").min = String(Number(homeState.roofIns) || 0);
+    $("#hlnFloorIns").min = String(Number(homeState.floorIns) || 0);
+    $("#hlnWallInsulationMeta").textContent = `strat nou · λ ${fmt(insulationLambda(scenarioState.wallInsulationMaterial),3)} W/mK · existent ${fmt(homeState.wallIns)} cm`;
+    $("#hlnRoofInsulationMeta").textContent = `strat nou · λ ${fmt(insulationLambda(scenarioState.roofInsulationMaterial),3)} W/mK · existent ${fmt(homeState.roofIns)} cm`;
+    $("#hlnFloorInsulationMeta").textContent = `strat nou · λ ${fmt(insulationLambda(scenarioState.floorInsulationMaterial),3)} W/mK · existent ${fmt(homeState.floorIns)} cm`;
     $("#hlnScenarioGlazing").value = scenarioState.glazing;
     $("#hlnScenarioWindows").value = scenarioState.windows;
     $("#hlnScenarioHeating").value = scenarioState.heating;
