@@ -32,7 +32,7 @@ try {
     scene.applyVisualState({
       ...(scene.visualState || {}),
       pvEnabled:true,
-      pvKwp:15,
+      pvKwp:20,
       solarThermalEnabled:true,
       solarThermalArea:12,
       heating:"condensing_gas_boiler",
@@ -125,8 +125,8 @@ try {
       smokeWorld:smokeWorld.toArray(),
     };
   });
-  if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
-    throw new Error("PV calibration did not expose the full six-panel field");
+  if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 8) {
+    throw new Error("PV calibration did not expose the full eight-panel field");
   }
   if (!roofVisualCalibration.pvSupport.mountedRoofUuid ||
       roofVisualCalibration.pvSupport.panels.some(panel => !panel.supported)) {
