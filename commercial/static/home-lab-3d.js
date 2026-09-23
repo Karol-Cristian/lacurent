@@ -819,8 +819,8 @@ class HomeLabHouse3D {
       type: "thermal",
       cols: 1,
       rows: 1,
-      // Clear lower-left roof area: intentionally away from the roof window.
-      anchor: [-0.40, 0.58, 0.38],
+      // Runtime-probed lower-left point on the main roof mesh, clear of the roof window.
+      anchor: [-0.25, 0.78, 0.25],
       panelWidth: panelWidthWorld,
       panelDepth: panelDepthWorld,
     });
