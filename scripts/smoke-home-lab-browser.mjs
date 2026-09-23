@@ -107,6 +107,50 @@ try {
       return {mountedRoofUuid, panels};
     };
 
+    const solarAnchorProbeCandidates = [
+      [-0.16, 0.78, 0.08],
+      [-0.14, 0.78, 0.08],
+      [-0.12, 0.78, 0.08],
+      [-0.10, 0.78, 0.08],
+      [-0.08, 0.78, 0.08],
+      [-0.06, 0.78, 0.08],
+      [-0.04, 0.78, 0.08],
+      [-0.02, 0.78, 0.08],
+      [ 0.00, 0.78, 0.08],
+      [ 0.02, 0.78, 0.08],
+      [ 0.04, 0.78, 0.08],
+      [ 0.05, 0.78, 0.08],
+      [-0.08, 0.78, 0.05],
+      [-0.06, 0.78, 0.05],
+      [-0.04, 0.78, 0.05],
+      [-0.02, 0.78, 0.05],
+      [ 0.00, 0.78, 0.05],
+      [ 0.02, 0.78, 0.05],
+      [ 0.04, 0.78, 0.05],
+      [-0.06, 0.78, 0.02],
+      [-0.04, 0.78, 0.02],
+      [-0.02, 0.78, 0.02],
+      [ 0.00, 0.78, 0.02],
+      [ 0.02, 0.78, 0.02],
+    ];
+    const solarAnchorProbe = solarAnchorProbeCandidates.map(anchor => {
+      scene.mountLayerOnRoof(solarThermal, anchor);
+      solarThermal.updateMatrixWorld(true);
+      const support = roofSupport(solarThermal);
+      const box = new Box3Ctor().setFromObject(solarThermal);
+      const center = box.getCenter(new Vector3Ctor());
+      const projected = center.clone().project(scene.camera);
+      return {
+        anchor,
+        fallback:Boolean(solarThermal.userData?.roofMountFallback),
+        mountedRoofUuid:String(solarThermal.userData?.roofMount?.objectUuid || ""),
+        support,
+        screenNdc:[projected.x, projected.y],
+      };
+    });
+    scene.mountLayerOnRoof(solarThermal, [0.05, 0.78, 0.08]);
+    solarThermal.updateMatrixWorld(true);
+
     const pvSupport = roofSupport(pv);
     const thermalSupport = roofSupport(solarThermal);
     const pvNormal = new Vector3Ctor(...(pv.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
@@ -124,6 +168,7 @@ try {
       solarThermalAssetLoaded:Boolean(solarThermal.userData?.assetLoaded),
       solarThermalAssetFallback:Boolean(solarThermal.userData?.assetFallback),
       solarThermalAssetUrl:String(solarThermal.userData?.assetUrl || ""),
+      solarAnchorProbe,
       thermalSupport,
       roofNormalDot:pvNormal.dot(thermalNormal),
       thermalCenterX:thermalCenter.x,
@@ -132,6 +177,7 @@ try {
       smokeWorld:smokeWorld.toArray(),
     };
   });
+  console.log("SOLAR_ANCHOR_PROBE " + JSON.stringify(roofVisualCalibration.solarAnchorProbe));
   if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 8) {
     throw new Error("PV calibration did not expose the full eight-panel field");
   }
