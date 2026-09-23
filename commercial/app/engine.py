@@ -144,6 +144,25 @@ def slab_on_ground_effective_u(
     return float(effective_u)
 
 
+def _unheated_zone_balance(item) -> tuple[float, float, float]:
+    """Return bztu, Hztu;e and Hztu;tot from explicit MC001 zone-balance inputs."""
+
+    zone = item.unheated_zone
+    if zone is None:
+        raise ValueError("Unheated-zone balance inputs are required.")
+    htr_ue = float(zone.heat_transfer_to_exterior_envelope_w_k)
+    cztu_ve = float(zone.exterior_ventilation_coefficient)
+    conditioned_sum = sum(float(value) for value in zone.conditioned_zone_heat_transfers_w_k)
+    hztu_exterior = (1.0 + cztu_ve) * htr_ue
+    hztu_total = conditioned_sum + hztu_exterior
+    if hztu_total <= 0:
+        raise ValueError("Unheated-zone total heat-transfer coefficient must be positive.")
+    bztu = hztu_exterior / hztu_total
+    if not 0 <= bztu <= 1:
+        raise ValueError("Derived bztu must be within 0..1.")
+    return bztu, hztu_exterior, hztu_total
+
+
 def _element_boundary_factor(item) -> float:
     if item.boundary_type == EnvelopeBoundaryType.ground and item.ground_contact is not None:
         contact = item.ground_contact
@@ -155,6 +174,9 @@ def _element_boundary_factor(item) -> float:
             contact.ground_conductivity_w_mk,
         )
         return effective_u / float(item.u_value_w_m2k)
+    if item.unheated_zone is not None:
+        factor, _, _ = _unheated_zone_balance(item)
+        return factor
     return float(item.boundary_correction_factor or 0.0)
 
 
@@ -177,6 +199,8 @@ def transmission_heat_transfer_components(
         factor = _element_boundary_factor(item)
         effective_u = raw_u * factor
         method = "direct_outside_air"
+        hztu_exterior = None
+        hztu_total = None
 
         if item.boundary_type == EnvelopeBoundaryType.ground and item.ground_contact is not None:
             contact = item.ground_contact
@@ -203,7 +227,13 @@ def transmission_heat_transfer_components(
                 EnvelopeBoundaryType.unheated_basement,
                 EnvelopeBoundaryType.adjacent_unheated_space,
             }:
-                method = "explicit_boundary_temperature_factor"
+                if item.unheated_zone is not None:
+                    factor, hztu_exterior, hztu_total = _unheated_zone_balance(item)
+                    effective_u = raw_u * factor
+                    value = effective_u * area
+                    method = "mc001_explicit_unheated_zone_balance"
+                else:
+                    method = "explicit_bztu_boundary_factor"
             elif item.boundary_type == EnvelopeBoundaryType.adjacent_heated_space:
                 method = "adjacent_heated_zero_transfer"
 
@@ -217,6 +247,8 @@ def transmission_heat_transfer_components(
             "raw_u": raw_u,
             "effective_u": effective_u,
             "method": method,
+            "hztu_exterior": hztu_exterior,
+            "hztu_total": hztu_total,
             "value": value,
         })
 
@@ -242,6 +274,12 @@ def transmission_heat_transfer_components(
             u_value_w_m2k=_round(row["raw_u"], 4),
             effective_u_value_w_m2k=_round(row["effective_u"], 4),
             calculation_method=row["method"],
+            hztu_exterior_w_k=(
+                None if row["hztu_exterior"] is None else _round(row["hztu_exterior"])
+            ),
+            hztu_total_w_k=(
+                None if row["hztu_total"] is None else _round(row["hztu_total"])
+            ),
         )
         for row in element_rows
     ]
