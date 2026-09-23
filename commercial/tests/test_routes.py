@@ -404,7 +404,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
     assert "/static/home-lab-3d.css?v=3d25" in response.text
-    assert "/static/home-lab-3d.js?v=3d34" in response.text
+    assert "/static/home-lab-3d.js?v=3d35" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1473,12 +1473,13 @@ def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimn
     assert 'name:"PV_secondary_top"' in source
     assert 'Math.max(2, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 2.5)))' in source
     assert "Every panel is a child of" in source
-    assert 'const panelDepthWorld = s.z * 0.105' in source
-    assert 'const gapZ = this.localLength(s.z * 0.010)' in source
-    assert 'this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.035])' in source
-    assert "const probes = [" in source
-    assert "ray.intersectObjects(roofCandidates, true)[0]" in source
-    assert "return this.localPointFromNormalized([-0.06, 0.965, -0.10])" in source
+    assert 'const panelDepthWorld = s.z * 0.085' in source
+    assert 'const gapZ = this.localLength(s.z * 0.006)' in source
+    assert 'this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020])' in source
+    assert "runtime-calibrated" in source.lower()
+    assert "return this.localPointFromNormalized([0.076, 1.005, 0.033])" in source
+    assert '"condensing_gas_boiler"' in source
+    assert '"gas_boiler"' in source
     assert "this.modelSize.y * 0.34" in source
     assert "this.modelSize.x * 0.065" in source
     assert "index < 10" in source
