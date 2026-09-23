@@ -141,7 +141,11 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
       <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
-      <div class="hln-3d-compass" aria-hidden="true"><b>N</b><span>E</span><i>S</i><em>V</em></div>
+      <div class="hln-3d-compass" data-hln-3d-compass role="button" tabindex="${this.mode === "home" ? "0" : "-1"}" aria-label="Orientarea energetică a casei">
+        <b>N</b><span>E</span><i>S</i><em>V</em>
+        <span class="hln-3d-compass-arrow" data-hln-3d-compass-arrow aria-hidden="true"></span>
+        <small data-hln-3d-compass-value>S</small>
+      </div>
       <div class="hln-3d-hotspots" data-hln-3d-hotspots aria-label="Elemente selectabile ale casei"></div>
       <canvas class="hln-3d-canvas" aria-label="Model 3D interactiv al casei"></canvas>
     `;
