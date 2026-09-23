@@ -2250,6 +2250,60 @@
     return {state, overrides};
   }
 
+  async function evaluatePaybackPackageFrontier(rows) {
+    const packages = [];
+    const seen = new Set();
+    const addKnownPackage = (packageRows, state, overrides, result) => {
+      if (!packageRows.length) return;
+      const signature = packageRows.map(row => row.action.id).join(">");
+      if (seen.has(signature)) return;
+      seen.add(signature);
+      const capexLei = packageRows.reduce((sum, row) => sum + Number(row.capexLei || 0), 0);
+      const economics = roiEconomics(homeResult, result, capexLei);
+      packages.push({rows:packageRows, state, overrides, result, economics, signature});
+    };
+
+    // Singles are already evaluated. Do not apply the time threshold here:
+    // the threshold belongs to the complete package, not its components.
+    for (const row of rows) {
+      addKnownPackage([row], row.state, row.overrides, row.result);
+    }
+
+    const annualSavingOrder = [...rows].sort(
+      (a, b) => b.annualSavingLei - a.annualSavingLei || b.roiPercentPerYear - a.roiPercentPerYear
+    );
+    const roiOrder = [...rows].sort(
+      (a, b) => b.roiPercentPerYear - a.roiPercentPerYear || b.annualSavingLei - a.annualSavingLei
+    );
+    const candidateRowSets = [];
+
+    // Test cumulative packages in two threshold-independent orders.
+    for (const order of [annualSavingOrder, roiOrder]) {
+      const maxSize = Math.min(order.length, 5);
+      for (let size = 2; size <= maxSize; size += 1) {
+        candidateRowSets.push(order.slice(0, size));
+      }
+    }
+
+    // Also test pair synergies among the strongest annual-saving measures.
+    const pairPool = annualSavingOrder.slice(0, 4);
+    for (let i = 0; i < pairPool.length; i += 1) {
+      for (let j = i + 1; j < pairPool.length; j += 1) {
+        candidateRowSets.push([pairPool[i], pairPool[j]]);
+      }
+    }
+
+    for (const packageRows of candidateRowSets) {
+      if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+      const signature = packageRows.map(row => row.action.id).join(">");
+      if (seen.has(signature)) continue;
+      const packageState = applyOptimizerRows(packageRows);
+      const result = await calculateCandidate(packageState.state, packageState.overrides);
+      addKnownPackage(packageRows, packageState.state, packageState.overrides, result);
+    }
+    return packages;
+  }
+
   function automaticRenovationCopy() {
     if (projectMode === "new_nzeb") {
       return {
@@ -2331,10 +2385,6 @@
     for (const row of rows) {
       if (!row.costKnown || !row.positive || !Number.isFinite(row.annualSavingLei)) continue;
       if (settings.budgetLei != null && row.capexLei > settings.budgetLei + 1e-6) continue;
-      if (
-        settings.maxPaybackYears != null &&
-        (!Number.isFinite(row.paybackYears) || row.paybackYears > settings.maxPaybackYears + 1e-6)
-      ) continue;
       const previous = families.get(row.action.family);
       if (!previous) {
         families.set(row.action.family, row);
@@ -2681,7 +2731,7 @@
         const why = settings.budgetLei != null
           ? "Nicio măsură testată cu economie pozitivă nu încape în bugetul ales."
           : settings.maxPaybackYears != null
-            ? "Nicio măsură testată cu economie pozitivă nu se amortizează în timpul ales."
+            ? "Nicio măsură sau combinație testată cu economie pozitivă nu se amortizează în timpul ales."
             : "Nu există încă o soluție cu ROI pozitiv calculabil.";
         setOptimizationNote(`<strong>Nu am găsit o soluție eligibilă.</strong><span>${escapeHtml(why)}</span>`, "warn");
         setStatus("Fără soluție economică eligibilă");
@@ -2721,27 +2771,52 @@
               economics = packageEconomics;
             }
           }
-        } else {
+        } else if (settings.mode === "roi-budget") {
           const candidates = rankedOpportunities;
           for (const row of candidates) {
             if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
             const packageCapex = selectedRows.reduce((sum, item) => sum + item.capexLei, 0) + row.capexLei;
-            if (settings.budgetLei != null && packageCapex > settings.budgetLei + 1e-6) continue;
+            if (packageCapex > settings.budgetLei + 1e-6) continue;
 
             const candidate = row.action.apply(state, overrides);
             const result = await calculateCandidate(candidate.state, candidate.overrides);
             const packageEconomics = roiEconomics(homeResult, result, packageCapex);
-            const passesTime = settings.maxPaybackYears == null ||
-              (Number.isFinite(packageEconomics.paybackYears) && packageEconomics.paybackYears <= settings.maxPaybackYears + 1e-6);
             const improvesSaving = packageEconomics.positive &&
               packageEconomics.annualSavingLei > Number(economics.annualSavingLei || 0) + 1e-6;
-            if (passesTime && improvesSaving) {
+            if (improvesSaving) {
               selectedRows.push(row);
               state = candidate.state;
               overrides = candidate.overrides;
               current = result;
               economics = packageEconomics;
             }
+          }
+        } else {
+          // Payback mode searches a threshold-independent package frontier.
+          // Only after each complete package has been recalculated do we apply
+          // the user's maximum payback. This makes the result monotonic:
+          // if a package returned at 7 years actually pays back in 6 years,
+          // the same package is eligible when the user asks for 6 years.
+          const frontier = await evaluatePaybackPackageFrontier(rankedOpportunities);
+          const feasible = frontier
+            .filter(item =>
+              item.economics.positive &&
+              Number.isFinite(item.economics.paybackYears) &&
+              item.economics.paybackYears <= settings.maxPaybackYears + 1e-6
+            )
+            .sort((a, b) =>
+              b.economics.annualSavingLei - a.economics.annualSavingLei ||
+              a.economics.capexLei - b.economics.capexLei ||
+              b.economics.roiPercentPerYear - a.economics.roiPercentPerYear
+            );
+
+          if (feasible.length) {
+            const best = feasible[0];
+            selectedRows = best.rows;
+            state = best.state;
+            overrides = best.overrides;
+            current = best.result;
+            economics = best.economics;
           }
         }
       } else {
