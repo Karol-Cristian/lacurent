@@ -987,11 +987,36 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         if design_temperature is not None
         else None
     )
-    design_heat_load_kw = (
-        float(result.heat_loss_w_k) * delta_t / 1000.0
-        if delta_t is not None
-        else None
-    )
+    annual_outdoor_temperature_c = None
+    monthly_temperatures = climate.get("monthly_temperatures") or []
+    total_climate_days = sum(float(row.get("days") or 0) for row in monthly_temperatures)
+    if total_climate_days > 0:
+        annual_outdoor_temperature_c = sum(
+            float(row.get("temperature_c") or 0) * float(row.get("days") or 0)
+            for row in monthly_temperatures
+        ) / total_climate_days
+
+    design_heat_load_kw = None
+    if delta_t is not None:
+        transmission = result.transmission_components
+        outside_and_buffer_w_k = (
+            float(transmission.hd_w_k)
+            + float(transmission.hu_w_k)
+            + float(transmission.ha_w_k)
+            + float(result.h_ve_w_k)
+        )
+        ground_delta_t = (
+            max(
+                float(result.input.indoor_design_temperature_c) - annual_outdoor_temperature_c,
+                0.0,
+            )
+            if annual_outdoor_temperature_c is not None
+            else delta_t
+        )
+        design_heat_load_kw = (
+            outside_and_buffer_w_k * delta_t
+            + float(transmission.hg_w_k) * ground_delta_t
+        ) / 1000.0
 
     loss_rows = [
         {
@@ -1079,6 +1104,12 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "co2_kg": float(result.co2.total_kg),
         "co2_specific_kg_m2": float(result.co2.specific_kg_m2),
         "heat_loss_w_k": float(result.heat_loss_w_k),
+        "transmission_components": model_to_dict(result.transmission_components),
+        "annual_outdoor_temperature_c": (
+            float(annual_outdoor_temperature_c)
+            if annual_outdoor_temperature_c is not None
+            else None
+        ),
         "annual_cost_lei": float(cost["priced_total_lei"]) if cost.get("complete") else None,
         "average_monthly_cost_lei": float(cost["average_monthly_priced_lei"]) if cost.get("complete") else None,
         "design_heat_load_kw": design_heat_load_kw,
@@ -1118,6 +1149,9 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 "useful_heating_kwh": float(row.useful_heating_kwh),
                 "useful_cooling_kwh": float(row.useful_cooling_kwh),
                 "outdoor_temperature_c": float(row.outdoor_temperature_c),
+                "transmission_excluding_ground_kwh": float(row.transmission_excluding_ground_kwh),
+                "ground_transmission_kwh": float(row.ground_transmission_kwh),
+                "ventilation_heat_transfer_kwh": float(row.ventilation_heat_transfer_kwh),
             }
             for row in result.monthly
         ],
