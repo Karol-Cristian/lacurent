@@ -395,8 +395,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next18" in response.text
-    assert "/static/home-lab-next.js?v=next33" in response.text
+    assert "/static/home-lab-next.css?v=next19" in response.text
+    assert "/static/home-lab-next.js?v=next34" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -415,6 +415,11 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnReportPvGeneration"' in response.text
     assert 'id="hlnReportHeatingSystem"' in response.text
     assert 'id="hlnReportAssumptions"' in response.text
+    assert 'id="hlnReportDecisionSaving"' in response.text
+    assert 'id="hlnReportDecisionInvestment"' in response.text
+    assert 'id="hlnReportDecisionPayback"' in response.text
+    assert 'id="hlnReportDecisionPriority"' in response.text
+    assert "Amortizarea este simplă" not in response.text
     assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
     assert 'id="hlnScenarioBenefitLabel"' in response.text
@@ -1023,6 +1028,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "nzebEnvelopeActions" in response.text
     assert "nzebEnvelopeStatus" in response.text
     assert "function renderReport" in response.text
+    assert "hlnReportDecisionSaving" in response.text
+    assert "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată." in response.text
     assert 'const strategy = $("#hlnReportStrategy")' in response.text
     assert "Best ROI estimativ" not in response.text
     assert "function roiEconomics" in response.text
