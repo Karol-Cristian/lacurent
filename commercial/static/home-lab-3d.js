@@ -798,10 +798,10 @@ class HomeLabHouse3D {
     // the clear left roof face, below the ridge and away from the dormer.
     this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
 
-    // Known-good production placement from before the solar-thermal
-    // positioning work.
+    // Exact PV placement from immediately before the solar-thermal
+    // positioning work was mistakenly applied to the photovoltaic array.
     const rowPitch = panelDepth + gapZ;
-    const downslopeShift = rowPitch * 0.18;
+    const downslopeShift = rowPitch * 0.195;
     const chimneyNudge = (panelWidth + gapX) * 0.30;
     layer.translateZ(downslopeShift);
     layer.translateX(chimneyNudge);
