@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next19">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next20">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -904,9 +904,33 @@
           <label>Suprafață încălzită <div class="hln-inline-input"><input id="hlnArea" type="number" min="40" max="300" step="5" value="120"><span>m²</span></div></label>
           <label>Niveluri încălzite <div class="hln-segments" id="hlnLevels"><button type="button" data-value="1">1</button><button type="button" data-value="2" class="is-active">2</button><button type="button" data-value="3">3+</button></div></label>
           <label>Înălțime interioară <div class="hln-inline-input"><input id="hlnHeight" type="number" min="2.2" max="3.5" step="0.1" value="2.7"><span>m</span></div></label>
-          <label>Suprafață opacă pereți exteriori <div class="hln-inline-input"><input id="hlnWallAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
-          <label>Suprafață planșeu superior / acoperiș <div class="hln-inline-input"><input id="hlnTopAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
-          <small class="hln-field-note">Lasă câmpurile goale dacă nu le știi. Atunci estimăm suprafețele din suprafața încălzită, numărul de niveluri și o geometrie dreptunghiulară simplificată. Pereții opaci nu includ ferestrele și ușile.</small>
+          <div class="hln-derived-geometry" aria-label="Geometrie precalculată">
+            <article><small>Amprentă la sol</small><strong id="hlnDerivedFootprint">—</strong></article>
+            <article><small>Perimetru exterior</small><strong id="hlnDerivedPerimeter">—</strong></article>
+            <article><small>Pereți exteriori bruți</small><strong id="hlnDerivedGrossWalls">—</strong></article>
+            <article><small>Ferestre + uși</small><strong id="hlnDerivedOpenings">—</strong></article>
+          </div>
+          <label>
+            <span class="hln-geometry-label-head">Suprafață opacă pereți exteriori <small id="hlnWallAreaStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnWallAreaOverride" type="number" min="1" max="1000" step="0.5"><span>m²</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="wallAreaOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <label>
+            <span class="hln-geometry-label-head">Suprafață planșeu superior / acoperiș <small id="hlnTopAreaStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnTopAreaOverride" type="number" min="1" max="1000" step="0.5"><span>m²</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="topAreaOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <label>
+            <span class="hln-geometry-label-head">Suprafață pardoseală / planșeu inferior <small id="hlnFloorAreaStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnFloorAreaOverride" type="number" min="1" max="1000" step="0.5"><span>m²</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="floorAreaOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <label>
+            <span class="hln-geometry-label-head">Volum încălzit <small id="hlnVolumeStatus" class="hln-geometry-status">Precalculat de LaCurent</small></span>
+            <div class="hln-inline-input"><input id="hlnVolumeOverride" type="number" min="1" max="5000" step="1"><span>m³</span></div>
+            <button type="button" class="hln-geometry-reset" data-hln-geometry-reset="volumeOverride" hidden>Reia valoarea calculată</button>
+          </label>
+          <small class="hln-field-note">LaCurent precalculează geometria din suprafața încălzită, niveluri și înălțime, cu o amprentă dreptunghiulară estimată. Pereții opaci scad ferestrele și 2,2 m² de uși exterioare. Orice valoare de mai sus poate fi suprascrisă; „Reia valoarea calculată” revine la geometria dedusă.</small>
           <label>Temperatură iarna <div class="hln-inline-input"><input id="hlnTemperature" type="number" min="18" max="24" step="0.5" value="21"><span>°C</span></div></label>
           <label>Tip clădire
             <select id="hlnBuildingType" disabled>
@@ -1156,7 +1180,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next40"></script>
+  <script src="/static/home-lab-next.js?v=next41"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
