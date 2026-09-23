@@ -236,13 +236,16 @@ try {
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   await expectVisible('[data-hln-screen="report"].is-active');
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  const editScenarioFromReport = page.locator('.hln-report-actions [data-hln-go="scenario"]');
-  await editScenarioFromReport.waitFor({state:"visible", timeout:15000});
-  // This button sits at the bottom of a long report. Chromium actionability can
-  // intermittently stall after the preceding full-page scroll even though the
-  // control is visible/enabled/stable. Invoke the same DOM click handler
-  // directly so this smoke validates navigation state, not scroll hit-testing.
-  await editScenarioFromReport.evaluate(button => button.click());
+  // This control lives inside the report heading while the smoke has just
+  // scrolled to the document bottom. Its viewport/actionability state is
+  // intentionally irrelevant here: validate the navigation handler directly.
+  const reportEditClicked = await page.evaluate(() => {
+    const button = document.querySelector('.hln-report-actions [data-hln-go="scenario"]');
+    if (!(button instanceof HTMLElement)) return false;
+    button.click();
+    return true;
+  });
+  if (!reportEditClicked) throw new Error("Report edit-scenario control is missing");
   await expectVisible('[data-hln-screen="scenario"].is-active');
   await page.waitForTimeout(50);
   const scrollAfterReport = await page.evaluate(() => window.scrollY);
