@@ -36,7 +36,7 @@ class GroundContactInput(BaseModel):
     exposed_perimeter_m: float = Field(gt=0)
     wall_thickness_m: float = Field(default=0.30, ge=0)
     ground_conductivity_w_mk: float = Field(default=2.0, gt=0)
-    edge_psi_w_mk: float = Field(default=0.0, ge=0, le=2)
+    edge_psi_w_mk: float = Field(default=0.0, ge=-2, le=2)
 
 
 class HeatingSystemType(str, Enum):
