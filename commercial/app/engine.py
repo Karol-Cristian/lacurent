@@ -100,7 +100,9 @@ BOUNDARY_TO_TRANSMISSION_COMPONENT = {
     EnvelopeBoundaryType.unheated_attic: TransmissionComponent.Hu,
     EnvelopeBoundaryType.unheated_basement: TransmissionComponent.Hu,
     EnvelopeBoundaryType.adjacent_heated_space: TransmissionComponent.Ha,
-    EnvelopeBoundaryType.adjacent_unheated_space: TransmissionComponent.Ha,
+    # An adjacent unheated buffer zone (garage/stairwell/etc.) belongs to Hu.
+    # Ha is retained for the explicit adjacent-heated-space path.
+    EnvelopeBoundaryType.adjacent_unheated_space: TransmissionComponent.Hu,
 }
 
 
