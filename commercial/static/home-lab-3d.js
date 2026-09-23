@@ -42,6 +42,27 @@ const SOLAR_THERMAL_REFERENCE = {
 
 const SOLAR_THERMAL_ANCHOR = [-0.02, 0.78, 0.08];
 
+const HEAT_PUMP_MODEL = {
+  label: "HVAC Condenser Unit",
+  url: "https://polyfork.dev/cdn/hvac-condenser-unit-a41b8d.glb",
+  source: "https://polyfork.dev/asset/hvac-condenser-unit-a41b8d",
+  license: "Commercial use permitted; attribution not required",
+};
+
+const AC_MODEL = {
+  label: "Air-Con Unit",
+  url: "https://polyfork.dev/cdn/air-con-unit-9fadc2.glb",
+  source: "https://polyfork.dev/asset/air-con-unit-9fadc2",
+  license: "Commercial use permitted; attribution not required",
+};
+
+const EQUIPMENT_LABELS = {
+  pv: "Fotovoltaice",
+  solarThermal: "Solar termic",
+  heatPump: "Pompă de căldură",
+  ac: "Aer condiționat",
+};
+
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c, field: "#hlnHomeWallIns" },
   roof: { label: "Pod / acoperiș", editor: "envelope", measure: "roof", color: 0x3f745c, field: "#hlnHomeRoofIns" },
@@ -122,6 +143,7 @@ class HomeLabHouse3D {
     this.hotspotAnchors = new Map();
     this.hotspotElements = new Map();
     this.hotspotRoot = null;
+    this.equipmentBadges = new Map();
     this.authorMode = new URLSearchParams(window.location.search).get("author3d") === "1";
     this.debugHitZones = new URLSearchParams(window.location.search).get("hotspotDebug") === "1";
     this.semanticConfig = JSON.parse(JSON.stringify(DEFAULT_FINAL_HOUSE_CONFIG));
@@ -209,11 +231,12 @@ class HomeLabHouse3D {
       await this.loadSemanticConfig();
       await this.loadModel();
       await this.createExperimentLayers();
-      this.createVisualEquipment();
+      await this.createVisualEquipment();
       this.createSelectionProofLayers();
       this.addHitZones();
       this.addRenovationLayer();
       this.createSemanticHotspots();
+      this.createEquipmentBadges();
       this.createAuthorPanel();
       this.bindEvents();
       this.resize();
@@ -541,6 +564,58 @@ class HomeLabHouse3D {
     return worldLength / Math.max(scale, 0.0001);
   }
 
+  async upgradeGroupWithGlb(group, model, targetSize, options = {}) {
+    const fallbackChildren = [...group.children];
+    try {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(model.url);
+      const source = gltf.scene;
+      source.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(source);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      if (size.x < 1e-5 || size.y < 1e-5 || size.z < 1e-5) {
+        throw new Error("Imported equipment GLB has invalid bounds");
+      }
+
+      source.position.set(-center.x, options.grounded ? -box.min.y : -center.y, -center.z);
+      const wrapper = new THREE.Group();
+      wrapper.name = `${group.name}_importedGLB`;
+      wrapper.rotation.y = Number(options.rotateY || 0);
+      wrapper.add(source);
+
+      const scale = Math.min(
+        targetSize.x / size.x,
+        targetSize.y / size.y,
+        targetSize.z / size.z
+      );
+      wrapper.scale.setScalar(scale);
+
+      source.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      });
+
+      fallbackChildren.forEach((child) => {
+        child.visible = false;
+        child.userData.hlnFallbackVisual = true;
+      });
+      group.add(wrapper);
+      group.userData.assetLoaded = true;
+      group.userData.assetFallback = false;
+      group.userData.assetUrl = model.url;
+      group.userData.assetSource = model.source;
+      group.userData.assetLicense = model.license;
+      return true;
+    } catch (error) {
+      console.warn(`[Home Lab 3D] ${model.label} GLB fallback`, error);
+      group.userData.assetLoaded = false;
+      group.userData.assetFallback = true;
+      return false;
+    }
+  }
+
   localPointFromNormalized(values) {
     const world = this.normalizedToWorld(values);
     this.modelRoot.updateMatrixWorld(true);
@@ -775,6 +850,7 @@ class HomeLabHouse3D {
     const s = this.modelSize;
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_pv";
+    layer.userData.hlnEquipment = "pv";
 
     const panelWidthWorld = s.x * 0.074;
     const panelDepthWorld = s.z * 0.085;
@@ -833,6 +909,7 @@ class HomeLabHouse3D {
 
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_solarThermal";
+    layer.userData.hlnEquipment = "solarThermal";
 
     // Keep exactly one direct collector child so area scaling and browser
     // calibration continue to treat this as one DHW solar-thermal collector.
@@ -1017,9 +1094,10 @@ class HomeLabHouse3D {
     this.experimentLayers.set("solarThermal", layer);
   }
 
-  createHeatPumpLayer() {
+  async createHeatPumpLayer() {
     const group = new THREE.Group();
     group.name = "LaCurentLayer_heatPump";
+    group.userData.hlnEquipment = "heatPump";
     group.position.copy(this.localPointFromNormalized([0.55, 0.105, 0.32]));
 
     const w = this.localLength(this.modelSize.x * 0.17);
@@ -1132,6 +1210,13 @@ class HomeLabHouse3D {
     pipe.rotation.z = Math.PI / 2;
     group.add(pipe);
 
+    await this.upgradeGroupWithGlb(
+      group,
+      HEAT_PUMP_MODEL,
+      new THREE.Vector3(w * 1.04, h * 1.02, d * 1.04),
+      { grounded:true, rotateY:Math.PI }
+    );
+
     group.visible = false;
     this.modelRoot.add(group);
     this.experimentLayers.set("heatPump", group);
@@ -1142,7 +1227,7 @@ class HomeLabHouse3D {
 
     this.createSplitPVLayer();
     await this.createSingleSolarThermalLayer();
-    this.createHeatPumpLayer();
+    await this.createHeatPumpLayer();
   }
 
   renderExperimentLayers() {
@@ -1240,11 +1325,12 @@ class HomeLabHouse3D {
     });
   }
 
-  createVisualEquipment() {
+  async createVisualEquipment() {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
     const ac = new THREE.Group();
     ac.name = "LaCurentVisual_AC";
+    ac.userData.hlnEquipment = "ac";
     ac.position.copy(this.localPointFromNormalized([0.38, 0.34, 0.51]));
 
     const w = this.localLength(this.modelSize.x * 0.13);
@@ -1276,6 +1362,13 @@ class HomeLabHouse3D {
       slot.position.set(i * w * 0.15, -h * 0.18, d * 0.51);
       ac.add(slot);
     }
+
+    await this.upgradeGroupWithGlb(
+      ac,
+      AC_MODEL,
+      new THREE.Vector3(w * 1.02, h * 1.08, d * 1.02),
+      { grounded:false, rotateY:Math.PI }
+    );
 
     ac.visible = false;
     this.modelRoot.add(ac);
@@ -1660,6 +1753,111 @@ class HomeLabHouse3D {
     const config = this.semanticConfig?.parts?.[part];
     if (!config?.anchor) return;
     this.hotspotAnchors.set(part, this.normalizedToWorld(config.anchor));
+  }
+
+  equipmentRoot(key) {
+    if (key === "ac") return this.equipmentLayers.get("ac") || null;
+    return this.experimentLayers.get(key) || null;
+  }
+
+  equipmentKeyFromObject(object) {
+    let current = object;
+    while (current && current !== this.modelRoot) {
+      const key = current.userData?.hlnEquipment;
+      if (key) return key;
+      current = current.parent;
+    }
+    return null;
+  }
+
+  dispatchEquipmentSelection(key) {
+    if (!EQUIPMENT_LABELS[key]) return;
+    if (key === "heatPump" || key === "ac") this.focusEquipment(key);
+    window.dispatchEvent(new CustomEvent("hln:equipment-select", {
+      detail: { equipment:key, mode:this.mode },
+    }));
+  }
+
+  equipmentBadgeText(key) {
+    const state = this.visualState || {};
+    if (key === "pv") {
+      const value = Number(state.pvKwp || 0);
+      return value > 0 ? `PV · ${value.toLocaleString("ro-RO", {maximumFractionDigits:1})} kWp` : "Fotovoltaice";
+    }
+    if (key === "solarThermal") {
+      const value = Number(state.solarThermalArea || 0);
+      return value > 0 ? `Solar termic · ${value.toLocaleString("ro-RO", {maximumFractionDigits:1})} m²` : "Solar termic";
+    }
+    return EQUIPMENT_LABELS[key] || key;
+  }
+
+  createEquipmentBadges() {
+    if (HOUSE_VARIANT !== "final" || this.authorMode) return;
+    this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
+    if (!this.hotspotRoot) return;
+
+    ["pv", "solarThermal", "heatPump", "ac"].forEach((key) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "hln-3d-equipment-badge";
+      button.dataset.hlnEquipment = key;
+      button.hidden = true;
+      button.setAttribute("aria-label", `Editează ${EQUIPMENT_LABELS[key]}`);
+      button.innerHTML = `
+        <span class="hln-3d-equipment-dot" aria-hidden="true"></span>
+        <span data-hln-equipment-label>${this.equipmentBadgeText(key)}</span>
+      `;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.dispatchEquipmentSelection(key);
+      });
+      this.hotspotRoot.appendChild(button);
+      this.equipmentBadges.set(key, button);
+    });
+
+    this.updateEquipmentBadges();
+  }
+
+  updateEquipmentBadges() {
+    if (!this.camera || !this.equipmentBadges.size) return;
+    const width = Math.max(1, this.mount.clientWidth);
+    const height = Math.max(1, this.mount.clientHeight);
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+
+    this.equipmentBadges.forEach((button, key) => {
+      const root = this.equipmentRoot(key);
+      if (!root?.visible) {
+        button.hidden = true;
+        return;
+      }
+
+      root.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) {
+        button.hidden = true;
+        return;
+      }
+      const anchor = box.getCenter(new THREE.Vector3());
+      anchor.y = box.max.y;
+      const towardAnchor = anchor.clone().sub(this.camera.position);
+      const projected = anchor.clone().project(this.camera);
+      const isInFront = cameraDirection.dot(towardAnchor) > 0;
+      const x = (projected.x * 0.5 + 0.5) * width;
+      const y = (-projected.y * 0.5 + 0.5) * height;
+      const visible =
+        isInFront &&
+        projected.z > -1 && projected.z < 1 &&
+        x > -70 && x < width + 70 &&
+        y > -40 && y < height + 40;
+
+      button.hidden = !visible;
+      if (!visible) return;
+      button.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -118%)`;
+      const label = button.querySelector("[data-hln-equipment-label]");
+      if (label) label.textContent = this.equipmentBadgeText(key);
+    });
   }
 
   createSemanticHotspots() {
@@ -2408,10 +2606,22 @@ class HomeLabHouse3D {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
+    const equipmentRoots = ["pv", "solarThermal", "heatPump", "ac"]
+      .map((key) => this.equipmentRoot(key))
+      .filter((root) => root?.visible);
+    const equipmentHit = equipmentRoots.length
+      ? this.raycaster.intersectObjects(equipmentRoots, true)[0]
+      : null;
+    const equipmentKey = equipmentHit ? this.equipmentKeyFromObject(equipmentHit.object) : null;
     const semanticHit = this.semanticMeshes.length ? this.raycaster.intersectObjects(this.semanticMeshes, true)[0] : null;
-    const hit = semanticHit || this.raycaster.intersectObjects(this.hitZones, false)[0];
+    const hit = equipmentHit || semanticHit || this.raycaster.intersectObjects(this.hitZones, false)[0];
     this.renderer.domElement.style.cursor = hit ? "pointer" : "grab";
     if (hoverOnly || !hit) return;
+
+    if (equipmentKey) {
+      this.dispatchEquipmentSelection(equipmentKey);
+      return;
+    }
 
     const part = hit.object.userData.part;
     if (this.authorMode) this.authorPart = part;
@@ -2539,6 +2749,7 @@ class HomeLabHouse3D {
         this.controls.update(dt);
       }
       this.updateHotspotPositions();
+      this.updateEquipmentBadges();
       this.updateChimneySmoke(now);
       this.renderer.render(this.scene, this.camera);
       this.lastRenderAt = now;

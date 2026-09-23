@@ -212,7 +212,7 @@ def test_energy_calculator_alias_goes_straight_to_home_lab() -> None:
     assert home_lab.status_code == 200
     assert 'data-home-lab-next' in home_lab.text
     assert 'data-hln-screen="home"' in home_lab.text
-    assert "Construiește punctul de plecare." in home_lab.text
+    assert "Casa este interfața." in home_lab.text
 
 
 def test_legacy_energy_calculator_remains_available_during_home_lab_next_cutover() -> None:
@@ -392,7 +392,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-screen="intervention"' in response.text
     assert 'data-hln-screen="scenario"' in response.text
     assert "Salvează Casa mea și vezi îmbunătățirile" in response.text
-    assert "Construiește punctul de plecare." in response.text
+    assert "Casa este interfața." in response.text
     assert "Ce vrei să schimbi?" in response.text
     assert "Păstrează intervenția" in response.text
     assert "Vezi îmbunătățirile ca un singur proiect." in response.text
@@ -401,12 +401,12 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next22" in response.text
-    assert "/static/home-lab-next.js?v=next46" in response.text
-    assert "/static/home-lab-3d.css?v=3d26" in response.text
+    assert "/static/home-lab-next.css?v=next24" in response.text
+    assert "/static/home-lab-next.js?v=next48" in response.text
+    assert "/static/home-lab-3d.css?v=3d28" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
-    assert "/static/home-lab-3d.js?v=3d46" in response.text
+    assert "/static/home-lab-3d.js?v=3d48" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -516,7 +516,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnLiveSolarThermalKw" type="range" min="0" max="30" step="0.5"' in response.text
     assert 'id="hlnQuickEditOverlay"' in response.text
     assert 'id="hlnQuickEditRange" type="range"' in response.text
-    assert "Glisează. La eliberare, valoarea se salvează și editorul dispare." in response.text
+    assert "Glisează și urmărește casa și rezultatul actualizându-se. Apasă Gata când ai terminat." in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
@@ -1347,8 +1347,14 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function applyQuickMeasureValue" in response.text
     assert "function commitQuickMeasureEditor" in response.text
     assert "function cancelQuickMeasureEditor" in response.text
-    assert 'quickEditRange.addEventListener("pointerup"' in response.text
-    assert 'quickEditRange.addEventListener("touchend"' in response.text
+    assert 'let quickEditTarget = "scenario"' in response.text
+    assert 'window.addEventListener("hln:equipment-select"' in response.text
+    assert 'screen === "home" ? "home" : "scenario"' in response.text
+    assert 'scheduleCalculate("home", 280)' in response.text
+    assert 'quickEditRange.addEventListener("pointerup"' not in response.text
+    assert 'quickEditRange.addEventListener("touchend"' not in response.text
+    assert 'data-hln-quick-edit-commit' in client.get("/home-lab-next").text
+    assert '$("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);' in response.text
     assert "scenarioOverrides" in response.text
     assert "pvEnabled" in response.text
     assert "pvKwp" in response.text
@@ -1498,6 +1504,16 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "glazingGlassColors" in response.text
     assert "LaCurentHeatPump_fanBlade" in response.text
     assert "THREE.TorusGeometry" in response.text
+    assert 'url: "https://polyfork.dev/cdn/hvac-condenser-unit-a41b8d.glb"' in response.text
+    assert 'url: "https://polyfork.dev/cdn/air-con-unit-9fadc2.glb"' in response.text
+    assert "async upgradeGroupWithGlb" in response.text
+    assert 'group.userData.hlnEquipment = "heatPump"' in response.text
+    assert 'ac.userData.hlnEquipment = "ac"' in response.text
+    assert 'layer.userData.hlnEquipment = "pv"' in response.text
+    assert 'layer.userData.hlnEquipment = "solarThermal"' in response.text
+    assert '"hln:equipment-select"' in response.text
+    assert "createEquipmentBadges()" in response.text
+    assert "updateEquipmentBadges()" in response.text
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
@@ -1560,6 +1576,20 @@ def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
     assert ".hln-3d-compass-arrow" in source
     assert 'data-hln-3d-stage="home"' in source
     assert "cursor: crosshair" in source
+
+
+def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    source = css.text
+    assert ".hln-hotspot span,.hln-zone span{display:inline}" in source
+    assert "backdrop-filter:blur(11px)" in source
+    assert "height:min(82dvh,760px)" in source
+
+    css3d = client.get("/static/home-lab-3d.css")
+    assert css3d.status_code == 200
+    assert ".hln-3d-equipment-badge" in css3d.text
+    assert ".hln-3d-equipment-dot" in css3d.text
 
 
 def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> None:

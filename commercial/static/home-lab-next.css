@@ -144,6 +144,7 @@ svg{display:block}
 .hln-hotspot-house{top:36%;right:7%}
 .hln-hotspot-envelope{bottom:23%;left:8%}
 .hln-hotspot-systems{bottom:16%;right:8%}
+.hln-hotspot-renewables{top:11%;right:27%}
 .hln-zone-roof{top:16%;right:12%}
 .hln-zone-wall{top:48%;left:4%}
 .hln-zone-window{top:49%;right:3%}
@@ -337,7 +338,9 @@ svg{display:block}
 .hln-scenario-actions{justify-content:flex-end;margin-top:18px}
 .hln-quick-edit-overlay{
   position:fixed;z-index:95;inset:0;display:grid;place-items:end center;padding:24px 20px 118px;
-  background:rgba(20,28,24,.08);backdrop-filter:blur(2px)
+  background:rgba(20,28,24,.14);
+  -webkit-backdrop-filter:blur(6px) saturate(.92);
+  backdrop-filter:blur(6px) saturate(.92)
 }
 .hln-quick-edit-overlay[hidden]{display:none}
 .hln-quick-edit-card{
@@ -359,8 +362,14 @@ svg{display:block}
 .hln-quick-edit-value small{color:var(--hln-muted);font-size:9px;text-align:right}
 .hln-quick-edit-range input[type="range"]{width:100%;margin:2px 0 0;accent-color:var(--hln-reno);cursor:ew-resize}
 .hln-quick-edit-range>div{display:flex;justify-content:space-between;margin-top:3px;color:#929a95;font-size:8px}
+.hln-quick-edit-actions{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px
+}
 .hln-quick-edit-details{
-  margin-top:12px;padding:0;border:0;background:transparent;color:var(--hln-reno);font-size:9px;font-weight:820
+  margin:0;padding:9px 0;border:0;background:transparent;color:var(--hln-reno);font-size:9px;font-weight:820;text-align:left
+}
+.hln-quick-edit-done{
+  min-width:92px;min-height:40px;padding:8px 15px
 }
 .hln-quick-edit-hint{display:block;margin-top:7px;color:#8b938e;font-size:8px;line-height:1.4}
 
@@ -506,8 +515,39 @@ svg{display:block}
   .hln-scenario-body{grid-template-columns:1fr}
 }
 @media(max-width:760px){
-  .hln-quick-edit-overlay{padding:14px 10px 142px}
-  .hln-quick-edit-card{padding:16px 14px 14px;border-radius:20px}
+  .hln-quick-edit-overlay{
+    padding:14px 10px 142px;
+    background:rgba(20,28,24,.20);
+    -webkit-backdrop-filter:blur(11px) saturate(.86);
+    backdrop-filter:blur(11px) saturate(.86)
+  }
+  .hln-quick-edit-card{
+    padding:16px 14px 14px;
+    border-radius:22px;
+    background:rgba(250,250,247,.84);
+    -webkit-backdrop-filter:blur(22px) saturate(1.08);
+    backdrop-filter:blur(22px) saturate(1.08)
+  }
+  .hln-quick-edit-actions{align-items:stretch}
+  .hln-quick-edit-details{flex:1}
+  .hln-quick-edit-done{flex:0 0 96px}
+
+  .hln-editor{
+    align-items:flex-end;
+    justify-content:center;
+    padding-top:18vh;
+    background:rgba(20,28,24,.22);
+    -webkit-backdrop-filter:blur(10px) saturate(.88);
+    backdrop-filter:blur(10px) saturate(.88)
+  }
+  .hln-editor-card{
+    width:100%;
+    height:min(82dvh,760px);
+    border-left:0;
+    border-top:1px solid rgba(255,255,255,.72);
+    border-radius:24px 24px 0 0;
+    box-shadow:0 -28px 70px rgba(22,29,26,.22)
+  }
   .hln-quick-edit-value strong{font-size:30px}
   .hln-app{padding-bottom:calc(148px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px))}
   .hln-topbar{grid-template-columns:auto 1fr;gap:10px;min-height:64px;padding:9px 11px}
@@ -569,12 +609,18 @@ svg{display:block}
   .hln-map-locality-results{grid-template-columns:1fr}
   .hln-screen-heading h1{font-size:26px}
   .hln-house-visual{min-height:260px}
-  .hln-hotspot span,.hln-zone span{display:none}
-  .hln-hotspot,.hln-zone{width:34px;height:34px;padding:0;justify-content:center}
+  .hln-hotspot span,.hln-zone span{display:inline}
+  .hln-hotspot,.hln-zone{
+    width:auto;height:auto;min-width:34px;min-height:34px;
+    max-width:104px;padding:6px 8px;justify-content:center;
+    font-size:7.5px;line-height:1.1;white-space:nowrap
+  }
+  .hln-hotspot svg,.hln-zone svg{flex:0 0 13px}
   .hln-hotspot-location{top:15%;left:5%}
   .hln-hotspot-house{top:34%;right:5%}
   .hln-hotspot-envelope{bottom:24%;left:5%}
   .hln-hotspot-systems{bottom:12%;right:7%}
+  .hln-hotspot-renewables{top:7%;right:19%}
   .hln-zone-roof{top:13%;right:10%}
   .hln-zone-wall{top:48%;left:2%}
   .hln-zone-window{top:47%;right:2%}

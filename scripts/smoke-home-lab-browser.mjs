@@ -43,6 +43,8 @@ try {
     const RaycasterCtor = scene.raycaster.constructor;
     const pv = scene.experimentLayers.get("pv");
     const solarThermal = scene.experimentLayers.get("solarThermal");
+    const heatPump = scene.experimentLayers.get("heatPump");
+    const ac = scene.equipmentLayers.get("ac");
     const smoke = scene.equipmentLayers.get("chimneySmoke");
     const pvBox = new Box3Ctor().setFromObject(pv);
     const solarThermalBox = new Box3Ctor().setFromObject(solarThermal);
@@ -124,6 +126,12 @@ try {
       solarThermalAssetLoaded:Boolean(solarThermal.userData?.assetLoaded),
       solarThermalAssetFallback:Boolean(solarThermal.userData?.assetFallback),
       solarThermalAssetUrl:String(solarThermal.userData?.assetUrl || ""),
+      heatPumpAssetLoaded:Boolean(heatPump?.userData?.assetLoaded),
+      heatPumpAssetFallback:Boolean(heatPump?.userData?.assetFallback),
+      heatPumpAssetUrl:String(heatPump?.userData?.assetUrl || ""),
+      acAssetLoaded:Boolean(ac?.userData?.assetLoaded),
+      acAssetFallback:Boolean(ac?.userData?.assetFallback),
+      acAssetUrl:String(ac?.userData?.assetUrl || ""),
       thermalSupport,
       roofNormalDot:pvNormal.dot(thermalNormal),
       thermalCenterX:thermalCenter.x,
@@ -163,6 +171,16 @@ try {
   if (roofVisualCalibration.thermalSupport.mountedRoofUuid !== roofVisualCalibration.pvSupport.mountedRoofUuid) {
     throw new Error("Solar thermal collector mounted on a roof-window/non-main-roof mesh: " + JSON.stringify(roofVisualCalibration));
   }
+  if (!roofVisualCalibration.heatPumpAssetLoaded ||
+      roofVisualCalibration.heatPumpAssetFallback ||
+      roofVisualCalibration.heatPumpAssetUrl !== "https://polyfork.dev/cdn/hvac-condenser-unit-a41b8d.glb") {
+    throw new Error("Professional heat-pump/HVAC GLB did not load: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (!roofVisualCalibration.acAssetLoaded ||
+      roofVisualCalibration.acAssetFallback ||
+      roofVisualCalibration.acAssetUrl !== "https://polyfork.dev/cdn/air-con-unit-9fadc2.glb") {
+    throw new Error("Professional AC GLB did not load: " + JSON.stringify(roofVisualCalibration));
+  }
   if (!roofVisualCalibration.smokeVisible) {
     throw new Error("Combustion plume is hidden for condensing gas");
   }
@@ -170,6 +188,35 @@ try {
   if (Math.abs(smokeX - 0.80) > 0.30 || Math.abs(smokeZ - 0.40) > 0.30 || smokeY < 4.85) {
     throw new Error("Smoke is not anchored to the measured taller chimney: " + JSON.stringify(roofVisualCalibration));
   }
+
+  await page.waitForFunction(() => {
+    const badge = document.querySelector('[data-hln-3d-stage="home"] [data-hln-equipment="pv"]');
+    return badge instanceof HTMLElement && !badge.hidden;
+  });
+  const pvBadge = page.locator('[data-hln-3d-stage="home"] [data-hln-equipment="pv"]');
+  const pvBadgeText = await pvBadge.innerText();
+  if (!/PV/i.test(pvBadgeText)) throw new Error("PV equipment badge is missing its visible label");
+  await pvBadge.evaluate(button => button.click());
+  await expectVisible("#hlnQuickEditOverlay");
+  const quickEditTarget = await page.locator("#hlnQuickEditOverlay").getAttribute("data-hln-quick-edit-target");
+  if (quickEditTarget !== "home") throw new Error("3D PV click did not open Casa mea quick edit");
+  const quickEditTitle = await page.locator("#hlnQuickEditTitle").innerText();
+  if (!/fotovoltaice/i.test(quickEditTitle)) throw new Error("3D PV click opened the wrong quick editor");
+  const quickRange = page.locator("#hlnQuickEditRange");
+  const beforeQuickValue = Number(await quickRange.inputValue());
+  await quickRange.evaluate((input) => {
+    const next = Math.min(Number(input.max || 50), Number(input.value || 0) + 0.5);
+    input.value = String(next);
+    input.dispatchEvent(new Event("input", {bubbles:true}));
+    input.dispatchEvent(new Event("change", {bubbles:true}));
+  });
+  const afterQuickValue = Number(await quickRange.inputValue());
+  if (!(afterQuickValue > beforeQuickValue)) throw new Error("PV quick editor did not accept the new power");
+  if (await page.locator("#hlnQuickEditOverlay").getAttribute("hidden") !== null) {
+    throw new Error("PV quick editor closed before the user pressed Gata");
+  }
+  await page.locator("[data-hln-quick-edit-commit]").click();
+  await page.waitForFunction(() => document.querySelector("#hlnQuickEditOverlay")?.hidden === true);
 
   const compass = page.locator('[data-hln-3d-stage="home"] [data-hln-3d-compass]');
   await compass.waitFor({state:"visible", timeout:15000});

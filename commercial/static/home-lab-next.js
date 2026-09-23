@@ -205,6 +205,7 @@
   let interventionOriginal = null;
   let quickEditType = null;
   let quickEditOriginal = null;
+  let quickEditTarget = "scenario";
   let screen = "home";
   let localities = [];
   let localityMap = new Map();
@@ -3323,27 +3324,32 @@
     south_east: "Sud-est",
   }[value] || value || "—");
 
+  function quickEditState() {
+    return quickEditTarget === "home" ? homeState : scenarioState;
+  }
+
   function quickEditConfig(type) {
+    const state = quickEditState();
     if (type === "pv") {
       return {
         title: "Panouri fotovoltaice",
         unit: "kWp",
         min: 0,
-        max: 30,
+        max: 50,
         step: 0.5,
-        value: scenarioState.pvEnabled ? Number(scenarioState.pvKwp) : 0,
-        meta: `${renewableOrientationLabel(scenarioState.pvOrientation)} · ${fmt(scenarioState.pvTilt)}°`,
+        value: state.pvEnabled ? Number(state.pvKwp) : 0,
+        meta: `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°`,
       };
     }
     if (type === "solar_thermal") {
       return {
-        title: "Panouri solare termice",
+        title: "Panou solar termic",
         unit: "kWth",
         min: 0,
         max: 30,
         step: 0.5,
-        value: scenarioState.solarThermalEnabled ? solarThermalKwFromArea(scenarioState.solarThermalArea) : 0,
-        meta: `${renewableOrientationLabel(scenarioState.solarThermalOrientation)} · ${fmt(scenarioState.solarThermalTilt)}°`,
+        value: state.solarThermalEnabled ? solarThermalKwFromArea(state.solarThermalArea) : 0,
+        meta: `${renewableOrientationLabel(state.solarThermalOrientation)} · ${fmt(state.solarThermalTilt)}°`,
       };
     }
     return null;
@@ -3365,36 +3371,52 @@
     range.setAttribute("aria-label", `${config.title} · ${config.unit}`);
   }
 
-  function openQuickMeasureEditor(type) {
+  function openQuickMeasureEditor(type, target = screen === "home" ? "home" : "scenario") {
+    quickEditTarget = target === "home" ? "home" : "scenario";
     const config = quickEditConfig(type);
     if (!config) return false;
     quickEditType = type;
-    quickEditOriginal = {...scenarioState};
+    quickEditOriginal = {...quickEditState()};
     renderQuickMeasureEditor();
     const overlay = $("#hlnQuickEditOverlay");
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
+    overlay.dataset.hlnQuickEditTarget = quickEditTarget;
     window.requestAnimationFrame(() => $("#hlnQuickEditRange")?.focus());
     return true;
   }
 
   function applyQuickMeasureValue(rawValue) {
     if (!quickEditType) return;
-    const value = clamp(Number(rawValue) || 0, 0, 30);
-    referenceMode = false;
-    optimizationMeta = null;
-    setOptimizationNote("");
+    const config = quickEditConfig(quickEditType);
+    const value = clamp(Number(rawValue) || 0, Number(config?.min || 0), Number(config?.max || 30));
+    const state = quickEditState();
+
+    if (quickEditTarget === "scenario") {
+      referenceMode = false;
+      optimizationMeta = null;
+      setOptimizationNote("");
+    }
 
     if (quickEditType === "pv") {
-      scenarioState.pvKwp = value;
-      scenarioState.pvEnabled = value > 0;
+      state.pvKwp = value;
+      state.pvEnabled = value > 0;
     } else if (quickEditType === "solar_thermal") {
-      scenarioState.solarThermalArea = solarThermalAreaFromKw(value);
-      scenarioState.solarThermalEnabled = value > 0;
+      state.solarThermalArea = solarThermalAreaFromKw(value);
+      state.solarThermalEnabled = value > 0;
+    }
+
+    renderQuickMeasureEditor();
+    if (quickEditTarget === "home") {
+      syncHomeEditorControls();
+      renderHome();
+      renderDock();
+      emitVisualState(quickEditType === "solar_thermal" ? "solarThermal" : quickEditType);
+      scheduleCalculate("home", 280);
+      return;
     }
 
     syncMeasuresFromScenario();
-    renderQuickMeasureEditor();
     renderScenario();
     renderDock();
     emitVisualState(quickEditType === "solar_thermal" ? "solarThermal" : quickEditType);
@@ -3405,30 +3427,51 @@
     const overlay = $("#hlnQuickEditOverlay");
     overlay.hidden = true;
     overlay.setAttribute("aria-hidden", "true");
+    delete overlay.dataset.hlnQuickEditTarget;
   }
 
   function commitQuickMeasureEditor() {
     if (!quickEditType) return;
-    scheduleCalculate("scenario", 20);
-    syncMeasuresFromScenario();
+    const target = quickEditTarget;
+    if (target === "home") {
+      scheduleCalculate("home", 20);
+      syncHomeEditorControls();
+      renderHome();
+    } else {
+      scheduleCalculate("scenario", 20);
+      syncMeasuresFromScenario();
+      renderScenario();
+    }
     quickEditType = null;
     quickEditOriginal = null;
+    quickEditTarget = "scenario";
     hideQuickMeasureEditor();
     persist();
-    renderScenario();
     renderDock();
   }
 
   function cancelQuickMeasureEditor() {
     if (!quickEditType) return;
-    if (quickEditOriginal) scenarioState = {...quickEditOriginal};
     const focus = quickEditType === "solar_thermal" ? "solarThermal" : quickEditType;
+    const target = quickEditTarget;
+    if (quickEditOriginal) {
+      if (target === "home") homeState = {...quickEditOriginal};
+      else scenarioState = {...quickEditOriginal};
+    }
     quickEditType = null;
     quickEditOriginal = null;
+    quickEditTarget = "scenario";
     hideQuickMeasureEditor();
-    syncMeasuresFromScenario();
-    scheduleCalculate("scenario", 20);
-    renderScenario();
+
+    if (target === "home") {
+      syncHomeEditorControls();
+      scheduleCalculate("home", 20);
+      renderHome();
+    } else {
+      syncMeasuresFromScenario();
+      scheduleCalculate("scenario", 20);
+      renderScenario();
+    }
     renderDock();
     emitVisualState(focus);
   }
@@ -3436,9 +3479,20 @@
   function openQuickMeasureDetails() {
     if (!quickEditType) return;
     const type = quickEditType;
+    const target = quickEditTarget;
     quickEditType = null;
     quickEditOriginal = null;
+    quickEditTarget = "scenario";
     hideQuickMeasureEditor();
+    if (target === "home") {
+      openEditor("renewables");
+      window.setTimeout(() => {
+        const field = type === "pv" ? $("#hlnHomePvKwp") : $("#hlnHomeSolarThermalArea");
+        field?.scrollIntoView({behavior:"smooth", block:"center"});
+        field?.focus({preventScroll:true});
+      }, 100);
+      return;
+    }
     openMeasure(type);
   }
 
@@ -4884,26 +4938,44 @@
     if (remove) resetMeasure(remove.dataset.hlnMeasureRemove);
   });
 
+  window.addEventListener("hln:equipment-select", (event) => {
+    const equipment = String(event.detail?.equipment || "");
+    if (equipment === "pv" || equipment === "solarThermal") {
+      openQuickMeasureEditor(
+        equipment === "solarThermal" ? "solar_thermal" : "pv",
+        screen === "home" ? "home" : "scenario"
+      );
+      return;
+    }
+
+    if (equipment === "heatPump" || equipment === "ac") {
+      if (screen === "home") {
+        openEditor("systems");
+        window.setTimeout(() => {
+          const field = equipment === "heatPump" ? $("#hlnHomeHeating") : $("#hlnHomeCooling");
+          field?.scrollIntoView({behavior:"smooth", block:"center"});
+          field?.focus({preventScroll:true});
+        }, 100);
+        return;
+      }
+      openMeasure(equipment === "heatPump" ? "heating" : "ventilation");
+    }
+  });
+
   const quickEditRange = $("#hlnQuickEditRange");
   quickEditRange.addEventListener("input", event => {
     applyQuickMeasureValue(event.target.value);
   });
   quickEditRange.addEventListener("change", event => {
     applyQuickMeasureValue(event.target.value);
-    commitQuickMeasureEditor();
   });
-  quickEditRange.addEventListener("pointerup", () => {
-    if (quickEditType) commitQuickMeasureEditor();
-  });
-  quickEditRange.addEventListener("touchend", () => {
-    if (quickEditType) commitQuickMeasureEditor();
-  }, { passive: true });
 
   $("#hlnQuickEditOverlay").addEventListener("click", event => {
     if (event.target === $("#hlnQuickEditOverlay")) cancelQuickMeasureEditor();
   });
   root.querySelectorAll("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
+  $("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);
 
   $("#hlnDockCta").addEventListener("click", async () => {
     if (screen === "home") {
