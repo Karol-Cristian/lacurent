@@ -831,8 +831,6 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
         ventilation={
             "air_changes_per_hour": technical.get("air_changes_per_hour"),
             "heat_recovery_efficiency": technical.get("heat_recovery_efficiency") or 0,
-            "infiltration_air_changes_per_hour": parse_optional_float(form.get("infiltration_air_changes_per_hour")),
-            "ventilation_air_changes_per_hour": parse_optional_float(form.get("ventilation_air_changes_per_hour")),
         },
         heating=heating,
         cooling={
