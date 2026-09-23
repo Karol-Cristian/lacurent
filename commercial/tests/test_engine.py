@@ -15,6 +15,7 @@ from commercial.app.engine import (
     heating_final_energy,
     heating_system_performance,
     primary_energy,
+    slab_on_ground_effective_u,
     transmission_heat_transfer,
     transmission_heat_transfer_components,
     ventilation_heat_transfer,
@@ -108,6 +109,19 @@ def test_transmission_separates_hd_hg_hu_and_ha() -> None:
     assert bridges[0].component.value == "Hd"
 
 
+def test_iso13370_slab_on_ground_u_uses_floor_geometry() -> None:
+    effective_u = slab_on_ground_effective_u(
+        construction_u_value_w_m2k=0.36,
+        area_m2=80,
+        exposed_perimeter_m=36,
+        wall_thickness_m=0.30,
+        ground_conductivity_w_mk=2.0,
+    )
+
+    assert effective_u == pytest.approx(0.253186, abs=1e-6)
+    assert effective_u < 0.36
+
+
 def test_ground_monthly_transfer_uses_annual_exterior_temperature() -> None:
     building = BuildingInput(
         project_name="Ground boundary",
@@ -147,6 +161,24 @@ def test_ground_monthly_transfer_uses_annual_exterior_temperature() -> None:
     assert_close(january.ground_transmission_kwh, expected_ground, tolerance=1e-3)
     assert_close(january.transmission_excluding_ground_kwh, 0.0)
     assert_close(january.ventilation_heat_transfer_kwh, 0.0)
+
+
+def test_reference_building_recomputes_geometry_dependent_ground_u() -> None:
+    actual = demo_building()
+    reference = build_reference_input(actual)
+    actual_ground = next(item for item in actual.envelope if item.boundary_type.value == "ground")
+    reference_ground = next(item for item in reference.envelope if item.boundary_type.value == "ground")
+
+    assert reference_ground.ground_contact is not None
+    assert reference_ground.ground_contact == actual_ground.ground_contact
+    actual_components, actual_rows, _ = transmission_heat_transfer_components(actual)
+    reference_components, reference_rows, _ = transmission_heat_transfer_components(reference)
+    actual_floor = next(item for item in actual_rows if item.boundary_type and item.boundary_type.value == "ground")
+    reference_floor = next(item for item in reference_rows if item.boundary_type and item.boundary_type.value == "ground")
+
+    assert actual_components.hg_w_k > 0
+    assert reference_components.hg_w_k > 0
+    assert actual_floor.boundary_correction_factor != reference_floor.boundary_correction_factor
 
 
 def test_adjacent_heated_space_has_zero_transmission() -> None:
