@@ -32,6 +32,12 @@ class TransmissionComponent(str, Enum):
     Ha = "Ha"
 
 
+class GroundContactInput(BaseModel):
+    exposed_perimeter_m: float = Field(gt=0)
+    wall_thickness_m: float = Field(default=0.30, ge=0)
+    ground_conductivity_w_mk: float = Field(default=2.0, gt=0)
+
+
 class HeatingSystemType(str, Enum):
     gas_boiler = "gas_boiler"
     condensing_gas_boiler = "condensing_gas_boiler"
@@ -156,22 +162,31 @@ class EnvelopeComponent(BaseModel):
     u_value_w_m2k: float = Field(gt=0)
     boundary_type: EnvelopeBoundaryType = EnvelopeBoundaryType.outside_air
     boundary_correction_factor: float | None = Field(default=None, ge=0, le=1)
+    ground_contact: GroundContactInput | None = None
 
     @root_validator(skip_on_failure=True)
     def validate_boundary_correction(cls, values: dict) -> dict:
         boundary = values.get("boundary_type")
         factor = values.get("boundary_correction_factor")
+        ground_contact = values.get("ground_contact")
         if boundary == EnvelopeBoundaryType.outside_air:
-            if factor not in (None, 1, 1.0):
-                raise ValueError("Direct exterior elements must use boundary factor 1.")
+            if factor not in (None, 1, 1.0) or ground_contact is not None:
+                raise ValueError("Direct exterior elements must use boundary factor 1 and no ground model.")
             values["boundary_correction_factor"] = 1.0
         elif boundary == EnvelopeBoundaryType.adjacent_heated_space:
-            if factor not in (None, 0, 0.0):
-                raise ValueError("Adjacent heated spaces must use boundary factor 0.")
+            if factor not in (None, 0, 0.0) or ground_contact is not None:
+                raise ValueError("Adjacent heated spaces must use boundary factor 0 and no ground model.")
             values["boundary_correction_factor"] = 0.0
+        elif boundary == EnvelopeBoundaryType.ground:
+            if factor is not None and ground_contact is not None:
+                raise ValueError("Ground boundary must use either an explicit factor or a ground-contact model, not both.")
+            if factor is None and ground_contact is None:
+                raise ValueError("Ground boundary requires an explicit factor or ground-contact geometry.")
+        elif ground_contact is not None:
+            raise ValueError("Ground-contact geometry is only valid for ground boundaries.")
         elif factor is None:
             raise ValueError(
-                "Ground and unheated/adjacent boundaries require an explicit boundary correction factor."
+                "Unheated/adjacent boundaries require an explicit boundary correction factor."
             )
         return values
 
