@@ -22,6 +22,49 @@ try {
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
 
+  await page.waitForFunction(
+    () => Array.isArray(window.__homeLab3D) && window.__homeLab3D[0]?.modelRoot,
+    null,
+    {timeout:30000}
+  );
+  const sceneDiagnostic = await page.evaluate(() => {
+    const scene = window.__homeLab3D?.[0];
+    const THREE_NS = window.THREE;
+    const boxFor = (obj) => {
+      const box = new THREE_NS.Box3().setFromObject(obj);
+      const size = new THREE_NS.Vector3(); box.getSize(size);
+      const center = new THREE_NS.Vector3(); box.getCenter(center);
+      return {min:box.min.toArray(), max:box.max.toArray(), size:size.toArray(), center:center.toArray()};
+    };
+    const meshes = (scene?.inspectableMeshes || []).map((mesh, index) => {
+      const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(m => ({
+        name:m?.name || "",
+        color:m?.color?.getHexString?.() || "",
+      }));
+      return {index,name:mesh.name || "",materials,box:boxFor(mesh),visible:mesh.visible};
+    });
+    const pv = scene?.experimentLayers?.get("pv");
+    const smoke = scene?.equipmentLayers?.get("chimneySmoke");
+    return {
+      modelSize:scene?.modelSize?.toArray?.(),
+      modelCenter:scene?.modelCenter?.toArray?.(),
+      visualState:scene?.visualState || null,
+      pv:{
+        visible:pv?.visible,
+        groupBox:pv ? boxFor(pv) : null,
+        children:pv ? pv.children.map((child,index)=>({index,name:child.name,visible:child.visible,position:child.position.toArray(),box:boxFor(child)})) : [],
+        roofMount:pv?.userData?.roofMount || null,
+      },
+      smoke:{
+        visible:smoke?.visible,
+        position:smoke?.position?.toArray?.(),
+        box:smoke ? boxFor(smoke) : null,
+      },
+      meshes,
+    };
+  });
+  console.log("LACURENT_HOUSE_GLTF_DIAGNOSTIC="+JSON.stringify(sceneDiagnostic));
+
   const compass = page.locator('[data-hln-3d-stage="home"] [data-hln-3d-compass]');
   await compass.waitFor({state:"visible", timeout:15000});
   const compassBox = await compass.boundingBox();
