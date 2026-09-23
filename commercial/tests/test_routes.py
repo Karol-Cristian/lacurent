@@ -1474,6 +1474,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
+# Diagnostic PR trigger: runtime PV coordinates are logged by the browser smoke script.
 def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimney_smoke() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
