@@ -312,6 +312,15 @@ svg{display:block}
 .hln-home-note p{margin:2px 0 0;font-size:9px;line-height:1.5}
 .hln-impact-panel strong.is-good{color:#b9e2c9}
 .hln-impact-panel strong.is-bad{color:#f0b4ad}
+.hln-scenario-investment-summary{display:grid;gap:10px;margin:0 0 10px;padding:13px 14px;border:1px solid #c8d9ce;border-radius:14px;background:#f1f7f3}
+.hln-scenario-investment-summary>div:first-child{display:grid;gap:3px}
+.hln-scenario-investment-summary>div:first-child>span{color:#4d7963;font-size:8px;font-weight:900;letter-spacing:.12em}
+.hln-scenario-investment-summary>div:first-child>strong{font-size:13px;color:#244b3a}
+.hln-scenario-investment-summary>div:first-child>small{color:#62746a;font-size:9px;line-height:1.45}
+.hln-scenario-investment-lines{display:grid;gap:5px}
+.hln-scenario-investment-lines p{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin:0;padding-top:6px;border-top:1px solid rgba(49,93,73,.10);font-size:8px}
+.hln-scenario-investment-lines b{font-weight:800}
+.hln-scenario-investment-lines span{color:#69776f;text-align:right}
 .hln-scenario-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .hln-scenario-metrics article{
   display:grid;grid-template-columns:38px minmax(0,1fr);gap:9px;align-items:center;min-height:84px;padding:13px;

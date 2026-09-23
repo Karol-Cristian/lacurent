@@ -96,6 +96,9 @@ class HomeLabHouse3D {
     this.autoRotateAllowed = false;
     this.destroyed = false;
     this.resizeObserver = null;
+    this.viewportObserver = null;
+    this.isViewportVisible = true;
+    this.lastRenderAt = 0;
     this.dragged = false;
     this.pointerDown = null;
     this.isMobile = window.matchMedia?.("(max-width: 760px)").matches ?? false;
@@ -1934,6 +1937,14 @@ class HomeLabHouse3D {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.mount);
 
+    if ("IntersectionObserver" in window) {
+      this.viewportObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        this.isViewportVisible = Boolean(entry?.isIntersecting);
+      }, {root:null, rootMargin:"180px 0px", threshold:0});
+      this.viewportObserver.observe(this.mount);
+    }
+
     this.controls.addEventListener("start", () => {
       this.controls.autoRotate = false;
       this.autoRotateAllowed = false;
@@ -2116,16 +2127,22 @@ class HomeLabHouse3D {
   animate() {
     if (this.destroyed) return;
     const app = this.mount.closest("[data-home-lab-next]");
-    const visible = document.visibilityState === "visible" && this.mount.offsetParent !== null;
+    const screenVisible = this.mount.offsetParent !== null;
+    const visible = document.visibilityState === "visible" && screenVisible && this.isViewportVisible;
     const optimizerBusy = Boolean(app?.classList.contains("is-optimizer-busy"));
-    if (visible && !optimizerBusy) {
-      const dt = Math.min(0.033, this.clock.getDelta());
+    const now = performance.now();
+    const minimumFrameIntervalMs = this.mode === "report" ? 40 : 30;
+    const frameDue = now - this.lastRenderAt >= minimumFrameIntervalMs;
+
+    if (visible && !optimizerBusy && frameDue) {
+      const dt = Math.min(0.04, this.clock.getDelta());
       if (this.controls) {
         this.controls.autoRotate = false;
         this.controls.update(dt);
       }
       this.updateHotspotPositions();
       this.renderer.render(this.scene, this.camera);
+      this.lastRenderAt = now;
     } else {
       this.clock.getDelta();
     }
