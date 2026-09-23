@@ -15,6 +15,23 @@ class EnvelopeType(str, Enum):
     exterior_door = "exterior_door"
 
 
+class EnvelopeBoundaryType(str, Enum):
+    outside_air = "outside_air"
+    ground = "ground"
+    unheated_space = "unheated_space"
+    unheated_attic = "unheated_attic"
+    unheated_basement = "unheated_basement"
+    adjacent_heated_space = "adjacent_heated_space"
+    adjacent_unheated_space = "adjacent_unheated_space"
+
+
+class TransmissionComponent(str, Enum):
+    Hd = "Hd"
+    Hg = "Hg"
+    Hu = "Hu"
+    Ha = "Ha"
+
+
 class HeatingSystemType(str, Enum):
     gas_boiler = "gas_boiler"
     condensing_gas_boiler = "condensing_gas_boiler"
@@ -137,12 +154,33 @@ class EnvelopeComponent(BaseModel):
     type: EnvelopeType
     area_m2: float = Field(gt=0)
     u_value_w_m2k: float = Field(gt=0)
+    boundary_type: EnvelopeBoundaryType = EnvelopeBoundaryType.outside_air
+    boundary_correction_factor: float | None = Field(default=None, ge=0, le=1)
+
+    @root_validator(skip_on_failure=True)
+    def validate_boundary_correction(cls, values: dict) -> dict:
+        boundary = values.get("boundary_type")
+        factor = values.get("boundary_correction_factor")
+        if boundary == EnvelopeBoundaryType.outside_air:
+            if factor not in (None, 1, 1.0):
+                raise ValueError("Direct exterior elements must use boundary factor 1.")
+            values["boundary_correction_factor"] = 1.0
+        elif boundary == EnvelopeBoundaryType.adjacent_heated_space:
+            if factor not in (None, 0, 0.0):
+                raise ValueError("Adjacent heated spaces must use boundary factor 0.")
+            values["boundary_correction_factor"] = 0.0
+        elif factor is None:
+            raise ValueError(
+                "Ground and unheated/adjacent boundaries require an explicit boundary correction factor."
+            )
+        return values
 
 
 class ThermalBridge(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     length_m: float = Field(gt=0)
     psi_w_mk: float = Field(ge=0)
+    component: TransmissionComponent = TransmissionComponent.Hd
 
 
 class VentilationInput(BaseModel):
@@ -403,6 +441,14 @@ class Co2Result(BaseModel):
     specific_kg_m2: float
 
 
+class TransmissionComponentsResult(BaseModel):
+    hd_w_k: float = 0
+    hg_w_k: float = 0
+    hu_w_k: float = 0
+    ha_w_k: float = 0
+    htr_w_k: float = 0
+
+
 class ComparisonResult(BaseModel):
     actual_specific_primary_kwh_m2: float
     reference_specific_primary_kwh_m2: float
@@ -474,6 +520,7 @@ class CalculationResult(BaseModel):
     input: BuildingInput
     climate: dict
     h_tr_w_k: float
+    transmission_components: TransmissionComponentsResult
     h_ve_w_k: float
     heat_loss_w_k: float
     envelope_geometry: EnvelopeGeometryResult
