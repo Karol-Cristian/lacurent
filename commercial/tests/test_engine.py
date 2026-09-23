@@ -122,6 +122,91 @@ def test_iso13370_slab_on_ground_u_uses_floor_geometry() -> None:
     assert effective_u < 0.36
 
 
+def test_iso13370_ground_is_not_treated_like_outside_air() -> None:
+    ground = simple_building(
+        envelope=[
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.36,
+                "boundary_type": "ground",
+                "ground_contact": {
+                    "exposed_perimeter_m": 36,
+                    "wall_thickness_m": 0.30,
+                    "ground_conductivity_w_mk": 2.0,
+                },
+            }
+        ],
+        thermal_bridges=[],
+    )
+    outside = simple_building(
+        envelope=[
+            {
+                "name": "Exposed floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.36,
+                "boundary_type": "outside_air",
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    ground_components, ground_rows, _ = transmission_heat_transfer_components(ground)
+    outside_components, _, _ = transmission_heat_transfer_components(outside)
+    row = ground_rows[0]
+
+    assert ground_components.hg_w_k > 0
+    assert ground_components.hd_w_k == 0
+    assert outside_components.hd_w_k == pytest.approx(28.8)
+    assert ground_components.hg_w_k < outside_components.hd_w_k
+    assert row.calculation_method == "iso13370_slab_on_ground_steady_state"
+    assert row.effective_u_value_w_m2k == pytest.approx(
+        slab_on_ground_effective_u(0.36, 80, 36, 0.30, 2.0),
+        abs=1e-4,
+    )
+    assert row.effective_u_value_w_m2k < row.u_value_w_m2k
+
+
+def test_cold_attic_uses_hu_while_heated_attic_roof_uses_hd() -> None:
+    cold_attic = simple_building(
+        envelope=[
+            {
+                "name": "Ceiling to cold attic",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.5,
+                "boundary_type": "unheated_attic",
+                "boundary_correction_factor": 0.75,
+            }
+        ],
+        thermal_bridges=[],
+    )
+    heated_attic_roof = simple_building(
+        envelope=[
+            {
+                "name": "Roof over heated attic",
+                "type": "roof",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.5,
+                "boundary_type": "outside_air",
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    cold_components, cold_rows, _ = transmission_heat_transfer_components(cold_attic)
+    heated_components, heated_rows, _ = transmission_heat_transfer_components(heated_attic_roof)
+
+    assert cold_components.hu_w_k == pytest.approx(30.0)
+    assert cold_components.hd_w_k == 0
+    assert heated_components.hd_w_k == pytest.approx(40.0)
+    assert heated_components.hu_w_k == 0
+    assert cold_rows[0].calculation_method == "explicit_boundary_temperature_factor"
+    assert heated_rows[0].calculation_method == "direct_outside_air"
+
+
 def test_ground_monthly_transfer_uses_annual_exterior_temperature() -> None:
     building = BuildingInput(
         project_name="Ground boundary",
