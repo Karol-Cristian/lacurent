@@ -3288,6 +3288,25 @@
     $("#hlnReportSavingLabel").textContent = outcome.label;
     applyDeltaState($("#hlnReportSaving"), outcome);
 
+    const reportAnnualSaving = Number(homeResult.annual_cost_lei) - Number(scenarioResult.annual_cost_lei);
+    $("#hlnReportDecisionSaving").textContent = Number.isFinite(reportAnnualSaving)
+      ? `${reportAnnualSaving >= 0 ? "+" : "−"}${fmt(Math.abs(reportAnnualSaving))} lei/an`
+      : "—";
+    const financialScenario = optimizationMeta?.mode === "roi";
+    const reportCapex = financialScenario ? Number(optimizationMeta.capexLei) : NaN;
+    const reportPayback = financialScenario ? Number(optimizationMeta.paybackYears) : NaN;
+    $("#hlnReportDecisionInvestment").textContent = Number.isFinite(reportCapex)
+      ? `${fmt(reportCapex)} lei`
+      : "necalculată";
+    $("#hlnReportDecisionPayback").textContent = Number.isFinite(reportPayback)
+      ? `${fmt(reportPayback,1)} ani`
+      : "—";
+    const firstSelected = Array.isArray(optimizationMeta?.selected) ? optimizationMeta.selected[0] : null;
+    $("#hlnReportDecisionPriority").textContent = firstSelected?.label || (measures.length ? measureTitle(measures[0]) : "Scenariu manual");
+    $("#hlnReportDecisionNote").textContent = financialScenario
+      ? "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată. Nu include finanțare, mentenanță, înlocuiri, inflație sau actualizarea banilor în timp."
+      : "Pentru un scenariu configurat manual, Home Lab compară energia și costul anual; CAPEX-ul și amortizarea nu sunt inventate dacă nu au fost calculate de optimizarea financiară.";
+
     $("#hlnReportBars").innerHTML = [
       reportComparisonRow("Cost anual", homeResult.annual_cost_lei, scenarioResult.annual_cost_lei, "lei/an"),
       reportComparisonRow("Energie finală", homeResult.final_energy_kwh, scenarioResult.final_energy_kwh, "kWh/an"),
