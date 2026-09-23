@@ -157,6 +157,7 @@ def test_simulation_facts_index_is_public_and_indexable() -> None:
     assert "AI-ul explică" in response.text
     assert "Podul trebuie izolat întotdeauna primul? Nu." in response.text
     assert "3.7×" in response.text
+    assert 'href="/home-lab-next?source=facts"' in response.text
     assert "/static/simulation-facts.css?v=facts1" in response.text
 
     shortcut = client.get("/facts", follow_redirects=False)
@@ -395,13 +396,16 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next17" in response.text
-    assert "/static/home-lab-next.js?v=next27" in response.text
+    assert "/static/home-lab-next.css?v=next19" in response.text
+    assert "/static/home-lab-next.js?v=next37" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
+    assert "AMORTIZARE SIMPLĂ" in response.text
+    assert "Cea mai eficientă investiție dintre variantele testate" in response.text
+    assert "Randament maxim al investiției" not in response.text
     assert 'data-hln-screen="report"' in response.text
     assert 'data-hln-go="report"' in response.text
     assert 'id="hlnReportBars"' in response.text
@@ -412,6 +416,11 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnReportPvGeneration"' in response.text
     assert 'id="hlnReportHeatingSystem"' in response.text
     assert 'id="hlnReportAssumptions"' in response.text
+    assert 'id="hlnReportDecisionSaving"' in response.text
+    assert 'id="hlnReportDecisionInvestment"' in response.text
+    assert 'id="hlnReportDecisionPayback"' in response.text
+    assert 'id="hlnReportDecisionPriority"' in response.text
+    assert "Amortizarea este simplă" not in response.text
     assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
     assert 'id="hlnScenarioBenefitLabel"' in response.text
@@ -438,7 +447,29 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnDockScenarioCost"' in response.text
     assert 'id="hlnMapLocalityResults"' in response.text
     assert 'id="hlnBuildingType"' in response.text
+    assert 'id="hlnBuildingType" disabled' in response.text
+    assert "Apartament / clădire colectivă" not in response.text
+    assert 'id="hlnWallAreaOverride"' in response.text
+    assert 'id="hlnTopAreaOverride"' in response.text
+    assert "Pereții opaci nu includ ferestrele și ușile." in response.text
+    assert "Material izolație pereți" in response.text
+    assert "Material și grosime finală simulate" in response.text
+    assert "Material strat nou" not in response.text
+    assert "Stratul nou se adaugă peste izolația existentă" not in response.text
     assert 'id="hlnConstructionYear"' in response.text
+    assert "Estimativ" in response.text
+    assert "verifică ipotezele înainte de decizie" in response.text
+    assert 'id="hlnHomeTopBoundary"' in response.text
+    assert "Pod rece / neîncălzit — calculează planșeul" in response.text
+    assert "U=3,25 W/m²K" in response.text
+    assert "U=2,25 W/m²K" in response.text
+    assert "Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat" in response.text
+    assert "setează 0 cm" in response.text
+    assert 'id="hlnHomeTopStructure"' not in response.text
+    assert 'id="hlnHomeAirtightness"' not in response.text
+    assert 'id="hlnHomeAtticLeakage"' not in response.text
+    assert 'name="infiltration_air_changes_per_hour"' not in response.text
+    assert 'name="ventilation_air_changes_per_hour"' not in response.text
     assert 'id="hlnHomeSolarThermalArea"' in response.text
     assert 'id="hlnHomeHeatingEmitter"' in response.text
     assert response.text.count('data-hln-home-heating-chain') == 4
@@ -869,7 +900,7 @@ def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
     assert 'value="new_nzeb"' in response.text
     assert 'id="hlnRoiCostSource"' in response.text
     assert 'id="hlnRoiCostAssumptions"' in response.text
-    assert "Costuri de piață preluate automat din catalog" in response.text
+    assert "Compară CAPEX-ul estimat cu economia anuală" in response.text
     assert 'id="hlnRoiCostWall"' not in response.text
     assert 'id="hlnRoiCostDoor"' not in response.text
     assert 'id="hlnRoiCostHeating"' not in response.text
@@ -968,6 +999,17 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function benefitText" in response.text
     assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
+    assert '$("[data-hln-editor]").find' not in response.text
+    assert "renderConfidence" not in response.text
+    assert "function trackEvent" in response.text
+    assert '"hln:analytics"' in response.text
+    assert '"home_lab_baseline_saved"' in response.text
+    assert '"home_lab_intervention_opened"' in response.text
+    assert '"home_lab_intervention_kept"' in response.text
+    assert '"home_lab_screen_viewed"' in response.text
+    assert '"home_lab_report_printed"' in response.text
+    assert '"home_lab_viewed"' in response.text
+    assert "if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);" in response.text
     assert "function directChangeText" in response.text
     assert "function applyDeltaState" in response.text
     assert "function energyClassRank" in response.text
@@ -999,6 +1041,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "nzebEnvelopeActions" in response.text
     assert "nzebEnvelopeStatus" in response.text
     assert "function renderReport" in response.text
+    assert "hlnReportDecisionSaving" in response.text
+    assert "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată." in response.text
     assert 'const strategy = $("#hlnReportStrategy")' in response.text
     assert "Best ROI estimativ" not in response.text
     assert "function roiEconomics" in response.text
@@ -1121,7 +1165,12 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'scenarioState.wallInsulationMaterial = $("#hlnWallInsulationMaterial").value' in response.text
     assert 'scenarioState.roofInsulationMaterial = $("#hlnRoofInsulationMaterial").value' in response.text
     assert 'scenarioState.floorInsulationMaterial = $("#hlnFloorInsulationMaterial").value' in response.text
+    assert "TOP_BOUNDARY_BASE_U" in response.text
+    assert "cold_attic: 3.25" in response.text
+    assert "flat_roof: 2.25" in response.text
+    assert "function layeredInsulationU" not in response.text
     assert 'scenarioState.wallInsulationMaterial !== homeState.wallInsulationMaterial' in response.text
+    assert 'Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01' in response.text
     assert 'labels.insulation[state.wallInsulationMaterial]' in response.text
     assert "Vezi îmbunătățirile" in response.text
     assert "glazing" in response.text

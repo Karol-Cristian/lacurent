@@ -9,7 +9,22 @@
   const form = $("#hlnTechnicalForm");
   const calcUrl = root.dataset.calculateUrl;
   const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
+  const acquisitionSource = new URLSearchParams(window.location.search).get("source") || "";
   const SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70;
+
+  function trackEvent(name, detail = {}) {
+    const payload = {
+      event:name,
+      product:"home_lab",
+      source:acquisitionSource || undefined,
+      partner:root.dataset.partnerId || "official",
+      ...detail,
+    };
+    window.dispatchEvent(new CustomEvent("hln:analytics", {detail:payload}));
+    // Vendor-neutral integration point. We do not create or load a tracker here;
+    // an analytics provider may consume the same events later after consent.
+    if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);
+  }
 
   // Material values mirror the existing LaCurent energy material presets.
   // They are engineering estimates, not hidden normative defaults.
@@ -32,6 +47,19 @@
   });
   const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
 
+  // Characteristic U values for uninsulated horizontal elements from the
+  // Romanian 2007 energy-performance methodology, Table 14.1:
+  // - slab below unheated attic: 3.25 W/m²K
+  // - slab below terrace: 2.25 W/m²K
+  // Unknown/heated-attic keeps the previous Light Engine fallback until the
+  // sloped-roof assembly has its own reviewed source-backed model.
+  const TOP_BOUNDARY_BASE_U = Object.freeze({
+    unknown: 1.00,
+    cold_attic: 3.25,
+    heated_attic: 1.00,
+    flat_roof: 2.25,
+  });
+
   const labels = {
     structure: {
       unknown: "Structură necunoscută",
@@ -49,6 +77,12 @@
       mineral_wool: "Vată minerală",
       cellulose: "Celuloză",
       wood_fiber: "Fibră lemnoasă"
+    },
+    topBoundary: {
+      unknown: "Limită superioară necunoscută",
+      cold_attic: "Pod rece / neîncălzit",
+      heated_attic: "Mansardă încălzită",
+      flat_roof: "Terasă / acoperiș plat"
     },
     glazing: {
       reference_mc001: "Fereastră de referință MC001",
@@ -114,12 +148,15 @@
     area: 120,
     levels: 2,
     height: 2.7,
+    wallAreaOverride: null,
+    topAreaOverride: null,
     temperature: 21,
     occupants: 4,
     windows: 18,
     wallStructure: "unknown",
     wallStructureThickness: 30,
     wallInsulationMaterial: "generic_040",
+    topBoundary: "unknown",
     roofInsulationMaterial: "generic_040",
     floorInsulationMaterial: "generic_040",
     wallIns: 5,
@@ -328,6 +365,10 @@
     return 1 / (baseR + addedR);
   }
 
+  function topBaseU(state) {
+    return Number(TOP_BOUNDARY_BASE_U[state?.topBoundary]) || TOP_BOUNDARY_BASE_U.unknown;
+  }
+
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
   function heatingChainDefaults(type) {
@@ -520,7 +561,7 @@
         insulationLambda(homeState.wallInsulationMaterial)
       ),
       roofIns: insulationCmForU(
-        1.00,
+        topBaseU(homeState),
         u.roof,
         insulationLambda(homeState.roofInsulationMaterial)
       ),
@@ -1040,7 +1081,11 @@
     const length = width * aspect;
     const perimeter = 2 * (length + width);
     const grossWalls = perimeter * height * levels;
-    const wallArea = Math.max(1, grossWalls - windows - doors);
+    const derivedWallArea = Math.max(1, grossWalls - windows - doors);
+    const explicitWallArea = Number(state.wallAreaOverride);
+    const explicitTopArea = Number(state.topAreaOverride);
+    const wallArea = Number.isFinite(explicitWallArea) && explicitWallArea > 0 ? explicitWallArea : derivedWallArea;
+    const topArea = Number.isFinite(explicitTopArea) && explicitTopArea > 0 ? explicitTopArea : footprint;
 
     formSet("locality_id", climateTokenForState(state));
     formSet("locality", state.locality);
@@ -1054,7 +1099,7 @@
     formSet("heated_floor_area_m2", area);
     formSet("heated_volume_m3", (area * height).toFixed(3));
     formSet("wall_area_m2", wallArea.toFixed(3));
-    formSet("roof_area_m2", footprint.toFixed(3));
+    formSet("roof_area_m2", topArea.toFixed(3));
     formSet("floor_area_m2", footprint.toFixed(3));
     formSet("window_area_m2", windows);
     formSet("thermal_bridge_length_m", (perimeter * levels).toFixed(3));
@@ -1088,7 +1133,7 @@
     formSet(
       "roof_u_value",
       roofU ?? insulationU(
-        1.00,
+        topBaseU(state),
         state.roofIns,
         insulationLambda(state.roofInsulationMaterial)
       ).toFixed(4)
@@ -1458,7 +1503,7 @@
       insulationLambda(state.wallInsulationMaterial)
     );
     if (key === "roofU") return insulationU(
-      1.00,
+      topBaseU(state),
       state.roofIns,
       insulationLambda(state.roofInsulationMaterial)
     );
@@ -1519,7 +1564,7 @@
           nextState.roofIns = Math.max(
             Number(nextState.roofIns || 0),
             equivalentInsulationCm(
-              1.00,
+              topBaseU(nextState),
               item.limit,
               insulationLambda(nextState.roofInsulationMaterial)
             )
@@ -1632,12 +1677,16 @@
       const envelopeVariants = [
         {
           family:"roof",
-          baseU:1.00,
+          baseU:topBaseU(state),
           lambda:insulationLambda(state.roofInsulationMaterial),
           stateKey:"roofIns",
           targetU:Number(envelopeLimits.roof),
           step:10,
-          label:"Izolație suplimentară pod"
+          label:state.topBoundary === "flat_roof"
+            ? "Izolație suplimentară terasă"
+            : state.topBoundary === "heated_attic"
+              ? "Izolație suplimentară acoperiș"
+              : "Izolație suplimentară planșeu spre pod"
         },
         {
           family:"wall",
@@ -1831,8 +1880,12 @@
     const width = Math.sqrt(footprint / aspect);
     const length = width * aspect;
     const perimeter = 2 * (length + width);
-    const wallArea = Math.max(1, perimeter * height * levels - windows - doors);
-    return {area, levels, height, windows, doors, footprint, wallArea};
+    const derivedWallArea = Math.max(1, perimeter * height * levels - windows - doors);
+    const explicitWallArea = Number(state.wallAreaOverride);
+    const explicitTopArea = Number(state.topAreaOverride);
+    const wallArea = Number.isFinite(explicitWallArea) && explicitWallArea > 0 ? explicitWallArea : derivedWallArea;
+    const topArea = Number.isFinite(explicitTopArea) && explicitTopArea > 0 ? explicitTopArea : footprint;
+    return {area, levels, height, windows, doors, footprint, wallArea, topArea};
   }
 
   function positiveRoiCost(family) {
@@ -1852,7 +1905,7 @@
     }
     if (family === "roof") {
       const deltaCm = Math.max(Number(candidateState.roofIns || 0) - Number(baseState.roofIns || 0), 0);
-      return deltaCm > 0 ? geometry.footprint * deltaCm * rate : null;
+      return deltaCm > 0 ? geometry.topArea * deltaCm * rate : null;
     }
     if (family === "floor") {
       const deltaCm = Math.max(Number(candidateState.floorIns || 0) - Number(baseState.floorIns || 0), 0);
@@ -2365,7 +2418,7 @@
       const details = $("#hlnRoiCostDetails");
       if (details) details.open = true;
       setOptimizationNote(
-        "<strong>Catalogul de costuri nu are încă un candidat utilizabil.</strong><span>Best ROI va reveni automat când baza comercială este completă; utilizatorul nu trebuie să introducă prețuri.</span>",
+        "<strong>Catalogul de costuri nu are încă un candidat utilizabil.</strong><span>Optimizarea financiară va reveni automat când baza comercială este completă; utilizatorul nu trebuie să introducă prețuri.</span>",
         "warn"
       );
       return;
@@ -2374,9 +2427,9 @@
     const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
-    setStatus("Calculez Best ROI…");
+    setStatus("Calculez amortizarea simplă…");
     setOptimizationNote(
-      `<strong>Best ROI în lucru…</strong><span>Recalculez soluțiile tehnice cu CAPEX cunoscut și caut randamentul maxim sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
+      `<strong>Compar investițiile…</strong><span>Recalculez soluțiile cu CAPEX cunoscut și compar economia anuală raportată la investiție sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
     );
 
     try {
@@ -2401,7 +2454,7 @@
           "<strong>Nu există încă o soluție cu ROI calculabil.</strong><span>Catalogul furnizează CAPEX-ul, dar economia anuală nu este pozitivă pentru candidații disponibili.</span>",
           "warn"
         );
-        setStatus("Best ROI fără candidat financiar pozitiv");
+        setStatus("Fără candidat cu amortizare pozitivă");
         scenarioResultState = scenarioResult ? "stale" : "empty";
         renderAll();
         return;
@@ -2420,7 +2473,7 @@
             "<strong>Nicio intervenție nu are ROI pozitiv cu datele curente.</strong><span>Nu forțez o recomandare doar pentru a produce un rezultat.</span>",
             "warn"
           );
-          setStatus("Best ROI fără investiție cu randament pozitiv");
+          setStatus("Fără investiție cu economie anuală pozitivă");
           scenarioResultState = scenarioResult ? "stale" : "empty";
           renderAll();
           return;
@@ -2474,7 +2527,7 @@
             `<strong>Nu am găsit un pachet care să treacă guardrail-ul „${escapeHtml(projectModeLabel())}”.</strong><span>Am testat toate familiile cu CAPEX cunoscut în bugetul bounded. Nu declar conformitate dacă pragurile nu sunt atinse.</span><small>Evaluări motor: ${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS}.</small>`,
             "warn"
           );
-          setStatus("Best ROI: guardrail neîndeplinit");
+          setStatus("Optimizare financiară: guardrail neîndeplinit");
           scenarioResultState = scenarioResult ? "stale" : "empty";
           renderAll();
           return;
@@ -2521,7 +2574,7 @@
 
       applyOptimizerResult(state, current, overrides, {
         mode:"roi",
-        label:"Best ROI",
+        label:"Amortizare simplă",
         projectMode,
         projectModeLabel:projectModeLabel(),
         regulatoryTarget:target,
@@ -2545,17 +2598,17 @@
         : "n/a";
       const paybackText = economics.paybackYears == null ? "n/a" : `${fmt(economics.paybackYears,1)} ani`;
       setOptimizationNote(
-        `<strong>Best ROI: ${roiText} · recuperare ${paybackText}</strong>
+        `<strong>Amortizare simplă: ${paybackText} · randament anual simplu ${roiText}</strong>
          <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length} intervenții în pachet.</span>
          <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. CAPEX: ${escapeHtml(roiCostBasisMeta?.source === "d1" ? "catalog D1" : "catalog de rezervă")} · ${escapeHtml(roiCostBasisMeta?.catalog_version || "versiune n/a")}. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
         guardrailPass && economics.positive ? "good" : "warn"
       );
-      setStatus("Best ROI calculat", "ok");
+      setStatus("Amortizare simplă calculată", "ok");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
       scenarioResultState = scenarioResult ? "stale" : "empty";
-      setOptimizationNote(`<strong>Best ROI indisponibil.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
-      setStatus(error?.message || "Best ROI indisponibil.", "error");
+      setOptimizationNote(`<strong>Amortizarea simplă nu este disponibilă.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
+      setStatus(error?.message || "Amortizarea simplă nu este disponibilă.", "error");
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
@@ -2769,8 +2822,9 @@
     const structureLabel = labels.structure[state.wallStructure] || labels.structure.unknown;
     const wallInsulationLabel = labels.insulation[state.wallInsulationMaterial] || labels.insulation.generic_040;
     const roofInsulationLabel = labels.insulation[state.roofInsulationMaterial] || labels.insulation.generic_040;
+    const topBoundaryLabel = labels.topBoundary[state.topBoundary] || labels.topBoundary.unknown;
     $("#hlnEnvelopeSummary").textContent = `${structureLabel} · ${state.wallIns} cm ${wallInsulationLabel}`;
-    $("#hlnEnvelopeMeta").textContent = `pod ${state.roofIns} cm ${roofInsulationLabel} · ${labels.glazing[state.glazing] || state.glazing} · ${fmt(state.windows, 1)} m²`;
+    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${state.roofIns} cm ${roofInsulationLabel} · ${labels.glazing[state.glazing] || state.glazing}`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
     const heatingParts = [
       labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter,
@@ -2794,7 +2848,6 @@
       ? [state.pvEnabled ? `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°` : null,
          state.solarThermalEnabled ? `solar termic ${renewableOrientationLabel(state.solarThermalOrientation)}` : null].filter(Boolean).join(" · ")
       : "PV · solar termic";
-    $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "13";
   }
 
   function measureSummary(type) {
@@ -2852,9 +2905,13 @@
   }
 
   function measureTitle(type) {
+    if (type === "roof") {
+      if (homeState.topBoundary === "flat_roof") return "Izolează terasa";
+      if (homeState.topBoundary === "heated_attic") return "Izolează acoperișul";
+      return "Izolează planșeul spre pod";
+    }
     return {
       wall: "Izolează fațada",
-      roof: "Izolează podul",
       floor: "Izolează pardoseala",
       windows: "Schimbă ferestrele",
       heating: "Schimbă încălzirea",
@@ -3048,9 +3105,9 @@
     $("#hlnWallIns").value = scenarioState.wallIns;
     $("#hlnRoofIns").value = scenarioState.roofIns;
     $("#hlnFloorIns").value = scenarioState.floorIns;
-    $("#hlnWallInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.wallInsulationMaterial),3)} W/mK · grosimea totală simulată`;
-    $("#hlnRoofInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.roofInsulationMaterial),3)} W/mK · grosimea totală simulată`;
-    $("#hlnFloorInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.floorInsulationMaterial),3)} W/mK · grosimea totală simulată`;
+    $("#hlnWallInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.wallInsulationMaterial),3)} W/mK · configurația finală simulată`;
+    $("#hlnRoofInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.roofInsulationMaterial),3)} W/mK · configurația finală simulată`;
+    $("#hlnFloorInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.floorInsulationMaterial),3)} W/mK · configurația finală simulată`;
     $("#hlnScenarioGlazing").value = scenarioState.glazing;
     $("#hlnScenarioWindows").value = scenarioState.windows;
     $("#hlnScenarioHeating").value = scenarioState.heating;
@@ -3174,6 +3231,25 @@
     $("#hlnReportSavingLabel").textContent = outcome.label;
     applyDeltaState($("#hlnReportSaving"), outcome);
 
+    const reportAnnualSaving = Number(homeResult.annual_cost_lei) - Number(scenarioResult.annual_cost_lei);
+    $("#hlnReportDecisionSaving").textContent = Number.isFinite(reportAnnualSaving)
+      ? `${reportAnnualSaving >= 0 ? "+" : "−"}${fmt(Math.abs(reportAnnualSaving))} lei/an`
+      : "—";
+    const financialScenario = optimizationMeta?.mode === "roi";
+    const reportCapex = financialScenario ? Number(optimizationMeta.capexLei) : NaN;
+    const reportPayback = financialScenario ? Number(optimizationMeta.paybackYears) : NaN;
+    $("#hlnReportDecisionInvestment").textContent = Number.isFinite(reportCapex)
+      ? `${fmt(reportCapex)} lei`
+      : "necalculată";
+    $("#hlnReportDecisionPayback").textContent = Number.isFinite(reportPayback)
+      ? `${fmt(reportPayback,1)} ani`
+      : "—";
+    const firstSelected = Array.isArray(optimizationMeta?.selected) ? optimizationMeta.selected[0] : null;
+    $("#hlnReportDecisionPriority").textContent = firstSelected?.label || (measures.length ? measureTitle(measures[0]) : "Scenariu manual");
+    $("#hlnReportDecisionNote").textContent = financialScenario
+      ? "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată. Nu include finanțare, mentenanță, înlocuiri, inflație sau actualizarea banilor în timp."
+      : "Pentru un scenariu configurat manual, Home Lab compară energia și costul anual; CAPEX-ul și amortizarea nu sunt inventate dacă nu au fost calculate de optimizarea financiară.";
+
     $("#hlnReportBars").innerHTML = [
       reportComparisonRow("Cost anual", homeResult.annual_cost_lei, scenarioResult.annual_cost_lei, "lei/an"),
       reportComparisonRow("Energie finală", homeResult.final_energy_kwh, scenarioResult.final_energy_kwh, "kWh/an"),
@@ -3247,7 +3323,7 @@
         ? "Verificarea nZEB Light separă energia primară, CO₂ și anvelopa modelată. Ponderea regenerabilă RER și conformitatea legală completă rămân neverificate."
         : projectMode === "existing_major"
           ? "Tabelul 2.10b este folosit ca guardrail energetic/CO₂ al optimizării. Raportul nu substituie verificarea completă a cerințelor proiectului."
-          : "Best ROI pentru renovare obișnuită nu inventează o obligație nZEB sau 2.10b doar din anul construcției.";
+          : "Optimizarea financiară pentru renovare obișnuită nu inventează o obligație nZEB sau 2.10b doar din anul construcției.";
 
     $("#hlnReportVisualTitle").textContent = `${scenarioResult.locality || homeState.locality || "Locuință"} · scenariul final`;
     $("#hlnReportVisualMeta").textContent =
@@ -3397,14 +3473,14 @@
           : `${fmt(optimizationMeta.paybackYears,1)} ani`;
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Best ROI · ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an</strong>
-            <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · recuperare simplă ${payback}. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
+            <strong>Amortizare simplă · ${payback}</strong>
+            <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · randament anual simplu ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
           </div>
           <div class="hln-strategy-list">
             ${selected.map((item,index) => `
               <article>
                 <b>${index + 1}</b>
-                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei · ROI individual ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără payback pozitiv" : "payback " + fmt(item.paybackYears,1) + " ani"}</small></div>
+                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei · randament anual simplu ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără amortizare pozitivă" : "amortizare simplă " + fmt(item.paybackYears,1) + " ani"}</small></div>
               </article>
             `).join("")}
           </div>
@@ -3477,6 +3553,7 @@
     if (next === "scenario" && !baselineSaved) return;
     if (next === "report" && (!baselineSaved || !scenarioResult || scenarioResultState !== "fresh")) return;
     screen = next;
+    trackEvent("home_lab_screen_viewed", {screen:next, measure_count:measures.length});
     root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
     emitVisualState();
@@ -3516,6 +3593,9 @@
     homeResult = result;
     currentResult = result;
     baselineSaved = true;
+    trackEvent("home_lab_baseline_saved", {
+      locality:homeState.locality || undefined,
+    });
     referenceMode = false;
     scenarioOverrides = {};
     optimizationMeta = null;
@@ -3552,11 +3632,14 @@
     $("#hlnConstructionYear").value = homeState.constructionYear || 2005;
     $("#hlnArea").value = homeState.area;
     $("#hlnHeight").value = homeState.height;
+    $("#hlnWallAreaOverride").value = homeState.wallAreaOverride ?? "";
+    $("#hlnTopAreaOverride").value = homeState.topAreaOverride ?? "";
     $("#hlnTemperature").value = homeState.temperature;
     $("#hlnOccupants").value = homeState.occupants;
     $("#hlnHomeWallStructure").value = homeState.wallStructure || "unknown";
     $("#hlnHomeWallStructureThickness").value = homeState.wallStructureThickness || 30;
     $("#hlnHomeWallInsulationMaterial").value = homeState.wallInsulationMaterial || "generic_040";
+    $("#hlnHomeTopBoundary").value = homeState.topBoundary || "unknown";
     $("#hlnHomeRoofInsulationMaterial").value = homeState.roofInsulationMaterial || "generic_040";
     $("#hlnHomeFloorInsulationMaterial").value = homeState.floorInsulationMaterial || "generic_040";
     $("#hlnHomeWallIns").value = homeState.wallIns;
@@ -3599,11 +3682,16 @@
     homeState.constructionYear = Number($("#hlnConstructionYear").value) || 2005;
     homeState.area = Number($("#hlnArea").value);
     homeState.height = Number($("#hlnHeight").value);
+    const wallAreaOverride = Number($("#hlnWallAreaOverride").value);
+    const topAreaOverride = Number($("#hlnTopAreaOverride").value);
+    homeState.wallAreaOverride = Number.isFinite(wallAreaOverride) && wallAreaOverride > 0 ? wallAreaOverride : null;
+    homeState.topAreaOverride = Number.isFinite(topAreaOverride) && topAreaOverride > 0 ? topAreaOverride : null;
     homeState.temperature = Number($("#hlnTemperature").value);
     homeState.occupants = Number($("#hlnOccupants").value);
     homeState.wallStructure = $("#hlnHomeWallStructure").value;
     homeState.wallStructureThickness = Number($("#hlnHomeWallStructureThickness").value) || 30;
     homeState.wallInsulationMaterial = $("#hlnHomeWallInsulationMaterial").value;
+    homeState.topBoundary = $("#hlnHomeTopBoundary").value;
     homeState.roofInsulationMaterial = $("#hlnHomeRoofInsulationMaterial").value;
     homeState.floorInsulationMaterial = $("#hlnHomeFloorInsulationMaterial").value;
     homeState.wallIns = Number($("#hlnHomeWallIns").value);
@@ -3661,6 +3749,7 @@
     referenceMode = false;
     interventionOriginal = {...scenarioState};
     activeMeasure = type;
+    trackEvent("home_lab_intervention_opened", {measure:type});
 
     if (!measures.includes(type)) {
       if (type === "wall") scenarioState.wallIns = Math.min(30, Number(homeState.wallIns) + 10);
@@ -3706,6 +3795,7 @@
   function keepIntervention() {
     if (!activeMeasure) return;
     if (!measures.includes(activeMeasure)) measures.push(activeMeasure);
+    trackEvent("home_lab_intervention_kept", {measure:activeMeasure, measure_count:measures.length});
     activeMeasure = null;
     interventionOriginal = null;
     persist();
@@ -4131,7 +4221,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
@@ -4349,6 +4439,7 @@
   if (printReportButton) {
     printReportButton.addEventListener("click", () => {
       renderReport();
+      trackEvent("home_lab_report_printed", {measure_count:measures.length});
       window.print();
     });
   }
@@ -4388,6 +4479,9 @@
   syncOptimizerInputs();
   loadRoiCostBasis().catch(() => {});
   renderAll();
+  trackEvent("home_lab_viewed", {
+    restored_baseline:Boolean(baselineSaved),
+  });
   emitVisualState();
 
   if (baselineSaved && homeResult) {

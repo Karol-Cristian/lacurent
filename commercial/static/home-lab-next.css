@@ -383,6 +383,7 @@ svg{display:block}
 .hln-editor-card>header>div{display:grid;gap:3px}
 .hln-editor-card>header strong{font-size:14px}
 .hln-editor-card>section{display:grid;gap:15px;padding:20px}
+.hln-field-note{display:block;margin:-4px 0 2px;padding:10px 11px;border-radius:10px;background:#f0eee8;color:#68736d;font-size:8px;line-height:1.5}
 .hln-editor-lead{padding-bottom:14px;border-bottom:1px solid #ebe7df}
 .hln-editor-lead .hln-row-icon{background:var(--hln-home-soft);color:var(--hln-home)}
 .hln-locality-results{display:grid;max-height:240px;overflow:auto;border:1px solid #d8d3ca;border-radius:12px;background:#fff}
@@ -1205,6 +1206,22 @@ svg{display:block}
 .hln-report-card>header span{font-size:8px;font-weight:900;letter-spacing:.13em;color:#5a806e}
 .hln-report-card>header strong{font-size:15px}
 .hln-report-comparison,.hln-report-monthly,.hln-report-monthly-cost,.hln-report-method{grid-column:1/-1}
+.hln-report-decision{grid-column:1/-1;order:0;border-color:#bfd8c8;background:linear-gradient(135deg,#f7fbf8,#eef6f1)}
+.hln-report-comparison{order:10}
+.hln-report-measures{order:20}
+.hln-report-strategy{order:30}
+.hln-report-losses{order:40}
+.hln-report-monthly{order:50}
+.hln-report-monthly-cost{order:60}
+.hln-report-system{order:70}
+.hln-report-renewables{order:75}
+.hln-report-nzeb{order:90}
+.hln-report-method{order:100}
+.hln-report-decision-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.hln-report-decision-grid>div{display:grid;gap:4px;padding:13px;border:1px solid #d8e5dc;border-radius:13px;background:rgba(255,255,255,.82)}
+.hln-report-decision-grid small{color:#6f7d76;font-size:8px}
+.hln-report-decision-grid strong{font-size:13px;line-height:1.35;color:#23483a}
+.hln-report-decision>p{margin:11px 0 0;color:#65736c;font-size:8px;line-height:1.5}
 .hln-report-bars{display:grid;gap:13px}
 .hln-report-bar-row{display:grid;gap:7px}
 .hln-report-bar-copy{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline}
@@ -1338,6 +1355,7 @@ svg{display:block}
   .hln-report-hero article{min-height:104px;padding:13px}
   .hln-report-hero article strong{font-size:26px}
   .hln-report-grid{grid-template-columns:1fr}
+  .hln-report-decision-grid{grid-template-columns:1fr 1fr}
   .hln-report-comparison,.hln-report-monthly,.hln-report-monthly-cost,.hln-report-method{grid-column:auto}
   .hln-report-bar-copy{grid-template-columns:1fr auto}
   .hln-report-bar-copy em{grid-column:2}

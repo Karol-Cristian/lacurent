@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next17">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next19">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -81,7 +81,7 @@
           <h1>Construiește punctul de plecare.</h1>
           <p>Spune-ne ce știi despre locuință. Restul îl estimăm și îl poți rafina oricând.</p>
         </div>
-        <div class="hln-confidence"><strong id="hlnConfirmedCount">13</strong><span>valori configurate</span></div>
+        <div class="hln-confidence"><strong>Estimativ</strong><span>verifică ipotezele înainte de decizie</span></div>
       </div>
 
       <div class="hln-home-layout">
@@ -288,7 +288,7 @@
               <option value="new_nzeb">Clădire nouă · nZEB</option>
             </select>
           </label>
-          <small id="hlnProjectGuardrailSummary">Best ROI folosește numai guardrail-urile aplicabile regimului selectat; anul construcției nu stabilește singur regimul juridic.</small>
+          <small id="hlnProjectGuardrailSummary">Optimizarea financiară folosește numai guardrail-urile aplicabile regimului selectat; anul construcției nu stabilește singur regimul juridic.</small>
         </div>
 
         <div class="hln-smart-configs">
@@ -298,17 +298,17 @@
             <small id="hlnAutoRenovationHint">Prioritizează reducerea consumului cu un număr bounded de recalculări</small>
           </button>
           <button type="button" data-hln-smart-config="roi">
-            <span>BEST ROI</span>
-            <strong>Randament maxim al investiției</strong>
-            <small>Costuri de piață preluate automat din catalog · fără formular suplimentar</small>
+            <span>AMORTIZARE SIMPLĂ</span>
+            <strong>Cea mai eficientă investiție dintre variantele testate</strong>
+            <small>Compară CAPEX-ul estimat cu economia anuală · fără formular suplimentar</small>
           </button>
         </div>
 
         <details class="hln-roi-costs" id="hlnRoiCostDetails">
-          <summary>Costurile folosite de Best ROI</summary>
+          <summary>Costurile folosite pentru amortizarea simplă</summary>
           <p><strong id="hlnRoiCostSource">Se încarcă automat din catalogul LaCurent…</strong> <span id="hlnRoiCostSourceMeta">Nu trebuie să introduci costuri manual.</span></p>
           <div class="hln-roi-cost-list" id="hlnRoiCostAssumptions"></div>
-          <small>Aceste valori sunt repere comerciale de planificare, cu sursă, dată și nivel de încredere. Ele influențează doar CAPEX/ROI; nu modifică formulele energetice.</small>
+          <small>Aceste valori sunt repere comerciale de planificare, cu sursă, dată și nivel de încredere. Ele influențează doar CAPEX-ul și amortizarea simplă; nu modifică formulele energetice.</small>
         </details>
 
         <div class="hln-optimization-note" id="hlnOptimizationNote" hidden></div>
@@ -500,7 +500,7 @@
 
           <div class="hln-intervention-editor">
             <div data-hln-intervention-panel="wall">
-              <div class="hln-field-heading"><svg><use href="#hln-i-wall"></use></svg><div><strong>Izolație pereți</strong><small id="hlnWallInsulationMeta">Material și grosime totală simulate</small></div></div>
+              <div class="hln-field-heading"><svg><use href="#hln-i-wall"></use></svg><div><strong>Izolație pereți</strong><small id="hlnWallInsulationMeta">Material și grosime finală simulate</small></div></div>
               <label>Tip izolație
                 <select id="hlnWallInsulationMaterial">
                   <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -516,7 +516,7 @@
             </div>
 
             <div data-hln-intervention-panel="roof" hidden>
-              <div class="hln-field-heading"><svg><use href="#hln-i-roof"></use></svg><div><strong>Izolație pod / acoperiș</strong><small id="hlnRoofInsulationMeta">Material și grosime totală simulate</small></div></div>
+              <div class="hln-field-heading"><svg><use href="#hln-i-roof"></use></svg><div><strong>Izolație pod / acoperiș</strong><small id="hlnRoofInsulationMeta">Material și grosime finală simulate</small></div></div>
               <label>Tip izolație
                 <select id="hlnRoofInsulationMaterial">
                   <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -532,7 +532,7 @@
             </div>
 
             <div data-hln-intervention-panel="floor" hidden>
-              <div class="hln-field-heading"><svg><use href="#hln-i-floor"></use></svg><div><strong>Izolație pardoseală</strong><small id="hlnFloorInsulationMeta">Material și grosime totală simulate</small></div></div>
+              <div class="hln-field-heading"><svg><use href="#hln-i-floor"></use></svg><div><strong>Izolație pardoseală</strong><small id="hlnFloorInsulationMeta">Material și grosime finală simulate</small></div></div>
               <label>Tip izolație
                 <select id="hlnFloorInsulationMaterial">
                   <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -750,6 +750,17 @@
       </section>
 
       <div class="hln-report-grid">
+        <section class="hln-report-card hln-report-decision">
+          <header><span>DECIZIA PE SCURT</span><strong>Ce înseamnă scenariul pentru buget</strong></header>
+          <div class="hln-report-decision-grid">
+            <div><small>Economie anuală estimată</small><strong id="hlnReportDecisionSaving">—</strong></div>
+            <div><small>Investiție estimată</small><strong id="hlnReportDecisionInvestment">—</strong></div>
+            <div><small>Amortizare simplă</small><strong id="hlnReportDecisionPayback">—</strong></div>
+            <div><small>Prima măsură din pachet</small><strong id="hlnReportDecisionPriority">—</strong></div>
+          </div>
+          <p id="hlnReportDecisionNote">—</p>
+        </section>
+
         <section class="hln-report-card hln-report-comparison">
           <header><span>ÎNAINTE VS DUPĂ</span><strong>Indicatorii principali</strong></header>
           <div id="hlnReportBars" class="hln-report-bars"></div>
@@ -893,13 +904,16 @@
           <label>Suprafață încălzită <div class="hln-inline-input"><input id="hlnArea" type="number" min="40" max="300" step="5" value="120"><span>m²</span></div></label>
           <label>Niveluri încălzite <div class="hln-segments" id="hlnLevels"><button type="button" data-value="1">1</button><button type="button" data-value="2" class="is-active">2</button><button type="button" data-value="3">3+</button></div></label>
           <label>Înălțime interioară <div class="hln-inline-input"><input id="hlnHeight" type="number" min="2.2" max="3.5" step="0.1" value="2.7"><span>m</span></div></label>
+          <label>Suprafață opacă pereți exteriori <div class="hln-inline-input"><input id="hlnWallAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
+          <label>Suprafață planșeu superior / acoperiș <div class="hln-inline-input"><input id="hlnTopAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
+          <small class="hln-field-note">Lasă câmpurile goale dacă nu le știi. Atunci estimăm suprafețele din suprafața încălzită, numărul de niveluri și o geometrie dreptunghiulară simplificată. Pereții opaci nu includ ferestrele și ușile.</small>
           <label>Temperatură iarna <div class="hln-inline-input"><input id="hlnTemperature" type="number" min="18" max="24" step="0.5" value="21"><span>°C</span></div></label>
           <label>Tip clădire
-            <select id="hlnBuildingType">
+            <select id="hlnBuildingType" disabled>
               <option value="residential_individual">Casă individuală</option>
-              <option value="residential_collective">Apartament / clădire colectivă</option>
             </select>
           </label>
+          <small class="hln-field-note">Versiunea publică Home Lab este calibrată pentru case individuale. Apartamentele și clădirile colective vor avea un model separat, ca să nu presupunem greșit acoperiș, pardoseală și fațade exterioare.</small>
           <label>Anul construcției <input id="hlnConstructionYear" type="number" min="1800" max="2100" step="1" value="2005"></label>
           <label>Persoane în locuință <input id="hlnOccupants" type="number" min="1" max="8" step="1" value="4"></label>
         </section>
@@ -929,6 +943,15 @@
             </select>
           </label>
           <label>Izolație pereți <div class="hln-inline-input"><input id="hlnHomeWallIns" type="number" min="0" max="40" step="1" value="5"><span>cm</span></div></label>
+          <label>Ce este deasupra ultimului nivel încălzit?
+            <select id="hlnHomeTopBoundary">
+              <option value="unknown">Nu știu — păstrează estimarea actuală</option>
+              <option value="cold_attic">Pod rece / neîncălzit — calculează planșeul</option>
+              <option value="heated_attic">Mansardă încălzită — calculează acoperișul</option>
+              <option value="flat_roof">Terasă / acoperiș plat</option>
+            </select>
+          </label>
+          <small class="hln-field-note">La „Pod rece” modelăm planșeul dintre camere și pod; la „Terasă” modelăm planșeul sub terasă. Pentru elementul neizolat folosim repere caracteristice U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată. Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat; dacă există curenți de aer, rezultatul poate subestima pierderea.</small>
           <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -940,6 +963,7 @@
             </select>
           </label>
           <label>Izolație pod / acoperiș <div class="hln-inline-input"><input id="hlnHomeRoofIns" type="number" min="0" max="50" step="1" value="10"><span>cm</span></div></label>
+          <small class="hln-field-note">Dacă între cameră și pod ai doar rigips/scândură fără vată, EPS sau alt termoizolant, setează 0 cm.</small>
           <label>Material izolație pardoseală
             <select id="hlnHomeFloorInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -1110,7 +1134,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next27"></script>
+  <script src="/static/home-lab-next.js?v=next37"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
