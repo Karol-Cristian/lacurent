@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -759,11 +760,73 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _ground_slab_correction_factor(
+    form: dict[str, Any],
+    *,
+    area_m2: float,
+    construction_u_value_w_m2k: float,
+) -> float:
+    """Return U_ground / U_construction using the ISO 13370 slab-on-ground steady-state model.
+
+    The incoming floor U is the construction-only equivalent U used by Home Lab.
+    ISO 13370 converts it into a geometry- and soil-dependent effective ground U.
+    Edge-insulation corrections and the seasonal periodic term are intentionally
+    outside this Light path and remain visible as methodology limitations.
+    """
+
+    if area_m2 <= 0 or construction_u_value_w_m2k <= 0:
+        raise ValueError("Calculul pardoselii spre sol necesită aria și U-ul pardoselii.")
+
+    ground_cfg = methodology()["boundary_conditions_light"]["ground"]
+    ground_lambda = (
+        parse_optional_float(form.get("ground_conductivity_w_mk"))
+        or float(ground_cfg["default_ground_conductivity_w_mk"])
+    )
+    wall_thickness = (
+        parse_optional_float(form.get("ground_wall_thickness_m"))
+        or float(ground_cfg["default_wall_thickness_m"])
+    )
+    if ground_lambda <= 0 or wall_thickness < 0:
+        raise ValueError("Datele pentru transferul spre sol trebuie să fie pozitive.")
+
+    perimeter = parse_optional_float(form.get("ground_exposed_perimeter_m"))
+    if perimeter is None or perimeter <= 0:
+        length = parse_optional_float(form.get("building_length_m"))
+        width = parse_optional_float(form.get("building_width_m"))
+        if length and width and length > 0 and width > 0:
+            perimeter = 2.0 * (length + width)
+        else:
+            # Last-resort geometry fallback for legacy/expert forms that do not
+            # carry plan dimensions. Home Lab always supplies the perimeter.
+            perimeter = 4.0 * math.sqrt(area_m2)
+
+    characteristic_dimension = 2.0 * area_m2 / perimeter
+    construction_resistance = 1.0 / construction_u_value_w_m2k
+    equivalent_thickness = wall_thickness + ground_lambda * construction_resistance
+
+    if equivalent_thickness < characteristic_dimension:
+        effective_ground_u = (
+            2.0
+            * ground_lambda
+            / (math.pi * characteristic_dimension + equivalent_thickness)
+            * math.log(math.pi * characteristic_dimension / equivalent_thickness + 1.0)
+        )
+    else:
+        effective_ground_u = ground_lambda / (
+            0.457 * characteristic_dimension + equivalent_thickness
+        )
+
+    factor = effective_ground_u / construction_u_value_w_m2k
+    return max(0.0, min(float(factor), 1.0))
+
+
 def _boundary_factor(
     form: dict[str, Any],
     *,
     boundary_type: str,
     field_name: str,
+    area_m2: float,
+    u_value_w_m2k: float,
 ) -> float:
     if boundary_type == "outside_air":
         return 1.0
@@ -774,9 +837,15 @@ def _boundary_factor(
     if explicit is not None:
         return explicit
 
+    if boundary_type == "ground":
+        return _ground_slab_correction_factor(
+            form,
+            area_m2=area_m2,
+            construction_u_value_w_m2k=u_value_w_m2k,
+        )
+
     cfg = methodology()["boundary_conditions_light"]
     defaults = {
-        "ground": cfg["ground"]["default_correction_factor"],
         "unheated_attic": cfg["unheated_attic"]["default_correction_factor"],
         "unheated_basement": cfg["unheated_basement"]["default_correction_factor"],
         "unheated_space": cfg["unheated_basement"]["default_correction_factor"],
@@ -792,7 +861,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     components = []
 
     roof_boundary = str(form.get("roof_boundary_type") or "outside_air")
-    floor_boundary = str(form.get("floor_boundary_type") or "ground")
+    floor_boundary = str(form.get("floor_boundary_type") or "outside_air")
     component_map = [
         ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value", "outside_air", "wall_boundary_correction_factor"),
         (
@@ -831,6 +900,8 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
                     form,
                     boundary_type=boundary_type,
                     field_name=factor_field,
+                    area_m2=float(area),
+                    u_value_w_m2k=float(u_value),
                 ),
             }
         )
