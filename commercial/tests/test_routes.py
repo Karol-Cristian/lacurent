@@ -402,7 +402,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next22" in response.text
-    assert "/static/home-lab-next.js?v=next45" in response.text
+    assert "/static/home-lab-next.js?v=next46" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d30" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -572,6 +572,20 @@ def test_home_lab_exposes_distinct_budget_and_payback_optimizer_objectives() -> 
     assert "isFinancialOptimizationMeta" in source
     assert 'button.dataset.hlnSmartConfig === "roi-budget"' in source
     assert 'button.dataset.hlnSmartConfig === "roi-payback"' in source
+
+
+def test_payback_optimizer_applies_threshold_to_complete_packages_not_components() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    source = response.text
+    family_start = source.index("function bestEconomicVariantPerFamily")
+    family_end = source.index("async function configureNzeb", family_start)
+    family_source = source[family_start:family_end]
+    assert "row.paybackYears > settings.maxPaybackYears" not in family_source
+    assert "evaluatePaybackPackageFrontier" in source
+    assert "threshold-independent package frontier" in source
+    assert "item.economics.paybackYears <= settings.maxPaybackYears" in source
+    assert "same package is eligible when the user asks for 6 years" in source
 
 
 def test_cloudflare_worker_converts_ordinary_asgi_exceptions_to_503() -> None:
