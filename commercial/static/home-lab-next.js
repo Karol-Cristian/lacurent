@@ -2844,7 +2844,6 @@
       ? [state.pvEnabled ? `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°` : null,
          state.solarThermalEnabled ? `solar termic ${renewableOrientationLabel(state.solarThermalOrientation)}` : null].filter(Boolean).join(" · ")
       : "PV · solar termic";
-    renderConfidence();
   }
 
   function measureSummary(type) {
