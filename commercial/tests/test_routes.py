@@ -567,7 +567,8 @@ def test_home_lab_exposes_distinct_budget_and_payback_optimizer_objectives() -> 
     assert 'metaMode:"roi_budget"' in source
     assert 'metaMode:"roi_payback"' in source
     assert "packageCapex > settings.budgetLei" in source
-    assert "packageEconomics.paybackYears <= settings.maxPaybackYears" in source
+    assert "evaluatePaybackPackageFrontier" in source
+    assert "item.economics.paybackYears <= settings.maxPaybackYears" in source
     assert "maximizez economia anuală" in source.lower()
     assert "isFinancialOptimizationMeta" in source
     assert 'button.dataset.hlnSmartConfig === "roi-budget"' in source
