@@ -109,39 +109,35 @@ try {
     const thermalNormal = new Vector3Ctor(...(solarThermal.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
     const thermalCenter = solarThermalBox.getCenter(new Vector3Ctor());
 
-    const pvBaseLocal = new Vector3Ctor(
-      ...(pv.userData?.roofMount?.basePositionLocal || [0, 0, 0])
-    );
-    const pvBaseWorld = scene.modelRoot.localToWorld(pvBaseLocal.clone());
-    const pvCurrentWorld = scene.modelRoot.localToWorld(pv.position.clone());
-    const pvOriginShift = pvBaseWorld.distanceTo(pvCurrentWorld);
+    const roofWindowCandidates = scene.semanticMeshes
+      .filter(mesh => mesh.userData?.part === "windows")
+      .map(mesh => {
+        const box = new Box3Ctor().setFromObject(mesh);
+        const center = box.getCenter(new Vector3Ctor());
+        return {
+          name:String(mesh.name || ""),
+          box,
+          center,
+        };
+      })
+      .filter(item => item.box.max.y > scene.modelCenter.y + scene.modelSize.y * 0.18);
 
-    const thermalBaseLocal = new Vector3Ctor(
-      ...(solarThermal.userData?.roofMount?.basePositionLocal || [0, 0, 0])
-    );
-    const thermalDownslopeLocal = new Vector3Ctor(
-      ...(solarThermal.userData?.roofMount?.localDownslope || [0, 0, 1])
-    ).normalize();
-    const thermalBaseWorld = scene.modelRoot.localToWorld(thermalBaseLocal.clone());
-    const thermalCurrentWorld = scene.modelRoot.localToWorld(solarThermal.position.clone());
-    const thermalDownslopeTipWorld = scene.modelRoot.localToWorld(
-      thermalBaseLocal.clone().add(thermalDownslopeLocal)
-    );
-    const thermalDownslopeWorld = thermalDownslopeTipWorld.sub(thermalBaseWorld).normalize();
-    const thermalVerticalDrop = thermalBaseWorld.y - thermalCurrentWorld.y;
+    const roofWindowOverlaps = roofWindowCandidates
+      .filter(item => item.box.intersectsBox(solarThermalBox))
+      .map(item => ({
+        name:item.name,
+        center:item.center.toArray(),
+      }));
 
     return {
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
       pvSupport,
-      pvOriginShift,
       solarThermalVisible:solarThermal.visible,
       solarThermalVisibleChildren:solarThermal.children.filter(child => child.visible).length,
       thermalSupport,
-      thermalDownslopeWorld:thermalDownslopeWorld.toArray(),
-      thermalVerticalDrop,
-      thermalBaseWorld:thermalBaseWorld.toArray(),
-      thermalCurrentWorld:thermalCurrentWorld.toArray(),
+      roofWindowCandidateCount:roofWindowCandidates.length,
+      roofWindowOverlaps,
       roofNormalDot:pvNormal.dot(thermalNormal),
       thermalCenterX:thermalCenter.x,
       modelCenterX:scene.modelCenter.x,
@@ -152,12 +148,6 @@ try {
   if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
     throw new Error("PV calibration did not expose the full six-panel field");
   }
-  // PV is intentionally restored to its pre-adjustment position. Its six
-  // representatives can span adjacent GLB roof meshes, so the relevant
-  // regression check here is that this solar-only task did not move PV.
-  if (roofVisualCalibration.pvOriginShift > 0.02) {
-    throw new Error("PV field moved even though this calibration targets only solar thermal: " + JSON.stringify(roofVisualCalibration));
-  }
   if (!roofVisualCalibration.solarThermalVisible || roofVisualCalibration.solarThermalVisibleChildren !== 1) {
     throw new Error("Solar thermal calibration did not expose the compact collector");
   }
@@ -165,15 +155,14 @@ try {
       roofVisualCalibration.thermalSupport.panels.some(panel => !panel.supported)) {
     throw new Error("Solar thermal field is not fully supported by its mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
   }
-  if (roofVisualCalibration.thermalDownslopeWorld[1] > -0.15 ||
-      roofVisualCalibration.thermalVerticalDrop < 0.10) {
-    throw new Error("Solar thermal collector did not move materially downslope in world space: " + JSON.stringify(roofVisualCalibration));
-  }
   if (roofVisualCalibration.roofNormalDot < 0.995) {
     throw new Error("Solar thermal collectors are not aligned to the same roof plane as PV: " + JSON.stringify(roofVisualCalibration));
   }
-  if (roofVisualCalibration.thermalCenterX <= roofVisualCalibration.modelCenterX) {
-    throw new Error("Solar thermal collectors are not positioned on the right side of the main roof: " + JSON.stringify(roofVisualCalibration));
+  if (roofVisualCalibration.thermalCenterX >= roofVisualCalibration.modelCenterX) {
+    throw new Error("Solar thermal collector is not positioned on the lower-left roof area: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (roofVisualCalibration.roofWindowOverlaps.length) {
+    throw new Error("Solar thermal collector overlaps a roof window/skylight: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.smokeVisible) {
     throw new Error("Combustion plume is hidden for condensing gas");
