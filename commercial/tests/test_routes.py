@@ -998,6 +998,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function benefitText" in response.text
     assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
+    assert '$("[data-hln-editor]").find' not in response.text
+    assert "renderConfidence" not in response.text
     assert "function trackEvent" in response.text
     assert '"hln:analytics"' in response.text
     assert '"home_lab_baseline_saved"' in response.text
