@@ -69,3 +69,9 @@ jobs:
           done
           curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
           node scripts/smoke-home-lab-browser.mjs
+
+      - name: Diagnose public production Home Lab 3D
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+        run: |
+          node scripts/smoke-home-lab-browser.mjs
