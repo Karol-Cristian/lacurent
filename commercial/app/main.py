@@ -836,7 +836,9 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     components = []
 
     roof_boundary = str(form.get("roof_boundary_type") or "outside_air")
-    floor_boundary = str(form.get("floor_boundary_type") or "outside_air")
+    # The legacy commercial form names this element "Pardoseală spre sol".
+    # If no explicit boundary is supplied, preserve that physical meaning.
+    floor_boundary = str(form.get("floor_boundary_type") or "ground")
     component_map = [
         ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value", "outside_air", "wall_boundary_correction_factor"),
         (
