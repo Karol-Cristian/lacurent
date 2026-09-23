@@ -81,7 +81,7 @@
           <h1>Construiește punctul de plecare.</h1>
           <p>Spune-ne ce știi despre locuință. Restul îl estimăm și îl poți rafina oricând.</p>
         </div>
-        <div class="hln-confidence"><strong id="hlnConfirmedCount">0/5</strong><span id="hlnConfidenceLabel">secțiuni confirmate · restul estimat</span></div>
+        <div class="hln-confidence"><strong>Estimativ</strong><span>verifică ipotezele înainte de decizie</span></div>
       </div>
 
       <div class="hln-home-layout">
@@ -500,8 +500,8 @@
 
           <div class="hln-intervention-editor">
             <div data-hln-intervention-panel="wall">
-              <div class="hln-field-heading"><svg><use href="#hln-i-wall"></use></svg><div><strong>Izolație pereți</strong><small id="hlnWallInsulationMeta">Stratul nou se adaugă peste izolația existentă</small></div></div>
-              <label>Material strat nou
+              <div class="hln-field-heading"><svg><use href="#hln-i-wall"></use></svg><div><strong>Izolație pereți</strong><small id="hlnWallInsulationMeta">Material și grosime finală simulate</small></div></div>
+              <label>Tip izolație
                 <select id="hlnWallInsulationMaterial">
                   <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
                   <option value="eps">Polistiren EPS</option>
@@ -511,13 +511,13 @@
                   <option value="wood_fiber">Fibră lemnoasă</option>
                 </select>
               </label>
-              <label>Grosime totală după intervenție</label><div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnWallIns" type="number" min="0" max="40" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
+              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnWallIns" type="number" min="0" max="40" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
               <div class="hln-quick-values"><button type="button" data-quick-add="5">+5 cm</button><button type="button" data-quick-add="10">+10 cm</button><button type="button" data-quick-add="15">+15 cm</button></div>
             </div>
 
             <div data-hln-intervention-panel="roof" hidden>
-              <div class="hln-field-heading"><svg><use href="#hln-i-roof"></use></svg><div><strong>Izolație pod / acoperiș</strong><small id="hlnRoofInsulationMeta">Stratul nou se adaugă peste izolația existentă</small></div></div>
-              <label>Material strat nou
+              <div class="hln-field-heading"><svg><use href="#hln-i-roof"></use></svg><div><strong>Izolație pod / acoperiș</strong><small id="hlnRoofInsulationMeta">Material și grosime finală simulate</small></div></div>
+              <label>Tip izolație
                 <select id="hlnRoofInsulationMaterial">
                   <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
                   <option value="eps">Polistiren EPS</option>
@@ -527,13 +527,13 @@
                   <option value="wood_fiber">Fibră lemnoasă</option>
                 </select>
               </label>
-              <label>Grosime totală după intervenție</label><div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnRoofIns" type="number" min="0" max="50" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
+              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnRoofIns" type="number" min="0" max="50" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
               <div class="hln-quick-values"><button type="button" data-quick-add="5">+5 cm</button><button type="button" data-quick-add="10">+10 cm</button><button type="button" data-quick-add="15">+15 cm</button></div>
             </div>
 
             <div data-hln-intervention-panel="floor" hidden>
-              <div class="hln-field-heading"><svg><use href="#hln-i-floor"></use></svg><div><strong>Izolație pardoseală</strong><small id="hlnFloorInsulationMeta">Stratul nou se adaugă peste izolația existentă</small></div></div>
-              <label>Material strat nou
+              <div class="hln-field-heading"><svg><use href="#hln-i-floor"></use></svg><div><strong>Izolație pardoseală</strong><small id="hlnFloorInsulationMeta">Material și grosime finală simulate</small></div></div>
+              <label>Tip izolație
                 <select id="hlnFloorInsulationMaterial">
                   <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
                   <option value="eps">Polistiren EPS</option>
@@ -543,7 +543,7 @@
                   <option value="wood_fiber">Fibră lemnoasă</option>
                 </select>
               </label>
-              <label>Grosime totală după intervenție</label><div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnFloorIns" type="number" min="0" max="30" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
+              <div class="hln-stepper"><button type="button" data-step="-1" aria-label="Scade">−</button><input id="hlnFloorIns" type="number" min="0" max="30" step="1"><span>cm</span><button type="button" data-step="1" aria-label="Crește">+</button></div>
               <div class="hln-quick-values"><button type="button" data-quick-add="5">+5 cm</button><button type="button" data-quick-add="10">+10 cm</button></div>
             </div>
 
@@ -932,7 +932,7 @@
             </select>
           </label>
           <label>Grosimea structurii peretelui <div class="hln-inline-input"><input id="hlnHomeWallStructureThickness" type="number" min="5" max="80" step="1" value="30"><span>cm</span></div></label>
-          <label>Material izolație existentă pereți
+          <label>Material izolație pereți
             <select id="hlnHomeWallInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
               <option value="eps">Polistiren EPS</option>
@@ -942,7 +942,7 @@
               <option value="wood_fiber">Fibră lemnoasă</option>
             </select>
           </label>
-          <label>Izolație existentă pereți <div class="hln-inline-input"><input id="hlnHomeWallIns" type="number" min="0" max="40" step="1" value="5"><span>cm</span></div></label>
+          <label>Izolație pereți <div class="hln-inline-input"><input id="hlnHomeWallIns" type="number" min="0" max="40" step="1" value="5"><span>cm</span></div></label>
           <label>Ce este deasupra ultimului nivel încălzit?
             <select id="hlnHomeTopBoundary">
               <option value="unknown">Nu știu — păstrează estimarea actuală</option>
@@ -951,35 +951,8 @@
               <option value="flat_roof">Terasă / acoperiș plat</option>
             </select>
           </label>
-          <label>Structura limitei superioare
-            <select id="hlnHomeTopStructure">
-              <option value="unknown">Nu știu — U de bază estimat 1,00 W/m²K</option>
-              <option value="plasterboard_boards">Rigips + scândură / astereală ușoară</option>
-              <option value="timber_ceiling">Planșeu din lemn</option>
-              <option value="concrete_slab">Placă de beton</option>
-              <option value="timber_rafter_roof">Acoperiș ușor pe căpriori</option>
-            </select>
-          </label>
-          <small class="hln-field-note">Structura aleasă stabilește rezistența termică estimată înainte de izolație. Valorile sunt estimări Light Engine; „Nu știu” păstrează comportamentul anterior.</small>
-          <label>Etanșeitatea casei
-            <select id="hlnHomeAirtightness">
-              <option value="unknown">Nu știu — păstrează estimarea actuală</option>
-              <option value="good">Bună — fără curenți perceptibili</option>
-              <option value="average">Medie — etanșeitate obișnuită</option>
-              <option value="drafty">Slabă — curenți perceptibili</option>
-              <option value="very_drafty">Foarte slabă — multe infiltrații</option>
-            </select>
-          </label>
-          <label>Etanșeitatea dintre camere și pod
-            <select id="hlnHomeAtticLeakage">
-              <option value="unknown">Nu știu</option>
-              <option value="sealed">Bine etanșat</option>
-              <option value="some_leaks">Rosturi / scăpări moderate</option>
-              <option value="drafty">Curenți prin trapă, spoturi sau rosturi</option>
-            </select>
-          </label>
-          <small class="hln-field-note">Când selectezi o etanșeitate cunoscută, infiltrația este calculată separat de aerul ventilat. Recuperatorul nu primește credit pentru aerul care intră prin neetanșeități. Etanșeitatea spre pod se aplică doar la „Pod rece / neîncălzit”.</small>
-          <label>Material izolație existentă pod / acoperiș
+          <small class="hln-field-note">La „Pod rece” modelăm planșeul dintre camere și pod; la „Terasă” modelăm planșeul sub terasă. Pentru elementul neizolat folosim repere caracteristice U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată. Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat; dacă există curenți de aer, rezultatul poate subestima pierderea.</small>
+          <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
               <option value="eps">Polistiren EPS</option>
@@ -989,8 +962,8 @@
               <option value="wood_fiber">Fibră lemnoasă</option>
             </select>
           </label>
-          <label>Izolație existentă pod / acoperiș <div class="hln-inline-input"><input id="hlnHomeRoofIns" type="number" min="0" max="50" step="1" value="10"><span>cm</span></div></label>
-          <label>Material izolație existentă pardoseală
+          <label>Izolație pod / acoperiș <div class="hln-inline-input"><input id="hlnHomeRoofIns" type="number" min="0" max="50" step="1" value="10"><span>cm</span></div></label>
+          <label>Material izolație pardoseală
             <select id="hlnHomeFloorInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
               <option value="eps">Polistiren EPS</option>
@@ -1000,7 +973,7 @@
               <option value="wood_fiber">Fibră lemnoasă</option>
             </select>
           </label>
-          <label>Izolație existentă pardoseală <div class="hln-inline-input"><input id="hlnHomeFloorIns" type="number" min="0" max="30" step="1" value="5"><span>cm</span></div></label>
+          <label>Izolație pardoseală <div class="hln-inline-input"><input id="hlnHomeFloorIns" type="number" min="0" max="30" step="1" value="5"><span>cm</span></div></label>
           <label>Suprafață ferestre <div class="hln-inline-input"><input id="hlnHomeWindows" type="number" min="2" max="60" step="0.5" value="18"><span>m²</span></div></label>
           <label>Tip vitraj
             <select id="hlnHomeGlazing"><option value="single_clear_glazing">Geam simplu</option><option value="double_clear_glazing">Geam dublu clar</option><option value="double_low_e_face_3">Geam dublu Low-E</option><option value="triple_low_e_faces_2_and_5" selected>Tripan Low-E</option></select>
@@ -1115,8 +1088,6 @@
       <input name="expert_ventilation_override" value="on">
       <input name="air_changes_per_hour" value="0.5">
       <input name="heat_recovery_efficiency" value="0">
-      <input name="infiltration_air_changes_per_hour" value="">
-      <input name="ventilation_air_changes_per_hour" value="">
       <input name="heating_choice" value="condensing_gas_boiler">
       <input name="expert_heating_override" value="">
       <input name="heating_system_type" value="condensing_gas_boiler">
@@ -1162,7 +1133,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next35"></script>
+  <script src="/static/home-lab-next.js?v=next36"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
