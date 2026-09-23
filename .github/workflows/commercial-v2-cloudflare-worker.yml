@@ -1,14 +1,9 @@
 name: Commercial v2 Cloudflare Worker
 
 on:
+  # Production promotion is intentionally manual. Pull requests are validated
+  # and deployed to the isolated staging Worker first.
   workflow_dispatch:
-  push:
-    branches:
-      - codex/commercial-v2-cloudflare-python
-    paths:
-      - ".github/workflows/commercial-v2-cloudflare-worker.yml"
-      - "commercial/**"
-      - "scripts/prepare-commercial-cloudflare-worker.mjs"
 
 jobs:
   worker-runtime:
