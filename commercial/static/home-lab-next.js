@@ -3442,6 +3442,54 @@
     openMeasure(type);
   }
 
+  function focusEditorControl(selector) {
+    window.requestAnimationFrame(() => {
+      const node = $(selector);
+      if (!node) return;
+      node.scrollIntoView({block:"center", behavior:"smooth"});
+      window.setTimeout(() => node.focus({preventScroll:true}), 180);
+    });
+  }
+
+  function handleHouse3dControl(control) {
+    if (!control) return;
+
+    if (control === "pv" || control === "solar_thermal") {
+      if (screen === "home") {
+        openEditor("renewables");
+        focusEditorControl(control === "pv" ? "#hlnHomePvKwp" : "#hlnHomeSolarThermalArea");
+        return;
+      }
+      if (baselineSaved) {
+        openQuickMeasureEditor(control);
+      }
+      return;
+    }
+
+    if (control === "heat_pump") {
+      if (screen === "home") {
+        openEditor("systems");
+        focusEditorControl("#hlnHomeHeating");
+      } else if (baselineSaved) {
+        openMeasure("heating");
+      }
+      return;
+    }
+
+    if (control === "ac") {
+      if (screen === "home") {
+        openEditor("systems");
+        focusEditorControl("#hlnHomeCooling");
+      } else if (baselineSaved) {
+        openMeasure("ventilation");
+      }
+    }
+  }
+
+  window.addEventListener("hln:3d-control", event => {
+    handleHouse3dControl(event.detail?.control);
+  });
+
   function interventionValue(type, state) {
     if (type === "wall") {
       const material = labels.insulation[state.wallInsulationMaterial] || labels.insulation.generic_040;
