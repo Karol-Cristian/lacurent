@@ -395,8 +395,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next17" in response.text
-    assert "/static/home-lab-next.js?v=next27" in response.text
+    assert "/static/home-lab-next.css?v=next18" in response.text
+    assert "/static/home-lab-next.js?v=next28" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -439,6 +439,11 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnMapLocalityResults"' in response.text
     assert 'id="hlnBuildingType"' in response.text
     assert 'id="hlnConstructionYear"' in response.text
+    assert 'id="hlnHomeTopBoundary"' in response.text
+    assert 'id="hlnHomeTopStructure"' in response.text
+    assert "Pod rece / neîncălzit — calculează planșeul" in response.text
+    assert "Rigips + scândură / astereală ușoară" in response.text
+    assert "Nu știu — U de bază estimat 1,00 W/m²K" in response.text
     assert 'id="hlnHomeSolarThermalArea"' in response.text
     assert 'id="hlnHomeHeatingEmitter"' in response.text
     assert response.text.count('data-hln-home-heating-chain') == 4
