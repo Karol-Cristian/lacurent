@@ -12,7 +12,7 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
 
     steps:
       - name: Check out repository
@@ -48,3 +48,24 @@ jobs:
           node --test commercial/tests/scenario-cockpit.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
+
+      - name: Install Chromium smoke dependency
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run Home Lab browser smoke
+        env:
+          HOME_LAB_BASE_URL: http://127.0.0.1:8765
+        run: |
+          python -m uvicorn app.main:app --app-dir commercial --host 127.0.0.1 --port 8765 > /tmp/home-lab-uvicorn.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid || true; cat /tmp/home-lab-uvicorn.log || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
+          node scripts/smoke-home-lab-browser.mjs
