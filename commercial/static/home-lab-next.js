@@ -47,30 +47,17 @@
   });
   const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
 
-  // Coarse Light Engine presets for the upper thermal boundary before added insulation.
-  // "unknown" intentionally preserves the previous Home Lab base U=1.00 W/m²K.
-  // The explicit structure choices are engineering estimates, not normative MC001 values.
-  const TOP_STRUCTURE_PRESETS = Object.freeze({
-    unknown: {baseU:1.00},
-    plasterboard_boards: {baseU:2.20},
-    timber_ceiling: {baseU:1.80},
-    concrete_slab: {baseU:2.60},
-    timber_rafter_roof: {baseU:2.00},
-  });
-
-  // Approximate natural infiltration at normal operating pressure, used only
-  // after the homeowner explicitly describes airtightness. Unknown keeps the
-  // previous equivalent-ACH calculation untouched.
-  const AIRTIGHTNESS_INFILTRATION_ACH = Object.freeze({
-    good: 0.15,
-    average: 0.30,
-    drafty: 0.60,
-    very_drafty: 0.90,
-  });
-  const ATTIC_LEAKAGE_ACH_ADD = Object.freeze({
-    sealed: 0.00,
-    some_leaks: 0.10,
-    drafty: 0.30,
+  // Characteristic U values for uninsulated horizontal elements from the
+  // Romanian 2007 energy-performance methodology, Table 14.1:
+  // - slab below unheated attic: 3.25 W/m²K
+  // - slab below terrace: 2.25 W/m²K
+  // Unknown/heated-attic keeps the previous Light Engine fallback until the
+  // sloped-roof assembly has its own reviewed source-backed model.
+  const TOP_BOUNDARY_BASE_U = Object.freeze({
+    unknown: 1.00,
+    cold_attic: 3.25,
+    heated_attic: 1.00,
+    flat_roof: 2.25,
   });
 
   const labels = {
@@ -96,26 +83,6 @@
       cold_attic: "Pod rece / neîncălzit",
       heated_attic: "Mansardă încălzită",
       flat_roof: "Terasă / acoperiș plat"
-    },
-    topStructure: {
-      unknown: "Structură necunoscută",
-      plasterboard_boards: "Rigips + scândură",
-      timber_ceiling: "Planșeu din lemn",
-      concrete_slab: "Placă de beton",
-      timber_rafter_roof: "Acoperiș ușor pe căpriori"
-    },
-    airtightness: {
-      unknown: "Etanșeitate necunoscută",
-      good: "Bună",
-      average: "Medie",
-      drafty: "Curenți perceptibili",
-      very_drafty: "Foarte neetanșă"
-    },
-    atticLeakage: {
-      unknown: "Necunoscută",
-      sealed: "Bine etanșat",
-      some_leaks: "Rosturi / scăpări moderate",
-      drafty: "Curenți spre pod"
     },
     glazing: {
       reference_mc001: "Fereastră de referință MC001",
@@ -190,9 +157,6 @@
     wallStructureThickness: 30,
     wallInsulationMaterial: "generic_040",
     topBoundary: "unknown",
-    topStructure: "unknown",
-    airtightness: "unknown",
-    atticLeakage: "unknown",
     roofInsulationMaterial: "generic_040",
     floorInsulationMaterial: "generic_040",
     wallIns: 5,
@@ -220,7 +184,6 @@
 
   let homeState = {...defaultState};
   let scenarioState = {...defaultState};
-  let confirmedGroups = new Set();
   let homeResult = null;
   let scenarioResult = null;
   let currentResult = null;
@@ -362,33 +325,12 @@
       projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
         ? saved.projectMode
         : "existing_standard";
-      confirmedGroups = new Set(
-        Array.isArray(saved.confirmedGroups)
-          ? saved.confirmedGroups.filter(item => ["location","house","envelope","systems","renewables"].includes(item))
-          : []
-      );
       homeResultState = homeResult ? "fresh" : "empty";
       scenarioResultState = scenarioResult ? "fresh" : "empty";
       // Rewrite the persisted state once so the migration is permanent.
       persist();
     }
   } catch (_) {}
-
-  function markConfirmedGroup(group) {
-    if (!["location","house","envelope","systems","renewables"].includes(group)) return;
-    confirmedGroups.add(group);
-  }
-
-  function renderConfidence() {
-    const countNode = $("#hlnConfirmedCount");
-    const labelNode = $("#hlnConfidenceLabel");
-    if (!countNode || !labelNode) return;
-    const count = confirmedGroups.size;
-    countNode.textContent = `${count}/5`;
-    labelNode.textContent = count === 5
-      ? "secțiuni confirmate"
-      : "secțiuni confirmate · restul estimat";
-  }
 
   function fmt(value, digits = 0) {
     const number = Number(value);
@@ -424,36 +366,7 @@
   }
 
   function topBaseU(state) {
-    const preset = TOP_STRUCTURE_PRESETS[state?.topStructure] || TOP_STRUCTURE_PRESETS.unknown;
-    return Number(preset.baseU) || TOP_STRUCTURE_PRESETS.unknown.baseU;
-  }
-
-  function layeredInsulationU(baseU, state, thicknessKey, materialKey) {
-    const totalCm = Math.max(0, Number(state?.[thicknessKey]) || 0);
-    const selectedMaterial = state?.[materialKey] || "generic_040";
-    if (!baselineSaved || state === homeState) {
-      return insulationU(baseU, totalCm, insulationLambda(selectedMaterial));
-    }
-
-    const existingCm = Math.max(0, Number(homeState?.[thicknessKey]) || 0);
-    const existingMaterial = homeState?.[materialKey] || "generic_040";
-    if (totalCm <= existingCm + 1e-9) {
-      return insulationU(baseU, totalCm, insulationLambda(existingMaterial));
-    }
-
-    const baseR = 1 / baseU;
-    const existingR = existingCm / 100 / insulationLambda(existingMaterial);
-    const addedR = (totalCm - existingCm) / 100 / insulationLambda(selectedMaterial);
-    return 1 / (baseR + existingR + addedR);
-  }
-
-  function infiltrationAch(state) {
-    const base = AIRTIGHTNESS_INFILTRATION_ACH[state?.airtightness];
-    if (!Number.isFinite(Number(base))) return null;
-    const atticAdd = state?.topBoundary === "cold_attic"
-      ? Number(ATTIC_LEAKAGE_ACH_ADD[state?.atticLeakage] || 0)
-      : 0;
-    return Number(base) + atticAdd;
+    return Number(TOP_BOUNDARY_BASE_U[state?.topBoundary]) || TOP_BOUNDARY_BASE_U.unknown;
   }
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -642,18 +555,18 @@
     if (!reference?.u_values_w_m2k) return null;
     const u = reference.u_values_w_m2k;
     return {
-      wallIns: Number(homeState.wallIns || 0) + insulationCmForU(
-        currentEnvelopeU(homeState, "wallU"),
+      wallIns: insulationCmForU(
+        wallBaseU(homeState),
         u.exterior_wall,
         insulationLambda(homeState.wallInsulationMaterial)
       ),
-      roofIns: Number(homeState.roofIns || 0) + insulationCmForU(
-        currentEnvelopeU(homeState, "roofU"),
+      roofIns: insulationCmForU(
+        topBaseU(homeState),
         u.roof,
         insulationLambda(homeState.roofInsulationMaterial)
       ),
-      floorIns: Number(homeState.floorIns || 0) + insulationCmForU(
-        currentEnvelopeU(homeState, "floorU"),
+      floorIns: insulationCmForU(
+        0.90,
         u.floor,
         insulationLambda(homeState.floorInsulationMaterial)
       ),
@@ -703,14 +616,17 @@
     const next = [];
     if (
       Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01 ||
+      scenarioState.wallInsulationMaterial !== homeState.wallInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.wallU))
     ) next.push("wall");
     if (
       Math.abs(Number(scenarioState.roofIns) - Number(homeState.roofIns)) > 0.01 ||
+      scenarioState.roofInsulationMaterial !== homeState.roofInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.roofU))
     ) next.push("roof");
     if (
       Math.abs(Number(scenarioState.floorIns) - Number(homeState.floorIns)) > 0.01 ||
+      scenarioState.floorInsulationMaterial !== homeState.floorInsulationMaterial ||
       Number.isFinite(Number(scenarioOverrides.floorU))
     ) next.push("floor");
     if (
@@ -1044,9 +960,6 @@
       const value = Number(config.value());
       const homeValue = Number(config.homeValue());
       input.value = String(value);
-      if (baselineSaved && ["wallIns","roofIns","floorIns"].includes(key)) {
-        input.min = String(homeValue);
-      }
       const valueNode = row.querySelector("[data-hln-tune-value]");
       const digits = config.digits ?? (value % 1 ? 1 : 0);
       if (valueNode) valueNode.textContent = `${fmt(value, digits)} ${config.unit}`;
@@ -1209,15 +1122,30 @@
     const windowU = finiteOverride("windowU");
     const doorU = finiteOverride("doorU");
 
-    formSet("wall_u_value", wallU ?? layeredInsulationU(
-      wallBaseU(state), state, "wallIns", "wallInsulationMaterial"
-    ).toFixed(4));
-    formSet("roof_u_value", roofU ?? layeredInsulationU(
-      topBaseU(state), state, "roofIns", "roofInsulationMaterial"
-    ).toFixed(4));
-    formSet("floor_u_value", floorU ?? layeredInsulationU(
-      0.90, state, "floorIns", "floorInsulationMaterial"
-    ).toFixed(4));
+    formSet(
+      "wall_u_value",
+      wallU ?? insulationU(
+        wallBaseU(state),
+        state.wallIns,
+        insulationLambda(state.wallInsulationMaterial)
+      ).toFixed(4)
+    );
+    formSet(
+      "roof_u_value",
+      roofU ?? insulationU(
+        topBaseU(state),
+        state.roofIns,
+        insulationLambda(state.roofInsulationMaterial)
+      ).toFixed(4)
+    );
+    formSet(
+      "floor_u_value",
+      floorU ?? insulationU(
+        0.90,
+        state.floorIns,
+        insulationLambda(state.floorInsulationMaterial)
+      ).toFixed(4)
+    );
     formSet("window_u_value", windowU ?? (glazingU[state.glazing] || 1.6));
     formSet("door_u_value", doorU ?? 1.8);
 
@@ -1231,35 +1159,18 @@
 
     const overrideAch = finiteOverride("airChanges");
     const overrideRecovery = finiteOverride("heatRecovery");
-    const explicitInfiltrationAch = infiltrationAch(state);
     if (overrideAch != null || overrideRecovery != null) {
-      // Optimizer/reference overrides use the legacy equivalent-ACH path.
-      formSet("infiltration_air_changes_per_hour", "");
-      formSet("ventilation_air_changes_per_hour", "");
       formSet("air_changes_per_hour", overrideAch ?? 0.5);
       formSet("heat_recovery_efficiency", overrideRecovery ?? 0);
-    } else if (explicitInfiltrationAch != null) {
-      const controlledAch = state.ventilation === "natural" ? 0.30 : 0.50;
-      const recovery = state.ventilation === "hrv" ? 0.75 : 0;
-      formSet("infiltration_air_changes_per_hour", explicitInfiltrationAch.toFixed(3));
-      formSet("ventilation_air_changes_per_hour", controlledAch.toFixed(3));
-      formSet("air_changes_per_hour", (explicitInfiltrationAch + controlledAch).toFixed(3));
-      formSet("heat_recovery_efficiency", recovery);
+    } else if (state.ventilation === "hrv") {
+      formSet("air_changes_per_hour", 0.5);
+      formSet("heat_recovery_efficiency", 0.75);
+    } else if (state.ventilation === "mechanical") {
+      formSet("air_changes_per_hour", 0.65);
+      formSet("heat_recovery_efficiency", 0);
     } else {
-      // Preserve the pre-airtightness Home Lab behaviour until the user
-      // explicitly describes the house.
-      formSet("infiltration_air_changes_per_hour", "");
-      formSet("ventilation_air_changes_per_hour", "");
-      if (state.ventilation === "hrv") {
-        formSet("air_changes_per_hour", 0.5);
-        formSet("heat_recovery_efficiency", 0.75);
-      } else if (state.ventilation === "mechanical") {
-        formSet("air_changes_per_hour", 0.65);
-        formSet("heat_recovery_efficiency", 0);
-      } else {
-        formSet("air_changes_per_hour", 0.5);
-        formSet("heat_recovery_efficiency", 0);
-      }
+      formSet("air_changes_per_hour", 0.5);
+      formSet("heat_recovery_efficiency", 0);
     }
 
     const overrideHeatingEfficiency = finiteOverride("heatingEfficiency");
@@ -1586,14 +1497,20 @@
   function currentEnvelopeU(state, key, overrides = {}) {
     const explicit = Number(overrides?.[key]);
     if (Number.isFinite(explicit) && explicit > 0) return explicit;
-    if (key === "wallU") return layeredInsulationU(
-      wallBaseU(state), state, "wallIns", "wallInsulationMaterial"
+    if (key === "wallU") return insulationU(
+      wallBaseU(state),
+      state.wallIns,
+      insulationLambda(state.wallInsulationMaterial)
     );
-    if (key === "roofU") return layeredInsulationU(
-      topBaseU(state), state, "roofIns", "roofInsulationMaterial"
+    if (key === "roofU") return insulationU(
+      topBaseU(state),
+      state.roofIns,
+      insulationLambda(state.roofInsulationMaterial)
     );
-    if (key === "floorU") return layeredInsulationU(
-      0.90, state, "floorIns", "floorInsulationMaterial"
+    if (key === "floorU") return insulationU(
+      0.90,
+      state.floorIns,
+      insulationLambda(state.floorInsulationMaterial)
     );
     if (key === "windowU") {
       return {
@@ -1633,29 +1550,35 @@
         const nextState = {...baseState};
         const nextOverrides = {...baseOverrides};
         if (item.id === "wall") {
-          const current = Number(currentEnvelopeU(nextState, "wallU", baseOverrides));
-          nextState.wallIns = Number(nextState.wallIns || 0) + equivalentInsulationCm(
-            current,
-            item.limit,
-            insulationLambda(nextState.wallInsulationMaterial)
+          nextState.wallIns = Math.max(
+            Number(nextState.wallIns || 0),
+            equivalentInsulationCm(
+              wallBaseU(nextState),
+              item.limit,
+              insulationLambda(nextState.wallInsulationMaterial)
+            )
           );
           nextOverrides.wallU = item.limit;
         }
         if (item.id === "roof") {
-          const current = Number(currentEnvelopeU(nextState, "roofU", baseOverrides));
-          nextState.roofIns = Number(nextState.roofIns || 0) + equivalentInsulationCm(
-            current,
-            item.limit,
-            insulationLambda(nextState.roofInsulationMaterial)
+          nextState.roofIns = Math.max(
+            Number(nextState.roofIns || 0),
+            equivalentInsulationCm(
+              topBaseU(nextState),
+              item.limit,
+              insulationLambda(nextState.roofInsulationMaterial)
+            )
           );
           nextOverrides.roofU = item.limit;
         }
         if (item.id === "floor") {
-          const current = Number(currentEnvelopeU(nextState, "floorU", baseOverrides));
-          nextState.floorIns = Number(nextState.floorIns || 0) + equivalentInsulationCm(
-            current,
-            item.limit,
-            insulationLambda(nextState.floorInsulationMaterial)
+          nextState.floorIns = Math.max(
+            Number(nextState.floorIns || 0),
+            equivalentInsulationCm(
+              0.90,
+              item.limit,
+              insulationLambda(nextState.floorInsulationMaterial)
+            )
           );
           nextOverrides.floorU = item.limit;
         }
@@ -1754,6 +1677,7 @@
       const envelopeVariants = [
         {
           family:"roof",
+          baseU:topBaseU(state),
           lambda:insulationLambda(state.roofInsulationMaterial),
           stateKey:"roofIns",
           targetU:Number(envelopeLimits.roof),
@@ -1762,6 +1686,7 @@
         },
         {
           family:"wall",
+          baseU:wallBaseU(state),
           lambda:insulationLambda(state.wallInsulationMaterial),
           stateKey:"wallIns",
           targetU:Number(envelopeLimits.exterior_wall),
@@ -1770,6 +1695,7 @@
         },
         {
           family:"floor",
+          baseU:0.90,
           lambda:insulationLambda(state.floorInsulationMaterial),
           stateKey:"floorIns",
           targetU:Number(envelopeLimits.floor_generic_conservative),
@@ -1791,8 +1717,8 @@
         if (alreadyStrong) continue;
 
         const level = Math.ceil(
-          Number.isFinite(item.targetU) && item.targetU > 0 && Number.isFinite(actualU) && actualU > 0
-            ? currentCm + equivalentInsulationCm(actualU, item.targetU, item.lambda)
+          Number.isFinite(item.targetU) && item.targetU > 0
+            ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU, item.lambda))
             : currentCm + item.step
         );
         if (level <= currentCm + 0.1) continue;
@@ -2893,10 +2819,8 @@
     const wallInsulationLabel = labels.insulation[state.wallInsulationMaterial] || labels.insulation.generic_040;
     const roofInsulationLabel = labels.insulation[state.roofInsulationMaterial] || labels.insulation.generic_040;
     const topBoundaryLabel = labels.topBoundary[state.topBoundary] || labels.topBoundary.unknown;
-    const topStructureLabel = labels.topStructure[state.topStructure] || labels.topStructure.unknown;
-    const airtightnessLabel = labels.airtightness[state.airtightness] || labels.airtightness.unknown;
     $("#hlnEnvelopeSummary").textContent = `${structureLabel} · ${state.wallIns} cm ${wallInsulationLabel}`;
-    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${topStructureLabel} · ${state.roofIns} cm ${roofInsulationLabel} · etanșeitate ${airtightnessLabel.toLowerCase()}`;
+    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${state.roofIns} cm ${roofInsulationLabel} · ${labels.glazing[state.glazing] || state.glazing}`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
     const heatingParts = [
       labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter,
@@ -3174,12 +3098,9 @@
     $("#hlnWallIns").value = scenarioState.wallIns;
     $("#hlnRoofIns").value = scenarioState.roofIns;
     $("#hlnFloorIns").value = scenarioState.floorIns;
-    $("#hlnWallIns").min = String(Number(homeState.wallIns) || 0);
-    $("#hlnRoofIns").min = String(Number(homeState.roofIns) || 0);
-    $("#hlnFloorIns").min = String(Number(homeState.floorIns) || 0);
-    $("#hlnWallInsulationMeta").textContent = `strat nou · λ ${fmt(insulationLambda(scenarioState.wallInsulationMaterial),3)} W/mK · existent ${fmt(homeState.wallIns)} cm`;
-    $("#hlnRoofInsulationMeta").textContent = `strat nou · λ ${fmt(insulationLambda(scenarioState.roofInsulationMaterial),3)} W/mK · existent ${fmt(homeState.roofIns)} cm`;
-    $("#hlnFloorInsulationMeta").textContent = `strat nou · λ ${fmt(insulationLambda(scenarioState.floorInsulationMaterial),3)} W/mK · existent ${fmt(homeState.floorIns)} cm`;
+    $("#hlnWallInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.wallInsulationMaterial),3)} W/mK · configurația finală simulată`;
+    $("#hlnRoofInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.roofInsulationMaterial),3)} W/mK · configurația finală simulată`;
+    $("#hlnFloorInsulationMeta").textContent = `λ ${fmt(insulationLambda(scenarioState.floorInsulationMaterial),3)} W/mK · configurația finală simulată`;
     $("#hlnScenarioGlazing").value = scenarioState.glazing;
     $("#hlnScenarioWindows").value = scenarioState.windows;
     $("#hlnScenarioHeating").value = scenarioState.heating;
@@ -3647,8 +3568,7 @@
         referenceMode,
         scenarioOverrides,
         optimizationMeta,
-        projectMode,
-        confirmedGroups:[...confirmedGroups]
+        projectMode
       }));
     } catch (_) {}
   }
@@ -3667,7 +3587,6 @@
     currentResult = result;
     baselineSaved = true;
     trackEvent("home_lab_baseline_saved", {
-      confirmed_sections:confirmedGroups.size,
       locality:homeState.locality || undefined,
     });
     referenceMode = false;
@@ -3714,9 +3633,6 @@
     $("#hlnHomeWallStructureThickness").value = homeState.wallStructureThickness || 30;
     $("#hlnHomeWallInsulationMaterial").value = homeState.wallInsulationMaterial || "generic_040";
     $("#hlnHomeTopBoundary").value = homeState.topBoundary || "unknown";
-    $("#hlnHomeTopStructure").value = homeState.topStructure || "unknown";
-    $("#hlnHomeAirtightness").value = homeState.airtightness || "unknown";
-    $("#hlnHomeAtticLeakage").value = homeState.atticLeakage || "unknown";
     $("#hlnHomeRoofInsulationMaterial").value = homeState.roofInsulationMaterial || "generic_040";
     $("#hlnHomeFloorInsulationMaterial").value = homeState.floorInsulationMaterial || "generic_040";
     $("#hlnHomeWallIns").value = homeState.wallIns;
@@ -3746,8 +3662,6 @@
   }
 
   function updateHomeFromEditors() {
-    const activeEditor = $("[data-hln-editor]").find(section => !section.hidden);
-    if (activeEditor?.dataset?.hlnEditor) markConfirmedGroup(activeEditor.dataset.hlnEditor);
     const previous = {
       orientation: homeState.orientation,
       cooling: homeState.cooling,
@@ -3771,9 +3685,6 @@
     homeState.wallStructureThickness = Number($("#hlnHomeWallStructureThickness").value) || 30;
     homeState.wallInsulationMaterial = $("#hlnHomeWallInsulationMaterial").value;
     homeState.topBoundary = $("#hlnHomeTopBoundary").value;
-    homeState.topStructure = $("#hlnHomeTopStructure").value;
-    homeState.airtightness = $("#hlnHomeAirtightness").value;
-    homeState.atticLeakage = $("#hlnHomeAtticLeakage").value;
     homeState.roofInsulationMaterial = $("#hlnHomeRoofInsulationMaterial").value;
     homeState.floorInsulationMaterial = $("#hlnHomeFloorInsulationMaterial").value;
     homeState.wallIns = Number($("#hlnHomeWallIns").value);
@@ -3809,7 +3720,6 @@
     homeState.solarThermalTilt = Number($("#hlnHomeSolarThermalTilt").value);
     syncHomeEditorControls();
     renderHome();
-    renderConfidence();
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
@@ -4121,7 +4031,6 @@
     homeState.climateZone = locality.climateZone || null;
     homeState.climateStationId = locality.stationId || null;
     homeState.winterDesignTemperatureC = locality.winterDesignTemperatureC ?? null;
-    markConfirmedGroup("location");
     $("#hlnLocalitySearch").value = locality.name;
     $("#hlnEditorClimate").textContent =
       `${locality.county || ""}${locality.climateZone ? " · zona " + locality.climateZone : ""} · ${locality.stationName || "profil climatic automat"}`;
@@ -4305,7 +4214,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeTopStructure","#hlnHomeAirtightness","#hlnHomeAtticLeakage","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
@@ -4313,7 +4222,6 @@
 
   root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
-    markConfirmedGroup("house");
     root.querySelectorAll("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
     baselineSaved = false;
     referenceMode = false;
@@ -4566,7 +4474,6 @@
   renderAll();
   trackEvent("home_lab_viewed", {
     restored_baseline:Boolean(baselineSaved),
-    confirmed_sections:confirmedGroups.size,
   });
   emitVisualState();
 
