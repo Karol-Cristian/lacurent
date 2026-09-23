@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.7",
+  "version": "lacurent-commercial-v2.8",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -29,7 +29,7 @@
       "model": "ISO 13370 slab-on-ground steady-state U-value for uninsulated/all-over insulated slabs without explicit edge-insulation correction",
       "source": "ISO 13370:2017; MC001-2022 §2.3.3 delegates ground-contact heat transfer to ISO 13370 / C107",
       "default_ground_conductivity_w_mk": 2.0,
-      "default_ground_conductivity_basis": "ISO 13370 default for unknown ground type (sand/gravel category)",
+      "default_ground_conductivity_basis": "LaCurent Light fallback for unknown soil; user/expert input can override",
       "default_wall_thickness_m": 0.30,
       "monthly_temperature_model": "annual_exterior_temperature",
       "limitations": "Annual steady-state ground coupling only. Seasonal periodic ground term/bm and explicit edge-insulation psi correction are not yet included."
