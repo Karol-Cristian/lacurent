@@ -951,7 +951,7 @@
               <option value="flat_roof">Terasă / acoperiș plat</option>
             </select>
           </label>
-          <small class="hln-field-note">La „Pod rece” modelăm planșeul ca Hu, adică spre un spațiu neîncălzit, nu direct spre aerul exterior. Home Lab folosește momentan un factor bztu Light 0,75, marcat cu încredere scăzută. La mansardă încălzită sau terasă, limita termică este acoperișul/terasa spre exterior. Pentru elementul neizolat folosim U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată.</small>
+          <small class="hln-field-note">Pod rece: limita termică este planșeul dintre camere și pod, modelat ca Hu — nu ca acoperiș expus direct. Home Lab folosește momentan un factor bztu Light 0,75, marcat cu încredere scăzută. Mansardă încălzită: limita termică devine acoperișul spre exterior (Hd), iar suprafața încălzită introdusă trebuie să includă mansarda. Terasă: limita este direct către exterior. Pentru elementul neizolat folosim U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată.</small>
           <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -972,7 +972,7 @@
               <option value="heated_space">Spațiu încălzit</option>
             </select>
           </label>
-          <small class="hln-field-note">Pardoseala pe sol este calculată separat ca Hg. Home Lab determină cuplarea staționară cu solul din aria și perimetrul casei după modelul de placă pe sol ISO 13370; pentru sol necunoscut folosește λ=2,0 W/mK. Balanța lunară folosește temperatura exterioară medie anuală pentru componenta staționară. Variația sezonieră periodică și corecția explicită pentru termoizolația de muchie nu sunt încă incluse.</small>
+          <small class="hln-field-note">Pardoseala pe sol este calculată separat ca Hg, din aria și perimetrul casei, nu ca un perete expus aerului exterior. Pentru sol necunoscut, Home Lab folosește λ=2,0 W/mK ca fallback Light. Peste subsol neîncălzit folosim Hu; peste un spațiu încălzit transferul prin această frontieră este zero. Modelul Hg folosește ramura staționară ISO 13370 și temperatura exterioară medie anuală; variația sezonieră periodică și termoizolația de muchie nu sunt încă modelate explicit.</small>
           <label>Material izolație pardoseală
             <select id="hlnHomeFloorInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
