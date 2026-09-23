@@ -51,10 +51,10 @@ class UnheatedZoneInput(BaseModel):
     conditioned_zone_heat_transfers_w_k: list[float] = Field(min_items=1)
 
     @validator("conditioned_zone_heat_transfers_w_k")
-    def validate_conditioned_transfers(cls, values: list[float]) -> list[float]:
-        if any(value <= 0 for value in values):
+    def validate_conditioned_transfers(cls, value: list[float]) -> list[float]:
+        if any(item <= 0 for item in value):
             raise ValueError("Conditioned-zone heat-transfer coefficients must be positive.")
-        return values
+        return value
 
 
 class HeatingSystemType(str, Enum):
