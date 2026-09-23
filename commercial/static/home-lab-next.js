@@ -1108,6 +1108,12 @@
     formSet("wall_area_m2", wallArea.toFixed(3));
     formSet("roof_area_m2", topArea.toFixed(3));
     formSet("floor_area_m2", footprint.toFixed(3));
+    formSet("ground_exposed_perimeter_m", perimeter.toFixed(3));
+    formSet(
+      "ground_wall_thickness_m",
+      (Math.max(Number(state.wallStructureThickness) || 30, 1) / 100).toFixed(3)
+    );
+    formSet("ground_conductivity_w_mk", "");
 
     const roofBoundaryType = state.topBoundary === "cold_attic"
       ? "unheated_attic"
