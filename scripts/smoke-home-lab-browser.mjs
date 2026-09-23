@@ -22,6 +22,50 @@ try {
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
 
+  await page.waitForFunction(
+    () => Array.isArray(window.__homeLab3D) && window.__homeLab3D[0]?.modelRoot,
+    null,
+    {timeout:30000}
+  );
+  const roofVisualCalibration = await page.evaluate(() => {
+    const scene = window.__homeLab3D[0];
+    scene.applyVisualState({
+      ...(scene.visualState || {}),
+      pvEnabled:true,
+      pvKwp:15,
+      heating:"condensing_gas_boiler",
+    });
+
+    const Box3Ctor = scene.modelBox.constructor;
+    const pv = scene.experimentLayers.get("pv");
+    const smoke = scene.equipmentLayers.get("chimneySmoke");
+    const pvBox = new Box3Ctor().setFromObject(pv);
+    const smokeWorld = scene.modelRoot.localToWorld(smoke.position.clone());
+
+    return {
+      pvVisible:pv.visible,
+      pvVisibleChildren:pv.children.filter(child => child.visible).length,
+      pvMinY:pvBox.min.y,
+      pvMaxY:pvBox.max.y,
+      modelMaxY:scene.modelBox.max.y,
+      smokeVisible:smoke.visible,
+      smokeWorld:smokeWorld.toArray(),
+    };
+  });
+  if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
+    throw new Error("PV calibration did not expose the full six-panel field");
+  }
+  if (roofVisualCalibration.pvMinY < 3.20 || roofVisualCalibration.pvMaxY > roofVisualCalibration.modelMaxY + 0.08) {
+    throw new Error("PV field still extends outside the usable roof band: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (!roofVisualCalibration.smokeVisible) {
+    throw new Error("Combustion plume is hidden for condensing gas");
+  }
+  const [smokeX, smokeY, smokeZ] = roofVisualCalibration.smokeWorld;
+  if (Math.abs(smokeX - 0.80) > 0.30 || Math.abs(smokeZ - 0.40) > 0.30 || smokeY < 4.85) {
+    throw new Error("Smoke is not anchored to the measured taller chimney: " + JSON.stringify(roofVisualCalibration));
+  }
+
   const compass = page.locator('[data-hln-3d-stage="home"] [data-hln-3d-compass]');
   await compass.waitFor({state:"visible", timeout:15000});
   const compassBox = await compass.boundingBox();
