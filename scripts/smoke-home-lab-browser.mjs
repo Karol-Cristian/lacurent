@@ -29,11 +29,12 @@ try {
   );
   const sceneDiagnostic = await page.evaluate(() => {
     const scene = window.__homeLab3D?.[0];
-    const THREE_NS = window.THREE;
+    const Box3Ctor = scene.modelBox.constructor;
+    const Vector3Ctor = scene.modelSize.constructor;
     const boxFor = (obj) => {
-      const box = new THREE_NS.Box3().setFromObject(obj);
-      const size = new THREE_NS.Vector3(); box.getSize(size);
-      const center = new THREE_NS.Vector3(); box.getCenter(center);
+      const box = new Box3Ctor().setFromObject(obj);
+      const size = new Vector3Ctor(); box.getSize(size);
+      const center = new Vector3Ctor(); box.getCenter(center);
       return {min:box.min.toArray(), max:box.max.toArray(), size:size.toArray(), center:center.toArray()};
     };
     const meshes = (scene?.inspectableMeshes || []).map((mesh, index) => {
