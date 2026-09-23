@@ -777,14 +777,14 @@ class HomeLabHouse3D {
     // the clear left roof face, below the ridge and away from the dormer.
     this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
 
-    // Fine placement from the production view:
-    // - shift the whole field exactly one row down the roof plane, so the
-    //   previous lower row becomes the new middle row;
-    // - nudge the field slightly toward the chimney without changing panel
-    //   spacing, power scaling, or the solved roof plane.
+    // Fine placement from the production view. A full-row translation was
+    // measured in Chromium and would push the field below the eave. Use the
+    // largest conservative visible shift while preserving the roof envelope,
+    // then nudge the whole field toward the chimney.
     const rowPitch = panelDepth + gapZ;
+    const downslopeShift = rowPitch * 0.45;
     const chimneyNudge = (panelWidth + gapX) * 0.30;
-    layer.translateZ(rowPitch);
+    layer.translateZ(downslopeShift);
     layer.translateX(chimneyNudge);
 
     layer.visible = false;
