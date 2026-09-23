@@ -70,6 +70,21 @@ def test_ventilation_coefficient_uses_air_change_volume_and_recovery() -> None:
     assert_close(ventilation_heat_transfer(building), 40.8)
 
 
+def test_split_ventilation_does_not_recover_infiltration() -> None:
+    building = simple_building(
+        ventilation={
+            "air_changes_per_hour": 0.7,
+            "heat_recovery_efficiency": 0.75,
+            "infiltration_air_changes_per_hour": 0.2,
+            "ventilation_air_changes_per_hour": 0.5,
+        }
+    )
+
+    # 0.2 h⁻¹ infiltration is unrecovered; only the 0.5 h⁻¹ controlled stream
+    # receives 75% heat recovery: 0.34 * 300 * (0.2 + 0.5 * 0.25).
+    assert_close(ventilation_heat_transfer(building), 33.15)
+
+
 def test_heating_final_energy_uses_efficiency() -> None:
     building = simple_building(
         heating={"system_type": "gas_boiler", "efficiency": 0.9, "carrier": "natural_gas"}
