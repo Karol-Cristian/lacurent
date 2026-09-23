@@ -845,7 +845,7 @@ jobs:
           energy_status, _, energy_html = open_url(apex + "/instalatii")
           assert energy_status == 200
           assert "data-home-lab-next" in energy_html
-          assert "Construiește punctul de plecare." in energy_html
+          assert "Casa este interfața." in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
