@@ -2473,7 +2473,7 @@
       const details = $("#hlnRoiCostDetails");
       if (details) details.open = true;
       setOptimizationNote(
-        "<strong>Catalogul de costuri nu are încă un candidat utilizabil.</strong><span>Best ROI va reveni automat când baza comercială este completă; utilizatorul nu trebuie să introducă prețuri.</span>",
+        "<strong>Catalogul de costuri nu are încă un candidat utilizabil.</strong><span>Optimizarea financiară va reveni automat când baza comercială este completă; utilizatorul nu trebuie să introducă prețuri.</span>",
         "warn"
       );
       return;
@@ -2482,9 +2482,9 @@
     const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
-    setStatus("Calculez Best ROI…");
+    setStatus("Calculez amortizarea simplă…");
     setOptimizationNote(
-      `<strong>Best ROI în lucru…</strong><span>Recalculez soluțiile tehnice cu CAPEX cunoscut și caut randamentul maxim sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
+      `<strong>Compar investițiile…</strong><span>Recalculez soluțiile cu CAPEX cunoscut și compar economia anuală raportată la investiție sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
     );
 
     try {
@@ -2509,7 +2509,7 @@
           "<strong>Nu există încă o soluție cu ROI calculabil.</strong><span>Catalogul furnizează CAPEX-ul, dar economia anuală nu este pozitivă pentru candidații disponibili.</span>",
           "warn"
         );
-        setStatus("Best ROI fără candidat financiar pozitiv");
+        setStatus("Fără candidat cu amortizare pozitivă");
         scenarioResultState = scenarioResult ? "stale" : "empty";
         renderAll();
         return;
@@ -2528,7 +2528,7 @@
             "<strong>Nicio intervenție nu are ROI pozitiv cu datele curente.</strong><span>Nu forțez o recomandare doar pentru a produce un rezultat.</span>",
             "warn"
           );
-          setStatus("Best ROI fără investiție cu randament pozitiv");
+          setStatus("Fără investiție cu economie anuală pozitivă");
           scenarioResultState = scenarioResult ? "stale" : "empty";
           renderAll();
           return;
@@ -2582,7 +2582,7 @@
             `<strong>Nu am găsit un pachet care să treacă guardrail-ul „${escapeHtml(projectModeLabel())}”.</strong><span>Am testat toate familiile cu CAPEX cunoscut în bugetul bounded. Nu declar conformitate dacă pragurile nu sunt atinse.</span><small>Evaluări motor: ${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS}.</small>`,
             "warn"
           );
-          setStatus("Best ROI: guardrail neîndeplinit");
+          setStatus("Optimizare financiară: guardrail neîndeplinit");
           scenarioResultState = scenarioResult ? "stale" : "empty";
           renderAll();
           return;
@@ -2629,7 +2629,7 @@
 
       applyOptimizerResult(state, current, overrides, {
         mode:"roi",
-        label:"Best ROI",
+        label:"Amortizare simplă",
         projectMode,
         projectModeLabel:projectModeLabel(),
         regulatoryTarget:target,
@@ -2653,17 +2653,17 @@
         : "n/a";
       const paybackText = economics.paybackYears == null ? "n/a" : `${fmt(economics.paybackYears,1)} ani`;
       setOptimizationNote(
-        `<strong>Best ROI: ${roiText} · recuperare ${paybackText}</strong>
+        `<strong>Amortizare simplă: ${paybackText} · randament anual simplu ${roiText}</strong>
          <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length} intervenții în pachet.</span>
          <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. CAPEX: ${escapeHtml(roiCostBasisMeta?.source === "d1" ? "catalog D1" : "catalog de rezervă")} · ${escapeHtml(roiCostBasisMeta?.catalog_version || "versiune n/a")}. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
         guardrailPass && economics.positive ? "good" : "warn"
       );
-      setStatus("Best ROI calculat", "ok");
+      setStatus("Amortizare simplă calculată", "ok");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
       scenarioResultState = scenarioResult ? "stale" : "empty";
-      setOptimizationNote(`<strong>Best ROI indisponibil.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
-      setStatus(error?.message || "Best ROI indisponibil.", "error");
+      setOptimizationNote(`<strong>Amortizarea simplă nu este disponibilă.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
+      setStatus(error?.message || "Amortizarea simplă nu este disponibilă.", "error");
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
@@ -3361,7 +3361,7 @@
         ? "Verificarea nZEB Light separă energia primară, CO₂ și anvelopa modelată. Ponderea regenerabilă RER și conformitatea legală completă rămân neverificate."
         : projectMode === "existing_major"
           ? "Tabelul 2.10b este folosit ca guardrail energetic/CO₂ al optimizării. Raportul nu substituie verificarea completă a cerințelor proiectului."
-          : "Best ROI pentru renovare obișnuită nu inventează o obligație nZEB sau 2.10b doar din anul construcției.";
+          : "Optimizarea financiară pentru renovare obișnuită nu inventează o obligație nZEB sau 2.10b doar din anul construcției.";
 
     $("#hlnReportVisualTitle").textContent = `${scenarioResult.locality || homeState.locality || "Locuință"} · scenariul final`;
     $("#hlnReportVisualMeta").textContent =
@@ -3511,14 +3511,14 @@
           : `${fmt(optimizationMeta.paybackYears,1)} ani`;
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Best ROI · ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an</strong>
-            <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · recuperare simplă ${payback}. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
+            <strong>Amortizare simplă · ${payback}</strong>
+            <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · randament anual simplu ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
           </div>
           <div class="hln-strategy-list">
             ${selected.map((item,index) => `
               <article>
                 <b>${index + 1}</b>
-                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei · ROI individual ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără payback pozitiv" : "payback " + fmt(item.paybackYears,1) + " ani"}</small></div>
+                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei · randament anual simplu ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără amortizare pozitivă" : "amortizare simplă " + fmt(item.paybackYears,1) + " ani"}</small></div>
               </article>
             `).join("")}
           </div>
