@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.9",
+  "version": "lacurent-commercial-v2.10",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -316,7 +316,16 @@
         "support_description": "Pardoseală de bază U=0,90 W/m²K; pentru placa pe sol grosimea este derivată după inversarea căii ISO 13370 Hg."
       },
       "window": {
-        "product_description": "tâmplărie de referință cu U'=1,11 W/m²K"
+        "product_description": "tâmplărie de referință cu U'=1,11 W/m²K",
+        "solar_gn_source": "MC001-2022 Tabel 2.5, valori recomandate g_n pentru clădiri rezidențiale; pentru zona V (>0,50), selecția 0,55 folosește limita superioară a intervalului sursă pentru vitraj multifuncțional din Tabelul 2.13.",
+        "solar_gn_selection_policy": "Politică LaCurent Light: păstrează geometria ferestrelor reale și alege cea mai mare valoare g_n explicită, source-backed, din intervalul recomandat al zonei. Nu este prezentată ca singura soluție prescrisă de MC001.",
+        "solar_gn_by_climate_zone": {
+          "I": 0.37,
+          "II": 0.43,
+          "III": 0.47,
+          "IV": 0.5,
+          "V": 0.55
+        }
       },
       "exterior_door": {
         "product_description": "ușă exterioară de referință cu U'=1,30 W/m²K"
