@@ -30,6 +30,10 @@ def demo_form_data() -> dict[str, str]:
         "roof_u_value": "0.24",
         "floor_area_m2": "80",
         "floor_u_value": "0.36",
+        "floor_boundary_type": "ground",
+        "ground_exposed_perimeter_m": "36",
+        "ground_wall_thickness_m": "0.30",
+        "ground_conductivity_w_mk": "2.0",
         "window_area_m2": "24",
         "window_u_value": "1.35",
         "door_area_m2": "3.2",
@@ -397,7 +401,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next38" in response.text
+    assert "/static/home-lab-next.js?v=next39" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -465,6 +469,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "Placă / pardoseală pe sol" in response.text
     assert "Subsol / beci neîncălzit" in response.text
     assert "Pardoseala pe sol este calculată separat ca Hg" in response.text
+    assert "modelul de placă pe sol ISO 13370" in response.text
+    assert "λ=2,0 W/mK" in response.text
     assert "modelăm planșeul ca Hu" in response.text
     assert 'name="roof_boundary_type"' in response.text
     assert 'name="floor_boundary_type"' in response.text
@@ -536,7 +542,7 @@ def test_form_maps_cold_attic_and_ground_to_hu_and_hg() -> None:
     assert roof.boundary_type.value == "unheated_attic"
     assert roof.boundary_correction_factor == 0.75
     assert floor.boundary_type.value == "ground"
-    assert floor.boundary_correction_factor == 0.60
+    assert 0.70 < floor.boundary_correction_factor < 0.71
 
 
 def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero_loss() -> None:
