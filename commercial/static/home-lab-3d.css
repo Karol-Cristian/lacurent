@@ -308,6 +308,58 @@
   opacity: .58;
 }
 
+.hln-3d-equipment-badge {
+  position:absolute;
+  left:0;
+  top:0;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:28px;
+  width:max-content;
+  max-width:150px;
+  margin:0;
+  padding:5px 8px;
+  border:1px solid rgba(255,255,255,.72);
+  border-radius:999px;
+  background:rgba(248,249,246,.88);
+  color:#263f36;
+  box-shadow:0 7px 22px rgba(22,31,27,.16);
+  -webkit-backdrop-filter:blur(12px);
+  backdrop-filter:blur(12px);
+  pointer-events:auto;
+  cursor:pointer;
+  font:inherit;
+  font-size:9px;
+  font-weight:800;
+  line-height:1;
+  white-space:nowrap;
+  transform-origin:center bottom;
+  transition:background .16s ease, transform .16s ease, opacity .16s ease;
+}
+.hln-3d-equipment-badge[hidden]{display:none}
+.hln-3d-equipment-badge:hover,
+.hln-3d-equipment-badge:focus-visible{
+  background:rgba(255,255,255,.98);
+  outline:none;
+}
+.hln-3d-equipment-dot{
+  flex:0 0 7px;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#3f745c;
+  box-shadow:0 0 0 3px rgba(63,116,92,.14);
+}
+@media(max-width:760px){
+  .hln-3d-equipment-badge{
+    min-height:26px;
+    max-width:126px;
+    padding:5px 7px;
+    font-size:8px;
+  }
+}
+
 .hln-3d-stage.is-interacting .hln-3d-hotspot-label {
   opacity: 0;
 }
