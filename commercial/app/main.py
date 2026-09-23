@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from functools import lru_cache
 from pathlib import Path
+import time
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -40,7 +42,14 @@ LOCATION_REGISTRY_PATH = DATA_DIR / "localities.json"
 CLIMATE_ZONES_PATH = DATA_DIR / "winter-climate-zones.geojson"
 ROMANIA_BOUNDARY_PATH = DATA_DIR / "romania-boundary.geojson"
 ROI_COST_BASIS_PATH = DATA_DIR / "roi-cost-basis.seed.json"
+ROI_COST_BASIS_CACHE_SECONDS = 900
+ROI_COST_BASIS_RETRY_SECONDS = 30
 LOCATION_STREAM_CHUNK_BYTES = 64 * 1024
+
+_roi_cost_basis_lock = asyncio.Lock()
+_roi_cost_basis_cached_payload: dict[str, Any] | None = None
+_roi_cost_basis_cache_expires_at = 0.0
+_roi_cost_basis_retry_after = 0.0
 
 @lru_cache(maxsize=1)
 def embed_partner_registry() -> dict[str, Any]:
@@ -1543,6 +1552,51 @@ def _roi_cost_payload_from_rows(rows: list[dict[str, Any]], *, source: str) -> d
     }
 
 
+async def _cached_roi_cost_payload_from_d1(db: Any) -> dict[str, Any] | None:
+    """Coalesce D1 setup/reads and keep the small versioned catalog per isolate."""
+    global _roi_cost_basis_cached_payload
+    global _roi_cost_basis_cache_expires_at
+    global _roi_cost_basis_retry_after
+
+    now = time.monotonic()
+    if _roi_cost_basis_cached_payload is not None and now < _roi_cost_basis_cache_expires_at:
+        return _roi_cost_basis_cached_payload
+    if now < _roi_cost_basis_retry_after:
+        return None
+
+    async with _roi_cost_basis_lock:
+        now = time.monotonic()
+        if _roi_cost_basis_cached_payload is not None and now < _roi_cost_basis_cache_expires_at:
+            return _roi_cost_basis_cached_payload
+        if now < _roi_cost_basis_retry_after:
+            return None
+
+        try:
+            await _ensure_roi_cost_basis_d1(db)
+            result = await db.prepare(
+                """
+                SELECT family, label, cost_lei, unit, source_kind, source_url,
+                       observed_on, catalog_version, confidence, note
+                FROM roi_cost_basis
+                WHERE active = 1
+                ORDER BY family
+                """
+            ).run()
+            payload = _roi_cost_payload_from_rows(_d1_rows(result), source="d1")
+            if not payload["costs"]:
+                raise ValueError("D1 ROI cost catalog is empty.")
+        except Exception:
+            # A short negative cache prevents a failing D1 binding from turning
+            # concurrent page loads into a serialized retry storm.
+            _roi_cost_basis_retry_after = time.monotonic() + ROI_COST_BASIS_RETRY_SECONDS
+            return None
+
+        _roi_cost_basis_cached_payload = payload
+        _roi_cost_basis_cache_expires_at = time.monotonic() + ROI_COST_BASIS_CACHE_SECONDS
+        _roi_cost_basis_retry_after = 0.0
+        return payload
+
+
 @app.get("/api/market-cost-basis")
 async def market_cost_basis_api(request: Request) -> JSONResponse:
     """Return commercial CAPEX assumptions without coupling them to physics.
@@ -1555,28 +1609,12 @@ async def market_cost_basis_api(request: Request) -> JSONResponse:
     env = request.scope.get("env")
     db = getattr(env, "DB", None) if env is not None else None
     if db is not None:
-        try:
-            await _ensure_roi_cost_basis_d1(db)
-            result = await db.prepare(
-                """
-                SELECT family, label, cost_lei, unit, source_kind, source_url,
-                       observed_on, catalog_version, confidence, note
-                FROM roi_cost_basis
-                WHERE active = 1
-                ORDER BY family
-                """
-            ).run()
-            rows = _d1_rows(result)
-            payload = _roi_cost_payload_from_rows(rows, source="d1")
-            if payload["costs"]:
-                return JSONResponse(
-                    payload,
-                    headers={"Cache-Control": "public, max-age=900"},
-                )
-        except Exception:
-            # D1 is commercial infrastructure. A catalog outage must not break
-            # the energy model or expose database/runtime details to the client.
-            pass
+        payload = await _cached_roi_cost_payload_from_d1(db)
+        if payload is not None:
+            return JSONResponse(
+                payload,
+                headers={"Cache-Control": "public, max-age=900"},
+            )
 
     seed = roi_cost_basis_seed()
     payload = {
