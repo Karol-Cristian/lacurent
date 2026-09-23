@@ -143,7 +143,7 @@ try {
   }
   if (!roofVisualCalibration.solarThermalAssetLoaded ||
       roofVisualCalibration.solarThermalAssetFallback ||
-      roofVisualCalibration.solarThermalAssetUrl !== "https://cdn.3dassets.dev/assets/2969/v1/model.glb") {
+      roofVisualCalibration.solarThermalAssetUrl !== "/static/assets/solar-thermal-roof-collector.glb") {
     throw new Error("Solar thermal collector did not load the imported GLB asset: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.thermalSupport.mountedRoofUuid ||
