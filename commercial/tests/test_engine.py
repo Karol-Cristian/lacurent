@@ -884,7 +884,7 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.9"
+    assert cfg["version"] == "lacurent-commercial-v2.10"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]
@@ -907,6 +907,25 @@ def test_reference_building_uses_source_backed_mc001_table_2_4_envelope_targets(
     assert 10 < mapping["wall"]["insulation_cm"] < 16
     assert 20 < mapping["roof"]["insulation_cm"] < 30
     assert 5 < mapping["floor"]["insulation_cm"] < 15
+
+
+def test_reference_glazing_is_independent_from_real_glazing_and_climate_zone_backed() -> None:
+    clear = demo_building()
+    clear.solar.glazing_type_id = "double_clear_glazing"
+    triple = demo_building()
+    triple.solar.glazing_type_id = "triple_low_e_faces_2_and_5"
+
+    clear_reference = build_reference_input(clear)
+    triple_reference = build_reference_input(triple)
+    clear_mapping = reference_physical_mapping(clear)
+    triple_mapping = reference_physical_mapping(triple)
+
+    assert clear_reference.solar.normal_incidence_solar_transmittance == pytest.approx(0.47)
+    assert triple_reference.solar.normal_incidence_solar_transmittance == pytest.approx(0.47)
+    assert clear_mapping["window"]["solar_gn"] == pytest.approx(0.47)
+    assert triple_mapping["window"]["solar_gn"] == pytest.approx(0.47)
+    assert clear_mapping["window"]["solar_climate_zone"] == "III"
+    assert "copy_window_area_orientation" in clear_mapping["window"]["geometry_policy"]
 
 
 def test_reference_building_is_calculated_with_same_engine() -> None:
