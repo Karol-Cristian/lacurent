@@ -401,16 +401,21 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next21" in response.text
-    assert "/static/home-lab-next.js?v=next44" in response.text
+    assert "/static/home-lab-next.css?v=next22" in response.text
+    assert "/static/home-lab-next.js?v=next45" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d30" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
-    assert "AMORTIZARE SIMPLĂ" in response.text
-    assert "Cea mai eficientă investiție dintre variantele testate" in response.text
-    assert "Randament maxim al investiției" not in response.text
+    assert 'data-hln-smart-config="roi-budget"' in response.text
+    assert 'data-hln-smart-config="roi-payback"' in response.text
+    assert 'id="hlnRoiBudget"' in response.text
+    assert 'id="hlnRoiPaybackYears"' in response.text
+    assert "BEST ROI" in response.text
+    assert "Cea mai mare economie în bugetul tău" in response.text
+    assert "Cea mai mare economie în timpul ales" in response.text
+    assert "Configurează automat îmbunătățirile" not in response.text
     assert 'data-hln-screen="report"' in response.text
     assert 'data-hln-go="report"' in response.text
     assert 'id="hlnReportBars"' in response.text
@@ -551,6 +556,22 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     assert "CEA MAI BUNĂ MĂSURĂ ROI" in source
     assert "lei/lună în medie" in source
     assert 'window.scrollTo({top: 0, behavior: "auto"})' in source
+
+
+def test_home_lab_exposes_distinct_budget_and_payback_optimizer_objectives() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    source = response.text
+    assert 'mode === "roi-budget"' in source
+    assert 'mode === "roi-payback"' in source
+    assert 'metaMode:"roi_budget"' in source
+    assert 'metaMode:"roi_payback"' in source
+    assert "packageCapex > settings.budgetLei" in source
+    assert "packageEconomics.paybackYears <= settings.maxPaybackYears" in source
+    assert "maximizez economia anuală" in source.lower()
+    assert "isFinancialOptimizationMeta" in source
+    assert 'button.dataset.hlnSmartConfig === "roi-budget"' in source
+    assert 'button.dataset.hlnSmartConfig === "roi-payback"' in source
 
 
 def test_cloudflare_worker_converts_ordinary_asgi_exceptions_to_503() -> None:
