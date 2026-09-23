@@ -40,7 +40,7 @@ const SOLAR_THERMAL_REFERENCE = {
   dimensionsM: [1.238, 0.100, 2.077],
 };
 
-const SOLAR_THERMAL_ANCHOR = [-0.18, 0.78, 0.08];
+const SOLAR_THERMAL_ANCHOR = [-0.02, 0.78, 0.08];
 
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c, field: "#hlnHomeWallIns" },

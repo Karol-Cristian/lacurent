@@ -403,8 +403,10 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
-    assert "/static/home-lab-3d.css?v=3d25" in response.text
-    assert "/static/home-lab-3d.js?v=3d45" in response.text
+    assert "/static/home-lab-3d.css?v=3d26" in response.text
+    assert 'aria-label="Schiță conceptuală a casei"' not in response.text
+    assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
+    assert "/static/home-lab-3d.js?v=3d46" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -589,14 +591,31 @@ def test_payback_optimizer_applies_threshold_to_complete_packages_not_components
     assert "same package is eligible when the user asks for 6 years" in source
 
 
-def test_cloudflare_worker_converts_ordinary_asgi_exceptions_to_503() -> None:
+def test_cloudflare_worker_converts_ordinary_asgi_exceptions_to_branded_503() -> None:
     worker_source = (
         Path(__file__).resolve().parents[1] / "cloudflare-worker" / "worker.py"
     ).read_text(encoding="utf-8")
     assert "except Exception as exc:" in worker_source
     assert "status=503" in worker_source
     assert '"retry-after": "2"' in worker_source
+    assert '"content-type": "text/html; charset=utf-8"' in worker_source
+    assert "Laboratorul ia o pauză scurtă." in worker_source
+    assert "from app.main import app" in worker_source
+    assert worker_source.index("try:") < worker_source.index("from app.main import app")
     assert "type(exc).__name__" in worker_source
+
+
+def test_browser_404_uses_branded_lacurent_error_page() -> None:
+    response = client.get(
+        "/pagina-care-nu-exista",
+        headers={"Accept": "text/html"},
+    )
+    assert response.status_code == 404
+    assert "text/html" in response.headers["content-type"]
+    assert "Pagina asta s-a rătăcit." in response.text
+    assert "Casă LaCurent cu o siguranță electrică declanșată" in response.text
+    assert 'href="/home-lab-next"' in response.text
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
@@ -1461,7 +1480,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert 'url: "https://cdn.3dassets.dev/assets/2969/v1/model.glb"' in response.text
     assert 'source: "https://3dassets.dev/assets/off-grid-power-and-controls-roof-solar-panel-197e7d81"' in response.text
     assert 'label: "Fondital VLC 25 flat-plate solar thermal collector"' in response.text
-    assert "const SOLAR_THERMAL_ANCHOR = [-0.18, 0.78, 0.08]" in response.text
+    assert "const SOLAR_THERMAL_ANCHOR = [-0.02, 0.78, 0.08]" in response.text
     assert "const panelWidthWorld = s.x * 0.075" in response.text
     assert "const panelDepthWorld = s.z * 0.135" in response.text
     assert "SolarThermalCollector_importedGLB" in response.text
@@ -1541,6 +1560,15 @@ def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
     assert ".hln-3d-compass-arrow" in source
     assert 'data-hln-3d-stage="home"' in source
     assert "cursor: crosshair" in source
+
+
+def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> None:
+    css = client.get("/static/home-lab-3d.css")
+    assert css.status_code == 200
+    source = css.text
+    assert "never flash the old 2D house" in source
+    assert ".hln-house-visual > svg" in source
+    assert "display: none" in source
 
 
 def test_embed_loader_supports_deferred_next_mounts() -> None:

@@ -10,8 +10,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .engine import calculate, demo_building
+from .error_page import render_error_html
 from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
@@ -75,6 +77,47 @@ app.include_router(elivio_router)
 app.include_router(personal_blog_router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def _browser_navigation(request: Request) -> bool:
+    if request.method.upper() not in {"GET", "HEAD"}:
+        return False
+    path = request.url.path
+    if path.startswith(("/api/", "/static/", "/home-lab-assets/")):
+        return False
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept.lower()
+
+
+@app.exception_handler(StarletteHTTPException)
+async def friendly_http_error(request: Request, exc: StarletteHTTPException) -> Response:
+    if _browser_navigation(request):
+        return HTMLResponse(
+            render_error_html(exc.status_code),
+            status_code=exc.status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+    return JSONResponse(
+        {"detail": exc.detail},
+        status_code=exc.status_code,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.exception_handler(Exception)
+async def friendly_unhandled_error(request: Request, exc: Exception) -> Response:
+    print(f"[LaCurent] unhandled request exception: {type(exc).__name__}")
+    if _browser_navigation(request):
+        return HTMLResponse(
+            render_error_html(500),
+            status_code=500,
+            headers={"Cache-Control": "no-store"},
+        )
+    return JSONResponse(
+        {"error": "Serviciul este temporar indisponibil."},
+        status_code=500,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/home-lab-assets/{filename}")
