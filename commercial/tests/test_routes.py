@@ -899,7 +899,7 @@ def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
     assert 'value="new_nzeb"' in response.text
     assert 'id="hlnRoiCostSource"' in response.text
     assert 'id="hlnRoiCostAssumptions"' in response.text
-    assert "Costuri de piață preluate automat din catalog" in response.text
+    assert "Compară CAPEX-ul estimat cu economia anuală" in response.text
     assert 'id="hlnRoiCostWall"' not in response.text
     assert 'id="hlnRoiCostDoor"' not in response.text
     assert 'id="hlnRoiCostHeating"' not in response.text
