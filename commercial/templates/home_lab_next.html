@@ -78,8 +78,8 @@
       <div class="hln-screen-heading">
         <div>
           <span>CASA MEA</span>
-          <h1>Construiește punctul de plecare.</h1>
-          <p>Spune-ne ce știi despre locuință. Restul îl estimăm și îl poți rafina oricând.</p>
+          <h1>Casa este interfața.</h1>
+          <p>Atinge punctele sau echipamentele direct pe casă. Modificările se calculează imediat, iar detaliile pot fi rafinate oricând.</p>
         </div>
         <div class="hln-confidence"><strong>Estimativ</strong><span>verifică ipotezele înainte de decizie</span></div>
       </div>
@@ -92,21 +92,24 @@
             
 
             <button type="button" class="hln-hotspot hln-hotspot-location" data-hln-editor-open="location">
-              <svg><use href="#hln-i-pin"></use></svg><span>Locație</span>
+              <svg><use href="#hln-i-pin"></use></svg><span>Locație · climat</span>
             </button>
             <button type="button" class="hln-hotspot hln-hotspot-house" data-hln-editor-open="house">
-              <svg><use href="#hln-i-ruler"></use></svg><span>Casă</span>
+              <svg><use href="#hln-i-ruler"></use></svg><span>Casă · geometrie</span>
             </button>
             <button type="button" class="hln-hotspot hln-hotspot-envelope" data-hln-editor-open="envelope">
-              <svg><use href="#hln-i-layers"></use></svg><span>Anvelopă</span>
+              <svg><use href="#hln-i-layers"></use></svg><span>Anvelopă · izolație</span>
             </button>
             <button type="button" class="hln-hotspot hln-hotspot-systems" data-hln-editor-open="systems">
-              <svg><use href="#hln-i-flame"></use></svg><span>Instalații</span>
+              <svg><use href="#hln-i-flame"></use></svg><span>Instalații · încălzire</span>
+            </button>
+            <button type="button" class="hln-hotspot hln-hotspot-renewables" data-hln-editor-open="renewables">
+              <svg><use href="#hln-i-sun"></use></svg><span>Regenerabile · PV / solar</span>
             </button>
           </div>
           <div class="hln-board-foot">
             <svg><use href="#hln-i-info"></use></svg>
-            <span>Valorile necunoscute pot rămâne estimate. Le poți rafina mai târziu.</span>
+            <span>Atinge un punct pentru categorie sau direct un echipament montat pentru reglaj rapid.</span>
           </div>
         </div>
 
@@ -884,8 +887,11 @@
           <input id="hlnQuickEditRange" type="range" min="0" max="30" step="0.5" aria-label="Valoare intervenție">
           <div><span>0</span><span id="hlnQuickEditMaxLabel">30</span></div>
         </div>
-        <button type="button" class="hln-quick-edit-details" data-hln-quick-edit-details>Orientare și înclinare</button>
-        <small class="hln-quick-edit-hint">Glisează. La eliberare, valoarea se salvează și editorul dispare.</small>
+        <div class="hln-quick-edit-actions">
+          <button type="button" class="hln-quick-edit-details" data-hln-quick-edit-details>Orientare și înclinare</button>
+          <button type="button" class="hln-primary hln-quick-edit-done" data-hln-quick-edit-commit>Gata</button>
+        </div>
+        <small class="hln-quick-edit-hint">Glisează și urmărește casa și rezultatul actualizându-se. Apasă Gata când ai terminat.</small>
       </div>
     </aside>
 
