@@ -40,6 +40,21 @@ const SOLAR_THERMAL_REFERENCE = {
   dimensionsM: [1.238, 0.100, 2.077],
 };
 
+const HVAC_MODELS = {
+  heatPump: {
+    label: "Air-source heat-pump outdoor unit",
+    url: "https://cdn.3dassets.dev/assets/14144/v1/model.glb",
+    source: "https://3dassets.dev/assets/home-appliances-and-utility-ac-outdoor-unit-a298bd16",
+    license: "CC0-1.0",
+  },
+  splitAc: {
+    label: "Wall-mounted split air conditioner",
+    url: "https://cdn.3dassets.dev/assets/14142/v1/model.glb",
+    source: "https://3dassets.dev/assets/home-appliances-and-utility-ac-split-a3f20ef8",
+    license: "CC0-1.0",
+  },
+};
+
 const SOLAR_THERMAL_ANCHOR = [-0.02, 0.78, 0.08];
 
 const PARTS = {
@@ -209,7 +224,7 @@ class HomeLabHouse3D {
       await this.loadSemanticConfig();
       await this.loadModel();
       await this.createExperimentLayers();
-      this.createVisualEquipment();
+      await this.createVisualEquipment();
       this.createSelectionProofLayers();
       this.addHitZones();
       this.addRenovationLayer();
@@ -818,6 +833,7 @@ class HomeLabHouse3D {
     this.mountLayerOnRoof(layer, [-0.34, 0.72, 0.16]);
 
     layer.visible = false;
+    layer.userData.hlnControl = "pv";
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);
   }
@@ -1013,124 +1029,75 @@ class HomeLabHouse3D {
     this.mountLayerOnRoof(layer, SOLAR_THERMAL_ANCHOR);
 
     layer.visible = false;
+    layer.userData.hlnControl = "solar_thermal";
     this.modelRoot.add(layer);
     this.experimentLayers.set("solarThermal", layer);
   }
 
-  createHeatPumpLayer() {
+  async createHeatPumpLayer() {
     const group = new THREE.Group();
     group.name = "LaCurentLayer_heatPump";
+    group.userData.hlnControl = "heat_pump";
     group.position.copy(this.localPointFromNormalized([0.55, 0.105, 0.32]));
 
-    const w = this.localLength(this.modelSize.x * 0.17);
-    const h = this.localLength(this.modelSize.y * 0.23);
-    const d = this.localLength(this.modelSize.z * 0.14);
-    const shellMaterial = new THREE.MeshStandardMaterial({
-      color: 0xe8ebe7,
-      roughness: 0.42,
-      metalness: 0.16,
-    });
-    const darkMaterial = new THREE.MeshStandardMaterial({
-      color: 0x303735,
-      roughness: 0.58,
-      metalness: 0.28,
-    });
+    const targetWidth = this.localLength(this.modelSize.x * 0.18);
+    const addFallback = () => {
+      const w = targetWidth;
+      const h = this.localLength(this.modelSize.y * 0.23);
+      const d = this.localLength(this.modelSize.z * 0.14);
+      const shellMaterial = new THREE.MeshStandardMaterial({
+        color:0xe8ebe7, roughness:0.42, metalness:0.16,
+      });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), shellMaterial);
+      body.position.y = h * 0.55;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), shellMaterial);
-    body.position.y = h * 0.55;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    group.add(body);
-
-    const top = new THREE.Mesh(
-      new THREE.BoxGeometry(w * 1.02, h * 0.035, d * 1.02),
-      new THREE.MeshStandardMaterial({ color:0xf4f5f2, roughness:0.34, metalness:0.18 })
-    );
-    top.position.y = h * 1.065;
-    group.add(top);
-
-    const fanRadius = Math.min(w, h) * 0.31;
-    const fanRecess = new THREE.Mesh(
-      new THREE.CircleGeometry(fanRadius * 1.08, 48),
-      new THREE.MeshStandardMaterial({ color:0x1f2624, roughness:0.72, metalness:0.20 })
-    );
-    fanRecess.position.set(-w * 0.12, h * 0.60, d * 0.505);
-    group.add(fanRecess);
-
-    const ringMaterial = new THREE.MeshStandardMaterial({
-      color:0x59615e, roughness:0.48, metalness:0.55
-    });
-    [1.0, 0.78, 0.55].forEach((scale) => {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(fanRadius * scale, fanRadius * 0.018, 8, 48),
-        ringMaterial
+      const fan = new THREE.Mesh(
+        new THREE.CylinderGeometry(Math.min(w, h) * 0.30, Math.min(w, h) * 0.30, d * 0.03, 40),
+        new THREE.MeshStandardMaterial({color:0x303735, roughness:0.58, metalness:0.28})
       );
-      ring.position.copy(fanRecess.position);
-      ring.position.z += this.localLength(0.004);
-      group.add(ring);
-    });
+      fan.rotation.x = Math.PI / 2;
+      fan.position.set(-w * 0.10, h * 0.58, d * 0.515);
+      group.add(fan);
+    };
 
-    const bladeMaterial = new THREE.MeshStandardMaterial({
-      color:0x3c4542, roughness:0.48, metalness:0.30
-    });
-    for (let index = 0; index < 6; index += 1) {
-      const blade = new THREE.Mesh(
-        new THREE.BoxGeometry(fanRadius * 0.78, fanRadius * 0.16, this.localLength(0.012)),
-        bladeMaterial
-      );
-      blade.name = "LaCurentHeatPump_fanBlade";
-      blade.position.copy(fanRecess.position);
-      blade.position.z += this.localLength(0.006);
-      blade.rotation.z = index * Math.PI / 3;
-      group.add(blade);
+    try {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(HVAC_MODELS.heatPump.url);
+      const source = gltf.scene;
+      source.name = "LaCurentHeatPump_importedGLB";
+      source.updateMatrixWorld(true);
+
+      const box = new THREE.Box3().setFromObject(source);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      if (size.x < 1e-5 || size.y < 1e-5 || size.z < 1e-5) {
+        throw new Error("Heat-pump GLB has invalid bounds");
+      }
+
+      const normalized = new THREE.Group();
+      normalized.name = "LaCurentHeatPump_normalizedAsset";
+      source.position.set(-center.x, -box.min.y, -center.z);
+      normalized.add(source);
+      normalized.scale.setScalar(targetWidth / size.x);
+
+      source.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        if (obj.material?.clone) {
+          obj.material = obj.material.clone();
+          if ("roughness" in obj.material) obj.material.roughness = Math.max(0.32, obj.material.roughness ?? 0.52);
+          if ("metalness" in obj.material) obj.material.metalness = Math.min(0.48, obj.material.metalness ?? 0.12);
+        }
+      });
+      group.add(normalized);
+    } catch (error) {
+      console.warn("[Home Lab 3D] heat-pump asset fallback", error);
+      addFallback();
     }
-
-    const hub = new THREE.Mesh(
-      new THREE.CircleGeometry(fanRadius * 0.16, 32),
-      darkMaterial
-    );
-    hub.position.copy(fanRecess.position);
-    hub.position.z += this.localLength(0.010);
-    group.add(hub);
-
-    const servicePanel = new THREE.Mesh(
-      new THREE.BoxGeometry(w * 0.18, h * 0.58, this.localLength(0.014)),
-      new THREE.MeshStandardMaterial({ color:0xd7dbd7, roughness:0.50, metalness:0.20 })
-    );
-    servicePanel.position.set(w * 0.38, h * 0.57, d * 0.51);
-    group.add(servicePanel);
-
-    const badge = new THREE.Mesh(
-      new THREE.BoxGeometry(w * 0.13, h * 0.025, this.localLength(0.016)),
-      new THREE.MeshBasicMaterial({ color:0x6f8980, toneMapped:false })
-    );
-    badge.position.set(w * 0.34, h * 0.90, d * 0.52);
-    group.add(badge);
-
-    const footMaterial = new THREE.MeshStandardMaterial({
-      color: 0x575e5b,
-      roughness: 0.82,
-      metalness: 0.22,
-    });
-    [-1, 1].forEach((side) => {
-      const foot = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.30, h * 0.065, d * 0.58),
-        footMaterial
-      );
-      foot.position.set(side * w * 0.27, h * 0.035, 0);
-      group.add(foot);
-    });
-
-    const pipeMaterial = new THREE.MeshStandardMaterial({
-      color:0xb88a55, roughness:0.50, metalness:0.55
-    });
-    const pipe = new THREE.Mesh(
-      new THREE.CylinderGeometry(this.localLength(0.018), this.localLength(0.018), h * 0.34, 14),
-      pipeMaterial
-    );
-    pipe.position.set(w * 0.55, h * 0.32, -d * 0.18);
-    pipe.rotation.z = Math.PI / 2;
-    group.add(pipe);
 
     group.visible = false;
     this.modelRoot.add(group);
@@ -1142,7 +1109,7 @@ class HomeLabHouse3D {
 
     this.createSplitPVLayer();
     await this.createSingleSolarThermalLayer();
-    this.createHeatPumpLayer();
+    await this.createHeatPumpLayer();
   }
 
   renderExperimentLayers() {
@@ -1240,41 +1207,61 @@ class HomeLabHouse3D {
     });
   }
 
-  createVisualEquipment() {
+  async createVisualEquipment() {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
     const ac = new THREE.Group();
     ac.name = "LaCurentVisual_AC";
+    ac.userData.hlnControl = "ac";
     ac.position.copy(this.localPointFromNormalized([0.38, 0.34, 0.51]));
 
-    const w = this.localLength(this.modelSize.x * 0.13);
-    const h = this.localLength(this.modelSize.y * 0.11);
-    const d = this.localLength(this.modelSize.z * 0.065);
-
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({
-        color: 0xf0f0eb,
-        roughness: 0.48,
-        metalness: 0.04,
-      })
-    );
-    body.castShadow = true;
-    body.receiveShadow = true;
-    ac.add(body);
-
-    const slotMaterial = new THREE.MeshStandardMaterial({
-      color: 0x454b49,
-      roughness: 0.78,
-      metalness: 0.1,
-    });
-    for (let i = -2; i <= 2; i += 1) {
-      const slot = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.12, h * 0.08, this.localLength(0.012)),
-        slotMaterial
+    const targetWidth = this.localLength(this.modelSize.x * 0.15);
+    const addFallback = () => {
+      const w = targetWidth;
+      const h = this.localLength(this.modelSize.y * 0.11);
+      const d = this.localLength(this.modelSize.z * 0.065);
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshStandardMaterial({color:0xf0f0eb, roughness:0.48, metalness:0.04})
       );
-      slot.position.set(i * w * 0.15, -h * 0.18, d * 0.51);
-      ac.add(slot);
+      body.castShadow = true;
+      body.receiveShadow = true;
+      ac.add(body);
+    };
+
+    try {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(HVAC_MODELS.splitAc.url);
+      const source = gltf.scene;
+      source.name = "LaCurentSplitAC_importedGLB";
+      source.updateMatrixWorld(true);
+
+      const box = new THREE.Box3().setFromObject(source);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      if (size.x < 1e-5 || size.y < 1e-5 || size.z < 1e-5) {
+        throw new Error("Split-AC GLB has invalid bounds");
+      }
+
+      const normalized = new THREE.Group();
+      normalized.name = "LaCurentSplitAC_normalizedAsset";
+      source.position.sub(center);
+      normalized.add(source);
+      normalized.scale.setScalar(targetWidth / size.x);
+
+      source.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        if (obj.material?.clone) {
+          obj.material = obj.material.clone();
+          if ("roughness" in obj.material) obj.material.roughness = Math.max(0.28, obj.material.roughness ?? 0.48);
+        }
+      });
+      ac.add(normalized);
+    } catch (error) {
+      console.warn("[Home Lab 3D] split-AC asset fallback", error);
+      addFallback();
     }
 
     ac.visible = false;
@@ -2400,6 +2387,40 @@ class HomeLabHouse3D {
     });
   }
 
+  interactiveControlHit() {
+    const roots = [];
+    this.experimentLayers.forEach((root) => {
+      if (root?.visible && root.userData?.hlnControl) roots.push(root);
+    });
+    this.equipmentLayers.forEach((root) => {
+      if (root?.visible && root.userData?.hlnControl) roots.push(root);
+    });
+
+    const hits = [];
+    roots.forEach((root) => {
+      const hit = this.raycaster.intersectObject(root, true).find((entry) => {
+        let node = entry.object;
+        while (node) {
+          if (node.visible === false) return false;
+          if (node === root) return true;
+          node = node.parent;
+        }
+        return false;
+      });
+      if (hit) hits.push({hit, control:root.userData.hlnControl});
+    });
+
+    hits.sort((a, b) => a.hit.distance - b.hit.distance);
+    return hits[0] || null;
+  }
+
+  dispatchInteractiveControl(control) {
+    if (!control) return;
+    window.dispatchEvent(new CustomEvent("hln:3d-control", {
+      detail: {control, mode:this.mode},
+    }));
+  }
+
   pick(event, hoverOnly) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -2408,10 +2429,17 @@ class HomeLabHouse3D {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
+    const controlHit = this.interactiveControlHit();
     const semanticHit = this.semanticMeshes.length ? this.raycaster.intersectObjects(this.semanticMeshes, true)[0] : null;
     const hit = semanticHit || this.raycaster.intersectObjects(this.hitZones, false)[0];
-    this.renderer.domElement.style.cursor = hit ? "pointer" : "grab";
-    if (hoverOnly || !hit) return;
+    this.renderer.domElement.style.cursor = controlHit || hit ? "pointer" : "grab";
+    if (hoverOnly) return;
+
+    if (controlHit) {
+      this.dispatchInteractiveControl(controlHit.control);
+      return;
+    }
+    if (!hit) return;
 
     const part = hit.object.userData.part;
     if (this.authorMode) this.authorPart = part;
