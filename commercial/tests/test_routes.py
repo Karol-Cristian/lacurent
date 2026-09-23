@@ -1473,16 +1473,17 @@ def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimn
     assert 'name:"PV_secondary_top"' in source
     assert 'Math.max(2, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 2.5)))' in source
     assert "Every panel is a child of" in source
-    assert 'this.mountLayerOnRoof(layer, [-0.34, 0.72, 0.16])' in source
-    assert "this.inspectableMeshes.forEach" in source
-    assert "compactFootprint" in source
-    assert "verticalEnough" in source
-    assert "return this.localPointFromNormalized([0.02, 0.94, -0.12])" in source
-    assert "this.modelSize.y * 0.30" in source
-    assert "this.modelSize.x * 0.055" in source
-    assert "index < 9" in source
+    assert 'const panelDepthWorld = s.z * 0.105' in source
+    assert 'const gapZ = this.localLength(s.z * 0.010)' in source
+    assert 'this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.035])' in source
+    assert "const probes = [" in source
+    assert "ray.intersectObjects(roofCandidates, true)[0]" in source
+    assert "return this.localPointFromNormalized([-0.06, 0.965, -0.10])" in source
+    assert "this.modelSize.y * 0.34" in source
+    assert "this.modelSize.x * 0.065" in source
+    assert "index < 10" in source
     assert "depthTest:false" in source
-    assert "Math.sin(Math.PI * t) * 0.68" in source
+    assert "Math.sin(Math.PI * t) * 0.78" in source
 
 
 def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit() -> None:
