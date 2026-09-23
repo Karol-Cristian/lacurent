@@ -352,7 +352,7 @@
   },
   "assumptions": [
     "Lanțul simplificat de încălzire separă emisia, distribuția, stocarea, reglajul, generatorul și energia auxiliară. Structura urmează MC001-2022 Capitolul 3, dar presetările Light pentru factori și SCOP sunt estimări LaCurent și nu valori normative MC001.",
-    "Transferul termic prin transmisie folosește forma directă MC001: Htr = Σ(U·A) + Σ(ψ·L), pentru domeniul simplificat al versiunii comerciale.",
+    "Transferul termic prin transmisie este separat pe frontiere: Htr = Hd + Hg + Hu + Ha. Hd folosește transferul direct spre exterior; Hg folosește modelul staționar de placă pe sol și temperatura exterioară medie anuală în balanța lunară; Hu folosește factori expliciți pentru spații neîncălzite; punțile termice sunt alocate componentei lor.",
     "Transferul prin ventilare folosește Hve = 0,34 × debitul de aer × factorul de recuperare, cu debitul derivat din schimburile de aer pe oră și volumul încălzit.",
     "Necesarul lunar de încălzire folosește structura Mc 001-2022 Figura 2.18: QH,nd = QH,ht − ηH,gn × QH,gn, cu factorul de utilizare al aporturilor și inerția termică.",
     "Aporturile solare automate folosesc Hsol lunar din Mc001/1-2-3/2006 Anexa A.9.6 pentru toate cele 42 de stații climatice MC001/6-2013. Se preferă corespondentul direct; în lipsa lui se folosește cea mai apropiată stație-sursă A.9.6, cu distanța raportată explicit. Valorile Hsol nu sunt interpolate între stații.",
