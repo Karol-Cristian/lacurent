@@ -951,7 +951,7 @@
               <option value="flat_roof">Terasă / acoperiș plat</option>
             </select>
           </label>
-          <small class="hln-field-note">Pod rece: limita termică este planșeul dintre camere și pod, modelat ca Hu — nu ca acoperiș expus direct. Home Lab folosește momentan un factor bztu Light 0,75, marcat cu încredere scăzută. Mansardă încălzită: limita termică devine acoperișul spre exterior (Hd), iar suprafața încălzită introdusă trebuie să includă mansarda. Terasă: limita este direct către exterior. Pentru elementul neizolat folosim U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată.</small>
+          <small class="hln-field-note">Pod rece: limita termică este planșeul dintre camere și pod, modelat ca Hu — nu ca acoperiș expus direct. Fără date despre anvelopa și ventilarea podului, Home Lab nu inventează temperatura podului: folosește conservator bztu=1,00 și nu acordă credit termic spațiului tampon. Motorul poate deriva bztu din balanța explicită Hztu;e / Hztu;tot când acele date sunt disponibile. Mansardă încălzită: limita termică devine acoperișul spre exterior (Hd), iar suprafața încălzită introdusă trebuie să includă mansarda. Terasă: limita este direct către exterior (Hd). Pentru elementul neizolat folosim U=3,25 W/m²K pentru planșeu sub pod și U=2,25 W/m²K pentru planșeu sub terasă, apoi aplicăm izolația selectată.</small>
           <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -972,7 +972,7 @@
               <option value="heated_space">Spațiu încălzit</option>
             </select>
           </label>
-          <small class="hln-field-note">Pardoseala pe sol este calculată separat ca Hg, din aria și perimetrul casei, nu ca un perete expus aerului exterior. Pentru sol necunoscut, Home Lab folosește λ=2,0 W/mK ca fallback Light. Peste subsol neîncălzit folosim Hu; peste un spațiu încălzit transferul prin această frontieră este zero. Modelul Hg folosește ramura staționară ISO 13370 și temperatura exterioară medie anuală; variația sezonieră periodică și termoizolația de muchie nu sunt încă modelate explicit.</small>
+          <small class="hln-field-note">Pardoseala pe sol este calculată separat ca Hg, din aria și perimetrul casei, nu ca un perete expus aerului exterior. Pentru sol necunoscut, Home Lab folosește λ=2,0 W/mK ca fallback Light. În bilanțul lunar, Hg folosește temperatura exterioară medie anuală conform structurii MC001 Figura 2.11. Peste subsol neîncălzit folosim Hu; fără un bztu explicit sau o balanță a subsolului nu acordăm credit de tampon. Peste un spațiu încălzit transferul prin această frontieră este zero. Componenta periodică sezonieră bm și termoizolația explicită de muchie nu sunt încă incluse.</small>
           <label>Material izolație pardoseală
             <select id="hlnHomeFloorInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -1089,8 +1089,14 @@
       <input name="floor_u_value" value="0.42">
       <input name="roof_boundary_type" value="outside_air">
       <input name="roof_boundary_correction_factor" value="">
+      <input name="roof_unheated_exterior_envelope_w_k" value="">
+      <input name="roof_unheated_exterior_ventilation_coefficient" value="">
+      <input name="roof_unheated_conditioned_zone_heat_transfer_w_k" value="">
       <input name="floor_boundary_type" value="ground">
       <input name="floor_boundary_correction_factor" value="">
+      <input name="floor_unheated_exterior_envelope_w_k" value="">
+      <input name="floor_unheated_exterior_ventilation_coefficient" value="">
+      <input name="floor_unheated_conditioned_zone_heat_transfer_w_k" value="">
       <input name="ground_exposed_perimeter_m" value="">
       <input name="ground_wall_thickness_m" value="0.30">
       <input name="ground_conductivity_w_mk" value="">
@@ -1150,7 +1156,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next39"></script>
+  <script src="/static/home-lab-next.js?v=next40"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
