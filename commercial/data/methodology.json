@@ -23,6 +23,27 @@
     },
     "effective_internal_heat_capacity_source": "Mc 001-2022 Table 2.20"
   },
+  "boundary_conditions_light": {
+    "status": "LaCurent Light boundary model. Hd/Hg/Hu/Ha separation and the monthly ground-temperature path follow MC001-2022 relation 2.15 and Figure 2.11. Ground and unheated-space correction factors remain explicit low-confidence product fallbacks until ISO 13370 / full bztu inputs are available.",
+    "ground": {
+      "default_correction_factor": 0.6,
+      "factor_confidence": "low",
+      "factor_source": "LaCurent Light fallback; explicit override supported; ISO 13370 ground coefficient remains future work",
+      "monthly_temperature_model": "annual_exterior_temperature"
+    },
+    "unheated_attic": {
+      "default_correction_factor": 0.75,
+      "factor_confidence": "low",
+      "factor_source": "LaCurent conservative Light bztu fallback; explicit override supported",
+      "monthly_temperature_model": "monthly_exterior_temperature_with_bztu"
+    },
+    "unheated_basement": {
+      "default_correction_factor": 0.65,
+      "factor_confidence": "low",
+      "factor_source": "LaCurent Light bztu fallback; explicit override supported",
+      "monthly_temperature_model": "monthly_exterior_temperature_with_bztu"
+    }
+  },
   "dhw": {
     "litres_per_person_day_at_60c": 50,
     "kwh_per_litre_10_to_60c": 0.05814
