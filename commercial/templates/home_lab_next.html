@@ -893,13 +893,16 @@
           <label>Suprafață încălzită <div class="hln-inline-input"><input id="hlnArea" type="number" min="40" max="300" step="5" value="120"><span>m²</span></div></label>
           <label>Niveluri încălzite <div class="hln-segments" id="hlnLevels"><button type="button" data-value="1">1</button><button type="button" data-value="2" class="is-active">2</button><button type="button" data-value="3">3+</button></div></label>
           <label>Înălțime interioară <div class="hln-inline-input"><input id="hlnHeight" type="number" min="2.2" max="3.5" step="0.1" value="2.7"><span>m</span></div></label>
+          <label>Suprafață opacă pereți exteriori <div class="hln-inline-input"><input id="hlnWallAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
+          <label>Suprafață planșeu superior / acoperiș <div class="hln-inline-input"><input id="hlnTopAreaOverride" type="number" min="1" max="1000" step="1" placeholder="automat"><span>m²</span></div></label>
+          <small class="hln-field-note">Lasă câmpurile goale dacă nu le știi. Atunci estimăm suprafețele din suprafața încălzită, numărul de niveluri și o geometrie dreptunghiulară simplificată. Pereții opaci nu includ ferestrele și ușile.</small>
           <label>Temperatură iarna <div class="hln-inline-input"><input id="hlnTemperature" type="number" min="18" max="24" step="0.5" value="21"><span>°C</span></div></label>
           <label>Tip clădire
-            <select id="hlnBuildingType">
+            <select id="hlnBuildingType" disabled>
               <option value="residential_individual">Casă individuală</option>
-              <option value="residential_collective">Apartament / clădire colectivă</option>
             </select>
           </label>
+          <small class="hln-field-note">Versiunea publică Home Lab este calibrată pentru case individuale. Apartamentele și clădirile colective vor avea un model separat, ca să nu presupunem greșit acoperiș, pardoseală și fațade exterioare.</small>
           <label>Anul construcției <input id="hlnConstructionYear" type="number" min="1800" max="2100" step="1" value="2005"></label>
           <label>Persoane în locuință <input id="hlnOccupants" type="number" min="1" max="8" step="1" value="4"></label>
         </section>
@@ -1148,7 +1151,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next30"></script>
+  <script src="/static/home-lab-next.js?v=next31"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
