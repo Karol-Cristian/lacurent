@@ -401,7 +401,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next39" in response.text
+    assert "/static/home-lab-next.js?v=next40" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -476,7 +476,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'name="floor_boundary_type"' in response.text
     assert "U=3,25 W/m²K" in response.text
     assert "U=2,25 W/m²K" in response.text
-    assert "factor bztu Light 0,75" in response.text
+    assert "folosește conservator bztu=1,00" in response.text
     assert "setează 0 cm" in response.text
     assert 'id="hlnHomeTopStructure"' not in response.text
     assert 'id="hlnHomeAirtightness"' not in response.text
@@ -547,13 +547,41 @@ def test_form_maps_cold_attic_and_ground_to_hu_and_hg() -> None:
     floor = next(item for item in building.envelope if item.type.value == "floor")
 
     assert roof.boundary_type.value == "unheated_attic"
-    assert roof.boundary_correction_factor == 0.75
+    assert roof.boundary_correction_factor == 1.0
     assert floor.boundary_type.value == "ground"
     assert floor.boundary_correction_factor is None
     assert floor.ground_contact is not None
     assert floor.ground_contact.exposed_perimeter_m == 36
     assert floor.ground_contact.wall_thickness_m == 0.30
     assert floor.ground_contact.ground_conductivity_w_mk == 2.0
+
+
+def test_form_can_supply_explicit_unheated_attic_zone_balance() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "unheated_attic"
+    data["roof_boundary_correction_factor"] = ""
+    data["roof_unheated_exterior_envelope_w_k"] = "30"
+    data["roof_unheated_exterior_ventilation_coefficient"] = "0.5"
+    data["roof_unheated_conditioned_zone_heat_transfer_w_k"] = "20"
+
+    building = build_input_from_form(data)
+    roof = next(item for item in building.envelope if item.type.value == "roof")
+
+    assert roof.boundary_type.value == "unheated_attic"
+    assert roof.boundary_correction_factor is None
+    assert roof.unheated_zone is not None
+    assert roof.unheated_zone.heat_transfer_to_exterior_envelope_w_k == 30
+    assert roof.unheated_zone.exterior_ventilation_coefficient == 0.5
+    assert roof.unheated_zone.conditioned_zone_heat_transfers_w_k == [20]
+
+
+def test_partial_unheated_zone_balance_is_rejected() -> None:
+    data = demo_form_data()
+    data["roof_boundary_type"] = "unheated_attic"
+    data["roof_unheated_exterior_envelope_w_k"] = "30"
+
+    with pytest.raises(ValueError):
+        build_input_from_form(data)
 
 
 def test_legacy_form_without_floor_boundary_still_maps_floor_to_ground() -> None:
