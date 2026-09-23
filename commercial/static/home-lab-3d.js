@@ -671,9 +671,29 @@ class HomeLabHouse3D {
       new THREE.Vector3(0, 1, 0),
       localNormal
     );
+
+    // Compute the actual steepest-descent direction on this roof plane.
+    // Translating along an arbitrary local X/Z axis is not guaranteed to move
+    // visually downslope after the roof quaternion has been applied.
+    const inverseWorldQuaternion = worldQuaternion.clone().invert();
+    const localGravity = new THREE.Vector3(0, -1, 0)
+      .applyQuaternion(inverseWorldQuaternion)
+      .normalize();
+    const localDownslope = localGravity
+      .clone()
+      .addScaledVector(localNormal, -localGravity.dot(localNormal));
+    if (localDownslope.lengthSq() < 1e-8) {
+      localDownslope.set(0, 0, 1);
+    } else {
+      localDownslope.normalize();
+    }
+
     group.userData.roofMount = {
       anchor: [...anchor],
       worldNormal: worldNormal.toArray(),
+      localNormal: localNormal.toArray(),
+      localDownslope: localDownslope.toArray(),
+      basePositionLocal: group.position.toArray(),
       mesh: hit.object?.name || "",
       objectUuid: hit.object?.uuid || "",
     };
@@ -778,14 +798,23 @@ class HomeLabHouse3D {
     // the clear left roof face, below the ridge and away from the dormer.
     this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
 
-    // Place the field one complete row pitch farther downslope so the former
-    // lower row becomes the new middle row. Roof support is validated against
-    // the actual GLB roof surface in the browser smoke test.
+    // Move on the measured roof plane, not on the group's arbitrary local Z.
+    // One complete row pitch means the former lower row becomes the new middle
+    // row in the actual downslope direction.
     const rowPitch = panelDepth + gapZ;
     const downslopeShift = rowPitch;
     const chimneyNudge = (panelWidth + gapX) * 0.30;
-    layer.translateZ(downslopeShift);
-    layer.translateX(chimneyNudge);
+    const roofMount = layer.userData.roofMount || {};
+    const downslope = new THREE.Vector3(...(roofMount.localDownslope || [0, 0, 1])).normalize();
+    const roofNormal = new THREE.Vector3(...(roofMount.localNormal || [0, 1, 0])).normalize();
+    layer.position.addScaledVector(downslope, downslopeShift);
+
+    // Nudge across the roof face toward the measured taller chimney while
+    // keeping this adjustment orthogonal to the downslope movement.
+    const crossSlope = new THREE.Vector3().crossVectors(roofNormal, downslope).normalize();
+    const chimneyTarget = this.existingChimneyLocalTop();
+    if (chimneyTarget.clone().sub(layer.position).dot(crossSlope) < 0) crossSlope.negate();
+    layer.position.addScaledVector(crossSlope, chimneyNudge);
 
     layer.visible = false;
     this.modelRoot.add(layer);
