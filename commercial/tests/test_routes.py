@@ -404,7 +404,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
     assert "/static/home-lab-3d.css?v=3d25" in response.text
-    assert "/static/home-lab-3d.js?v=3d43" in response.text
+    assert "/static/home-lab-3d.js?v=3d44" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1458,7 +1458,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
     assert "createSingleSolarThermalLayer()" in response.text
-    assert "anchor: [-0.25, 0.78, 0.15]" in response.text
+    assert "anchor: [-0.18, 0.78, 0.08]" in response.text
     assert "const panelWidthWorld = s.x * 0.075" in response.text
     assert "const panelDepthWorld = s.z * 0.135" in response.text
     assert "panelWidth: panelWidthWorld" in response.text
