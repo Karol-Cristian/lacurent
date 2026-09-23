@@ -784,60 +784,117 @@ class HomeLabHouse3D {
   createHeatPumpLayer() {
     const group = new THREE.Group();
     group.name = "LaCurentLayer_heatPump";
-    group.position.copy(this.localPointFromNormalized([0.54, 0.11, 0.30]));
+    group.position.copy(this.localPointFromNormalized([0.55, 0.105, 0.32]));
 
-    const w = this.localLength(this.modelSize.x * 0.14);
-    const h = this.localLength(this.modelSize.y * 0.20);
-    const d = this.localLength(this.modelSize.z * 0.12);
+    const w = this.localLength(this.modelSize.x * 0.17);
+    const h = this.localLength(this.modelSize.y * 0.23);
+    const d = this.localLength(this.modelSize.z * 0.14);
+    const shellMaterial = new THREE.MeshStandardMaterial({
+      color: 0xe8ebe7,
+      roughness: 0.42,
+      metalness: 0.16,
+    });
+    const darkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x303735,
+      roughness: 0.58,
+      metalness: 0.28,
+    });
 
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({
-        color: 0xe5e5df,
-        roughness: 0.62,
-        metalness: 0.08,
-      })
-    );
-    body.position.y = h * 0.52;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), shellMaterial);
+    body.position.y = h * 0.55;
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
 
-    const grille = new THREE.Mesh(
-      new THREE.CircleGeometry(Math.min(w, h) * 0.28, 32),
-      new THREE.MeshStandardMaterial({
-        color: 0x4d5553,
-        roughness: 0.78,
-        metalness: 0.24,
-      })
+    const top = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 1.02, h * 0.035, d * 1.02),
+      new THREE.MeshStandardMaterial({ color:0xf4f5f2, roughness:0.34, metalness:0.18 })
     );
-    grille.position.set(0, h * 0.55, d * 0.505);
-    group.add(grille);
+    top.position.y = h * 1.065;
+    group.add(top);
+
+    const fanRadius = Math.min(w, h) * 0.31;
+    const fanRecess = new THREE.Mesh(
+      new THREE.CircleGeometry(fanRadius * 1.08, 48),
+      new THREE.MeshStandardMaterial({ color:0x1f2624, roughness:0.72, metalness:0.20 })
+    );
+    fanRecess.position.set(-w * 0.12, h * 0.60, d * 0.505);
+    group.add(fanRecess);
+
+    const ringMaterial = new THREE.MeshStandardMaterial({
+      color:0x59615e, roughness:0.48, metalness:0.55
+    });
+    [1.0, 0.78, 0.55].forEach((scale) => {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(fanRadius * scale, fanRadius * 0.018, 8, 48),
+        ringMaterial
+      );
+      ring.position.copy(fanRecess.position);
+      ring.position.z += this.localLength(0.004);
+      group.add(ring);
+    });
+
+    const bladeMaterial = new THREE.MeshStandardMaterial({
+      color:0x3c4542, roughness:0.48, metalness:0.30
+    });
+    for (let index = 0; index < 6; index += 1) {
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(fanRadius * 0.78, fanRadius * 0.16, this.localLength(0.012)),
+        bladeMaterial
+      );
+      blade.name = "LaCurentHeatPump_fanBlade";
+      blade.position.copy(fanRecess.position);
+      blade.position.z += this.localLength(0.006);
+      blade.rotation.z = index * Math.PI / 3;
+      group.add(blade);
+    }
 
     const hub = new THREE.Mesh(
-      new THREE.CircleGeometry(Math.min(w, h) * 0.055, 24),
-      new THREE.MeshStandardMaterial({
-        color: 0x242b29,
-        roughness: 0.68,
-        metalness: 0.12,
-      })
+      new THREE.CircleGeometry(fanRadius * 0.16, 32),
+      darkMaterial
     );
-    hub.position.set(0, h * 0.55, d * 0.51);
+    hub.position.copy(fanRecess.position);
+    hub.position.z += this.localLength(0.010);
     group.add(hub);
 
+    const servicePanel = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.18, h * 0.58, this.localLength(0.014)),
+      new THREE.MeshStandardMaterial({ color:0xd7dbd7, roughness:0.50, metalness:0.20 })
+    );
+    servicePanel.position.set(w * 0.38, h * 0.57, d * 0.51);
+    group.add(servicePanel);
+
+    const badge = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.13, h * 0.025, this.localLength(0.016)),
+      new THREE.MeshBasicMaterial({ color:0x6f8980, toneMapped:false })
+    );
+    badge.position.set(w * 0.34, h * 0.90, d * 0.52);
+    group.add(badge);
+
     const footMaterial = new THREE.MeshStandardMaterial({
-      color: 0x676d69,
+      color: 0x575e5b,
       roughness: 0.82,
-      metalness: 0.16,
+      metalness: 0.22,
     });
     [-1, 1].forEach((side) => {
       const foot = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.28, h * 0.08, d * 0.55),
+        new THREE.BoxGeometry(w * 0.30, h * 0.065, d * 0.58),
         footMaterial
       );
-      foot.position.set(side * w * 0.27, h * 0.04, 0);
+      foot.position.set(side * w * 0.27, h * 0.035, 0);
       group.add(foot);
     });
+
+    const pipeMaterial = new THREE.MeshStandardMaterial({
+      color:0xb88a55, roughness:0.50, metalness:0.55
+    });
+    const pipe = new THREE.Mesh(
+      new THREE.CylinderGeometry(this.localLength(0.018), this.localLength(0.018), h * 0.34, 14),
+      pipeMaterial
+    );
+    pipe.position.set(w * 0.55, h * 0.32, -d * 0.18);
+    pipe.rotation.z = Math.PI / 2;
+    group.add(pipe);
 
     group.visible = false;
     this.modelRoot.add(group);
