@@ -1203,12 +1203,19 @@ def demo_building() -> BuildingInput:
         envelope=[
             {"name": "Pereți exteriori", "type": "exterior_wall", "area_m2": 168, "u_value_w_m2k": 0.42},
             {"name": "Acoperiș", "type": "roof", "area_m2": 92, "u_value_w_m2k": 0.24},
-            {"name": "Pardoseală spre sol", "type": "floor", "area_m2": 80, "u_value_w_m2k": 0.36},
+            {
+                "name": "Pardoseală spre sol",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.36,
+                "boundary_type": "ground",
+                "boundary_correction_factor": 0.60,
+            },
             {"name": "Ferestre", "type": "window", "area_m2": 24, "u_value_w_m2k": 1.35},
             {"name": "Ușă exterioară", "type": "exterior_door", "area_m2": 3.2, "u_value_w_m2k": 1.7},
         ],
         thermal_bridges=[
-            {"name": "Perimetrul pardoselii", "length_m": 42, "psi_w_mk": 0.05},
+            {"name": "Perimetrul pardoselii", "length_m": 42, "psi_w_mk": 0.05, "component": "Hg"},
         ],
         ventilation={"air_changes_per_hour": 0.5, "heat_recovery_efficiency": 0},
         heating={"system_type": "condensing_gas_boiler", "efficiency": 0.94, "cost_profile": "natural_gas"},
