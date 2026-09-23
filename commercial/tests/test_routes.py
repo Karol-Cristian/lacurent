@@ -542,7 +542,11 @@ def test_form_maps_cold_attic_and_ground_to_hu_and_hg() -> None:
     assert roof.boundary_type.value == "unheated_attic"
     assert roof.boundary_correction_factor == 0.75
     assert floor.boundary_type.value == "ground"
-    assert 0.70 < floor.boundary_correction_factor < 0.71
+    assert floor.boundary_correction_factor is None
+    assert floor.ground_contact is not None
+    assert floor.ground_contact.exposed_perimeter_m == 36
+    assert floor.ground_contact.wall_thickness_m == 0.30
+    assert floor.ground_contact.ground_conductivity_w_mk == 2.0
 
 
 def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero_loss() -> None:
