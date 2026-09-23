@@ -740,14 +740,16 @@ class HomeLabHouse3D {
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_pv";
 
+    // One compact field on the same roof plane. The first two panels are the
+    // requested vertical pair; additional capacity fills the neighbouring
+    // column and then the upper row instead of scattering panels on the roof.
     const panels = [
-      // The first two are intentionally one vertical pair. Small PV systems
-      // therefore read as a realistic two-panel installation instead of one
-      // isolated panel floating in the composition.
       { name: "PV_primary_lower", anchor: [-0.35, 0.62, 0.33] },
-      { name: "PV_primary_upper", anchor: [-0.35, 0.78, 0.18] },
-      { name: "PV_right_upper", anchor: [0.12, 0.80, 0.17] },
-      { name: "PV_right_outer", anchor: [0.34, 0.72, 0.29] },
+      { name: "PV_primary_upper", anchor: [-0.35, 0.76, 0.20] },
+      { name: "PV_secondary_lower", anchor: [-0.21, 0.62, 0.33] },
+      { name: "PV_secondary_upper", anchor: [-0.21, 0.76, 0.20] },
+      { name: "PV_primary_top", anchor: [-0.35, 0.86, 0.08] },
+      { name: "PV_secondary_top", anchor: [-0.21, 0.86, 0.08] },
     ];
 
     panels.forEach(({ name, anchor }) => {
@@ -1275,8 +1277,12 @@ class HomeLabHouse3D {
     const pv = this.experimentLayers.get("pv");
     if (pv) {
       pv.visible = Boolean(detail.pvEnabled);
+      // Visual density follows configured capacity without pretending that
+      // each rendered rectangle is one physical module. Roughly 2.5 kWp per
+      // representative panel gives 2 panels around 3–5 kWp, 4 around 10 kWp
+      // and fills the 6-panel field from about 15 kWp upward.
       const panelCount = detail.pvEnabled
-        ? Math.max(2, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 7.5)))
+        ? Math.max(2, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 2.5)))
         : 0;
       pv.children.forEach((panel, index) => {
         panel.visible = index < panelCount;
