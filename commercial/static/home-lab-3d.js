@@ -794,17 +794,10 @@ class HomeLabHouse3D {
       layer.add(panel);
     });
 
-    // One raycast defines the plane for the whole PV field. The anchor sits on
-    // the clear left roof face, below the ridge and away from the dormer.
-    this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
-
-    // Exact PV placement from immediately before the solar-thermal
-    // positioning work was mistakenly applied to the photovoltaic array.
-    const rowPitch = panelDepth + gapZ;
-    const downslopeShift = rowPitch * 0.195;
-    const chimneyNudge = (panelWidth + gapX) * 0.30;
-    layer.translateZ(downslopeShift);
-    layer.translateX(chimneyNudge);
+    // Restore the lower main-roof position used before PR #323 moved the
+    // photovoltaic field upward. Keep the current compact 2x3 geometry, but
+    // do not apply any of the later fine-position translations.
+    this.mountLayerOnRoof(layer, [-0.34, 0.72, 0.16]);
 
     layer.visible = false;
     this.modelRoot.add(layer);
