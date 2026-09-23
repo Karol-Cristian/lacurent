@@ -1459,8 +1459,10 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "detail.solarThermalArea" in response.text
     assert "createSingleSolarThermalLayer()" in response.text
     assert "anchor: [0.20, 0.78, 0.24]" in response.text
-    assert "panelWidth: s.x * 0.075" in response.text
-    assert "panelDepth: s.z * 0.135" in response.text
+    assert "const panelWidthWorld = s.x * 0.075" in response.text
+    assert "const panelDepthWorld = s.z * 0.135" in response.text
+    assert "panelWidth: panelWidthWorld" in response.text
+    assert "panelDepth: panelDepthWorld" in response.text
     assert "const thermalScale = clamp(" in response.text
     assert "0.82 + Number(detail.solarThermalArea || 0) * 0.025" in response.text
     assert "1.10" in response.text
