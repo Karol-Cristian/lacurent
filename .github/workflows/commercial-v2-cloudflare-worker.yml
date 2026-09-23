@@ -105,6 +105,7 @@ jobs:
           python - <<'PY'
           import json
           import sys
+          import urllib.error
           import urllib.parse
           import urllib.request
 
@@ -117,11 +118,16 @@ jobs:
           base = "http://127.0.0.1:8788"
 
           def get(path):
-              with urllib.request.urlopen(base + path, timeout=20) as response:
-                  body = response.read().decode("utf-8")
-                  if response.status != 200:
-                      raise AssertionError(f"{path} returned {response.status}")
-                  return body
+              print(f"GET {path}", flush=True)
+              try:
+                  with urllib.request.urlopen(base + path, timeout=20) as response:
+                      body = response.read().decode("utf-8")
+                      if response.status != 200:
+                          raise AssertionError(f"{path} returned {response.status}")
+                      return body
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode("utf-8", errors="replace")
+                  raise AssertionError(f"{path} returned HTTP {exc.code}: {body[:800]}") from exc
 
           def get_binary(path):
               with urllib.request.urlopen(base + path, timeout=20) as response:
@@ -271,7 +277,7 @@ jobs:
           assert 'data-page="testing-home"' not in sales_html
           energy_html = get("/instalatii")
           assert "data-home-lab-next" in energy_html
-          assert "Construiește punctul de plecare." in energy_html
+          assert "Casa este interfața." in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
