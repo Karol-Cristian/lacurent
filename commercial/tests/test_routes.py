@@ -1480,7 +1480,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert 'url: "https://cdn.3dassets.dev/assets/2969/v1/model.glb"' in response.text
     assert 'source: "https://3dassets.dev/assets/off-grid-power-and-controls-roof-solar-panel-197e7d81"' in response.text
     assert 'label: "Fondital VLC 25 flat-plate solar thermal collector"' in response.text
-    assert "const SOLAR_THERMAL_ANCHOR = [0.05, 0.78, 0.08]" in response.text
+    assert "const SOLAR_THERMAL_ANCHOR = [-0.02, 0.78, 0.08]" in response.text
     assert "const panelWidthWorld = s.x * 0.075" in response.text
     assert "const panelDepthWorld = s.z * 0.135" in response.text
     assert "SolarThermalCollector_importedGLB" in response.text
