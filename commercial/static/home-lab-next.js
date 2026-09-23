@@ -216,7 +216,9 @@
   let optimizerAbortController = null;
   let optimizerRunToken = 0;
   let optimizerEvaluationCount = 0;
+  let optimizerLastRemoteRequestAt = 0;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
+  const OPTIMIZER_MIN_REQUEST_GAP_MS = 160;
   const LIVE_REQUEST_TIMEOUT_MS = 8000;
   const OPTIMIZER_REQUEST_TIMEOUT_MS = 12000;
   const optimizerCandidateCache = new Map();
@@ -1581,6 +1583,18 @@
     if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS) {
       throw new Error(`Bugetul de calcul al optimizerului a fost atins (${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări). Ajustează datele sau costurile și încearcă din nou.`);
     }
+
+    const elapsedSincePreviousRequest = Date.now() - optimizerLastRemoteRequestAt;
+    const remainingGap = Math.max(0, OPTIMIZER_MIN_REQUEST_GAP_MS - elapsedSincePreviousRequest);
+    if (remainingGap > 0) {
+      await new Promise(resolve => window.setTimeout(resolve, remainingGap));
+    }
+    if (optimizerAbortController?.signal.aborted) {
+      const abortError = new Error("Optimizer oprit");
+      abortError.name = "AbortError";
+      throw abortError;
+    }
+    optimizerLastRemoteRequestAt = Date.now();
     optimizerEvaluationCount += 1;
 
     const response = await fetchWithTimeout(
@@ -2033,6 +2047,37 @@
     return null;
   }
 
+  function roiCostBasisText(action, baseState, candidateState) {
+    const family = action?.family || action?.id;
+    const rate = positiveRoiCost(family);
+    if (rate == null) return "";
+    const geometry = roiGeometry(baseState);
+    if (family === "wall") {
+      const deltaCm = Math.max(Number(candidateState.wallIns || 0) - Number(baseState.wallIns || 0), 0);
+      return `${fmt(geometry.wallArea,1)} m² × ${fmt(deltaCm,1)} cm × ${fmt(rate,1)} lei/m²/cm`;
+    }
+    if (family === "roof") {
+      const deltaCm = Math.max(Number(candidateState.roofIns || 0) - Number(baseState.roofIns || 0), 0);
+      return `${fmt(geometry.topArea,1)} m² × ${fmt(deltaCm,1)} cm × ${fmt(rate,1)} lei/m²/cm`;
+    }
+    if (family === "floor") {
+      const deltaCm = Math.max(Number(candidateState.floorIns || 0) - Number(baseState.floorIns || 0), 0);
+      return `${fmt(geometry.floorArea,1)} m² × ${fmt(deltaCm,1)} cm × ${fmt(rate,1)} lei/m²/cm`;
+    }
+    if (family === "windows") return `${fmt(geometry.windows,1)} m² × ${fmt(rate)} lei/m²`;
+    if (family === "pv") {
+      const before = baseState.pvEnabled ? Math.max(Number(baseState.pvKwp || 0), 0) : 0;
+      const after = candidateState.pvEnabled ? Math.max(Number(candidateState.pvKwp || 0), 0) : 0;
+      return `${fmt(Math.max(after-before,0),1)} kWp × ${fmt(rate)} lei/kWp`;
+    }
+    if (family === "solar_thermal") {
+      const before = baseState.solarThermalEnabled ? Math.max(Number(baseState.solarThermalArea || 0), 0) : 0;
+      const after = candidateState.solarThermalEnabled ? Math.max(Number(candidateState.solarThermalArea || 0), 0) : 0;
+      return `${fmt(Math.max(after-before,0),1)} m² × ${fmt(rate)} lei/m²`;
+    }
+    return `${fmt(rate)} lei total`;
+  }
+
   function roiEconomics(baselineResult, result, capexLei) {
     const baselineCost = Number(baselineResult?.annual_cost_lei);
     const newCost = Number(result?.annual_cost_lei);
@@ -2157,6 +2202,7 @@
     calculateToken += 1;
     cancelOptimizerRun();
     optimizerEvaluationCount = 0;
+    optimizerLastRemoteRequestAt = 0;
     optimizerAbortController = new AbortController();
     scenarioResultState = "pending";
     renderAll();
@@ -2188,6 +2234,7 @@
       annualSavingLei:row.annualSavingLei,
       roiPercentPerYear:row.roiPercentPerYear,
       paybackYears:row.paybackYears,
+      costBasis:roiCostBasisText(row.action, homeState, row.state),
       regulatoryImprovement:row.regulatoryImprovement,
     };
   }
@@ -2672,6 +2719,20 @@
       economics = roiEconomics(homeResult, current, capexLei);
       const guardrailPass = regulatoryMeetsTarget(current, target, state, overrides);
       const selected = selectedRows.map(roiRowSummary);
+      const selectedCapexTotal = selected.reduce((sum, item) => sum + Number(item.capexLei || 0), 0);
+      if (!Number.isFinite(economics.capexLei) || Math.abs(selectedCapexTotal - economics.capexLei) > 1) {
+        throw new Error("Inconsistență internă: CAPEX-ul pachetului nu corespunde intervențiilor selectate.");
+      }
+      if (selected.length === 1) {
+        const only = selected[0];
+        const savingTolerance = Math.max(2, Math.abs(Number(economics.annualSavingLei || 0)) * 0.005);
+        if (
+          !Number.isFinite(Number(only.annualSavingLei)) ||
+          Math.abs(Number(only.annualSavingLei) - Number(economics.annualSavingLei)) > savingTolerance
+        ) {
+          throw new Error("Inconsistență internă: economia pachetului cu o singură măsură nu corespunde economiei acelei măsuri.");
+        }
+      }
       const regulatoryNote = !target
         ? "Renovare obișnuită: nu aplic un prag global 2.10a/2.10b; cerințele punctuale aplicabile intervențiilor rămân separate."
         : projectMode === "new_nzeb"
@@ -2705,7 +2766,7 @@
       const paybackText = economics.paybackYears == null ? "n/a" : `${fmt(economics.paybackYears,1)} ani`;
       setOptimizationNote(
         `<strong>Amortizare simplă: ${paybackText} · randament anual simplu ${roiText}</strong>
-         <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length} intervenții în pachet.</span>
+         <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length === 1 ? "1 măsură ROI selectată" : selected.length + " intervenții în pachet"}.</span>
          <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. CAPEX: ${escapeHtml(roiCostBasisMeta?.source === "d1" ? "catalog D1" : "catalog de rezervă")} · ${escapeHtml(roiCostBasisMeta?.catalog_version || "versiune n/a")}. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
         guardrailPass && economics.positive ? "good" : "warn"
       );
@@ -3304,6 +3365,31 @@
       applyDeltaState(node, item);
     });
 
+    const investmentSummary = $("#hlnScenarioInvestmentSummary");
+    if (investmentSummary) {
+      const selectedInvestments = optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)
+        ? optimizationMeta.selected
+        : [];
+      if (selectedInvestments.length) {
+        const annualSaving = Number(optimizationMeta.annualSavingLei);
+        const monthlyEquivalent = Number.isFinite(annualSaving) ? annualSaving / 12 : NaN;
+        const singular = selectedInvestments.length === 1;
+        investmentSummary.hidden = false;
+        investmentSummary.innerHTML = `
+          <div>
+            <span>${singular ? "CEA MAI BUNĂ MĂSURĂ ROI" : "PACHET ROI SELECTAT"}</span>
+            <strong>${singular ? escapeHtml(selectedInvestments[0].label) : selectedInvestments.length + " intervenții selectate"}</strong>
+            <small>CAPEX total ${fmt(optimizationMeta.capexLei)} lei · economie ${fmt(annualSaving)} lei/an${Number.isFinite(monthlyEquivalent) ? ` · ≈ ${fmt(monthlyEquivalent)} lei/lună în medie` : ""} · amortizare ${optimizationMeta.paybackYears == null ? "n/a" : fmt(optimizationMeta.paybackYears,1) + " ani"}</small>
+          </div>
+          <div class="hln-scenario-investment-lines">
+            ${selectedInvestments.map(item => `<p><b>${escapeHtml(item.label)}</b><span>CAPEX ${fmt(item.capexLei)} lei${item.costBasis ? " · " + escapeHtml(item.costBasis) : ""}</span></p>`).join("")}
+          </div>`;
+      } else {
+        investmentSummary.hidden = true;
+        investmentSummary.innerHTML = "";
+      }
+    }
+
     const list = $("#hlnSelectedMeasures");
     if (!measures.length) {
       list.innerHTML = '<div class="hln-home-note"><span>i</span><p>Nu ai păstrat încă nicio intervenție. Revino în Șantier și testează una.</p></div>';
@@ -3453,9 +3539,17 @@
 
     const reportMeasures = $("#hlnReportMeasures");
     const activeMeasures = measures.length ? measures : [];
+    const optimizerFamilyToMeasure = {
+      wall:"wall", roof:"roof", floor:"floor", windows:"windows",
+      heating:"heating", heating_control:"heating", ventilation:"ventilation",
+      pv:"pv", solar_thermal:"solar_thermal",
+    };
     const activeIds = new Set(activeMeasures);
     const extraOptimizerMeasures = Array.isArray(optimizationMeta?.selected)
-      ? optimizationMeta.selected.filter(item => item?.id && !activeIds.has(item.id))
+      ? optimizationMeta.selected.filter(item => {
+          const visibleMeasure = optimizerFamilyToMeasure[item?.family];
+          return item?.id && (!visibleMeasure || !activeIds.has(visibleMeasure));
+        })
       : [];
     const measureRows = [
       ...activeMeasures.map(type => `
@@ -3602,7 +3696,7 @@
             ${selected.map((item,index) => `
               <article>
                 <b>${index + 1}</b>
-                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei · randament anual simplu ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără amortizare pozitivă" : "amortizare simplă " + fmt(item.paybackYears,1) + " ani"}</small></div>
+                <div><strong>${escapeHtml(item.label)}</strong><small>CAPEX ${fmt(item.capexLei)} lei${item.costBasis ? " · " + escapeHtml(item.costBasis) : ""} · randament anual simplu ${fmt(item.roiPercentPerYear,1)}%/an · ${item.paybackYears == null ? "fără amortizare pozitivă" : "amortizare simplă " + fmt(item.paybackYears,1) + " ani"}</small></div>
               </article>
             `).join("")}
           </div>
@@ -3682,7 +3776,7 @@
     if (next === "report") {
       window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     }
-    window.scrollTo({top: 0, behavior: "smooth"});
+    window.scrollTo({top: 0, behavior: "auto"});
   }
 
   function persist() {
