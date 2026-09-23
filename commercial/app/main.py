@@ -1038,14 +1038,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         if design_temperature is not None
         else None
     )
-    annual_outdoor_temperature_c = None
-    monthly_temperatures = climate.get("monthly_temperatures") or []
-    total_climate_days = sum(float(row.get("days") or 0) for row in monthly_temperatures)
-    if total_climate_days > 0:
-        annual_outdoor_temperature_c = sum(
-            float(row.get("temperature_c") or 0) * float(row.get("days") or 0)
-            for row in monthly_temperatures
-        ) / total_climate_days
+    annual_outdoor_temperature_c = float(result.annual_outdoor_temperature_c)
 
     design_heat_load_kw = None
     if delta_t is not None:
