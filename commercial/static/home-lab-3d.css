@@ -880,44 +880,116 @@
 
 
 .hln-3d-compass {
+  --hln-compass-angle: 180deg;
   position: absolute;
   left: 14px;
   bottom: 14px;
   z-index: 7;
-  width: 54px;
-  height: 54px;
-  border: 1px solid rgba(31,45,38,.10);
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgba(31,45,38,.13);
   border-radius: 50%;
-  background: rgba(251,250,246,.82);
-  box-shadow: 0 7px 22px rgba(27,37,32,.07);
+  background: rgba(251,250,246,.90);
+  box-shadow: 0 8px 24px rgba(27,37,32,.10), inset 0 0 0 5px rgba(49,93,73,.035);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  pointer-events: none;
   color: #5c6962;
   font-size: 8px;
   font-style: normal;
+  user-select: none;
+  touch-action: manipulation;
 }
 
-.hln-3d-compass b,
-.hln-3d-compass span,
-.hln-3d-compass i,
-.hln-3d-compass em {
+.hln-3d-stage[data-hln-3d-stage="home"] .hln-3d-compass {
+  cursor: crosshair;
+  pointer-events: auto;
+}
+
+.hln-3d-stage:not([data-hln-3d-stage="home"]) .hln-3d-compass {
+  pointer-events: none;
+}
+
+.hln-3d-compass > b,
+.hln-3d-compass > span:not(.hln-3d-compass-arrow),
+.hln-3d-compass > i,
+.hln-3d-compass > em {
   position: absolute;
+  z-index: 3;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 850;
+  pointer-events: none;
 }
 
-.hln-3d-compass b { left: 50%; top: 4px; transform: translateX(-50%); color: #315d49; }
-.hln-3d-compass i { left: 50%; bottom: 4px; transform: translateX(-50%); }
-.hln-3d-compass span { right: 5px; top: 50%; transform: translateY(-50%); }
-.hln-3d-compass em { left: 5px; top: 50%; transform: translateY(-50%); }
+.hln-3d-compass > b { left: 50%; top: 4px; transform: translateX(-50%); color: #315d49; }
+.hln-3d-compass > i { left: 50%; bottom: 4px; transform: translateX(-50%); }
+.hln-3d-compass > span:not(.hln-3d-compass-arrow) { right: 6px; top: 50%; transform: translateY(-50%); }
+.hln-3d-compass > em { left: 6px; top: 50%; transform: translateY(-50%); }
+
+.hln-3d-compass-arrow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 2px;
+  height: 21px;
+  border-radius: 999px;
+  background: #c25845;
+  box-shadow: 0 1px 3px rgba(101,51,41,.20);
+  transform-origin: 50% 100%;
+  transform: translate(-50%, -100%) rotate(var(--hln-compass-angle));
+  pointer-events: none;
+}
+
+.hln-3d-compass-arrow::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid #c25845;
+  transform: translateX(-50%);
+}
+
+.hln-3d-compass > small {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 4;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(49,93,73,.14);
+  border-radius: 999px;
+  background: #fff;
+  color: #315d49;
+  font-size: 7px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hln-3d-stage[data-hln-3d-stage="home"] .hln-3d-compass:hover {
+  border-color: rgba(49,93,73,.30);
+  box-shadow: 0 10px 28px rgba(27,37,32,.13), inset 0 0 0 5px rgba(49,93,73,.05);
+}
+
+.hln-3d-stage[data-hln-3d-stage="home"] .hln-3d-compass:focus-visible {
+  outline: 2px solid rgba(49,93,73,.50);
+  outline-offset: 2px;
+}
 
 @media (max-width: 760px) {
   .hln-3d-compass {
     left: 10px;
     bottom: 10px;
-    width: 48px;
-    height: 48px;
+    width: 58px;
+    height: 58px;
   }
 
   .hln-3d-stage.is-authoring .hln-3d-compass {
