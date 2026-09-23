@@ -564,6 +564,58 @@ class HomeLabHouse3D {
     return worldLength / Math.max(scale, 0.0001);
   }
 
+  async upgradeGroupWithGlb(group, model, targetSize, options = {}) {
+    const fallbackChildren = [...group.children];
+    try {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(model.url);
+      const source = gltf.scene;
+      source.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(source);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      if (size.x < 1e-5 || size.y < 1e-5 || size.z < 1e-5) {
+        throw new Error("Imported equipment GLB has invalid bounds");
+      }
+
+      source.position.set(-center.x, options.grounded ? -box.min.y : -center.y, -center.z);
+      const wrapper = new THREE.Group();
+      wrapper.name = `${group.name}_importedGLB`;
+      wrapper.rotation.y = Number(options.rotateY || 0);
+      wrapper.add(source);
+
+      const scale = Math.min(
+        targetSize.x / size.x,
+        targetSize.y / size.y,
+        targetSize.z / size.z
+      );
+      wrapper.scale.setScalar(scale);
+
+      source.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      });
+
+      fallbackChildren.forEach((child) => {
+        child.visible = false;
+        child.userData.hlnFallbackVisual = true;
+      });
+      group.add(wrapper);
+      group.userData.assetLoaded = true;
+      group.userData.assetFallback = false;
+      group.userData.assetUrl = model.url;
+      group.userData.assetSource = model.source;
+      group.userData.assetLicense = model.license;
+      return true;
+    } catch (error) {
+      console.warn(`[Home Lab 3D] ${model.label} GLB fallback`, error);
+      group.userData.assetLoaded = false;
+      group.userData.assetFallback = true;
+      return false;
+    }
+  }
+
   localPointFromNormalized(values) {
     const world = this.normalizedToWorld(values);
     this.modelRoot.updateMatrixWorld(true);
@@ -1042,7 +1094,7 @@ class HomeLabHouse3D {
     this.experimentLayers.set("solarThermal", layer);
   }
 
-  createHeatPumpLayer() {
+  async createHeatPumpLayer() {
     const group = new THREE.Group();
     group.name = "LaCurentLayer_heatPump";
     group.userData.hlnEquipment = "heatPump";
@@ -1158,6 +1210,13 @@ class HomeLabHouse3D {
     pipe.rotation.z = Math.PI / 2;
     group.add(pipe);
 
+    await this.upgradeGroupWithGlb(
+      group,
+      HEAT_PUMP_MODEL,
+      new THREE.Vector3(w * 1.04, h * 1.02, d * 1.04),
+      { grounded:true, rotateY:Math.PI }
+    );
+
     group.visible = false;
     this.modelRoot.add(group);
     this.experimentLayers.set("heatPump", group);
@@ -1168,7 +1227,7 @@ class HomeLabHouse3D {
 
     this.createSplitPVLayer();
     await this.createSingleSolarThermalLayer();
-    this.createHeatPumpLayer();
+    await this.createHeatPumpLayer();
   }
 
   renderExperimentLayers() {
@@ -1266,7 +1325,7 @@ class HomeLabHouse3D {
     });
   }
 
-  createVisualEquipment() {
+  async createVisualEquipment() {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
     const ac = new THREE.Group();
@@ -1303,6 +1362,13 @@ class HomeLabHouse3D {
       slot.position.set(i * w * 0.15, -h * 0.18, d * 0.51);
       ac.add(slot);
     }
+
+    await this.upgradeGroupWithGlb(
+      ac,
+      AC_MODEL,
+      new THREE.Vector3(w * 1.02, h * 1.08, d * 1.02),
+      { grounded:false, rotateY:Math.PI }
+    );
 
     ac.visible = false;
     this.modelRoot.add(ac);
