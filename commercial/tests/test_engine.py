@@ -320,6 +320,28 @@ def test_reference_building_recomputes_geometry_dependent_ground_u() -> None:
     assert actual_floor.boundary_correction_factor != reference_floor.boundary_correction_factor
 
 
+def test_adjacent_unheated_buffer_is_hu_not_ha() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Wall to unheated garage",
+                "type": "exterior_wall",
+                "area_m2": 20,
+                "u_value_w_m2k": 1.0,
+                "boundary_type": "adjacent_unheated_space",
+                "boundary_correction_factor": 0.5,
+            }
+        ],
+        thermal_bridges=[],
+    )
+
+    components, envelope, _ = transmission_heat_transfer_components(building)
+
+    assert components.hu_w_k == pytest.approx(10.0)
+    assert components.ha_w_k == 0
+    assert envelope[0].component.value == "Hu"
+
+
 def test_adjacent_heated_space_has_zero_transmission() -> None:
     building = simple_building(
         envelope=[
