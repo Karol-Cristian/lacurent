@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from .methodology import methodology, resolve_climate
+from .methodology import methodology, resolve_climate, resolve_locality
 from .models import (
     BuildingInput,
     CoolingInput,
@@ -102,6 +102,11 @@ def _reference_window_solar_gn(actual: BuildingInput, rules: dict[str, Any]) -> 
 
     climate = resolve_climate(actual.locality)
     zone = str(climate.get("climate_zone") or "").strip()
+    if not zone:
+        try:
+            zone = str(resolve_locality(actual.locality).get("climateZone") or "").strip()
+        except ValueError:
+            zone = ""
     spec = rules["physical_mapping"]["window"]
     values = spec["solar_gn_by_climate_zone"]
     if zone not in values:
