@@ -627,18 +627,18 @@
     if (!reference?.u_values_w_m2k) return null;
     const u = reference.u_values_w_m2k;
     return {
-      wallIns: insulationCmForU(
-        wallBaseU(homeState),
+      wallIns: Number(homeState.wallIns || 0) + insulationCmForU(
+        currentEnvelopeU(homeState, "wallU"),
         u.exterior_wall,
         insulationLambda(homeState.wallInsulationMaterial)
       ),
-      roofIns: insulationCmForU(
-        topBaseU(homeState),
+      roofIns: Number(homeState.roofIns || 0) + insulationCmForU(
+        currentEnvelopeU(homeState, "roofU"),
         u.roof,
         insulationLambda(homeState.roofInsulationMaterial)
       ),
-      floorIns: insulationCmForU(
-        0.90,
+      floorIns: Number(homeState.floorIns || 0) + insulationCmForU(
+        currentEnvelopeU(homeState, "floorU"),
         u.floor,
         insulationLambda(homeState.floorInsulationMaterial)
       ),
@@ -1618,35 +1618,29 @@
         const nextState = {...baseState};
         const nextOverrides = {...baseOverrides};
         if (item.id === "wall") {
-          nextState.wallIns = Math.max(
-            Number(nextState.wallIns || 0),
-            equivalentInsulationCm(
-              wallBaseU(nextState),
-              item.limit,
-              insulationLambda(nextState.wallInsulationMaterial)
-            )
+          const current = Number(currentEnvelopeU(nextState, "wallU", baseOverrides));
+          nextState.wallIns = Number(nextState.wallIns || 0) + equivalentInsulationCm(
+            current,
+            item.limit,
+            insulationLambda(nextState.wallInsulationMaterial)
           );
           nextOverrides.wallU = item.limit;
         }
         if (item.id === "roof") {
-          nextState.roofIns = Math.max(
-            Number(nextState.roofIns || 0),
-            equivalentInsulationCm(
-              topBaseU(nextState),
-              item.limit,
-              insulationLambda(nextState.roofInsulationMaterial)
-            )
+          const current = Number(currentEnvelopeU(nextState, "roofU", baseOverrides));
+          nextState.roofIns = Number(nextState.roofIns || 0) + equivalentInsulationCm(
+            current,
+            item.limit,
+            insulationLambda(nextState.roofInsulationMaterial)
           );
           nextOverrides.roofU = item.limit;
         }
         if (item.id === "floor") {
-          nextState.floorIns = Math.max(
-            Number(nextState.floorIns || 0),
-            equivalentInsulationCm(
-              0.90,
-              item.limit,
-              insulationLambda(nextState.floorInsulationMaterial)
-            )
+          const current = Number(currentEnvelopeU(nextState, "floorU", baseOverrides));
+          nextState.floorIns = Number(nextState.floorIns || 0) + equivalentInsulationCm(
+            current,
+            item.limit,
+            insulationLambda(nextState.floorInsulationMaterial)
           );
           nextOverrides.floorU = item.limit;
         }
@@ -1745,7 +1739,6 @@
       const envelopeVariants = [
         {
           family:"roof",
-          baseU:topBaseU(state),
           lambda:insulationLambda(state.roofInsulationMaterial),
           stateKey:"roofIns",
           targetU:Number(envelopeLimits.roof),
@@ -1754,7 +1747,6 @@
         },
         {
           family:"wall",
-          baseU:wallBaseU(state),
           lambda:insulationLambda(state.wallInsulationMaterial),
           stateKey:"wallIns",
           targetU:Number(envelopeLimits.exterior_wall),
@@ -1763,7 +1755,6 @@
         },
         {
           family:"floor",
-          baseU:0.90,
           lambda:insulationLambda(state.floorInsulationMaterial),
           stateKey:"floorIns",
           targetU:Number(envelopeLimits.floor_generic_conservative),
@@ -1785,8 +1776,8 @@
         if (alreadyStrong) continue;
 
         const level = Math.ceil(
-          Number.isFinite(item.targetU) && item.targetU > 0
-            ? Math.max(currentCm, equivalentInsulationCm(item.baseU, item.targetU, item.lambda))
+          Number.isFinite(item.targetU) && item.targetU > 0 && Number.isFinite(actualU) && actualU > 0
+            ? currentCm + equivalentInsulationCm(actualU, item.targetU, item.lambda)
             : currentCm + item.step
         );
         if (level <= currentCm + 0.1) continue;
