@@ -75,6 +75,50 @@ try {
     throw new Error(`Report navigation did not reset scroll immediately: ${scrollAfterReport}px`);
   }
 
+  // Payback thresholds must be monotonic. A package found with a 7-year
+  // ceiling whose actual payback is <= 6 years must also remain discoverable
+  // when the ceiling is tightened to 6 years.
+  await page.locator('.hln-progress [data-hln-go="site"]').click();
+  await expectVisible('[data-hln-screen="site"].is-active');
+  await page.locator('[data-hln-reset-home]').first().click();
+  await page.locator("#hlnRoiPaybackYears").fill("7");
+  await page.locator('[data-hln-smart-config="roi-payback"]').click();
+  await page.waitForFunction(
+    () => {
+      const button = document.querySelector('[data-hln-smart-config="roi-payback"]');
+      const note = String(document.querySelector("#hlnOptimizationNote")?.textContent || "");
+      return button && !button.disabled &&
+        (note.includes("CAPEX") || note.includes("Niciun pachet") || note.includes("Nu am găsit"));
+    },
+    null,
+    {timeout:90000}
+  );
+  const paybackNote7 = await page.locator("#hlnOptimizationNote").innerText();
+  const actualMatch7 = paybackNote7.match(/amortizare\s+([0-9]+(?:[.,][0-9]+)?)\s+ani\s+·\s+ROI/i);
+  if (actualMatch7) {
+    const actualYears7 = Number(actualMatch7[1].replace(",", "."));
+    if (actualYears7 <= 6.000001) {
+      await page.locator("#hlnRoiPaybackYears").fill("6");
+      await page.locator('[data-hln-smart-config="roi-payback"]').click();
+      await page.waitForFunction(
+        () => {
+          const button = document.querySelector('[data-hln-smart-config="roi-payback"]');
+          const note = String(document.querySelector("#hlnOptimizationNote")?.textContent || "");
+          return button && !button.disabled &&
+            (note.includes("CAPEX") || note.includes("Niciun pachet") || note.includes("Nu am găsit"));
+        },
+        null,
+        {timeout:90000}
+      );
+      const paybackNote6 = await page.locator("#hlnOptimizationNote").innerText();
+      if (!/CAPEX/i.test(paybackNote6)) {
+        throw new Error(
+          `Payback threshold is non-monotonic: 7-year search found ${actualYears7} years, but 6-year search did not. 6-year note: ${paybackNote6}`
+        );
+      }
+    }
+  }
+
   if (pageErrors.length) {
     throw new Error("Browser page errors:\n" + pageErrors.join("\n"));
   }
