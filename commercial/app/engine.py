@@ -391,8 +391,28 @@ def _monthly_solar_gains(
         "station_distance_km": source_meta.get("station_distance_km") if source_meta else None,
     }
 
-def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: float) -> list[dict]:
-    """Monthly quasi-steady balance following the Mc 001-2022 / SR EN ISO 52016-1 structure."""
+def _annual_outdoor_temperature_c(climate: dict) -> float:
+    """Return the day-weighted annual exterior temperature from the selected climate station."""
+
+    months = climate["monthly_temperatures"]
+    total_days = sum(float(month["days"]) for month in months)
+    if total_days <= 0:
+        raise ValueError("Climate profile must contain a positive annual duration.")
+    return sum(float(month["temperature_c"]) * float(month["days"]) for month in months) / total_days
+
+
+def monthly_energy_balance(
+    building: BuildingInput,
+    transmission: TransmissionComponentsResult,
+    h_ve_w_k: float,
+) -> list[dict]:
+    """Monthly quasi-steady balance with explicit exterior/ground boundary paths.
+
+    MC001 Figure 2.11 keeps ground transfer separate: Hd/Hu/Ha use the monthly
+    exterior temperature while Hg uses the annual exterior temperature. The
+    current Light Engine keeps Hg constant through the year; a future ISO 13370
+    implementation may replace it with monthly Hgr;an,m coefficients.
+    """
 
     data = methodology()
     climate = resolve_climate(building.locality)
@@ -401,10 +421,12 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         if building.internal_gains_w_m2 is not None
         else data["internal_gains_w_m2"][building.building_type.value]
     )
-    total_h = h_tr_w_k + h_ve_w_k
+    total_h = transmission.htr_w_k + h_ve_w_k
     a_h = _monthly_utilization_parameter(building, total_h, "heating")
     a_c = _monthly_utilization_parameter(building, total_h, "cooling")
     a_c_red = float(data["monthly_method"]["cooling_reduction_factor_continuous"])
+    annual_outdoor = _annual_outdoor_temperature_c(climate)
+    h_excluding_ground = transmission.hd_w_k + transmission.hu_w_k + transmission.ha_w_k
 
     monthly = []
     for month in climate["monthly_temperatures"]:
@@ -422,13 +444,51 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
         solar_gains = float(solar["gains_kwh"])
         total_gains = internal_gains + solar_gains
 
-        # Mc 001 sign convention: heat transfer is positive when heat leaves the zone.
-        q_h_ht = total_h * (building.indoor_design_temperature_c - outdoor) * hours / 1000
+        # MC001 Figure 2.11 sign convention: heat transfer is positive when it
+        # leaves the conditioned zone. Ground is coupled to the annual exterior
+        # temperature instead of the current month's outside-air temperature.
+        q_h_tr_excl_ground = (
+            h_excluding_ground
+            * (building.indoor_design_temperature_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_h_ground = (
+            transmission.hg_w_k
+            * (building.indoor_design_temperature_c - annual_outdoor)
+            * hours
+            / 1000
+        )
+        q_h_ve = (
+            h_ve_w_k
+            * (building.indoor_design_temperature_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_h_ht = q_h_tr_excl_ground + q_h_ground + q_h_ve
         useful_heating = _monthly_heating_need(q_h_ht, total_gains, a_h)
 
         useful_cooling = 0.0
         if building.cooling.enabled:
-            q_c_ht = total_h * (building.cooling.setpoint_c - outdoor) * hours / 1000
+            q_c_tr_excl_ground = (
+                h_excluding_ground
+                * (building.cooling.setpoint_c - outdoor)
+                * hours
+                / 1000
+            )
+            q_c_ground = (
+                transmission.hg_w_k
+                * (building.cooling.setpoint_c - annual_outdoor)
+                * hours
+                / 1000
+            )
+            q_c_ve = (
+                h_ve_w_k
+                * (building.cooling.setpoint_c - outdoor)
+                * hours
+                / 1000
+            )
+            q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
             useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
 
         monthly.append({
@@ -436,6 +496,9 @@ def monthly_energy_balance(building: BuildingInput, h_tr_w_k: float, h_ve_w_k: f
             "days": days,
             "outdoor_temperature_c": outdoor,
             "heat_loss_kwh": _round(max(q_h_ht, 0.0)),
+            "transmission_excluding_ground_kwh": _round(q_h_tr_excl_ground),
+            "ground_transmission_kwh": _round(q_h_ground),
+            "ventilation_heat_transfer_kwh": _round(q_h_ve),
             "internal_gains_kwh": _round(internal_gains),
             "solar_gains_kwh": _round(solar_gains),
             "solar_gains_source": solar["source"],
