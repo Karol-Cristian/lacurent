@@ -770,9 +770,11 @@ class HomeLabHouse3D {
 
     const xLeft = -(panelWidth + gapX) * 0.5;
     const xRight = (panelWidth + gapX) * 0.5;
-    const zLower = panelDepth + gapZ;
+    const rowPitch = panelDepth + gapZ;
+    const zLower = rowPitch;
     const zMiddle = 0;
-    const zUpper = -(panelDepth + gapZ);
+    const zUpper = -rowPitch;
+    const zRidge = -rowPitch * 2;
 
     // Visibility order keeps the requested vertical pair first, then fills the
     // neighbouring column, then the final upper row. Every panel is a child of
@@ -785,6 +787,8 @@ class HomeLabHouse3D {
       { name:"PV_secondary_upper", x:xRight, z:zMiddle },
       { name:"PV_primary_top", x:xLeft, z:zUpper },
       { name:"PV_secondary_top", x:xRight, z:zUpper },
+      { name:"PV_primary_ridge", x:xLeft, z:zRidge },
+      { name:"PV_secondary_ridge", x:xRight, z:zRidge },
     ];
 
     slots.forEach(({name, x, z}) => {
@@ -794,9 +798,8 @@ class HomeLabHouse3D {
       layer.add(panel);
     });
 
-    // Restore the lower main-roof position used before PR #323 moved the
-    // photovoltaic field upward. Keep the current compact 2x3 geometry, but
-    // do not apply any of the later fine-position translations.
+    // Keep the restored lower main-roof position and extend the compact field
+    // upward with one additional aligned pair. The anchor itself is unchanged.
     this.mountLayerOnRoof(layer, [-0.34, 0.72, 0.16]);
 
     layer.visible = false;
