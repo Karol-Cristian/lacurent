@@ -18,6 +18,7 @@ from .models import (
     Contribution,
     Co2Result,
     EnergyServiceResult,
+    EnvelopeBoundaryType,
     EnvelopeGeometryResult,
     EnvelopeUValuesResult,
     HeatingControlType,
@@ -32,6 +33,8 @@ from .models import (
     PhotovoltaicResult,
     RenewableEnergyResult,
     SolarThermalResult,
+    TransmissionComponent,
+    TransmissionComponentsResult,
 )
 
 
@@ -89,32 +92,87 @@ def envelope_u_values(building: BuildingInput) -> EnvelopeUValuesResult:
     )
 
 
+BOUNDARY_TO_TRANSMISSION_COMPONENT = {
+    EnvelopeBoundaryType.outside_air: TransmissionComponent.Hd,
+    EnvelopeBoundaryType.ground: TransmissionComponent.Hg,
+    EnvelopeBoundaryType.unheated_space: TransmissionComponent.Hu,
+    EnvelopeBoundaryType.unheated_attic: TransmissionComponent.Hu,
+    EnvelopeBoundaryType.unheated_basement: TransmissionComponent.Hu,
+    EnvelopeBoundaryType.adjacent_heated_space: TransmissionComponent.Ha,
+    EnvelopeBoundaryType.adjacent_unheated_space: TransmissionComponent.Ha,
+}
+
+
+def transmission_heat_transfer_components(
+    building: BuildingInput,
+) -> tuple[TransmissionComponentsResult, list[Contribution], list[Contribution]]:
+    """Return MC001 relation (2.15) components: Htr = Hd + Hg + Hu + Ha.
+
+    Direct exterior elements use factor 1. Ground/unheated/adjacent elements
+    carry an explicit boundary correction factor in the input contract.
+    """
+
+    element_rows: list[tuple[str, str, TransmissionComponent, EnvelopeBoundaryType, float, float]] = []
+    totals = {component: 0.0 for component in TransmissionComponent}
+
+    for item in building.envelope:
+        component = BOUNDARY_TO_TRANSMISSION_COMPONENT[item.boundary_type]
+        factor = float(item.boundary_correction_factor or 0.0)
+        value = float(item.u_value_w_m2k) * float(item.area_m2) * factor
+        totals[component] += value
+        element_rows.append(
+            (item.name, item.type.value, component, item.boundary_type, factor, value)
+        )
+
+    bridge_rows: list[tuple[str, str, TransmissionComponent, float]] = []
+    for item in building.thermal_bridges:
+        component = item.component
+        value = float(item.psi_w_mk) * float(item.length_m)
+        totals[component] += value
+        bridge_rows.append((item.name, "thermal_bridge", component, value))
+
+    htr = sum(totals.values())
+
+    envelope_contributions = [
+        Contribution(
+            name=name,
+            type=kind,
+            value=_round(value),
+            unit="W/K",
+            percent=_round(100 * value / htr if htr else 0, 1),
+            component=component,
+            boundary_type=boundary,
+            boundary_correction_factor=_round(factor, 3),
+        )
+        for name, kind, component, boundary, factor, value in element_rows
+    ]
+    bridge_contributions = [
+        Contribution(
+            name=name,
+            type=kind,
+            value=_round(value),
+            unit="W/K",
+            percent=_round(100 * value / htr if htr else 0, 1),
+            component=component,
+        )
+        for name, kind, component, value in bridge_rows
+    ]
+
+    result = TransmissionComponentsResult(
+        hd_w_k=_round(totals[TransmissionComponent.Hd]),
+        hg_w_k=_round(totals[TransmissionComponent.Hg]),
+        hu_w_k=_round(totals[TransmissionComponent.Hu]),
+        ha_w_k=_round(totals[TransmissionComponent.Ha]),
+        htr_w_k=_round(htr),
+    )
+    return result, envelope_contributions, bridge_contributions
+
+
 def transmission_heat_transfer(building: BuildingInput) -> tuple[float, list[Contribution], list[Contribution]]:
-    """MC001-compatible direct term: Htr = sum(Ui * Ai) + sum(psi_j * L_j). Units: W/K."""
+    """Backward-compatible Htr wrapper around the explicit Hd/Hg/Hu/Ha model."""
 
-    element_terms = [
-        (item.name, item.type.value, item.u_value_w_m2k * item.area_m2)
-        for item in building.envelope
-    ]
-    bridge_terms = [
-        (item.name, "thermal_bridge", item.psi_w_mk * item.length_m)
-        for item in building.thermal_bridges
-    ]
-    total = sum(value for _, _, value in [*element_terms, *bridge_terms])
-
-    def contributions(rows: list[tuple[str, str, float]]) -> list[Contribution]:
-        return [
-            Contribution(
-                name=name,
-                type=kind,
-                value=_round(value),
-                unit="W/K",
-                percent=_round(100 * value / total if total else 0, 1),
-            )
-            for name, kind, value in rows
-        ]
-
-    return _round(total), contributions(element_terms), contributions(bridge_terms)
+    components, envelope, bridges = transmission_heat_transfer_components(building)
+    return components.htr_w_k, envelope, bridges
 
 
 def ventilation_heat_transfer(building: BuildingInput) -> float:
