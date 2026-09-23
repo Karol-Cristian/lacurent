@@ -404,7 +404,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
     assert "/static/home-lab-3d.css?v=3d25" in response.text
-    assert "/static/home-lab-3d.js?v=3d45" in response.text
+    assert "/static/home-lab-3d.js?v=3d46" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1437,6 +1437,13 @@ def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> Non
     assert 'value="wood_fiber"' in html
 
 
+def test_home_lab_solar_thermal_glb_asset_is_bundled() -> None:
+    response = client.get("/static/assets/solar-thermal-roof-collector.glb")
+    assert response.status_code == 200
+    assert response.content[:4] == b"glTF"
+    assert len(response.content) > 10_000
+
+
 def test_home_lab_3d_reflects_selected_house_systems() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
@@ -1458,7 +1465,8 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
     assert "async createSingleSolarThermalLayer()" in response.text
-    assert 'url: "https://cdn.3dassets.dev/assets/2969/v1/model.glb"' in response.text
+    assert 'url: "/static/assets/solar-thermal-roof-collector.glb"' in response.text
+    assert 'upstreamUrl: "https://cdn.3dassets.dev/assets/2969/v1/model.glb"' in response.text
     assert 'source: "https://3dassets.dev/assets/off-grid-power-and-controls-roof-solar-panel-197e7d81"' in response.text
     assert 'label: "Fondital VLC 25 flat-plate solar thermal collector"' in response.text
     assert "const SOLAR_THERMAL_ANCHOR = [-0.18, 0.78, 0.08]" in response.text
