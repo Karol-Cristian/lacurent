@@ -549,6 +549,18 @@ def test_form_maps_cold_attic_and_ground_to_hu_and_hg() -> None:
     assert floor.ground_contact.ground_conductivity_w_mk == 2.0
 
 
+def test_legacy_form_without_floor_boundary_still_maps_floor_to_ground() -> None:
+    data = demo_form_data()
+    data.pop("floor_boundary_type", None)
+
+    building = build_input_from_form(data)
+    floor = next(item for item in building.envelope if item.type.value == "floor")
+
+    assert floor.boundary_type.value == "ground"
+    assert floor.boundary_correction_factor is None
+    assert floor.ground_contact is not None
+
+
 def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero_loss() -> None:
     data = demo_form_data()
     data["roof_boundary_type"] = "outside_air"
