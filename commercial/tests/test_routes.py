@@ -1461,6 +1461,21 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
+def test_home_lab_3d_uses_two_panel_primary_pv_stack_and_opposite_chimney_smoke() -> None:
+    response = client.get("/static/home-lab-3d.js")
+    assert response.status_code == 200
+    source = response.text
+    assert 'name: "PV_primary_lower"' in source
+    assert 'name: "PV_primary_upper"' in source
+    assert 'Math.max(2, Math.min(pv.children.length' in source
+    assert "distinct[1] || distinct[0]" in source
+    assert "return this.localPointFromNormalized([0.22, 0.91, 0.12])" in source
+    assert "this.modelSize.y * 0.24" in source
+    assert "this.modelSize.x * 0.045" in source
+    assert "index < 7" in source
+    assert "Math.sin(Math.PI * t) * 0.48" in source
+
+
 def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit() -> None:
     js = client.get("/static/home-lab-3d.js")
     assert js.status_code == 200
