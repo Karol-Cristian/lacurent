@@ -396,7 +396,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next18" in response.text
-    assert "/static/home-lab-next.js?v=next28" in response.text
+    assert "/static/home-lab-next.js?v=next29" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -441,6 +441,11 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnConstructionYear"' in response.text
     assert 'id="hlnHomeTopBoundary"' in response.text
     assert 'id="hlnHomeTopStructure"' in response.text
+    assert 'id="hlnHomeAirtightness"' in response.text
+    assert 'id="hlnHomeAtticLeakage"' in response.text
+    assert "Recuperatorul nu primește credit pentru aerul care intră prin neetanșeități." in response.text
+    assert 'name="infiltration_air_changes_per_hour"' in response.text
+    assert 'name="ventilation_air_changes_per_hour"' in response.text
     assert "Pod rece / neîncălzit — calculează planșeul" in response.text
     assert "Rigips + scândură / astereală ușoară" in response.text
     assert "Nu știu — U de bază estimat 1,00 W/m²K" in response.text
