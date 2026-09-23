@@ -1130,6 +1130,21 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 else None
             ),
             "calculation_method": item.calculation_method,
+            "boundary_correction_factor": (
+                float(item.boundary_correction_factor)
+                if item.boundary_correction_factor is not None
+                else None
+            ),
+            "hztu_exterior_w_k": (
+                float(item.hztu_exterior_w_k)
+                if item.hztu_exterior_w_k is not None
+                else None
+            ),
+            "hztu_total_w_k": (
+                float(item.hztu_total_w_k)
+                if item.hztu_total_w_k is not None
+                else None
+            ),
         }
         for item in [*result.envelope_contributions, *result.thermal_bridge_contributions]
         if float(item.value) > 0
@@ -1145,6 +1160,9 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 "u_value_w_m2k": None,
                 "effective_u_value_w_m2k": None,
                 "calculation_method": "ventilation_heat_transfer",
+                "boundary_correction_factor": None,
+                "hztu_exterior_w_k": None,
+                "hztu_total_w_k": None,
             }
         )
     loss_total = sum(row["value_w_k"] for row in loss_rows) or 1.0
