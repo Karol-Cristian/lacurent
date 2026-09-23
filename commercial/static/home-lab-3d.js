@@ -740,31 +740,42 @@ class HomeLabHouse3D {
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_pv";
 
-    // One compact field on the same roof plane. The first two panels are the
-    // requested vertical pair; additional capacity fills the neighbouring
-    // column and then the upper row instead of scattering panels on the roof.
-    const panels = [
-      { name: "PV_primary_lower", anchor: [-0.35, 0.62, 0.33] },
-      { name: "PV_primary_upper", anchor: [-0.35, 0.76, 0.20] },
-      { name: "PV_secondary_lower", anchor: [-0.21, 0.62, 0.33] },
-      { name: "PV_secondary_upper", anchor: [-0.21, 0.76, 0.20] },
-      { name: "PV_primary_top", anchor: [-0.35, 0.86, 0.08] },
-      { name: "PV_secondary_top", anchor: [-0.21, 0.86, 0.08] },
+    const panelWidthWorld = s.x * 0.080;
+    const panelDepthWorld = s.z * 0.135;
+    const panelWidth = this.localLength(panelWidthWorld);
+    const panelDepth = this.localLength(panelDepthWorld);
+    const gapX = this.localLength(s.x * 0.014);
+    const gapZ = this.localLength(s.z * 0.016);
+
+    const xLeft = -(panelWidth + gapX) * 0.5;
+    const xRight = (panelWidth + gapX) * 0.5;
+    const zLower = panelDepth + gapZ;
+    const zMiddle = 0;
+    const zUpper = -(panelDepth + gapZ);
+
+    // Visibility order keeps the requested vertical pair first, then fills the
+    // neighbouring column, then the final upper row. Every panel is a child of
+    // this single roof-mounted field, so they cannot drift onto another roof
+    // face or the dormer independently.
+    const slots = [
+      { name:"PV_primary_lower", x:xLeft, z:zLower },
+      { name:"PV_primary_upper", x:xLeft, z:zMiddle },
+      { name:"PV_secondary_lower", x:xRight, z:zLower },
+      { name:"PV_secondary_upper", x:xRight, z:zMiddle },
+      { name:"PV_primary_top", x:xLeft, z:zUpper },
+      { name:"PV_secondary_top", x:xRight, z:zUpper },
     ];
 
-    panels.forEach(({ name, anchor }) => {
-      const panel = this.createRoofCluster({
-        type: "pv",
-        cols: 1,
-        rows: 1,
-        anchor,
-        panelWidth: s.x * 0.080,
-        panelDepth: s.z * 0.135,
-      });
+    slots.forEach(({name, x, z}) => {
+      const panel = this.createPanelUnit(panelWidthWorld, panelDepthWorld, "pv");
       panel.name = name;
+      panel.position.set(x, 0, z);
       layer.add(panel);
     });
 
+    // One raycast defines the plane for the whole PV field. The anchor sits on
+    // the clear left roof face, below the ridge and away from the dormer.
+    this.mountLayerOnRoof(layer, [-0.34, 0.72, 0.16]);
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);
@@ -943,9 +954,9 @@ class HomeLabHouse3D {
     canvas.height = 96;
     const ctx = canvas.getContext("2d");
     const gradient = ctx.createRadialGradient(48, 48, 4, 48, 48, 44);
-    gradient.addColorStop(0, "rgba(235,238,235,.58)");
-    gradient.addColorStop(0.45, "rgba(218,224,220,.30)");
-    gradient.addColorStop(1, "rgba(205,213,208,0)");
+    gradient.addColorStop(0, "rgba(190,198,193,.92)");
+    gradient.addColorStop(0.42, "rgba(176,186,180,.62)");
+    gradient.addColorStop(1, "rgba(160,172,164,0)");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 96, 96);
     const texture = new THREE.CanvasTexture(canvas);
@@ -954,39 +965,44 @@ class HomeLabHouse3D {
   }
 
   existingChimneyLocalTop() {
+    const roofLine = this.modelBox.min.y + this.modelSize.y * 0.72;
     const candidates = [];
-    this.modelRoot.traverse((object) => {
-      if (!object?.isMesh) return;
-      const key = `${object.name || ""} ${object.material?.name || ""}`.toLowerCase();
-      if (!/chimney|flue|smokestack|smoke_stack|chimenea/.test(key)) return;
-      const box = new THREE.Box3().setFromObject(object);
-      candidates.push(new THREE.Vector3(
-        (box.min.x + box.max.x) * 0.5,
-        box.max.y,
-        (box.min.z + box.max.z) * 0.5
-      ));
+
+    // The imported model does not expose stable chimney names. Detect original
+    // roof protrusions geometrically and prefer the substantial rectangular
+    // stack visible near the ridge, rather than an arbitrary named sub-mesh.
+    this.inspectableMeshes.forEach((mesh) => {
+      if (!mesh?.visible) return;
+      const box = new THREE.Box3().setFromObject(mesh);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+
+      const highEnough = box.max.y > roofLine;
+      const compactFootprint =
+        size.x > this.modelSize.x * 0.012 &&
+        size.z > this.modelSize.z * 0.012 &&
+        size.x < this.modelSize.x * 0.18 &&
+        size.z < this.modelSize.z * 0.18;
+      const verticalEnough = size.y > this.modelSize.y * 0.055;
+      if (!highEnough || !compactFootprint || !verticalEnough) return;
+
+      const footprint = size.x * size.z;
+      const volume = footprint * size.y;
+      const centerBias = 1 - clamp(Math.abs(center.x - this.modelCenter.x) / Math.max(this.modelSize.x * 0.5, 0.001), 0, 1);
+      const score = volume * (1 + centerBias * 0.35) + box.max.y * 0.001;
+      candidates.push({point:new THREE.Vector3(center.x, box.max.y, center.z), score});
     });
 
-    if (candidates.length) {
-      const distinct = [];
-      const separation = Math.max(this.modelSize.x, this.modelSize.z) * 0.08;
-      candidates
-        .sort((a, b) => b.y - a.y)
-        .forEach((point) => {
-          const sameStack = distinct.some((existing) =>
-            Math.hypot(existing.x - point.x, existing.z - point.z) < separation
-          );
-          if (!sameStack) distinct.push(point);
-        });
-
-      // The previous implementation selected the highest/first chimney.
-      // Prefer the other physical stack when a second one exists.
-      const selected = distinct[1] || distinct[0];
-      if (selected) return this.modelRoot.worldToLocal(selected.clone());
+    candidates.sort((a, b) => b.score - a.score);
+    if (candidates[0]?.point) {
+      return this.modelRoot.worldToLocal(candidates[0].point.clone());
     }
 
-    // Final House fallback mirrored to the opposite roof stack.
-    return this.localPointFromNormalized([0.22, 0.91, 0.12]);
+    // Stable Final House fallback: large ridge chimney visible in the product
+    // model, not the previous guessed "second chimney" location.
+    return this.localPointFromNormalized([0.02, 0.94, -0.12]);
   }
 
   createExistingChimneySmoke() {
@@ -995,18 +1011,20 @@ class HomeLabHouse3D {
     group.position.copy(this.existingChimneyLocalTop());
 
     const texture = this.createSmokeTexture();
-    const plumeHeight = this.localLength(this.modelSize.y * 0.24);
-    const baseSize = this.localLength(Math.max(0.22, this.modelSize.x * 0.045));
-    for (let index = 0; index < 7; index += 1) {
+    const plumeHeight = this.localLength(this.modelSize.y * 0.30);
+    const baseSize = this.localLength(Math.max(0.28, this.modelSize.x * 0.055));
+    for (let index = 0; index < 9; index += 1) {
       const material = new THREE.SpriteMaterial({
         map:texture,
         transparent:true,
         opacity:0.0,
         depthWrite:false,
-        color:0xe4e8e5,
+        depthTest:false,
+        color:0xb8c1bb,
       });
       const sprite = new THREE.Sprite(material);
-      sprite.userData.smokePhase = index / 7;
+      sprite.userData.smokePhase = index / 9;
+      sprite.renderOrder = 30;
       sprite.userData.smokeHeight = plumeHeight;
       sprite.userData.smokeBaseSize = baseSize;
       group.add(sprite);
@@ -1031,7 +1049,7 @@ class HomeLabHouse3D {
       );
       const size = baseSize * (0.72 + t * 1.35);
       sprite.scale.set(size, size, 1);
-      sprite.material.opacity = Math.sin(Math.PI * t) * 0.48;
+      sprite.material.opacity = Math.sin(Math.PI * t) * 0.68;
     });
   }
 
