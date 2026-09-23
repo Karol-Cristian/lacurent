@@ -396,7 +396,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next18" in response.text
-    assert "/static/home-lab-next.js?v=next30" in response.text
+    assert "/static/home-lab-next.js?v=next31" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -438,6 +438,11 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnDockScenarioCost"' in response.text
     assert 'id="hlnMapLocalityResults"' in response.text
     assert 'id="hlnBuildingType"' in response.text
+    assert 'id="hlnBuildingType" disabled' in response.text
+    assert "Apartament / clădire colectivă" not in response.text
+    assert 'id="hlnWallAreaOverride"' in response.text
+    assert 'id="hlnTopAreaOverride"' in response.text
+    assert "Pereții opaci nu includ ferestrele și ușile." in response.text
     assert 'id="hlnConstructionYear"' in response.text
     assert 'id="hlnConfirmedCount">0/5' in response.text
     assert 'id="hlnConfidenceLabel">secțiuni confirmate · restul estimat' in response.text
