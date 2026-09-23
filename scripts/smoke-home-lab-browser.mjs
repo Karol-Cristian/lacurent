@@ -66,6 +66,36 @@ try {
   });
   console.log("LACURENT_HOUSE_GLTF_DIAGNOSTIC="+JSON.stringify(sceneDiagnostic));
 
+  const roofPeakDiagnostic = await page.evaluate(() => {
+    const scene = window.__homeLab3D?.[0];
+    const Vector3Ctor = scene.modelSize.constructor;
+    const threshold = scene.modelBox.min.y + scene.modelSize.y * 0.80;
+    const buckets = new Map();
+    for (const mesh of scene.inspectableMeshes || []) {
+      const position = mesh.geometry?.attributes?.position;
+      if (!position) continue;
+      mesh.updateMatrixWorld(true);
+      const point = new Vector3Ctor();
+      for (let i = 0; i < position.count; i += 1) {
+        point.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+        if (point.y < threshold) continue;
+        const gx = Math.round(point.x / 0.20) * 0.20;
+        const gz = Math.round(point.z / 0.20) * 0.20;
+        const key = gx.toFixed(2)+","+gz.toFixed(2);
+        const prev = buckets.get(key) || {x:gx,z:gz,maxY:-Infinity,count:0};
+        prev.maxY = Math.max(prev.maxY, point.y);
+        prev.count += 1;
+        buckets.set(key, prev);
+      }
+    }
+    return [...buckets.values()]
+      .sort((a,b)=>b.maxY-a.maxY || b.count-a.count)
+      .slice(0,40);
+  });
+  console.log("LACURENT_ROOF_PEAKS="+JSON.stringify(roofPeakDiagnostic));
+  await browser.close();
+  process.exit(0);
+
   const compass = page.locator('[data-hln-3d-stage="home"] [data-hln-3d-compass]');
   await compass.waitFor({state:"visible", timeout:15000});
   const compassBox = await compass.boundingBox();
