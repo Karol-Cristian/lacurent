@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import math
 
 from .methodology import (
     carrier_factors,
@@ -103,13 +104,68 @@ BOUNDARY_TO_TRANSMISSION_COMPONENT = {
 }
 
 
+def slab_on_ground_effective_u(
+    construction_u_value_w_m2k: float,
+    area_m2: float,
+    exposed_perimeter_m: float,
+    wall_thickness_m: float,
+    ground_conductivity_w_mk: float,
+) -> float:
+    """ISO 13370 steady-state U-value for a slab on ground without edge correction.
+
+    Home Lab's construction U is treated as the equivalent resistance of the
+    floor construction including the surface-resistance convention already
+    embedded in that U. The result is the geometry-dependent ground-coupled U.
+    """
+
+    u = float(construction_u_value_w_m2k)
+    area = float(area_m2)
+    perimeter = float(exposed_perimeter_m)
+    wall_thickness = float(wall_thickness_m)
+    ground_lambda = float(ground_conductivity_w_mk)
+    if min(u, area, perimeter, ground_lambda) <= 0 or wall_thickness < 0:
+        raise ValueError("ISO 13370 slab-on-ground inputs must be positive.")
+
+    characteristic_dimension = 2.0 * area / perimeter
+    construction_resistance = 1.0 / u
+    equivalent_thickness = wall_thickness + ground_lambda * construction_resistance
+
+    if equivalent_thickness < characteristic_dimension:
+        effective_u = (
+            2.0
+            * ground_lambda
+            / (math.pi * characteristic_dimension + equivalent_thickness)
+            * math.log(math.pi * characteristic_dimension / equivalent_thickness + 1.0)
+        )
+    else:
+        effective_u = ground_lambda / (
+            0.457 * characteristic_dimension + equivalent_thickness
+        )
+    return float(effective_u)
+
+
+def _element_boundary_factor(item) -> float:
+    if item.boundary_type == EnvelopeBoundaryType.ground and item.ground_contact is not None:
+        contact = item.ground_contact
+        effective_u = slab_on_ground_effective_u(
+            item.u_value_w_m2k,
+            item.area_m2,
+            contact.exposed_perimeter_m,
+            contact.wall_thickness_m,
+            contact.ground_conductivity_w_mk,
+        )
+        return effective_u / float(item.u_value_w_m2k)
+    return float(item.boundary_correction_factor or 0.0)
+
+
 def transmission_heat_transfer_components(
     building: BuildingInput,
 ) -> tuple[TransmissionComponentsResult, list[Contribution], list[Contribution]]:
     """Return MC001 relation (2.15) components: Htr = Hd + Hg + Hu + Ha.
 
-    Direct exterior elements use factor 1. Ground/unheated/adjacent elements
-    carry an explicit boundary correction factor in the input contract.
+    Direct exterior elements use factor 1. Unheated/adjacent elements carry
+    an explicit correction factor. Ground elements may instead carry ISO 13370
+    slab geometry, in which case the effective factor is calculated here.
     """
 
     element_rows: list[tuple[str, str, TransmissionComponent, EnvelopeBoundaryType, float, float]] = []
@@ -117,7 +173,7 @@ def transmission_heat_transfer_components(
 
     for item in building.envelope:
         component = BOUNDARY_TO_TRANSMISSION_COMPONENT[item.boundary_type]
-        factor = float(item.boundary_correction_factor or 0.0)
+        factor = _element_boundary_factor(item)
         value = float(item.u_value_w_m2k) * float(item.area_m2) * factor
         totals[component] += value
         element_rows.append(
@@ -1075,7 +1131,7 @@ def _boundary_assumptions(building: BuildingInput) -> list[str]:
         if boundary in seen:
             continue
         seen.add(boundary)
-        factor = float(item.boundary_correction_factor or 0)
+        factor = _element_boundary_factor(item)
         if boundary == EnvelopeBoundaryType.ground:
             assumptions.append(
                 "Pardoseala spre sol este calculată separat ca Hg. Coeficientul staționar echivalent "
