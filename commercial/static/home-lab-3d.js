@@ -798,9 +798,11 @@ class HomeLabHouse3D {
       type: "thermal",
       cols: 1,
       rows: 1,
-      anchor: [-0.40, 0.58, 0.38],
-      panelWidth: s.x * 0.095,
-      panelDepth: s.z * 0.175,
+      // Runtime-probed main-roof point immediately to the right of the dormer.
+      // It resolves to the same GLB roof mesh/plane used by the PV field.
+      anchor: [0.20, 0.78, 0.24],
+      panelWidth: s.x * 0.075,
+      panelDepth: s.z * 0.135,
     });
     layer.name = "LaCurentLayer_solarThermal";
     layer.visible = false;
@@ -1288,7 +1290,13 @@ class HomeLabHouse3D {
     const solarThermal = this.experimentLayers.get("solarThermal");
     if (solarThermal) {
       solarThermal.visible = Boolean(detail.solarThermalEnabled);
-      const thermalScale = clamp(0.82 + Number(detail.solarThermalArea || 0) * 0.045, 0.82, 1.40);
+      // Keep the area feedback visible, but cap the collector growth so it
+      // remains visually subordinate to the PV field and roof architecture.
+      const thermalScale = clamp(
+        0.82 + Number(detail.solarThermalArea || 0) * 0.025,
+        0.82,
+        1.10
+      );
       solarThermal.scale.setScalar(thermalScale);
     }
 
