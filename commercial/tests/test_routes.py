@@ -396,12 +396,15 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next18" in response.text
-    assert "/static/home-lab-next.js?v=next32" in response.text
+    assert "/static/home-lab-next.js?v=next33" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
+    assert "AMORTIZARE SIMPLĂ" in response.text
+    assert "Cea mai eficientă investiție dintre variantele testate" in response.text
+    assert "Randament maxim al investiției" not in response.text
     assert 'data-hln-screen="report"' in response.text
     assert 'data-hln-go="report"' in response.text
     assert 'id="hlnReportBars"' in response.text
