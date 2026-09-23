@@ -203,6 +203,7 @@
 
   let homeState = {...defaultState};
   let scenarioState = {...defaultState};
+  let confirmedGroups = new Set();
   let homeResult = null;
   let scenarioResult = null;
   let currentResult = null;
@@ -344,12 +345,33 @@
       projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
         ? saved.projectMode
         : "existing_standard";
+      confirmedGroups = new Set(
+        Array.isArray(saved.confirmedGroups)
+          ? saved.confirmedGroups.filter(item => ["location","house","envelope","systems","renewables"].includes(item))
+          : []
+      );
       homeResultState = homeResult ? "fresh" : "empty";
       scenarioResultState = scenarioResult ? "fresh" : "empty";
       // Rewrite the persisted state once so the migration is permanent.
       persist();
     }
   } catch (_) {}
+
+  function markConfirmedGroup(group) {
+    if (!["location","house","envelope","systems","renewables"].includes(group)) return;
+    confirmedGroups.add(group);
+  }
+
+  function renderConfidence() {
+    const countNode = $("#hlnConfirmedCount");
+    const labelNode = $("#hlnConfidenceLabel");
+    if (!countNode || !labelNode) return;
+    const count = confirmedGroups.size;
+    countNode.textContent = `${count}/5`;
+    labelNode.textContent = count === 5
+      ? "secțiuni confirmate"
+      : "secțiuni confirmate · restul estimat";
+  }
 
   function fmt(value, digits = 0) {
     const number = Number(value);
@@ -2884,7 +2906,7 @@
       ? [state.pvEnabled ? `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°` : null,
          state.solarThermalEnabled ? `solar termic ${renewableOrientationLabel(state.solarThermalOrientation)}` : null].filter(Boolean).join(" · ")
       : "PV · solar termic";
-    $("#hlnConfirmedCount").textContent = baselineSaved ? "✓" : "13";
+    renderConfidence();
   }
 
   function measureSummary(type) {
@@ -3588,7 +3610,8 @@
         referenceMode,
         scenarioOverrides,
         optimizationMeta,
-        projectMode
+        projectMode,
+        confirmedGroups:[...confirmedGroups]
       }));
     } catch (_) {}
   }
@@ -3680,6 +3703,8 @@
   }
 
   function updateHomeFromEditors() {
+    const activeEditor = $("[data-hln-editor]").find(section => !section.hidden);
+    if (activeEditor?.dataset?.hlnEditor) markConfirmedGroup(activeEditor.dataset.hlnEditor);
     const previous = {
       orientation: homeState.orientation,
       cooling: homeState.cooling,
@@ -3737,6 +3762,7 @@
     homeState.solarThermalTilt = Number($("#hlnHomeSolarThermalTilt").value);
     syncHomeEditorControls();
     renderHome();
+    renderConfidence();
     baselineSaved = false;
     referenceMode = false;
     scenarioOverrides = {};
@@ -4046,6 +4072,7 @@
     homeState.climateZone = locality.climateZone || null;
     homeState.climateStationId = locality.stationId || null;
     homeState.winterDesignTemperatureC = locality.winterDesignTemperatureC ?? null;
+    markConfirmedGroup("location");
     $("#hlnLocalitySearch").value = locality.name;
     $("#hlnEditorClimate").textContent =
       `${locality.county || ""}${locality.climateZone ? " · zona " + locality.climateZone : ""} · ${locality.stationName || "profil climatic automat"}`;
@@ -4237,6 +4264,7 @@
 
   root.querySelectorAll("#hlnLevels [data-value]").forEach(button => button.addEventListener("click", () => {
     homeState.levels = Number(button.dataset.value);
+    markConfirmedGroup("house");
     root.querySelectorAll("#hlnLevels [data-value]").forEach(item => item.classList.toggle("is-active", item === button));
     baselineSaved = false;
     referenceMode = false;
