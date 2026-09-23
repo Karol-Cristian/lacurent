@@ -129,7 +129,42 @@ try {
         center:item.center.toArray(),
       }));
 
+    const GroupCtor = pv.constructor;
+    const roofProbe = [];
+    for (const ax of [-0.55, -0.45, -0.35, -0.25, -0.15, -0.05, 0.05, 0.15, 0.25]) {
+      for (const az of [-0.05, 0.05, 0.15, 0.25, 0.35, 0.45]) {
+        const probe = new GroupCtor();
+        const mounted = scene.mountLayerOnRoof(probe, [ax, 0.78, az]);
+        const world = scene.modelRoot.localToWorld(probe.position.clone());
+        roofProbe.push({
+          anchor:[ax, az],
+          mounted,
+          world:world.toArray(),
+          mesh:String(probe.userData?.roofMount?.mesh || ""),
+          uuid:String(probe.userData?.roofMount?.objectUuid || ""),
+        });
+      }
+    }
+
+    const highMeshes = scene.inspectableMeshes
+      .map(mesh => {
+        const box = new Box3Ctor().setFromObject(mesh);
+        const center = box.getCenter(new Vector3Ctor());
+        const size = box.getSize(new Vector3Ctor());
+        const materialKeys = (Array.isArray(mesh.material) ? mesh.material : [mesh.material])
+          .map(material => `${String(material?.name || "")} ${material?.map ? "mapped" : ""}`);
+        return {
+          name:String(mesh.name || ""),
+          center:center.toArray(),
+          size:size.toArray(),
+          materialKeys,
+        };
+      })
+      .filter(item => item.center[1] > scene.modelCenter.y + scene.modelSize.y * 0.08);
+
     return {
+      roofProbe,
+      highMeshes,
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
       pvSupport,
@@ -145,6 +180,10 @@ try {
       smokeWorld:smokeWorld.toArray(),
     };
   });
+  console.log("ROOF_DIAG " + JSON.stringify({
+    roofProbe:roofVisualCalibration.roofProbe,
+    highMeshes:roofVisualCalibration.highMeshes,
+  }));
   if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
     throw new Error("PV calibration did not expose the full six-panel field");
   }
