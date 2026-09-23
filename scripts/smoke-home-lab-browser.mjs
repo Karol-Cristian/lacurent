@@ -33,6 +33,8 @@ try {
       ...(scene.visualState || {}),
       pvEnabled:true,
       pvKwp:15,
+      solarThermalEnabled:true,
+      solarThermalArea:12,
       heating:"condensing_gas_boiler",
     });
 
@@ -40,68 +42,83 @@ try {
     const Vector3Ctor = scene.modelSize.constructor;
     const RaycasterCtor = scene.raycaster.constructor;
     const pv = scene.experimentLayers.get("pv");
+    const solarThermal = scene.experimentLayers.get("solarThermal");
     const smoke = scene.equipmentLayers.get("chimneySmoke");
     const pvBox = new Box3Ctor().setFromObject(pv);
+    const solarThermalBox = new Box3Ctor().setFromObject(solarThermal);
     const smokeWorld = scene.modelRoot.localToWorld(smoke.position.clone());
-    const mountedRoofUuid = String(pv.userData?.roofMount?.objectUuid || "");
     const roofMeshes = scene.inspectableMeshes.filter(mesh => mesh?.visible !== false);
 
     scene.modelRoot.updateMatrixWorld(true);
     pv.updateMatrixWorld(true);
+    solarThermal.updateMatrixWorld(true);
 
     const supportTolerance = scene.modelSize.y * 0.035;
-    const pvRoofSupport = pv.children
-      .filter(panel => panel.visible)
-      .map(panel => {
-        const body = panel.children.find(child => {
-          const params = child.geometry?.parameters;
-          return Number.isFinite(params?.width) && Number.isFinite(params?.depth);
-        });
-        if (!body) return {name:panel.name, supported:false, reason:"panel-body-missing"};
+    const roofSupport = (layer) => {
+      const mountedRoofUuid = String(layer.userData?.roofMount?.objectUuid || "");
+      const panels = layer.children
+        .filter(panel => panel.visible)
+        .map(panel => {
+          const body = panel.children.find(child => {
+            const params = child.geometry?.parameters;
+            return Number.isFinite(params?.width) && Number.isFinite(params?.depth);
+          });
+          if (!body) return {name:panel.name, supported:false, reason:"panel-body-missing"};
 
-        const width = body.geometry.parameters.width;
-        const depth = body.geometry.parameters.depth;
-        const samples = [
-          [0, 0],
-          [-width * 0.46, -depth * 0.46],
-          [ width * 0.46, -depth * 0.46],
-          [-width * 0.46,  depth * 0.46],
-          [ width * 0.46,  depth * 0.46],
-        ];
+          const width = body.geometry.parameters.width;
+          const depth = body.geometry.parameters.depth;
+          const samples = [
+            [0, 0],
+            [-width * 0.46, -depth * 0.46],
+            [ width * 0.46, -depth * 0.46],
+            [-width * 0.46,  depth * 0.46],
+            [ width * 0.46,  depth * 0.46],
+          ];
 
-        const checks = samples.map(([x, z]) => {
-          const panelPoint = panel.localToWorld(new Vector3Ctor(x, 0, z));
-          const origin = panelPoint.clone();
-          origin.y += scene.modelSize.y * 0.08;
-          const ray = new RaycasterCtor(
-            origin,
-            new Vector3Ctor(0, -1, 0),
-            0,
-            scene.modelSize.y * 0.18
-          );
-          const hit = ray.intersectObjects(roofMeshes, true)
-            .find(candidate => candidate.object?.uuid === mountedRoofUuid);
-          const gap = hit ? Math.abs(panelPoint.y - hit.point.y) : null;
+          const checks = samples.map(([x, z]) => {
+            const panelPoint = panel.localToWorld(new Vector3Ctor(x, 0, z));
+            const origin = panelPoint.clone();
+            origin.y += scene.modelSize.y * 0.08;
+            const ray = new RaycasterCtor(
+              origin,
+              new Vector3Ctor(0, -1, 0),
+              0,
+              scene.modelSize.y * 0.18
+            );
+            const hit = ray.intersectObjects(roofMeshes, true)
+              .find(candidate => candidate.object?.uuid === mountedRoofUuid);
+            const gap = hit ? Math.abs(panelPoint.y - hit.point.y) : null;
+            return {
+              supported:Boolean(hit) && gap <= supportTolerance,
+              gap,
+            };
+          });
+
           return {
-            supported:Boolean(hit) && gap <= supportTolerance,
-            gap,
+            name:panel.name,
+            supported:checks.every(check => check.supported),
+            maxGap:Math.max(...checks.map(check => check.gap ?? Number.POSITIVE_INFINITY)),
           };
         });
+      return {mountedRoofUuid, panels};
+    };
 
-        return {
-          name:panel.name,
-          supported:checks.every(check => check.supported),
-          maxGap:Math.max(...checks.map(check => check.gap ?? Number.POSITIVE_INFINITY)),
-        };
-      });
+    const pvSupport = roofSupport(pv);
+    const thermalSupport = roofSupport(solarThermal);
+    const pvNormal = new Vector3Ctor(...(pv.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
+    const thermalNormal = new Vector3Ctor(...(solarThermal.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
+    const thermalCenter = solarThermalBox.getCenter(new Vector3Ctor());
 
     return {
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
-      pvMinY:pvBox.min.y,
-      pvMaxY:pvBox.max.y,
-      mountedRoofUuid,
-      pvRoofSupport,
+      pvSupport,
+      solarThermalVisible:solarThermal.visible,
+      solarThermalVisibleChildren:solarThermal.children.filter(child => child.visible).length,
+      thermalSupport,
+      roofNormalDot:pvNormal.dot(thermalNormal),
+      thermalCenterX:thermalCenter.x,
+      modelCenterX:scene.modelCenter.x,
       smokeVisible:smoke.visible,
       smokeWorld:smokeWorld.toArray(),
     };
@@ -109,9 +126,22 @@ try {
   if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
     throw new Error("PV calibration did not expose the full six-panel field");
   }
-  if (!roofVisualCalibration.mountedRoofUuid ||
-      roofVisualCalibration.pvRoofSupport.some(panel => !panel.supported)) {
-    throw new Error("PV field is not fully supported by the mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
+  if (!roofVisualCalibration.pvSupport.mountedRoofUuid ||
+      roofVisualCalibration.pvSupport.panels.some(panel => !panel.supported)) {
+    throw new Error("PV field is not fully supported by its mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (!roofVisualCalibration.solarThermalVisible || roofVisualCalibration.solarThermalVisibleChildren !== 3) {
+    throw new Error("Solar thermal calibration did not expose the compact three-collector field");
+  }
+  if (!roofVisualCalibration.thermalSupport.mountedRoofUuid ||
+      roofVisualCalibration.thermalSupport.panels.some(panel => !panel.supported)) {
+    throw new Error("Solar thermal field is not fully supported by its mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (roofVisualCalibration.roofNormalDot < 0.995) {
+    throw new Error("Solar thermal collectors are not aligned to the same roof plane as PV: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (roofVisualCalibration.thermalCenterX <= roofVisualCalibration.modelCenterX) {
+    throw new Error("Solar thermal collectors are not positioned on the right side of the main roof: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.smokeVisible) {
     throw new Error("Combustion plume is hidden for condensing gas");
