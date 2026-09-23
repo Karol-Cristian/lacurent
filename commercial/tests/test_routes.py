@@ -401,12 +401,12 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next23" in response.text
-    assert "/static/home-lab-next.js?v=next47" in response.text
-    assert "/static/home-lab-3d.css?v=3d27" in response.text
+    assert "/static/home-lab-next.css?v=next24" in response.text
+    assert "/static/home-lab-next.js?v=next48" in response.text
+    assert "/static/home-lab-3d.css?v=3d28" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
-    assert "/static/home-lab-3d.js?v=3d47" in response.text
+    assert "/static/home-lab-3d.js?v=3d48" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
