@@ -1142,7 +1142,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'scenarioState.wallInsulationMaterial = $("#hlnWallInsulationMaterial").value' in response.text
     assert 'scenarioState.roofInsulationMaterial = $("#hlnRoofInsulationMaterial").value' in response.text
     assert 'scenarioState.floorInsulationMaterial = $("#hlnFloorInsulationMaterial").value' in response.text
-    assert 'scenarioState.wallInsulationMaterial !== homeState.wallInsulationMaterial' in response.text
+    assert "function layeredInsulationU" in response.text
+    assert "const existingR =" in response.text
+    assert "const addedR =" in response.text
+    assert 'Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01' in response.text
     assert 'labels.insulation[state.wallInsulationMaterial]' in response.text
     assert "Vezi îmbunătățirile" in response.text
     assert "glazing" in response.text
