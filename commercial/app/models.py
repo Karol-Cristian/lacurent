@@ -383,6 +383,9 @@ class Contribution(BaseModel):
     value: float
     unit: str
     percent: float
+    component: TransmissionComponent | None = None
+    boundary_type: EnvelopeBoundaryType | None = None
+    boundary_correction_factor: float | None = None
 
 
 class MonthlyBalance(BaseModel):
