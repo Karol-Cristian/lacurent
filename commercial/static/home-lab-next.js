@@ -614,7 +614,7 @@
         insulationLambda(homeState.wallInsulationMaterial)
       ),
       roofIns: insulationCmForU(
-        1.00,
+        topBaseU(homeState),
         u.roof,
         insulationLambda(homeState.roofInsulationMaterial)
       ),
@@ -1573,7 +1573,7 @@
       insulationLambda(state.wallInsulationMaterial)
     );
     if (key === "roofU") return insulationU(
-      1.00,
+      topBaseU(state),
       state.roofIns,
       insulationLambda(state.roofInsulationMaterial)
     );
@@ -1634,7 +1634,7 @@
           nextState.roofIns = Math.max(
             Number(nextState.roofIns || 0),
             equivalentInsulationCm(
-              1.00,
+              topBaseU(nextState),
               item.limit,
               insulationLambda(nextState.roofInsulationMaterial)
             )
