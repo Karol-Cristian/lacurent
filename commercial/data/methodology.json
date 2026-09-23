@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.8",
+  "version": "lacurent-commercial-v2.9",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -272,13 +272,57 @@
     }
   },
   "reference_building": {
+    "envelope_source": "MC001-2022, Tabel 2.4 — rezistențe/transmitanțe termice corectate recomandate (valori normate/de referință) pentru clădiri rezidențiale NZEB.",
+    "envelope_source_status": "source_backed_residential_nzeb_reference_values",
+    "reference_context": "Anvelopă de referință rezidențială bazată pe Tabelul 2.4. Grosimile afișate sunt echivalente fizice LaCurent care reproduc țintele U'; materialele nu sunt prescrise de MC001.",
     "u_values_w_m2k": {
-      "exterior_wall": 0.35,
-      "roof": 0.25,
-      "floor": 0.3,
-      "window": 1.3,
-      "exterior_door": 1.7
+      "exterior_wall": 0.25,
+      "roof": 0.15,
+      "floor": 0.2,
+      "window": 1.11,
+      "exterior_door": 1.3
     },
+    "floor_u_values_by_boundary_w_m2k": {
+      "ground": 0.2,
+      "outside_air": 0.2,
+      "unheated_basement": 0.29,
+      "unheated_space": 0.29,
+      "adjacent_unheated_space": 0.29
+    },
+    "physical_mapping": {
+      "wall": {
+        "base_u_w_m2k": 0.903,
+        "material_id": "eps",
+        "material_label": "EPS λ=0,040",
+        "insulation_lambda_w_mk": 0.04,
+        "support_description": "Suport echivalent: zidărie ceramică eficientă 30 cm, λ=0,32 W/mK, cu rezistențe superficiale totale 0,17 m²K/W."
+      },
+      "roof": {
+        "base_u_w_m2k": 2.25,
+        "base_u_by_boundary_w_m2k": {
+          "unheated_attic": 3.25,
+          "outside_air": 2.25
+        },
+        "material_id": "mineral_wool",
+        "material_label": "vată minerală λ=0,039",
+        "insulation_lambda_w_mk": 0.039,
+        "support_description": "Suport echivalent pentru planșeu/acoperiș; U de bază 3,25 W/m²K spre pod rece și 2,25 W/m²K spre exterior/terasă."
+      },
+      "floor": {
+        "base_u_w_m2k": 0.9,
+        "material_id": "xps",
+        "material_label": "XPS λ=0,035",
+        "insulation_lambda_w_mk": 0.035,
+        "support_description": "Pardoseală de bază U=0,90 W/m²K; pentru placa pe sol grosimea este derivată după inversarea căii ISO 13370 Hg."
+      },
+      "window": {
+        "product_description": "tâmplărie de referință cu U'=1,11 W/m²K"
+      },
+      "exterior_door": {
+        "product_description": "ușă exterioară de referință cu U'=1,30 W/m²K"
+      }
+    },
+    "systems_source_status": "LaCurent Light system assumptions; not claimed as Tabel 2.4 normative system values.",
     "air_changes_per_hour": 0.5,
     "heat_recovery_efficiency": 0,
     "heating_efficiency": 0.95,
