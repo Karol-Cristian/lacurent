@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next21">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next22">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -291,17 +291,50 @@
           <small id="hlnProjectGuardrailSummary">Optimizarea financiară folosește numai guardrail-urile aplicabile regimului selectat; anul construcției nu stabilește singur regimul juridic.</small>
         </div>
 
-        <div class="hln-smart-configs">
-          <button type="button" data-hln-smart-config="nzeb">
-            <span id="hlnAutoRenovationEyebrow">OPTIMIZARE AUTOMATĂ</span>
-            <strong id="hlnAutoRenovationTitle">Configurează automat îmbunătățirile</strong>
-            <small id="hlnAutoRenovationHint">Prioritizează reducerea consumului cu un număr bounded de recalculări</small>
+        <div class="hln-regulatory-config" id="hlnRegulatoryConfig" hidden>
+          <button type="button" data-hln-smart-config="nzeb" id="hlnAutoRenovationButton">
+            <span id="hlnAutoRenovationEyebrow">ȚINTĂ NORMATIVĂ</span>
+            <strong id="hlnAutoRenovationTitle">Configurează spre ținta proiectului</strong>
+            <small id="hlnAutoRenovationHint">Se afișează numai pentru renovare majoră sau clădire nouă nZEB</small>
           </button>
-          <button type="button" data-hln-smart-config="roi">
-            <span>AMORTIZARE SIMPLĂ</span>
-            <strong>Cea mai eficientă investiție dintre variantele testate</strong>
-            <small>Compară CAPEX-ul estimat cu economia anuală · fără formular suplimentar</small>
-          </button>
+        </div>
+
+        <div class="hln-economic-heading">
+          <span>OPTIMIZARE ECONOMICĂ</span>
+          <strong>Alege ce constrângere contează pentru tine.</strong>
+          <small>Toate variantele folosesc același motor energetic și același catalog CAPEX. Se schimbă doar obiectivul economic.</small>
+        </div>
+
+        <div class="hln-smart-configs hln-economic-configs">
+          <article class="hln-economic-card">
+            <button type="button" data-hln-smart-config="roi">
+              <span>BEST ROI</span>
+              <strong>Randament maxim</strong>
+              <small>Maximizează economia anuală raportată la fiecare leu investit.</small>
+            </button>
+          </article>
+          <article class="hln-economic-card">
+            <button type="button" data-hln-smart-config="roi-budget">
+              <span>BEST ROI · BUGET</span>
+              <strong>Cea mai mare economie în bugetul tău</strong>
+              <small>Construiește un pachet fără să depășească suma disponibilă.</small>
+            </button>
+            <label class="hln-economic-input">
+              <span>Buget maxim</span>
+              <div><input id="hlnRoiBudget" type="number" min="1000" max="500000" step="1000" value="30000"><b>lei</b></div>
+            </label>
+          </article>
+          <article class="hln-economic-card">
+            <button type="button" data-hln-smart-config="roi-payback">
+              <span>BEST ROI · TIMP</span>
+              <strong>Cea mai mare economie în timpul ales</strong>
+              <small>Păstrează numai soluțiile care își recuperează investiția suficient de repede.</small>
+            </button>
+            <label class="hln-economic-input">
+              <span>Amortizare maximă</span>
+              <div><input id="hlnRoiPaybackYears" type="number" min="1" max="30" step="1" value="10"><b>ani</b></div>
+            </label>
+          </article>
         </div>
 
         <details class="hln-roi-costs" id="hlnRoiCostDetails">
@@ -1182,7 +1215,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d30"></script>
-  <script src="/static/home-lab-next.js?v=next44"></script>
+  <script src="/static/home-lab-next.js?v=next45"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
