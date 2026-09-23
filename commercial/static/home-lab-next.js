@@ -9,7 +9,22 @@
   const form = $("#hlnTechnicalForm");
   const calcUrl = root.dataset.calculateUrl;
   const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
+  const acquisitionSource = new URLSearchParams(window.location.search).get("source") || "";
   const SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70;
+
+  function trackEvent(name, detail = {}) {
+    const payload = {
+      event:name,
+      product:"home_lab",
+      source:acquisitionSource || undefined,
+      partner:root.dataset.partnerId || "official",
+      ...detail,
+    };
+    window.dispatchEvent(new CustomEvent("hln:analytics", {detail:payload}));
+    // Vendor-neutral integration point. We do not create or load a tracker here;
+    // an analytics provider may consume the same events later after consent.
+    if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);
+  }
 
   // Material values mirror the existing LaCurent energy material presets.
   // They are engineering estimates, not hidden normative defaults.
@@ -3610,6 +3625,7 @@
     if (next === "scenario" && !baselineSaved) return;
     if (next === "report" && (!baselineSaved || !scenarioResult || scenarioResultState !== "fresh")) return;
     screen = next;
+    trackEvent("home_lab_screen_viewed", {screen:next, measure_count:measures.length});
     root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === next));
     renderAll();
     emitVisualState();
@@ -3650,6 +3666,10 @@
     homeResult = result;
     currentResult = result;
     baselineSaved = true;
+    trackEvent("home_lab_baseline_saved", {
+      confirmed_sections:confirmedGroups.size,
+      locality:homeState.locality || undefined,
+    });
     referenceMode = false;
     scenarioOverrides = {};
     optimizationMeta = null;
@@ -3812,6 +3832,7 @@
     referenceMode = false;
     interventionOriginal = {...scenarioState};
     activeMeasure = type;
+    trackEvent("home_lab_intervention_opened", {measure:type});
 
     if (!measures.includes(type)) {
       if (type === "wall") scenarioState.wallIns = Math.min(30, Number(homeState.wallIns) + 10);
@@ -3857,6 +3878,7 @@
   function keepIntervention() {
     if (!activeMeasure) return;
     if (!measures.includes(activeMeasure)) measures.push(activeMeasure);
+    trackEvent("home_lab_intervention_kept", {measure:activeMeasure, measure_count:measures.length});
     activeMeasure = null;
     interventionOriginal = null;
     persist();
@@ -4502,6 +4524,7 @@
   if (printReportButton) {
     printReportButton.addEventListener("click", () => {
       renderReport();
+      trackEvent("home_lab_report_printed", {measure_count:measures.length});
       window.print();
     });
   }
@@ -4541,6 +4564,10 @@
   syncOptimizerInputs();
   loadRoiCostBasis().catch(() => {});
   renderAll();
+  trackEvent("home_lab_viewed", {
+    restored_baseline:Boolean(baselineSaved),
+    confirmed_sections:confirmedGroups.size,
+  });
   emitVisualState();
 
   if (baselineSaved && homeResult) {
