@@ -402,9 +402,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next20" in response.text
-    assert "/static/home-lab-next.js?v=next42" in response.text
+    assert "/static/home-lab-next.js?v=next43" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d28" in response.text
+    assert "/static/home-lab-3d.js?v=3d29" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -529,6 +529,13 @@ def test_home_lab_geometry_and_roi_rounding_share_one_geometry_model() -> None:
 
 
 
+def test_home_lab_3d_pauses_hidden_scenes_and_optimizer_rendering() -> None:
+    response = client.get("/static/home-lab-3d.js")
+    assert response.status_code == 200
+    assert 'this.mount.offsetParent !== null' in response.text
+    assert 'classList.contains("is-optimizer-busy")' in response.text
+
+
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     response = client.get("/embed/demo-store/next")
     assert response.status_code == 200
@@ -553,6 +560,8 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["reference_parameters"]["u_values_w_m2k"]["window"] == pytest.approx(1.11)
     assert payload["reference_parameters"]["physical_mapping"]["roof"]["insulation_cm"] > payload["reference_parameters"]["physical_mapping"]["floor"]["insulation_cm"]
     assert payload["reference_parameters"]["physical_mapping"]["floor"]["mapping_status"] == "iso13370_ground_inverse"
+    assert payload["reference_parameters"]["physical_mapping"]["window"]["solar_gn"] == pytest.approx(0.47)
+    assert payload["reference_parameters"]["physical_mapping"]["window"]["solar_climate_zone"] == "III"
     assert "Tabel 2.4" in payload["reference_parameters"]["envelope_source"]
     assert payload["reference_parameters"]["heating_efficiency"] > 0
     assert payload["transmission_components"]["hg_w_k"] > 0
@@ -1246,6 +1255,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "physical_mapping" in response.text
     assert 'mappedU("floor", u.floor)' in response.text
     assert 'MC001 Tabel 2.4' in response.text
+    assert 'formSet("solar_glazing_gn", referenceSolarGn ?? "")' in response.text
+    assert 'syncMeasuresFromOptimizer(meta)' in response.text
+    assert 'heating_control:"heating"' in response.text
+    assert 'item?.family === "ventilation"' in response.text
     assert "function resetScenarioToHome" in response.text
     assert "function renderLiveConfigurator" in response.text
     assert "function openQuickMeasureEditor" in response.text

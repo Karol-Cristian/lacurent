@@ -2115,13 +2115,20 @@ class HomeLabHouse3D {
 
   animate() {
     if (this.destroyed) return;
-    const dt = Math.min(0.033, this.clock.getDelta());
-    if (this.controls) {
-      this.controls.autoRotate = false;
-      this.controls.update(dt);
+    const app = this.mount.closest("[data-home-lab-next]");
+    const visible = document.visibilityState === "visible" && this.mount.offsetParent !== null;
+    const optimizerBusy = Boolean(app?.classList.contains("is-optimizer-busy"));
+    if (visible && !optimizerBusy) {
+      const dt = Math.min(0.033, this.clock.getDelta());
+      if (this.controls) {
+        this.controls.autoRotate = false;
+        this.controls.update(dt);
+      }
+      this.updateHotspotPositions();
+      this.renderer.render(this.scene, this.camera);
+    } else {
+      this.clock.getDelta();
     }
-    this.updateHotspotPositions();
-    this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame(() => this.animate());
   }
 

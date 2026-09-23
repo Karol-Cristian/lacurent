@@ -318,6 +318,7 @@ class SolarInput(BaseModel):
         "double_low_e_face_3",
         "triple_low_e_faces_2_and_5",
     ] = "double_low_e_face_3"
+    normal_incidence_solar_transmittance: float | None = Field(default=None, gt=0, le=1)
     glazing_groups: list[SolarGlazingGroup] = Field(default_factory=list)
     frame_fraction: float = Field(default=0.20, ge=0, lt=1)
     obstacle_shading_factor: float = Field(default=1.0, ge=0, le=1)

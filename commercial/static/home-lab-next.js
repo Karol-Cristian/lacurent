@@ -685,6 +685,25 @@
     measures = next;
   }
 
+  function syncMeasuresFromOptimizer(meta) {
+    const familyToMeasure = {
+      wall:"wall",
+      roof:"roof",
+      floor:"floor",
+      windows:"windows",
+      heating:"heating",
+      heating_control:"heating",
+      ventilation:"ventilation",
+      pv:"pv",
+      solar_thermal:"solar_thermal",
+    };
+    const selected = Array.isArray(meta?.selected) ? meta.selected : [];
+    for (const item of selected) {
+      const measure = familyToMeasure[item?.family];
+      if (measure && !measures.includes(measure)) measures.push(measure);
+    }
+  }
+
   function emitVisualState(focus = null) {
     const state = screen === "home" ? homeState : scenarioState;
     const detail = {
@@ -748,6 +767,7 @@
       roofU: mappedU("roof", u.roof),
       floorU: mappedU("floor", u.floor),
       windowU: Number(u.window),
+      solarGlazingGn: Number(physical?.window?.solar_gn),
       doorU: Number(u.exterior_door),
       thermalBridgesOff: true,
       airChanges: Number(ref?.air_changes_per_hour),
@@ -1071,7 +1091,7 @@
           refPart("perete", physical.wall, u.exterior_wall),
           refPart("pod/acoperiș", physical.roof, u.roof),
           refPart("pardoseală", physical.floor, u.floor),
-          `ferestre U' ${fmt(u.window,2)}`,
+          `ferestre U' ${fmt(u.window,2)} · gₙ ${fmt(physical?.window?.solar_gn,2)} · geometrie păstrată`,
           `uși U' ${fmt(u.exterior_door,2)} W/m²K`,
         ].join(" · ");
         $("#hlnReferenceAir").textContent =
@@ -1300,7 +1320,9 @@
     formSet("solar_thermal_tilt_degrees", state.solarThermalTilt);
     formSet("solar_thermal_system_efficiency", 0.45);
 
-    formSet("solar_glazing_type_id", state.glazing === "reference_mc001" ? homeState.glazing : state.glazing);
+    const referenceSolarGn = finiteOverride("solarGlazingGn");
+    formSet("solar_glazing_gn", referenceSolarGn ?? "");
+    formSet("solar_glazing_type_id", state.glazing === "reference_mc001" ? "double_low_e_face_3" : state.glazing);
     formSet("solar_orientation", state.orientation);
     formSet("indoor_design_temperature_c", state.temperature);
     formSet("dhw_occupants", state.occupants);
@@ -1322,6 +1344,10 @@
   function setResultState(target, state) {
     if (target === "home") homeResultState = state;
     else scenarioResultState = state;
+  }
+
+  function setOptimizerBusy(busy) {
+    root.classList.toggle("is-optimizer-busy", Boolean(busy));
   }
 
   function cancelOptimizerRun() {
@@ -2146,6 +2172,7 @@
     referenceMode = false;
     optimizationMeta = meta;
     syncMeasuresFromScenario();
+    syncMeasuresFromOptimizer(meta);
     renderAll();
     persist();
     emitVisualState(meta?.mode || "optimizer");
@@ -2227,6 +2254,7 @@
     const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
+    setOptimizerBusy(true);
     const copy = automaticRenovationCopy();
     setStatus(copy.working);
     setOptimizationNote(
@@ -2436,6 +2464,7 @@
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
+      setOptimizerBusy(false);
       populateTechnicalForm(scenarioState, scenarioOverrides);
       if (runToken === optimizerRunToken) optimizerAbortController = null;
     }
@@ -2503,6 +2532,7 @@
     const runToken = beginOptimizerRun();
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
+    setOptimizerBusy(true);
     setStatus("Calculez amortizarea simplă…");
     setOptimizationNote(
       `<strong>Compar investițiile…</strong><span>Recalculez soluțiile cu CAPEX cunoscut și compar economia anuală raportată la investiție sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
@@ -2688,6 +2718,7 @@
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
+      setOptimizerBusy(false);
       populateTechnicalForm(scenarioState, scenarioOverrides);
       if (runToken === optimizerRunToken) optimizerAbortController = null;
     }
@@ -2964,7 +2995,16 @@
         : ` · ${labels.heatingEmitter[now.heatingEmitter] || now.heatingEmitter}`;
       return `${labels.heating[base.heating]} → ${labels.heating[now.heating]}${detail}`;
     }
-    if (type === "ventilation") return `${labels.ventilation[base.ventilation]} → ${labels.ventilation[now.ventilation]}`;
+    if (type === "ventilation") {
+      const optimizerItem = Array.isArray(optimizationMeta?.selected)
+        ? optimizationMeta.selected.find(item => item?.family === "ventilation")
+        : null;
+      const recovery = Number(scenarioOverrides.heatRecovery);
+      const detail = Number.isFinite(recovery) && recovery > 0
+        ? ` · recuperare ${fmt(100 * recovery)}%`
+        : "";
+      return `${optimizerItem?.label ? optimizerItem.label + " · " : ""}${labels.ventilation[base.ventilation]} → ${labels.ventilation[now.ventilation]}${detail}`;
+    }
     if (type === "pv") {
       if (!now.pvEnabled) return "PV dezactivat";
       const pv = scenarioResult?.renewables?.pv;
