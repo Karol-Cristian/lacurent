@@ -26,14 +26,14 @@ try {
   await expectVisible('[data-hln-editor="house"]');
   await page.locator("#hlnArea").fill("130");
   await page.locator("#hlnArea").press("Tab");
-  await page.locator("[data-hln-editor-close]").click();
+  await page.locator(".hln-editor-done").click();
 
   await page.locator('.hln-config-row[data-hln-editor-open="envelope"]').click();
   await expectVisible('[data-hln-editor="envelope"]');
   await page.locator("#hlnHomeTopBoundary").selectOption("cold_attic");
   await page.locator("#hlnHomeRoofIns").fill("0");
   await page.locator("#hlnHomeRoofIns").press("Tab");
-  await page.locator("[data-hln-editor-close]").click();
+  await page.locator(".hln-editor-done").click();
 
   await page.waitForTimeout(1200);
   await expectVisible("#hlnDockCta");
