@@ -212,7 +212,7 @@ def test_energy_calculator_alias_goes_straight_to_home_lab() -> None:
     assert home_lab.status_code == 200
     assert 'data-home-lab-next' in home_lab.text
     assert 'data-hln-screen="home"' in home_lab.text
-    assert "Construiește punctul de plecare." in home_lab.text
+    assert "Casa este interfața." in home_lab.text
 
 
 def test_legacy_energy_calculator_remains_available_during_home_lab_next_cutover() -> None:
@@ -392,7 +392,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-screen="intervention"' in response.text
     assert 'data-hln-screen="scenario"' in response.text
     assert "Salvează Casa mea și vezi îmbunătățirile" in response.text
-    assert "Construiește punctul de plecare." in response.text
+    assert "Casa este interfața." in response.text
     assert "Ce vrei să schimbi?" in response.text
     assert "Păstrează intervenția" in response.text
     assert "Vezi îmbunătățirile ca un singur proiect." in response.text
@@ -1351,8 +1351,10 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'window.addEventListener("hln:equipment-select"' in response.text
     assert 'screen === "home" ? "home" : "scenario"' in response.text
     assert 'scheduleCalculate("home", 280)' in response.text
-    assert 'quickEditRange.addEventListener("pointerup"' in response.text
-    assert 'quickEditRange.addEventListener("touchend"' in response.text
+    assert 'quickEditRange.addEventListener("pointerup"' not in response.text
+    assert 'quickEditRange.addEventListener("touchend"' not in response.text
+    assert 'data-hln-quick-edit-commit' in client.get("/home-lab-next").text
+    assert '$("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);' in response.text
     assert "scenarioOverrides" in response.text
     assert "pvEnabled" in response.text
     assert "pvKwp" in response.text
