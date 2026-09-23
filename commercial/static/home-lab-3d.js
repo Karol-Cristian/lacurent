@@ -782,7 +782,7 @@ class HomeLabHouse3D {
     // largest conservative visible shift while preserving the roof envelope,
     // then nudge the whole field toward the chimney.
     const rowPitch = panelDepth + gapZ;
-    const downslopeShift = rowPitch * 0.45;
+    const downslopeShift = rowPitch * 0.18;
     const chimneyNudge = (panelWidth + gapX) * 0.30;
     layer.translateZ(downslopeShift);
     layer.translateX(chimneyNudge);
