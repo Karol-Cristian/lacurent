@@ -1461,13 +1461,18 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
-def test_home_lab_3d_uses_two_panel_primary_pv_stack_and_opposite_chimney_smoke() -> None:
+def test_home_lab_3d_uses_capacity_scaled_aligned_pv_field_and_opposite_chimney_smoke() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
     source = response.text
     assert 'name: "PV_primary_lower"' in source
     assert 'name: "PV_primary_upper"' in source
-    assert 'Math.max(2, Math.min(pv.children.length' in source
+    assert 'name: "PV_secondary_lower"' in source
+    assert 'name: "PV_secondary_upper"' in source
+    assert 'name: "PV_primary_top"' in source
+    assert 'name: "PV_secondary_top"' in source
+    assert 'Math.max(2, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 2.5)))' in source
+    assert "compact field on the same roof plane" in source
     assert "distinct[1] || distinct[0]" in source
     assert "return this.localPointFromNormalized([0.22, 0.91, 0.12])" in source
     assert "this.modelSize.y * 0.24" in source
