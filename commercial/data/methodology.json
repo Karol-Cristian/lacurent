@@ -26,10 +26,13 @@
   "boundary_conditions_light": {
     "status": "LaCurent Light boundary model. Hd/Hg/Hu/Ha separation and the monthly ground-temperature path follow MC001-2022 relation 2.15 and Figure 2.11. Ground and unheated-space correction factors remain explicit low-confidence product fallbacks until ISO 13370 / full bztu inputs are available.",
     "ground": {
-      "default_correction_factor": 0.6,
-      "factor_confidence": "low",
-      "factor_source": "LaCurent Light fallback; explicit override supported; ISO 13370 ground coefficient remains future work",
-      "monthly_temperature_model": "annual_exterior_temperature"
+      "model": "ISO 13370 slab-on-ground steady-state U-value for uninsulated/all-over insulated slabs without explicit edge-insulation correction",
+      "source": "ISO 13370:2017; MC001-2022 §2.3.3 delegates ground-contact heat transfer to ISO 13370 / C107",
+      "default_ground_conductivity_w_mk": 2.0,
+      "default_ground_conductivity_basis": "ISO 13370 default for unknown ground type (sand/gravel category)",
+      "default_wall_thickness_m": 0.30,
+      "monthly_temperature_model": "annual_exterior_temperature",
+      "limitations": "Annual steady-state ground coupling only. Seasonal periodic ground term/bm and explicit edge-insulation psi correction are not yet included."
     },
     "unheated_attic": {
       "default_correction_factor": 0.75,
