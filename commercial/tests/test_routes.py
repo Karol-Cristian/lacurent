@@ -1461,24 +1461,28 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
-def test_home_lab_3d_uses_capacity_scaled_aligned_pv_field_and_opposite_chimney_smoke() -> None:
+def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimney_smoke() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
     source = response.text
-    assert 'name: "PV_primary_lower"' in source
-    assert 'name: "PV_primary_upper"' in source
-    assert 'name: "PV_secondary_lower"' in source
-    assert 'name: "PV_secondary_upper"' in source
-    assert 'name: "PV_primary_top"' in source
-    assert 'name: "PV_secondary_top"' in source
+    assert 'name:"PV_primary_lower"' in source
+    assert 'name:"PV_primary_upper"' in source
+    assert 'name:"PV_secondary_lower"' in source
+    assert 'name:"PV_secondary_upper"' in source
+    assert 'name:"PV_primary_top"' in source
+    assert 'name:"PV_secondary_top"' in source
     assert 'Math.max(2, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 2.5)))' in source
-    assert "compact field on the same roof plane" in source
-    assert "distinct[1] || distinct[0]" in source
-    assert "return this.localPointFromNormalized([0.22, 0.91, 0.12])" in source
-    assert "this.modelSize.y * 0.24" in source
-    assert "this.modelSize.x * 0.045" in source
-    assert "index < 7" in source
-    assert "Math.sin(Math.PI * t) * 0.48" in source
+    assert "Every panel is a child of" in source
+    assert 'this.mountLayerOnRoof(layer, [-0.34, 0.72, 0.16])' in source
+    assert "this.inspectableMeshes.forEach" in source
+    assert "compactFootprint" in source
+    assert "verticalEnough" in source
+    assert "return this.localPointFromNormalized([0.02, 0.94, -0.12])" in source
+    assert "this.modelSize.y * 0.30" in source
+    assert "this.modelSize.x * 0.055" in source
+    assert "index < 9" in source
+    assert "depthTest:false" in source
+    assert "Math.sin(Math.PI * t) * 0.68" in source
 
 
 def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit() -> None:
