@@ -171,14 +171,54 @@ def transmission_heat_transfer_components(
     element_rows: list[tuple[str, str, TransmissionComponent, EnvelopeBoundaryType, float, float]] = []
     totals = {component: 0.0 for component in TransmissionComponent}
 
+    element_rows: list[dict] = []
     for item in building.envelope:
         component = BOUNDARY_TO_TRANSMISSION_COMPONENT[item.boundary_type]
+        raw_u = float(item.u_value_w_m2k)
+        area = float(item.area_m2)
         factor = _element_boundary_factor(item)
-        value = float(item.u_value_w_m2k) * float(item.area_m2) * factor
+        effective_u = raw_u * factor
+        method = "direct_outside_air"
+
+        if item.boundary_type == EnvelopeBoundaryType.ground and item.ground_contact is not None:
+            contact = item.ground_contact
+            effective_u = slab_on_ground_effective_u(
+                raw_u,
+                area,
+                contact.exposed_perimeter_m,
+                contact.wall_thickness_m,
+                contact.ground_conductivity_w_mk,
+            )
+            value = (
+                effective_u * area
+                + float(contact.exposed_perimeter_m) * float(contact.edge_psi_w_mk)
+            )
+            factor = effective_u / raw_u
+            method = "iso13370_slab_on_ground_steady_state"
+        else:
+            value = effective_u * area
+            if item.boundary_type in {
+                EnvelopeBoundaryType.unheated_space,
+                EnvelopeBoundaryType.unheated_attic,
+                EnvelopeBoundaryType.unheated_basement,
+                EnvelopeBoundaryType.adjacent_unheated_space,
+            }:
+                method = "explicit_boundary_temperature_factor"
+            elif item.boundary_type == EnvelopeBoundaryType.adjacent_heated_space:
+                method = "adjacent_heated_zero_transfer"
+
         totals[component] += value
-        element_rows.append(
-            (item.name, item.type.value, component, item.boundary_type, factor, value)
-        )
+        element_rows.append({
+            "name": item.name,
+            "kind": item.type.value,
+            "component": component,
+            "boundary": item.boundary_type,
+            "factor": factor,
+            "raw_u": raw_u,
+            "effective_u": effective_u,
+            "method": method,
+            "value": value,
+        })
 
     bridge_rows: list[tuple[str, str, TransmissionComponent, float]] = []
     for item in building.thermal_bridges:
@@ -191,16 +231,19 @@ def transmission_heat_transfer_components(
 
     envelope_contributions = [
         Contribution(
-            name=name,
-            type=kind,
-            value=_round(value),
+            name=row["name"],
+            type=row["kind"],
+            value=_round(row["value"]),
             unit="W/K",
-            percent=_round(100 * value / htr if htr else 0, 1),
-            component=component,
-            boundary_type=boundary,
-            boundary_correction_factor=_round(factor, 3),
+            percent=_round(100 * row["value"] / htr if htr else 0, 1),
+            component=row["component"],
+            boundary_type=row["boundary"],
+            boundary_correction_factor=_round(row["factor"], 3),
+            u_value_w_m2k=_round(row["raw_u"], 4),
+            effective_u_value_w_m2k=_round(row["effective_u"], 4),
+            calculation_method=row["method"],
         )
-        for name, kind, component, boundary, factor, value in element_rows
+        for row in element_rows
     ]
     bridge_contributions = [
         Contribution(
@@ -210,6 +253,7 @@ def transmission_heat_transfer_components(
             unit="W/K",
             percent=_round(100 * value / htr if htr else 0, 1),
             component=component,
+            calculation_method="linear_thermal_bridge",
         )
         for name, kind, component, value in bridge_rows
     ]
@@ -1218,6 +1262,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         climate=climate,
         h_tr_w_k=h_tr,
         transmission_components=transmission,
+        annual_outdoor_temperature_c=_round(_annual_outdoor_temperature_c(climate), 3),
         h_ve_w_k=h_ve,
         heat_loss_w_k=_round(h_tr + h_ve),
         envelope_geometry=envelope_geometry(building),
