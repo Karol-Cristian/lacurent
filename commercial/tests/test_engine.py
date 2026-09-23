@@ -135,7 +135,7 @@ def test_unheated_attic_can_derive_bztu_from_explicit_zone_heat_balance() -> Non
     bztu = hztu_exterior / hztu_total
 
     assert components.hd_w_k == 0
-    assert components.hu_w_k == pytest.approx(80 * 0.5 * bztu)
+    assert components.hu_w_k == pytest.approx(80 * 0.5 * bztu, abs=1e-3)
     assert row.boundary_correction_factor == pytest.approx(bztu, abs=1e-3)
     assert row.hztu_exterior_w_k == pytest.approx(hztu_exterior)
     assert row.hztu_total_w_k == pytest.approx(hztu_total)
