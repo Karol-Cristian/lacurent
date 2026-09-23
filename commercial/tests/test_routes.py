@@ -402,7 +402,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next20" in response.text
-    assert "/static/home-lab-next.js?v=next41" in response.text
+    assert "/static/home-lab-next.js?v=next42" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -547,8 +547,13 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["heat_loss_w_k"] > 0
     assert payload["energy_class"]
     assert "annual_cost_lei" in payload
-    assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
-    assert payload["reference_parameters"]["u_values_w_m2k"]["window"] > 0
+    assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] == pytest.approx(0.25)
+    assert payload["reference_parameters"]["u_values_w_m2k"]["roof"] == pytest.approx(0.15)
+    assert payload["reference_parameters"]["u_values_w_m2k"]["floor"] == pytest.approx(0.20)
+    assert payload["reference_parameters"]["u_values_w_m2k"]["window"] == pytest.approx(1.11)
+    assert payload["reference_parameters"]["physical_mapping"]["roof"]["insulation_cm"] > payload["reference_parameters"]["physical_mapping"]["floor"]["insulation_cm"]
+    assert payload["reference_parameters"]["physical_mapping"]["floor"]["mapping_status"] == "iso13370_ground_inverse"
+    assert "Tabel 2.4" in payload["reference_parameters"]["envelope_source"]
     assert payload["reference_parameters"]["heating_efficiency"] > 0
     assert payload["transmission_components"]["hg_w_k"] > 0
     assert payload["annual_outdoor_temperature_c"] is not None
@@ -1238,6 +1243,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'state.heatPumpSource === "heat_pump_air_air"' in response.text
     assert "persist();" in response.text
     assert "function setReferenceHouse" in response.text
+    assert "physical_mapping" in response.text
+    assert 'mappedU("floor", u.floor)' in response.text
+    assert 'MC001 Tabel 2.4' in response.text
     assert "function resetScenarioToHome" in response.text
     assert "function renderLiveConfigurator" in response.text
     assert "function openQuickMeasureEditor" in response.text

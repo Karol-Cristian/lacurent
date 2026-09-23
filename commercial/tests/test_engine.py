@@ -22,7 +22,7 @@ from commercial.app.engine import (
 )
 from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol, resolve_monthly_plane_hsol
 from commercial.app.models import BuildingInput, EnergyServiceResult
-from commercial.app.reference import build_reference_input
+from commercial.app.reference import build_reference_input, reference_physical_mapping
 
 
 def simple_building(**overrides) -> BuildingInput:
@@ -363,6 +363,15 @@ def test_reference_building_recomputes_geometry_dependent_ground_u() -> None:
     assert actual_components.hg_w_k > 0
     assert reference_components.hg_w_k > 0
     assert actual_floor.boundary_correction_factor != reference_floor.boundary_correction_factor
+    assert reference_floor.effective_u_value_w_m2k == pytest.approx(0.20, abs=1e-3)
+    assert reference_floor.u_value_w_m2k > reference_floor.effective_u_value_w_m2k
+
+    physical = reference_physical_mapping(actual)
+    assert physical["wall"]["target_u_prime_w_m2k"] == pytest.approx(0.25)
+    assert physical["roof"]["target_u_prime_w_m2k"] == pytest.approx(0.15)
+    assert physical["floor"]["target_u_prime_w_m2k"] == pytest.approx(0.20)
+    assert physical["floor"]["mapping_status"] == "iso13370_ground_inverse"
+    assert physical["roof"]["insulation_cm"] > physical["floor"]["insulation_cm"]
 
 
 def test_adjacent_unheated_buffer_is_hu_not_ha() -> None:
@@ -875,10 +884,29 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.8"
+    assert cfg["version"] == "lacurent-commercial-v2.9"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]
+
+
+def test_reference_building_uses_source_backed_mc001_table_2_4_envelope_targets() -> None:
+    actual = demo_building()
+    reference = build_reference_input(actual)
+    by_type = {item.type.value: item for item in reference.envelope}
+
+    assert by_type["exterior_wall"].u_value_w_m2k == pytest.approx(0.25)
+    assert by_type["roof"].u_value_w_m2k == pytest.approx(0.15)
+    assert by_type["window"].u_value_w_m2k == pytest.approx(1.11)
+    assert by_type["exterior_door"].u_value_w_m2k == pytest.approx(1.30)
+
+    mapping = reference_physical_mapping(actual)
+    assert mapping["wall"]["material_id"] == "eps"
+    assert mapping["roof"]["material_id"] == "mineral_wool"
+    assert mapping["floor"]["material_id"] == "xps"
+    assert 10 < mapping["wall"]["insulation_cm"] < 16
+    assert 20 < mapping["roof"]["insulation_cm"] < 30
+    assert 5 < mapping["floor"]["insulation_cm"] < 15
 
 
 def test_reference_building_is_calculated_with_same_engine() -> None:

@@ -1173,6 +1173,8 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     reference = result.reference
     method = methodology()
     reference_rules = method["reference_building"]
+    from .reference import reference_physical_mapping
+    physical_reference = reference_physical_mapping(result.input)
     climate_zone = str(climate.get("climate_zone") or "")
     if not climate_zone:
         try:
@@ -1314,6 +1316,11 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 key: float(value)
                 for key, value in reference_rules["u_values_w_m2k"].items()
             },
+            "envelope_source": reference_rules.get("envelope_source"),
+            "envelope_source_status": reference_rules.get("envelope_source_status"),
+            "reference_context": reference_rules.get("reference_context"),
+            "systems_source_status": reference_rules.get("systems_source_status"),
+            "physical_mapping": physical_reference,
             "air_changes_per_hour": float(reference_rules["air_changes_per_hour"]),
             "heat_recovery_efficiency": float(reference_rules["heat_recovery_efficiency"]),
             "heating_efficiency": float(reference_rules["heating_efficiency"]),
