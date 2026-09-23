@@ -397,7 +397,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next35" in response.text
+    assert "/static/home-lab-next.js?v=next36" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -452,23 +452,23 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnWallAreaOverride"' in response.text
     assert 'id="hlnTopAreaOverride"' in response.text
     assert "Pereții opaci nu includ ferestrele și ușile." in response.text
-    assert "Material izolație existentă pereți" in response.text
-    assert "Material strat nou" in response.text
-    assert "Grosime totală după intervenție" in response.text
-    assert "Stratul nou se adaugă peste izolația existentă" in response.text
+    assert "Material izolație pereți" in response.text
+    assert "Material și grosime finală simulate" in response.text
+    assert "Material strat nou" not in response.text
+    assert "Stratul nou se adaugă peste izolația existentă" not in response.text
     assert 'id="hlnConstructionYear"' in response.text
-    assert 'id="hlnConfirmedCount">0/5' in response.text
-    assert 'id="hlnConfidenceLabel">secțiuni confirmate · restul estimat' in response.text
+    assert "Estimativ" in response.text
+    assert "verifică ipotezele înainte de decizie" in response.text
     assert 'id="hlnHomeTopBoundary"' in response.text
-    assert 'id="hlnHomeTopStructure"' in response.text
-    assert 'id="hlnHomeAirtightness"' in response.text
-    assert 'id="hlnHomeAtticLeakage"' in response.text
-    assert "Recuperatorul nu primește credit pentru aerul care intră prin neetanșeități." in response.text
-    assert 'name="infiltration_air_changes_per_hour"' in response.text
-    assert 'name="ventilation_air_changes_per_hour"' in response.text
     assert "Pod rece / neîncălzit — calculează planșeul" in response.text
-    assert "Rigips + scândură / astereală ușoară" in response.text
-    assert "Nu știu — U de bază estimat 1,00 W/m²K" in response.text
+    assert "U=3,25 W/m²K" in response.text
+    assert "U=2,25 W/m²K" in response.text
+    assert "Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat" in response.text
+    assert 'id="hlnHomeTopStructure"' not in response.text
+    assert 'id="hlnHomeAirtightness"' not in response.text
+    assert 'id="hlnHomeAtticLeakage"' not in response.text
+    assert 'name="infiltration_air_changes_per_hour"' not in response.text
+    assert 'name="ventilation_air_changes_per_hour"' not in response.text
     assert 'id="hlnHomeSolarThermalArea"' in response.text
     assert 'id="hlnHomeHeatingEmitter"' in response.text
     assert response.text.count('data-hln-home-heating-chain') == 4
@@ -1162,9 +1162,11 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'scenarioState.wallInsulationMaterial = $("#hlnWallInsulationMaterial").value' in response.text
     assert 'scenarioState.roofInsulationMaterial = $("#hlnRoofInsulationMaterial").value' in response.text
     assert 'scenarioState.floorInsulationMaterial = $("#hlnFloorInsulationMaterial").value' in response.text
-    assert "function layeredInsulationU" in response.text
-    assert "const existingR =" in response.text
-    assert "const addedR =" in response.text
+    assert "TOP_BOUNDARY_BASE_U" in response.text
+    assert "cold_attic: 3.25" in response.text
+    assert "flat_roof: 2.25" in response.text
+    assert "function layeredInsulationU" not in response.text
+    assert 'scenarioState.wallInsulationMaterial !== homeState.wallInsulationMaterial' in response.text
     assert 'Math.abs(Number(scenarioState.wallIns) - Number(homeState.wallIns)) > 0.01' in response.text
     assert 'labels.insulation[state.wallInsulationMaterial]' in response.text
     assert "Vezi îmbunătățirile" in response.text
