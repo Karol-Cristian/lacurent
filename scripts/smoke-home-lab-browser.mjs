@@ -117,6 +117,9 @@ try {
       pvCenterY:pvCenter.y,
       solarThermalVisible:solarThermal.visible,
       solarThermalVisibleChildren:solarThermal.children.filter(child => child.visible).length,
+      solarThermalAssetLoaded:Boolean(solarThermal.userData?.assetLoaded),
+      solarThermalAssetFallback:Boolean(solarThermal.userData?.assetFallback),
+      solarThermalAssetUrl:String(solarThermal.userData?.assetUrl || ""),
       thermalSupport,
       roofNormalDot:pvNormal.dot(thermalNormal),
       thermalCenterX:thermalCenter.x,
@@ -137,6 +140,11 @@ try {
   }
   if (!roofVisualCalibration.solarThermalVisible || roofVisualCalibration.solarThermalVisibleChildren !== 1) {
     throw new Error("Solar thermal calibration did not expose the compact collector");
+  }
+  if (!roofVisualCalibration.solarThermalAssetLoaded ||
+      roofVisualCalibration.solarThermalAssetFallback ||
+      roofVisualCalibration.solarThermalAssetUrl !== "https://cdn.3dassets.dev/assets/2969/v1/model.glb") {
+    throw new Error("Solar thermal collector did not load the imported GLB asset: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.thermalSupport.mountedRoofUuid ||
       roofVisualCalibration.thermalSupport.panels.some(panel => !panel.supported)) {

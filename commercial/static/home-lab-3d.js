@@ -27,6 +27,21 @@ const HOUSE_MODEL = HOUSE_MODELS[HOUSE_VARIANT] || HOUSE_MODELS.current;
 const HOUSE_MODEL_URL = HOUSE_MODEL.url;
 const HOUSE_MODEL_SOURCE = HOUSE_MODEL.source;
 
+const SOLAR_THERMAL_MODEL = {
+  label: "Roof-mounted flat-plate collector base",
+  url: "https://cdn.3dassets.dev/assets/2969/v1/model.glb",
+  source: "https://3dassets.dev/assets/off-grid-power-and-controls-roof-solar-panel-197e7d81",
+  license: "CC0-1.0",
+};
+
+const SOLAR_THERMAL_REFERENCE = {
+  label: "Fondital VLC 25 flat-plate solar thermal collector",
+  source: "https://www.bimobject.com/en-au/fondital/product/vlc_25",
+  dimensionsM: [1.238, 0.100, 2.077],
+};
+
+const SOLAR_THERMAL_ANCHOR = [-0.18, 0.78, 0.08];
+
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c, field: "#hlnHomeWallIns" },
   roof: { label: "Pod / acoperiș", editor: "envelope", measure: "roof", color: 0x3f745c, field: "#hlnHomeRoofIns" },
@@ -193,7 +208,7 @@ class HomeLabHouse3D {
     try {
       await this.loadSemanticConfig();
       await this.loadModel();
-      this.createExperimentLayers();
+      await this.createExperimentLayers();
       this.createVisualEquipment();
       this.createSelectionProofLayers();
       this.addHitZones();
@@ -807,20 +822,196 @@ class HomeLabHouse3D {
     this.experimentLayers.set("pv", layer);
   }
 
-  createSingleSolarThermalLayer() {
+  async createSingleSolarThermalLayer() {
     const s = this.modelSize;
     const panelWidthWorld = s.x * 0.075;
     const panelDepthWorld = s.z * 0.135;
-    const layer = this.createRoofCluster({
-      type: "thermal",
-      cols: 1,
-      rows: 1,
-      // Runtime-probed lower-left point on the main roof mesh, clear of the roof window.
-      anchor: [-0.18, 0.78, 0.08],
-      panelWidth: panelWidthWorld,
-      panelDepth: panelDepthWorld,
-    });
+    const panelThicknessWorld = Math.max(0.045, s.y * 0.012);
+    const panelWidth = this.localLength(panelWidthWorld);
+    const panelDepth = this.localLength(panelDepthWorld);
+    const panelThickness = this.localLength(panelThicknessWorld);
+
+    const layer = new THREE.Group();
     layer.name = "LaCurentLayer_solarThermal";
+
+    // Keep exactly one direct collector child so area scaling and browser
+    // calibration continue to treat this as one DHW solar-thermal collector.
+    const collector = new THREE.Group();
+    collector.name = "SolarThermalCollector_flatPlate";
+
+    // Invisible probe retains the exact roof-contact footprint used by the
+    // geometric Chromium smoke (centre + four corners).
+    const supportProbe = new THREE.Mesh(
+      new THREE.BoxGeometry(panelWidth, panelThickness, panelDepth),
+      new THREE.MeshBasicMaterial({ visible:false })
+    );
+    supportProbe.name = "SolarThermalCollector_supportProbe";
+    supportProbe.position.y = panelThickness * 0.5;
+    supportProbe.visible = false;
+    collector.add(supportProbe);
+
+    const frameMaterial = new THREE.MeshStandardMaterial({
+      color:0x252c2e,
+      roughness:0.34,
+      metalness:0.56,
+    });
+
+    try {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(SOLAR_THERMAL_MODEL.url);
+      const source = gltf.scene;
+      source.name = "SolarThermalCollector_importedGLB";
+      source.updateMatrixWorld(true);
+
+      const sourceBox = new THREE.Box3().setFromObject(source);
+      const sourceSize = sourceBox.getSize(new THREE.Vector3());
+      const sourceCenter = sourceBox.getCenter(new THREE.Vector3());
+      if (
+        sourceSize.x < 1e-5 ||
+        sourceSize.y < 1e-5 ||
+        sourceSize.z < 1e-5
+      ) {
+        throw new Error("Imported solar collector GLB has invalid bounds");
+      }
+
+      // The source GLB is a roof-mounted panel. Re-centre and scale it to the
+      // same footprint as the validated collector, using the slim vertical
+      // proportions of a real flat-plate solar-thermal collector.
+      const normalizedAsset = new THREE.Group();
+      normalizedAsset.name = "SolarThermalCollector_normalizedAsset";
+      source.position.sub(sourceCenter);
+      normalizedAsset.add(source);
+      normalizedAsset.scale.set(
+        panelWidth / sourceSize.x,
+        panelThickness / sourceSize.y,
+        panelDepth / sourceSize.z
+      );
+      normalizedAsset.position.y = panelThickness * 0.5;
+
+      source.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.material = frameMaterial.clone();
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      });
+
+      collector.add(normalizedAsset);
+      layer.userData.assetLoaded = true;
+      layer.userData.assetFallback = false;
+      layer.userData.assetUrl = SOLAR_THERMAL_MODEL.url;
+      layer.userData.assetSource = SOLAR_THERMAL_MODEL.source;
+      layer.userData.assetLicense = SOLAR_THERMAL_MODEL.license;
+      layer.userData.thermalReference = SOLAR_THERMAL_REFERENCE.source;
+    } catch (error) {
+      console.warn("[Home Lab 3D] solar thermal GLB fallback", error);
+      layer.userData.assetLoaded = false;
+      layer.userData.assetFallback = true;
+
+      const fallbackBody = new THREE.Mesh(
+        new THREE.BoxGeometry(panelWidth, panelThickness, panelDepth),
+        frameMaterial.clone()
+      );
+      fallbackBody.position.y = panelThickness * 0.5;
+      fallbackBody.castShadow = true;
+      fallbackBody.receiveShadow = true;
+      collector.add(fallbackBody);
+    }
+
+    // The imported geometry supplies the real 3D frame/body. These two thin
+    // layers make the product read as a glazed liquid flat-plate collector,
+    // rather than as another photovoltaic module.
+    const absorber = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        panelWidth * 0.89,
+        panelThickness * 0.055,
+        panelDepth * 0.90
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0x183f43,
+        roughness:0.30,
+        metalness:0.12,
+      })
+    );
+    absorber.name = "SolarThermalCollector_absorber";
+    absorber.position.y = panelThickness * 1.015;
+    collector.add(absorber);
+
+    const riserMaterial = new THREE.MeshStandardMaterial({
+      color:0x315b5d,
+      roughness:0.38,
+      metalness:0.24,
+    });
+    for (let index = -2; index <= 2; index += 1) {
+      const riser = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          panelWidth * 0.018,
+          panelThickness * 0.018,
+          panelDepth * 0.76
+        ),
+        riserMaterial
+      );
+      riser.name = "SolarThermalCollector_absorberRiser";
+      riser.position.set(
+        index * panelWidth * 0.145,
+        panelThickness * 1.055,
+        0
+      );
+      collector.add(riser);
+    }
+
+    const headerMaterial = new THREE.MeshStandardMaterial({
+      color:0x69503a,
+      roughness:0.42,
+      metalness:0.42,
+    });
+    [-1, 1].forEach((side) => {
+      const header = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          panelWidth * 0.79,
+          panelThickness * 0.020,
+          panelDepth * 0.018
+        ),
+        headerMaterial
+      );
+      header.name = "SolarThermalCollector_header";
+      header.position.set(
+        0,
+        panelThickness * 1.060,
+        side * panelDepth * 0.365
+      );
+      collector.add(header);
+    });
+
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        panelWidth * 0.915,
+        panelThickness * 0.018,
+        panelDepth * 0.925
+      ),
+      new THREE.MeshPhysicalMaterial({
+        color:0x1c3940,
+        transparent:true,
+        opacity:0.62,
+        roughness:0.10,
+        metalness:0.02,
+        transmission:0.10,
+        clearcoat:0.76,
+        clearcoatRoughness:0.08,
+        depthWrite:false,
+      })
+    );
+    glass.name = "SolarThermalCollector_lowIronGlass";
+    glass.position.y = panelThickness * 1.085;
+    glass.renderOrder = 6;
+    collector.add(glass);
+
+    layer.add(collector);
+
+    // Keep the validated position from PR #340. The imported collector is
+    // mounted through the same roof-raycast path so it stays flush to the
+    // actual GLB roof and clear of the skylight.
+    this.mountLayerOnRoof(layer, SOLAR_THERMAL_ANCHOR);
+
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("solarThermal", layer);
@@ -946,11 +1137,11 @@ class HomeLabHouse3D {
     this.experimentLayers.set("heatPump", group);
   }
 
-  createExperimentLayers() {
+  async createExperimentLayers() {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
     this.createSplitPVLayer();
-    this.createSingleSolarThermalLayer();
+    await this.createSingleSolarThermalLayer();
     this.createHeatPumpLayer();
   }
 
@@ -2403,4 +2594,12 @@ if (document.readyState === "loading") {
   boot();
 }
 
-export { HomeLabHouse3D, HOUSE_MODELS, HOUSE_MODEL_URL, HOUSE_MODEL_SOURCE };
+export {
+  HomeLabHouse3D,
+  HOUSE_MODELS,
+  HOUSE_MODEL_URL,
+  HOUSE_MODEL_SOURCE,
+  SOLAR_THERMAL_MODEL,
+  SOLAR_THERMAL_REFERENCE,
+  SOLAR_THERMAL_ANCHOR,
+};

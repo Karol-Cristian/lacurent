@@ -404,7 +404,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
     assert "/static/home-lab-3d.css?v=3d25" in response.text
-    assert "/static/home-lab-3d.js?v=3d44" in response.text
+    assert "/static/home-lab-3d.js?v=3d45" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1457,12 +1457,18 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert 'detail.ventilation === "mechanical" || detail.ventilation === "hrv"' in response.text
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
-    assert "createSingleSolarThermalLayer()" in response.text
-    assert "anchor: [-0.18, 0.78, 0.08]" in response.text
+    assert "async createSingleSolarThermalLayer()" in response.text
+    assert 'url: "https://cdn.3dassets.dev/assets/2969/v1/model.glb"' in response.text
+    assert 'source: "https://3dassets.dev/assets/off-grid-power-and-controls-roof-solar-panel-197e7d81"' in response.text
+    assert 'label: "Fondital VLC 25 flat-plate solar thermal collector"' in response.text
+    assert "const SOLAR_THERMAL_ANCHOR = [-0.18, 0.78, 0.08]" in response.text
     assert "const panelWidthWorld = s.x * 0.075" in response.text
     assert "const panelDepthWorld = s.z * 0.135" in response.text
-    assert "panelWidth: panelWidthWorld" in response.text
-    assert "panelDepth: panelDepthWorld" in response.text
+    assert "SolarThermalCollector_importedGLB" in response.text
+    assert "SolarThermalCollector_lowIronGlass" in response.text
+    assert "SolarThermalCollector_absorberRiser" in response.text
+    assert "await this.createSingleSolarThermalLayer()" in response.text
+    assert "this.mountLayerOnRoof(layer, SOLAR_THERMAL_ANCHOR)" in response.text
     assert "const thermalScale = clamp(" in response.text
     assert "0.82 + Number(detail.solarThermalArea || 0) * 0.025" in response.text
     assert "1.10" in response.text
