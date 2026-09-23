@@ -516,7 +516,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnLiveSolarThermalKw" type="range" min="0" max="30" step="0.5"' in response.text
     assert 'id="hlnQuickEditOverlay"' in response.text
     assert 'id="hlnQuickEditRange" type="range"' in response.text
-    assert "Glisează. La eliberare, valoarea se salvează și editorul dispare." in response.text
+    assert "Glisează și urmărește casa și rezultatul actualizându-se. Apasă Gata când ai terminat." in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
