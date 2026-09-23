@@ -404,7 +404,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
     assert "/static/home-lab-3d.css?v=3d25" in response.text
-    assert "/static/home-lab-3d.js?v=3d38" in response.text
+    assert "/static/home-lab-3d.js?v=3d39" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1459,8 +1459,10 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "detail.solarThermalArea" in response.text
     assert "createSingleSolarThermalLayer()" in response.text
     assert "anchor: [0.20, 0.78, 0.24]" in response.text
-    assert "panelWidth: s.x * 0.075" in response.text
-    assert "panelDepth: s.z * 0.135" in response.text
+    assert "const panelWidthWorld = s.x * 0.075" in response.text
+    assert "const panelDepthWorld = s.z * 0.135" in response.text
+    assert "panelWidth: panelWidthWorld" in response.text
+    assert "panelDepth: panelDepthWorld" in response.text
     assert "const thermalScale = clamp(" in response.text
     assert "0.82 + Number(detail.solarThermalArea || 0) * 0.025" in response.text
     assert "1.10" in response.text
@@ -1489,15 +1491,14 @@ def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimn
     assert 'const panelDepthWorld = s.z * 0.085' in source
     assert 'const gapZ = this.localLength(s.z * 0.006)' in source
     assert 'this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020])' in source
-    assert "const rowPitch = panelDepth + gapZ" in source
-    assert "const downslopeShift = rowPitch;" in source
     assert "localDownslope: localDownslope.toArray()" in source
     assert "basePositionLocal: group.position.toArray()" in source
-    assert "layer.position.addScaledVector(downslope, downslopeShift)" in source
     assert 'objectUuid: hit.object?.uuid || ""' in source
-    assert "const chimneyNudge = (panelWidth + gapX) * 0.30" in source
+    assert "const solarDownslopeShift = this.localLength(panelDepthWorld) * 0.55" in source
+    assert "layer.position.addScaledVector(downslope, solarDownslopeShift)" in source
+    assert "const solarChimneyNudge = this.localLength(panelWidthWorld) * 0.22" in source
     assert "crossVectors(roofNormal, downslope)" in source
-    assert "layer.position.addScaledVector(crossSlope, chimneyNudge)" in source
+    assert "layer.position.addScaledVector(crossSlope, solarChimneyNudge)" in source
     assert "runtime-calibrated" in source.lower()
     assert "return this.localPointFromNormalized([0.076, 1.005, 0.033])" in source
     assert '"condensing_gas_boiler"' in source

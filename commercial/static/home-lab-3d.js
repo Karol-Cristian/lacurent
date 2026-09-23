@@ -798,23 +798,6 @@ class HomeLabHouse3D {
     // the clear left roof face, below the ridge and away from the dormer.
     this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
 
-    // Move one complete row pitch along the actual steepest-descent vector
-    // of the GLB roof face, so the former lower row becomes the new middle row.
-    const rowPitch = panelDepth + gapZ;
-    const downslopeShift = rowPitch;
-    const chimneyNudge = (panelWidth + gapX) * 0.30;
-    const roofMount = layer.userData.roofMount || {};
-    const downslope = new THREE.Vector3(...(roofMount.localDownslope || [0, 0, 1])).normalize();
-    const roofNormal = new THREE.Vector3(...(roofMount.localNormal || [0, 1, 0])).normalize();
-    layer.position.addScaledVector(downslope, downslopeShift);
-
-    // Move across the roof face toward the measured taller chimney without
-    // contaminating the downslope displacement.
-    const crossSlope = new THREE.Vector3().crossVectors(roofNormal, downslope).normalize();
-    const chimneyTarget = this.existingChimneyLocalTop();
-    if (chimneyTarget.clone().sub(layer.position).dot(crossSlope) < 0) crossSlope.negate();
-    layer.position.addScaledVector(crossSlope, chimneyNudge);
-
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);
@@ -822,6 +805,8 @@ class HomeLabHouse3D {
 
   createSingleSolarThermalLayer() {
     const s = this.modelSize;
+    const panelWidthWorld = s.x * 0.075;
+    const panelDepthWorld = s.z * 0.135;
     const layer = this.createRoofCluster({
       type: "thermal",
       cols: 1,
@@ -829,10 +814,26 @@ class HomeLabHouse3D {
       // Runtime-probed main-roof point immediately to the right of the dormer.
       // It resolves to the same GLB roof mesh/plane used by the PV field.
       anchor: [0.20, 0.78, 0.24],
-      panelWidth: s.x * 0.075,
-      panelDepth: s.z * 0.135,
+      panelWidth: panelWidthWorld,
+      panelDepth: panelDepthWorld,
     });
     layer.name = "LaCurentLayer_solarThermal";
+
+    // The requested visual adjustment applies to the solar-thermal collector,
+    // not to the photovoltaic array. Move it clearly down the real roof slope
+    // and slightly toward the measured taller chimney.
+    const roofMount = layer.userData.roofMount || {};
+    const downslope = new THREE.Vector3(...(roofMount.localDownslope || [0, 0, 1])).normalize();
+    const roofNormal = new THREE.Vector3(...(roofMount.localNormal || [0, 1, 0])).normalize();
+    const solarDownslopeShift = this.localLength(panelDepthWorld) * 0.55;
+    layer.position.addScaledVector(downslope, solarDownslopeShift);
+
+    const crossSlope = new THREE.Vector3().crossVectors(roofNormal, downslope).normalize();
+    const chimneyTarget = this.existingChimneyLocalTop();
+    if (chimneyTarget.clone().sub(layer.position).dot(crossSlope) < 0) crossSlope.negate();
+    const solarChimneyNudge = this.localLength(panelWidthWorld) * 0.22;
+    layer.position.addScaledVector(crossSlope, solarChimneyNudge);
+
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("solarThermal", layer);
