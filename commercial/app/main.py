@@ -1067,6 +1067,19 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             "name": item.name,
             "type": item.type,
             "value_w_k": float(item.value),
+            "component": item.component.value if item.component is not None else None,
+            "boundary_type": item.boundary_type.value if item.boundary_type is not None else None,
+            "u_value_w_m2k": (
+                float(item.u_value_w_m2k)
+                if item.u_value_w_m2k is not None
+                else None
+            ),
+            "effective_u_value_w_m2k": (
+                float(item.effective_u_value_w_m2k)
+                if item.effective_u_value_w_m2k is not None
+                else None
+            ),
+            "calculation_method": item.calculation_method,
         }
         for item in [*result.envelope_contributions, *result.thermal_bridge_contributions]
         if float(item.value) > 0
@@ -1077,6 +1090,11 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 "name": "Ventilație / infiltrații",
                 "type": "ventilation",
                 "value_w_k": float(result.h_ve_w_k),
+                "component": "Hve",
+                "boundary_type": "outside_air",
+                "u_value_w_m2k": None,
+                "effective_u_value_w_m2k": None,
+                "calculation_method": "ventilation_heat_transfer",
             }
         )
     loss_total = sum(row["value_w_k"] for row in loss_rows) or 1.0
