@@ -2267,16 +2267,14 @@
         working:"Caut un pachet pentru renovarea majoră…",
       };
     }
-    return {
-      eyebrow:"OPTIMIZARE EFICIENTĂ",
-      title:"Configurează automat îmbunătățirile",
-      hint:"Reduce energia primară fără să impună artificial un prag nZEB",
-      working:"Caut un pachet eficient de îmbunătățiri…",
-    };
+    return null;
   }
 
   function renderAutomaticRenovationCopy() {
+    const container = $("#hlnRegulatoryConfig");
     const copy = automaticRenovationCopy();
+    if (container) container.hidden = !copy;
+    if (!copy) return;
     const eyebrow = $("#hlnAutoRenovationEyebrow");
     const title = $("#hlnAutoRenovationTitle");
     const hint = $("#hlnAutoRenovationHint");
@@ -2285,8 +2283,86 @@
     if (hint) hint.textContent = copy.hint;
   }
 
+  function isFinancialOptimizationMeta(meta = optimizationMeta) {
+    return String(meta?.mode || "").startsWith("roi");
+  }
+
+  function economicOptimizerSettings(mode) {
+    if (mode === "roi-budget") {
+      const budgetLei = Number($("#hlnRoiBudget")?.value);
+      if (!Number.isFinite(budgetLei) || budgetLei < 1000) {
+        throw new Error("Introdu un buget de cel puțin 1.000 lei.");
+      }
+      return {
+        mode,
+        metaMode:"roi_budget",
+        label:`Best ROI · buget maxim ${fmt(budgetLei)} lei`,
+        budgetLei,
+        maxPaybackYears:null,
+        working:"Optimizez investițiile în bugetul ales…",
+      };
+    }
+    if (mode === "roi-payback") {
+      const maxPaybackYears = Number($("#hlnRoiPaybackYears")?.value);
+      if (!Number.isFinite(maxPaybackYears) || maxPaybackYears < 1 || maxPaybackYears > 30) {
+        throw new Error("Alege o amortizare maximă între 1 și 30 de ani.");
+      }
+      return {
+        mode,
+        metaMode:"roi_payback",
+        label:`Best ROI · amortizare ≤ ${fmt(maxPaybackYears,1)} ani`,
+        budgetLei:null,
+        maxPaybackYears,
+        working:"Caut cea mai mare economie în timpul de amortizare ales…",
+      };
+    }
+    return {
+      mode:"roi",
+      metaMode:"roi",
+      label:"Best ROI",
+      budgetLei:null,
+      maxPaybackYears:null,
+      working:"Calculez Best ROI…",
+    };
+  }
+
+  function bestEconomicVariantPerFamily(rows, settings) {
+    const families = new Map();
+    for (const row of rows) {
+      if (!row.costKnown || !row.positive || !Number.isFinite(row.annualSavingLei)) continue;
+      if (settings.budgetLei != null && row.capexLei > settings.budgetLei + 1e-6) continue;
+      if (
+        settings.maxPaybackYears != null &&
+        (!Number.isFinite(row.paybackYears) || row.paybackYears > settings.maxPaybackYears + 1e-6)
+      ) continue;
+      const previous = families.get(row.action.family);
+      if (!previous) {
+        families.set(row.action.family, row);
+        continue;
+      }
+      if (settings.mode === "roi") {
+        if (
+          row.roiPercentPerYear > previous.roiPercentPerYear + 1e-9 ||
+          Math.abs(row.roiPercentPerYear - previous.roiPercentPerYear) <= 1e-9 &&
+            row.annualSavingLei > previous.annualSavingLei
+        ) families.set(row.action.family, row);
+      } else if (
+        row.annualSavingLei > previous.annualSavingLei + 1e-9 ||
+        Math.abs(row.annualSavingLei - previous.annualSavingLei) <= 1e-9 &&
+          row.roiPercentPerYear > previous.roiPercentPerYear
+      ) {
+        families.set(row.action.family, row);
+      }
+    }
+    return [...families.values()];
+  }
+
   async function configureNzeb() {
     if (!baselineSaved || !homeResult) return;
+    if (projectMode === "existing_standard") {
+      setOptimizationNote("<strong>Alege un obiectiv economic.</strong><span>Pentru renovarea obișnuită, Home Lab optimizează prin Best ROI, buget maxim sau timp maxim de amortizare.</span>");
+      return;
+    }
 
     const target = regulatoryTargetForProjectMode();
     const constrained = projectMode !== "existing_standard";
@@ -2517,32 +2593,30 @@
     }
   }
 
-  async function configureBestRoi() {
+  async function configureBestRoi(constraintMode = "roi") {
     if (!baselineSaved || !homeResult) return;
 
+    let settings;
     try {
+      settings = economicOptimizerSettings(constraintMode);
       await loadRoiCostBasis();
     } catch (error) {
       setOptimizationNote(
-        "<strong>Catalogul de costuri nu este disponibil momentan.</strong><span>Best ROI are nevoie de CAPEX, dar nu cer utilizatorului să întrețină aceste date. Încearcă din nou după ce catalogul revine.</span>",
+        `<strong>Optimizarea economică nu poate porni.</strong><span>${escapeHtml(error?.message || "Catalogul de costuri nu este disponibil momentan.")}</span>`,
         "warn"
       );
-      setStatus("Catalog costuri indisponibil", "error");
+      setStatus("Optimizare economică indisponibilă", "error");
       return;
     }
 
     const target = regulatoryTargetForProjectMode();
     if (projectMode !== "existing_standard" && !target) {
-      setOptimizationNote("<strong>Best ROI nu poate aplica guardrail-ul selectat.</strong><span>Lipsește pragul metodologic pentru zona climatică / tipul clădirii.</span>", "warn");
+      setOptimizationNote("<strong>Optimizarea economică nu poate aplica guardrail-ul selectat.</strong><span>Lipsește pragul metodologic pentru zona climatică / tipul clădirii.</span>", "warn");
       return;
     }
 
-    const actions = adaptiveOptimizerActions(
-      migrateStoredHeatingState({...homeState}, defaultState),
-      {},
-      target,
-      "roi"
-    );
+    const baseState = migrateStoredHeatingState({...homeState}, defaultState);
+    const actions = adaptiveOptimizerActions(baseState, {}, target, "roi");
     const mandatoryFamilies = new Set(
       projectMode === "new_nzeb"
         ? nzebEnvelopeActions(homeState, {}, target).map(action => action.family || action.id)
@@ -2552,25 +2626,21 @@
     const missingMandatoryCosts = [...mandatoryFamilies].filter(family => positiveRoiCost(family) == null);
     const knownActions = actions.filter(action => positiveRoiCost(action.family) != null);
     const missingFamilies = [...new Set(
-      actions
-        .filter(action => positiveRoiCost(action.family) == null)
-        .map(action => action.family)
+      actions.filter(action => positiveRoiCost(action.family) == null).map(action => action.family)
     )];
 
     if (missingMandatoryCosts.length) {
       const details = $("#hlnRoiCostDetails");
       if (details) details.open = true;
       setOptimizationNote(
-        `<strong>Catalogul D1 nu are încă toate familiile obligatorii.</strong><span>Lipsesc: ${escapeHtml(missingMandatoryCosts.join(", "))}. Nu cer aceste valori utilizatorului și nu inventez CAPEX.</span>`,
+        `<strong>Catalogul D1 nu are încă toate familiile obligatorii.</strong><span>Lipsesc: ${escapeHtml(missingMandatoryCosts.join(", "))}. Nu inventez CAPEX.</span>`,
         "warn"
       );
       return;
     }
     if (!knownActions.length) {
-      const details = $("#hlnRoiCostDetails");
-      if (details) details.open = true;
       setOptimizationNote(
-        "<strong>Catalogul de costuri nu are încă un candidat utilizabil.</strong><span>Optimizarea financiară va reveni automat când baza comercială este completă; utilizatorul nu trebuie să introducă prețuri.</span>",
+        "<strong>Catalogul de costuri nu are încă un candidat utilizabil.</strong><span>Utilizatorul nu trebuie să introducă manual costurile interne ale catalogului.</span>",
         "warn"
       );
       return;
@@ -2580,13 +2650,17 @@
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setOptimizerBusy(true);
-    setStatus("Calculez amortizarea simplă…");
+    setStatus(settings.working);
+    const constraintCopy = settings.budgetLei != null
+      ? `Nu depășesc ${fmt(settings.budgetLei)} lei și maximizez economia anuală a pachetului.`
+      : settings.maxPaybackYears != null
+        ? `Accept numai pachete cu amortizare simplă ≤ ${fmt(settings.maxPaybackYears,1)} ani și maximizez economia anuală.`
+        : "Maximizez randamentul anual simplu: economie anuală / CAPEX.";
     setOptimizationNote(
-      `<strong>Compar investițiile…</strong><span>Recalculez soluțiile cu CAPEX cunoscut și compar economia anuală raportată la investiție sub guardrail-ul „${escapeHtml(projectModeLabel())}”. Interfața rămâne activă.</span>`
+      `<strong>${escapeHtml(settings.label)}…</strong><span>${escapeHtml(constraintCopy)} Guardrail: „${escapeHtml(projectModeLabel())}”.</span>`
     );
 
     try {
-      const baseState = migrateStoredHeatingState({...homeState}, defaultState);
       const evaluated = await evaluateActionVariants(
         baseState,
         {},
@@ -2597,17 +2671,20 @@
       );
       if (runToken !== optimizerRunToken) return;
 
-      const familyWinners = bestVariantPerFamily(evaluated, "roi");
-      const rankedOpportunities = familyWinners
-        .filter(row => row.costKnown && Number.isFinite(row.roiPercentPerYear))
-        .sort((a, b) => b.roiPercentPerYear - a.roiPercentPerYear);
+      const familyWinners = bestEconomicVariantPerFamily(evaluated, settings);
+      const rankedOpportunities = [...familyWinners].sort((a, b) => {
+        if (settings.mode === "roi") return b.roiPercentPerYear - a.roiPercentPerYear;
+        return b.annualSavingLei - a.annualSavingLei || b.roiPercentPerYear - a.roiPercentPerYear;
+      });
 
       if (!rankedOpportunities.length) {
-        setOptimizationNote(
-          "<strong>Nu există încă o soluție cu ROI calculabil.</strong><span>Catalogul furnizează CAPEX-ul, dar economia anuală nu este pozitivă pentru candidații disponibili.</span>",
-          "warn"
-        );
-        setStatus("Fără candidat cu amortizare pozitivă");
+        const why = settings.budgetLei != null
+          ? "Nicio măsură testată cu economie pozitivă nu încape în bugetul ales."
+          : settings.maxPaybackYears != null
+            ? "Nicio măsură testată cu economie pozitivă nu se amortizează în timpul ales."
+            : "Nu există încă o soluție cu ROI pozitiv calculabil.";
+        setOptimizationNote(`<strong>Nu am găsit o soluție eligibilă.</strong><span>${escapeHtml(why)}</span>`, "warn");
+        setStatus("Fără soluție economică eligibilă");
         scenarioResultState = scenarioResult ? "stale" : "empty";
         renderAll();
         return;
@@ -2616,53 +2693,61 @@
       let selectedRows = [];
       let state = baseState;
       let overrides = {};
-      let current = null;
-      let economics = null;
+      let current = homeResult;
+      let economics = roiEconomics(homeResult, homeResult, 0);
 
       if (!target) {
-        const positive = rankedOpportunities.filter(row => row.positive);
-        if (!positive.length) {
-          setOptimizationNote(
-            "<strong>Nicio intervenție nu are ROI pozitiv cu datele curente.</strong><span>Nu forțez o recomandare doar pentru a produce un rezultat.</span>",
-            "warn"
-          );
-          setStatus("Fără investiție cu economie anuală pozitivă");
-          scenarioResultState = scenarioResult ? "stale" : "empty";
-          renderAll();
-          return;
-        }
+        if (settings.mode === "roi") {
+          selectedRows = [rankedOpportunities[0]];
+          state = selectedRows[0].state;
+          overrides = selectedRows[0].overrides;
+          current = selectedRows[0].result;
+          economics = roiEconomics(homeResult, current, selectedRows[0].capexLei);
 
-        selectedRows = [positive[0]];
-        state = selectedRows[0].state;
-        overrides = selectedRows[0].overrides;
-        current = selectedRows[0].result;
-        economics = roiEconomics(homeResult, current, selectedRows[0].capexLei);
+          for (const row of rankedOpportunities.slice(1)) {
+            if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+            const candidate = row.action.apply(state, overrides);
+            const result = await calculateCandidate(candidate.state, candidate.overrides);
+            const packageCapex = selectedRows.reduce((sum, item) => sum + item.capexLei, 0) + row.capexLei;
+            const packageEconomics = roiEconomics(homeResult, result, packageCapex);
+            if (
+              packageEconomics.positive &&
+              packageEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6
+            ) {
+              selectedRows.push(row);
+              state = candidate.state;
+              overrides = candidate.overrides;
+              current = result;
+              economics = packageEconomics;
+            }
+          }
+        } else {
+          const candidates = rankedOpportunities;
+          for (const row of candidates) {
+            if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+            const packageCapex = selectedRows.reduce((sum, item) => sum + item.capexLei, 0) + row.capexLei;
+            if (settings.budgetLei != null && packageCapex > settings.budgetLei + 1e-6) continue;
 
-        // Testează sinergiile cumulativ, dar numai cât timp rămâne un slot
-        // rezervat pentru rezultatul final complet. Nu există limită pe numărul
-        // de măsuri; limita este exclusiv numărul de evaluări ale motorului.
-        for (const row of positive.slice(1)) {
-          if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
-          const candidate = row.action.apply(state, overrides);
-          const result = await calculateCandidate(candidate.state, candidate.overrides);
-          const packageCapex = selectedRows.reduce((sum, item) => sum + item.capexLei, 0) + row.capexLei;
-          const packageEconomics = roiEconomics(homeResult, result, packageCapex);
-          if (
-            packageEconomics.positive &&
-            packageEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6
-          ) {
-            selectedRows.push(row);
-            state = candidate.state;
-            overrides = candidate.overrides;
-            current = result;
-            economics = packageEconomics;
+            const candidate = row.action.apply(state, overrides);
+            const result = await calculateCandidate(candidate.state, candidate.overrides);
+            const packageEconomics = roiEconomics(homeResult, result, packageCapex);
+            const passesTime = settings.maxPaybackYears == null ||
+              (Number.isFinite(packageEconomics.paybackYears) && packageEconomics.paybackYears <= settings.maxPaybackYears + 1e-6);
+            const improvesSaving = packageEconomics.positive &&
+              packageEconomics.annualSavingLei > Number(economics.annualSavingLei || 0) + 1e-6;
+            if (passesTime && improvesSaving) {
+              selectedRows.push(row);
+              state = candidate.state;
+              overrides = candidate.overrides;
+              current = result;
+              economics = packageEconomics;
+            }
           }
         }
       } else {
-        // Pentru un proiect cu prag global, pornește de la toate familiile cu
-        // CAPEX cunoscut. Apoi elimină măsuri dacă pachetul rămâne conform și
-        // ROI-ul pachetului crește. Astfel numărul de intervenții nu este plafonat.
-        selectedRows = [...familyWinners].filter(row => row.costKnown);
+        // Pentru proiectele cu guardrail normativ, pornește de la câștigătorii
+        // eligibili pe familie și elimină măsuri numai dacă ținta rămâne atinsă.
+        selectedRows = [...familyWinners];
         const mandatoryMissingFromPackage = [...mandatoryFamilies].filter(
           family => !selectedRows.some(row => row.action.family === family)
         );
@@ -2677,10 +2762,10 @@
 
         if (!regulatoryMeetsTarget(current, target, state, overrides)) {
           setOptimizationNote(
-            `<strong>Nu am găsit un pachet care să treacă guardrail-ul „${escapeHtml(projectModeLabel())}”.</strong><span>Am testat toate familiile cu CAPEX cunoscut în bugetul bounded. Nu declar conformitate dacă pragurile nu sunt atinse.</span><small>Evaluări motor: ${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS}.</small>`,
+            `<strong>Nu am găsit un pachet care să treacă guardrail-ul „${escapeHtml(projectModeLabel())}”.</strong><span>Nu declar conformitate dacă pragurile nu sunt atinse.</span>`,
             "warn"
           );
-          setStatus("Optimizare financiară: guardrail neîndeplinit");
+          setStatus("Guardrail normativ neîndeplinit");
           scenarioResultState = scenarioResult ? "stale" : "empty";
           renderAll();
           return;
@@ -2692,25 +2777,42 @@
 
         for (const row of removalOrder) {
           if (optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS - 1) break;
+          const constraintAlreadyMet = settings.budgetLei != null
+            ? economics.capexLei <= settings.budgetLei + 1e-6
+            : settings.maxPaybackYears != null
+              ? Number.isFinite(economics.paybackYears) && economics.paybackYears <= settings.maxPaybackYears + 1e-6
+              : false;
+          if (settings.mode !== "roi" && constraintAlreadyMet) break;
+
           const trialRows = selectedRows.filter(item => item !== row);
           const trialPackage = applyOptimizerRows(trialRows);
           const trialResult = await calculateCandidate(trialPackage.state, trialPackage.overrides);
           if (!regulatoryMeetsTarget(trialResult, target, trialPackage.state, trialPackage.overrides)) continue;
           const trialCapex = trialRows.reduce((sum, item) => sum + item.capexLei, 0);
           const trialEconomics = roiEconomics(homeResult, trialResult, trialCapex);
-          if (
-            Number.isFinite(trialEconomics.roiPercentPerYear) &&
-            (!Number.isFinite(economics.roiPercentPerYear) ||
-              trialEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6)
-          ) {
+
+          const accept = settings.mode === "roi"
+            ? Number.isFinite(trialEconomics.roiPercentPerYear) &&
+              (!Number.isFinite(economics.roiPercentPerYear) || trialEconomics.roiPercentPerYear > economics.roiPercentPerYear + 1e-6)
+            : settings.budgetLei != null
+              ? trialEconomics.capexLei < economics.capexLei - 1e-6
+              : Number.isFinite(trialEconomics.paybackYears) &&
+                (!Number.isFinite(economics.paybackYears) || trialEconomics.paybackYears < economics.paybackYears - 1e-6);
+
+          if (accept) {
             selectedRows = trialRows;
             state = trialPackage.state;
             overrides = trialPackage.overrides;
             current = trialResult;
             economics = trialEconomics;
-            packageCapex = trialCapex;
           }
         }
+      }
+
+      if (!selectedRows.length) {
+        setOptimizationNote("<strong>Niciun pachet eligibil nu a rămas după aplicarea constrângerii.</strong>", "warn");
+        setStatus("Fără pachet eligibil");
+        return;
       }
 
       current = await calculateCandidate(state, overrides, {compact:false});
@@ -2718,10 +2820,20 @@
       const capexLei = selectedRows.reduce((sum, row) => sum + row.capexLei, 0);
       economics = roiEconomics(homeResult, current, capexLei);
       const guardrailPass = regulatoryMeetsTarget(current, target, state, overrides);
+      const budgetPass = settings.budgetLei == null || economics.capexLei <= settings.budgetLei + 1e-6;
+      const paybackPass = settings.maxPaybackYears == null ||
+        (Number.isFinite(economics.paybackYears) && economics.paybackYears <= settings.maxPaybackYears + 1e-6);
       const selected = selectedRows.map(roiRowSummary);
       const selectedCapexTotal = selected.reduce((sum, item) => sum + Number(item.capexLei || 0), 0);
+
       if (!Number.isFinite(economics.capexLei) || Math.abs(selectedCapexTotal - economics.capexLei) > 1) {
         throw new Error("Inconsistență internă: CAPEX-ul pachetului nu corespunde intervențiilor selectate.");
+      }
+      if (!budgetPass) {
+        throw new Error(`Nu am găsit un pachet conform sub bugetul de ${fmt(settings.budgetLei)} lei.`);
+      }
+      if (!paybackPass) {
+        throw new Error(`Nu am găsit un pachet conform cu amortizare ≤ ${fmt(settings.maxPaybackYears,1)} ani.`);
       }
       if (selected.length === 1) {
         const only = selected[0];
@@ -2733,19 +2845,23 @@
           throw new Error("Inconsistență internă: economia pachetului cu o singură măsură nu corespunde economiei acelei măsuri.");
         }
       }
+
       const regulatoryNote = !target
-        ? "Renovare obișnuită: nu aplic un prag global 2.10a/2.10b; cerințele punctuale aplicabile intervențiilor rămân separate."
+        ? "Renovare obișnuită: fără prag global 2.10a/2.10b."
         : projectMode === "new_nzeb"
-          ? "Pragurile modelate nZEB pentru energie primară, CO₂ și anvelopă sunt respectate; RER și verificarea completă de conformitate rămân de verificat."
-          : "Pachetul respectă pragurile energetice/CO₂ modelate din MC001 Tabel 2.10b pentru renovare majoră; verificarea completă a proiectului rămâne separată.";
+          ? "Pragurile modelate nZEB sunt respectate; RER și verificarea completă rămân separate."
+          : "Pachetul respectă pragurile energetice/CO₂ modelate pentru renovare majoră.";
 
       applyOptimizerResult(state, current, overrides, {
-        mode:"roi",
-        label:"Amortizare simplă",
+        mode:settings.metaMode,
+        economicMode:settings.mode,
+        label:settings.label,
         projectMode,
         projectModeLabel:projectModeLabel(),
         regulatoryTarget:target,
         guardrailPass,
+        budgetLimitLei:settings.budgetLei,
+        maxPaybackYears:settings.maxPaybackYears,
         selected,
         rankedOpportunities:rankedOpportunities.map(roiRowSummary),
         capexLei:economics.capexLei,
@@ -2760,22 +2876,25 @@
         note:regulatoryNote,
       });
 
-      const roiText = Number.isFinite(economics.roiPercentPerYear)
-        ? `${fmt(economics.roiPercentPerYear,1)}%/an`
-        : "n/a";
+      const roiText = Number.isFinite(economics.roiPercentPerYear) ? `${fmt(economics.roiPercentPerYear,1)}%/an` : "n/a";
       const paybackText = economics.paybackYears == null ? "n/a" : `${fmt(economics.paybackYears,1)} ani`;
+      const constraintText = settings.budgetLei != null
+        ? `buget maxim ${fmt(settings.budgetLei)} lei`
+        : settings.maxPaybackYears != null
+          ? `amortizare maximă ${fmt(settings.maxPaybackYears,1)} ani`
+          : "randament maxim";
       setOptimizationNote(
-        `<strong>Amortizare simplă: ${paybackText} · randament anual simplu ${roiText}</strong>
-         <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length === 1 ? "1 măsură ROI selectată" : selected.length + " intervenții în pachet"}.</span>
-         <small>${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. CAPEX: ${escapeHtml(roiCostBasisMeta?.source === "d1" ? "catalog D1" : "catalog de rezervă")} · ${escapeHtml(roiCostBasisMeta?.catalog_version || "versiune n/a")}. ${escapeHtml(regulatoryNote)}${missingFamilies.length ? ` Familii fără CAPEX, excluse din ranking: ${escapeHtml(missingFamilies.join(", "))}.` : ""}</small>`,
-        guardrailPass && economics.positive ? "good" : "warn"
+        `<strong>${escapeHtml(settings.label)} · amortizare ${paybackText} · ROI ${roiText}</strong>
+         <span>CAPEX ${fmt(economics.capexLei)} lei · economie anuală ${economics.annualSavingLei >= 0 ? "+" : "−"}${fmt(Math.abs(economics.annualSavingLei))} lei/an · ${selected.length === 1 ? "1 măsură selectată" : selected.length + " intervenții în pachet"}.</span>
+         <small>Obiectiv: ${escapeHtml(constraintText)} · ${optimizerEvaluationCount}/${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări motor. ${escapeHtml(regulatoryNote)}</small>`,
+        guardrailPass && budgetPass && paybackPass && economics.positive ? "good" : "warn"
       );
-      setStatus("Amortizare simplă calculată", "ok");
+      setStatus("Optimizare economică calculată", "ok");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
       scenarioResultState = scenarioResult ? "stale" : "empty";
-      setOptimizationNote(`<strong>Amortizarea simplă nu este disponibilă.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
-      setStatus(error?.message || "Amortizarea simplă nu este disponibilă.", "error");
+      setOptimizationNote(`<strong>Optimizarea economică nu este disponibilă.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`, "warn");
+      setStatus(error?.message || "Optimizarea economică nu este disponibilă.", "error");
       renderAll();
     } finally {
       buttons.forEach(button => button.disabled = false);
@@ -3367,17 +3486,22 @@
 
     const investmentSummary = $("#hlnScenarioInvestmentSummary");
     if (investmentSummary) {
-      const selectedInvestments = optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)
+      const selectedInvestments = isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)
         ? optimizationMeta.selected
         : [];
       if (selectedInvestments.length) {
         const annualSaving = Number(optimizationMeta.annualSavingLei);
         const monthlyEquivalent = Number.isFinite(annualSaving) ? annualSaving / 12 : NaN;
         const singular = selectedInvestments.length === 1;
+        const objectiveLabel = optimizationMeta?.mode === "roi_budget"
+          ? `BEST ROI · BUGET ≤ ${fmt(optimizationMeta.budgetLimitLei)} LEI`
+          : optimizationMeta?.mode === "roi_payback"
+            ? `BEST ROI · AMORTIZARE ≤ ${fmt(optimizationMeta.maxPaybackYears,1)} ANI`
+            : singular ? "CEA MAI BUNĂ MĂSURĂ ROI" : "PACHET ROI SELECTAT";
         investmentSummary.hidden = false;
         investmentSummary.innerHTML = `
           <div>
-            <span>${singular ? "CEA MAI BUNĂ MĂSURĂ ROI" : "PACHET ROI SELECTAT"}</span>
+            <span>${objectiveLabel}</span>
             <strong>${singular ? escapeHtml(selectedInvestments[0].label) : selectedInvestments.length + " intervenții selectate"}</strong>
             <small>CAPEX total ${fmt(optimizationMeta.capexLei)} lei · economie ${fmt(annualSaving)} lei/an${Number.isFinite(monthlyEquivalent) ? ` · ≈ ${fmt(monthlyEquivalent)} lei/lună în medie` : ""} · amortizare ${optimizationMeta.paybackYears == null ? "n/a" : fmt(optimizationMeta.paybackYears,1) + " ani"}</small>
           </div>
@@ -3443,7 +3567,7 @@
     $("#hlnReportDecisionSaving").textContent = Number.isFinite(reportAnnualSaving)
       ? `${reportAnnualSaving >= 0 ? "+" : "−"}${fmt(Math.abs(reportAnnualSaving))} lei/an`
       : "—";
-    const financialScenario = optimizationMeta?.mode === "roi";
+    const financialScenario = isFinancialOptimizationMeta();
     const reportCapex = financialScenario ? Number(optimizationMeta.capexLei) : NaN;
     const reportPayback = financialScenario ? Number(optimizationMeta.paybackYears) : NaN;
     $("#hlnReportDecisionInvestment").textContent = Number.isFinite(reportCapex)
@@ -3679,7 +3803,7 @@
 
     const strategy = $("#hlnReportStrategy");
     if (strategy) {
-      if (optimizationMeta?.mode === "roi" && Array.isArray(optimizationMeta.selected)) {
+      if (isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)) {
         const selected = optimizationMeta.selected;
         const ranked = Array.isArray(optimizationMeta.rankedOpportunities)
           ? optimizationMeta.rankedOpportunities
@@ -3689,7 +3813,7 @@
           : `${fmt(optimizationMeta.paybackYears,1)} ani`;
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
-            <strong>Amortizare simplă · ${payback}</strong>
+            <strong>${escapeHtml(optimizationMeta.label || "Best ROI")} · amortizare ${payback}</strong>
             <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · randament anual simplu ${fmt(optimizationMeta.roiPercentPerYear,1)}%/an. Guardrail: ${escapeHtml(optimizationMeta.projectModeLabel || projectModeLabel())}.</span>
           </div>
           <div class="hln-strategy-list">
@@ -3741,7 +3865,7 @@
 
     const report = $("[data-hln-screen='report']");
     report?.classList.toggle("is-nzeb-target", optimizationMeta?.mode === "nzeb");
-    report?.classList.toggle("is-roi-target", optimizationMeta?.mode === "roi");
+    report?.classList.toggle("is-roi-target", isFinancialOptimizationMeta());
   }
 
   function renderProgress() {
@@ -4618,7 +4742,9 @@
   $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
-      if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi();
+      if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi("roi");
+      if (button.dataset.hlnSmartConfig === "roi-budget") await configureBestRoi("roi-budget");
+      if (button.dataset.hlnSmartConfig === "roi-payback") await configureBestRoi("roi-payback");
     });
   });
 
