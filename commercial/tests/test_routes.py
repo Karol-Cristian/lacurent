@@ -528,6 +528,13 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["transmission_components"]["hg_w_k"] > 0
     assert payload["annual_outdoor_temperature_c"] is not None
     assert payload["monthly"][0]["ground_transmission_kwh"] > 0
+    ground_loss = next(
+        row for row in payload["heat_loss_breakdown"]
+        if row.get("boundary_type") == "ground"
+    )
+    assert ground_loss["component"] == "Hg"
+    assert ground_loss["calculation_method"] == "iso13370_slab_on_ground_steady_state"
+    assert ground_loss["effective_u_value_w_m2k"] < ground_loss["u_value_w_m2k"]
 
 
 def test_form_maps_cold_attic_and_ground_to_hu_and_hg() -> None:
