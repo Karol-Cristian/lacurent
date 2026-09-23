@@ -401,12 +401,12 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next22" in response.text
-    assert "/static/home-lab-next.js?v=next46" in response.text
+    assert "/static/home-lab-next.css?v=next23" in response.text
+    assert "/static/home-lab-next.js?v=next47" in response.text
     assert "/static/home-lab-3d.css?v=3d26" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
-    assert "/static/home-lab-3d.js?v=3d46" in response.text
+    assert "/static/home-lab-3d.js?v=3d47" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1496,8 +1496,14 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "selectedMeasures" in response.text
     assert "this.authorMode && selectedMeasures.has(part)" in response.text
     assert "glazingGlassColors" in response.text
-    assert "LaCurentHeatPump_fanBlade" in response.text
-    assert "THREE.TorusGeometry" in response.text
+    assert 'url: "https://cdn.3dassets.dev/assets/14144/v1/model.glb"' in response.text
+    assert 'url: "https://cdn.3dassets.dev/assets/14142/v1/model.glb"' in response.text
+    assert "LaCurentHeatPump_importedGLB" in response.text
+    assert "LaCurentSplitAC_importedGLB" in response.text
+    assert 'group.userData.hlnControl = "heat_pump"' in response.text
+    assert 'ac.userData.hlnControl = "ac"' in response.text
+    assert "await this.createHeatPumpLayer()" in response.text
+    assert "await this.createVisualEquipment()" in response.text
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
@@ -1569,6 +1575,34 @@ def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> Non
     assert "never flash the old 2D house" in source
     assert ".hln-house-visual > svg" in source
     assert "display: none" in source
+
+
+def test_home_lab_house_equipment_is_directly_interactive() -> None:
+    scene = client.get("/static/home-lab-3d.js")
+    controller = client.get("/static/home-lab-next.js")
+    assert scene.status_code == 200
+    assert controller.status_code == 200
+    assert 'layer.userData.hlnControl = "pv"' in scene.text
+    assert 'layer.userData.hlnControl = "solar_thermal"' in scene.text
+    assert 'group.userData.hlnControl = "heat_pump"' in scene.text
+    assert 'ac.userData.hlnControl = "ac"' in scene.text
+    assert "interactiveControlHit()" in scene.text
+    assert '"hln:3d-control"' in scene.text
+    assert 'window.addEventListener("hln:3d-control"' in controller.text
+    assert 'openQuickMeasureEditor(control)' in controller.text
+    assert 'focusEditorControl("#hlnHomePvKwp")' in controller.text
+    assert 'focusEditorControl("#hlnHomeSolarThermalArea")' in controller.text
+
+
+def test_home_lab_mobile_keeps_house_labels_and_uses_blurred_quick_edit_overlay() -> None:
+    response = client.get("/static/home-lab-next.css")
+    assert response.status_code == 200
+    source = response.text
+    assert "House-first mobile interaction" in source
+    assert "backdrop-filter:blur(11px) saturate(.86)" in source
+    assert ".hln-hotspot span" in source
+    assert ".hln-zone span" in source
+    assert "display:inline" in source
 
 
 def test_embed_loader_supports_deferred_next_mounts() -> None:
