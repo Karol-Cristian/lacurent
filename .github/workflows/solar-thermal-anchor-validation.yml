@@ -55,12 +55,7 @@ jobs:
           cat /tmp/lacurent-uvicorn.log
           exit 1
 
-      - name: Run existing Chromium smoke
-        env:
-          HOME_LAB_BASE_URL: http://127.0.0.1:8000
-        run: node scripts/smoke-home-lab-browser.mjs
-
-      - name: Verify solar thermal has no fallback or skylight interception
+      - name: Run targeted Chromium geometry smoke
         env:
           HOME_LAB_BASE_URL: http://127.0.0.1:8000
         run: |
@@ -68,6 +63,8 @@ jobs:
           import { chromium } from "playwright";
           const browser = await chromium.launch({headless:true});
           const page = await browser.newPage({viewport:{width:1280,height:900}});
+          const errors = [];
+          page.on("pageerror", e => errors.push(String(e?.stack || e)));
           await page.goto(process.env.HOME_LAB_BASE_URL + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
           await page.waitForFunction(() => Array.isArray(window.__homeLab3D) && window.__homeLab3D[0]?.modelRoot, null, {timeout:30000});
           const result = await page.evaluate(() => {
@@ -89,6 +86,7 @@ jobs:
             const V = scene.modelSize.constructor;
             const R = scene.raycaster.constructor;
             const mounted = String(thermal.userData?.roofMount?.objectUuid || "");
+            const pvMounted = String(pv.userData?.roofMount?.objectUuid || "");
             const panel = thermal.children.find(child => child.visible);
             const body = panel?.children.find(child => Number.isFinite(child.geometry?.parameters?.width) && Number.isFinite(child.geometry?.parameters?.depth));
             const width = body?.geometry?.parameters?.width || 0;
@@ -101,35 +99,56 @@ jobs:
               [ width*0.46, depth*0.46],
             ];
             const roofMeshes = scene.inspectableMeshes.filter(mesh => mesh?.visible !== false);
+            const tolerance = scene.modelSize.y * 0.035;
             const sampleHits = samples.map(([x,z]) => {
               const point = panel.localToWorld(new V(x,0,z));
               const origin = point.clone();
               origin.y += scene.modelSize.y * 0.08;
               const hits = new R(origin,new V(0,-1,0),0,scene.modelSize.y*0.18).intersectObjects(roofMeshes,true);
+              const mountedHitIndex = hits.findIndex(hit => String(hit.object?.uuid || "") === mounted);
+              const mountedHit = mountedHitIndex >= 0 ? hits[mountedHitIndex] : null;
               return {
                 firstUuid:String(hits[0]?.object?.uuid || ""),
                 firstName:String(hits[0]?.object?.name || ""),
-                mountedHitIndex:hits.findIndex(hit => String(hit.object?.uuid || "") === mounted),
+                mountedHitIndex,
+                gap:mountedHit ? Math.abs(point.y-mountedHit.point.y) : null,
               };
             });
+            const pvNormal = new V(...(pv.userData?.roofMount?.worldNormal || [0,1,0])).normalize();
+            const thermalNormal = new V(...(thermal.userData?.roofMount?.worldNormal || [0,1,0])).normalize();
+            const smokeWorld = scene.modelRoot.localToWorld(smoke.position.clone()).toArray();
             return {
               fallback:Boolean(thermal.userData?.roofMountFallback),
+              thermalVisible:Boolean(thermal.visible),
+              thermalVisibleChildren:thermal.children.filter(child=>child.visible).length,
               thermalAnchor:thermal.userData?.roofMount?.anchor,
               thermalMountedUuid:mounted,
               thermalMountedMesh:String(thermal.userData?.roofMount?.mesh || ""),
-              pvMountedUuid:String(pv.userData?.roofMount?.objectUuid || ""),
+              pvVisible:Boolean(pv.visible),
+              pvVisibleChildren:pv.children.filter(child=>child.visible).length,
+              pvAnchor:pv.userData?.roofMount?.anchor,
+              pvMountedUuid:pvMounted,
+              roofNormalDot:pvNormal.dot(thermalNormal),
               sampleHits,
-              pvPosition:pv.position.toArray(),
-              smokePosition:smoke.position.toArray(),
+              supportTolerance:tolerance,
+              smokeVisible:Boolean(smoke.visible),
+              smokeWorld,
             };
           });
           console.log(JSON.stringify(result, null, 2));
+          if (errors.length) throw new Error("Page errors: " + JSON.stringify(errors));
+          if (!result.thermalVisible || result.thermalVisibleChildren !== 1) throw new Error("Solar thermal must expose exactly one visible collector");
           if (result.fallback) throw new Error("Solar thermal used roof mount fallback");
-          if (!result.thermalMountedUuid) throw new Error("Solar thermal has no mounted roof UUID");
-          if (result.thermalMountedUuid !== result.pvMountedUuid) throw new Error("Solar thermal is not mounted to the same main roof mesh as PV");
           if (JSON.stringify(result.thermalAnchor) !== JSON.stringify([-0.18,0.78,0.08])) throw new Error("Unexpected solar thermal anchor");
-          if (result.sampleHits.some(hit => hit.firstUuid !== result.thermalMountedUuid || hit.mountedHitIndex !== 0)) {
-            throw new Error("Solar thermal sample ray is intercepted before the main roof (possible skylight overlap): " + JSON.stringify(result.sampleHits));
+          if (!result.thermalMountedUuid || result.thermalMountedUuid !== result.pvMountedUuid) throw new Error("Solar thermal is not mounted to the main PV roof mesh");
+          if (result.sampleHits.some(hit => hit.mountedHitIndex !== 0 || hit.firstUuid !== result.thermalMountedUuid || hit.gap === null || hit.gap > result.supportTolerance)) {
+            throw new Error("Solar thermal corners are unsupported or intercepted before main roof (possible skylight overlap): " + JSON.stringify(result.sampleHits));
           }
+          if (result.roofNormalDot < 0.995) throw new Error("Solar thermal is not flush with main roof plane");
+          if (!result.pvVisible || result.pvVisibleChildren !== 8) throw new Error("PV layout/visibility changed");
+          if (JSON.stringify(result.pvAnchor) !== JSON.stringify([-0.34,0.72,0.16])) throw new Error("PV anchor changed");
+          if (!result.smokeVisible) throw new Error("Smoke unexpectedly hidden");
+          const [sx,sy,sz]=result.smokeWorld;
+          if (Math.abs(sx-0.80)>0.30 || Math.abs(sz-0.40)>0.30 || sy<4.85) throw new Error("Smoke/chimney runtime position changed unexpectedly");
           await browser.close();
           NODE
