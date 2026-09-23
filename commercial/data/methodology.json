@@ -35,16 +35,18 @@
       "limitations": "Annual steady-state ground coupling only. Seasonal periodic ground term/bm and explicit edge-insulation psi correction are not yet included."
     },
     "unheated_attic": {
-      "default_correction_factor": 0.75,
-      "factor_confidence": "low",
-      "factor_source": "LaCurent conservative Light bztu fallback; explicit override supported",
-      "monthly_temperature_model": "monthly_exterior_temperature_with_bztu"
+      "default_correction_factor": 1.0,
+      "factor_confidence": "conservative",
+      "factor_source": "Conservative no-buffer-credit fallback. MC001 bztu must be explicit/source-backed or derived from an explicit adjacent-zone heat balance before any reduction below 1 is credited.",
+      "monthly_temperature_model": "monthly_exterior_temperature_with_bztu",
+      "explicit_balance_source": "MC001-2022 relations for Hztu;e, Hztu;tot and bztu; implemented only when exterior-zone and conditioned-zone heat-transfer inputs are explicit"
     },
     "unheated_basement": {
-      "default_correction_factor": 0.65,
-      "factor_confidence": "low",
-      "factor_source": "LaCurent Light bztu fallback; explicit override supported",
-      "monthly_temperature_model": "monthly_exterior_temperature_with_bztu"
+      "default_correction_factor": 1.0,
+      "factor_confidence": "conservative",
+      "factor_source": "Conservative no-buffer-credit fallback. No unheated-basement temperature benefit is credited without an explicit/source-backed bztu or adjacent-zone heat balance.",
+      "monthly_temperature_model": "monthly_exterior_temperature_with_bztu",
+      "explicit_balance_source": "MC001-2022 adjacent-unheated-zone heat-balance path"
     }
   },
   "dhw": {
