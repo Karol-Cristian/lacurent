@@ -261,6 +261,51 @@ def test_cold_attic_uses_hu_while_heated_attic_roof_uses_hd() -> None:
     assert heated_rows[0].calculation_method == "direct_outside_air"
 
 
+def test_ground_floor_insulation_saving_is_not_ranked_as_outside_air_saving() -> None:
+    def floor_case(u_value: float, boundary: str) -> BuildingInput:
+        element = {
+            "name": "Floor",
+            "type": "floor",
+            "area_m2": 60,
+            "u_value_w_m2k": u_value,
+            "boundary_type": boundary,
+        }
+        if boundary == "ground":
+            element["ground_contact"] = {
+                "exposed_perimeter_m": 31,
+                "wall_thickness_m": 0.30,
+                "ground_conductivity_w_mk": 2.0,
+            }
+        return BuildingInput(
+            project_name="Floor marginal saving",
+            locality="Cluj-Napoca",
+            heated_floor_area_m2=60,
+            heated_volume_m3=162,
+            indoor_design_temperature_c=20,
+            internal_gains_w_m2=0,
+            solar_gains_kwh_m2_month=0,
+            solar={"mode": "explicit"},
+            envelope=[element],
+            thermal_bridges=[],
+            ventilation={"air_changes_per_hour": 0, "heat_recovery_efficiency": 0},
+            heating={"system_type": "condensing_gas_boiler", "efficiency": 0.95},
+            cooling={"enabled": False},
+            dhw={"enabled": False, "occupants": 0, "efficiency": 0.85},
+        )
+
+    ground_before = calculate(floor_case(0.90, "ground"), include_reference=False)
+    ground_after = calculate(floor_case(0.42, "ground"), include_reference=False)
+    outside_before = calculate(floor_case(0.90, "outside_air"), include_reference=False)
+    outside_after = calculate(floor_case(0.42, "outside_air"), include_reference=False)
+
+    ground_saving = ground_before.annual_heating_demand_kwh - ground_after.annual_heating_demand_kwh
+    outside_saving = outside_before.annual_heating_demand_kwh - outside_after.annual_heating_demand_kwh
+
+    assert ground_saving > 0
+    assert outside_saving > 0
+    assert ground_saving < outside_saving
+
+
 def test_ground_monthly_transfer_uses_annual_exterior_temperature() -> None:
     building = BuildingInput(
         project_name="Ground boundary",
