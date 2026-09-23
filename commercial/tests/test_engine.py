@@ -257,7 +257,7 @@ def test_cold_attic_uses_hu_while_heated_attic_roof_uses_hd() -> None:
     assert cold_components.hd_w_k == 0
     assert heated_components.hd_w_k == pytest.approx(40.0)
     assert heated_components.hu_w_k == 0
-    assert cold_rows[0].calculation_method == "explicit_boundary_temperature_factor"
+    assert cold_rows[0].calculation_method == "explicit_bztu_boundary_factor"
     assert heated_rows[0].calculation_method == "direct_outside_air"
 
 
