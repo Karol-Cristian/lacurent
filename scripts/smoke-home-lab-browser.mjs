@@ -130,8 +130,32 @@ try {
         center:panel.getWorldPosition(new Vector3Ctor()).toArray(),
       }));
 
+    const pvRegion = new Box3Ctor().setFromObject(pv).expandByScalar(scene.modelSize.x * 0.08);
+    const glbMeshesNearPv = scene.inspectableMeshes
+      .map(mesh => {
+        const box = new Box3Ctor().setFromObject(mesh);
+        const center = box.getCenter(new Vector3Ctor());
+        const size = box.getSize(new Vector3Ctor());
+        const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(material => ({
+          name:String(material?.name || ""),
+          color:material?.color?.getHexString?.() || "",
+          hasMap:Boolean(material?.map),
+        }));
+        return {
+          name:String(mesh.name || ""),
+          uuid:String(mesh.uuid || ""),
+          center:center.toArray(),
+          size:size.toArray(),
+          materials,
+          intersectsPvRegion:box.intersectsBox(pvRegion),
+        };
+      })
+      .filter(item => item.intersectsPvRegion)
+      .sort((a, b) => a.center[1] - b.center[1]);
+
     return {
       pvPanelCentersWorld,
+      glbMeshesNearPv,
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
       pvSupport,
