@@ -1,0 +1,98 @@
+name: Worker route diagnostic
+
+on:
+  push:
+    branches:
+      - codex/house-first-interactive-equipment
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: python -m pip install uv
+      - run: node scripts/prepare-commercial-cloudflare-worker.mjs
+      - working-directory: .wrangler/commercial-v2-worker
+        run: npm install --save-dev wrangler@latest
+      - name: Sync Python Worker
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+      - name: Start Worker and identify failing GET route
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler dev --ip 127.0.0.1 --port 8788 > worker-dev.log 2>&1 &
+          pid=$!
+          trap 'cat worker-dev.log || true; kill $pid || true' EXIT
+          for attempt in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8788/health >/dev/null && break
+            sleep 2
+          done
+          paths=(
+            /
+            /software-testing
+            /instalatii
+            /instalatii/calculator/legacy
+            /embed
+            /embed-host-demo
+            /magazin
+            /embed/demo-store
+            /static/embed-house-lab.js
+            /static/home-lab/home-envelope.svg
+            /static/home-lab/window-orientation-card.svg
+            /static/home-lab/wood-fireplace.svg
+            /static/home-lab/district-heating.svg
+            /static/embed-loader.js
+            /software-testing/resources
+            /static/company.css
+            /static/testing_intake.css
+            /static/software_testing_v2.css
+            /static/painpoints.css
+            /static/favicon.svg
+            /health
+            /api/market-cost-basis
+            /demo
+            /static/app.css
+            /static/app.js
+            /instalatii/calculator
+            /home-lab/facts
+            /robots.txt
+            /sitemap.xml
+            /static/simulation-facts.css
+            /home-lab-next
+            /static/home-lab-next.js
+            /static/home-lab-next.css
+            /static/home-lab-product.js
+            /static/home-lab-product.css
+            /elivio-consilio
+            /elivio-consilio/confidentialitate
+            /static/elivio.css
+            /static/elivio.js
+          )
+          for path in "${paths[@]}"; do
+            code=$(curl -sS -o /tmp/route-body -w '%{http_code}' "http://127.0.0.1:8788$path" || true)
+            echo "ROUTE $path -> $code"
+            if [ "$code" != "200" ]; then
+              echo "BODY:"
+              head -c 1200 /tmp/route-body || true
+              echo
+              echo "WORKER LOG:"
+              tail -n 160 worker-dev.log || true
+              exit 1
+            fi
+          done
