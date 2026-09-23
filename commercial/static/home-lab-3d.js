@@ -740,11 +740,16 @@ class HomeLabHouse3D {
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_pv";
 
+    // One compact field on the same roof plane. The first two panels are the
+    // requested vertical pair; additional capacity fills the neighbouring
+    // column and then the upper row instead of scattering panels on the roof.
     const panels = [
-      { name: "PV_left_upper", anchor: [-0.36, 0.78, 0.18] },
-      { name: "PV_left_lower", anchor: [-0.34, 0.64, 0.31] },
-      { name: "PV_right_upper", anchor: [0.12, 0.80, 0.17] },
-      { name: "PV_right_outer", anchor: [0.34, 0.72, 0.29] },
+      { name: "PV_primary_lower", anchor: [-0.35, 0.62, 0.33] },
+      { name: "PV_primary_upper", anchor: [-0.35, 0.76, 0.20] },
+      { name: "PV_secondary_lower", anchor: [-0.21, 0.62, 0.33] },
+      { name: "PV_secondary_upper", anchor: [-0.21, 0.76, 0.20] },
+      { name: "PV_primary_top", anchor: [-0.35, 0.86, 0.08] },
+      { name: "PV_secondary_top", anchor: [-0.21, 0.86, 0.08] },
     ];
 
     panels.forEach(({ name, anchor }) => {
@@ -949,26 +954,39 @@ class HomeLabHouse3D {
   }
 
   existingChimneyLocalTop() {
-    const named = [];
+    const candidates = [];
     this.modelRoot.traverse((object) => {
       if (!object?.isMesh) return;
       const key = `${object.name || ""} ${object.material?.name || ""}`.toLowerCase();
-      if (/chimney|flue|smokestack|smoke_stack|chimenea/.test(key)) named.push(object);
+      if (!/chimney|flue|smokestack|smoke_stack|chimenea/.test(key)) return;
+      const box = new THREE.Box3().setFromObject(object);
+      candidates.push(new THREE.Vector3(
+        (box.min.x + box.max.x) * 0.5,
+        box.max.y,
+        (box.min.z + box.max.z) * 0.5
+      ));
     });
-    if (named.length) {
-      let top = null;
-      named.forEach((mesh) => {
-        const box = new THREE.Box3().setFromObject(mesh);
-        const point = new THREE.Vector3(
-          (box.min.x + box.max.x) * 0.5,
-          box.max.y,
-          (box.min.z + box.max.z) * 0.5
-        );
-        if (!top || point.y > top.y) top = point;
-      });
-      if (top) return this.modelRoot.worldToLocal(top.clone());
+
+    if (candidates.length) {
+      const distinct = [];
+      const separation = Math.max(this.modelSize.x, this.modelSize.z) * 0.08;
+      candidates
+        .sort((a, b) => b.y - a.y)
+        .forEach((point) => {
+          const sameStack = distinct.some((existing) =>
+            Math.hypot(existing.x - point.x, existing.z - point.z) < separation
+          );
+          if (!sameStack) distinct.push(point);
+        });
+
+      // The previous implementation selected the highest/first chimney.
+      // Prefer the other physical stack when a second one exists.
+      const selected = distinct[1] || distinct[0];
+      if (selected) return this.modelRoot.worldToLocal(selected.clone());
     }
-    return this.localPointFromNormalized([-0.22, 0.91, 0.12]);
+
+    // Final House fallback mirrored to the opposite roof stack.
+    return this.localPointFromNormalized([0.22, 0.91, 0.12]);
   }
 
   createExistingChimneySmoke() {
@@ -977,9 +995,9 @@ class HomeLabHouse3D {
     group.position.copy(this.existingChimneyLocalTop());
 
     const texture = this.createSmokeTexture();
-    const plumeHeight = this.localLength(this.modelSize.y * 0.18);
-    const baseSize = this.localLength(Math.max(0.16, this.modelSize.x * 0.035));
-    for (let index = 0; index < 5; index += 1) {
+    const plumeHeight = this.localLength(this.modelSize.y * 0.24);
+    const baseSize = this.localLength(Math.max(0.22, this.modelSize.x * 0.045));
+    for (let index = 0; index < 7; index += 1) {
       const material = new THREE.SpriteMaterial({
         map:texture,
         transparent:true,
@@ -988,7 +1006,7 @@ class HomeLabHouse3D {
         color:0xe4e8e5,
       });
       const sprite = new THREE.Sprite(material);
-      sprite.userData.smokePhase = index / 5;
+      sprite.userData.smokePhase = index / 7;
       sprite.userData.smokeHeight = plumeHeight;
       sprite.userData.smokeBaseSize = baseSize;
       group.add(sprite);
@@ -1013,7 +1031,7 @@ class HomeLabHouse3D {
       );
       const size = baseSize * (0.72 + t * 1.35);
       sprite.scale.set(size, size, 1);
-      sprite.material.opacity = Math.sin(Math.PI * t) * 0.30;
+      sprite.material.opacity = Math.sin(Math.PI * t) * 0.48;
     });
   }
 
@@ -1259,8 +1277,12 @@ class HomeLabHouse3D {
     const pv = this.experimentLayers.get("pv");
     if (pv) {
       pv.visible = Boolean(detail.pvEnabled);
+      // Visual density follows configured capacity without pretending that
+      // each rendered rectangle is one physical module. Roughly 2.5 kWp per
+      // representative panel gives 2 panels around 3–5 kWp, 4 around 10 kWp
+      // and fills the 6-panel field from about 15 kWp upward.
       const panelCount = detail.pvEnabled
-        ? Math.max(1, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 7.5)))
+        ? Math.max(2, Math.min(pv.children.length, Math.ceil(Number(detail.pvKwp || 0) / 2.5)))
         : 0;
       pv.children.forEach((panel, index) => {
         panel.visible = index < panelCount;
