@@ -759,23 +759,81 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _boundary_factor(
+    form: dict[str, Any],
+    *,
+    boundary_type: str,
+    field_name: str,
+) -> float:
+    if boundary_type == "outside_air":
+        return 1.0
+    if boundary_type == "adjacent_heated_space":
+        return 0.0
+
+    explicit = parse_optional_float(form.get(field_name))
+    if explicit is not None:
+        return explicit
+
+    cfg = methodology()["boundary_conditions_light"]
+    defaults = {
+        "ground": cfg["ground"]["default_correction_factor"],
+        "unheated_attic": cfg["unheated_attic"]["default_correction_factor"],
+        "unheated_basement": cfg["unheated_basement"]["default_correction_factor"],
+        "unheated_space": cfg["unheated_basement"]["default_correction_factor"],
+        "adjacent_unheated_space": cfg["unheated_basement"]["default_correction_factor"],
+    }
+    if boundary_type not in defaults:
+        raise ValueError(f"Tip de frontieră termică nesuportat: {boundary_type}")
+    return float(defaults[boundary_type])
+
+
 def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     technical = _technical_values(form)
     components = []
+
+    roof_boundary = str(form.get("roof_boundary_type") or "outside_air")
+    floor_boundary = str(form.get("floor_boundary_type") or "ground")
     component_map = [
-        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value"),
-        ("Acoperiș / tavan", "roof", "roof_area_m2", "roof_u_value"),
-        ("Pardoseală spre sol", "floor", "floor_area_m2", "floor_u_value"),
-        ("Ferestre", "window", "window_area_m2", "window_u_value"),
-        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value"),
+        ("Pereți exteriori", "exterior_wall", "wall_area_m2", "wall_u_value", "outside_air", "wall_boundary_correction_factor"),
+        (
+            "Planșeu superior / acoperiș",
+            "roof",
+            "roof_area_m2",
+            "roof_u_value",
+            roof_boundary,
+            "roof_boundary_correction_factor",
+        ),
+        (
+            "Pardoseală inferioară",
+            "floor",
+            "floor_area_m2",
+            "floor_u_value",
+            floor_boundary,
+            "floor_boundary_correction_factor",
+        ),
+        ("Ferestre", "window", "window_area_m2", "window_u_value", "outside_air", "window_boundary_correction_factor"),
+        ("Uși exterioare", "exterior_door", "door_area_m2", "door_u_value", "outside_air", "door_boundary_correction_factor"),
     ]
 
-    for name, kind, area_key, u_key in component_map:
+    for name, kind, area_key, u_key, boundary_type, factor_field in component_map:
         area = technical.get(area_key)
         u_value = technical.get(u_key)
         if area is None or area <= 0:
             continue
-        components.append({"name": name, "type": kind, "area_m2": area, "u_value_w_m2k": u_value})
+        components.append(
+            {
+                "name": name,
+                "type": kind,
+                "area_m2": area,
+                "u_value_w_m2k": u_value,
+                "boundary_type": boundary_type,
+                "boundary_correction_factor": _boundary_factor(
+                    form,
+                    boundary_type=boundary_type,
+                    field_name=factor_field,
+                ),
+            }
+        )
 
     thermal_bridges = []
     bridge_length = technical.get("thermal_bridge_length_m")
