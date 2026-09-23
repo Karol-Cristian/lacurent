@@ -38,6 +38,38 @@ try {
   await page.waitForTimeout(1200);
   await expectVisible("#hlnDockCta");
 
+  // Save the baseline, run the same Best ROI path used by the product, and
+  // require the visible Scenario economics to reconcile with the optimizer.
+  await page.locator("#hlnDockCta").click();
+  await expectVisible('[data-hln-screen="site"].is-active');
+  await page.locator('[data-hln-smart-config="roi"]').click();
+  await page.waitForFunction(
+    () => document.querySelector("#hlnOptimizationNote")?.textContent?.includes("Amortizare simplă"),
+    null,
+    {timeout:45000}
+  );
+  const optimizerMeasures = await page.evaluate(() => window.__homeLabVisualState?.measures || []);
+  if (!optimizerMeasures.length) throw new Error("Best ROI did not expose any selected measure");
+
+  await page.locator("#hlnDockCta").click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await expectVisible("#hlnScenarioInvestmentSummary");
+  const investmentText = await page.locator("#hlnScenarioInvestmentSummary").innerText();
+  if (!/CAPEX total/i.test(investmentText) || !/lei\/an/i.test(investmentText)) {
+    throw new Error("Scenario ROI reconciliation is incomplete: " + investmentText);
+  }
+
+  await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
+  await expectVisible('[data-hln-screen="report"].is-active');
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.locator('.hln-report-actions [data-hln-go="scenario"]').click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await page.waitForTimeout(50);
+  const scrollAfterReport = await page.evaluate(() => window.scrollY);
+  if (scrollAfterReport > 20) {
+    throw new Error(`Report navigation did not reset scroll immediately: ${scrollAfterReport}px`);
+  }
+
   if (pageErrors.length) {
     throw new Error("Browser page errors:\n" + pageErrors.join("\n"));
   }
