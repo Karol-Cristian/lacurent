@@ -1682,7 +1682,11 @@
           stateKey:"roofIns",
           targetU:Number(envelopeLimits.roof),
           step:10,
-          label:"Izolație suplimentară pod"
+          label:state.topBoundary === "flat_roof"
+            ? "Izolație suplimentară terasă"
+            : state.topBoundary === "heated_attic"
+              ? "Izolație suplimentară acoperiș"
+              : "Izolație suplimentară planșeu spre pod"
         },
         {
           family:"wall",
@@ -2901,9 +2905,13 @@
   }
 
   function measureTitle(type) {
+    if (type === "roof") {
+      if (homeState.topBoundary === "flat_roof") return "Izolează terasa";
+      if (homeState.topBoundary === "heated_attic") return "Izolează acoperișul";
+      return "Izolează planșeul spre pod";
+    }
     return {
       wall: "Izolează fațada",
-      roof: "Izolează podul",
       floor: "Izolează pardoseala",
       windows: "Schimbă ferestrele",
       heating: "Schimbă încălzirea",
