@@ -45,9 +45,13 @@ try {
   await page.locator("#hlnRoiBudget").fill("50000");
   await page.locator('[data-hln-smart-config="roi-budget"]').click();
   await page.waitForFunction(
-    () => document.querySelector("#hlnOptimizationNote")?.textContent?.includes("Best ROI · buget"),
+    () => {
+      const button = document.querySelector('[data-hln-smart-config="roi-budget"]');
+      const note = String(document.querySelector("#hlnOptimizationNote")?.textContent || "");
+      return button && !button.disabled && note.includes("Best ROI · buget") && note.includes("CAPEX");
+    },
     null,
-    {timeout:60000}
+    {timeout:90000}
   );
   const optimizerMeasures = await page.evaluate(() => window.__homeLabVisualState?.measures || []);
   if (!optimizerMeasures.length) throw new Error("Budget Best ROI did not expose any selected measure");
