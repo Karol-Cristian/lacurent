@@ -816,7 +816,7 @@ class HomeLabHouse3D {
       cols: 1,
       rows: 1,
       // Runtime-probed lower-left point on the main roof mesh, clear of the roof window.
-      anchor: [-0.25, 0.78, 0.15],
+      anchor: [-0.18, 0.78, 0.08],
       panelWidth: panelWidthWorld,
       panelDepth: panelDepthWorld,
     });
