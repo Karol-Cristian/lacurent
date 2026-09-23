@@ -1138,36 +1138,6 @@ class HomeLabHouse3D {
     this.modelRoot.add(gasFlue);
     this.equipmentLayers.set("gasFlue", gasFlue);
 
-    const woodHeat = new THREE.Group();
-    woodHeat.name = "LaCurentVisual_woodHeat";
-    woodHeat.position.copy(this.localPointFromNormalized([-0.22, 0.84, 0.12]));
-    const chimneyMaterial = new THREE.MeshStandardMaterial({ color: 0x444846, roughness: 0.72, metalness: 0.18 });
-    const chimney = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        this.localLength(s.x * 0.018),
-        this.localLength(s.x * 0.020),
-        this.localLength(s.y * 0.22),
-        18
-      ),
-      chimneyMaterial
-    );
-    chimney.position.y = this.localLength(s.y * 0.10);
-    woodHeat.add(chimney);
-    const cap = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        this.localLength(s.x * 0.030),
-        this.localLength(s.x * 0.030),
-        this.localLength(s.y * 0.018),
-        18
-      ),
-      chimneyMaterial
-    );
-    cap.position.y = this.localLength(s.y * 0.22);
-    woodHeat.add(cap);
-    woodHeat.visible = false;
-    this.modelRoot.add(woodHeat);
-    this.equipmentLayers.set("woodHeat", woodHeat);
-
     const district = new THREE.Group();
     district.name = "LaCurentVisual_districtHeat";
     district.position.copy(this.localPointFromNormalized([-0.45, 0.18, 0.50]));
@@ -1342,8 +1312,8 @@ class HomeLabHouse3D {
     const gasFlue = this.equipmentLayers.get("gasFlue");
     if (gasFlue) gasFlue.visible = detail.heating === "condensing_gas_boiler" || detail.heating === "gas_boiler";
 
-    const woodHeat = this.equipmentLayers.get("woodHeat");
-    if (woodHeat) woodHeat.visible = ["wood_stove", "wood_boiler", "pellet_boiler"].includes(detail.heating);
+    const chimneySmoke = this.equipmentLayers.get("chimneySmoke");
+    if (chimneySmoke) chimneySmoke.visible = ["wood_stove", "wood_boiler", "pellet_boiler"].includes(detail.heating);
 
     const districtHeat = this.equipmentLayers.get("districtHeat");
     if (districtHeat) districtHeat.visible = detail.heating === "district_heat";
