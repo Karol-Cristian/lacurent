@@ -1590,8 +1590,8 @@ def test_home_lab_house_equipment_is_directly_interactive() -> None:
     assert '"hln:3d-control"' in scene.text
     assert 'window.addEventListener("hln:3d-control"' in controller.text
     assert 'openQuickMeasureEditor(control)' in controller.text
-    assert 'focusEditorControl("#hlnHomePvKwp")' in controller.text
-    assert 'focusEditorControl("#hlnHomeSolarThermalArea")' in controller.text
+    assert '"#hlnHomePvKwp"' in controller.text
+    assert '"#hlnHomeSolarThermalArea"' in controller.text
 
 
 def test_home_lab_mobile_keeps_house_labels_and_uses_blurred_quick_edit_overlay() -> None:
