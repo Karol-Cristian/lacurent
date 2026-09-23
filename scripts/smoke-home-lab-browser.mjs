@@ -38,25 +38,26 @@ try {
   await page.waitForTimeout(1200);
   await expectVisible("#hlnDockCta");
 
-  // Save the baseline, run the same Best ROI path used by the product, and
+  // Save the baseline, run the budget-constrained economic optimizer, and
   // require the visible Scenario economics to reconcile with the optimizer.
   await page.locator("#hlnDockCta").click();
   await expectVisible('[data-hln-screen="site"].is-active');
-  await page.locator('[data-hln-smart-config="roi"]').click();
+  await page.locator("#hlnRoiBudget").fill("50000");
+  await page.locator('[data-hln-smart-config="roi-budget"]').click();
   await page.waitForFunction(
-    () => document.querySelector("#hlnOptimizationNote")?.textContent?.includes("Amortizare simplă"),
+    () => document.querySelector("#hlnOptimizationNote")?.textContent?.includes("Best ROI · buget"),
     null,
-    {timeout:45000}
+    {timeout:60000}
   );
   const optimizerMeasures = await page.evaluate(() => window.__homeLabVisualState?.measures || []);
-  if (!optimizerMeasures.length) throw new Error("Best ROI did not expose any selected measure");
+  if (!optimizerMeasures.length) throw new Error("Budget Best ROI did not expose any selected measure");
 
   await page.locator("#hlnDockCta").click();
   await expectVisible('[data-hln-screen="scenario"].is-active');
   await expectVisible("#hlnScenarioInvestmentSummary");
   const investmentText = await page.locator("#hlnScenarioInvestmentSummary").innerText();
-  if (!/CAPEX total/i.test(investmentText) || !/lei\/an/i.test(investmentText)) {
-    throw new Error("Scenario ROI reconciliation is incomplete: " + investmentText);
+  if (!/BEST ROI · BUGET/i.test(investmentText) || !/CAPEX total/i.test(investmentText) || !/lei\/an/i.test(investmentText)) {
+    throw new Error("Scenario budget ROI reconciliation is incomplete: " + investmentText);
   }
 
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
