@@ -36,6 +36,7 @@ class GroundContactInput(BaseModel):
     exposed_perimeter_m: float = Field(gt=0)
     wall_thickness_m: float = Field(default=0.30, ge=0)
     ground_conductivity_w_mk: float = Field(default=2.0, gt=0)
+    edge_psi_w_mk: float = Field(default=0.0, ge=0, le=2)
 
 
 class HeatingSystemType(str, Enum):
@@ -401,6 +402,9 @@ class Contribution(BaseModel):
     component: TransmissionComponent | None = None
     boundary_type: EnvelopeBoundaryType | None = None
     boundary_correction_factor: float | None = None
+    u_value_w_m2k: float | None = None
+    effective_u_value_w_m2k: float | None = None
+    calculation_method: str | None = None
 
 
 class MonthlyBalance(BaseModel):
@@ -542,6 +546,7 @@ class CalculationResult(BaseModel):
     climate: dict
     h_tr_w_k: float
     transmission_components: TransmissionComponentsResult
+    annual_outdoor_temperature_c: float
     h_ve_w_k: float
     heat_loss_w_k: float
     envelope_geometry: EnvelopeGeometryResult
