@@ -146,8 +146,13 @@ class ThermalBridge(BaseModel):
 
 
 class VentilationInput(BaseModel):
+    # Legacy/equivalent total air-change rate. Existing callers keep using this.
     air_changes_per_hour: float = Field(ge=0, le=5)
     heat_recovery_efficiency: float = Field(default=0, ge=0, lt=1)
+    # Optional split used by Home Lab when the homeowner supplies airtightness.
+    # Infiltration bypasses heat recovery; controlled ventilation can be recovered.
+    infiltration_air_changes_per_hour: float | None = Field(default=None, ge=0, le=5)
+    ventilation_air_changes_per_hour: float | None = Field(default=None, ge=0, le=5)
 
 
 class HeatingInput(BaseModel):
