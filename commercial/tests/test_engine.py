@@ -754,7 +754,7 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.7"
+    assert cfg["version"] == "lacurent-commercial-v2.8"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]
