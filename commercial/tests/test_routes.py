@@ -1457,6 +1457,15 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert 'detail.ventilation === "mechanical" || detail.ventilation === "hrv"' in response.text
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
+    assert 'name:"SolarThermal_center"' in response.text
+    assert 'name:"SolarThermal_lower"' in response.text
+    assert 'name:"SolarThermal_upper"' in response.text
+    assert 'const panelWidthWorld = s.x * 0.052' in response.text
+    assert 'const panelDepthWorld = s.z * 0.095' in response.text
+    assert 'this.mountLayerOnRoof(layer, [0.30, 0.78, 0.38])' in response.text
+    assert 'Math.ceil(Number(detail.solarThermalArea || 0) / 4)' in response.text
+    assert 'solarThermal.scale.setScalar(1)' in response.text
+    assert 'const thermalScale =' not in response.text
     assert "selectedMeasures" in response.text
     assert "this.authorMode && selectedMeasures.has(part)" in response.text
     assert "glazingGlassColors" in response.text
