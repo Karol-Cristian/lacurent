@@ -741,11 +741,11 @@ class HomeLabHouse3D {
     layer.name = "LaCurentLayer_pv";
 
     const panelWidthWorld = s.x * 0.074;
-    const panelDepthWorld = s.z * 0.105;
+    const panelDepthWorld = s.z * 0.085;
     const panelWidth = this.localLength(panelWidthWorld);
     const panelDepth = this.localLength(panelDepthWorld);
     const gapX = this.localLength(s.x * 0.010);
-    const gapZ = this.localLength(s.z * 0.010);
+    const gapZ = this.localLength(s.z * 0.006);
 
     const xLeft = -(panelWidth + gapX) * 0.5;
     const xRight = (panelWidth + gapX) * 0.5;
@@ -775,7 +775,7 @@ class HomeLabHouse3D {
 
     // One raycast defines the plane for the whole PV field. The anchor sits on
     // the clear left roof face, below the ridge and away from the dormer.
-    this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.035]);
+    this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);
@@ -965,46 +965,11 @@ class HomeLabHouse3D {
   }
 
   existingChimneyLocalTop() {
-    // Probe only the known large ridge-chimney zone instead of scoring every
-    // roof protrusion. This prevents the dormer or the smaller stack from
-    // stealing the smoke anchor.
-    const probes = [
-      [-0.10, -0.12],
-      [-0.06, -0.12],
-      [-0.02, -0.12],
-      [-0.10, -0.07],
-      [-0.06, -0.07],
-      [-0.02, -0.07],
-    ];
-    const roofCandidates = this.inspectableMeshes.filter(mesh => mesh?.visible !== false);
-    const hits = [];
-
-    this.modelRoot.updateMatrixWorld(true);
-    probes.forEach(([nx, nz]) => {
-      const origin = new THREE.Vector3(
-        this.modelCenter.x + this.modelSize.x * nx,
-        this.modelBox.max.y + this.modelSize.y * 0.22,
-        this.modelCenter.z + this.modelSize.z * nz
-      );
-      const ray = new THREE.Raycaster(
-        origin,
-        new THREE.Vector3(0, -1, 0),
-        0,
-        this.modelSize.y * 1.6
-      );
-      const hit = ray.intersectObjects(roofCandidates, true)[0];
-      if (hit?.point) hits.push(hit.point.clone());
-    });
-
-    if (hits.length) {
-      hits.sort((a, b) => b.y - a.y);
-      const highest = hits[0].clone();
-      highest.y += this.modelSize.y * 0.018;
-      return this.modelRoot.worldToLocal(highest);
-    }
-
-    // Explicit Final House fallback at the large ridge chimney.
-    return this.localPointFromNormalized([-0.06, 0.965, -0.10]);
+    // Runtime-calibrated from the actual Final House GLB. The requested
+    // taller/other chimney peaks at world x≈0.8, z≈0.4, y≈4.93.
+    // Normalized against the loaded model this is approximately:
+    // x=0.076, y=1.005, z=0.033.
+    return this.localPointFromNormalized([0.076, 1.005, 0.033]);
   }
 
   createExistingChimneySmoke() {
@@ -1374,7 +1339,15 @@ class HomeLabHouse3D {
     if (gasFlue) gasFlue.visible = detail.heating === "condensing_gas_boiler" || detail.heating === "gas_boiler";
 
     const chimneySmoke = this.equipmentLayers.get("chimneySmoke");
-    if (chimneySmoke) chimneySmoke.visible = ["wood_stove", "wood_boiler", "pellet_boiler"].includes(detail.heating);
+    if (chimneySmoke) {
+      chimneySmoke.visible = [
+        "condensing_gas_boiler",
+        "gas_boiler",
+        "wood_stove",
+        "wood_boiler",
+        "pellet_boiler",
+      ].includes(detail.heating);
+    }
 
     const districtHeat = this.equipmentLayers.get("districtHeat");
     if (districtHeat) districtHeat.visible = detail.heating === "district_heat";
