@@ -23,13 +23,13 @@ try {
   await expectVisible('[data-hln-screen="home"].is-active');
 
   // Exercise the editor path that static/node syntax checks cannot validate.
-  await page.locator('[data-hln-editor-open="house"]').click();
+  await page.locator('.hln-config-row[data-hln-editor-open="house"]').click();
   await expectVisible('[data-hln-editor="house"]');
   await page.locator("#hlnArea").fill("130");
   await page.locator("#hlnArea").press("Tab");
   await page.locator("[data-hln-editor-close]").click();
 
-  await page.locator('[data-hln-editor-open="envelope"]').click();
+  await page.locator('.hln-config-row[data-hln-editor-open="envelope"]').click();
   await expectVisible('[data-hln-editor="envelope"]');
   const boundary = page.locator("#hlnHomeTopBoundary");
   if (await boundary.count()) {
