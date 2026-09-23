@@ -109,11 +109,28 @@ try {
     const thermalNormal = new Vector3Ctor(...(solarThermal.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
     const thermalCenter = solarThermalBox.getCenter(new Vector3Ctor());
 
+    const basePositionLocal = new Vector3Ctor(
+      ...(pv.userData?.roofMount?.basePositionLocal || [0, 0, 0])
+    );
+    const downslopeLocal = new Vector3Ctor(
+      ...(pv.userData?.roofMount?.localDownslope || [0, 0, 1])
+    ).normalize();
+    const basePositionWorld = scene.modelRoot.localToWorld(basePositionLocal.clone());
+    const currentOriginWorld = scene.modelRoot.localToWorld(pv.position.clone());
+    const downslopeTipWorld = scene.modelRoot.localToWorld(
+      basePositionLocal.clone().add(downslopeLocal)
+    );
+    const downslopeWorld = downslopeTipWorld.sub(basePositionWorld).normalize();
+    const pvVerticalDrop = basePositionWorld.y - currentOriginWorld.y;
 
     return {
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
       pvSupport,
+      downslopeWorld:downslopeWorld.toArray(),
+      pvVerticalDrop,
+      basePositionWorld:basePositionWorld.toArray(),
+      currentOriginWorld:currentOriginWorld.toArray(),
       solarThermalVisible:solarThermal.visible,
       solarThermalVisibleChildren:solarThermal.children.filter(child => child.visible).length,
       thermalSupport,
@@ -130,6 +147,10 @@ try {
   if (!roofVisualCalibration.pvSupport.mountedRoofUuid ||
       roofVisualCalibration.pvSupport.panels.some(panel => !panel.supported)) {
     throw new Error("PV field is not fully supported by its mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (roofVisualCalibration.downslopeWorld[1] > -0.15 ||
+      roofVisualCalibration.pvVerticalDrop < 0.05) {
+    throw new Error("PV movement is not materially downslope in world space: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.solarThermalVisible || roofVisualCalibration.solarThermalVisibleChildren !== 1) {
     throw new Error("Solar thermal calibration did not expose the compact collector");
