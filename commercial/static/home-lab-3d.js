@@ -740,12 +740,12 @@ class HomeLabHouse3D {
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_pv";
 
-    const panelWidthWorld = s.x * 0.080;
-    const panelDepthWorld = s.z * 0.135;
+    const panelWidthWorld = s.x * 0.074;
+    const panelDepthWorld = s.z * 0.105;
     const panelWidth = this.localLength(panelWidthWorld);
     const panelDepth = this.localLength(panelDepthWorld);
-    const gapX = this.localLength(s.x * 0.014);
-    const gapZ = this.localLength(s.z * 0.016);
+    const gapX = this.localLength(s.x * 0.010);
+    const gapZ = this.localLength(s.z * 0.010);
 
     const xLeft = -(panelWidth + gapX) * 0.5;
     const xRight = (panelWidth + gapX) * 0.5;
@@ -775,7 +775,7 @@ class HomeLabHouse3D {
 
     // One raycast defines the plane for the whole PV field. The anchor sits on
     // the clear left roof face, below the ridge and away from the dormer.
-    this.mountLayerOnRoof(layer, [-0.34, 0.72, 0.16]);
+    this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.035]);
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("pv", layer);
@@ -965,44 +965,46 @@ class HomeLabHouse3D {
   }
 
   existingChimneyLocalTop() {
-    const roofLine = this.modelBox.min.y + this.modelSize.y * 0.72;
-    const candidates = [];
+    // Probe only the known large ridge-chimney zone instead of scoring every
+    // roof protrusion. This prevents the dormer or the smaller stack from
+    // stealing the smoke anchor.
+    const probes = [
+      [-0.10, -0.12],
+      [-0.06, -0.12],
+      [-0.02, -0.12],
+      [-0.10, -0.07],
+      [-0.06, -0.07],
+      [-0.02, -0.07],
+    ];
+    const roofCandidates = this.inspectableMeshes.filter(mesh => mesh?.visible !== false);
+    const hits = [];
 
-    // The imported model does not expose stable chimney names. Detect original
-    // roof protrusions geometrically and prefer the substantial rectangular
-    // stack visible near the ridge, rather than an arbitrary named sub-mesh.
-    this.inspectableMeshes.forEach((mesh) => {
-      if (!mesh?.visible) return;
-      const box = new THREE.Box3().setFromObject(mesh);
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      const center = new THREE.Vector3();
-      box.getCenter(center);
-
-      const highEnough = box.max.y > roofLine;
-      const compactFootprint =
-        size.x > this.modelSize.x * 0.012 &&
-        size.z > this.modelSize.z * 0.012 &&
-        size.x < this.modelSize.x * 0.18 &&
-        size.z < this.modelSize.z * 0.18;
-      const verticalEnough = size.y > this.modelSize.y * 0.055;
-      if (!highEnough || !compactFootprint || !verticalEnough) return;
-
-      const footprint = size.x * size.z;
-      const volume = footprint * size.y;
-      const centerBias = 1 - clamp(Math.abs(center.x - this.modelCenter.x) / Math.max(this.modelSize.x * 0.5, 0.001), 0, 1);
-      const score = volume * (1 + centerBias * 0.35) + box.max.y * 0.001;
-      candidates.push({point:new THREE.Vector3(center.x, box.max.y, center.z), score});
+    this.modelRoot.updateMatrixWorld(true);
+    probes.forEach(([nx, nz]) => {
+      const origin = new THREE.Vector3(
+        this.modelCenter.x + this.modelSize.x * nx,
+        this.modelBox.max.y + this.modelSize.y * 0.22,
+        this.modelCenter.z + this.modelSize.z * nz
+      );
+      const ray = new THREE.Raycaster(
+        origin,
+        new THREE.Vector3(0, -1, 0),
+        0,
+        this.modelSize.y * 1.6
+      );
+      const hit = ray.intersectObjects(roofCandidates, true)[0];
+      if (hit?.point) hits.push(hit.point.clone());
     });
 
-    candidates.sort((a, b) => b.score - a.score);
-    if (candidates[0]?.point) {
-      return this.modelRoot.worldToLocal(candidates[0].point.clone());
+    if (hits.length) {
+      hits.sort((a, b) => b.y - a.y);
+      const highest = hits[0].clone();
+      highest.y += this.modelSize.y * 0.018;
+      return this.modelRoot.worldToLocal(highest);
     }
 
-    // Stable Final House fallback: large ridge chimney visible in the product
-    // model, not the previous guessed "second chimney" location.
-    return this.localPointFromNormalized([0.02, 0.94, -0.12]);
+    // Explicit Final House fallback at the large ridge chimney.
+    return this.localPointFromNormalized([-0.06, 0.965, -0.10]);
   }
 
   createExistingChimneySmoke() {
@@ -1011,9 +1013,9 @@ class HomeLabHouse3D {
     group.position.copy(this.existingChimneyLocalTop());
 
     const texture = this.createSmokeTexture();
-    const plumeHeight = this.localLength(this.modelSize.y * 0.30);
-    const baseSize = this.localLength(Math.max(0.28, this.modelSize.x * 0.055));
-    for (let index = 0; index < 9; index += 1) {
+    const plumeHeight = this.localLength(this.modelSize.y * 0.34);
+    const baseSize = this.localLength(Math.max(0.34, this.modelSize.x * 0.065));
+    for (let index = 0; index < 10; index += 1) {
       const material = new THREE.SpriteMaterial({
         map:texture,
         transparent:true,
@@ -1023,7 +1025,7 @@ class HomeLabHouse3D {
         color:0xb8c1bb,
       });
       const sprite = new THREE.Sprite(material);
-      sprite.userData.smokePhase = index / 9;
+      sprite.userData.smokePhase = index / 10;
       sprite.renderOrder = 30;
       sprite.userData.smokeHeight = plumeHeight;
       sprite.userData.smokeBaseSize = baseSize;
@@ -1049,7 +1051,7 @@ class HomeLabHouse3D {
       );
       const size = baseSize * (0.72 + t * 1.35);
       sprite.scale.set(size, size, 1);
-      sprite.material.opacity = Math.sin(Math.PI * t) * 0.68;
+      sprite.material.opacity = Math.sin(Math.PI * t) * 0.78;
     });
   }
 
