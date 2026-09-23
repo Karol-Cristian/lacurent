@@ -84,6 +84,12 @@
       heated_attic: "Mansardă încălzită",
       flat_roof: "Terasă / acoperiș plat"
     },
+    floorBoundary: {
+      ground: "Placă / pardoseală pe sol",
+      unheated_basement: "Peste subsol neîncălzit",
+      outside_air: "Peste exterior / spațiu deschis",
+      heated_space: "Peste spațiu încălzit"
+    },
     glazing: {
       reference_mc001: "Fereastră de referință MC001",
       single_clear_glazing: "Geam simplu",
@@ -157,6 +163,7 @@
     wallStructureThickness: 30,
     wallInsulationMaterial: "generic_040",
     topBoundary: "unknown",
+    floorBoundary: "ground",
     roofInsulationMaterial: "generic_040",
     floorInsulationMaterial: "generic_040",
     wallIns: 5,
@@ -1101,6 +1108,20 @@
     formSet("wall_area_m2", wallArea.toFixed(3));
     formSet("roof_area_m2", topArea.toFixed(3));
     formSet("floor_area_m2", footprint.toFixed(3));
+
+    const roofBoundaryType = state.topBoundary === "cold_attic"
+      ? "unheated_attic"
+      : "outside_air";
+    const floorBoundaryType = {
+      ground: "ground",
+      unheated_basement: "unheated_basement",
+      outside_air: "outside_air",
+      heated_space: "adjacent_heated_space",
+    }[state.floorBoundary] || "ground";
+    formSet("roof_boundary_type", roofBoundaryType);
+    formSet("roof_boundary_correction_factor", "");
+    formSet("floor_boundary_type", floorBoundaryType);
+    formSet("floor_boundary_correction_factor", "");
     formSet("window_area_m2", windows);
     formSet("thermal_bridge_length_m", (perimeter * levels).toFixed(3));
 
@@ -2823,8 +2844,9 @@
     const wallInsulationLabel = labels.insulation[state.wallInsulationMaterial] || labels.insulation.generic_040;
     const roofInsulationLabel = labels.insulation[state.roofInsulationMaterial] || labels.insulation.generic_040;
     const topBoundaryLabel = labels.topBoundary[state.topBoundary] || labels.topBoundary.unknown;
+    const floorBoundaryLabel = labels.floorBoundary[state.floorBoundary] || labels.floorBoundary.ground;
     $("#hlnEnvelopeSummary").textContent = `${structureLabel} · ${state.wallIns} cm ${wallInsulationLabel}`;
-    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${state.roofIns} cm ${roofInsulationLabel} · ${labels.glazing[state.glazing] || state.glazing}`;
+    $("#hlnEnvelopeMeta").textContent = `${topBoundaryLabel} · ${state.roofIns} cm ${roofInsulationLabel} · ${floorBoundaryLabel} · ${labels.glazing[state.glazing] || state.glazing}`;
     $("#hlnSystemsSummary").textContent = labels.heating[state.heating] || state.heating;
     const heatingParts = [
       labels.heatingEmitter[state.heatingEmitter] || state.heatingEmitter,
@@ -2910,9 +2932,14 @@
       if (homeState.topBoundary === "heated_attic") return "Izolează acoperișul";
       return "Izolează planșeul spre pod";
     }
+    if (type === "floor") {
+      if (homeState.floorBoundary === "unheated_basement") return "Izolează planșeul peste subsol";
+      if (homeState.floorBoundary === "outside_air") return "Izolează planșeul peste exterior";
+      if (homeState.floorBoundary === "heated_space") return "Planșeu peste spațiu încălzit";
+      return "Izolează pardoseala spre sol";
+    }
     return {
       wall: "Izolează fațada",
-      floor: "Izolează pardoseala",
       windows: "Schimbă ferestrele",
       heating: "Schimbă încălzirea",
       ventilation: "Ventilație & răcire",
@@ -3640,6 +3667,7 @@
     $("#hlnHomeWallStructureThickness").value = homeState.wallStructureThickness || 30;
     $("#hlnHomeWallInsulationMaterial").value = homeState.wallInsulationMaterial || "generic_040";
     $("#hlnHomeTopBoundary").value = homeState.topBoundary || "unknown";
+    $("#hlnHomeFloorBoundary").value = homeState.floorBoundary || "ground";
     $("#hlnHomeRoofInsulationMaterial").value = homeState.roofInsulationMaterial || "generic_040";
     $("#hlnHomeFloorInsulationMaterial").value = homeState.floorInsulationMaterial || "generic_040";
     $("#hlnHomeWallIns").value = homeState.wallIns;
@@ -3692,6 +3720,7 @@
     homeState.wallStructureThickness = Number($("#hlnHomeWallStructureThickness").value) || 30;
     homeState.wallInsulationMaterial = $("#hlnHomeWallInsulationMaterial").value;
     homeState.topBoundary = $("#hlnHomeTopBoundary").value;
+    homeState.floorBoundary = $("#hlnHomeFloorBoundary").value;
     homeState.roofInsulationMaterial = $("#hlnHomeRoofInsulationMaterial").value;
     homeState.floorInsulationMaterial = $("#hlnHomeFloorInsulationMaterial").value;
     homeState.wallIns = Number($("#hlnHomeWallIns").value);
@@ -4221,7 +4250,7 @@
     if (event.target === $("#hlnEditor")) closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnWallAreaOverride","#hlnTopAreaOverride","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
