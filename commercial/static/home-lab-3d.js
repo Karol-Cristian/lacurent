@@ -141,7 +141,11 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
       <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
-      <div class="hln-3d-compass" aria-hidden="true"><b>N</b><span>E</span><i>S</i><em>V</em></div>
+      <div class="hln-3d-compass" data-hln-3d-compass role="button" tabindex="${this.mode === "home" ? "0" : "-1"}" aria-label="Orientarea energetică a casei">
+        <b>N</b><span>E</span><i>S</i><em>V</em>
+        <span class="hln-3d-compass-arrow" data-hln-3d-compass-arrow aria-hidden="true"></span>
+        <small data-hln-3d-compass-value>S</small>
+      </div>
       <div class="hln-3d-hotspots" data-hln-3d-hotspots aria-label="Elemente selectabile ale casei"></div>
       <canvas class="hln-3d-canvas" aria-label="Model 3D interactiv al casei"></canvas>
     `;
@@ -608,8 +612,8 @@ class HomeLabHouse3D {
   }
 
   mountLayerOnRoof(group, anchor, fallbackSlope = 0.60) {
-    const baseMesh = this.inspectableMeshes[0];
-    if (!baseMesh) {
+    const roofCandidates = this.inspectableMeshes.filter(mesh => mesh?.visible !== false);
+    if (!roofCandidates.length) {
       group.position.copy(this.localPointFromNormalized(anchor));
       group.rotation.x = fallbackSlope;
       return false;
@@ -631,11 +635,20 @@ class HomeLabHouse3D {
       0,
       this.modelSize.y * 2.2
     );
-    const hit = ray.intersectObject(baseMesh, true)[0];
+    const hits = ray.intersectObjects(roofCandidates, true);
+    const hit = hits.find(candidate => {
+      if (!candidate?.face) return false;
+      const name = String(candidate.object?.name || "").toLowerCase();
+      if (/chimney|flue|stack/.test(name)) return false;
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(candidate.object.matrixWorld);
+      const normal = candidate.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+      return Math.abs(normal.y) > 0.18;
+    });
 
     if (!hit?.face) {
       group.position.copy(this.localPointFromNormalized(anchor));
       group.rotation.x = fallbackSlope;
+      group.userData.roofMountFallback = true;
       return false;
     }
 
@@ -651,7 +664,7 @@ class HomeLabHouse3D {
       .normalize();
 
     const localPoint = this.modelRoot.worldToLocal(hit.point.clone());
-    const clearance = this.localLength(Math.max(0.018, this.modelSize.y * 0.003));
+    const clearance = this.localLength(Math.max(0.013, this.modelSize.y * 0.0012));
 
     group.position.copy(localPoint).addScaledVector(localNormal, clearance);
     group.quaternion.setFromUnitVectors(
@@ -661,6 +674,7 @@ class HomeLabHouse3D {
     group.userData.roofMount = {
       anchor: [...anchor],
       worldNormal: worldNormal.toArray(),
+      mesh: hit.object?.name || "",
     };
     return true;
   }
@@ -770,60 +784,117 @@ class HomeLabHouse3D {
   createHeatPumpLayer() {
     const group = new THREE.Group();
     group.name = "LaCurentLayer_heatPump";
-    group.position.copy(this.localPointFromNormalized([0.54, 0.11, 0.30]));
+    group.position.copy(this.localPointFromNormalized([0.55, 0.105, 0.32]));
 
-    const w = this.localLength(this.modelSize.x * 0.14);
-    const h = this.localLength(this.modelSize.y * 0.20);
-    const d = this.localLength(this.modelSize.z * 0.12);
+    const w = this.localLength(this.modelSize.x * 0.17);
+    const h = this.localLength(this.modelSize.y * 0.23);
+    const d = this.localLength(this.modelSize.z * 0.14);
+    const shellMaterial = new THREE.MeshStandardMaterial({
+      color: 0xe8ebe7,
+      roughness: 0.42,
+      metalness: 0.16,
+    });
+    const darkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x303735,
+      roughness: 0.58,
+      metalness: 0.28,
+    });
 
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({
-        color: 0xe5e5df,
-        roughness: 0.62,
-        metalness: 0.08,
-      })
-    );
-    body.position.y = h * 0.52;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), shellMaterial);
+    body.position.y = h * 0.55;
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
 
-    const grille = new THREE.Mesh(
-      new THREE.CircleGeometry(Math.min(w, h) * 0.28, 32),
-      new THREE.MeshStandardMaterial({
-        color: 0x4d5553,
-        roughness: 0.78,
-        metalness: 0.24,
-      })
+    const top = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 1.02, h * 0.035, d * 1.02),
+      new THREE.MeshStandardMaterial({ color:0xf4f5f2, roughness:0.34, metalness:0.18 })
     );
-    grille.position.set(0, h * 0.55, d * 0.505);
-    group.add(grille);
+    top.position.y = h * 1.065;
+    group.add(top);
+
+    const fanRadius = Math.min(w, h) * 0.31;
+    const fanRecess = new THREE.Mesh(
+      new THREE.CircleGeometry(fanRadius * 1.08, 48),
+      new THREE.MeshStandardMaterial({ color:0x1f2624, roughness:0.72, metalness:0.20 })
+    );
+    fanRecess.position.set(-w * 0.12, h * 0.60, d * 0.505);
+    group.add(fanRecess);
+
+    const ringMaterial = new THREE.MeshStandardMaterial({
+      color:0x59615e, roughness:0.48, metalness:0.55
+    });
+    [1.0, 0.78, 0.55].forEach((scale) => {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(fanRadius * scale, fanRadius * 0.018, 8, 48),
+        ringMaterial
+      );
+      ring.position.copy(fanRecess.position);
+      ring.position.z += this.localLength(0.004);
+      group.add(ring);
+    });
+
+    const bladeMaterial = new THREE.MeshStandardMaterial({
+      color:0x3c4542, roughness:0.48, metalness:0.30
+    });
+    for (let index = 0; index < 6; index += 1) {
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(fanRadius * 0.78, fanRadius * 0.16, this.localLength(0.012)),
+        bladeMaterial
+      );
+      blade.name = "LaCurentHeatPump_fanBlade";
+      blade.position.copy(fanRecess.position);
+      blade.position.z += this.localLength(0.006);
+      blade.rotation.z = index * Math.PI / 3;
+      group.add(blade);
+    }
 
     const hub = new THREE.Mesh(
-      new THREE.CircleGeometry(Math.min(w, h) * 0.055, 24),
-      new THREE.MeshStandardMaterial({
-        color: 0x242b29,
-        roughness: 0.68,
-        metalness: 0.12,
-      })
+      new THREE.CircleGeometry(fanRadius * 0.16, 32),
+      darkMaterial
     );
-    hub.position.set(0, h * 0.55, d * 0.51);
+    hub.position.copy(fanRecess.position);
+    hub.position.z += this.localLength(0.010);
     group.add(hub);
 
+    const servicePanel = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.18, h * 0.58, this.localLength(0.014)),
+      new THREE.MeshStandardMaterial({ color:0xd7dbd7, roughness:0.50, metalness:0.20 })
+    );
+    servicePanel.position.set(w * 0.38, h * 0.57, d * 0.51);
+    group.add(servicePanel);
+
+    const badge = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.13, h * 0.025, this.localLength(0.016)),
+      new THREE.MeshBasicMaterial({ color:0x6f8980, toneMapped:false })
+    );
+    badge.position.set(w * 0.34, h * 0.90, d * 0.52);
+    group.add(badge);
+
     const footMaterial = new THREE.MeshStandardMaterial({
-      color: 0x676d69,
+      color: 0x575e5b,
       roughness: 0.82,
-      metalness: 0.16,
+      metalness: 0.22,
     });
     [-1, 1].forEach((side) => {
       const foot = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.28, h * 0.08, d * 0.55),
+        new THREE.BoxGeometry(w * 0.30, h * 0.065, d * 0.58),
         footMaterial
       );
-      foot.position.set(side * w * 0.27, h * 0.04, 0);
+      foot.position.set(side * w * 0.27, h * 0.035, 0);
       group.add(foot);
     });
+
+    const pipeMaterial = new THREE.MeshStandardMaterial({
+      color:0xb88a55, roughness:0.50, metalness:0.55
+    });
+    const pipe = new THREE.Mesh(
+      new THREE.CylinderGeometry(this.localLength(0.018), this.localLength(0.018), h * 0.34, 14),
+      pipeMaterial
+    );
+    pipe.position.set(w * 0.55, h * 0.32, -d * 0.18);
+    pipe.rotation.z = Math.PI / 2;
+    group.add(pipe);
 
     group.visible = false;
     this.modelRoot.add(group);
@@ -858,6 +929,91 @@ class HomeLabHouse3D {
       button.setAttribute("aria-pressed", layer.visible ? "true" : "false");
       button.textContent = labels[key] || key;
       root.appendChild(button);
+    });
+  }
+
+  createSmokeTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 96;
+    canvas.height = 96;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(48, 48, 4, 48, 48, 44);
+    gradient.addColorStop(0, "rgba(235,238,235,.58)");
+    gradient.addColorStop(0.45, "rgba(218,224,220,.30)");
+    gradient.addColorStop(1, "rgba(205,213,208,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 96, 96);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+
+  existingChimneyLocalTop() {
+    const named = [];
+    this.modelRoot.traverse((object) => {
+      if (!object?.isMesh) return;
+      const key = `${object.name || ""} ${object.material?.name || ""}`.toLowerCase();
+      if (/chimney|flue|smokestack|smoke_stack|chimenea/.test(key)) named.push(object);
+    });
+    if (named.length) {
+      let top = null;
+      named.forEach((mesh) => {
+        const box = new THREE.Box3().setFromObject(mesh);
+        const point = new THREE.Vector3(
+          (box.min.x + box.max.x) * 0.5,
+          box.max.y,
+          (box.min.z + box.max.z) * 0.5
+        );
+        if (!top || point.y > top.y) top = point;
+      });
+      if (top) return this.modelRoot.worldToLocal(top.clone());
+    }
+    return this.localPointFromNormalized([-0.22, 0.91, 0.12]);
+  }
+
+  createExistingChimneySmoke() {
+    const group = new THREE.Group();
+    group.name = "LaCurentVisual_existingChimneySmoke";
+    group.position.copy(this.existingChimneyLocalTop());
+
+    const texture = this.createSmokeTexture();
+    const plumeHeight = this.localLength(this.modelSize.y * 0.18);
+    const baseSize = this.localLength(Math.max(0.16, this.modelSize.x * 0.035));
+    for (let index = 0; index < 5; index += 1) {
+      const material = new THREE.SpriteMaterial({
+        map:texture,
+        transparent:true,
+        opacity:0.0,
+        depthWrite:false,
+        color:0xe4e8e5,
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.userData.smokePhase = index / 5;
+      sprite.userData.smokeHeight = plumeHeight;
+      sprite.userData.smokeBaseSize = baseSize;
+      group.add(sprite);
+    }
+    group.visible = false;
+    this.modelRoot.add(group);
+    this.equipmentLayers.set("chimneySmoke", group);
+  }
+
+  updateChimneySmoke(now) {
+    const group = this.equipmentLayers.get("chimneySmoke");
+    if (!group?.visible) return;
+    const seconds = now * 0.001;
+    group.children.forEach((sprite, index) => {
+      const t = (seconds * 0.16 + Number(sprite.userData.smokePhase || 0)) % 1;
+      const rise = Number(sprite.userData.smokeHeight || 1);
+      const baseSize = Number(sprite.userData.smokeBaseSize || 0.2);
+      sprite.position.set(
+        Math.sin(seconds * 0.72 + index * 1.7) * baseSize * 0.28 * t,
+        rise * t,
+        Math.cos(seconds * 0.55 + index * 1.2) * baseSize * 0.16 * t
+      );
+      const size = baseSize * (0.72 + t * 1.35);
+      sprite.scale.set(size, size, 1);
+      sprite.material.opacity = Math.sin(Math.PI * t) * 0.30;
     });
   }
 
@@ -901,6 +1057,8 @@ class HomeLabHouse3D {
     ac.visible = false;
     this.modelRoot.add(ac);
     this.equipmentLayers.set("ac", ac);
+
+    this.createExistingChimneySmoke();
   }
 
   createSelectionProofLayers() {
@@ -980,36 +1138,6 @@ class HomeLabHouse3D {
     this.modelRoot.add(gasFlue);
     this.equipmentLayers.set("gasFlue", gasFlue);
 
-    const woodHeat = new THREE.Group();
-    woodHeat.name = "LaCurentVisual_woodHeat";
-    woodHeat.position.copy(this.localPointFromNormalized([-0.22, 0.84, 0.12]));
-    const chimneyMaterial = new THREE.MeshStandardMaterial({ color: 0x444846, roughness: 0.72, metalness: 0.18 });
-    const chimney = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        this.localLength(s.x * 0.018),
-        this.localLength(s.x * 0.020),
-        this.localLength(s.y * 0.22),
-        18
-      ),
-      chimneyMaterial
-    );
-    chimney.position.y = this.localLength(s.y * 0.10);
-    woodHeat.add(chimney);
-    const cap = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        this.localLength(s.x * 0.030),
-        this.localLength(s.x * 0.030),
-        this.localLength(s.y * 0.018),
-        18
-      ),
-      chimneyMaterial
-    );
-    cap.position.y = this.localLength(s.y * 0.22);
-    woodHeat.add(cap);
-    woodHeat.visible = false;
-    this.modelRoot.add(woodHeat);
-    this.equipmentLayers.set("woodHeat", woodHeat);
-
     const district = new THREE.Group();
     district.name = "LaCurentVisual_districtHeat";
     district.position.copy(this.localPointFromNormalized([-0.45, 0.18, 0.50]));
@@ -1054,30 +1182,49 @@ class HomeLabHouse3D {
     this.equipmentLayers.set("electricHeat", electric);
   }
 
-  focusOrientation(orientation) {
-    if (!this.camera || !this.controls || !this.modelSize) return;
-    const offsets = {
-      south: 0,
-      south_west: Math.PI / 4,
-      west: Math.PI / 2,
-      north_west: 3 * Math.PI / 4,
-      north: Math.PI,
-      north_east: -3 * Math.PI / 4,
-      east: -Math.PI / 2,
-      south_east: -Math.PI / 4,
+  setCompassOrientation(orientation) {
+    const angles = {
+      north:0,
+      north_east:45,
+      east:90,
+      south_east:135,
+      south:180,
+      south_west:225,
+      west:270,
+      north_west:315,
     };
-    const offset = offsets[orientation] ?? 0;
-    const target = new THREE.Vector3(0, this.modelSize.y * 0.42, 0);
-    const radius = Math.max(this.modelSize.x, this.modelSize.z) * (this.mode === "home" ? 1.72 : 1.58);
-    const baseAngle = Math.atan2(0.76, 1);
-    const angle = baseAngle + offset;
-    const position = new THREE.Vector3(
-      Math.sin(angle) * radius,
-      radius * 0.50,
-      Math.cos(angle) * radius
-    );
-    this.animateCamera(position, target);
+    const labels = {
+      north:"N", north_east:"NE", east:"E", south_east:"SE",
+      south:"S", south_west:"SV", west:"V", north_west:"NV",
+    };
+    const compass = this.mount.querySelector("[data-hln-3d-compass]");
+    if (!compass) return;
+    const value = angles[orientation] == null ? "south" : orientation;
+    compass.style.setProperty("--hln-compass-angle", `${angles[value]}deg`);
+    compass.dataset.orientation = value;
+    compass.setAttribute("aria-label", `Orientarea energetică a casei: ${labels[value]}. Apasă pe cerc pentru modificare.`);
+    const label = compass.querySelector("[data-hln-3d-compass-value]");
+    if (label) label.textContent = labels[value];
   }
+
+  orientationFromCompassPointer(event, compass) {
+    const rect = compass.getBoundingClientRect();
+    const dx = event.clientX - (rect.left + rect.width / 2);
+    const dy = event.clientY - (rect.top + rect.height / 2);
+    const raw = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+    const step = Math.round(raw / 45) % 8;
+    return ["north","north_east","east","south_east","south","south_west","west","north_west"][step];
+  }
+
+  commitSemanticOrientation(orientation) {
+    if (this.mode !== "home") return;
+    const select = document.querySelector("#hlnOrientation");
+    if (!(select instanceof HTMLSelectElement)) return;
+    if (![...select.options].some(option => option.value === orientation)) return;
+    select.value = orientation;
+    select.dispatchEvent(new Event("change", {bubbles:true}));
+  }
+
 
   focusEquipment(kind) {
     if (!this.modelSize) return;
@@ -1184,8 +1331,8 @@ class HomeLabHouse3D {
     const gasFlue = this.equipmentLayers.get("gasFlue");
     if (gasFlue) gasFlue.visible = detail.heating === "condensing_gas_boiler" || detail.heating === "gas_boiler";
 
-    const woodHeat = this.equipmentLayers.get("woodHeat");
-    if (woodHeat) woodHeat.visible = ["wood_stove", "wood_boiler", "pellet_boiler"].includes(detail.heating);
+    const chimneySmoke = this.equipmentLayers.get("chimneySmoke");
+    if (chimneySmoke) chimneySmoke.visible = ["wood_stove", "wood_boiler", "pellet_boiler"].includes(detail.heating);
 
     const districtHeat = this.equipmentLayers.get("districtHeat");
     if (districtHeat) districtHeat.visible = detail.heating === "district_heat";
@@ -1195,7 +1342,7 @@ class HomeLabHouse3D {
 
     if (detail.orientation && detail.orientation !== this.lastVisualOrientation) {
       this.lastVisualOrientation = detail.orientation;
-      this.focusOrientation(detail.orientation);
+      this.setCompassOrientation(detail.orientation);
     }
 
     if (detail.focus === "cooling" && detail.cooling === "split") {
@@ -1205,12 +1352,10 @@ class HomeLabHouse3D {
       (detail.focus === "cooling" && detail.cooling === "heat_pump")
     ) {
       this.focusEquipment("heatPump");
-    } else if (detail.focus === "pv") {
-      this.focusOrientation(detail.pvOrientation || "south");
-    } else if (detail.focus === "solarThermal") {
-      this.focusOrientation(detail.solarThermalOrientation || "south");
+    } else if (detail.focus === "pv" || detail.focus === "solarThermal") {
+      this.focusPart("roof", false);
     } else if (detail.focus === "home") {
-      this.focusOrientation(detail.orientation || "south");
+      this.resetCamera();
     }
   }
 
@@ -1982,6 +2127,22 @@ class HomeLabHouse3D {
       this.resetCamera();
     });
 
+    const compass = this.mount.querySelector("[data-hln-3d-compass]");
+    if (compass && this.mode === "home") {
+      compass.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.commitSemanticOrientation(this.orientationFromCompassPointer(event, compass));
+      });
+      compass.addEventListener("keydown", (event) => {
+        const keyboardMap = {ArrowUp:"north", ArrowRight:"east", ArrowDown:"south", ArrowLeft:"west"};
+        const orientation = keyboardMap[event.key];
+        if (!orientation) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.commitSemanticOrientation(orientation);
+      });
+    }
+
     this.mount.querySelector("[data-hln-3d-explode]")?.addEventListener("click", (event) => {
       event.stopPropagation();
       const button = event.currentTarget;
@@ -2022,12 +2183,8 @@ class HomeLabHouse3D {
     this.selectedPart = part;
     this.mount.dataset.hln3dSelected = part;
     this.setHotspotSelection(part);
-    if (this.authorMode) {
-      this.renovationLayer.visible = false;
-    } else {
-      this.rebuildRenovationLayer(part);
-      this.focusPart(part, false);
-    }
+    this.renovationLayer.visible = false;
+    if (!this.authorMode) this.focusPart(part, false);
     this.autoRotateAllowed = false;
     this.controls.autoRotate = false;
 
@@ -2141,6 +2298,7 @@ class HomeLabHouse3D {
         this.controls.update(dt);
       }
       this.updateHotspotPositions();
+      this.updateChimneySmoke(now);
       this.renderer.render(this.scene, this.camera);
       this.lastRenderAt = now;
     } else {

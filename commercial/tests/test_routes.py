@@ -403,8 +403,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next22" in response.text
     assert "/static/home-lab-next.js?v=next46" in response.text
-    assert "/static/home-lab-3d.css?v=3d24" in response.text
-    assert "/static/home-lab-3d.js?v=3d30" in response.text
+    assert "/static/home-lab-3d.css?v=3d25" in response.text
+    assert "/static/home-lab-3d.js?v=3d31" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1443,7 +1443,8 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "createSelectionProofLayers" in response.text
     assert 'this.equipmentLayers.set("ventilation"' in response.text
     assert 'this.equipmentLayers.set("gasFlue"' in response.text
-    assert 'this.equipmentLayers.set("woodHeat"' in response.text
+    assert 'this.equipmentLayers.set("chimneySmoke"' in response.text
+    assert 'this.equipmentLayers.set("woodHeat"' not in response.text
     assert 'this.equipmentLayers.set("districtHeat"' in response.text
     assert 'this.equipmentLayers.set("electricHeat"' in response.text
     assert 'detail.heating === "heat_pump"' in response.text
@@ -1455,6 +1456,35 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "selectedMeasures" in response.text
     assert "this.authorMode && selectedMeasures.has(part)" in response.text
     assert "glazingGlassColors" in response.text
+    assert "LaCurentHeatPump_fanBlade" in response.text
+    assert "THREE.TorusGeometry" in response.text
+    assert "ray.intersectObjects(roofCandidates, true)" in response.text
+
+
+def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit() -> None:
+    js = client.get("/static/home-lab-3d.js")
+    assert js.status_code == 200
+    source = js.text
+    assert 'data-hln-3d-compass' in source
+    assert "setCompassOrientation(orientation)" in source
+    assert "orientationFromCompassPointer(event, compass)" in source
+    assert 'document.querySelector("#hlnOrientation")' in source
+    assert 'select.dispatchEvent(new Event("change", {bubbles:true}))' in source
+    assert "focusOrientation(" not in source
+    assert 'this.setCompassOrientation(detail.orientation)' in source
+    assert 'detail.focus === "pv" || detail.focus === "solarThermal"' in source
+    assert 'this.focusPart("roof", false)' in source
+    assert "this.rebuildRenovationLayer(part)" not in source
+
+
+def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
+    css = client.get("/static/home-lab-3d.css")
+    assert css.status_code == 200
+    source = css.text
+    assert "--hln-compass-angle" in source
+    assert ".hln-3d-compass-arrow" in source
+    assert 'data-hln-3d-stage="home"' in source
+    assert "cursor: crosshair" in source
 
 
 def test_embed_loader_supports_deferred_next_mounts() -> None:
