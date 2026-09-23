@@ -563,22 +563,23 @@
     const reference = homeResult?.reference_parameters || currentResult?.reference_parameters;
     if (!reference?.u_values_w_m2k) return null;
     const u = reference.u_values_w_m2k;
+    const physical = reference.physical_mapping || {};
+    const fallback = (item, baseU, targetU, lambda) => {
+      const mapped = Number(item?.insulation_cm);
+      return Number.isFinite(mapped) ? mapped : insulationCmForU(baseU, targetU, lambda);
+    };
     return {
-      wallIns: insulationCmForU(
-        wallBaseU(homeState),
-        u.exterior_wall,
-        insulationLambda(homeState.wallInsulationMaterial)
-      ),
-      roofIns: insulationCmForU(
-        topBaseU(homeState),
+      wallIns: fallback(physical.wall, 0.903, u.exterior_wall, 0.040),
+      roofIns: fallback(
+        physical.roof,
+        homeState.topBoundary === "cold_attic" ? 3.25 : 2.25,
         u.roof,
-        insulationLambda(homeState.roofInsulationMaterial)
+        0.039
       ),
-      floorIns: insulationCmForU(
-        0.90,
-        u.floor,
-        insulationLambda(homeState.floorInsulationMaterial)
-      ),
+      floorIns: fallback(physical.floor, 0.90, u.floor, 0.035),
+      wallInsulationMaterial: physical.wall?.material_id || "eps",
+      roofInsulationMaterial: physical.roof?.material_id || "mineral_wool",
+      floorInsulationMaterial: physical.floor?.material_id || "xps",
       windows: Number(homeState.windows),
       glazing: "reference_mc001",
       heating: "reference_mc001",
@@ -737,10 +738,15 @@
     };
     const ref = homeResult?.reference_parameters || currentResult?.reference_parameters;
     const u = ref?.u_values_w_m2k || {};
+    const physical = ref?.physical_mapping || {};
+    const mappedU = (key, fallback) => {
+      const value = Number(physical?.[key]?.calculation_u_w_m2k);
+      return Number.isFinite(value) && value > 0 ? value : Number(fallback);
+    };
     scenarioOverrides = {
-      wallU: Number(u.exterior_wall),
-      roofU: Number(u.roof),
-      floorU: Number(u.floor),
+      wallU: mappedU("wall", u.exterior_wall),
+      roofU: mappedU("roof", u.roof),
+      floorU: mappedU("floor", u.floor),
       windowU: Number(u.window),
       doorU: Number(u.exterior_door),
       thermalBridgesOff: true,
@@ -754,7 +760,7 @@
       dhwEfficiency: Number(ref?.dhw_efficiency),
     };
     referenceMode = true;
-    optimizationMeta = {mode:"reference", label:"Casa de referință MC001"};
+    optimizationMeta = {mode:"reference", label:"Referință MC001 · Tabel 2.4"};
     setOptimizationNote("");
     syncMeasuresFromScenario();
     renderAll();
@@ -1050,8 +1056,24 @@
       referenceSpec.hidden = !referenceDerived;
       if (referenceDerived && reference?.u_values_w_m2k) {
         const u = reference.u_values_w_m2k;
-        $("#hlnReferenceEnvelope").textContent =
-          `U perete ${fmt(u.exterior_wall,2)} · pod ${fmt(u.roof,2)} · pardoseală ${fmt(u.floor,2)} · ferestre ${fmt(u.window,2)} · uși ${fmt(u.exterior_door,2)} W/m²K · punți termice 0`;
+        const physical = reference.physical_mapping || {};
+        const refPart = (label, item, fallbackU) => {
+          const cm = Number(item?.insulation_cm);
+          const targetU = Number(item?.target_u_prime_w_m2k ?? fallbackU);
+          const material = item?.material_label ? ` ${item.material_label}` : "";
+          if (Number.isFinite(cm) && Number.isFinite(targetU)) {
+            return `${label} ≈ ${fmt(cm,1)} cm${material} → U' ${fmt(targetU,2)}`;
+          }
+          return `${label} U' ${fmt(targetU,2)}`;
+        };
+        $("#hlnReferenceEnvelope").textContent = [
+          "MC001 Tabel 2.4",
+          refPart("perete", physical.wall, u.exterior_wall),
+          refPart("pod/acoperiș", physical.roof, u.roof),
+          refPart("pardoseală", physical.floor, u.floor),
+          `ferestre U' ${fmt(u.window,2)}`,
+          `uși U' ${fmt(u.exterior_door,2)} W/m²K`,
+        ].join(" · ");
         $("#hlnReferenceAir").textContent =
           `n = ${fmt(reference.air_changes_per_hour,2)} h⁻¹ · recuperare ${fmt(100 * Number(reference.heat_recovery_efficiency || 0),0)}%`;
         $("#hlnReferenceHeating").textContent =
