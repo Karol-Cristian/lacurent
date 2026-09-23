@@ -1755,6 +1755,111 @@ class HomeLabHouse3D {
     this.hotspotAnchors.set(part, this.normalizedToWorld(config.anchor));
   }
 
+  equipmentRoot(key) {
+    if (key === "ac") return this.equipmentLayers.get("ac") || null;
+    return this.experimentLayers.get(key) || null;
+  }
+
+  equipmentKeyFromObject(object) {
+    let current = object;
+    while (current && current !== this.modelRoot) {
+      const key = current.userData?.hlnEquipment;
+      if (key) return key;
+      current = current.parent;
+    }
+    return null;
+  }
+
+  dispatchEquipmentSelection(key) {
+    if (!EQUIPMENT_LABELS[key]) return;
+    if (key === "heatPump" || key === "ac") this.focusEquipment(key);
+    window.dispatchEvent(new CustomEvent("hln:equipment-select", {
+      detail: { equipment:key, mode:this.mode },
+    }));
+  }
+
+  equipmentBadgeText(key) {
+    const state = this.visualState || {};
+    if (key === "pv") {
+      const value = Number(state.pvKwp || 0);
+      return value > 0 ? `PV · ${value.toLocaleString("ro-RO", {maximumFractionDigits:1})} kWp` : "Fotovoltaice";
+    }
+    if (key === "solarThermal") {
+      const value = Number(state.solarThermalArea || 0);
+      return value > 0 ? `Solar termic · ${value.toLocaleString("ro-RO", {maximumFractionDigits:1})} m²` : "Solar termic";
+    }
+    return EQUIPMENT_LABELS[key] || key;
+  }
+
+  createEquipmentBadges() {
+    if (HOUSE_VARIANT !== "final" || this.authorMode) return;
+    this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
+    if (!this.hotspotRoot) return;
+
+    ["pv", "solarThermal", "heatPump", "ac"].forEach((key) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "hln-3d-equipment-badge";
+      button.dataset.hlnEquipment = key;
+      button.hidden = true;
+      button.setAttribute("aria-label", `Editează ${EQUIPMENT_LABELS[key]}`);
+      button.innerHTML = `
+        <span class="hln-3d-equipment-dot" aria-hidden="true"></span>
+        <span data-hln-equipment-label>${this.equipmentBadgeText(key)}</span>
+      `;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.dispatchEquipmentSelection(key);
+      });
+      this.hotspotRoot.appendChild(button);
+      this.equipmentBadges.set(key, button);
+    });
+
+    this.updateEquipmentBadges();
+  }
+
+  updateEquipmentBadges() {
+    if (!this.camera || !this.equipmentBadges.size) return;
+    const width = Math.max(1, this.mount.clientWidth);
+    const height = Math.max(1, this.mount.clientHeight);
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+
+    this.equipmentBadges.forEach((button, key) => {
+      const root = this.equipmentRoot(key);
+      if (!root?.visible) {
+        button.hidden = true;
+        return;
+      }
+
+      root.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) {
+        button.hidden = true;
+        return;
+      }
+      const anchor = box.getCenter(new THREE.Vector3());
+      anchor.y = box.max.y;
+      const towardAnchor = anchor.clone().sub(this.camera.position);
+      const projected = anchor.clone().project(this.camera);
+      const isInFront = cameraDirection.dot(towardAnchor) > 0;
+      const x = (projected.x * 0.5 + 0.5) * width;
+      const y = (-projected.y * 0.5 + 0.5) * height;
+      const visible =
+        isInFront &&
+        projected.z > -1 && projected.z < 1 &&
+        x > -70 && x < width + 70 &&
+        y > -40 && y < height + 40;
+
+      button.hidden = !visible;
+      if (!visible) return;
+      button.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -118%)`;
+      const label = button.querySelector("[data-hln-equipment-label]");
+      if (label) label.textContent = this.equipmentBadgeText(key);
+    });
+  }
+
   createSemanticHotspots() {
     if (HOUSE_VARIANT !== "final" || !this.authorMode) return;
 
@@ -2501,10 +2606,22 @@ class HomeLabHouse3D {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
+    const equipmentRoots = ["pv", "solarThermal", "heatPump", "ac"]
+      .map((key) => this.equipmentRoot(key))
+      .filter((root) => root?.visible);
+    const equipmentHit = equipmentRoots.length
+      ? this.raycaster.intersectObjects(equipmentRoots, true)[0]
+      : null;
+    const equipmentKey = equipmentHit ? this.equipmentKeyFromObject(equipmentHit.object) : null;
     const semanticHit = this.semanticMeshes.length ? this.raycaster.intersectObjects(this.semanticMeshes, true)[0] : null;
-    const hit = semanticHit || this.raycaster.intersectObjects(this.hitZones, false)[0];
+    const hit = equipmentHit || semanticHit || this.raycaster.intersectObjects(this.hitZones, false)[0];
     this.renderer.domElement.style.cursor = hit ? "pointer" : "grab";
     if (hoverOnly || !hit) return;
+
+    if (equipmentKey) {
+      this.dispatchEquipmentSelection(equipmentKey);
+      return;
+    }
 
     const part = hit.object.userData.part;
     if (this.authorMode) this.authorPart = part;
@@ -2632,6 +2749,7 @@ class HomeLabHouse3D {
         this.controls.update(dt);
       }
       this.updateHotspotPositions();
+      this.updateEquipmentBadges();
       this.updateChimneySmoke(now);
       this.renderer.render(this.scene, this.camera);
       this.lastRenderAt = now;
