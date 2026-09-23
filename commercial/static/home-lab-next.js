@@ -2278,7 +2278,7 @@
     const eyebrow = $("#hlnAutoRenovationEyebrow");
     const title = $("#hlnAutoRenovationTitle");
     const hint = $("#hlnAutoRenovationHint");
-    if (eyebrow) eyebrow.textContent = copy.eyrow || copy.eyebrow;
+    if (eyebrow) eyebrow.textContent = copy.eyebrow;
     if (title) title.textContent = copy.title;
     if (hint) hint.textContent = copy.hint;
   }
