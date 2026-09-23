@@ -792,37 +792,19 @@ class HomeLabHouse3D {
     this.experimentLayers.set("pv", layer);
   }
 
-  createSolarThermalLayer() {
+  createSingleSolarThermalLayer() {
     const s = this.modelSize;
-    const layer = new THREE.Group();
-    layer.name = "LaCurentLayer_solarThermal";
-
-    // Keep thermal collectors deliberately smaller than the PV representatives.
-    // Capacity is communicated by adding collectors, never by inflating one
-    // collector into an oversized plate.
-    const panelWidthWorld = s.x * 0.052;
-    const panelDepthWorld = s.z * 0.095;
-    const panelWidth = this.localLength(panelWidthWorld);
-    const panelDepth = this.localLength(panelDepthWorld);
-    const gapZ = this.localLength(s.z * 0.007);
-    const rowPitch = panelDepth + gapZ;
-
-    const slots = [
-      { name:"SolarThermal_center", z:0 },
-      { name:"SolarThermal_lower", z:rowPitch },
-      { name:"SolarThermal_upper", z:-rowPitch },
-    ];
-    slots.forEach(({name, z}) => {
-      const panel = this.createPanelUnit(panelWidthWorld, panelDepthWorld, "thermal");
-      panel.name = name;
-      panel.position.set(0, 0, z);
-      layer.add(panel);
+    const layer = this.createRoofCluster({
+      type: "thermal",
+      cols: 1,
+      rows: 1,
+      // Runtime-probed main-roof point immediately to the right of the dormer.
+      // It resolves to the same GLB roof mesh/plane used by the PV field.
+      anchor: [0.20, 0.78, 0.24],
+      panelWidth: s.x * 0.075,
+      panelDepth: s.z * 0.135,
     });
-
-    // Main roof face, to the right of the dormer. This uses the same roof
-    // mounting/raycast logic as the PV field so both layers follow the GLB.
-    this.mountLayerOnRoof(layer, [0.30, 0.78, 0.38]);
-
+    layer.name = "LaCurentLayer_solarThermal";
     layer.visible = false;
     this.modelRoot.add(layer);
     this.experimentLayers.set("solarThermal", layer);
@@ -952,7 +934,7 @@ class HomeLabHouse3D {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
     this.createSplitPVLayer();
-    this.createSolarThermalLayer();
+    this.createSingleSolarThermalLayer();
     this.createHeatPumpLayer();
   }
 
@@ -1308,13 +1290,14 @@ class HomeLabHouse3D {
     const solarThermal = this.experimentLayers.get("solarThermal");
     if (solarThermal) {
       solarThermal.visible = Boolean(detail.solarThermalEnabled);
-      const thermalPanelCount = detail.solarThermalEnabled
-        ? Math.max(1, Math.min(solarThermal.children.length, Math.ceil(Number(detail.solarThermalArea || 0) / 4)))
-        : 0;
-      solarThermal.scale.setScalar(1);
-      solarThermal.children.forEach((panel, index) => {
-        panel.visible = index < thermalPanelCount;
-      });
+      // Keep the area feedback visible, but cap the collector growth so it
+      // remains visually subordinate to the PV field and roof architecture.
+      const thermalScale = clamp(
+        0.82 + Number(detail.solarThermalArea || 0) * 0.025,
+        0.82,
+        1.10
+      );
+      solarThermal.scale.setScalar(thermalScale);
     }
 
     const selectedMeasures = new Set(Array.isArray(detail.measures) ? detail.measures : []);
