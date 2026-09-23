@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next17">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next18">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d24">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -929,6 +929,24 @@
             </select>
           </label>
           <label>Izolație pereți <div class="hln-inline-input"><input id="hlnHomeWallIns" type="number" min="0" max="40" step="1" value="5"><span>cm</span></div></label>
+          <label>Ce este deasupra ultimului nivel încălzit?
+            <select id="hlnHomeTopBoundary">
+              <option value="unknown">Nu știu — păstrează estimarea actuală</option>
+              <option value="cold_attic">Pod rece / neîncălzit — calculează planșeul</option>
+              <option value="heated_attic">Mansardă încălzită — calculează acoperișul</option>
+              <option value="flat_roof">Terasă / acoperiș plat</option>
+            </select>
+          </label>
+          <label>Structura limitei superioare
+            <select id="hlnHomeTopStructure">
+              <option value="unknown">Nu știu — U de bază estimat 1,00 W/m²K</option>
+              <option value="plasterboard_boards">Rigips + scândură / astereală ușoară</option>
+              <option value="timber_ceiling">Planșeu din lemn</option>
+              <option value="concrete_slab">Placă de beton</option>
+              <option value="timber_rafter_roof">Acoperiș ușor pe căpriori</option>
+            </select>
+          </label>
+          <small class="hln-field-note">Structura aleasă stabilește rezistența termică estimată înainte de izolație. Valorile sunt estimări Light Engine; „Nu știu” păstrează comportamentul anterior.</small>
           <label>Material izolație pod / acoperiș
             <select id="hlnHomeRoofInsulationMaterial">
               <option value="generic_040">Nu știu — λ 0,040 W/mK</option>
@@ -1110,7 +1128,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d28"></script>
-  <script src="/static/home-lab-next.js?v=next27"></script>
+  <script src="/static/home-lab-next.js?v=next28"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
