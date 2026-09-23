@@ -397,7 +397,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next36" in response.text
+    assert "/static/home-lab-next.js?v=next37" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -464,6 +464,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert "U=3,25 W/m²K" in response.text
     assert "U=2,25 W/m²K" in response.text
     assert "Infiltrațiile prin trapă, spoturi sau rosturi nu sunt încă estimate separat" in response.text
+    assert "setează 0 cm" in response.text
     assert 'id="hlnHomeTopStructure"' not in response.text
     assert 'id="hlnHomeAirtightness"' not in response.text
     assert 'id="hlnHomeAtticLeakage"' not in response.text
