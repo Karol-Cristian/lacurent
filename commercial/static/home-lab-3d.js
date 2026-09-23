@@ -42,6 +42,27 @@ const SOLAR_THERMAL_REFERENCE = {
 
 const SOLAR_THERMAL_ANCHOR = [-0.02, 0.78, 0.08];
 
+const HEAT_PUMP_MODEL = {
+  label: "HVAC Condenser Unit",
+  url: "https://polyfork.dev/cdn/hvac-condenser-unit-a41b8d.glb",
+  source: "https://polyfork.dev/asset/hvac-condenser-unit-a41b8d",
+  license: "Commercial use permitted; attribution not required",
+};
+
+const AC_MODEL = {
+  label: "Air-Con Unit",
+  url: "https://polyfork.dev/cdn/air-con-unit-9fadc2.glb",
+  source: "https://polyfork.dev/asset/air-con-unit-9fadc2",
+  license: "Commercial use permitted; attribution not required",
+};
+
+const EQUIPMENT_LABELS = {
+  pv: "Fotovoltaice",
+  solarThermal: "Solar termic",
+  heatPump: "Pompă de căldură",
+  ac: "Aer condiționat",
+};
+
 const PARTS = {
   wall: { label: "Fațadă", editor: "envelope", measure: "wall", color: 0x3f745c, field: "#hlnHomeWallIns" },
   roof: { label: "Pod / acoperiș", editor: "envelope", measure: "roof", color: 0x3f745c, field: "#hlnHomeRoofIns" },
@@ -122,6 +143,7 @@ class HomeLabHouse3D {
     this.hotspotAnchors = new Map();
     this.hotspotElements = new Map();
     this.hotspotRoot = null;
+    this.equipmentBadges = new Map();
     this.authorMode = new URLSearchParams(window.location.search).get("author3d") === "1";
     this.debugHitZones = new URLSearchParams(window.location.search).get("hotspotDebug") === "1";
     this.semanticConfig = JSON.parse(JSON.stringify(DEFAULT_FINAL_HOUSE_CONFIG));
@@ -209,11 +231,12 @@ class HomeLabHouse3D {
       await this.loadSemanticConfig();
       await this.loadModel();
       await this.createExperimentLayers();
-      this.createVisualEquipment();
+      await this.createVisualEquipment();
       this.createSelectionProofLayers();
       this.addHitZones();
       this.addRenovationLayer();
       this.createSemanticHotspots();
+      this.createEquipmentBadges();
       this.createAuthorPanel();
       this.bindEvents();
       this.resize();
@@ -775,6 +798,7 @@ class HomeLabHouse3D {
     const s = this.modelSize;
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_pv";
+    layer.userData.hlnEquipment = "pv";
 
     const panelWidthWorld = s.x * 0.074;
     const panelDepthWorld = s.z * 0.085;
@@ -833,6 +857,7 @@ class HomeLabHouse3D {
 
     const layer = new THREE.Group();
     layer.name = "LaCurentLayer_solarThermal";
+    layer.userData.hlnEquipment = "solarThermal";
 
     // Keep exactly one direct collector child so area scaling and browser
     // calibration continue to treat this as one DHW solar-thermal collector.
@@ -1020,6 +1045,7 @@ class HomeLabHouse3D {
   createHeatPumpLayer() {
     const group = new THREE.Group();
     group.name = "LaCurentLayer_heatPump";
+    group.userData.hlnEquipment = "heatPump";
     group.position.copy(this.localPointFromNormalized([0.55, 0.105, 0.32]));
 
     const w = this.localLength(this.modelSize.x * 0.17);
@@ -1245,6 +1271,7 @@ class HomeLabHouse3D {
 
     const ac = new THREE.Group();
     ac.name = "LaCurentVisual_AC";
+    ac.userData.hlnEquipment = "ac";
     ac.position.copy(this.localPointFromNormalized([0.38, 0.34, 0.51]));
 
     const w = this.localLength(this.modelSize.x * 0.13);
