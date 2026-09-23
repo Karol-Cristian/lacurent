@@ -1481,8 +1481,9 @@ def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimn
     assert 'const gapZ = this.localLength(s.z * 0.006)' in source
     assert 'this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020])' in source
     assert "const rowPitch = panelDepth + gapZ" in source
-    assert "const downslopeShift = rowPitch * 0.195" in source
+    assert "const downslopeShift = rowPitch;" in source
     assert "layer.translateZ(downslopeShift)" in source
+    assert 'objectUuid: hit.object?.uuid || ""' in source
     assert "const chimneyNudge = (panelWidth + gapX) * 0.30" in source
     assert "layer.translateX(chimneyNudge)" in source
     assert "runtime-calibrated" in source.lower()

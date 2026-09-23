@@ -675,6 +675,7 @@ class HomeLabHouse3D {
       anchor: [...anchor],
       worldNormal: worldNormal.toArray(),
       mesh: hit.object?.name || "",
+      objectUuid: hit.object?.uuid || "",
     };
     return true;
   }
@@ -777,12 +778,11 @@ class HomeLabHouse3D {
     // the clear left roof face, below the ridge and away from the dormer.
     this.mountLayerOnRoof(layer, [-0.34, 0.78, 0.020]);
 
-    // Fine placement from the production view. A full-row translation was
-    // measured in Chromium and would push the field below the eave. Use the
-    // largest conservative visible shift while preserving the roof envelope,
-    // then nudge the whole field toward the chimney.
+    // Place the field one complete row pitch farther downslope so the former
+    // lower row becomes the new middle row. Roof support is validated against
+    // the actual GLB roof surface in the browser smoke test.
     const rowPitch = panelDepth + gapZ;
-    const downslopeShift = rowPitch * 0.195;
+    const downslopeShift = rowPitch;
     const chimneyNudge = (panelWidth + gapX) * 0.30;
     layer.translateZ(downslopeShift);
     layer.translateX(chimneyNudge);

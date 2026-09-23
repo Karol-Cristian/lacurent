@@ -37,17 +37,71 @@ try {
     });
 
     const Box3Ctor = scene.modelBox.constructor;
+    const Vector3Ctor = scene.modelSize.constructor;
+    const RaycasterCtor = scene.raycaster.constructor;
     const pv = scene.experimentLayers.get("pv");
     const smoke = scene.equipmentLayers.get("chimneySmoke");
     const pvBox = new Box3Ctor().setFromObject(pv);
     const smokeWorld = scene.modelRoot.localToWorld(smoke.position.clone());
+    const mountedRoofUuid = String(pv.userData?.roofMount?.objectUuid || "");
+    const roofMeshes = scene.inspectableMeshes.filter(mesh => mesh?.visible !== false);
+
+    scene.modelRoot.updateMatrixWorld(true);
+    pv.updateMatrixWorld(true);
+
+    const supportTolerance = scene.modelSize.y * 0.035;
+    const pvRoofSupport = pv.children
+      .filter(panel => panel.visible)
+      .map(panel => {
+        const body = panel.children.find(child => {
+          const params = child.geometry?.parameters;
+          return Number.isFinite(params?.width) && Number.isFinite(params?.depth);
+        });
+        if (!body) return {name:panel.name, supported:false, reason:"panel-body-missing"};
+
+        const width = body.geometry.parameters.width;
+        const depth = body.geometry.parameters.depth;
+        const samples = [
+          [0, 0],
+          [-width * 0.46, -depth * 0.46],
+          [ width * 0.46, -depth * 0.46],
+          [-width * 0.46,  depth * 0.46],
+          [ width * 0.46,  depth * 0.46],
+        ];
+
+        const checks = samples.map(([x, z]) => {
+          const panelPoint = panel.localToWorld(new Vector3Ctor(x, 0, z));
+          const origin = panelPoint.clone();
+          origin.y += scene.modelSize.y * 0.08;
+          const ray = new RaycasterCtor(
+            origin,
+            new Vector3Ctor(0, -1, 0),
+            0,
+            scene.modelSize.y * 0.18
+          );
+          const hit = ray.intersectObjects(roofMeshes, true)
+            .find(candidate => candidate.object?.uuid === mountedRoofUuid);
+          const gap = hit ? Math.abs(panelPoint.y - hit.point.y) : null;
+          return {
+            supported:Boolean(hit) && gap <= supportTolerance,
+            gap,
+          };
+        });
+
+        return {
+          name:panel.name,
+          supported:checks.every(check => check.supported),
+          maxGap:Math.max(...checks.map(check => check.gap ?? Number.POSITIVE_INFINITY)),
+        };
+      });
 
     return {
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
       pvMinY:pvBox.min.y,
       pvMaxY:pvBox.max.y,
-      modelMaxY:scene.modelBox.max.y,
+      mountedRoofUuid,
+      pvRoofSupport,
       smokeVisible:smoke.visible,
       smokeWorld:smokeWorld.toArray(),
     };
@@ -55,8 +109,9 @@ try {
   if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
     throw new Error("PV calibration did not expose the full six-panel field");
   }
-  if (roofVisualCalibration.pvMinY < 3.20 || roofVisualCalibration.pvMaxY > roofVisualCalibration.modelMaxY + 0.08) {
-    throw new Error("PV field still extends outside the usable roof band: " + JSON.stringify(roofVisualCalibration));
+  if (!roofVisualCalibration.mountedRoofUuid ||
+      roofVisualCalibration.pvRoofSupport.some(panel => !panel.supported)) {
+    throw new Error("PV field is not fully supported by the mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.smokeVisible) {
     throw new Error("Combustion plume is hidden for condensing gas");
