@@ -601,7 +601,7 @@ def test_cloudflare_worker_converts_ordinary_asgi_exceptions_to_branded_503() ->
     assert '"content-type": "text/html; charset=utf-8"' in worker_source
     assert "Laboratorul ia o pauză scurtă." in worker_source
     assert "from app.main import app" in worker_source
-    assert worker_source.index("try:") < worker_source.index("from app.main import app")
+    assert worker_source.index("from app.main import app") < worker_source.index("class Default")
     assert "type(exc).__name__" in worker_source
 
 
