@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from .methodology import methodology
+from .methodology import methodology, resolve_climate
 from .models import (
     BuildingInput,
     CoolingInput,
@@ -89,6 +89,24 @@ def _reference_calculation_u(element: dict[str, Any], rules: dict[str, Any]) -> 
 def _equivalent_insulation_cm(base_u: float, target_construction_u: float, lambda_w_mk: float) -> float:
     added_r = max(0.0, (1.0 / float(target_construction_u)) - (1.0 / float(base_u)))
     return round(added_r * float(lambda_w_mk) * 100.0, 1)
+
+
+def _reference_window_solar_gn(actual: BuildingInput, rules: dict[str, Any]) -> tuple[str, float]:
+    """Return the explicit reference glazing solar factor for the climate zone.
+
+    MC001 Table 2.5 provides recommended residential g_n intervals, not one
+    unique glazing. LaCurent Light selects the highest source-backed value in
+    the applicable interval so the reference never inherits the real glazing
+    and no midpoint is invented.
+    """
+
+    climate = resolve_climate(actual.locality)
+    zone = str(climate.get("climate_zone") or "").strip()
+    spec = rules["physical_mapping"]["window"]
+    values = spec["solar_gn_by_climate_zone"]
+    if zone not in values:
+        raise ValueError("Reference glazing solar factor is unavailable for the selected climate zone.")
+    return zone, float(values[zone])
 
 
 def reference_physical_mapping(actual: BuildingInput) -> dict[str, Any]:
@@ -198,9 +216,15 @@ def reference_physical_mapping(actual: BuildingInput) -> dict[str, Any]:
                 ),
             }
 
+    climate_zone, solar_gn = _reference_window_solar_gn(actual, rules)
     mapping["window"] = {
         "target_u_prime_w_m2k": float(rules["u_values_w_m2k"]["window"]),
         "product_description": physical["window"]["product_description"],
+        "solar_gn": solar_gn,
+        "solar_climate_zone": climate_zone,
+        "solar_source": physical["window"]["solar_gn_source"],
+        "solar_selection_policy": physical["window"]["solar_gn_selection_policy"],
+        "geometry_policy": "copy_window_area_orientation_and_geographic_placement_from_real_building",
     }
     mapping["exterior_door"] = {
         "target_u_prime_w_m2k": float(rules["u_values_w_m2k"]["exterior_door"]),
@@ -222,6 +246,10 @@ def build_reference_input(actual: BuildingInput) -> BuildingInput:
         reference_u = _reference_calculation_u(element, rules)
         if reference_u is not None:
             element["u_value_w_m2k"] = reference_u
+
+    _climate_zone, solar_gn = _reference_window_solar_gn(actual, rules)
+    data["solar"]["glazing_type_id"] = "double_low_e_face_3"
+    data["solar"]["normal_incidence_solar_transmittance"] = solar_gn
 
     data["thermal_bridges"] = []
     data["ventilation"] = {
