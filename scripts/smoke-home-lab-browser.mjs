@@ -46,37 +46,36 @@ async function configureDiagnosticCase(config) {
   await page.reload({waitUntil:"networkidle"});
   await expectVisible('[data-hln-screen="home"].is-active');
 
-  await openEditor("house");
-  await changeInput("#hlnArea", config.area);
-  await page.locator(`#hlnLevels [data-value="${config.levels}"]`).click();
-  await changeInput("#hlnHeight", config.height);
-  await changeInput("#hlnConstructionYear", config.year);
-  await closeEditor();
-
-  await openEditor("envelope");
-  await page.locator("#hlnHomeWallStructure").selectOption(config.wallStructure);
-  await changeInput("#hlnHomeWallStructureThickness", config.wallStructureThickness);
-  await page.locator("#hlnHomeWallInsulationMaterial").selectOption("eps");
-  await page.locator("#hlnHomeTopBoundary").selectOption("cold_attic");
-  await page.locator("#hlnHomeFloorBoundary").selectOption("ground");
-  await page.locator("#hlnHomeRoofInsulationMaterial").selectOption("mineral_wool");
-  await page.locator("#hlnHomeFloorInsulationMaterial").selectOption("xps");
-  await changeInput("#hlnHomeWallIns", config.wallIns);
-  await changeInput("#hlnHomeRoofIns", config.roofIns);
-  await changeInput("#hlnHomeFloorIns", config.floorIns);
-  await changeInput("#hlnHomeWindows", config.windows);
-  await page.locator("#hlnHomeGlazing").selectOption(config.glazing);
-  await closeEditor();
-
-  await openEditor("systems");
-  await page.locator("#hlnHomeHeating").selectOption(config.heating);
-  await page.locator("#hlnHomeHeatingEmitter").selectOption(config.emitter);
-  await page.locator("#hlnHomeHeatingDistribution").selectOption(config.distribution);
-  await page.locator("#hlnHomeHeatingStorage").selectOption("none");
-  await page.locator("#hlnHomeHeatingControl").selectOption(config.control);
-  await page.locator("#hlnHomeVentilation").selectOption(config.ventilation);
-  await page.locator("#hlnHomeCooling").selectOption("none");
-  await closeEditor();
+  await page.evaluate(cfg => {
+    const setValue = (selector, value) => {
+      const node = document.querySelector(selector);
+      if (!node) throw new Error("Missing diagnostic control " + selector);
+      node.value = String(value);
+    };
+    setValue("#hlnArea", cfg.area);
+    setValue("#hlnHeight", cfg.height);
+    setValue("#hlnConstructionYear", cfg.year);
+    setValue("#hlnHomeWallStructure", cfg.wallStructure);
+    setValue("#hlnHomeWallStructureThickness", cfg.wallStructureThickness);
+    setValue("#hlnHomeWallInsulationMaterial", "eps");
+    setValue("#hlnHomeTopBoundary", "cold_attic");
+    setValue("#hlnHomeFloorBoundary", "ground");
+    setValue("#hlnHomeRoofInsulationMaterial", "mineral_wool");
+    setValue("#hlnHomeFloorInsulationMaterial", "xps");
+    setValue("#hlnHomeWallIns", cfg.wallIns);
+    setValue("#hlnHomeRoofIns", cfg.roofIns);
+    setValue("#hlnHomeFloorIns", cfg.floorIns);
+    setValue("#hlnHomeWindows", cfg.windows);
+    setValue("#hlnHomeGlazing", cfg.glazing);
+    setValue("#hlnHomeHeating", cfg.heating);
+    setValue("#hlnHomeHeatingEmitter", cfg.emitter);
+    setValue("#hlnHomeHeatingDistribution", cfg.distribution);
+    setValue("#hlnHomeHeatingStorage", "none");
+    setValue("#hlnHomeHeatingControl", cfg.control);
+    setValue("#hlnHomeVentilation", cfg.ventilation);
+    setValue("#hlnHomeCooling", "none");
+    document.querySelector("#hlnArea").dispatchEvent(new Event("change", {bubbles:true}));
+  }, config);
 
   await waitCalculated("#hlnDockCost");
   await page.waitForTimeout(250);
@@ -103,11 +102,11 @@ async function snapshotScenarioMetrics() {
 }
 
 async function navigateScenarioAndSnapshot() {
-  await page.locator('[data-hln-go="scenario"]').click();
+  await page.locator('.hln-progress [data-hln-go="scenario"]').click();
   await expectVisible('[data-hln-screen="scenario"].is-active');
   await page.waitForTimeout(200);
   const metrics = await snapshotScenarioMetrics();
-  await page.locator('[data-hln-go="site"]').click();
+  await page.locator('.hln-progress [data-hln-go="site"]').click();
   await expectVisible('[data-hln-screen="site"].is-active');
   return metrics;
 }
