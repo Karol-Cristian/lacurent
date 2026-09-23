@@ -95,6 +95,20 @@ try {
         };
       });
 
+    const basePositionLocal = new Vector3Ctor(
+      ...(pv.userData?.roofMount?.basePositionLocal || [0, 0, 0])
+    );
+    const downslopeLocal = new Vector3Ctor(
+      ...(pv.userData?.roofMount?.localDownslope || [0, 0, 1])
+    ).normalize();
+    const basePositionWorld = scene.modelRoot.localToWorld(basePositionLocal.clone());
+    const currentOriginWorld = scene.modelRoot.localToWorld(pv.position.clone());
+    const downslopeTipWorld = scene.modelRoot.localToWorld(
+      basePositionLocal.clone().add(downslopeLocal)
+    );
+    const downslopeWorld = downslopeTipWorld.sub(basePositionWorld).normalize();
+    const pvVerticalDrop = basePositionWorld.y - currentOriginWorld.y;
+
     return {
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
@@ -102,6 +116,10 @@ try {
       pvMaxY:pvBox.max.y,
       mountedRoofUuid,
       pvRoofSupport,
+      downslopeWorld:downslopeWorld.toArray(),
+      pvVerticalDrop,
+      basePositionWorld:basePositionWorld.toArray(),
+      currentOriginWorld:currentOriginWorld.toArray(),
       smokeVisible:smoke.visible,
       smokeWorld:smokeWorld.toArray(),
     };
@@ -112,6 +130,10 @@ try {
   if (!roofVisualCalibration.mountedRoofUuid ||
       roofVisualCalibration.pvRoofSupport.some(panel => !panel.supported)) {
     throw new Error("PV field is not fully supported by the mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (roofVisualCalibration.downslopeWorld[1] > -0.15 ||
+      roofVisualCalibration.pvVerticalDrop < 0.05) {
+    throw new Error("PV shift is not materially downslope in world space: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.smokeVisible) {
     throw new Error("Combustion plume is hidden for condensing gas");
