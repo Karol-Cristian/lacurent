@@ -118,25 +118,11 @@ def transmission_heat_transfer(building: BuildingInput) -> tuple[float, list[Con
 
 
 def ventilation_heat_transfer(building: BuildingInput) -> float:
-    """Return Hve in W/K.
+    """MC001 Hve helper: Hve = 0.34 * qv_m3h * (1 - eta_hr). Units: W/K."""
 
-    Legacy inputs keep the previous equivalent-ACH behaviour. When Home Lab
-    supplies a split, infiltration is never credited with heat recovery while
-    the controlled ventilation stream can use eta_hr.
-    """
-
-    ventilation = building.ventilation
-    infiltration_ach = ventilation.infiltration_air_changes_per_hour
-    controlled_ach = ventilation.ventilation_air_changes_per_hour
-    if infiltration_ach is None and controlled_ach is None:
-        airflow_m3h = ventilation.air_changes_per_hour * building.heated_volume_m3
-        recovery_factor = 1 - ventilation.heat_recovery_efficiency
-        return _round(0.34 * airflow_m3h * recovery_factor)
-
-    infiltration = float(infiltration_ach or 0)
-    controlled = float(controlled_ach or 0)
-    effective_ach = infiltration + controlled * (1 - ventilation.heat_recovery_efficiency)
-    return _round(0.34 * effective_ach * building.heated_volume_m3)
+    airflow_m3h = building.ventilation.air_changes_per_hour * building.heated_volume_m3
+    recovery_factor = 1 - building.ventilation.heat_recovery_efficiency
+    return _round(0.34 * airflow_m3h * recovery_factor)
 
 
 def _monthly_utilization_parameter(building: BuildingInput, total_h_w_k: float, mode: str) -> float:
