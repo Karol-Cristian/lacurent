@@ -22,6 +22,30 @@ try {
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
 
+  const compass = page.locator('[data-hln-3d-stage="home"] [data-hln-3d-compass]');
+  await compass.waitFor({state:"visible", timeout:15000});
+  const compassBox = await compass.boundingBox();
+  if (!compassBox) throw new Error("Home Lab compass has no bounding box");
+  await compass.click({position:{x:compassBox.width / 2, y:2}});
+  await page.waitForFunction(() => document.querySelector("#hlnOrientation")?.value === "north");
+  const orientationAfterCompass = await page.locator("#hlnOrientation").inputValue();
+  if (orientationAfterCompass !== "north") throw new Error("Compass did not set semantic orientation");
+
+  const canvas = page.locator('[data-hln-3d-stage="home"] canvas');
+  const canvasBox = await canvas.boundingBox();
+  if (canvasBox) {
+    const startX = canvasBox.x + canvasBox.width * 0.58;
+    const startY = canvasBox.y + canvasBox.height * 0.52;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 90, startY + 12, {steps:6});
+    await page.mouse.up();
+  }
+  const orientationAfterOrbit = await page.locator("#hlnOrientation").inputValue();
+  if (orientationAfterOrbit !== "north") {
+    throw new Error("Camera orbit changed the semantic house orientation");
+  }
+
   await page.locator('.hln-config-row[data-hln-editor-open="house"]').click();
   await expectVisible('[data-hln-editor="house"]');
   await page.locator("#hlnArea").fill("130");
