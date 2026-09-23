@@ -1,0 +1,101 @@
+name: Commercial Home Lab Staging
+
+on:
+  pull_request:
+    branches:
+      - codex/commercial-v2-cloudflare-python
+    paths:
+      - "commercial/**"
+      - "scripts/prepare-commercial-cloudflare-worker.mjs"
+      - ".github/workflows/commercial-home-lab-staging.yml"
+
+concurrency:
+  group: commercial-home-lab-staging
+  cancel-in-progress: true
+
+jobs:
+  staging:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STAGING_URL: https://lacurent-commercial-v2-staging.lemnarukarol.workers.dev
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Run release-gate checks
+        run: |
+          git diff --check
+          node --check commercial/static/home-lab-next.js
+          node --check commercial/static/home-lab-3d.js
+          python -m compileall -q commercial
+          python -m pytest commercial/tests -q
+
+      - name: Validate staging credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Install uv
+        run: python -m pip install uv
+
+      - name: Prepare Worker bundle
+        run: |
+          node scripts/prepare-commercial-cloudflare-worker.mjs --name lacurent-commercial-v2-staging
+          cp commercial/cloudflare-worker/wrangler.staging.toml .wrangler/commercial-v2-worker/wrangler.toml
+
+      - name: Install current Wrangler
+        working-directory: .wrangler/commercial-v2-worker
+        run: npm install --save-dev wrangler@latest
+
+      - name: Sync Python Worker dependencies
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Deploy staging Worker
+        working-directory: .wrangler/commercial-v2-worker
+        run: npx wrangler deploy
+
+      - name: Smoke-test staging
+        run: |
+          for attempt in $(seq 1 12); do
+            if curl -fsS "$STAGING_URL/health" | grep -q '"status":"ok"'; then
+              break
+            fi
+            sleep 5
+          done
+          curl -fsS "$STAGING_URL/health" | grep -q '"status":"ok"'
+          curl -fsSL "$STAGING_URL/home-lab-next" | grep -q 'data-home-lab-next'
+          curl -fsSL "$STAGING_URL/home-lab/facts" | grep -q 'Home Lab Facts'
+
+      - name: Publish staging URL
+        run: |
+          echo "## Home Lab staging" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$STAGING_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR commit: ${{ github.event.pull_request.head.sha }}" >> "$GITHUB_STEP_SUMMARY"
