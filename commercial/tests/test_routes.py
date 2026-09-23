@@ -157,6 +157,7 @@ def test_simulation_facts_index_is_public_and_indexable() -> None:
     assert "AI-ul explică" in response.text
     assert "Podul trebuie izolat întotdeauna primul? Nu." in response.text
     assert "3.7×" in response.text
+    assert 'href="/home-lab-next?source=facts"' in response.text
     assert "/static/simulation-facts.css?v=facts1" in response.text
 
     shortcut = client.get("/facts", follow_redirects=False)
@@ -396,7 +397,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next19" in response.text
-    assert "/static/home-lab-next.js?v=next34" in response.text
+    assert "/static/home-lab-next.js?v=next35" in response.text
     assert "/static/home-lab-3d.css?v=3d24" in response.text
     assert "/static/home-lab-3d.js?v=3d28" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
@@ -997,6 +998,15 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function benefitText" in response.text
     assert "function renderImpactPanel" in response.text
     assert "function populateTechnicalForm" in response.text
+    assert "function trackEvent" in response.text
+    assert '"hln:analytics"' in response.text
+    assert '"home_lab_baseline_saved"' in response.text
+    assert '"home_lab_intervention_opened"' in response.text
+    assert '"home_lab_intervention_kept"' in response.text
+    assert '"home_lab_screen_viewed"' in response.text
+    assert '"home_lab_report_printed"' in response.text
+    assert '"home_lab_viewed"' in response.text
+    assert "if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);" in response.text
     assert "function directChangeText" in response.text
     assert "function applyDeltaState" in response.text
     assert "function energyClassRank" in response.text
