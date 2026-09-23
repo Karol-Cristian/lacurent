@@ -123,7 +123,15 @@ try {
     const downslopeWorld = downslopeTipWorld.sub(basePositionWorld).normalize();
     const pvVerticalDrop = basePositionWorld.y - currentOriginWorld.y;
 
+    const pvPanelCentersWorld = pv.children
+      .filter(panel => panel.visible)
+      .map(panel => ({
+        name:panel.name,
+        center:panel.getWorldPosition(new Vector3Ctor()).toArray(),
+      }));
+
     return {
+      pvPanelCentersWorld,
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
       pvSupport,
@@ -141,6 +149,7 @@ try {
       smokeWorld:smokeWorld.toArray(),
     };
   });
+  console.log("PV_RUNTIME_CALIBRATION " + JSON.stringify(roofVisualCalibration));
   if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
     throw new Error("PV calibration did not expose the full six-panel field");
   }
