@@ -85,18 +85,22 @@ try {
               0,
               scene.modelSize.y * 0.18
             );
-            const hit = ray.intersectObjects(roofMeshes, true)
-              .find(candidate => candidate.object?.uuid === mountedRoofUuid);
+            const hits = ray.intersectObjects(roofMeshes, true);
+            const hit = hits.find(candidate => candidate.object?.uuid === mountedRoofUuid);
             const gap = hit ? Math.abs(panelPoint.y - hit.point.y) : null;
+            const firstUuid = String(hits[0]?.object?.uuid || "");
             return {
               supported:Boolean(hit) && gap <= supportTolerance,
               gap,
+              firstUuid,
+              intercepted:Boolean(firstUuid) && firstUuid !== mountedRoofUuid,
             };
           });
 
           return {
             name:panel.name,
             supported:checks.every(check => check.supported),
+            unobstructed:checks.every(check => !check.intercepted),
             maxGap:Math.max(...checks.map(check => check.gap ?? Number.POSITIVE_INFINITY)),
           };
         });
@@ -147,8 +151,8 @@ try {
     throw new Error("Solar thermal collector did not load the imported GLB asset: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.thermalSupport.mountedRoofUuid ||
-      roofVisualCalibration.thermalSupport.panels.some(panel => !panel.supported)) {
-    throw new Error("Solar thermal field is not fully supported by its mounted GLB roof face: " + JSON.stringify(roofVisualCalibration));
+      roofVisualCalibration.thermalSupport.panels.some(panel => !panel.supported || !panel.unobstructed)) {
+    throw new Error("Solar thermal field is unsupported or intercepted by another roof object: " + JSON.stringify(roofVisualCalibration));
   }
   if (roofVisualCalibration.roofNormalDot < 0.995) {
     throw new Error("Solar thermal collector is not aligned to the main roof plane: " + JSON.stringify(roofVisualCalibration));
