@@ -92,6 +92,14 @@ jobs:
           curl -fsSL "$STAGING_URL/home-lab-next" | grep -q 'data-home-lab-next'
           curl -fsSL "$STAGING_URL/home-lab/facts" | grep -q 'Home Lab Facts'
 
+      - name: Install browser smoke dependency
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Exercise Home Lab in Chromium
+        run: node scripts/smoke-home-lab-browser.mjs
+
       - name: Publish staging URL
         run: |
           echo "## Home Lab staging" >> "$GITHUB_STEP_SUMMARY"
