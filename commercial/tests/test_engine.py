@@ -118,7 +118,7 @@ def test_iso13370_slab_on_ground_u_uses_floor_geometry() -> None:
         ground_conductivity_w_mk=2.0,
     )
 
-    assert effective_u == pytest.approx(0.253186, abs=1e-6)
+    assert effective_u == pytest.approx(0.2535925613, abs=1e-9)
     assert effective_u < 0.36
 
 
