@@ -4968,20 +4968,14 @@
   });
   quickEditRange.addEventListener("change", event => {
     applyQuickMeasureValue(event.target.value);
-    commitQuickMeasureEditor();
   });
-  quickEditRange.addEventListener("pointerup", () => {
-    if (quickEditType) commitQuickMeasureEditor();
-  });
-  quickEditRange.addEventListener("touchend", () => {
-    if (quickEditType) commitQuickMeasureEditor();
-  }, { passive: true });
 
   $("#hlnQuickEditOverlay").addEventListener("click", event => {
     if (event.target === $("#hlnQuickEditOverlay")) cancelQuickMeasureEditor();
   });
   root.querySelectorAll("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
+  $("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);
 
   $("#hlnDockCta").addEventListener("click", async () => {
     if (screen === "home") {
