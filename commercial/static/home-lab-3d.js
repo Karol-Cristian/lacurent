@@ -932,6 +932,91 @@ class HomeLabHouse3D {
     });
   }
 
+  createSmokeTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 96;
+    canvas.height = 96;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(48, 48, 4, 48, 48, 44);
+    gradient.addColorStop(0, "rgba(235,238,235,.58)");
+    gradient.addColorStop(0.45, "rgba(218,224,220,.30)");
+    gradient.addColorStop(1, "rgba(205,213,208,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 96, 96);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+
+  existingChimneyLocalTop() {
+    const named = [];
+    this.modelRoot.traverse((object) => {
+      if (!object?.isMesh) return;
+      const key = `${object.name || ""} ${object.material?.name || ""}`.toLowerCase();
+      if (/chimney|flue|smokestack|smoke_stack|chimenea/.test(key)) named.push(object);
+    });
+    if (named.length) {
+      let top = null;
+      named.forEach((mesh) => {
+        const box = new THREE.Box3().setFromObject(mesh);
+        const point = new THREE.Vector3(
+          (box.min.x + box.max.x) * 0.5,
+          box.max.y,
+          (box.min.z + box.max.z) * 0.5
+        );
+        if (!top || point.y > top.y) top = point;
+      });
+      if (top) return this.modelRoot.worldToLocal(top.clone());
+    }
+    return this.localPointFromNormalized([-0.22, 0.91, 0.12]);
+  }
+
+  createExistingChimneySmoke() {
+    const group = new THREE.Group();
+    group.name = "LaCurentVisual_existingChimneySmoke";
+    group.position.copy(this.existingChimneyLocalTop());
+
+    const texture = this.createSmokeTexture();
+    const plumeHeight = this.localLength(this.modelSize.y * 0.18);
+    const baseSize = this.localLength(Math.max(0.16, this.modelSize.x * 0.035));
+    for (let index = 0; index < 5; index += 1) {
+      const material = new THREE.SpriteMaterial({
+        map:texture,
+        transparent:true,
+        opacity:0.0,
+        depthWrite:false,
+        color:0xe4e8e5,
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.userData.smokePhase = index / 5;
+      sprite.userData.smokeHeight = plumeHeight;
+      sprite.userData.smokeBaseSize = baseSize;
+      group.add(sprite);
+    }
+    group.visible = false;
+    this.modelRoot.add(group);
+    this.equipmentLayers.set("chimneySmoke", group);
+  }
+
+  updateChimneySmoke(now) {
+    const group = this.equipmentLayers.get("chimneySmoke");
+    if (!group?.visible) return;
+    const seconds = now * 0.001;
+    group.children.forEach((sprite, index) => {
+      const t = (seconds * 0.16 + Number(sprite.userData.smokePhase || 0)) % 1;
+      const rise = Number(sprite.userData.smokeHeight || 1);
+      const baseSize = Number(sprite.userData.smokeBaseSize || 0.2);
+      sprite.position.set(
+        Math.sin(seconds * 0.72 + index * 1.7) * baseSize * 0.28 * t,
+        rise * t,
+        Math.cos(seconds * 0.55 + index * 1.2) * baseSize * 0.16 * t
+      );
+      const size = baseSize * (0.72 + t * 1.35);
+      sprite.scale.set(size, size, 1);
+      sprite.material.opacity = Math.sin(Math.PI * t) * 0.30;
+    });
+  }
+
   createVisualEquipment() {
     if (HOUSE_VARIANT !== "final" || !this.modelRoot) return;
 
@@ -972,6 +1057,8 @@ class HomeLabHouse3D {
     ac.visible = false;
     this.modelRoot.add(ac);
     this.equipmentLayers.set("ac", ac);
+
+    this.createExistingChimneySmoke();
   }
 
   createSelectionProofLayers() {
