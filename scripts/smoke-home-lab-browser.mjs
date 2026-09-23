@@ -108,11 +108,13 @@ try {
     const pvNormal = new Vector3Ctor(...(pv.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
     const thermalNormal = new Vector3Ctor(...(solarThermal.userData?.roofMount?.worldNormal || [0, 1, 0])).normalize();
     const thermalCenter = solarThermalBox.getCenter(new Vector3Ctor());
+    const pvCenter = pvBox.getCenter(new Vector3Ctor());
 
     return {
       pvVisible:pv.visible,
       pvVisibleChildren:pv.children.filter(child => child.visible).length,
       pvSupport,
+      pvCenterY:pvCenter.y,
       solarThermalVisible:solarThermal.visible,
       solarThermalVisibleChildren:solarThermal.children.filter(child => child.visible).length,
       thermalSupport,
@@ -125,6 +127,13 @@ try {
   });
   if (!roofVisualCalibration.pvVisible || roofVisualCalibration.pvVisibleChildren !== 6) {
     throw new Error("PV calibration did not expose the full six-panel field");
+  }
+  if (!roofVisualCalibration.pvSupport.mountedRoofUuid ||
+      roofVisualCalibration.pvSupport.panels.some(panel => !panel.supported)) {
+    throw new Error("Lower PV field is not fully supported by the main GLB roof: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (roofVisualCalibration.pvCenterY > 3.60) {
+    throw new Error("PV field is still too high on the roof: " + JSON.stringify(roofVisualCalibration));
   }
   if (!roofVisualCalibration.solarThermalVisible || roofVisualCalibration.solarThermalVisibleChildren !== 1) {
     throw new Error("Solar thermal calibration did not expose the compact collector");
