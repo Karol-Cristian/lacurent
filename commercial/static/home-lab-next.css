@@ -144,7 +144,7 @@ svg{display:block}
 .hln-hotspot-house{top:36%;right:7%}
 .hln-hotspot-envelope{bottom:23%;left:8%}
 .hln-hotspot-systems{bottom:16%;right:8%}
-.hln-hotspot-renewables{top:11%;right:27%}
+.hln-hotspot-windows{top:27%;right:8%}
 .hln-zone-roof{top:16%;right:12%}
 .hln-zone-wall{top:48%;left:4%}
 .hln-zone-window{top:49%;right:3%}
@@ -338,9 +338,9 @@ svg{display:block}
 .hln-scenario-actions{justify-content:flex-end;margin-top:18px}
 .hln-quick-edit-overlay{
   position:fixed;z-index:95;inset:0;display:grid;place-items:end center;padding:24px 20px 118px;
-  background:rgba(20,28,24,.14);
-  -webkit-backdrop-filter:blur(6px) saturate(.92);
-  backdrop-filter:blur(6px) saturate(.92)
+  background:rgba(20,28,24,.08);
+  -webkit-backdrop-filter:blur(2px) saturate(.98);
+  backdrop-filter:blur(2px) saturate(.98)
 }
 .hln-quick-edit-overlay[hidden]{display:none}
 .hln-quick-edit-card{
@@ -374,7 +374,7 @@ svg{display:block}
 .hln-quick-edit-hint{display:block;margin-top:7px;color:#8b938e;font-size:8px;line-height:1.4}
 
 .hln-editor{
-  position:fixed;z-index:80;inset:0;display:flex;justify-content:flex-end;background:rgba(22,29,26,.34);backdrop-filter:blur(6px)
+  position:fixed;z-index:80;inset:0;display:flex;justify-content:flex-end;background:rgba(22,29,26,.16);backdrop-filter:blur(2px)
 }
 .hln-editor[hidden]{display:none}
 .hln-editor-card{
@@ -517,9 +517,9 @@ svg{display:block}
 @media(max-width:760px){
   .hln-quick-edit-overlay{
     padding:14px 10px 142px;
-    background:rgba(20,28,24,.20);
-    -webkit-backdrop-filter:blur(11px) saturate(.86);
-    backdrop-filter:blur(11px) saturate(.86)
+    background:rgba(20,28,24,.10);
+    -webkit-backdrop-filter:blur(3px) saturate(.96);
+    backdrop-filter:blur(3px) saturate(.96)
   }
   .hln-quick-edit-card{
     padding:16px 14px 14px;
@@ -536,9 +536,9 @@ svg{display:block}
     align-items:flex-end;
     justify-content:center;
     padding-top:18vh;
-    background:rgba(20,28,24,.22);
-    -webkit-backdrop-filter:blur(10px) saturate(.88);
-    backdrop-filter:blur(10px) saturate(.88)
+    background:rgba(20,28,24,.12);
+    -webkit-backdrop-filter:blur(3px) saturate(.96);
+    backdrop-filter:blur(3px) saturate(.96)
   }
   .hln-editor-card{
     width:100%;
@@ -634,7 +634,7 @@ svg{display:block}
   .hln-hotspot-house{top:34%;right:5%}
   .hln-hotspot-envelope{bottom:24%;left:5%}
   .hln-hotspot-systems{bottom:12%;right:7%}
-  .hln-hotspot-renewables{top:7%;right:19%}
+  .hln-hotspot-windows{top:26%;right:4%}
   .hln-zone-roof{top:13%;right:10%}
   .hln-zone-wall{top:48%;left:2%}
   .hln-zone-window{top:47%;right:2%}
@@ -1535,4 +1535,12 @@ svg{display:block}
  .hln-energy-prices[open]{flex-basis:100%}
  .hln-energy-cards{grid-template-columns:1fr}
  .hln-energy-prices[open]+.hln-energy-sen{margin-top:-18px;padding-bottom:8px}
+}
+
+
+/* Issue #353: mobile form controls must not trigger Safari's automatic page zoom. */
+@media(max-width:760px){
+  .hln-editor input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  .hln-editor select,
+  .hln-editor textarea{font-size:16px}
 }
