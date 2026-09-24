@@ -649,7 +649,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
     assert "Referință" in response.text
     assert 'class="hln-price-status' in response.text
-    assert "/static/home-lab-3d.js?v=3d52" in response.text
+    assert "/static/home-lab-3d.js?v=3d53" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1967,6 +1967,7 @@ def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     assert 'solidHeat: "Încălzire"' in js3d.text
     assert '["home", "site"].includes(this.mode)' in js3d.text
     assert "(this.isMobile || (" in js3d.text
+    assert 'this.isMobile = window.matchMedia?.("(max-width: 760px)").matches' in js3d.text
     assert "this.updateHotspotPositions();" in js3d.text
     assert "this.updateEquipmentBadges();" in js3d.text
     assert 'data-hln-3d-add-rail' in js3d.text
