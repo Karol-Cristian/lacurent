@@ -554,6 +554,54 @@ try {
   );
   await page.locator("#hlnDockCta").click();
   await expectVisible('[data-hln-screen="site"].is-active');
+  await page.waitForFunction(
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh"),
+    null,
+    {timeout:30000}
+  );
+  const mobileDeclutter = await page.evaluate(() => {
+    const root = document.querySelector("[data-home-lab-next]");
+    const homeReturn = document.querySelector('[data-hln-screen="site"] .hln-home-return');
+    const mobileCopy = document.querySelector('[data-hln-screen="site"] .hln-copy-mobile');
+    const desktopCopy = document.querySelector('[data-hln-screen="site"] .hln-copy-desktop');
+    const energyPreview = document.querySelector(".hln-energy-preview");
+    const status = document.querySelector(".hln-live-calc-status");
+    const cta = document.querySelector("#hlnDockCta");
+    const back = document.querySelector("#hlnDockBack");
+    if (!(root instanceof HTMLElement) ||
+        !(homeReturn instanceof HTMLElement) ||
+        !(mobileCopy instanceof HTMLElement) ||
+        !(desktopCopy instanceof HTMLElement) ||
+        !(energyPreview instanceof HTMLElement) ||
+        !(status instanceof HTMLElement) ||
+        !(cta instanceof HTMLElement) ||
+        !(back instanceof HTMLElement)) {
+      throw new Error("Mobile declutter controls are incomplete");
+    }
+    const ctaBox = cta.getBoundingClientRect();
+    const backBox = back.getBoundingClientRect();
+    return {
+      activeScreen:root.dataset.hlnActiveScreen,
+      homeReturnDisplay:getComputedStyle(homeReturn).display,
+      mobileCopyDisplay:getComputedStyle(mobileCopy).display,
+      desktopCopyDisplay:getComputedStyle(desktopCopy).display,
+      energyPreviewDisplay:getComputedStyle(energyPreview).display,
+      statusDisplay:getComputedStyle(status).display,
+      ctaHeight:ctaBox.height,
+      backHeight:backBox.height,
+    };
+  });
+  if (mobileDeclutter.activeScreen !== "site" ||
+      mobileDeclutter.homeReturnDisplay !== "none" ||
+      mobileDeclutter.mobileCopyDisplay === "none" ||
+      mobileDeclutter.desktopCopyDisplay !== "none" ||
+      mobileDeclutter.energyPreviewDisplay !== "none" ||
+      mobileDeclutter.statusDisplay !== "none" ||
+      mobileDeclutter.ctaHeight > 46 ||
+      mobileDeclutter.backHeight > 42) {
+    throw new Error("Mobile house-first declutter contract failed: " + JSON.stringify(mobileDeclutter));
+  }
+
   const mobileBack = await page.evaluate(() => {
     const back = document.querySelector("#hlnDockBack");
     if (!(back instanceof HTMLElement)) throw new Error("Mobile back button is missing");
