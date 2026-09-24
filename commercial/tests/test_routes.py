@@ -561,9 +561,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next32" in response.text
+    assert "/static/home-lab-next.css?v=next33" in response.text
     assert "/static/home-lab-next.js?v=next58" in response.text
-    assert "/static/home-lab-3d.css?v=3d31" in response.text
+    assert "/static/home-lab-3d.css?v=3d32" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
 
@@ -649,7 +649,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
     assert "Referință" in response.text
     assert 'class="hln-price-status' in response.text
-    assert "/static/home-lab-3d.js?v=3d55" in response.text
+    assert "/static/home-lab-3d.js?v=3d56" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1943,6 +1943,34 @@ def test_home_lab_mobile_declutter_contract() -> None:
     semantic = client.get("/static/final-house-semantic.json")
     assert semantic.status_code == 200
     assert semantic.json()["parts"]["windows"]["anchor"] == [0.43, 0.44, 0.14]
+
+
+
+def test_home_lab_mobile_home_declutter_pass2_contract() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'data-mobile-label="Locație"' in response.text
+    assert 'data-mobile-label="Geometrie"' in response.text
+    assert 'data-mobile-label="Anvelopă"' in response.text
+    assert 'class="hln-hotspot hln-hotspot-systems"' not in response.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-live-summary.is-fresh .hln-live-calc-status" in css.text
+    assert 'max-width:148px' in css.text
+    assert 'span[data-mobile-label]::after' in css.text
+
+    js3d = client.get("/static/home-lab-3d.js")
+    assert js3d.status_code == 200
+    assert 'box.min.y + boxSize.y * 0.18' in js3d.text
+    assert 'pv:{x:-58, y:-70}' in js3d.text
+    assert 'solarThermal:{x:58, y:-46}' in js3d.text
+    assert 'solidHeat:{x:0, y:-4}' in js3d.text
+
+    css3d = client.get("/static/home-lab-3d.css")
+    assert css3d.status_code == 200
+    assert 'bottom:66px' in css3d.text
+    assert 'max-width:118px' in css3d.text
 
 
 def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
