@@ -1058,3 +1058,17 @@
 .hln-3d-stage:not(.is-authoring) [data-hln-3d-explode] {
   display: none;
 }
+
+
+/* Issue #353: stable-scale house interaction and explicit add affordances. */
+.hln-3d-equipment-badge.is-add{
+  z-index:9;
+  background:rgba(255,255,255,.94);
+  border-color:rgba(63,116,92,.28);
+  color:#315d49;
+}
+.hln-3d-equipment-badge.is-add .hln-3d-equipment-dot{
+  background:#fff;
+  border:1px solid rgba(63,116,92,.48);
+  box-shadow:none;
+}

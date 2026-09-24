@@ -159,6 +159,9 @@ class HomeLabHouse3D {
     this.selectionProofLayers = new Map();
     this.visualState = null;
     this.lastVisualOrientation = null;
+    this.baselineCameraPosition = null;
+    this.baselineCameraTarget = null;
+    this.contextCameraTimer = 0;
   }
 
   async init() {
@@ -177,7 +180,7 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-reset aria-label="Resetează vederea">Reset</button>
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
-      <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
+      <div class="hln-3d-hint">trage pentru rotire</div>
       <div class="hln-3d-compass" data-hln-3d-compass role="button" tabindex="${this.mode === "home" ? "0" : "-1"}" aria-label="Orientarea energetică a casei">
         <b>N</b><span>E</span><i>S</i><em>V</em>
         <span class="hln-3d-compass-arrow" data-hln-3d-compass-arrow aria-hidden="true"></span>
@@ -217,6 +220,8 @@ class HomeLabHouse3D {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.065;
     this.controls.enablePan = false;
+    // Keep the house at a stable scale. Rotation remains interactive, but wheel/pinch zoom is intentionally disabled.
+    this.controls.enableZoom = false;
     this.controls.minDistance = 6;
     this.controls.maxDistance = 18;
     this.controls.minPolarAngle = Math.PI * 0.16;
@@ -549,6 +554,8 @@ class HomeLabHouse3D {
     if (this.authorMode && this.isMobile && HOUSE_VARIANT === "final") distance *= 1.34;
     this.camera.position.set(distance * 0.76, distance * 0.48, distance);
     this.controls.update();
+    this.baselineCameraPosition = this.camera.position.clone();
+    this.baselineCameraTarget = this.controls.target.clone();
 
     const warmLeft = new THREE.PointLight(0xffc98f, 0.34, Math.max(this.modelSize.x, this.modelSize.z) * 1.0, 2);
     warmLeft.position.set(-this.modelSize.x * 0.22, this.modelSize.y * 0.34, this.modelSize.z * 0.54);
@@ -1545,19 +1552,24 @@ class HomeLabHouse3D {
   focusEquipment(kind) {
     if (!this.modelSize) return;
     const s = this.modelSize;
+    let position = null;
+    let target = null;
     if (kind === "ac") {
-      this.animateCamera(
-        new THREE.Vector3(s.x * 0.95, s.y * 0.58, s.z * 1.24),
-        new THREE.Vector3(s.x * 0.24, s.y * 0.35, s.z * 0.30)
-      );
-      return;
+      position = new THREE.Vector3(s.x * 0.95, s.y * 0.58, s.z * 1.24);
+      target = new THREE.Vector3(s.x * 0.24, s.y * 0.35, s.z * 0.30);
+    } else if (kind === "heatPump") {
+      position = new THREE.Vector3(s.x * 1.18, s.y * 0.48, s.z * 0.86);
+      target = new THREE.Vector3(s.x * 0.30, s.y * 0.20, s.z * 0.18);
     }
-    if (kind === "heatPump") {
-      this.animateCamera(
-        new THREE.Vector3(s.x * 1.28, s.y * 0.48, s.z * 0.82),
-        new THREE.Vector3(s.x * 0.34, s.y * 0.20, s.z * 0.18)
-      );
-    }
+    if (!position || !target) return;
+    this.animateCamera(position, target);
+    window.clearTimeout(this.contextCameraTimer);
+    this.contextCameraTimer = window.setTimeout(() => this.restoreBaselineCamera(), 1250);
+  }
+
+  restoreBaselineCamera() {
+    if (!this.baselineCameraPosition || !this.baselineCameraTarget) return;
+    this.animateCamera(this.baselineCameraPosition.clone(), this.baselineCameraTarget.clone());
   }
 
   applyVisualState(detail = {}) {
@@ -1687,7 +1699,7 @@ class HomeLabHouse3D {
     ) {
       this.focusEquipment("heatPump");
     } else if (detail.focus === "pv" || detail.focus === "solarThermal") {
-      this.focusPart("roof", false);
+      // Roof equipment is already visible in the stable baseline viewport; do not permanently zoom the house.
     } else if (detail.focus === "home") {
       this.resetCamera();
     }
@@ -1828,6 +1840,21 @@ class HomeLabHouse3D {
 
     this.equipmentBadges.forEach((button, key) => {
       const root = this.equipmentRoot(key);
+      const state = this.visualState || {};
+      const isZeroState =
+        (key === "pv" && !state.pvEnabled) ||
+        (key === "solarThermal" && !state.solarThermalEnabled);
+      if (isZeroState) {
+        button.hidden = false;
+        button.classList.add("is-add");
+        button.style.transform = key === "pv"
+          ? `translate3d(${width * 0.43}px, 62px, 0) translate(-50%, 0)`
+          : `translate3d(${width * 0.64}px, 62px, 0) translate(-50%, 0)`;
+        const label = button.querySelector("[data-hln-equipment-label]");
+        if (label) label.textContent = key === "pv" ? "+ PV" : "+ Solar";
+        return;
+      }
+      button.classList.remove("is-add");
       if (!root?.visible) {
         button.hidden = true;
         return;
