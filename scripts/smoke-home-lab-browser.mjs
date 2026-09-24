@@ -20,28 +20,6 @@ async function expectVisible(selector) {
 try {
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
-  const mobileDock = await page.evaluate(() => {
-    const dock = document.querySelector(".hln-dock");
-    const benefits = document.querySelector(".hln-dock-benefits");
-    const cta = document.querySelector("#hlnDockCta");
-    if (!(dock instanceof HTMLElement) || !(benefits instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
-      throw new Error("Mobile dock is incomplete");
-    }
-    const ctaBox = cta.getBoundingClientRect();
-    const dockStyle = getComputedStyle(dock);
-    return {
-      benefitsDisplay:getComputedStyle(benefits).display,
-      ctaVisible:ctaBox.width > 0 && ctaBox.height > 0,
-      dockBackground:dockStyle.backgroundColor,
-      dockBorder:dockStyle.borderTopWidth,
-    };
-  });
-  if (mobileDock.benefitsDisplay !== "none" ||
-      !mobileDock.ctaVisible ||
-      mobileDock.dockBackground !== "rgba(0, 0, 0, 0)" ||
-      mobileDock.dockBorder !== "0px") {
-    throw new Error("Mobile dock is not CTA-only: " + JSON.stringify(mobileDock));
-  }
   await expectVisible('[data-hln-screen="home"].is-active');
   await expectVisible("#hlnPersistentClass");
   await expectVisible("#hlnPersistentCost");
@@ -529,6 +507,28 @@ try {
   await page.setViewportSize({width:390,height:844});
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
+  const mobileDock = await page.evaluate(() => {
+    const dock = document.querySelector(".hln-dock");
+    const benefits = document.querySelector(".hln-dock-benefits");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(dock instanceof HTMLElement) || !(benefits instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Mobile dock is incomplete");
+    }
+    const ctaBox = cta.getBoundingClientRect();
+    const dockStyle = getComputedStyle(dock);
+    return {
+      benefitsDisplay:getComputedStyle(benefits).display,
+      ctaVisible:ctaBox.width > 0 && ctaBox.height > 0,
+      dockBackground:dockStyle.backgroundColor,
+      dockBorder:dockStyle.borderTopWidth,
+    };
+  });
+  if (mobileDock.benefitsDisplay !== "none" ||
+      !mobileDock.ctaVisible ||
+      mobileDock.dockBackground !== "rgba(0, 0, 0, 0)" ||
+      mobileDock.dockBorder !== "0px") {
+    throw new Error("Mobile dock is not CTA-only: " + JSON.stringify(mobileDock));
+  }
   const mobilePersistentLayout = await page.evaluate(() => {
     const stack = document.querySelector("[data-hln-persistent-stack]");
     const strip = document.querySelector(".hln-energy-strip");
