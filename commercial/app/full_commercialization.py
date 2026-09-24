@@ -83,6 +83,7 @@ class FullProductBackedOptimizationResultV1(BaseModel):
     continuous_commercializations: list[ContinuousCommercializationResultV1] = Field(
         default_factory=list
     )
+    provisional_selection: OptimizationSelectionV1
     final_selection: OptimizationSelectionV1
     continuous_rechecks: int
     heating_rechecks: int
@@ -803,14 +804,19 @@ def run_full_product_backed_optimization(
             if heating_rechecks >= payload.max_heating_evaluations:
                 break
 
-    final_selection = select_optimization_candidate(
+    provisional_selection = select_optimization_candidate(
         payload.search.request,
         selectable,
     )
-    fully = sum(
-        1 for item in selectable
+    final_pool = [
+        item for item in selectable
         if item.commercialization_status in {"commercialized", "raw_only"}
+    ]
+    final_selection = select_optimization_candidate(
+        payload.search.request,
+        final_pool,
     )
+    fully = len(final_pool)
     partial = sum(
         1 for item in selectable
         if item.commercialization_status == "partially_discretized"
@@ -821,12 +827,9 @@ def run_full_product_backed_optimization(
         "Heating is evaluated as a discrete product branch across the bounded commercialized candidate set.",
         "This mixed V1 does not yet re-run local continuous refinement separately inside every heating branch.",
     ]
-    if final_selection.selected is not None and (
-        final_selection.selected.commercialization_status
-        == "partially_discretized"
-    ):
+    if provisional_selection.selected is not None and final_selection.selected is None:
         warnings.append(
-            "Selected result still contains at least one family without complete product-level commercialization."
+            "A provisional economic result exists, but no fully product-commercialized candidate satisfies the selected intent."
         )
     if not selectable:
         warnings.append("No candidate survived commercial rechecking.")
@@ -834,6 +837,7 @@ def run_full_product_backed_optimization(
     return FullProductBackedOptimizationResultV1(
         raw_search=raw_search,
         continuous_commercializations=continuous,
+        provisional_selection=provisional_selection,
         final_selection=final_selection,
         continuous_rechecks=len(continuous),
         heating_rechecks=heating_rechecks,
