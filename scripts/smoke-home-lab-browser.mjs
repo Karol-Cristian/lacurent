@@ -465,7 +465,9 @@ try {
   if (actualMatch7) {
     const actualYears7 = Number(actualMatch7[1].replace(",", "."));
     if (actualYears7 <= 6.000001) {
-      await page.locator('.hln-progress [data-hln-go="site"]').click();
+      await page.evaluate(() => {
+        document.querySelector('.hln-progress [data-hln-go="site"]')?.click();
+      });
       await expectVisible('[data-hln-screen="site"].is-active');
       await page.locator("#hlnRoiPaybackYears").fill("6");
       await page.locator('[data-hln-smart-config="economic-payback"]').click();
