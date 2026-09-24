@@ -1,0 +1,74 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+
+const source = fs.readFileSync(path.join(__dirname, '../static/home-lab-next.js'), 'utf8');
+const helper = source.slice(source.indexOf('  async function fetchWithTimeout('), source.indexOf('  async function calculateState('));
+
+function harness() {
+  let calls = 0;
+  let signal;
+  let release;
+  const timers = new Set();
+  const request = vm.runInNewContext(helper + '\nfetchWithTimeout;', {
+    AbortController, Error, LIVE_REQUEST_TIMEOUT_MS: 20,
+    window: {
+      setTimeout(fn, ms) { const timer = setTimeout(fn, ms); timers.add(timer); return timer; },
+      clearTimeout(timer) { clearTimeout(timer); timers.delete(timer); },
+    },
+    fetch: async (_url, options) => {
+      calls += 1;
+      signal = options.signal;
+      // Headers arrive immediately; the response body is independently delayed.
+      const body = new Promise((resolve, reject) => {
+        release = resolve;
+        const abort = () => reject(Object.assign(new Error('aborted'), {name:'AbortError'}));
+        if (signal.aborted) abort();
+        else signal.addEventListener('abort', abort, {once:true});
+      });
+      body.catch(() => {});
+      return {ok:true, status:200, headers:{get:() => 'application/json'}, json:() => body};
+    },
+  });
+  return {request, timers, get calls() { return calls; }, get signal() { return signal; }, release(value) { release(value); }};
+}
+
+test('body stalled after headers times out; next explicit request recovers without retry', async () => {
+  const h = harness();
+  await assert.rejects(h.request('/calculate', {}, null, 20), {name:'TimeoutError'});
+  assert.equal(h.signal.aborted, true);
+  assert.equal(h.calls, 1);
+  assert.equal(h.timers.size, 0);
+  const next = h.request('/calculate', {}, null, 100);
+  h.release({annual_cost_lei:123});
+  const result = await next;
+  assert.equal(result.payload.annual_cost_lei, 123);
+  assert.equal(h.calls, 2);
+  assert.equal(h.timers.size, 0);
+});
+
+test('parent cancellation still reaches body after headers arrive', async () => {
+  const h = harness();
+  const parent = new AbortController();
+  const pending = h.request('/calculate', {}, parent.signal, 100);
+  await new Promise(resolve => setImmediate(resolve));
+  parent.abort();
+  await assert.rejects(pending, {name:'AbortError'});
+  assert.equal(h.signal.aborted, true);
+  assert.equal(h.timers.size, 0);
+  assert.equal(h.calls, 1);
+});
+
+test('successful body clears timer and detaches parent listener', async () => {
+  const h = harness();
+  const parent = new AbortController();
+  const pending = h.request('/calculate', {}, parent.signal, 100);
+  h.release({ok:true});
+  const result = await pending;
+  assert.equal(result.payload.ok, true);
+  assert.equal(h.timers.size, 0);
+  parent.abort();
+  assert.equal(h.signal.aborted, false);
+});

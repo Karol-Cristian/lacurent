@@ -92,3 +92,45 @@ client-side abort. Re-read this register and remote branch heads first.
 - Next: reproduce live-slider changes while a slow calculation is already in
   server execution, and verify recovery after timeout without stale UI state or
   automatic retry amplification.
+
+## 2026-09-24 — keep calculation timeout active through response body
+
+- Base: `0bbee2fbb9d49e58f8179bf9854d41e0a95de5a3`, isolated worktree.
+  Production inspected at `6bfd00c25d0d5d6d0292890701241747fce0874f`:
+  the same early timeout cleanup remains present. Other campaign heads checked:
+  calculations `1fd34a6`, readiness `85d764d`, integration `9b878a2`;
+  no duplicate body-timeout fix. No other branch integrated.
+- Defect: fetch resolves when headers arrive. The helper then cleared its timer
+  and detached parent cancellation before callers awaited response.json(). A
+  stalled body could therefore leave live calculation/optimizer waiting without
+  the intended deadline; later aborts no longer reached that body reader.
+- Reproduction: Node VM runs the actual helper source with immediate headers
+  and an independently controlled body promise honoring AbortSignal. Before:
+  3 regressions fail (missing timeout/cancellation and new result contract).
+- Fix: consume JSON/non-JSON bodies inside the protected try/finally and return
+  response metadata plus parsed payload to both live and optimizer callers.
+  No retries added. Browser cache key advanced; regression added to PR checks.
+- Verification on the files in this entry's containing commit: 3 new Node
+  regressions pass (body deadline, cancellation after headers, next explicit
+  request succeeds; timer/listener cleanup); all 16 Node tests pass; 245 Python
+  tests pass with 13 existing warnings; JS syntax and git diff --check pass.
+- Bounded local load rerun: Python 3.12.14, Linux x86_64, one Uvicorn process,
+  16 compact calculation requests/user (optimizer-like), 160 ms think time,
+  12 s request deadline, stop above 2% errors, outer 60 s execution timeout.
+
+| Users | Requests | req/s | p50 ms | p95 ms | p99 ms | Errors | Max RSS MiB |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10 | 160 | 58.71 | 5.41 | 27.48 | 39.48 | 0 | 45.23 |
+| 50 | 800 | 268.96 | 11.43 | 70.15 | 78.72 | 0 | 47.42 |
+| 100 | 1600 | 414.22 | 65.56 | 159.37 | 177.04 | 0 | 51.68 |
+
+- Limits: controlled fetch regression, not browser E2E. Load measures backend
+  calculation requests, not a complete interactive ROI journey, and does not
+  validate this client timeout itself. No Cloudflare capacity/metrics claim,
+  production load, PR or deploy. Client cancellation does not prove server CPU
+  work stops. The dedicated branch is older than production; integrated-version
+  tests and preservation of the latest asset cache key remain required later.
+- Push safety: deploy workflow only triggers on production-branch pushes or
+  manual dispatch; PR checks remain pull_request-only. No triggers broadened.
+- Next: catalog preflight has a separate bare fetch; investigate its deadline
+  and recovery, then browser-level stale-result handling after cancellation.
