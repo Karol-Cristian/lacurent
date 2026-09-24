@@ -316,7 +316,22 @@ try {
   }
 
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
-  await expectVisible('[data-hln-screen="report"].is-active');
+  try {
+    await expectVisible('[data-hln-screen="report"].is-active');
+  } catch (error) {
+    const reportState = await page.evaluate(() => ({
+      activeScreen: document.querySelector('[data-hln-screen].is-active')?.getAttribute("data-hln-screen") || null,
+      reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
+      scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
+      editorHidden: document.querySelector("#hlnEditor")?.hidden,
+    }));
+    throw new Error(
+      "Scenario-to-report navigation failed. state=" + JSON.stringify(reportState) +
+      " pageErrors=" + JSON.stringify(pageErrors) +
+      " consoleErrors=" + JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   // This control lives inside the report heading while the smoke has just
   // scrolled to the document bottom. Its viewport/actionability state is
