@@ -822,6 +822,7 @@ try {
       summaryBottom:summaryBox.bottom,
       statusTop:statusBox.top,
       statusBottom:statusBox.bottom,
+      statusDisplay:getComputedStyle(status).display,
       stackZ:Number(stackStyle.zIndex || 0),
       quickZ:Number(quickStyle.zIndex || 0),
       stackFilter:stackStyle.filter,
@@ -836,8 +837,7 @@ try {
       mobilePersistentLayout.stackTop < 63 ||
       mobilePersistentLayout.stackTop > 65 ||
       mobilePersistentLayout.summaryTop + 1 < mobilePersistentLayout.stripBottom ||
-      mobilePersistentLayout.statusTop + 1 < mobilePersistentLayout.summaryTop ||
-      mobilePersistentLayout.statusBottom > mobilePersistentLayout.summaryBottom + 1 ||
+      mobilePersistentLayout.statusDisplay !== "none" ||
       mobilePersistentLayout.stackZ <= mobilePersistentLayout.quickZ ||
       mobilePersistentLayout.stackFilter !== "none" ||
       mobilePersistentLayout.stackBackdrop !== "none" ||
