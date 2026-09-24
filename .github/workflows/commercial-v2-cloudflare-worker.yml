@@ -10,6 +10,13 @@ on:
       - "commercial/**"
       - "scripts/prepare-commercial-cloudflare-worker.mjs"
 
+# Production deploys must finish in queue order. Without a shared concurrency
+# group, two close pushes can deploy in parallel and an older run can finish
+# last, replacing a newer release.
+concurrency:
+  group: commercial-v2-production
+  queue: max
+
 jobs:
   worker-runtime:
     runs-on: ubuntu-latest
