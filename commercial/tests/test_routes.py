@@ -402,7 +402,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next22" in response.text
-    assert "/static/home-lab-next.js?v=next46" in response.text
+    assert "/static/home-lab-next.js?v=next47" in response.text
     assert "/static/home-lab-3d.css?v=3d26" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -1479,6 +1479,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "Math.min(rawOcclusion, 48)" in response.text
     assert 'orientationchange' in response.text
     assert "new AbortController()" in response.text
+    assert "let optimizerLaunchPending = false" in response.text
+    assert "if (optimizerLaunchPending) return" in response.text
+    assert "await runOptimizerAction(async () =>" in response.text
     assert "[429, 502, 503, 504].includes(response.status)" not in response.text
     assert "response.status >= 500" not in response.text
     assert "Live interaction must never amplify an overloaded Worker" in response.text

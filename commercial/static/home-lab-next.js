@@ -214,6 +214,7 @@
   let calculateTimer = 0;
   let calculateAbortController = null;
   let optimizerAbortController = null;
+  let optimizerLaunchPending = false;
   let optimizerRunToken = 0;
   let optimizerEvaluationCount = 0;
   let optimizerLastRemoteRequestAt = 0;
@@ -2207,6 +2208,23 @@
     scenarioResultState = "pending";
     renderAll();
     return optimizerRunToken;
+  }
+
+  async function runOptimizerAction(action) {
+    if (optimizerLaunchPending) return;
+    optimizerLaunchPending = true;
+    const buttons = $$('[data-hln-smart-config]');
+    buttons.forEach(button => button.disabled = true);
+    setOptimizerBusy(true);
+    try {
+      await action();
+    } finally {
+      optimizerLaunchPending = false;
+      if (!optimizerAbortController) {
+        buttons.forEach(button => button.disabled = false);
+        setOptimizerBusy(false);
+      }
+    }
   }
 
   function applyOptimizerResult(state, result, overrides, meta) {
@@ -4816,10 +4834,12 @@
 
   $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
-      if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
-      if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi("roi");
-      if (button.dataset.hlnSmartConfig === "roi-budget") await configureBestRoi("roi-budget");
-      if (button.dataset.hlnSmartConfig === "roi-payback") await configureBestRoi("roi-payback");
+      await runOptimizerAction(async () => {
+        if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
+        if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi("roi");
+        if (button.dataset.hlnSmartConfig === "roi-budget") await configureBestRoi("roi-budget");
+        if (button.dataset.hlnSmartConfig === "roi-payback") await configureBestRoi("roi-payback");
+      });
     });
   });
 
