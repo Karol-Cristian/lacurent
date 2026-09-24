@@ -1595,7 +1595,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "selected.length" in response.text
     assert "fără limită artificială la numărul de intervenții" in response.text
     assert "round < 3" not in response.text
-    assert 'dock.hidden = screen === "report"' in response.text
+    assert "if (dock) dock.hidden = false;" in response.text
+    assert 'backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi"' in response.text
     assert "function nzebMeetsTarget" in response.text
     assert "ROI_ACTIONS" not in response.text
     assert "weather_compensated" in response.text
