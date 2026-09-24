@@ -1536,3 +1536,71 @@ svg{display:block}
  .hln-energy-cards{grid-template-columns:1fr}
  .hln-energy-prices[open]+.hln-energy-sen{margin-top:-18px;padding-bottom:8px}
 }
+
+
+/* Issue #356: explicit technical configuration mode. */
+.hln-config-sheet-head-technical>div{display:grid;gap:3px}
+.hln-config-sheet-head-technical>div small{color:#8b938e;font-size:8px}
+.hln-technical-open{
+  display:flex;align-items:center;gap:7px;min-height:36px;padding:7px 10px;
+  border:1px solid var(--hln-line);border-radius:999px;background:#fff;color:var(--hln-reno);
+  font-size:9px;font-weight:840
+}
+.hln-technical-open svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8}
+
+.hln-technical-nav{
+  position:sticky;top:72px;z-index:3;display:flex;gap:7px;align-items:center;
+  padding:10px 14px;border-bottom:1px solid var(--hln-line);background:rgba(251,250,247,.98);
+  overflow-x:auto;scrollbar-width:none
+}
+.hln-technical-nav::-webkit-scrollbar{display:none}
+.hln-technical-nav[hidden]{display:none}
+.hln-technical-nav button{
+  flex:0 0 auto;display:flex;gap:7px;align-items:center;min-height:38px;padding:8px 11px;
+  border:1px solid #d8d3ca;border-radius:999px;background:#fff;color:#59645e;font-size:9px;font-weight:820
+}
+.hln-technical-nav button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8}
+.hln-technical-nav button.is-active{border-color:var(--hln-home);background:var(--hln-home-soft);color:var(--hln-home)}
+
+.hln-editor.is-technical-mode{
+  align-items:stretch;justify-content:center;padding:0;background:var(--hln-bg);
+  -webkit-backdrop-filter:none;backdrop-filter:none
+}
+.hln-editor.is-technical-mode .hln-editor-card{
+  width:min(1040px,100%);height:100dvh;border:0;border-radius:0;box-shadow:none;background:var(--hln-surface)
+}
+.hln-editor.is-technical-mode .hln-editor-card>section{
+  width:min(840px,100%);margin:0 auto;padding:26px 24px 120px
+}
+.hln-editor.is-technical-mode .hln-editor-card>header{
+  padding-left:max(14px,calc((100% - 1012px)/2));padding-right:max(14px,calc((100% - 1012px)/2))
+}
+
+/* Keep gameified quick controls visually connected to the house. */
+.hln-quick-edit-overlay{
+  background:rgba(20,28,24,.09);
+  -webkit-backdrop-filter:blur(3px) saturate(.96);
+  backdrop-filter:blur(3px) saturate(.96)
+}
+
+@media(max-width:760px){
+  .hln-editor input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  .hln-editor select,
+  .hln-editor textarea{font-size:16px}
+
+  .hln-editor.is-technical-mode{
+    padding:0;background:var(--hln-bg);
+    -webkit-backdrop-filter:none;backdrop-filter:none
+  }
+  .hln-editor.is-technical-mode .hln-editor-card{
+    height:100dvh;max-height:none;border-radius:0;border-top:0
+  }
+  .hln-editor.is-technical-mode .hln-editor-card>section{padding:18px 14px 120px}
+  .hln-technical-nav{top:72px;padding:8px 10px}
+  .hln-technical-nav button{min-height:40px;padding:8px 10px}
+  .hln-quick-edit-overlay{
+    background:rgba(20,28,24,.10);
+    -webkit-backdrop-filter:blur(4px) saturate(.96);
+    backdrop-filter:blur(4px) saturate(.96)
+  }
+}
