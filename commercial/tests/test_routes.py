@@ -402,7 +402,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next24" in response.text
-    assert "/static/home-lab-next.js?v=next48" in response.text
+    assert "/static/home-lab-next.js?v=next49" in response.text
     assert "/static/home-lab-3d.css?v=3d28" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -1162,6 +1162,73 @@ def test_roi_cost_basis_bootstraps_through_worker_binding_not_deploy_token() -> 
     assert 'market_cost_payload.get("source") != "d1"' in workflow
 
 
+def test_roi_cost_basis_coalesces_concurrent_d1_bootstrap_and_reads(monkeypatch) -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    from starlette.requests import Request
+    from commercial.app import main
+
+    seed = main.roi_cost_basis_seed()
+
+    class Result:
+        def __init__(self, rows):
+            self.results = rows
+
+    class Statement:
+        def __init__(self, db, sql):
+            self.db = db
+            self.sql = sql
+
+        def bind(self, *_args):
+            return self
+
+        async def run(self):
+            await asyncio.sleep(0)
+            self.db.run_calls += 1
+            if "SELECT COUNT(*)" in self.sql:
+                return Result([{
+                    "row_count": len(seed["costs"]),
+                    "catalog_version": seed["catalog_version"],
+                }])
+            if "SELECT family" in self.sql:
+                return Result([{"family": family, **item} for family, item in seed["costs"].items()])
+            return Result([])
+
+    class Database:
+        def __init__(self):
+            self.prepare_calls = 0
+            self.run_calls = 0
+
+        def prepare(self, sql):
+            self.prepare_calls += 1
+            return Statement(self, sql)
+
+    monkeypatch.setattr(main, "_roi_cost_basis_cached_payload", None)
+    monkeypatch.setattr(main, "_roi_cost_basis_cache_expires_at", 0.0)
+    monkeypatch.setattr(main, "_roi_cost_basis_retry_after", 0.0)
+    db = Database()
+
+    async def exercise():
+        scope = {
+            "type": "http", "method": "GET", "path": "/api/market-cost-basis",
+            "headers": [], "query_string": b"", "server": ("test", 80),
+            "client": ("test", 1), "scheme": "http",
+            "env": SimpleNamespace(DB=db),
+        }
+        return await asyncio.gather(*(
+            main.market_cost_basis_api(Request(scope)) for _ in range(100)
+        ))
+
+    responses = asyncio.run(exercise())
+    assert len(responses) == 100
+    assert all(b'"source":"d1"' in response.body for response in responses)
+    # One cold lookup: table, index, status and catalog select. Before the fix
+    # all 100 requests performed all four operations (400 D1 runs).
+    assert db.prepare_calls == 4
+    assert db.run_calls == 4
+
+
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -1418,6 +1485,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "Math.min(rawOcclusion, 48)" in response.text
     assert 'orientationchange' in response.text
     assert "new AbortController()" in response.text
+    assert "let optimizerLaunchPending = false" in response.text
+    assert "if (optimizerLaunchPending) return" in response.text
+    assert "await runOptimizerAction(async () =>" in response.text
     assert "[429, 502, 503, 504].includes(response.status)" not in response.text
     assert "response.status >= 500" not in response.text
     assert "Live interaction must never amplify an overloaded Worker" in response.text
@@ -2078,4 +2148,3 @@ def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_c
     assert 'if (lang !== "en") return raw;' in script.text
     assert "originalText.get" in script.text
     assert "window.lacurentSetLanguage = setLanguage" in script.text
-
