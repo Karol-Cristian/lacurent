@@ -1650,8 +1650,8 @@ def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit()
     assert 'select.dispatchEvent(new Event("change", {bubbles:true}))' in source
     assert "focusOrientation(" not in source
     assert 'this.setCompassOrientation(detail.orientation)' in source
-    assert 'detail.focus === "pv" || detail.focus === "solarThermal"' in source
-    assert 'this.focusPart("roof", false)' in source
+    assert 'detail.focus === "pv" || detail.focus === "solarThermal"' not in source
+    assert 'this.controls.enableZoom = false' in source
     assert "this.rebuildRenovationLayer(part)" not in source
 
 
