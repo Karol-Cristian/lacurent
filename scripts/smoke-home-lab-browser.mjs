@@ -22,6 +22,12 @@ try {
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
 
+  const privacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
+  if (await privacyFirstUse.isVisible()) {
+    await privacyFirstUse.locator("[data-lacurent-deny-local]").click();
+    await privacyFirstUse.waitFor({state:"hidden", timeout:5000});
+  }
+
   await page.waitForFunction(
     () => Array.isArray(window.__homeLab3D) && window.__homeLab3D[0]?.modelRoot,
     null,
@@ -419,6 +425,14 @@ try {
         );
       }
     }
+  }
+
+  const privacyStorage = await page.evaluate(() => ({
+    consent: JSON.parse(localStorage.getItem("lacurent-privacy-v1") || "null"),
+    homeDraft: localStorage.getItem("lacurent-home-lab-next-v1:official"),
+  }));
+  if (privacyStorage.consent?.localAutosave !== false || privacyStorage.homeDraft !== null) {
+    throw new Error("Home Lab wrote a local draft after local autosave was refused: " + JSON.stringify(privacyStorage));
   }
 
   await page.setViewportSize({width:390,height:844});
