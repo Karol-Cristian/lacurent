@@ -4762,7 +4762,7 @@
     target.hidden = !hits.length;
   }
 
-  $("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
+  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
     openEditor(button.dataset.hlnEditorOpen, {
       technical: button.hasAttribute("data-hln-technical-entry"),
     });
@@ -4771,7 +4771,7 @@
   root.querySelectorAll("[data-hln-technical-section]").forEach(button => button.addEventListener("click", () => {
     setEditorSection(button.dataset.hlnTechnicalSection);
   }));
-  $("[data-hln-editor-close]").forEach(button => button.addEventListener("click", closeEditor));
+  $$("[data-hln-editor-close]").forEach(button => button.addEventListener("click", closeEditor));
   $("#hlnEditor").addEventListener("click", event => {
     const editor = $("#hlnEditor");
     if (event.target === editor && editor.dataset.hlnEditorMode !== "technical") closeEditor();
