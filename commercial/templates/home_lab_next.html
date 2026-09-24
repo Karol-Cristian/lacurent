@@ -7,8 +7,8 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next26">
-  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d28">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next27">
+  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d29">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
   <svg class="hln-icon-sprite" aria-hidden="true">
@@ -105,8 +105,8 @@
             <button type="button" class="hln-hotspot hln-hotspot-systems" data-hln-editor-open="systems">
               <svg><use href="#hln-i-flame"></use></svg><span>Instalații · încălzire</span>
             </button>
-            <button type="button" class="hln-hotspot hln-hotspot-renewables" data-hln-editor-open="renewables">
-              <svg><use href="#hln-i-sun"></use></svg><span>Regenerabile · PV / solar</span>
+            <button type="button" class="hln-hotspot hln-hotspot-windows" data-hln-editor-open="envelope" data-hln-window-affordance>
+              <svg><use href="#hln-i-window"></use></svg><span>Ferestre</span>
             </button>
           </div>
           <div class="hln-board-foot">
@@ -118,7 +118,7 @@
         <div class="hln-config-sheet">
           <div class="hln-config-sheet-head">
             <span>DATELE CASEI</span>
-            <small>5 categorii</small>
+            <small>4 categorii</small>
           </div>
 
           <button type="button" class="hln-config-row" data-hln-editor-open="location">
@@ -145,11 +145,6 @@
             <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
           </button>
 
-          <button type="button" class="hln-config-row" data-hln-editor-open="renewables">
-            <span class="hln-row-icon"><svg><use href="#hln-i-sun"></use></svg></span>
-            <span class="hln-row-copy"><small>REGENERABILE</small><strong id="hlnRenewablesSummary">Fără regenerabile</strong><em id="hlnRenewablesMeta">PV · solar termic</em></span>
-            <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
-          </button>
         </div>
       </div>
     </section>
