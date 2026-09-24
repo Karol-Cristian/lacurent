@@ -828,6 +828,8 @@ def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None
     assert '"/api/optimization/home-lab"' in source
     assert '["economic-auto","economic-budget","economic-bill","economic-payback"].includes(action)' in source
     assert "isFinancialOptimizationMeta" in source
+    assert 'const buttons = $("[data-hln-smart-config]")' not in source
+    assert 'const buttons = $("[data-hln-smart-config]")' in source
 
 def test_payback_optimizer_applies_threshold_to_complete_packages_not_components() -> None:
     response = client.get("/static/home-lab-next.js")
