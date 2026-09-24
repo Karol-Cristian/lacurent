@@ -1,5 +1,44 @@
 # Home Lab release-readiness campaign
 
+## 2026-09-24 evening — retain an immutable rollback receipt
+
+- Continued readiness base `85d764dcebb165fc588924b8e09b5446aafd8b15` in an
+  isolated worktree; no other campaign changes were integrated.
+- Observed production SHA: `91dcdf05e8873dd6bf9630c68c89af9590ffe2d8`.
+- Reproduced gap: this register recorded no immutable rollback target;
+  the deployment workflow only printed the version into Actions logs and its
+  rollback note concerned recreating an older route. Neither identified a
+  version-to-source mapping or a complete recovery procedure in the repository.
+- Added [rollback receipt and runbook](rollback.md), using the successful
+  deployment's actual Worker UUID, source SHA, job ID and timestamp. It also
+  prevents treating the same Worker's `workers.dev` alias as isolated staging.
+- Verification: read Actions run/job metadata and decoded deploy log; matched
+  the UUID and Worker name to that job and its source SHA. Checked the runbook
+  against Cloudflare's rollback documentation. `git diff --check` passed.
+  Documentation only: no application tests rerun and no recovery executed.
+- Publication safety: both workflows were inspected; this branch matches no
+  deploy push trigger. No workflow was dispatched. Changes are documentation
+  only, with no PR or deploy.
+
+### Updated evidence matrix (supersedes the morning snapshot below)
+
+| Criterion | Evidence at inspected revisions | Status / remaining limit |
+| --- | --- | --- |
+| Calculations | Register at `1fd34a6c29cc54cea3ec3c922fda5d36fa1874bd`: numeric oracle and auxiliary-electricity tariff regression; annual carrier total was already correct | Fixes integrated; final report reconciliation still tracked in [#390](https://github.com/Karol-Cristian/lacurent/issues/390) |
+| Complete flows | User-flow register now exists in production `91dcdf0`; PR #394 browser CI run `36036491066` passed | Earlier persistence blocker cleared; report acceptance in #390 remains open |
+| Capacity | Stability register at `9e9855e6b41611e71c3cfb84f3f9aa425601bede`: bounded local 10/50/100-user test, zero errors | Local evidence only; representative Cloudflare capacity untested |
+| Configuration | Exact production SHA `91dcdf0`, successful deploy run [36037020065](https://github.com/Karol-Cristian/lacurent/actions/runs/36037020065), Worker runtime and custom-domain smoke passed | Evidence for this SHA; not for a future integrated release |
+| Recovery | Immutable Worker receipt now retained; queue/resource safeguards documented | Rehearsal and database compatibility untested |
+| Offer / monetization | No strategy campaign branch or corresponding evidence found among inspected campaign branches | Untested |
+
+**NO-GO for declaring the complete weekend release ready.** This does not
+retract the successful deployment above. Remaining acceptance gaps are the
+final report, representative capacity, recovery rehearsal/compatibility and
+offer evidence. Recheck the exact final integrated SHA after any further change.
+
+Next: obtain an isolated recovery environment and produce the rehearsal receipt
+specified in `rollback.md`; do not test rollback on either production hostname.
+
 ## 2026-09-24 — serialize production deployments
 
 - Verified production base: `c5676f7b3c2df8b82ad5216cc4f16aed39d66921`
