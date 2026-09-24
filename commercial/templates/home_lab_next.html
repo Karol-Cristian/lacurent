@@ -1140,6 +1140,10 @@
     </aside>
 
     <section class="hln-dock" data-hln-dock="home" aria-live="polite">
+      <button type="button" class="hln-dock-back" id="hlnDockBack" hidden>
+        <svg aria-hidden="true"><use href="#hln-i-arrow-left"></use></svg>
+        <span>Înapoi</span>
+      </button>
       <div class="hln-dock-benefits hln-dock-compare" hidden>
         <article class="is-home">
           <span><small>Casa mea</small><strong><b id="hlnDockHomeClass">—</b><em id="hlnDockHomeCost">—</em></strong></span>
@@ -1152,7 +1156,7 @@
         </article>
       </div>
       <button type="button" class="hln-dock-cta" id="hlnDockCta">
-        <span>Salvează Casa mea și vezi îmbunătățirile</span>
+        <span data-mobile-label="Îmbunătățiri">Salvează Casa mea și vezi îmbunătățirile</span>
         <svg><use href="#hln-i-arrow-right"></use></svg>
       </button>
     </section>
