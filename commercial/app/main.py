@@ -22,6 +22,8 @@ from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .optimization import (
     OptimizationCandidateRequestV1,
+    OptimizationMode,
+    OptimizationRequestV1,
     OptimizationSearchRequestV1,
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
@@ -2097,6 +2099,181 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
 @app.post("/api/home-lab-next/calculate")
 async def home_lab_next_calculate_api(request: Request) -> JSONResponse:
     return await home_lab_next_calculation(request)
+
+
+def _home_lab_optimizer_label(mode: OptimizationMode, form: dict[str, Any]) -> str:
+    if mode == OptimizationMode.investment_budget:
+        return f"Buget maxim {float(form.get('_investment_budget_lei') or 0):.0f} lei"
+    if mode == OptimizationMode.annual_bill_target:
+        return f"Factură anuală țintă {float(form.get('_annual_bill_target_lei') or 0):.0f} lei"
+    if mode == OptimizationMode.max_payback_years:
+        return f"Recuperare în maximum {float(form.get('_max_payback_years') or 0):.1f} ani"
+    return "Optimizare economică automată"
+
+
+def _optimizer_measure_rows(candidate: Any) -> list[dict[str, Any]]:
+    labels = {
+        "wall": "Izolație pereți",
+        "roof": "Izolație acoperiș / pod",
+        "floor": "Izolație pardoseală",
+        "windows": "Ferestre",
+        "pv": "Fotovoltaice",
+        "solar_thermal": "Solar termic",
+        "heating": "Sistem de încălzire",
+    }
+    rows = []
+    for line in candidate.cost_breakdown:
+        if float(line.capex_lei) <= 0:
+            continue
+        rows.append(
+            {
+                "family": line.family,
+                "label": labels.get(line.family, line.family.replace("_", " ").title()),
+                "capexLei": float(line.capex_lei),
+                "parameterValue": float(line.parameter_value),
+                "parameterUnit": line.parameter_unit,
+                "sourceKind": line.source_kind,
+                "productId": line.product_id,
+                "sku": line.sku,
+                "quantity": line.quantity,
+                "quantityUnit": line.quantity_unit,
+                "materialSubtotalLei": line.material_subtotal_lei,
+                "nonmaterialSubtotalLei": line.nonmaterial_subtotal_lei,
+                "note": line.note,
+            }
+        )
+    return rows
+
+
+@app.post("/api/optimization/home-lab")
+async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse:
+    form = dict(await request.form())
+    raw_mode = str(form.pop("_optimization_mode", "") or "").strip()
+    try:
+        mode = OptimizationMode(raw_mode)
+    except ValueError:
+        return JSONResponse(
+            {"error": "Modul de optimizare economică nu este valid."},
+            status_code=422,
+        )
+
+    try:
+        building = build_input_from_form(form)
+        request_kwargs: dict[str, Any] = {
+            "baseline": building,
+            "mode": mode,
+        }
+        if mode == OptimizationMode.investment_budget:
+            request_kwargs["investment_budget_lei"] = parse_optional_float(
+                form.get("_investment_budget_lei")
+            )
+        elif mode == OptimizationMode.annual_bill_target:
+            request_kwargs["annual_bill_target_lei"] = parse_optional_float(
+                form.get("_annual_bill_target_lei")
+            )
+        elif mode == OptimizationMode.max_payback_years:
+            request_kwargs["max_payback_years"] = parse_optional_float(
+                form.get("_max_payback_years")
+            )
+
+        optimization_request = OptimizationRequestV1(**request_kwargs)
+        search_request = OptimizationSearchRequestV1(
+            request=optimization_request,
+            max_evaluations=36,
+        )
+        search_result = run_parametric_optimization(
+            search_request,
+            await _optimizer_cost_catalog(request),
+        )
+        selected = search_result.selection.selected
+        if selected is None or selected.resulting_configuration is None:
+            return JSONResponse(
+                {
+                    "error": "Nu există nicio soluție care satisface condiția economică aleasă în spațiul analizat.",
+                    "selection": model_to_dict(search_result.selection),
+                    "evaluated_candidates": search_result.evaluated_candidates,
+                    "pareto_count": len(search_result.pareto_candidate_ids),
+                },
+                status_code=422,
+            )
+
+        final_result = calculate(
+            selected.resulting_configuration,
+            include_reference=False,
+        )
+        raw_measures = model_to_dict(selected.parameters)
+        commercial_ready = (
+            selected.commercialization_status == "commercialized"
+            or (
+                selected.commercialization_status == "raw_only"
+                and float(selected.capex_lei) <= 1e-9
+            )
+        )
+        active_rows = _optimizer_measure_rows(selected)
+        optimization_payload = {
+            "kind": "parametric_economic",
+            "mode": "parametric_economic",
+            "economicMode": mode.value,
+            "label": _home_lab_optimizer_label(mode, form),
+            "rationale": search_result.selection.rationale,
+            "capexLei": float(selected.capex_lei),
+            "annualSavingLei": float(selected.annual_saving_lei),
+            "roiPercentPerYear": (
+                None
+                if selected.roi_percent_per_year is None
+                else float(selected.roi_percent_per_year)
+            ),
+            "paybackYears": (
+                None
+                if selected.payback_years is None
+                else float(selected.payback_years)
+            ),
+            "selected": active_rows,
+            "evaluatedCandidates": int(search_result.evaluated_candidates),
+            "feasibleCandidates": int(search_result.selection.feasible_count),
+            "paretoSolutions": int(search_result.selection.pareto_count),
+            "rawSolution": raw_measures,
+            "rawEvaluation": {
+                "candidateId": selected.candidate_id,
+                "annualBillLei": float(selected.annual_bill_lei),
+                "baselineAnnualBillLei": float(selected.baseline_annual_bill_lei),
+                "finalEnergyKwh": float(selected.final_energy_kwh),
+                "primarySpecificKwhM2": float(selected.primary_specific_kwh_m2),
+                "co2TotalKg": float(selected.co2_total_kg),
+                "co2SpecificKgM2": float(selected.co2_specific_kg_m2),
+                "energyClass": selected.energy_class,
+                "designHeatLoadKw": selected.design_heat_load_kw,
+            },
+            "resultingConfiguration": model_to_dict(selected.resulting_configuration),
+            "commercialSolution": None,
+            "commercializationStatus": selected.commercialization_status,
+            "commercialReady": commercial_ready,
+            "commercialMessage": (
+                "Soluția nu necesită discretizare comercială."
+                if commercial_ready
+                else (
+                    "Catalogul comercial complet nu este încă atașat acestei rulări. "
+                    "Rezultatul de mai jos este optimul parametric; raportul nu inventează "
+                    "grosimi, module, ferestre sau echipamente comerciale."
+                )
+            ),
+            "discretization": [],
+            "costSource": selected.cost_source,
+            "costCatalogVersion": selected.cost_catalog_version,
+            "warnings": [
+                *search_result.warnings,
+                *selected.warnings,
+            ],
+            "autoHorizonsYears": search_result.selection.auto_horizons_years,
+        }
+        return JSONResponse(
+            {
+                "scenario": embed_lab_result_payload(final_result),
+                "optimization": optimization_payload,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
 
 
 @app.post("/calculate", response_class=HTMLResponse)
