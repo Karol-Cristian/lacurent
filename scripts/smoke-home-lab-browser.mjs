@@ -21,6 +21,10 @@ try {
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
+  await expectVisible("#hlnPersistentClass");
+  await expectVisible("#hlnPersistentCost");
+  await expectVisible("#hlnPersistentEnergy");
+  await expectVisible("#hlnStatus");
 
   const privacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
   if (await privacyFirstUse.isVisible()) {
@@ -281,6 +285,28 @@ try {
       " cause=" + String(error)
     );
   }
+  const technicalSummaryLayout = await page.evaluate(() => {
+    const stack = document.querySelector("[data-hln-persistent-stack]");
+    const editor = document.querySelector("#hlnEditor");
+    const card = editor?.querySelector(".hln-editor-card");
+    if (!(stack instanceof HTMLElement) || !(card instanceof HTMLElement)) {
+      throw new Error("Persistent summary or technical editor card is missing");
+    }
+    const stackBox = stack.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    return {
+      bodyTechnical: document.body.classList.contains("hln-technical-open"),
+      stackTop: stackBox.top,
+      stackBottom: stackBox.bottom,
+      cardTop: cardBox.top,
+    };
+  });
+  if (!technicalSummaryLayout.bodyTechnical ||
+      technicalSummaryLayout.stackTop > 1 ||
+      technicalSummaryLayout.cardTop + 1 < technicalSummaryLayout.stackBottom) {
+    throw new Error("Persistent summary is not reserved above technical mode: " + JSON.stringify(technicalSummaryLayout));
+  }
+
   await page.locator("#hlnArea").fill("130");
   await page.locator("#hlnArea").press("Tab");
   await page.locator(".hln-editor-done").click();
@@ -438,26 +464,44 @@ try {
   await page.setViewportSize({width:390,height:844});
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
-  const mobileTopbarLayout = await page.evaluate(() => {
-    const status = document.querySelector("#hlnStatus");
-    const meta = status?.closest(".hln-topbar-meta");
+  const mobilePersistentLayout = await page.evaluate(() => {
+    const stack = document.querySelector("[data-hln-persistent-stack]");
     const strip = document.querySelector(".hln-energy-strip");
-    if (!(status instanceof HTMLElement) || !(meta instanceof HTMLElement) || !(strip instanceof HTMLElement)) {
-      throw new Error("Mobile Home Lab status or energy strip is missing");
+    const summary = document.querySelector(".hln-live-summary");
+    const status = document.querySelector("#hlnStatus");
+    const metrics = ["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"]
+      .map(selector => document.querySelector(selector));
+    if (!(stack instanceof HTMLElement) ||
+        !(strip instanceof HTMLElement) ||
+        !(summary instanceof HTMLElement) ||
+        !(status instanceof HTMLElement) ||
+        metrics.some(node => !(node instanceof HTMLElement))) {
+      throw new Error("Mobile persistent Home Lab summary is incomplete");
     }
-    const statusBox = status.getBoundingClientRect();
+    const stackBox = stack.getBoundingClientRect();
     const stripBox = strip.getBoundingClientRect();
+    const summaryBox = summary.getBoundingClientRect();
+    const statusBox = status.getBoundingClientRect();
     return {
-      metaPosition: getComputedStyle(meta).position,
-      statusTop: statusBox.top,
-      statusBottom: statusBox.bottom,
-      stripTop: stripBox.top,
-      stripBottom: stripBox.bottom,
+      stackPosition:getComputedStyle(stack).position,
+      stackTop:stackBox.top,
+      stripBottom:stripBox.bottom,
+      summaryTop:summaryBox.top,
+      summaryBottom:summaryBox.bottom,
+      statusTop:statusBox.top,
+      statusBottom:statusBox.bottom,
+      metricsVisible:metrics.every(node => {
+        const box = node.getBoundingClientRect();
+        return box.width > 0 && box.height > 0;
+      }),
     };
   });
-  if (mobileTopbarLayout.metaPosition !== "static" ||
-      mobileTopbarLayout.statusBottom > mobileTopbarLayout.stripTop + 1) {
-    throw new Error("Mobile calculation status overlaps the energy strip: " + JSON.stringify(mobileTopbarLayout));
+  if (mobilePersistentLayout.stackPosition !== "sticky" ||
+      mobilePersistentLayout.summaryTop + 1 < mobilePersistentLayout.stripBottom ||
+      mobilePersistentLayout.statusTop + 1 < mobilePersistentLayout.summaryTop ||
+      mobilePersistentLayout.statusBottom > mobilePersistentLayout.summaryBottom + 1 ||
+      !mobilePersistentLayout.metricsVisible) {
+    throw new Error("Mobile persistent result/status layout is invalid: " + JSON.stringify(mobilePersistentLayout));
   }
 
   if (pageErrors.length) {
