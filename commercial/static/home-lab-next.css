@@ -1474,3 +1474,51 @@ svg{display:block}
 .hln-geometry-status{padding:3px 7px;border-radius:999px;background:#edf5ef;color:#39624d;font-size:8px;font-weight:820;white-space:nowrap}
 .hln-geometry-status.is-manual{background:#f4efe4;color:#735f2f}
 .hln-geometry-reset{justify-self:start;padding:0;border:0;background:transparent;color:var(--hln-reno);font-size:9px;font-weight:820;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+/* Market context stays secondary to the house and does not add live requests. */
+.hln-energy-strip{display:flex;align-items:flex-start;gap:16px;padding:0 24px;border-bottom:1px solid var(--hln-line);background:#f5f4ef;color:var(--hln-muted)}
+.hln-energy-prices{flex:1;min-width:0}
+.hln-energy-prices>summary{display:flex;align-items:center;gap:16px;min-height:48px;cursor:pointer;list-style:none;font-size:11px}
+.hln-energy-prices>summary::-webkit-details-marker{display:none}
+.hln-energy-title{font-weight:750;color:var(--hln-ink);white-space:nowrap}
+.hln-energy-preview{display:flex;flex:1;flex-wrap:wrap;gap:6px 18px}
+.hln-energy-preview>span{white-space:nowrap}
+.hln-energy-preview strong{color:var(--hln-ink);font-variant-numeric:tabular-nums;font-weight:650}
+.hln-energy-preview small{font-size:10px}
+.hln-energy-preview em{font-size:9px;font-style:normal;color:#8b461e}
+.hln-energy-reference{font-size:10px;white-space:nowrap}
+.hln-energy-reference>span{display:inline-block;margin-left:5px}
+.hln-energy-prices[open] .hln-energy-reference>span{transform:rotate(180deg)}
+.hln-energy-sen{display:flex;align-items:center;gap:7px;min-height:48px;flex-shrink:0;color:var(--hln-ink);text-decoration:none;font-size:11px}
+.hln-energy-sen svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6}
+.hln-energy-sen small{display:block;font-size:9px;color:var(--hln-muted);margin-top:2px}
+.hln-energy-details{padding:2px 0 18px;font-size:12px;line-height:1.55}
+.hln-energy-details>p{margin:0 0 14px;max-width:800px}
+.hln-energy-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.hln-energy-cards article{padding:14px;border:1px solid var(--hln-line);border-radius:12px;background:var(--hln-surface);min-width:0}
+.hln-energy-cards header{display:flex;gap:8px;justify-content:space-between;align-items:center;color:var(--hln-ink)}
+.hln-energy-cards p{margin:8px 0 0}
+.hln-energy-cards a{display:inline-block;margin-top:8px;color:var(--hln-ink);text-underline-offset:3px;overflow-wrap:anywhere}
+.hln-energy-price{font-size:19px;color:var(--hln-ink);font-variant-numeric:tabular-nums}
+.hln-energy-price small{font-size:11px;color:var(--hln-muted)}
+.hln-price-status{font-size:10px;border-radius:20px;padding:2px 7px;background:#eae9e2;color:#555d57}
+.hln-price-status.is-stale{background:#f9ead7;color:#80401c}
+.hln-energy-prices>summary:focus-visible,.hln-energy-strip a:focus-visible{outline:2px solid var(--hln-reno);outline-offset:3px}
+@media(max-width:1100px){
+ .hln-energy-preview{gap:5px 12px}
+ .hln-energy-prices>summary{gap:10px;padding:8px 0}
+ .hln-energy-title{display:none}
+}
+@media(max-width:650px){
+ .hln-energy-strip{position:relative;padding:0 12px;gap:10px}
+ .hln-energy-title{display:block;font-size:11px}
+ .hln-energy-preview{display:none}
+ .hln-energy-prices>summary{justify-content:space-between;min-height:48px}
+ .hln-energy-reference{font-size:9px}
+ .hln-energy-sen{font-size:10px}
+ .hln-energy-sen small{font-size:8px}
+ .hln-energy-strip:has(.hln-energy-prices[open]){flex-wrap:wrap}
+ .hln-energy-prices[open]{flex-basis:100%}
+ .hln-energy-cards{grid-template-columns:1fr}
+ .hln-energy-prices[open]+.hln-energy-sen{margin-top:-18px;padding-bottom:8px}
+}

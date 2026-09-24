@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next24">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next25">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d28">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
@@ -73,6 +73,8 @@
         <div class="hln-status" id="hlnStatus" aria-live="polite">Se calculează casa...</div>
       </div>
     </header>
+
+    {% include "home_lab_energy_strip.html" %}
 
     <section class="hln-screen is-active" data-hln-screen="home">
       <div class="hln-screen-heading">

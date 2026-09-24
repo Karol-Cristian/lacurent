@@ -401,11 +401,21 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next24" in response.text
+    assert "/static/home-lab-next.css?v=next25" in response.text
     assert "/static/home-lab-next.js?v=next49" in response.text
     assert "/static/home-lab-3d.css?v=3d28" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
+
+
+def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'class="hln-energy-strip"' in response.text
+    assert "Prețuri de referință, nu cotații live." in response.text
+    assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
+    assert "Referință" in response.text
+    assert 'class="hln-price-status' in response.text
     assert "/static/home-lab-3d.js?v=3d48" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text

@@ -402,3 +402,31 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
             "Factura reală depinde de contract, furnizor, operator, taxe, categoria de consum, sezon și condițiile locale."
         ),
     }
+
+
+def home_lab_price_overview(*, today: date | None = None) -> dict[str, Any]:
+    """Display saved market references, never imply a live or universal tariff."""
+    data = energy_prices()
+    def number(value: float, digits: int = 2) -> str:
+        return f"{value:.{digits}f}".replace(".", ",")
+
+    electricity = list(data["electricity"]["operator_prices_lei_per_kwh"].values())
+    definitions = [
+        ("electricity", "Curent", f"{number(min(electricity))}–{number(max(electricity))}", "lei/kWh"),
+        ("natural_gas", "Gaz", number(data["natural_gas"]["reference_price_lei_per_kwh"], 3), "lei/kWh"),
+        ("firewood", "Lemn", number(data["firewood"]["reference_price_lei_per_package"], 0), "lei/palet 0,8 m³"),
+        ("pellets", "Peleți", number(data["pellets"]["price_lei_per_15kg_bag"]), "lei/sac 15 kg"),
+    ]
+    labels = {"current": "Referință", "stale": "Ofertă expirată", "not_yet_valid": "Ofertă viitoare"}
+    rows = []
+    for key, label, value, unit in definitions:
+        reference = data[key]
+        status = _price_reference_status(reference, today=today)
+        rows.append({
+            "key": key, "label": label, "value": value, "unit": unit,
+            "status": status, "status_label": labels[status],
+            "source_name": reference["source_name"], "source_url": reference["source_url"],
+            "note": reference["note"], "valid_until": reference.get("valid_until"),
+            "valid_from": reference.get("valid_from"),
+        })
+    return {"retrieved_on": data["retrieved_on"], "rows": rows}

@@ -20,7 +20,7 @@ from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
-from .pricing import energy_prices, estimate_energy_cost
+from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .product_matching import (
     WallInsulationProductMatchRequestV1,
@@ -1809,6 +1809,7 @@ async def home_lab_next(request: Request) -> HTMLResponse:
             "partner": None,
             "embed_mode": False,
             "calculate_url": "/api/home-lab-next/calculate",
+            "energy_overview": home_lab_price_overview(),
         },
     )
 
@@ -1884,6 +1885,7 @@ async def partner_embed_home_lab_next(request: Request, partner_id: str) -> HTML
             "partner": partner,
             "embed_mode": True,
             "calculate_url": f"/embed/{partner_id}/next/calculate",
+            "energy_overview": home_lab_price_overview(),
         },
     )
 
