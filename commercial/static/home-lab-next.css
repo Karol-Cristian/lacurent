@@ -1604,3 +1604,152 @@ svg{display:block}
     backdrop-filter:blur(4px) saturate(.96)
   }
 }
+
+
+/* Issue #358: persistent class / cost / energy summary with calculation status. */
+.hln-persistent-stack{
+  position:sticky;
+  top:76px;
+  z-index:29;
+  background:rgba(251,250,247,.98);
+  box-shadow:0 8px 18px rgba(30,37,34,.045);
+}
+.hln-live-summary{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  min-height:48px;
+  padding:6px 24px 7px;
+  border-bottom:1px solid var(--hln-line);
+  background:rgba(251,250,247,.98);
+}
+.hln-live-metrics{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  min-width:0;
+}
+.hln-live-metrics article{
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr);
+  gap:7px;
+  align-items:center;
+  min-width:0;
+  padding:5px 8px;
+  border:1px solid rgba(216,211,202,.75);
+  border-radius:10px;
+  background:#fff;
+}
+.hln-live-icon{
+  display:grid;
+  width:28px;
+  height:28px;
+  place-items:center;
+  border-radius:8px;
+  background:var(--hln-home-soft);
+  color:var(--hln-home);
+}
+.hln-live-icon svg{
+  width:14px;
+  height:14px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.hln-live-metrics article>span:last-child{
+  display:grid;
+  min-width:0;
+  gap:1px;
+}
+.hln-live-metrics small,
+.hln-live-calc-status>small{
+  color:#7c8680;
+  font-size:7px;
+  font-weight:820;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.hln-live-metrics strong{
+  overflow:hidden;
+  color:var(--hln-ink);
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.hln-live-calc-status{
+  display:grid;
+  min-width:160px;
+  gap:3px;
+  justify-items:end;
+}
+.hln-live-calc-status .hln-status{
+  max-width:260px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.hln-dock:not(.has-comparison){
+  grid-template-columns:1fr;
+  justify-items:end;
+}
+.hln-dock:not(.has-comparison) .hln-dock-cta{
+  width:min(330px,100%);
+}
+.hln-technical-open .hln-persistent-stack{
+  position:fixed;
+  top:0;
+  left:50%;
+  width:min(1240px,calc(100% - 48px));
+  transform:translateX(-50%);
+  z-index:95;
+}
+.hln-technical-open .hln-editor.is-technical-mode{
+  padding-top:var(--hln-persistent-stack-height,104px);
+}
+.hln-technical-open .hln-editor.is-technical-mode .hln-editor-card{
+  height:calc(100dvh - var(--hln-persistent-stack-height,104px));
+}
+.hln-technical-open .hln-energy-prices[open] .hln-energy-details{
+  display:none;
+}
+
+@media(max-width:980px){
+  .hln-technical-open .hln-persistent-stack{width:100%}
+}
+@media(max-width:760px){
+  .hln-persistent-stack{top:64px}
+  .hln-live-summary{
+    grid-template-columns:1fr;
+    gap:4px;
+    min-height:68px;
+    padding:5px 10px 6px;
+  }
+  .hln-live-metrics{gap:4px}
+  .hln-live-metrics article{
+    grid-template-columns:1fr;
+    justify-items:center;
+    gap:1px;
+    padding:4px 3px;
+    text-align:center;
+  }
+  .hln-live-icon{display:none}
+  .hln-live-metrics small{font-size:6px}
+  .hln-live-metrics strong{max-width:100%;font-size:10px}
+  .hln-live-calc-status{
+    display:flex;
+    min-width:0;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+  .hln-live-calc-status>small{font-size:6px}
+  .hln-live-calc-status .hln-status{
+    max-width:min(74vw,300px);
+    padding:4px 7px;
+    font-size:7px;
+  }
+  .hln-technical-open .hln-persistent-stack{top:0}
+}

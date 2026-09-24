@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next27">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next28">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d29">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
@@ -71,11 +71,32 @@
 
       <div class="hln-topbar-meta">
         {% if embed_mode %}<small class="hln-partner">{{ partner.brand_name }}</small>{% endif %}
-        <div class="hln-status" id="hlnStatus" aria-live="polite">Se calculează casa...</div>
       </div>
     </header>
 
-    {% include "home_lab_energy_strip.html" %}
+    <div class="hln-persistent-stack" data-hln-persistent-stack>
+      {% include "home_lab_energy_strip.html" %}
+      <section class="hln-live-summary" aria-label="Rezumat energetic curent">
+        <div class="hln-live-metrics">
+          <article>
+            <span class="hln-live-icon"><svg><use href="#hln-i-gauge"></use></svg></span>
+            <span><small>Clasă energetică</small><strong id="hlnPersistentClass">—</strong></span>
+          </article>
+          <article>
+            <span class="hln-live-icon"><svg><use href="#hln-i-money"></use></svg></span>
+            <span><small>Cost anual estimat</small><strong id="hlnPersistentCost">—</strong></span>
+          </article>
+          <article>
+            <span class="hln-live-icon"><svg><use href="#hln-i-bolt"></use></svg></span>
+            <span><small>Energie anuală</small><strong id="hlnPersistentEnergy">—</strong></span>
+          </article>
+        </div>
+        <div class="hln-live-calc-status">
+          <small>STATUS CALCUL</small>
+          <div class="hln-status" id="hlnStatus" aria-live="polite">Se calculează casa...</div>
+        </div>
+      </section>
+    </div>
 
     <section class="hln-screen is-active" data-hln-screen="home">
       <div class="hln-screen-heading">
@@ -1106,11 +1127,6 @@
     </aside>
 
     <section class="hln-dock" data-hln-dock="home" aria-live="polite">
-      <div class="hln-dock-metrics">
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-gauge"></use></svg></span><span><small>Clasă</small><strong id="hlnDockClass">—</strong></span></article>
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-money"></use></svg></span><span><small>Cost anual</small><strong id="hlnDockCost">—</strong></span></article>
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-bolt"></use></svg></span><span><small>Energie</small><strong id="hlnDockEnergy">—</strong></span></article>
-      </div>
       <div class="hln-dock-benefits hln-dock-compare" hidden>
         <article class="is-home">
           <span><small>Casa mea</small><strong><b id="hlnDockHomeClass">—</b><em id="hlnDockHomeCost">—</em></strong></span>
@@ -1230,7 +1246,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d49"></script>
-  <script src="/static/home-lab-next.js?v=next53"></script>
+  <script src="/static/home-lab-next.js?v=next54"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

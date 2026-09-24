@@ -1416,9 +1416,9 @@
     if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
 
     const allCalculatedSelectors = [
-      "#hlnDockClass",
-      "#hlnDockCost",
-      "#hlnDockEnergy",
+      "#hlnPersistentClass",
+      "#hlnPersistentCost",
+      "#hlnPersistentEnergy",
       "#hlnLiveCost",
       "#hlnLiveClass",
       "#hlnDockScenarioClass",
@@ -1445,7 +1445,7 @@
 
     const pending = pendingTextFor(target);
     if (target === "home") {
-      ["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].forEach(selector => {
+      ["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"].forEach(selector => {
         const node = $(selector);
         if (!node) return;
         node.textContent = pending;
@@ -1458,7 +1458,7 @@
     }
 
     const valueSelectors = allCalculatedSelectors.filter(selector =>
-      !["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].includes(selector)
+      !["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"].includes(selector)
     );
     valueSelectors.forEach(selector => {
       const node = $(selector);
@@ -3153,21 +3153,25 @@
 
   function renderDock() {
     const dock = $(".hln-dock");
+    const result = screen === "home"
+      ? (baselineSaved ? homeResult : currentResult || homeResult)
+      : scenarioResult || currentResult || homeResult;
+
+    $("#hlnPersistentClass").textContent = result?.energy_class || "—";
+    $("#hlnPersistentCost").textContent =
+      result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`;
+    $("#hlnPersistentEnergy").textContent =
+      result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`;
+
     if (dock) dock.hidden = screen === "report";
     if (screen === "report") return;
-    const metrics = $(".hln-dock-metrics");
+
     const benefits = $(".hln-dock-benefits");
     const cta = $("#hlnDockCta");
     const ctaLabel = cta?.querySelector("span") || cta;
-    const result = screen === "home" ? (baselineSaved ? homeResult : currentResult || homeResult) : scenarioResult || currentResult || homeResult;
-
-    $("#hlnDockClass").textContent = result?.energy_class || "—";
-    $("#hlnDockCost").textContent = result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei`;
-    $("#hlnDockEnergy").textContent = result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh`;
-
     const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
-    metrics.hidden = scenarioMode;
     benefits.hidden = !scenarioMode;
+    dock?.classList.toggle("has-comparison", scenarioMode);
 
     if (scenarioMode && homeResult && scenarioResult) {
       $("#hlnDockHomeClass").textContent = homeResult.energy_class || "—";
@@ -4137,11 +4141,24 @@
     if (name === "location") renderHomeLocationMap();
   }
 
+  function syncPersistentStackHeight() {
+    const stack = $("[data-hln-persistent-stack]");
+    if (!stack) return;
+    const height = Math.ceil(stack.getBoundingClientRect().height);
+    if (height > 0) document.documentElement.style.setProperty("--hln-persistent-stack-height", `${height}px`);
+  }
+
   function openEditor(name, options = {}) {
     const editor = $("#hlnEditor");
     const technical = Boolean(options.technical);
     editor.dataset.hlnEditorMode = technical ? "technical" : "context";
     editor.classList.toggle("is-technical-mode", technical);
+    document.body.classList.toggle("hln-technical-open", technical);
+    if (technical) {
+      root.querySelector(".hln-energy-prices[open]")?.removeAttribute("open");
+      syncPersistentStackHeight();
+      window.requestAnimationFrame(syncPersistentStackHeight);
+    }
     const nav = $("[data-hln-technical-nav]");
     if (nav) nav.hidden = !technical;
     const modeLabel = $("#hlnEditorModeLabel");
@@ -4158,6 +4175,7 @@
     const editor = $("#hlnEditor");
     editor.hidden = true;
     editor.classList.remove("is-technical-mode");
+    document.body.classList.remove("hln-technical-open");
     delete editor.dataset.hlnEditorMode;
     const nav = $("[data-hln-technical-nav]");
     if (nav) nav.hidden = true;
@@ -4795,7 +4813,11 @@
     target.hidden = !hits.length;
   }
 
-  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
+  window.addEventListener("resize", () => {
+    if (document.body.classList.contains("hln-technical-open")) syncPersistentStackHeight();
+  });
+
+  root.querySelectorAll("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
     openEditor(button.dataset.hlnEditorOpen, {
       technical: button.hasAttribute("data-hln-technical-entry"),
     });
