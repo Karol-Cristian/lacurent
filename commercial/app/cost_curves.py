@@ -32,7 +32,7 @@ class ParametricCostCurveV1(BaseModel):
         "added_thermal_resistance_m2k_w",
         "target_window_resistance_m2k_w",
     ]
-    parameter_unit: Literal["m2K/W_added"]
+    parameter_unit: Literal["m2K/W_added", "m2K/W_window"]
     quantity_basis: Literal["m2"]
     price_scope: Literal["material_only", "installed_total"]
     activation_cost_per_basis_lei: float = Field(default=0, ge=0)
