@@ -1416,6 +1416,7 @@
     const summary = $(".hln-live-summary");
     if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
     if (summary) {
+      summary.classList.toggle("is-fresh", state === "fresh");
       summary.classList.toggle("is-pending", state === "pending" || state === "stale");
       summary.classList.toggle("is-error", state === "error");
     }
@@ -4122,6 +4123,7 @@
   }
 
   function renderAll() {
+    root.dataset.hlnActiveScreen = screen;
     renderHome();
     renderProgress();
     renderDock();
@@ -5121,17 +5123,17 @@
       return;
     }
 
-    if (equipment === "heatPump" || equipment === "ac") {
+    if (equipment === "heatPump" || equipment === "ac" || equipment === "solidHeat") {
       if (screen === "home") {
         openEditor("systems");
         window.setTimeout(() => {
-          const field = equipment === "heatPump" ? $("#hlnHomeHeating") : $("#hlnHomeCooling");
+          const field = equipment === "ac" ? $("#hlnHomeCooling") : $("#hlnHomeHeating");
           field?.scrollIntoView({behavior:"smooth", block:"center"});
           field?.focus({preventScroll:true});
         }, 100);
         return;
       }
-      openMeasure(equipment === "heatPump" ? "heating" : "ventilation");
+      openMeasure(equipment === "ac" ? "ventilation" : "heating");
     }
   });
 
