@@ -1976,3 +1976,82 @@ svg{display:block}
     padding-bottom:88px;
   }
 }
+
+
+/* Mobile house-first declutter: preserve capability, reduce simultaneous visual weight. */
+.hln-copy-mobile{display:none}
+@media(max-width:760px){
+  .hln-copy-desktop{display:none}
+  .hln-copy-mobile{display:inline}
+
+  .hln-progress{gap:2px}
+  .hln-progress>i{width:20px}
+  .hln-progress button{min-height:30px;gap:4px;padding:2px 3px}
+  .hln-progress button span{width:24px;height:24px;font-size:7px}
+  .hln-progress button b{font-size:8px}
+
+  .hln-energy-strip{gap:8px;padding:0 8px}
+  .hln-energy-prices>summary,
+  .hln-energy-sen{min-height:34px;font-size:9px}
+  .hln-energy-preview{display:none}
+  .hln-energy-reference{font-size:8px}
+  .hln-energy-sen{gap:5px}
+  .hln-energy-sen small{font-size:7px}
+
+  .hln-app[data-hln-active-screen]:not([data-hln-active-screen="home"]) .hln-live-summary{
+    min-height:58px;
+    gap:2px;
+    padding:4px 7px 5px;
+  }
+  .hln-app[data-hln-active-screen]:not([data-hln-active-screen="home"]) .hln-live-metrics article{
+    min-height:44px;
+    padding:4px 6px;
+  }
+  .hln-app[data-hln-active-screen]:not([data-hln-active-screen="home"]) .hln-live-metrics strong{
+    font-size:12px;
+  }
+  .hln-app[data-hln-active-screen]:not([data-hln-active-screen="home"]) .hln-live-class-card strong{
+    font-size:18px;
+  }
+  .hln-app[data-hln-active-screen]:not([data-hln-active-screen="home"]) .hln-live-value em{
+    min-height:10px;
+    font-size:6px;
+  }
+  .hln-app[data-hln-active-screen]:not([data-hln-active-screen="home"]) .hln-live-summary.is-fresh .hln-live-calc-status{
+    display:none;
+  }
+
+  .hln-screen[data-hln-screen="site"]{padding-top:18px}
+  .hln-screen[data-hln-screen="site"] .hln-screen-heading{
+    align-items:flex-start;
+    margin-bottom:10px;
+  }
+  .hln-screen[data-hln-screen="site"] .hln-screen-heading h1{
+    margin:4px 0 4px;
+    font-size:28px;
+  }
+  .hln-screen[data-hln-screen="site"] .hln-screen-heading p{
+    font-size:11px;
+    line-height:1.35;
+  }
+  .hln-screen[data-hln-screen="site"] .hln-home-return{display:none}
+
+  .hln-house-board-3d-ready .hln-board-label{padding:6px 4px}
+  .hln-house-board-3d-ready .hln-board-foot{display:none}
+  .hln-house-visual-renovation{
+    min-height:350px;
+    padding-bottom:62px;
+  }
+
+  .hln-dock-back:not([hidden]){
+    min-height:40px;
+    padding:0 10px;
+    box-shadow:0 5px 14px rgba(18,28,24,.09);
+  }
+  .hln-dock-cta{
+    max-width:min(56vw,170px);
+    min-height:44px;
+    padding:0 12px 0 14px;
+    box-shadow:0 7px 18px rgba(14,28,21,.18);
+  }
+}
