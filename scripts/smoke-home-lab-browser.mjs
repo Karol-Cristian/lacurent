@@ -434,11 +434,15 @@ try {
   // Returning through Casa mea can trigger an asynchronous scenario refresh.
   // The product intentionally blocks Report until that result is fresh.
   await page.waitForFunction(
-    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh"),
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh") &&
+      !document.querySelector("#hlnDockCta")?.disabled,
     null,
     {timeout:30000}
   );
-  await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
+  // The scenario-actions report path is covered above. Use the persistent CTA
+  // here to re-enter Report after the Casa mea round-trip and validate the
+  // persistent navigation contract independently of viewport/actionability.
+  await page.locator("#hlnDockCta").click();
   await expectVisible('[data-hln-screen="report"].is-active');
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
