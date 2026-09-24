@@ -3224,10 +3224,12 @@
     if (screen === "report") return;
 
     const benefits = $(".hln-dock-benefits");
+    const back = $("#hlnDockBack");
     const cta = $("#hlnDockCta");
     const ctaLabel = cta?.querySelector("span") || cta;
     const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
     benefits.hidden = !scenarioMode;
+    if (back) back.hidden = screen === "home";
     dock?.classList.toggle("has-comparison", scenarioMode);
 
     if (scenarioMode && homeResult && scenarioResult) {
@@ -3267,17 +3269,22 @@
     if (screen === "home") {
       cta.hidden = false;
       ctaLabel.textContent = baselineSaved ? "Vezi îmbunătățirile" : "Salvează Casa mea și vezi îmbunătățirile";
+      ctaLabel.dataset.mobileLabel = "Îmbunătățiri";
     } else if (screen === "site") {
       cta.hidden = measures.length === 0;
       ctaLabel.textContent = "Vezi Scenariul meu";
+      ctaLabel.dataset.mobileLabel = "Scenariul";
     } else if (screen === "intervention") {
       cta.hidden = false;
       ctaLabel.textContent = "Păstrează intervenția";
+      ctaLabel.dataset.mobileLabel = "Păstrează";
     } else if (screen === "scenario") {
       cta.hidden = false;
       ctaLabel.textContent = "Generează raportul";
+      ctaLabel.dataset.mobileLabel = "Raport";
     } else {
       cta.hidden = true;
+      ctaLabel.dataset.mobileLabel = "";
     }
   }
 
@@ -5138,6 +5145,20 @@
   root.querySelectorAll("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
   $("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);
+
+  $("#hlnDockBack").addEventListener("click", () => {
+    if (screen === "site") {
+      showScreen("home");
+      return;
+    }
+    if (screen === "intervention") {
+      cancelIntervention();
+      return;
+    }
+    if (screen === "scenario") {
+      showScreen("site");
+    }
+  });
 
   $("#hlnDockCta").addEventListener("click", async () => {
     if (screen === "home") {
