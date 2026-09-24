@@ -10,6 +10,8 @@
   const calcUrl = root.dataset.calculateUrl;
   const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
   const acquisitionSource = new URLSearchParams(window.location.search).get("source") || "";
+  const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
+  const analyticsAllowed = () => window.LaCurentPrivacy?.allowsAnalytics?.() === true;
   const SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70;
 
   function trackEvent(name, detail = {}) {
@@ -20,9 +22,10 @@
       partner:root.dataset.partnerId || "official",
       ...detail,
     };
+    if (!analyticsAllowed()) return;
     window.dispatchEvent(new CustomEvent("hln:analytics", {detail:payload}));
-    // Vendor-neutral integration point. We do not create or load a tracker here;
-    // an analytics provider may consume the same events later after consent.
+    // Vendor-neutral integration point. No analytics event leaves this product
+    // surface until the user has explicitly allowed analytics.
     if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);
   }
 
@@ -140,6 +143,13 @@
       thermostatic_valves: "robineți termostatici",
       zoned: "control pe zone",
       weather_compensated: "compensare climatică"
+    },
+    dhw: {
+      same_as_heating: "ACM ca încălzirea",
+      electric_boiler: "Boiler electric ACM",
+      gas_boiler: "ACM pe gaz",
+      heat_pump_water_heater: "Pompă de căldură ACM",
+      district_heat: "ACM prin termoficare"
     }
   };
 
@@ -179,6 +189,7 @@
     heatingDistribution: "hydronic_insulated",
     heatingStorage: "none",
     heatingControl: "room_thermostat",
+    dhwSystem: "same_as_heating",
     ventilation: "natural",
     cooling: "none",
     pvEnabled: false,
@@ -205,6 +216,7 @@
   let interventionOriginal = null;
   let quickEditType = null;
   let quickEditOriginal = null;
+  let quickEditTarget = "scenario";
   let screen = "home";
   let localities = [];
   let localityMap = new Map();
@@ -322,27 +334,29 @@
     return state;
   }
 
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-    if (saved?.homeState) {
-      homeState = migrateStoredHeatingState(saved.homeState, defaultState);
-      scenarioState = migrateStoredHeatingState(saved.scenarioState || {}, homeState);
-      homeResult = saved.homeResult || null;
-      scenarioResult = saved.scenarioResult || null;
-      measures = Array.isArray(saved.measures) ? saved.measures : [];
-      baselineSaved = Boolean(saved.baselineSaved);
-      referenceMode = Boolean(saved.referenceMode);
-      scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
-      optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
-      projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
-        ? saved.projectMode
-        : "existing_standard";
-      homeResultState = homeResult ? "fresh" : "empty";
-      scenarioResultState = scenarioResult ? "fresh" : "empty";
-      // Rewrite the persisted state once so the migration is permanent.
-      persist();
-    }
-  } catch (_) {}
+  if (localAutosaveAllowed()) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved?.homeState) {
+        homeState = migrateStoredHeatingState(saved.homeState, defaultState);
+        scenarioState = migrateStoredHeatingState(saved.scenarioState || {}, homeState);
+        homeResult = saved.homeResult || null;
+        scenarioResult = saved.scenarioResult || null;
+        measures = Array.isArray(saved.measures) ? saved.measures : [];
+        baselineSaved = Boolean(saved.baselineSaved);
+        referenceMode = Boolean(saved.referenceMode);
+        scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
+        optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
+        projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
+          ? saved.projectMode
+          : "existing_standard";
+        homeResultState = homeResult ? "fresh" : "empty";
+        scenarioResultState = scenarioResult ? "fresh" : "empty";
+        // Rewrite the persisted state once so the migration is permanent.
+        persist();
+      }
+    } catch (_) {}
+  }
 
   function fmt(value, digits = 0) {
     const number = Number(value);
@@ -781,6 +795,7 @@
       heatingCostProfile: "natural_gas",
       coolingSeer: Number(ref?.cooling_seer),
       dhwEfficiency: Number(ref?.dhw_efficiency),
+      dhwCarrier: "natural_gas",
     };
     referenceMode = true;
     optimizationMeta = {mode:"reference", label:"Referință MC001 · Tabel 2.4"};
@@ -1310,7 +1325,19 @@
     formSet("cooling_seer", overrideCoolingSeer ?? (state.cooling === "split" ? 4.2 : 4.0));
 
     const overrideDhwEfficiency = finiteOverride("dhwEfficiency");
-    formSet("dhw_efficiency", overrideDhwEfficiency ?? 0.86);
+    if (overrideDhwEfficiency != null) {
+      formSet("expert_dhw_override", "on");
+      formSet("dhw_system_type", "custom");
+      formSet("dhw_efficiency", overrideDhwEfficiency);
+      formSet("dhw_cop", "");
+      formSet("dhw_carrier", overrides.dhwCarrier || "natural_gas");
+    } else {
+      formSet("expert_dhw_override", "");
+      formSet("dhw_system_type", state.dhwSystem || "same_as_heating");
+      formSet("dhw_efficiency", "");
+      formSet("dhw_cop", "");
+      formSet("dhw_carrier", "");
+    }
 
     formSet("pv_enabled", state.pvEnabled ? "on" : "");
     formSet("pv_installed_power_kwp", state.pvKwp);
@@ -1386,12 +1413,23 @@
     const target = screen === "home" ? "home" : "scenario";
     const state = resultStateFor(target);
     const live = $("#hlnLiveConfigurator");
+    const summary = $(".hln-live-summary");
     if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
+    if (summary) {
+      summary.classList.toggle("is-fresh", state === "fresh");
+      summary.classList.toggle("is-pending", state === "pending" || state === "stale");
+      summary.classList.toggle("is-error", state === "error");
+    }
 
+    const persistentSelectors = [
+      "#hlnPersistentClass",
+      "#hlnPersistentCost",
+      "#hlnPersistentEnergy",
+      "#hlnPersistentCostDelta",
+      "#hlnPersistentEnergyDelta",
+    ];
     const allCalculatedSelectors = [
-      "#hlnDockClass",
-      "#hlnDockCost",
-      "#hlnDockEnergy",
+      ...persistentSelectors,
       "#hlnLiveCost",
       "#hlnLiveClass",
       "#hlnDockScenarioClass",
@@ -1416,22 +1454,20 @@
       return;
     }
 
-    const pending = pendingTextFor(target);
+    // Keep the last valid HUD values visible while a new calculation is in
+    // flight. Freshness is communicated by the adjacent status chip and the
+    // HUD pending/error state, so the user's reference values never disappear.
+    persistentSelectors.forEach(selector => $(selector)?.classList.add("hln-calculating-value"));
+
     if (target === "home") {
-      ["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].forEach(selector => {
-        const node = $(selector);
-        if (!node) return;
-        node.textContent = pending;
-        node.classList.remove("is-good", "is-bad");
-        node.classList.add("hln-calculating-value");
-      });
       const cta = $("#hlnDockCta");
       if (cta && screen === "home") cta.disabled = state !== "error";
       return;
     }
 
+    const pending = pendingTextFor(target);
     const valueSelectors = allCalculatedSelectors.filter(selector =>
-      !["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].includes(selector)
+      !persistentSelectors.includes(selector)
     );
     valueSelectors.forEach(selector => {
       const node = $(selector);
@@ -3123,21 +3159,77 @@
 
   function renderDock() {
     const dock = $(".hln-dock");
-    if (dock) dock.hidden = screen === "report";
-    if (screen === "report") return;
-    const metrics = $(".hln-dock-metrics");
+    const result = screen === "home"
+      ? (baselineSaved ? homeResult : currentResult || homeResult)
+      : scenarioResult || currentResult || homeResult;
+    const comparisonMode = Boolean(
+      baselineSaved &&
+      screen !== "home" &&
+      homeResult &&
+      scenarioResult
+    );
+    const summary = $(".hln-live-summary");
+    const energyClass = String(result?.energy_class || "").toUpperCase();
+
+    $("#hlnPersistentClass").textContent = energyClass || "—";
+    $("#hlnPersistentCost").textContent =
+      result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`;
+    $("#hlnPersistentEnergy").textContent =
+      result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`;
+    if (summary) summary.dataset.energyClass = energyClass;
+
+    const classContext = $("#hlnPersistentClassContext");
+    const costDeltaNode = $("#hlnPersistentCostDelta");
+    const energyDeltaNode = $("#hlnPersistentEnergyDelta");
+    [costDeltaNode, energyDeltaNode].forEach(node => {
+      node?.classList.remove("is-good", "is-bad");
+    });
+
+    if (comparisonMode) {
+      const costDelta = directChangeText(
+        scenarioResult.annual_cost_lei,
+        homeResult.annual_cost_lei,
+        {unit:" lei/an", digits:0}
+      );
+      const energyDelta = directChangeText(
+        scenarioResult.final_energy_kwh,
+        homeResult.final_energy_kwh,
+        {unit:"%", digits:0, percent:true}
+      );
+      if (costDeltaNode) {
+        costDeltaNode.textContent = `vs Casa mea · ${costDelta.text}`;
+        applyDeltaState(costDeltaNode, costDelta);
+      }
+      if (energyDeltaNode) {
+        energyDeltaNode.textContent = `vs Casa mea · ${energyDelta.text}`;
+        applyDeltaState(energyDeltaNode, energyDelta);
+      }
+      if (classContext) {
+        const baseClass = String(homeResult.energy_class || "—").toUpperCase();
+        classContext.textContent = baseClass === energyClass
+          ? `Scenariu · aceeași clasă ${energyClass || "—"}`
+          : `Casa mea ${baseClass} → ${energyClass || "—"}`;
+      }
+    } else {
+      if (costDeltaNode) costDeltaNode.textContent = "Baseline Casa mea";
+      if (energyDeltaNode) energyDeltaNode.textContent = "Baseline Casa mea";
+      if (classContext) classContext.textContent = baselineSaved ? "Casa mea salvată" : "Casa curentă";
+    }
+
+    window.requestAnimationFrame(syncPersistentStackHeight);
+
+    if (dock) dock.hidden = false;
+
     const benefits = $(".hln-dock-benefits");
+    const back = $("#hlnDockBack");
+    const backLabel = back?.querySelector("span") || back;
     const cta = $("#hlnDockCta");
     const ctaLabel = cta?.querySelector("span") || cta;
-    const result = screen === "home" ? (baselineSaved ? homeResult : currentResult || homeResult) : scenarioResult || currentResult || homeResult;
-
-    $("#hlnDockClass").textContent = result?.energy_class || "—";
-    $("#hlnDockCost").textContent = result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei`;
-    $("#hlnDockEnergy").textContent = result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh`;
-
     const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
-    metrics.hidden = scenarioMode;
     benefits.hidden = !scenarioMode;
+    if (back) back.hidden = screen === "home";
+    if (backLabel) backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi";
+    dock?.classList.toggle("has-comparison", scenarioMode);
 
     if (scenarioMode && homeResult && scenarioResult) {
       $("#hlnDockHomeClass").textContent = homeResult.energy_class || "—";
@@ -3176,17 +3268,25 @@
     if (screen === "home") {
       cta.hidden = false;
       ctaLabel.textContent = baselineSaved ? "Vezi îmbunătățirile" : "Salvează Casa mea și vezi îmbunătățirile";
+      ctaLabel.dataset.mobileLabel = "Îmbunătățiri";
     } else if (screen === "site") {
       cta.hidden = measures.length === 0;
       ctaLabel.textContent = "Vezi Scenariul meu";
+      ctaLabel.dataset.mobileLabel = "Scenariul";
     } else if (screen === "intervention") {
       cta.hidden = false;
       ctaLabel.textContent = "Păstrează intervenția";
+      ctaLabel.dataset.mobileLabel = "Păstrează";
     } else if (screen === "scenario") {
       cta.hidden = false;
       ctaLabel.textContent = "Generează raportul";
+      ctaLabel.dataset.mobileLabel = "Raport";
+    } else if (screen === "report") {
+      cta.hidden = true;
+      ctaLabel.dataset.mobileLabel = "";
     } else {
       cta.hidden = true;
+      ctaLabel.dataset.mobileLabel = "";
     }
   }
 
@@ -3214,6 +3314,7 @@
     }
     $("#hlnSystemsMeta").textContent = [
       ...heatingParts,
+      labels.dhw[state.dhwSystem] || state.dhwSystem,
       labels.ventilation[state.ventilation] || state.ventilation,
       labels.cooling[state.cooling] || state.cooling
     ].join(" · ");
@@ -3338,27 +3439,32 @@
     south_east: "Sud-est",
   }[value] || value || "—");
 
+  function quickEditState() {
+    return quickEditTarget === "home" ? homeState : scenarioState;
+  }
+
   function quickEditConfig(type) {
+    const state = quickEditState();
     if (type === "pv") {
       return {
         title: "Panouri fotovoltaice",
         unit: "kWp",
         min: 0,
-        max: 30,
+        max: 50,
         step: 0.5,
-        value: scenarioState.pvEnabled ? Number(scenarioState.pvKwp) : 0,
-        meta: `${renewableOrientationLabel(scenarioState.pvOrientation)} · ${fmt(scenarioState.pvTilt)}°`,
+        value: state.pvEnabled ? Number(state.pvKwp) : 0,
+        meta: `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°`,
       };
     }
     if (type === "solar_thermal") {
       return {
-        title: "Panouri solare termice",
+        title: "Panou solar termic",
         unit: "kWth",
         min: 0,
         max: 30,
         step: 0.5,
-        value: scenarioState.solarThermalEnabled ? solarThermalKwFromArea(scenarioState.solarThermalArea) : 0,
-        meta: `${renewableOrientationLabel(scenarioState.solarThermalOrientation)} · ${fmt(scenarioState.solarThermalTilt)}°`,
+        value: state.solarThermalEnabled ? solarThermalKwFromArea(state.solarThermalArea) : 0,
+        meta: `${renewableOrientationLabel(state.solarThermalOrientation)} · ${fmt(state.solarThermalTilt)}°`,
       };
     }
     return null;
@@ -3380,36 +3486,52 @@
     range.setAttribute("aria-label", `${config.title} · ${config.unit}`);
   }
 
-  function openQuickMeasureEditor(type) {
+  function openQuickMeasureEditor(type, target = screen === "home" ? "home" : "scenario") {
+    quickEditTarget = target === "home" ? "home" : "scenario";
     const config = quickEditConfig(type);
     if (!config) return false;
     quickEditType = type;
-    quickEditOriginal = {...scenarioState};
+    quickEditOriginal = {...quickEditState()};
     renderQuickMeasureEditor();
     const overlay = $("#hlnQuickEditOverlay");
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
+    overlay.dataset.hlnQuickEditTarget = quickEditTarget;
     window.requestAnimationFrame(() => $("#hlnQuickEditRange")?.focus());
     return true;
   }
 
   function applyQuickMeasureValue(rawValue) {
     if (!quickEditType) return;
-    const value = clamp(Number(rawValue) || 0, 0, 30);
-    referenceMode = false;
-    optimizationMeta = null;
-    setOptimizationNote("");
+    const config = quickEditConfig(quickEditType);
+    const value = clamp(Number(rawValue) || 0, Number(config?.min || 0), Number(config?.max || 30));
+    const state = quickEditState();
+
+    if (quickEditTarget === "scenario") {
+      referenceMode = false;
+      optimizationMeta = null;
+      setOptimizationNote("");
+    }
 
     if (quickEditType === "pv") {
-      scenarioState.pvKwp = value;
-      scenarioState.pvEnabled = value > 0;
+      state.pvKwp = value;
+      state.pvEnabled = value > 0;
     } else if (quickEditType === "solar_thermal") {
-      scenarioState.solarThermalArea = solarThermalAreaFromKw(value);
-      scenarioState.solarThermalEnabled = value > 0;
+      state.solarThermalArea = solarThermalAreaFromKw(value);
+      state.solarThermalEnabled = value > 0;
+    }
+
+    renderQuickMeasureEditor();
+    if (quickEditTarget === "home") {
+      syncHomeEditorControls();
+      renderHome();
+      renderDock();
+      emitVisualState(quickEditType === "solar_thermal" ? "solarThermal" : quickEditType);
+      scheduleCalculate("home", 280);
+      return;
     }
 
     syncMeasuresFromScenario();
-    renderQuickMeasureEditor();
     renderScenario();
     renderDock();
     emitVisualState(quickEditType === "solar_thermal" ? "solarThermal" : quickEditType);
@@ -3420,30 +3542,51 @@
     const overlay = $("#hlnQuickEditOverlay");
     overlay.hidden = true;
     overlay.setAttribute("aria-hidden", "true");
+    delete overlay.dataset.hlnQuickEditTarget;
   }
 
   function commitQuickMeasureEditor() {
     if (!quickEditType) return;
-    scheduleCalculate("scenario", 20);
-    syncMeasuresFromScenario();
+    const target = quickEditTarget;
+    if (target === "home") {
+      scheduleCalculate("home", 20);
+      syncHomeEditorControls();
+      renderHome();
+    } else {
+      scheduleCalculate("scenario", 20);
+      syncMeasuresFromScenario();
+      renderScenario();
+    }
     quickEditType = null;
     quickEditOriginal = null;
+    quickEditTarget = "scenario";
     hideQuickMeasureEditor();
     persist();
-    renderScenario();
     renderDock();
   }
 
   function cancelQuickMeasureEditor() {
     if (!quickEditType) return;
-    if (quickEditOriginal) scenarioState = {...quickEditOriginal};
     const focus = quickEditType === "solar_thermal" ? "solarThermal" : quickEditType;
+    const target = quickEditTarget;
+    if (quickEditOriginal) {
+      if (target === "home") homeState = {...quickEditOriginal};
+      else scenarioState = {...quickEditOriginal};
+    }
     quickEditType = null;
     quickEditOriginal = null;
+    quickEditTarget = "scenario";
     hideQuickMeasureEditor();
-    syncMeasuresFromScenario();
-    scheduleCalculate("scenario", 20);
-    renderScenario();
+
+    if (target === "home") {
+      syncHomeEditorControls();
+      scheduleCalculate("home", 20);
+      renderHome();
+    } else {
+      syncMeasuresFromScenario();
+      scheduleCalculate("scenario", 20);
+      renderScenario();
+    }
     renderDock();
     emitVisualState(focus);
   }
@@ -3451,9 +3594,20 @@
   function openQuickMeasureDetails() {
     if (!quickEditType) return;
     const type = quickEditType;
+    const target = quickEditTarget;
     quickEditType = null;
     quickEditOriginal = null;
+    quickEditTarget = "scenario";
     hideQuickMeasureEditor();
+    if (target === "home") {
+      openEditor("renewables");
+      window.setTimeout(() => {
+        const field = type === "pv" ? $("#hlnHomePvKwp") : $("#hlnHomeSolarThermalArea");
+        field?.scrollIntoView({behavior:"smooth", block:"center"});
+        field?.focus({preventScroll:true});
+      }, 100);
+      return;
+    }
     openMeasure(type);
   }
 
@@ -3966,6 +4120,7 @@
   }
 
   function renderAll() {
+    root.dataset.hlnActiveScreen = screen;
     renderHome();
     renderProgress();
     renderDock();
@@ -3994,6 +4149,7 @@
   }
 
   function persist() {
+    if (!localAutosaveAllowed()) return false;
     try {
       localStorage.setItem(storageKey, JSON.stringify({
         baselineSaved,
@@ -4007,7 +4163,10 @@
         optimizationMeta,
         projectMode
       }));
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   async function saveHomeAndOpenSite() {
@@ -4039,18 +4198,54 @@
     return true;
   }
 
-  function openEditor(name) {
-    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile",renewables:"Regenerabile"};
+  function setEditorSection(name) {
+    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile",renewables:"PV & solar"};
     $("#hlnEditorTitle").textContent = titles[name] || "Editează";
     $$("[data-hln-editor]").forEach(section => section.hidden = section.dataset.hlnEditor !== name);
-    $("#hlnEditor").hidden = false;
-    document.body.style.overflow = "hidden";
-    syncHomeEditorControls();
+    root.querySelectorAll("[data-hln-technical-section]").forEach(button => {
+      button.classList.toggle("is-active", button.dataset.hlnTechnicalSection === name);
+    });
     if (name === "location") renderHomeLocationMap();
   }
 
+  function syncPersistentStackHeight() {
+    const stack = $("[data-hln-persistent-stack]");
+    if (!stack) return;
+    const height = Math.ceil(stack.getBoundingClientRect().height);
+    if (height > 0) document.documentElement.style.setProperty("--hln-persistent-stack-height", `${height}px`);
+  }
+
+  function openEditor(name, options = {}) {
+    const editor = $("#hlnEditor");
+    const technical = Boolean(options.technical);
+    editor.dataset.hlnEditorMode = technical ? "technical" : "context";
+    editor.classList.toggle("is-technical-mode", technical);
+    document.body.classList.toggle("hln-technical-open", technical);
+    if (technical) {
+      root.querySelector(".hln-energy-prices[open]")?.removeAttribute("open");
+      syncPersistentStackHeight();
+      window.requestAnimationFrame(syncPersistentStackHeight);
+    }
+    const nav = $("[data-hln-technical-nav]");
+    if (nav) nav.hidden = !technical;
+    const modeLabel = $("#hlnEditorModeLabel");
+    if (modeLabel) modeLabel.textContent = technical ? "CONFIGURARE TEHNICĂ" : "CASA MEA";
+    const done = $("#hlnEditorDone");
+    if (done) done.textContent = technical ? "Vezi casa" : "Gata";
+    editor.hidden = false;
+    document.body.style.overflow = "hidden";
+    syncHomeEditorControls();
+    setEditorSection(name);
+  }
+
   function closeEditor() {
-    $("#hlnEditor").hidden = true;
+    const editor = $("#hlnEditor");
+    editor.hidden = true;
+    editor.classList.remove("is-technical-mode");
+    document.body.classList.remove("hln-technical-open");
+    delete editor.dataset.hlnEditorMode;
+    const nav = $("[data-hln-technical-nav]");
+    if (nav) nav.hidden = true;
     document.body.style.overflow = "";
     renderHome();
     scheduleCalculate("home", 20);
@@ -4116,6 +4311,7 @@
     $("#hlnHomeHeatingDistribution").value = homeState.heatingDistribution;
     $("#hlnHomeHeatingStorage").value = homeState.heatingStorage;
     $("#hlnHomeHeatingControl").value = homeState.heatingControl;
+    $("#hlnHomeDhwSystem").value = homeState.dhwSystem || "same_as_heating";
     toggleHeatPumpSourceControls();
     $("#hlnHomeVentilation").value = homeState.ventilation;
     $("#hlnHomeCooling").value = homeState.cooling;
@@ -4183,6 +4379,7 @@
       homeState.heatingControl = $("#hlnHomeHeatingControl").value;
     }
     normalizeHeatingState(homeState);
+    homeState.dhwSystem = $("#hlnHomeDhwSystem").value;
     homeState.ventilation = $("#hlnHomeVentilation").value;
     homeState.cooling = $("#hlnHomeCooling").value;
     homeState.pvEnabled = $("#hlnHomePvEnabled").checked;
@@ -4683,13 +4880,28 @@
     target.hidden = !hits.length;
   }
 
-  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => openEditor(button.dataset.hlnEditorOpen)));
+  window.addEventListener("resize", syncPersistentStackHeight);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(syncPersistentStackHeight, 120);
+  });
+  window.requestAnimationFrame(syncPersistentStackHeight);
+
+  root.querySelectorAll("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
+    openEditor(button.dataset.hlnEditorOpen, {
+      technical: button.hasAttribute("data-hln-technical-entry"),
+    });
+  }));
+  $("[data-hln-technical-open]")?.addEventListener("click", () => openEditor("house", {technical:true}));
+  root.querySelectorAll("[data-hln-technical-section]").forEach(button => button.addEventListener("click", () => {
+    setEditorSection(button.dataset.hlnTechnicalSection);
+  }));
   $$("[data-hln-editor-close]").forEach(button => button.addEventListener("click", closeEditor));
   $("#hlnEditor").addEventListener("click", event => {
-    if (event.target === $("#hlnEditor")) closeEditor();
+    const editor = $("#hlnEditor");
+    if (event.target === editor && editor.dataset.hlnEditorMode !== "technical") closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeDhwSystem","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
@@ -4878,10 +5090,7 @@
     if (go) {
       const target = go.dataset.hlnGo;
       if (target === "home") {
-        screen = "home";
-        root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
-        renderAll();
-        emitVisualState();
+        showScreen("home");
         return;
       }
       if (target === "site" && baselineSaved) showScreen("site");
@@ -4901,26 +5110,62 @@
     if (remove) resetMeasure(remove.dataset.hlnMeasureRemove);
   });
 
+  window.addEventListener("hln:equipment-select", (event) => {
+    const equipment = String(event.detail?.equipment || "");
+    if (equipment === "pv" || equipment === "solarThermal") {
+      openQuickMeasureEditor(
+        equipment === "solarThermal" ? "solar_thermal" : "pv",
+        screen === "home" ? "home" : "scenario"
+      );
+      return;
+    }
+
+    if (equipment === "heatPump" || equipment === "ac" || equipment === "solidHeat") {
+      if (screen === "home") {
+        openEditor("systems");
+        window.setTimeout(() => {
+          const field = equipment === "ac" ? $("#hlnHomeCooling") : $("#hlnHomeHeating");
+          field?.scrollIntoView({behavior:"smooth", block:"center"});
+          field?.focus({preventScroll:true});
+        }, 100);
+        return;
+      }
+      openMeasure(equipment === "ac" ? "ventilation" : "heating");
+    }
+  });
+
   const quickEditRange = $("#hlnQuickEditRange");
   quickEditRange.addEventListener("input", event => {
     applyQuickMeasureValue(event.target.value);
   });
   quickEditRange.addEventListener("change", event => {
     applyQuickMeasureValue(event.target.value);
-    commitQuickMeasureEditor();
   });
-  quickEditRange.addEventListener("pointerup", () => {
-    if (quickEditType) commitQuickMeasureEditor();
-  });
-  quickEditRange.addEventListener("touchend", () => {
-    if (quickEditType) commitQuickMeasureEditor();
-  }, { passive: true });
 
   $("#hlnQuickEditOverlay").addEventListener("click", event => {
     if (event.target === $("#hlnQuickEditOverlay")) cancelQuickMeasureEditor();
   });
   root.querySelectorAll("[data-hln-quick-edit-close]").forEach(button => button.addEventListener("click", cancelQuickMeasureEditor));
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
+  $("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);
+
+  $("#hlnDockBack").addEventListener("click", () => {
+    if (screen === "site") {
+      showScreen("home");
+      return;
+    }
+    if (screen === "intervention") {
+      cancelIntervention();
+      return;
+    }
+    if (screen === "scenario") {
+      showScreen("site");
+      return;
+    }
+    if (screen === "report") {
+      showScreen("scenario");
+    }
+  });
 
   $("#hlnDockCta").addEventListener("click", async () => {
     if (screen === "home") {

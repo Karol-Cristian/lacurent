@@ -21,6 +21,16 @@ try {
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
+  await expectVisible("#hlnPersistentClass");
+  await expectVisible("#hlnPersistentCost");
+  await expectVisible("#hlnPersistentEnergy");
+  await expectVisible("#hlnStatus");
+
+  const privacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
+  if (await privacyFirstUse.isVisible()) {
+    await privacyFirstUse.locator("[data-lacurent-deny-local]").click();
+    await privacyFirstUse.waitFor({state:"hidden", timeout:5000});
+  }
 
   await page.waitForFunction(
     () => Array.isArray(window.__homeLab3D) && window.__homeLab3D[0]?.modelRoot,
@@ -43,6 +53,8 @@ try {
     const RaycasterCtor = scene.raycaster.constructor;
     const pv = scene.experimentLayers.get("pv");
     const solarThermal = scene.experimentLayers.get("solarThermal");
+    const heatPump = scene.experimentLayers.get("heatPump");
+    const ac = scene.equipmentLayers.get("ac");
     const smoke = scene.equipmentLayers.get("chimneySmoke");
     const pvBox = new Box3Ctor().setFromObject(pv);
     const solarThermalBox = new Box3Ctor().setFromObject(solarThermal);
@@ -124,6 +136,12 @@ try {
       solarThermalAssetLoaded:Boolean(solarThermal.userData?.assetLoaded),
       solarThermalAssetFallback:Boolean(solarThermal.userData?.assetFallback),
       solarThermalAssetUrl:String(solarThermal.userData?.assetUrl || ""),
+      heatPumpAssetLoaded:Boolean(heatPump?.userData?.assetLoaded),
+      heatPumpAssetFallback:Boolean(heatPump?.userData?.assetFallback),
+      heatPumpAssetUrl:String(heatPump?.userData?.assetUrl || ""),
+      acAssetLoaded:Boolean(ac?.userData?.assetLoaded),
+      acAssetFallback:Boolean(ac?.userData?.assetFallback),
+      acAssetUrl:String(ac?.userData?.assetUrl || ""),
       thermalSupport,
       roofNormalDot:pvNormal.dot(thermalNormal),
       thermalCenterX:thermalCenter.x,
@@ -163,6 +181,16 @@ try {
   if (roofVisualCalibration.thermalSupport.mountedRoofUuid !== roofVisualCalibration.pvSupport.mountedRoofUuid) {
     throw new Error("Solar thermal collector mounted on a roof-window/non-main-roof mesh: " + JSON.stringify(roofVisualCalibration));
   }
+  if (!roofVisualCalibration.heatPumpAssetLoaded ||
+      roofVisualCalibration.heatPumpAssetFallback ||
+      roofVisualCalibration.heatPumpAssetUrl !== "https://polyfork.dev/cdn/hvac-condenser-unit-a41b8d.glb") {
+    throw new Error("Professional heat-pump/HVAC GLB did not load: " + JSON.stringify(roofVisualCalibration));
+  }
+  if (!roofVisualCalibration.acAssetLoaded ||
+      roofVisualCalibration.acAssetFallback ||
+      roofVisualCalibration.acAssetUrl !== "https://polyfork.dev/cdn/air-con-unit-9fadc2.glb") {
+    throw new Error("Professional AC GLB did not load: " + JSON.stringify(roofVisualCalibration));
+  }
   if (!roofVisualCalibration.smokeVisible) {
     throw new Error("Combustion plume is hidden for condensing gas");
   }
@@ -170,6 +198,45 @@ try {
   if (Math.abs(smokeX - 0.80) > 0.30 || Math.abs(smokeZ - 0.40) > 0.30 || smokeY < 4.85) {
     throw new Error("Smoke is not anchored to the measured taller chimney: " + JSON.stringify(roofVisualCalibration));
   }
+
+  await page.waitForFunction(() => {
+    const badge = document.querySelector('[data-hln-3d-stage="home"] [data-hln-equipment="pv"]');
+    return badge instanceof HTMLElement && !badge.hidden;
+  });
+  const pvBadge = page.locator('[data-hln-3d-stage="home"] [data-hln-equipment="pv"]');
+  const pvBadgeText = await pvBadge.innerText();
+  if (!/PV/i.test(pvBadgeText)) throw new Error("PV equipment badge is missing its visible label");
+  await pvBadge.evaluate(button => button.click());
+  try {
+    await expectVisible("#hlnQuickEditOverlay");
+  } catch (error) {
+    throw new Error(
+      "PV badge click did not open quick edit. pageErrors=" +
+      JSON.stringify(pageErrors) +
+      " consoleErrors=" +
+      JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
+  const quickEditTarget = await page.locator("#hlnQuickEditOverlay").getAttribute("data-hln-quick-edit-target");
+  if (quickEditTarget !== "home") throw new Error("3D PV click did not open Casa mea quick edit");
+  const quickEditTitle = await page.locator("#hlnQuickEditTitle").innerText();
+  if (!/fotovoltaice/i.test(quickEditTitle)) throw new Error("3D PV click opened the wrong quick editor");
+  const quickRange = page.locator("#hlnQuickEditRange");
+  const beforeQuickValue = Number(await quickRange.inputValue());
+  await quickRange.evaluate((input) => {
+    const next = Math.min(Number(input.max || 50), Number(input.value || 0) + 0.5);
+    input.value = String(next);
+    input.dispatchEvent(new Event("input", {bubbles:true}));
+    input.dispatchEvent(new Event("change", {bubbles:true}));
+  });
+  const afterQuickValue = Number(await quickRange.inputValue());
+  if (!(afterQuickValue > beforeQuickValue)) throw new Error("PV quick editor did not accept the new power");
+  if (await page.locator("#hlnQuickEditOverlay").getAttribute("hidden") !== null) {
+    throw new Error("PV quick editor closed before the user pressed Gata");
+  }
+  await page.locator("[data-hln-quick-edit-commit]").click();
+  await page.waitForFunction(() => document.querySelector("#hlnQuickEditOverlay")?.hidden === true);
 
   const compass = page.locator('[data-hln-3d-stage="home"] [data-hln-3d-compass]');
   await compass.waitFor({state:"visible", timeout:15000});
@@ -196,7 +263,59 @@ try {
   }
 
   await page.locator('.hln-config-row[data-hln-editor-open="house"]').click();
-  await expectVisible('[data-hln-editor="house"]');
+  try {
+    await expectVisible('[data-hln-editor="house"]');
+  } catch (error) {
+    const editorState = await page.evaluate(() => {
+      const editor = document.querySelector("#hlnEditor");
+      return {
+        editorHidden: editor?.hidden,
+        editorMode: editor?.dataset?.hlnEditorMode || null,
+        editorClass: editor?.className || null,
+        visibleSections: [...document.querySelectorAll("[data-hln-editor]")].map(node => ({
+          name: node.dataset.hlnEditor,
+          hidden: node.hidden,
+        })),
+      };
+    });
+    throw new Error(
+      "Technical house editor did not open. state=" + JSON.stringify(editorState) +
+      " pageErrors=" + JSON.stringify(pageErrors) +
+      " consoleErrors=" + JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
+  const technicalSummaryLayout = await page.evaluate(() => {
+    const stack = document.querySelector("[data-hln-persistent-stack]");
+    const editor = document.querySelector("#hlnEditor");
+    const card = editor?.querySelector(".hln-editor-card");
+    if (!(stack instanceof HTMLElement) || !(card instanceof HTMLElement)) {
+      throw new Error("Persistent summary or technical editor card is missing");
+    }
+    const stackBox = stack.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    const stackStyle = getComputedStyle(stack);
+    const editorStyle = getComputedStyle(editor);
+    return {
+      bodyTechnical: document.body.classList.contains("hln-technical-open"),
+      stackTop: stackBox.top,
+      stackBottom: stackBox.bottom,
+      cardTop: cardBox.top,
+      stackZ:Number(stackStyle.zIndex || 0),
+      editorZ:Number(editorStyle.zIndex || 0),
+      stackFilter:stackStyle.filter,
+      stackBackdrop:stackStyle.backdropFilter || stackStyle.webkitBackdropFilter || "none",
+    };
+  });
+  if (!technicalSummaryLayout.bodyTechnical ||
+      technicalSummaryLayout.stackTop > 1 ||
+      technicalSummaryLayout.cardTop + 1 < technicalSummaryLayout.stackBottom ||
+      technicalSummaryLayout.stackZ <= technicalSummaryLayout.editorZ ||
+      technicalSummaryLayout.stackFilter !== "none" ||
+      technicalSummaryLayout.stackBackdrop !== "none") {
+    throw new Error("Persistent summary is not reserved above technical mode: " + JSON.stringify(technicalSummaryLayout));
+  }
+
   await page.locator("#hlnArea").fill("130");
   await page.locator("#hlnArea").press("Tab");
   await page.locator(".hln-editor-done").click();
@@ -237,9 +356,130 @@ try {
     throw new Error("Scenario budget ROI reconciliation is incomplete: " + investmentText);
   }
 
+  await page.waitForFunction(
+    () => {
+      const value = document.querySelector("#hlnScenarioNewCost");
+      return value && !value.classList.contains("hln-calculating-value");
+    },
+    null,
+    {timeout:30000}
+  );
+  const persistentScenarioDeltas = await page.evaluate(() => {
+    const summary = document.querySelector(".hln-live-summary");
+    const cost = document.querySelector("#hlnPersistentCostDelta");
+    const energy = document.querySelector("#hlnPersistentEnergyDelta");
+    const energyClass = document.querySelector("#hlnPersistentClass");
+    return {
+      cost:String(cost?.textContent || ""),
+      energy:String(energy?.textContent || ""),
+      energyClass:String(energyClass?.textContent || ""),
+      classColor:summary ? getComputedStyle(summary).getPropertyValue("--hln-class-color").trim() : "",
+    };
+  });
+  if (!persistentScenarioDeltas.cost.includes("vs Casa mea") ||
+      !persistentScenarioDeltas.energy.includes("vs Casa mea") ||
+      !persistentScenarioDeltas.energyClass ||
+      !persistentScenarioDeltas.classColor) {
+    throw new Error("Persistent scenario deltas/class color are missing: " + JSON.stringify(persistentScenarioDeltas));
+  }
+  const desktopDock = await page.evaluate(() => {
+    const benefits = document.querySelector(".hln-dock-benefits");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(benefits instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Desktop comparison dock is incomplete");
+    }
+    const benefitsBox = benefits.getBoundingClientRect();
+    const ctaBox = cta.getBoundingClientRect();
+    return {
+      benefitsVisible: benefitsBox.width > 0 && benefitsBox.height > 0 && getComputedStyle(benefits).display !== "none",
+      ctaVisible: ctaBox.width > 0 && ctaBox.height > 0,
+    };
+  });
+  if (!desktopDock.benefitsVisible || !desktopDock.ctaVisible) {
+    throw new Error("Desktop dock lost comparison cards or CTA: " + JSON.stringify(desktopDock));
+  }
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
-  await expectVisible('[data-hln-screen="report"].is-active');
+  try {
+    {
+      const reportReady = await page.evaluate(() => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
+  } catch (error) {
+    const reportState = await page.evaluate(() => {
+      const active = document.querySelector('[data-hln-screen].is-active');
+      const report = document.querySelector('[data-hln-screen="report"]');
+      const reportRect = report instanceof HTMLElement ? report.getBoundingClientRect() : null;
+      const parent = report instanceof HTMLElement ? report.parentElement : null;
+      return {
+        activeScreen: active?.getAttribute("data-hln-screen") || null,
+        reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
+        scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
+        editorHidden: document.querySelector("#hlnEditor")?.hidden,
+        reportHidden: report instanceof HTMLElement ? report.hidden : null,
+        reportClass: report instanceof HTMLElement ? report.className : null,
+        reportDisplay: report instanceof HTMLElement ? getComputedStyle(report).display : null,
+        reportVisibility: report instanceof HTMLElement ? getComputedStyle(report).visibility : null,
+        reportRect: reportRect ? {width:reportRect.width, height:reportRect.height, top:reportRect.top} : null,
+        parentDisplay: parent instanceof HTMLElement ? getComputedStyle(parent).display : null,
+      };
+    });
+    throw new Error(
+      "Scenario-to-report navigation failed. state=" + JSON.stringify(reportState) +
+      " pageErrors=" + JSON.stringify(pageErrors) +
+      " consoleErrors=" + JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+  // Returning to Casa mea through the global progress navigation must not
+  // preserve the report's bottom scroll position and show an apparently blank
+  // or partial first screen.
+  await page.evaluate(() => {
+    document.querySelector('.hln-progress [data-hln-go="home"]')?.click();
+  });
+  await expectVisible('[data-hln-screen="home"].is-active');
+  await page.waitForTimeout(50);
+  const scrollAfterHome = await page.evaluate(() => window.scrollY);
+  if (scrollAfterHome > 20) {
+    throw new Error(`Home progress navigation did not reset scroll: ${scrollAfterHome}px`);
+  }
+  await page.locator('.hln-progress [data-hln-go="scenario"]').click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  // Returning through Casa mea can trigger an asynchronous scenario refresh.
+  // The product intentionally blocks Report until that result is fresh.
+  await page.waitForFunction(
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh") &&
+      !document.querySelector("#hlnDockCta")?.disabled,
+    null,
+    {timeout:30000}
+  );
+  // The scenario-actions report path is covered above. Use the persistent CTA
+  // here to re-enter Report after the Casa mea round-trip and validate the
+  // persistent navigation contract independently of viewport/actionability.
+  await page.locator("#hlnDockCta").click();
+  {
+      const reportReady = await page.evaluate(() => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
   // This control lives inside the report heading while the smoke has just
   // scrolled to the document bottom. Its viewport/actionability state is
   // intentionally irrelevant here: validate the navigation handler directly.
@@ -299,6 +539,295 @@ try {
         );
       }
     }
+  }
+
+  const privacyStorage = await page.evaluate(() => ({
+    consent: JSON.parse(localStorage.getItem("lacurent-privacy-v1") || "null"),
+    homeDraft: localStorage.getItem("lacurent-home-lab-next-v1:official"),
+  }));
+  if (privacyStorage.consent?.localAutosave !== false || privacyStorage.homeDraft !== null) {
+    throw new Error("Home Lab wrote a local draft after local autosave was refused: " + JSON.stringify(privacyStorage));
+  }
+
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await expectVisible("[data-home-lab-next]");
+  const mobileDock = await page.evaluate(() => {
+    const dock = document.querySelector(".hln-dock");
+    const benefits = document.querySelector(".hln-dock-benefits");
+    const back = document.querySelector("#hlnDockBack");
+    const cta = document.querySelector("#hlnDockCta");
+    const ctaLabel = cta?.querySelector("span");
+    if (!(dock instanceof HTMLElement) ||
+        !(benefits instanceof HTMLElement) ||
+        !(back instanceof HTMLElement) ||
+        !(cta instanceof HTMLElement) ||
+        !(ctaLabel instanceof HTMLElement)) {
+      throw new Error("Mobile dock is incomplete");
+    }
+    const backBox = back.getBoundingClientRect();
+    const ctaBox = cta.getBoundingClientRect();
+    const dockStyle = getComputedStyle(dock);
+    return {
+      benefitsDisplay:getComputedStyle(benefits).display,
+      backDisplay:getComputedStyle(back).display,
+      backWidth:backBox.width,
+      ctaVisible:ctaBox.width > 0 && ctaBox.height > 0,
+      ctaWidth:ctaBox.width,
+      ctaRight:ctaBox.right,
+      mobileLabel:ctaLabel.dataset.mobileLabel,
+      dockBackground:dockStyle.backgroundColor,
+      dockBorder:dockStyle.borderTopWidth,
+    };
+  });
+  if (mobileDock.benefitsDisplay !== "none" ||
+      mobileDock.backDisplay !== "none" ||
+      mobileDock.backWidth !== 0 ||
+      !mobileDock.ctaVisible ||
+      mobileDock.ctaWidth > 200 ||
+      Math.abs(mobileDock.ctaRight - 376) > 2 ||
+      mobileDock.mobileLabel !== "Îmbunătățiri" ||
+      mobileDock.dockBackground !== "rgba(0, 0, 0, 0)" ||
+      mobileDock.dockBorder !== "0px") {
+    throw new Error("Mobile dock is not compact/right-aligned on Casa mea: " + JSON.stringify(mobileDock));
+  }
+
+  await page.waitForFunction(
+    () => !document.querySelector("#hlnDockCta")?.disabled,
+    null,
+    {timeout:30000}
+  );
+  await page.locator("#hlnDockCta").click();
+  await expectVisible('[data-hln-screen="site"].is-active');
+  await page.waitForFunction(
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh"),
+    null,
+    {timeout:30000}
+  );
+  const mobileDeclutter = await page.evaluate(() => {
+    const root = document.querySelector("[data-home-lab-next]");
+    const homeReturn = document.querySelector('[data-hln-screen="site"] .hln-home-return');
+    const mobileCopy = document.querySelector('[data-hln-screen="site"] .hln-copy-mobile');
+    const desktopCopy = document.querySelector('[data-hln-screen="site"] .hln-copy-desktop');
+    const energyPreview = document.querySelector(".hln-energy-preview");
+    const status = document.querySelector(".hln-live-calc-status");
+    const cta = document.querySelector("#hlnDockCta");
+    const back = document.querySelector("#hlnDockBack");
+    if (!(root instanceof HTMLElement) ||
+        !(homeReturn instanceof HTMLElement) ||
+        !(mobileCopy instanceof HTMLElement) ||
+        !(desktopCopy instanceof HTMLElement) ||
+        !(energyPreview instanceof HTMLElement) ||
+        !(status instanceof HTMLElement) ||
+        !(cta instanceof HTMLElement) ||
+        !(back instanceof HTMLElement)) {
+      throw new Error("Mobile declutter controls are incomplete");
+    }
+    const ctaBox = cta.getBoundingClientRect();
+    const backBox = back.getBoundingClientRect();
+    return {
+      activeScreen:root.dataset.hlnActiveScreen,
+      homeReturnDisplay:getComputedStyle(homeReturn).display,
+      mobileCopyDisplay:getComputedStyle(mobileCopy).display,
+      desktopCopyDisplay:getComputedStyle(desktopCopy).display,
+      energyPreviewDisplay:getComputedStyle(energyPreview).display,
+      statusDisplay:getComputedStyle(status).display,
+      ctaHeight:ctaBox.height,
+      backHeight:backBox.height,
+    };
+  });
+  if (mobileDeclutter.activeScreen !== "site" ||
+      mobileDeclutter.homeReturnDisplay !== "none" ||
+      mobileDeclutter.mobileCopyDisplay === "none" ||
+      mobileDeclutter.desktopCopyDisplay !== "none" ||
+      mobileDeclutter.energyPreviewDisplay !== "none" ||
+      mobileDeclutter.statusDisplay !== "none" ||
+      mobileDeclutter.ctaHeight > 46 ||
+      mobileDeclutter.backHeight > 42) {
+    throw new Error("Mobile house-first declutter contract failed: " + JSON.stringify(mobileDeclutter));
+  }
+
+  const mobileBack = await page.evaluate(() => {
+    const back = document.querySelector("#hlnDockBack");
+    if (!(back instanceof HTMLElement)) throw new Error("Mobile back button is missing");
+    const box = back.getBoundingClientRect();
+    return {
+      visible:box.width > 0 && box.height > 0 && getComputedStyle(back).display !== "none",
+      left:box.left,
+      label:String(back.textContent || "").trim(),
+    };
+  });
+  if (!mobileBack.visible || mobileBack.left < 12 || mobileBack.left > 16 || mobileBack.label !== "Înapoi") {
+    throw new Error("Mobile back navigation is not visible on step 2: " + JSON.stringify(mobileBack));
+  }
+
+  await page.waitForFunction(
+    () => {
+      const hotspot = document.querySelector('[data-hln-3d-hotspot="wall"]');
+      const legacy = document.querySelector('.hln-zone-wall');
+      const visible = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const box = node.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && getComputedStyle(node).display !== "none";
+      };
+      // The semantic hotspot is authoritative when the external 3D model has
+      // loaded. If that dependency is unavailable in CI, the HTML fallback
+      // must remain usable instead of leaving Step 2 without an action.
+      return visible(hotspot) || visible(legacy);
+    },
+    null,
+    {timeout:30000}
+  );
+  await page.evaluate(() => {
+    const hotspot = document.querySelector('[data-hln-3d-hotspot="wall"]');
+    const legacy = document.querySelector('.hln-zone-wall');
+    const visible = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const box = node.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && getComputedStyle(node).display !== "none";
+    };
+    const target = visible(hotspot) ? hotspot : legacy;
+    if (!(target instanceof HTMLElement)) throw new Error("No usable wall control on Step 2");
+    target.click();
+  });
+  await expectVisible('[data-hln-screen="intervention"].is-active');
+  const mobileInterventionNav = await page.evaluate(() => {
+    const back = document.querySelector("#hlnDockBack");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(back instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Mobile intervention navigation is incomplete");
+    }
+    const backBox = back.getBoundingClientRect();
+    const ctaBox = cta.getBoundingClientRect();
+    return {
+      backLeft:backBox.left,
+      backRight:backBox.right,
+      ctaLeft:ctaBox.left,
+      ctaRight:ctaBox.right,
+      backOrder:getComputedStyle(back).order,
+      ctaOrder:getComputedStyle(cta).order,
+      overlap:backBox.right > ctaBox.left,
+    };
+  });
+  if (mobileInterventionNav.backLeft < 12 ||
+      mobileInterventionNav.backLeft > 16 ||
+      Math.abs(mobileInterventionNav.ctaRight - 376) > 2 ||
+      mobileInterventionNav.backOrder !== "0" ||
+      mobileInterventionNav.ctaOrder !== "1" ||
+      mobileInterventionNav.overlap) {
+    throw new Error("Mobile back/forward controls overlap or are reversed: " + JSON.stringify(mobileInterventionNav));
+  }
+
+  await page.locator("#hlnDockCta").click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await page.waitForFunction(
+    () => !document.querySelector("#hlnDockCta")?.disabled,
+    null,
+    {timeout:30000}
+  );
+  await page.locator("#hlnDockCta").click();
+  {
+      const reportReady = await page.evaluate(() => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
+  const mobileReportNav = await page.evaluate(() => {
+    const dock = document.querySelector(".hln-dock");
+    const back = document.querySelector("#hlnDockBack");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(dock instanceof HTMLElement) || !(back instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Mobile report navigation is incomplete");
+    }
+    const backBox = back.getBoundingClientRect();
+    return {
+      dockState:dock.dataset.hlnDock,
+      dockDisplay:getComputedStyle(dock).display,
+      backVisible:backBox.width > 0 && backBox.height > 0 && getComputedStyle(back).display !== "none",
+      backLeft:backBox.left,
+      backLabel:String(back.textContent || "").trim(),
+      ctaHidden:cta.hidden,
+    };
+  });
+  if (mobileReportNav.dockState !== "report" ||
+      mobileReportNav.dockDisplay !== "flex" ||
+      !mobileReportNav.backVisible ||
+      mobileReportNav.backLeft < 12 ||
+      mobileReportNav.backLeft > 16 ||
+      mobileReportNav.backLabel !== "Înapoi la scenariu" ||
+      !mobileReportNav.ctaHidden) {
+    throw new Error("Mobile report remains a navigation dead end: " + JSON.stringify(mobileReportNav));
+  }
+  await page.locator("#hlnDockBack").click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await page.locator('.hln-progress [data-hln-go="home"]').click();
+  await expectVisible('[data-hln-screen="home"].is-active');
+  const mobilePersistentLayout = await page.evaluate(() => {
+    const stack = document.querySelector("[data-hln-persistent-stack]");
+    const strip = document.querySelector(".hln-energy-strip");
+    const summary = document.querySelector(".hln-live-summary");
+    const status = document.querySelector("#hlnStatus");
+    const quickOverlay = document.querySelector("#hlnQuickEditOverlay");
+    const metrics = ["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"]
+      .map(selector => document.querySelector(selector));
+    if (!(stack instanceof HTMLElement) ||
+        !(strip instanceof HTMLElement) ||
+        !(summary instanceof HTMLElement) ||
+        !(status instanceof HTMLElement) ||
+        !(quickOverlay instanceof HTMLElement) ||
+        metrics.some(node => !(node instanceof HTMLElement))) {
+      throw new Error("Mobile persistent Home Lab HUD is incomplete");
+    }
+    const stackBox = stack.getBoundingClientRect();
+    const stripBox = strip.getBoundingClientRect();
+    const summaryBox = summary.getBoundingClientRect();
+    const statusBox = status.getBoundingClientRect();
+    const stackStyle = getComputedStyle(stack);
+    const quickStyle = getComputedStyle(quickOverlay);
+    return {
+      stackPosition:stackStyle.position,
+      stackTop:stackBox.top,
+      stripBottom:stripBox.bottom,
+      summaryTop:summaryBox.top,
+      summaryBottom:summaryBox.bottom,
+      statusTop:statusBox.top,
+      statusBottom:statusBox.bottom,
+      stackZ:Number(stackStyle.zIndex || 0),
+      quickZ:Number(quickStyle.zIndex || 0),
+      stackFilter:stackStyle.filter,
+      stackBackdrop:stackStyle.backdropFilter || stackStyle.webkitBackdropFilter || "none",
+      metricsVisible:metrics.every(node => {
+        const box = node.getBoundingClientRect();
+        return box.width > 0 && box.height > 0;
+      }),
+    };
+  });
+  if (mobilePersistentLayout.stackPosition !== "fixed" ||
+      mobilePersistentLayout.stackTop < 63 ||
+      mobilePersistentLayout.stackTop > 65 ||
+      mobilePersistentLayout.summaryTop + 1 < mobilePersistentLayout.stripBottom ||
+      mobilePersistentLayout.statusTop + 1 < mobilePersistentLayout.summaryTop ||
+      mobilePersistentLayout.statusBottom > mobilePersistentLayout.summaryBottom + 1 ||
+      mobilePersistentLayout.stackZ <= mobilePersistentLayout.quickZ ||
+      mobilePersistentLayout.stackFilter !== "none" ||
+      mobilePersistentLayout.stackBackdrop !== "none" ||
+      !mobilePersistentLayout.metricsVisible) {
+    throw new Error("Mobile persistent result/status HUD is invalid: " + JSON.stringify(mobilePersistentLayout));
+  }
+
+  await page.evaluate(() => window.scrollTo(0, Math.max(document.body.scrollHeight, 1600)));
+  await page.waitForTimeout(60);
+  const mobileHudTopAfterScroll = await page.evaluate(
+    () => document.querySelector("[data-hln-persistent-stack]")?.getBoundingClientRect().top
+  );
+  if (mobileHudTopAfterScroll == null || mobileHudTopAfterScroll < 63 || mobileHudTopAfterScroll > 65) {
+    throw new Error("Mobile persistent HUD moved during scroll: " + mobileHudTopAfterScroll);
   }
 
   if (pageErrors.length) {

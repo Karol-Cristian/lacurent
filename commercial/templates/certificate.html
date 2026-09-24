@@ -16,8 +16,9 @@
     <header class="certificate-header">
       <div>
         <p class="eyebrow">LaCurent · Instalații & Energie</p>
-        <h1>Raport de performanță energetică</h1>
+        <h1>Raport tehnic estimativ de performanță energetică</h1>
         <p>{{ result.input.project_name }} · generat automat pentru analiza curentă</p>
+        <p><strong>Nu este Certificat de Performanță Energetică (CPE) și nu produce efectele juridice ale unui CPE emis de un auditor energetic atestat.</strong></p>
       </div>
       <div class="class-badge print-badge">
         <span>Încadrare orientativă</span>
@@ -126,7 +127,9 @@
     </section>
 
     <footer>
-      LaCurent · raport generat la cererea utilizatorului · {{ result.methodology_version }}
+      LaCurent · raport tehnic estimativ generat la cererea utilizatorului · {{ result.methodology_version }} ·
+      <a href="/terms">Termeni</a> · <a href="/privacy">Confidențialitate</a> ·
+      <a href="mailto:karol@lacurent.com">karol@lacurent.com</a>
     </footer>
   </main>
   <script src="{{ url_for('static', path='app.js') }}?v=v2eng3"></script>

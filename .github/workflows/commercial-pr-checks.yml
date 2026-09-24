@@ -4,10 +4,6 @@ on:
   pull_request:
     branches:
       - codex/commercial-v2-cloudflare-python
-    paths:
-      - "commercial/**"
-      - ".github/workflows/commercial-pr-checks.yml"
-      - "scripts/prepare-commercial-cloudflare-worker.mjs"
 
 jobs:
   checks:
