@@ -563,7 +563,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next32" in response.text
     assert "/static/home-lab-next.js?v=next58" in response.text
-    assert "/static/home-lab-3d.css?v=3d30" in response.text
+    assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
 
@@ -649,7 +649,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
     assert "Referință" in response.text
     assert 'class="hln-price-status' in response.text
-    assert "/static/home-lab-3d.js?v=3d53" in response.text
+    assert "/static/home-lab-3d.js?v=3d54" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1911,7 +1911,10 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
     assert css3d.status_code == 200
     assert ".hln-3d-equipment-badge" in css3d.text
     assert ".hln-3d-equipment-dot" in css3d.text
-    assert ".hln-house-visual-3d-ready > .hln-zone" in css3d.text
+    assert ".hln-house-visual-3d-ready > .hln-zone-heating" in css3d.text
+    assert ".hln-semantic-wall-ready > .hln-zone-wall" in css3d.text
+    assert ".hln-semantic-roof-ready > .hln-zone-roof" in css3d.text
+    assert ".hln-semantic-windows-ready > .hln-zone-window" in css3d.text
     assert "@keyframes hlnDiscoverPulse" in css3d.text
     assert "@media(prefers-reduced-motion:reduce)" in css3d.text
 
@@ -1970,6 +1973,7 @@ def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     assert 'this.isMobile = window.matchMedia?.("(max-width: 760px)").matches' in js3d.text
     assert "this.updateHotspotPositions();" in js3d.text
     assert "this.updateEquipmentBadges();" in js3d.text
+    assert "hln-semantic-${part}-ready" in js3d.text
     assert 'data-hln-3d-add-rail' in js3d.text
     assert 'pvButton.hidden = Boolean(detail.pvEnabled)' in js3d.text
     assert 'solarButton.hidden = Boolean(detail.solarThermalEnabled)' in js3d.text
