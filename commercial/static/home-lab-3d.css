@@ -1100,8 +1100,8 @@
 .hln-3d-hotspot.is-discoverable .hln-3d-hotspot-dot{
   animation:hlnDiscoverPulse 1.45s ease-in-out .35s 3;
 }
-.hln-3d-equipment-badge[data-hln-equipment="pv"],
-.hln-3d-equipment-badge[data-hln-equipment="solarThermal"],
+.hln-3d-equipment-badge[data-hln-equipment="pv"] .hln-3d-equipment-dot,
+.hln-3d-equipment-badge[data-hln-equipment="solarThermal"] .hln-3d-equipment-dot,
 .hln-3d-add-rail button{
   animation:hlnDiscoverPulse 1.45s ease-in-out .55s 3;
 }
@@ -1144,8 +1144,8 @@
 
 @media(prefers-reduced-motion:reduce){
   .hln-3d-hotspot.is-discoverable .hln-3d-hotspot-dot,
-  .hln-3d-equipment-badge[data-hln-equipment="pv"],
-  .hln-3d-equipment-badge[data-hln-equipment="solarThermal"],
+  .hln-3d-equipment-badge[data-hln-equipment="pv"] .hln-3d-equipment-dot,
+  .hln-3d-equipment-badge[data-hln-equipment="solarThermal"] .hln-3d-equipment-dot,
   .hln-3d-add-rail button{
     animation:none!important;
     box-shadow:0 0 0 4px rgba(65,105,122,.10);
