@@ -5325,7 +5325,7 @@
     });
   }
 
-  $("[data-hln-smart-config]").forEach(button => {
+  $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       await runOptimizerAction(async () => {
         const action = button.dataset.hlnSmartConfig;
