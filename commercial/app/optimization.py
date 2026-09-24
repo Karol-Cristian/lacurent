@@ -132,6 +132,12 @@ class OptimizationSelectionV1(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class OptimizationSelectionRequestV1(BaseModel):
+    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    request: OptimizationRequestV1
+    candidates: list[CandidateEvaluationV1] = Field(min_items=1, max_items=10000)
+
+
 def _stable_candidate_id(measures: ParametricMeasuresV1) -> str:
     raw = json.dumps(
         model_to_dict(measures),

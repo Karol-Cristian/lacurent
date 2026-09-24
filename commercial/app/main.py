@@ -20,6 +20,12 @@ from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
+from .optimization import (
+    OptimizationCandidateRequestV1,
+    OptimizationSelectionRequestV1,
+    evaluate_parametric_candidate,
+    select_optimization_candidate,
+)
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .product_matching import (
@@ -1709,6 +1715,43 @@ async def market_cost_basis_api(request: Request) -> JSONResponse:
         payload,
         headers={"Cache-Control": "public, max-age=300"},
     )
+
+
+async def _optimizer_cost_catalog(request: Request) -> dict[str, Any]:
+    """Use D1 when available and the versioned seed only as an explicit fallback."""
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        payload = await _cached_roi_cost_payload_from_d1(db)
+        if payload is not None:
+            return payload
+    return {**roi_cost_basis_seed(), "source": "seed_fallback"}
+
+
+@app.post("/api/optimization/candidate")
+async def optimization_candidate_api(
+    payload: OptimizationCandidateRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Evaluate one raw physical candidate before commercial discretization."""
+    try:
+        result = evaluate_parametric_candidate(
+            payload.baseline,
+            payload.measures,
+            await _optimizer_cost_catalog(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/optimization/select")
+async def optimization_select_api(
+    payload: OptimizationSelectionRequestV1,
+) -> JSONResponse:
+    """Apply one economic policy to an already evaluated candidate set."""
+    result = select_optimization_candidate(payload.request, payload.candidates)
+    return JSONResponse(model_to_dict(result))
 
 
 @app.get("/api/energy-prices")

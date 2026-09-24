@@ -3,9 +3,11 @@ from __future__ import annotations
 import math
 
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from commercial.app.engine import calculate, demo_building
+from commercial.app.main import app
 from commercial.app.models import model_to_dict
 from commercial.app.optimization import (
     CandidateEvaluationV1,
@@ -243,3 +245,53 @@ def test_auto_mode_is_explicit_multi_horizon_not_shortest_payback() -> None:
     assert result.selected.candidate_id == "balanced"
     assert result.auto_horizons_years == [5, 10, 15, 20, 25]
     assert "does not assume one hidden payback horizon" in result.rationale
+
+
+client = TestClient(app)
+
+
+def test_parametric_candidate_api_uses_versioned_cost_catalog() -> None:
+    response = client.post(
+        "/api/optimization/candidate",
+        json={
+            "baseline": model_to_dict(demo_building()),
+            "measures": {
+                "wall_added_r_m2k_w": 1.25,
+                "pv_added_kwp": 1.4,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["candidate_id"].startswith("OPT-")
+    assert payload["capex_lei"] > 0
+    assert payload["commercialization_status"] == "pending_product_catalog"
+    assert payload["cost_source"] == "seed_fallback"
+    assert {row["family"] for row in payload["cost_breakdown"]} == {"wall", "pv"}
+
+
+def test_optimization_select_api_applies_single_requested_policy() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.max_payback_years,
+        max_payback_years=4,
+    )
+    candidates = [
+        _synthetic("small", capex=1000, bill=9000, saving=1000, payback=1),
+        _synthetic("valuable", capex=12000, bill=3000, saving=7000, payback=1.71),
+        _synthetic("too_slow", capex=40000, bill=1000, saving=9000, payback=4.44),
+    ]
+
+    response = client.post(
+        "/api/optimization/select",
+        json={
+            "request": model_to_dict(request),
+            "candidates": [model_to_dict(item) for item in candidates],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["selected"]["candidate_id"] == "valuable"
+    assert payload["feasible_count"] == 2
