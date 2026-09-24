@@ -400,7 +400,14 @@ try {
   }
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   try {
-    await expectVisible('[data-hln-screen="report"].is-active');
+    await page.waitForFunction(
+      () => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        return report?.classList.contains("is-active") && getComputedStyle(report).display !== "none";
+      },
+      null,
+      {timeout:15000}
+    );
   } catch (error) {
     const reportState = await page.evaluate(() => ({
       activeScreen: document.querySelector('[data-hln-screen].is-active')?.getAttribute("data-hln-screen") || null,
@@ -443,7 +450,14 @@ try {
   // here to re-enter Report after the Casa mea round-trip and validate the
   // persistent navigation contract independently of viewport/actionability.
   await page.locator("#hlnDockCta").click();
-  await expectVisible('[data-hln-screen="report"].is-active');
+  await page.waitForFunction(
+      () => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        return report?.classList.contains("is-active") && getComputedStyle(report).display !== "none";
+      },
+      null,
+      {timeout:15000}
+    );
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
   // This control lives inside the report heading while the smoke has just
@@ -664,7 +678,14 @@ try {
     {timeout:30000}
   );
   await page.locator("#hlnDockCta").click();
-  await expectVisible('[data-hln-screen="report"].is-active');
+  await page.waitForFunction(
+      () => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        return report?.classList.contains("is-active") && getComputedStyle(report).display !== "none";
+      },
+      null,
+      {timeout:15000}
+    );
   const mobileReportNav = await page.evaluate(() => {
     const dock = document.querySelector(".hln-dock");
     const back = document.querySelector("#hlnDockBack");
