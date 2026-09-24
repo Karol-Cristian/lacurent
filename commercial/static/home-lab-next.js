@@ -3220,16 +3220,17 @@
 
     window.requestAnimationFrame(syncPersistentStackHeight);
 
-    if (dock) dock.hidden = screen === "report";
-    if (screen === "report") return;
+    if (dock) dock.hidden = false;
 
     const benefits = $(".hln-dock-benefits");
     const back = $("#hlnDockBack");
+    const backLabel = back?.querySelector("span") || back;
     const cta = $("#hlnDockCta");
     const ctaLabel = cta?.querySelector("span") || cta;
     const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
     benefits.hidden = !scenarioMode;
     if (back) back.hidden = screen === "home";
+    if (backLabel) backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi";
     dock?.classList.toggle("has-comparison", scenarioMode);
 
     if (scenarioMode && homeResult && scenarioResult) {
@@ -3282,6 +3283,9 @@
       cta.hidden = false;
       ctaLabel.textContent = "Generează raportul";
       ctaLabel.dataset.mobileLabel = "Raport";
+    } else if (screen === "report") {
+      cta.hidden = true;
+      ctaLabel.dataset.mobileLabel = "";
     } else {
       cta.hidden = true;
       ctaLabel.dataset.mobileLabel = "";
@@ -5157,6 +5161,10 @@
     }
     if (screen === "scenario") {
       showScreen("site");
+      return;
+    }
+    if (screen === "report") {
+      showScreen("scenario");
     }
   });
 
