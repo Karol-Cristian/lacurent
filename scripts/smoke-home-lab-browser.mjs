@@ -315,6 +315,14 @@ try {
     throw new Error("Scenario budget ROI reconciliation is incomplete: " + investmentText);
   }
 
+  await page.waitForFunction(
+    () => {
+      const value = document.querySelector("#hlnScenarioNewCost");
+      return value && !value.classList.contains("hln-calculating-value");
+    },
+    null,
+    {timeout:30000}
+  );
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   try {
     await expectVisible('[data-hln-screen="report"].is-active');
