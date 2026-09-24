@@ -1423,7 +1423,7 @@
       "#hlnLiveClass",
       "#hlnDockScenarioClass",
       "#hlnDockScenarioCost",
-      "#hlnPersistentCostBenefit",
+      "#hlnDockCostBenefit",
       "#hlnScenarioNewCost",
       "#hlnScenarioBenefit",
       "#hlnScenarioCostCompare",
@@ -3186,7 +3186,7 @@
         homeResult.annual_cost_lei,
         {unit:" lei/an"}
       );
-      const savingNode = $("#hlnPersistentCostBenefit");
+      const savingNode = $("#hlnDockCostBenefit");
       const savingLabel = $("#hlnDockSavingLabel");
       savingNode.textContent = saving.text;
       applyDeltaState(savingNode, saving);
