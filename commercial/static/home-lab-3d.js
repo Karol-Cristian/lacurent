@@ -2005,6 +2005,8 @@ class HomeLabHouse3D {
     const cameraDirection = new THREE.Vector3();
     this.camera.getWorldDirection(cameraDirection);
 
+    const visibleParts = new Set();
+
     this.hotspotAnchors.forEach((anchor, part) => {
       const button = this.hotspotElements.get(part);
       if (!button) return;
@@ -2025,9 +2027,15 @@ class HomeLabHouse3D {
 
       button.hidden = !visible;
       if (!visible) return;
+      visibleParts.add(part);
       const safeX = this.isMobile ? clamp(x, 36, width - 36) : x;
       const safeY = this.isMobile && this.mode === "site" ? clamp(y, 62, height - 92) : y;
       button.style.transform = `translate3d(${safeX - 22}px, ${safeY - 22}px, 0)`;
+    });
+
+    const visual = this.mount.closest(".hln-house-visual");
+    ["wall", "roof", "windows", "floor"].forEach((part) => {
+      visual?.classList.toggle(`hln-semantic-${part}-ready`, visibleParts.has(part));
     });
   }
 
