@@ -2016,20 +2016,34 @@ class HomeLabHouse3D {
       const projected = anchor.clone().project(this.camera);
       const x = (projected.x * 0.5 + 0.5) * width;
       const y = (-projected.y * 0.5 + 0.5) * height;
-      const visible =
+      const projectedVisible =
         isInFront &&
+        Number.isFinite(projected.x) &&
+        Number.isFinite(projected.y) &&
+        Number.isFinite(projected.z) &&
         projected.z > -1 &&
         projected.z < 1 &&
         (this.isMobile || (
           x > -24 && x < width + 24 &&
           y > -24 && y < height + 24
         ));
+      const mobileSiteFallback = this.isMobile && this.mode === "site" &&
+        ["wall", "roof", "windows"].includes(part);
+      const visible = projectedVisible || mobileSiteFallback;
 
       button.hidden = !visible;
       if (!visible) return;
       visibleParts.add(part);
-      const safeX = this.isMobile ? clamp(x, 36, width - 36) : x;
-      const safeY = this.isMobile && this.mode === "site" ? clamp(y, 62, height - 92) : y;
+
+      const fallbackPosition = {
+        wall:[54, height * 0.56],
+        roof:[width * 0.64, 82],
+        windows:[width - 64, height * 0.48],
+      }[part];
+      const sourceX = projectedVisible ? x : fallbackPosition?.[0] ?? width * 0.5;
+      const sourceY = projectedVisible ? y : fallbackPosition?.[1] ?? height * 0.5;
+      const safeX = this.isMobile ? clamp(sourceX, 36, width - 36) : sourceX;
+      const safeY = this.isMobile && this.mode === "site" ? clamp(sourceY, 62, height - 92) : sourceY;
       button.style.transform = `translate3d(${safeX - 22}px, ${safeY - 22}px, 0)`;
     });
 
