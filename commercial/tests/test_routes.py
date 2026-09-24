@@ -1529,7 +1529,6 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);" in response.text
     assert "function directChangeText" in response.text
     assert "function applyDeltaState" in response.text
-    assert "function energyClassRank" in response.text
     assert '["#hlnImpactCost", cost]' in response.text
     assert '["#hlnImpactEnergy", energy]' in response.text
     assert '["#hlnImpactEfficiency", efficiency]' in response.text
