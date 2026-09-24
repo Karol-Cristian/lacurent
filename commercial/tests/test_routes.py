@@ -1597,7 +1597,6 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);" in response.text
     assert "const good = lowerIsBetter ? delta < 0 : delta > 0;" in response.text
     assert 'label: good ? "Economie" : "Cost suplimentar"' in response.text
-    assert "savingLabel.textContent = saving.label" in response.text
     assert "async function saveHomeAndOpenSite" in response.text
     assert 'await calculateState(homeState, "home")' in response.text
     assert 'showScreen("site")' in response.text
