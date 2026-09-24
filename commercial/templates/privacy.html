@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Confidențialitate | LaCurent{% endblock %}
+
+{% block content %}
+<article class="lc-legal-page">
+  <p class="eyebrow">LaCurent · informații legale</p>
+  <h1>Politica de confidențialitate</h1>
+  <p><strong>Ultima actualizare:</strong> 24 septembrie 2026.</p>
+
+  <div class="lc-legal-callout">
+    <strong>Pe scurt:</strong>
+    Home Lab poate salva casa și scenariile în browserul dispozitivului tău numai dacă alegi explicit această opțiune.
+    Salvarea locală nu este un cont LaCurent și nu sincronizează automat datele între dispozitive.
+  </div>
+
+  <h2>1. Cine operează LaCurent</h2>
+  <p>
+    LaCurent este un proiect software independent operat de <strong>Karol Cristian Lemnaru</strong>.
+    Pentru întrebări despre confidențialitate, solicitări sau reclamații: <a href="mailto:karol@lacurent.com">karol@lacurent.com</a>.
+  </p>
+  <p>
+    Datele unei entități comerciale, CUI-ul și numărul de registru nu sunt publicate aici deoarece nu sunt prezentate în această versiune ca date disponibile.
+    Dacă LaCurent activează o tranzacție cu plată, identitatea entității contractante și datele comerciale aplicabile trebuie afișate înainte de încheierea tranzacției.
+  </p>
+
+  <h2>2. Ce date folosește Home Lab</h2>
+  <p>
+    Pentru a calcula rezultatele, aplicația poate procesa informațiile introduse de tine despre clădire: localitate, geometrie, an construcție,
+    anvelopă, ferestre, instalații, regenerabile și scenarii de renovare. Nu este necesar să introduci nume, CNP, adresă poștală exactă sau alte date sensibile pentru calculul energetic.
+  </p>
+  <p>
+    Cererile de calcul sunt transmise serviciului LaCurent pentru procesare și returnarea rezultatului. Fluxul guest Home Lab nu creează în mod intenționat
+    un cont sau un proiect server-side persistent din aceste simulări. Furnizorii de infrastructură pot prelucra date tehnice de rețea și securitate necesare operării serviciului.
+  </p>
+
+  <h2>3. Salvarea locală în browser</h2>
+  <p>
+    Salvarea simulării este opțională. La prima utilizare alegi între „Permite salvarea locală” și „Continuă fără salvare”.
+    Fără acord, Home Lab și calculatorul clasic nu citesc și nu scriu drafturile de simulare în stocarea locală.
+  </p>
+  <ul>
+    <li><code>lacurent-home-lab-next-v1:&lt;partener&gt;</code> — casa, scenariile și rezultatele Home Lab; rămân pe dispozitiv până când le ștergi sau cureți datele browserului.</li>
+    <li><code>lacurent-calculator-draft-v1[:partener]</code> — draftul calculatorului clasic; expiră logic după 30 de zile.</li>
+    <li><code>lacurent-privacy-v1</code> — alegerea ta privind salvarea locală; este folosită pentru a respecta preferința exprimată.</li>
+  </ul>
+  <p>
+    Poți schimba oricând alegerea din „Setări confidențialitate” și poți șterge simulările locale de pe dispozitiv.
+    Ștergerea locală nu implică ștergerea unui cont sau a unei baze de date, deoarece aceste drafturi sunt stocate în browser.
+  </p>
+
+  <h2>4. Analytics și marketing</h2>
+  <p>
+    Home Lab nu trebuie să trimită evenimente către un strat de analytics fără consimțământul corespunzător.
+    Codul produsului păstrează analytics și marketing dezactivate implicit. Orice integrare viitoare neesențială trebuie activată numai după alegerea utilizatorului.
+  </p>
+
+  <h2>5. Scop și temei</h2>
+  <p>
+    Datele introduse într-o cerere de calcul sunt folosite pentru furnizarea funcției solicitate. Salvarea locală opțională se bazează pe alegerea ta explicită.
+    Stocarea/accesul neesențial pe terminal este tratat conservator, în acord cu regulile privind stocarea pe echipamentul utilizatorului.
+  </p>
+
+  <h2>6. Drepturi și reclamații</h2>
+  <p>
+    Pentru date personale prelucrate de LaCurent poți solicita informații, rectificare, ștergere sau alte drepturi aplicabile folosind
+    <a href="mailto:karol@lacurent.com">karol@lacurent.com</a>. Pentru drafturile din browser, controlul direct este disponibil prin ștergerea locală din interfață.
+  </p>
+  <p>
+    Poți depune o plângere și la Autoritatea Națională de Supraveghere a Prelucrării Datelor cu Caracter Personal (ANSPDCP):
+    <a href="https://www.dataprotection.ro/" target="_blank" rel="noreferrer">dataprotection.ro</a>.
+  </p>
+
+  <h2>7. Actualizări</h2>
+  <p>
+    Această pagină va fi actualizată când se schimbă modul de stocare, apar conturi/sincronizare cloud, analytics, servicii cu plată sau date comerciale noi.
+  </p>
+</article>
+{% endblock %}
