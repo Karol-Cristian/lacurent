@@ -95,6 +95,20 @@ class HeatingSystemProductV1(BaseModel):
     product_url: str | None = Field(default=None, max_length=1000)
     catalog_version: str | None = Field(default=None, max_length=120)
 
+    @root_validator(skip_on_failure=True)
+    def validate_explicit_product_performance(cls, values: dict) -> dict:
+        heating = values.get("heating")
+        if heating is None:
+            return values
+        if heating.system_type.value == "heat_pump":
+            if heating.scop is None:
+                raise ValueError("Heating product heat pump requires explicit SCOP.")
+        elif heating.efficiency is None:
+            raise ValueError(
+                "Heating product requires explicit seasonal generator efficiency."
+            )
+        return values
+
     @property
     def installed_capex_lei(self) -> float:
         return float(self.equipment_price_lei) + float(self.installation_price_lei)
