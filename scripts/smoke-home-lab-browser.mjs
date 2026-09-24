@@ -294,16 +294,25 @@ try {
     }
     const stackBox = stack.getBoundingClientRect();
     const cardBox = card.getBoundingClientRect();
+    const stackStyle = getComputedStyle(stack);
+    const editorStyle = getComputedStyle(editor);
     return {
       bodyTechnical: document.body.classList.contains("hln-technical-open"),
       stackTop: stackBox.top,
       stackBottom: stackBox.bottom,
       cardTop: cardBox.top,
+      stackZ:Number(stackStyle.zIndex || 0),
+      editorZ:Number(editorStyle.zIndex || 0),
+      stackFilter:stackStyle.filter,
+      stackBackdrop:stackStyle.backdropFilter || stackStyle.webkitBackdropFilter || "none",
     };
   });
   if (!technicalSummaryLayout.bodyTechnical ||
       technicalSummaryLayout.stackTop > 1 ||
-      technicalSummaryLayout.cardTop + 1 < technicalSummaryLayout.stackBottom) {
+      technicalSummaryLayout.cardTop + 1 < technicalSummaryLayout.stackBottom ||
+      technicalSummaryLayout.stackZ <= technicalSummaryLayout.editorZ ||
+      technicalSummaryLayout.stackFilter !== "none" ||
+      technicalSummaryLayout.stackBackdrop !== "none") {
     throw new Error("Persistent summary is not reserved above technical mode: " + JSON.stringify(technicalSummaryLayout));
   }
 
@@ -355,6 +364,24 @@ try {
     null,
     {timeout:30000}
   );
+  const persistentScenarioDeltas = await page.evaluate(() => {
+    const summary = document.querySelector(".hln-live-summary");
+    const cost = document.querySelector("#hlnPersistentCostDelta");
+    const energy = document.querySelector("#hlnPersistentEnergyDelta");
+    const energyClass = document.querySelector("#hlnPersistentClass");
+    return {
+      cost:String(cost?.textContent || ""),
+      energy:String(energy?.textContent || ""),
+      energyClass:String(energyClass?.textContent || ""),
+      classColor:summary ? getComputedStyle(summary).getPropertyValue("--hln-class-color").trim() : "",
+    };
+  });
+  if (!persistentScenarioDeltas.cost.includes("vs Casa mea") ||
+      !persistentScenarioDeltas.energy.includes("vs Casa mea") ||
+      !persistentScenarioDeltas.energyClass ||
+      !persistentScenarioDeltas.classColor) {
+    throw new Error("Persistent scenario deltas/class color are missing: " + JSON.stringify(persistentScenarioDeltas));
+  }
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   try {
     await expectVisible('[data-hln-screen="report"].is-active');
@@ -469,39 +496,61 @@ try {
     const strip = document.querySelector(".hln-energy-strip");
     const summary = document.querySelector(".hln-live-summary");
     const status = document.querySelector("#hlnStatus");
+    const quickOverlay = document.querySelector("#hlnQuickEditOverlay");
     const metrics = ["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"]
       .map(selector => document.querySelector(selector));
     if (!(stack instanceof HTMLElement) ||
         !(strip instanceof HTMLElement) ||
         !(summary instanceof HTMLElement) ||
         !(status instanceof HTMLElement) ||
+        !(quickOverlay instanceof HTMLElement) ||
         metrics.some(node => !(node instanceof HTMLElement))) {
-      throw new Error("Mobile persistent Home Lab summary is incomplete");
+      throw new Error("Mobile persistent Home Lab HUD is incomplete");
     }
     const stackBox = stack.getBoundingClientRect();
     const stripBox = strip.getBoundingClientRect();
     const summaryBox = summary.getBoundingClientRect();
     const statusBox = status.getBoundingClientRect();
+    const stackStyle = getComputedStyle(stack);
+    const quickStyle = getComputedStyle(quickOverlay);
     return {
-      stackPosition:getComputedStyle(stack).position,
+      stackPosition:stackStyle.position,
       stackTop:stackBox.top,
       stripBottom:stripBox.bottom,
       summaryTop:summaryBox.top,
       summaryBottom:summaryBox.bottom,
       statusTop:statusBox.top,
       statusBottom:statusBox.bottom,
+      stackZ:Number(stackStyle.zIndex || 0),
+      quickZ:Number(quickStyle.zIndex || 0),
+      stackFilter:stackStyle.filter,
+      stackBackdrop:stackStyle.backdropFilter || stackStyle.webkitBackdropFilter || "none",
       metricsVisible:metrics.every(node => {
         const box = node.getBoundingClientRect();
         return box.width > 0 && box.height > 0;
       }),
     };
   });
-  if (mobilePersistentLayout.stackPosition !== "sticky" ||
+  if (mobilePersistentLayout.stackPosition !== "fixed" ||
+      mobilePersistentLayout.stackTop < 63 ||
+      mobilePersistentLayout.stackTop > 65 ||
       mobilePersistentLayout.summaryTop + 1 < mobilePersistentLayout.stripBottom ||
       mobilePersistentLayout.statusTop + 1 < mobilePersistentLayout.summaryTop ||
       mobilePersistentLayout.statusBottom > mobilePersistentLayout.summaryBottom + 1 ||
+      mobilePersistentLayout.stackZ <= mobilePersistentLayout.quickZ ||
+      mobilePersistentLayout.stackFilter !== "none" ||
+      mobilePersistentLayout.stackBackdrop !== "none" ||
       !mobilePersistentLayout.metricsVisible) {
-    throw new Error("Mobile persistent result/status layout is invalid: " + JSON.stringify(mobilePersistentLayout));
+    throw new Error("Mobile persistent result/status HUD is invalid: " + JSON.stringify(mobilePersistentLayout));
+  }
+
+  await page.evaluate(() => window.scrollTo(0, Math.max(document.body.scrollHeight, 1600)));
+  await page.waitForTimeout(60);
+  const mobileHudTopAfterScroll = await page.evaluate(
+    () => document.querySelector("[data-hln-persistent-stack]")?.getBoundingClientRect().top
+  );
+  if (mobileHudTopAfterScroll == null || mobileHudTopAfterScroll < 63 || mobileHudTopAfterScroll > 65) {
+    throw new Error("Mobile persistent HUD moved during scroll: " + mobileHudTopAfterScroll);
   }
 
   if (pageErrors.length) {
