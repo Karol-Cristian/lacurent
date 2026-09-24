@@ -4099,7 +4099,7 @@
   function setEditorSection(name) {
     const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile",renewables:"PV & solar"};
     $("#hlnEditorTitle").textContent = titles[name] || "Editează";
-    $("[data-hln-editor]").forEach(section => section.hidden = section.dataset.hlnEditor !== name);
+    $$("[data-hln-editor]").forEach(section => section.hidden = section.dataset.hlnEditor !== name);
     root.querySelectorAll("[data-hln-technical-section]").forEach(button => {
       button.classList.toggle("is-active", button.dataset.hlnTechnicalSection === name);
     });
