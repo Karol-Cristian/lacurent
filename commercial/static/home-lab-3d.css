@@ -1154,3 +1154,22 @@
     box-shadow:0 0 0 4px rgba(65,105,122,.10);
   }
 }
+
+
+/* Mobile Casa mea pass 2: equipment stays contextual and clears navigation. */
+@media(max-width:760px){
+  .hln-3d-stage[data-hln-3d-stage="home"] .hln-3d-compass{
+    left:12px;
+    bottom:66px;
+    width:56px;
+    height:56px;
+  }
+  .hln-3d-stage[data-hln-3d-stage="home"] .hln-3d-equipment-badge{
+    min-height:24px;
+    max-width:118px;
+    padding:4px 6px;
+    font-size:7.5px;
+    background:rgba(248,249,246,.84);
+    box-shadow:0 4px 12px rgba(22,31,27,.08);
+  }
+}
