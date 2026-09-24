@@ -312,21 +312,12 @@ def test_simulation_facts_index_is_public_and_indexable() -> None:
     assert 'rel="canonical" href="https://lacurent.com/home-lab/facts"' in response.text
     assert "Motorul calculează" in response.text
     assert "AI-ul explică" in response.text
-    assert "Podul trebuie izolat întotdeauna primul? Nu." in response.text
-    assert "3.7×" in response.text
     assert 'href="/home-lab-next?source=facts"' in response.text
     assert "/static/simulation-facts.css?v=facts1" in response.text
 
     shortcut = client.get("/facts", follow_redirects=False)
     assert shortcut.status_code == 308
     assert shortcut.headers["location"] == "/home-lab/facts"
-
-    featured = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
-    assert featured.status_code == 200
-    assert "100 m² de pereți" in featured.text
-    assert "65 m² de tavan" in featured.text
-    assert "3.7" in featured.text
-    assert "Regula utilă este A × ΔU" in featured.text
 
 
 def test_robots_and_sitemap_expose_home_lab_facts() -> None:
@@ -535,6 +526,20 @@ def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     assert "https://lacurent.com/static/embed-loader.js?v=embed8" in response.text
     assert "Home Lab Next este experiența recomandată" in response.text
     assert 'href="/embed/demo-store/next"' in response.text
+
+
+def test_invalid_roof_vs_walls_fact_is_retired() -> None:
+    index = client.get("/home-lab/facts")
+    assert index.status_code == 200
+    assert "Podul trebuie izolat întotdeauna primul? Nu." not in index.text
+    assert "3.7×" not in index.text
+
+    detail = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
+    assert detail.status_code == 404
+
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200
+    assert "podul-trebuie-izolat-intotdeauna-primul" not in sitemap.text
 
 
 def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
