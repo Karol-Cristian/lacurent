@@ -2179,7 +2179,7 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
         optimization_request = OptimizationRequestV1(**request_kwargs)
         search_request = OptimizationSearchRequestV1(
             request=optimization_request,
-            max_evaluations=36,
+            max_evaluations=24,
         )
         search_result = run_parametric_optimization(
             search_request,
