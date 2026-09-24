@@ -561,7 +561,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next32" in response.text
+    assert "/static/home-lab-next.css?v=next359" in response.text
     assert "/static/home-lab-next.js?v=next58-body-timeout" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
@@ -1919,6 +1919,23 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
     assert "@media(prefers-reduced-motion:reduce)" in css3d.text
 
 
+
+
+
+def test_home_lab_issue_359_short_laptop_layout_contract() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert "/static/home-lab-next.css?v=next359" in response.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert "@media (min-width:981px) and (max-height:820px)" in css.text
+    assert '.hln-screen[data-hln-screen="home"] .hln-house-board' in css.text
+    assert "min-height:338px" in css.text
+    assert '.hln-screen[data-hln-screen="home"] .hln-config-row' in css.text
+    assert "min-height:58px" in css.text
+    assert "min-height:calc(100vh - 20px)" in css.text
+    assert "padding-bottom:76px" in css.text
 
 
 def test_home_lab_mobile_declutter_contract() -> None:
