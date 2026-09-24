@@ -197,7 +197,7 @@ jobs:
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
               "/instalatii/calculator": "data-home-lab-next",
-              "/home-lab/facts": "Podul trebuie izolat întotdeauna primul? Nu.",
+              "/home-lab/facts": "SIMULĂRI PUBLICE",
               "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
@@ -216,6 +216,11 @@ jobs:
               body = get(path)
               if expected not in body.replace(" ", "") and expected not in body:
                   raise AssertionError(f"{path} did not contain {expected!r}")
+
+          retired_fact = "Podul trebuie izolat întotdeauna primul? Nu."
+          facts_html = get("/home-lab/facts")
+          if retired_fact in facts_html:
+              raise AssertionError("Retired invalid Home Lab fact is still published.")
 
           for path in (
               "/home-lab-assets/house-fireplace.webp?v=2",
