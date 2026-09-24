@@ -20,6 +20,28 @@ async function expectVisible(selector) {
 try {
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
+  const mobileDock = await page.evaluate(() => {
+    const dock = document.querySelector(".hln-dock");
+    const benefits = document.querySelector(".hln-dock-benefits");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(dock instanceof HTMLElement) || !(benefits instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Mobile dock is incomplete");
+    }
+    const ctaBox = cta.getBoundingClientRect();
+    const dockStyle = getComputedStyle(dock);
+    return {
+      benefitsDisplay:getComputedStyle(benefits).display,
+      ctaVisible:ctaBox.width > 0 && ctaBox.height > 0,
+      dockBackground:dockStyle.backgroundColor,
+      dockBorder:dockStyle.borderTopWidth,
+    };
+  });
+  if (mobileDock.benefitsDisplay !== "none" ||
+      !mobileDock.ctaVisible ||
+      mobileDock.dockBackground !== "rgba(0, 0, 0, 0)" ||
+      mobileDock.dockBorder !== "0px") {
+    throw new Error("Mobile dock is not CTA-only: " + JSON.stringify(mobileDock));
+  }
   await expectVisible('[data-hln-screen="home"].is-active');
   await expectVisible("#hlnPersistentClass");
   await expectVisible("#hlnPersistentCost");
@@ -382,27 +404,21 @@ try {
       !persistentScenarioDeltas.classColor) {
     throw new Error("Persistent scenario deltas/class color are missing: " + JSON.stringify(persistentScenarioDeltas));
   }
-  const ctaOnlyDock = await page.evaluate(() => {
-    const dock = document.querySelector(".hln-dock");
+  const desktopDock = await page.evaluate(() => {
+    const benefits = document.querySelector(".hln-dock-benefits");
     const cta = document.querySelector("#hlnDockCta");
-    if (!(dock instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
-      throw new Error("Bottom dock or CTA is missing");
+    if (!(benefits instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Desktop comparison dock is incomplete");
     }
-    const directElementChildren = [...dock.children].filter(node => node instanceof HTMLElement);
+    const benefitsBox = benefits.getBoundingClientRect();
+    const ctaBox = cta.getBoundingClientRect();
     return {
-      children:directElementChildren.length,
-      benefits:Boolean(dock.querySelector(".hln-dock-benefits")),
-      ctaVisible:cta.getBoundingClientRect().width > 0 && cta.getBoundingClientRect().height > 0,
-      background:getComputedStyle(dock).backgroundColor,
-      border:getComputedStyle(dock).borderTopWidth,
+      benefitsVisible: benefitsBox.width > 0 && benefitsBox.height > 0 && getComputedStyle(benefits).display !== "none",
+      ctaVisible: ctaBox.width > 0 && ctaBox.height > 0,
     };
   });
-  if (ctaOnlyDock.children !== 1 ||
-      ctaOnlyDock.benefits ||
-      !ctaOnlyDock.ctaVisible ||
-      ctaOnlyDock.background !== "rgba(0, 0, 0, 0)" ||
-      ctaOnlyDock.border !== "0px") {
-    throw new Error("Bottom dock is not CTA-only: " + JSON.stringify(ctaOnlyDock));
+  if (!desktopDock.benefitsVisible || !desktopDock.ctaVisible) {
+    throw new Error("Desktop dock lost comparison cards or CTA: " + JSON.stringify(desktopDock));
   }
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   try {
