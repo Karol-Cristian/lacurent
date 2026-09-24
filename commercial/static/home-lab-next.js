@@ -218,6 +218,7 @@
   let quickEditOriginal = null;
   let quickEditTarget = "scenario";
   let screen = "home";
+  const introCollapsedScreens = new Set();
   let localities = [];
   let localityMap = new Map();
   let locationMapData = null;
@@ -4119,8 +4120,34 @@
     });
   }
 
+  function syncAdaptiveIntroState() {
+    root.querySelectorAll('[data-hln-screen="home"], [data-hln-screen="site"]').forEach(node => {
+      node.classList.toggle("is-intro-collapsed", introCollapsedScreens.has(node.dataset.hlnScreen));
+    });
+  }
+
+  function collapseAdaptiveIntroFor(target) {
+    if (!(target instanceof Element)) return;
+    const interaction = target.closest(
+      ".hln-house-board, .hln-live-configurator, [data-hln-editor-open], [data-hln-measure]"
+    );
+    if (!interaction) return;
+    const screenNode = interaction.closest('[data-hln-screen="home"], [data-hln-screen="site"]');
+    const name = screenNode?.dataset.hlnScreen;
+    if (!name || introCollapsedScreens.has(name)) return;
+    introCollapsedScreens.add(name);
+    syncAdaptiveIntroState();
+    window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+  }
+
+  function resetAdaptiveIntros() {
+    introCollapsedScreens.clear();
+    syncAdaptiveIntroState();
+  }
+
   function renderAll() {
     root.dataset.hlnActiveScreen = screen;
+    syncAdaptiveIntroState();
     renderHome();
     renderProgress();
     renderDock();
@@ -4884,7 +4911,17 @@
   window.addEventListener("orientationchange", () => {
     window.setTimeout(syncPersistentStackHeight, 120);
   });
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) resetAdaptiveIntros();
+  });
   window.requestAnimationFrame(syncPersistentStackHeight);
+
+  root.addEventListener("pointerdown", event => {
+    collapseAdaptiveIntroFor(event.target);
+  }, {passive:true});
+  root.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") collapseAdaptiveIntroFor(event.target);
+  });
 
   root.querySelectorAll("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
     openEditor(button.dataset.hlnEditorOpen, {
