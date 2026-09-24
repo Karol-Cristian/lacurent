@@ -341,6 +341,25 @@ try {
     );
   }
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+  // Returning to Casa mea through the global progress navigation must not
+  // preserve the report's bottom scroll position and show an apparently blank
+  // or partial first screen.
+  await page.evaluate(() => {
+    document.querySelector('.hln-progress [data-hln-go="home"]')?.click();
+  });
+  await expectVisible('[data-hln-screen="home"].is-active');
+  await page.waitForTimeout(50);
+  const scrollAfterHome = await page.evaluate(() => window.scrollY);
+  if (scrollAfterHome > 20) {
+    throw new Error(`Home progress navigation did not reset scroll: ${scrollAfterHome}px`);
+  }
+  await page.locator('.hln-progress [data-hln-go="scenario"]').click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
+  await expectVisible('[data-hln-screen="report"].is-active');
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
   // This control lives inside the report heading while the smoke has just
   // scrolled to the document bottom. Its viewport/actionability state is
   // intentionally irrelevant here: validate the navigation handler directly.

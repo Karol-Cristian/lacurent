@@ -4990,10 +4990,7 @@
     if (go) {
       const target = go.dataset.hlnGo;
       if (target === "home") {
-        screen = "home";
-        root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
-        renderAll();
-        emitVisualState();
+        showScreen("home");
         return;
       }
       if (target === "site" && baselineSaved) showScreen("site");
