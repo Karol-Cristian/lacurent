@@ -431,6 +431,13 @@ try {
   }
   await page.locator('.hln-progress [data-hln-go="scenario"]').click();
   await expectVisible('[data-hln-screen="scenario"].is-active');
+  // Returning through Casa mea can trigger an asynchronous scenario refresh.
+  // The product intentionally blocks Report until that result is fresh.
+  await page.waitForFunction(
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh"),
+    null,
+    {timeout:30000}
+  );
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   await expectVisible('[data-hln-screen="report"].is-active');
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
