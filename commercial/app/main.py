@@ -1778,6 +1778,16 @@ async def software_testing(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "software_testing.html", {"request": request})
 
 
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "privacy.html", {"request": request})
+
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "terms.html", {"request": request})
+
+
 @app.get("/instalatii")
 async def installations() -> RedirectResponse:
     # Retired public energy landing: go straight to the actual Home Lab app.
@@ -1863,6 +1873,8 @@ async def sitemap_xml(request: Request) -> Response:
         "https://lacurent.com/software-testing",
         "https://lacurent.com/home-lab-next",
         "https://lacurent.com/home-lab/facts",
+        "https://lacurent.com/privacy",
+        "https://lacurent.com/terms",
     ]
     db = _request_db(request)
     try:

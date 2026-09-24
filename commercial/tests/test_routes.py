@@ -147,6 +147,69 @@ def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
     assert 'homeState.dhwSystem = $("#hlnHomeDhwSystem").value' in js.text
 
 
+def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
+    privacy = client.get("/privacy")
+    assert privacy.status_code == 200
+    assert "Politica de confidențialitate" in privacy.text
+    assert "lacurent-home-lab-next-v1" in privacy.text
+    assert "lacurent-calculator-draft-v1" in privacy.text
+    assert "Continuă fără salvare" in privacy.text
+    assert "karol@lacurent.com" in privacy.text
+    assert "dataprotection.ro" in privacy.text
+
+    terms = client.get("/terms")
+    assert terms.status_code == 200
+    assert "Termeni de utilizare" in terms.text
+    assert "Nu reprezintă un Certificat de Performanță Energetică" in terms.text
+    assert "încadrare orientativă calculată" in terms.text
+    assert "karol@lacurent.com" in terms.text
+
+
+def test_commercial_pages_expose_legal_links_and_privacy_controls_where_needed() -> None:
+    company = client.get("/")
+    assert company.status_code == 200
+    assert 'href="/privacy"' in company.text
+    assert 'href="/terms"' in company.text
+    assert 'href="mailto:karol@lacurent.com"' in company.text
+
+    calculator = client.get("/instalatii/calculator/legacy")
+    assert calculator.status_code == 200
+    assert 'href="/privacy"' in calculator.text
+    assert 'href="/terms"' in calculator.text
+    assert 'href="mailto:karol@lacurent.com"' in calculator.text
+    assert 'data-lacurent-privacy-open' in calculator.text
+    assert 'data-lacurent-first-use-consent' in calculator.text
+    assert "/static/privacy-consent.js?v=privacy1" in calculator.text
+
+
+def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'data-lacurent-first-use-consent' in response.text
+    assert 'href="/privacy"' in response.text
+    assert 'href="/terms"' in response.text
+    assert "/static/privacy-consent.js?v=privacy1" in response.text
+
+    privacy_js = client.get("/static/privacy-consent.js")
+    assert privacy_js.status_code == 200
+    assert 'const CONSENT_KEY = "lacurent-privacy-v1"' in privacy_js.text
+    assert "allowsLocalAutosave" in privacy_js.text
+    assert "clearLocalDrafts" in privacy_js.text
+
+    home_js = client.get("/static/home-lab-next.js")
+    assert home_js.status_code == 200
+    assert "const localAutosaveAllowed" in home_js.text
+    assert "if (localAutosaveAllowed())" in home_js.text
+    assert "if (!localAutosaveAllowed()) return false;" in home_js.text
+    assert "if (!analyticsAllowed()) return;" in home_js.text
+
+    autosave_js = client.get("/static/calculator-autosave.js")
+    assert autosave_js.status_code == 200
+    assert "function autosaveAllowed()" in autosave_js.text
+    assert "if (!autosaveAllowed()) return null;" in autosave_js.text
+    assert "if (!autosaveAllowed()) return false;" in autosave_js.text
+
+
 def test_company_home_is_a_focused_testing_entry_page() -> None:
     response = client.get("/")
     assert response.status_code == 200
@@ -348,7 +411,10 @@ def test_certificate_renders_romanian_printable_report_with_costs() -> None:
     payload = demo_building().model_dump_json()
     response = client.post("/certificate", data={"payload": payload})
     assert response.status_code == 200
-    assert "Raport de performanță energetică" in response.text
+    assert "Raport tehnic estimativ de performanță energetică" in response.text
+    assert "Nu este Certificat de Performanță Energetică (CPE)" in response.text
+    assert 'href="/terms"' in response.text
+    assert 'href="/privacy"' in response.text
     assert "Tipărește / salvează PDF" in response.text
     assert "Cost estimat al serviciilor energetice modelate" in response.text
     assert "nu reprezintă un Certificat de Performanță Energetică" in response.text
@@ -491,7 +557,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next27" in response.text
-    assert "/static/home-lab-next.js?v=next52" in response.text
+    assert "/static/home-lab-next.js?v=next53" in response.text
     assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text

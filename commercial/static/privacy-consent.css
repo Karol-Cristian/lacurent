@@ -1,0 +1,136 @@
+.lc-legal-footer {
+  display: flex;
+  gap: 12px 18px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 28px auto 18px;
+  padding: 14px 18px;
+  color: #647184;
+  font-size: 12px;
+}
+.lc-legal-footer a,
+.lc-legal-footer button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.lc-privacy-first-use,
+.lc-privacy-panel {
+  position: fixed;
+  z-index: 10000;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: min(430px, calc(100vw - 36px));
+  border: 1px solid rgba(35, 51, 72, 0.16);
+  border-radius: 16px;
+  padding: 18px;
+  background: rgba(255,255,255,.98);
+  color: #172033;
+  box-shadow: 0 18px 56px rgba(19, 34, 51, .20);
+}
+.lc-privacy-first-use[hidden],
+.lc-privacy-panel[hidden] { display: none !important; }
+.lc-privacy-first-use h2,
+.lc-privacy-panel h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+.lc-privacy-first-use p,
+.lc-privacy-panel p {
+  margin: 0 0 12px;
+  color: #5d6a7b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.lc-privacy-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.lc-privacy-actions button,
+.lc-privacy-actions a {
+  min-height: 38px;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.lc-privacy-primary {
+  border: 0;
+  background: #1459c8;
+  color: #fff;
+}
+.lc-privacy-secondary {
+  border: 1px solid #ccd5e0;
+  background: #fff;
+  color: #26364c;
+}
+.lc-privacy-link {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: #1459c8;
+}
+.lc-privacy-panel-head {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
+}
+.lc-privacy-close {
+  border: 0;
+  background: transparent;
+  color: #536176;
+  font-size: 20px;
+  cursor: pointer;
+}
+.lc-privacy-state {
+  display: block;
+  margin: 10px 0 14px;
+  color: #35455c;
+  font-size: 12px;
+  font-weight: 750;
+}
+.lc-legal-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 42px 0 64px;
+}
+.lc-legal-page h1 {
+  margin-bottom: 12px;
+}
+.lc-legal-page h2 {
+  margin-top: 32px;
+}
+.lc-legal-page p,
+.lc-legal-page li {
+  line-height: 1.65;
+}
+.lc-legal-callout {
+  margin: 20px 0;
+  border-left: 4px solid #1459c8;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #f3f7fd;
+}
+@media (max-width: 650px) {
+  .lc-privacy-first-use,
+  .lc-privacy-panel {
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: calc(100vw - 20px);
+  }
+  .lc-privacy-actions {
+    display: grid;
+  }
+}

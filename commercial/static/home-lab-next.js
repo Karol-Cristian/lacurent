@@ -10,6 +10,8 @@
   const calcUrl = root.dataset.calculateUrl;
   const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
   const acquisitionSource = new URLSearchParams(window.location.search).get("source") || "";
+  const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
+  const analyticsAllowed = () => window.LaCurentPrivacy?.allowsAnalytics?.() === true;
   const SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70;
 
   function trackEvent(name, detail = {}) {
@@ -20,9 +22,10 @@
       partner:root.dataset.partnerId || "official",
       ...detail,
     };
+    if (!analyticsAllowed()) return;
     window.dispatchEvent(new CustomEvent("hln:analytics", {detail:payload}));
-    // Vendor-neutral integration point. We do not create or load a tracker here;
-    // an analytics provider may consume the same events later after consent.
+    // Vendor-neutral integration point. No analytics event leaves this product
+    // surface until the user has explicitly allowed analytics.
     if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);
   }
 
@@ -331,27 +334,29 @@
     return state;
   }
 
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-    if (saved?.homeState) {
-      homeState = migrateStoredHeatingState(saved.homeState, defaultState);
-      scenarioState = migrateStoredHeatingState(saved.scenarioState || {}, homeState);
-      homeResult = saved.homeResult || null;
-      scenarioResult = saved.scenarioResult || null;
-      measures = Array.isArray(saved.measures) ? saved.measures : [];
-      baselineSaved = Boolean(saved.baselineSaved);
-      referenceMode = Boolean(saved.referenceMode);
-      scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
-      optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
-      projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
-        ? saved.projectMode
-        : "existing_standard";
-      homeResultState = homeResult ? "fresh" : "empty";
-      scenarioResultState = scenarioResult ? "fresh" : "empty";
-      // Rewrite the persisted state once so the migration is permanent.
-      persist();
-    }
-  } catch (_) {}
+  if (localAutosaveAllowed()) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved?.homeState) {
+        homeState = migrateStoredHeatingState(saved.homeState, defaultState);
+        scenarioState = migrateStoredHeatingState(saved.scenarioState || {}, homeState);
+        homeResult = saved.homeResult || null;
+        scenarioResult = saved.scenarioResult || null;
+        measures = Array.isArray(saved.measures) ? saved.measures : [];
+        baselineSaved = Boolean(saved.baselineSaved);
+        referenceMode = Boolean(saved.referenceMode);
+        scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
+        optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
+        projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
+          ? saved.projectMode
+          : "existing_standard";
+        homeResultState = homeResult ? "fresh" : "empty";
+        scenarioResultState = scenarioResult ? "fresh" : "empty";
+        // Rewrite the persisted state once so the migration is permanent.
+        persist();
+      }
+    } catch (_) {}
+  }
 
   function fmt(value, digits = 0) {
     const number = Number(value);
@@ -4073,6 +4078,7 @@
   }
 
   function persist() {
+    if (!localAutosaveAllowed()) return false;
     try {
       localStorage.setItem(storageKey, JSON.stringify({
         baselineSaved,
@@ -4086,7 +4092,10 @@
         optimizationMeta,
         projectMode
       }));
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   async function saveHomeAndOpenSite() {
