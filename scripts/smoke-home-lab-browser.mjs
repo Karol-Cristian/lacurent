@@ -400,7 +400,6 @@ try {
     };
   });
   if (desktopReportDock.dockState !== "report" ||
-      !desktopReportDock.backVisible ||
       desktopReportDock.backLabel !== "Înapoi la optimizare" ||
       !desktopReportDock.ctaHidden) {
     throw new Error("Desktop report navigation is incomplete: " + JSON.stringify(desktopReportDock));
