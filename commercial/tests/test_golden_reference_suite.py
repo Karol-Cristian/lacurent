@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from copy import deepcopy
 from pathlib import Path
 
@@ -81,8 +82,17 @@ def test_golden_reference_matrix_has_required_release_coverage() -> None:
 
 def test_golden_reference_oracle_does_not_import_production_calculation_code() -> None:
     source = Path(golden.__file__).read_text(encoding="utf-8")
-    assert "from commercial.app" not in source
-    assert "import commercial.app" not in source
+    tree = ast.parse(source)
+    imported_modules = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported_modules.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported_modules.append(node.module)
+    assert not any(
+        module == "commercial.app" or module.startswith("commercial.app.")
+        for module in imported_modules
+    )
 
 
 @pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
