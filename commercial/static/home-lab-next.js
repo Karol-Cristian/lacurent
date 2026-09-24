@@ -4738,7 +4738,7 @@
     activeMeasure = null;
     interventionOriginal = null;
     persist();
-    showScreen("scenario");
+    showScreen("site");
   }
 
   function resetMeasure(type) {

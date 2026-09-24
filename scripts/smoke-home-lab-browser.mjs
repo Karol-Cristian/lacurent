@@ -330,40 +330,41 @@ try {
   await page.waitForTimeout(1200);
   await expectVisible("#hlnDockCta");
 
-  // Save the baseline, run the budget-constrained economic optimizer, and
-  // require the visible Scenario economics to reconcile with the optimizer.
+  // Save the baseline and run the new single-constraint budget optimizer.
+  // Successful optimization goes directly from Step 2 to the report.
   await page.locator("#hlnDockCta").click();
   await expectVisible('[data-hln-screen="site"].is-active');
   await page.locator("#hlnRoiBudget").fill("50000");
-  await page.locator('[data-hln-smart-config="roi-budget"]').click();
+  await page.locator('[data-hln-smart-config="economic-budget"]').click();
   await page.waitForFunction(
     () => {
-      const button = document.querySelector('[data-hln-smart-config="roi-budget"]');
+      const button = document.querySelector('[data-hln-smart-config="economic-budget"]');
       const note = String(document.querySelector("#hlnOptimizationNote")?.textContent || "");
-      return button && !button.disabled && note.includes("Best ROI · buget") && note.includes("CAPEX");
+      return button && !button.disabled && note.includes("CAPEX");
     },
     null,
     {timeout:90000}
   );
-  const optimizerMeasures = await page.evaluate(() => window.__homeLabVisualState?.measures || []);
-  if (!optimizerMeasures.length) throw new Error("Budget Best ROI did not expose any selected measure");
+  await expectVisible('[data-hln-screen="report"].is-active');
 
-  await page.locator("#hlnDockCta").click();
-  await expectVisible('[data-hln-screen="scenario"].is-active');
-  await expectVisible("#hlnScenarioInvestmentSummary");
-  const investmentText = await page.locator("#hlnScenarioInvestmentSummary").innerText();
-  if (!/BEST ROI · BUGET/i.test(investmentText) || !/CAPEX total/i.test(investmentText) || !/lei\/an/i.test(investmentText)) {
-    throw new Error("Scenario budget ROI reconciliation is incomplete: " + investmentText);
+  const optimizerMeasures = await page.evaluate(() => window.__homeLabVisualState?.measures || []);
+  if (!optimizerMeasures.length) throw new Error("Budget optimizer did not expose any selected measure");
+
+  const optimizerReport = await page.evaluate(() => ({
+    investment:String(document.querySelector("#hlnReportDecisionInvestment")?.textContent || ""),
+    saving:String(document.querySelector("#hlnReportDecisionSaving")?.textContent || ""),
+    raw:String(document.querySelector("#hlnReportRawSolution")?.textContent || ""),
+    trace:String(document.querySelector("#hlnReportSearchTrace")?.textContent || ""),
+    commercial:String(document.querySelector("#hlnReportCommercialSolution")?.textContent || ""),
+  }));
+  if (!/lei/i.test(optimizerReport.investment) ||
+      !/lei\/an/i.test(optimizerReport.saving) ||
+      !optimizerReport.raw.trim() ||
+      !/configurații evaluate/i.test(optimizerReport.trace) ||
+      !optimizerReport.commercial.trim()) {
+    throw new Error("Direct optimizer report is incomplete: " + JSON.stringify(optimizerReport));
   }
 
-  await page.waitForFunction(
-    () => {
-      const value = document.querySelector("#hlnScenarioNewCost");
-      return value && !value.classList.contains("hln-calculating-value");
-    },
-    null,
-    {timeout:30000}
-  );
   const persistentScenarioDeltas = await page.evaluate(() => {
     const summary = document.querySelector(".hln-live-summary");
     const cost = document.querySelector("#hlnPersistentCostDelta");
@@ -380,69 +381,33 @@ try {
       !persistentScenarioDeltas.energy.includes("vs Casa mea") ||
       !persistentScenarioDeltas.energyClass ||
       !persistentScenarioDeltas.classColor) {
-    throw new Error("Persistent scenario deltas/class color are missing: " + JSON.stringify(persistentScenarioDeltas));
+    throw new Error("Persistent optimizer deltas/class color are missing: " + JSON.stringify(persistentScenarioDeltas));
   }
-  const desktopDock = await page.evaluate(() => {
-    const benefits = document.querySelector(".hln-dock-benefits");
+
+  const desktopReportDock = await page.evaluate(() => {
+    const dock = document.querySelector(".hln-dock");
+    const back = document.querySelector("#hlnDockBack");
     const cta = document.querySelector("#hlnDockCta");
-    if (!(benefits instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
-      throw new Error("Desktop comparison dock is incomplete");
+    if (!(dock instanceof HTMLElement) || !(back instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Desktop report dock is incomplete");
     }
-    const benefitsBox = benefits.getBoundingClientRect();
-    const ctaBox = cta.getBoundingClientRect();
+    const backBox = back.getBoundingClientRect();
     return {
-      benefitsVisible: benefitsBox.width > 0 && benefitsBox.height > 0 && getComputedStyle(benefits).display !== "none",
-      ctaVisible: ctaBox.width > 0 && ctaBox.height > 0,
+      dockState:dock.dataset.hlnDock,
+      backVisible:backBox.width > 0 && backBox.height > 0,
+      backLabel:String(back.textContent || "").trim(),
+      ctaHidden:cta.hidden,
     };
   });
-  if (!desktopDock.benefitsVisible || !desktopDock.ctaVisible) {
-    throw new Error("Desktop dock lost comparison cards or CTA: " + JSON.stringify(desktopDock));
+  if (desktopReportDock.dockState !== "report" ||
+      !desktopReportDock.backVisible ||
+      desktopReportDock.backLabel !== "Înapoi la optimizare" ||
+      !desktopReportDock.ctaHidden) {
+    throw new Error("Desktop report navigation is incomplete: " + JSON.stringify(desktopReportDock));
   }
-  await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
-  try {
-    {
-      const reportReady = await page.evaluate(() => {
-        const report = document.querySelector('[data-hln-screen="report"]');
-        if (!(report instanceof HTMLElement)) return false;
-        const box = report.getBoundingClientRect();
-        return report.classList.contains("is-active") &&
-          getComputedStyle(report).display !== "none" &&
-          getComputedStyle(report).visibility !== "hidden" &&
-          box.width > 0 && box.height > 0;
-      });
-      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
-    }
-  } catch (error) {
-    const reportState = await page.evaluate(() => {
-      const active = document.querySelector('[data-hln-screen].is-active');
-      const report = document.querySelector('[data-hln-screen="report"]');
-      const reportRect = report instanceof HTMLElement ? report.getBoundingClientRect() : null;
-      const parent = report instanceof HTMLElement ? report.parentElement : null;
-      return {
-        activeScreen: active?.getAttribute("data-hln-screen") || null,
-        reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
-        scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
-        editorHidden: document.querySelector("#hlnEditor")?.hidden,
-        reportHidden: report instanceof HTMLElement ? report.hidden : null,
-        reportClass: report instanceof HTMLElement ? report.className : null,
-        reportDisplay: report instanceof HTMLElement ? getComputedStyle(report).display : null,
-        reportVisibility: report instanceof HTMLElement ? getComputedStyle(report).visibility : null,
-        reportRect: reportRect ? {width:reportRect.width, height:reportRect.height, top:reportRect.top} : null,
-        parentDisplay: parent instanceof HTMLElement ? getComputedStyle(parent).display : null,
-      };
-    });
-    throw new Error(
-      "Scenario-to-report navigation failed. state=" + JSON.stringify(reportState) +
-      " pageErrors=" + JSON.stringify(pageErrors) +
-      " consoleErrors=" + JSON.stringify(consoleErrors) +
-      " cause=" + String(error)
-    );
-  }
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
   // Returning to Casa mea through the global progress navigation must not
-  // preserve the report's bottom scroll position and show an apparently blank
-  // or partial first screen.
+  // preserve the report's bottom scroll position.
   await page.evaluate(() => {
     document.querySelector('.hln-progress [data-hln-go="home"]')?.click();
   });
@@ -452,45 +417,26 @@ try {
   if (scrollAfterHome > 20) {
     throw new Error(`Home progress navigation did not reset scroll: ${scrollAfterHome}px`);
   }
-  await page.locator('.hln-progress [data-hln-go="scenario"]').click();
-  await expectVisible('[data-hln-screen="scenario"].is-active');
-  // Returning through Casa mea can trigger an asynchronous scenario refresh.
-  // The product intentionally blocks Report until that result is fresh.
+
+  await page.locator('.hln-progress [data-hln-go="site"]').click();
+  await expectVisible('[data-hln-screen="site"].is-active');
   await page.waitForFunction(
-    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh") &&
-      !document.querySelector("#hlnDockCta")?.disabled,
+    () => !document.querySelector("#hlnDockCta")?.disabled,
     null,
     {timeout:30000}
   );
-  // The scenario-actions report path is covered above. Use the persistent CTA
-  // here to re-enter Report after the Casa mea round-trip and validate the
-  // persistent navigation contract independently of viewport/actionability.
   await page.locator("#hlnDockCta").click();
-  {
-      const reportReady = await page.evaluate(() => {
-        const report = document.querySelector('[data-hln-screen="report"]');
-        if (!(report instanceof HTMLElement)) return false;
-        const box = report.getBoundingClientRect();
-        return report.classList.contains("is-active") &&
-          getComputedStyle(report).display !== "none" &&
-          getComputedStyle(report).visibility !== "hidden" &&
-          box.width > 0 && box.height > 0;
-      });
-      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
-    }
+  await expectVisible('[data-hln-screen="report"].is-active');
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
-  // This control lives inside the report heading while the smoke has just
-  // scrolled to the document bottom. Its viewport/actionability state is
-  // intentionally irrelevant here: validate the navigation handler directly.
   const reportEditClicked = await page.evaluate(() => {
-    const button = document.querySelector('.hln-report-actions [data-hln-go="scenario"]');
+    const button = document.querySelector('.hln-report-actions [data-hln-go="site"]');
     if (!(button instanceof HTMLElement)) return false;
     button.click();
     return true;
   });
-  if (!reportEditClicked) throw new Error("Report edit-scenario control is missing");
-  await expectVisible('[data-hln-screen="scenario"].is-active');
+  if (!reportEditClicked) throw new Error("Report edit-optimization control is missing");
+  await expectVisible('[data-hln-screen="site"].is-active');
   await page.waitForTimeout(50);
   const scrollAfterReport = await page.evaluate(() => window.scrollY);
   if (scrollAfterReport > 20) {
@@ -504,30 +450,32 @@ try {
   await expectVisible('[data-hln-screen="site"].is-active');
   await page.locator('[data-hln-reset-home]').first().click();
   await page.locator("#hlnRoiPaybackYears").fill("7");
-  await page.locator('[data-hln-smart-config="roi-payback"]').click();
+  await page.locator('[data-hln-smart-config="economic-payback"]').click();
   await page.waitForFunction(
     () => {
-      const button = document.querySelector('[data-hln-smart-config="roi-payback"]');
+      const button = document.querySelector('[data-hln-smart-config="economic-payback"]');
       const note = String(document.querySelector("#hlnOptimizationNote")?.textContent || "");
       return button && !button.disabled &&
-        (note.includes("CAPEX") || note.includes("Niciun pachet") || note.includes("Nu am găsit"));
+        (note.includes("CAPEX") || note.includes("Nu există") || note.includes("Optimizarea nu a putut"));
     },
     null,
     {timeout:90000}
   );
   const paybackNote7 = await page.locator("#hlnOptimizationNote").innerText();
-  const actualMatch7 = paybackNote7.match(/amortizare\s+([0-9]+(?:[.,][0-9]+)?)\s+ani\s+·\s+ROI/i);
+  const actualMatch7 = paybackNote7.match(/amortizare\s+([0-9]+(?:[.,][0-9]+)?)\s+ani/i);
   if (actualMatch7) {
     const actualYears7 = Number(actualMatch7[1].replace(",", "."));
     if (actualYears7 <= 6.000001) {
+      await page.locator("#hlnDockBack").click();
+      await expectVisible('[data-hln-screen="site"].is-active');
       await page.locator("#hlnRoiPaybackYears").fill("6");
-      await page.locator('[data-hln-smart-config="roi-payback"]').click();
+      await page.locator('[data-hln-smart-config="economic-payback"]').click();
       await page.waitForFunction(
         () => {
-          const button = document.querySelector('[data-hln-smart-config="roi-payback"]');
+          const button = document.querySelector('[data-hln-smart-config="economic-payback"]');
           const note = String(document.querySelector("#hlnOptimizationNote")?.textContent || "");
           return button && !button.disabled &&
-            (note.includes("CAPEX") || note.includes("Niciun pachet") || note.includes("Nu am găsit"));
+            (note.includes("CAPEX") || note.includes("Nu există") || note.includes("Optimizarea nu a putut"));
         },
         null,
         {timeout:90000}
@@ -818,7 +766,7 @@ try {
   }
 
   await page.locator("#hlnDockCta").click();
-  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await expectVisible('[data-hln-screen="site"].is-active');
   await page.waitForFunction(
     () => !document.querySelector("#hlnDockCta")?.disabled,
     null,
@@ -859,12 +807,12 @@ try {
       !mobileReportNav.backVisible ||
       mobileReportNav.backLeft < 12 ||
       mobileReportNav.backLeft > 16 ||
-      mobileReportNav.backLabel !== "Înapoi la scenariu" ||
+      mobileReportNav.backLabel !== "Înapoi la optimizare" ||
       !mobileReportNav.ctaHidden) {
     throw new Error("Mobile report remains a navigation dead end: " + JSON.stringify(mobileReportNav));
   }
   await page.locator("#hlnDockBack").click();
-  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await expectVisible('[data-hln-screen="site"].is-active');
   await page.locator('.hln-progress [data-hln-go="home"]').click();
   await expectVisible('[data-hln-screen="home"].is-active');
   const mobilePersistentLayout = await page.evaluate(() => {
