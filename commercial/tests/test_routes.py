@@ -537,6 +537,20 @@ def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     assert 'href="/embed/demo-store/next"' in response.text
 
 
+def test_invalid_roof_vs_walls_fact_is_retired() -> None:
+    index = client.get("/home-lab/facts")
+    assert index.status_code == 200
+    assert "Podul trebuie izolat întotdeauna primul? Nu." not in index.text
+    assert "3.7×" not in index.text
+
+    detail = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
+    assert detail.status_code == 404
+
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200
+    assert "podul-trebuie-izolat-intotdeauna-primul" not in sitemap.text
+
+
 def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
