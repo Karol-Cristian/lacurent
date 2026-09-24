@@ -468,9 +468,9 @@ svg{display:block}
 .hln-segments button.is-active{border-color:var(--hln-home);background:var(--hln-home-soft);color:var(--hln-home)}
 .hln-dock{
   position:absolute;z-index:40;left:18px;right:18px;bottom:16px;
-  display:grid;grid-template-columns:1fr;justify-items:end;align-items:center;
-  min-height:0;padding:0;border:0;background:transparent;box-shadow:none;
-  -webkit-backdrop-filter:none;backdrop-filter:none;color:#fff
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;
+  min-height:92px;padding:10px 11px;border:1px solid #2d3934;border-radius:20px;background:rgba(28,39,35,.97);
+  box-shadow:0 18px 48px rgba(20,29,25,.22);backdrop-filter:blur(18px);color:#fff
 }
 .hln-dock-metrics,.hln-dock-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .hln-dock-metrics article,.hln-dock-benefits article{
@@ -499,9 +499,8 @@ svg{display:block}
 .hln-dock-compare .is-saving strong{color:#c4e5d2}
 .hln-dock-compare .is-saving strong.is-bad{color:#efb8b1}
 .hln-dock-cta{
-  display:flex;gap:10px;align-items:center;justify-content:center;width:min(360px,100%);min-height:56px;padding:11px 18px;
-  border:1px solid #4a735f;border-radius:16px;background:#315f49;color:#fff;font-size:11px;font-weight:850;
-  box-shadow:0 12px 28px rgba(14,28,21,.24)
+  display:flex;gap:10px;align-items:center;justify-content:center;min-height:54px;max-width:330px;padding:10px 16px;
+  border:1px solid #4a735f;border-radius:14px;background:#315f49;color:#fff;font-size:10px;font-weight:850
 }
 .hln-dock-cta svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
 .hln-dock-cta.is-home{border-color:#45697d;background:#355f78}
@@ -517,7 +516,7 @@ svg{display:block}
 }
 @media(max-width:760px){
   .hln-quick-edit-overlay{
-    padding:14px 10px 92px;
+    padding:14px 10px 142px;
     background:rgba(20,28,24,.20);
     -webkit-backdrop-filter:blur(11px) saturate(.86);
     backdrop-filter:blur(11px) saturate(.86)
@@ -550,7 +549,7 @@ svg{display:block}
     box-shadow:0 -28px 70px rgba(22,29,26,.22)
   }
   .hln-quick-edit-value strong{font-size:30px}
-  .hln-app{padding-bottom:calc(82px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px))}
+  .hln-app{padding-bottom:calc(148px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px))}
   .hln-topbar{grid-template-columns:auto 1fr;gap:10px;min-height:64px;padding:9px 11px}
   .hln-brand-mark{width:34px;height:34px}
   .hln-brand>span:last-child{display:none}
@@ -599,14 +598,25 @@ svg{display:block}
   .hln-scenario-actions{display:grid;grid-template-columns:1fr}
   .hln-editor-card{width:100%}
   .hln-dock{
-    position:fixed;left:14px;right:14px;
-    bottom:calc(8px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
-    min-height:0;padding:0;border-radius:0
+    position:fixed;left:8px;right:8px;
+    bottom:calc(6px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
+    grid-template-columns:1fr;gap:6px;min-height:128px;padding:8px;border-radius:17px
   }
   .hln-dock-cta{
-    width:100%;max-width:none;min-height:52px;font-size:11px;
-    box-shadow:0 10px 24px rgba(14,28,21,.25)
+    order:-1;min-height:48px;
+    box-shadow:0 7px 20px rgba(14,28,21,.22)
   }
+  .hln-dock-metrics,.hln-dock-benefits{gap:4px}
+  .hln-dock-compare article{padding:7px 8px}
+  .hln-dock-compare strong{display:grid;gap:1px}
+  .hln-dock-compare strong b{font-size:14px}
+  .hln-dock-compare strong em{font-size:8px}
+  .hln-dock-compare .is-saving strong{font-size:10px}
+  .hln-dock-metrics article,.hln-dock-benefits article{grid-template-columns:1fr;justify-items:center;gap:2px;padding:6px 4px;text-align:center}
+  .hln-dock-icon,.hln-dock-benefits article>svg{display:none}
+  .hln-dock small{font-size:7px}
+  .hln-dock strong{font-size:11px}
+  .hln-dock-cta{width:100%;max-width:none;min-height:44px;font-size:10px}
 }
 @media(max-width:520px){
   .hln-location-map{min-height:230px}
@@ -1880,3 +1890,40 @@ svg{display:block}
   .hln-technical-open .hln-persistent-spacer{height:0}
 }
 
+
+
+/* #358 scope correction: comparison dock stays on desktop, CTA-only on phone. */
+@media(max-width:760px){
+  .hln-dock{
+    position:fixed;
+    left:14px;
+    right:14px;
+    bottom:calc(8px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
+    grid-template-columns:1fr;
+    gap:0;
+    min-height:0;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+  .hln-dock-benefits{
+    display:none!important;
+  }
+  .hln-dock-cta{
+    width:100%;
+    max-width:none;
+    min-height:52px;
+    font-size:11px;
+    box-shadow:0 10px 24px rgba(14,28,21,.25);
+  }
+  .hln-app{
+    padding-bottom:calc(82px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
+  }
+  .hln-quick-edit-overlay{
+    padding-bottom:92px;
+  }
+}
