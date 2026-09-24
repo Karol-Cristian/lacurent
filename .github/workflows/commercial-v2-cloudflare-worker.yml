@@ -17,6 +17,10 @@ concurrency:
   group: commercial-v2-production
   queue: max
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   worker-runtime:
     runs-on: ubuntu-latest
@@ -28,6 +32,48 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Require merged PR origin for production pushes
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ["GITHUB_SHA"]
+          target = os.environ["GITHUB_REF_NAME"]
+          token = os.environ["GH_TOKEN"]
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/commits/{sha}/pulls",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              pull_requests = json.loads(response.read().decode("utf-8"))
+
+          valid = [
+              pr for pr in pull_requests
+              if pr.get("merged_at")
+              and pr.get("base", {}).get("ref") == target
+              and pr.get("merge_commit_sha") == sha
+          ]
+          if not valid:
+              raise SystemExit(
+                  "Production push is not the merge commit of a merged PR targeting "
+                  f"{target}. Direct-push deployments are blocked."
+              )
+
+          print("Production push originated from merged PR(s):", ", ".join(
+              f"#{pr['number']}" for pr in valid
+          ))
+          PY
 
       - name: Validate production deployment credentials
         run: |
@@ -439,8 +485,8 @@ jobs:
         working-directory: .wrangler/commercial-v2-worker
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare domain preparation skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both configured."
-            exit 0
+            echo "::error::Cloudflare domain preparation requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
           fi
           python - <<'PY'
           import json
@@ -560,8 +606,8 @@ jobs:
         working-directory: .wrangler/commercial-v2-worker
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare staging deploy skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both configured."
-            exit 0
+            echo "::error::Cloudflare deploy requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
           fi
           mkdir -p .bin
           printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
@@ -573,8 +619,8 @@ jobs:
         working-directory: .wrangler/commercial-v2-worker
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare production verification skipped: deployment credentials are not both configured."
-            exit 0
+            echo "::error::Production verification requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
           fi
           python - <<'PY'
           import json
