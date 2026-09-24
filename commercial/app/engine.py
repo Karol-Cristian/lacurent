@@ -341,7 +341,19 @@ def _heating_gain_utilization_factor(gamma_h: float, a_h: float) -> float:
 
     if abs(gamma_h - 1.0) <= GAMMA_EQUALITY_TOLERANCE:
         return a_h / (a_h + 1.0)
-    return (1.0 - gamma_h**a_h) / (1.0 - gamma_h ** (a_h + 1.0))
+    if gamma_h == 0:
+        return 1.0
+    # Algebraically identical to (1-gamma**a)/(1-gamma**(a+1)).
+    # Negative exponents avoid overflow for high thermal time constants;
+    # expm1 avoids subtracting nearly equal numbers when gamma is near 1.
+    log_gamma = math.log(gamma_h)
+    if gamma_h > 1:
+        return (
+            math.expm1(-a_h * log_gamma)
+            / math.expm1(-(a_h + 1.0) * log_gamma)
+            / gamma_h
+        )
+    return math.expm1(a_h * log_gamma) / math.expm1((a_h + 1.0) * log_gamma)
 
 
 def _monthly_heating_need(q_h_ht_kwh: float, q_h_gn_kwh: float, a_h: float) -> float:
@@ -367,7 +379,8 @@ def _cooling_heat_transfer_utilization_factor(gamma_c: float, a_c: float) -> flo
         return 1.0
     if abs(gamma_c - 1.0) <= GAMMA_EQUALITY_TOLERANCE:
         return a_c / (a_c + 1.0)
-    return (1.0 - gamma_c ** (-a_c)) / (1.0 - gamma_c ** (-(a_c + 1.0)))
+    # The cooling expression is the heating expression with reciprocal gamma.
+    return _heating_gain_utilization_factor(1.0 / gamma_c, a_c)
 
 
 def _monthly_cooling_need(
