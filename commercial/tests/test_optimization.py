@@ -6,9 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from commercial.app.cost_curves import build_wall_product_cost_curve
 from commercial.app.engine import calculate, demo_building
 from commercial.app.main import app
 from commercial.app.models import model_to_dict
+from commercial.app.product_matching import WallInsulationProductV1
 from commercial.app.optimization import (
     CandidateEvaluationV1,
     OptimizationMode,
@@ -340,3 +342,51 @@ def test_parametric_search_api_returns_raw_solution_and_counts() -> None:
     assert payload["selection"]["candidate_count"] == payload["evaluated_candidates"]
     assert payload["search_method"] == "axis_halton_coordinate_refinement_v1"
     assert "commercially discretized" in " ".join(payload["warnings"])
+
+
+
+def test_parametric_capex_prefers_complete_product_derived_curve() -> None:
+    baseline = demo_building()
+    result = calculate(baseline, include_reference=False)
+    products = [
+        WallInsulationProductV1(
+            partner_id="test",
+            product_id="wall-100",
+            name="Wall 100",
+            thickness_mm=100,
+            lambda_w_mk=0.040,
+            package_area_m2=2,
+            price_per_package_lei=100,
+            stock_status="in_stock",
+        ),
+        WallInsulationProductV1(
+            partner_id="test",
+            product_id="wall-120",
+            name="Wall 120",
+            thickness_mm=120,
+            lambda_w_mk=0.040,
+            package_area_m2=2,
+            price_per_package_lei=116,
+            stock_status="in_stock",
+        ),
+    ]
+    curve = build_wall_product_cost_curve(
+        products,
+        nonmaterial_installed_cost_per_m2_lei=80,
+    )
+    catalog = _catalog()
+    catalog["parametric_curves"] = {"wall": model_to_dict(curve)}
+
+    capex, lines, warnings = parametric_capex(
+        result,
+        ParametricMeasuresV1(wall_added_r_m2k_w=2.75),
+        catalog,
+    )
+
+    expected_per_m2 = 134
+    assert capex == pytest.approx(
+        result.envelope_geometry.net_wall_area_m2 * expected_per_m2,
+        abs=0.01,
+    )
+    assert lines[0].source_kind == "product_derived_parametric_curve"
+    assert not any(item.startswith("wall: CAPEX is a continuous planning curve") for item in warnings)

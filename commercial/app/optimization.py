@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, root_validator
 
+from .cost_curves import ParametricCostCurveV1, curve_cost_per_basis
 from .engine import calculate
 from .methodology import methodology
 from .models import BuildingInput, model_to_dict
@@ -258,12 +259,45 @@ def parametric_capex(
     ):
         if added_r <= 0:
             continue
+        area = _envelope_area(baseline_result, family)
+        raw_curve = (
+            catalog.get("parametric_curves", {}).get(family)
+            if isinstance(catalog.get("parametric_curves"), dict)
+            else None
+        )
+        if raw_curve is not None:
+            curve = ParametricCostCurveV1(**raw_curve)
+            if curve.family != family:
+                raise ValueError(
+                    f"Parametric cost curve family {curve.family!r} does not match {family!r}."
+                )
+            capex = area * curve_cost_per_basis(
+                curve,
+                float(added_r),
+                require_installed_total=True,
+            )
+            lines.append(
+                CostLineV1(
+                    family=family,
+                    capex_lei=round(capex, 2),
+                    parameter_value=round(float(added_r), 6),
+                    parameter_unit="m2K/W_added",
+                    source_kind="product_derived_parametric_curve",
+                    confidence="market_derived",
+                    catalog_unit="lei_per_m2_as_function_of_R",
+                    note=(
+                        f"{curve.source_product_count} product observations; "
+                        f"scope={curve.price_scope}."
+                    ),
+                )
+            )
+            continue
+
         item = _catalog_item(catalog, family)
         if item.get("unit") != "lei_per_m2_per_cm":
             raise ValueError(
                 f"Cost catalog entry {family!r} must use lei_per_m2_per_cm for the planning fallback."
             )
-        area = _envelope_area(baseline_result, family)
         lambda_w_mk = _normalization_lambda(family)
         equivalent_thickness_cm = float(added_r) * lambda_w_mk * 100.0
         capex = area * equivalent_thickness_cm * float(item["cost_lei"])

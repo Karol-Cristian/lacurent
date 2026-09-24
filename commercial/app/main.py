@@ -30,6 +30,12 @@ from .optimization import (
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
+from .cost_curves import (
+    WallCostCurveRequestV1,
+    WallProductDiscretizationRequestV1,
+    build_wall_product_cost_curve,
+    discretize_wall_product,
+)
 from .product_matching import (
     WallInsulationProductMatchRequestV1,
     WallInsulationProductScenarioRequestV1,
@@ -1728,6 +1734,37 @@ async def _optimizer_cost_catalog(request: Request) -> dict[str, Any]:
         if payload is not None:
             return payload
     return {**roi_cost_basis_seed(), "source": "seed_fallback"}
+
+
+@app.post("/api/optimization/cost-curves/wall")
+async def wall_cost_curve_api(
+    payload: WallCostCurveRequestV1,
+) -> JSONResponse:
+    try:
+        curve = build_wall_product_cost_curve(
+            payload.products,
+            nonmaterial_installed_cost_per_m2_lei=(
+                payload.nonmaterial_installed_cost_per_m2_lei
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(curve))
+
+
+@app.post("/api/optimization/discretize/wall")
+async def wall_optimizer_discretization_api(
+    payload: WallProductDiscretizationRequestV1,
+) -> JSONResponse:
+    try:
+        result = discretize_wall_product(
+            target_added_r_m2k_w=payload.target_added_r_m2k_w,
+            affected_area_m2=payload.affected_area_m2,
+            products=payload.products,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(result))
 
 
 @app.post("/api/optimization/candidate")
