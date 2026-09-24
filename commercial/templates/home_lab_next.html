@@ -57,15 +57,11 @@
         </button>
         <i></i>
         <button type="button" data-hln-go="site">
-          <span>02</span><b>Îmbunătățiri</b>
-        </button>
-        <i></i>
-        <button type="button" data-hln-go="scenario">
-          <span>03</span><b>Scenariu</b>
+          <span>02</span><b>Optimizează</b>
         </button>
         <i></i>
         <button type="button" data-hln-go="report">
-          <span>04</span><b>Raport</b>
+          <span>03</span><b>Raport</b>
         </button>
       </nav>
 
@@ -321,34 +317,48 @@
 
         <div class="hln-economic-heading">
           <span>OPTIMIZARE ECONOMICĂ</span>
-          <strong>Alege ce constrângere contează pentru tine.</strong>
-          <small>Toate variantele folosesc același motor energetic și același catalog CAPEX. Se schimbă doar obiectivul economic.</small>
+          <strong>Alege o singură regulă. Motorul caută combinația tehnică.</strong>
+          <small>Parametrii tehnici sunt optimizați continuu înainte de orice discretizare comercială. Nu combinăm mai multe constrângeri într-o singură rulare.</small>
         </div>
 
         <div class="hln-smart-configs hln-economic-configs">
           <article class="hln-economic-card">
-            <button type="button" data-hln-smart-config="roi">
-              <span>BEST ROI</span>
-              <strong>Randament maxim</strong>
-              <small>Maximizează economia anuală raportată la fiecare leu investit.</small>
+            <button type="button" data-hln-smart-config="economic-auto">
+              <span>AUTOMAT</span>
+              <strong>Optimizează pentru mine</strong>
+              <small>Compară beneficiul economic pe mai multe orizonturi și alege o soluție robustă, fără să-ți ceară un termen arbitrar.</small>
             </button>
           </article>
+
           <article class="hln-economic-card">
-            <button type="button" data-hln-smart-config="roi-budget">
-              <span>BEST ROI · BUGET</span>
-              <strong>Cea mai mare economie în bugetul tău</strong>
-              <small>Construiește un pachet fără să depășească suma disponibilă.</small>
+            <button type="button" data-hln-smart-config="economic-budget">
+              <span>BUGET DE INVESTIȚIE</span>
+              <strong>Folosește cel mai bine suma disponibilă</strong>
+              <small>Maximizează economia anuală fără să depășească bugetul ales.</small>
             </button>
             <label class="hln-economic-input">
               <span>Buget maxim</span>
               <div><input id="hlnRoiBudget" type="number" min="1000" max="500000" step="1000" value="30000"><b>lei</b></div>
             </label>
           </article>
+
           <article class="hln-economic-card">
-            <button type="button" data-hln-smart-config="roi-payback">
-              <span>BEST ROI · TIMP</span>
-              <strong>Cea mai mare economie în timpul ales</strong>
-              <small>Păstrează numai soluțiile care își recuperează investiția suficient de repede.</small>
+            <button type="button" data-hln-smart-config="economic-bill">
+              <span>BUGET ANUAL FACTURI</span>
+              <strong>Coboară factura până la ținta ta</strong>
+              <small>Caută investiția minimă care poate atinge plafonul anual ales.</small>
+            </button>
+            <label class="hln-economic-input">
+              <span>Factură maximă</span>
+              <div><input id="hlnAnnualBillTarget" type="number" min="0" max="100000" step="250" value="5000"><b>lei/an</b></div>
+            </label>
+          </article>
+
+          <article class="hln-economic-card">
+            <button type="button" data-hln-smart-config="economic-payback">
+              <span>RECUPERARE INVESTIȚIE</span>
+              <strong>Recuperează investiția în maximum X ani</strong>
+              <small>Dintre soluțiile eligibile, păstrează pe cea cu economia anuală cea mai mare; nu minimizează artificial payback-ul.</small>
             </button>
             <label class="hln-economic-input">
               <span>Amortizare maximă</span>
@@ -768,7 +778,7 @@
           <p>Raport tehnic estimativ LaCurent Light. Nu înlocuiește un CPE sau audit energetic emis de un specialist autorizat.</p>
         </div>
         <div class="hln-report-actions">
-          <button type="button" class="hln-secondary" data-hln-go="scenario">Editează scenariul</button>
+          <button type="button" class="hln-secondary" data-hln-go="site">Editează optimizarea</button>
           <button type="button" class="hln-primary" data-hln-print-report>Print / PDF</button>
         </div>
       </div>
@@ -813,6 +823,17 @@
             <div><small>Prima măsură din pachet</small><strong id="hlnReportDecisionPriority">—</strong></div>
           </div>
           <p id="hlnReportDecisionNote">—</p>
+        </section>
+
+        <section class="hln-report-card hln-report-commercial">
+          <header><span>SOLUȚIA DE IMPLEMENTAT</span><strong>Discretizarea comercială</strong></header>
+          <div id="hlnReportCommercialSolution"></div>
+        </section>
+
+        <section class="hln-report-card hln-report-raw">
+          <header><span>OPTIM MATEMATIC</span><strong>Valorile brute înainte de discretizare</strong></header>
+          <div id="hlnReportRawSolution"></div>
+          <p id="hlnReportSearchTrace">—</p>
         </section>
 
         <section class="hln-report-card hln-report-comparison">
