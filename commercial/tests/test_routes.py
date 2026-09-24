@@ -561,11 +561,43 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next27" in response.text
-    assert "/static/home-lab-next.js?v=next53" in response.text
+    assert "/static/home-lab-next.css?v=next28" in response.text
+    assert "/static/home-lab-next.js?v=next54" in response.text
     assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
+
+
+def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'class="hln-persistent-stack"' in response.text
+    assert 'class="hln-live-summary"' in response.text
+    assert 'id="hlnPersistentClass"' in response.text
+    assert 'id="hlnPersistentCost"' in response.text
+    assert 'id="hlnPersistentEnergy"' in response.text
+    assert 'id="hlnStatus"' in response.text
+    assert response.text.index('class="hln-energy-strip"') < response.text.index('class="hln-live-summary"')
+    assert response.text.index('class="hln-live-summary"') < response.text.index('data-hln-screen="home"')
+    assert 'id="hlnDockClass"' not in response.text
+    assert 'id="hlnDockCost"' not in response.text
+    assert 'id="hlnDockEnergy"' not in response.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-persistent-stack{" in css.text
+    assert "position:sticky" in css.text
+    assert ".hln-technical-open .hln-persistent-stack" in css.text
+    assert ".hln-technical-open .hln-editor.is-technical-mode" in css.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert '$("#hlnPersistentClass").textContent' in js.text
+    assert '$("#hlnPersistentCost").textContent' in js.text
+    assert '$("#hlnPersistentEnergy").textContent' in js.text
+    assert 'document.body.classList.toggle("hln-technical-open", technical)' in js.text
+    assert 'document.body.classList.remove("hln-technical-open")' in js.text
+    assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text
 
 
 def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
