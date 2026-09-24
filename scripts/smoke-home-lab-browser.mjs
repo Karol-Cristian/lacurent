@@ -400,14 +400,37 @@ try {
   }
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   try {
-    await expectVisible('[data-hln-screen="report"].is-active');
+    {
+      const reportReady = await page.evaluate(() => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
   } catch (error) {
-    const reportState = await page.evaluate(() => ({
-      activeScreen: document.querySelector('[data-hln-screen].is-active')?.getAttribute("data-hln-screen") || null,
-      reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
-      scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
-      editorHidden: document.querySelector("#hlnEditor")?.hidden,
-    }));
+    const reportState = await page.evaluate(() => {
+      const active = document.querySelector('[data-hln-screen].is-active');
+      const report = document.querySelector('[data-hln-screen="report"]');
+      const reportRect = report instanceof HTMLElement ? report.getBoundingClientRect() : null;
+      const parent = report instanceof HTMLElement ? report.parentElement : null;
+      return {
+        activeScreen: active?.getAttribute("data-hln-screen") || null,
+        reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
+        scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
+        editorHidden: document.querySelector("#hlnEditor")?.hidden,
+        reportHidden: report instanceof HTMLElement ? report.hidden : null,
+        reportClass: report instanceof HTMLElement ? report.className : null,
+        reportDisplay: report instanceof HTMLElement ? getComputedStyle(report).display : null,
+        reportVisibility: report instanceof HTMLElement ? getComputedStyle(report).visibility : null,
+        reportRect: reportRect ? {width:reportRect.width, height:reportRect.height, top:reportRect.top} : null,
+        parentDisplay: parent instanceof HTMLElement ? getComputedStyle(parent).display : null,
+      };
+    });
     throw new Error(
       "Scenario-to-report navigation failed. state=" + JSON.stringify(reportState) +
       " pageErrors=" + JSON.stringify(pageErrors) +
@@ -431,8 +454,30 @@ try {
   }
   await page.locator('.hln-progress [data-hln-go="scenario"]').click();
   await expectVisible('[data-hln-screen="scenario"].is-active');
-  await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
-  await expectVisible('[data-hln-screen="report"].is-active');
+  // Returning through Casa mea can trigger an asynchronous scenario refresh.
+  // The product intentionally blocks Report until that result is fresh.
+  await page.waitForFunction(
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh") &&
+      !document.querySelector("#hlnDockCta")?.disabled,
+    null,
+    {timeout:30000}
+  );
+  // The scenario-actions report path is covered above. Use the persistent CTA
+  // here to re-enter Report after the Casa mea round-trip and validate the
+  // persistent navigation contract independently of viewport/actionability.
+  await page.locator("#hlnDockCta").click();
+  {
+      const reportReady = await page.evaluate(() => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
   // This control lives inside the report heading while the smoke has just
@@ -554,6 +599,54 @@ try {
   );
   await page.locator("#hlnDockCta").click();
   await expectVisible('[data-hln-screen="site"].is-active');
+  await page.waitForFunction(
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh"),
+    null,
+    {timeout:30000}
+  );
+  const mobileDeclutter = await page.evaluate(() => {
+    const root = document.querySelector("[data-home-lab-next]");
+    const homeReturn = document.querySelector('[data-hln-screen="site"] .hln-home-return');
+    const mobileCopy = document.querySelector('[data-hln-screen="site"] .hln-copy-mobile');
+    const desktopCopy = document.querySelector('[data-hln-screen="site"] .hln-copy-desktop');
+    const energyPreview = document.querySelector(".hln-energy-preview");
+    const status = document.querySelector(".hln-live-calc-status");
+    const cta = document.querySelector("#hlnDockCta");
+    const back = document.querySelector("#hlnDockBack");
+    if (!(root instanceof HTMLElement) ||
+        !(homeReturn instanceof HTMLElement) ||
+        !(mobileCopy instanceof HTMLElement) ||
+        !(desktopCopy instanceof HTMLElement) ||
+        !(energyPreview instanceof HTMLElement) ||
+        !(status instanceof HTMLElement) ||
+        !(cta instanceof HTMLElement) ||
+        !(back instanceof HTMLElement)) {
+      throw new Error("Mobile declutter controls are incomplete");
+    }
+    const ctaBox = cta.getBoundingClientRect();
+    const backBox = back.getBoundingClientRect();
+    return {
+      activeScreen:root.dataset.hlnActiveScreen,
+      homeReturnDisplay:getComputedStyle(homeReturn).display,
+      mobileCopyDisplay:getComputedStyle(mobileCopy).display,
+      desktopCopyDisplay:getComputedStyle(desktopCopy).display,
+      energyPreviewDisplay:getComputedStyle(energyPreview).display,
+      statusDisplay:getComputedStyle(status).display,
+      ctaHeight:ctaBox.height,
+      backHeight:backBox.height,
+    };
+  });
+  if (mobileDeclutter.activeScreen !== "site" ||
+      mobileDeclutter.homeReturnDisplay !== "none" ||
+      mobileDeclutter.mobileCopyDisplay === "none" ||
+      mobileDeclutter.desktopCopyDisplay !== "none" ||
+      mobileDeclutter.energyPreviewDisplay !== "none" ||
+      mobileDeclutter.statusDisplay !== "none" ||
+      mobileDeclutter.ctaHeight > 46 ||
+      mobileDeclutter.backHeight > 42) {
+    throw new Error("Mobile house-first declutter contract failed: " + JSON.stringify(mobileDeclutter));
+  }
+
   const mobileBack = await page.evaluate(() => {
     const back = document.querySelector("#hlnDockBack");
     if (!(back instanceof HTMLElement)) throw new Error("Mobile back button is missing");
@@ -568,7 +661,35 @@ try {
     throw new Error("Mobile back navigation is not visible on step 2: " + JSON.stringify(mobileBack));
   }
 
-  await page.locator('[data-hln-measure="wall"]').first().click();
+  await page.waitForFunction(
+    () => {
+      const hotspot = document.querySelector('[data-hln-3d-hotspot="wall"]');
+      const legacy = document.querySelector('.hln-zone-wall');
+      const visible = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const box = node.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && getComputedStyle(node).display !== "none";
+      };
+      // The semantic hotspot is authoritative when the external 3D model has
+      // loaded. If that dependency is unavailable in CI, the HTML fallback
+      // must remain usable instead of leaving Step 2 without an action.
+      return visible(hotspot) || visible(legacy);
+    },
+    null,
+    {timeout:30000}
+  );
+  await page.evaluate(() => {
+    const hotspot = document.querySelector('[data-hln-3d-hotspot="wall"]');
+    const legacy = document.querySelector('.hln-zone-wall');
+    const visible = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const box = node.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && getComputedStyle(node).display !== "none";
+    };
+    const target = visible(hotspot) ? hotspot : legacy;
+    if (!(target instanceof HTMLElement)) throw new Error("No usable wall control on Step 2");
+    target.click();
+  });
   await expectVisible('[data-hln-screen="intervention"].is-active');
   const mobileInterventionNav = await page.evaluate(() => {
     const back = document.querySelector("#hlnDockBack");
@@ -605,7 +726,18 @@ try {
     {timeout:30000}
   );
   await page.locator("#hlnDockCta").click();
-  await expectVisible('[data-hln-screen="report"].is-active');
+  {
+      const reportReady = await page.evaluate(() => {
+        const report = document.querySelector('[data-hln-screen="report"]');
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
   const mobileReportNav = await page.evaluate(() => {
     const dock = document.querySelector(".hln-dock");
     const back = document.querySelector("#hlnDockBack");

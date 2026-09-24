@@ -561,9 +561,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next31" in response.text
-    assert "/static/home-lab-next.js?v=next57" in response.text
-    assert "/static/home-lab-3d.css?v=3d29" in response.text
+    assert "/static/home-lab-next.css?v=next32" in response.text
+    assert "/static/home-lab-next.js?v=next58" in response.text
+    assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
 
@@ -649,7 +649,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
     assert "Referință" in response.text
     assert 'class="hln-price-status' in response.text
-    assert "/static/home-lab-3d.js?v=3d49" in response.text
+    assert "/static/home-lab-3d.js?v=3d55" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1911,7 +1911,38 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
     assert css3d.status_code == 200
     assert ".hln-3d-equipment-badge" in css3d.text
     assert ".hln-3d-equipment-dot" in css3d.text
+    assert ".hln-house-visual-3d-ready > .hln-zone-heating" in css3d.text
+    assert ".hln-semantic-wall-ready > .hln-zone-wall" in css3d.text
+    assert ".hln-semantic-roof-ready > .hln-zone-roof" in css3d.text
+    assert ".hln-semantic-windows-ready > .hln-zone-window" in css3d.text
+    assert "@keyframes hlnDiscoverPulse" in css3d.text
+    assert "@media(prefers-reduced-motion:reduce)" in css3d.text
 
+
+
+
+def test_home_lab_mobile_declutter_contract() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'class="hln-copy-mobile"' in response.text
+    assert "Alege ce vrei să îmbunătățești." in response.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert "root.dataset.hlnActiveScreen = screen" in js.text
+    assert 'summary.classList.toggle("is-fresh", state === "fresh")' in js.text
+    assert 'equipment === "solidHeat"' in js.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-energy-preview{display:none}" in css.text
+    assert '.hln-app[data-hln-active-screen]:not([data-hln-active-screen="home"])' in css.text
+    assert ".hln-live-summary.is-fresh .hln-live-calc-status" in css.text
+    assert '.hln-screen[data-hln-screen="site"] .hln-home-return{display:none}' in css.text
+
+    semantic = client.get("/static/final-house-semantic.json")
+    assert semantic.status_code == 200
+    assert semantic.json()["parts"]["windows"]["anchor"] == [0.43, 0.44, 0.14]
 
 
 def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
@@ -1933,8 +1964,18 @@ def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     js3d = client.get("/static/home-lab-3d.js")
     assert js3d.status_code == 200
     assert "this.controls.enableZoom = false" in js3d.text
-    assert 'new Set(["windows"])' in js3d.text
+    assert 'new Set(["wall", "roof", "windows"])' in js3d.text
     assert 'button.classList.add("is-gameified")' in js3d.text
+    assert 'button.classList.add("is-discoverable")' in js3d.text
+    assert 'solidHeat: "Încălzire"' in js3d.text
+    assert '["home", "site"].includes(this.mode)' in js3d.text
+    assert "(this.isMobile || (" in js3d.text
+    assert 'this.isMobile = window.matchMedia?.("(max-width: 760px)").matches' in js3d.text
+    assert 'const mobileSiteFallback = this.isMobile && this.mode === "site"' in js3d.text
+    assert 'wall:[54, height * 0.56]' in js3d.text
+    assert "this.updateHotspotPositions();" in js3d.text
+    assert "this.updateEquipmentBadges();" in js3d.text
+    assert "hln-semantic-${part}-ready" in js3d.text
     assert 'data-hln-3d-add-rail' in js3d.text
     assert 'pvButton.hidden = Boolean(detail.pvEnabled)' in js3d.text
     assert 'solarButton.hidden = Boolean(detail.solarThermalEnabled)' in js3d.text

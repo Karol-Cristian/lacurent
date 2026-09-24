@@ -1088,3 +1088,69 @@
   .hln-3d-add-rail{top:52px;gap:5px}
   .hln-3d-add-rail button{min-height:28px;padding:5px 8px;font-size:8px}
 }
+
+
+/* House-first declutter: semantic 3D controls replace duplicate absolute pills. */
+.hln-house-visual-3d-ready > .hln-zone-heating{display:none!important}
+.hln-house-visual-3d-ready.hln-semantic-wall-ready > .hln-zone-wall{display:none!important}
+.hln-house-visual-3d-ready.hln-semantic-roof-ready > .hln-zone-roof{display:none!important}
+.hln-house-visual-3d-ready.hln-semantic-windows-ready > .hln-zone-window{display:none!important}
+
+@keyframes hlnDiscoverPulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(65,105,122,.18)}
+  50%{transform:scale(1.06);box-shadow:0 0 0 8px rgba(65,105,122,0)}
+}
+.hln-3d-hotspot.is-discoverable .hln-3d-hotspot-dot{
+  animation:hlnDiscoverPulse 1.45s ease-in-out .35s 3;
+}
+.hln-3d-equipment-badge[data-hln-equipment="pv"] .hln-3d-equipment-dot,
+.hln-3d-equipment-badge[data-hln-equipment="solarThermal"] .hln-3d-equipment-dot,
+.hln-3d-add-rail button{
+  animation:hlnDiscoverPulse 1.45s ease-in-out .55s 3;
+}
+
+@media(max-width:760px){
+  .hln-3d-toolbar{top:8px;right:8px}
+  .hln-3d-reset-control{
+    width:34px;
+    min-width:34px;
+    height:34px;
+    min-height:34px!important;
+    padding:0!important;
+    border-radius:50%!important;
+  }
+  .hln-3d-reset-icon{display:block;font-size:17px;line-height:1}
+  .hln-3d-reset-label{display:none}
+
+  .hln-3d-add-rail{
+    top:16px;
+    gap:5px;
+  }
+  .hln-3d-add-rail button{
+    min-height:26px;
+    padding:4px 7px;
+    font-size:8px;
+    box-shadow:0 5px 14px rgba(22,31,27,.08);
+  }
+
+  .hln-3d-hotspot.is-gameified .hln-3d-hotspot-label{
+    padding:4px 7px;
+    background:rgba(251,250,246,.88);
+    box-shadow:0 4px 12px rgba(28,34,31,.07);
+  }
+  .hln-3d-equipment-badge{
+    min-height:24px;
+    padding:4px 6px;
+    box-shadow:0 5px 14px rgba(22,31,27,.10);
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .hln-3d-hotspot.is-discoverable .hln-3d-hotspot-dot,
+  .hln-3d-equipment-badge[data-hln-equipment="pv"] .hln-3d-equipment-dot,
+  .hln-3d-equipment-badge[data-hln-equipment="solarThermal"] .hln-3d-equipment-dot,
+  .hln-3d-add-rail button{
+    animation:none!important;
+    box-shadow:0 0 0 4px rgba(65,105,122,.10);
+  }
+}
