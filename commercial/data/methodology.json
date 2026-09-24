@@ -51,7 +51,37 @@
   },
   "dhw": {
     "litres_per_person_day_at_60c": 50,
-    "kwh_per_litre_10_to_60c": 0.05814
+    "kwh_per_litre_10_to_60c": 0.05814,
+    "system_defaults": {
+      "gas_boiler": {
+        "carrier": "natural_gas",
+        "efficiency": 0.88,
+        "source": "src/features/energy/physics/registries/dhwSystemPresets.registry.ts",
+        "confidence": "low",
+        "status": "Existing LaCurent internal DHW estimate"
+      },
+      "electric_boiler": {
+        "carrier": "electricity",
+        "efficiency": 0.98,
+        "source": "src/features/energy/physics/registries/dhwSystemPresets.registry.ts",
+        "confidence": "low",
+        "status": "Existing LaCurent internal DHW estimate"
+      },
+      "heat_pump_water_heater": {
+        "carrier": "electricity",
+        "cop": 2.4,
+        "source": "src/features/energy/physics/registries/dhwSystemPresets.registry.ts",
+        "confidence": "low",
+        "status": "Existing LaCurent internal DHW COP estimate"
+      },
+      "district_heat": {
+        "carrier": "district_heat",
+        "efficiency": 0.95,
+        "source": "commercial/data/methodology.json heating_system_defaults",
+        "confidence": "low",
+        "status": "LaCurent simplified delivered-energy assumption"
+      }
+    }
   },
   "heating_system_defaults": {
     "gas_boiler": {
