@@ -549,6 +549,105 @@ try {
     throw new Error("Home Lab wrote a local draft after local autosave was refused: " + JSON.stringify(privacyStorage));
   }
 
+  // Issue #359 replacement: keep the normal house scale, reclaim intro space
+  // only after the user starts working with the house.
+  await page.setViewportSize({width:1024,height:768});
+  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await expectVisible('[data-hln-screen="home"].is-active');
+  const laptopIntroBefore = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const board = screen?.querySelector(".hln-house-board");
+    const visual = screen?.querySelector(".hln-house-visual");
+    if (!(screen instanceof HTMLElement) || !(heading instanceof HTMLElement) ||
+        !(board instanceof HTMLElement) || !(visual instanceof HTMLElement)) {
+      throw new Error("Laptop adaptive intro elements are missing");
+    }
+    return {
+      collapsed:screen.classList.contains("is-intro-collapsed"),
+      headingHeight:heading.getBoundingClientRect().height,
+      boardTop:board.getBoundingClientRect().top,
+      visualHeight:visual.getBoundingClientRect().height,
+    };
+  });
+  if (laptopIntroBefore.collapsed || laptopIntroBefore.headingHeight < 70) {
+    throw new Error("Laptop intro should be visible on entry: " + JSON.stringify(laptopIntroBefore));
+  }
+  await page.locator('[data-hln-screen="home"] .hln-house-visual').dispatchEvent("pointerdown");
+  await page.waitForFunction(
+    () => document.querySelector('[data-hln-screen="home"]')?.classList.contains("is-intro-collapsed")
+  );
+  await page.waitForTimeout(280);
+  const laptopIntroAfter = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const board = screen?.querySelector(".hln-house-board");
+    const visual = screen?.querySelector(".hln-house-visual");
+    return {
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+      boardTop:board?.getBoundingClientRect().top ?? -1,
+      visualHeight:visual?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (laptopIntroAfter.headingHeight > 2 ||
+      laptopIntroAfter.boardTop >= laptopIntroBefore.boardTop - 55 ||
+      laptopIntroAfter.visualHeight < 390) {
+    throw new Error("Laptop intro did not yield space to the normal-size house: " +
+      JSON.stringify({before:laptopIntroBefore, after:laptopIntroAfter}));
+  }
+
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await expectVisible('[data-hln-screen="home"].is-active');
+  const mobileIntroBefore = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const visual = screen?.querySelector(".hln-house-visual");
+    return {
+      collapsed:screen?.classList.contains("is-intro-collapsed"),
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+      visualHeight:visual?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (mobileIntroBefore.collapsed || mobileIntroBefore.headingHeight < 70) {
+    throw new Error("Mobile intro should be visible after page entry: " + JSON.stringify(mobileIntroBefore));
+  }
+  await page.locator('[data-hln-screen="home"] .hln-house-visual').dispatchEvent("pointerdown");
+  await page.waitForFunction(
+    () => document.querySelector('[data-hln-screen="home"]')?.classList.contains("is-intro-collapsed")
+  );
+  await page.waitForTimeout(280);
+  const mobileIntroAfter = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const visual = screen?.querySelector(".hln-house-visual");
+    return {
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+      visualHeight:visual?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (mobileIntroAfter.headingHeight > 2 ||
+      mobileIntroAfter.visualHeight < 355 ||
+      mobileIntroAfter.visualHeight < mobileIntroBefore.visualHeight + 70) {
+    throw new Error("Mobile intro space was not reassigned to the house: " +
+      JSON.stringify({before:mobileIntroBefore, after:mobileIntroAfter}));
+  }
+
+  // A real reload starts a new UI session: the explanation must return.
+  await page.reload({waitUntil:"networkidle", timeout:30000});
+  await expectVisible('[data-hln-screen="home"].is-active');
+  const introRestored = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    return {
+      collapsed:screen?.classList.contains("is-intro-collapsed"),
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (introRestored.collapsed || introRestored.headingHeight < 70) {
+    throw new Error("Adaptive intro did not return after refresh: " + JSON.stringify(introRestored));
+  }
+
   await page.setViewportSize({width:390,height:844});
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
