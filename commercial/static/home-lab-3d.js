@@ -2779,6 +2779,7 @@ class HomeLabHouse3D {
 
   resize() {
     if (!this.renderer || !this.camera) return;
+    this.isMobile = window.matchMedia?.("(max-width: 760px)").matches ?? window.innerWidth <= 760;
     const width = Math.max(1, this.mount.clientWidth);
     const height = Math.max(1, this.mount.clientHeight);
     this.renderer.setSize(width, height, false);
