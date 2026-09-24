@@ -660,7 +660,7 @@ jobs:
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
-              "/home-lab/facts": "Podul trebuie izolat întotdeauna primul? Nu.",
+              "/home-lab/facts": "SIMULĂRI PUBLICE",
               "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
@@ -678,6 +678,12 @@ jobs:
               if expected not in body and expected not in body.replace(" ", ""):
                   raise AssertionError(f"{path} did not contain {expected!r}")
               print(path, status)
+
+          status, _, facts_html = open_url(apex + "/home-lab/facts")
+          if status != 200:
+              raise AssertionError(f"/home-lab/facts returned HTTP {status}")
+          if "Podul trebuie izolat întotdeauna primul? Nu." in facts_html:
+              raise AssertionError("Retired invalid Home Lab fact is still published on production domain.")
 
           chat_request = json.dumps({
               "messages": [
