@@ -1067,6 +1067,16 @@
           <label data-hln-home-heating-chain>Reglaj
             <select id="hlnHomeHeatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
           </label>
+          <label>Apă caldă menajeră (ACM)
+            <select id="hlnHomeDhwSystem">
+              <option value="same_as_heating">Același sistem ca încălzirea</option>
+              <option value="electric_boiler">Boiler electric</option>
+              <option value="gas_boiler">Centrală pe gaz</option>
+              <option value="heat_pump_water_heater">Pompă de căldură pentru ACM</option>
+              <option value="district_heat">Termoficare</option>
+            </select>
+          </label>
+          <small class="hln-field-note">ACM este calculată separat de încălzirea spațiilor. „Același sistem” reutilizează tipul sursei, dar aplică performanța specifică ACM.</small>
           <label>Ventilație
             <select id="hlnHomeVentilation"><option value="natural">Naturală</option><option value="mechanical">Mecanică</option><option value="hrv">Cu recuperare de căldură</option></select>
           </label>
@@ -1188,7 +1198,11 @@
       <input name="dhw_enabled" value="on">
       <input name="dhw_occupants" value="4">
       <input name="dhw_litres_per_person_day_at_60c" value="50">
-      <input name="dhw_efficiency" value="0.86">
+      <input name="dhw_system_type" value="same_as_heating">
+      <input name="dhw_efficiency" value="">
+      <input name="dhw_cop" value="">
+      <input name="dhw_carrier" value="">
+      <input name="expert_dhw_override" value="">
       <input name="pv_enabled" value="">
       <input name="pv_installed_power_kwp" value="5.0">
       <input name="pv_orientation" value="south">
@@ -1211,7 +1225,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d49"></script>
-  <script src="/static/home-lab-next.js?v=next50"></script>
+  <script src="/static/home-lab-next.js?v=next51"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

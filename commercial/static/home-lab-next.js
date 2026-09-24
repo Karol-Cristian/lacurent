@@ -140,6 +140,13 @@
       thermostatic_valves: "robineți termostatici",
       zoned: "control pe zone",
       weather_compensated: "compensare climatică"
+    },
+    dhw: {
+      same_as_heating: "ACM ca încălzirea",
+      electric_boiler: "Boiler electric ACM",
+      gas_boiler: "ACM pe gaz",
+      heat_pump_water_heater: "Pompă de căldură ACM",
+      district_heat: "ACM prin termoficare"
     }
   };
 
@@ -179,6 +186,7 @@
     heatingDistribution: "hydronic_insulated",
     heatingStorage: "none",
     heatingControl: "room_thermostat",
+    dhwSystem: "same_as_heating",
     ventilation: "natural",
     cooling: "none",
     pvEnabled: false,
@@ -782,6 +790,7 @@
       heatingCostProfile: "natural_gas",
       coolingSeer: Number(ref?.cooling_seer),
       dhwEfficiency: Number(ref?.dhw_efficiency),
+      dhwCarrier: "natural_gas",
     };
     referenceMode = true;
     optimizationMeta = {mode:"reference", label:"Referință MC001 · Tabel 2.4"};
@@ -1311,7 +1320,19 @@
     formSet("cooling_seer", overrideCoolingSeer ?? (state.cooling === "split" ? 4.2 : 4.0));
 
     const overrideDhwEfficiency = finiteOverride("dhwEfficiency");
-    formSet("dhw_efficiency", overrideDhwEfficiency ?? 0.86);
+    if (overrideDhwEfficiency != null) {
+      formSet("expert_dhw_override", "on");
+      formSet("dhw_system_type", "custom");
+      formSet("dhw_efficiency", overrideDhwEfficiency);
+      formSet("dhw_cop", "");
+      formSet("dhw_carrier", overrides.dhwCarrier || "natural_gas");
+    } else {
+      formSet("expert_dhw_override", "");
+      formSet("dhw_system_type", state.dhwSystem || "same_as_heating");
+      formSet("dhw_efficiency", "");
+      formSet("dhw_cop", "");
+      formSet("dhw_carrier", "");
+    }
 
     formSet("pv_enabled", state.pvEnabled ? "on" : "");
     formSet("pv_installed_power_kwp", state.pvKwp);
@@ -3218,6 +3239,7 @@
     }
     $("#hlnSystemsMeta").textContent = [
       ...heatingParts,
+      labels.dhw[state.dhwSystem] || state.dhwSystem,
       labels.ventilation[state.ventilation] || state.ventilation,
       labels.cooling[state.cooling] || state.cooling
     ].join(" · ");
@@ -4195,6 +4217,7 @@
     $("#hlnHomeHeatingDistribution").value = homeState.heatingDistribution;
     $("#hlnHomeHeatingStorage").value = homeState.heatingStorage;
     $("#hlnHomeHeatingControl").value = homeState.heatingControl;
+    $("#hlnHomeDhwSystem").value = homeState.dhwSystem || "same_as_heating";
     toggleHeatPumpSourceControls();
     $("#hlnHomeVentilation").value = homeState.ventilation;
     $("#hlnHomeCooling").value = homeState.cooling;
@@ -4262,6 +4285,7 @@
       homeState.heatingControl = $("#hlnHomeHeatingControl").value;
     }
     normalizeHeatingState(homeState);
+    homeState.dhwSystem = $("#hlnHomeDhwSystem").value;
     homeState.ventilation = $("#hlnHomeVentilation").value;
     homeState.cooling = $("#hlnHomeCooling").value;
     homeState.pvEnabled = $("#hlnHomePvEnabled").checked;
@@ -4777,7 +4801,7 @@
     if (event.target === editor && editor.dataset.hlnEditorMode !== "technical") closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeDhwSystem","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);
