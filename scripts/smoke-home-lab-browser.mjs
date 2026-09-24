@@ -627,7 +627,7 @@ try {
     };
   });
   if (mobileIntroAfter.headingHeight > 2 ||
-      mobileIntroAfter.visualHeight < 355 ||
+      mobileIntroAfter.visualHeight < 465 ||
       mobileIntroAfter.visualHeight < mobileIntroBefore.visualHeight + 70) {
     throw new Error("Mobile intro space was not reassigned to the house: " +
       JSON.stringify({before:mobileIntroBefore, after:mobileIntroAfter}));
