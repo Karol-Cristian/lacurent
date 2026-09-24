@@ -1511,7 +1511,13 @@
     }, timeoutMs);
 
     try {
-      return await fetch(url, {...options, signal:controller.signal});
+      const response = await fetch(url, {...options, signal:controller.signal});
+      // Keep the deadline and parent cancellation active through body delivery.
+      const contentType = response.headers.get("content-type") || "";
+      let payload = null;
+      if (contentType.includes("application/json")) payload = await response.json();
+      else await response.text();
+      return {response, payload};
     } catch (error) {
       if (timedOut && !parentSignal?.aborted) {
         const timeoutError = new Error("Calculul a durat prea mult. Reîncearcă.");
@@ -1539,19 +1545,12 @@
     renderAll();
 
     const request = async () => {
-      const response = await fetchWithTimeout(
+      const {response, payload} = await fetchWithTimeout(
         calcUrl,
         {method:"POST", body},
         controller.signal,
         LIVE_REQUEST_TIMEOUT_MS
       );
-      const contentType = response.headers.get("content-type") || "";
-      let payload = null;
-      if (contentType.includes("application/json")) {
-        payload = await response.json();
-      } else {
-        await response.text();
-      }
 
       // Live interaction must never amplify an overloaded Worker with an
       // automatic retry. The next user action or explicit CTA retry is enough.
@@ -1634,14 +1633,12 @@
     optimizerLastRemoteRequestAt = Date.now();
     optimizerEvaluationCount += 1;
 
-    const response = await fetchWithTimeout(
+    const {response, payload} = await fetchWithTimeout(
       calcUrl,
       {method:"POST", body},
       optimizerAbortController?.signal || null,
       OPTIMIZER_REQUEST_TIMEOUT_MS
     );
-    const contentType = response.headers.get("content-type") || "";
-    const payload = contentType.includes("application/json") ? await response.json() : null;
     if (!response.ok || !payload || payload.error) {
       throw new Error(payload?.error || `Calcul candidat indisponibil (HTTP ${response.status || "?"}).`);
     }
