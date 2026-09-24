@@ -282,12 +282,36 @@ class CoolingInput(BaseModel):
     setpoint_c: float = Field(default=26, ge=20, le=30)
 
 
+class DhwSystemType(str, Enum):
+    same_as_heating = "same_as_heating"
+    electric_boiler = "electric_boiler"
+    gas_boiler = "gas_boiler"
+    heat_pump_water_heater = "heat_pump_water_heater"
+    district_heat = "district_heat"
+    biomass_boiler = "biomass_boiler"
+    custom = "custom"
+
+
 class DhwInput(BaseModel):
     enabled: bool = True
     occupants: int = Field(default=3, ge=0, le=30)
     litres_per_person_day_at_60c: float | None = Field(default=None, gt=0)
-    efficiency: float = Field(default=0.85, gt=0, le=1)
+    system_type: DhwSystemType = DhwSystemType.custom
+    efficiency: float | None = Field(default=0.85, gt=0, le=1)
+    cop: float | None = Field(default=None, gt=1, le=10)
     carrier: Carrier = Carrier.natural_gas
+
+    @root_validator(skip_on_failure=True)
+    def validate_performance(cls, values: dict) -> dict:
+        if not values.get("enabled"):
+            return values
+        efficiency = values.get("efficiency")
+        cop = values.get("cop")
+        if efficiency is None and cop is None:
+            raise ValueError("Domestic hot water requires either an efficiency or a COP.")
+        if efficiency is not None and cop is not None:
+            raise ValueError("Domestic hot water must use either efficiency or COP, not both.")
+        return values
 
 
 SolarOrientation = Literal[
