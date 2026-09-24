@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from commercial.app.engine import demo_building
+from commercial.app.engine import demo_building, dhw_energy
 from commercial.app.main import app, build_input_from_form
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
@@ -56,6 +56,95 @@ def demo_form_data() -> dict[str, str]:
         "dhw_efficiency": "0.86",
         "dhw_carrier": "natural_gas",
     }
+
+
+def _simple_home_lab_dhw_form(heating_choice: str, dhw_system_type: str = "same_as_heating") -> dict[str, str]:
+    data = demo_form_data()
+    data.update(
+        {
+            "building_length_m": "10",
+            "building_width_m": "8",
+            "heated_levels": "2",
+            "average_height_m": "2.7",
+            "house_window_area_m2": "20",
+            "house_door_area_m2": "2.2",
+            "heating_choice": heating_choice,
+            "dhw_system_type": dhw_system_type,
+            "expert_dhw_override": "",
+        }
+    )
+    return data
+
+
+def test_dhw_same_as_heat_pump_uses_dhw_cop_not_resistance_efficiency() -> None:
+    building = build_input_from_form(_simple_home_lab_dhw_form("heat_pump"))
+
+    assert building.dhw.system_type.value == "same_as_heating"
+    assert building.dhw.carrier.value == "electricity"
+    assert building.dhw.cop == pytest.approx(2.4)
+    assert building.dhw.efficiency is None
+
+    result = dhw_energy(building, useful_kwh=2400)
+    assert result.carrier.value == "electricity"
+    assert result.final_kwh == pytest.approx(1000)
+
+
+def test_dhw_same_as_gas_uses_dhw_specific_generation_efficiency() -> None:
+    building = build_input_from_form(_simple_home_lab_dhw_form("condensing_gas_boiler"))
+
+    assert building.dhw.system_type.value == "same_as_heating"
+    assert building.dhw.carrier.value == "natural_gas"
+    assert building.dhw.efficiency == pytest.approx(0.88)
+    assert building.dhw.cop is None
+
+
+def test_dhw_dedicated_heat_pump_is_independent_from_space_heating_carrier() -> None:
+    building = build_input_from_form(
+        _simple_home_lab_dhw_form("condensing_gas_boiler", "heat_pump_water_heater")
+    )
+
+    assert building.heating.carrier.value == "natural_gas"
+    assert building.dhw.system_type.value == "heat_pump_water_heater"
+    assert building.dhw.carrier.value == "electricity"
+    assert building.dhw.cop == pytest.approx(2.4)
+    assert building.dhw.efficiency is None
+
+
+def test_dhw_expert_override_preserves_explicit_carrier_and_efficiency() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "expert_dhw_override": "on",
+            "dhw_system_type": "custom",
+            "dhw_carrier": "biomass",
+            "dhw_efficiency": "0.72",
+            "dhw_cop": "",
+        }
+    )
+    building = build_input_from_form(data)
+
+    assert building.dhw.system_type.value == "custom"
+    assert building.dhw.carrier.value == "biomass"
+    assert building.dhw.efficiency == pytest.approx(0.72)
+    assert building.dhw.cop is None
+
+
+def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
+    page = client.get("/home-lab-next")
+    assert page.status_code == 200
+    assert 'id="hlnHomeDhwSystem"' in page.text
+    assert 'value="same_as_heating">Același sistem ca încălzirea' in page.text
+    assert 'value="electric_boiler">Boiler electric' in page.text
+    assert 'value="gas_boiler">Centrală pe gaz' in page.text
+    assert 'value="heat_pump_water_heater">Pompă de căldură pentru ACM' in page.text
+    assert 'name="dhw_system_type" value="same_as_heating"' in page.text
+    assert 'name="dhw_cop" value=""' in page.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert 'dhwSystem: "same_as_heating"' in js.text
+    assert 'formSet("dhw_system_type", state.dhwSystem || "same_as_heating")' in js.text
+    assert 'homeState.dhwSystem = $("#hlnHomeDhwSystem").value' in js.text
 
 
 def test_company_home_is_a_focused_testing_entry_page() -> None:
@@ -402,7 +491,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next27" in response.text
-    assert "/static/home-lab-next.js?v=next50" in response.text
+    assert "/static/home-lab-next.js?v=next51" in response.text
     assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
