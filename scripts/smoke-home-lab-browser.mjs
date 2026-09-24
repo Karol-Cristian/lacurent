@@ -605,7 +605,8 @@ try {
   const laptopColumns = shortLaptopHome.gridColumns.split(" ").filter(Boolean);
   if (shortLaptopHome.viewport.width !== 1024 ||
       shortLaptopHome.viewport.height !== 768 ||
-      shortLaptopHome.documentHeight > 770 ||
+      shortLaptopHome.app.top < 8 ||
+      shortLaptopHome.app.bottom > shortLaptopHome.viewport.height - 8 ||
       shortLaptopHome.homeDisplay === "none" ||
       laptopColumns.length < 2 ||
       shortLaptopHome.house.bottom > shortLaptopHome.dock.top - 4 ||
