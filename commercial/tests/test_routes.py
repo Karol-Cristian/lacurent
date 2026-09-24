@@ -1934,7 +1934,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     source = css.text
     assert ".is-intro-collapsed" in source
     assert "@media(min-width:981px) and (max-height:820px)" in source
-    assert "min-height:360px" in source
+    assert "min-height:470px" in source
     assert "min-height:392px" in source
     assert "padding-top:8px" in source
     assert "padding-top:12px" in source
