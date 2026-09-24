@@ -34,6 +34,10 @@ from .commercialization import (
     commercialize_wall_candidate,
     run_wall_product_backed_optimization,
 )
+from .full_commercialization import (
+    FullProductBackedOptimizationRequestV1,
+    run_full_product_backed_optimization,
+)
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .cost_curves import (
@@ -1795,6 +1799,21 @@ async def wall_product_backed_optimization_api(
 ) -> JSONResponse:
     try:
         result = run_wall_product_backed_optimization(
+            payload,
+            await _optimizer_cost_catalog(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/optimization/run/full-products")
+async def full_product_backed_optimization_api(
+    payload: FullProductBackedOptimizationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    try:
+        result = run_full_product_backed_optimization(
             payload,
             await _optimizer_cost_catalog(request),
         )
