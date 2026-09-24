@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next359">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next359-adaptive">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d31">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
@@ -113,7 +113,7 @@
 
     <section class="hln-screen is-active" data-hln-screen="home">
       <div class="hln-screen-heading">
-        <div>
+        <div class="hln-screen-intro-copy">
           <span>CASA MEA</span>
           <h1>Casa este interfața.</h1>
           <p>Atinge punctele sau echipamentele direct pe casă. Modificările se calculează imediat, iar detaliile pot fi rafinate oricând.</p>
@@ -194,7 +194,7 @@
 
     <section class="hln-screen" data-hln-screen="site">
       <div class="hln-screen-heading">
-        <div>
+        <div class="hln-screen-intro-copy">
           <span>ÎMBUNĂTĂȚIRI</span>
           <h1>Ce vrei să schimbi?</h1>
           <p><span class="hln-copy-desktop">Alege direct de pe casă sau din lista de intervenții. Casa mea rămâne neschimbată.</span><span class="hln-copy-mobile">Alege ce vrei să îmbunătățești.</span></p>
@@ -1263,7 +1263,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d55"></script>
-  <script src="/static/home-lab-next.js?v=next58-body-timeout"></script>
+  <script src="/static/home-lab-next.js?v=next59-adaptive-intro"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

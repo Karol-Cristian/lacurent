@@ -549,76 +549,103 @@ try {
     throw new Error("Home Lab wrote a local draft after local autosave was refused: " + JSON.stringify(privacyStorage));
   }
 
-  // Issue #359: the complete primary Casa mea interaction must fit a
-  // typical short laptop viewport without requiring vertical scrolling.
+  // Issue #359 replacement: keep the normal house scale, reclaim intro space
+  // only after the user starts working with the house.
   await page.setViewportSize({width:1024,height:768});
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
-  await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
-  await page.waitForFunction(
-    () => document.querySelector(".hln-live-summary")?.dataset.energyClass,
-    null,
-    {timeout:30000}
-  );
-  const shortLaptopHome = await page.evaluate(() => {
-    const rect = selector => {
-      const node = document.querySelector(selector);
-      if (!(node instanceof HTMLElement)) throw new Error("Missing laptop-fit element: " + selector);
-      const box = node.getBoundingClientRect();
-      return {top:box.top,bottom:box.bottom,left:box.left,right:box.right,width:box.width,height:box.height};
-    };
-    const home = document.querySelector('[data-hln-screen="home"]');
-    const layout = document.querySelector(".hln-home-layout");
-    const technicalOpen = document.querySelector("[data-hln-technical-open]");
-    const cta = document.querySelector("#hlnDockCta");
-    const configStrong = document.querySelector(".hln-home-layout .hln-config-row .hln-row-copy strong");
-    const heading = document.querySelector('[data-hln-screen="home"] .hln-screen-heading h1');
-    if (!(home instanceof HTMLElement) ||
-        !(layout instanceof HTMLElement) ||
-        !(technicalOpen instanceof HTMLElement) ||
-        !(cta instanceof HTMLElement) ||
-        !(configStrong instanceof HTMLElement) ||
-        !(heading instanceof HTMLElement)) {
-      throw new Error("Short-laptop Casa mea controls are incomplete");
+  const laptopIntroBefore = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const board = screen?.querySelector(".hln-house-board");
+    const visual = screen?.querySelector(".hln-house-visual");
+    if (!(screen instanceof HTMLElement) || !(heading instanceof HTMLElement) ||
+        !(board instanceof HTMLElement) || !(visual instanceof HTMLElement)) {
+      throw new Error("Laptop adaptive intro elements are missing");
     }
-    const house = rect(".hln-house-board");
-    const config = rect(".hln-config-sheet");
-    const dock = rect(".hln-dock");
-    const app = rect("[data-home-lab-next]");
-    const tech = rect("[data-hln-technical-open]");
-    const ctaBox = rect("#hlnDockCta");
     return {
-      viewport:{width:innerWidth,height:innerHeight},
-      documentHeight:Math.max(document.documentElement.scrollHeight, document.body.scrollHeight),
-      app,
-      house,
-      config,
-      dock,
-      tech,
-      cta:ctaBox,
-      homeDisplay:getComputedStyle(home).display,
-      gridColumns:getComputedStyle(layout).gridTemplateColumns,
-      configFont:Number.parseFloat(getComputedStyle(configStrong).fontSize),
-      headingFont:Number.parseFloat(getComputedStyle(heading).fontSize),
+      collapsed:screen.classList.contains("is-intro-collapsed"),
+      headingHeight:heading.getBoundingClientRect().height,
+      boardTop:board.getBoundingClientRect().top,
+      visualHeight:visual.getBoundingClientRect().height,
     };
   });
-  const laptopColumns = shortLaptopHome.gridColumns.split(" ").filter(Boolean);
-  if (shortLaptopHome.viewport.width !== 1024 ||
-      shortLaptopHome.viewport.height !== 768 ||
-      shortLaptopHome.app.top < 8 ||
-      shortLaptopHome.app.bottom > shortLaptopHome.viewport.height - 8 ||
-      shortLaptopHome.homeDisplay === "none" ||
-      laptopColumns.length < 2 ||
-      shortLaptopHome.house.bottom > shortLaptopHome.dock.top - 4 ||
-      shortLaptopHome.config.bottom > shortLaptopHome.dock.top - 4 ||
-      shortLaptopHome.dock.bottom > shortLaptopHome.app.bottom - 6 ||
-      shortLaptopHome.tech.width <= 0 ||
-      shortLaptopHome.tech.height < 28 ||
-      shortLaptopHome.cta.width <= 0 ||
-      shortLaptopHome.cta.height < 42 ||
-      shortLaptopHome.configFont < 11 ||
-      shortLaptopHome.headingFont < 27) {
-    throw new Error("Issue #359 short-laptop Casa mea does not fit: " + JSON.stringify(shortLaptopHome));
+  if (laptopIntroBefore.collapsed || laptopIntroBefore.headingHeight < 70) {
+    throw new Error("Laptop intro should be visible on entry: " + JSON.stringify(laptopIntroBefore));
+  }
+  await page.locator('[data-hln-screen="home"] .hln-house-visual').dispatchEvent("pointerdown");
+  await page.waitForFunction(
+    () => document.querySelector('[data-hln-screen="home"]')?.classList.contains("is-intro-collapsed")
+  );
+  await page.waitForTimeout(280);
+  const laptopIntroAfter = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const board = screen?.querySelector(".hln-house-board");
+    const visual = screen?.querySelector(".hln-house-visual");
+    return {
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+      boardTop:board?.getBoundingClientRect().top ?? -1,
+      visualHeight:visual?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (laptopIntroAfter.headingHeight > 2 ||
+      laptopIntroAfter.boardTop >= laptopIntroBefore.boardTop - 55 ||
+      laptopIntroAfter.visualHeight < 390) {
+    throw new Error("Laptop intro did not yield space to the normal-size house: " +
+      JSON.stringify({before:laptopIntroBefore, after:laptopIntroAfter}));
+  }
+
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await expectVisible('[data-hln-screen="home"].is-active');
+  const mobileIntroBefore = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const visual = screen?.querySelector(".hln-house-visual");
+    return {
+      collapsed:screen?.classList.contains("is-intro-collapsed"),
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+      visualHeight:visual?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (mobileIntroBefore.collapsed || mobileIntroBefore.headingHeight < 70) {
+    throw new Error("Mobile intro should be visible after page entry: " + JSON.stringify(mobileIntroBefore));
+  }
+  await page.locator('[data-hln-screen="home"] .hln-house-visual').dispatchEvent("pointerdown");
+  await page.waitForFunction(
+    () => document.querySelector('[data-hln-screen="home"]')?.classList.contains("is-intro-collapsed")
+  );
+  await page.waitForTimeout(280);
+  const mobileIntroAfter = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    const visual = screen?.querySelector(".hln-house-visual");
+    return {
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+      visualHeight:visual?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (mobileIntroAfter.headingHeight > 2 ||
+      mobileIntroAfter.visualHeight < 465 ||
+      mobileIntroAfter.visualHeight < mobileIntroBefore.visualHeight + 70) {
+    throw new Error("Mobile intro space was not reassigned to the house: " +
+      JSON.stringify({before:mobileIntroBefore, after:mobileIntroAfter}));
+  }
+
+  // A real reload starts a new UI session: the explanation must return.
+  await page.reload({waitUntil:"networkidle", timeout:30000});
+  await expectVisible('[data-hln-screen="home"].is-active');
+  const introRestored = await page.evaluate(() => {
+    const screen = document.querySelector('[data-hln-screen="home"]');
+    const heading = screen?.querySelector(".hln-screen-heading");
+    return {
+      collapsed:screen?.classList.contains("is-intro-collapsed"),
+      headingHeight:heading?.getBoundingClientRect().height ?? -1,
+    };
+  });
+  if (introRestored.collapsed || introRestored.headingHeight < 70) {
+    throw new Error("Adaptive intro did not return after refresh: " + JSON.stringify(introRestored));
   }
 
   await page.setViewportSize({width:390,height:844});

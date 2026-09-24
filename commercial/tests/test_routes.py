@@ -561,8 +561,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next359" in response.text
-    assert "/static/home-lab-next.js?v=next58-body-timeout" in response.text
+    assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
+    assert "/static/home-lab-next.js?v=next59-adaptive-intro" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -1922,20 +1922,33 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
 
 
 
-def test_home_lab_issue_359_short_laptop_layout_contract() -> None:
+def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
-    assert "/static/home-lab-next.css?v=next359" in response.text
+    assert response.text.count('class="hln-screen-intro-copy"') == 2
+    assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
+    assert "/static/home-lab-next.js?v=next59-adaptive-intro" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
-    assert "@media (min-width:981px) and (max-height:820px)" in css.text
-    assert '.hln-screen[data-hln-screen="home"] .hln-house-board' in css.text
-    assert "min-height:338px" in css.text
-    assert '.hln-screen[data-hln-screen="home"] .hln-config-row' in css.text
-    assert "min-height:58px" in css.text
-    assert "min-height:calc(100vh - 20px)" in css.text
-    assert "padding-bottom:76px" in css.text
+    source = css.text
+    assert ".is-intro-collapsed" in source
+    assert "@media(min-width:981px) and (max-height:820px)" in source
+    assert "min-height:470px" in source
+    assert "min-height:392px" in source
+    assert "padding-top:8px" in source
+    assert "padding-top:12px" in source
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    source = js.text
+    assert "const introCollapsedScreens = new Set()" in source
+    assert "collapseAdaptiveIntroFor" in source
+    assert "resetAdaptiveIntros" in source
+    assert 'event.persisted' in source
+    assert 'root.addEventListener("pointerdown"' in source
+    assert "localStorage.setItem" in source
+    assert "introCollapsedScreens" not in source.split("localStorage.setItem", 1)[1].split("));", 1)[0]
 
 
 def test_home_lab_mobile_declutter_contract() -> None:
