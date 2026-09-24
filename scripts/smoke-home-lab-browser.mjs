@@ -382,6 +382,28 @@ try {
       !persistentScenarioDeltas.classColor) {
     throw new Error("Persistent scenario deltas/class color are missing: " + JSON.stringify(persistentScenarioDeltas));
   }
+  const ctaOnlyDock = await page.evaluate(() => {
+    const dock = document.querySelector(".hln-dock");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(dock instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Bottom dock or CTA is missing");
+    }
+    const directElementChildren = [...dock.children].filter(node => node instanceof HTMLElement);
+    return {
+      children:directElementChildren.length,
+      benefits:Boolean(dock.querySelector(".hln-dock-benefits")),
+      ctaVisible:cta.getBoundingClientRect().width > 0 && cta.getBoundingClientRect().height > 0,
+      background:getComputedStyle(dock).backgroundColor,
+      border:getComputedStyle(dock).borderTopWidth,
+    };
+  });
+  if (ctaOnlyDock.children !== 1 ||
+      ctaOnlyDock.benefits ||
+      !ctaOnlyDock.ctaVisible ||
+      ctaOnlyDock.background !== "rgba(0, 0, 0, 0)" ||
+      ctaOnlyDock.border !== "0px") {
+    throw new Error("Bottom dock is not CTA-only: " + JSON.stringify(ctaOnlyDock));
+  }
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   try {
     await expectVisible('[data-hln-screen="report"].is-active');
