@@ -1431,9 +1431,6 @@
       ...persistentSelectors,
       "#hlnLiveCost",
       "#hlnLiveClass",
-      "#hlnDockScenarioClass",
-      "#hlnDockScenarioCost",
-      "#hlnDockCostBenefit",
       "#hlnScenarioNewCost",
       "#hlnScenarioBenefit",
       "#hlnScenarioCostCompare",
@@ -1481,8 +1478,6 @@
       saving.textContent = "Valorile vor fi actualizate pentru configurația curentă";
       saving.classList.remove("is-bad");
     }
-    const dockLabel = $("#hlnDockSavingLabel");
-    if (dockLabel) dockLabel.textContent = "Recalculare";
     const scenarioLabel = $("#hlnScenarioBenefitLabel");
     if (scenarioLabel) scenarioLabel.textContent = "rezultat în curs";
 
@@ -3113,10 +3108,6 @@
     node.classList.toggle("is-bad", item?.good === false);
   }
 
-  function energyClassRank(value) {
-    return {"A+":0,A:1,B:2,C:3,D:4,E:5,F:6,G:7}[String(value || "").toUpperCase()] ?? null;
-  }
-
   function renderImpactPanel() {
     if (!homeResult || !scenarioResult) return;
 
@@ -3223,42 +3214,8 @@
     if (dock) dock.hidden = screen === "report";
     if (screen === "report") return;
 
-    const benefits = $(".hln-dock-benefits");
     const cta = $("#hlnDockCta");
     const ctaLabel = cta?.querySelector("span") || cta;
-    const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
-    benefits.hidden = !scenarioMode;
-    dock?.classList.toggle("has-comparison", scenarioMode);
-
-    if (scenarioMode && homeResult && scenarioResult) {
-      $("#hlnDockHomeClass").textContent = homeResult.energy_class || "—";
-      $("#hlnDockHomeCost").textContent =
-        homeResult.annual_cost_lei == null ? "—" : `${fmt(homeResult.annual_cost_lei)} lei/an`;
-      $("#hlnDockScenarioClass").textContent = scenarioResult.energy_class || "—";
-      $("#hlnDockScenarioCost").textContent =
-        scenarioResult.annual_cost_lei == null ? "—" : `${fmt(scenarioResult.annual_cost_lei)} lei/an`;
-
-      const saving = costOutcomeText(
-        scenarioResult.annual_cost_lei,
-        homeResult.annual_cost_lei,
-        {unit:" lei/an"}
-      );
-      const savingNode = $("#hlnDockCostBenefit");
-      const savingLabel = $("#hlnDockSavingLabel");
-      savingNode.textContent = saving.text;
-      applyDeltaState(savingNode, saving);
-      if (savingLabel) savingLabel.textContent = saving.label;
-
-      const baseClassRank = energyClassRank(homeResult.energy_class);
-      const scenarioClassRank = energyClassRank(scenarioResult.energy_class);
-      const scenarioClassNode = $("#hlnDockScenarioClass");
-      if (scenarioClassNode) {
-        const classChange = baseClassRank == null || scenarioClassRank == null
-          ? {good:null}
-          : {good:scenarioClassRank < baseClassRank ? true : scenarioClassRank > baseClassRank ? false : null};
-        applyDeltaState(scenarioClassNode, classChange);
-      }
-    }
 
     renderImpactPanel();
     dock.dataset.hlnDock = screen;
