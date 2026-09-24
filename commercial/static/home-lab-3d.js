@@ -1705,7 +1705,7 @@ class HomeLabHouse3D {
 
     let config = this.cloneSemanticConfig(DEFAULT_FINAL_HOUSE_CONFIG);
     try {
-      const response = await fetch("/static/final-house-semantic.json?v=1");
+      const response = await fetch("/static/final-house-semantic.json?v=2");
       if (response.ok) {
         const loaded = await response.json();
         if (loaded?.model === "final" && loaded?.parts) config = loaded;
