@@ -401,7 +401,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next25" in response.text
+    assert "/static/home-lab-next.css?v=next26" in response.text
     assert "/static/home-lab-next.js?v=next49" in response.text
     assert "/static/home-lab-3d.css?v=3d28" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
@@ -528,6 +528,13 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'id="hlnQuickEditRange" type="range"' in response.text
     assert "Glisează și urmărește casa și rezultatul actualizându-se. Apasă Gata când ai terminat." in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
+
+
+def test_home_lab_mobile_status_stays_in_topbar_flow() -> None:
+    response = client.get("/static/home-lab-next.css?v=next26")
+    assert response.status_code == 200
+    assert ".hln-topbar-meta{\n    grid-column:1/-1;\n    position:static;" in response.text
+    assert "max-width:100%;\n    overflow:hidden;" in response.text
 
 
 
