@@ -7,7 +7,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next28">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next29">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d29">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
@@ -76,19 +76,31 @@
 
     <div class="hln-persistent-stack" data-hln-persistent-stack>
       {% include "home_lab_energy_strip.html" %}
-      <section class="hln-live-summary" aria-label="Rezumat energetic curent">
+      <section class="hln-live-summary" aria-label="Rezumat energetic curent" data-energy-class="">
         <div class="hln-live-metrics">
-          <article>
-            <span class="hln-live-icon"><svg><use href="#hln-i-gauge"></use></svg></span>
-            <span><small>Clasă energetică</small><strong id="hlnPersistentClass">—</strong></span>
+          <article class="hln-live-class-card">
+            <span class="hln-energy-label-arrow" aria-hidden="true"></span>
+            <span class="hln-live-value">
+              <small>Clasă energetică</small>
+              <strong id="hlnPersistentClass">—</strong>
+              <em id="hlnPersistentClassContext">Casa curentă</em>
+            </span>
           </article>
-          <article>
+          <article class="hln-live-cost-card">
             <span class="hln-live-icon"><svg><use href="#hln-i-money"></use></svg></span>
-            <span><small>Cost anual estimat</small><strong id="hlnPersistentCost">—</strong></span>
+            <span class="hln-live-value">
+              <small>Cost anual estimat</small>
+              <strong id="hlnPersistentCost">—</strong>
+              <em class="hln-live-delta" id="hlnPersistentCostDelta">Baseline Casa mea</em>
+            </span>
           </article>
-          <article>
+          <article class="hln-live-energy-card">
             <span class="hln-live-icon"><svg><use href="#hln-i-bolt"></use></svg></span>
-            <span><small>Energie anuală</small><strong id="hlnPersistentEnergy">—</strong></span>
+            <span class="hln-live-value">
+              <small>Energie anuală</small>
+              <strong id="hlnPersistentEnergy">—</strong>
+              <em class="hln-live-delta" id="hlnPersistentEnergyDelta">Baseline Casa mea</em>
+            </span>
           </article>
         </div>
         <div class="hln-live-calc-status">
@@ -97,6 +109,7 @@
         </div>
       </section>
     </div>
+    <div class="hln-persistent-spacer" aria-hidden="true"></div>
 
     <section class="hln-screen is-active" data-hln-screen="home">
       <div class="hln-screen-heading">
@@ -1246,7 +1259,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d49"></script>
-  <script src="/static/home-lab-next.js?v=next54"></script>
+  <script src="/static/home-lab-next.js?v=next55"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
