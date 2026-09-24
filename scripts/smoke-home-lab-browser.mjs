@@ -510,25 +510,65 @@ try {
   const mobileDock = await page.evaluate(() => {
     const dock = document.querySelector(".hln-dock");
     const benefits = document.querySelector(".hln-dock-benefits");
+    const back = document.querySelector("#hlnDockBack");
     const cta = document.querySelector("#hlnDockCta");
-    if (!(dock instanceof HTMLElement) || !(benefits instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+    const ctaLabel = cta?.querySelector("span");
+    if (!(dock instanceof HTMLElement) ||
+        !(benefits instanceof HTMLElement) ||
+        !(back instanceof HTMLElement) ||
+        !(cta instanceof HTMLElement) ||
+        !(ctaLabel instanceof HTMLElement)) {
       throw new Error("Mobile dock is incomplete");
     }
+    const backBox = back.getBoundingClientRect();
     const ctaBox = cta.getBoundingClientRect();
     const dockStyle = getComputedStyle(dock);
     return {
       benefitsDisplay:getComputedStyle(benefits).display,
+      backDisplay:getComputedStyle(back).display,
+      backWidth:backBox.width,
       ctaVisible:ctaBox.width > 0 && ctaBox.height > 0,
+      ctaWidth:ctaBox.width,
+      ctaRight:ctaBox.right,
+      mobileLabel:ctaLabel.dataset.mobileLabel,
       dockBackground:dockStyle.backgroundColor,
       dockBorder:dockStyle.borderTopWidth,
     };
   });
   if (mobileDock.benefitsDisplay !== "none" ||
+      mobileDock.backDisplay !== "none" ||
+      mobileDock.backWidth !== 0 ||
       !mobileDock.ctaVisible ||
+      mobileDock.ctaWidth > 200 ||
+      Math.abs(mobileDock.ctaRight - 376) > 2 ||
+      mobileDock.mobileLabel !== "Îmbunătățiri" ||
       mobileDock.dockBackground !== "rgba(0, 0, 0, 0)" ||
       mobileDock.dockBorder !== "0px") {
-    throw new Error("Mobile dock is not CTA-only: " + JSON.stringify(mobileDock));
+    throw new Error("Mobile dock is not compact/right-aligned on Casa mea: " + JSON.stringify(mobileDock));
   }
+
+  await page.waitForFunction(
+    () => !document.querySelector("#hlnDockCta")?.disabled,
+    null,
+    {timeout:30000}
+  );
+  await page.locator("#hlnDockCta").click();
+  await expectVisible('[data-hln-screen="site"].is-active');
+  const mobileBack = await page.evaluate(() => {
+    const back = document.querySelector("#hlnDockBack");
+    if (!(back instanceof HTMLElement)) throw new Error("Mobile back button is missing");
+    const box = back.getBoundingClientRect();
+    return {
+      visible:box.width > 0 && box.height > 0 && getComputedStyle(back).display !== "none",
+      left:box.left,
+      label:String(back.textContent || "").trim(),
+    };
+  });
+  if (!mobileBack.visible || mobileBack.left < 12 || mobileBack.left > 16 || mobileBack.label !== "Înapoi") {
+    throw new Error("Mobile back navigation is not visible on step 2: " + JSON.stringify(mobileBack));
+  }
+  await page.locator("#hlnDockBack").click();
+  await expectVisible('[data-hln-screen="home"].is-active');
   const mobilePersistentLayout = await page.evaluate(() => {
     const stack = document.querySelector("[data-hln-persistent-stack]");
     const strip = document.querySelector(".hln-energy-strip");

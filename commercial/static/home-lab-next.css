@@ -498,6 +498,8 @@ svg{display:block}
 .hln-dock-compare .is-renovation strong b{color:#cce7d7}
 .hln-dock-compare .is-saving strong{color:#c4e5d2}
 .hln-dock-compare .is-saving strong.is-bad{color:#efb8b1}
+.hln-dock-back{display:none}
+.hln-dock-back[hidden]{display:none!important}
 .hln-dock-cta{
   display:flex;gap:10px;align-items:center;justify-content:center;min-height:54px;max-width:330px;padding:10px 16px;
   border:1px solid #4a735f;border-radius:14px;background:#315f49;color:#fff;font-size:10px;font-weight:850
@@ -1893,14 +1895,17 @@ svg{display:block}
 
 
 /* #358 scope correction: comparison dock stays on desktop, CTA-only on phone. */
+/* Mobile navigation stays compact so the house remains the primary interface. */
 @media(max-width:760px){
   .hln-dock{
     position:fixed;
     left:14px;
     right:14px;
     bottom:calc(8px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
-    grid-template-columns:1fr;
-    gap:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
     min-height:0;
     padding:0;
     border:0;
@@ -1913,17 +1918,49 @@ svg{display:block}
   .hln-dock-benefits{
     display:none!important;
   }
+  .hln-dock-back:not([hidden]){
+    display:inline-flex;
+    flex:0 0 auto;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:44px;
+    padding:0 13px;
+    border:1px solid rgba(43,58,52,.18);
+    border-radius:999px;
+    background:rgba(251,250,247,.96);
+    box-shadow:0 7px 18px rgba(18,28,24,.12);
+    color:#34443d;
+    font-size:10px;
+    font-weight:820;
+  }
+  .hln-dock-back svg{
+    width:16px;
+    height:16px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+  }
   .hln-dock-cta{
-    width:100%;
-    max-width:none;
-    min-height:52px;
-    font-size:11px;
+    width:auto;
+    max-width:min(60vw,190px);
+    min-height:48px;
+    margin-left:auto;
+    padding:0 14px 0 16px;
+    border-radius:999px;
+    font-size:0;
     box-shadow:0 10px 24px rgba(14,28,21,.25);
   }
+  .hln-dock-cta>span::after{
+    content:attr(data-mobile-label);
+    font-size:11px;
+    line-height:1.1;
+  }
+  .hln-dock-cta svg{flex:0 0 auto}
   .hln-app{
-    padding-bottom:calc(82px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
+    padding-bottom:calc(76px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
   }
   .hln-quick-edit-overlay{
-    padding-bottom:92px;
+    padding-bottom:88px;
   }
 }

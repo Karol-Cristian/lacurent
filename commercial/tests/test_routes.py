@@ -579,6 +579,9 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'class="hln-dock"' in response.text
     assert 'class="hln-dock-benefits hln-dock-compare"' in response.text
     assert 'id="hlnDockCta"' in response.text
+    assert 'id="hlnDockBack"' in response.text
+    assert '<use href="#hln-i-arrow-left"></use>' in response.text
+    assert 'data-mobile-label="Îmbunătățiri"' in response.text
     assert 'id="hlnPersistentClassContext"' in response.text
     assert 'id="hlnPersistentCostDelta"' in response.text
     assert 'id="hlnPersistentEnergyDelta"' in response.text
@@ -607,6 +610,9 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert "/* #358 scope correction: comparison dock stays on desktop, CTA-only on phone. */" in css.text
     assert ".hln-dock-benefits{" in css.text
     assert "display:none!important" in css.text
+    assert ".hln-dock-back:not([hidden])" in css.text
+    assert "max-width:min(60vw,190px)" in css.text
+    assert "content:attr(data-mobile-label)" in css.text
 
     js = client.get("/static/home-lab-next.js")
     assert js.status_code == 200
@@ -622,6 +628,10 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'document.body.classList.toggle("hln-technical-open", technical)' in js.text
     assert 'document.body.classList.remove("hln-technical-open")' in js.text
     assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text
+    assert 'if (back) back.hidden = screen === "home"' in js.text
+    assert 'ctaLabel.dataset.mobileLabel = "Îmbunătățiri"' in js.text
+    assert '$("#hlnDockBack").addEventListener("click"' in js.text
+    assert 'cancelIntervention();' in js.text
     assert 'root.querySelectorAll("[data-hln-editor-open]").forEach' in js.text
 
 
