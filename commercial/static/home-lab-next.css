@@ -2088,7 +2088,7 @@ svg{display:block}
 
   .hln-screen[data-hln-screen="home"].is-intro-collapsed .hln-house-visual,
   .hln-screen[data-hln-screen="site"].is-intro-collapsed .hln-house-visual{
-    min-height:360px;
+    min-height:470px;
   }
 }
 
