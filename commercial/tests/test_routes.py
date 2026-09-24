@@ -1952,8 +1952,7 @@ def test_home_lab_mobile_home_declutter_pass2_contract() -> None:
     assert 'data-mobile-label="Locație"' in response.text
     assert 'data-mobile-label="Geometrie"' in response.text
     assert 'data-mobile-label="Anvelopă"' in response.text
-    home_visual = response.text.split('class="hln-house-visual hln-house-visual-home"', 1)[1].split('</div>', 1)[0]
-    assert "Instalații · încălzire" not in home_visual
+    assert 'class="hln-hotspot hln-hotspot-systems"' not in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
