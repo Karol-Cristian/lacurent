@@ -598,6 +598,8 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'document.body.classList.toggle("hln-technical-open", technical)' in js.text
     assert 'document.body.classList.remove("hln-technical-open")' in js.text
     assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text
+    assert '$("[data-hln-editor-open]").forEach' in js.text
+    assert '$("[data-hln-editor-open]").forEach' not in js.text
 
 
 def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
