@@ -4817,7 +4817,7 @@
     if (document.body.classList.contains("hln-technical-open")) syncPersistentStackHeight();
   });
 
-  $("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
+  root.querySelectorAll("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
     openEditor(button.dataset.hlnEditorOpen, {
       technical: button.hasAttribute("data-hln-technical-entry"),
     });
