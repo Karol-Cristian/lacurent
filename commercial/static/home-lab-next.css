@@ -558,9 +558,23 @@ svg{display:block}
   .hln-progress button{padding:4px}
   .hln-progress button b{display:none}
   .hln-progress button span{width:26px;height:26px}
-  .hln-topbar-meta{grid-column:1/-1;position:absolute;right:10px;top:64px;pointer-events:none}
+  .hln-topbar-meta{
+    grid-column:1/-1;
+    position:static;
+    justify-self:end;
+    min-width:0;
+    margin-top:-2px;
+    pointer-events:auto
+  }
   .hln-partner{display:none}
-  .hln-status{padding:5px 8px;background:rgba(240,238,232,.88);font-size:7px}
+  .hln-status{
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    padding:5px 8px;
+    background:rgba(240,238,232,.88);
+    font-size:7px
+  }
   .hln-screen{padding:28px 14px 18px}
   .hln-screen-heading{align-items:flex-start;margin-bottom:18px}
   .hln-screen-heading h1{font-size:29px}

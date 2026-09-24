@@ -348,6 +348,31 @@ try {
     }
   }
 
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await expectVisible("[data-home-lab-next]");
+  const mobileTopbarLayout = await page.evaluate(() => {
+    const status = document.querySelector("#hlnStatus");
+    const meta = status?.closest(".hln-topbar-meta");
+    const strip = document.querySelector(".hln-energy-strip");
+    if (!(status instanceof HTMLElement) || !(meta instanceof HTMLElement) || !(strip instanceof HTMLElement)) {
+      throw new Error("Mobile Home Lab status or energy strip is missing");
+    }
+    const statusBox = status.getBoundingClientRect();
+    const stripBox = strip.getBoundingClientRect();
+    return {
+      metaPosition: getComputedStyle(meta).position,
+      statusTop: statusBox.top,
+      statusBottom: statusBox.bottom,
+      stripTop: stripBox.top,
+      stripBottom: stripBox.bottom,
+    };
+  });
+  if (mobileTopbarLayout.metaPosition !== "static" ||
+      mobileTopbarLayout.statusBottom > mobileTopbarLayout.stripTop + 1) {
+    throw new Error("Mobile calculation status overlaps the energy strip: " + JSON.stringify(mobileTopbarLayout));
+  }
+
   if (pageErrors.length) {
     throw new Error("Browser page errors:\n" + pageErrors.join("\n"));
   }
