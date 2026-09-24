@@ -138,6 +138,37 @@ class OptimizationSelectionRequestV1(BaseModel):
     candidates: list[CandidateEvaluationV1] = Field(min_items=1, max_items=10000)
 
 
+class OptimizationSearchBoundsV1(BaseModel):
+    """Internal physical search bounds, not commercial increments."""
+
+    wall_added_r_m2k_w_max: float = Field(default=8.0, gt=0, le=15)
+    roof_added_r_m2k_w_max: float = Field(default=10.0, gt=0, le=20)
+    floor_added_r_m2k_w_max: float = Field(default=6.0, gt=0, le=15)
+    window_replacement_fraction_max: float = Field(default=1.0, gt=0, le=1)
+    window_target_u_w_m2k: float = Field(default=0.9, gt=0, le=6)
+    pv_added_kwp_max: float = Field(default=15.0, gt=0, le=100)
+    solar_thermal_added_m2_max: float = Field(default=8.0, gt=0, le=100)
+
+
+class OptimizationSearchRequestV1(BaseModel):
+    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    request: OptimizationRequestV1
+    bounds: OptimizationSearchBoundsV1 = Field(default_factory=OptimizationSearchBoundsV1)
+    max_evaluations: int = Field(default=36, ge=12, le=128)
+
+
+class OptimizationSearchResultV1(BaseModel):
+    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    selection: OptimizationSelectionV1
+    bounds: OptimizationSearchBoundsV1
+    evaluated_candidates: int
+    skipped_candidates: int
+    max_evaluations: int
+    pareto_candidate_ids: list[str] = Field(default_factory=list)
+    search_method: str
+    warnings: list[str] = Field(default_factory=list)
+
+
 def _stable_candidate_id(measures: ParametricMeasuresV1) -> str:
     raw = json.dumps(
         model_to_dict(measures),
@@ -419,9 +450,12 @@ def evaluate_parametric_candidate(
     baseline: BuildingInput,
     measures: ParametricMeasuresV1,
     catalog: dict[str, Any],
+    *,
+    baseline_result: Any | None = None,
+    baseline_cost: dict[str, Any] | None = None,
 ) -> CandidateEvaluationV1:
-    baseline_result = calculate(baseline, include_reference=False)
-    baseline_cost = estimate_energy_cost(baseline_result)
+    baseline_result = baseline_result or calculate(baseline, include_reference=False)
+    baseline_cost = baseline_cost or estimate_energy_cost(baseline_result)
     if not baseline_cost.get("complete"):
         raise ValueError(
             "Baseline annual bill is incomplete; optimization cannot compare economics safely."
@@ -665,4 +699,227 @@ def select_optimization_candidate(
         ),
         rationale=rationale,
         warnings=warnings,
+    )
+
+
+_SEARCH_DIMENSIONS = (
+    ("wall_added_r_m2k_w", "wall_added_r_m2k_w_max"),
+    ("roof_added_r_m2k_w", "roof_added_r_m2k_w_max"),
+    ("floor_added_r_m2k_w", "floor_added_r_m2k_w_max"),
+    ("window_replacement_fraction", "window_replacement_fraction_max"),
+    ("pv_added_kwp", "pv_added_kwp_max"),
+    ("solar_thermal_added_m2", "solar_thermal_added_m2_max"),
+)
+_HALTON_BASES = (2, 3, 5, 7, 11, 13)
+
+
+def _van_der_corput(index: int, base: int) -> float:
+    result = 0.0
+    denominator = 1.0
+    value = index
+    while value:
+        value, remainder = divmod(value, base)
+        denominator *= base
+        result += remainder / denominator
+    return result
+
+
+def _measures_from_normalized(
+    values: list[float],
+    bounds: OptimizationSearchBoundsV1,
+) -> ParametricMeasuresV1:
+    payload: dict[str, float] = {
+        "window_target_u_w_m2k": float(bounds.window_target_u_w_m2k),
+    }
+    for index, (measure_key, bound_key) in enumerate(_SEARCH_DIMENSIONS):
+        normalized = min(max(float(values[index]), 0.0), 1.0)
+        payload[measure_key] = normalized * float(getattr(bounds, bound_key))
+    return ParametricMeasuresV1(**payload)
+
+
+def _normalized_from_measures(
+    measures: ParametricMeasuresV1,
+    bounds: OptimizationSearchBoundsV1,
+) -> list[float]:
+    values = []
+    for measure_key, bound_key in _SEARCH_DIMENSIONS:
+        upper = float(getattr(bounds, bound_key))
+        values.append(
+            min(max(float(getattr(measures, measure_key)) / upper, 0.0), 1.0)
+        )
+    return values
+
+
+def _measure_signature(measures: ParametricMeasuresV1) -> tuple[float, ...]:
+    return tuple(
+        round(float(value), 6)
+        for value in (
+            measures.wall_added_r_m2k_w,
+            measures.roof_added_r_m2k_w,
+            measures.floor_added_r_m2k_w,
+            measures.window_replacement_fraction,
+            measures.window_target_u_w_m2k,
+            measures.pv_added_kwp,
+            measures.solar_thermal_added_m2,
+        )
+    )
+
+
+def _fallback_refinement_seed(
+    request: OptimizationRequestV1,
+    candidates: list[CandidateEvaluationV1],
+) -> CandidateEvaluationV1 | None:
+    if not candidates:
+        return None
+    if request.mode == OptimizationMode.annual_bill_target:
+        return min(candidates, key=lambda item: (item.annual_bill_lei, item.capex_lei))
+    if request.mode == OptimizationMode.max_payback_years:
+        positive = [
+            item for item in candidates
+            if item.capex_lei > 0 and item.annual_saving_lei > 0
+        ]
+        if positive:
+            return max(
+                positive,
+                key=lambda item: (
+                    item.annual_saving_lei / item.capex_lei,
+                    item.annual_saving_lei,
+                ),
+            )
+    return max(
+        candidates,
+        key=lambda item: (item.annual_saving_lei, -item.capex_lei),
+    )
+
+
+def run_parametric_optimization(
+    payload: OptimizationSearchRequestV1,
+    catalog: dict[str, Any],
+) -> OptimizationSearchResultV1:
+    """Deterministic bounded search in raw physical parameter space.
+
+    Search deliberately avoids commercial product increments. It combines
+    axis probes, a six-dimensional Halton exploration and local coordinate
+    refinement around the policy-selected solution. Commercial rounding is a
+    separate downstream operation.
+    """
+
+    request = payload.request
+    bounds = payload.bounds
+    max_evaluations = int(payload.max_evaluations)
+    baseline_result = calculate(request.baseline, include_reference=False)
+    baseline_cost = estimate_energy_cost(baseline_result)
+    if not baseline_cost.get("complete"):
+        raise ValueError(
+            "Baseline annual bill is incomplete; parametric optimization cannot run safely."
+        )
+
+    evaluated: list[CandidateEvaluationV1] = []
+    seen: set[tuple[float, ...]] = set()
+    skipped = 0
+
+    def evaluate_if_new(measures: ParametricMeasuresV1) -> bool:
+        nonlocal skipped
+        if len(evaluated) >= max_evaluations:
+            return False
+        signature = _measure_signature(measures)
+        if signature in seen:
+            skipped += 1
+            return False
+        seen.add(signature)
+
+        if request.mode == OptimizationMode.investment_budget:
+            capex, _, _ = parametric_capex(baseline_result, measures, catalog)
+            if capex > float(request.investment_budget_lei) + 1e-6:
+                skipped += 1
+                return False
+
+        try:
+            item = evaluate_parametric_candidate(
+                request.baseline,
+                measures,
+                catalog,
+                baseline_result=baseline_result,
+                baseline_cost=baseline_cost,
+            )
+        except ValueError:
+            skipped += 1
+            return False
+        evaluated.append(item)
+        return True
+
+    # Always include the unmodified house. It is the economically correct
+    # solution when a target is already met or every intervention destroys value.
+    evaluate_if_new(
+        ParametricMeasuresV1(
+            window_target_u_w_m2k=bounds.window_target_u_w_m2k,
+        )
+    )
+
+    # Axis probes ensure sparse solutions are not missed by the mixed sampler.
+    for dimension in range(len(_SEARCH_DIMENSIONS)):
+        for level in (0.5, 1.0):
+            if len(evaluated) >= max_evaluations:
+                break
+            vector = [0.0] * len(_SEARCH_DIMENSIONS)
+            vector[dimension] = level
+            evaluate_if_new(_measures_from_normalized(vector, bounds))
+
+    # Reserve about one quarter of the budget for local refinement.
+    refinement_reserve = max(6, min(12, max_evaluations // 4))
+    coarse_limit = max(1, max_evaluations - refinement_reserve)
+    halton_index = 1
+    halton_attempt_limit = max_evaluations * 6
+    attempts = 0
+    while len(evaluated) < coarse_limit and attempts < halton_attempt_limit:
+        vector = [
+            _van_der_corput(halton_index, base)
+            for base in _HALTON_BASES
+        ]
+        evaluate_if_new(_measures_from_normalized(vector, bounds))
+        halton_index += 1
+        attempts += 1
+
+    # Refine around the actual policy-selected candidate, not around a generic
+    # energy or ROI score. If the target is not yet feasible, use a mode-aware
+    # seed so the second stage still moves toward feasibility.
+    for step_fraction in (0.125, 0.0625):
+        if len(evaluated) >= max_evaluations:
+            break
+        current_selection = select_optimization_candidate(request, evaluated)
+        seed = current_selection.selected or _fallback_refinement_seed(
+            request,
+            evaluated,
+        )
+        if seed is None:
+            break
+        origin = _normalized_from_measures(seed.parameters, bounds)
+        for dimension in range(len(_SEARCH_DIMENSIONS)):
+            for direction in (-1.0, 1.0):
+                if len(evaluated) >= max_evaluations:
+                    break
+                vector = list(origin)
+                vector[dimension] = min(
+                    max(vector[dimension] + direction * step_fraction, 0.0),
+                    1.0,
+                )
+                evaluate_if_new(_measures_from_normalized(vector, bounds))
+
+    selection = select_optimization_candidate(request, evaluated)
+    frontier = pareto_frontier(evaluated)
+
+    return OptimizationSearchResultV1(
+        selection=selection,
+        bounds=bounds,
+        evaluated_candidates=len(evaluated),
+        skipped_candidates=skipped,
+        max_evaluations=max_evaluations,
+        pareto_candidate_ids=[item.candidate_id for item in frontier],
+        search_method="axis_halton_coordinate_refinement_v1",
+        warnings=[
+            "Search bounds are numerical safety bounds, not commercial package sizes.",
+            "The selected candidate is still a raw mathematical solution. It must be "
+            "commercially discretized and then recalculated before appearing as the "
+            "implementable recommendation in the final report.",
+        ],
     )

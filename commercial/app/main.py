@@ -22,8 +22,10 @@ from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .optimization import (
     OptimizationCandidateRequestV1,
+    OptimizationSearchRequestV1,
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
+    run_parametric_optimization,
     select_optimization_candidate,
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
@@ -1751,6 +1753,22 @@ async def optimization_select_api(
 ) -> JSONResponse:
     """Apply one economic policy to an already evaluated candidate set."""
     result = select_optimization_candidate(payload.request, payload.candidates)
+    return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/optimization/run")
+async def optimization_run_api(
+    payload: OptimizationSearchRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Run the bounded raw-parameter search for one economic intent."""
+    try:
+        result = run_parametric_optimization(
+            payload,
+            await _optimizer_cost_catalog(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return JSONResponse(model_to_dict(result))
 
 

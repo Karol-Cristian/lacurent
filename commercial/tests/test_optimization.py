@@ -13,10 +13,12 @@ from commercial.app.optimization import (
     CandidateEvaluationV1,
     OptimizationMode,
     OptimizationRequestV1,
+    OptimizationSearchRequestV1,
     ParametricMeasuresV1,
     apply_parametric_measures,
     evaluate_parametric_candidate,
     parametric_capex,
+    run_parametric_optimization,
     select_optimization_candidate,
 )
 
@@ -295,3 +297,46 @@ def test_optimization_select_api_applies_single_requested_policy() -> None:
     payload = response.json()
     assert payload["selected"]["candidate_id"] == "valuable"
     assert payload["feasible_count"] == 2
+
+
+
+def test_parametric_search_is_bounded_and_returns_policy_selection() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.investment_budget,
+        investment_budget_lei=20000,
+    )
+    result = run_parametric_optimization(
+        OptimizationSearchRequestV1(
+            request=request,
+            max_evaluations=12,
+        ),
+        _catalog(),
+    )
+
+    assert 1 <= result.evaluated_candidates <= 12
+    assert result.selection.selected is not None
+    assert result.selection.selected.capex_lei <= 20000 + 0.01
+    assert result.search_method == "axis_halton_coordinate_refinement_v1"
+    assert result.pareto_candidate_ids
+
+
+def test_parametric_search_api_returns_raw_solution_and_counts() -> None:
+    response = client.post(
+        "/api/optimization/run",
+        json={
+            "request": {
+                "baseline": model_to_dict(demo_building()),
+                "mode": "annual_bill_target",
+                "annual_bill_target_lei": 0,
+            },
+            "max_evaluations": 12,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert 1 <= payload["evaluated_candidates"] <= 12
+    assert payload["selection"]["candidate_count"] == payload["evaluated_candidates"]
+    assert payload["search_method"] == "axis_halton_coordinate_refinement_v1"
+    assert "commercially discretized" in " ".join(payload["warnings"])
