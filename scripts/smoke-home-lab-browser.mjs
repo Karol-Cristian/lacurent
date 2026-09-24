@@ -400,14 +400,18 @@ try {
   }
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
   try {
-    await page.waitForFunction(
-      () => {
+    {
+      const reportReady = await page.evaluate(() => {
         const report = document.querySelector('[data-hln-screen="report"]');
-        return report?.classList.contains("is-active") && getComputedStyle(report).display !== "none";
-      },
-      null,
-      {timeout:15000}
-    );
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
   } catch (error) {
     const reportState = await page.evaluate(() => {
       const active = document.querySelector('[data-hln-screen].is-active');
@@ -462,14 +466,18 @@ try {
   // here to re-enter Report after the Casa mea round-trip and validate the
   // persistent navigation contract independently of viewport/actionability.
   await page.locator("#hlnDockCta").click();
-  await page.waitForFunction(
-      () => {
+  {
+      const reportReady = await page.evaluate(() => {
         const report = document.querySelector('[data-hln-screen="report"]');
-        return report?.classList.contains("is-active") && getComputedStyle(report).display !== "none";
-      },
-      null,
-      {timeout:15000}
-    );
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
   // This control lives inside the report heading while the smoke has just
@@ -718,14 +726,18 @@ try {
     {timeout:30000}
   );
   await page.locator("#hlnDockCta").click();
-  await page.waitForFunction(
-      () => {
+  {
+      const reportReady = await page.evaluate(() => {
         const report = document.querySelector('[data-hln-screen="report"]');
-        return report?.classList.contains("is-active") && getComputedStyle(report).display !== "none";
-      },
-      null,
-      {timeout:15000}
-    );
+        if (!(report instanceof HTMLElement)) return false;
+        const box = report.getBoundingClientRect();
+        return report.classList.contains("is-active") &&
+          getComputedStyle(report).display !== "none" &&
+          getComputedStyle(report).visibility !== "hidden" &&
+          box.width > 0 && box.height > 0;
+      });
+      if (!reportReady) throw new Error("Report screen did not become rendered after navigation");
+    }
   const mobileReportNav = await page.evaluate(() => {
     const dock = document.querySelector(".hln-dock");
     const back = document.querySelector("#hlnDockBack");
