@@ -2055,3 +2055,178 @@ svg{display:block}
     box-shadow:0 7px 18px rgba(14,28,21,.18);
   }
 }
+
+
+/* Issue #359: keep Casa mea fully usable inside a short laptop viewport.
+   Deliberately desktop-only so tablet/mobile behavior remains unchanged. */
+@media (min-width:981px) and (max-height:820px){
+  .hln-page{
+    min-height:100vh;
+    padding:10px;
+  }
+  .hln-app{
+    min-height:calc(100vh - 20px);
+    padding-bottom:76px;
+    border-radius:22px;
+  }
+
+  .hln-topbar{
+    min-height:56px;
+    padding:8px 18px;
+    gap:18px;
+  }
+  .hln-brand-mark{width:34px;height:34px;border-radius:10px}
+  .hln-brand strong{font-size:13px}
+  .hln-brand small{margin-top:3px;font-size:8px}
+  .hln-progress{gap:6px}
+  .hln-progress>i{width:34px}
+  .hln-progress button{
+    min-height:32px;
+    gap:6px;
+    padding:4px 6px;
+  }
+  .hln-progress button span{width:24px;height:24px;font-size:7px}
+  .hln-progress button b{font-size:9px}
+
+  .hln-persistent-stack{top:56px}
+  .hln-energy-strip{
+    gap:12px;
+    padding:0 18px;
+  }
+  .hln-energy-prices>summary,
+  .hln-energy-sen{
+    min-height:34px;
+    font-size:10px;
+  }
+  .hln-energy-preview{gap:4px 12px}
+  .hln-energy-preview small,
+  .hln-energy-reference{font-size:8px}
+  .hln-energy-sen small{font-size:8px}
+
+  .hln-live-summary{
+    min-height:56px;
+    gap:10px;
+    padding:5px 18px 6px;
+  }
+  .hln-live-metrics{gap:7px}
+  .hln-live-metrics article{
+    min-height:44px;
+    grid-template-columns:30px minmax(0,1fr);
+    gap:7px;
+    padding:5px 9px;
+    border-radius:11px;
+  }
+  .hln-live-class-card{
+    grid-template-columns:24px minmax(0,1fr)!important;
+    padding-right:18px!important;
+  }
+  .hln-energy-label-arrow{width:20px;height:28px}
+  .hln-live-icon{width:28px;height:28px;border-radius:8px}
+  .hln-live-icon svg{width:15px;height:15px}
+  .hln-live-metrics small{font-size:7px}
+  .hln-live-metrics strong{font-size:14px}
+  .hln-live-value em{font-size:7px}
+  .hln-live-calc-status{
+    min-width:150px;
+    gap:2px;
+  }
+  .hln-live-calc-status>small{font-size:7px}
+  .hln-live-calc-status .hln-status{
+    max-width:220px;
+    padding:5px 8px;
+    font-size:8px;
+  }
+
+  .hln-screen[data-hln-screen="home"]{
+    padding:12px 24px 10px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-screen-heading{
+    align-items:center;
+    gap:18px;
+    margin-bottom:10px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-screen-heading h1{
+    margin:4px 0 5px;
+    font-size:29px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-screen-heading p{
+    max-width:760px;
+    font-size:11px;
+    line-height:1.35;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-confidence{
+    min-width:112px;
+    padding:8px 10px;
+    border-radius:12px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-confidence strong{font-size:18px}
+  .hln-screen[data-hln-screen="home"] .hln-confidence span{font-size:7px}
+
+  .hln-screen[data-hln-screen="home"] .hln-home-layout{
+    gap:14px;
+    align-items:stretch;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-house-board{
+    min-height:338px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-board-label{
+    padding:10px 14px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-house-visual{
+    min-height:252px;
+    padding:14px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-board-foot{
+    padding:8px 12px;
+    font-size:8px;
+  }
+
+  .hln-screen[data-hln-screen="home"] .hln-config-sheet-head{
+    min-height:46px;
+    padding:8px 12px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-config-sheet-head small{font-size:8px}
+  .hln-screen[data-hln-screen="home"] .hln-technical-open{
+    min-height:30px;
+    padding:5px 8px;
+    font-size:8px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-config-row{
+    grid-template-columns:36px minmax(0,1fr) 18px;
+    gap:9px;
+    min-height:58px;
+    padding:6px 12px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-row-icon{
+    width:34px;
+    height:34px;
+    border-radius:10px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-row-icon svg,
+  .hln-screen[data-hln-screen="home"] .hln-config-row>.hln-row-arrow{
+    width:16px;
+    height:16px;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-row-copy small{font-size:7px}
+  .hln-screen[data-hln-screen="home"] .hln-row-copy strong{
+    font-size:12px;
+    line-height:1.18;
+  }
+  .hln-screen[data-hln-screen="home"] .hln-row-copy em{font-size:8px}
+
+  .hln-dock{
+    left:14px;
+    right:14px;
+    bottom:8px;
+    min-height:64px;
+    padding:7px 9px;
+    border-radius:16px;
+  }
+  .hln-dock:not(.has-comparison) .hln-dock-cta{
+    width:min(300px,100%);
+  }
+  .hln-dock-cta{
+    min-height:44px;
+    padding:8px 13px;
+  }
+}
