@@ -1707,10 +1707,10 @@ svg{display:block}
   z-index:95;
 }
 .hln-technical-open .hln-editor.is-technical-mode{
-  padding-top:96px;
+  padding-top:var(--hln-persistent-stack-height,104px);
 }
 .hln-technical-open .hln-editor.is-technical-mode .hln-editor-card{
-  height:calc(100dvh - 96px);
+  height:calc(100dvh - var(--hln-persistent-stack-height,104px));
 }
 .hln-technical-open .hln-energy-prices[open] .hln-energy-details{
   display:none;
@@ -1752,10 +1752,4 @@ svg{display:block}
     font-size:7px;
   }
   .hln-technical-open .hln-persistent-stack{top:0}
-  .hln-technical-open .hln-editor.is-technical-mode{
-    padding-top:116px;
-  }
-  .hln-technical-open .hln-editor.is-technical-mode .hln-editor-card{
-    height:calc(100dvh - 116px);
-  }
 }
