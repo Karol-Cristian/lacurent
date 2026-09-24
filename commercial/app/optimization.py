@@ -91,6 +91,12 @@ class CostLineV1(BaseModel):
     confidence: str | None = None
     catalog_unit: str | None = None
     note: str | None = None
+    product_id: str | None = None
+    sku: str | None = None
+    quantity: float | None = None
+    quantity_unit: str | None = None
+    material_subtotal_lei: float | None = None
+    nonmaterial_subtotal_lei: float | None = None
 
 
 class CandidateEvaluationV1(BaseModel):
@@ -116,6 +122,8 @@ class CandidateEvaluationV1(BaseModel):
         "raw_only",
         "pending_product_catalog",
         "ready_for_discretization",
+        "partially_discretized",
+        "commercialized",
     ] = "pending_product_catalog"
     assumptions: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
@@ -166,6 +174,7 @@ class OptimizationSearchResultV1(BaseModel):
     skipped_candidates: int
     max_evaluations: int
     pareto_candidate_ids: list[str] = Field(default_factory=list)
+    candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
     search_method: str
     warnings: list[str] = Field(default_factory=list)
 
@@ -862,12 +871,6 @@ def run_parametric_optimization(
             return False
         seen.add(signature)
 
-        if request.mode == OptimizationMode.investment_budget:
-            capex, _, _ = parametric_capex(baseline_result, measures, catalog)
-            if capex > float(request.investment_budget_lei) + 1e-6:
-                skipped += 1
-                return False
-
         try:
             item = evaluate_parametric_candidate(
                 request.baseline,
@@ -949,6 +952,7 @@ def run_parametric_optimization(
         skipped_candidates=skipped,
         max_evaluations=max_evaluations,
         pareto_candidate_ids=[item.candidate_id for item in frontier],
+        candidates=evaluated,
         search_method="axis_halton_coordinate_refinement_v1",
         warnings=[
             "Search bounds are numerical safety bounds, not commercial package sizes.",

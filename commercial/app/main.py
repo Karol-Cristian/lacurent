@@ -28,6 +28,12 @@ from .optimization import (
     run_parametric_optimization,
     select_optimization_candidate,
 )
+from .commercialization import (
+    WallCommercializationRequestV1,
+    WallProductBackedOptimizationRequestV1,
+    commercialize_wall_candidate,
+    run_wall_product_backed_optimization,
+)
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .cost_curves import (
@@ -1761,6 +1767,36 @@ async def wall_optimizer_discretization_api(
             target_added_r_m2k_w=payload.target_added_r_m2k_w,
             affected_area_m2=payload.affected_area_m2,
             products=payload.products,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/optimization/commercialize/wall")
+async def wall_commercialization_api(
+    payload: WallCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    try:
+        result = commercialize_wall_candidate(
+            payload,
+            await _optimizer_cost_catalog(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/optimization/run/wall-products")
+async def wall_product_backed_optimization_api(
+    payload: WallProductBackedOptimizationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    try:
+        result = run_wall_product_backed_optimization(
+            payload,
+            await _optimizer_cost_catalog(request),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
