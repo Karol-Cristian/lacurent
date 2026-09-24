@@ -197,7 +197,17 @@ try {
   const pvBadgeText = await pvBadge.innerText();
   if (!/PV/i.test(pvBadgeText)) throw new Error("PV equipment badge is missing its visible label");
   await pvBadge.evaluate(button => button.click());
-  await expectVisible("#hlnQuickEditOverlay");
+  try {
+    await expectVisible("#hlnQuickEditOverlay");
+  } catch (error) {
+    throw new Error(
+      "PV badge click did not open quick edit. pageErrors=" +
+      JSON.stringify(pageErrors) +
+      " consoleErrors=" +
+      JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
   const quickEditTarget = await page.locator("#hlnQuickEditOverlay").getAttribute("data-hln-quick-edit-target");
   if (quickEditTarget !== "home") throw new Error("3D PV click did not open Casa mea quick edit");
   const quickEditTitle = await page.locator("#hlnQuickEditTitle").innerText();
