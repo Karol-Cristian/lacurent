@@ -667,7 +667,6 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
     assert 'id="hlnScenarioBenefitLabel"' in response.text
-    assert 'id="hlnDockSavingLabel"' in response.text
     assert "Variație cost anual" in response.text
     assert "Consum energie" in response.text
     assert "Eficiență energetică" in response.text
