@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from commercial.app.engine import demo_building
-from commercial.app.main import app, form_values_from_building
+from commercial.app.main import app, default_form_values
 
 
 client = TestClient(app)
 
 
 def _form_payload() -> dict[str, str]:
-    values = form_values_from_building(demo_building())
+    values = default_form_values()
     payload: dict[str, str] = {}
     for key, value in values.items():
         if value is None:
