@@ -2784,6 +2784,11 @@ class HomeLabHouse3D {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    // Hidden screens initialize at near-zero dimensions. When a step becomes
+    // visible, ResizeObserver must re-project its semantic controls immediately
+    // instead of waiting for the render loop / IntersectionObserver.
+    this.updateHotspotPositions();
+    this.updateEquipmentBadges();
   }
 
   animate() {
