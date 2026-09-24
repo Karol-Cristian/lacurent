@@ -1,0 +1,245 @@
+from __future__ import annotations
+
+import math
+
+import pytest
+from pydantic import ValidationError
+
+from commercial.app.engine import calculate, demo_building
+from commercial.app.models import model_to_dict
+from commercial.app.optimization import (
+    CandidateEvaluationV1,
+    OptimizationMode,
+    OptimizationRequestV1,
+    ParametricMeasuresV1,
+    apply_parametric_measures,
+    evaluate_parametric_candidate,
+    parametric_capex,
+    select_optimization_candidate,
+)
+
+
+def _catalog() -> dict:
+    return {
+        "source": "test",
+        "catalog_version": "test-v1",
+        "costs": {
+            "wall": {"cost_lei": 16, "unit": "lei_per_m2_per_cm"},
+            "roof": {"cost_lei": 8, "unit": "lei_per_m2_per_cm"},
+            "floor": {"cost_lei": 11, "unit": "lei_per_m2_per_cm"},
+            "windows": {"cost_lei": 1000, "unit": "lei_per_m2"},
+            "pv": {"cost_lei": 4000, "unit": "lei_per_kwp"},
+            "solar_thermal": {"cost_lei": 2650, "unit": "lei_per_m2"},
+        },
+    }
+
+
+def _synthetic(
+    candidate_id: str,
+    *,
+    capex: float,
+    bill: float,
+    saving: float,
+    payback: float | None,
+) -> CandidateEvaluationV1:
+    baseline = demo_building()
+    return CandidateEvaluationV1(
+        candidate_id=candidate_id,
+        parameters=ParametricMeasuresV1(),
+        capex_lei=capex,
+        baseline_annual_bill_lei=bill + saving,
+        annual_bill_lei=bill,
+        annual_saving_lei=saving,
+        payback_years=payback,
+        roi_percent_per_year=(100 * saving / capex if capex else None),
+        final_energy_kwh=10000,
+        primary_specific_kwh_m2=100,
+        co2_total_kg=1000,
+        co2_specific_kg_m2=5,
+        energy_class="B",
+        resulting_configuration=baseline,
+    )
+
+
+def test_optimization_request_accepts_only_one_user_constraint() -> None:
+    baseline = demo_building()
+
+    request = OptimizationRequestV1(
+        baseline=baseline,
+        mode=OptimizationMode.investment_budget,
+        investment_budget_lei=25000,
+    )
+    assert request.investment_budget_lei == 25000
+
+    with pytest.raises(ValidationError):
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.investment_budget,
+            investment_budget_lei=25000,
+            max_payback_years=7,
+        )
+
+    with pytest.raises(ValidationError):
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.annual_bill_target,
+        )
+
+    auto = OptimizationRequestV1(
+        baseline=baseline,
+        mode=OptimizationMode.auto_economic,
+    )
+    assert auto.investment_budget_lei is None
+
+    with pytest.raises(ValidationError):
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.auto_economic,
+            annual_bill_target_lei=4000,
+        )
+
+
+def test_added_wall_r_is_applied_directly_to_whole_wall_u() -> None:
+    baseline = demo_building()
+    measures = ParametricMeasuresV1(wall_added_r_m2k_w=2.5)
+
+    candidate, warnings = apply_parametric_measures(baseline, measures)
+    original_wall = next(
+        item for item in baseline.envelope if item.type.value == "exterior_wall"
+    )
+    new_wall = next(
+        item for item in candidate.envelope if item.type.value == "exterior_wall"
+    )
+
+    expected_u = 1.0 / (1.0 / original_wall.u_value_w_m2k + 2.5)
+    assert new_wall.u_value_w_m2k == pytest.approx(expected_u)
+    assert model_to_dict(baseline) != model_to_dict(candidate)
+    assert warnings == []
+
+
+def test_wall_capex_is_continuous_in_added_r_not_commercial_steps() -> None:
+    baseline = demo_building()
+    result = calculate(baseline, include_reference=False)
+    measures = ParametricMeasuresV1(wall_added_r_m2k_w=2.375)
+
+    capex, lines, warnings = parametric_capex(result, measures, _catalog())
+
+    # Wall normalization lambda is 0.040 W/mK in methodology.json.
+    expected_cm = 2.375 * 0.040 * 100
+    expected = result.envelope_geometry.net_wall_area_m2 * expected_cm * 16
+    assert capex == pytest.approx(expected, abs=0.01)
+    assert lines[0].parameter_unit == "m2K/W_added"
+    assert lines[0].parameter_value == pytest.approx(2.375)
+    assert any("product discretization" in item for item in warnings)
+
+
+def test_partial_window_replacement_uses_area_weighted_effective_u() -> None:
+    baseline = demo_building()
+    measures = ParametricMeasuresV1(
+        window_replacement_fraction=0.5,
+        window_target_u_w_m2k=0.9,
+    )
+
+    candidate, warnings = apply_parametric_measures(baseline, measures)
+    original = next(item for item in baseline.envelope if item.type.value == "window")
+    changed = next(item for item in candidate.envelope if item.type.value == "window")
+
+    assert changed.u_value_w_m2k == pytest.approx(
+        0.5 * original.u_value_w_m2k + 0.5 * 0.9
+    )
+    assert any("solar transmittance" in item for item in warnings)
+
+
+def test_candidate_evaluation_recalculates_complete_house() -> None:
+    baseline = demo_building()
+    candidate = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(
+            wall_added_r_m2k_w=1.8,
+            pv_added_kwp=1.7,
+        ),
+        _catalog(),
+    )
+
+    assert candidate.capex_lei > 0
+    assert candidate.annual_bill_lei >= 0
+    assert candidate.final_energy_kwh >= 0
+    assert candidate.cost_catalog_version == "test-v1"
+    assert candidate.commercialization_status == "pending_product_catalog"
+    assert candidate.resulting_configuration is not None
+    assert candidate.resulting_configuration.renewables.pv.enabled
+    assert candidate.resulting_configuration.renewables.pv.installed_power_kwp == pytest.approx(1.7)
+
+
+def test_budget_mode_maximizes_saving_without_forcing_full_budget_spend() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.investment_budget,
+        investment_budget_lei=10000,
+    )
+    candidates = [
+        _synthetic("A", capex=5000, bill=7000, saving=3000, payback=1.67),
+        _synthetic("B", capex=9000, bill=6500, saving=3500, payback=2.57),
+        _synthetic("C", capex=12000, bill=5000, saving=5000, payback=2.4),
+    ]
+
+    result = select_optimization_candidate(request, candidates)
+
+    assert result.selected is not None
+    assert result.selected.candidate_id == "B"
+    assert result.feasible_count == 2
+
+
+def test_bill_target_mode_minimizes_investment() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.annual_bill_target,
+        annual_bill_target_lei=5000,
+    )
+    candidates = [
+        _synthetic("A", capex=16000, bill=4900, saving=5100, payback=3.14),
+        _synthetic("B", capex=13000, bill=5000, saving=5000, payback=2.6),
+        _synthetic("C", capex=9000, bill=5700, saving=4300, payback=2.09),
+    ]
+
+    result = select_optimization_candidate(request, candidates)
+
+    assert result.selected is not None
+    assert result.selected.candidate_id == "B"
+
+
+def test_payback_mode_does_not_minimize_payback_itself() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.max_payback_years,
+        max_payback_years=5,
+    )
+    candidates = [
+        _synthetic("tiny", capex=1000, bill=9000, saving=1000, payback=1),
+        _synthetic("large", capex=9000, bill=2000, saving=8000, payback=1.125),
+        _synthetic("slow", capex=30000, bill=1000, saving=9000, payback=6),
+    ]
+
+    result = select_optimization_candidate(request, candidates)
+
+    assert result.selected is not None
+    assert result.selected.candidate_id == "large"
+
+
+def test_auto_mode_is_explicit_multi_horizon_not_shortest_payback() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    candidates = [
+        _synthetic("tiny", capex=1000, bill=9000, saving=1000, payback=1),
+        _synthetic("balanced", capex=9000, bill=2000, saving=8000, payback=1.125),
+        _synthetic("overbuilt", capex=60000, bill=1000, saving=9000, payback=6.67),
+    ]
+
+    result = select_optimization_candidate(request, candidates)
+
+    assert result.selected is not None
+    assert result.selected.candidate_id == "balanced"
+    assert result.auto_horizons_years == [5, 10, 15, 20, 25]
+    assert "does not assume one hidden payback horizon" in result.rationale
