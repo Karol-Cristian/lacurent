@@ -61,6 +61,7 @@ const EQUIPMENT_LABELS = {
   solarThermal: "Solar termic",
   heatPump: "Pompă de căldură",
   ac: "Aer condiționat",
+  solidHeat: "Încălzire",
 };
 
 const PARTS = {
@@ -83,7 +84,7 @@ const DEFAULT_FINAL_HOUSE_CONFIG = {
     },
     windows: {
       label: "Ferestre",
-      anchor: [0.21, 0.43, 0.505],
+      anchor: [0.43, 0.44, 0.14],
       hitbox: { position: [0.00, 0.42, 0.50], size: [0.72, 0.34, 0.11] },
       camera: { position: [0.66, 0.55, 1.18], target: [0.00, 0.42, 0.28] },
     },
@@ -175,7 +176,7 @@ class HomeLabHouse3D {
         <span>Pregătim modelul casei…</span>
       </div>
       <div class="hln-3d-toolbar" aria-label="Control model 3D">
-        <button type="button" data-hln-3d-reset aria-label="Resetează vederea">Reset</button>
+        <button type="button" class="hln-3d-reset-control" data-hln-3d-reset aria-label="Resetează vederea"><span class="hln-3d-reset-icon" aria-hidden="true">↺</span><span class="hln-3d-reset-label">Reset</span></button>
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
       <div class="hln-3d-hint">trage pentru rotire</div>
@@ -1759,6 +1760,7 @@ class HomeLabHouse3D {
 
   equipmentRoot(key) {
     if (key === "ac") return this.equipmentLayers.get("ac") || null;
+    if (key === "solidHeat") return this.equipmentLayers.get("chimneySmoke") || null;
     return this.experimentLayers.get(key) || null;
   }
 
@@ -1790,12 +1792,19 @@ class HomeLabHouse3D {
       const value = Number(state.solarThermalArea || 0);
       return value > 0 ? `Solar termic · ${value.toLocaleString("ro-RO", {maximumFractionDigits:1})} m²` : "Solar termic";
     }
+    if (key === "solidHeat") {
+      return {
+        wood_stove:"Sobă / șemineu",
+        wood_boiler:"Centrală pe lemn",
+        pellet_boiler:"Centrală pe peleți",
+      }[state.heating] || "Încălzire";
+    }
     return EQUIPMENT_LABELS[key] || key;
   }
 
   updateAddRail(detail = this.visualState || {}) {
     this.addRail = this.addRail || this.mount.querySelector("[data-hln-3d-add-rail]");
-    if (!this.addRail || this.mode !== "home" || this.authorMode) return;
+    if (!this.addRail || !["home", "site"].includes(this.mode) || this.authorMode) return;
 
     const pvButton = this.addRail.querySelector('[data-hln-add-equipment="pv"]');
     const solarButton = this.addRail.querySelector('[data-hln-add-equipment="solarThermal"]');
@@ -1809,7 +1818,7 @@ class HomeLabHouse3D {
     this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
     if (!this.hotspotRoot) return;
 
-    ["pv", "solarThermal", "heatPump", "ac"].forEach((key) => {
+    ["pv", "solarThermal", "heatPump", "ac", "solidHeat"].forEach((key) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "hln-3d-equipment-badge";
@@ -1840,6 +1849,13 @@ class HomeLabHouse3D {
     this.camera.getWorldDirection(cameraDirection);
 
     this.equipmentBadges.forEach((button, key) => {
+      const state = this.visualState || {};
+      const solidHeatRelevant = ["wood_stove", "wood_boiler", "pellet_boiler"].includes(state.heating);
+      if (key === "solidHeat" && !solidHeatRelevant) {
+        button.hidden = true;
+        return;
+      }
+
       const root = this.equipmentRoot(key);
       if (!root?.visible) {
         button.hidden = true;
@@ -1867,7 +1883,10 @@ class HomeLabHouse3D {
 
       button.hidden = !visible;
       if (!visible) return;
-      button.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -118%)`;
+      const safeX = this.isMobile ? clamp(x, 56, width - 56) : x;
+      const roofLift = this.isMobile && (key === "pv" || key === "solarThermal") ? 24 : 0;
+      const safeY = this.isMobile ? clamp(y - roofLift, 42, height - 86) : y;
+      button.style.transform = `translate3d(${safeX}px, ${safeY}px, 0) translate(-50%, -118%)`;
       const label = button.querySelector("[data-hln-equipment-label]");
       if (label) label.textContent = this.equipmentBadgeText(key);
     });
@@ -1875,7 +1894,7 @@ class HomeLabHouse3D {
 
   createSemanticHotspots() {
     if (HOUSE_VARIANT !== "final") return;
-    if (!this.authorMode && this.mode !== "home") return;
+    if (!this.authorMode && !["home", "site"].includes(this.mode)) return;
 
     this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
     if (!this.hotspotRoot) return;
@@ -1886,7 +1905,9 @@ class HomeLabHouse3D {
 
     const visibleParts = this.authorMode
       ? new Set(Object.keys(this.semanticConfig.parts || {}))
-      : new Set(["windows"]);
+      : this.mode === "site"
+        ? new Set(["wall", "roof", "windows"])
+        : new Set(["windows"]);
 
     Object.entries(this.semanticConfig.parts || {}).forEach(([part, config]) => {
       if (!visibleParts.has(part)) return;
@@ -1937,6 +1958,7 @@ class HomeLabHouse3D {
         });
       } else {
         button.classList.add("is-gameified");
+        if (part === "windows") button.classList.add("is-discoverable");
         button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -1999,7 +2021,9 @@ class HomeLabHouse3D {
 
       button.hidden = !visible;
       if (!visible) return;
-      button.style.transform = `translate3d(${x - 22}px, ${y - 22}px, 0)`;
+      const safeX = this.isMobile ? clamp(x, 36, width - 36) : x;
+      const safeY = this.isMobile && this.mode === "site" ? clamp(y, 62, height - 92) : y;
+      button.style.transform = `translate3d(${safeX - 22}px, ${safeY - 22}px, 0)`;
     });
   }
 
