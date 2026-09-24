@@ -401,9 +401,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next26" in response.text
-    assert "/static/home-lab-next.js?v=next49" in response.text
-    assert "/static/home-lab-3d.css?v=3d28" in response.text
+    assert "/static/home-lab-next.css?v=next27" in response.text
+    assert "/static/home-lab-next.js?v=next50" in response.text
+    assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
 
@@ -416,7 +416,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
     assert "Referință" in response.text
     assert 'class="hln-price-status' in response.text
-    assert "/static/home-lab-3d.js?v=3d48" in response.text
+    assert "/static/home-lab-3d.js?v=3d49" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -1650,8 +1650,8 @@ def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit()
     assert 'select.dispatchEvent(new Event("change", {bubbles:true}))' in source
     assert "focusOrientation(" not in source
     assert 'this.setCompassOrientation(detail.orientation)' in source
-    assert 'detail.focus === "pv" || detail.focus === "solarThermal"' in source
-    assert 'this.focusPart("roof", false)' in source
+    assert 'detail.focus === "pv" || detail.focus === "solarThermal"' not in source
+    assert 'this.controls.enableZoom = false' in source
     assert "this.rebuildRenovationLayer(part)" not in source
 
 
@@ -1677,6 +1677,44 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
     assert css3d.status_code == 200
     assert ".hln-3d-equipment-badge" in css3d.text
     assert ".hln-3d-equipment-dot" in css3d.text
+
+
+
+def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'data-hln-technical-open' in response.text
+    assert 'data-hln-technical-nav' in response.text
+    assert 'data-hln-technical-section="systems"' in response.text
+    assert 'data-hln-technical-entry' in response.text
+    assert 'hln-hotspot-renewables' not in response.text
+    assert 'data-hln-editor="renewables"' in response.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert 'editor.dataset.hlnEditorMode = technical ? "technical" : "context"' in js.text
+    assert 'editor.dataset.hlnEditorMode !== "technical"' in js.text
+    assert 'setEditorSection(button.dataset.hlnTechnicalSection)' in js.text
+
+    js3d = client.get("/static/home-lab-3d.js")
+    assert js3d.status_code == 200
+    assert "this.controls.enableZoom = false" in js3d.text
+    assert 'new Set(["windows"])' in js3d.text
+    assert 'button.classList.add("is-gameified")' in js3d.text
+    assert 'data-hln-3d-add-rail' in js3d.text
+    assert 'pvButton.hidden = Boolean(detail.pvEnabled)' in js3d.text
+    assert 'solarButton.hidden = Boolean(detail.solarThermalEnabled)' in js3d.text
+    assert 'Math.ceil(Number(detail.pvKwp || 0) / 2.5)' in js3d.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-editor.is-technical-mode" in css.text
+    assert ".hln-editor textarea{font-size:16px}" in css.text
+
+    css3d = client.get("/static/home-lab-3d.css")
+    assert css3d.status_code == 200
+    assert ".hln-3d-hotspot.is-gameified" in css3d.text
+    assert ".hln-3d-add-rail" in css3d.text
 
 
 def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> None:

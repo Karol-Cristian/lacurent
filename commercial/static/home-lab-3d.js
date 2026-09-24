@@ -159,6 +159,7 @@ class HomeLabHouse3D {
     this.selectionProofLayers = new Map();
     this.visualState = null;
     this.lastVisualOrientation = null;
+    this.addRail = null;
   }
 
   async init() {
@@ -177,7 +178,11 @@ class HomeLabHouse3D {
         <button type="button" data-hln-3d-reset aria-label="Resetează vederea">Reset</button>
         <button type="button" data-hln-3d-explode aria-label="Arată stratul tehnic">Straturi</button>
       </div>
-      <div class="hln-3d-hint">trage pentru rotire · pinch / scroll pentru zoom</div>
+      <div class="hln-3d-hint">trage pentru rotire</div>
+      <div class="hln-3d-add-rail" data-hln-3d-add-rail hidden aria-label="Adaugă regenerabile">
+        <button type="button" data-hln-add-equipment="pv">+ PV</button>
+        <button type="button" data-hln-add-equipment="solarThermal">+ Solar</button>
+      </div>
       <div class="hln-3d-compass" data-hln-3d-compass role="button" tabindex="${this.mode === "home" ? "0" : "-1"}" aria-label="Orientarea energetică a casei">
         <b>N</b><span>E</span><i>S</i><em>V</em>
         <span class="hln-3d-compass-arrow" data-hln-3d-compass-arrow aria-hidden="true"></span>
@@ -217,6 +222,7 @@ class HomeLabHouse3D {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.065;
     this.controls.enablePan = false;
+    this.controls.enableZoom = false;
     this.controls.minDistance = 6;
     this.controls.maxDistance = 18;
     this.controls.minPolarAngle = Math.PI * 0.16;
@@ -1600,6 +1606,8 @@ class HomeLabHouse3D {
       solarThermal.scale.setScalar(thermalScale);
     }
 
+    this.updateAddRail(detail);
+
     const selectedMeasures = new Set(Array.isArray(detail.measures) ? detail.measures : []);
     ["wall", "roof", "floor", "windows"].forEach((part) => {
       const layer = this.selectionProofLayers.get(part);
@@ -1679,16 +1687,10 @@ class HomeLabHouse3D {
       this.setCompassOrientation(detail.orientation);
     }
 
-    if (detail.focus === "cooling" && detail.cooling === "split") {
-      this.focusEquipment("ac");
-    } else if (
-      (detail.focus === "heating" && detail.heating === "heat_pump") ||
-      (detail.focus === "cooling" && detail.cooling === "heat_pump")
-    ) {
-      this.focusEquipment("heatPump");
-    } else if (detail.focus === "pv" || detail.focus === "solarThermal") {
-      this.focusPart("roof", false);
-    } else if (detail.focus === "home") {
+    // State changes must not permanently reframe the house. Existing equipment
+    // remains clickable for an explicit focus, but adding/changing it keeps the
+    // current camera composition stable.
+    if (detail.focus === "home") {
       this.resetCamera();
     }
   }
@@ -1791,6 +1793,17 @@ class HomeLabHouse3D {
     return EQUIPMENT_LABELS[key] || key;
   }
 
+  updateAddRail(detail = this.visualState || {}) {
+    this.addRail = this.addRail || this.mount.querySelector("[data-hln-3d-add-rail]");
+    if (!this.addRail || this.mode !== "home" || this.authorMode) return;
+
+    const pvButton = this.addRail.querySelector('[data-hln-add-equipment="pv"]');
+    const solarButton = this.addRail.querySelector('[data-hln-add-equipment="solarThermal"]');
+    if (pvButton) pvButton.hidden = Boolean(detail.pvEnabled);
+    if (solarButton) solarButton.hidden = Boolean(detail.solarThermalEnabled);
+    this.addRail.hidden = Boolean(pvButton?.hidden && solarButton?.hidden);
+  }
+
   createEquipmentBadges() {
     if (HOUSE_VARIANT !== "final" || this.authorMode) return;
     this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
@@ -1861,7 +1874,8 @@ class HomeLabHouse3D {
   }
 
   createSemanticHotspots() {
-    if (HOUSE_VARIANT !== "final" || !this.authorMode) return;
+    if (HOUSE_VARIANT !== "final") return;
+    if (!this.authorMode && this.mode !== "home") return;
 
     this.hotspotRoot = this.mount.querySelector("[data-hln-3d-hotspots]");
     if (!this.hotspotRoot) return;
@@ -1870,10 +1884,12 @@ class HomeLabHouse3D {
     this.hotspotAnchors.clear();
     this.hotspotElements.clear();
 
-    const normalParts = new Set(["wall", "windows", "roof"]);
+    const visibleParts = this.authorMode
+      ? new Set(Object.keys(this.semanticConfig.parts || {}))
+      : new Set(["windows"]);
 
     Object.entries(this.semanticConfig.parts || {}).forEach(([part, config]) => {
-      if (!this.authorMode && !normalParts.has(part)) return;
+      if (!visibleParts.has(part)) return;
 
       const button = document.createElement("button");
       button.type = "button";
@@ -1920,7 +1936,9 @@ class HomeLabHouse3D {
           this.renderAuthorPanel();
         });
       } else {
+        button.classList.add("is-gameified");
         button.addEventListener("click", (event) => {
+          event.preventDefault();
           event.stopPropagation();
           this.selectPart(part, true);
         });
@@ -2517,6 +2535,14 @@ class HomeLabHouse3D {
 
   bindEvents() {
     const canvas = this.renderer.domElement;
+
+    this.mount.querySelectorAll("[data-hln-add-equipment]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.dispatchEquipmentSelection(button.dataset.hlnAddEquipment);
+      });
+    });
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.mount);

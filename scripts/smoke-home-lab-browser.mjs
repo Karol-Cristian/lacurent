@@ -197,7 +197,17 @@ try {
   const pvBadgeText = await pvBadge.innerText();
   if (!/PV/i.test(pvBadgeText)) throw new Error("PV equipment badge is missing its visible label");
   await pvBadge.evaluate(button => button.click());
-  await expectVisible("#hlnQuickEditOverlay");
+  try {
+    await expectVisible("#hlnQuickEditOverlay");
+  } catch (error) {
+    throw new Error(
+      "PV badge click did not open quick edit. pageErrors=" +
+      JSON.stringify(pageErrors) +
+      " consoleErrors=" +
+      JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
   const quickEditTarget = await page.locator("#hlnQuickEditOverlay").getAttribute("data-hln-quick-edit-target");
   if (quickEditTarget !== "home") throw new Error("3D PV click did not open Casa mea quick edit");
   const quickEditTitle = await page.locator("#hlnQuickEditTitle").innerText();
@@ -243,7 +253,28 @@ try {
   }
 
   await page.locator('.hln-config-row[data-hln-editor-open="house"]').click();
-  await expectVisible('[data-hln-editor="house"]');
+  try {
+    await expectVisible('[data-hln-editor="house"]');
+  } catch (error) {
+    const editorState = await page.evaluate(() => {
+      const editor = document.querySelector("#hlnEditor");
+      return {
+        editorHidden: editor?.hidden,
+        editorMode: editor?.dataset?.hlnEditorMode || null,
+        editorClass: editor?.className || null,
+        visibleSections: [...document.querySelectorAll("[data-hln-editor]")].map(node => ({
+          name: node.dataset.hlnEditor,
+          hidden: node.hidden,
+        })),
+      };
+    });
+    throw new Error(
+      "Technical house editor did not open. state=" + JSON.stringify(editorState) +
+      " pageErrors=" + JSON.stringify(pageErrors) +
+      " consoleErrors=" + JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
   await page.locator("#hlnArea").fill("130");
   await page.locator("#hlnArea").press("Tab");
   await page.locator(".hln-editor-done").click();
@@ -284,8 +315,31 @@ try {
     throw new Error("Scenario budget ROI reconciliation is incomplete: " + investmentText);
   }
 
+  await page.waitForFunction(
+    () => {
+      const value = document.querySelector("#hlnScenarioNewCost");
+      return value && !value.classList.contains("hln-calculating-value");
+    },
+    null,
+    {timeout:30000}
+  );
   await page.locator('.hln-scenario-actions [data-hln-go="report"]').click();
-  await expectVisible('[data-hln-screen="report"].is-active');
+  try {
+    await expectVisible('[data-hln-screen="report"].is-active');
+  } catch (error) {
+    const reportState = await page.evaluate(() => ({
+      activeScreen: document.querySelector('[data-hln-screen].is-active')?.getAttribute("data-hln-screen") || null,
+      reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
+      scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
+      editorHidden: document.querySelector("#hlnEditor")?.hidden,
+    }));
+    throw new Error(
+      "Scenario-to-report navigation failed. state=" + JSON.stringify(reportState) +
+      " pageErrors=" + JSON.stringify(pageErrors) +
+      " consoleErrors=" + JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   // This control lives inside the report heading while the smoke has just
   // scrolled to the document bottom. Its viewport/actionability state is

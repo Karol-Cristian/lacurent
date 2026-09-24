@@ -4096,18 +4096,40 @@
     return true;
   }
 
-  function openEditor(name) {
-    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile",renewables:"Regenerabile"};
+  function setEditorSection(name) {
+    const titles = {location:"Locația",house:"Casa",envelope:"Anvelopa",systems:"Instalațiile",renewables:"PV & solar"};
     $("#hlnEditorTitle").textContent = titles[name] || "Editează";
     $$("[data-hln-editor]").forEach(section => section.hidden = section.dataset.hlnEditor !== name);
-    $("#hlnEditor").hidden = false;
-    document.body.style.overflow = "hidden";
-    syncHomeEditorControls();
+    root.querySelectorAll("[data-hln-technical-section]").forEach(button => {
+      button.classList.toggle("is-active", button.dataset.hlnTechnicalSection === name);
+    });
     if (name === "location") renderHomeLocationMap();
   }
 
+  function openEditor(name, options = {}) {
+    const editor = $("#hlnEditor");
+    const technical = Boolean(options.technical);
+    editor.dataset.hlnEditorMode = technical ? "technical" : "context";
+    editor.classList.toggle("is-technical-mode", technical);
+    const nav = $("[data-hln-technical-nav]");
+    if (nav) nav.hidden = !technical;
+    const modeLabel = $("#hlnEditorModeLabel");
+    if (modeLabel) modeLabel.textContent = technical ? "CONFIGURARE TEHNICĂ" : "CASA MEA";
+    const done = $("#hlnEditorDone");
+    if (done) done.textContent = technical ? "Vezi casa" : "Gata";
+    editor.hidden = false;
+    document.body.style.overflow = "hidden";
+    syncHomeEditorControls();
+    setEditorSection(name);
+  }
+
   function closeEditor() {
-    $("#hlnEditor").hidden = true;
+    const editor = $("#hlnEditor");
+    editor.hidden = true;
+    editor.classList.remove("is-technical-mode");
+    delete editor.dataset.hlnEditorMode;
+    const nav = $("[data-hln-technical-nav]");
+    if (nav) nav.hidden = true;
     document.body.style.overflow = "";
     renderHome();
     scheduleCalculate("home", 20);
@@ -4740,10 +4762,19 @@
     target.hidden = !hits.length;
   }
 
-  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => openEditor(button.dataset.hlnEditorOpen)));
+  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
+    openEditor(button.dataset.hlnEditorOpen, {
+      technical: button.hasAttribute("data-hln-technical-entry"),
+    });
+  }));
+  $("[data-hln-technical-open]")?.addEventListener("click", () => openEditor("house", {technical:true}));
+  root.querySelectorAll("[data-hln-technical-section]").forEach(button => button.addEventListener("click", () => {
+    setEditorSection(button.dataset.hlnTechnicalSection);
+  }));
   $$("[data-hln-editor-close]").forEach(button => button.addEventListener("click", closeEditor));
   $("#hlnEditor").addEventListener("click", event => {
-    if (event.target === $("#hlnEditor")) closeEditor();
+    const editor = $("#hlnEditor");
+    if (event.target === editor && editor.dataset.hlnEditorMode !== "technical") closeEditor();
   });
 
   ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]

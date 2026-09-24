@@ -1058,3 +1058,33 @@
 .hln-3d-stage:not(.is-authoring) [data-hln-3d-explode] {
   display: none;
 }
+
+
+/* Issue #356: gameified controls tied to the 3D scene. */
+.hln-3d-hotspot.is-gameified .hln-3d-hotspot-label{
+  opacity:1;
+  transform:translateX(-50%) translateY(2px);
+  background:rgba(251,250,246,.96);
+}
+.hln-3d-hotspot.is-gameified .hln-3d-hotspot-dot{
+  background:#41697a;
+  border-color:#f7f5ef;
+}
+.hln-3d-add-rail{
+  position:absolute;left:50%;top:58px;z-index:9;display:flex;gap:7px;
+  transform:translateX(-50%);pointer-events:auto
+}
+.hln-3d-add-rail[hidden]{display:none}
+.hln-3d-add-rail button{
+  min-height:30px;padding:6px 10px;border:1px solid rgba(63,116,92,.24);border-radius:999px;
+  background:rgba(251,250,246,.94);color:#315d49;box-shadow:0 7px 22px rgba(22,31,27,.10);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  font:inherit;font-size:9px;font-weight:850;white-space:nowrap
+}
+.hln-3d-add-rail button:hover,
+.hln-3d-add-rail button:focus-visible{background:#fff;border-color:rgba(63,116,92,.42);outline:none}
+
+@media(max-width:760px){
+  .hln-3d-add-rail{top:52px;gap:5px}
+  .hln-3d-add-rail button{min-height:28px;padding:5px 8px;font-size:8px}
+}
