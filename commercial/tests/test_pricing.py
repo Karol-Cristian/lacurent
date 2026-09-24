@@ -165,6 +165,38 @@ def test_cooling_cost_is_priced_as_electricity_when_enabled() -> None:
     )
 
 
+def test_heating_auxiliaries_use_electricity_price_and_cost_totals_reconcile() -> None:
+    form = simple_form("condensing_gas_boiler")
+    form.update(
+        {
+            "heating_chain_enabled": "on",
+            "heating_auxiliary_electricity_kwh_year": "120",
+        }
+    )
+    result = calculate(build_input_from_form(form))
+    estimate = estimate_energy_cost(result)
+    heating = next(row for row in estimate["service_rows"] if row["service"] == "heating")
+    gas = next(row for row in estimate["rows"] if row["carrier"] == "natural_gas")
+    electricity = next(row for row in estimate["rows"] if row["carrier"] == "electricity")
+
+    expected_heating_cost = (
+        result.heating.final_kwh * gas["unit_price_lei_per_kwh"]
+        + result.heating_system.auxiliary_electricity_kwh
+        * electricity["unit_price_lei_per_kwh"]
+    )
+
+    assert result.heating_system.auxiliary_electricity_kwh == pytest.approx(120.0)
+    assert heating["main_carrier_final_kwh"] == pytest.approx(result.heating.final_kwh, abs=0.01)
+    assert heating["auxiliary_electricity_kwh"] == pytest.approx(120.0)
+    assert heating["annual_cost_lei"] == pytest.approx(expected_heating_cost, abs=0.01)
+    assert sum(float(row["annual_cost_lei"] or 0) for row in estimate["service_rows"]) == pytest.approx(
+        estimate["priced_total_lei"], abs=0.01
+    )
+    assert sum(float(row["priced_total_lei"]) for row in estimate["monthly_rows"]) == pytest.approx(
+        estimate["priced_total_lei"], abs=0.01
+    )
+
+
 def test_price_reference_status_expires_dated_tariffs() -> None:
     reference = {"valid_from": "2026-04-01", "valid_until": "2026-09-30"}
     assert _price_reference_status(reference, today=date(2026, 9, 18)) == "current"
@@ -208,4 +240,3 @@ def test_pv_self_consumption_reduces_purchased_electricity_cost_and_monthly_tota
     monthly_total = sum(float(row["priced_total_lei"]) for row in pv_estimate["monthly_rows"])
     assert monthly_total == pytest.approx(pv_estimate["priced_total_lei"], abs=0.05)
     assert sum(float(row["pv_self_consumed_kwh"]) for row in pv_estimate["monthly_rows"]) > 0
-

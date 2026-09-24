@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from commercial.app.engine import demo_building
+from commercial.app.engine import demo_building, dhw_energy
 from commercial.app.main import app, build_input_from_form
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
@@ -56,6 +56,158 @@ def demo_form_data() -> dict[str, str]:
         "dhw_efficiency": "0.86",
         "dhw_carrier": "natural_gas",
     }
+
+
+def _simple_home_lab_dhw_form(heating_choice: str, dhw_system_type: str = "same_as_heating") -> dict[str, str]:
+    data = demo_form_data()
+    data.update(
+        {
+            "building_length_m": "10",
+            "building_width_m": "8",
+            "heated_levels": "2",
+            "average_height_m": "2.7",
+            "house_window_area_m2": "20",
+            "house_door_area_m2": "2.2",
+            "heating_choice": heating_choice,
+            "dhw_system_type": dhw_system_type,
+            "expert_dhw_override": "",
+        }
+    )
+    return data
+
+
+def test_dhw_same_as_heat_pump_uses_dhw_cop_not_resistance_efficiency() -> None:
+    building = build_input_from_form(_simple_home_lab_dhw_form("heat_pump"))
+
+    assert building.dhw.system_type.value == "same_as_heating"
+    assert building.dhw.carrier.value == "electricity"
+    assert building.dhw.cop == pytest.approx(2.4)
+    assert building.dhw.efficiency is None
+
+    result = dhw_energy(building, useful_kwh=2400)
+    assert result.carrier.value == "electricity"
+    assert result.final_kwh == pytest.approx(1000)
+
+
+def test_dhw_same_as_gas_uses_dhw_specific_generation_efficiency() -> None:
+    building = build_input_from_form(_simple_home_lab_dhw_form("condensing_gas_boiler"))
+
+    assert building.dhw.system_type.value == "same_as_heating"
+    assert building.dhw.carrier.value == "natural_gas"
+    assert building.dhw.efficiency == pytest.approx(0.88)
+    assert building.dhw.cop is None
+
+
+def test_dhw_dedicated_heat_pump_is_independent_from_space_heating_carrier() -> None:
+    building = build_input_from_form(
+        _simple_home_lab_dhw_form("condensing_gas_boiler", "heat_pump_water_heater")
+    )
+
+    assert building.heating.carrier.value == "natural_gas"
+    assert building.dhw.system_type.value == "heat_pump_water_heater"
+    assert building.dhw.carrier.value == "electricity"
+    assert building.dhw.cop == pytest.approx(2.4)
+    assert building.dhw.efficiency is None
+
+
+def test_dhw_expert_override_preserves_explicit_carrier_and_efficiency() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "expert_dhw_override": "on",
+            "dhw_system_type": "custom",
+            "dhw_carrier": "biomass",
+            "dhw_efficiency": "0.72",
+            "dhw_cop": "",
+        }
+    )
+    building = build_input_from_form(data)
+
+    assert building.dhw.system_type.value == "custom"
+    assert building.dhw.carrier.value == "biomass"
+    assert building.dhw.efficiency == pytest.approx(0.72)
+    assert building.dhw.cop is None
+
+
+def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
+    page = client.get("/home-lab-next")
+    assert page.status_code == 200
+    assert 'id="hlnHomeDhwSystem"' in page.text
+    assert 'value="same_as_heating">Același sistem ca încălzirea' in page.text
+    assert 'value="electric_boiler">Boiler electric' in page.text
+    assert 'value="gas_boiler">Centrală pe gaz' in page.text
+    assert 'value="heat_pump_water_heater">Pompă de căldură pentru ACM' in page.text
+    assert 'name="dhw_system_type" value="same_as_heating"' in page.text
+    assert 'name="dhw_cop" value=""' in page.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert 'dhwSystem: "same_as_heating"' in js.text
+    assert 'formSet("dhw_system_type", state.dhwSystem || "same_as_heating")' in js.text
+    assert 'homeState.dhwSystem = $("#hlnHomeDhwSystem").value' in js.text
+
+
+def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
+    privacy = client.get("/privacy")
+    assert privacy.status_code == 200
+    assert "Politica de confidențialitate" in privacy.text
+    assert "lacurent-home-lab-next-v1" in privacy.text
+    assert "lacurent-calculator-draft-v1" in privacy.text
+    assert "Continuă fără salvare" in privacy.text
+    assert "karol@lacurent.com" in privacy.text
+    assert "dataprotection.ro" in privacy.text
+
+    terms = client.get("/terms")
+    assert terms.status_code == 200
+    assert "Termeni de utilizare" in terms.text
+    assert "Nu reprezintă un Certificat de Performanță Energetică" in terms.text
+    assert "încadrare orientativă calculată" in terms.text
+    assert "karol@lacurent.com" in terms.text
+
+
+def test_commercial_pages_expose_legal_links_and_privacy_controls_where_needed() -> None:
+    company = client.get("/")
+    assert company.status_code == 200
+    assert 'href="/privacy"' in company.text
+    assert 'href="/terms"' in company.text
+    assert 'href="mailto:karol@lacurent.com"' in company.text
+
+    calculator = client.get("/instalatii/calculator/legacy")
+    assert calculator.status_code == 200
+    assert 'href="/privacy"' in calculator.text
+    assert 'href="/terms"' in calculator.text
+    assert 'href="mailto:karol@lacurent.com"' in calculator.text
+    assert 'data-lacurent-privacy-open' in calculator.text
+    assert 'data-lacurent-first-use-consent' in calculator.text
+    assert "/static/privacy-consent.js?v=privacy1" in calculator.text
+
+
+def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'data-lacurent-first-use-consent' in response.text
+    assert 'href="/privacy"' in response.text
+    assert 'href="/terms"' in response.text
+    assert "/static/privacy-consent.js?v=privacy1" in response.text
+
+    privacy_js = client.get("/static/privacy-consent.js")
+    assert privacy_js.status_code == 200
+    assert 'const CONSENT_KEY = "lacurent-privacy-v1"' in privacy_js.text
+    assert "allowsLocalAutosave" in privacy_js.text
+    assert "clearLocalDrafts" in privacy_js.text
+
+    home_js = client.get("/static/home-lab-next.js")
+    assert home_js.status_code == 200
+    assert "const localAutosaveAllowed" in home_js.text
+    assert "if (localAutosaveAllowed())" in home_js.text
+    assert "if (!localAutosaveAllowed()) return false;" in home_js.text
+    assert "if (!analyticsAllowed()) return;" in home_js.text
+
+    autosave_js = client.get("/static/calculator-autosave.js")
+    assert autosave_js.status_code == 200
+    assert "function autosaveAllowed()" in autosave_js.text
+    assert "if (!autosaveAllowed()) return null;" in autosave_js.text
+    assert "if (!autosaveAllowed()) return false;" in autosave_js.text
 
 
 def test_company_home_is_a_focused_testing_entry_page() -> None:
@@ -160,21 +312,12 @@ def test_simulation_facts_index_is_public_and_indexable() -> None:
     assert 'rel="canonical" href="https://lacurent.com/home-lab/facts"' in response.text
     assert "Motorul calculează" in response.text
     assert "AI-ul explică" in response.text
-    assert "Podul trebuie izolat întotdeauna primul? Nu." in response.text
-    assert "3.7×" in response.text
     assert 'href="/home-lab-next?source=facts"' in response.text
     assert "/static/simulation-facts.css?v=facts1" in response.text
 
     shortcut = client.get("/facts", follow_redirects=False)
     assert shortcut.status_code == 308
     assert shortcut.headers["location"] == "/home-lab/facts"
-
-    featured = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
-    assert featured.status_code == 200
-    assert "100 m² de pereți" in featured.text
-    assert "65 m² de tavan" in featured.text
-    assert "3.7" in featured.text
-    assert "Regula utilă este A × ΔU" in featured.text
 
 
 def test_robots_and_sitemap_expose_home_lab_facts() -> None:
@@ -212,7 +355,7 @@ def test_energy_calculator_alias_goes_straight_to_home_lab() -> None:
     assert home_lab.status_code == 200
     assert 'data-home-lab-next' in home_lab.text
     assert 'data-hln-screen="home"' in home_lab.text
-    assert "Construiește punctul de plecare." in home_lab.text
+    assert "Casa este interfața." in home_lab.text
 
 
 def test_legacy_energy_calculator_remains_available_during_home_lab_next_cutover() -> None:
@@ -259,7 +402,10 @@ def test_certificate_renders_romanian_printable_report_with_costs() -> None:
     payload = demo_building().model_dump_json()
     response = client.post("/certificate", data={"payload": payload})
     assert response.status_code == 200
-    assert "Raport de performanță energetică" in response.text
+    assert "Raport tehnic estimativ de performanță energetică" in response.text
+    assert "Nu este Certificat de Performanță Energetică (CPE)" in response.text
+    assert 'href="/terms"' in response.text
+    assert 'href="/privacy"' in response.text
     assert "Tipărește / salvează PDF" in response.text
     assert "Cost estimat al serviciilor energetice modelate" in response.text
     assert "nu reprezintă un Certificat de Performanță Energetică" in response.text
@@ -382,6 +528,20 @@ def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     assert 'href="/embed/demo-store/next"' in response.text
 
 
+def test_invalid_roof_vs_walls_fact_is_retired() -> None:
+    index = client.get("/home-lab/facts")
+    assert index.status_code == 200
+    assert "Podul trebuie izolat întotdeauna primul? Nu." not in index.text
+    assert "3.7×" not in index.text
+
+    detail = client.get("/home-lab/facts/podul-trebuie-izolat-intotdeauna-primul")
+    assert detail.status_code == 404
+
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200
+    assert "podul-trebuie-izolat-intotdeauna-primul" not in sitemap.text
+
+
 def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
@@ -392,7 +552,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'data-hln-screen="intervention"' in response.text
     assert 'data-hln-screen="scenario"' in response.text
     assert "Salvează Casa mea și vezi îmbunătățirile" in response.text
-    assert "Construiește punctul de plecare." in response.text
+    assert "Casa este interfața." in response.text
     assert "Ce vrei să schimbi?" in response.text
     assert "Păstrează intervenția" in response.text
     assert "Vezi îmbunătățirile ca un singur proiect." in response.text
@@ -401,12 +561,89 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next22" in response.text
-    assert "/static/home-lab-next.js?v=next46" in response.text
-    assert "/static/home-lab-3d.css?v=3d26" in response.text
+    assert "/static/home-lab-next.css?v=next31" in response.text
+    assert "/static/home-lab-next.js?v=next57" in response.text
+    assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
-    assert "/static/home-lab-3d.js?v=3d46" in response.text
+
+
+def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'class="hln-persistent-stack"' in response.text
+    assert 'class="hln-live-summary"' in response.text
+    assert 'id="hlnPersistentClass"' in response.text
+    assert 'id="hlnPersistentCost"' in response.text
+    assert 'id="hlnPersistentEnergy"' in response.text
+    assert 'class="hln-dock"' in response.text
+    assert 'class="hln-dock-benefits hln-dock-compare"' in response.text
+    assert 'id="hlnDockCta"' in response.text
+    assert 'id="hlnDockBack"' in response.text
+    assert '<use href="#hln-i-arrow-left"></use>' in response.text
+    assert 'data-mobile-label="Îmbunătățiri"' in response.text
+    assert 'id="hlnPersistentClassContext"' in response.text
+    assert 'id="hlnPersistentCostDelta"' in response.text
+    assert 'id="hlnPersistentEnergyDelta"' in response.text
+    assert 'class="hln-persistent-spacer"' in response.text
+    assert 'id="hlnStatus"' in response.text
+    assert response.text.index('class="hln-energy-strip"') < response.text.index('class="hln-live-summary"')
+    assert response.text.index('class="hln-live-summary"') < response.text.index('data-hln-screen="home"')
+    assert 'id="hlnDockClass"' not in response.text
+    assert 'id="hlnDockCost"' not in response.text
+    assert 'id="hlnDockEnergy"' not in response.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-persistent-stack{" in css.text
+    assert "position:sticky" in css.text
+    assert 'data-energy-class="A+"' in css.text
+    assert ".hln-live-class-card" in css.text
+    assert ".hln-live-delta.is-good" in css.text
+    assert ".hln-live-delta.is-bad" in css.text
+    assert ".hln-persistent-spacer" in css.text
+    assert "position:fixed" in css.text
+    assert "z-index:140" in css.text
+    assert "-webkit-backdrop-filter:none!important" in css.text
+    assert ".hln-technical-open .hln-persistent-stack" in css.text
+    assert ".hln-technical-open .hln-editor.is-technical-mode" in css.text
+    assert "/* #358 scope correction: comparison dock stays on desktop, CTA-only on phone. */" in css.text
+    assert ".hln-dock-benefits{" in css.text
+    assert "display:none!important" in css.text
+    assert ".hln-dock-back:not([hidden])" in css.text
+    assert "max-width:min(60vw,190px)" in css.text
+    assert "content:attr(data-mobile-label)" in css.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert '$("#hlnPersistentClass").textContent' in js.text
+    assert '$("#hlnPersistentCost").textContent' in js.text
+    assert '$("#hlnPersistentEnergy").textContent' in js.text
+    assert 'const costDeltaNode = $("#hlnPersistentCostDelta")' in js.text
+    assert 'const energyDeltaNode = $("#hlnPersistentEnergyDelta")' in js.text
+    assert 'costDeltaNode.textContent = `vs Casa mea · ${costDelta.text}`' in js.text
+    assert 'energyDeltaNode.textContent = `vs Casa mea · ${energyDelta.text}`' in js.text
+    assert 'summary.dataset.energyClass = energyClass' in js.text
+    assert 'window.requestAnimationFrame(syncPersistentStackHeight)' in js.text
+    assert 'document.body.classList.toggle("hln-technical-open", technical)' in js.text
+    assert 'document.body.classList.remove("hln-technical-open")' in js.text
+    assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text
+    assert 'if (back) back.hidden = screen === "home"' in js.text
+    assert 'ctaLabel.dataset.mobileLabel = "Îmbunătățiri"' in js.text
+    assert '$("#hlnDockBack").addEventListener("click"' in js.text
+    assert 'cancelIntervention();' in js.text
+    assert 'root.querySelectorAll("[data-hln-editor-open]").forEach' in js.text
+
+
+def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'class="hln-energy-strip"' in response.text
+    assert "Prețuri de referință, nu cotații live." in response.text
+    assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
+    assert "Referință" in response.text
+    assert 'class="hln-price-status' in response.text
+    assert "/static/home-lab-3d.js?v=3d49" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="roi"' in response.text
@@ -516,8 +753,15 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hlnLiveSolarThermalKw" type="range" min="0" max="30" step="0.5"' in response.text
     assert 'id="hlnQuickEditOverlay"' in response.text
     assert 'id="hlnQuickEditRange" type="range"' in response.text
-    assert "Glisează. La eliberare, valoarea se salvează și editorul dispare." in response.text
+    assert "Glisează și urmărește casa și rezultatul actualizându-se. Apasă Gata când ai terminat." in response.text
     assert response.text.count('value="reference_mc001" disabled') == 4
+
+
+def test_home_lab_mobile_status_stays_in_topbar_flow() -> None:
+    response = client.get("/static/home-lab-next.css?v=next26")
+    assert response.status_code == 200
+    assert ".hln-topbar-meta{\n    grid-column:1/-1;\n    position:static;" in response.text
+    assert "max-width:100%;\n    overflow:hidden;" in response.text
 
 
 
@@ -601,7 +845,7 @@ def test_cloudflare_worker_converts_ordinary_asgi_exceptions_to_branded_503() ->
     assert '"content-type": "text/html; charset=utf-8"' in worker_source
     assert "Laboratorul ia o pauză scurtă." in worker_source
     assert "from app.main import app" in worker_source
-    assert worker_source.index("try:") < worker_source.index("from app.main import app")
+    assert worker_source.index("from app.main import app") < worker_source.index("class Default")
     assert "type(exc).__name__" in worker_source
 
 
@@ -1162,6 +1406,73 @@ def test_roi_cost_basis_bootstraps_through_worker_binding_not_deploy_token() -> 
     assert 'market_cost_payload.get("source") != "d1"' in workflow
 
 
+def test_roi_cost_basis_coalesces_concurrent_d1_bootstrap_and_reads(monkeypatch) -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    from starlette.requests import Request
+    from commercial.app import main
+
+    seed = main.roi_cost_basis_seed()
+
+    class Result:
+        def __init__(self, rows):
+            self.results = rows
+
+    class Statement:
+        def __init__(self, db, sql):
+            self.db = db
+            self.sql = sql
+
+        def bind(self, *_args):
+            return self
+
+        async def run(self):
+            await asyncio.sleep(0)
+            self.db.run_calls += 1
+            if "SELECT COUNT(*)" in self.sql:
+                return Result([{
+                    "row_count": len(seed["costs"]),
+                    "catalog_version": seed["catalog_version"],
+                }])
+            if "SELECT family" in self.sql:
+                return Result([{"family": family, **item} for family, item in seed["costs"].items()])
+            return Result([])
+
+    class Database:
+        def __init__(self):
+            self.prepare_calls = 0
+            self.run_calls = 0
+
+        def prepare(self, sql):
+            self.prepare_calls += 1
+            return Statement(self, sql)
+
+    monkeypatch.setattr(main, "_roi_cost_basis_cached_payload", None)
+    monkeypatch.setattr(main, "_roi_cost_basis_cache_expires_at", 0.0)
+    monkeypatch.setattr(main, "_roi_cost_basis_retry_after", 0.0)
+    db = Database()
+
+    async def exercise():
+        scope = {
+            "type": "http", "method": "GET", "path": "/api/market-cost-basis",
+            "headers": [], "query_string": b"", "server": ("test", 80),
+            "client": ("test", 1), "scheme": "http",
+            "env": SimpleNamespace(DB=db),
+        }
+        return await asyncio.gather(*(
+            main.market_cost_basis_api(Request(scope)) for _ in range(100)
+        ))
+
+    responses = asyncio.run(exercise())
+    assert len(responses) == 100
+    assert all(b'"source":"d1"' in response.body for response in responses)
+    # One cold lookup: table, index, status and catalog select. Before the fix
+    # all 100 requests performed all four operations (400 D1 runs).
+    assert db.prepare_calls == 4
+    assert db.run_calls == 4
+
+
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -1347,8 +1658,14 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function applyQuickMeasureValue" in response.text
     assert "function commitQuickMeasureEditor" in response.text
     assert "function cancelQuickMeasureEditor" in response.text
-    assert 'quickEditRange.addEventListener("pointerup"' in response.text
-    assert 'quickEditRange.addEventListener("touchend"' in response.text
+    assert 'let quickEditTarget = "scenario"' in response.text
+    assert 'window.addEventListener("hln:equipment-select"' in response.text
+    assert 'screen === "home" ? "home" : "scenario"' in response.text
+    assert 'scheduleCalculate("home", 280)' in response.text
+    assert 'quickEditRange.addEventListener("pointerup"' not in response.text
+    assert 'quickEditRange.addEventListener("touchend"' not in response.text
+    assert 'data-hln-quick-edit-commit' in client.get("/home-lab-next").text
+    assert '$("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);' in response.text
     assert "scenarioOverrides" in response.text
     assert "pvEnabled" in response.text
     assert "pvKwp" in response.text
@@ -1412,6 +1729,9 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "Math.min(rawOcclusion, 48)" in response.text
     assert 'orientationchange' in response.text
     assert "new AbortController()" in response.text
+    assert "let optimizerLaunchPending = false" in response.text
+    assert "if (optimizerLaunchPending) return" in response.text
+    assert "await runOptimizerAction(async () =>" in response.text
     assert "[429, 502, 503, 504].includes(response.status)" not in response.text
     assert "response.status >= 500" not in response.text
     assert "Live interaction must never amplify an overloaded Worker" in response.text
@@ -1498,6 +1818,16 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "glazingGlassColors" in response.text
     assert "LaCurentHeatPump_fanBlade" in response.text
     assert "THREE.TorusGeometry" in response.text
+    assert 'url: "https://polyfork.dev/cdn/hvac-condenser-unit-a41b8d.glb"' in response.text
+    assert 'url: "https://polyfork.dev/cdn/air-con-unit-9fadc2.glb"' in response.text
+    assert "async upgradeGroupWithGlb" in response.text
+    assert 'group.userData.hlnEquipment = "heatPump"' in response.text
+    assert 'ac.userData.hlnEquipment = "ac"' in response.text
+    assert 'layer.userData.hlnEquipment = "pv"' in response.text
+    assert 'layer.userData.hlnEquipment = "solarThermal"' in response.text
+    assert '"hln:equipment-select"' in response.text
+    assert "createEquipmentBadges()" in response.text
+    assert "updateEquipmentBadges()" in response.text
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
@@ -1547,8 +1877,8 @@ def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit()
     assert 'select.dispatchEvent(new Event("change", {bubbles:true}))' in source
     assert "focusOrientation(" not in source
     assert 'this.setCompassOrientation(detail.orientation)' in source
-    assert 'detail.focus === "pv" || detail.focus === "solarThermal"' in source
-    assert 'this.focusPart("roof", false)' in source
+    assert 'detail.focus === "pv" || detail.focus === "solarThermal"' not in source
+    assert 'this.controls.enableZoom = false' in source
     assert "this.rebuildRenovationLayer(part)" not in source
 
 
@@ -1560,6 +1890,58 @@ def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
     assert ".hln-3d-compass-arrow" in source
     assert 'data-hln-3d-stage="home"' in source
     assert "cursor: crosshair" in source
+
+
+def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    source = css.text
+    assert ".hln-hotspot span,.hln-zone span{display:inline}" in source
+    assert "backdrop-filter:blur(11px)" in source
+    assert "height:min(82dvh,760px)" in source
+
+    css3d = client.get("/static/home-lab-3d.css")
+    assert css3d.status_code == 200
+    assert ".hln-3d-equipment-badge" in css3d.text
+    assert ".hln-3d-equipment-dot" in css3d.text
+
+
+
+def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'data-hln-technical-open' in response.text
+    assert 'data-hln-technical-nav' in response.text
+    assert 'data-hln-technical-section="systems"' in response.text
+    assert 'data-hln-technical-entry' in response.text
+    assert 'hln-hotspot-renewables' not in response.text
+    assert 'data-hln-editor="renewables"' in response.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert 'editor.dataset.hlnEditorMode = technical ? "technical" : "context"' in js.text
+    assert 'editor.dataset.hlnEditorMode !== "technical"' in js.text
+    assert 'setEditorSection(button.dataset.hlnTechnicalSection)' in js.text
+
+    js3d = client.get("/static/home-lab-3d.js")
+    assert js3d.status_code == 200
+    assert "this.controls.enableZoom = false" in js3d.text
+    assert 'new Set(["windows"])' in js3d.text
+    assert 'button.classList.add("is-gameified")' in js3d.text
+    assert 'data-hln-3d-add-rail' in js3d.text
+    assert 'pvButton.hidden = Boolean(detail.pvEnabled)' in js3d.text
+    assert 'solarButton.hidden = Boolean(detail.solarThermalEnabled)' in js3d.text
+    assert 'Math.ceil(Number(detail.pvKwp || 0) / 2.5)' in js3d.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-editor.is-technical-mode" in css.text
+    assert ".hln-editor textarea{font-size:16px}" in css.text
+
+    css3d = client.get("/static/home-lab-3d.css")
+    assert css3d.status_code == 200
+    assert ".hln-3d-hotspot.is-gameified" in css3d.text
+    assert ".hln-3d-add-rail" in css3d.text
 
 
 def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> None:
@@ -2048,4 +2430,3 @@ def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_c
     assert 'if (lang !== "en") return raw;' in script.text
     assert "originalText.get" in script.text
     assert "window.lacurentSetLanguage = setLanguage" in script.text
-

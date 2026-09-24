@@ -67,3 +67,61 @@ Next: inspect monthly renewable allocation and annual carrier reconciliation,
 including solar thermal meeting all DHW demand and auxiliary-electricity cases.
 First re-read this register and the remote branch heads; do not redo this fix or
 merge other campaign branches automatically.
+
+## 2026-09-24 — heating auxiliaries priced on the wrong carrier
+
+- Continued the existing work branch from `dfd123f7bfcaef7b82bfd74cce1a5a2a0f2331a1`.
+- Synchronized it by a normal merge with the then-current production SHA
+  `afdd9af2d4c9e09e3ae11105dfe264ec817a62b1`; history was not rewritten.
+- Deployment workflow inspection confirmed that pushes deploy only from
+  `codex/commercial-v2-cloudflare-python` (or explicit manual dispatch), not from
+  this campaign branch.
+
+### Defect and reproduction
+
+The engine correctly separates boiler/pump/control auxiliary consumption into
+the electricity carrier, but the service-cost view combined it with heating and
+priced the whole service at the main heating-carrier tariff. That made service
+and monthly totals disagree with the authoritative carrier total and distorted
+the cost/ROI breakdown for non-electric heating.
+
+Controlled reproduction: condensing gas boiler in Cluj, explicit 120 kWh/year
+auxiliary electricity, no PV. Tolerances were fixed before implementation at
+0.01 kWh for energy reconciliation and 0.01 lei for monetary reconciliation.
+
+- Main gas final energy: 21,402.12 kWh; auxiliary electricity: 120.00 kWh.
+- References used by the application: gas 0.36627 lei/kWh; electricity
+  1.27284 lei/kWh.
+- Before: heating service cost 7,882.91 lei; independent two-carrier result
+  7,991.69 lei (understated by 108.79 lei).
+- Before: carrier total 9,316.58 lei versus service/monthly total 9,207.79 lei.
+
+### Remediation
+
+Price heating main energy on its own carrier and auxiliary consumption on the
+county electricity reference. Expose both quantities in the service row, use
+their weighted effective price only for monthly allocation, and exclude
+auxiliary electricity from biomass delivery quantities. The physical engine,
+tariffs and user inputs are unchanged.
+
+### Verification and traceability
+
+Results apply to the files in the commit containing this entry. The containing
+commit is the immutable fix identifier.
+
+- Independent post-fix calculation: 7,991.69 lei in code and two-carrier oracle;
+  difference below 0.01 lei.
+- Post-fix carrier, service and monthly totals: each 9,316.58 lei; differences
+  below 0.01 lei.
+- Engine and pricing tests: **88 passed**.
+- Entire Python commercial suite: **331 passed**, 14 pre-existing deprecation
+  warnings, no failures.
+- `git diff --check`: passed.
+
+### Boundaries and next iteration
+
+No PR, merge to production, deployment, browser test or Cloudflare execution was
+performed. This verifies deterministic cost/carrier reconciliation against the
+saved price references; it does not claim agreement with an actual household
+bill. Next: verify solar-thermal DHW backup energy and PV self-consumption across
+mixed carriers month by month, using independent balances.

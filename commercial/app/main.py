@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from functools import lru_cache
 from pathlib import Path
+import time
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -18,7 +20,7 @@ from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
-from .pricing import energy_prices, estimate_energy_cost
+from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .product_matching import (
     WallInsulationProductMatchRequestV1,
@@ -40,7 +42,14 @@ LOCATION_REGISTRY_PATH = DATA_DIR / "localities.json"
 CLIMATE_ZONES_PATH = DATA_DIR / "winter-climate-zones.geojson"
 ROMANIA_BOUNDARY_PATH = DATA_DIR / "romania-boundary.geojson"
 ROI_COST_BASIS_PATH = DATA_DIR / "roi-cost-basis.seed.json"
+ROI_COST_BASIS_CACHE_SECONDS = 900
+ROI_COST_BASIS_RETRY_SECONDS = 30
 LOCATION_STREAM_CHUNK_BYTES = 64 * 1024
+
+_roi_cost_basis_lock = asyncio.Lock()
+_roi_cost_basis_cached_payload: dict[str, Any] | None = None
+_roi_cost_basis_cache_expires_at = 0.0
+_roi_cost_basis_retry_after = 0.0
 
 @lru_cache(maxsize=1)
 def embed_partner_registry() -> dict[str, Any]:
@@ -442,6 +451,82 @@ HEATING_PROFILES: dict[str, dict[str, Any]] = {
 }
 
 
+def _dhw_default_profile(system_type: str) -> dict[str, Any]:
+    profile = methodology()["dhw"]["system_defaults"].get(system_type)
+    if profile is None:
+        raise ValueError(f"Sistem ACM nesuportat: {system_type}")
+    return {
+        "system_type": system_type,
+        "carrier": profile["carrier"],
+        "efficiency": profile.get("efficiency"),
+        "cop": profile.get("cop"),
+    }
+
+
+def _dhw_same_as_heating_profile(
+    heating_choice: str,
+    heating: dict[str, Any],
+) -> dict[str, Any]:
+    if heating_choice in {"gas_boiler", "condensing_gas_boiler"}:
+        profile = _dhw_default_profile("gas_boiler")
+    elif heating_choice in {"electric_resistance", "electric_boiler"}:
+        profile = _dhw_default_profile("electric_boiler")
+    elif heating_choice == "heat_pump":
+        profile = _dhw_default_profile("heat_pump_water_heater")
+    elif heating_choice == "district_heat":
+        profile = _dhw_default_profile("district_heat")
+    elif heating_choice in {"wood_stove", "wood_boiler", "pellet_boiler"}:
+        fallback = {"wood_stove": 0.75, "wood_boiler": 0.80, "pellet_boiler": 0.88}[heating_choice]
+        profile = {
+            "system_type": "same_as_heating",
+            "carrier": "biomass",
+            "efficiency": float(heating.get("efficiency") or fallback),
+            "cop": None,
+        }
+    else:
+        carrier = str(heating.get("carrier") or "other")
+        efficiency = heating.get("efficiency")
+        scop = heating.get("scop")
+        profile = {
+            "system_type": "same_as_heating",
+            "carrier": carrier,
+            "efficiency": float(efficiency) if efficiency is not None else None,
+            "cop": float(scop) if efficiency is None and scop is not None else None,
+        }
+    profile["system_type"] = "same_as_heating"
+    return profile
+
+
+def _dhw_values_from_form(
+    form: dict[str, Any],
+    *,
+    heating: dict[str, Any],
+    heating_choice: str,
+    simple: bool,
+) -> dict[str, Any]:
+    expert = form.get("expert_dhw_override") == "on"
+    requested = str(
+        form.get("dhw_system_type")
+        or ("same_as_heating" if simple and not expert else "custom")
+    )
+
+    if expert or not simple:
+        cop = parse_optional_float(form.get("dhw_cop"))
+        efficiency = parse_optional_float(form.get("dhw_efficiency"))
+        if cop is not None:
+            efficiency = None
+        return {
+            "system_type": requested if requested else "custom",
+            "carrier": str(form.get("dhw_carrier") or "natural_gas"),
+            "efficiency": efficiency if efficiency is not None else (None if cop is not None else 0.85),
+            "cop": cop,
+        }
+
+    if requested == "same_as_heating":
+        return _dhw_same_as_heating_profile(heating_choice, heating)
+    return _dhw_default_profile(requested)
+
+
 def default_form_values() -> dict[str, Any]:
     return {
         "project_name": "",
@@ -522,7 +607,9 @@ def default_form_values() -> dict[str, Any]:
         "dhw_enabled": True,
         "dhw_occupants": 4,
         "dhw_litres_per_person_day_at_60c": 50,
+        "dhw_system_type": "same_as_heating",
         "dhw_efficiency": 0.86,
+        "dhw_cop": "",
         "dhw_carrier": "natural_gas",
         "pv_enabled": False,
         "pv_installed_power_kwp": 5.0,
@@ -592,7 +679,9 @@ def form_values_from_building(building: BuildingInput) -> dict[str, Any]:
             "dhw_enabled": building.dhw.enabled,
             "dhw_occupants": building.dhw.occupants,
             "dhw_litres_per_person_day_at_60c": building.dhw.litres_per_person_day_at_60c,
+            "dhw_system_type": building.dhw.system_type.value,
             "dhw_efficiency": building.dhw.efficiency,
+            "dhw_cop": building.dhw.cop,
             "dhw_carrier": building.dhw.carrier.value,
             "pv_enabled": building.renewables.pv.enabled,
             "pv_installed_power_kwp": building.renewables.pv.installed_power_kwp,
@@ -997,9 +1086,14 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
     dhw_enabled = _checked(form, "dhw_enabled")
     heating = technical["heating"]
 
-    dhw_carrier = form.get("dhw_carrier")
-    if form.get("expert_dhw_override") != "on" and _simple_form_present(form):
-        dhw_carrier = heating["carrier"]
+    simple = _simple_form_present(form)
+    heating_choice = str(form.get("heating_choice") or heating.get("system_type") or "condensing_gas_boiler")
+    dhw_values = _dhw_values_from_form(
+        form,
+        heating=heating,
+        heating_choice=heating_choice,
+        simple=simple,
+    )
 
     glazing_groups = []
     for orientation, field in SOLAR_ORIENTATION_FIELDS.items():
@@ -1047,8 +1141,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
             "enabled": dhw_enabled,
             "occupants": parse_optional_int(form.get("dhw_occupants")) or 0,
             "litres_per_person_day_at_60c": parse_optional_float(form.get("dhw_litres_per_person_day_at_60c")),
-            "efficiency": parse_optional_float(form.get("dhw_efficiency")) or 0.85,
-            "carrier": dhw_carrier or "natural_gas",
+            **dhw_values,
         },
         renewables={
             "pv": {
@@ -1543,6 +1636,51 @@ def _roi_cost_payload_from_rows(rows: list[dict[str, Any]], *, source: str) -> d
     }
 
 
+async def _cached_roi_cost_payload_from_d1(db: Any) -> dict[str, Any] | None:
+    """Coalesce D1 setup/reads and keep the small versioned catalog per isolate."""
+    global _roi_cost_basis_cached_payload
+    global _roi_cost_basis_cache_expires_at
+    global _roi_cost_basis_retry_after
+
+    now = time.monotonic()
+    if _roi_cost_basis_cached_payload is not None and now < _roi_cost_basis_cache_expires_at:
+        return _roi_cost_basis_cached_payload
+    if now < _roi_cost_basis_retry_after:
+        return None
+
+    async with _roi_cost_basis_lock:
+        now = time.monotonic()
+        if _roi_cost_basis_cached_payload is not None and now < _roi_cost_basis_cache_expires_at:
+            return _roi_cost_basis_cached_payload
+        if now < _roi_cost_basis_retry_after:
+            return None
+
+        try:
+            await _ensure_roi_cost_basis_d1(db)
+            result = await db.prepare(
+                """
+                SELECT family, label, cost_lei, unit, source_kind, source_url,
+                       observed_on, catalog_version, confidence, note
+                FROM roi_cost_basis
+                WHERE active = 1
+                ORDER BY family
+                """
+            ).run()
+            payload = _roi_cost_payload_from_rows(_d1_rows(result), source="d1")
+            if not payload["costs"]:
+                raise ValueError("D1 ROI cost catalog is empty.")
+        except Exception:
+            # A short negative cache prevents a failing D1 binding from turning
+            # concurrent page loads into a serialized retry storm.
+            _roi_cost_basis_retry_after = time.monotonic() + ROI_COST_BASIS_RETRY_SECONDS
+            return None
+
+        _roi_cost_basis_cached_payload = payload
+        _roi_cost_basis_cache_expires_at = time.monotonic() + ROI_COST_BASIS_CACHE_SECONDS
+        _roi_cost_basis_retry_after = 0.0
+        return payload
+
+
 @app.get("/api/market-cost-basis")
 async def market_cost_basis_api(request: Request) -> JSONResponse:
     """Return commercial CAPEX assumptions without coupling them to physics.
@@ -1555,28 +1693,12 @@ async def market_cost_basis_api(request: Request) -> JSONResponse:
     env = request.scope.get("env")
     db = getattr(env, "DB", None) if env is not None else None
     if db is not None:
-        try:
-            await _ensure_roi_cost_basis_d1(db)
-            result = await db.prepare(
-                """
-                SELECT family, label, cost_lei, unit, source_kind, source_url,
-                       observed_on, catalog_version, confidence, note
-                FROM roi_cost_basis
-                WHERE active = 1
-                ORDER BY family
-                """
-            ).run()
-            rows = _d1_rows(result)
-            payload = _roi_cost_payload_from_rows(rows, source="d1")
-            if payload["costs"]:
-                return JSONResponse(
-                    payload,
-                    headers={"Cache-Control": "public, max-age=900"},
-                )
-        except Exception:
-            # D1 is commercial infrastructure. A catalog outage must not break
-            # the energy model or expose database/runtime details to the client.
-            pass
+        payload = await _cached_roi_cost_payload_from_d1(db)
+        if payload is not None:
+            return JSONResponse(
+                payload,
+                headers={"Cache-Control": "public, max-age=900"},
+            )
 
     seed = roi_cost_basis_seed()
     payload = {
@@ -1654,6 +1776,16 @@ async def index(request: Request) -> HTMLResponse:
 @app.get("/software-testing", response_class=HTMLResponse)
 async def software_testing(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "software_testing.html", {"request": request})
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "privacy.html", {"request": request})
+
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "terms.html", {"request": request})
 
 
 @app.get("/instalatii")
@@ -1741,6 +1873,8 @@ async def sitemap_xml(request: Request) -> Response:
         "https://lacurent.com/software-testing",
         "https://lacurent.com/home-lab-next",
         "https://lacurent.com/home-lab/facts",
+        "https://lacurent.com/privacy",
+        "https://lacurent.com/terms",
     ]
     db = _request_db(request)
     try:
@@ -1771,6 +1905,7 @@ async def home_lab_next(request: Request) -> HTMLResponse:
             "partner": None,
             "embed_mode": False,
             "calculate_url": "/api/home-lab-next/calculate",
+            "energy_overview": home_lab_price_overview(),
         },
     )
 
@@ -1846,6 +1981,7 @@ async def partner_embed_home_lab_next(request: Request, partner_id: str) -> HTML
             "partner": partner,
             "embed_mode": True,
             "calculate_url": f"/embed/{partner_id}/next/calculate",
+            "energy_overview": home_lab_price_overview(),
         },
     )
 

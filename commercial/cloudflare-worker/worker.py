@@ -1,5 +1,7 @@
 from workers import Response, WorkerEntrypoint, asgi
 
+from app.main import app
+
 
 def _friendly_worker_error_html() -> str:
     return """<!doctype html>
@@ -55,10 +57,9 @@ def _friendly_worker_error_html() -> str:
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
         try:
-            # Import inside the guarded request path so application import/startup
-            # failures can also render the branded fallback instead of a raw 1101.
-            from app.main import app
-
+            # Keep the ASGI app initialized at module scope. Cloudflare's Python
+            # runtime needs the mounted static-file resources to be constructed
+            # during worker initialization, not lazily inside the request.
             return await asgi.fetch(app, request, self.env)
         except Exception as exc:
             # Hard isolate termination (CPU/memory) can still bypass Python

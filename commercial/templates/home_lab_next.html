@@ -7,8 +7,9 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next22">
-  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d26">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next31">
+  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d29">
+  <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
   <svg class="hln-icon-sprite" aria-hidden="true">
@@ -70,16 +71,52 @@
 
       <div class="hln-topbar-meta">
         {% if embed_mode %}<small class="hln-partner">{{ partner.brand_name }}</small>{% endif %}
-        <div class="hln-status" id="hlnStatus" aria-live="polite">Se calculează casa...</div>
       </div>
     </header>
+
+    <div class="hln-persistent-stack" data-hln-persistent-stack>
+      {% include "home_lab_energy_strip.html" %}
+      <section class="hln-live-summary" aria-label="Rezumat energetic curent" data-energy-class="">
+        <div class="hln-live-metrics">
+          <article class="hln-live-class-card">
+            <span class="hln-energy-label-arrow" aria-hidden="true"></span>
+            <span class="hln-live-value">
+              <small>Clasă energetică</small>
+              <strong id="hlnPersistentClass">—</strong>
+              <em id="hlnPersistentClassContext">Casa curentă</em>
+            </span>
+          </article>
+          <article class="hln-live-cost-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-money"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Cost anual estimat</small>
+              <strong id="hlnPersistentCost">—</strong>
+              <em class="hln-live-delta" id="hlnPersistentCostDelta">Baseline Casa mea</em>
+            </span>
+          </article>
+          <article class="hln-live-energy-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-bolt"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Energie anuală</small>
+              <strong id="hlnPersistentEnergy">—</strong>
+              <em class="hln-live-delta" id="hlnPersistentEnergyDelta">Baseline Casa mea</em>
+            </span>
+          </article>
+        </div>
+        <div class="hln-live-calc-status">
+          <small>STATUS CALCUL</small>
+          <div class="hln-status" id="hlnStatus" aria-live="polite">Se calculează casa...</div>
+        </div>
+      </section>
+    </div>
+    <div class="hln-persistent-spacer" aria-hidden="true"></div>
 
     <section class="hln-screen is-active" data-hln-screen="home">
       <div class="hln-screen-heading">
         <div>
           <span>CASA MEA</span>
-          <h1>Construiește punctul de plecare.</h1>
-          <p>Spune-ne ce știi despre locuință. Restul îl estimăm și îl poți rafina oricând.</p>
+          <h1>Casa este interfața.</h1>
+          <p>Atinge punctele sau echipamentele direct pe casă. Modificările se calculează imediat, iar detaliile pot fi rafinate oricând.</p>
         </div>
         <div class="hln-confidence"><strong>Estimativ</strong><span>verifică ipotezele înainte de decizie</span></div>
       </div>
@@ -92,55 +129,61 @@
             
 
             <button type="button" class="hln-hotspot hln-hotspot-location" data-hln-editor-open="location">
-              <svg><use href="#hln-i-pin"></use></svg><span>Climat</span>
+              <svg><use href="#hln-i-pin"></use></svg><span>Locație · climat</span>
             </button>
             <button type="button" class="hln-hotspot hln-hotspot-house" data-hln-editor-open="house">
-              <svg><use href="#hln-i-ruler"></use></svg><span>Geometrie</span>
+              <svg><use href="#hln-i-ruler"></use></svg><span>Casă · geometrie</span>
             </button>
             <button type="button" class="hln-hotspot hln-hotspot-envelope" data-hln-editor-open="envelope">
-              <svg><use href="#hln-i-layers"></use></svg><span>Anvelopă</span>
+              <svg><use href="#hln-i-layers"></use></svg><span>Anvelopă · izolație</span>
             </button>
             <button type="button" class="hln-hotspot hln-hotspot-systems" data-hln-editor-open="systems">
-              <svg><use href="#hln-i-flame"></use></svg><span>Instalații</span>
+              <svg><use href="#hln-i-flame"></use></svg><span>Instalații · încălzire</span>
             </button>
           </div>
           <div class="hln-board-foot">
             <svg><use href="#hln-i-info"></use></svg>
-            <span>Valorile necunoscute pot rămâne estimate. Le poți rafina mai târziu.</span>
+            <span>Atinge un punct pentru categorie sau direct un echipament montat pentru reglaj rapid.</span>
           </div>
         </div>
 
         <div class="hln-config-sheet">
-          <div class="hln-config-sheet-head">
-            <span>DATELE CASEI</span>
-            <small>5 categorii</small>
+          <div class="hln-config-sheet-head hln-config-sheet-head-technical">
+            <div>
+              <span>CONFIGURARE TEHNICĂ</span>
+              <small>5 categorii · modificări complete</small>
+            </div>
+            <button type="button" class="hln-technical-open" data-hln-technical-open>
+              Deschide
+              <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
+            </button>
           </div>
 
-          <button type="button" class="hln-config-row" data-hln-editor-open="location">
+          <button type="button" class="hln-config-row" data-hln-editor-open="location" data-hln-technical-entry>
             <span class="hln-row-icon"><svg><use href="#hln-i-pin"></use></svg></span>
             <span class="hln-row-copy"><small>LOCAȚIE</small><strong id="hlnLocationSummary">{{ values.locality }}</strong><em id="hlnClimateSummary">profil climatic automat</em></span>
             <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
           </button>
 
-          <button type="button" class="hln-config-row" data-hln-editor-open="house">
+          <button type="button" class="hln-config-row" data-hln-editor-open="house" data-hln-technical-entry>
             <span class="hln-row-icon"><svg><use href="#hln-i-ruler"></use></svg></span>
             <span class="hln-row-copy"><small>CASĂ</small><strong id="hlnHouseSummary">120 m² · 2 niveluri</strong><em id="hlnHouseMeta">2,7 m · 21°C</em></span>
             <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
           </button>
 
-          <button type="button" class="hln-config-row" data-hln-editor-open="envelope">
+          <button type="button" class="hln-config-row" data-hln-editor-open="envelope" data-hln-technical-entry>
             <span class="hln-row-icon"><svg><use href="#hln-i-layers"></use></svg></span>
             <span class="hln-row-copy"><small>ANVELOPĂ</small><strong id="hlnEnvelopeSummary">5 cm pereți · 10 cm pod</strong><em id="hlnEnvelopeMeta">Tripan Low-E · 18 m²</em></span>
             <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
           </button>
 
-          <button type="button" class="hln-config-row" data-hln-editor-open="systems">
+          <button type="button" class="hln-config-row" data-hln-editor-open="systems" data-hln-technical-entry>
             <span class="hln-row-icon"><svg><use href="#hln-i-flame"></use></svg></span>
             <span class="hln-row-copy"><small>INSTALAȚII</small><strong id="hlnSystemsSummary">Centrală gaz</strong><em id="hlnSystemsMeta">Ventilație naturală</em></span>
             <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
           </button>
 
-          <button type="button" class="hln-config-row" data-hln-editor-open="renewables">
+          <button type="button" class="hln-config-row" data-hln-editor-open="renewables" data-hln-technical-entry>
             <span class="hln-row-icon"><svg><use href="#hln-i-sun"></use></svg></span>
             <span class="hln-row-copy"><small>REGENERABILE</small><strong id="hlnRenewablesSummary">Fără regenerabile</strong><em id="hlnRenewablesMeta">PV · solar termic</em></span>
             <svg class="hln-row-arrow"><use href="#hln-i-chevron"></use></svg>
@@ -884,18 +927,29 @@
           <input id="hlnQuickEditRange" type="range" min="0" max="30" step="0.5" aria-label="Valoare intervenție">
           <div><span>0</span><span id="hlnQuickEditMaxLabel">30</span></div>
         </div>
-        <button type="button" class="hln-quick-edit-details" data-hln-quick-edit-details>Orientare și înclinare</button>
-        <small class="hln-quick-edit-hint">Glisează. La eliberare, valoarea se salvează și editorul dispare.</small>
+        <div class="hln-quick-edit-actions">
+          <button type="button" class="hln-quick-edit-details" data-hln-quick-edit-details>Orientare și înclinare</button>
+          <button type="button" class="hln-primary hln-quick-edit-done" data-hln-quick-edit-commit>Gata</button>
+        </div>
+        <small class="hln-quick-edit-hint">Glisează și urmărește casa și rezultatul actualizându-se. Apasă Gata când ai terminat.</small>
       </div>
     </aside>
 
     <aside class="hln-editor" id="hlnEditor" hidden>
       <div class="hln-editor-card">
         <header>
-          <button type="button" data-hln-editor-close aria-label="Înapoi"><svg><use href="#hln-i-arrow-left"></use></svg></button>
-          <div><span>CASA MEA</span><strong id="hlnEditorTitle">Editează</strong></div>
-          <button type="button" class="hln-editor-done" data-hln-editor-close>Gata</button>
+          <button type="button" data-hln-editor-close aria-label="Înapoi la casă"><svg><use href="#hln-i-arrow-left"></use></svg></button>
+          <div><span id="hlnEditorModeLabel">CASA MEA</span><strong id="hlnEditorTitle">Editează</strong></div>
+          <button type="button" class="hln-editor-done" id="hlnEditorDone" data-hln-editor-close>Gata</button>
         </header>
+
+        <nav class="hln-technical-nav" data-hln-technical-nav hidden aria-label="Categorii configurare tehnică">
+          <button type="button" data-hln-technical-section="location"><svg><use href="#hln-i-pin"></use></svg><span>Locație</span></button>
+          <button type="button" data-hln-technical-section="house"><svg><use href="#hln-i-ruler"></use></svg><span>Casă</span></button>
+          <button type="button" data-hln-technical-section="envelope"><svg><use href="#hln-i-layers"></use></svg><span>Anvelopă</span></button>
+          <button type="button" data-hln-technical-section="systems"><svg><use href="#hln-i-flame"></use></svg><span>Instalații</span></button>
+          <button type="button" data-hln-technical-section="renewables"><svg><use href="#hln-i-sun"></use></svg><span>PV & solar</span></button>
+        </nav>
 
         <section data-hln-editor="location" hidden>
           <div class="hln-editor-lead"><span class="hln-row-icon"><svg><use href="#hln-i-pin"></use></svg></span><div><strong>Alege locația pe hartă</strong><small>Localitatea stabilește profilul climatic și radiația solară.</small></div></div>
@@ -1048,6 +1102,16 @@
           <label data-hln-home-heating-chain>Reglaj
             <select id="hlnHomeHeatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
           </label>
+          <label>Apă caldă menajeră (ACM)
+            <select id="hlnHomeDhwSystem">
+              <option value="same_as_heating">Același sistem ca încălzirea</option>
+              <option value="electric_boiler">Boiler electric</option>
+              <option value="gas_boiler">Centrală pe gaz</option>
+              <option value="heat_pump_water_heater">Pompă de căldură pentru ACM</option>
+              <option value="district_heat">Termoficare</option>
+            </select>
+          </label>
+          <small class="hln-field-note">ACM este calculată separat de încălzirea spațiilor. „Același sistem” reutilizează tipul sursei, dar aplică performanța specifică ACM.</small>
           <label>Ventilație
             <select id="hlnHomeVentilation"><option value="natural">Naturală</option><option value="mechanical">Mecanică</option><option value="hrv">Cu recuperare de căldură</option></select>
           </label>
@@ -1076,11 +1140,10 @@
     </aside>
 
     <section class="hln-dock" data-hln-dock="home" aria-live="polite">
-      <div class="hln-dock-metrics">
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-gauge"></use></svg></span><span><small>Clasă</small><strong id="hlnDockClass">—</strong></span></article>
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-money"></use></svg></span><span><small>Cost anual</small><strong id="hlnDockCost">—</strong></span></article>
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-bolt"></use></svg></span><span><small>Energie</small><strong id="hlnDockEnergy">—</strong></span></article>
-      </div>
+      <button type="button" class="hln-dock-back" id="hlnDockBack" hidden>
+        <svg aria-hidden="true"><use href="#hln-i-arrow-left"></use></svg>
+        <span>Înapoi</span>
+      </button>
       <div class="hln-dock-benefits hln-dock-compare" hidden>
         <article class="is-home">
           <span><small>Casa mea</small><strong><b id="hlnDockHomeClass">—</b><em id="hlnDockHomeCost">—</em></strong></span>
@@ -1093,7 +1156,7 @@
         </article>
       </div>
       <button type="button" class="hln-dock-cta" id="hlnDockCta">
-        <span>Salvează Casa mea și vezi îmbunătățirile</span>
+        <span data-mobile-label="Îmbunătățiri">Salvează Casa mea și vezi îmbunătățirile</span>
         <svg><use href="#hln-i-arrow-right"></use></svg>
       </button>
     </section>
@@ -1169,7 +1232,11 @@
       <input name="dhw_enabled" value="on">
       <input name="dhw_occupants" value="4">
       <input name="dhw_litres_per_person_day_at_60c" value="50">
-      <input name="dhw_efficiency" value="0.86">
+      <input name="dhw_system_type" value="same_as_heating">
+      <input name="dhw_efficiency" value="">
+      <input name="dhw_cop" value="">
+      <input name="dhw_carrier" value="">
+      <input name="expert_dhw_override" value="">
       <input name="pv_enabled" value="">
       <input name="pv_installed_power_kwp" value="5.0">
       <input name="pv_orientation" value="south">
@@ -1183,6 +1250,10 @@
     </form>
   </main>
 
+  {% include "_legal_footer.html" %}
+  {% include "_privacy_controls.html" %}
+
+  <script src="/static/privacy-consent.js?v=privacy1"></script>
   <script type="importmap">
     {
       "imports": {
@@ -1191,8 +1262,8 @@
       }
     }
   </script>
-  <script type="module" src="/static/home-lab-3d.js?v=3d46"></script>
-  <script src="/static/home-lab-next.js?v=next46"></script>
+  <script type="module" src="/static/home-lab-3d.js?v=3d49"></script>
+  <script src="/static/home-lab-next.js?v=next57"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

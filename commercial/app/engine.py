@@ -970,9 +970,14 @@ def dhw_energy(building: BuildingInput, useful_kwh: float | None = None) -> Ener
         if useful_kwh is None
         else max(float(useful_kwh), 0.0)
     )
+    performance = (
+        float(building.dhw.cop)
+        if building.dhw.cop is not None
+        else float(building.dhw.efficiency or 1.0)
+    )
     return EnergyServiceResult(
         useful_kwh=_round(useful),
-        final_kwh=_round(useful / building.dhw.efficiency),
+        final_kwh=_round(useful / performance),
         carrier=building.dhw.carrier,
     )
 
