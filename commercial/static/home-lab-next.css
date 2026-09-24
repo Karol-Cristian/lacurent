@@ -1606,90 +1606,185 @@ svg{display:block}
 }
 
 
-/* Issue #358: persistent class / cost / energy summary with calculation status. */
+/* Issue #358: persistent class / cost / energy HUD with calculation status. */
 .hln-persistent-stack{
   position:sticky;
   top:76px;
-  z-index:29;
-  background:rgba(251,250,247,.98);
-  box-shadow:0 8px 18px rgba(30,37,34,.045);
+  z-index:140;
+  isolation:isolate;
+  background:#fbfaf7;
+  box-shadow:0 10px 26px rgba(30,37,34,.10);
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  filter:none!important;
+  opacity:1!important;
 }
+.hln-persistent-spacer{display:none}
 .hln-live-summary{
+  --hln-class-color:#66736d;
   display:grid;
   grid-template-columns:minmax(0,1fr) auto;
-  gap:12px;
+  gap:14px;
   align-items:center;
-  min-height:48px;
-  padding:6px 24px 7px;
-  border-bottom:1px solid var(--hln-line);
-  background:rgba(251,250,247,.98);
+  min-height:72px;
+  padding:8px 24px 9px;
+  border-bottom:1px solid #d9d5cc;
+  background:#fbfaf7;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  filter:none!important;
+  opacity:1!important;
 }
+.hln-live-summary[data-energy-class="A+"]{--hln-class-color:#087f3e}
+.hln-live-summary[data-energy-class="A"]{--hln-class-color:#2c9b46}
+.hln-live-summary[data-energy-class="B"]{--hln-class-color:#79ae39}
+.hln-live-summary[data-energy-class="C"]{--hln-class-color:#d2bd27}
+.hln-live-summary[data-energy-class="D"]{--hln-class-color:#e3a12c}
+.hln-live-summary[data-energy-class="E"]{--hln-class-color:#df712d}
+.hln-live-summary[data-energy-class="F"]{--hln-class-color:#d54a34}
+.hln-live-summary[data-energy-class="G"]{--hln-class-color:#a82f32}
 .hln-live-metrics{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:8px;
+  grid-template-columns:minmax(150px,.8fr) minmax(190px,1fr) minmax(190px,1fr);
+  gap:9px;
   min-width:0;
 }
 .hln-live-metrics article{
+  position:relative;
   display:grid;
-  grid-template-columns:28px minmax(0,1fr);
-  gap:7px;
+  grid-template-columns:38px minmax(0,1fr);
+  gap:9px;
   align-items:center;
   min-width:0;
-  padding:5px 8px;
-  border:1px solid rgba(216,211,202,.75);
-  border-radius:10px;
-  background:#fff;
+  min-height:54px;
+  padding:7px 11px;
+  border:1px solid rgba(53,66,60,.10);
+  border-radius:13px;
+  overflow:hidden;
+}
+.hln-live-class-card{
+  grid-template-columns:30px minmax(0,1fr)!important;
+  padding-right:22px!important;
+  border:0!important;
+  border-radius:6px!important;
+  color:#fff;
+  background:var(--hln-class-color);
+  clip-path:polygon(0 0,calc(100% - 18px) 0,100% 50%,calc(100% - 18px) 100%,0 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+}
+.hln-energy-label-arrow{
+  width:25px;
+  height:34px;
+  border-radius:4px;
+  background:
+    linear-gradient(to bottom,
+      rgba(255,255,255,.95) 0 12%,
+      transparent 12% 20%,
+      rgba(255,255,255,.78) 20% 32%,
+      transparent 32% 40%,
+      rgba(255,255,255,.58) 40% 52%,
+      transparent 52% 60%,
+      rgba(255,255,255,.38) 60% 72%,
+      transparent 72% 80%,
+      rgba(255,255,255,.22) 80% 92%,
+      transparent 92%);
+  opacity:.7;
+}
+.hln-live-cost-card{
+  background:linear-gradient(135deg,#eef8f6 0%,#f9fcfb 100%);
+  box-shadow:inset 4px 0 0 #18856f;
+}
+.hln-live-energy-card{
+  background:linear-gradient(135deg,#fff5df 0%,#fffaf0 100%);
+  box-shadow:inset 4px 0 0 #d78a18;
 }
 .hln-live-icon{
   display:grid;
-  width:28px;
-  height:28px;
+  width:36px;
+  height:36px;
   place-items:center;
-  border-radius:8px;
-  background:var(--hln-home-soft);
-  color:var(--hln-home);
+  border-radius:10px;
 }
+.hln-live-cost-card .hln-live-icon{background:#d9f0ea;color:#166d5d}
+.hln-live-energy-card .hln-live-icon{background:#f8e6bc;color:#9b620f}
 .hln-live-icon svg{
-  width:14px;
-  height:14px;
+  width:18px;
+  height:18px;
   fill:none;
   stroke:currentColor;
-  stroke-width:1.8;
+  stroke-width:1.9;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-.hln-live-metrics article>span:last-child{
+.hln-live-value{
   display:grid;
   min-width:0;
   gap:1px;
 }
 .hln-live-metrics small,
 .hln-live-calc-status>small{
-  color:#7c8680;
-  font-size:7px;
-  font-weight:820;
+  color:#68746e;
+  font-size:8px;
+  font-weight:860;
   letter-spacing:.08em;
   text-transform:uppercase;
 }
+.hln-live-class-card small{color:rgba(255,255,255,.82)}
 .hln-live-metrics strong{
   overflow:hidden;
-  color:var(--hln-ink);
-  font-size:12px;
+  color:#1d2924;
+  font-size:17px;
+  line-height:1.1;
+  font-weight:880;
   font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+.hln-live-class-card strong{
+  color:#fff;
+  font-size:24px;
+  letter-spacing:-.04em;
+}
+.hln-live-value em{
+  min-height:15px;
+  overflow:hidden;
+  color:#67746d;
+  font-size:8px;
+  font-style:normal;
+  font-weight:760;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.hln-live-class-card em{color:rgba(255,255,255,.78)}
+.hln-live-delta{
+  display:inline-flex;
+  width:max-content;
+  max-width:100%;
+  align-items:center;
+  gap:4px;
+  padding:2px 6px;
+  border-radius:999px;
+  background:rgba(86,100,93,.08);
+}
+.hln-live-delta.is-good{background:#dcefe3;color:#166a43}
+.hln-live-delta.is-bad{background:#f8dfdc;color:#a23e34}
+.hln-live-summary.is-pending .hln-live-metrics strong,
+.hln-live-summary.is-pending .hln-live-delta{
+  text-decoration-style:dotted;
+}
 .hln-live-calc-status{
   display:grid;
-  min-width:160px;
-  gap:3px;
+  min-width:175px;
+  gap:4px;
   justify-items:end;
 }
 .hln-live-calc-status .hln-status{
-  max-width:260px;
+  max-width:280px;
   overflow:hidden;
   text-overflow:ellipsis;
+  font-size:9px;
+  font-weight:760;
 }
 .hln-dock:not(.has-comparison){
   grid-template-columns:1fr;
@@ -1704,40 +1799,75 @@ svg{display:block}
   left:50%;
   width:min(1240px,calc(100% - 48px));
   transform:translateX(-50%);
-  z-index:95;
+  z-index:140;
 }
 .hln-technical-open .hln-editor.is-technical-mode{
-  padding-top:var(--hln-persistent-stack-height,104px);
+  padding-top:var(--hln-persistent-stack-height,126px);
 }
 .hln-technical-open .hln-editor.is-technical-mode .hln-editor-card{
-  height:calc(100dvh - var(--hln-persistent-stack-height,104px));
+  height:calc(100dvh - var(--hln-persistent-stack-height,126px));
 }
 .hln-technical-open .hln-energy-prices[open] .hln-energy-details{
   display:none;
 }
 
+/* The HUD is intentionally above page-dimming / blur layers. */
+.hln-editor,
+.hln-quick-edit-overlay{z-index:95}
+.hln-persistent-stack{pointer-events:auto}
+
 @media(max-width:980px){
   .hln-technical-open .hln-persistent-stack{width:100%}
+  .hln-live-metrics{
+    grid-template-columns:minmax(130px,.75fr) minmax(160px,1fr) minmax(160px,1fr)
+  }
 }
 @media(max-width:760px){
-  .hln-persistent-stack{top:64px}
+  .hln-persistent-stack{
+    position:fixed;
+    top:64px;
+    left:0;
+    right:0;
+    width:100%;
+    z-index:140;
+  }
+  .hln-persistent-spacer{
+    display:block;
+    height:var(--hln-persistent-stack-height,118px);
+  }
   .hln-live-summary{
     grid-template-columns:1fr;
     gap:4px;
-    min-height:68px;
-    padding:5px 10px 6px;
+    min-height:76px;
+    padding:5px 7px 6px;
   }
-  .hln-live-metrics{gap:4px}
+  .hln-live-metrics{
+    grid-template-columns:.72fr 1fr 1fr;
+    gap:4px;
+  }
   .hln-live-metrics article{
     grid-template-columns:1fr;
-    justify-items:center;
+    justify-items:start;
+    min-height:52px;
     gap:1px;
-    padding:4px 3px;
-    text-align:center;
+    padding:5px 7px;
+    text-align:left;
   }
+  .hln-live-class-card{
+    grid-template-columns:1fr!important;
+    padding:5px 17px 5px 7px!important;
+  }
+  .hln-energy-label-arrow,
   .hln-live-icon{display:none}
-  .hln-live-metrics small{font-size:6px}
-  .hln-live-metrics strong{max-width:100%;font-size:10px}
+  .hln-live-metrics small{font-size:6.5px}
+  .hln-live-metrics strong{max-width:100%;font-size:13px}
+  .hln-live-class-card strong{font-size:20px}
+  .hln-live-value em{
+    max-width:100%;
+    min-height:12px;
+    font-size:6.5px;
+  }
+  .hln-live-delta{padding:1px 4px}
   .hln-live-calc-status{
     display:flex;
     min-width:0;
@@ -1747,9 +1877,16 @@ svg{display:block}
   }
   .hln-live-calc-status>small{font-size:6px}
   .hln-live-calc-status .hln-status{
-    max-width:min(74vw,300px);
+    max-width:min(76vw,310px);
     padding:4px 7px;
     font-size:7px;
   }
-  .hln-technical-open .hln-persistent-stack{top:0}
+  .hln-technical-open .hln-persistent-stack{
+    top:0;
+    left:0;
+    right:0;
+    transform:none;
+  }
+  .hln-technical-open .hln-persistent-spacer{height:0}
 }
+

@@ -561,8 +561,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next28" in response.text
-    assert "/static/home-lab-next.js?v=next54" in response.text
+    assert "/static/home-lab-next.css?v=next29" in response.text
+    assert "/static/home-lab-next.js?v=next55" in response.text
     assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -576,6 +576,10 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'id="hlnPersistentClass"' in response.text
     assert 'id="hlnPersistentCost"' in response.text
     assert 'id="hlnPersistentEnergy"' in response.text
+    assert 'id="hlnPersistentClassContext"' in response.text
+    assert 'id="hlnPersistentCostDelta"' in response.text
+    assert 'id="hlnPersistentEnergyDelta"' in response.text
+    assert 'class="hln-persistent-spacer"' in response.text
     assert 'id="hlnStatus"' in response.text
     assert response.text.index('class="hln-energy-strip"') < response.text.index('class="hln-live-summary"')
     assert response.text.index('class="hln-live-summary"') < response.text.index('data-hln-screen="home"')
@@ -587,6 +591,14 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert css.status_code == 200
     assert ".hln-persistent-stack{" in css.text
     assert "position:sticky" in css.text
+    assert 'data-energy-class="A+"' in css.text
+    assert ".hln-live-class-card" in css.text
+    assert ".hln-live-delta.is-good" in css.text
+    assert ".hln-live-delta.is-bad" in css.text
+    assert ".hln-persistent-spacer" in css.text
+    assert "position:fixed" in css.text
+    assert "z-index:140" in css.text
+    assert "-webkit-backdrop-filter:none!important" in css.text
     assert ".hln-technical-open .hln-persistent-stack" in css.text
     assert ".hln-technical-open .hln-editor.is-technical-mode" in css.text
 
@@ -595,6 +607,12 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert '$("#hlnPersistentClass").textContent' in js.text
     assert '$("#hlnPersistentCost").textContent' in js.text
     assert '$("#hlnPersistentEnergy").textContent' in js.text
+    assert 'const costDeltaNode = $("#hlnPersistentCostDelta")' in js.text
+    assert 'const energyDeltaNode = $("#hlnPersistentEnergyDelta")' in js.text
+    assert 'costDeltaNode.textContent = `vs Casa mea · ${costDelta.text}`' in js.text
+    assert 'energyDeltaNode.textContent = `vs Casa mea · ${energyDelta.text}`' in js.text
+    assert 'summary.dataset.energyClass = energyClass' in js.text
+    assert 'window.requestAnimationFrame(syncPersistentStackHeight)' in js.text
     assert 'document.body.classList.toggle("hln-technical-open", technical)' in js.text
     assert 'document.body.classList.remove("hln-technical-open")' in js.text
     assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text

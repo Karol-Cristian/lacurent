@@ -1413,12 +1413,22 @@
     const target = screen === "home" ? "home" : "scenario";
     const state = resultStateFor(target);
     const live = $("#hlnLiveConfigurator");
+    const summary = $(".hln-live-summary");
     if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
+    if (summary) {
+      summary.classList.toggle("is-pending", state === "pending" || state === "stale");
+      summary.classList.toggle("is-error", state === "error");
+    }
 
-    const allCalculatedSelectors = [
+    const persistentSelectors = [
       "#hlnPersistentClass",
       "#hlnPersistentCost",
       "#hlnPersistentEnergy",
+      "#hlnPersistentCostDelta",
+      "#hlnPersistentEnergyDelta",
+    ];
+    const allCalculatedSelectors = [
+      ...persistentSelectors,
       "#hlnLiveCost",
       "#hlnLiveClass",
       "#hlnDockScenarioClass",
@@ -1443,22 +1453,20 @@
       return;
     }
 
-    const pending = pendingTextFor(target);
+    // Keep the last valid HUD values visible while a new calculation is in
+    // flight. Freshness is communicated by the adjacent status chip and the
+    // HUD pending/error state, so the user's reference values never disappear.
+    persistentSelectors.forEach(selector => $(selector)?.classList.add("hln-calculating-value"));
+
     if (target === "home") {
-      ["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"].forEach(selector => {
-        const node = $(selector);
-        if (!node) return;
-        node.textContent = pending;
-        node.classList.remove("is-good", "is-bad");
-        node.classList.add("hln-calculating-value");
-      });
       const cta = $("#hlnDockCta");
       if (cta && screen === "home") cta.disabled = state !== "error";
       return;
     }
 
+    const pending = pendingTextFor(target);
     const valueSelectors = allCalculatedSelectors.filter(selector =>
-      !["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"].includes(selector)
+      !persistentSelectors.includes(selector)
     );
     valueSelectors.forEach(selector => {
       const node = $(selector);
@@ -3156,12 +3164,61 @@
     const result = screen === "home"
       ? (baselineSaved ? homeResult : currentResult || homeResult)
       : scenarioResult || currentResult || homeResult;
+    const comparisonMode = Boolean(
+      baselineSaved &&
+      screen !== "home" &&
+      homeResult &&
+      scenarioResult
+    );
+    const summary = $(".hln-live-summary");
+    const energyClass = String(result?.energy_class || "").toUpperCase();
 
-    $("#hlnPersistentClass").textContent = result?.energy_class || "—";
+    $("#hlnPersistentClass").textContent = energyClass || "—";
     $("#hlnPersistentCost").textContent =
       result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`;
     $("#hlnPersistentEnergy").textContent =
       result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`;
+    if (summary) summary.dataset.energyClass = energyClass;
+
+    const classContext = $("#hlnPersistentClassContext");
+    const costDeltaNode = $("#hlnPersistentCostDelta");
+    const energyDeltaNode = $("#hlnPersistentEnergyDelta");
+    [costDeltaNode, energyDeltaNode].forEach(node => {
+      node?.classList.remove("is-good", "is-bad");
+    });
+
+    if (comparisonMode) {
+      const costDelta = directChangeText(
+        scenarioResult.annual_cost_lei,
+        homeResult.annual_cost_lei,
+        {unit:" lei/an", digits:0}
+      );
+      const energyDelta = directChangeText(
+        scenarioResult.final_energy_kwh,
+        homeResult.final_energy_kwh,
+        {unit:"%", digits:0, percent:true}
+      );
+      if (costDeltaNode) {
+        costDeltaNode.textContent = `vs Casa mea · ${costDelta.text}`;
+        applyDeltaState(costDeltaNode, costDelta);
+      }
+      if (energyDeltaNode) {
+        energyDeltaNode.textContent = `vs Casa mea · ${energyDelta.text}`;
+        applyDeltaState(energyDeltaNode, energyDelta);
+      }
+      if (classContext) {
+        const baseClass = String(homeResult.energy_class || "—").toUpperCase();
+        classContext.textContent = baseClass === energyClass
+          ? `Scenariu · aceeași clasă ${energyClass || "—"}`
+          : `Casa mea ${baseClass} → ${energyClass || "—"}`;
+      }
+    } else {
+      if (costDeltaNode) costDeltaNode.textContent = "Baseline Casa mea";
+      if (energyDeltaNode) energyDeltaNode.textContent = "Baseline Casa mea";
+      if (classContext) classContext.textContent = baselineSaved ? "Casa mea salvată" : "Casa curentă";
+    }
+
+    window.requestAnimationFrame(syncPersistentStackHeight);
 
     if (dock) dock.hidden = screen === "report";
     if (screen === "report") return;
@@ -4813,9 +4870,11 @@
     target.hidden = !hits.length;
   }
 
-  window.addEventListener("resize", () => {
-    if (document.body.classList.contains("hln-technical-open")) syncPersistentStackHeight();
+  window.addEventListener("resize", syncPersistentStackHeight);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(syncPersistentStackHeight, 120);
   });
+  window.requestAnimationFrame(syncPersistentStackHeight);
 
   root.querySelectorAll("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
     openEditor(button.dataset.hlnEditorOpen, {
