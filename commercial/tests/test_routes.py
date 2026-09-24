@@ -611,6 +611,9 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert ".hln-dock-benefits{" in css.text
     assert "display:none!important" in css.text
     assert ".hln-dock-back:not([hidden])" in css.text
+    assert "order:0" in css.text
+    assert "order:1" in css.text
+    assert 'data-hln-dock="report"' in css.text
     assert "max-width:min(60vw,190px)" in css.text
     assert "content:attr(data-mobile-label)" in css.text
 
@@ -629,8 +632,11 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'document.body.classList.remove("hln-technical-open")' in js.text
     assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text
     assert 'if (back) back.hidden = screen === "home"' in js.text
+    assert 'backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi"' in js.text
     assert 'ctaLabel.dataset.mobileLabel = "Îmbunătățiri"' in js.text
     assert '$("#hlnDockBack").addEventListener("click"' in js.text
+    assert 'if (screen === "report")' in js.text
+    assert 'showScreen("scenario");' in js.text
     assert 'cancelIntervention();' in js.text
     assert 'root.querySelectorAll("[data-hln-editor-open]").forEach' in js.text
 
@@ -1589,7 +1595,8 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "selected.length" in response.text
     assert "fără limită artificială la numărul de intervenții" in response.text
     assert "round < 3" not in response.text
-    assert 'dock.hidden = screen === "report"' in response.text
+    assert "if (dock) dock.hidden = false;" in response.text
+    assert 'backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi"' in response.text
     assert "function nzebMeetsTarget" in response.text
     assert "ROI_ACTIONS" not in response.text
     assert "weather_compensated" in response.text

@@ -1896,6 +1896,9 @@ svg{display:block}
 
 /* #358 scope correction: comparison dock stays on desktop, CTA-only on phone. */
 /* Mobile navigation stays compact so the house remains the primary interface. */
+@media(min-width:761px){
+  .hln-dock[data-hln-dock="report"]{display:none}
+}
 @media(max-width:760px){
   .hln-dock{
     position:fixed;
@@ -1920,6 +1923,7 @@ svg{display:block}
   }
   .hln-dock-back:not([hidden]){
     display:inline-flex;
+    order:0;
     flex:0 0 auto;
     align-items:center;
     justify-content:center;
@@ -1942,6 +1946,8 @@ svg{display:block}
     stroke-width:1.8;
   }
   .hln-dock-cta{
+    order:1;
+    flex:0 1 auto;
     width:auto;
     max-width:min(60vw,190px);
     min-height:48px;
@@ -1957,6 +1963,12 @@ svg{display:block}
     line-height:1.1;
   }
   .hln-dock-cta svg{flex:0 0 auto}
+  .hln-dock[data-hln-dock="report"]{
+    justify-content:flex-start;
+  }
+  .hln-dock[data-hln-dock="report"] .hln-dock-back{
+    max-width:210px;
+  }
   .hln-app{
     padding-bottom:calc(76px + env(safe-area-inset-bottom, 0px) + var(--hln-mobile-bottom-occlusion, 0px));
   }

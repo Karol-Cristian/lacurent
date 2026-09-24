@@ -567,7 +567,74 @@ try {
   if (!mobileBack.visible || mobileBack.left < 12 || mobileBack.left > 16 || mobileBack.label !== "Înapoi") {
     throw new Error("Mobile back navigation is not visible on step 2: " + JSON.stringify(mobileBack));
   }
+
+  await page.locator('[data-hln-measure="wall"]').first().click();
+  await expectVisible('[data-hln-screen="intervention"].is-active');
+  const mobileInterventionNav = await page.evaluate(() => {
+    const back = document.querySelector("#hlnDockBack");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(back instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Mobile intervention navigation is incomplete");
+    }
+    const backBox = back.getBoundingClientRect();
+    const ctaBox = cta.getBoundingClientRect();
+    return {
+      backLeft:backBox.left,
+      backRight:backBox.right,
+      ctaLeft:ctaBox.left,
+      ctaRight:ctaBox.right,
+      backOrder:getComputedStyle(back).order,
+      ctaOrder:getComputedStyle(cta).order,
+      overlap:backBox.right > ctaBox.left,
+    };
+  });
+  if (mobileInterventionNav.backLeft < 12 ||
+      mobileInterventionNav.backLeft > 16 ||
+      Math.abs(mobileInterventionNav.ctaRight - 376) > 2 ||
+      mobileInterventionNav.backOrder !== "0" ||
+      mobileInterventionNav.ctaOrder !== "1" ||
+      mobileInterventionNav.overlap) {
+    throw new Error("Mobile back/forward controls overlap or are reversed: " + JSON.stringify(mobileInterventionNav));
+  }
+
+  await page.locator("#hlnDockCta").click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await page.waitForFunction(
+    () => !document.querySelector("#hlnDockCta")?.disabled,
+    null,
+    {timeout:30000}
+  );
+  await page.locator("#hlnDockCta").click();
+  await expectVisible('[data-hln-screen="report"].is-active');
+  const mobileReportNav = await page.evaluate(() => {
+    const dock = document.querySelector(".hln-dock");
+    const back = document.querySelector("#hlnDockBack");
+    const cta = document.querySelector("#hlnDockCta");
+    if (!(dock instanceof HTMLElement) || !(back instanceof HTMLElement) || !(cta instanceof HTMLElement)) {
+      throw new Error("Mobile report navigation is incomplete");
+    }
+    const backBox = back.getBoundingClientRect();
+    return {
+      dockState:dock.dataset.hlnDock,
+      dockDisplay:getComputedStyle(dock).display,
+      backVisible:backBox.width > 0 && backBox.height > 0 && getComputedStyle(back).display !== "none",
+      backLeft:backBox.left,
+      backLabel:String(back.textContent || "").trim(),
+      ctaHidden:cta.hidden,
+    };
+  });
+  if (mobileReportNav.dockState !== "report" ||
+      mobileReportNav.dockDisplay !== "flex" ||
+      !mobileReportNav.backVisible ||
+      mobileReportNav.backLeft < 12 ||
+      mobileReportNav.backLeft > 16 ||
+      mobileReportNav.backLabel !== "Înapoi la scenariu" ||
+      !mobileReportNav.ctaHidden) {
+    throw new Error("Mobile report remains a navigation dead end: " + JSON.stringify(mobileReportNav));
+  }
   await page.locator("#hlnDockBack").click();
+  await expectVisible('[data-hln-screen="scenario"].is-active');
+  await page.locator('.hln-progress [data-hln-go="home"]').click();
   await expectVisible('[data-hln-screen="home"].is-active');
   const mobilePersistentLayout = await page.evaluate(() => {
     const stack = document.querySelector("[data-hln-persistent-stack]");
