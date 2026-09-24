@@ -561,8 +561,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next29" in response.text
-    assert "/static/home-lab-next.js?v=next55" in response.text
+    assert "/static/home-lab-next.css?v=next30" in response.text
+    assert "/static/home-lab-next.js?v=next56" in response.text
     assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -576,6 +576,12 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'id="hlnPersistentClass"' in response.text
     assert 'id="hlnPersistentCost"' in response.text
     assert 'id="hlnPersistentEnergy"' in response.text
+    assert 'class="hln-dock hln-dock-cta-only"' in response.text
+    assert 'id="hlnDockCta"' in response.text
+    assert 'class="hln-dock-benefits' not in response.text
+    assert 'id="hlnDockHomeClass"' not in response.text
+    assert 'id="hlnDockScenarioClass"' not in response.text
+    assert 'id="hlnDockCostBenefit"' not in response.text
     assert 'id="hlnPersistentClassContext"' in response.text
     assert 'id="hlnPersistentCostDelta"' in response.text
     assert 'id="hlnPersistentEnergyDelta"' in response.text
@@ -611,11 +617,14 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'const energyDeltaNode = $("#hlnPersistentEnergyDelta")' in js.text
     assert 'costDeltaNode.textContent = `vs Casa mea · ${costDelta.text}`' in js.text
     assert 'energyDeltaNode.textContent = `vs Casa mea · ${energyDelta.text}`' in js.text
+    assert 'const benefits = $(".hln-dock-benefits")' not in js.text
+    assert 'hlnDockHomeClass' not in js.text
+    assert 'hlnDockScenarioClass' not in js.text
+    assert 'hlnDockCostBenefit' not in js.text
     assert 'summary.dataset.energyClass = energyClass' in js.text
     assert 'window.requestAnimationFrame(syncPersistentStackHeight)' in js.text
     assert 'document.body.classList.toggle("hln-technical-open", technical)' in js.text
     assert 'document.body.classList.remove("hln-technical-open")' in js.text
-    assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text
     assert 'root.querySelectorAll("[data-hln-editor-open]").forEach' in js.text
 
 
@@ -658,7 +667,6 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'data-hln-print-report' in response.text
     assert 'id="hlnImpactEfficiency"' in response.text
     assert 'id="hlnScenarioBenefitLabel"' in response.text
-    assert 'id="hlnDockSavingLabel"' in response.text
     assert "Variație cost anual" in response.text
     assert "Consum energie" in response.text
     assert "Eficiență energetică" in response.text
@@ -675,10 +683,6 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'data-hln-editor="renewables"' in response.text
     assert 'id="hlnRenewablesSummary"' in response.text
     assert 'id="hlnHomeLocationMap"' in response.text
-    assert 'id="hlnDockHomeClass"' in response.text
-    assert 'id="hlnDockHomeCost"' in response.text
-    assert 'id="hlnDockScenarioClass"' in response.text
-    assert 'id="hlnDockScenarioCost"' in response.text
     assert 'id="hlnMapLocalityResults"' in response.text
     assert 'id="hlnBuildingType"' in response.text
     assert 'id="hlnBuildingType" disabled' in response.text
@@ -1525,7 +1529,6 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);" in response.text
     assert "function directChangeText" in response.text
     assert "function applyDeltaState" in response.text
-    assert "function energyClassRank" in response.text
     assert '["#hlnImpactCost", cost]' in response.text
     assert '["#hlnImpactEnergy", energy]' in response.text
     assert '["#hlnImpactEfficiency", efficiency]' in response.text
@@ -1594,7 +1597,6 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "const delta = percent ? (100 * (now - base) / Math.abs(base)) : (now - base);" in response.text
     assert "const good = lowerIsBetter ? delta < 0 : delta > 0;" in response.text
     assert 'label: good ? "Economie" : "Cost suplimentar"' in response.text
-    assert "savingLabel.textContent = saving.label" in response.text
     assert "async function saveHomeAndOpenSite" in response.text
     assert 'await calculateState(homeState, "home")' in response.text
     assert 'showScreen("site")' in response.text
@@ -1603,10 +1605,6 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "function homeMapLabels" in response.text
     assert "hln-map-legend" in response.text
     assert 'Zona ${zone} · ${temperatureByZone[zone]}' in response.text
-    assert '$("#hlnDockHomeClass").textContent' in response.text
-    assert '$("#hlnDockScenarioClass").textContent' in response.text
-    assert '$("#hlnDockHomeCost").textContent' in response.text
-    assert '$("#hlnDockScenarioCost").textContent' in response.text
     assert "$root" not in response.text
     assert 'root.querySelectorAll("#hlnLevels [data-value]")' in response.text
     assert 'root.querySelectorAll("[data-hln-screen]")' in response.text
