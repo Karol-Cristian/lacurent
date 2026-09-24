@@ -796,7 +796,7 @@ try {
     const stack = document.querySelector("[data-hln-persistent-stack]");
     const strip = document.querySelector(".hln-energy-strip");
     const summary = document.querySelector(".hln-live-summary");
-    const status = document.querySelector("#hlnStatus");
+    const status = document.querySelector(".hln-live-calc-status");
     const quickOverlay = document.querySelector("#hlnQuickEditOverlay");
     const metrics = ["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"]
       .map(selector => document.querySelector(selector));
