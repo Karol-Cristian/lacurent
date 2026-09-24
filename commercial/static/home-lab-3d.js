@@ -1878,8 +1878,10 @@ class HomeLabHouse3D {
       const visible =
         isInFront &&
         projected.z > -1 && projected.z < 1 &&
-        x > -70 && x < width + 70 &&
-        y > -40 && y < height + 40;
+        (this.isMobile || (
+          x > -70 && x < width + 70 &&
+          y > -40 && y < height + 40
+        ));
 
       button.hidden = !visible;
       if (!visible) return;
@@ -2016,8 +2018,10 @@ class HomeLabHouse3D {
         isInFront &&
         projected.z > -1 &&
         projected.z < 1 &&
-        x > -24 && x < width + 24 &&
-        y > -24 && y < height + 24;
+        (this.isMobile || (
+          x > -24 && x < width + 24 &&
+          y > -24 && y < height + 24
+        ));
 
       button.hidden = !visible;
       if (!visible) return;
