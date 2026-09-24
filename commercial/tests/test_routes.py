@@ -165,15 +165,21 @@ def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
     assert "karol@lacurent.com" in terms.text
 
 
-def test_commercial_shell_exposes_legal_footer_and_privacy_controls() -> None:
-    response = client.get("/")
-    assert response.status_code == 200
-    assert 'href="/privacy"' in response.text
-    assert 'href="/terms"' in response.text
-    assert 'href="mailto:karol@lacurent.com"' in response.text
-    assert 'data-lacurent-privacy-open' in response.text
-    assert 'data-lacurent-first-use-consent' in response.text
-    assert "/static/privacy-consent.js?v=privacy1" in response.text
+def test_commercial_pages_expose_legal_links_and_privacy_controls_where_needed() -> None:
+    company = client.get("/")
+    assert company.status_code == 200
+    assert 'href="/privacy"' in company.text
+    assert 'href="/terms"' in company.text
+    assert 'href="mailto:karol@lacurent.com"' in company.text
+
+    calculator = client.get("/instalatii/calculator/legacy")
+    assert calculator.status_code == 200
+    assert 'href="/privacy"' in calculator.text
+    assert 'href="/terms"' in calculator.text
+    assert 'href="mailto:karol@lacurent.com"' in calculator.text
+    assert 'data-lacurent-privacy-open' in calculator.text
+    assert 'data-lacurent-first-use-consent' in calculator.text
+    assert "/static/privacy-consent.js?v=privacy1" in calculator.text
 
 
 def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
