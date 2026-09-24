@@ -409,12 +409,24 @@ try {
       {timeout:15000}
     );
   } catch (error) {
-    const reportState = await page.evaluate(() => ({
-      activeScreen: document.querySelector('[data-hln-screen].is-active')?.getAttribute("data-hln-screen") || null,
-      reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
-      scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
-      editorHidden: document.querySelector("#hlnEditor")?.hidden,
-    }));
+    const reportState = await page.evaluate(() => {
+      const active = document.querySelector('[data-hln-screen].is-active');
+      const report = document.querySelector('[data-hln-screen="report"]');
+      const reportRect = report instanceof HTMLElement ? report.getBoundingClientRect() : null;
+      const parent = report instanceof HTMLElement ? report.parentElement : null;
+      return {
+        activeScreen: active?.getAttribute("data-hln-screen") || null,
+        reportButtonExists: Boolean(document.querySelector('.hln-scenario-actions [data-hln-go="report"]')),
+        scenarioInvestment: String(document.querySelector("#hlnScenarioInvestmentSummary")?.textContent || ""),
+        editorHidden: document.querySelector("#hlnEditor")?.hidden,
+        reportHidden: report instanceof HTMLElement ? report.hidden : null,
+        reportClass: report instanceof HTMLElement ? report.className : null,
+        reportDisplay: report instanceof HTMLElement ? getComputedStyle(report).display : null,
+        reportVisibility: report instanceof HTMLElement ? getComputedStyle(report).visibility : null,
+        reportRect: reportRect ? {width:reportRect.width, height:reportRect.height, top:reportRect.top} : null,
+        parentDisplay: parent instanceof HTMLElement ? getComputedStyle(parent).display : null,
+      };
+    });
     throw new Error(
       "Scenario-to-report navigation failed. state=" + JSON.stringify(reportState) +
       " pageErrors=" + JSON.stringify(pageErrors) +
