@@ -4141,13 +4141,24 @@
     if (name === "location") renderHomeLocationMap();
   }
 
+  function syncPersistentStackHeight() {
+    const stack = $("[data-hln-persistent-stack]");
+    if (!stack) return;
+    const height = Math.ceil(stack.getBoundingClientRect().height);
+    if (height > 0) document.documentElement.style.setProperty("--hln-persistent-stack-height", `${height}px`);
+  }
+
   function openEditor(name, options = {}) {
     const editor = $("#hlnEditor");
     const technical = Boolean(options.technical);
     editor.dataset.hlnEditorMode = technical ? "technical" : "context";
     editor.classList.toggle("is-technical-mode", technical);
     document.body.classList.toggle("hln-technical-open", technical);
-    if (technical) root.querySelector(".hln-energy-prices[open]")?.removeAttribute("open");
+    if (technical) {
+      root.querySelector(".hln-energy-prices[open]")?.removeAttribute("open");
+      syncPersistentStackHeight();
+      window.requestAnimationFrame(syncPersistentStackHeight);
+    }
     const nav = $("[data-hln-technical-nav]");
     if (nav) nav.hidden = !technical;
     const modeLabel = $("#hlnEditorModeLabel");
@@ -4802,7 +4813,11 @@
     target.hidden = !hits.length;
   }
 
-  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
+  window.addEventListener("resize", () => {
+    if (document.body.classList.contains("hln-technical-open")) syncPersistentStackHeight();
+  });
+
+  $("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
     openEditor(button.dataset.hlnEditorOpen, {
       technical: button.hasAttribute("data-hln-technical-entry"),
     });
