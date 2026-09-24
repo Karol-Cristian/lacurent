@@ -641,7 +641,20 @@ try {
     throw new Error("Mobile back navigation is not visible on step 2: " + JSON.stringify(mobileBack));
   }
 
-  await page.locator('[data-hln-measure="wall"]').first().click();
+  await page.waitForFunction(
+    () => {
+      const hotspot = document.querySelector('[data-hln-3d-hotspot="wall"]');
+      const legacy = document.querySelector('.hln-zone-wall');
+      if (!(hotspot instanceof HTMLElement) || !(legacy instanceof HTMLElement)) return false;
+      const box = hotspot.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 &&
+        getComputedStyle(hotspot).display !== "none" &&
+        getComputedStyle(legacy).display === "none";
+    },
+    null,
+    {timeout:30000}
+  );
+  await page.locator('[data-hln-3d-hotspot="wall"]').click();
   await expectVisible('[data-hln-screen="intervention"].is-active');
   const mobileInterventionNav = await page.evaluate(() => {
     const back = document.querySelector("#hlnDockBack");
